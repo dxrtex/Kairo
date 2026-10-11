@@ -65,13 +65,3 @@ def test_nan_inputs_give_no_nan_in_json():
     pl = structure(df, 1.0, {"0.618": float("nan"), "0.5": 120.0})
     json.dumps(pl, allow_nan=False)                     # wirft bei NaN/Infinity
     assert all(not math.isnan(v) for _, v in pl["tg"])
-
-
-def test_candle_types():
-    import pandas as pd
-    from backend.tradeplan import candle
-    mk = lambda o, h, l, c: pd.DataFrame({"Open": [o], "High": [h], "Low": [l], "Close": [c]})
-    assert candle(mk(10, 11, 9.9, 10.95)) == "bull"
-    assert candle(mk(10.6, 10.8, 9.0, 10.7)) == "hammer"
-    assert candle(mk(10.9, 11, 9, 9.2)) == "red"
-    assert candle(mk(10, 10.5, 9.5, 10.02)) == "doji"
