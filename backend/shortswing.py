@@ -519,6 +519,11 @@ def _combo(sets: dict) -> dict:
         "L Ausverkauf Treffer+Fast 20 T 1,5 % · gelb Pause · grau Trend 20 T 1 %": {"weak": hf(20, 0.015), "strong": [("trend", 20, 0.01)]},
         "M Ausverkauf nur Treffer 20 T 1,5 % · sonst Trend 20 T 1 %": {"weak": [("hit", 20, 0.015)], "mixed": [("trend", 20, 0.01)], "strong": [("trend", 20, 0.01)]},
         "N Treffer 20 T + Trend 20 T, überall 1 %": {"all": [("hit", 20, 0.01), ("trend", 20, 0.01)]},
+        "P nur Treffer 20 T: Ausverkauf 1,5 %, sonst 1 %": {"weak": [("hit", 20, 0.015)], "mixed": [("hit", 20, 0.01)], "strong": [("hit", 20, 0.01)]},
+        "Q nur Treffer 20 T: Ausverkauf 1,5 %, sonst 0,5 %": {"weak": [("hit", 20, 0.015)], "mixed": [("hit", 20, 0.005)], "strong": [("hit", 20, 0.005)]},
+        "R nur Treffer 20 T: Ausverkauf 2 %, sonst 1 %": {"weak": [("hit", 20, 0.02)], "mixed": [("hit", 20, 0.01)], "strong": [("hit", 20, 0.01)]},
+        "S nur Treffer 20 T: Ausverkauf + grau 1 %, gelb Pause": {"weak": [("hit", 20, 0.01)], "strong": [("hit", 20, 0.01)]},
+        "T nur Treffer 10 T, 1 %": {"all": [("hit", 10, 0.01)]},
         "O Ausverkauf Treffer+Fast+Trend 20 T 1,5 % · sonst Trend 20 T 1 %": {"weak": hf(20, 0.015) + [("trend", 20, 0.015)], "mixed": [("trend", 20, 0.01)], "strong": [("trend", 20, 0.01)]},
     }
     out["depot"] = {name: depot(plan) for name, plan in strategies.items()}
