@@ -3298,10 +3298,11 @@ const TP = { maxAtr: 3, minAtr: 0.5, kob: 1.0, spreadStock: 0.001, spreadTurbo: 
 // Ø netto je Trade in R (Kauf in der Basis, Kairo-Treffer): [alle Marktlagen, schwacher Markt (S&P 500 < EMA 200), gesunder Markt]
 const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52, -0.04], 20: [0.26, 0.67, 0.04] };
 // Ausstieg: ein fester Plan je Aktie – Take-Profit als R-Vielfaches (Studie: backend/shortswing.py, Kursziel-Vergleich), sonst Zeit-Ausstieg
-// Ergebnis (5 Jahre, Kauf in der Basis, 10 Tage, netto je Trade): TP 1 R +0,02 · 2 R +0,08 · 3 R +0,11 · 5 R +0,15 · ohne TP +0,16 –
-// je weiter das Ziel, desto besser. TP 5 R kostet praktisch nichts und gibt eine feste Verkaufsmarke für die Ausreißer.
-const TP_EXIT = { R: 5, hold: 10,
-  why: "TP = Kauf + 5 × Abstand zum SL: Im Test schnitten nahe Ziele (1–3 R) deutlich schlechter ab als Laufenlassen – 5 R kostet praktisch nichts und sichert die seltenen großen Sprünge. Der normale Ausstieg ist der Ausstiegstag." };
+// Ausstieg (Kursziel-Vergleich, 5 Jahre, Kauf in der Basis, 10 Tage, netto je Trade): ohne TP +0,16 R · TP EMA 20 +0,12 R
+// (bestes realistisches Ziel, in ~26 % erreicht) · nächster Widerstand +0,08 · 2 R +0,08. Hälfte am TP, Rest zum Ausstiegstag:
+// gleicher Stop für beide Hälften → Ergebnis ≈ Mittel beider Regeln (≈ +0,14 R).
+const TP_EXIT = { hold: 10, part: 0.5,
+  why: "TP = EMA 20: Dorthin federt der Kurs nach einer Korrektur am häufigsten zurück – im Test das beste erreichbare Ziel (in etwa jedem 4. Trade erreicht). Nur die Hälfte verkaufen: Die andere Hälfte bis zum Ausstiegstag bringt die großen Gewinner, von denen die Strategie lebt." };
 const TP_EXP_TREND = { 5: 0.07, 7: 0.07, 10: 0.07, 20: 0.07 };      // Trend-Rücksetzer, sofort gekauft (beste Haltedauer 5 Tage)
 const tpCfg = () => ({ depot: +state.tpDepot > 0 ? +state.tpDepot : 3000, risk: +state.tpRisk > 0 ? +state.tpRisk : 1,
   hold: TP_EXIT.hold, fee: state.tpFee != null ? +state.tpFee : 0.99, maxOpen: +state.tpMaxOpen || 3 });
@@ -3344,8 +3345,9 @@ function tp2Calc(r, S, o = {}) {
   out.expo = out.riskEur / out.dist;                          // Basiswert-Exposure in €
   const hold = o.hold || (trend ? 5 : cfg.hold), cal = hold * 7 / 5;
   out.hold = hold;
-  out.tp = TP_EXIT.R && !trend ? +(E + TP_EXIT.R * risk).toFixed(4) : null;
-  out.tpWhy = out.tp ? TP_EXIT.why : "Kein festes Kursziel: Im Test brachte der Verkauf am Ausstiegstag mehr als jedes feste Ziel – Gewinner laufen lassen.";
+  out.tp = !trend && r.e20 && r.e20 > E + 0.25 * atr ? +(+r.e20).toFixed(4) : null;     // wie in der Studie: EMA 20 nur, wenn sie über dem Kauf liegt
+  out.tpWhy = out.tp ? TP_EXIT.why : trend ? "Trend-Rücksetzer: kein TP, Verkauf am Ausstiegstag (im Test am besten)."
+    : "Kein TP: Der Kurs liegt schon an oder über der EMA 20 – das naheliegende Ziel ist erreicht. Verkauf am Ausstiegstag.";
   out.d0 = tpEntryDay(o.date);
   out.exit = addBd(out.d0, hold - 1);
   // Quartalszahlen in der Haltedauer: spätestens am Handelstag davor raus (Kurslücke kann Stop und K.-o. überspringen)
@@ -3406,13 +3408,13 @@ function tpInner(r, S) {
     <div class="tp2-plan">
       ${row("Kauf", `${fmt(m.E)} ${cur}`, m.base ? `in der Seitwärtsphase ${fmt(m.base.lo)}–${fmt(m.base.hi)}` : "keine Seitwärtsphase erkannt")}
       ${row("Stop-Loss (SL)", `${fmt(m.stop)} ${cur}`, `${sgnPct(m.stop / m.E - 1, 1)} · Verlust ${sgnEur(at(m.stop))}`, "down")}
-      ${m.tp ? row("Take-Profit (TP)", `${fmt(m.tp)} ${cur}`, `${sgnPct(m.tp / m.E - 1, 1)} · Gewinn ${sgnEur(at(m.tp))}`, "up") : ""}
-      ${row(m.tp ? "Kein TP erreicht? Verkaufen am" : "Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `zum Schluss – nach ${m.hold} Handelstagen`)}
+      ${m.tp ? row("Take-Profit (TP) · Hälfte verkaufen", `${fmt(m.tp)} ${cur}`, `EMA 20 · ${sgnPct(m.tp / m.E - 1, 1)} · Gewinn auf die Hälfte ${sgnEur(at(m.tp) / 2 - cfg.fee / 2)}`, "up") : ""}
+      ${row(m.tp ? "Rest verkaufen am" : "Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `zum Schluss – nach ${m.hold} Handelstagen`)}
       ${row("Produkt", prod, lv.L > 1 ? `K.-o. höchstens ${fmt(lv.ko)} ${cur}` : (lv.qty != null ? `${lv.qty} Stück` : ""))}
       ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(cfg.risk, 1)} %)`)}
-      ${lv.L > 1 ? row("SL am Turbo", sgnPct(-lv.tStop, 0), `vom Kaufkurs des Turbos${m.tp ? ` · TP am Turbo ${sgnPct(Math.min(9, lv.L * (m.tp / m.E - 1)), 0)}` : ""}`) : ""}
+      ${lv.L > 1 ? row("SL am Turbo", sgnPct(-lv.tStop, 0), `vom Kaufkurs des Turbos${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
     </div>
-    <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: Stop-Loss-Order${m.tp ? " und Limit-Verkauf (TP)" : ""} direkt nach dem Kauf eintragen${m.tp ? " – was zuerst erreicht wird, schließt die Position" : ""}. Am Ausstiegstag den Rest zum Schluss verkaufen. Kairo führt keine Orders aus.</div>
+    <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position${m.tp ? " und einen Limit-Verkauf über die Hälfte beim TP" : ""}. ${m.tp ? "Wird der TP erreicht, die Stop-Order auf die verbliebene Hälfte anpassen. " : ""}Am Ausstiegstag den Rest zum Schluss verkaufen. Kairo führt keine Orders aus.</div>
     <div class="note">Warum diese Werte: SL = ${esc(m.src)} (${fmt(m.riskAtr, 1)} ATR). ${m.tpWhy || ""} Hebel = höchster, bei dem der K.-o. mindestens 1 ATR unter dem SL liegt (max. ×${fmt(m.maxL, 1)}) – das Risiko bleibt gleich, nur der Einsatz sinkt. Kosten ≈ ${eur2(lv.cost)} sind eingerechnet. Kurslücke unter den K.-o.: Einsatz verloren (${sgnEur(-lv.stake - 2 * cfg.fee)}).</div>
     ${lv.L > 1 ? `<div class="row-actions" style="margin-top:10px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Turbo bei onvista suchen</a></div>` : ""}
     <div class="row-actions" style="margin-top:12px"><button class="btn" data-tpopen="${esc(r.t)}">Trade eröffnen & speichern</button></div>
@@ -3441,7 +3443,7 @@ function tpStatus(p) {
   if (c == null) return { tone: "gray", t: "Kein aktueller Kurs" };
   if (c <= p.stop) return { tone: "red", t: `Schluss ${fmt(c)} unter dem Stop – Position schließen` };
   if (today >= p.exit) return { tone: "yellow", t: "Ausstiegstag erreicht – verkaufen" };
-  if (p.tp && c >= p.tp) return { tone: "green", t: `TP ${fmt(p.tp)} erreicht – verkaufen (falls die Limit-Order nicht schon ausgeführt wurde)` };
+  if (p.tp && c >= p.tp) return { tone: "green", t: `TP ${fmt(p.tp)} erreicht – Hälfte verkaufen, Rest bis zum Ausstiegstag laufen lassen` };
   return { tone: "blue", t: `läuft · noch ${Math.max(0, Math.round((new Date(p.exit) - new Date(today)) / 864e5))} Kalendertage` };
 }
 function tpPlansHtml() {
