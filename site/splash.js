@@ -1,7 +1,7 @@
 /* Kairo – Start-Animation (≈ 2,2 s) nach dem finalen Markenauftritt: K-Symbol in der Kachel + Wortmarke KA|RO.
    Ablauf: Graphit-Licht und Kachel blenden auf · der Docht zieht sich aus der Mitte auf · der Körper der Kerze federt auf,
    blaues Leuchten · der Winkel des K fährt aus der Kerze heraus · die Kachel gleitet nach links, KA|RO steigt Buchstabe
-   für Buchstabe aus der Grundlinie, die Kerze der Wortmarke wächst · „Der richtige Moment“ läuft zusammen · Lichtreflex.
+   für Buchstabe aus der Grundlinie, die Kerze der Wortmarke wächst · Lichtreflex.
    Übergang: Kachel öffnet sich zur App (Maske). Startet erst, wenn die Animation durch ist UND die App
    KairoSplash.ready() gemeldet hat – spätestens nach 6 s. */
 (function () {
@@ -36,7 +36,6 @@
           </svg>
         </div>
       </div>
-      <div class="sp-tag">Der richtige Moment</div>
     </div>`;
   const ANIM_MS = 2250, EXIT_MS = 600, TIMEOUT_MS = 6000;
   let current = null;
