@@ -1,0 +1,60 @@
+name: Studie Kurzfrist-Reversal (2–5 Tage, Stop, Hebel, Ausstieg)
+
+on:
+  workflow_dispatch:
+    inputs:
+      period:
+        description: "Kurshistorie (6y = inkl. 2020 und Bärenmarkt 2022)"
+        required: false
+        default: "6y"
+      n:
+        description: "Anzahl Aktien"
+        required: false
+        default: "1600"
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m backend.universe
+      - run: python -m backend.bilanz --shard ${{ matrix.shard }} --shards 20 --n ${{ inputs.n || '1600' }} --period "${{ inputs.period || '6y' }}" --px-base
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kurz-${{ matrix.shard }}
+          path: bilanz_part_${{ matrix.shard }}.json
+          retention-days: 14
+  study:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: kurz-*
+          merge-multiple: true
+      - run: python -m backend.shortswing bilanz_part_*.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kurzfrist-ergebnis
+          path: data/shortswing_study.json
