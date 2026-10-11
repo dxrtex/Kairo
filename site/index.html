@@ -3300,10 +3300,10 @@ const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52,
 // ---- Deine Strategie (Jonny): Setups mit ≥ 9/11 Kriterien, eigene Auswahl und eigener Einstieg bei eindeutigem Signal,
 // kurze Haltedauer mit Hebel. Kairo rechnet je Aktie SL, TP, Hebel, Größe und Risiko:
 // SL = Tief der Seitwärtsphase − 0,25 ATR (Struktur der Aktie) · TP = EMA 20 (Kursziel-Vergleich 3/5/7 Tage: Ziele ≈ gleichwertig,
-// EMA 20 mit der höchsten Trefferquote) · Zeit-Stop nach 5 Handelstagen · Hebel = höchster bis ×10 (Scalable), bei dem der
+// EMA 20 mit der höchsten Trefferquote) · kein fester Zeit-Stop: Horizont 5–10 Tage, spätestens nach 10 Handelstagen raus (TP-Chancen für 7 Tage) · Hebel = höchster bis ×10 (Scalable), bei dem der
 // K.-o. ≥ 1 ATR unter dem SL liegt · Risiko 1 % (2 % bei grüner Ampel) · höchstens 5 Trades · alle Kurse in Euro.
 // Zum Vergleich der Depot-Test (Regeln ohne deine Auswahl): 20 Tage ohne TP brachten dort mehr – „Deine Trades“ zeigt, was bei dir besser läuft.
-const KMAX = { hold: 5, weakMult: 2, maxOpen: 5 };
+const KMAX = { hold: 10, tpDays: 7, weakMult: 2, maxOpen: 5 };   // Horizont 5–10 Tage: spätestens Tag 10, TP für ~7 Tage bewertet
 const TP_EXIT = { hold: KMAX.hold };
 // ---- TP-Bewertung je Aktie ----
 // Kandidaten: Hoch der Seitwärtsphase, 10-Tage-Hoch, frühere Hochs (Swing), EMA 20/50, Fibonacci – Verkauf 0,1 ATR davor.
@@ -3405,11 +3405,11 @@ function tp2Calc(r, S, o = {}) {
   // TP: erste echte Kursmarke der Aktie mit mindestens 1,5 × Risiko Abstand (lohnendes Chance-Risiko-Verhältnis), höchstens 4 ×;
   // keine passende Marke → 2 × Risiko
   // TP individuell: alle echten Kursmarken der Aktie bewerten (Chance, sie in der Haltedauer VOR dem SL zu erreichen × Gewinn)
-  const ev = tpEval(r, E, stop, atr, KMAX.hold);
+  const ev = tpEval(r, E, stop, atr, KMAX.tpDays);
   out.tpCands = ev.list; [out.tpLbl, out.tp, out.tpP] = [ev.best.lbl, ev.best.tp, ev.best.p];
   out.tpR = (out.tp - E) / risk;
   out.tpBE = 1 / (1 + out.tpR);                                 // nötige Trefferquote, ab der der Trade im Schnitt Gewinn bringt
-  out.tpWhy = `TP = ${out.tpLbl}: Von ${ev.list.length} Kursmarken dieser Aktie hat sie das beste Verhältnis aus Gewinn und Wahrscheinlichkeit, in ${KMAX.hold} Tagen vor dem SL erreicht zu werden (≈ ${pct(out.tpP, 0)}). Verkauft wird knapp vor der Marke, weil dort Verkäufer warten. Chance/Risiko ${fmt(out.tpR, 1)} : 1.`;
+  out.tpWhy = `TP = ${out.tpLbl}: Von ${ev.list.length} Kursmarken dieser Aktie hat sie das beste Verhältnis aus Gewinn und Wahrscheinlichkeit, in ${KMAX.tpDays} Tagen vor dem SL erreicht zu werden (≈ ${pct(out.tpP, 0)}). Verkauft wird knapp vor der Marke, weil dort Verkäufer warten. Chance/Risiko ${fmt(out.tpR, 1)} : 1.`;
   out.d0 = tpEntryDay(o.date);
   out.exit = addBd(out.d0, hold - 1);
   // Quartalszahlen in der Haltedauer: spätestens am Handelstag davor raus (Kurslücke kann Stop und K.-o. überspringen)
@@ -3472,17 +3472,17 @@ function tpInner(r, S) {
       ${row("Stop-Loss (SL)", `${X(m.stop)} ${cur}`, `${sgnPct(m.stop / m.E - 1, 1)} · Verlust ${sgnEur(at(m.stop))}`, "down")}
       ${m.tp ? row("Take-Profit (TP)", `${X(m.tp)} ${cur}`, `${esc(m.tpLbl)} · ${sgnPct(m.tp / m.E - 1, 1)} · Gewinn ${sgnEur(at(m.tp))} · Chance/Risiko ${fmt(m.tpR, 1)} : 1 · erreicht ≈ ${pct(m.tpP, 0)}`, "up") : ""}
       ${m.tpCands && m.tpCands.length > 1 ? `<details class="tp2-acc" style="margin:0 14px 10px"><summary>So wurde der TP gewählt (${m.tpCands.length} Kursmarken bewertet)</summary>
-        <div class="table-wrap plain" style="margin-top:6px"><table class="tpt"><thead><tr><th>Kursmarke</th><th class="num">TP</th><th class="num">Chance/Risiko</th><th class="num">erreicht in ${m.hold} T.</th></tr></thead><tbody>
+        <div class="table-wrap plain" style="margin-top:6px"><table class="tpt"><thead><tr><th>Kursmarke</th><th class="num">TP</th><th class="num">Chance/Risiko</th><th class="num">erreicht in ${KMAX.tpDays} T.</th></tr></thead><tbody>
         ${m.tpCands.map(c => `<tr${c.tp === m.tp ? ' style="font-weight:700"' : ""}><td>${c.tp === m.tp ? "✓ " : ""}${esc(c.lbl)}</td><td class="num">${X(c.tp)} €</td><td class="num">${fmt(c.R, 1)} : 1</td><td class="num">${pct(c.p, 0)}</td></tr>`).join("")}</tbody></table></div>
         <div class="note">Gewählt wird unter den realistischen Marken (≥ 30 % Chance, mindestens 1 : 1) die mit dem höchsten erwarteten Gewinn (Wahrscheinlichkeit × Chance/Risiko). Wahrscheinlichkeiten aus der Schwankung der Aktie, am Kairo-Backtest geeicht – ohne deine eigene Auswahl.</div></details>` : ""}
       ${m.tp && m.tpR < 1 ? `<div class="tip tone-yellow" style="margin:0 10px 10px">Der TP liegt näher als der SL: Gewinn kleiner als das Risiko. Lohnt sich nur, wenn mehr als ${pct(m.tpBE, 0)} solcher Trades aufgehen.</div>` : ""}
-      ${row(m.tp ? "Weder SL noch TP? Verkaufen am" : "Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `zum Schluss – nach ${m.hold} Handelstagen`)}
+      ${row("Spätestens verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `nach ${m.hold} Handelstagen · dein Horizont 5–10 Tage, davor entscheidest du`)}
       ${row("Produkt", prod, lv.L > 1 ? `K.-o. höchstens ${X(lv.ko)} ${cur}` : (lv.qty != null ? `${lv.qty} Stück` : ""))}
       ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(m.riskPct, 1)} %${m.fit.mult > 1 ? " – Ausverkauf" : ""})`)}
       ${lv.L > 1 ? row("SL am Turbo", sgnPct(-lv.tStop, 0), `vom Kaufkurs des Turbos${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
     </div>
     ${tpTurboHtml(r, m, lv)}
-    <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order und einen Limit-Verkauf beim TP – beide über die ganze Position (was zuerst greift, schließt den Trade; die andere Order dann löschen). Ist nach ${m.hold} Handelstagen keins von beiden erreicht, zum Schluss verkaufen. Kairo führt keine Orders aus.</div>
+    <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order und einen Limit-Verkauf beim TP – beide über die ganze Position (was zuerst greift, schließt den Trade; die andere Order dann löschen). Ist nach ${m.hold} Handelstagen keins von beiden erreicht, spätestens dann zum Schluss verkaufen. Tipp: Gewinner nicht vor dem TP verkaufen – laut Daten bringen 7–10 Tage mehr als 3–5. Kairo führt keine Orders aus.</div>
     <div class="note">Warum diese Werte: SL = ${esc(m.src)} (${fmt(m.riskAtr, 1)} ATR). ${m.tpWhy || ""} Hebel = höchster, bei dem der K.-o. mindestens 1 ATR unter dem SL liegt (max. ×${fmt(Math.min(10, m.maxL), 1)}, Scalable bis ×10) – so knockt eine normale Kursschwankung den Turbo nicht aus – das Risiko bleibt gleich, nur der Einsatz sinkt. Kosten ≈ ${eur2(lv.cost)} sind eingerechnet. Kurslücke unter den K.-o.: Einsatz verloren (${sgnEur(-lv.stake - 2 * cfg.fee)}).</div>
     ${lv.L > 1 ? `<div class="row-actions" style="margin-top:10px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Turbo bei onvista suchen</a></div>` : ""}
     ${m.fit.ok ? `<div class="row-actions" style="margin-top:12px"><button class="btn" data-tpopen="${esc(r.t)}">Trade eröffnen & speichern</button></div>
@@ -3531,7 +3531,7 @@ function tpStatus(p) {
   if (c == null) return { tone: "gray", t: "Kein aktueller Kurs" };
   const fe = v => fmt(v * (toEur(1, p.cur || "EUR") || 1));
   if (c <= p.stop) return { tone: "red", t: `Schluss ${fe(c)} € unter dem Stop – Position schließen` };
-  if (today >= p.exit) return { tone: "yellow", t: "Ausstiegstag erreicht – verkaufen" };
+  if (today >= p.exit) return { tone: "yellow", t: "Spätester Ausstiegstag erreicht – verkaufen" };
   if (p.tp && c >= p.tp) return { tone: "green", t: `TP ${fe(p.tp)} € erreicht – verkaufen (falls die Limit-Order nicht schon ausgeführt wurde)` };
   return { tone: "blue", t: `läuft · noch ${Math.max(0, Math.round((new Date(p.exit) - new Date(today)) / 864e5))} Kalendertage` };
 }
