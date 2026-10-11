@@ -411,7 +411,7 @@ def _regime(mk: dict, d: str) -> str | None:
     return "strong"
 
 
-def _depot(trades: list[tuple], start: float = 3000.0, max_open: int = 3) -> dict:
+def _depot(trades: list[tuple], start: float = 3000.0, max_open: int = 3, seed: int = 11) -> dict:
     """Depot mit Startkapital, höchstens max_open Trades gleichzeitig, Risiko je Trade in % des aktuellen Depots.
 
     trades: (Kaufdatum ISO, Netto-R, Handelstage gehalten, Risiko-Anteil). Reihenfolge innerhalb eines Tages zufällig
@@ -420,7 +420,7 @@ def _depot(trades: list[tuple], start: float = 3000.0, max_open: int = 3) -> dic
     import datetime as dt
     if not trades:
         return {}
-    rnd = random.Random(11)
+    rnd = random.Random(seed)
     trades = sorted(trades, key=lambda t: (t[0], rnd.random()))
     eq, peak, mdd, open_, taken, by_year, eq_year = start, start, 0.0, [], 0, {}, {}
     def close_until(t0):
@@ -482,7 +482,7 @@ def _combo(sets: dict) -> dict:
                                for rg, per in sorted(g.items())}
     out["by_regime"] = tab
     # 2) Strategien als Depot. plan: Marktlage → Liste (Setup, Haltedauer, Risiko)
-    def depot(plan):
+    def depot(plan, seeds=25):
         tr = []
         for rg_key, legs in plan.items():
             for k, hold, rk in legs:
@@ -491,7 +491,14 @@ def _combo(sets: dict) -> dict:
                     if rg is None or (rg_key != "all" and rg != rg_key):
                         continue
                     tr.append((d_in, sm["net"], sm["d"], rk))
-        return _depot(tr)
+        runs = [_depot(tr, seed=sd) for sd in range(seeds)]
+        cg = sorted(x["cagr"] for x in runs)
+        md = sorted(x["mdd"] for x in runs)
+        ys = sorted({y for x in runs for y in x["years"]})
+        return {"cagr_median": cg[len(cg) // 2], "cagr_p10": cg[len(cg) // 10], "cagr_p90": cg[len(cg) * 9 // 10],
+                "mdd_median": md[len(md) // 2], "mdd_p90": md[len(md) * 9 // 10],
+                "end_median": sorted(x["end_eur"] for x in runs)[len(runs) // 2], "trades": runs[0]["trades"],
+                "years_median": {y: sorted(x["years"].get(y, 0) for x in runs)[len(runs) // 2] for y in ys}}
     hf = lambda h, rk: [("hit", h, rk), ("fast", h, rk)]
     strategies = {
         "A jetzt: Treffer+Fast, 10 T, 1 %": {"all": hf(10, 0.01)},
@@ -509,6 +516,10 @@ def _combo(sets: dict) -> dict:
         "J Ampel wie F, aber überall + Trend 20 T": {"weak": hf(20, 0.015) + [("trend", 20, 0.01)],
                                                     "mixed": [("trend", 20, 0.01)] + hf(20, 0.0075), "strong": [("trend", 20, 0.01)]},
         "K wie F mit 1 % im Ausverkauf": {"weak": hf(20, 0.01), "mixed": [("trend", 20, 0.01)], "strong": [("trend", 20, 0.01)]},
+        "L Ausverkauf Treffer+Fast 20 T 1,5 % · gelb Pause · grau Trend 20 T 1 %": {"weak": hf(20, 0.015), "strong": [("trend", 20, 0.01)]},
+        "M Ausverkauf nur Treffer 20 T 1,5 % · sonst Trend 20 T 1 %": {"weak": [("hit", 20, 0.015)], "mixed": [("trend", 20, 0.01)], "strong": [("trend", 20, 0.01)]},
+        "N Treffer 20 T + Trend 20 T, überall 1 %": {"all": [("hit", 20, 0.01), ("trend", 20, 0.01)]},
+        "O Ausverkauf Treffer+Fast+Trend 20 T 1,5 % · sonst Trend 20 T 1 %": {"weak": hf(20, 0.015) + [("trend", 20, 0.015)], "mixed": [("trend", 20, 0.01)], "strong": [("trend", 20, 0.01)]},
     }
     out["depot"] = {name: depot(plan) for name, plan in strategies.items()}
     return out
