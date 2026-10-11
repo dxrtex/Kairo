@@ -321,6 +321,82 @@ def _strip(res: dict) -> dict:
     return {k: v for k, v in res.items() if k != "_rows"}
 
 
+def _market() -> dict:
+    """Marktlage je Handelstag: S&P 500 über EMA 200 / EMA 50, VIX. Leer, wenn keine Daten."""
+    try:
+        from .data_provider import YFinanceProvider
+        from .indicators import ema
+        h = YFinanceProvider().history(["^GSPC", "^VIX"], "8y")
+        spx, vix = h["^GSPC"]["Close"], h["^VIX"]["Close"]
+        e200, e50 = ema(spx, 200), ema(spx, 50)
+        out = {}
+        for d in spx.index:
+            v = vix.get(d)
+            out[str(d.date())] = {"a200": bool(spx[d] > e200[d]) if e200[d] == e200[d] else None,
+                                  "a50": bool(spx[d] > e50[d]) if e50[d] == e50[d] else None,
+                                  "vix": float(v) if v is not None and v == v else None}
+        return out
+    except Exception as exc:                       # Studie läuft auch ohne Marktdaten
+        print("Marktdaten fehlen:", repr(exc)[:120])
+        return {}
+
+
+QRULE = dict(entry="base", ck=5, cm=1.5, lowhalf=False, wait=10, inv=10, buf=0.25, maxd=3.0, tgt=None, wkend=False, levs=[1])
+
+
+def _quality(sets: dict) -> dict:
+    mk = _market()
+    out = {"market_days": len(mk)}
+    for k in ("hit", "fast"):
+        es = sets.get(k) or []
+        res_k = {}
+        for hold in (7, 10, 20):
+            rule = {**QRULE, "hold": hold}
+            rows = []
+            for e in es:
+                if len(e["px"]["c"]) < hold + 10:
+                    continue
+                sm = simulate(e["px"], rule)
+                if sm and "skip" not in sm:
+                    rows.append((e, sm))
+            train = [(e, sm) for e, sm in rows if _period(e["d"]) == "train"]
+            feats = {
+                "markt_sp500_ueber_ema200": lambda e: (mk.get(e["d"]) or {}).get("a200"),
+                "markt_sp500_ueber_ema50": lambda e: (mk.get(e["d"]) or {}).get("a50"),
+                "vix": lambda e: None if (mk.get(e["d"]) or {}).get("vix") is None else
+                       ("< 18" if mk[e["d"]]["vix"] < 18 else "18–25" if mk[e["d"]]["vix"] < 25 else "≥ 25"),
+                "score": lambda e: None if k != "hit" else ("80+" if e.get("score", 0) >= 80 else "70–79" if e["score"] >= 70
+                                                           else "60–69" if e["score"] >= 60 else "< 60"),
+                "divergenz": lambda e: e.get("div") or "keine",
+                "zone": lambda e: e.get("zone"),
+                "earnings_5T": lambda e: bool(e.get("earn")),
+                "kriterien": lambda e: (e.get("f") or {}).get("met"),
+                "crv": lambda e: None if not e.get("crv") else ("≥ 3" if e["crv"] >= 3 else "2–3" if e["crv"] >= 2 else "< 2"),
+            }
+            for name in ("dd", "atrp", "vol", "rsi", "e200", "e50"):        # Quintile (Grenzen nur aus dem Lern-Zeitraum)
+                vals = sorted(x for x in ((e.get("f") or {}).get(name) for e, _ in train) if x is not None)
+                if len(vals) >= 50:
+                    qs = [vals[int(len(vals) * q)] for q in (0.2, 0.4, 0.6, 0.8)]
+                    feats[name] = (lambda nm, qs: lambda e: None if (e.get("f") or {}).get(nm) is None else
+                                   f"Q{1 + sum(e['f'][nm] > q for q in qs)} ({'≤' if True else ''}{qs[min(3, sum(e['f'][nm] > q for q in qs))]:.3g})")(name, qs)
+            tab = {}
+            for name, fn in feats.items():
+                groups = defaultdict(lambda: defaultdict(list))
+                for e, sm in rows:
+                    try:
+                        g = fn(e)
+                    except Exception:
+                        g = None
+                    if g is None:
+                        continue
+                    groups[str(g)][_period(e["d"])].append(sm["net"])
+                tab[name] = {g: {p: {"n": len(v), "net": round(float(np.mean(v)), 3)} for p, v in sorted(per.items())}
+                             for g, per in sorted(groups.items())}
+            res_k[hold] = {"n": len(rows), "all": round(float(np.mean([sm["net"] for _, sm in rows])), 3) if rows else None, "by": tab}
+        out[k] = res_k
+    return out
+
+
 def main(argv=None) -> int:
     paths = (argv or sys.argv[1:])
     t0 = time.time()
@@ -456,6 +532,10 @@ def main(argv=None) -> int:
                          "portfolio_05pct": pf, "skip": x["skip"]})
         report["stage3"][k] = rows
         print(f"Stufe 3 {k}", f"{time.time() - t0:.0f} s", flush=True)
+
+    # 5c) Stufe 6 – Was zeichnet die besten Reversals aus? Marktlage und Signalmerkmale (feste Regel „Kauf in der Basis“)
+    report["stage6"] = _quality(sets)
+    print("Stufe 6 fertig", f"{time.time() - t0:.0f} s", flush=True)
 
     # 5b) Stufe 5 – Kauf IN der Basis (vor dem Ausbruch) – deine Vorgehensweise
     report["stage5"] = {}
