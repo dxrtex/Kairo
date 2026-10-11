@@ -376,20 +376,6 @@
   @media (min-width: 700px) { .tp2-cfg { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .tp2-cfg label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
   .tp2-cfg input { width: 100%; font: inherit; font-size: 16px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
-  .tp2-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 4px 0 10px; }
-  .tp2-stats > div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid; gap: 2px; }
-  .tp2-stats span { font-size: 11px; color: var(--muted); font-weight: 600; } .tp2-stats b { font-size: 18px; font-variant-numeric: tabular-nums; }
-  .tp2-stats em { font-style: normal; font-size: 11px; color: var(--muted); }
-  @media (max-width: 560px) { .tp2-stats { grid-template-columns: 1fr 1fr; } }
-  .tp2-done { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 4px; border-top: 1px solid var(--line); font-size: 13px; }
-  .tp2-done .lnk { background: none; border: 0; color: var(--faint); cursor: pointer; font-size: 13px; }
-  .kand-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
-  .kand { text-align: left; display: grid; gap: 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
-  .kand:hover { border-color: var(--accent); }
-  .kand-h { display: flex; justify-content: space-between; gap: 8px; } .kand-h b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .kand-crv { font-weight: 700; font-variant-numeric: tabular-nums; } .kand-m { font-size: 12px; color: var(--muted); }
-  .kand-t { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--muted); }
-  .kand-f { margin-top: 2px; } .kand-f small { opacity: .7; font-size: 11px; }
   .tp2-plan { margin-top: 12px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
   .tp2-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; padding: 10px 14px; border-top: 1px solid var(--line); }
   .tp2-row:first-child { border-top: 0; }
@@ -3319,46 +3305,6 @@ const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52,
 // Zum Vergleich der Depot-Test (Regeln ohne deine Auswahl): 20 Tage ohne TP brachten dort mehr – „Deine Trades“ zeigt, was bei dir besser läuft.
 const KMAX = { hold: 5, weakMult: 2, maxOpen: 5, tpMinR: 1.5, tpMaxR: 4, tpDefR: 2 };
 const TP_EXIT = { hold: KMAX.hold };
-// TP-Regel (für Plan und Kandidatenliste): erste Kursmarke der Aktie mit 1,5–4 × Risiko Abstand, sonst 2 × Risiko
-function tpTarget(r, E, risk, atr) {
-  const pl = r.pl || {}, lo = E + KMAX.tpMinR * risk, hi = E + KMAX.tpMaxR * risk;
-  const tgs = (pl.tg || []).filter(([, x]) => x >= lo && x <= hi);
-  if (r.e20 >= lo && r.e20 <= hi && !tgs.some(([, x]) => Math.abs(x - r.e20) < 0.3 * atr)) tgs.push(["EMA 20", +r.e20]);
-  tgs.sort((a, b) => a[1] - b[1]);
-  return tgs.length ? [tgs[0][0], +tgs[0][1]] : [`${fmt(KMAX.tpDefR, 0)} × Risiko`, +(E + KMAX.tpDefR * risk).toFixed(4)];
-}
-const KC = { bull: ["bullische Kerze", "up"], hammer: ["Hammer", "up"], green: ["grüne Kerze", ""], doji: ["Doji", ""], red: ["rote Kerze", "down"] };
-// Kandidaten: alle Setups ab 9/11 mit Kursstruktur – Seitwärtsphase, letzte Kerze, Chance/Risiko, Warnungen
-function kandRows() {
-  return (searchIdx || []).filter(r => (r.s === "hit" || r.s === "fast" || (r.m ?? 0) >= 9) && r.pl && r.pl.stop && r.c > r.pl.stop).map(r => {
-    const pl = r.pl, atr = pl.atr, E = r.c, risk = E - pl.stop, [tl, tp] = tpTarget(r, E, risk, atr);
-    const inBase = !!pl.base && E <= pl.base.hi + 0.5 * atr, kc = pl.kc, sig = inBase && (kc === "bull" || kc === "hammer");
-    const ed = r.ed ? daysUntil(r.ed) : null;
-    return { r, E, risk, tp, tl, crv: (tp - E) / risk, ra: risk / atr, inBase, kc, sig, edSoon: ed != null && ed >= 0 && ed <= 7, ed };
-  });
-}
-function kandHtml() {
-  const f = state.kf || "sig", fav = favs(), all = kandRows();
-  const rows = all.filter(x => f === "alle" || (f === "sig" && x.sig) || (f === "basis" && x.inBase) || (f === "hit" && x.r.s === "hit") || (f === "fav" && fav.has(x.r.t)))
-    .sort((a, b) => (b.sig - a.sig) || (b.r.s === "hit") - (a.r.s === "hit") || b.crv - a.crv);
-  const lim = state.kAll ? 200 : 12, cnt = k => all.filter(x => k === "sig" ? x.sig : k === "basis" ? x.inBase : k === "hit" ? x.r.s === "hit" : k === "fav" ? fav.has(x.r.t) : true).length;
-  const chip = (k, l) => `<button class="opt${f === k ? " on" : ""}" data-kf="${k}">${l} <small>${cnt(k)}</small></button>`;
-  const item = x => { const r = x.r, kc = KC[x.kc] || ["–", ""];
-    return `<button class="kand" data-ein="${esc(r.t)}">
-      <div class="kand-h"><b>${esc(r.n)}</b><span class="kand-crv ${x.crv >= 2 ? "up" : ""}">${fmt(x.crv, 1)} : 1</span></div>
-      <div class="kand-m">${esc(r.t)} · ${r.s === "hit" ? "Treffer 11/11" : r.s === "fast" ? `Fast ${r.m ?? 10}/11` : `${r.m}/11`} · ${fmt(x.E)} ${esc(r.cur || "")}${r.d1 != null ? ` <span class="${r.d1 >= 0 ? "up" : "down"}">${sgnPct(r.d1, 1)}</span>` : ""}</div>
-      <div class="kand-t"><span class="${x.inBase ? "up" : ""}">${x.inBase ? "✓ in der Seitwärtsphase" : r.pl.base ? "über der Seitwärtsphase" : "keine Seitwärtsphase"}</span><span class="${kc[1]}">${kc[0]}</span><span>SL ${sgnPct(r.pl.stop / x.E - 1, 1)}</span><span>TP ${esc(x.tl)} ${sgnPct(x.tp / x.E - 1, 1)}</span>${x.edSoon ? `<span class="down">⚠ Zahlen in ${x.ed} T.</span>` : ""}</div></button>`; };
-  return `<div class="section-title"><span>Deine Kandidaten</span><span>ab 9/11 · ${all.length}</span></div>
-    <div class="g-amts kand-f">${chip("sig", "Signal heute")}${chip("basis", "in Seitwärtsphase")}${chip("hit", "nur 11/11")}${chip("fav", "★ beobachtet")}${chip("alle", "alle")}</div>
-    <div class="note" style="margin:4px 2px 8px">„Signal heute“ = in der Seitwärtsphase und bullische Kerze bzw. Hammer am letzten Tag. Sortiert nach Signal, Treffer, Chance/Risiko (TP-Abstand ÷ SL-Abstand). Tippen öffnet den Trade-Plan.</div>
-    <div class="kand-list">${rows.slice(0, lim).map(item).join("") || `<div class="note">Keine Kandidaten in diesem Filter.</div>`}</div>
-    ${rows.length > lim ? `<button class="btn ghost sm" data-kall="1" style="margin-top:8px">Alle ${rows.length} zeigen</button>` : ""}`;
-}
-document.addEventListener("click", e => {
-  const b = e.target.closest("[data-kf],[data-kall]"); if (!b) return;
-  if (b.dataset.kf) { state.kf = b.dataset.kf; state.kAll = false; } else state.kAll = true;
-  save(); render();
-});
 function kmFit(r, mk) {
   const weak = mk && mk.k === "weak", n = r.m ?? 0;
   const lbl = r.s === "hit" ? "Kairo-Treffer" : r.s === "fast" ? "Fast-Treffer" : r.tr >= 1 ? "Trend-Rücksetzer" : `${n}/11 Kriterien`;
@@ -3417,7 +3363,10 @@ function tp2Calc(r, S, o = {}) {
   out.hold = hold;
   // TP: erste echte Kursmarke der Aktie mit mindestens 1,5 × Risiko Abstand (lohnendes Chance-Risiko-Verhältnis), höchstens 4 ×;
   // keine passende Marke → 2 × Risiko
-  [out.tpLbl, out.tp] = tpTarget(r, E, risk, atr);
+  const tgs = (pl.tg || []).filter(([, x]) => x >= E + KMAX.tpMinR * risk && x <= E + KMAX.tpMaxR * risk);
+  if (r.e20 > E + KMAX.tpMinR * risk && r.e20 <= E + KMAX.tpMaxR * risk && !tgs.some(([, x]) => Math.abs(x - r.e20) < 0.3 * atr)) tgs.push(["EMA 20", +r.e20]);
+  tgs.sort((a, b) => a[1] - b[1]);
+  [out.tpLbl, out.tp] = tgs.length ? [tgs[0][0], +tgs[0][1]] : [`${fmt(KMAX.tpDefR, 0)} × Risiko`, +(E + KMAX.tpDefR * risk).toFixed(4)];
   out.tpR = (out.tp - E) / risk;
   out.tpWhy = `TP = ${out.tpLbl}: die erste Kursmarke der Aktie, an der Verkäufer warten, mit mindestens ${fmt(KMAX.tpMinR, 1)} × deinem Risiko Abstand – so ist jeder Gewinn größer als der mögliche Verlust (Chance/Risiko ${fmt(out.tpR, 1)} : 1).`;
   out.d0 = tpEntryDay(o.date);
@@ -3527,7 +3476,7 @@ function tpOpen(t) {
   if (l.filter(p => p.st === "open").length >= m.cfg.maxOpen && !confirm(`Schon ${m.cfg.maxOpen} offene Trades – Gesamtrisiko steigt. Trotzdem eröffnen?`)) return;
   l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, d: isoD(m.d0), scan: String(data.generated).slice(0, 10),
               E: +m.E, stop: m.stop, atr: m.atr, L: lv.L, ko: lv.ko, expo: Math.round(lv.expo), stake: Math.round(lv.stake), qty: lv.qty,
-              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), tp: m.tp, tt: (state.tpT || {})[t] || null, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open" });
+              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open" });
   plansSave(l); render(); window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function tpStatus(p) {
@@ -3539,50 +3488,18 @@ function tpStatus(p) {
   return { tone: "blue", t: `läuft · noch ${Math.max(0, Math.round((new Date(p.exit) - new Date(today)) / 864e5))} Kalendertage` };
 }
 function tpPlansHtml() {
-  const l = plansLoad(), open = l.filter(p => p.st === "open"), done = l.filter(p => p.st === "closed"), cfg = tpCfg();
+  const l = plansLoad(), open = l.filter(p => p.st === "open"), done = l.filter(p => p.st === "closed");
+  if (!l.length) return "";
   const row = p => { const r = rowOf(p.t), c = r ? r.c : null, s = tpStatus(p), pnl = c != null ? (c - p.E) / p.E * p.expo - p.cost : null;
-    const tt = p.tt && p.tt.p && p.tt.ko ? ` · Turbo-SL ${fmt(p.tt.p * (p.stop - p.tt.ko) / (p.E - p.tt.ko))} €${p.tp ? ` · Turbo-TP ${fmt(p.tt.p * (p.tp - p.tt.ko) / (p.E - p.tt.ko))} €` : ""}` : "";
     return `<div class="g-pos"><div class="g-pos-h"><button class="g-nm" data-ein="${esc(p.t)}"><b>${esc(p.n)}</b><small>${esc(p.t)} · ${p.L === 1 ? "Aktie" : `Turbo ×${p.L}`} · seit ${dateDE(p.d)} · raus spätestens ${dateDE(p.exit)}</small></button>
       <div class="g-pl ${pnl >= 0 ? "up" : "down"}"><b>${sgnEur(pnl)}</b><small>${c != null ? sgnPct(c / p.E - 1, 1) : ""}</small></div></div>
-      <div class="g-row"><span>Kauf ${fmt(p.E)} · SL ${fmt(p.stop)}${p.tp ? ` · TP ${fmt(p.tp)}` : ""} · jetzt ${fmt(c)} ${esc(p.cur || "")}${tt}</span><span class="g-tag ${s.tone === "red" ? "down" : s.tone === "green" ? "up" : ""}">${esc(s.t)}</span></div>
-      <div class="g-act"><button class="btn ghost sm" data-tpclose="${p.id}">Verkauft …</button><button class="btn ghost sm" data-tpdel="${p.id}">Löschen</button></div></div>`; };
-  const eurOf = p => p.eur != null ? p.eur : p.expo && p.X ? (p.X - p.E) / p.E * p.expo - (p.cost || 0) : null;
-  const rs = done.filter(p => p.R != null), n = rs.length, sumR = rs.reduce((a, p) => a + p.R, 0);
-  const wins = rs.filter(p => p.R > 0).length, eurs = done.map(eurOf).filter(x => x != null), sumE = eurs.reduce((a, b) => a + b, 0);
-  const openRisk = open.reduce((a, p) => a + (p.risk || 0), 0);
-  const stat = `<div class="tp2-stats">
-      <div><span>Plätze</span><b>${open.length} / ${cfg.maxOpen}</b><em>offenes Risiko ${eur(openRisk)}</em></div>
-      <div><span>Trades</span><b>${n}</b><em>${n ? `${wins} Gewinner` : "noch keine"}</em></div>
-      <div><span>Trefferquote</span><b>${n ? pct(wins / n, 0) : "–"}</b><em>bei TP ≈ 2 : 1 reichen ~40 %</em></div>
-      <div><span>Ø je Trade</span><b class="${sumR >= 0 ? "up" : "down"}">${n ? `${fmt(sumR / n, 2).replace(/^(?!-)/, "+")} R` : "–"}</b><em>${eurs.length ? `gesamt ${sgnEur(sumE)}` : "Ziel: deutlich über 0"}</em></div></div>
-    ${n && n < 20 ? `<div class="note" style="margin:6px 2px 0">Test läuft: ${n} von etwa 20–30 Trades. Erst dann ist das Ergebnis aussagekräftig.</div>` : ""}`;
-  const last = done.slice(0, 8).map(p => `<div class="tp2-done"><span><b>${esc(p.n)}</b> · ${dateDE(p.d)}${p.xd ? ` → ${dateDE(p.xd)}` : ""}</span><span class="${(p.R ?? 0) >= 0 ? "up" : "down"}">${p.R != null ? `${fmt(p.R, 2).replace(/^(?!-)/, "+")} R` : ""}${eurOf(p) != null ? ` · ${sgnEur(eurOf(p))}` : ""}</span><button class="lnk" data-tpdel="${p.id}" aria-label="Löschen">✕</button></div>`).join("");
-  const add = `<details class="tp2-acc"><summary>Abgeschlossenen Trade nachtragen</summary>
-      <div class="tp2-cfg" style="margin-top:8px">
-        <label>Aktie<input id="mnN" type="text" placeholder="z. B. Uber"></label>
-        <label>Kaufdatum<input id="mnD" type="date"></label>
-        <label>Kaufkurs Aktie<input id="mnE" type="number" inputmode="decimal" step="any"></label>
-        <label>Stop-Loss Aktie<input id="mnS" type="number" inputmode="decimal" step="any"></label>
-        <label>Verkaufskurs Aktie<input id="mnX" type="number" inputmode="decimal" step="any"></label>
-        <label>Verkaufsdatum<input id="mnXD" type="date"></label>
-        <label>Ergebnis in € (optional)<input id="mnEur" type="number" inputmode="decimal" step="any" placeholder="z. B. 74"></label></div>
-      <div class="row-actions" style="margin-top:8px"><button class="btn sm" data-mnadd="1">Trade speichern</button></div>
-      <div class="note">R = (Verkauf − Kauf) ÷ (Kauf − Stop) – dein Ergebnis in Vielfachen des Risikos, vergleichbar über alle Trades.</div></details>`;
-  return `<div class="section-title"><span>Deine Trades</span><span>${open.length} offen</span></div>${stat}
-    ${open.map(row).join("") || `<div class="note" style="margin:8px 2px">Keine offenen Trades. Wähle unten einen Kandidaten und tippe im Plan auf „Trade eröffnen & speichern“.</div>`}
-    ${last ? `<div class="plan-h" style="margin:12px 2px 4px">Abgeschlossen</div>${last}` : ""}${add}`;
+      <div class="g-row"><span>Einstieg ${fmt(p.E)} · Stop ${fmt(p.stop)} · jetzt ${fmt(c)} ${esc(p.cur || "")}${p.ko ? ` · K.-o. ${fmt(p.ko)}` : ""}</span><span class="g-tag ${s.tone === "red" ? "down" : s.tone === "green" ? "up" : ""}">${esc(s.t)}</span></div>
+      <div class="g-act"><button class="btn ghost sm" data-tpclose="${p.id}">Geschlossen …</button><button class="btn ghost sm" data-tpdel="${p.id}">Löschen</button></div></div>`; };
+  const rs = done.map(p => p.R).filter(x => x != null);
+  const stat = rs.length ? `${rs.length} abgeschlossen · Ø ${fmt(rs.reduce((a, b) => a + b, 0) / rs.length, 2)} R · Treffer ${pct(rs.filter(x => x > 0).length / rs.length, 0)} (Ziel: Ø über 0 R – dann funktioniert deine Auswahl)` : "";
+  return `<div class="section-title"><span>Deine Trades</span><span>${open.length} offen</span></div>${open.map(row).join("") || `<div class="note">Keine offenen Trades.</div>`}
+    ${stat ? `<div class="note" style="margin:6px 2px 14px">${stat}</div>` : ""}`;
 }
-document.addEventListener("click", e => {
-  const b = e.target.closest("[data-mnadd]"); if (!b) return;
-  const v = id => { const x = $(id); return x ? x.value : ""; }, num = id => parseFloat(String(v(id)).replace(",", "."));
-  const E = num("mnE"), S = num("mnS"), X = num("mnX"), n = v("mnN").trim();
-  if (!n || !(E > 0) || !(S > 0) || !(X > 0) || S >= E) { alert("Bitte Aktie, Kaufkurs, Stop (unter dem Kauf) und Verkaufskurs eingeben."); return; }
-  const r = searchIdx && (searchIdx.find(x => x.t.toLowerCase() === n.toLowerCase()) || einMatches(n)[0]);
-  const eurV = num("mnEur"), l = plansLoad();
-  l.unshift({ id: Date.now().toString(36), t: r ? r.t : n, n: r ? r.n : n, cur: r ? r.cur : "", setup: "manuell", d: v("mnD") || isoD(new Date()),
-              E, stop: S, X, xd: v("mnXD") || isoD(new Date()), R: +((X - E) / (E - S)).toFixed(3), eur: eurV === eurV ? eurV : null, st: "closed", manual: 1 });
-  plansSave(l); render();
-});
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-tpopen],[data-tpclose],[data-tpdel]"); if (!b) return;
   if (b.dataset.tpopen) { tpOpen(b.dataset.tpopen); return; }
@@ -3591,9 +3508,7 @@ document.addEventListener("click", e => {
   const p = l[i], r = rowOf(p.t), v = prompt(`Verkaufskurs von ${p.n} (Basiswert, ${p.cur || ""}):`, r ? String(r.c).replace(".", ",") : "");
   const x = v == null ? null : parseFloat(String(v).replace(",", "."));
   if (!(x > 0)) return;
-  const ev = prompt("Ergebnis in € laut Broker (optional – leer lassen, dann schätzt Kairo):", "");
-  const eu = ev ? parseFloat(String(ev).replace(",", ".")) : NaN;
-  Object.assign(p, { st: "closed", X: x, xd: isoD(new Date()), R: +((x - p.E) / (p.E - p.stop)).toFixed(3), eur: eu === eu ? eu : undefined });
+  Object.assign(p, { st: "closed", X: x, xd: isoD(new Date()), R: +((x - p.E) / (p.E - p.stop)).toFixed(3) });
   plansSave(l); render();
 });
 function tpRefresh() { const r = state.einT && searchIdx && searchIdx.find(x => x.t === state.einT), box = $("tpBox"); if (r && box) box.innerHTML = tpInner(r, einSetup(r)); }
@@ -3615,10 +3530,11 @@ function einHtml() {
   if (!searchIdx) { loadSearch(); return `<div class="section-title"><span>Einstieg</span><span>lädt …</span></div>`; }
   if (!anaData) loadAnalysis();
   const r = state.einT && searchIdx.find(x => x.t === state.einT);
-  return `${tpPlansHtml()}<div class="section-title"><span>Trade-Plan</span><span>SL · TP · Hebel · Größe</span></div>
-    <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, Axon, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
-    ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Wähle unten einen Kandidaten oder gib eine Aktie ein – Kairo rechnet SL, TP, Hebel, Positionsgröße und Risiko für genau diese Aktie.</div>`}
-    ${kandHtml()}`;
+  const best = searchIdx.filter(x => x.tr === 2).sort((a, b) => (a.tdd ?? 1) - (b.tdd ?? 1)).slice(0, 6);
+  return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span>Setup · Trade-Plan · Hebel</span></div>
+    <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
+    ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Trend-Rücksetzer</b> oder ein <b>Kairo-Setup</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
+      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heute die besten Einstiege · Trend Top</div><div class="ein-list">${best.map(x => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")}</span>${einTag(x)}</button>`).join("")}</div>` : ""}`}`;
 }
 document.addEventListener("input", e => {
   if (e.target.id === "gQ") { state.gQ = e.target.value; const l = $("gList"); if (l) l.innerHTML = gListHtml(); }
@@ -3990,8 +3906,7 @@ document.addEventListener("click", e => {
     cardEl.querySelectorAll("[data-rng]").forEach(b => b.classList.toggle("on", b === rg));
     const r = mini && data.results.find(x => x.ticker === mini.dataset.mini); if (r) loadChart(r.ticker).then(c => paintChart(mini, c, r)); return; }
   const ei = e.target.closest("[data-ein]");
-  if (ei) { const r = searchIdx && searchIdx.find(x => x.t === ei.dataset.ein); state.einT = ei.dataset.ein; state.einQ = r ? r.n : ei.dataset.ein; closeCard(); if (state.sec !== "entry") goSec("entry"); else { save(); render(); }
-    requestAnimationFrame(() => { const h = document.querySelector(".ein-head"); if (h) h.scrollIntoView({ block: "start" }); else window.scrollTo({ top: 0 }); }); return; }
+  if (ei) { const r = searchIdx && searchIdx.find(x => x.t === ei.dataset.ein); state.einT = ei.dataset.ein; state.einQ = r ? r.n : ei.dataset.ein; closeCard(); if (state.sec !== "entry") goSec("entry"); else { save(); render(); } window.scrollTo({ top: 0 }); return; }
   const gs = e.target.closest("[data-gosec]");
   if (gs) { e.preventDefault(); closeCard(); goSec(gs.dataset.gosec); return; }
   const gk = e.target.closest("[data-gokinds]");
