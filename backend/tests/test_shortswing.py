@@ -59,3 +59,19 @@ def test_trailing_stop_exits_when_touched():
     p = px(o=o, h=[x + 0.01 for x in o], l=[x - 0.01 for x in o], c=o)
     s = simulate(p, {**BASE, "hold": 5, "trail": 2.0, "trail_from": 1.0})
     assert s["x"] == "be/trail" and abs(s["r"] - (1.07 - 1.0) / 0.05) < 1e-9   # 1,11 − 2 × 0,02
+
+
+def test_consolidation_breakout_entry():
+    # Tag 0–2 eng seitwärts (Spanne 0,02 ≤ 2 ATR), Tag 3 Ausbruch über 1,01 → Kauf 1,01, Stop = 0,99 − 0,25 × 0,02
+    o = [1.00, 1.00, 1.00, 1.005, 1.03, 1.04]
+    h = [1.01, 1.01, 1.005, 1.03, 1.04, 1.05]
+    l = [0.99, 0.995, 0.99, 1.0, 1.02, 1.03]
+    p = px(o=o, h=h, l=l, c=o, pl=(0.97, 0.98, 0.96))
+    s = simulate(p, {**BASE, "entry": "cons", "ck": 3, "cm": 2.0, "buf": 0.25, "hold": 2})
+    entry, stop = 1.01, 0.99 - 0.005
+    assert s["x"] == "zeit" and abs(s["r"] - (o[4] - entry) / (entry - stop)) < 1e-9
+
+
+def test_consolidation_fails_when_invalidation_broken():
+    p = px(o=[1.0, 0.95], h=[1.0, 0.96], l=[0.95, 0.94], c=[0.96, 0.95], pl=(0.97, 0.98, 0.96))
+    assert simulate(p, {**BASE, "entry": "cons", "ck": 3, "cm": 2.0, "buf": 0.25}) == {"skip": "failed"}
