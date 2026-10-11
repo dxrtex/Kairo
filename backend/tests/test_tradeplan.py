@@ -40,3 +40,15 @@ def test_future_bars_do_not_change_past_structure():
     a = structure(df.iloc[:30], atr=2.0)
     b = structure(df.iloc[:31].iloc[:30], atr=2.0)
     assert a == b
+
+
+def test_marks_above_close_sorted_and_merged():
+    import pandas as pd
+    from backend.tradeplan import structure
+    n = 30
+    c = [100 - i * 0.5 for i in range(n - 5)] + [88, 88.5, 88.2, 88.4, 88.3]
+    df = pd.DataFrame({"Open": c, "High": [x + 0.5 for x in c], "Low": [x - 0.5 for x in c], "Close": c})
+    pl = structure(df, 1.0, {"0": 120, "0.618": 95.0, "0.706": 95.2, "1": 80})
+    vals = [v for _, v in pl["tg"]]
+    assert vals == sorted(vals) and all(v > 88.3 for v in vals) and len(vals) <= 4
+    assert any("Fib 0,618 / Fib 0,706" in lb for lb, _ in pl["tg"])

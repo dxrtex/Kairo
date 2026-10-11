@@ -52,7 +52,7 @@ def main(argv=None) -> int:
            "zone": {"H": res.zone.get("H"), "H_date": res.zone.get("H_date"),
                     "fib": {k: round(float(v), 2) for k, v in ((res.zone.get("fib") or {}).get("levels") or {}).items()},
                     "support": (res.zone.get("support") or {}).get("center")},
-           "structure": structure(df, float(a14.iloc[-1])), "high_52w": round(float(df["High"].tail(250).max()), 2),
+           "structure": structure(df, float(a14.iloc[-1]), (res.zone.get("fib") or {}).get("levels")), "high_52w": round(float(df["High"].tail(250).max()), 2),
            "market": mk, "bars": bars}
     print("===BEGIN===")
     print(json.dumps(out, ensure_ascii=False, default=str))

@@ -20,8 +20,11 @@ STOP_BUF = 0.25                                      # ATR unter der Invalidieru
 MAX_STOP_ATR, MIN_STOP_ATR = 3.0, 0.5
 
 
-def structure(df: pd.DataFrame, atr: float | None) -> dict:
-    """Basis, Tiefs, Stop-Vorschlag und Widerstände. Leeres Dict, wenn zu wenig Daten."""
+def structure(df: pd.DataFrame, atr: float | None, fib: dict | None = None) -> dict:
+    """Basis, Tiefs, Stop-Vorschlag, Widerstände und nahe Kursmarken. Leeres Dict, wenn zu wenig Daten.
+
+    fib: Fibonacci-Niveaus der Kairo-Zone ({"0.618": Kurs, …}), falls vorhanden.
+    """
     d = df.dropna(subset=["High", "Low", "Close"])
     if len(d) < 12 or not atr or atr <= 0:
         return {}
@@ -44,4 +47,31 @@ def structure(df: pd.DataFrame, atr: float | None) -> dict:
         out["res"] = [r4(z["p"]) for z in lv[:3]]
     except Exception:
         out["res"] = []
+    out["tg"] = marks(d, atr, base, fib)
     return out
+
+
+def marks(d: pd.DataFrame, atr: float, base: dict | None, fib: dict | None) -> list:
+    """Nahe Kursmarken über dem Schluss (Orientierung, keine festen Ziele): Basis-Hoch, 10-Tage-Hoch, EMA 20/50, Fibonacci.
+
+    Höchstens 4, aufsteigend; Marken näher als 0,3 ATR beieinander werden zusammengefasst.
+    """
+    c = d["Close"].astype(float)
+    last = float(c.iloc[-1])
+    cand = []
+    if base:
+        cand.append(("Basis-Hoch", base["hi"]))
+    cand.append(("10-Tage-Hoch", float(d["High"].astype(float).iloc[-10:].max())))
+    for n in (20, 50):
+        cand.append((f"EMA {n}", float(c.ewm(span=n, adjust=False).mean().iloc[-1])))
+    for k, v in (fib or {}).items():
+        if k not in ("0", "1") and v:
+            cand.append((f"Fib {str(k).replace('.', ',')}", float(v)))
+    cand = sorted((x for x in cand if x[1] > last + 0.1 * atr), key=lambda x: x[1])
+    out = []
+    for lb, v in cand:
+        if out and v - out[-1][1] < 0.3 * atr:
+            out[-1][0] += " / " + lb
+            continue
+        out.append([lb, round(v, 4)])
+    return out[:4]
