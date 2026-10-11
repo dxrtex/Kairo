@@ -376,6 +376,9 @@
   @media (min-width: 700px) { .tp2-cfg { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .tp2-cfg label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
   .tp2-cfg input { width: 100%; font: inherit; font-size: 16px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .tp2-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 2px 0 0; }
+  .tp2-cmp > div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid; gap: 2px; }
+  .tp2-cmp span { font-size: 12px; color: var(--muted); font-weight: 600; } .tp2-cmp b { font-size: 20px; } .tp2-cmp em { font-style: normal; font-size: 12px; color: var(--muted); }
   .tp2-plan { margin-top: 12px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
   .tp2-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; padding: 10px 14px; border-top: 1px solid var(--line); }
   .tp2-row:first-child { border-top: 0; }
@@ -3303,7 +3306,7 @@ const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52,
 // EMA 20 mit der höchsten Trefferquote) · kein fester Zeit-Stop: Horizont 5–10 Tage, spätestens nach 10 Handelstagen raus (TP-Chancen für 7 Tage) · Hebel = höchster bis ×10 (Scalable), bei dem der
 // K.-o. ≥ 1 ATR unter dem SL liegt · Risiko 1 % (2 % bei grüner Ampel) · höchstens 5 Trades · alle Kurse in Euro.
 // Zum Vergleich der Depot-Test (Regeln ohne deine Auswahl): 20 Tage ohne TP brachten dort mehr – „Deine Trades“ zeigt, was bei dir besser läuft.
-const KMAX = { hold: 10, tpDays: 7, weakMult: 2, maxOpen: 5 };   // Horizont 5–10 Tage: spätestens Tag 10, TP für ~7 Tage bewertet
+const KMAX = { hold: 10, hold2: 20, tpDays: 7, weakMult: 2, maxOpen: 5 };   // Hälfte 1: TP / spätestens Tag 10 · Hälfte 2: bis Tag 20   // Horizont 5–10 Tage: spätestens Tag 10, TP für ~7 Tage bewertet
 const TP_EXIT = { hold: KMAX.hold };
 // ---- TP-Bewertung je Aktie ----
 // Kandidaten: Hoch der Seitwärtsphase, 10-Tage-Hoch, frühere Hochs (Swing), EMA 20/50, Fibonacci – Verkauf 0,1 ATR davor.
@@ -3416,6 +3419,11 @@ function tp2Calc(r, S, o = {}) {
   if (r.ed) { const ed = new Date(r.ed + "T12:00:00"); if (ed > out.d0 && ed <= out.exit) {
     out.exit = subBd(ed, 1); const left = bdBetween(out.d0, out.exit) + 1; out.edCut = true;
     out.problems.push([left >= 5 ? "yellow" : "red", `Quartalszahlen am ${dateDE(r.ed)} – Ausstieg vorgezogen auf den Handelstag davor (${left} statt ${hold} Tage).${left < 5 ? " Zu kurz für die Strategie – lieber nach den Zahlen einsteigen." : ""}`]); } }
+  // Hälfte 2 läuft bis Tag 20 – ebenfalls vor den Quartalszahlen raus
+  out.exit2 = addBd(out.d0, KMAX.hold2 - 1);
+  if (r.ed) { const ed = new Date(r.ed + "T12:00:00"); if (ed > out.d0 && ed <= out.exit2) { out.exit2 = subBd(ed, 1); out.ed2Cut = true;
+    if (!out.edCut) out.problems.push(["yellow", `Quartalszahlen am ${dateDE(r.ed)} – die zweite Hälfte wird am Handelstag davor verkauft (${bdBetween(out.d0, out.exit2) + 1} statt ${KMAX.hold2} Tage).`]); } }
+  if (out.exit2 < out.exit) out.exit2 = out.exit;
   out.levs = TP.levs.map(L => {
     const ko = L > 1 ? E * (1 - 1 / L) : null, ok = L === 1 || ko <= stop - TP.kob * atr;
     let expo = out.expo, capped = false;
@@ -3470,19 +3478,20 @@ function tpInner(r, S) {
     <div class="tp2-plan"${m.fit.ok ? "" : ' style="opacity:.6"'}>
       ${row("Kauf", `${X(m.E)} ${cur}`, m.base ? `in der Seitwärtsphase ${X(m.base.lo)}–${X(m.base.hi)} €` : "keine Seitwärtsphase erkannt")}
       ${row("Stop-Loss (SL)", `${X(m.stop)} ${cur}`, `${sgnPct(m.stop / m.E - 1, 1)} · Verlust ${sgnEur(at(m.stop))}`, "down")}
-      ${m.tp ? row("Take-Profit (TP)", `${X(m.tp)} ${cur}`, `${esc(m.tpLbl)} · ${sgnPct(m.tp / m.E - 1, 1)} · Gewinn ${sgnEur(at(m.tp))} · Chance/Risiko ${fmt(m.tpR, 1)} : 1 · erreicht ≈ ${pct(m.tpP, 0)}`, "up") : ""}
+      ${m.tp ? row("Hälfte 1 · Take-Profit (TP)", `${X(m.tp)} ${cur}`, `${esc(m.tpLbl)} · ${sgnPct(m.tp / m.E - 1, 1)} · Gewinn auf die Hälfte ${sgnEur(at(m.tp) / 2)} · Chance/Risiko ${fmt(m.tpR, 1)} : 1 · erreicht ≈ ${pct(m.tpP, 0)}`, "up") : ""}
       ${m.tpCands && m.tpCands.length > 1 ? `<details class="tp2-acc" style="margin:0 14px 10px"><summary>So wurde der TP gewählt (${m.tpCands.length} Kursmarken bewertet)</summary>
         <div class="table-wrap plain" style="margin-top:6px"><table class="tpt"><thead><tr><th>Kursmarke</th><th class="num">TP</th><th class="num">Chance/Risiko</th><th class="num">erreicht in ${KMAX.tpDays} T.</th></tr></thead><tbody>
         ${m.tpCands.map(c => `<tr${c.tp === m.tp ? ' style="font-weight:700"' : ""}><td>${c.tp === m.tp ? "✓ " : ""}${esc(c.lbl)}</td><td class="num">${X(c.tp)} €</td><td class="num">${fmt(c.R, 1)} : 1</td><td class="num">${pct(c.p, 0)}</td></tr>`).join("")}</tbody></table></div>
         <div class="note">Gewählt wird unter den realistischen Marken (≥ 30 % Chance, mindestens 1 : 1) die mit dem höchsten erwarteten Gewinn (Wahrscheinlichkeit × Chance/Risiko). Wahrscheinlichkeiten aus der Schwankung der Aktie, am Kairo-Backtest geeicht – ohne deine eigene Auswahl.</div></details>` : ""}
       ${m.tp && m.tpR < 1 ? `<div class="tip tone-yellow" style="margin:0 10px 10px">Der TP liegt näher als der SL: Gewinn kleiner als das Risiko. Lohnt sich nur, wenn mehr als ${pct(m.tpBE, 0)} solcher Trades aufgehen.</div>` : ""}
-      ${row("Spätestens verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `nach ${m.hold} Handelstagen · dein Horizont 5–10 Tage, davor entscheidest du`)}
+      ${row("Hälfte 1 · spätestens verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `falls TP nicht erreicht · nach ${m.hold} Handelstagen, davor entscheidest du`)}
+      ${row("Hälfte 2 · laufen lassen bis", m.exit2.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.ed2Cut ? "zum Schluss – vor den Quartalszahlen · kein TP, nur der SL sichert ab" : `zum Schluss – nach ${KMAX.hold2} Handelstagen · kein TP, nur der SL sichert ab`)}
       ${row("Produkt", prod, lv.L > 1 ? `K.-o. höchstens ${X(lv.ko)} ${cur}` : (lv.qty != null ? `${lv.qty} Stück` : ""))}
       ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(m.riskPct, 1)} %${m.fit.mult > 1 ? " – Ausverkauf" : ""})`)}
       ${lv.L > 1 ? row("SL am Turbo", sgnPct(-lv.tStop, 0), `vom Kaufkurs des Turbos${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
     </div>
     ${tpTurboHtml(r, m, lv)}
-    <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order und einen Limit-Verkauf beim TP – beide über die ganze Position (was zuerst greift, schließt den Trade; die andere Order dann löschen). Ist nach ${m.hold} Handelstagen keins von beiden erreicht, spätestens dann zum Schluss verkaufen. Tipp: Gewinner nicht vor dem TP verkaufen – laut Daten bringen 7–10 Tage mehr als 3–5. Kairo führt keine Orders aus.</div>
+    <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die <b>ganze</b> Position und einen Limit-Verkauf beim TP über die <b>Hälfte</b>. Wird der TP erreicht, die Stop-Order auf die verbliebene Hälfte anpassen. Hälfte 1 ohne TP spätestens an Tag ${m.hold} verkaufen, Hälfte 2 bis Tag ${KMAX.hold2} laufen lassen. So testest du deine Strategie (Hälfte 1) gegen das Laufenlassen aus dem Backtest (Hälfte 2) – „Deine Trades“ vergleicht beide. Kairo führt keine Orders aus.</div>
     <div class="note">Warum diese Werte: SL = ${esc(m.src)} (${fmt(m.riskAtr, 1)} ATR). ${m.tpWhy || ""} Hebel = höchster, bei dem der K.-o. mindestens 1 ATR unter dem SL liegt (max. ×${fmt(Math.min(10, m.maxL), 1)}, Scalable bis ×10) – so knockt eine normale Kursschwankung den Turbo nicht aus – das Risiko bleibt gleich, nur der Einsatz sinkt. Kosten ≈ ${eur2(lv.cost)} sind eingerechnet. Kurslücke unter den K.-o.: Einsatz verloren (${sgnEur(-lv.stake - 2 * cfg.fee)}).</div>
     ${lv.L > 1 ? `<div class="row-actions" style="margin-top:10px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Turbo bei onvista suchen</a></div>` : ""}
     ${m.fit.ok ? `<div class="row-actions" style="margin-top:12px"><button class="btn" data-tpopen="${esc(r.t)}">Trade eröffnen & speichern</button></div>
@@ -3504,7 +3513,7 @@ function tpTurboHtml(r, m, lv) {
   return form + `<div class="tp2-plan">
       <div class="tp2-row"><span>Stop-Loss am Turbo</span><b class="down">${fmt(sl)} €</b><em>${sgnPct(sl / P - 1, 0)} vom Kaufkurs · entspricht Aktie ${X(m.stop)} ${cur}</em></div>
       ${m.tp ? `<div class="tp2-row"><span>Take-Profit am Turbo</span><b class="up">${fmt(P * (m.tp - KO) / (m.E - KO))} €</b><em>${sgnPct((m.tp - KO) / (m.E - KO) - 1, 0)} vom Kaufkurs · entspricht Aktie ${X(m.tp)} ${cur}</em></div>` : ""}
-      <div class="tp2-row"><span>Stückzahl</span><b>${fmt(qty, 0)} Stück</b><em>Einsatz ${eur(qty * P)} · Verlust am Stop ≈ ${eur2(qty * lossU)} · Hebel ≈ ×${fmt(lev, 1)}</em></div></div>
+      <div class="tp2-row"><span>Stückzahl</span><b>${fmt(qty, 0)} Stück</b><em>Einsatz ${eur(qty * P)} · Verlust am Stop ≈ ${eur2(qty * lossU)} · Hebel ≈ ×${fmt(lev, 1)} · davon ${fmt(Math.floor(qty / 2), 0)} Stück mit Limit beim TP, ${fmt(qty - Math.floor(qty / 2), 0)} laufen bis Tag ${KMAX.hold2}</em></div></div>
     ${near ? `<div class="tip tone-yellow" style="margin-top:8px">K.-o. liegt weniger als 1 ATR unter dem Stop – eine Kurslücke kann den Turbo ausknocken, bevor der Stop greift. Besser einen Turbo mit K.-o. unter ${X(m.stop - TP.kob * m.atr)} ${cur}.</div>` : ""}
     <div class="note" style="margin:6px 0 0">Stop-Order (${fmt(sl)} €)${m.tp ? ` und Limit-Verkauf (${fmt(P * (m.tp - KO) / (m.E - KO))} €)` : ""} bei Scalable direkt auf den Turbo setzen. Genau gilt sie nur, solange der Devisenkurs gleich bleibt; der K.-o. von Open-End-Turbos steigt außerdem täglich leicht (Finanzierung). Prüfe den Stop deshalb ab und zu gegen den Kurs der Aktie (${X(m.stop)} ${cur}).</div>`;
 }
@@ -3523,7 +3532,7 @@ function tpOpen(t) {
   if (l.filter(p => p.st === "open").length >= m.cfg.maxOpen && !confirm(`Schon ${m.cfg.maxOpen} offene Trades – Gesamtrisiko steigt. Trotzdem eröffnen?`)) return;
   l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, d: isoD(m.d0), scan: String(data.generated).slice(0, 10),
               E: +m.E, stop: m.stop, atr: m.atr, L: lv.L, ko: lv.ko, expo: Math.round(lv.expo), stake: Math.round(lv.stake), qty: lv.qty,
-              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open" });
+              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), exit2: isoD(m.exit2), tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open" });
   plansSave(l); render(); window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function tpStatus(p) {
@@ -3531,23 +3540,45 @@ function tpStatus(p) {
   if (c == null) return { tone: "gray", t: "Kein aktueller Kurs" };
   const fe = v => fmt(v * (toEur(1, p.cur || "EUR") || 1));
   if (c <= p.stop) return { tone: "red", t: `Schluss ${fe(c)} € unter dem Stop – Position schließen` };
-  if (today >= p.exit) return { tone: "yellow", t: "Spätester Ausstiegstag erreicht – verkaufen" };
-  if (p.tp && c >= p.tp) return { tone: "green", t: `TP ${fe(p.tp)} € erreicht – verkaufen (falls die Limit-Order nicht schon ausgeführt wurde)` };
+  const x2 = p.exit2 || p.exit;
+  if (p.x1 == null && p.tp && c >= p.tp) return { tone: "green", t: `TP ${fe(p.tp)} € erreicht – Hälfte 1 verkaufen, Rest bis ${dateDE(x2)} laufen lassen` };
+  if (p.x1 == null && today >= p.exit) return { tone: "yellow", t: "Tag 10 – Hälfte 1 verkaufen (TP nicht erreicht)" };
+  if (today >= x2) return { tone: "yellow", t: "Tag 20 – Hälfte 2 verkaufen" };
+  if (p.x1 != null) return { tone: "blue", t: `Hälfte 1 verkauft · Rest läuft bis ${dateDE(x2)}` };
   return { tone: "blue", t: `läuft · noch ${Math.max(0, Math.round((new Date(p.exit) - new Date(today)) / 864e5))} Kalendertage` };
 }
 function tpPlansHtml() {
   const l = plansLoad(), open = l.filter(p => p.st === "open"), done = l.filter(p => p.st === "closed");
   if (!l.length) return "";
   const row = p => { const r = rowOf(p.t), c = r ? r.c : null, s = tpStatus(p), pnl = c != null ? (c - p.E) / p.E * p.expo - p.cost : null;
-    return `<div class="g-pos"><div class="g-pos-h"><button class="g-nm" data-ein="${esc(p.t)}"><b>${esc(p.n)}</b><small>${esc(p.t)} · ${p.L === 1 ? "Aktie" : `Turbo ×${p.L}`} · seit ${dateDE(p.d)} · raus spätestens ${dateDE(p.exit)}</small></button>
+    return `<div class="g-pos"><div class="g-pos-h"><button class="g-nm" data-ein="${esc(p.t)}"><b>${esc(p.n)}</b><small>${esc(p.t)} · ${p.L === 1 ? "Aktie" : `Turbo ×${p.L}`} · seit ${dateDE(p.d)} · Hälfte 1 bis ${dateDE(p.exit)} · Hälfte 2 bis ${dateDE(p.exit2 || p.exit)}</small></button>
       <div class="g-pl ${pnl >= 0 ? "up" : "down"}"><b>${sgnEur(pnl)}</b><small>${c != null ? sgnPct(c / p.E - 1, 1) : ""}</small></div></div>
       <div class="g-row"><span>${(fe => `Kauf ${fe(p.E)} · SL ${fe(p.stop)}${p.tp ? ` · TP ${fe(p.tp)}` : ""} · jetzt ${fe(c)} €${p.ko ? ` · K.-o. ${fe(p.ko)} €` : ""}`)(v => fmt(v * (toEur(1, p.cur || "EUR") || 1)))}</span><span class="g-tag ${s.tone === "red" ? "down" : s.tone === "green" ? "up" : ""}">${esc(s.t)}</span></div>
-      <div class="g-act"><button class="btn ghost sm" data-tpclose="${p.id}">Geschlossen …</button><button class="btn ghost sm" data-tpdel="${p.id}">Löschen</button></div></div>`; };
-  const rs = done.map(p => p.R).filter(x => x != null);
-  const stat = rs.length ? `${rs.length} abgeschlossen · Ø ${fmt(rs.reduce((a, b) => a + b, 0) / rs.length, 2)} R · Treffer ${pct(rs.filter(x => x > 0).length / rs.length, 0)} (Ziel: Ø über 0 R – dann funktioniert deine Auswahl)` : "";
+      <div class="g-act">${p.x1 == null ? `<button class="btn ghost sm" data-tph1="${p.id}">Hälfte 1 verkauft …</button>` : `<small class="muted">Hälfte 1: ${fmt(p.R1, 2)} R</small>`}<button class="btn ghost sm" data-tph2="${p.id}">${p.x1 == null ? "Alles verkauft …" : "Hälfte 2 verkauft …"}</button><button class="btn ghost sm" data-tpdel="${p.id}">Löschen</button></div></div>`; };
+  const rs = done.map(p => p.R).filter(x => x != null), avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  const h = done.filter(p => p.R1 != null && p.R2 != null), a1 = avg(h.map(p => p.R1)), a2 = avg(h.map(p => p.R2));
+  const stat = rs.length ? `${rs.length} abgeschlossen · Ø ${fmt(avg(rs), 2)} R · Treffer ${pct(rs.filter(x => x > 0).length / rs.length, 0)} (Ziel: Ø über 0 R – dann funktioniert deine Auswahl)` : "";
+  const cmp = h.length ? `<div class="tp2-cmp"><div><span>Hälfte 1 · deine Strategie (TP)</span><b class="${a1 >= 0 ? "up" : "down"}">${fmt(a1, 2).replace(/^(?!-)/, "+")} R</b><em>Treffer ${pct(h.filter(p => p.R1 > 0).length / h.length, 0)}</em></div>
+      <div><span>Hälfte 2 · laufen lassen (Tag 20)</span><b class="${a2 >= 0 ? "up" : "down"}">${fmt(a2, 2).replace(/^(?!-)/, "+")} R</b><em>Treffer ${pct(h.filter(p => p.R2 > 0).length / h.length, 0)}</em></div></div>
+    <div class="note" style="margin:4px 2px 12px">${h.length} Trades verglichen${h.length < 20 ? ` – aussagekräftig ab etwa 20–30` : a1 > a2 + 0.1 ? " – deine TP-Strategie liegt vorn" : a2 > a1 + 0.1 ? " – Laufenlassen liegt vorn" : " – beide etwa gleich"}.</div>` : "";
   return `<div class="section-title"><span>Deine Trades</span><span>${open.length} offen</span></div>${open.map(row).join("") || `<div class="note">Keine offenen Trades.</div>`}
-    ${stat ? `<div class="note" style="margin:6px 2px 14px">${stat}</div>` : ""}`;
+    ${stat ? `<div class="note" style="margin:6px 2px 8px">${stat}</div>` : ""}${cmp}`;
 }
+document.addEventListener("click", e => {                     // Hälfte 1 / Hälfte 2 (bzw. alles) verkauft
+  const b = e.target.closest("[data-tph1],[data-tph2]"); if (!b) return;
+  const l = plansLoad(), p = l.find(x => x.id === (b.dataset.tph1 || b.dataset.tph2)); if (!p) return;
+  const r = rowOf(p.t), fx = toEur(1, p.cur || "EUR") || 1, first = !!b.dataset.tph1, all = !first && p.x1 == null;
+  const v = prompt(`${first ? "Hälfte 1" : all ? "Ganze Position" : "Hälfte 2"} von ${p.n} – Verkaufskurs der Aktie in €:`, r ? (r.c * fx).toFixed(2).replace(".", ",") : "");
+  const x = v == null ? null : parseFloat(String(v).replace(",", ".")) / fx;
+  if (!(x > 0)) return;
+  const Rx = +((x - p.E) / (p.E - p.stop)).toFixed(3), d = isoD(new Date());
+  if (first) Object.assign(p, { x1: x, R1: Rx, xd1: d });
+  else {
+    if (all) Object.assign(p, { x1: x, R1: Rx, xd1: d });
+    Object.assign(p, { x2: x, R2: Rx, st: "closed", X: (p.x1 + x) / 2, xd: d, R: +(((p.R1 ?? Rx) + Rx) / 2).toFixed(3) });
+  }
+  plansSave(l); render();
+});
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-tpopen],[data-tpclose],[data-tpdel]"); if (!b) return;
   if (b.dataset.tpopen) { tpOpen(b.dataset.tpopen); return; }
