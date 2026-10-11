@@ -3256,8 +3256,8 @@ const einTag = r => r.tr === 2 ? `<i class="st trend">Trend Top</i>` : r.tr === 
 function einSetup(r) {
   if (r.tr === 2) return { k: "top", tone: "green", title: "Trend-Rücksetzer · Top", sub: "Das stärkste Setup im 6-Jahres-Test – hier lohnt sich der Einstieg am meisten.", plan: r.tp };
   if (r.tr === 1) return { k: "trend", tone: "green", title: "Trend-Rücksetzer", sub: "Aufwärtstrend mit kurzer Verschnaufpause an der EMA 50 – im Test deutlich besser als Kairo.", plan: r.tp };
-  if (r.s === "hit") return { k: "kairo", tone: "yellow", title: `Kairo-Treffer${r.sc ? " · Score " + r.sc : ""}`, sub: "Umkehr nach einer Korrektur. Am besten in einer engen Seitwärtsphase kaufen – dann im Test netto positiv, vor allem in schwachen Märkten.", plan: r.kp };
-  if (r.s === "fast") return { k: "fast", tone: "yellow", title: "Kairo Fast-Treffer", sub: `Es fehlt noch: ${(r.km || []).map(k => SHORT[k] || k).join(", ") || "–"}. Im Test etwa halb so gut wie volle Treffer – nur die klarsten Setups, in einer Seitwärtsphase.`, plan: null };
+  if (r.s === "hit") return { k: "kairo", tone: "yellow", title: `Kairo-Treffer${r.sc ? " · Score " + r.sc : ""}`, sub: "Umkehr nach einer Korrektur. Laut Strategie nur bei grüner Marktampel (Ausverkauf) traden – dann die stärkste Kombination der Studie.", plan: r.kp };
+  if (r.s === "fast") return { k: "fast", tone: "yellow", title: "Kairo Fast-Treffer", sub: `Es fehlt noch: ${(r.km || []).map(k => SHORT[k] || k).join(", ") || "–"}. Laut Strategie auslassen – Fast-Treffer machten im Depot-Test jede Variante schlechter.`, plan: null };
   return { k: "none", tone: "gray", title: "Kein Einstiegs-Setup", sub: "Weder Trend-Rücksetzer noch Kairo-Treffer. Der Trade-Plan unten rechnet nur Stop, Größe und Hebel – für diese Aktie gibt es keinen getesteten Vorteil.", plan: null };
 }
 function einTrendCheck(r) {
@@ -3297,12 +3297,31 @@ function einPlanHtml(r) {
 const TP = { maxAtr: 3, minAtr: 0.5, kob: 1.0, spreadStock: 0.001, spreadTurbo: 0.0015, fin: 0.05, levs: [1, 3, 5, 10], holds: [5, 7, 10, 20] };
 // Ø netto je Trade in R (Kauf in der Basis, Kairo-Treffer): [alle Marktlagen, schwacher Markt (S&P 500 < EMA 200), gesunder Markt]
 const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52, -0.04], 20: [0.26, 0.67, 0.04] };
-// Ausstieg: ein fester Plan je Aktie – Take-Profit als R-Vielfaches (Studie: backend/shortswing.py, Kursziel-Vergleich), sonst Zeit-Ausstieg
-// Ausstieg (Kursziel-Vergleich, 5 Jahre, Kauf in der Basis, 10 Tage, netto je Trade): ohne TP +0,16 R · TP EMA 20 +0,12 R
-// (bestes realistisches Ziel, in ~26 % erreicht) · nächster Widerstand +0,08 · 2 R +0,08. Hälfte am TP, Rest zum Ausstiegstag:
-// gleicher Stop für beide Hälften → Ergebnis ≈ Mittel beider Regeln (≈ +0,14 R).
-const TP_EXIT = { hold: 10, part: 0.5,
-  why: "TP = EMA 20: Dorthin federt der Kurs nach einer Korrektur am häufigsten zurück – im Test das beste erreichbare Ziel (in etwa jedem 4. Trade erreicht). Nur die Hälfte verkaufen: Die andere Hälfte bis zum Ausstiegstag bringt die großen Gewinner, von denen die Strategie lebt." };
+// ---- Kairo-Strategie (Depot-Vergleich, backend/shortswing.py only=combo: 3.000 €, max. 3 Trades, 2021–2026, je 25 Reihenfolgen) ----
+// Sieger „M“: Marktampel grün (Ausverkauf) → nur volle Kairo-Treffer, 1,5 % Risiko · sonst → nur Trend-Rücksetzer, 1 % ·
+// immer Kauf in der Seitwärtsphase, Stop = Basis-Tief − 0,25 ATR, 20 Handelstage, kein TP.
+// Median +29 % p. a. (10.–90. Perzentil +23 … +34 %), größter Rückgang ≈ 23 %. Zum Vergleich: alter Plan (Treffer+Fast, 10 T) ≈ +1 % p. a.
+// Fast-Treffer und jedes feste Kursziel machten jede Variante schlechter.
+const KMAX = { hold: 20, weakMult: 1.5 };
+const TP_EXIT = { hold: KMAX.hold };
+function kmFit(r, mk) {
+  const k = r.tr >= 1 ? "trend" : r.s === "hit" ? "hit" : r.s === "fast" ? "fast" : "none", weak = mk && mk.k === "weak";
+  const lbl = { trend: "Trend-Rücksetzer", hit: "Kairo-Treffer", fast: "Fast-Treffer", none: "Kein Setup" }[k];
+  if (k === "none") return { ok: false, k, tone: "gray", mult: 1, t: "Kein Setup der Strategie – nicht traden",
+    s: "Weder Kairo-Treffer noch Trend-Rücksetzer. Der Plan unten rechnet nur Stop und Größe – ein Vorteil ist nicht belegt." };
+  if (!mk) return { ok: k !== "fast", k, tone: "yellow", mult: 1, t: `${lbl} – Marktlage noch nicht geladen`,
+    s: "Regel: Kairo-Treffer nur im Ausverkauf (Ampel grün), Trend-Rücksetzer sonst. Fast-Treffer nie." };
+  if (k === "fast") return { ok: false, k, tone: "red", mult: 1, t: "Auslassen – Fast-Treffer",
+    s: "Im Depot-Test machten Fast-Treffer jede Strategie schlechter: Sie belegen Plätze, die bessere Trades bekommen sollten." };
+  if (weak && k === "hit") return { ok: true, k, tone: "green", mult: KMAX.weakMult, t: "A-Setup – Kairo-Treffer im Ausverkauf: traden",
+    s: `Die stärkste Kombination der Studie (im Test ≈ +0,5 bis +0,9 R je Trade). Risiko ×${fmt(KMAX.weakMult, 1)}.` };
+  if (weak) return { ok: false, k, tone: "yellow", mult: 1, t: "Auslassen – im Ausverkauf nur Kairo-Treffer",
+    s: "Solange die Ampel grün ist, gehören die Plätze den Kairo-Treffern – die bringen in dieser Phase am meisten." };
+  if (k === "trend") return { ok: true, k, tone: "green", mult: 1, t: "Setup der Strategie – Trend-Rücksetzer: traden",
+    s: "Außerhalb des Ausverkaufs der beste Baustein (Depot-Test: allein ≈ +21 % pro Jahr bei kleinem Rückgang)." };
+  return { ok: false, k, tone: "red", mult: 1, t: "Auslassen – Kairo-Treffer nur im Ausverkauf",
+    s: "Bei gelber/grauer Ampel brachten Kairo-Reversals im Test ≈ 0. Warte auf die grüne Ampel oder nimm einen Trend-Rücksetzer." };
+}
 const TP_EXP_TREND = { 5: 0.07, 7: 0.07, 10: 0.07, 20: 0.07 };      // Trend-Rücksetzer, sofort gekauft (beste Haltedauer 5 Tage)
 const tpCfg = () => ({ depot: +state.tpDepot > 0 ? +state.tpDepot : 3000, risk: +state.tpRisk > 0 ? +state.tpRisk : 1,
   hold: TP_EXIT.hold, fee: state.tpFee != null ? +state.tpFee : 0.99, maxOpen: +state.tpMaxOpen || 3 });
@@ -3310,12 +3329,12 @@ const tpCfg = () => ({ depot: +state.tpDepot > 0 ? +state.tpDepot : 3000, risk: 
 function tpMarket() {
   const m = anaData && anaData.market, s = m && m["^GSPC"], v = m && m["^VIX"] ? m["^VIX"].c : null;
   if (!s) return null;
-  if (!s.above200 || (v != null && v >= 25)) return { k: "weak", tone: "green", t: "Markt im Ausverkauf – beste Phase für Reversals",
-    s: `S&P 500 ${s.above200 ? "über" : "unter"} EMA 200${v != null ? `, VIX ${fmt(v, 0)}` : ""}. Im Test: Ø +0,5 R je Trade (10 Tage).` };
-  if (!s.above50 || (v != null && v >= 20)) return { k: "mixed", tone: "yellow", t: "Markt angeschlagen – Reversals möglich",
+  if (!s.above200 || (v != null && v >= 25)) return { k: "weak", tone: "green", t: "grün · Ausverkauf – Kairo-Treffer traden",
+    s: `S&P 500 ${s.above200 ? "über" : "unter"} EMA 200${v != null ? `, VIX ${fmt(v, 0)}` : ""}.` };
+  if (!s.above50 || (v != null && v >= 20)) return { k: "mixed", tone: "yellow", t: "gelb · angeschlagen – Trend-Rücksetzer traden",
     s: `S&P 500 ${s.above50 ? "über" : "unter"} EMA 50${v != null ? `, VIX ${fmt(v, 0)}` : ""}.` };
-  return { k: "strong", tone: "gray", t: "Gesunder Markt – Reversals nur sehr selektiv",
-    s: `S&P 500 über EMA 50/200${v != null ? `, VIX ${fmt(v, 0)}` : ""}. Im Test lagen Reversals hier nahe null – nur die klarsten Setups.` };
+  return { k: "strong", tone: "gray", t: "grau · gesunder Markt – Trend-Rücksetzer traden",
+    s: `S&P 500 über EMA 50/200${v != null ? `, VIX ${fmt(v, 0)}` : ""}.` };
 }
 const addBd = (d, n) => { const x = new Date(d); let k = 0; while (k < n) { x.setDate(x.getDate() + 1); if (x.getDay() % 6) k++; } return x; };
 const isoD = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -3326,8 +3345,8 @@ const bdBetween = (a, b) => { let k = 0; const x = new Date(a); while (x < b) { 
 function tp2Calc(r, S, o = {}) {
   const cfg = tpCfg(), pl = r.pl || {}, atr = pl.atr || r.atr || (r.ap || 0) * r.c;
   const trend = S && (S.k === "top" || S.k === "trend");
-  const stop = trend && pl.l3 != null ? +(pl.l3 - 1.0 * atr).toFixed(4) : pl.stop;
-  const src = trend ? "Tief der letzten 3 Tage − 1 ATR (Trend-Regel)" : pl.src ? `${pl.src} − 0,25 ATR` : "";
+  const stop = pl.stop;                                      // für alle Setups gleich (so getestet): Basis-Tief − 0,25 ATR
+  const src = pl.src ? `${pl.src} − 0,25 ATR` : "";
   const E = o.entry > 0 ? o.entry : r.c, fx = toEur(1, r.cur || "EUR") || 1;
   // Kursmarken: nahe Marken aus dem Scan (Basis-Hoch, EMA 20/50, Fibonacci), sonst die Swing-Widerstände
   const tg = (pl.tg && pl.tg.length ? pl.tg : (pl.res || []).map((x, i) => [`Widerstand ${i + 1}`, x])).filter(x => x[1] > E);
@@ -3338,16 +3357,18 @@ function tp2Calc(r, S, o = {}) {
   if (risk <= 0) { out.problems.push(["red", `Kurs liegt schon unter dem Stop ${fmt(stop)} – Setup gescheitert.`]); return out; }
   if (out.riskAtr > TP.maxAtr) out.problems.push(["red", `Stop ${fmt(out.riskAtr, 1)} ATR entfernt (mehr als ${TP.maxAtr}) – zu weit für diese Strategie. ${pl.base ? "" : "Auf eine Basis warten."}`]);
   else if (out.riskAtr < TP.minAtr) out.problems.push(["yellow", `Stop nur ${fmt(out.riskAtr, 1)} ATR entfernt – normales Tagesrauschen kann ihn auslösen.`]);
-  if (!trend && !pl.base) out.problems.push(["yellow", "Noch keine enge Seitwärtsphase (Basis) – im Test lohnte sich Abwarten deutlich."]);
-  else if (!trend && pl.base && E > pl.base.hi + 0.5 * atr) out.problems.push(["yellow", `Kurs schon über der Basis (${fmt(pl.base.hi)}) – die Gegenbewegung läuft bereits, der Stop liegt entsprechend weiter weg.`]);
+  if (!pl.base) out.problems.push(["yellow", "Noch keine enge Seitwärtsphase (Basis) – laut Strategie erst kaufen, wenn sie da ist."]);
+  else if (pl.base && E > pl.base.hi + 0.5 * atr) out.problems.push(["yellow", `Kurs schon über der Basis (${fmt(pl.base.hi)}) – die Gegenbewegung läuft bereits, der Stop liegt entsprechend weiter weg.`]);
   out.dist = risk / E;
-  out.riskEur = cfg.depot * cfg.risk / 100;
+  out.mk = tpMarket();
+  out.fit = kmFit(r, out.mk);
+  out.riskPct = cfg.risk * out.fit.mult;
+  out.riskEur = cfg.depot * out.riskPct / 100;
   out.expo = out.riskEur / out.dist;                          // Basiswert-Exposure in €
-  const hold = o.hold || (trend ? 5 : cfg.hold), cal = hold * 7 / 5;
+  const hold = o.hold || KMAX.hold, cal = hold * 7 / 5;
   out.hold = hold;
-  out.tp = !trend && r.e20 && r.e20 > E + 0.25 * atr ? +(+r.e20).toFixed(4) : null;     // wie in der Studie: EMA 20 nur, wenn sie über dem Kauf liegt
-  out.tpWhy = out.tp ? TP_EXIT.why : trend ? "Trend-Rücksetzer: kein TP, Verkauf am Ausstiegstag (im Test am besten)."
-    : "Kein TP: Der Kurs liegt schon an oder über der EMA 20 – das naheliegende Ziel ist erreicht. Verkauf am Ausstiegstag.";
+  out.tp = null;
+  out.tpWhy = "Kein TP: Jedes feste Kursziel (1–5 R, Widerstand, EMA 20) brachte im Test weniger – die großen Gewinner bezahlen die Verluste. Verkauf am Ausstiegstag.";
   out.d0 = tpEntryDay(o.date);
   out.exit = addBd(out.d0, hold - 1);
   // Quartalszahlen in der Haltedauer: spätestens am Handelstag davor raus (Kurslücke kann Stop und K.-o. überspringen)
@@ -3370,8 +3391,7 @@ function tp2Calc(r, S, o = {}) {
   // Vorschlag: der höchste zulässige Turbo-Hebel (K.-o. ≥ 1 ATR unter dem Stop) – bindet am wenigsten Kapital, Risiko bleibt gleich
   const okT = out.levs.filter(x => x.ok && x.L > 1);
   out.sug = (okT[okT.length - 1] || out.levs[0]).L;
-  const mk = tpMarket();
-  out.mk = mk;
+  const mk = out.mk;
   const ex = trend ? [TP_EXP_TREND[hold], null, null] : TP_EXP[hold] || [];
   out.expR = mk && mk.k === "weak" && ex[1] != null ? ex[1] : mk && mk.k === "strong" && ex[2] != null ? ex[2] : ex[0];
   return out;
@@ -3393,32 +3413,34 @@ function tpInner(r, S) {
       <label>Kaufkurs (${cur})<input id="tpE" type="number" inputmode="decimal" step="any" value="${esc(ent || r.c)}" data-t="${esc(r.t)}"></label>
       <label>Kaufdatum<input id="tpD" type="date" value="${esc(dt || isoD(tpEntryDay()))}" data-t="${esc(r.t)}"></label></div>
     <div class="note" style="margin:4px 0 0">Vorgabe: letzter Schluss (${dateDE(String(data.generated).slice(0, 10))}). Schon gekauft? Echten Kurs und Datum eintragen – der Plan rechnet neu.</div>`;
-  const acct = `<details class="tp2-acc"><summary>Konto: ${eur(cfg.depot)} · Risiko ${fmt(cfg.risk, 1)} % je Trade</summary>
+  const acct = `<details class="tp2-acc"><summary>Konto: ${eur(cfg.depot)} · Basisrisiko ${fmt(cfg.risk, 1)} % je Trade (Kairo-Treffer im Ausverkauf ×${fmt(KMAX.weakMult, 1)})</summary>
       <div class="tp2-cfg" style="margin-top:8px"><label>Depot (€)<input id="tpDepot" type="number" inputmode="decimal" min="0" step="100" value="${esc(cfg.depot)}"></label>
       <label>Risiko je Trade (%)<input id="tpRisk" type="number" inputmode="decimal" min="0.1" max="5" step="0.1" value="${esc(cfg.risk)}"></label></div>
-      <div class="note">Einmal einstellen, gilt für alle Pläne. Empfehlung: 1 %.</div></details>`;
+      <div class="note">Einmal einstellen, gilt für alle Pläne. Empfehlung: 1 % (so getestet). Höchstens 3 Trades gleichzeitig.</div></details>`;
   if (!m.stop || (m.problems.length && m.problems[0][0] === "red" && !m.dist)) return head + m.problems.map(([t, x]) => `<div class="tip tone-${t === "red" ? "red" : "yellow"}" style="margin-top:10px">${esc(x)}</div>`).join("") + acct;
   const lv = m.levs.find(x => x.L === m.sug);
   const at = px => (px - m.E) / m.E * lv.expo - lv.cost;
   const prod = lv.L === 1 ? `Aktie direkt` : `Turbo Long ×${lv.L}`;
   const row = (k, v, sub, cls = "") => `<div class="tp2-row"><span>${k}</span><b class="${cls}">${v}</b>${sub ? `<em>${sub}</em>` : ""}</div>`;
   return `${head}
-    ${m.mk ? `<div class="tip tone-${m.mk.tone === "gray" ? "gray" : m.mk.tone}" style="margin-top:12px"><b class="t">Marktampel · ${esc(m.mk.t)}</b>${esc(m.mk.s)}</div>` : ""}
+    <div class="tip tone-${m.fit.tone}" style="margin-top:12px"><b class="t">${esc(m.fit.t)}</b>${esc(m.fit.s)}</div>
+    ${m.mk ? `<div class="note" style="margin:6px 2px 0">Marktampel: ${esc(m.mk.t)} – ${esc(m.mk.s)}</div>` : ""}
     ${m.problems.map(([t, x]) => `<div class="tip tone-${t}" style="margin-top:8px">${esc(x)}</div>`).join("")}
-    <div class="tp2-plan">
+    ${m.fit.ok ? "" : `<div class="plan-h" style="margin-top:14px">Nur zur Information – laut Strategie nicht traden</div>`}
+    <div class="tp2-plan"${m.fit.ok ? "" : ' style="opacity:.6"'}>
       ${row("Kauf", `${fmt(m.E)} ${cur}`, m.base ? `in der Seitwärtsphase ${fmt(m.base.lo)}–${fmt(m.base.hi)}` : "keine Seitwärtsphase erkannt")}
       ${row("Stop-Loss (SL)", `${fmt(m.stop)} ${cur}`, `${sgnPct(m.stop / m.E - 1, 1)} · Verlust ${sgnEur(at(m.stop))}`, "down")}
       ${m.tp ? row("Take-Profit (TP) · Hälfte verkaufen", `${fmt(m.tp)} ${cur}`, `EMA 20 · ${sgnPct(m.tp / m.E - 1, 1)} · Gewinn auf die Hälfte ${sgnEur(at(m.tp) / 2 - cfg.fee / 2)}`, "up") : ""}
       ${row(m.tp ? "Rest verkaufen am" : "Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `zum Schluss – nach ${m.hold} Handelstagen`)}
       ${row("Produkt", prod, lv.L > 1 ? `K.-o. höchstens ${fmt(lv.ko)} ${cur}` : (lv.qty != null ? `${lv.qty} Stück` : ""))}
-      ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(cfg.risk, 1)} %)`)}
+      ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(m.riskPct, 1)} %${m.fit.mult > 1 ? " – Ausverkauf" : ""})`)}
       ${lv.L > 1 ? row("SL am Turbo", sgnPct(-lv.tStop, 0), `vom Kaufkurs des Turbos${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
     </div>
     <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position${m.tp ? " und einen Limit-Verkauf über die Hälfte beim TP" : ""}. ${m.tp ? "Wird der TP erreicht, die Stop-Order auf die verbliebene Hälfte anpassen. " : ""}Am Ausstiegstag den Rest zum Schluss verkaufen. Kairo führt keine Orders aus.</div>
     <div class="note">Warum diese Werte: SL = ${esc(m.src)} (${fmt(m.riskAtr, 1)} ATR). ${m.tpWhy || ""} Hebel = höchster, bei dem der K.-o. mindestens 1 ATR unter dem SL liegt (max. ×${fmt(m.maxL, 1)}) – das Risiko bleibt gleich, nur der Einsatz sinkt. Kosten ≈ ${eur2(lv.cost)} sind eingerechnet. Kurslücke unter den K.-o.: Einsatz verloren (${sgnEur(-lv.stake - 2 * cfg.fee)}).</div>
     ${lv.L > 1 ? `<div class="row-actions" style="margin-top:10px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Turbo bei onvista suchen</a></div>` : ""}
-    <div class="row-actions" style="margin-top:12px"><button class="btn" data-tpopen="${esc(r.t)}">Trade eröffnen & speichern</button></div>
-    <div class="note">Speichert den Plan unverändert. Kairo prüft ihn nach jedem Abendscan (SL, TP, Ausstiegstag).</div>
+    ${m.fit.ok ? `<div class="row-actions" style="margin-top:12px"><button class="btn" data-tpopen="${esc(r.t)}">Trade eröffnen & speichern</button></div>
+    <div class="note">Speichert den Plan unverändert. Kairo prüft ihn nach jedem Abendscan (Stop, Ausstiegstag).</div>` : ""}
     ${acct}`;
 }
 function tpHtml(r, S) { return `<div class="hcard"><div class="plan-h">Trade-Plan</div><div id="tpBox">${tpInner(r, S)}</div></div>`; }
@@ -3455,7 +3477,7 @@ function tpPlansHtml() {
       <div class="g-row"><span>Einstieg ${fmt(p.E)} · Stop ${fmt(p.stop)} · jetzt ${fmt(c)} ${esc(p.cur || "")}${p.ko ? ` · K.-o. ${fmt(p.ko)}` : ""}</span><span class="g-tag ${s.tone === "red" ? "down" : s.tone === "green" ? "up" : ""}">${esc(s.t)}</span></div>
       <div class="g-act"><button class="btn ghost sm" data-tpclose="${p.id}">Geschlossen …</button><button class="btn ghost sm" data-tpdel="${p.id}">Löschen</button></div></div>`; };
   const rs = done.map(p => p.R).filter(x => x != null);
-  const stat = rs.length ? `${rs.length} abgeschlossen · Ø ${fmt(rs.reduce((a, b) => a + b, 0) / rs.length, 2)} R · Treffer ${pct(rs.filter(x => x > 0).length / rs.length, 0)} (Test-Erwartung ≈ +0,16 R, Treffer ≈ 30 %)` : "";
+  const stat = rs.length ? `${rs.length} abgeschlossen · Ø ${fmt(rs.reduce((a, b) => a + b, 0) / rs.length, 2)} R · Treffer ${pct(rs.filter(x => x > 0).length / rs.length, 0)} (Strategie im Test: Ø ≈ +0,3 R je Trade, Gewinner ≈ 30 %)` : "";
   return `<div class="section-title"><span>Deine Trades</span><span>${open.length} offen</span></div>${open.map(row).join("") || `<div class="note">Keine offenen Trades.</div>`}
     ${stat ? `<div class="note" style="margin:6px 2px 14px">${stat}</div>` : ""}`;
 }
