@@ -42,7 +42,7 @@ async def main(q: str) -> None:
         print("LISTE:", (await pg.inner_text("#einList"))[:800])
         opt = await pg.query_selector("#einList .ein-opt")
         if opt:
-            await opt.click()
+            await opt.dispatch_event("click")             # Tagesbriefing-Fenster kann echte Klicks abfangen
             await pg.wait_for_timeout(2500)
             box = await pg.query_selector("#tpBox")
             print("TP:", (await box.inner_text())[:2500] if box else "kein #tpBox")
