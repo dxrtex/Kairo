@@ -15,6 +15,10 @@ on:
         description: "Kursverläufe aus einem früheren Lauf wiederverwenden (Run-ID) – nur Auswertung neu"
         required: false
         default: ""
+      holds:
+        description: "Haltedauern für den Kursziel-Vergleich (z. B. 3,5,7)"
+        required: false
+        default: "10,20"
       only:
         description: "Nur eine Auswertung (tp = Kursziel-Vergleich, combo = Strategie-Vergleich als Depot), leer = alles"
         required: false
@@ -71,6 +75,7 @@ jobs:
       - run: python -m backend.shortswing bilanz_part_*.json
         env:
           SS_ONLY: ${{ inputs.only }}
+          SS_HOLDS: ${{ inputs.holds || '10,20' }}
       - uses: actions/upload-artifact@v4
         with:
           name: kurzfrist-ergebnis

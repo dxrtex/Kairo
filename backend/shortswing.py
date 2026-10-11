@@ -568,7 +568,7 @@ def _tp_study(sets: dict) -> dict:
     for k in ("hit", "fast"):
         es = sets.get(k) or []
         rows = {}
-        for hold in (10, 20):
+        for hold in tuple(int(x) for x in os.environ.get("SS_HOLDS", "10,20").split(",")):
             for tgt in TP_TARGETS:
                 rule = {**QRULE, "hold": hold, "tgt": tgt}
                 x = run_rule(es, rule, ci=False)
