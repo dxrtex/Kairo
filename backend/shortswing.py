@@ -201,7 +201,7 @@ def simulate(px: dict, r: dict) -> dict | None:
     cal_days = day * 7 / 5
     cost = (SPREAD["turbo" if lev > 1 else "stock"] + orders * FEE / EXPOSURE
             + (FIN_PA * (1 - 1 / lev) * cal_days / 365 if lev > 1 else 0)) / rp
-    return {"r": gross, "net": gross - cost, "d": day, "x": why, "lev": lev, "mfe": mfe, "mae": mae, "rp": rp}
+    return {"r": gross, "net": gross - cost, "d": day, "x": why, "lev": lev, "mfe": mfe, "mae": mae, "rp": rp, "s": start}
 
 
 def _summ(rows: list[dict]) -> dict:
@@ -398,6 +398,122 @@ def _quality(sets: dict) -> dict:
     return out
 
 
+def _regime(mk: dict, d: str) -> str | None:
+    """Marktampel wie in der App: weak = S&P 500 unter EMA 200 oder VIX ≥ 25; mixed = unter EMA 50 oder VIX ≥ 20; sonst strong."""
+    m = mk.get(d)
+    if not m or m.get("a200") is None:
+        return None
+    v = m.get("vix")
+    if not m["a200"] or (v is not None and v >= 25):
+        return "weak"
+    if not m.get("a50") or (v is not None and v >= 20):
+        return "mixed"
+    return "strong"
+
+
+def _depot(trades: list[tuple], start: float = 3000.0, max_open: int = 3) -> dict:
+    """Depot mit Startkapital, höchstens max_open Trades gleichzeitig, Risiko je Trade in % des aktuellen Depots.
+
+    trades: (Kaufdatum ISO, Netto-R, Handelstage gehalten, Risiko-Anteil). Reihenfolge innerhalb eines Tages zufällig
+    (fest gesät), nie nach Ergebnis. Gewinne/Verluste werden beim Verkauf gebucht.
+    """
+    import datetime as dt
+    if not trades:
+        return {}
+    rnd = random.Random(11)
+    trades = sorted(trades, key=lambda t: (t[0], rnd.random()))
+    eq, peak, mdd, open_, taken, by_year, eq_year = start, start, 0.0, [], 0, {}, {}
+    def close_until(t0):
+        nonlocal eq, peak, mdd, open_
+        keep = []
+        for end, amt in sorted(open_):
+            if end <= t0:
+                eq += amt
+                peak = max(peak, eq)
+                mdd = max(mdd, 1 - eq / peak)
+            else:
+                keep.append((end, amt))
+        open_ = keep
+    for d, net, days, rk in trades:
+        t0 = dt.date.fromisoformat(d)
+        close_until(t0)
+        y = d[:4]
+        eq_year.setdefault(y, eq)
+        if len(open_) >= max_open:
+            continue
+        taken += 1
+        by_year[y] = by_year.get(y, 0) + 1
+        open_.append((t0 + dt.timedelta(days=int(days * 7 / 5) + 1), eq * rk * net))
+    close_until(dt.date(2100, 1, 1))
+    ys = sorted(eq_year)
+    yr = {y: round((eq_year[ys[i + 1]] if i + 1 < len(ys) else eq) / eq_year[y] - 1, 3) for i, y in enumerate(ys)}
+    span = max(0.5, (dt.date.fromisoformat(trades[-1][0]) - dt.date.fromisoformat(trades[0][0])).days / 365)
+    return {"trades": taken, "end_eur": round(eq), "cagr": round((eq / start) ** (1 / span) - 1, 3), "mdd": round(mdd, 3),
+            "years": yr, "per_year": by_year}
+
+
+def _combo(sets: dict) -> dict:
+    """Welche Kombination aus Setup, Haltedauer, Marktlage und Risiko bringt am meisten – als ein Depot mit 3.000 €."""
+    import datetime as dt
+    mk = _market()
+    out = {"market_days": len(mk)}
+    sims = {}                                       # (Setup, Haltedauer) → Liste (Event, Ergebnis)
+    for k in ("hit", "fast", "trend", "top"):
+        for hold in (5, 10, 20):
+            rule = {**QRULE, "hold": hold, **({"ck": 3, "cm": 2.5} if k in ("trend", "top") else {})}
+            rows = []
+            for e in sets.get(k) or []:
+                if len(e["px"]["c"]) < hold + 10:
+                    continue
+                sm = simulate(e["px"], rule)
+                if sm and "skip" not in sm:
+                    d0 = dt.date.fromisoformat(e["d"])
+                    rows.append((e, sm, str(d0 + dt.timedelta(days=int((sm.get("s", 0) + 1) * 7 / 5)))))
+            sims[(k, hold)] = rows
+    # 1) Ergebnis je Trade nach Marktlage (Netto-R) – vor allem: wie laufen Trend-Rücksetzer im gesunden Markt?
+    tab = {}
+    for (k, hold), rows in sims.items():
+        g = defaultdict(lambda: defaultdict(list))
+        for e, sm, _ in rows:
+            rg = _regime(mk, e["d"])
+            if rg:
+                g[rg][_period(e["d"])].append(sm["net"])
+        tab[f"{k} {hold}T"] = {rg: {p: {"n": len(v), "net": round(float(np.mean(v)), 3)} for p, v in sorted(per.items())}
+                               for rg, per in sorted(g.items())}
+    out["by_regime"] = tab
+    # 2) Strategien als Depot. plan: Marktlage → Liste (Setup, Haltedauer, Risiko)
+    def depot(plan):
+        tr = []
+        for rg_key, legs in plan.items():
+            for k, hold, rk in legs:
+                for e, sm, d_in in sims[(k, hold)]:
+                    rg = _regime(mk, e["d"])
+                    if rg is None or (rg_key != "all" and rg != rg_key):
+                        continue
+                    tr.append((d_in, sm["net"], sm["d"], rk))
+        return _depot(tr)
+    hf = lambda h, rk: [("hit", h, rk), ("fast", h, rk)]
+    strategies = {
+        "A jetzt: Treffer+Fast, 10 T, 1 %": {"all": hf(10, 0.01)},
+        "B Treffer+Fast, 20 T, 1 %": {"all": hf(20, 0.01)},
+        "C nur Treffer, 20 T, 1 %": {"all": [("hit", 20, 0.01)]},
+        "D Trend-Rücksetzer, 20 T, 1 %": {"all": [("trend", 20, 0.01)]},
+        "E Trend-Rücksetzer, 10 T, 1 %": {"all": [("trend", 10, 0.01)]},
+        "F Ampel: Ausverkauf Treffer+Fast 20 T 1,5 % · sonst Trend 20 T 1 %":
+            {"weak": hf(20, 0.015), "mixed": [("trend", 20, 0.01)], "strong": [("trend", 20, 0.01)]},
+        "G Ampel: Ausverkauf Treffer+Fast 20 T 1,5 % · gelb Treffer 20 T 1 % · grau Trend 20 T 1 %":
+            {"weak": hf(20, 0.015), "mixed": [("hit", 20, 0.01)], "strong": [("trend", 20, 0.01)]},
+        "H Ampel: Ausverkauf Treffer+Fast 20 T 1,5 % · sonst Trend 10 T 1 %":
+            {"weak": hf(20, 0.015), "mixed": [("trend", 10, 0.01)], "strong": [("trend", 10, 0.01)]},
+        "I Ampel: nur im Ausverkauf Treffer+Fast 20 T 1,5 %, sonst Pause": {"weak": hf(20, 0.015)},
+        "J Ampel wie F, aber überall + Trend 20 T": {"weak": hf(20, 0.015) + [("trend", 20, 0.01)],
+                                                    "mixed": [("trend", 20, 0.01)] + hf(20, 0.0075), "strong": [("trend", 20, 0.01)]},
+        "K wie F mit 1 % im Ausverkauf": {"weak": hf(20, 0.01), "mixed": [("trend", 20, 0.01)], "strong": [("trend", 20, 0.01)]},
+    }
+    out["depot"] = {name: depot(plan) for name, plan in strategies.items()}
+    return out
+
+
 TP_TARGETS = (None, ("R", 1.0), ("R", 1.5), ("R", 2.0), ("R", 2.5), ("R", 3.0), ("R", 4.0), ("R", 5.0), ("tp1",), ("ema20",))
 
 
@@ -446,6 +562,12 @@ def main(argv=None) -> int:
               "range": [min(e["d"] for e in ev), max(e["d"] for e in ev)],
               "split": {"train": f"bis {TRAIN_END}", "val": f"{TRAIN_END} – {VAL_END}", "test": f"ab {VAL_END}"}}
 
+    if os.environ.get("SS_ONLY") == "combo":               # Strategie-Vergleich als durchgehendes Depot
+        report["combo"] = _combo(sets)
+        print("===BEGIN===")
+        print(json.dumps(report, ensure_ascii=False, separators=(",", ":"), default=str))
+        print("===END===")
+        return 0
     if os.environ.get("SS_ONLY") == "tp":                  # nur der Kursziel-Vergleich (schneller Lauf)
         report["tp"] = _tp_study(sets)
         print("===BEGIN===")
