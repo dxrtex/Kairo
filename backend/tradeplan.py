@@ -48,7 +48,27 @@ def structure(df: pd.DataFrame, atr: float | None, fib: dict | None = None) -> d
     except Exception:
         out["res"] = []
     out["tg"] = marks(d, atr, base, fib)
+    out["kc"] = candle(d)
     return out
+
+
+def candle(d: pd.DataFrame) -> str | None:
+    """Letzte Tageskerze grob eingeordnet: bull (kräftig grün, Schluss im oberen Drittel), hammer (lange Lunte unten,
+    Schluss obere Hälfte), green, red, doji. Nur zur Orientierung beim manuellen Einstieg."""
+    if "Open" not in d or len(d) < 1:
+        return None
+    o, h, l, c = (float(d[k].iloc[-1]) for k in ("Open", "High", "Low", "Close"))
+    rng = h - l
+    if not rng or rng != rng:
+        return None
+    body, pos = abs(c - o), (c - l) / rng
+    if body <= 0.1 * rng:
+        return "hammer" if pos >= 0.6 and min(o, c) - l >= 0.6 * rng else "doji"
+    if c > o:
+        if min(o, c) - l >= 2 * body and pos >= 0.5:
+            return "hammer"
+        return "bull" if pos >= 0.67 and body >= 0.5 * rng else "green"
+    return "hammer" if min(o, c) - l >= 2 * body and pos >= 0.5 else "red"
 
 
 def marks(d: pd.DataFrame, atr: float, base: dict | None, fib: dict | None) -> list:
