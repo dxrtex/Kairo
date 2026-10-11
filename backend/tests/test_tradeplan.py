@@ -1,0 +1,42 @@
+"""Trade-Plan-Struktur: Basis erkennen, Stop unter der Basis, ohne Basis 10-Tage-Tief, nur Vergangenheit."""
+
+import numpy as np
+import pandas as pd
+
+from backend.tradeplan import structure
+
+
+def frame(lows, highs, closes):
+    idx = pd.bdate_range("2026-01-01", periods=len(lows))
+    return pd.DataFrame({"Open": closes, "High": highs, "Low": lows, "Close": closes, "Volume": 1e6}, index=idx)
+
+
+def test_base_detected_and_stop_below_base():
+    n = 30
+    lows = list(np.linspace(120, 100, n - 5)) + [99.0, 99.5, 99.2, 99.4, 99.3]
+    highs = [x + 2 for x in lows[:-5]] + [100.5, 100.8, 100.6, 100.7, 100.9]
+    closes = [x + 1 for x in lows[:-5]] + [100.0, 100.2, 100.1, 100.3, 100.5]
+    s = structure(frame(lows, highs, closes), atr=2.0)
+    assert s["base"]["k"] == 5 and s["base"]["lo"] == 99.0
+    assert abs(s["stop"] - (99.0 - 0.25 * 2.0)) < 1e-9 and "Basis" in s["src"]
+
+
+def test_no_base_uses_10_day_low():
+    n = 30
+    closes = list(np.linspace(130, 100, n))
+    lows = [x - 3 for x in closes]
+    highs = [x + 3 for x in closes]
+    s = structure(frame(lows, highs, closes), atr=2.0)
+    assert s["base"] is None and abs(s["stop"] - (min(lows[-10:]) - 0.5)) < 1e-9
+
+
+def test_future_bars_do_not_change_past_structure():
+    n = 40
+    rng = np.random.default_rng(3)
+    closes = list(100 + np.cumsum(rng.normal(0, 1, n)))
+    lows = [x - 1 for x in closes]
+    highs = [x + 1 for x in closes]
+    df = frame(lows, highs, closes)
+    a = structure(df.iloc[:30], atr=2.0)
+    b = structure(df.iloc[:31].iloc[:30], atr=2.0)
+    assert a == b

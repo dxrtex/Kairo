@@ -371,6 +371,17 @@
   .kchip.filt { margin-left: auto; color: var(--text); }
   td a.nm { color: var(--text); font-weight: 600; }
   .tpform { margin: 12px 0 10px; }
+  /* Trade-Plan (Einstieg) */
+  .tp2-cfg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .tp2-cfg label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .tp2-cfg input { width: 100%; font: inherit; font-size: 16px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .tp2-levs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .tp2-lev { position: relative; display: grid; gap: 2px; text-align: left; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); cursor: pointer; font: inherit; }
+  .tp2-lev b { font-size: 14px; } .tp2-lev span { font-size: 13px; } .tp2-lev em { font-style: normal; font-size: 11px; color: var(--muted); line-height: 1.35; }
+  .tp2-lev.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .tp2-lev.no { opacity: .45; }
+  .tp2-lev i { position: absolute; top: -8px; right: 8px; font-style: normal; font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; border-radius: 6px; padding: 1px 6px; }
+  @media (max-width: 560px) { .tp2-levs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tp2-cfg { grid-template-columns: 1fr 1fr; } }
   table.tpt { width: 100%; min-width: 0; font-size: 14px; border-collapse: collapse; }
   table.tpt th { font-size: 12px; color: var(--muted); font-weight: 650; text-align: left; padding: 4px 6px; background: none; }
   table.tpt td { padding: 8px 6px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
@@ -3257,33 +3268,7 @@ function einTrendCheck(r) {
 function einPlanHtml(r) {
   const S = einSetup(r), res = data.results.find(x => x.ticker === r.t), cur = esc(r.cur || "");
   const p = S.plan, c = r.c, atr = r.atr || (r.ap || 0) * c;
-  let plan = "";
-  if (p && p[0] && p[0] < c) {
-    const [stop, t1, t2] = p, ko1 = stop - atr, ko15 = stop - 1.5 * atr, lev = k => c / (c - k), bud = Math.max(0, +state.budget || 0);
-    const tv = (x, ko) => Math.max(0, (x - ko) / (c - ko)) - 1;
-    const sc = [["Ziel 1 (nächstes Hoch)", t1, "up"], ["Ziel 2", t2, "up"], ["Setup-Stop (Schluss darunter)", stop, "down"], ["Knock-out", ko1, "down"]].filter(x => x[1] && x[1] > 0);
-    const [expR, expKo] = EIN_EXP[S.k === "fast" ? "kairo" : S.k] || [null, null];
-    plan = `<div class="hcard"><div class="plan-h">Trade-Plan</div>
-      <div class="plan"><div class="fig"><span>Einstieg (aktueller Kurs)</span><b>${fmt(c)} ${cur}</b></div>
-        <div class="fig"><span>Setup ungültig unter</span><b class="down">${fmt(stop)}</b><em class="sub">${sgnPct(stop / c - 1, 1)}</em></div>
-        <div class="fig"><span>Ziel 1</span><b class="up">${t1 ? fmt(t1) : "–"}</b><em class="sub">${t1 ? sgnPct(t1 / c - 1, 1) : ""}</em></div>
-        <div class="fig"><span>Ziel 2</span><b class="up">${t2 ? fmt(t2) : "–"}</b><em class="sub">${t2 ? sgnPct(t2 / c - 1, 1) : ""}</em></div></div>
-      <div class="plan-h" style="margin-top:14px">Turbo & Hebel ${gl("ko")}${gl("lev")}</div>
-      <div class="mtiles ein-tiles"><div class="mt rec"><span>Empfohlen: K.-o. 1 ATR unter Stop</span><b>${fmt(ko1)} ${cur}</b><em>Hebel ≈ <b>${fmt(lev(ko1), 1)}×</b> · im Test beste Ø-Rendite</em></div>
-        <div class="mt"><span>Vorsichtiger: 1,5 ATR unter Stop</span><b>${fmt(ko15)} ${cur}</b><em>Hebel ≈ ${fmt(lev(ko15), 1)}× · seltener ausgeknockt</em></div></div>
-      <div class="form tpform" style="margin-top:10px"><label>Einsatz in €<input id="einBudget" type="number" inputmode="decimal" min="0" step="50" value="${esc(state.budget ?? 400)}"></label></div>
-      <div class="table-wrap plain"><table class="tpt ein-tpt"><thead><tr><th>Szenario · Aktie</th><th class="num">Turbo</th><th class="num">bei ${eur(bud)}</th></tr></thead><tbody>
-        ${sc.map(([l, x, cl]) => `<tr><td>${l}<small>${fmt(x)} · <span class="${cl}">${sgnPct(x / c - 1, 1)}</span></small></td><td class="num ${cl}">${sgnPct(tv(x, ko1), 0)}</td><td class="num ${cl}"><b>${sgnEur(bud * tv(x, ko1))}</b></td></tr>`).join("")}</tbody></table></div>
-      ${expR != null ? `<div class="tip tone-${S.k === "top" || S.k === "trend" ? "green" : "yellow"}" style="margin-top:10px"><b class="t">Erwartung laut 6-Jahres-Test</b>Ø ${sgnPct(expR, 0)} Turbo-Rendite je Trade – aber etwa ${pct(expKo, 0)} der Turbos wurden unterwegs ausgeknockt. Der Gewinn kommt von wenigen großen Gewinnern: <b>kleine Positionen, viele Trades</b> (Faustregel: je Trade höchstens 5 % deines Trading-Kapitals).</div>` : ""}
-      <div class="note">Turbo-Werte als Näherung (ohne Bezugsverhältnis, Spread, Finanzierung). Bei Scalable einen Long-Turbo mit K.-o. nahe ${fmt(ko1)} ${cur} wählen – der Hebel ergibt sich daraus automatisch: volatile Aktien bekommen weniger, ruhige mehr.</div>
-      <div class="tfind"><div class="plan-h">Turbo finden</div>
-        <div class="tf-grid"><span>Basiswert</span><b>${esc(r.n || r.t)} <small class="muted">${esc(r.t)}</small></b><span>Typ</span><b>Turbo / Knock-out <span class="up">Long</span>, Open End</b>
-          <span>K.-o.-Schwelle</span><b>${fmt(ko15)} – ${fmt(ko1)} ${cur}</b><span>Hebel</span><b>≈ ${fmt(lev(ko15), 1)} – ${fmt(lev(ko1), 1)}×</b></div>
-        <div class="row-actions" style="margin-top:10px"><button class="btn ghost sm" data-tfcopy="${esc(`Turbo Long ${r.n || r.t} · K.-o. ${fmt(ko15)} – ${fmt(ko1)} ${cur} · Hebel ≈ ${fmt(lev(ko15), 1)}–${fmt(lev(ko1), 1)}×`)}">Suchwerte kopieren</button>
-          <a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Bei onvista suchen</a></div>
-        <div class="note">In Scalable: Basiswert suchen → <b>Derivate</b> → <b>Knock-out</b> → <b>Long</b> → nach K.-o.-Schwelle sortieren und einen Turbo mit K.-o. zwischen ${fmt(ko15)} und ${fmt(ko1)} wählen. Lieber den Emittenten mit dem kleinsten Spread nehmen.</div></div></div>
-      <div class="hcard"><div class="plan-h">Ausstieg</div><div class="note" style="margin:0">Nach dem Kauf im Depot eintragen – der <b>Gewinnmitnahme-Check</b> sagt dir dann täglich, wann es Zeit ist: <b>mitnehmen ab 4 von 5 Kriterien</b> (im Test die beste Regel). Ziel 1 und 2 sind Orientierung, kein Verkaufszwang. Schließt die Aktie unter ${fmt(stop)}, ist das Setup vorbei.</div></div>`;
-  }
+  const plan = tpHtml(r, S);
   const days = r.ed ? daysUntil(r.ed) : null;
   const warn = [days != null && days >= 0 && days <= 21 ? `⚠ Quartalszahlen am ${dateDE(r.ed)} (in ${days} Tagen) – Kurssprünge können den K.-o. überspringen.` : "",
     res && res.senti && res.senti.tgt ? `Analysten-Ziel Ø ${fmt(res.senti.tgt.m)} ${cur} (${sgnPct(res.senti.tgt.m / c - 1, 0)}).` : ""].filter(Boolean);
@@ -3297,11 +3282,190 @@ function einPlanHtml(r) {
       <div class="note" style="margin:0">${r.s === "hit" ? "Alle Kriterien erfüllt." : (r.km || []).length ? "Fehlt: " + (r.km || []).map(k => esc(SHORT[k] || k)).join(", ") : "–"}${r.title ? ` · ${esc(r.title)}` : ""}</div></div>
     <div class="row-actions">${res ? `<button class="btn" data-open="${esc(r.t)}">Chart & Details</button>` : ""}<a class="btn ghost" href="${tvUrl(r.t)}" target="_blank" rel="noopener">TradingView</a></div>`;
 }
+// ---------- Trade-Plan (Reiter „Einstieg“): Struktur aus dem Scan (backend/tradeplan.py), Größe/Hebel/Kosten auf dem Gerät ----------
+// Regeln und Erwartungen aus der Kurzfrist-Studie (backend/shortswing.py, 5 Jahre, 1.600 Aktien, netto nach Kosten):
+// Kauf IN der Basis, Stop = Basis-Tief − 0,25 ATR, Größe aus dem Risiko, kein Teilverkauf, kein Freitags-Ausstieg.
+const TP = { maxAtr: 3, minAtr: 0.5, kob: 1.0, spreadStock: 0.001, spreadTurbo: 0.0015, fin: 0.05, levs: [1, 3, 5, 10], holds: [5, 7, 10, 20] };
+// Ø netto je Trade in R (Kauf in der Basis, Kairo-Treffer): [alle Marktlagen, schwacher Markt (S&P 500 < EMA 200), gesunder Markt]
+const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52, -0.04], 20: [0.26, 0.67, 0.04] };
+const TP_EXP_TREND = { 5: 0.07, 7: 0.07, 10: 0.07, 20: 0.07 };      // Trend-Rücksetzer, sofort gekauft (beste Haltedauer 5 Tage)
+const tpCfg = () => ({ depot: +state.tpDepot > 0 ? +state.tpDepot : 3000, risk: +state.tpRisk > 0 ? +state.tpRisk : 1,
+  hold: TP.holds.includes(+state.tpHold) ? +state.tpHold : 7, fee: state.tpFee != null ? +state.tpFee : 0.99, maxOpen: +state.tpMaxOpen || 3 });
+// Marktampel für Reversals: im breiten Ausverkauf funktioniert das „Gummiband“ am besten
+function tpMarket() {
+  const m = anaData && anaData.market, s = m && m["^GSPC"], v = m && m["^VIX"] ? m["^VIX"].c : null;
+  if (!s) return null;
+  if (!s.above200 || (v != null && v >= 25)) return { k: "weak", tone: "green", t: "Markt im Ausverkauf – beste Phase für Reversals",
+    s: `S&P 500 ${s.above200 ? "über" : "unter"} EMA 200${v != null ? `, VIX ${fmt(v, 0)}` : ""}. Im Test: Ø +0,5 R je Trade (10 Tage).` };
+  if (!s.above50 || (v != null && v >= 20)) return { k: "mixed", tone: "yellow", t: "Markt angeschlagen – Reversals möglich",
+    s: `S&P 500 ${s.above50 ? "über" : "unter"} EMA 50${v != null ? `, VIX ${fmt(v, 0)}` : ""}.` };
+  return { k: "strong", tone: "gray", t: "Gesunder Markt – Reversals nur sehr selektiv",
+    s: `S&P 500 über EMA 50/200${v != null ? `, VIX ${fmt(v, 0)}` : ""}. Im Test lagen Reversals hier nahe null – nur die klarsten Setups.` };
+}
+const addBd = (d, n) => { const x = new Date(d); let k = 0; while (k < n) { x.setDate(x.getDate() + 1); if (x.getDay() % 6) k++; } return x; };
+const isoD = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function tpEntryDay() { const d = new Date(); while (!(d.getDay() % 6)) d.setDate(d.getDate() + 1); return d; }
+// Kern: aus Struktur + Einstellungen → Stop, Größe, Hebel, Kosten, Szenarien. Reine Rechnung (keine Anzeige).
+function tp2Calc(r, S, o = {}) {
+  const cfg = tpCfg(), pl = r.pl || {}, atr = pl.atr || r.atr || (r.ap || 0) * r.c;
+  const trend = S && (S.k === "top" || S.k === "trend");
+  const stop = trend && pl.l3 != null ? +(pl.l3 - 1.0 * atr).toFixed(4) : pl.stop;
+  const src = trend ? "Tief der letzten 3 Tage − 1 ATR (Trend-Regel)" : pl.src ? `${pl.src} − 0,25 ATR` : "";
+  const E = o.entry > 0 ? o.entry : r.c, fx = toEur(1, r.cur || "EUR") || 1;
+  const out = { E, stop, atr, src, trend, cfg, fx, cur: r.cur || "", base: pl.base, res: (pl.res || []).filter(x => x > E), problems: [] };
+  if (!stop || !atr) { out.problems.push(["red", "Keine Kursstruktur für diese Aktie – kein Trade-Plan möglich."]); return out; }
+  const risk = E - stop;
+  out.riskAtr = risk / atr;
+  if (risk <= 0) { out.problems.push(["red", `Kurs liegt schon unter dem Stop ${fmt(stop)} – Setup gescheitert.`]); return out; }
+  if (out.riskAtr > TP.maxAtr) out.problems.push(["red", `Stop ${fmt(out.riskAtr, 1)} ATR entfernt (mehr als ${TP.maxAtr}) – zu weit für diese Strategie. ${pl.base ? "" : "Auf eine Basis warten."}`]);
+  else if (out.riskAtr < TP.minAtr) out.problems.push(["yellow", `Stop nur ${fmt(out.riskAtr, 1)} ATR entfernt – normales Tagesrauschen kann ihn auslösen.`]);
+  if (!trend && !pl.base) out.problems.push(["yellow", "Noch keine enge Seitwärtsphase (Basis) – im Test lohnte sich Abwarten deutlich."]);
+  else if (!trend && pl.base && E > pl.base.hi + 0.5 * atr) out.problems.push(["yellow", `Kurs schon über der Basis (${fmt(pl.base.hi)}) – die Gegenbewegung läuft bereits, der Stop liegt entsprechend weiter weg.`]);
+  out.dist = risk / E;
+  out.riskEur = cfg.depot * cfg.risk / 100;
+  out.expo = out.riskEur / out.dist;                          // Basiswert-Exposure in €
+  const hold = o.hold || (trend ? 5 : cfg.hold), cal = hold * 7 / 5;
+  out.hold = hold;
+  out.exit = addBd(tpEntryDay(), hold - 1);
+  out.levs = TP.levs.map(L => {
+    const ko = L > 1 ? E * (1 - 1 / L) : null, ok = L === 1 || ko <= stop - TP.kob * atr;
+    let expo = out.expo, capped = false;
+    const stake0 = expo / L;
+    if (stake0 > cfg.depot) { expo = cfg.depot * L; capped = true; }   // nicht genug Kapital → kleinere Position
+    const stake = expo / L, fees = 2 * cfg.fee;
+    const cost = fees + expo * (L > 1 ? TP.spreadTurbo : TP.spreadStock) + (L > 1 ? TP.fin * (1 - 1 / L) * expo * cal / 365 : 0);
+    const qty = L === 1 ? Math.floor(expo / (E * fx)) : null;
+    const rEff = expo * out.dist;                              // tatsächliches Risiko bis zum Stop
+    return { L, ko, ok, stake, expo, capped, cost, qty, rEff, koGap: ko ? (stop - ko) / atr : null, gapLoss: L > 1 ? stake : null };
+  });
+  // Vorschlag: der kleinste zulässige Hebel, dessen Einsatz höchstens ein Drittel des Depots bindet (Platz für 3 Trades)
+  const okL = out.levs.filter(x => x.ok);
+  out.sug = (okL.find(x => x.stake <= cfg.depot / cfg.maxOpen) || okL[okL.length - 1] || out.levs[0]).L;
+  const mk = tpMarket();
+  out.mk = mk;
+  const ex = trend ? [TP_EXP_TREND[hold], null, null] : TP_EXP[hold] || [];
+  out.expR = mk && mk.k === "weak" && ex[1] != null ? ex[1] : mk && mk.k === "strong" && ex[2] != null ? ex[2] : ex[0];
+  if (r.ed) { const dd = daysUntil(r.ed); if (dd >= 0 && dd <= hold * 7 / 5 + 1) out.problems.push(["red", `Quartalszahlen am ${dateDE(r.ed)} fallen in die Haltedauer – Kurssprung kann Stop und K.-o. überspringen. Lieber danach einsteigen.`]); }
+  return out;
+}
+// Szenarien netto für einen Hebel
+function tpScen(m, lv) {
+  const rows = [];
+  const at = (px) => (px - m.E) / m.E * lv.expo - lv.cost;
+  m.res.slice(0, 2).forEach((x, i) => rows.push([`Widerstand ${i + 1}`, x, "up", at(x)]));
+  rows.push(["Stop (Plan)", m.stop, "down", at(m.stop)]);
+  if (lv.L > 1) rows.push(["Kurslücke unter den K.-o.", lv.ko, "down", -lv.stake - 2 * m.cfg.fee]);
+  return rows;
+}
+function tpInner(r, S) {
+  const st = state.tpE || {}, ent = st[r.t];
+  const m = tp2Calc(r, S, { entry: ent, hold: +state.tpHoldSel || null });
+  const cur = esc(m.cur), cfg = m.cfg;
+  const head = `<div class="tp2-cfg">
+      <label>Kaufkurs (${cur})<input id="tpE" type="number" inputmode="decimal" step="any" value="${esc(ent || r.c)}" data-t="${esc(r.t)}"></label>
+      <label>Depot (€)<input id="tpDepot" type="number" inputmode="decimal" min="0" step="100" value="${esc(cfg.depot)}"></label>
+      <label>Risiko je Trade (%)<input id="tpRisk" type="number" inputmode="decimal" min="0.1" max="5" step="0.1" value="${esc(cfg.risk)}"></label></div>
+    <div class="note" style="margin:4px 0 0">Kaufkurs = letzter Schluss (${dateDE(String(data.generated).slice(0, 10))}). Tippe deinen echten Kurs ein – alles rechnet neu.</div>`;
+  if (!m.stop || (m.problems.length && m.problems[0][0] === "red" && !m.dist)) return head + m.problems.map(([t, x]) => `<div class="tip tone-${t === "red" ? "red" : "yellow"}" style="margin-top:10px">${esc(x)}</div>`).join("");
+  const sel = m.levs.find(x => x.L === (+state.tpLev || m.sug)) || m.levs.find(x => x.L === m.sug);
+  const lvRow = x => `<button class="tp2-lev${x.L === sel.L ? " on" : ""}${x.ok ? "" : " no"}" data-tpl="${x.L}"${x.ok ? "" : ` title="K.-o. zu nah am Stop"`}>
+      <b>${x.L === 1 ? "Aktie" : `Turbo ×${x.L}`}</b><span>${x.ok ? `Einsatz ${eur(x.stake)}` : "ungeeignet"}</span>
+      <em>${x.L === 1 ? (x.qty != null ? `${x.qty} Stück` : "") : x.ok ? `K.-o. ${fmt(x.ko)} · ${fmt(x.koGap, 1)} ATR unter Stop` : `K.-o. ${fmt(x.ko)} läge zu nah am Stop`}</em>${x.L === m.sug ? `<i>Vorschlag</i>` : ""}</button>`;
+  const sc = tpScen(m, sel);
+  // Studienwerte sind schon netto (Aktie, ~2.000 € Exposure) → nur die Mehrkosten dieses Produkts abziehen
+  const studyCost = sel.expo * 0.0005 + 2 * 0.99 * sel.expo / 2000;
+  const expE = m.expR != null ? m.expR * sel.rEff - Math.max(0, sel.cost - studyCost) : null;
+  return `${head}
+    ${m.mk ? `<div class="tip tone-${m.mk.tone === "gray" ? "gray" : m.mk.tone}" style="margin-top:12px"><b class="t">Marktampel · ${esc(m.mk.t)}</b>${esc(m.mk.s)}</div>` : ""}
+    ${m.problems.map(([t, x]) => `<div class="tip tone-${t}" style="margin-top:8px">${esc(x)}</div>`).join("")}
+    <div class="plan" style="margin-top:12px">
+      <div class="fig"><span>Einstieg</span><b>${fmt(m.E)} ${cur}</b><em class="sub">${m.base ? `in der Basis ${fmt(m.base.lo)}–${fmt(m.base.hi)}` : "keine Basis erkannt"}</em></div>
+      <div class="fig"><span>Stop (Schluss darunter = raus)</span><b class="down">${fmt(m.stop)}</b><em class="sub">${sgnPct(m.stop / m.E - 1, 1)} · ${fmt(m.riskAtr, 1)} ATR</em></div>
+      <div class="fig"><span>Risiko</span><b>${eur2(sel.rEff)}</b><em class="sub">${fmt(cfg.risk, 1)} % von ${eur(cfg.depot)}${sel.capped ? " · Kapital reicht nicht" : ""}</em></div>
+      <div class="fig"><span>Spätester Ausstieg</span><b>${m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" })}</b><em class="sub">nach ${m.hold} Handelstagen</em></div></div>
+    <div class="note" style="margin:6px 0 0">Stop-Grund: ${esc(m.src)} · ATR ${fmt(m.atr)} (${pct(m.atr / m.E, 1)})</div>
+    <div class="plan-h" style="margin-top:14px">Haltedauer</div>
+    <div class="g-amts">${TP.holds.map(h => `<button class="opt${h === m.hold ? " on" : ""}" data-tph="${h}">${h} Tage${(m.trend ? h === 5 : h === 10) ? " ★" : ""}</button>`).join("")}</div>
+    <div class="note" style="margin:4px 0 0">${m.trend ? "Trend-Rücksetzer: im Test 5 Tage am besten." : "Kairo-Reversal: im Test 2–3 Tage ≈ 0, ab 5 Tagen positiv, 10–20 Tage am besten. Gewinner laufen lassen – kein Teilverkauf."}</div>
+    <div class="plan-h" style="margin-top:14px">Produkt & Hebel ${gl("ko")}${gl("lev")}</div>
+    <div class="tp2-levs">${m.levs.map(lvRow).join("")}</div>
+    <div class="note" style="margin:6px 0 0">Basiswert-Exposure ${eur(sel.expo)} = Risiko ÷ Stop-Abstand (${pct(m.dist, 1)}). Der Hebel ändert das Risiko nicht – nur, wie viel Kapital du bindest. K.-o. mindestens 1 ATR unter dem Stop.</div>
+    <div class="table-wrap plain" style="margin-top:10px"><table class="tpt"><thead><tr><th>Szenario</th><th class="num">Kurs</th><th class="num">netto</th></tr></thead><tbody>
+      ${sc.map(([l, x, c, v]) => `<tr><td>${l}</td><td class="num">${fmt(x)} <small class="${c}">${sgnPct(x / m.E - 1, 1)}</small></td><td class="num ${v >= 0 ? "up" : "down"}"><b>${sgnEur(v)}</b></td></tr>`).join("")}
+      ${expE != null ? `<tr><td>Erwartung je Trade (Test, ${m.hold} T.)</td><td class="num">${fmt(m.expR, 2).replace(/^(?!-)/, "+")} R</td><td class="num ${expE >= 0 ? "up" : "down"}"><b>${sgnEur(expE)}</b></td></tr>` : ""}</tbody></table></div>
+    <div class="note">Kosten geschätzt: ${eur2(sel.cost)} (2 × ${eur2(cfg.fee)} Gebühr, Spread${sel.L > 1 ? ", Finanzierung" : ""}). ${sel.L > 1 ? "Echte Turbo-Daten (Bezugsverhältnis, Aufgeld) weichen leicht ab. " : ""}Kurslücken, Handelsaussetzungen und Quartalszahlen können zu höheren Verlusten als geplant führen. Keine Anlageberatung.</div>
+    ${sel.L > 1 ? `<div class="tfind" style="margin-top:10px"><div class="plan-h">Turbo finden</div><div class="tf-grid"><span>Typ</span><b>Turbo Long, Open End</b><span>K.-o. höchstens</span><b>${fmt(Math.min(sel.ko, m.stop - TP.kob * m.atr))} ${cur}</b><span>Einsatz</span><b>${eur(sel.stake)}</b></div>
+      <div class="row-actions" style="margin-top:8px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Bei onvista suchen</a></div></div>` : ""}
+    <div class="row-actions" style="margin-top:12px"><button class="btn" data-tpopen="${esc(r.t)}">Trade eröffnen & speichern</button></div>
+    <div class="note">Speichert den Plan unverändert (Einstieg, Stop, Größe, Ausstiegsdatum). Kairo prüft ihn nach jedem Abendscan. Den Stop als echte Order bei deinem Broker setzen – Kairo führt keine Orders aus.</div>`;
+}
+function tpHtml(r, S) { return `<div class="hcard"><div class="plan-h">Trade-Plan</div><div id="tpBox">${tpInner(r, S)}</div></div>`; }
+// Gespeicherte Trades (geplant → eröffnet → geschlossen), eingefroren beim Eröffnen
+const PLAN_KEY = "kairo-plans";
+const plansLoad = () => { try { return JSON.parse(localStorage.getItem(PLAN_KEY)) || []; } catch (e) { return []; } };
+const plansSave = l => { try { localStorage.setItem(PLAN_KEY, JSON.stringify(l)); } catch (e) {} };
+function tpOpen(t) {
+  const r = searchIdx && searchIdx.find(x => x.t === t); if (!r) return;
+  const S = einSetup(r), m = tp2Calc(r, S, { entry: (state.tpE || {})[t], hold: +state.tpHoldSel || null });
+  if (!m.stop || !m.dist) return;
+  const lv = m.levs.find(x => x.L === (+state.tpLev || m.sug)) || m.levs.find(x => x.L === m.sug);
+  const l = plansLoad();
+  if (l.filter(p => p.st === "open").length >= m.cfg.maxOpen && !confirm(`Schon ${m.cfg.maxOpen} offene Trades – Gesamtrisiko steigt. Trotzdem eröffnen?`)) return;
+  l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, d: isoD(tpEntryDay()), scan: String(data.generated).slice(0, 10),
+              E: +m.E, stop: m.stop, atr: m.atr, L: lv.L, ko: lv.ko, expo: Math.round(lv.expo), stake: Math.round(lv.stake), qty: lv.qty,
+              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), res: m.res.slice(0, 2), mk: m.mk ? m.mk.k : null, st: "open" });
+  plansSave(l); render(); window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function tpStatus(p) {
+  const r = rowOf(p.t), c = r ? r.c : null, today = isoD(new Date());
+  if (c == null) return { tone: "gray", t: "Kein aktueller Kurs" };
+  if (c <= p.stop) return { tone: "red", t: `Schluss ${fmt(c)} unter dem Stop – Position schließen` };
+  if (today >= p.exit) return { tone: "yellow", t: "Ausstiegstag erreicht – verkaufen" };
+  if (p.res && p.res[0] && c >= p.res[0]) return { tone: "green", t: "Widerstand 1 erreicht – laufen lassen bis zum Ausstiegstag" };
+  return { tone: "blue", t: `läuft · noch ${Math.max(0, Math.round((new Date(p.exit) - new Date(today)) / 864e5))} Kalendertage` };
+}
+function tpPlansHtml() {
+  const l = plansLoad(), open = l.filter(p => p.st === "open"), done = l.filter(p => p.st === "closed");
+  if (!l.length) return "";
+  const row = p => { const r = rowOf(p.t), c = r ? r.c : null, s = tpStatus(p), pnl = c != null ? (c - p.E) / p.E * p.expo - p.cost : null;
+    return `<div class="g-pos"><div class="g-pos-h"><button class="g-nm" data-ein="${esc(p.t)}"><b>${esc(p.n)}</b><small>${esc(p.t)} · ${p.L === 1 ? "Aktie" : `Turbo ×${p.L}`} · seit ${dateDE(p.d)} · raus spätestens ${dateDE(p.exit)}</small></button>
+      <div class="g-pl ${pnl >= 0 ? "up" : "down"}"><b>${sgnEur(pnl)}</b><small>${c != null ? sgnPct(c / p.E - 1, 1) : ""}</small></div></div>
+      <div class="g-row"><span>Einstieg ${fmt(p.E)} · Stop ${fmt(p.stop)} · jetzt ${fmt(c)} ${esc(p.cur || "")}${p.ko ? ` · K.-o. ${fmt(p.ko)}` : ""}</span><span class="g-tag ${s.tone === "red" ? "down" : s.tone === "green" ? "up" : ""}">${esc(s.t)}</span></div>
+      <div class="g-act"><button class="btn ghost sm" data-tpclose="${p.id}">Geschlossen …</button><button class="btn ghost sm" data-tpdel="${p.id}">Löschen</button></div></div>`; };
+  const rs = done.map(p => p.R).filter(x => x != null);
+  const stat = rs.length ? `${rs.length} abgeschlossen · Ø ${fmt(rs.reduce((a, b) => a + b, 0) / rs.length, 2)} R · Treffer ${pct(rs.filter(x => x > 0).length / rs.length, 0)} (Test-Erwartung ≈ +0,16 R, Treffer ≈ 30 %)` : "";
+  return `<div class="section-title"><span>Deine Trades</span><span>${open.length} offen</span></div>${open.map(row).join("") || `<div class="note">Keine offenen Trades.</div>`}
+    ${stat ? `<div class="note" style="margin:6px 2px 14px">${stat}</div>` : ""}`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-tpl],[data-tph],[data-tpopen],[data-tpclose],[data-tpdel]"); if (!b) return;
+  if (b.dataset.tpl) { state.tpLev = +b.dataset.tpl; save(); tpRefresh(); return; }
+  if (b.dataset.tph) { state.tpHoldSel = +b.dataset.tph; save(); tpRefresh(); return; }
+  if (b.dataset.tpopen) { tpOpen(b.dataset.tpopen); return; }
+  const l = plansLoad(), i = l.findIndex(p => p.id === (b.dataset.tpclose || b.dataset.tpdel)); if (i < 0) return;
+  if (b.dataset.tpdel) { if (confirm("Trade-Plan löschen?")) { l.splice(i, 1); plansSave(l); render(); } return; }
+  const p = l[i], r = rowOf(p.t), v = prompt(`Verkaufskurs von ${p.n} (Basiswert, ${p.cur || ""}):`, r ? String(r.c).replace(".", ",") : "");
+  const x = v == null ? null : parseFloat(String(v).replace(",", "."));
+  if (!(x > 0)) return;
+  Object.assign(p, { st: "closed", X: x, xd: isoD(new Date()), R: +((x - p.E) / (p.E - p.stop)).toFixed(3) });
+  plansSave(l); render();
+});
+function tpRefresh() { const r = state.einT && searchIdx && searchIdx.find(x => x.t === state.einT), box = $("tpBox"); if (r && box) box.innerHTML = tpInner(r, einSetup(r)); }
+document.addEventListener("input", e => {
+  if (!["tpE", "tpDepot", "tpRisk"].includes(e.target.id)) return;
+  const v = parseFloat(String(e.target.value).replace(",", "."));
+  if (e.target.id === "tpE") { state.tpE = { ...(state.tpE || {}), [e.target.dataset.t]: v > 0 ? v : undefined }; }
+  if (e.target.id === "tpDepot" && v > 0) state.tpDepot = v;
+  if (e.target.id === "tpRisk" && v > 0) state.tpRisk = Math.min(5, v);
+  save();
+});
+document.addEventListener("change", e => { if (["tpE", "tpDepot", "tpRisk"].includes(e.target.id)) tpRefresh(); });
 function einHtml() {
   if (!searchIdx) { loadSearch(); return `<div class="section-title"><span>Einstieg</span><span>lädt …</span></div>`; }
+  if (!anaData) loadAnalysis();
   const r = state.einT && searchIdx.find(x => x.t === state.einT);
   const best = searchIdx.filter(x => x.tr === 2).sort((a, b) => (a.tdd ?? 1) - (b.tdd ?? 1)).slice(0, 6);
-  return `<div class="section-title"><span>Einstieg planen</span><span>Setup · Trade-Plan · Hebel</span></div>
+  return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span>Setup · Trade-Plan · Hebel</span></div>
     <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
     ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Trend-Rücksetzer</b> oder ein <b>Kairo-Setup</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
       ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heute die besten Einstiege · Trend Top</div><div class="ein-list">${best.map(x => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")}</span>${einTag(x)}</button>`).join("")}</div>` : ""}`}`;
@@ -3524,11 +3688,11 @@ async function openDetail(t) {
 }
 
 // Turbo-Plan: Setup-Marken (Entry, Stop = Setup ungültig, Ziele) übersetzt auf ein Knock-out-Zertifikat.
-// K.-o.-Vorschlag: eine halbe Tagesspanne (ATR) unter dem Stop – so fliegt der Turbo nicht raus, bevor das Setup kippt.
+// K.-o.-Vorschlag: eine Tagesspanne (ATR) unter dem Stop – wie im Trade-Plan (Einstieg); so fliegt der Turbo nicht raus, bevor das Setup kippt.
 function tpCalc(r) {
   const p = r.plan || {}, E = p.entry, atr = (r.atr_pct || 0) * (E || 0);
   const koIn = parseFloat(String(($("tpKo") || {}).value || "").replace(",", "."));
-  const ko = koIn > 0 && koIn < E ? koIn : +(p.stop - 0.5 * atr).toFixed(E < 10 ? 3 : 2);
+  const ko = koIn > 0 && koIn < E ? koIn : +(p.stop - 1.0 * atr).toFixed(E < 10 ? 3 : 2);
   const bud = Math.max(0, +state.budget || 0), lev = E / (E - ko), val = x => Math.max(0, (x - ko) / (E - ko));
   const sc = [["Ziel 1", p.target1, "up"], ["Ziel 2 (Swing-High)", p.target2, "up"], ["Stop · Setup ungültig", p.stop, "down"], ["Knock-out", ko, "down"]];
   return { ko, lev, rows: sc.filter(x => x[1] != null).map(([l, x, c]) => ({ l, x, c, und: x / E - 1, t: val(x) - 1, eur: bud * (val(x) - 1) })), bud, p };
@@ -3552,7 +3716,7 @@ function turboPlanHtml(r) {
       <label>Einsatz in €<input id="tpBudget" type="number" inputmode="decimal" min="0" step="50" value="${esc(state.budget ?? 400)}"></label>
       <label>K.-o.-Schwelle (Long)<input id="tpKo" type="number" inputmode="decimal" step="any" value="${m.ko}" data-t="${esc(r.ticker)}"></label></div>
     <div id="tpOut">${tpOutHtml(r)}</div>
-    <div class="note">Vorschlag K.-o.: ½ Tagesspanne (ATR ${pct(r.atr_pct, 1)}) unter der Setup-Grenze – darunter ist die Idee ohnehin vorbei. Tippe die Schwelle deines Turbos ein, um ihn durchzurechnen. Näherung ohne Finanzierungskosten, Spread und Bezugsverhältnis. Volatilität (30 T.) ${pct(r.volatility, 0)}${r.earnings_risk ? ` · ⚠ Quartalszahlen ${dateDE(r.earnings_date)} – Kurssprünge können den K.-o. überspringen` : ""}.</div>`;
+    <div class="note">Vorschlag K.-o.: 1 Tagesspanne (ATR ${pct(r.atr_pct, 1)}) unter der Setup-Grenze – darunter ist die Idee ohnehin vorbei. Tippe die Schwelle deines Turbos ein, um ihn durchzurechnen. Näherung ohne Finanzierungskosten, Spread und Bezugsverhältnis. Volatilität (30 T.) ${pct(r.volatility, 0)}${r.earnings_risk ? ` · ⚠ Quartalszahlen ${dateDE(r.earnings_date)} – Kurssprünge können den K.-o. überspringen` : ""}.</div>`;
 }
 document.addEventListener("input", e => {
   if (e.target.id !== "tpBudget" && e.target.id !== "tpKo") return;

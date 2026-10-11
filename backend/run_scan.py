@@ -25,7 +25,7 @@ from .config import CONFIG, ROOT, as_dict
 from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
-from . import briefing, company, push, trend_study, forecast, grade, live, sentiment, state, telegram
+from . import briefing, company, push, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import MARKET, SECTOR_DE, SECTOR_ETF, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -429,6 +429,12 @@ def main(argv=None) -> int:
         tr_hit = bool(tres and tres.passed)
         try:
             search[t] = {**search_row(res, m, hint(res)), **entry_fields(res, tres, m), **day_moves(df)}
+            try:                                     # Trade-Plan-Struktur (Basis, Stop, Widerstände) für den Reiter „Einstieg“
+                pl = tradeplan.structure(df, res.flags.get("atr"))
+                if pl:
+                    search[t]["pl"] = pl
+            except Exception as exc:
+                print(f"{t}: Trade-Plan-Fehler {exc!r}")
             if not (res.passed or res.fast_hit or m.get("in_watchlist") or tr_hit):
                 search[t].pop("lw", None)                # Tagestiefs nur für Kandidaten (hält search.json klein)
         except Exception as exc:
