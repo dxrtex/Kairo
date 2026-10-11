@@ -527,6 +527,35 @@ def _combo(sets: dict) -> dict:
         "O Ausverkauf Treffer+Fast+Trend 20 T 1,5 % · sonst Trend 20 T 1 %": {"weak": hf(20, 0.015) + [("trend", 20, 0.015)], "mixed": [("trend", 20, 0.01)], "strong": [("trend", 20, 0.01)]},
     }
     out["depot"] = {name: depot(plan) for name, plan in strategies.items()}
+    # 3) Haltedauer 20/30/40 × gleichzeitige Trades 3/4/5 – nur Kairo-Treffer, Risiko 2 % im Ausverkauf, sonst 1 %.
+    #    Fair: dieselben Signale für alle Haltedauern (nur solche mit ≥ 50 Kerzen Verlauf).
+    fair = [e for e in sets.get("hit") or [] if len(e["px"]["c"]) >= 50]
+    hs = {}
+    for hold in (20, 30, 40):
+        rule = {**QRULE, "hold": hold}
+        rows = []
+        for e in fair:
+            sm = simulate(e["px"], rule)
+            if sm and "skip" not in sm:
+                d0 = dt.date.fromisoformat(e["d"])
+                rows.append((e, sm, str(d0 + dt.timedelta(days=int((sm.get("s", 0) + 1) * 7 / 5)))))
+        hs[hold] = rows
+    per_trade, grid = {}, {}
+    for hold, rows in hs.items():
+        g = defaultdict(lambda: defaultdict(list))
+        for e, sm, _ in rows:
+            g[_regime(mk, e["d"]) or "?"][_period(e["d"])].append(sm["net"])
+        per_trade[f"{hold}T"] = {rg: {p: {"n": len(v), "net": round(float(np.mean(v)), 3)} for p, v in sorted(per.items())}
+                                 for rg, per in sorted(g.items())}
+        tr = [(d_in, sm["net"], sm["d"], 0.02 if _regime(mk, e["d"]) == "weak" else 0.01)
+              for e, sm, d_in in rows if _regime(mk, e["d"])]
+        for mo in (3, 4, 5):
+            runs = [_depot(tr, max_open=mo, seed=sd) for sd in range(25)]
+            cg, md = sorted(x["cagr"] for x in runs), sorted(x["mdd"] for x in runs)
+            grid[f"{hold}T · {mo} gleichzeitig"] = {"cagr_median": cg[12], "cagr_p10": cg[2], "cagr_p90": cg[22],
+                                                    "mdd_median": md[12], "mdd_p90": md[22], "end_median": sorted(x["end_eur"] for x in runs)[12],
+                                                    "trades": runs[0]["trades"]}
+    out["hold_slots"] = {"signals": len(fair), "per_trade": per_trade, "depot": grid}
     return out
 
 
