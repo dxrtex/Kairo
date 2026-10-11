@@ -208,7 +208,10 @@ def _portfolio(trades: list[tuple[str, float, int, float]], risk: float = 0.005,
     eq, peak, mdd, open_ = 1.0, 1.0, 0.0, []
     taken = 0
     import datetime as dt
-    for d, net, days, _ in sorted(trades):
+    # Reihenfolge innerhalb eines Tages zufällig (fest gesät) – NICHT nach Ergebnis sortieren (sonst Verzerrung)
+    rnd = random.Random(7)
+    trades = sorted(trades, key=lambda t: (t[0], rnd.random()))
+    for d, net, days, _ in trades:
         t0 = dt.date.fromisoformat(d)
         still = []
         for end, pnl in open_:
@@ -235,6 +238,8 @@ def run_rule(events: list[dict], rule: dict, ci: bool = True) -> dict:
     out = {"skip": defaultdict(int)}
     rows = defaultdict(list)
     for e in events:
+        if len(e["px"]["c"]) < rule["hold"]:      # Zeitfenster noch nicht vollständig (jüngste Signale) – sonst Verzerrung
+            continue
         s = simulate(e["px"], rule)
         if s is None:
             continue
@@ -257,7 +262,7 @@ def _key(rule: dict) -> str:
     return json.dumps({k: v for k, v in rule.items() if k != "levs"}, sort_keys=True)
 
 
-def stage(events: list[dict], rules: list[dict], min_n: int = 150) -> list[tuple[dict, dict]]:
+def stage(events: list[dict], rules: list[dict], min_n: int = 100) -> list[tuple[dict, dict]]:
     out = []
     for r in rules:
         res = run_rule(events, r, ci=False)
@@ -326,7 +331,7 @@ def main(argv=None) -> int:
 
     # 2) Stufe 1 – Haltedauer × Invalidierung × Puffer × Ziel × Wochenende (voller Verkauf, Hebel 1)
     grid1 = [dict(entry="open", late=0.5, inv=inv, buf=buf, maxd=3.0, hold=hold, tgt=tgt, wkend=wk, levs=[1])
-             for inv, buf, hold, tgt, wk in itertools.product((3, 10), (0.25, 0.5, 1.0, 1.5), (2, 3, 5, 7, 10, 15),
+             for inv, buf, hold, tgt, wk in itertools.product((3, 10), (0.25, 0.5, 1.0, 1.5), (2, 3, 5, 7, 10, 15, 20, 30),
                                                               (None, ("R", 1.5), ("ema20",), ("tp1",)), (False, True))]
     report["stage1"] = {}
     best1 = {}
@@ -334,13 +339,13 @@ def main(argv=None) -> int:
         es = sets.get(k) or []
         if not es:
             continue
-        res = stage(es, grid1)
+        res = stage(es, [g for g in grid1 if k != "base" or g["hold"] <= 20])   # Vergleichstage: 20 Tage Verlauf
         best1[k] = res[0][0] if res else None
         # kompakt: Haltedauer-Kurve beim besten Rest (im Lern-Zeitraum gewählt)
         curve = {}
         if res:
             b = res[0][0]
-            for hold in (2, 3, 5, 7, 10, 15):
+            for hold in (2, 3, 5, 7, 10, 15, 20, 30):
                 rr = next((x for x in res if _key(x[0]) == _key({**b, "hold": hold})), None)
                 if rr:
                     curve[hold] = {p: _strip(rr[1]).get(p) for p in ("train", "val", "test")}
@@ -365,12 +370,13 @@ def main(argv=None) -> int:
         es = sets.get(k) or []
         if es:
             report["proposal"][k] = {"dein_vorschlag": _strip(run_rule(es, user)),
-                                     "bisher_63T": _strip(run_rule(es, old_kairo)) if k in ("hit", "fast") else None}
+                                     "bisher_63T": _strip(run_rule(es, old_kairo)) if k in ("hit", "fast") else None,
+                                     "bisher_20T": _strip(run_rule(es, {**old_kairo, "hold": 20}))}
     print("Vorschlag/bisher fertig", f"{time.time() - t0:.0f} s", flush=True)
 
     # 4) Stufe 2 – Ausstieg: Teilverkauf, Break-even, Trailing, Momentum (auf dem besten Stufe-1-Gerüst je Setup)
     report["stage2"] = {}
-    for k in ("hit", "trend", "top"):
+    for k in ("hit", "fast", "trend", "top"):
         b = best1.get(k)
         es = sets.get(k) or []
         if not b or not es:
