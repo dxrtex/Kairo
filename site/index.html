@@ -3305,6 +3305,47 @@ const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52,
 // Zum Vergleich der Depot-Test (Regeln ohne deine Auswahl): 20 Tage ohne TP brachten dort mehr – „Deine Trades“ zeigt, was bei dir besser läuft.
 const KMAX = { hold: 5, weakMult: 2, maxOpen: 5 };
 const TP_EXIT = { hold: KMAX.hold };
+// ---- TP-Bewertung je Aktie ----
+// Kandidaten: Hoch der Seitwärtsphase, 10-Tage-Hoch, frühere Hochs (Swing), EMA 20/50, Fibonacci – Verkauf 0,1 ATR davor.
+// Chance je Marke: Zufallspfade mit der Schwankung der Aktie (0,95 ATR pro Tag, an den Kairo-Backtest geeicht:
+// 1 R in 5 Tagen ≈ 40 %, 2 R ≈ 16 %) – zählt, ob die Marke vor dem SL erreicht wird. Wahl: höchster erwarteter Gewinn
+// aus dem TP (Chance × Chance/Risiko) unter den realistischen Marken (≥ 30 % Chance, ≥ 1 : 1), sonst ab 0,6 : 1.
+const MC = { n: 2000, sub: 8, sig: 0.95, cache: {} };
+function mcPaths(days) {
+  if (MC.cache[days]) return MC.cache[days];
+  let a = 0x9e3779b9;
+  const rnd = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const st = days * MC.sub, out = new Float32Array(MC.n * st), sd = MC.sig / Math.sqrt(MC.sub);
+  for (let i = 0; i < MC.n; i++) { let x = 0;
+    for (let j = 0; j < st; j++) { const u = rnd() || 1e-9, v = rnd(); x += sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); out[i * st + j] = x; } }
+  return (MC.cache[days] = { p: out, st });
+}
+function tpProb(days, upAtr, dnAtr) {                          // Anteil der Pfade, die +upAtr vor −dnAtr erreichen
+  const { p, st } = mcPaths(days); let hit = 0;
+  for (let i = 0; i < MC.n; i++) for (let j = 0; j < st; j++) { const x = p[i * st + j]; if (x >= upAtr) { hit++; break; } if (x <= -dnAtr) break; }
+  return hit / MC.n;
+}
+function tpEval(r, E, stop, atr, days) {
+  const pl = r.pl || {}, risk = E - stop, raw = [];
+  if (pl.base) raw.push(["Hoch der Seitwärtsphase", pl.base.hi]);
+  if (pl.h10) raw.push(["10-Tage-Hoch", pl.h10]);
+  (pl.res || []).forEach(x => raw.push(["früheres Hoch", x]));
+  (pl.tg || []).forEach(([l, x]) => raw.push([l, x]));
+  if (r.e20) raw.push(["EMA 20", +r.e20]); if (r.e50) raw.push(["EMA 50", +r.e50]);
+  const lv = [];
+  raw.filter(([, x]) => x > E + 0.35 * atr && x <= E + 6 * atr).sort((a, b) => a[1] - b[1]).forEach(([l, x]) => {
+    const prev = lv[lv.length - 1];
+    if (prev && x - prev.lvl < 0.25 * atr) { const parts = new Set([...prev.lbl.split(" / "), ...l.split(" / ")]); prev.lbl = [...parts].join(" / "); }
+    else lv.push({ lbl: [...new Set(l.split(" / "))].join(" / "), lvl: x });
+  });
+  if (!lv.length) lv.push({ lbl: "1,5 × Risiko", lvl: E + 1.5 * risk + 0.1 * atr });
+  const list = lv.map(c => { const tp = c.lvl - 0.1 * atr, R = (tp - E) / risk, p = tpProb(days, (tp - E) / atr, risk / atr);
+    return { lbl: c.lbl, lvl: c.lvl, tp, R, p, sc: p * R }; });
+  // realistisch zuerst: Marken mit ≥ 30 % Chance und mindestens 1 : 1; sonst ab 0,6 : 1; sonst alle
+  const real = list.filter(x => x.p >= 0.3 && x.R >= 1), ok = list.filter(x => x.R >= 0.6);
+  const best = (real.length ? real : ok.length ? ok : list).reduce((a, b) => b.sc > a.sc + 1e-9 ? b : a);
+  return { list, best };
+}
 function kmFit(r, mk) {
   const weak = mk && mk.k === "weak", n = r.m ?? 0;
   const lbl = r.s === "hit" ? "Kairo-Treffer" : r.s === "fast" ? "Fast-Treffer" : r.tr >= 1 ? "Trend-Rücksetzer" : `${n}/11 Kriterien`;
@@ -3363,14 +3404,12 @@ function tp2Calc(r, S, o = {}) {
   out.hold = hold;
   // TP: erste echte Kursmarke der Aktie mit mindestens 1,5 × Risiko Abstand (lohnendes Chance-Risiko-Verhältnis), höchstens 4 ×;
   // keine passende Marke → 2 × Risiko
-  // TP = EMA 20 (Kursziel-Vergleich, 5 Tage, Kairo-Treffer: alle Ziele ≈ gleich gut, EMA 20 mit der höchsten Trefferquote ≈ 50 %);
-  // liegt der Kurs schon an/über der EMA 20: nächste Kursmarke ab 1 × Risiko, sonst 2 × Risiko
-  if (r.e20 > E + 0.25 * atr) [out.tpLbl, out.tp] = ["EMA 20", +r.e20];
-  else { const nx = (pl.tg || []).filter(([, x]) => x >= E + risk).sort((a, b) => a[1] - b[1])[0];
-    [out.tpLbl, out.tp] = nx ? [nx[0], +nx[1]] : ["2 × Risiko", +(E + 2 * risk).toFixed(4)]; }
+  // TP individuell: alle echten Kursmarken der Aktie bewerten (Chance, sie in der Haltedauer VOR dem SL zu erreichen × Gewinn)
+  const ev = tpEval(r, E, stop, atr, KMAX.hold);
+  out.tpCands = ev.list; [out.tpLbl, out.tp, out.tpP] = [ev.best.lbl, ev.best.tp, ev.best.p];
   out.tpR = (out.tp - E) / risk;
   out.tpBE = 1 / (1 + out.tpR);                                 // nötige Trefferquote, ab der der Trade im Schnitt Gewinn bringt
-  out.tpWhy = `TP = ${out.tpLbl}: Nach einer Korrektur federt der Kurs am häufigsten zur EMA 20 zurück. Im Test (Kairo-Treffer, 5 Tage) brachten alle Kursziele etwa dasselbe – die EMA 20 aber mit der höchsten Trefferquote (≈ 50 %), also die sicherste Variante. Chance/Risiko ${fmt(out.tpR, 1)} : 1 – lohnt sich ab ${pct(out.tpBE, 0)} Trefferquote.`;
+  out.tpWhy = `TP = ${out.tpLbl}: Von ${ev.list.length} Kursmarken dieser Aktie hat sie das beste Verhältnis aus Gewinn und Wahrscheinlichkeit, in ${KMAX.hold} Tagen vor dem SL erreicht zu werden (≈ ${pct(out.tpP, 0)}). Verkauft wird knapp vor der Marke, weil dort Verkäufer warten. Chance/Risiko ${fmt(out.tpR, 1)} : 1.`;
   out.d0 = tpEntryDay(o.date);
   out.exit = addBd(out.d0, hold - 1);
   // Quartalszahlen in der Haltedauer: spätestens am Handelstag davor raus (Kurslücke kann Stop und K.-o. überspringen)
@@ -3431,7 +3470,11 @@ function tpInner(r, S) {
     <div class="tp2-plan"${m.fit.ok ? "" : ' style="opacity:.6"'}>
       ${row("Kauf", `${X(m.E)} ${cur}`, m.base ? `in der Seitwärtsphase ${X(m.base.lo)}–${X(m.base.hi)} €` : "keine Seitwärtsphase erkannt")}
       ${row("Stop-Loss (SL)", `${X(m.stop)} ${cur}`, `${sgnPct(m.stop / m.E - 1, 1)} · Verlust ${sgnEur(at(m.stop))}`, "down")}
-      ${m.tp ? row("Take-Profit (TP)", `${X(m.tp)} ${cur}`, `${esc(m.tpLbl)} · ${sgnPct(m.tp / m.E - 1, 1)} · Gewinn ${sgnEur(at(m.tp))} · Chance/Risiko ${fmt(m.tpR, 1)} : 1`, "up") : ""}
+      ${m.tp ? row("Take-Profit (TP)", `${X(m.tp)} ${cur}`, `${esc(m.tpLbl)} · ${sgnPct(m.tp / m.E - 1, 1)} · Gewinn ${sgnEur(at(m.tp))} · Chance/Risiko ${fmt(m.tpR, 1)} : 1 · erreicht ≈ ${pct(m.tpP, 0)}`, "up") : ""}
+      ${m.tpCands && m.tpCands.length > 1 ? `<details class="tp2-acc" style="margin:0 14px 10px"><summary>So wurde der TP gewählt (${m.tpCands.length} Kursmarken bewertet)</summary>
+        <div class="table-wrap plain" style="margin-top:6px"><table class="tpt"><thead><tr><th>Kursmarke</th><th class="num">TP</th><th class="num">Chance/Risiko</th><th class="num">erreicht in ${m.hold} T.</th></tr></thead><tbody>
+        ${m.tpCands.map(c => `<tr${c.tp === m.tp ? ' style="font-weight:700"' : ""}><td>${c.tp === m.tp ? "✓ " : ""}${esc(c.lbl)}</td><td class="num">${X(c.tp)} €</td><td class="num">${fmt(c.R, 1)} : 1</td><td class="num">${pct(c.p, 0)}</td></tr>`).join("")}</tbody></table></div>
+        <div class="note">Gewählt wird unter den realistischen Marken (≥ 30 % Chance, mindestens 1 : 1) die mit dem höchsten erwarteten Gewinn (Wahrscheinlichkeit × Chance/Risiko). Wahrscheinlichkeiten aus der Schwankung der Aktie, am Kairo-Backtest geeicht – ohne deine eigene Auswahl.</div></details>` : ""}
       ${m.tp && m.tpR < 1 ? `<div class="tip tone-yellow" style="margin:0 10px 10px">Der TP liegt näher als der SL: Gewinn kleiner als das Risiko. Lohnt sich nur, wenn mehr als ${pct(m.tpBE, 0)} solcher Trades aufgehen.</div>` : ""}
       ${row(m.tp ? "Weder SL noch TP? Verkaufen am" : "Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `zum Schluss – nach ${m.hold} Handelstagen`)}
       ${row("Produkt", prod, lv.L > 1 ? `K.-o. höchstens ${X(lv.ko)} ${cur}` : (lv.qty != null ? `${lv.qty} Stück` : ""))}
