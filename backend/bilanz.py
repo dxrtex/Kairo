@@ -109,7 +109,7 @@ def _py(v):
     return v
 
 
-def scan_history(df: pd.DataFrame, ticker: str, start: int = 260, base_every: int = 15) -> list[dict]:
+def scan_history(df: pd.DataFrame, ticker: str, start: int = 260, base_every: int = 15, px_base: bool = False) -> list[dict]:
     """Alle Signale (und Vergleichstage) einer Aktie über die Historie."""
     from .analysis import swing_levels
     from .scanner import evaluate
@@ -129,8 +129,10 @@ def scan_history(df: pd.DataFrame, ticker: str, start: int = 260, base_every: in
                              cf.mbi.impulse_length, cf.mbi.std_mult)["red_x"].to_numpy(bool)
     out, last_sig = [], {"hit": -99, "fast": -99, "trend": -99}
 
-    def pxrec(i, stop, t1, t2, lv, atr):
-        cl, j1 = c[i], min(n, i + 1 + HOLD)
+    wday = np.array([d.weekday() for d in df.index])
+
+    def pxrec(i, stop, t1, t2, lv, atr, hold=HOLD):
+        cl, j1 = c[i], min(n, i + 1 + hold)
         rn = lambda a: [round(float(x / cl), 4) for x in a]
         return {"o": rn(o[i + 1:j1]), "h": rn(h[i + 1:j1]), "l": rn(l[i + 1:j1]), "c": rn(c[i + 1:j1]),
                 "pl": rn(l[max(0, i - 9):i + 1]), "e20": round(float(e20[i] / cl), 4),
@@ -138,7 +140,10 @@ def scan_history(df: pd.DataFrame, ticker: str, start: int = 260, base_every: in
                 "t1": round(float(t1 / cl), 4) if t1 else None, "t2": round(float(t2 / cl), 4) if t2 else None,
                 "tp": [round(float(z["p"] / cl), 4) for z in lv[:3]],
                 "rsi": [round(float(x), 1) for x in rsi_s[i + 1:j1]], "mh": [round(float(x / cl), 5) for x in mh[i + 1:j1]],
-                "mh0": round(float(mh[i] / cl), 5), "rx": [int(x) for x in rx[i + 1:j1]]}
+                "mh0": round(float(mh[i] / cl), 5), "rx": [int(x) for x in rx[i + 1:j1]],
+                # Kurzfrist-Studie: Wochentage (Wochenend-Regel), Hochs am/vor dem Signaltag (Bestätigungs-Einstieg)
+                "wd": [int(x) for x in wday[i:j1]], "h0": round(float(h[i] / cl), 4),
+                "h3": round(float(h[max(0, i - 2):i + 1].max() / cl), 4)}
 
     for i in range(start, n):
         try:
@@ -185,7 +190,7 @@ def scan_history(df: pd.DataFrame, ticker: str, start: int = 260, base_every: in
             atr = r.flags.get("atr") or 0
             p = {"entry": r.close, "stop": r.close - 2 * atr, "target1": r.close + 2 * atr, "target2": None, "crv": 1.0}
         tp1, lv = None, []
-        if kind:
+        if kind or px_base:
             try:
                 lv = swing_levels(df.iloc[: i + 1], r.close, r.flags.get("atr") or 0)
                 tp1 = lv[0]["p"] if lv else None
@@ -214,6 +219,8 @@ def scan_history(df: pd.DataFrame, ticker: str, start: int = 260, base_every: in
                           "met": int(sum(c.ok for c in r.criteria if c.key not in ("cap", "liquidity", "price", "history")))}})
         if kind:                                   # Kursverlauf danach (für den Ausstiegs-Backtest, relativ zum Schluss)
             out[-1]["px"] = pxrec(i, p["stop"], p.get("target1"), p.get("target2"), lv, r.flags.get("atr") or 0)
+        elif px_base:                              # Vergleichstage für die Kurzfrist-Studie (20 Tage genügen)
+            out[-1]["px"] = pxrec(i, p["stop"], p.get("target1"), p.get("target2"), lv, r.flags.get("atr") or 0, hold=20)
     return out
 
 
@@ -275,6 +282,7 @@ def main(argv=None) -> int:
     ap.add_argument("--n", type=int, default=1600)
     ap.add_argument("--period", default="3y", help="Kurshistorie, z. B. 3y oder 6y (Prüfung über mehrere Marktphasen)")
     ap.add_argument("--combine", nargs="*")
+    ap.add_argument("--px-base", action="store_true", help="Kursverlauf auch für Vergleichstage speichern (Kurzfrist-Studie)")
     a = ap.parse_args(argv)
     if a.combine is not None:
         ev, seen = [], set()
@@ -299,7 +307,7 @@ def main(argv=None) -> int:
     print(f"Shard {a.shard}: {len(data)} von {len(mine)} Aktien geladen")
     ev, t0 = [], time.time()
     for k, (t, df) in enumerate(data.items()):
-        ev += scan_history(df, t)
+        ev += scan_history(df, t, px_base=a.px_base)
         if k % 25 == 0:
             print(f"  {k} Aktien, {sum(e['k'] == 'hit' for e in ev)} Treffer-Signale, {time.time() - t0:.0f} s")
     Path(f"bilanz_part_{a.shard}.json").write_text(json.dumps(ev, separators=(",", ":")))
