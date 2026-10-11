@@ -15,6 +15,10 @@ on:
         description: "Kursverläufe aus einem früheren Lauf wiederverwenden (Run-ID) – nur Auswertung neu"
         required: false
         default: ""
+      only:
+        description: "Nur eine Auswertung (tp = Kursziel-Vergleich), leer = alles"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -65,6 +69,8 @@ jobs:
           run-id: ${{ inputs.reuse_run || github.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - run: python -m backend.shortswing bilanz_part_*.json
+        env:
+          SS_ONLY: ${{ inputs.only }}
       - uses: actions/upload-artifact@v4
         with:
           name: kurzfrist-ergebnis
