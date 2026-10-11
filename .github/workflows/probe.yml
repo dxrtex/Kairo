@@ -1,0 +1,21 @@
+name: Live-Probe (App im Browser)
+
+on:
+  workflow_dispatch:
+    inputs:
+      q:
+        description: "Suchbegriff im Reiter Einstieg"
+        required: true
+        default: "Axon"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install playwright==1.47.0 && python -m playwright install --with-deps chromium
+      - run: python tools/live_probe.py "${{ inputs.q }}"
