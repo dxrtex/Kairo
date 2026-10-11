@@ -70,7 +70,29 @@ def simulate(px: dict, r: dict) -> dict | None:
     # Einstieg
     start = 0
     mode = r.get("entry", "open")
-    if mode == "cons":
+    if mode == "base":
+        # Kauf IN der Seitwärtsphase (vor dem Ausbruch): sobald ck Tage eng laufen (Spanne ≤ cm × ATR) und die
+        # Invalidierung hält, Kauf zur Eröffnung am Folgetag. lowhalf: nur wenn diese Eröffnung in der unteren Hälfte
+        # der Basis liegt (nahe der Unterstützung). Stop = Tief der Basis − Puffer.
+        k, m, wait = r.get("ck", 3), r.get("cm", 2.0), r.get("wait", 10)
+        entry = None
+        for j in range(min(wait, len(c) - 1)):
+            if l[j] < inv:
+                return {"skip": "failed"}
+            if j < k - 1:
+                continue
+            hi, lo = max(h[j - k + 1:j + 1]), min(l[j - k + 1:j + 1])
+            if hi - lo <= m * atr:
+                oj = o[j + 1]
+                if oj > hi or oj <= lo:            # schon ausgebrochen bzw. durch die Basis gefallen
+                    continue
+                if r.get("lowhalf") and oj > (hi + lo) / 2:
+                    continue
+                entry, start, stop0 = oj, j + 1, lo - r["buf"] * atr
+                break
+        if entry is None:
+            return {"skip": "nofill"}
+    elif mode == "cons":
         # „Gummiband mit Bestätigung“: nach dem Signal abwarten, bis der Kurs ck Tage eng seitwärts läuft
         # (Spanne ≤ cm × ATR, kein Bruch der Invalidierung), dann Kauf beim Ausbruch über das Hoch dieser Phase
         # am Folgetag. Stop = Tief der Seitwärtsphase − Puffer. Jede Entscheidung nur mit Kursen bis zu diesem Tag.
@@ -258,7 +280,7 @@ def run_rule(events: list[dict], rule: dict, ci: bool = True) -> dict:
     out = {"skip": defaultdict(int)}
     rows = defaultdict(list)
     for e in events:
-        if len(e["px"]["c"]) < rule["hold"] + (rule.get("wait", 10) if rule.get("entry") == "cons" else 0):      # Zeitfenster noch nicht vollständig (jüngste Signale) – sonst Verzerrung
+        if len(e["px"]["c"]) < rule["hold"] + (rule.get("wait", 10) if rule.get("entry") in ("cons", "base") else 0):      # Zeitfenster noch nicht vollständig (jüngste Signale) – sonst Verzerrung
             continue
         s = simulate(e["px"], rule)
         if s is None:
@@ -434,6 +456,37 @@ def main(argv=None) -> int:
                          "portfolio_05pct": pf, "skip": x["skip"]})
         report["stage3"][k] = rows
         print(f"Stufe 3 {k}", f"{time.time() - t0:.0f} s", flush=True)
+
+    # 5b) Stufe 5 – Kauf IN der Basis (vor dem Ausbruch) – deine Vorgehensweise
+    report["stage5"] = {}
+    for k in ("hit", "fast", "trend", "base"):
+        es = sets.get(k) or []
+        if not es:
+            continue
+        holds = (2, 3, 5, 7, 10) if k == "base" else (2, 3, 5, 7, 10, 20)
+        grid = [dict(entry="base", ck=ck, cm=cm, lowhalf=lh, wait=10, inv=10, buf=buf, maxd=3.0, hold=hold, tgt=tgt, wkend=False, levs=[1])
+                for ck, cm, lh, buf, hold, tgt in itertools.product((3, 5), (1.5, 2.5), (False, True), (0.25, 0.5), holds,
+                                                                   (None, ("R", 1.5), ("tp1",)))]
+        res = stage(es, grid)
+        if not res:
+            continue
+        b = res[0][0]
+        curve = {}
+        for hold in holds:
+            rr = next((x for x in res if _key(x[0]) == _key({**b, "hold": hold})), None)
+            if rr:
+                curve[hold] = {p: _strip(rr[1]).get(p) for p in ("train", "val", "test", "all")}
+        # gleiche Basis-Definition, festes Raster (für den fairen Vergleich mit Zufall): 5 Tage, ≤ 1,5 ATR, untere Hälfte
+        fixed = {}
+        for lh in (False, True):
+            for hold in holds:
+                x = run_rule(es, dict(entry="base", ck=5, cm=1.5, lowhalf=lh, wait=10, inv=10, buf=0.25, maxd=3.0, hold=hold,
+                                      tgt=None, wkend=False, levs=[1]), ci=False)
+                fixed[f"{'unten' if lh else 'alle'}_{hold}"] = {p: _strip(x).get(p) for p in ("train", "val", "test", "all")}
+        report["stage5"][k] = {"best": b, "best_res": _strip(res[0][1]), "hold_curve": curve, "fixed": fixed,
+                               "top5": [{"rule": r, "train": x["train"], "val": x.get("val"), "test": x.get("test"), "ci_test": x.get("ci_test")}
+                                        for r, x in res[:5]]}
+        print(f"Stufe 5 {k}", f"{time.time() - t0:.0f} s", flush=True)
 
     # 6) Stufe 4 – Abwarten + Ausbruch aus der Seitwärtsphase (deine manuelle Vorgehensweise, objektiv nachgebildet)
     report["stage4"] = {}
