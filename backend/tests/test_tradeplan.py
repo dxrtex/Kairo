@@ -52,3 +52,16 @@ def test_marks_above_close_sorted_and_merged():
     vals = [v for _, v in pl["tg"]]
     assert vals == sorted(vals) and all(v > 88.3 for v in vals) and len(vals) <= 4
     assert any("Fib 0,618 / Fib 0,706" in lb for lb, _ in pl["tg"])
+
+
+def test_nan_inputs_give_no_nan_in_json():
+    import json
+    import math
+    import pandas as pd
+    from backend.tradeplan import structure
+    c = [100 - i * 0.3 for i in range(30)]
+    df = pd.DataFrame({"Open": c, "High": [x + 0.5 for x in c], "Low": [x - 0.5 for x in c], "Close": c})
+    assert structure(df, float("nan")) == {}
+    pl = structure(df, 1.0, {"0.618": float("nan"), "0.5": 120.0})
+    json.dumps(pl, allow_nan=False)                     # wirft bei NaN/Infinity
+    assert all(not math.isnan(v) for _, v in pl["tg"])

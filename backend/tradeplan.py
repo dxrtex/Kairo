@@ -26,7 +26,7 @@ def structure(df: pd.DataFrame, atr: float | None, fib: dict | None = None) -> d
     fib: Fibonacci-Niveaus der Kairo-Zone ({"0.618": Kurs, …}), falls vorhanden.
     """
     d = df.dropna(subset=["High", "Low", "Close"])
-    if len(d) < 12 or not atr or atr <= 0:
+    if len(d) < 12 or atr is None or not np.isfinite(atr) or atr <= 0:
         return {}
     h, l, c = (d[k].to_numpy(float) for k in ("High", "Low", "Close"))
     r4 = lambda x: round(float(x), 4)
@@ -65,9 +65,9 @@ def marks(d: pd.DataFrame, atr: float, base: dict | None, fib: dict | None) -> l
     for n in (20, 50):
         cand.append((f"EMA {n}", float(c.ewm(span=n, adjust=False).mean().iloc[-1])))
     for k, v in (fib or {}).items():
-        if k not in ("0", "1") and v:
+        if k not in ("0", "1") and v is not None and np.isfinite(v):
             cand.append((f"Fib {str(k).replace('.', ',')}", float(v)))
-    cand = sorted((x for x in cand if x[1] > last + 0.1 * atr), key=lambda x: x[1])
+    cand = sorted((x for x in cand if np.isfinite(x[1]) and x[1] > last + 0.1 * atr), key=lambda x: x[1])
     out = []
     for lb, v in cand:
         if out and v - out[-1][1] < 0.3 * atr:

@@ -13,7 +13,15 @@ URL = "https://dxrtex.github.io/Kairo/"
 
 
 async def main(q: str) -> None:
-    d = json.load(urllib.request.urlopen(URL + "data/search.json"))
+    raw = urllib.request.urlopen(URL + "data/search.json").read().decode()
+    def _bad(c):
+        raise ValueError(f"nicht browser-taugliches JSON: {c}")
+    try:
+        json.loads(raw, parse_constant=_bad)
+        print("search.json: strenges JSON ok")
+    except ValueError as exc:
+        print("search.json FEHLER:", exc)
+    d = json.loads(raw)
     rows = d.get("rows") or []
     hit = [r for r in rows if q.lower() in (r.get("t", "") + " " + r.get("n", "")).lower()]
     print("search.json:", d.get("generated"), "Zeilen", len(rows), "mit pl", sum(1 for r in rows if r.get("pl")))
