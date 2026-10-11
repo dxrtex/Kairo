@@ -3305,7 +3305,7 @@ const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52,
 // (jedes feste Ziel brachte weniger) · Risiko 1 %, bei grüner Ampel (Ausverkauf) 2 % · bis zu 5 Trades gleichzeitig ·
 // Hebel = höchster bis ×10 (Scalable) mit K.-o. ≥ 1 ATR unter dem SL · alle Kurse in Euro.
 // Depot-Test: Median ≈ +55 % p. a. (10.–90. Perzentil +42 … +72 %), größter Rückgang ≈ 32 %. Fast-Treffer verschlechterten jede Variante.
-const KMAX = { hold: 20, hold2: 20, tpDays: 7, weakMult: 2, maxOpen: 5 };
+const KMAX = { hold: 20, hold2: 20, tpDays: 7, weakMult: 2, maxOpen: 5, perSector: 2 };   // perSector: Klumpenschutz
 const TP_EXIT = { hold: KMAX.hold };
 // ---- TP-Bewertung je Aktie ----
 // Kandidaten: Hoch der Seitwärtsphase, 10-Tage-Hoch, frühere Hochs (Swing), EMA 20/50, Fibonacci – Verkauf 0,1 ATR davor.
@@ -3401,6 +3401,15 @@ function tp2Calc(r, S, o = {}) {
   out.mk = tpMarket();
   out.fit = kmFit(r, out.mk);
   out.riskPct = cfg.risk * out.fit.mult;
+  // Klumpenschutz: offene Trades und Depot-Positionen im selben Sektor – höchstens 2 je Sektor
+  if (r.sec) {
+    const same = new Map();
+    plansLoad().filter(p => p.st === "open" && p.t !== r.t).forEach(p => { const x = rowOf(p.t); if (x && x.sec === r.sec) same.set(p.t, p.n || x.n); });
+    (typeof depotLoad === "function" ? depotLoad() : []).forEach(p => { const x = p.t && p.t !== r.t && rowOf(p.t); if (x && x.sec === r.sec) same.set(p.t, x.n); });
+    out.cluster = { sec: r.sec, n: same.size, names: [...same.values()] };
+    if (same.size >= KMAX.perSector) out.problems.push(["red", `Klumpenschutz: Du hast schon ${same.size} Positionen im Sektor ${r.sec} (${[...same.values()].slice(0, 3).join(", ")}). Höchstens ${KMAX.perSector} je Sektor – fällt der Sektor, fallen alle gleichzeitig. Lieber auslassen oder eine andere Position zuerst schließen.`]);
+    else if (same.size) out.problems.push(["yellow", `Klumpenschutz: ${same.size} Position im selben Sektor (${r.sec}: ${[...same.values()].join(", ")}). Diese wäre die letzte erlaubte in ${r.sec}.`]);
+  }
   out.riskEur = cfg.depot * out.riskPct / 100;
   out.expo = out.riskEur / out.dist;                          // Basiswert-Exposure in €
   const hold = o.hold || KMAX.hold, cal = hold * 7 / 5;
@@ -3523,7 +3532,7 @@ function tpOpen(t) {
   if (l.filter(p => p.st === "open").length >= m.cfg.maxOpen && !confirm(`Schon ${m.cfg.maxOpen} offene Trades – Gesamtrisiko steigt. Trotzdem eröffnen?`)) return;
   l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, d: isoD(m.d0), scan: String(data.generated).slice(0, 10),
               E: +m.E, stop: m.stop, atr: m.atr, L: lv.L, ko: lv.ko, expo: Math.round(lv.expo), stake: Math.round(lv.stake), qty: lv.qty,
-              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), exit2: isoD(m.exit2), tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open" });
+              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), exit2: isoD(m.exit2), sec: r.sec || null, tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open" });
   plansSave(l); render(); window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function tpStatus(p) {
@@ -3550,6 +3559,9 @@ function tpPlansHtml() {
       <div><span>Hälfte 2 · laufen lassen (Tag 20)</span><b class="${a2 >= 0 ? "up" : "down"}">${fmt(a2, 2).replace(/^(?!-)/, "+")} R</b><em>Treffer ${pct(h.filter(p => p.R2 > 0).length / h.length, 0)}</em></div></div>
     <div class="note" style="margin:4px 2px 12px">${h.length} Trades verglichen${h.length < 20 ? ` – aussagekräftig ab etwa 20–30` : a1 > a2 + 0.1 ? " – deine TP-Strategie liegt vorn" : a2 > a1 + 0.1 ? " – Laufenlassen liegt vorn" : " – beide etwa gleich"}.</div>` : "";
   return `<div class="section-title"><span>Deine Trades</span><span>${open.length} offen</span></div>${open.map(row).join("") || `<div class="note">Keine offenen Trades.</div>`}
+    ${(() => { const cnt = {}; open.forEach(p => { const x = rowOf(p.t), k = (x && x.sec) || p.sec; if (k) cnt[k] = (cnt[k] || 0) + 1; });
+      const ks = Object.entries(cnt).sort((a, b) => b[1] - a[1]);
+      return ks.length ? `<div class="note" style="margin:4px 2px 0">Sektoren: ${ks.map(([k, n]) => `<span class="${n >= KMAX.perSector ? "down" : ""}">${esc(k)} ${n}</span>`).join(" · ")}${ks.some(([, n]) => n >= KMAX.perSector) ? ` – Klumpenschutz: höchstens ${KMAX.perSector} je Sektor` : ""}</div>` : ""; })()}
     ${stat ? `<div class="note" style="margin:6px 2px 8px">${stat}</div>` : ""}${cmp}`;
 }
 document.addEventListener("click", e => {                     // Hälfte 1 / Hälfte 2 (bzw. alles) verkauft
