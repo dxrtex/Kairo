@@ -3432,12 +3432,31 @@ function tpInner(r, S) {
       ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(m.riskPct, 1)} %${m.fit.mult > 1 ? " – Ausverkauf" : ""})`)}
       ${lv.L > 1 ? row("SL am Turbo", sgnPct(-lv.tStop, 0), `vom Kaufkurs des Turbos${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
     </div>
+    ${tpTurboHtml(r, m, lv)}
     <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position${m.tp ? " und einen Limit-Verkauf über die Hälfte beim TP" : ""}. ${m.tp ? "Wird der TP erreicht, die Stop-Order auf die verbliebene Hälfte anpassen. " : ""}Am Ausstiegstag den Rest zum Schluss verkaufen. Kairo führt keine Orders aus.</div>
     <div class="note">Warum diese Werte: SL = ${esc(m.src)} (${fmt(m.riskAtr, 1)} ATR). ${m.tpWhy || ""} Hebel = höchster, bei dem der K.-o. mindestens 1 ATR unter dem SL liegt (max. ×${fmt(m.maxL, 1)}) – das Risiko bleibt gleich, nur der Einsatz sinkt. Kosten ≈ ${eur2(lv.cost)} sind eingerechnet. Kurslücke unter den K.-o.: Einsatz verloren (${sgnEur(-lv.stake - 2 * cfg.fee)}).</div>
     ${lv.L > 1 ? `<div class="row-actions" style="margin-top:10px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Turbo bei onvista suchen</a></div>` : ""}
     ${m.fit.ok ? `<div class="row-actions" style="margin-top:12px"><button class="btn" data-tpopen="${esc(r.t)}">Trade eröffnen & speichern</button></div>
     <div class="note">Speichert den Plan unverändert. Kairo prüft ihn nach jedem Abendscan (Stop, Ausstiegstag).</div>` : ""}
     ${acct}`;
+}
+// Dein echter Turbo: Stop-Kurs am Turbo und Stückzahl aus Kaufkurs (€) und K.-o.-Schwelle des Produkts.
+// Turbo-Wert ≈ (Kurs − K.-o.) × Bezugsverhältnis ÷ Devisenkurs → verhältnisgleich: SL-Turbo = Kauf × (SL − K.-o.) ÷ (Kauf Aktie − K.-o.).
+function tpTurboHtml(r, m, lv) {
+  const t = (state.tpT || {})[r.t] || {}, P = +t.p || 0, KO = +t.ko || 0, cur = esc(m.cur);
+  const form = `<div class="plan-h" style="margin-top:14px">Dein Turbo</div>
+    <div class="tp2-cfg"><label>Kaufkurs Turbo (€)<input id="tpTP" type="number" inputmode="decimal" step="any" value="${esc(t.p || "")}" placeholder="z. B. 8,40" data-t="${esc(r.t)}"></label>
+      <label>K.-o.-Schwelle (${cur})<input id="tpKO" type="number" inputmode="decimal" step="any" value="${esc(t.ko || "")}" placeholder="z. B. ${fmt(lv.ko || m.stop * 0.85)}" data-t="${esc(r.t)}"></label></div>`;
+  if (!(P > 0 && KO > 0)) return form + `<div class="note" style="margin:4px 0 0">Trag Kaufkurs und K.-o. deines Turbos ein – dann rechnet Kairo den Stop-Kurs für den Turbo in € und die Stückzahl.</div>`;
+  if (KO >= m.stop) return form + `<div class="tip tone-red" style="margin-top:8px">K.-o. ${fmt(KO)} liegt über dem Stop ${fmt(m.stop)} – der Turbo würde vor dem Stop ausgeknockt. Einen Turbo mit tieferem K.-o. wählen.</div>`;
+  if (KO >= m.E) return form + `<div class="tip tone-red" style="margin-top:8px">K.-o. liegt über dem Kaufkurs der Aktie – Eingabe prüfen (Long-Turbo).</div>`;
+  const sl = P * (m.stop - KO) / (m.E - KO), lossU = P - sl, qty = Math.max(1, Math.floor(m.riskEur / lossU));
+  const lev = m.E / (m.E - KO), near = KO > m.stop - TP.kob * m.atr;
+  return form + `<div class="tp2-plan">
+      <div class="tp2-row"><span>Stop-Loss am Turbo</span><b class="down">${fmt(sl)} €</b><em>${sgnPct(sl / P - 1, 0)} vom Kaufkurs · entspricht Aktie ${fmt(m.stop)} ${cur}</em></div>
+      <div class="tp2-row"><span>Stückzahl</span><b>${fmt(qty, 0)} Stück</b><em>Einsatz ${eur(qty * P)} · Verlust am Stop ≈ ${eur2(qty * lossU)} · Hebel ≈ ×${fmt(lev, 1)}</em></div></div>
+    ${near ? `<div class="tip tone-yellow" style="margin-top:8px">K.-o. liegt weniger als 1 ATR unter dem Stop – eine Kurslücke kann den Turbo ausknocken, bevor der Stop greift. Besser einen Turbo mit K.-o. unter ${fmt(m.stop - TP.kob * m.atr)} ${cur}.</div>` : ""}
+    <div class="note" style="margin:6px 0 0">Die Stop-Order bei Scalable auf den Turbo setzen (Verkaufskurs ${fmt(sl)} €). Genau gilt sie nur, solange der Devisenkurs gleich bleibt; der K.-o. von Open-End-Turbos steigt außerdem täglich leicht (Finanzierung). Prüfe den Stop deshalb ab und zu gegen den Kurs der Aktie (${fmt(m.stop)} ${cur}).</div>`;
 }
 function tpHtml(r, S) { return `<div class="hcard"><div class="plan-h">Trade-Plan</div><div id="tpBox">${tpInner(r, S)}</div></div>`; }
 // Gespeicherte Trades (geplant → eröffnet → geschlossen), eingefroren beim Eröffnen
@@ -3491,6 +3510,10 @@ document.addEventListener("click", e => {
 function tpRefresh() { const r = state.einT && searchIdx && searchIdx.find(x => x.t === state.einT), box = $("tpBox"); if (r && box) box.innerHTML = tpInner(r, einSetup(r)); }
 document.addEventListener("input", e => {
   if (e.target.id === "tpD") { state.tpD = { ...(state.tpD || {}), [e.target.dataset.t]: e.target.value || undefined }; save(); return; }
+  if (e.target.id === "tpTP" || e.target.id === "tpKO") {
+    const v = parseFloat(String(e.target.value).replace(",", ".")), t = e.target.dataset.t, cur = (state.tpT || {})[t] || {};
+    state.tpT = { ...(state.tpT || {}), [t]: { ...cur, [e.target.id === "tpTP" ? "p" : "ko"]: v > 0 ? v : undefined } }; save(); return;
+  }
   if (!["tpE", "tpDepot", "tpRisk"].includes(e.target.id)) return;
   const v = parseFloat(String(e.target.value).replace(",", "."));
   if (e.target.id === "tpE") { state.tpE = { ...(state.tpE || {}), [e.target.dataset.t]: v > 0 ? v : undefined }; }
@@ -3498,7 +3521,7 @@ document.addEventListener("input", e => {
   if (e.target.id === "tpRisk" && v > 0) state.tpRisk = Math.min(5, v);
   save();
 });
-document.addEventListener("change", e => { if (["tpE", "tpD", "tpDepot", "tpRisk"].includes(e.target.id)) tpRefresh(); });
+document.addEventListener("change", e => { if (["tpE", "tpD", "tpDepot", "tpRisk", "tpTP", "tpKO"].includes(e.target.id)) tpRefresh(); });
 function einHtml() {
   if (!searchIdx) { loadSearch(); return `<div class="section-title"><span>Einstieg</span><span>lädt …</span></div>`; }
   if (!anaData) loadAnalysis();
