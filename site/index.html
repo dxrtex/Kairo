@@ -3299,10 +3299,11 @@ const TP = { maxAtr: 3, minAtr: 0.5, kob: 1.0, spreadStock: 0.001, spreadTurbo: 
 const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52, -0.04], 20: [0.26, 0.67, 0.04] };
 // ---- Kairo-Strategie (Depot-Vergleich, backend/shortswing.py only=combo: 3.000 €, max. 3 Trades, 2021–2026, je 25 Reihenfolgen) ----
 // Nur volle Kairo-Treffer · Kauf in der Seitwärtsphase · Stop = Basis-Tief − 0,25 ATR · 20 Handelstage · kein TP ·
-// Risiko 2 % bei grüner Ampel (Ausverkauf), sonst 1 %. Median +39 % p. a. (10.–90. Perzentil +30 … +46 %), größter Rückgang ≈ 28 %.
+// Risiko 2 % bei grüner Ampel (Ausverkauf), sonst 1 % · höchstens 5 Trades gleichzeitig.
+// Median +55 % p. a. (10.–90. Perzentil +42 … +72 %), größter Rückgang ≈ 32 %; mit 3 Trades +38 %. 30 Tage nicht besser, 40 Tage schlechter.
 // Vergleich: immer 1 % +22 % · mit Trend-Rücksetzern +29 % · alter Plan (Treffer+Fast, 10 T) +1 %. Fast-Treffer und feste Kursziele
 // verschlechterten jede Variante. Mehr als 2 % würde den Rückgang weiter vergrößern – der Vorteil beruht auf wenigen Ausverkaufsphasen.
-const KMAX = { hold: 20, weakMult: 2 };
+const KMAX = { hold: 20, weakMult: 2, maxOpen: 5 };
 const TP_EXIT = { hold: KMAX.hold };
 function kmFit(r, mk) {
   const k = r.s === "hit" ? "hit" : r.s === "fast" ? "fast" : r.tr >= 1 ? "trend" : "none", weak = mk && mk.k === "weak";
@@ -3320,7 +3321,7 @@ function kmFit(r, mk) {
 }
 const TP_EXP_TREND = { 5: 0.07, 7: 0.07, 10: 0.07, 20: 0.07 };      // Trend-Rücksetzer, sofort gekauft (beste Haltedauer 5 Tage)
 const tpCfg = () => ({ depot: +state.tpDepot > 0 ? +state.tpDepot : 3000, risk: +state.tpRisk > 0 ? +state.tpRisk : 1,
-  hold: TP_EXIT.hold, fee: state.tpFee != null ? +state.tpFee : 0.99, maxOpen: +state.tpMaxOpen || 3 });
+  hold: TP_EXIT.hold, fee: state.tpFee != null ? +state.tpFee : 0.99, maxOpen: +state.tpMaxOpen || KMAX.maxOpen });
 // Marktampel für Reversals: im breiten Ausverkauf funktioniert das „Gummiband“ am besten
 function tpMarket() {
   const m = anaData && anaData.market, s = m && m["^GSPC"], v = m && m["^VIX"] ? m["^VIX"].c : null;
@@ -3412,7 +3413,7 @@ function tpInner(r, S) {
   const acct = `<details class="tp2-acc"><summary>Konto: ${eur(cfg.depot)} · Basisrisiko ${fmt(cfg.risk, 1)} % je Trade (bei grüner Ampel ×${fmt(KMAX.weakMult, 0)})</summary>
       <div class="tp2-cfg" style="margin-top:8px"><label>Depot (€)<input id="tpDepot" type="number" inputmode="decimal" min="0" step="100" value="${esc(cfg.depot)}"></label>
       <label>Risiko je Trade (%)<input id="tpRisk" type="number" inputmode="decimal" min="0.1" max="5" step="0.1" value="${esc(cfg.risk)}"></label></div>
-      <div class="note">Einmal einstellen, gilt für alle Pläne. Empfehlung: 1 % (so getestet). Höchstens 3 Trades gleichzeitig.</div></details>`;
+      <div class="note">Einmal einstellen, gilt für alle Pläne. Empfehlung: 1 % (so getestet). Höchstens ${KMAX.maxOpen} Trades gleichzeitig.</div></details>`;
   if (!m.stop || (m.problems.length && m.problems[0][0] === "red" && !m.dist)) return head + m.problems.map(([t, x]) => `<div class="tip tone-${t === "red" ? "red" : "yellow"}" style="margin-top:10px">${esc(x)}</div>`).join("") + acct;
   const lv = m.levs.find(x => x.L === m.sug);
   const at = px => (px - m.E) / m.E * lv.expo - lv.cost;
