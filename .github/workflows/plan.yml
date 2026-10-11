@@ -1,0 +1,21 @@
+name: Einzel-Analyse (Trade-Plan)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticker:
+        description: "Ticker (Yahoo), z. B. AXON oder SAP.DE"
+        required: true
+
+jobs:
+  analyse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m backend.plan_cli "${{ inputs.ticker }}"
