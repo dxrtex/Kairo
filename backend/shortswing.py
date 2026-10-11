@@ -327,7 +327,7 @@ def _market() -> dict:
     try:
         from .data_provider import YFinanceProvider
         from .indicators import ema
-        h = YFinanceProvider().history(["^GSPC", "^VIX"], "8y")
+        h = YFinanceProvider().history(["^GSPC", "^VIX"], "12y")
         spx, vix = h["^GSPC"]["Close"], h["^VIX"]["Close"]
         e200, e50 = ema(spx, 200), ema(spx, 50)
         out = {}
@@ -421,7 +421,7 @@ def _depot(trades: list[tuple], start: float = 3000.0, max_open: int = 3, seed: 
     if not trades:
         return {}
     rnd = random.Random(seed)
-    trades = sorted(trades, key=lambda t: (t[0], rnd.random()))
+    trades = sorted(trades, key=lambda t: (t[0], -(t[4] if len(t) > 4 else 0), rnd.random()))
     eq, peak, mdd, open_, taken, by_year, eq_year = start, start, 0.0, [], 0, {}, {}
     def close_until(t0):
         nonlocal eq, peak, mdd, open_
@@ -434,7 +434,7 @@ def _depot(trades: list[tuple], start: float = 3000.0, max_open: int = 3, seed: 
             else:
                 keep.append((end, amt))
         open_ = keep
-    for d, net, days, rk in trades:
+    for d, net, days, rk, *_ in trades:
         t0 = dt.date.fromisoformat(d)
         close_until(t0)
         y = d[:4]
@@ -556,6 +556,32 @@ def _combo(sets: dict) -> dict:
                                                     "mdd_median": md[12], "mdd_p90": md[22], "end_median": sorted(x["end_eur"] for x in runs)[12],
                                                     "trades": runs[0]["trades"]}
     out["hold_slots"] = {"signals": len(fair), "per_trade": per_trade, "depot": grid}
+    # 4) Feinschliff der Siegerstrategie (nur Treffer, 20 T): Risiko im Ausverkauf, Plätze, Auswahl bei zu vielen Signalen
+    rows20 = hs.get(20) or []
+    prios = {
+        "zufällig": lambda e: 0,
+        "klassische Divergenz zuerst": lambda e: 1 if e.get("div") == "klassisch" else 0,
+        "höchster Score zuerst": lambda e: e.get("score") or 0,
+        "geringste Schwankung zuerst": lambda e: -((e.get("f") or {}).get("atrp") or 1),
+        "tiefster Rücksetzer zuerst": lambda e: (e.get("f") or {}).get("dd") or 0,
+        "Support-Zone zuerst": lambda e: 1 if e.get("zone") == "Support" else 0,
+    }
+    fine = {}
+    def run(weak_rk, other_rk, slots, prio):
+        tr = [(d_in, sm["net"], sm["d"], weak_rk if _regime(mk, e["d"]) == "weak" else other_rk, prio(e))
+              for e, sm, d_in in rows20 if _regime(mk, e["d"])]
+        runs = [_depot(tr, max_open=slots, seed=sd) for sd in range(25)]
+        cg, md = sorted(x["cagr"] for x in runs), sorted(x["mdd"] for x in runs)
+        return {"cagr_median": cg[12], "cagr_p10": cg[2], "cagr_p90": cg[22], "mdd_median": md[12], "mdd_p90": md[22],
+                "end_median": sorted(x["end_eur"] for x in runs)[12], "trades": runs[0]["trades"],
+                "years_median": {y: sorted(x["years"].get(y, 0) for x in runs)[12] for y in sorted({y for x in runs for y in x["years"]})}}
+    for wr in (0.015, 0.02, 0.025, 0.03):
+        fine[f"Risiko Ausverkauf {wr:.1%} · 5 Plätze"] = run(wr, 0.01, 5, prios["zufällig"])
+    for sl in (5, 6, 8):
+        fine[f"2 % / 1 % · {sl} Plätze"] = run(0.02, 0.01, sl, prios["zufällig"])
+    for name, pr in prios.items():
+        fine[f"2 % / 1 % · 5 Plätze · {name}"] = run(0.02, 0.01, 5, pr)
+    out["fine"] = fine
     return out
 
 
