@@ -545,9 +545,9 @@ def main(argv=None) -> int:
         with open(SITE / "briefing.json", "w", encoding="utf-8") as f:
             json.dump(brief, f, ensure_ascii=False, separators=(",", ":"))
     with open(SITE / "search.json", "w", encoding="utf-8") as f:
-        json.dump({"generated": out["generated"], "fx_eur": fx,
-                   "rows": sorted(search.values(), key=lambda r: r["n"].lower())},
-                  f, ensure_ascii=False, separators=(",", ":"))
+        json.dump(_clean({"generated": out["generated"], "fx_eur": fx,     # NaN → null: sonst kann der Browser die Datei nicht lesen
+                          "rows": sorted(search.values(), key=lambda r: r["n"].lower())}),
+                  f, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     # Termine: Einzelabfrage (.info) zuerst, sonst aus dem Screener (Universum-Liste)
     dated = {}
     for r in rows:
