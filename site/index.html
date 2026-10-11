@@ -3256,7 +3256,7 @@ const einTag = r => r.tr === 2 ? `<i class="st trend">Trend Top</i>` : r.tr === 
 function einSetup(r) {
   if (r.tr === 2) return { k: "top", tone: "green", title: "Trend-Rücksetzer · Top", sub: "Das stärkste Setup im 6-Jahres-Test – hier lohnt sich der Einstieg am meisten.", plan: r.tp };
   if (r.tr === 1) return { k: "trend", tone: "green", title: "Trend-Rücksetzer", sub: "Aufwärtstrend mit kurzer Verschnaufpause an der EMA 50 – im Test deutlich besser als Kairo.", plan: r.tp };
-  if (r.s === "hit") return { k: "kairo", tone: "yellow", title: `Kairo-Treffer${r.sc ? " · Score " + r.sc : ""}`, sub: "Umkehr nach einer Korrektur. Laut Strategie nur bei grüner Marktampel (Ausverkauf) traden – dann die stärkste Kombination der Studie.", plan: r.kp };
+  if (r.s === "hit") return { k: "kairo", tone: "yellow", title: `Kairo-Treffer${r.sc ? " · Score " + r.sc : ""}`, sub: "Umkehr nach einer Korrektur – das Setup deiner Strategie. Bei grüner Marktampel (Ausverkauf) mit doppeltem Risiko.", plan: r.kp };
   if (r.s === "fast") return { k: "fast", tone: "yellow", title: "Kairo Fast-Treffer", sub: `Es fehlt noch: ${(r.km || []).map(k => SHORT[k] || k).join(", ") || "–"}. Laut Strategie auslassen – Fast-Treffer machten im Depot-Test jede Variante schlechter.`, plan: null };
   return { k: "none", tone: "gray", title: "Kein Einstiegs-Setup", sub: "Weder Trend-Rücksetzer noch Kairo-Treffer. Der Trade-Plan unten rechnet nur Stop, Größe und Hebel – für diese Aktie gibt es keinen getesteten Vorteil.", plan: null };
 }
@@ -3298,29 +3298,25 @@ const TP = { maxAtr: 3, minAtr: 0.5, kob: 1.0, spreadStock: 0.001, spreadTurbo: 
 // Ø netto je Trade in R (Kauf in der Basis, Kairo-Treffer): [alle Marktlagen, schwacher Markt (S&P 500 < EMA 200), gesunder Markt]
 const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52, -0.04], 20: [0.26, 0.67, 0.04] };
 // ---- Kairo-Strategie (Depot-Vergleich, backend/shortswing.py only=combo: 3.000 €, max. 3 Trades, 2021–2026, je 25 Reihenfolgen) ----
-// Sieger „M“: Marktampel grün (Ausverkauf) → nur volle Kairo-Treffer, 1,5 % Risiko · sonst → nur Trend-Rücksetzer, 1 % ·
-// immer Kauf in der Seitwärtsphase, Stop = Basis-Tief − 0,25 ATR, 20 Handelstage, kein TP.
-// Median +29 % p. a. (10.–90. Perzentil +23 … +34 %), größter Rückgang ≈ 23 %. Zum Vergleich: alter Plan (Treffer+Fast, 10 T) ≈ +1 % p. a.
-// Fast-Treffer und jedes feste Kursziel machten jede Variante schlechter.
-const KMAX = { hold: 20, weakMult: 1.5 };
+// Nur volle Kairo-Treffer · Kauf in der Seitwärtsphase · Stop = Basis-Tief − 0,25 ATR · 20 Handelstage · kein TP ·
+// Risiko 2 % bei grüner Ampel (Ausverkauf), sonst 1 %. Median +39 % p. a. (10.–90. Perzentil +30 … +46 %), größter Rückgang ≈ 28 %.
+// Vergleich: immer 1 % +22 % · mit Trend-Rücksetzern +29 % · alter Plan (Treffer+Fast, 10 T) +1 %. Fast-Treffer und feste Kursziele
+// verschlechterten jede Variante. Mehr als 2 % würde den Rückgang weiter vergrößern – der Vorteil beruht auf wenigen Ausverkaufsphasen.
+const KMAX = { hold: 20, weakMult: 2 };
 const TP_EXIT = { hold: KMAX.hold };
 function kmFit(r, mk) {
-  const k = r.tr >= 1 ? "trend" : r.s === "hit" ? "hit" : r.s === "fast" ? "fast" : "none", weak = mk && mk.k === "weak";
-  const lbl = { trend: "Trend-Rücksetzer", hit: "Kairo-Treffer", fast: "Fast-Treffer", none: "Kein Setup" }[k];
-  if (k === "none") return { ok: false, k, tone: "gray", mult: 1, t: "Kein Setup der Strategie – nicht traden",
-    s: "Weder Kairo-Treffer noch Trend-Rücksetzer. Der Plan unten rechnet nur Stop und Größe – ein Vorteil ist nicht belegt." };
-  if (!mk) return { ok: k !== "fast", k, tone: "yellow", mult: 1, t: `${lbl} – Marktlage noch nicht geladen`,
-    s: "Regel: Kairo-Treffer nur im Ausverkauf (Ampel grün), Trend-Rücksetzer sonst. Fast-Treffer nie." };
+  const k = r.s === "hit" ? "hit" : r.s === "fast" ? "fast" : r.tr >= 1 ? "trend" : "none", weak = mk && mk.k === "weak";
+  if (k === "hit") return weak
+    ? { ok: true, k, tone: "green", mult: KMAX.weakMult, t: "A-Setup – Kairo-Treffer im Ausverkauf: traden",
+        s: `Die stärkste Phase der Strategie (im Test ≈ +0,5 bis +0,9 R je Trade). Risiko ×${fmt(KMAX.weakMult, 0)}.` }
+    : { ok: true, k, tone: "green", mult: 1, t: "Setup der Strategie – Kairo-Treffer: traden",
+        s: "Normales Risiko. Bei grüner Marktampel (Ausverkauf) verdoppelt der Plan das Risiko – dann läuft die Strategie am besten." };
   if (k === "fast") return { ok: false, k, tone: "red", mult: 1, t: "Auslassen – Fast-Treffer",
-    s: "Im Depot-Test machten Fast-Treffer jede Strategie schlechter: Sie belegen Plätze, die bessere Trades bekommen sollten." };
-  if (weak && k === "hit") return { ok: true, k, tone: "green", mult: KMAX.weakMult, t: "A-Setup – Kairo-Treffer im Ausverkauf: traden",
-    s: `Die stärkste Kombination der Studie (im Test ≈ +0,5 bis +0,9 R je Trade). Risiko ×${fmt(KMAX.weakMult, 1)}.` };
-  if (weak) return { ok: false, k, tone: "yellow", mult: 1, t: "Auslassen – im Ausverkauf nur Kairo-Treffer",
-    s: "Solange die Ampel grün ist, gehören die Plätze den Kairo-Treffern – die bringen in dieser Phase am meisten." };
-  if (k === "trend") return { ok: true, k, tone: "green", mult: 1, t: "Setup der Strategie – Trend-Rücksetzer: traden",
-    s: "Außerhalb des Ausverkaufs der beste Baustein (Depot-Test: allein ≈ +21 % pro Jahr bei kleinem Rückgang)." };
-  return { ok: false, k, tone: "red", mult: 1, t: "Auslassen – Kairo-Treffer nur im Ausverkauf",
-    s: "Bei gelber/grauer Ampel brachten Kairo-Reversals im Test ≈ 0. Warte auf die grüne Ampel oder nimm einen Trend-Rücksetzer." };
+    s: "Im Depot-Test machten Fast-Treffer jede Strategie schlechter: Sie belegen Plätze, die volle Treffer bekommen sollten." };
+  if (k === "trend") return { ok: false, k, tone: "gray", mult: 1, t: "Kein Teil deiner Strategie – Trend-Rücksetzer",
+    s: "Du handelst nur Kairo-Treffer. Der Plan unten ist nur zur Information." };
+  return { ok: false, k, tone: "gray", mult: 1, t: "Kein Setup – nicht traden",
+    s: "Kein Kairo-Treffer. Der Plan unten rechnet nur Stop und Größe – ein Vorteil ist nicht belegt." };
 }
 const TP_EXP_TREND = { 5: 0.07, 7: 0.07, 10: 0.07, 20: 0.07 };      // Trend-Rücksetzer, sofort gekauft (beste Haltedauer 5 Tage)
 const tpCfg = () => ({ depot: +state.tpDepot > 0 ? +state.tpDepot : 3000, risk: +state.tpRisk > 0 ? +state.tpRisk : 1,
@@ -3329,11 +3325,11 @@ const tpCfg = () => ({ depot: +state.tpDepot > 0 ? +state.tpDepot : 3000, risk: 
 function tpMarket() {
   const m = anaData && anaData.market, s = m && m["^GSPC"], v = m && m["^VIX"] ? m["^VIX"].c : null;
   if (!s) return null;
-  if (!s.above200 || (v != null && v >= 25)) return { k: "weak", tone: "green", t: "grün · Ausverkauf – Kairo-Treffer traden",
+  if (!s.above200 || (v != null && v >= 25)) return { k: "weak", tone: "green", t: "grün · Ausverkauf – Kairo-Treffer mit doppeltem Risiko",
     s: `S&P 500 ${s.above200 ? "über" : "unter"} EMA 200${v != null ? `, VIX ${fmt(v, 0)}` : ""}.` };
-  if (!s.above50 || (v != null && v >= 20)) return { k: "mixed", tone: "yellow", t: "gelb · angeschlagen – Trend-Rücksetzer traden",
+  if (!s.above50 || (v != null && v >= 20)) return { k: "mixed", tone: "yellow", t: "gelb · angeschlagen – normales Risiko",
     s: `S&P 500 ${s.above50 ? "über" : "unter"} EMA 50${v != null ? `, VIX ${fmt(v, 0)}` : ""}.` };
-  return { k: "strong", tone: "gray", t: "grau · gesunder Markt – Trend-Rücksetzer traden",
+  return { k: "strong", tone: "gray", t: "grau · gesunder Markt – normales Risiko",
     s: `S&P 500 über EMA 50/200${v != null ? `, VIX ${fmt(v, 0)}` : ""}.` };
 }
 const addBd = (d, n) => { const x = new Date(d); let k = 0; while (k < n) { x.setDate(x.getDate() + 1); if (x.getDay() % 6) k++; } return x; };
@@ -3413,7 +3409,7 @@ function tpInner(r, S) {
       <label>Kaufkurs (${cur})<input id="tpE" type="number" inputmode="decimal" step="any" value="${esc(ent || r.c)}" data-t="${esc(r.t)}"></label>
       <label>Kaufdatum<input id="tpD" type="date" value="${esc(dt || isoD(tpEntryDay()))}" data-t="${esc(r.t)}"></label></div>
     <div class="note" style="margin:4px 0 0">Vorgabe: letzter Schluss (${dateDE(String(data.generated).slice(0, 10))}). Schon gekauft? Echten Kurs und Datum eintragen – der Plan rechnet neu.</div>`;
-  const acct = `<details class="tp2-acc"><summary>Konto: ${eur(cfg.depot)} · Basisrisiko ${fmt(cfg.risk, 1)} % je Trade (Kairo-Treffer im Ausverkauf ×${fmt(KMAX.weakMult, 1)})</summary>
+  const acct = `<details class="tp2-acc"><summary>Konto: ${eur(cfg.depot)} · Basisrisiko ${fmt(cfg.risk, 1)} % je Trade (bei grüner Ampel ×${fmt(KMAX.weakMult, 0)})</summary>
       <div class="tp2-cfg" style="margin-top:8px"><label>Depot (€)<input id="tpDepot" type="number" inputmode="decimal" min="0" step="100" value="${esc(cfg.depot)}"></label>
       <label>Risiko je Trade (%)<input id="tpRisk" type="number" inputmode="decimal" min="0.1" max="5" step="0.1" value="${esc(cfg.risk)}"></label></div>
       <div class="note">Einmal einstellen, gilt für alle Pläne. Empfehlung: 1 % (so getestet). Höchstens 3 Trades gleichzeitig.</div></details>`;
