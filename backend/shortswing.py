@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import os
 import random
 import sys
 import time
@@ -397,6 +398,24 @@ def _quality(sets: dict) -> dict:
     return out
 
 
+TP_TARGETS = (None, ("R", 1.0), ("R", 1.5), ("R", 2.0), ("R", 2.5), ("R", 3.0), ("R", 4.0), ("R", 5.0), ("tp1",), ("ema20",))
+
+
+def _tp_study(sets: dict) -> dict:
+    """Ein festes Kursziel (Verkauf, sobald erreicht) gegen reinen Zeit-Ausstieg – Kauf in der Basis wie im Trade-Plan."""
+    out = {}
+    for k in ("hit", "fast"):
+        es = sets.get(k) or []
+        rows = {}
+        for hold in (10, 20):
+            for tgt in TP_TARGETS:
+                rule = {**QRULE, "hold": hold, "tgt": tgt}
+                x = run_rule(es, rule, ci=False)
+                rows[f"{hold}T {'kein Ziel' if not tgt else ' '.join(map(str, tgt))}"] = {p: _strip(x).get(p) for p in ("train", "val", "test", "all")}
+        out[k] = rows
+    return out
+
+
 def main(argv=None) -> int:
     paths = (argv or sys.argv[1:])
     t0 = time.time()
@@ -426,6 +445,13 @@ def main(argv=None) -> int:
     report = {"generated": time.strftime("%Y-%m-%d"), "n": {k: len(v) for k, v in sets.items()},
               "range": [min(e["d"] for e in ev), max(e["d"] for e in ev)],
               "split": {"train": f"bis {TRAIN_END}", "val": f"{TRAIN_END} – {VAL_END}", "test": f"ab {VAL_END}"}}
+
+    if os.environ.get("SS_ONLY") == "tp":                  # nur der Kursziel-Vergleich (schneller Lauf)
+        report["tp"] = _tp_study(sets)
+        print("===BEGIN===")
+        print(json.dumps(report, ensure_ascii=False, separators=(",", ":"), default=str))
+        print("===END===")
+        return 0
 
     # 1) Rohe Vorwärtsrenditen ab Eröffnung des Folgetags (ohne Regeln): gibt es überhaupt einen Vorsprung?
     fwd = {}
