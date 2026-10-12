@@ -568,9 +568,9 @@ def _combo(sets: dict) -> dict:
         "Support-Zone zuerst": lambda e: 1 if e.get("zone") == "Support" else 0,
     }
     fine = {}
-    def run(weak_rk, other_rk, slots, prio):
+    def run(weak_rk, other_rk, slots, prio, hold=20, keep=lambda e: True):
         tr = [(d_in, sm["net"], sm["d"], weak_rk if _regime(mk, e["d"]) == "weak" else other_rk, prio(e))
-              for e, sm, d_in in rows20 if _regime(mk, e["d"])]
+              for e, sm, d_in in (hs.get(hold) or []) if _regime(mk, e["d"]) and keep(e)]
         runs = [_depot(tr, max_open=slots, seed=sd) for sd in range(25)]
         cg, md = sorted(x["cagr"] for x in runs), sorted(x["mdd"] for x in runs)
         return {"cagr_median": cg[12], "cagr_p10": cg[2], "cagr_p90": cg[22], "mdd_median": md[12], "mdd_p90": md[22],
@@ -582,6 +582,16 @@ def _combo(sets: dict) -> dict:
         fine[f"2 % / 1 % · {sl} Plätze"] = run(0.02, 0.01, sl, prios["zufällig"])
     for name, pr in prios.items():
         fine[f"2 % / 1 % · 5 Plätze · {name}"] = run(0.02, 0.01, 5, pr)
+    # 5) Kombinationen mit der Siegerregel „ruhigste zuerst“: Haltedauer × Plätze × Risiko, nur ruhige Treffer
+    calm = prios["geringste Schwankung zuerst"]
+    atrp = lambda e: (e.get("f") or {}).get("atrp") or 1
+    for hold in (20, 30, 40):
+        for sl in (4, 5, 6, 8):
+            fine[f"ruhigste zuerst · {hold} T · {sl} Plätze · 2 %/1 %"] = run(0.02, 0.01, sl, calm, hold)
+    for wr in (0.015, 0.025, 0.03):
+        fine[f"ruhigste zuerst · 20 T · 5 Plätze · {wr:.1%}/1 %"] = run(wr, 0.01, 5, calm)
+    for cap in (0.025, 0.03, 0.035, 0.04):
+        fine[f"ruhigste zuerst · 20 T · 5 Plätze · nur ATR < {cap:.1%}"] = run(0.02, 0.01, 5, calm, 20, lambda e, c=cap: atrp(e) < c)
     out["fine"] = fine
     return out
 
