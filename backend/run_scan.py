@@ -376,7 +376,7 @@ def main(argv=None) -> int:
     ins = None
     if not args.end:
         try:
-            ins = insider.fetch()
+            ins = insider.fetch(watch=watch)
             print(f"Insider: {ins['filings']} Meldungen, {len(ins['buys'])} Käufe, {len(ins['sells'])} Verkäufe")
         except Exception as exc:
             print(f"Insider: Fehler {exc!r}")
