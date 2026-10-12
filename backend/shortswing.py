@@ -185,6 +185,9 @@ def simulate(px: dict, r: dict) -> dict | None:
         if n_held >= hold:
             exit_, day, why = c[j], n_held, "zeit"
             break
+        if r.get("d5") is not None and n_held == r.get("d5_day", 5) and R(c[j]) < r["d5"]:   # keine Anschlussbewegung → raus
+            exit_, day, why = c[j], n_held, "tag5"
+            break
         if r.get("wkend") and _last_of_week(wd, j + 1):              # wd[0] = Signaltag → Tag j ist wd[j + 1]
             exit_, day, why = c[j], n_held, "wochenende"
             break
@@ -810,6 +813,27 @@ def _truth(sets: dict) -> dict:
     out["leverage_wf"] = {"jetzt (bis 10×, 2 %/1 %)": split(trades("hit", "turbo", 20, R)),
                           "kleinster Hebel, 2 %/1 %": split(ltrades((1, 2, 3, 5, 10))),
                           "kleinster Hebel, nur Ausverkauf 2 %": split(ltrades((1, 2, 3, 5, 10), other=0.0, mixed=0.0))}
+    # 4c) Ausstieg an Tag 5 ohne Anschlussbewegung (ChatGPT-Vorschlag) und kleinere Risiken
+    def xtrades(rule_extra, weak=0.02, other=0.01, mixed=None):
+        tr = []
+        rule = {**QRULE, "hold": 20, "levs": [10, 5, 3, 1], "kob": 1.0, **rule_extra}
+        for x in sims.get(("hit", "turbo", 20)) or []:
+            if not x["rg"]:
+                continue
+            sm = simulate(x["e"]["px"], rule)
+            rk = weak if x["rg"] == "weak" else (mixed if (mixed is not None and x["rg"] == "mixed") else other)
+            if sm and "skip" not in sm and rk > 0:
+                tr.append({"d": x["d"], "sm": sm, "rk": rk, "prio": R(x["e"])})
+        return tr
+    out["exit_risk"] = {
+        "Tag 5: raus wenn im Minus": run(xtrades({"d5": 0.0})),
+        "Tag 5: raus wenn unter −0,5 R": run(xtrades({"d5": -0.5})),
+        "Tag 3: raus wenn im Minus": run(xtrades({"d5": 0.0, "d5_day": 3})),
+        "Risiko 1 % Ausverkauf / 0,5 % sonst": run(trades("hit", "turbo", 20, R, weak=0.01, other=0.005)),
+        "Risiko 1,5 % Ausverkauf / 0,5 % sonst": run(trades("hit", "turbo", 20, R, weak=0.015, other=0.005)),
+        "Risiko 2 % Ausverkauf / 0,5 % sonst": run(trades("hit", "turbo", 20, R, weak=0.02, other=0.005)),
+        "3 Plätze, 2 %/1 %": run(trades("hit", "turbo", 20, R), slots=3),
+    }
     # 5) Walk-forward: auf 2017–2023 wählen, auf 2024–2026 prüfen (getrennte Depots mit je 3.000 €)
     wf = {}
     for pn, pf in prios.items():
