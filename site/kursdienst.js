@@ -27,8 +27,8 @@ export default {
 };
 
 // Quellen nacheinander, bis jede Aktie einen Kurs hat:
-// 1) Yahoo Sammelabruf (spark) · 2) Yahoo einzeln (chart) · 3) Yahoo mit Anmelde-Cookie (quote) · 4) Stooq (CSV)
-// Ohne Browser-Kennung – die beantwortet Yahoo mit 429.
+// 1) Yahoo Sammelabruf (spark) · 2) Yahoo einzeln (chart) – beide ohne Browser-Kennung (sonst 429)
+// 3) Yahoo mit Anmelde-Cookie + Crumb (quote) – wie yfinance, mit Browser-Kennung
 async function quotes(syms, ctx, diag) {
   const cache = caches.default, out = {}, miss = [];
   const log = (src, st) => { if (diag) diag.push(`${src}: ${st}`); };
@@ -59,7 +59,6 @@ async function quotes(syms, ctx, diag) {
       }
     }
     if (todo().length) await crumbQuotes(todo(), out, log);                   // 3) quote mit Cookie + Crumb
-    if (todo().length) await stooq(todo(), out, log);                         // 4) Stooq
     for (const s of miss) if (out[s]) ctx.waitUntil(cache.put(key(s), new Response(JSON.stringify(out[s]), { headers: { "Cache-Control": "max-age=20" } })));
   }
   for (const s of syms) if (!(s in out)) out[s] = null;
@@ -68,15 +67,16 @@ async function quotes(syms, ctx, diag) {
 
 async function crumbQuotes(syms, out, log) {
   try {
-    const c = await fetch("https://fc.yahoo.com/", { redirect: "manual" });
+    const UA = { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15" };
+    const c = await fetch("https://fc.yahoo.com/", { redirect: "manual", headers: UA });
     const cookie = (c.headers.get("set-cookie") || "").split(";")[0];
     log("cookie", cookie ? "ok" : "keins (" + c.status + ")");
     if (!cookie) return;
-    const cr = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", { headers: { cookie } });
+    const cr = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", { headers: { ...UA, cookie } });
     const crumb = cr.ok ? (await cr.text()).trim() : "";
     log("crumb", cr.status);
     if (!crumb) return;
-    const r = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms.map(encodeURIComponent).join(",")}&crumb=${encodeURIComponent(crumb)}`, { headers: { cookie } });
+    const r = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms.map(encodeURIComponent).join(",")}&crumb=${encodeURIComponent(crumb)}`, { headers: { ...UA, cookie } });
     log("quote", r.status);
     if (!r.ok) return;
     for (const q of ((await r.json()).quoteResponse || {}).result || []) {
@@ -84,29 +84,6 @@ async function crumbQuotes(syms, out, log) {
         h: q.regularMarketDayHigh ?? null, l: q.regularMarketDayLow ?? null, t: (q.regularMarketTime || 0) * 1000, cur: q.currency || null };
     }
   } catch (e) { log("quote", "Fehler " + e); }
-}
-
-// Stooq: kostenlose Kurse (leicht verzögert). Endungen umgesetzt: AAPL → aapl.us, 7203.T → 7203.jp, VOD.L → vod.uk
-const STQ = { DE: "de", F: "de", L: "uk", T: "jp", HK: "hk", PA: "fr", AS: "nl", MC: "es", MI: "it", SW: "ch", ST: "se", HE: "fi", CO: "dk", OL: "no", BR: "be", VI: "at", WA: "pl" };
-async function stooq(syms, out, log) {
-  const map = {};
-  for (const s of syms) {
-    const m = s.match(/^(.*)\.([A-Z]+)$/);
-    const st = !m ? s.replace("-", ".") + ".us" : STQ[m[2]] ? (m[2] === "HK" ? String(+m[1]) : m[1]) + "." + STQ[m[2]] : null;
-    if (st) map[st.toLowerCase()] = s;
-  }
-  const list = Object.keys(map);
-  if (!list.length) return;
-  try {
-    const r = await fetch(`https://stooq.com/q/l/?s=${list.join("+")}&f=sd2t2ohlcp&h&e=csv`);
-    log("stooq", r.status);
-    if (!r.ok) return;
-    for (const line of (await r.text()).trim().split("\n").slice(1)) {
-      const [sym, d, t, o, h, l, c, p] = line.split(",");
-      const orig = map[(sym || "").toLowerCase()];
-      if (orig && +c > 0) out[orig] = { c: +c, pc: +p > 0 ? +p : null, h: +h || null, l: +l || null, t: null, cur: null, src: "stooq" };   // Stooq-Zeit ist Börsen-Ortszeit – nicht umrechnen
-    }
-  } catch (e) { log("stooq", "Fehler " + e); }
 }
 
 const key = s => new Request("https://kairo-kurse.cache/" + s);
