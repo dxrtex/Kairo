@@ -3635,6 +3635,8 @@ document.addEventListener("click", async e => {
   if (yq) { const j = await fetch(yq + "/?s=SAP.DE,7203.T").then(r => r.json()).catch(() => null), q = j && j["SAP.DE"], q2 = j && j["7203.T"];
     res.push(q && q.c > 0 ? `✓ Kursdienst: SAP ${fmt(q.c)} EUR (XETRA)${q2 && q2.c > 0 ? ` · Toyota ${fmt(q2.c, 0)} JPY` : ""}`
       : j ? `✗ Kursdienst erreichbar, aber ohne Kurs${/Version 2/.test(JSON.stringify(j)) ? "" : " – bitte den neuen Code (Version 2) einfügen und „Deploy“"} · Diagnose: ${await fetch(yq + "/?s=SAP.DE&debug=1").then(r => r.json()).then(d => (d._diag || []).join(" · ") || "alter Code ohne Diagnose").catch(() => "–")}` : "✗ Kursdienst: keine Antwort – Adresse prüfen (https://….workers.dev) und ob der Code mit „Deploy“ gespeichert ist"); }
+  // Läuft der Kursdienst, ist fehlendes XETRA bei Twelve Data egal → nur noch als Hinweis
+  if (res.some(x => x.startsWith("✓ Kursdienst"))) res.forEach((x, i) => { if (x.startsWith("✗ Twelve Data: XETRA")) res[i] = "ℹ Twelve Data: XETRA nicht im Gratis-Tarif – egal, deutsche/europäische Kurse kommen über deinen Kursdienst"; });
   if (msg) msg.innerHTML = `<div class="tip tone-${res.some(x => x.startsWith("✗")) ? "yellow" : "green"}" style="margin-top:10px">${res.map(esc).join("<br>") || "Schlüssel gelöscht – Kurse wieder vom Abendscan."}</div>`;
 });
 // Deutsche Aktien: Handelsplatz für den Chart wählbar – XETRA ist im eingebetteten Chart ca. 15 Min. verzögert,
