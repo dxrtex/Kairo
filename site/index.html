@@ -379,6 +379,14 @@
   .tp2-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 2px 0 0; }
   .tp2-cmp > div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid; gap: 2px; }
   .tp2-cmp span { font-size: 12px; color: var(--muted); font-weight: 600; } .tp2-cmp b { font-size: 20px; } .tp2-cmp em { font-style: normal; font-size: 12px; color: var(--muted); }
+  .live-btn { font: inherit; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--accent); cursor: pointer; white-space: nowrap; }
+  .live-btn.spin { opacity: .5; pointer-events: none; } .live-btn.spin::before { content: "… "; }
+  td .live-btn { padding: 2px 7px; font-size: 11px; margin-left: 4px; }
+  .live-tag { font-size: 11px; font-weight: 700; color: var(--up); white-space: nowrap; } .live-dot { color: var(--up); font-size: 9px; }
+  .live-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: -4px 2px 10px; font-size: 12px; }
+  .ein-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .tvbox summary { cursor: pointer; list-style: none; } .tvbox iframe { width: 100%; height: 420px; border: 0; border-radius: 12px; margin-top: 8px; background: var(--surface-2); }
+  @media (max-width: 560px) { .tvbox iframe { height: 320px; } }
   .tp2-plan { margin-top: 12px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
   .tp2-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; padding: 10px 14px; border-top: 1px solid var(--line); }
   .tp2-row:first-child { border-top: 0; }
@@ -1375,7 +1383,7 @@ function card(r) {
     <div class="scorebox" hidden>${scoreBoxHtml(r)}</div>
     <div class="figures">
       <div class="fig"><span>Rückgang</span><b class="${(r.drawdown ?? 0) >= 0 ? "down" : "up"}">${ddFmt(r.drawdown, 0)}</b></div>
-      <div class="fig"><span>Kurs</span><b>${fmt(r.close)}</b></div>
+      <div class="fig"><span>Kurs${r.live ? " · live" : ""}</span><b>${fmt(r.close)}</b></div>
       <div class="fig"><span>CRV</span><b class="${(r.crv ?? 0) >= 2 ? "up" : "muted"}">${fmt(r.crv, 1)}</b></div>
       <div class="fig"><span>Börsenwert</span><b>${fmtCap(r.market_cap_usd)}</b></div>
     </div>
@@ -1389,6 +1397,7 @@ function card(r) {
     <div class="actions">
       <button class="btn" data-open="${esc(r.ticker)}">Details &amp; Chart</button>
       <a class="btn ghost" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">TradingView</a>
+      ${liveBtn(r.ticker)}${liveTag(r.ticker)}
     </div>
   </article>`;
 }
@@ -1498,7 +1507,7 @@ const COLS = [
   { k: "grade", l: "Stufe", g: r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0, h: r => gradeBadge(r) || `<span class="muted">–</span>` },
   { k: "exchange", l: "Börse", g: r => r.exchange, h: r => esc(r.exchange) },
   { k: "cap", l: "Market Cap", n: 1, g: r => r.market_cap_usd ?? 0, h: r => fmtCap(r.market_cap_usd) },
-  { k: "close", l: "Kurs", n: 1, g: r => r.close, h: r => fmt(r.close) },
+  { k: "close", l: "Kurs", n: 1, g: r => r.close, h: r => `${fmt(r.close)}${r.live ? ' <span class="live-dot" title="live">●</span>' : ""} ${liveBtn(r.ticker)}` },
   { k: "tgt", l: "Analysten-Ziel", n: 1, g: r => tgtUp(r) ?? -9, h: r => { const t = r.senti && r.senti.tgt, u = tgtUp(r);
     return u == null ? `<span class="muted">–</span>` : `<b class="${u >= 0 ? "up" : "down"}">${u >= 0 ? "+" : ""}${pct(u, 0)}</b><small style="display:block" class="muted">Ø ${fmt(t.m)}${r.senti.an && r.senti.an.n ? ` · ${r.senti.an.n} Anal.` : ""}</small>`; } },
   { k: "dd", l: "Rückgang", n: 1, g: r => r.drawdown ?? 0, h: r => `<span class="${(r.drawdown ?? 0) >= 0 ? "down" : "up"}">${ddFmt(r.drawdown)}</span>` },
@@ -1684,7 +1693,11 @@ function depotHtml() {
     return { p, i, r, cur, nowEur, val, cost };
   });
   const gv = wert - einstand;
-  const head = `<div class="section-title"><span>Mein Depot</span><span>${list.length} Positionen</span></div>`;
+  liveKick(list.map(p => p.t), "depot");
+  const nLive = list.filter(p => p.t && LIVE.map[p.t]).length;
+  const head = `<div class="section-title"><span>Mein Depot</span><span>${list.length} Positionen</span></div>
+    <div class="live-bar">${liveOn() ? `${nLive ? `<span class="live-tag">● ${nLive} von ${list.filter(p => p.t).length} live · aktualisiert alle 60 s</span>` : `<span class="muted">Live-Kurse werden geladen …</span>`}<button class="live-btn" data-liveall="depot">↻ Alle aktualisieren</button>`
+      : `<span class="muted">Kurse vom Abendscan. Für Echtzeit: Einstellungen → Live-Kurse.</span>`}</div>`;
   const sum = list.length && valued ? `<div class="dep-sum">
       <div class="fig"><span>Depotwert${valued < list.length ? " (ohne Zertifikate)" : ""}</span><b>${fmt(wert)} €</b></div>
       <div class="fig"><span>Einstand</span><b>${fmt(einstand)} €</b></div>
@@ -3241,7 +3254,14 @@ function settingsHtml() {
   const groups = Object.entries(CFG_LABELS).filter(([k]) => cfg[k]).map(([k, label]) =>
     `<h4>${label}</h4><div class="table-wrap"><table><tbody>${Object.entries(cfg[k]).map(([p, v]) =>
       `<tr><td>${esc(p)}</td><td class="num">${esc(Array.isArray(v) ? v.join(" – ") : typeof v === "number" ? fmt(v, Number.isInteger(v) ? 0 : 3) : v)}</td></tr>`).join("")}</tbody></table></div>`).join("");
-  return `<div class="section-title"><span>Persönlich</span><span>nur auf diesem Gerät</span></div>
+  return `<div class="section-title"><span>Live-Kurse</span><span>${liveOn() ? "aktiv" : "aus"}</span></div>
+    <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
+      <label>Finnhub-Schlüssel <small>(US-Aktien in Echtzeit · kostenlos auf finnhub.io)</small><input id="kxFh" type="password" autocomplete="off" value="${esc(liveKey("fh"))}" placeholder="z. B. c1abc…"></label>
+      <label>Twelve-Data-Schlüssel <small>(Europa/Asien + Tageskerzen für jede Aktie · kostenlos auf twelvedata.com)</small><input id="kxTd" type="password" autocomplete="off" value="${esc(liveKey("td"))}" placeholder="z. B. 9f2e…"></label>
+      <div class="row-actions"><button class="btn" data-kxsave="1">Speichern &amp; testen</button></div>
+      <div class="note">Die Schlüssel bleiben nur auf diesem Gerät – nicht im Backup, nicht auf GitHub. Der große Scan bleibt einmal täglich; live geladen werden nur die Aktien, die du öffnest, dein Depot und deine offenen Trades.</div>
+      <div id="kxMsg"></div></div></div>
+    <div class="section-title"><span>Persönlich</span><span>nur auf diesem Gerät</span></div>
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
       <label class="full">Wie soll Kairo dich nennen?<input id="cfgName" value="${esc(state.name || "")}" placeholder="z. B. Jonny" maxlength="24" autocomplete="given-name"></label></div>
       <div class="note">Erscheint in der Begrüßung oben („Guten Abend, ${esc(state.name || "…")}“). Leer lassen = ohne Namen.</div>
@@ -3307,7 +3327,97 @@ function einTrendCheck(r) {
   return `<ul class="checks">${rows.map(([ok, l, v, hint]) => `<li><i class="${ok ? "up" : "down"}">${ok ? "✓" : "✗"}</i><b>${l}:</b> ${esc(v)}${!ok && hint ? `<small style="display:block" class="muted">${esc(hint)}</small>` : ""}</li>`).join("")}
     ${top.map(([ok, l, v]) => `<li><i class="${ok ? "up" : "muted"}">${ok ? "★" : "·"}</i><b>${l}:</b> ${esc(v)}</li>`).join("")}</ul>`;
 }
+// ---------- Echtzeit-Kurse (direkt vom iPad; Schlüssel nur lokal – nie im Repo, nicht im Backup) ----------
+// US-Aktien: Finnhub (kostenlos, Echtzeit, 60 Abfragen/Min.) · andere Börsen und Tageskerzen: Twelve Data (kostenlos, 8/Min., 800/Tag).
+// Ein Live-Kurs ersetzt im Speicher den Schlusskurs der Aktie – Trade-Plan, Scanner, Depot und Trades rechnen damit automatisch.
+const LIVE = { map: {}, busy: new Set(), ttl: 30e3 };
+const liveKey = k => { try { return localStorage.getItem("kx-" + k) || ""; } catch (e) { return ""; } };
+const liveOn = () => !!(liveKey("fh") || liveKey("td"));
+const isUS = t => !/\.[A-Z]+$/.test(t);
+function tdSymbol(t) {
+  const m = t.match(/^(.*)\.([A-Z]+)$/); if (!m) return { symbol: t.replace("-", ".") };
+  const ex = { DE: "XETR", F: "FSX", L: "LSE", PA: "Euronext", AS: "Euronext", BR: "Euronext", LS: "Euronext", SW: "SIX", MI: "MTA", MC: "BME", VI: "VSE",
+               ST: "OMX", CO: "OMXC", HE: "OMXH", OL: "OSE", TO: "TSX", HK: "HKEX", T: "JPX", AX: "ASX", NS: "NSE", KS: "KRX", SI: "SGX" }[m[2]];
+  return ex ? { symbol: m[2] === "HK" ? m[1].replace(/^0+/, "") : m[1], exchange: ex } : null;
+}
+async function liveFetch(t) {
+  const fh = liveKey("fh"), td = liveKey("td");
+  if (isUS(t) && fh) {
+    const j = await (await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t.replace("-", "."))}&token=${encodeURIComponent(fh)}`)).json();
+    if (j && j.c > 0) return { c: +j.c, pc: +j.pc || null, h: +j.h, l: +j.l, ts: (j.t || 0) * 1000 || Date.now(), src: "Finnhub" };
+  }
+  const sy = td && tdSymbol(t);
+  if (sy) {
+    const j = await (await fetch("https://api.twelvedata.com/quote?" + new URLSearchParams({ ...sy, apikey: td }))).json();
+    const c = parseFloat(j && j.close);
+    if (c > 0) return { c, pc: parseFloat(j.previous_close) || null, h: parseFloat(j.high), l: parseFloat(j.low), ts: (j.timestamp || 0) * 1000 || Date.now(), src: "Twelve Data" };
+  }
+  return null;
+}
+async function liveQuote(t, force) {
+  const o = LIVE.map[t];
+  if (!force && o && Date.now() - o.at < LIVE.ttl) return o;
+  if (LIVE.busy.has(t)) return o;
+  LIVE.busy.add(t);
+  try { const q = await liveFetch(t); if (q) { q.at = Date.now(); LIVE.map[t] = q; liveApply(t, q); } return q; }
+  catch (e) { return null; } finally { LIVE.busy.delete(t); }
+}
+function liveApply(t, q) {
+  const r = rowOf(t);
+  if (r) { if (r.c0 == null) r.c0 = r.c; r.c = q.c; if (q.pc) r.d1 = q.c / q.pc - 1; r.live = q.at; }
+  const x = data && data.results && data.results.find(y => y.ticker === t);
+  if (x) { if (x.close0 == null) x.close0 = x.close; x.close = q.c; x.live = q.at; }
+}
+async function liveMany(ts) { const out = []; for (const t of [...new Set(ts)]) out.push(await liveQuote(t)); return out.filter(Boolean).length; }
+const liveTime = t => { const q = LIVE.map[t]; return q ? new Date(q.ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : ""; };
+const liveTag = t => LIVE.map[t] ? `<span class="live-tag" title="Live-Kurs von ${esc(LIVE.map[t].src)}">● Live ${liveTime(t)}</span>` : "";
+const liveBtn = t => `<button class="live-btn" data-live="${esc(t)}" title="Nur diese Aktie mit dem aktuellen Kurs aktualisieren">↻ Live</button>`;
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-live]"); if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  if (!liveOn()) { alert("Für Live-Kurse einmal einen kostenlosen Schlüssel eintragen: Einstellungen → Live-Kurse."); return; }
+  b.classList.add("spin"); const q = await liveQuote(b.dataset.live, true); b.classList.remove("spin");
+  if (!q) { alert("Für diese Aktie gibt es gerade keinen Live-Kurs (Börse vom Anbieter nicht abgedeckt oder Abfrage-Limit erreicht)."); return; }
+  render();
+});
+// Depot und offene Trades: alle 60 s nachladen, solange der Reiter offen und die App sichtbar ist
+setInterval(() => {
+  if (!liveOn() || document.visibilityState !== "visible" || !searchIdx) return;
+  const ts = state.sec === "depot" ? depotLoad().map(p => p.t).filter(Boolean) : state.sec === "entry" ? [...plansLoad().filter(p => p.st === "open").map(p => p.t), state.einT].filter(Boolean) : [];
+  if (ts.length) liveMany(ts).then(n => { if (n) render(); });
+}, 60e3);
+const liveStale = ts => ts.filter(t => { const o = LIVE.map[t]; return !o || Date.now() - o.at > LIVE.ttl; });
+function liveKick(ts, sec) {                                  // veraltete Kurse nachladen und einmal neu zeichnen
+  const st = liveOn() ? liveStale([...new Set(ts.filter(Boolean))]) : [];
+  if (st.length) liveMany(st).then(n => { if (n && state.sec === sec) render(); });
+}
+document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("tvbox")) { state.tvOpen = e.target.open; save(); } }, true);
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-liveall]"); if (!b) return;
+  if (!liveOn()) { alert("Für Live-Kurse einmal einen kostenlosen Schlüssel eintragen: Einstellungen → Live-Kurse."); return; }
+  b.classList.add("spin"); Object.values(LIVE.map).forEach(v => { v.at = 0; });
+  await liveMany(depotLoad().map(p => p.t).filter(Boolean)); b.classList.remove("spin"); render();
+});
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-kxsave]"); if (!b) return;
+  const fh = ($("kxFh").value || "").trim(), td = ($("kxTd").value || "").trim(), msg = $("kxMsg");
+  try { fh ? localStorage.setItem("kx-fh", fh) : localStorage.removeItem("kx-fh"); td ? localStorage.setItem("kx-td", td) : localStorage.removeItem("kx-td"); } catch (err) {}
+  LIVE.map = {};
+  const res = [];
+  if (fh) { const q = await liveFetch("AAPL").catch(() => null); res.push(q ? `✓ Finnhub: Apple ${fmt(q.c)} USD` : "✗ Finnhub: keine Antwort – Schlüssel prüfen"); }
+  if (td) { const q = await liveFetch("SAP.DE").catch(() => null); res.push(q ? `✓ Twelve Data: SAP ${fmt(q.c)} EUR` : "✗ Twelve Data: keine Antwort – Schlüssel prüfen (oder Börse im kostenlosen Tarif nicht enthalten)"); }
+  if (msg) msg.innerHTML = `<div class="tip tone-${res.some(x => x.startsWith("✗")) ? "yellow" : "green"}" style="margin-top:10px">${res.map(esc).join("<br>") || "Schlüssel gelöscht – Kurse wieder vom Abendscan."}</div>`;
+});
+const tvSym = t => { try { return new URL(tvUrl(t)).searchParams.get("symbol"); } catch (e) { return t; } };
+function tvChartHtml(t) {
+  const src = "https://s.tradingview.com/widgetembed/?" + new URLSearchParams({ symbol: tvSym(t), interval: "D", theme: isLight() ? "light" : "dark", style: "1",
+    locale: "de_DE", timezone: "Europe/Berlin", hide_side_toolbar: "1", allow_symbol_change: "0", saveimage: "0", withdateranges: "1", studies: "[]" });
+  return `<details class="hcard tvbox"${state.tvOpen === false ? "" : " open"}><summary class="plan-h">Live-Chart · TradingView</summary>
+    <iframe src="${src}" loading="lazy" title="Live-Chart ${esc(t)}" allowtransparency="true" frameborder="0" scrolling="no"></iframe>
+    <div class="note" style="margin:6px 0 0">Echtzeit bzw. leicht verzögert je nach Börse. Kerzen, Seitwärtsphase und Stop im Plan stammen aus dem Abendscan; den Kaufkurs rechnet der Plan live.</div></details>`;
+}
 function einPlanHtml(r) {
+  if (liveOn()) { const o = LIVE.map[r.t]; if (!o || Date.now() - o.at > LIVE.ttl) liveQuote(r.t).then(q => { if (q && state.sec === "entry" && state.einT === r.t) render(); }); }
   const S = einSetup(r), res = data.results.find(x => x.ticker === r.t), cur = esc(r.cur || "");
   const p = S.plan, c = r.c, atr = r.atr || (r.ap || 0) * c;
   const plan = tpHtml(r, S);
@@ -3315,9 +3425,10 @@ function einPlanHtml(r) {
   const warn = [days != null && days >= 0 && days <= 21 ? `⚠ Quartalszahlen am ${dateDE(r.ed)} (in ${days} Tagen) – Kurssprünge können den K.-o. überspringen.` : "",
     res && res.senti && res.senti.tgt ? `Analysten-Ziel Ø ${fmt(res.senti.tgt.m)} ${cur} (${sgnPct(res.senti.tgt.m / c - 1, 0)}).` : ""].filter(Boolean);
   return `<div class="hcard ein-head tone-${S.tone}">
-      <div class="ein-top"><div><h2>${favBtn(r.t)} ${esc(r.n)}</h2><div class="meta">${esc(r.t)} · ${esc(r.x || "")} · ${fmt(c)} ${cur} · Vola ${pct(r.vola, 0)}</div></div></div>
+      <div class="ein-top"><div><h2>${favBtn(r.t)} ${esc(r.n)}</h2><div class="meta">${esc(r.t)} · ${esc(r.x || "")} · ${fmt(c)} ${cur}${r.d1 != null ? ` <span class="${r.d1 >= 0 ? "up" : "down"}">${sgnPct(r.d1, 1)}</span>` : ""} · Vola ${pct(r.vola, 0)} ${liveTag(r.t)}</div></div>${liveBtn(r.t)}</div>
       <div class="ein-verdict"><b>${esc(S.title)}</b><span>${esc(S.sub)}</span></div>
       ${warn.length ? `<div class="note" style="margin:8px 0 0">${warn.map(esc).join("<br>")}</div>` : ""}</div>
+    ${tvChartHtml(r.t)}
     ${plan}
     <div class="hcard"><div class="plan-h">Trend-Rücksetzer · ${(r.tm || []).filter(Boolean).length}/3 erfüllt${r.tr === 2 ? " · Stufe Top" : ""}</div>${einTrendCheck(r)}</div>
     <div class="hcard"><div class="plan-h">Kairo-Setup · ${r.m ?? "–"}/11 erfüllt</div>
@@ -3497,7 +3608,7 @@ function tpInner(r, S) {
   const head = `<div class="tp2-cfg">
       <label>Kaufkurs Aktie (€)<input id="tpE" type="number" inputmode="decimal" step="any" value="${esc(entE || +(r.c * fx0).toFixed(2))}" data-t="${esc(r.t)}"></label>
       <label>Kaufdatum<input id="tpD" type="date" value="${esc(dt || isoD(tpEntryDay()))}" data-t="${esc(r.t)}"></label></div>
-    <div class="note" style="margin:4px 0 0">Vorgabe: letzter Schluss (${dateDE(String(data.generated).slice(0, 10))}). Schon gekauft? Echten Kurs und Datum eintragen – der Plan rechnet neu.${r.cur && r.cur !== "EUR" ? ` Alle Kurse in Euro (umgerechnet aus ${esc(r.cur)} zum aktuellen Devisenkurs).` : ""}</div>`;
+    <div class="note" style="margin:4px 0 0">Vorgabe: ${r.live ? `Live-Kurs ${liveTime(r.t)} Uhr` : `letzter Schluss (${dateDE(String(data.generated).slice(0, 10))})${liveOn() ? "" : " – für Live-Kurse Schlüssel in den Einstellungen eintragen"}`}. Schon gekauft? Echten Kurs und Datum eintragen – der Plan rechnet neu.${r.cur && r.cur !== "EUR" ? ` Alle Kurse in Euro (umgerechnet aus ${esc(r.cur)} zum aktuellen Devisenkurs).` : ""}</div>`;
   const acct = `<details class="tp2-acc"><summary>Konto: ${eur(cfg.depot)} · Basisrisiko ${fmt(cfg.risk, 1)} % je Trade (bei grüner Ampel ×${fmt(KMAX.weakMult, 0)})</summary>
       <div class="tp2-cfg" style="margin-top:8px"><label>Depot (€)<input id="tpDepot" type="number" inputmode="decimal" min="0" step="100" value="${esc(cfg.depot)}"></label>
       <label>Risiko je Trade (%)<input id="tpRisk" type="number" inputmode="decimal" min="0.1" max="5" step="0.1" value="${esc(cfg.risk)}"></label></div>
@@ -3576,6 +3687,7 @@ function tpStatus(p) {
 }
 function tpPlansHtml() {
   const l = plansLoad(), open = l.filter(p => p.st === "open"), done = l.filter(p => p.st === "closed");
+  liveKick(open.map(p => p.t), "entry");
   if (!l.length) return "";
   const row = p => { const r = rowOf(p.t), c = r ? r.c : null, s = tpStatus(p), pnl = c != null ? (c - p.E) / p.E * p.expo - p.cost : null;
     return `<div class="g-pos"><div class="g-pos-h"><button class="g-nm" data-ein="${esc(p.t)}"><b>${esc(p.n)}</b><small>${esc(p.t)} · ${p.L === 1 ? "Aktie" : `Turbo ×${p.L}`} · seit ${dateDE(p.d)} · verkaufen am ${dateDE(p.exit2 || p.exit)}</small></button>
