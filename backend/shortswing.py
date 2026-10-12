@@ -652,9 +652,21 @@ def _depot_real(trades: list[dict], start: float = 3000.0, max_open: int = 5, se
         for t in by_day.get(ds, []):                        # Käufe
             if len(open_) >= max_open or eq <= 0:
                 continue
+            amt, sm = eq * t["rk"], t["sm"]
+            if t.get("var"):                                 # kleinster Hebel, dessen Einsatz ins freie Kapital passt
+                free = eq - sum(p["stake"] for p in open_)
+                sm = None
+                for L in sorted(t["var"]):
+                    cand = t["var"][L]
+                    if amt / cand["rp"] / cand["lev"] <= free:
+                        sm = cand
+                        break
+                if sm is None:
+                    continue
             taken += 1
-            n = t["sm"]["d"]
-            open_.append({"start": day, "end": day + dt.timedelta(days=int(n * 7 / 5) + 1), "amt": eq * t["rk"], "sm": t["sm"]})
+            n = sm["d"]
+            open_.append({"start": day, "end": day + dt.timedelta(days=int(n * 7 / 5) + 1), "amt": amt, "sm": sm,
+                          "stake": amt / sm["rp"] / sm["lev"]})
         if mtm and day.weekday() < 5:                        # täglicher Depotwert mit offenen Trades
             val = eq
             for p in open_:
@@ -764,6 +776,40 @@ def _truth(sets: dict) -> dict:
         "1 % Ausverkauf / gelb Pause / 0,5 % grau": run(trades("hit", "turbo", 20, R, weak=0.01, mixed=0.0, other=0.005)),
         "nur im Ausverkauf 2 %": run(trades("hit", "turbo", 20, R, other=0.0, mixed=0.0)),
     }
+    # 4b) Hebel: so wenig wie das Kapital verlangt (Einsatz aller Trades ≤ Depot) statt immer bis 10×
+    lev_sims = {}
+    for L in (1, 2, 3, 5, 10):
+        rule = {**QRULE, "hold": 20, "levs": [L], "kob": 1.0}
+        for x in sims.get(("hit", "aktie", 20)) or []:
+            sm = simulate(x["e"]["px"], rule)
+            if sm and "skip" not in sm and sm["lev"] == L:
+                lev_sims.setdefault(id(x), {})[L] = sm
+    def ltrades(allowed, weak=0.02, other=0.01, mixed=None):
+        tr = []
+        for x in sims.get(("hit", "aktie", 20)) or []:
+            var = {L: v for L, v in (lev_sims.get(id(x)) or {}).items() if L in allowed}
+            if not x["rg"] or not var:
+                continue
+            rk = weak if x["rg"] == "weak" else (mixed if (mixed is not None and x["rg"] == "mixed") else other)
+            if rk > 0:
+                tr.append({"d": x["d"], "sm": next(iter(var.values())), "var": var, "rk": rk, "prio": R(x["e"])})
+        return tr
+    out["leverage"] = {
+        "immer höchster Hebel bis 10× (jetzt)": run(trades("hit", "turbo", 20, R)),
+        "kleinster passender Hebel 1–10×": run(ltrades((1, 2, 3, 5, 10))),
+        "kleinster passender Hebel 1–5×": run(ltrades((1, 2, 3, 5))),
+        "kleinster passender Hebel 2–10×": run(ltrades((2, 3, 5, 10))),
+        "nur Ausverkauf 2 %, kleinster Hebel 1–10×": run(ltrades((1, 2, 3, 5, 10), other=0.0, mixed=0.0)),
+        "nur Ausverkauf 3 %, kleinster Hebel 1–10×": run(ltrades((1, 2, 3, 5, 10), weak=0.03, other=0.0, mixed=0.0)),
+    }
+    # Walk-forward der Hebel-Regel: Lernzeit / Prüfzeit getrennt
+    def split(tr):
+        a = run([t for t in tr if t["d"] < TRAIN_END], seeds=7)
+        b = run([t for t in tr if t["d"] >= TRAIN_END], seeds=7)
+        return {"lernen": a and {"cagr": a["cagr"], "mdd": a["mdd_daily"]}, "pruefen": b and {"cagr": b["cagr"], "mdd": b["mdd_daily"]}}
+    out["leverage_wf"] = {"jetzt (bis 10×, 2 %/1 %)": split(trades("hit", "turbo", 20, R)),
+                          "kleinster Hebel, 2 %/1 %": split(ltrades((1, 2, 3, 5, 10))),
+                          "kleinster Hebel, nur Ausverkauf 2 %": split(ltrades((1, 2, 3, 5, 10), other=0.0, mixed=0.0))}
     # 5) Walk-forward: auf 2017–2023 wählen, auf 2024–2026 prüfen (getrennte Depots mit je 3.000 €)
     wf = {}
     for pn, pf in prios.items():
