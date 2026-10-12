@@ -3335,10 +3335,23 @@ function settingsHtml() {
   return `<div class="section-title"><span>Live-Kurse</span><span>${liveOn() ? "aktiv" : "aus"}</span></div>
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
       <label>Finnhub-Schlüssel <small>(US-Aktien in Echtzeit · kostenlos auf finnhub.io)</small><input id="kxFh" type="password" autocomplete="off" value="${esc(liveKey("fh"))}" placeholder="z. B. c1abc…"></label>
-      <label>Twelve-Data-Schlüssel <small>(Europa/Asien + Tageskerzen für jede Aktie · kostenlos auf twelvedata.com)</small><input id="kxTd" type="password" autocomplete="off" value="${esc(liveKey("td"))}" placeholder="z. B. 9f2e…"></label>
+      <label>Twelve-Data-Schlüssel <small>(Tageskerzen für Aktien außerhalb des Scans · kostenlos auf twelvedata.com, Gratis-Tarif nur US-Börsen)</small><input id="kxTd" type="password" autocomplete="off" value="${esc(liveKey("td"))}" placeholder="z. B. 9f2e…"></label>
+      <label class="full">Kairo-Kursdienst <small>(Deutschland, Europa, Asien · deine kostenlose Cloudflare-Adresse, Anleitung unten)</small><input id="kxYq" type="url" autocomplete="off" value="${esc(liveKey("yq"))}" placeholder="https://kairo-kurse.DEINNAME.workers.dev"></label>
       <div class="row-actions"><button class="btn" data-kxsave="1">Speichern &amp; testen</button></div>
       <div class="note">Die Schlüssel bleiben nur auf diesem Gerät – nicht im Backup, nicht auf GitHub. Der große Scan bleibt einmal täglich; live geladen werden nur die Aktien, die du öffnest, dein Depot und deine offenen Trades.</div>
-      <div id="kxMsg"></div></div></div>
+      <div id="kxMsg"></div>
+      <details class="kd-help"><summary>Kairo-Kursdienst einrichten (einmalig, ca. 10 Minuten, kostenlos)</summary>
+        <ol class="steps">
+          <li>In Safari <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com/sign-up</a> öffnen, mit E-Mail und Passwort registrieren und die E-Mail bestätigen.</li>
+          <li>Links im Menü <b>„Compute (Workers)“</b> bzw. <b>„Workers &amp; Pages“</b> öffnen → <b>„Create“</b> → <b>„Start with Hello World!“</b>. Falls nach einem Namen für deine Workers-Adresse gefragt wird: einen beliebigen Namen wählen.</li>
+          <li>Als Namen <b>kairo-kurse</b> eintragen → <b>„Deploy“</b>.</li>
+          <li><b>„Edit code“</b> tippen. Im Editor den ganzen Text markieren und löschen.</li>
+          <li>Hier auf <button class="btn ghost sm" data-kdcopy>Code kopieren</button> tippen, zurück zu Cloudflare, in den leeren Editor einfügen → oben rechts <b>„Deploy“</b>.</li>
+          <li>Die Adresse oben im Editor kopieren (endet auf <b>.workers.dev</b>), hier ins Feld „Kairo-Kursdienst“ einfügen → <b>„Speichern &amp; testen“</b>.</li>
+        </ol>
+        <textarea id="kdCode" class="tgtext" readonly rows="6" placeholder="Code wird geladen …"></textarea>
+        <div class="note">Kurse von Yahoo Finance, je nach Börse leicht verzögert (XETRA ca. 15 Min.). Der Dienst läuft in deinem Cloudflare-Konto; nur die Kairo-App darf ihn nutzen. Kostenlos bis 100.000 Abrufe am Tag.</div>
+      </details></div></div>
     <div class="section-title"><span>Persönlich</span><span>nur auf diesem Gerät</span></div>
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
       <label class="full">Wie soll Kairo dich nennen?<input id="cfgName" value="${esc(state.name || "")}" placeholder="z. B. Jonny" maxlength="24" autocomplete="given-name"></label></div>
@@ -3467,7 +3480,7 @@ function einTrendCheck(r) {
 // Ein Live-Kurs ersetzt im Speicher den Schlusskurs der Aktie – Trade-Plan, Scanner, Depot und Trades rechnen damit automatisch.
 const LIVE = { map: {}, busy: new Set(), ttl: 30e3 };
 const liveKey = k => { try { return localStorage.getItem("kx-" + k) || ""; } catch (e) { return ""; } };
-const liveOn = () => !!(liveKey("fh") || liveKey("td"));
+const liveOn = () => !!(liveKey("fh") || liveKey("td") || liveKey("yq"));
 const isUS = t => !/\.[A-Z]+$/.test(t);
 function tdSymbol(t) {
   const m = t.match(/^(.*)\.([A-Z]+)$/); if (!m) return { symbol: t.replace("-", ".") };
@@ -3487,6 +3500,11 @@ async function liveFetch(t) {
   if (isUS(t) && fh) {
     const j = await (await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t.replace("-", "."))}&token=${encodeURIComponent(fh)}`)).json();
     if (j && j.c > 0) return { c: +j.c, pc: +j.pc || null, h: +j.h, l: +j.l, ts: (j.t || 0) * 1000 || Date.now(), src: "Finnhub" };
+  }
+  const yq = liveKey("yq");
+  if (yq) {                                                    // eigener Kursdienst (Yahoo über Cloudflare): alle Börsen des Scans
+    const j = await (await fetch(`${yq}/?s=${encodeURIComponent(t)}`)).json(), q = j && j[t.toUpperCase()];
+    if (q && q.c > 0) return { c: +q.c, pc: q.pc != null ? +q.pc : null, h: q.h, l: q.l, ts: q.t || Date.now(), src: "Kursdienst" };
   }
   const sy = td && tdSymbol(t);
   if (sy) {
@@ -3540,10 +3558,23 @@ document.addEventListener("click", async e => {
   b.classList.add("spin"); Object.values(LIVE.map).forEach(v => { v.at = 0; });
   await liveMany(depotLoad().map(p => p.t).filter(Boolean)); b.classList.remove("spin"); render();
 });
+document.addEventListener("toggle", e => {                     // Kursdienst-Code erst beim Aufklappen laden
+  if (!e.target.classList || !e.target.classList.contains("kd-help") || !e.target.open) return;
+  const ta = $("kdCode"); if (ta && !ta.value) fetch("kursdienst.js", { cache: "no-store" }).then(r => r.text()).then(t => { ta.value = t; }).catch(() => { ta.value = "Code konnte nicht geladen werden – Seite neu laden."; });
+}, true);
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-kdcopy]"); if (!b) return;
+  const ta = $("kdCode"); if (!ta || !ta.value) return;
+  ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+  const done = () => { b.textContent = "✓ Kopiert"; };
+  (navigator.clipboard ? navigator.clipboard.writeText(ta.value) : Promise.reject()).then(done).catch(() => { try { document.execCommand("copy"); done(); } catch (x) {} });
+});
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-kxsave]"); if (!b) return;
   const fh = ($("kxFh").value || "").trim(), td = ($("kxTd").value || "").trim(), msg = $("kxMsg");
-  try { fh ? localStorage.setItem("kx-fh", fh) : localStorage.removeItem("kx-fh"); td ? localStorage.setItem("kx-td", td) : localStorage.removeItem("kx-td"); } catch (err) {}
+  let yq = ($("kxYq").value || "").trim().replace(/\/+$/, ""); if (yq && !/^https:\/\//.test(yq)) yq = "https://" + yq.replace(/^http:\/\//, "");
+  try { fh ? localStorage.setItem("kx-fh", fh) : localStorage.removeItem("kx-fh"); td ? localStorage.setItem("kx-td", td) : localStorage.removeItem("kx-td");
+    yq ? localStorage.setItem("kx-yq", yq) : localStorage.removeItem("kx-yq"); } catch (err) {}
   LIVE.map = {};
   const res = [];
   if (fh) { const q = await liveFetch("AAPL").catch(() => null); res.push(q ? `✓ Finnhub: Apple ${fmt(q.c)} USD` : "✗ Finnhub: keine Antwort – Schlüssel prüfen"); }
@@ -3556,6 +3587,9 @@ document.addEventListener("click", async e => {
     if (ok(us)) res.push(ok(de) ? `✓ Twelve Data: XETRA verfügbar (SAP ${fmt(parseFloat(de.close))} EUR)`
       : `✗ Twelve Data: XETRA im kostenlosen Tarif nicht enthalten – deutsche/europäische Aktien bleiben beim Abendkurs (Live-Chart von TradingView geht trotzdem). Antwort: ${why(de)}`);
   }
+  if (yq) { const j = await fetch(yq + "/?s=SAP.DE,7203.T").then(r => r.json()).catch(() => null), q = j && j["SAP.DE"], q2 = j && j["7203.T"];
+    res.push(q && q.c > 0 ? `✓ Kursdienst: SAP ${fmt(q.c)} EUR (XETRA)${q2 && q2.c > 0 ? ` · Toyota ${fmt(q2.c, 0)} JPY` : ""}`
+      : j ? "✗ Kursdienst erreichbar, aber Yahoo liefert gerade keinen Kurs – später noch einmal testen" : "✗ Kursdienst: keine Antwort – Adresse prüfen (https://….workers.dev) und ob der Code mit „Deploy“ gespeichert ist"); }
   if (msg) msg.innerHTML = `<div class="tip tone-${res.some(x => x.startsWith("✗")) ? "yellow" : "green"}" style="margin-top:10px">${res.map(esc).join("<br>") || "Schlüssel gelöscht – Kurse wieder vom Abendscan."}</div>`;
 });
 const tvSym = t => { const xr = rowOf(t); if (xr && xr.ext) return `${xr.ext.exchange.toUpperCase().replace(/\s+/g, "")}:${xr.ext.symbol}`;
