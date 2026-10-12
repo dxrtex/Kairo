@@ -27,3 +27,19 @@ def test_nothing_when_calm_and_ko_near_depot():
     prices = {"SAP.DE": _df([160, 161], [170, 171], [165, 166]), "NVDA": _df([175, 176], [182, 181], [180, 179])}
     m = messages(dev, prices, "2026-10-06", {})
     assert len(m) == 1 and "K.-o. nah" in m[0]["title"]
+
+
+def test_synced_overrides_from_kursdienst(monkeypatch):
+    import requests
+    from backend.push import synced
+
+    class R:
+        ok, status_code = True, 200
+        def json(self):
+            return {"p": [{"i": "x", "t": "RHM.DE", "sl": 900}], "d": []}
+    seen = {}
+    monkeypatch.setattr(requests, "get", lambda url, params=None, timeout=None: seen.update(url=url, params=params) or R())
+    dev = {"s": {}, "p": [], "d": [{"t": "OLD"}], "sync": "https://k.workers.dev/", "key": "k" * 20}
+    out = synced(dev)
+    assert out["p"][0]["t"] == "RHM.DE" and out["d"] == [] and seen["url"] == "https://k.workers.dev/trades" and seen["params"]["key"] == "k" * 20
+    assert synced({"p": [1]}) == {"p": [1]}
