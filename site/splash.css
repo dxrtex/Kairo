@@ -5,10 +5,7 @@
   position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; overflow: hidden;
   font-synthesis: none; -webkit-font-smoothing: antialiased; }
 .sp-bg { position: absolute; inset: 0; background: #000; }
-.sp-bg::after { content: ""; position: absolute; inset: 0; opacity: 0;
-  background: radial-gradient(42% 32% at 50% 47%, rgba(10, 132, 255, .16), transparent 70%),
-              radial-gradient(90% 60% at 50% -10%, rgba(255, 255, 255, .05), transparent 60%);
-  animation: sp-fade 1.4s ease-out .25s forwards; }
+/* reines OLED-Schwarz – kein farbiges Hintergrundlicht */
 
 /* 1) Kurslinie: zieht sich aus der Mitte auf, wird zum Docht */
 .sp-line { position: absolute; left: 50%; top: 50%; width: min(60vw, 520px); height: 1.5px; margin: -1px 0 0 calc(min(60vw, 520px) / -2);
@@ -28,7 +25,7 @@
 .sp-tile { position: absolute; inset: 0; border-radius: 22.4%; opacity: 0; transform: scale(1.14);
   background: radial-gradient(130% 110% at 50% 0%, #1d2026 0%, #0a0b0d 55%, #000 100%);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .09), inset 0 1px 0 rgba(255, 255, 255, .08),
-              0 calc(var(--T) * .22) calc(var(--T) * .6) rgba(0, 0, 0, .7), 0 0 calc(var(--T) * .5) rgba(10, 132, 255, .12);
+              0 calc(var(--T) * .22) calc(var(--T) * .6) rgba(0, 0, 0, .7);
   animation: sp-tile .8s var(--ease) 1.08s forwards; }
 
 /* 2) Kerze: Docht aus der Mitte, Körper federt auf, Leuchten blüht */
@@ -78,6 +75,17 @@
 .splash.exit .sp-bg { transition: opacity .5s ease-in .06s; opacity: 0; }
 .splash.exit .sp-load { transition: opacity .15s; opacity: 0; }
 
+/* Kurzfassung ab dem zweiten Öffnen (≈ 0,9 s): fertiges Logo blendet ruhig ein */
+.splash.short *, .splash.short *::before, .splash.short *::after { animation: none !important; }
+.splash.short .sp-line, .splash.short .sp-tag { display: none; }
+.splash.short .sp-lock { transform: none; }
+.splash.short .sp-tile { opacity: 1; transform: none; }
+.splash.short .sp-wick, .splash.short .sp-body, .splash.short .sp-wc { transform: none; }
+.splash.short .sp-arm, .splash.short .sp-l { transform: none; opacity: 1; filter: none; }
+.splash.short .sp-glow { opacity: .5; }
+.splash.short .sp-stage { opacity: 0; transform: translateY(-1.5vh) scale(.965); animation: sp-quick .5s var(--ease) .05s forwards !important; }
+.splash.short .sp-shine::before { animation: sp-shine .8s var(--io) .2s forwards !important; }
+
 /* „Bewegung reduzieren“: fertiges Logo, danach sanftes Ausblenden */
 .splash.reduce *, .splash.reduce *::before, .splash.reduce *::after { animation: none !important; }
 .splash.reduce .sp-lock { transform: none; }
@@ -85,7 +93,7 @@
 .splash.reduce .sp-wick, .splash.reduce .sp-body, .splash.reduce .sp-wc { transform: none; }
 .splash.reduce .sp-arm, .splash.reduce .sp-l { transform: none; opacity: 1; filter: none; }
 .splash.reduce .sp-glow { opacity: .5; } .splash.reduce .sp-line { display: none; }
-.splash.reduce .sp-tag, .splash.reduce .sp-bg::after { opacity: 1; }
+.splash.reduce .sp-tag { opacity: 1; }
 .splash.reduce.exit .sp-stage { transform: none; filter: none; }
 
 @keyframes sp-fade    { to { opacity: 1; } }
@@ -100,4 +108,5 @@
 @keyframes sp-slide   { to { transform: translateX(0); } }
 @keyframes sp-letter  { to { opacity: 1; transform: translateX(0); filter: blur(0); } }
 @keyframes sp-tag     { from { opacity: 0; letter-spacing: .62em; } to { opacity: 1; letter-spacing: .42em; } }
+@keyframes sp-quick   { to { opacity: 1; transform: translateY(-1.5vh) scale(1); } }
 @keyframes sp-load    { to { transform: translateX(250%); } }
