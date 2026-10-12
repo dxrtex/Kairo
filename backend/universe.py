@@ -154,11 +154,27 @@ def load() -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=COLUMNS + ["region"])
 
 
+def guard(new: pd.DataFrame, prev: pd.DataFrame | None, region: str, keep: float = 0.9) -> pd.DataFrame:
+    """Schutz gegen Aussetzer des Yahoo-Screeners: Schrumpft eine Region um mehr als 10 % gegenüber der letzten Liste,
+    werden die fehlenden Aktien aus der letzten Liste übernommen (die Kriterien des Scans bleiben unverändert)."""
+    if prev is None or prev.empty or len(new) >= keep * len(prev):
+        return new
+    miss = prev[~prev["ticker"].isin(new["ticker"])]
+    print(f"  {region}: nur {len(new)} statt {len(prev)} Aktien geliefert – {len(miss)} aus der letzten Liste übernommen")
+    return pd.concat([new, miss[[c for c in new.columns if c in miss.columns]]], ignore_index=True)
+
+
 def main() -> int:
     lists = build()
     (ROOT / "data").mkdir(exist_ok=True)
+    state = ROOT / "state"                          # Branch kairo-data (im Workflow eingebunden): letzte gute Liste
     for region, df in lists.items():
+        last = state / f"universe_{region}.csv"
+        prev = pd.read_csv(last, dtype={"ticker": str}) if last.exists() else None
+        df = guard(df, prev, region)
         df.to_csv(ROOT / "data" / f"universe_{region}.csv", index=False)
+        if state.exists():
+            df.to_csv(last, index=False)
         print(f"{region.upper()}: {len(df)} Aktien ab 2 Mrd. USD")
     return 0 if all(len(d) for d in lists.values()) else 1
 
