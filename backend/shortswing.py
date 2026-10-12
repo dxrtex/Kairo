@@ -428,7 +428,7 @@ def _depot(trades: list[tuple], start: float = 3000.0, max_open: int = 3, seed: 
         keep = []
         for end, amt in sorted(open_):
             if end <= t0:
-                eq += amt
+                eq = max(0.0, eq + amt)                 # Totalverlust: Konto bei 0, keine neuen Trades mehr
                 peak = max(peak, eq)
                 mdd = max(mdd, 1 - eq / peak)
             else:
@@ -439,16 +439,17 @@ def _depot(trades: list[tuple], start: float = 3000.0, max_open: int = 3, seed: 
         close_until(t0)
         y = d[:4]
         eq_year.setdefault(y, eq)
-        if len(open_) >= max_open:
+        if len(open_) >= max_open or eq <= 0:
             continue
         taken += 1
         by_year[y] = by_year.get(y, 0) + 1
         open_.append((t0 + dt.timedelta(days=int(days * 7 / 5) + 1), eq * rk * net))
     close_until(dt.date(2100, 1, 1))
     ys = sorted(eq_year)
-    yr = {y: round((eq_year[ys[i + 1]] if i + 1 < len(ys) else eq) / eq_year[y] - 1, 3) for i, y in enumerate(ys)}
+    yr = {y: round((eq_year[ys[i + 1]] if i + 1 < len(ys) else eq) / eq_year[y] - 1, 3) if eq_year[y] > 0 else -1.0
+          for i, y in enumerate(ys)}
     span = max(0.5, (dt.date.fromisoformat(trades[-1][0]) - dt.date.fromisoformat(trades[0][0])).days / 365)
-    return {"trades": taken, "end_eur": round(eq), "cagr": round((eq / start) ** (1 / span) - 1, 3), "mdd": round(mdd, 3),
+    return {"trades": taken, "end_eur": round(eq), "cagr": round((eq / start) ** (1 / span) - 1, 3) if eq > 0 else -1.0, "mdd": round(mdd, 3),
             "years": yr, "per_year": by_year}
 
 
