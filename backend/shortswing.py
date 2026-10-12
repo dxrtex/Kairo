@@ -323,6 +323,17 @@ def _strip(res: dict) -> dict:
 
 
 def _market() -> dict:
+    """Marktlage je Handelstag – mit Wiederholung (Yahoo/SQLite-Cache gelegentlich gesperrt)."""
+    import time
+    for attempt in range(4):
+        out = _market_once()
+        if out:
+            return out
+        time.sleep(5 * (attempt + 1))
+    raise SystemExit("Marktdaten (S&P 500/VIX) nicht ladbar – Auswertung ohne Marktlage wäre wertlos")
+
+
+def _market_once() -> dict:
     """Marktlage je Handelstag: S&P 500 über EMA 200 / EMA 50, VIX. Leer, wenn keine Daten."""
     try:
         from .data_provider import YFinanceProvider

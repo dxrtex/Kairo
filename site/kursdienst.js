@@ -1,8 +1,9 @@
-// Kairo-Kursdienst – kleiner Cloudflare Worker (kostenlos), der Kurse von Yahoo Finance für die Kairo-App holt.
-// Damit bekommen auch deutsche/europäische/asiatische Aktien Live-Kurse (je nach Börse leicht verzögert, XETRA ca. 15 Min.).
-// Einrichtung: Cloudflare → Workers & Pages → Create → Worker → „Hello World“ → Deploy → Edit code →
-// alles ersetzen durch diesen Code → Deploy. Die Adresse (https://….workers.dev) in Kairo unter Einstellungen → Live-Kurse eintragen.
-// Abruf: https://….workers.dev/?s=SAP.DE,AAPL,7203.T  →  {"SAP.DE": {"c":…, "pc":…, "h":…, "l":…, "t":…, "cur":"EUR"}, …}
+// Kairo-Kursdienst (Version 3) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
+//   ?s=SAP.DE,AAPL      Kurse (Yahoo Finance, je nach Börse leicht verzögert)
+//   ?q=Rheinmetall      Aktiensuche an allen Börsen
+//   ?c=RHM.DE           Tageskerzen (1 Jahr) – damit plant Kairo auch Aktien außerhalb des Scans
+//   /trades?key=…       offene Trades für die Mitteilungen (GET lesen, POST speichern) – braucht den KV-Speicher „KAIRO“
+// Einrichtung: Cloudflare → Workers & Pages → Worker → Edit code → alles ersetzen → Deploy (Anleitung in Kairo → Einstellungen).
 
 const ALLOW = ["https://dxrtex.github.io"];          // nur die Kairo-App darf den Dienst im Browser nutzen
 const MAX = 25;                                       // höchstens so viele Aktien je Abruf
@@ -12,14 +13,20 @@ export default {
     const origin = request.headers.get("Origin") || "";
     const cors = {
       "Access-Control-Allow-Origin": ALLOW.includes(origin) ? origin : ALLOW[0],
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
       "Vary": "Origin",
     };
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
     const url = new URL(request.url);
+    if (url.pathname.replace(/\/+$/, "") === "/trades") return trades(request, env, url, cors);
+    const q = (url.searchParams.get("q") || "").trim();
+    if (q) return json(await search(q), cors);
+    const c = (url.searchParams.get("c") || "").trim().toUpperCase();
+    if (c && /^[A-Z0-9.\-^=]{1,20}$/.test(c)) return json(await candles(c), cors);
     const syms = (url.searchParams.get("s") || "").split(",").map(x => x.trim().toUpperCase())
       .filter(x => /^[A-Z0-9.\-^=]{1,20}$/.test(x)).slice(0, MAX);
-    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 2). Abruf: ?s=SAP.DE,AAPL" }, cors);
+    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 3). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
     const diag = url.searchParams.has("debug") ? [] : null;
     const out = await quotes(syms, ctx, diag);
     return json(diag ? { ...out, _diag: diag } : out, cors);
@@ -86,10 +93,61 @@ async function crumbQuotes(syms, out, log) {
   } catch (e) { log("quote", "Fehler " + e); }
 }
 
+// Aktiensuche (Yahoo): nur Aktien, mit Yahoo-Kürzel (z. B. RHM.DE), Börse und Name
+async function search(q) {
+  for (const host of ["query1", "query2"]) {
+    try {
+      const r = await fetch(`https://${host}.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=15&newsCount=0&listsCount=0`);
+      if (!r.ok) continue;
+      const l = ((await r.json()).quotes || []).filter(x => x.symbol && (x.quoteType === "EQUITY" || x.typeDisp === "Equity"));
+      return { quotes: l.map(x => ({ symbol: x.symbol, name: x.longname || x.shortname || x.symbol, exch: x.exchDisp || x.exchange || "", sector: x.sectorDisp || x.sector || "" })) };
+    } catch (e) { /* nächster Host */ }
+  }
+  return { quotes: [], error: "Suche gerade nicht erreichbar" };
+}
+
+// Tageskerzen eines Jahres (Yahoo) – nur vollständige Kerzen
+async function candles(sym) {
+  for (const host of ["query1", "query2"]) {
+    try {
+      const r = await fetch(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1y`);
+      if (!r.ok) continue;
+      const res = (((await r.json()).chart || {}).result || [])[0];
+      const qd = res && res.indicators && res.indicators.quote && res.indicators.quote[0];
+      if (!qd || !res.timestamp) continue;
+      const o = [], h = [], l = [], c = [], t = [];
+      res.timestamp.forEach((ts, i) => { if ([qd.open[i], qd.high[i], qd.low[i], qd.close[i]].every(v => v != null && v > 0)) {
+        o.push(qd.open[i]); h.push(qd.high[i]); l.push(qd.low[i]); c.push(qd.close[i]); t.push(ts * 1000); } });
+      const m = res.meta || {};
+      return { symbol: sym, name: m.longName || m.shortName || sym, cur: m.currency || null, exch: m.fullExchangeName || m.exchangeName || "", t, o, h, l, c };
+    } catch (e) { /* nächster Host */ }
+  }
+  return { symbol: sym, error: "keine Kerzen" };
+}
+
+// Offene Trades für die Mitteilungen: die App speichert sie hier, die Prüfung auf GitHub liest sie.
+// Schutz: Der erste Schlüssel, der speichert, gehört dem Dienst – andere Schlüssel werden abgelehnt.
+async function trades(request, env, url, cors) {
+  if (!env || !env.KAIRO) return json({ error: "KV-Speicher „KAIRO“ fehlt – in Cloudflare unter Settings → Bindings anlegen" }, cors, 501);
+  const key = url.searchParams.get("key") || "";
+  if (key.length < 16) return json({ error: "Schlüssel fehlt" }, cors, 401);
+  const owner = await env.KAIRO.get("owner");
+  if (owner && owner !== key) return json({ error: "falscher Schlüssel" }, cors, 403);
+  if (request.method === "POST") {
+    const body = await request.text();
+    if (body.length > 50000) return json({ error: "zu groß" }, cors, 413);
+    let data; try { data = JSON.parse(body); } catch (e) { return json({ error: "kein JSON" }, cors, 400); }
+    if (!owner) await env.KAIRO.put("owner", key);
+    await env.KAIRO.put("trades", JSON.stringify({ p: data.p || [], d: data.d || [], at: Date.now() }));
+    return json({ ok: true }, cors);
+  }
+  return json(JSON.parse((await env.KAIRO.get("trades")) || '{"p":[],"d":[]}'), cors);
+}
+
 const key = s => new Request("https://kairo-kurse.cache/" + s);
 const pack = m => ({ c: m.regularMarketPrice, pc: m.chartPreviousClose ?? m.previousClose ?? null, h: m.regularMarketDayHigh ?? null,
                      l: m.regularMarketDayLow ?? null, t: (m.regularMarketTime || 0) * 1000, cur: m.currency || null });
 
-function json(obj, cors) {
-  return new Response(JSON.stringify(obj), { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
+function json(obj, cors, status = 200) {
+  return new Response(JSON.stringify(obj), { status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
 }

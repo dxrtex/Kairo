@@ -1771,7 +1771,7 @@ function calendarHtml() {
 // ---------- Depot (bleibt nur auf diesem Gerät gespeichert) ----------
 const DEPOT_KEY = "kairo-depot-v1";
 function depotLoad() { try { return JSON.parse(localStorage.getItem(DEPOT_KEY) || "[]"); } catch (e) { return []; } }
-function depotSave(list) { try { localStorage.setItem(DEPOT_KEY, JSON.stringify(list)); } catch (e) {} calBadge(); }
+function depotSave(list) { try { localStorage.setItem(DEPOT_KEY, JSON.stringify(list)); } catch (e) {} calBadge(); kxSyncSoon(); }
 let depotEdit = null, depotMsg = "";
 const rowOf = t => searchIdx && searchIdx.find(r => r.t === t);
 const toEur = (v, cur) => v == null ? null : v * (fxEur[cur] ?? (cur === "EUR" ? 1 : NaN));
@@ -3302,10 +3302,25 @@ function pushCode(sub) {
   const d = depotLoad().filter(p => p.t).map(p => p.d && p.d.ko ? { t: p.t, dir: p.d.dir, ko: p.d.ko } : { t: p.t });
   const seen = new Set(), dep = d.filter(x => { const k = x.t + (x.ko || ""); if (seen.has(k)) return false; seen.add(k); return true; });
   // offene Trade-Pläne: nur Kursmarken und Daten (Stop, Ziel, K.-o., Verkaufstag) – keine Beträge
-  const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).startsWith("~")).map(x => ({ i: x.id, t: x.t, n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit }));
-  return JSON.stringify({ s: sub.toJSON ? sub.toJSON() : sub, d: dep, p });
+  const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).includes(":")).map(x => ({ i: x.id, t: String(x.t).replace(/^~/, ""), n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit }));
+  const yq = liveKey("yq");                                   // mit Kursdienst: Trades holt die Prüfung dort – kein Secret-Update je Trade
+  return JSON.stringify({ s: sub.toJSON ? sub.toJSON() : sub, d: dep, p, ...(yq ? { sync: yq, key: syncKey() } : {}) });
 }
 let pushSub = null;
+// ---------- Abgleich der offenen Trades mit dem eigenen Kursdienst (für die Mitteilungen – ohne Secret-Update je Trade) ----------
+const syncKey = () => { let k = liveKey("sk"); if (!k) { k = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()).replace(/-/g, ""); try { localStorage.setItem("kx-sk", k); } catch (e) {} } return k; };
+function syncPayload() {
+  const d = depotLoad().filter(p => p.t).map(p => p.d && p.d.ko ? { t: p.t, dir: p.d.dir, ko: p.d.ko } : { t: p.t });
+  const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).includes(":")).map(x => ({ i: x.id, t: String(x.t).replace(/^~/, ""), n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit }));
+  return { d, p };
+}
+async function kxSync() {
+  const yq = liveKey("yq"); if (!yq) return null;
+  try { const r = await fetch(`${yq}/trades?key=${encodeURIComponent(syncKey())}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(syncPayload()) });
+    const j = await r.json(); state.syncOk = !!(j && j.ok); state.syncErr = j && j.error || ""; state.syncAt = Date.now(); save(); return j;
+  } catch (e) { state.syncOk = false; state.syncErr = "keine Verbindung"; save(); return null; }
+}
+let kxSyncT = 0; function kxSyncSoon() { clearTimeout(kxSyncT); kxSyncT = setTimeout(kxSync, 1500); }
 const pushSig = () => plansLoad().filter(x => x.st === "open").map(x => x.id).join(",") + "|" + depotLoad().map(p => p.t + (p.d && p.d.ko || "")).join(",");
 async function pushInit() {
   if (!pushOk()) return;
@@ -3389,6 +3404,8 @@ function settingsHtml() {
           <li><b>„Edit code“</b> tippen. Im Editor den ganzen Text markieren und löschen.</li>
           <li>Hier auf <button class="btn ghost sm" data-kdcopy>Code kopieren</button> tippen, zurück zu Cloudflare, in den leeren Editor einfügen → oben rechts <b>„Deploy“</b>.</li>
           <li>Die Adresse oben im Editor kopieren (endet auf <b>.workers.dev</b>), hier ins Feld „Kairo-Kursdienst“ einfügen → <b>„Speichern &amp; testen“</b>.</li>
+          <li><b>Für automatische Mitteilungen (einmalig):</b> In Cloudflare links <b>„Storage &amp; Databases“ → „KV“</b> → <b>„Create“</b>, Name <b>kairo</b> → anlegen. Dann deinen Worker öffnen → <b>„Settings“</b> → <b>„Bindings“</b> → <b>„Add“</b> → <b>„KV namespace“</b>, Variablenname <b>KAIRO</b> (groß), Namespace <b>kairo</b> wählen → <b>„Deploy“</b>/„Save“. Hier noch einmal „Speichern &amp; testen“.</li>
+          <li>Danach einmalig unter „Mitteilungen“ den Code neu kopieren und das GitHub-Secret <code>PUSH_SUBS</code> aktualisieren – ab dann kennt die Prüfung jeden neuen Trade von selbst.</li>
         </ol>
         <textarea id="kdCode" class="tgtext" readonly rows="6" placeholder="Code wird geladen …"></textarea>
         <div class="note">Kurse von Yahoo Finance, je nach Börse leicht verzögert (XETRA ca. 15 Min.). Der Dienst läuft in deinem Cloudflare-Konto; nur die Kairo-App darf ihn nutzen. Kostenlos bis 100.000 Abrufe am Tag.</div>
@@ -3442,6 +3459,10 @@ function einListHtml() {
 const tdGet = async (path, params) => { const k = liveKey("td"); const j = await (await fetch(`https://api.twelvedata.com/${path}?` + new URLSearchParams({ ...params, ...(k ? { apikey: k } : {}) }))).json();
   if (j && j.status === "error") throw new Error(j.message || "Twelve Data"); return j; };
 async function extSearch(q) {
+  if (liveKey("yq")) {                                          // Kursdienst: Yahoo-Suche über alle Börsen
+    const j = await (await fetch(`${liveKey("yq")}/?q=${encodeURIComponent(q)}`)).json();
+    if (j && j.quotes) return j.quotes.map(x => ({ y: x.symbol, symbol: x.symbol, exchange: x.exch, instrument_name: x.name, country: "", currency: "" }));
+  }
   const j = await tdGet("symbol_search", { symbol: q, outputsize: 15 });
   return (j.data || []).filter(x => !x.instrument_type || /stock|depositary|equity/i.test(x.instrument_type));
 }
@@ -3462,7 +3483,20 @@ function extStructure(o, h, l, c) {
   return { atr, e20: e20[n - 1], e50: e50[n - 1], e200: n >= 200 ? e200[n - 1] : null, vola: sd * Math.sqrt(252), d1: c[n - 2] ? last / c[n - 2] - 1 : null,
            pl: { base, l3: Math.min(...l.slice(-3)), l10, h10, inv, src: base ? `Tief der ${base.k}-Tage-Basis` : "Tief der letzten 10 Tage (keine Basis)", stop, atr, sd: (last - stop) / atr, res: [], tg: tg.slice(0, 4), kc } };
 }
+async function extLoadY(x) {                                 // Tageskerzen über den Kursdienst (Yahoo) – jede Börse
+  const j = await (await fetch(`${liveKey("yq")}/?c=${encodeURIComponent(x.y)}`)).json();
+  if (!j || !j.c || j.c.length < 30) throw new Error(j && j.error || "zu wenig Kursdaten");
+  const st = extStructure(j.o, j.h, j.l, j.c), c = j.c[j.c.length - 1], cur = j.cur || "";
+  const t = `~${x.y}`;
+  const row = { t, n: j.name || x.instrument_name || x.y, x: `${x.y} · ${x.exchange || j.exch || ""}`, c, cur, s: "", m: null, km: [], tm: [], tr: 0, ap: st.atr / c, ...st,
+                ext: { y: x.y, symbol: x.y, exchange: x.exchange || j.exch || "" }, title: "Außerhalb des Kairo-Scans", text: "" };
+  searchIdx = searchIdx.filter(r => r.t !== t); searchIdx.push(row);
+  try { const l = JSON.parse(localStorage.getItem("kairo-ext") || "[]").filter(y => y.t !== t); l.unshift(row); localStorage.setItem("kairo-ext", JSON.stringify(l.slice(0, 40))); } catch (e) {}
+  if (cur && fxEur[cur] == null && cur !== "EUR") row.fxMissing = true;
+  return row;
+}
 async function extLoad(x) {
+  if (x.y && liveKey("yq")) return extLoadY(x);
   const j = await tdGet("time_series", { symbol: x.symbol, exchange: x.exchange, interval: "1day", outputsize: 260 });
   const v = (j.values || []).slice().reverse();
   if (v.length < 30) throw new Error("zu wenig Kursdaten");
@@ -3479,7 +3513,7 @@ async function extLoad(x) {
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-extq],[data-extpick]"); if (!b) return;
   e.preventDefault(); const box = $("einList");
-  if (!liveKey("td")) { box.innerHTML = `<div class="tip tone-yellow" style="margin:6px 0">Für Aktien außerhalb des Scans braucht Kairo die Tageskerzen von Twelve Data: einmal den kostenlosen Schlüssel eintragen unter Einstellungen → Live-Kurse.</div>`; return; }
+  if (!liveKey("td") && !liveKey("yq")) { box.innerHTML = `<div class="tip tone-yellow" style="margin:6px 0">Für Aktien außerhalb des Scans braucht Kairo Tageskerzen: einmal den Kairo-Kursdienst einrichten unter Einstellungen → Live-Kurse.</div>`; return; }
   if (b.dataset.extq) {
     box.innerHTML = `<div class="note" style="margin:6px 2px">Suche an allen Börsen …</div>`;
     try { const l = await extSearch(b.dataset.extq);
@@ -3531,6 +3565,10 @@ function tdSymbol(t) {
 }
 async function liveFetch(t) {
   const fh = liveKey("fh"), td = liveKey("td"), xr = rowOf(t), ext = xr && xr.ext;
+  if (ext && ext.y && liveKey("yq")) {                        // über den Kursdienst gefunden: Kurs mit dem Yahoo-Kürzel
+    const j = await (await fetch(`${liveKey("yq")}/?s=${encodeURIComponent(ext.y)}`)).json(), q = j && j[ext.y.toUpperCase()];
+    return q && q.c > 0 ? { c: +q.c, pc: q.pc != null ? +q.pc : null, h: q.h, l: q.l, ts: q.t || Date.now(), src: "Kursdienst" } : null;
+  }
   if (ext) {
     if (fh && /^(NASDAQ|NYSE|AMEX|NYSE ARCA|BATS|CBOE)/i.test(ext.exchange)) { const j = await (await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ext.symbol)}&token=${encodeURIComponent(fh)}`)).json();
       if (j && j.c > 0) return { c: +j.c, pc: +j.pc || null, h: +j.h, l: +j.l, ts: (j.t || 0) * 1000 || Date.now(), src: "Finnhub" }; }
@@ -3635,6 +3673,12 @@ document.addEventListener("click", async e => {
   if (yq) { const j = await fetch(yq + "/?s=SAP.DE,7203.T").then(r => r.json()).catch(() => null), q = j && j["SAP.DE"], q2 = j && j["7203.T"];
     res.push(q && q.c > 0 ? `✓ Kursdienst: SAP ${fmt(q.c)} EUR (XETRA)${q2 && q2.c > 0 ? ` · Toyota ${fmt(q2.c, 0)} JPY` : ""}`
       : j ? `✗ Kursdienst erreichbar, aber ohne Kurs${/Version 2/.test(JSON.stringify(j)) ? "" : " – bitte den neuen Code (Version 2) einfügen und „Deploy“"} · Diagnose: ${await fetch(yq + "/?s=SAP.DE&debug=1").then(r => r.json()).then(d => (d._diag || []).join(" · ") || "alter Code ohne Diagnose").catch(() => "–")}` : "✗ Kursdienst: keine Antwort – Adresse prüfen (https://….workers.dev) und ob der Code mit „Deploy“ gespeichert ist"); }
+  if (yq && res.some(x => x.startsWith("✓ Kursdienst"))) {
+    const info = await fetch(yq + "/").then(r => r.json()).catch(() => null);
+    if (!info || !/Version 3/.test(info.info || "")) res.push("ℹ Kursdienst: Version 3 noch nicht eingefügt – für Aktiensuche weltweit und automatische Mitteilungen den neuen Code kopieren und „Deploy“");
+    else if (!info.kv) res.push("ℹ Kursdienst: Speicher „KAIRO“ fehlt noch – für automatische Mitteilungen (Anleitung unten, Schritt 7)");
+    else { const j = await kxSync(); res.push(j && j.ok ? "✓ Trades-Abgleich aktiv – Mitteilungen kennen neue Trades automatisch" : `✗ Trades-Abgleich: ${(j && j.error) || "keine Antwort"}`); }
+  }
   // Läuft der Kursdienst, ist fehlendes XETRA bei Twelve Data egal → nur noch als Hinweis
   if (res.some(x => x.startsWith("✓ Kursdienst"))) res.forEach((x, i) => { if (x.startsWith("✗ Twelve Data: XETRA")) res[i] = "ℹ Twelve Data: XETRA nicht im Gratis-Tarif – egal, deutsche/europäische Kurse kommen über deinen Kursdienst"; });
   if (msg) msg.innerHTML = `<div class="tip tone-${res.some(x => x.startsWith("✗")) ? "yellow" : "green"}" style="margin-top:10px">${res.map(esc).join("<br>") || "Schlüssel gelöscht – Kurse wieder vom Abendscan."}</div>`;
@@ -3642,7 +3686,8 @@ document.addEventListener("click", async e => {
 // Deutsche Aktien: Handelsplatz für den Chart wählbar – XETRA ist im eingebetteten Chart ca. 15 Min. verzögert,
 // gettex (dort handelt Scalable) bzw. Tradegate zeigen je nach TradingView-Datenpaket aktuellere Kurse.
 const TV_VENUES = [["XETR", "XETRA"], ["GETTEX", "gettex"], ["TRADEGATE", "Tradegate"]];
-const tvSym = t => { const xr = rowOf(t); if (xr && xr.ext) return `${xr.ext.exchange.toUpperCase().replace(/\s+/g, "")}:${xr.ext.symbol}`;
+const tvSym = t => { const xr = rowOf(t); if (xr && xr.ext && xr.ext.y) { try { return new URL(tvUrl(xr.ext.y)).searchParams.get("symbol"); } catch (e) { return xr.ext.y; } }
+  if (xr && xr.ext) return `${xr.ext.exchange.toUpperCase().replace(/\s+/g, "")}:${xr.ext.symbol}`;
   if (/\.DE$/.test(t) && state.tvVenue && state.tvVenue !== "XETR") return `${state.tvVenue}:${t.replace(/\.DE$/, "")}`;
   try { return new URL(tvUrl(t)).searchParams.get("symbol"); } catch (e) { return t; } };
 function tvChartHtml(t) {
@@ -3917,7 +3962,7 @@ function tpHtml(r, S) { return `<div class="hcard"><div class="plan-h">Trade-Pla
 // Gespeicherte Trades (geplant → eröffnet → geschlossen), eingefroren beim Eröffnen
 const PLAN_KEY = "kairo-plans";
 const plansLoad = () => { try { return JSON.parse(localStorage.getItem(PLAN_KEY)) || []; } catch (e) { return []; } };
-const plansSave = l => { try { localStorage.setItem(PLAN_KEY, JSON.stringify(l)); } catch (e) {} };
+const plansSave = l => { try { localStorage.setItem(PLAN_KEY, JSON.stringify(l)); } catch (e) {} kxSyncSoon(); };
 function tpOpen(t) {
   const r = searchIdx && searchIdx.find(x => x.t === t); if (!r) return;
   const S = einSetup(r), fx0 = toEur(1, r.cur || "EUR") || 1, ee = (state.tpEe || {})[t];
@@ -3955,7 +4000,7 @@ function tpPlansHtml() {
   const cmp = h.length ? `<div class="tp2-cmp"><div><span>Hälfte 1 · deine Strategie (TP)</span><b class="${a1 >= 0 ? "up" : "down"}">${fmt(a1, 2).replace(/^(?!-)/, "+")} R</b><em>Treffer ${pct(h.filter(p => p.R1 > 0).length / h.length, 0)}</em></div>
       <div><span>Hälfte 2 · laufen lassen (Tag 20)</span><b class="${a2 >= 0 ? "up" : "down"}">${fmt(a2, 2).replace(/^(?!-)/, "+")} R</b><em>Treffer ${pct(h.filter(p => p.R2 > 0).length / h.length, 0)}</em></div></div>
     <div class="note" style="margin:4px 2px 12px">${h.length} Trades verglichen${h.length < 20 ? ` – aussagekräftig ab etwa 20–30` : a1 > a2 + 0.1 ? " – deine TP-Strategie liegt vorn" : a2 > a1 + 0.1 ? " – Laufenlassen liegt vorn" : " – beide etwa gleich"}.</div>` : "";
-  const pushOld = pushSub && state.pushSig != null && state.pushSig !== pushSig()
+  const pushOld = pushSub && !(state.syncOk && state.pushHasSync) && state.pushSig != null && state.pushSig !== pushSig()
     ? `<div class="note" style="border-left:3px solid var(--gold)">🔔 Deine Trades haben sich geändert – damit Stop-, Verkaufstag- und K.-o.-Mitteilungen stimmen: <a href="#" data-gosec="settings">Einstellungen → Mitteilungen</a> → Code kopieren → Secret <code>PUSH_SUBS</code> aktualisieren.</div>` : "";
   return pushOld + `<div class="section-title"><span>Deine Trades</span><span>${open.length} offen</span></div>${open.map(row).join("") || `<div class="note">Keine offenen Trades.</div>`}
     ${(() => { const cnt = {}; open.forEach(p => { const x = rowOf(p.t), k = (x && x.sec) || p.sec; if (k) cnt[k] = (cnt[k] || 0) + 1; });
@@ -4398,7 +4443,7 @@ document.addEventListener("click", e => {
   const pb = e.target.closest("[data-push]");
   if (pb) {
     if (pb.dataset.push === "on") { pushEnable(); return; }
-    if (pb.dataset.push === "copy" && pushSub) { state.pushSig = pushSig(); save(); const txt = pushCode(pushSub), ta = $("pushText"); ta.value = txt; ta.hidden = false; ta.select();
+    if (pb.dataset.push === "copy" && pushSub) { state.pushSig = pushSig(); state.pushHasSync = !!liveKey("yq"); save(); const txt = pushCode(pushSub), ta = $("pushText"); ta.value = txt; ta.hidden = false; ta.select();
       (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => { pb.textContent = "✓ Kopiert"; }).catch(() => { try { document.execCommand("copy"); pb.textContent = "✓ Kopiert"; } catch (x) {} }); }
     return;
   }

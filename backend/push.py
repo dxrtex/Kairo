@@ -103,6 +103,25 @@ def prices_for(devs: list[dict]) -> dict:
     return out
 
 
+def synced(dev: dict) -> dict:
+    """Mit Kairo-Kursdienst: aktuelle offene Trades und Depot dort abholen (die App speichert sie bei jeder Änderung).
+    Ohne Antwort bleibt der Stand aus dem Secret."""
+    url, key = dev.get("sync"), dev.get("key")
+    if not url or not key:
+        return dev
+    try:
+        import requests
+        r = requests.get(f"{url.rstrip('/')}/trades", params={"key": key}, timeout=15)
+        j = r.json() if r.ok else {}
+        if isinstance(j.get("p"), list) and isinstance(j.get("d"), list):
+            print(f"Push: Trades vom Kursdienst – {len(j['p'])} offen, {len(j['d'])} im Depot")
+            return {**dev, "p": j["p"], "d": j["d"]}
+        print(f"Push: Kursdienst ohne Trades ({r.status_code}) – Stand aus dem Secret")
+    except Exception as exc:
+        print(f"Push: Kursdienst nicht erreichbar ({exc!r}) – Stand aus dem Secret")
+    return dev
+
+
 def run(today_iso: str | None = None) -> dict:
     from datetime import datetime
     from . import state
@@ -118,6 +137,7 @@ def run(today_iso: str | None = None) -> dict:
         print(f"Push: Secret nicht lesbar ({exc!r})")
         return {"enabled": True, "ok": False}
     today = today_iso or datetime.now().strftime("%Y-%m-%d")
+    devs = [synced(dev) for dev in devs]
     prices = prices_for(devs)
     sent = {k2: v for k2, v in state.load("push_sent.json", {}).items() if v >= _days_ago(today, 60)}
     n_sent = failed = 0
