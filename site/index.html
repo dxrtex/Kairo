@@ -3260,9 +3260,12 @@ const standalone = () => navigator.standalone === true || matchMedia("(display-m
 function pushCode(sub) {
   const d = depotLoad().filter(p => p.t).map(p => p.d && p.d.ko ? { t: p.t, dir: p.d.dir, ko: p.d.ko } : { t: p.t });
   const seen = new Set(), dep = d.filter(x => { const k = x.t + (x.ko || ""); if (seen.has(k)) return false; seen.add(k); return true; });
-  return JSON.stringify({ s: sub.toJSON ? sub.toJSON() : sub, m: [...favs()], d: dep });
+  // offene Trade-Pläne: nur Kursmarken und Daten (Stop, Ziel, K.-o., Verkaufstag) – keine Beträge
+  const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).startsWith("~")).map(x => ({ i: x.id, t: x.t, n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit }));
+  return JSON.stringify({ s: sub.toJSON ? sub.toJSON() : sub, d: dep, p });
 }
 let pushSub = null;
+const pushSig = () => plansLoad().filter(x => x.st === "open").map(x => x.id).join(",") + "|" + depotLoad().map(p => p.t + (p.d && p.d.ko || "")).join(",");
 async function pushInit() {
   if (!pushOk()) return;
   try { const reg = await navigator.serviceWorker.ready; pushSub = await reg.pushManager.getSubscription(); } catch (e) {}
@@ -3284,13 +3287,13 @@ function pushHtml() {
   let body;
   if (!pushOk() && !standalone()) body = `<div class="tgdesc">Mitteilungen funktionieren auf dem iPad nur, wenn Kairo als App auf dem Home-Bildschirm liegt: in Safari <b>Teilen ⬆︎ → „Zum Home-Bildschirm“</b>, dann Kairo von dort öffnen und hier aktivieren (ab iPadOS 16.4).</div>`;
   else if (!pushOk()) body = `<div class="tgdesc">Dieses Gerät unterstützt keine Web-Mitteilungen (iPadOS 16.4 oder neuer nötig).</div>`;
-  else if (!pushSub) body = `<div class="tgdesc">Nach jedem Abendscan bekommst du eine Mitteilung direkt aufs iPad – auch wenn Kairo geschlossen ist:<br>⚠️ <b>K.-o. nah</b> bei deinen Turbos · 🟢 <b>deine Aktien</b> neu als Treffer/Trend-Rücksetzer, Quartalszahlen morgen · 🌙 <b>neue Top-Treffer</b> und Zinsentscheide.</div>
+  else if (!pushSub) body = `<div class="tgdesc">Nur wenn es wichtig ist – tagsüber alle 30 Minuten geprüft, auch wenn Kairo geschlossen ist:<br>🛑 <b>Stop erreicht</b> · 🎯 <b>Kursziel erreicht</b> (falls gesetzt) · 📆 <b>Verkaufstag</b> (Tag 20) · ⚠️ <b>K.-o. nah</b> / 💥 erreicht. Jede Meldung kommt nur einmal.</div>
     <div class="row-actions" style="margin-top:12px"><button class="btn" data-push="on">Mitteilungen aktivieren</button></div>`;
   else body = `<div class="tgdesc">✓ Dieses iPad ist angemeldet. Damit der Scan die Mitteilungen senden kann, einmalig den Code als GitHub-Secret speichern:</div>
-    <ol class="steps"><li><button class="btn ghost sm" data-push="copy">Code kopieren</button> <span class="muted">(Geräte-Abo + Merkliste + Depot-Basiswerte mit K.-o., keine Beträge)</span></li>
+    <ol class="steps"><li><button class="btn ghost sm" data-push="copy">Code kopieren</button> <span class="muted">(Geräte-Abo + offene Trades mit Stop/K.-o./Verkaufstag + Depot-K.-o., keine Beträge)</span></li>
       <li><a href="${REPO}/settings/secrets/actions/new" target="_blank" rel="noopener">Neues Secret anlegen</a> → Name <code>PUSH_SUBS</code>, Wert = Code einfügen → speichern.</li>
       <li>Falls noch nicht geschehen: Secret <code>VAPID_PRIVATE_KEY</code> anlegen (den Wert hat dir Claude im Chat gegeben).</li></ol>
-    <div class="note">Nach Änderungen an Merkliste oder Depot den Code erneut kopieren und das Secret <code>PUSH_SUBS</code> aktualisieren – sonst gelten die K.-o.-Warnungen für den alten Stand.</div>
+    <div class="note">Nach jedem neuen Trade (oder Änderungen im Depot) den Code erneut kopieren und das Secret <code>PUSH_SUBS</code> aktualisieren – sonst kennt die Prüfung den neuen Trade nicht.</div>
     <textarea id="pushText" class="tgtext" readonly hidden></textarea>`;
   return `<div class="section-title"><span>Mitteilungen aufs iPad</span><span class="up">${live}</span></div><div class="card tgset">${body}</div>`;
 }
@@ -3840,7 +3843,9 @@ function tpPlansHtml() {
   const cmp = h.length ? `<div class="tp2-cmp"><div><span>Hälfte 1 · deine Strategie (TP)</span><b class="${a1 >= 0 ? "up" : "down"}">${fmt(a1, 2).replace(/^(?!-)/, "+")} R</b><em>Treffer ${pct(h.filter(p => p.R1 > 0).length / h.length, 0)}</em></div>
       <div><span>Hälfte 2 · laufen lassen (Tag 20)</span><b class="${a2 >= 0 ? "up" : "down"}">${fmt(a2, 2).replace(/^(?!-)/, "+")} R</b><em>Treffer ${pct(h.filter(p => p.R2 > 0).length / h.length, 0)}</em></div></div>
     <div class="note" style="margin:4px 2px 12px">${h.length} Trades verglichen${h.length < 20 ? ` – aussagekräftig ab etwa 20–30` : a1 > a2 + 0.1 ? " – deine TP-Strategie liegt vorn" : a2 > a1 + 0.1 ? " – Laufenlassen liegt vorn" : " – beide etwa gleich"}.</div>` : "";
-  return `<div class="section-title"><span>Deine Trades</span><span>${open.length} offen</span></div>${open.map(row).join("") || `<div class="note">Keine offenen Trades.</div>`}
+  const pushOld = pushSub && state.pushSig != null && state.pushSig !== pushSig()
+    ? `<div class="note" style="border-left:3px solid var(--gold)">🔔 Deine Trades haben sich geändert – damit Stop-, Verkaufstag- und K.-o.-Mitteilungen stimmen: <a href="#" data-gosec="settings">Einstellungen → Mitteilungen</a> → Code kopieren → Secret <code>PUSH_SUBS</code> aktualisieren.</div>` : "";
+  return pushOld + `<div class="section-title"><span>Deine Trades</span><span>${open.length} offen</span></div>${open.map(row).join("") || `<div class="note">Keine offenen Trades.</div>`}
     ${(() => { const cnt = {}; open.forEach(p => { const x = rowOf(p.t), k = (x && x.sec) || p.sec; if (k) cnt[k] = (cnt[k] || 0) + 1; });
       const ks = Object.entries(cnt).sort((a, b) => b[1] - a[1]);
       return ks.length ? `<div class="note" style="margin:4px 2px 0">Sektoren: ${ks.map(([k, n]) => `<span class="${n >= KMAX.perSector ? "down" : ""}">${esc(k)} ${n}</span>`).join(" · ")}${ks.some(([, n]) => n >= KMAX.perSector) ? ` – Klumpenschutz: höchstens ${KMAX.perSector} je Sektor` : ""}</div>` : ""; })()}
@@ -4281,7 +4286,7 @@ document.addEventListener("click", e => {
   const pb = e.target.closest("[data-push]");
   if (pb) {
     if (pb.dataset.push === "on") { pushEnable(); return; }
-    if (pb.dataset.push === "copy" && pushSub) { const txt = pushCode(pushSub), ta = $("pushText"); ta.value = txt; ta.hidden = false; ta.select();
+    if (pb.dataset.push === "copy" && pushSub) { state.pushSig = pushSig(); save(); const txt = pushCode(pushSub), ta = $("pushText"); ta.value = txt; ta.hidden = false; ta.select();
       (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => { pb.textContent = "✓ Kopiert"; }).catch(() => { try { document.execCommand("copy"); pb.textContent = "✓ Kopiert"; } catch (x) {} }); }
     return;
   }

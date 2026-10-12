@@ -1,4 +1,4 @@
-from backend import push, webpush
+from backend import webpush
 
 
 def test_rfc8291_vector():
@@ -10,14 +10,3 @@ def test_rfc8291_vector():
                                   "AC8wEqKK6PBru3jl7A_yl95bQpu6cVPTpK4Mqgkf1CXztLVBSt2Ks3oZwbuwXPXLWyouBWLVWGNWQexSgSxsj_Qulcy4a-fN")
 
 
-def test_messages():
-    rows = [{"ticker": "AAA", "name": "Alpha", "passed": True, "score": 80, "in_watchlist": True},
-            {"ticker": "BBB", "name": "Beta", "passed": False, "score": 0, "tr": {"ok": True, "top": True, "chk": {"p": .62}}}]
-    search = {"CCC": {"c": 100, "n": "Gamma"}}
-    dev = {"m": ["BBB"], "d": [{"t": "CCC", "dir": "long", "ko": 95}]}
-    ev = [{"kind": "earnings", "ticker": "AAA", "days": 1, "name": "Alpha"}]
-    msgs = push.messages(rows, {"hit": [], "trend": []}, {"regime": {"label": "Rückenwind"}}, ev, search, dev)
-    titles = [m["title"] for m in msgs]
-    assert titles[0].startswith("⚠️") and "Gamma" in msgs[0]["body"]
-    assert "Alpha ist jetzt Treffer" in msgs[1]["body"] and "Check 62 %" in msgs[1]["body"] and "Quartalszahlen" in msgs[1]["body"]
-    assert "1 neue Treffer" in msgs[2]["body"] and "Trend Top" in msgs[2]["body"]

@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -25,7 +26,7 @@ from .config import CONFIG, ROOT, as_dict
 from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
-from . import briefing, company, insider, push, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
+from . import briefing, company, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import MARKET, SECTOR_DE, SECTOR_ETF, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -613,10 +614,8 @@ def main(argv=None) -> int:
         except Exception as exc:
             print(f"Telegram: Fehler {exc!r}")
             alerts = {"enabled": False, "error": True}
-        try:                                          # Mitteilungen aufs iPad (Web Push)
-            alerts["push"] = push.run(rows, market, cal["events"], search, last, today_iso)
-        except Exception as exc:
-            print(f"Push: Fehler {exc!r}")
+        # Mitteilungen aufs iPad: nur noch Wichtiges, tagsüber alle 30 Min. über alerts.yml (Stop, Ziel, Verkaufstag, K.-o.)
+        alerts["push"] = {"enabled": bool(os.environ.get("PUSH_SUBS") and os.environ.get("VAPID_PRIVATE_KEY")), "date": today_iso, "mode": "live"}
         try:
             bil = live.update(rows, data, today_iso)
             print(f"Live-Bilanz: {bil['live']['n']} Signale seit {bil['live']['since']}, neu: {len(bil['new'])}")

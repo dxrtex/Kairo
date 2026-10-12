@@ -1,8 +1,11 @@
-"""Push-Mitteilungen aufs iPad nach jedem Scan (Web Push, siehe webpush.py).
+"""Push-Mitteilungen aufs iPad – nur wenn es wichtig ist (Web Push, siehe webpush.py).
+
+Stop erreicht, Kursziel erreicht, Verkaufstag (Tag 20), K.-o. nah/erreicht. Läuft tagsüber alle 30 Minuten (alerts.yml)
+und nach dem Abendscan; jede Meldung kommt nur einmal (state/push_sent.json).
 
 Einrichtung (einmalig): In der App unter Einstellungen → Mitteilungen aktivieren, den angezeigten Code kopieren und als
 GitHub-Secret PUSH_SUBS speichern; zusätzlich VAPID_PRIVATE_KEY. Der Code enthält das Abo des Geräts und – optional –
-Merkliste und Depot (Basiswert, Richtung, K.-o.) für persönliche Hinweise. Er liegt nur in den Secrets, nie im Repo.
+offene Trade-Pläne (Basiswert, Stop, Ziel, K.-o., Verkaufstag) und Depot (Basiswert, K.-o.), keine Beträge. Er liegt nur in den Secrets, nie im Repo.
 """
 
 from __future__ import annotations
@@ -24,64 +27,85 @@ def _pct(x: float) -> str:
     return f"{x * 100:.1f} %".replace(".", ",")
 
 
-def messages(rows: list[dict], last: dict, market: dict, events: list[dict], search: dict, dev: dict) -> list[dict]:
-    """Höchstens 3 kurze Mitteilungen: Depot-Warnung, deine Aktien, Abendbericht."""
-    by = {r["ticker"]: r for r in rows}
-    fav, depot = set(dev.get("m") or []), dev.get("d") or []
-    mine = fav | {r["ticker"] for r in rows if r.get("in_watchlist")} | {d.get("t") for d in depot}
-    prev_hit, prev_tr = set(last.get("hit", [])), set(last.get("trend", []))
+def _hit(df, since, col, fn):
+    """Tiefst-/Höchstkurs seit dem Kauftag (Tageskerzen inkl. laufendem Tag)."""
+    x = df[df.index >= since] if since else df.tail(1)
+    v = x[col].dropna()
+    return float(fn(v)) if len(v) else None
+
+
+def messages(dev: dict, prices: dict, today: str, sent: dict) -> list[dict]:
+    """Nur Wichtiges: Stop erreicht, Take-Profit erreicht, Verkaufstag, K.-o. nah/erreicht. Jede Meldung nur einmal (sent)."""
     out = []
-    # 1) Depot: K.-o. nah
-    warn = []
-    for d in depot:
-        s = search.get(d.get("t"))
-        if not s or not d.get("ko") or not s.get("c"):
+
+    def add(key, title, body, sec="entry"):
+        if key in sent:
+            return
+        sent[key] = today
+        out.append({"title": title, "body": body, "url": APP + f"?sec={sec}", "tag": "kairo-" + key.split(":")[0]})
+
+    for p in dev.get("p") or []:                       # offene Trade-Pläne (Einstieg)
+        t, df = p.get("t"), prices.get(p.get("t"))
+        n, cur = (p.get("n") or t or "")[:28], p.get("cur") or ""
+        if not t:
             continue
-        dist = (s["c"] - d["ko"]) / s["c"] if d.get("dir", "long") == "long" else (d["ko"] - s["c"]) / s["c"]
-        if dist < 0.08:
-            warn.append((dist, f"{s.get('n') or d['t']}: nur {_pct(dist)} bis K.-o. {_num(d['ko'])}"))
-    if warn:
-        warn.sort()
-        out.append({"title": "⚠️ K.-o. nah" if len(warn) == 1 else f"⚠️ {len(warn)} Turbos nah am K.-o.",
-                    "body": "\n".join(t for _, t in warn[:4]), "url": APP + "?sec=depot", "tag": "kairo-ko"})
-    # 2) Deine Aktien: neu Treffer / Trend-Rücksetzer, Termine morgen
-    lines = []
-    for t in sorted(mine):
-        r = by.get(t)
-        if not r:
+        x = p.get("x")
+        if x and x <= today and today <= (p.get("x2") or "9999") and x >= _days_ago(today, 10):
+            add(f"exit:{p.get('i')}", f"📆 Verkaufstag: {n}", "Tag 20 erreicht – laut Kairo-Strategie heute verkaufen (Turbo im Depot verkaufen, Trade im Journal schließen).")
+        if df is None or not len(df):
             continue
-        n = (r.get("name") or t)[:28]
-        if r["passed"] and t not in prev_hit:
-            lines.append(f"🟢 {n} ist jetzt Treffer · Score {r['score']}")
-        elif (r.get("tr") or {}).get("ok") and t not in prev_tr:
-            chk = (r["tr"].get("chk") or {}).get("p")
-            lines.append(f"↗️ {n}: Trend-Rücksetzer{' Top' if r['tr'].get('top') else ''}" + (f" · Check {chk * 100:.0f} %" if chk is not None else ""))
-    for ev in events:
-        if ev.get("days") == 1 and ev.get("ticker") in mine and ev.get("kind") == "earnings":
-            lines.append(f"📅 morgen Quartalszahlen: {(ev.get('name') or ev['ticker'])[:28]}")
-    if lines:
-        out.append({"title": "Deine Aktien", "body": "\n".join(lines[:5]) + (f"\n+ {len(lines) - 5} weitere" if len(lines) > 5 else ""),
-                    "url": APP + "?sec=today", "tag": "kairo-mine"})
-    # 3) Abendbericht: neue Treffer und Trend-Top
-    hits = [r for r in rows if r["passed"]]
-    new_hits = sorted([r for r in hits if r["ticker"] not in prev_hit], key=lambda r: -r["score"])
-    new_top = [r for r in rows if (r.get("tr") or {}).get("top") and r["ticker"] not in prev_tr]
-    macro = [ev for ev in events if ev.get("days") == 1 and ev.get("kind") == "macro"]
-    if new_hits or new_top or macro:
-        reg = (market.get("regime") or {}).get("label")
-        parts = []
-        if new_hits:
-            parts.append(f"{len(new_hits)} neue Treffer: " + ", ".join((r.get("name") or r["ticker"])[:18] for r in new_hits[:3]))
-        if new_top:
-            parts.append(f"{len(new_top)} neue Trend Top: " + ", ".join((r.get("name") or r["ticker"])[:18] for r in new_top[:3]))
-        if macro:
-            parts.append("Morgen: " + ", ".join(ev.get("title", "") for ev in macro[:2]))
-        out.append({"title": f"🌙 Kairo · {len(hits)} Treffer" + (f" · {reg}" if reg else ""), "body": "\n".join(parts),
-                    "url": APP + "?sec=today", "tag": "kairo-report"})
+        lo, hi = _hit(df, p.get("d"), "Low", min), _hit(df, p.get("d"), "High", max)
+        if p.get("sl") and lo is not None and lo <= p["sl"]:
+            add(f"sl:{p.get('i')}", f"🛑 Stop erreicht: {n}", f"Tief {_num(lo)} {cur} unter dem Stop {_num(p['sl'])} {cur}. Prüfe, ob die Stop-Order ausgeführt wurde, und schließe den Trade im Journal.")
+        elif p.get("tp") and hi is not None and hi >= p["tp"]:
+            add(f"tp:{p.get('i')}", f"🎯 Kursziel erreicht: {n}", f"Hoch {_num(hi)} {cur} über dem Ziel {_num(p['tp'])} {cur} – Gewinn mitnehmen oder Teilverkauf.")
+        c = float(df["Close"].dropna().iloc[-1])
+        if p.get("ko") and c > 0:
+            _ko(add, n, c, float(p["ko"]), "long", today, cur, "entry")
+    for d in dev.get("d") or []:                       # Depot: K.-o.-Schwelle
+        df = prices.get(d.get("t"))
+        if not d.get("ko") or df is None or not len(df):
+            continue
+        _ko(add, (d.get("n") or d["t"])[:28], float(df["Close"].dropna().iloc[-1]), float(d["ko"]), d.get("dir", "long"), today, "", "depot")
     return out
 
 
-def run(rows, market, calendar_events, search, last: dict, today_iso: str) -> dict:
+def _ko(add, n, c, ko, direction, today, cur, sec):
+    dist = (c - ko) / c if direction == "long" else (ko - c) / c
+    if dist <= 0:
+        add(f"kohit:{n}:{ko}", f"💥 K.-o. erreicht: {n}", f"Kurs {_num(c)} {cur} hat die K.-o.-Schwelle {_num(ko)} {cur} erreicht.", sec)
+    elif dist < 0.05:
+        add(f"ko:{n}:{ko}:{today}", f"⚠️ K.-o. nah: {n}", f"Nur noch {_pct(dist)} bis zur K.-o.-Schwelle {_num(ko)} {cur} (Kurs {_num(c)}).", sec)
+
+
+def _days_ago(today: str, n: int) -> str:
+    from datetime import date, timedelta
+    return (date.fromisoformat(today) - timedelta(days=n)).isoformat()
+
+
+def prices_for(devs: list[dict]) -> dict:
+    """Tageskerzen (inkl. laufendem Handelstag, ~15 Min. verzögert) für alle Basiswerte aus Plänen und Depot."""
+    import yfinance as yf
+    ts = sorted({x.get("t") for dev in devs for x in (dev.get("p") or []) + (dev.get("d") or [])
+                 if x.get("t") and not str(x.get("t")).startswith("~")})
+    if not ts:
+        return {}
+    h = yf.download(ts, period="2mo", interval="1d", group_by="ticker", auto_adjust=False, progress=False, threads=True)
+    out = {}
+    for t in ts:
+        try:
+            df = h[t] if len(ts) > 1 else h
+            df = df.dropna(subset=["Close"])
+            df.index = [str(i.date()) for i in df.index]
+            out[t] = df
+        except Exception:
+            pass
+    return out
+
+
+def run(today_iso: str | None = None) -> dict:
+    from datetime import datetime
+    from . import state
     raw, key = os.environ.get("PUSH_SUBS"), os.environ.get("VAPID_PRIVATE_KEY")
     if not raw or not key:
         print("Push: nicht eingerichtet (Secrets PUSH_SUBS / VAPID_PRIVATE_KEY fehlen)")
@@ -93,27 +117,26 @@ def run(rows, market, calendar_events, search, last: dict, today_iso: str) -> di
     except Exception as exc:
         print(f"Push: Secret nicht lesbar ({exc!r})")
         return {"enabled": True, "ok": False}
-    import numpy as np
-    import pandas as pd
-    today = pd.Timestamp(today_iso)
-    evs = []
-    for ev in calendar_events:
-        try:
-            evs.append({**ev, "days": int(np.busday_count(today.date(), pd.Timestamp(ev["date"]).date()))})
-        except Exception:
-            pass
-    sent = failed = 0
+    today = today_iso or datetime.now().strftime("%Y-%m-%d")
+    prices = prices_for(devs)
+    sent = {k2: v for k2, v in state.load("push_sent.json", {}).items() if v >= _days_ago(today, 60)}
+    n_sent = failed = 0
     for dev in devs:
         sub = dev.get("s") or dev
-        for msg in messages(rows, last, market, evs, search, dev):
+        for msg in messages(dev, prices, today, sent):
             try:
                 st = webpush.send(sub, msg, k)
-                sent += st in (200, 201, 202)
+                n_sent += st in (200, 201, 202)
                 failed += st not in (200, 201, 202)
                 if st not in (200, 201, 202):
                     print(f"Push: Status {st}" + (" – Abo abgelaufen, in der App neu aktivieren" if st in (404, 410) else ""))
             except Exception as exc:
                 failed += 1
                 print(f"Push: Fehler {exc!r}")
-    print(f"Push: {sent} Mitteilungen gesendet, {failed} fehlgeschlagen, {len(devs)} Gerät(e)")
-    return {"enabled": True, "ok": failed == 0, "sent": sent, "date": today_iso}
+    state.save("push_sent.json", sent)
+    print(f"Push: {n_sent} Mitteilungen gesendet, {failed} fehlgeschlagen, {len(devs)} Gerät(e), {len(prices)} Kurse")
+    return {"enabled": True, "ok": failed == 0, "sent": n_sent, "date": today}
+
+
+if __name__ == "__main__":
+    run()

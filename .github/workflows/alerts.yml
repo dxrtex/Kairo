@@ -1,0 +1,42 @@
+name: Wichtige Mitteilungen (tagsüber)
+
+on:
+  schedule:
+    - cron: "*/30 6-21 * * 1-5"   # alle 30 Minuten, Mo–Fr, ca. 8–23 Uhr Berlin
+  workflow_dispatch:
+
+permissions:
+  contents: write                  # gesendete Meldungen merken (Branch kairo-alerts, getrennt vom Scan-Zustand), damit jede nur einmal kommt
+
+concurrency:
+  group: alerts
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Zustand laden (Branch kairo-alerts, getrennt vom Scan-Zustand)
+        run: |
+          if git fetch -q origin kairo-alerts:kairo-alerts 2>/dev/null; then git worktree add -q state kairo-alerts;
+          else git worktree add -q --orphan -b kairo-alerts state; fi
+      - name: Stop, Kursziel, Verkaufstag, K.-o. prüfen
+        run: python -m backend.push
+        env:
+          PUSH_SUBS: ${{ secrets.PUSH_SUBS }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+      - name: Zustand sichern
+        if: always()
+        run: |
+          cd state || exit 0
+          git add -A
+          git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Mitteilungen $(date +%F-%H%M)" || exit 0
+          git pull -q --rebase origin kairo-alerts || true
+          git push -q origin kairo-alerts
