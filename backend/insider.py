@@ -115,7 +115,7 @@ def parse_openinsider(page: str) -> list[dict]:
         kind = "buy" if g("type").startswith("P") else "sell" if g("type").startswith("S") else None
         val, px = abs(_num_us(g("val"))), _num_us(g("px"))
         tk = (re.findall(r"[A-Z][A-Z0-9.\-]{0,7}", g("t").upper()) or [""])[-1]
-        if not kind or not tk or val <= 0 or px <= 0 or px > 1e5 or val > 5e9:   # Meldefehler (Kurs 50.000 $ o. Ä.) auslassen
+        if not kind or not tk or val <= 0 or px <= 0 or px > 1e5 or val >= 2e9:   # Meldefehler (Wert am Zahlen-Höchstwert 2^31) auslassen
             continue
         out.append({"t": tk, "n": g("n"), "who": g("who"), "role": g("role"), "kind": kind, "d": g("d")[:10],
                     "sh": round(abs(_num_us(g("sh")))), "px": round(px, 2), "val": round(val),
