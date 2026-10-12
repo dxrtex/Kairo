@@ -80,7 +80,8 @@ def _merge(rows: list[dict]) -> list[dict]:
 
 
 def _cells(row: str) -> list[str]:
-    return [re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", c))).strip()
+    # Tags samt Attributen entfernen – auch wenn ein Attribut (Tooltip) selbst „>“ enthält
+    return [re.sub(r"\s+", " ", html.unescape(re.sub(r"""<(?:[^>"']|"[^"]*"|'[^']*')*>""", " ", c))).strip()
             for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)]
 
 
@@ -113,11 +114,12 @@ def parse_openinsider(page: str) -> list[dict]:
         g = lambda k: c[ix[k]] if ix[k] is not None else ""
         kind = "buy" if g("type").startswith("P") else "sell" if g("type").startswith("S") else None
         val, px = abs(_num_us(g("val"))), _num_us(g("px"))
-        if not kind or not g("t") or val <= 0:
+        tk = (re.findall(r"[A-Z][A-Z0-9.\-]{0,7}", g("t").upper()) or [""])[-1]
+        if not kind or not tk or val <= 0 or px <= 0 or px > 1e5 or val > 5e9:   # Meldefehler (Kurs 50.000 $ o. Ä.) auslassen
             continue
-        out.append({"t": g("t").upper(), "n": g("n"), "who": g("who"), "role": g("role"), "kind": kind, "d": g("d")[:10],
+        out.append({"t": tk, "n": g("n"), "who": g("who"), "role": g("role"), "kind": kind, "d": g("d")[:10],
                     "sh": round(abs(_num_us(g("sh")))), "px": round(px, 2), "val": round(val),
-                    "url": f"http://openinsider.com/{g('t').upper()}"})
+                    "url": f"http://openinsider.com/{tk}"})
     return out
 
 

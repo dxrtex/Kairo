@@ -41,7 +41,7 @@ def test_bad_xml_and_merge():
 OI_HTML = """<table width="100%" cellpadding="0" cellspacing="0" border="0" class="tinytable">
 <thead><tr><th>X</th><th>Filing&nbsp;Date</th><th>Trade&nbsp;Date</th><th>Ticker</th><th>Company&nbsp;Name</th><th>Insider&nbsp;Name</th>
 <th>Title</th><th>Trade&nbsp;Type</th><th>Price</th><th>Qty</th><th>Owned</th><th>&Delta;Own</th><th>Value</th></tr></thead>
-<tbody><tr><td>M</td><td><div><a href="x">2026-10-09 16:05:11</a></div></td><td><div>2026-10-08</div></td><td><b><a href="/AXON">AXON</a></b></td>
+<tbody><tr><td>M</td><td><div><a href="x">2026-10-09 16:05:11</a></div></td><td><div>2026-10-08</div></td><td><b><a href="/AXON" onmouseover="Tip('<img src=\'x.png\'>', DELAY, 1)" ONMOUSEOUT="UnTip()">AXON</a></b></td>
 <td><a href="/AXON">Axon Enterprise, Inc.</a></td><td><a href="/insider/x">Smith Patrick W</a></td><td>CEO, Dir</td><td>P - Purchase</td>
 <td>$400.50</td><td>+1,000</td><td>10,000</td><td>+11%</td><td>+$400,500</td></tr>
 <tr><td></td><td>2026-10-09</td><td>2026-10-07</td><td>NVDA</td><td>Nvidia</td><td>Huang Jen</td><td>CEO</td><td>S - Sale+OE</td>
