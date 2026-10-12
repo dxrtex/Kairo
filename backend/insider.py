@@ -26,6 +26,7 @@ import requests
 # dieselben Formular-4-Meldungen, frei abrufbar und schon aufbereitet.
 UA = {"User-Agent": f"Kairo Scanner {os.environ.get('SEC_CONTACT', '')}".strip(), "Accept-Encoding": "gzip, deflate"}
 OI = {"buy": "http://openinsider.com/latest-insider-purchases-25k", "sell": "http://openinsider.com/latest-insider-sales-100k"}
+SCREEN = "http://openinsider.com/screener?s={t}&fd=180&xp=1&xs=1&cnt=40"   # je Aktie: Käufe + Verkäufe, 180 Tage
 FEED = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&owner=include&count=100&start={start}&output=atom"
 MIN_BUY, MIN_SELL = 50_000, 1_000_000                 # USD: kleinere Käufe/Verkäufe sind Rauschen
 
@@ -136,7 +137,29 @@ def fetch_openinsider() -> list[dict]:
     return rows
 
 
-def fetch(pages: int = 3, budget_s: float = 150) -> dict:
+def fetch_watch(watch: dict[str, str], budget_s: float = 120) -> tuple[list[dict], int]:
+    """Gezielt für die Watchlist: Insider-Käufe und -Verkäufe je US-Aktie der letzten 6 Monate (OpenInsider-Screener).
+    Nur US-Börsenkürzel (ohne Punkt) – europäische und asiatische Werte melden nicht an die SEC."""
+    t0, rows, done = time.time(), [], 0
+    for t, name in watch.items():
+        if "." in t or "^" in t or time.time() - t0 > budget_s:
+            continue
+        try:
+            r = requests.get(SCREEN.format(t=t), headers={"User-Agent": "Mozilla/5.0 (Kairo Scanner)"}, timeout=20)
+            got = [x for x in parse_openinsider(r.text) if x["t"] == t]
+            done += 1
+            for x in _merge(got):
+                if x["kind"] == "buy" or x["val"] >= 250_000:          # Verkäufe nur ab 250.000 $ – kleine sind Routine
+                    rows.append({**x, "n": x.get("n") or name, "url": f"http://openinsider.com/{t}"})
+            time.sleep(0.4)
+        except Exception as exc:
+            print(f"Insider Watchlist {t}: {exc!r}"[:140])
+    rows.sort(key=lambda x: (x["d"], x["val"]), reverse=True)
+    print(f"Insider Watchlist: {done} Aktien geprüft, {sum(x['kind'] == 'buy' for x in rows)} Käufe, {sum(x['kind'] == 'sell' for x in rows)} Verkäufe")
+    return rows[:200], done
+
+
+def fetch(pages: int = 3, budget_s: float = 150, watch: dict[str, str] | None = None) -> dict:
     t0, s = time.time(), requests.Session()
     s.headers.update(UA)
     rows = []
@@ -183,15 +206,19 @@ def fetch(pages: int = 3, budget_s: float = 150) -> dict:
     rows = _merge(rows)
     buys = sorted([r for r in rows if r["kind"] == "buy" and r["val"] >= MIN_BUY], key=lambda r: -r["val"])
     sells = sorted([r for r in rows if r["kind"] == "sell" and r["val"] >= MIN_SELL], key=lambda r: -r["val"])
-    return {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "filings": len(seen) or len(rows),
-            "buys": buys[:60], "sells": sells[:40], "source": src}
+    out = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "filings": len(seen) or len(rows),
+           "buys": buys[:60], "sells": sells[:40], "source": src}
+    if watch:
+        out["watch"], out["watch_n"] = fetch_watch(watch)
+    return out
 
 
 def main(argv=None) -> int:
-    res = fetch()
+    from .run_scan import load_watchlist
+    res = fetch(watch=load_watchlist())
     print(f"Insider: {res['filings']} Meldungen, {len(res['buys'])} Käufe, {len(res['sells'])} Verkäufe")
     print("===BEGIN===")
-    print(json.dumps({**res, "buys": res["buys"][:15], "sells": res["sells"][:8]}, ensure_ascii=False))
+    print(json.dumps({**res, "buys": res["buys"][:15], "sells": res["sells"][:8], "watch": res.get("watch", [])[:40]}, ensure_ascii=False))
     print("===END===")
     return 0
 
