@@ -3558,6 +3558,10 @@ document.addEventListener("click", async e => {
   b.classList.add("spin"); Object.values(LIVE.map).forEach(v => { v.at = 0; });
   await liveMany(depotLoad().map(p => p.t).filter(Boolean)); b.classList.remove("spin"); render();
 });
+document.addEventListener("click", e => {
+  const v = e.target.closest("[data-tvvenue]"); if (!v) return;
+  state.tvVenue = v.dataset.tvvenue; save(); render();
+});
 document.addEventListener("toggle", e => {                     // Kursdienst-Code erst beim Aufklappen laden
   if (!e.target.classList || !e.target.classList.contains("kd-help") || !e.target.open) return;
   const ta = $("kdCode"); if (ta && !ta.value) fetch("kursdienst.js", { cache: "no-store" }).then(r => r.text()).then(t => { ta.value = t; }).catch(() => { ta.value = "Code konnte nicht geladen werden – Seite neu laden."; });
@@ -3592,14 +3596,19 @@ document.addEventListener("click", async e => {
       : j ? "✗ Kursdienst erreichbar, aber Yahoo liefert gerade keinen Kurs – später noch einmal testen" : "✗ Kursdienst: keine Antwort – Adresse prüfen (https://….workers.dev) und ob der Code mit „Deploy“ gespeichert ist"); }
   if (msg) msg.innerHTML = `<div class="tip tone-${res.some(x => x.startsWith("✗")) ? "yellow" : "green"}" style="margin-top:10px">${res.map(esc).join("<br>") || "Schlüssel gelöscht – Kurse wieder vom Abendscan."}</div>`;
 });
+// Deutsche Aktien: Handelsplatz für den Chart wählbar – XETRA ist im eingebetteten Chart ca. 15 Min. verzögert,
+// gettex (dort handelt Scalable) bzw. Tradegate zeigen je nach TradingView-Datenpaket aktuellere Kurse.
+const TV_VENUES = [["XETR", "XETRA"], ["GETTEX", "gettex"], ["TRADEGATE", "Tradegate"]];
 const tvSym = t => { const xr = rowOf(t); if (xr && xr.ext) return `${xr.ext.exchange.toUpperCase().replace(/\s+/g, "")}:${xr.ext.symbol}`;
+  if (/\.DE$/.test(t) && state.tvVenue && state.tvVenue !== "XETR") return `${state.tvVenue}:${t.replace(/\.DE$/, "")}`;
   try { return new URL(tvUrl(t)).searchParams.get("symbol"); } catch (e) { return t; } };
 function tvChartHtml(t) {
   const src = "https://s.tradingview.com/widgetembed/?" + new URLSearchParams({ symbol: tvSym(t), interval: "D", theme: isLight() ? "light" : "dark", style: "1",
     locale: "de_DE", timezone: "Europe/Berlin", hide_side_toolbar: "1", allow_symbol_change: "0", saveimage: "0", withdateranges: "1", studies: "[]" });
   return `<details class="hcard tvbox"${state.tvOpen === false ? "" : " open"}><summary class="plan-h">Live-Chart · TradingView</summary>
+    ${/\.DE$/.test(t) ? `<div class="opts seg" style="margin:6px 0">${TV_VENUES.map(([v, l]) => `<button class="opt${(state.tvVenue || "XETR") === v ? " on" : ""}" data-tvvenue="${v}">${l}</button>`).join("")}</div>` : ""}
     <iframe src="${src}" loading="lazy" title="Live-Chart ${esc(t)}" allowtransparency="true" frameborder="0" scrolling="no"></iframe>
-    <div class="note" style="margin:6px 0 0">Echtzeit bzw. leicht verzögert je nach Börse. Kerzen, Seitwärtsphase und Stop im Plan stammen aus dem Abendscan; den Kaufkurs rechnet der Plan live.</div></details>`;
+    <div class="note" style="margin:6px 0 0">Der eingebettete Chart ist je nach Börse verzögert (XETRA ca. 15 Min.) – bei deutschen Aktien oben gettex oder Tradegate wählen. Maßgeblich für den Plan ist der Live-Kurs oben (Kursdienst/Finnhub); Kerzen, Seitwärtsphase und Stop stammen aus dem Abendscan.</div></details>`;
 }
 function einPlanHtml(r) {
   if (liveOn()) { const o = LIVE.map[r.t]; if (!o || Date.now() - o.at > LIVE.ttl) liveQuote(r.t).then(q => { if (q && state.sec === "entry" && state.einT === r.t) render(); }); }
