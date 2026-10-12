@@ -286,7 +286,7 @@
   nav.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: rgba(22, 22, 24, .82);
                -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border-top: 1px solid var(--line);
                padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
-  .tabs { max-width: 680px; margin: 0 auto; display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .tabs { max-width: 680px; margin: 0 auto; display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
   .tab { border: 0; background: none; cursor: pointer; color: var(--muted); display: flex; flex-direction: column; align-items: center;
          gap: 3px; font-size: 12px; font-weight: 600; padding: 6px 0; border-radius: 16px; position: relative; }
   .tab svg { width: 24px; height: 24px; }
@@ -312,7 +312,7 @@
   .opt.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 650; }
   .sheet .btn { width: 100%; margin-top: 26px; display: block; }
 
-  .tabs { max-width: 820px; grid-template-columns: repeat(7, 1fr); }
+  .tabs { max-width: 820px; grid-template-columns: repeat(8, 1fr); }
   .card h2 a { color: inherit; text-decoration: none; }
   .ampel { display: flex; gap: 5px; flex-wrap: wrap; }
   .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--up); display: inline-block; }
@@ -987,6 +987,9 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
     <button class="tab" data-sec="calendar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
       Kalender<span class="badge" id="calBadge" hidden></span></button>
+    <button class="tab" data-sec="news">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h10A1.5 1.5 0 0 1 17 5.5V19a1 1 0 0 0 1 1H6a2 2 0 0 1-2-2z"/><path d="M17 9h2.5a.5.5 0 0 1 .5.5V18a2 2 0 0 1-2 2M8 8h5M8 12h5M8 16h3"/></svg>
+      News</button>
     <button class="tab" data-sec="depot">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15l3.5-4 3 2.5L20 7"/></svg>
       Depot</button>
@@ -1590,6 +1593,75 @@ const CAL_KIND = { earnings: ["Q", "k-earn", "Quartalszahlen"], exdiv: ["Div", "
                    macro: ["%", "k-macro", "Notenbank"], expiry: ["V", "k-exp", "Großer Verfall"] };
 let calMonth = 0, calDay = null;   // Monatsansicht: Versatz zum aktuellen Monat, ausgewählter Tag
 const isoOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// ---------- Nachrichten: deine Aktien, Markt, Insider-Käufe (SEC) – Scan-Daten + live über Finnhub (Schlüssel nur lokal) ----------
+const NEWS = { gen: null, co: {}, ins: {}, at: 0, busy: false };
+function newsLoad(force) {
+  const files = ["briefing.json", "insider.json"].filter(f => jsonData[f] === undefined);
+  Promise.all(files.map(f => fetch(`data/${f}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null).then(d => { jsonData[f] = d; })))
+    .then(() => { if (files.length && state.sec === "news") render(); });
+  const fh = liveKey("fh");
+  if (!fh || NEWS.busy || (!force && Date.now() - NEWS.at < 10 * 60e3)) return;
+  NEWS.busy = true;
+  const q = (p, o) => fetch(`https://finnhub.io/api/v1/${p}?${new URLSearchParams({ ...o, token: fh })}`).then(r => r.ok ? r.json() : null).catch(() => null);
+  const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 4 * 864e5).toISOString().slice(0, 10);
+  const us = [...myTickers()].filter(isUS).slice(0, 12), ins3 = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);
+  Promise.all([q("news", { category: "general" }).then(j => { NEWS.gen = Array.isArray(j) ? j : NEWS.gen; }),
+    ...us.map(t => q("company-news", { symbol: t.replace("-", "."), from, to }).then(j => { if (Array.isArray(j)) NEWS.co[t] = j.slice(0, 6); })),
+    ...us.map(t => q("stock/insider-transactions", { symbol: t.replace("-", "."), from: ins3 }).then(j => { if (j && Array.isArray(j.data)) NEWS.ins[t] = j.data.filter(x => x.transactionCode === "P" || x.transactionCode === "S"); }))])
+    .finally(() => { NEWS.busy = false; NEWS.at = Date.now(); if (state.sec === "news") render(); });
+}
+function newsHtml() {
+  newsLoad();
+  const tab = state.newsTab || "mine", mine = myTickers(), now = Date.now(), bj = jsonData["briefing.json"], ij = jsonData["insider.json"];
+  const nameOf = t => { const s = rowOf(t), r = byTicker(t); return (r && r.name) || (s && s.n) || t; };
+  const ago = ms => { if (!ms) return ""; const h = Math.max(0, Math.round((now - ms) / 36e5)); return h < 1 ? "gerade eben" : h < 24 ? `vor ${h} Std.` : h < 72 ? `vor ${Math.round(h / 24)} Tg.` : new Date(ms).toLocaleDateString("de-DE"); };
+  const trU = n => n.o && /^https?:/.test(n.u || "") ? `https://translate.google.com/translate?sl=auto&tl=de&u=${encodeURIComponent(n.u)}` : n.u;
+  const row = n => `<a class="bf-r" href="${esc(trU(n) || "#")}" target="_blank" rel="noopener"${n.o ? ` title="${esc(n.o)}"` : ""}><i class="${n.s > 0 ? "g" : n.s < 0 ? "r" : "n"}"></i><span><b>${esc(n.t)}</b><em>${n.nm ? esc(n.nm) + " · " : ""}${esc(n.p || "")}${n.ms ? " · " + esc(ago(n.ms)) : ""}${n.o ? " · übersetzt" : ""}</em></span></a>`;
+  const block = (title, rows, empty) => `<div class="bf-s"><b>${title}</b><div class="bf-l">${rows.length ? rows.join("") : `<div class="bf-empty" style="padding:12px 14px">${empty}</div>`}</div></div>`;
+  const msOf = d => { const t = Date.parse(d); return isNaN(t) ? null : t; };
+  const dedup = l => { const s = new Set(); return l.filter(n => { const k = String(n.t).toLowerCase().slice(0, 70); if (s.has(k)) return false; s.add(k); return true; }); };
+  const seg = `<div class="opts seg">${[["mine", "Meine Aktien"], ["market", "Markt"], ["insider", "Insider"]].map(([v, l]) => `<button class="opt${tab === v ? " on" : ""}" data-newstab="${v}">${l}</button>`).join("")}</div>`;
+  const live = liveKey("fh"), src = live ? `Scan + live (Finnhub)${NEWS.at ? " · " + new Date(NEWS.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr" : " · lädt …"}` : "aus dem letzten Scan";
+  const head = `<div class="section-title"><span>Nachrichten</span><span>${esc(src)}</span></div>${seg}
+    ${live ? `<button class="live-btn" data-newsfresh style="margin:0 2px 4px">↻ Aktualisieren</button>` : `<p class="muted" style="font-size:13px;margin:4px 2px">Tipp: Mit einem kostenlosen Finnhub-Schlüssel (Einstellungen → Live-Kurse) kommen die Meldungen live und mit Insider-Geschäften je Aktie.</p>`}`;
+  if (tab === "mine") {
+    let pool = bj && bj.stocks ? Object.entries(bj.stocks).filter(([t]) => mine.has(t)).flatMap(([t, l]) => l.map(n => ({ ...n, nm: nameOf(t), tk: t, ms: msOf(n.d) }))) : [];
+    Object.entries(NEWS.co).forEach(([t, l]) => l.forEach(n => pool.push({ t: n.headline, u: n.url, p: n.source, ms: n.datetime * 1000, nm: nameOf(t), tk: t, s: 0 })));
+    data.results.filter(r => mine.has(r.ticker) && r.senti && r.senti.news).forEach(r => r.senti.news.forEach(n => pool.push({ ...n, nm: r.name || r.ticker, tk: r.ticker, ms: msOf(n.d) })));
+    pool = dedup(pool.filter(n => n.t && n.ms && now - n.ms < 7 * 864e5).sort((a, b) => b.ms - a.ms));
+    const hot = pool.filter(n => n.s && Math.abs(n.s) > 0).slice(0, 6), rest = pool.filter(n => !hot.includes(n)).slice(0, 40);
+    return head + (mine.size ? "" : `<p class="muted" style="margin:8px 2px">Lege Aktien in Merkliste, Depot oder Watchlist – dann siehst du hier ihre Meldungen.</p>`)
+      + (hot.length ? block("Wichtig – mit klarer Stimmung", hot.map(row), "") : "")
+      + block(`Neueste Meldungen zu deinen Aktien · 7 Tage`, rest.map(row), "Keine neuen Meldungen zu deinen Aktien.");
+  }
+  if (tab === "market") {
+    let pool = (bj && bj.market || []).map(n => ({ ...n, s: 0, ms: msOf(n.d) }));
+    (NEWS.gen || []).forEach(n => pool.push({ t: n.headline, u: n.url, p: n.source, ms: n.datetime * 1000, s: 0 }));
+    pool = dedup(pool.filter(n => n.t && n.ms && now - n.ms < 3 * 864e5).sort((a, b) => b.ms - a.ms)).slice(0, 40);
+    const mac = (calData || []).filter(e => (e.kind === "macro" || e.kind === "expiry") && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 7)
+      .map(e => `<div class="bf-r"><i class="y"></i><span><b>${esc(e.title || "Termin")}</b><em>${daysUntil(e.date) === 0 ? "Heute" : daysUntil(e.date) === 1 ? "Morgen" : dateDE(e.date)}${e.region === "us" ? " · USA" : e.region === "europe" ? " · Europa" : ""}</em></span></div>`);
+    if (!calData) loadCalendar();
+    const reg = anaData && anaData.market && anaData.market.regime;
+    return head + (reg ? `<div class="bf-mkt" style="margin:8px 2px"><i class="${reg.tone}"></i><span>Marktampel: <b>${esc(reg.label)}</b></span></div>` : "")
+      + (mac.length ? block("Termine diese Woche (Notenbanken, Konjunktur, Verfall)", mac, "") : "")
+      + block("Marktmeldungen · 3 Tage", pool.map(row), "Keine Marktmeldungen geladen.");
+  }
+  // Insider: offizielle SEC-Meldungen (Formular 4) aus dem Scan + live je Aktie (Finnhub)
+  const usd = v => { const fx = (fxEur && fxEur.USD) || 0.9, e = v * fx; return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
+  const known = t => rowOf(t) || byTicker(t);
+  const irow = x => { const tag = mine.has(x.t) ? '<span class="pill dep">Deine</span>' : byTicker(x.t) && byTicker(x.t).passed ? '<span class="pill">Treffer</span>' : "";
+    return `<a class="bf-r" href="${esc(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`)}" target="_blank" rel="noopener"><i class="${x.kind === "buy" ? "g" : "r"}"></i><span><b>${esc(x.n || x.t)} ${tag}</b><em>${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"} ${fmt(x.sh, 0)} Stk. zu ${fmt(x.px)} $ · ${dateDE(x.d)}</em></span><span class="bf-p ${x.kind === "buy" ? "up" : "down"}">${usd(x.val)}</span></a>`; };
+  const buys = ij && ij.buys || [], sells = ij && ij.sells || [];
+  const mineBuys = buys.filter(x => mine.has(x.t) || known(x.t));
+  const liveRows = Object.entries(NEWS.ins).flatMap(([t, l]) => l.map(x => ({ t, n: nameOf(t), who: String(x.name || "").replace(/\b\w+/g, w => w[0] + w.slice(1).toLowerCase()), role: "", kind: x.transactionCode === "P" ? "buy" : "sell",
+    sh: Math.abs(x.change || 0), px: x.transactionPrice || 0, val: Math.abs(x.change || 0) * (x.transactionPrice || 0), d: x.transactionDate }))).filter(x => x.val > 0).sort((a, b) => String(b.d).localeCompare(String(a.d))).slice(0, 15);
+  const when = ij && ij.generated ? new Date(ij.generated).toLocaleString("de-DE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+  return head + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quelle: offizielle US-Meldungen (SEC, Formular 4)${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
+    + (live ? block("Deine US-Aktien · 90 Tage (live)", liveRows.map(irow), NEWS.at ? "Keine Insider-Käufe oder -Verkäufe über die Börse." : "lädt …") : "")
+    + (mineBuys.length ? block("Insider-Käufe bei Aktien aus dem Kairo-Scan", mineBuys.slice(0, 15).map(irow), "") : "")
+    + block("Größte Insider-Käufe (USA, letzte Meldungen)", buys.slice(0, 25).map(irow), ij === null ? "Noch keine Insider-Daten – kommen mit dem nächsten Scan." : "lädt …")
+    + block("Größte Insider-Verkäufe", sells.slice(0, 12).map(irow), "–");
+}
 function calendarHtml() {
   if (!calData) return `<div class="section-title"><span>Kalender</span><span>lädt …</span></div>`;
   const dep = depotTickers();
@@ -3850,6 +3922,7 @@ function renderMain() {
   if (state.sec === "today") { $("main").innerHTML = todayHtml(); if (isPostfach()) mountPostfach(); return; }
   if (state.sec === "bilanz") { $("main").innerHTML = bilanzHtml(); return; }
   if (state.sec === "calendar") { $("main").innerHTML = calendarHtml(); return; }
+  if (state.sec === "news") { $("main").innerHTML = newsHtml(); return; }
   if (state.sec === "entry") { $("main").innerHTML = einHtml(); return; }
   if (state.sec === "depot") { $("main").innerHTML = depotHtml(); mountDepotCharts(); return; }
   if (state.sec === "journal") { $("main").innerHTML = journalHtml(); return; }
@@ -3942,7 +4015,7 @@ function greetText() {
   const h = new Date().getHours(), nm = String(state.name || "").trim();
   return esc(h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend") + (nm ? `, <span class="nm">${esc(nm)}</span>` : "") + greetEmoji();
 }
-const SEC_T = { today: "Heute", scanner: "Scanner", entry: "Einstieg", calendar: "Kalender", depot: "Depot", journal: "Journal", game: "Spiel", settings: "Einstellungen", bilanz: "Bilanz" };
+const SEC_T = { today: "Heute", scanner: "Scanner", entry: "Einstieg", calendar: "Kalender", news: "News", depot: "Depot", journal: "Journal", game: "Spiel", settings: "Einstellungen", bilanz: "Bilanz" };
 function appleHead() {
   document.body.dataset.sec = state.sec;
   if (!isApple()) return;
@@ -4182,6 +4255,8 @@ function goSec(sec) {
 }
 document.addEventListener("click", e => {
   if (e.target.closest("[data-brief]")) { openBrief(); return; }
+  const nt = e.target.closest("[data-newstab]"); if (nt) { state.newsTab = nt.dataset.newstab; save(); render(); return; }
+  if (e.target.closest("[data-newsfresh]")) { newsLoad(true); render(); return; }
   const bc = e.target.closest("[data-briefcard]"); if (bc) { closeBrief(); openCard(bc.dataset.briefcard); return; }
   const bd = e.target.closest("[data-briefdep]"); if (bd) { closeBrief(); depOpen.add(bd.dataset.briefdep); goSec("depot"); return; }
   const bx = e.target.closest("[data-briefclose]"); if (bx) { closeBrief(); if (!bx.dataset.gosec) return; }

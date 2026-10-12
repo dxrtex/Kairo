@@ -25,7 +25,7 @@ from .config import CONFIG, ROOT, as_dict
 from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
-from . import briefing, company, push, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
+from . import briefing, company, insider, push, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import MARKET, SECTOR_DE, SECTOR_ETF, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -371,6 +371,14 @@ def main(argv=None) -> int:
             print(f"Briefing: Nachrichten für {len(brief['stocks'])} Aktien, {len(brief['market'])} Marktmeldungen, {brief.get('translated', 0)} übersetzt · {brief.get('diag')}")
         except Exception as exc:
             print(f"Briefing: Fehler {exc!r}")
+    # Insider-Geschäfte (SEC Formular 4) für den Nachrichtenbereich – Fehler dürfen den Scan nicht stoppen
+    ins = None
+    if not args.end:
+        try:
+            ins = insider.fetch()
+            print(f"Insider: {ins['filings']} Meldungen, {len(ins['buys'])} Käufe, {len(ins['sells'])} Verkäufe")
+        except Exception as exc:
+            print(f"Insider: Fehler {exc!r}")
     watch_dates = {}
     if not args.end:
         for t in watch:
@@ -545,6 +553,9 @@ def main(argv=None) -> int:
     if brief is not None:
         with open(SITE / "briefing.json", "w", encoding="utf-8") as f:
             json.dump(brief, f, ensure_ascii=False, separators=(",", ":"))
+    if ins is not None and ins.get("filings"):
+        with open(SITE / "insider.json", "w", encoding="utf-8") as f:
+            json.dump(_clean(ins), f, ensure_ascii=False, separators=(",", ":"))
     with open(SITE / "search.json", "w", encoding="utf-8") as f:
         json.dump(_clean({"generated": out["generated"], "fx_eur": fx,     # NaN → null: sonst kann der Browser die Datei nicht lesen
                           "rows": sorted(search.values(), key=lambda r: r["n"].lower())}),
