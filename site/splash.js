@@ -42,7 +42,10 @@
       <div class="sp-tag">Scanner · Trade-Plan · Depot</div>
       <div class="sp-load"><i></i></div>
     </div>`;
-  const ANIM_MS = 2500, EXIT_MS = 560, TIMEOUT_MS = 6000;
+  const ANIM_MS = 2500, SHORT_MS = 850, EXIT_MS = 560, TIMEOUT_MS = 6000;
+  const INTRO_V = "3";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
+  const seen = () => { try { return localStorage.getItem("kairo-intro") === INTRO_V; } catch (e) { return false; } };
+  const mark = () => { try { localStorage.setItem("kairo-intro", INTRO_V); } catch (e) {} };
   let current = null;
 
   function play(opts = {}) {
@@ -51,10 +54,13 @@
     el.className = "splash"; el.setAttribute("aria-hidden", "true"); el.innerHTML = LOGO;
     const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) el.classList.add("reduce");
+    const short = !reduce && (opts.full === false || (opts.full !== true && seen()));   // volles Intro nur beim ersten Öffnen / nach Update
+    if (short) el.classList.add("short");
+    mark();
     document.body.appendChild(el);
     let resolveReady;
     const ready = new Promise(r => { resolveReady = r; });
-    const animDone = new Promise(r => setTimeout(r, reduce ? 300 : ANIM_MS));
+    const animDone = new Promise(r => setTimeout(r, reduce ? 300 : short ? SHORT_MS : ANIM_MS));
     animDone.then(() => el.classList.add("waiting"));               // App lädt noch → feine Ladelinie
     const handle = { el, ready: resolveReady };
     current = handle;
