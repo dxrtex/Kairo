@@ -3588,7 +3588,10 @@ const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52,
 // Nur volle Kairo-Treffer · Kauf in der Seitwärtsphase · SL = Tief der Seitwärtsphase − 0,25 ATR · 20 Handelstage halten, kein TP
 // (jedes feste Ziel brachte weniger) · Risiko 1 %, bei grüner Ampel (Ausverkauf) 2 % · bis zu 5 Trades gleichzeitig ·
 // Hebel = höchster bis ×10 (Scalable) mit K.-o. ≥ 1 ATR unter dem SL · alle Kurse in Euro.
-// Depot-Test: Median ≈ +55 % p. a. (10.–90. Perzentil +42 … +72 %), größter Rückgang ≈ 32 %. Fast-Treffer verschlechterten jede Variante.
+// Depot-Test 2021–2026: Median ≈ +55 % p. a.; großer Lauf 2017–2026 (3.200 Aktien): +18 % p. a. bei zufälliger Auswahl.
+// Auswahl bei mehr Treffern als freien Plätzen: die ruhigsten zuerst (geringste ATR in % vom Kurs, am Signaltag gemessen) –
+// 10 Jahre: +34 % p. a. statt +18 %, größter Rückgang 30 % statt 42 %, in jedem Jahr besser. Fast-Treffer und
+// Trend-Rücksetzer verschlechterten jede Variante (Trend: 2023 Totalverlust).
 const KMAX = { hold: 20, hold2: 20, tpDays: 7, weakMult: 2, maxOpen: 5, perSector: 2 };   // perSector: Klumpenschutz
 const TP_EXIT = { hold: KMAX.hold };
 // ---- TP-Bewertung je Aktie ----
@@ -3632,13 +3635,28 @@ function tpEval(r, E, stop, atr, days) {
   const best = (real.length ? real : ok.length ? ok : list).reduce((a, b) => b.sc > a.sc + 1e-9 ? b : a);
   return { list, best };
 }
+// Rangfolge der heutigen Kairo-Treffer: ruhigste (kleinste ATR in % vom Kurs) zuerst
+function kmRank() {
+  const hits = (searchIdx || []).filter(x => x.s === "hit" && !x.ext).sort((a, b) => (a.ap ?? 9) - (b.ap ?? 9));
+  const pos = {}; hits.forEach((x, i) => { pos[x.t] = i + 1; });
+  return { hits, pos };
+}
+function kmSlots() { const cfg = tpCfg(); return Math.max(0, cfg.maxOpen - plansLoad().filter(p => p.st === "open").length); }
 function kmFit(r, mk) {
   const weak = mk && mk.k === "weak";
-  if (r.s === "hit") return weak
-    ? { ok: true, k: "hit", tone: "green", mult: KMAX.weakMult, t: "A-Setup – Kairo-Treffer im Ausverkauf: traden",
-        s: `Die stärkste Phase der Strategie. Risiko ×${fmt(KMAX.weakMult, 0)}.` }
-    : { ok: true, k: "hit", tone: "green", mult: 1, t: "Kairo-Treffer: traden",
-        s: "Setup der Strategie. Kauf in der Seitwärtsphase, 20 Tage halten. Bei grüner Marktampel verdoppelt der Plan das Risiko." };
+  if (r.s === "hit") {
+    const { hits, pos } = kmRank(), rk = pos[r.t], free = kmSlots();
+    const rank = rk ? ` Rang ${rk} von ${hits.length} heutigen Treffern (Schwankung ${r.ap != null ? pct(r.ap, 1) : "–"} pro Tag) – bei mehr Treffern als freien Plätzen nimmt Kairo die ruhigsten zuerst.` : "";
+    const fit = weak
+      ? { ok: true, k: "hit", tone: "green", mult: KMAX.weakMult, t: "A-Setup – Kairo-Treffer im Ausverkauf: traden",
+          s: `Die stärkste Phase der Strategie. Risiko ×${fmt(KMAX.weakMult, 0)}.` + rank }
+      : { ok: true, k: "hit", tone: "green", mult: 1, t: "Kairo-Treffer: traden",
+          s: "Setup der Strategie. Kauf in der Seitwärtsphase, 20 Tage halten. Bei grüner Marktampel verdoppelt der Plan das Risiko." + rank };
+    if (!free) return { ...fit, tone: "yellow", t: "Kairo-Treffer – aber alle Plätze belegt", s: `Du hast schon ${tpCfg().maxOpen} offene Trades. Erst wenn einer endet (SL oder Tag 20), ist wieder Platz.` + rank };
+    if (rk && rk > free) return { ...fit, tone: "yellow", t: `Kairo-Treffer – Rang ${rk}, nur ${free} ${free > 1 ? "Plätze" : "Platz"} frei`,
+      s: `Im 10-Jahres-Test brachte „ruhigste Treffer zuerst“ +34 % statt +18 % pro Jahr bei kleinerem Rückgang. Nimm diesen nur, wenn die ruhigeren Treffer davor nicht kaufbar sind.` + rank };
+    return fit;
+  }
   if (r.s === "fast") return { ok: false, k: "fast", tone: "red", mult: 1, t: "Auslassen – Fast-Treffer",
     s: "Im Depot-Test machten Fast-Treffer jede Variante schlechter: Sie belegen Plätze, die volle Treffer bekommen sollten." };
   return { ok: false, k: "none", tone: "gray", mult: 1, t: "Kein Kairo-Treffer – nicht traden",
@@ -3897,11 +3915,11 @@ function einHtml() {
   if (!searchIdx) { loadSearch(); return `<div class="section-title"><span>Einstieg</span><span>lädt …</span></div>`; }
   if (!anaData) loadAnalysis();
   const r = state.einT && searchIdx.find(x => x.t === state.einT);
-  const best = searchIdx.filter(x => x.tr === 2).sort((a, b) => (a.tdd ?? 1) - (b.tdd ?? 1)).slice(0, 6);
+  const best = kmRank().hits.slice(0, 8), free = kmSlots();
   return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span>Setup · Trade-Plan · Hebel</span></div>
     <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
-    ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Trend-Rücksetzer</b> oder ein <b>Kairo-Setup</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
-      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heute die besten Einstiege · Trend Top</div><div class="ein-list">${best.map(x => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")}</span>${einTag(x)}</button>`).join("")}</div>` : ""}`}`;
+    ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Kairo-Treffer</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
+      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Kairo-Treffer · ruhigste zuerst${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Schwankung ${x.ap != null ? pct(x.ap, 1) : "–"}${i < free ? "" : " · nur bei freiem Platz"}</span>${einTag(x)}</button>`).join("")}</div>` : ""}`}`;
 }
 document.addEventListener("input", e => {
   if (e.target.id === "gQ") { state.gQ = e.target.value; const l = $("gList"); if (l) l.innerHTML = gListHtml(); }
