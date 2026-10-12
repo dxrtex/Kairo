@@ -212,6 +212,13 @@ def fetch(pages: int = 3, budget_s: float = 150, watch: dict[str, str] | None = 
            "buys": buys[:60], "sells": sells[:40], "source": src}
     if watch:
         out["watch"], out["watch_n"] = fetch_watch(watch)
+        try:                                        # deutsche Werte: Directors' Dealings der BaFin
+            from . import bafin
+            de = bafin.fetch(watch)
+            out["watch"] += [{**x, "url": f"{bafin.BASE}?emittentIsin={x['isin']}&zeitraum=0&emittentButton=Suche+Emittent"} for x in de["rows"]]
+            out["watch_de_n"] = de["n"]
+        except Exception as exc:
+            print(f"BaFin: Fehler {exc!r}"[:160])
     return out
 
 
