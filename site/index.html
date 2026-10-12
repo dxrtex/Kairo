@@ -286,7 +286,7 @@
   nav.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: rgba(22, 22, 24, .82);
                -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border-top: 1px solid var(--line);
                padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
-  .tabs { max-width: 680px; margin: 0 auto; display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .tabs { max-width: 680px; margin: 0 auto; display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
   .tab { border: 0; background: none; cursor: pointer; color: var(--muted); display: flex; flex-direction: column; align-items: center;
          gap: 3px; font-size: 12px; font-weight: 600; padding: 6px 0; border-radius: 16px; position: relative; }
   .tab svg { width: 24px; height: 24px; }
@@ -312,7 +312,7 @@
   .opt.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 650; }
   .sheet .btn { width: 100%; margin-top: 26px; display: block; }
 
-  .tabs { max-width: 820px; grid-template-columns: repeat(7, 1fr); }
+  .tabs { max-width: 820px; grid-template-columns: repeat(8, 1fr); }
   .card h2 a { color: inherit; text-decoration: none; }
   .ampel { display: flex; gap: 5px; flex-wrap: wrap; }
   .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--up); display: inline-block; }
@@ -379,6 +379,15 @@
   .tp2-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 2px 0 0; }
   .tp2-cmp > div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid; gap: 2px; }
   .tp2-cmp span { font-size: 12px; color: var(--muted); font-weight: 600; } .tp2-cmp b { font-size: 20px; } .tp2-cmp em { font-style: normal; font-size: 12px; color: var(--muted); }
+  .live-btn { font: inherit; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--accent); cursor: pointer; white-space: nowrap; }
+  .live-btn.spin { opacity: .5; pointer-events: none; } .live-btn.spin::before { content: "… "; }
+  td .live-btn { padding: 2px 7px; font-size: 11px; margin-left: 4px; }
+  .live-tag { font-size: 11px; font-weight: 700; color: var(--up); white-space: nowrap; } .live-dot { color: var(--up); font-size: 9px; }
+  .live-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: -4px 2px 10px; font-size: 12px; }
+  .ein-ext b { color: var(--accent); }
+  .ein-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .tvbox summary { cursor: pointer; list-style: none; } .tvbox iframe { width: 100%; height: 420px; border: 0; border-radius: 12px; margin-top: 8px; background: var(--surface-2); }
+  @media (max-width: 560px) { .tvbox iframe { height: 320px; } }
   .tp2-plan { margin-top: 12px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
   .tp2-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; padding: 10px 14px; border-top: 1px solid var(--line); }
   .tp2-row:first-child { border-top: 0; }
@@ -802,6 +811,13 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
 
 </style>
 <style id="ds-postfach-classic" media="not all">
+:root{--bg:#000;--surface:#121212;--surface-2:#1c1c1e;--surface-3:#2c2c2e;--line:#2c2c2e;--glass:#121212;--glass-line:#2c2c2e;
+--text:#fff;--muted:#8e8e93;--faint:#5a5a5e;--accent:#0a84ff;--accent-ink:#fff;--accent-bg:color-mix(in srgb,#0a84ff 16%,transparent);
+--up:#30d158;--up-bg:color-mix(in srgb,#30d158 15%,transparent);--red:#ff453a;--red-bg:color-mix(in srgb,#ff453a 14%,transparent);
+--zone:color-mix(in srgb,#0a84ff 14%,transparent);color-scheme:dark}
+body{background:#000!important;color:#fff}
+body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+nav.tabbar{background:color-mix(in srgb,#121212 88%,transparent)!important}.score::before{background:#121212!important}.cm-box{background:#121212}
 
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-feature-settings:"tnum"}
 
@@ -971,6 +987,9 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
     <button class="tab" data-sec="calendar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
       Kalender<span class="badge" id="calBadge" hidden></span></button>
+    <button class="tab" data-sec="news">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h10A1.5 1.5 0 0 1 17 5.5V19a1 1 0 0 0 1 1H6a2 2 0 0 1-2-2z"/><path d="M17 9h2.5a.5.5 0 0 1 .5.5V18a2 2 0 0 1-2 2M8 8h5M8 12h5M8 16h3"/></svg>
+      News</button>
     <button class="tab" data-sec="depot">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15l3.5-4 3 2.5L20 7"/></svg>
       Depot</button>
@@ -1368,7 +1387,7 @@ function card(r) {
     <div class="scorebox" hidden>${scoreBoxHtml(r)}</div>
     <div class="figures">
       <div class="fig"><span>Rückgang</span><b class="${(r.drawdown ?? 0) >= 0 ? "down" : "up"}">${ddFmt(r.drawdown, 0)}</b></div>
-      <div class="fig"><span>Kurs</span><b>${fmt(r.close)}</b></div>
+      <div class="fig"><span>Kurs${r.live ? " · live" : ""}</span><b>${fmt(r.close)}</b></div>
       <div class="fig"><span>CRV</span><b class="${(r.crv ?? 0) >= 2 ? "up" : "muted"}">${fmt(r.crv, 1)}</b></div>
       <div class="fig"><span>Börsenwert</span><b>${fmtCap(r.market_cap_usd)}</b></div>
     </div>
@@ -1382,6 +1401,7 @@ function card(r) {
     <div class="actions">
       <button class="btn" data-open="${esc(r.ticker)}">Details &amp; Chart</button>
       <a class="btn ghost" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">TradingView</a>
+      ${liveBtn(r.ticker)}${liveTag(r.ticker)}
     </div>
   </article>`;
 }
@@ -1491,7 +1511,7 @@ const COLS = [
   { k: "grade", l: "Stufe", g: r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0, h: r => gradeBadge(r) || `<span class="muted">–</span>` },
   { k: "exchange", l: "Börse", g: r => r.exchange, h: r => esc(r.exchange) },
   { k: "cap", l: "Market Cap", n: 1, g: r => r.market_cap_usd ?? 0, h: r => fmtCap(r.market_cap_usd) },
-  { k: "close", l: "Kurs", n: 1, g: r => r.close, h: r => fmt(r.close) },
+  { k: "close", l: "Kurs", n: 1, g: r => r.close, h: r => `${fmt(r.close)}${r.live ? ' <span class="live-dot" title="live">●</span>' : ""} ${liveBtn(r.ticker)}` },
   { k: "tgt", l: "Analysten-Ziel", n: 1, g: r => tgtUp(r) ?? -9, h: r => { const t = r.senti && r.senti.tgt, u = tgtUp(r);
     return u == null ? `<span class="muted">–</span>` : `<b class="${u >= 0 ? "up" : "down"}">${u >= 0 ? "+" : ""}${pct(u, 0)}</b><small style="display:block" class="muted">Ø ${fmt(t.m)}${r.senti.an && r.senti.an.n ? ` · ${r.senti.an.n} Anal.` : ""}</small>`; } },
   { k: "dd", l: "Rückgang", n: 1, g: r => r.drawdown ?? 0, h: r => `<span class="${(r.drawdown ?? 0) >= 0 ? "down" : "up"}">${ddFmt(r.drawdown)}</span>` },
@@ -1517,7 +1537,9 @@ const COLS = [
 let searchIdx = null, searchLoading = null, fxEur = { EUR: 1 };
 function loadSearch() {
   if (!searchLoading) searchLoading = fetch("data/search.json", { cache: "no-store" }).then(r => r.json())
-    .then(d => { searchIdx = d.rows || []; fxEur = d.fx_eur || { EUR: 1 }; render(); }).catch(() => { searchIdx = []; render(); });
+    .then(d => { searchIdx = d.rows || []; fxEur = d.fx_eur || { EUR: 1 };
+      try { (JSON.parse(localStorage.getItem("kairo-ext") || "[]")).forEach(x => { if (!searchIdx.some(r => r.t === x.t)) searchIdx.push(x); }); } catch (e) {}
+      render(); }).catch(() => { searchIdx = []; render(); });
   return searchLoading;
 }
 function tipHtml(h) {
@@ -1571,6 +1593,75 @@ const CAL_KIND = { earnings: ["Q", "k-earn", "Quartalszahlen"], exdiv: ["Div", "
                    macro: ["%", "k-macro", "Notenbank"], expiry: ["V", "k-exp", "Großer Verfall"] };
 let calMonth = 0, calDay = null;   // Monatsansicht: Versatz zum aktuellen Monat, ausgewählter Tag
 const isoOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// ---------- Nachrichten: deine Aktien, Markt, Insider-Käufe (SEC) – Scan-Daten + live über Finnhub (Schlüssel nur lokal) ----------
+const NEWS = { gen: null, co: {}, ins: {}, at: 0, busy: false };
+function newsLoad(force) {
+  const files = ["briefing.json", "insider.json"].filter(f => jsonData[f] === undefined);
+  Promise.all(files.map(f => fetch(`data/${f}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null).then(d => { jsonData[f] = d; })))
+    .then(() => { if (files.length && state.sec === "news") render(); });
+  const fh = liveKey("fh");
+  if (!fh || NEWS.busy || (!force && Date.now() - NEWS.at < 10 * 60e3)) return;
+  NEWS.busy = true;
+  const q = (p, o) => fetch(`https://finnhub.io/api/v1/${p}?${new URLSearchParams({ ...o, token: fh })}`).then(r => r.ok ? r.json() : null).catch(() => null);
+  const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 4 * 864e5).toISOString().slice(0, 10);
+  const us = [...myTickers()].filter(isUS).slice(0, 12), ins3 = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);
+  Promise.all([q("news", { category: "general" }).then(j => { NEWS.gen = Array.isArray(j) ? j : NEWS.gen; }),
+    ...us.map(t => q("company-news", { symbol: t.replace("-", "."), from, to }).then(j => { if (Array.isArray(j)) NEWS.co[t] = j.slice(0, 6); })),
+    ...us.map(t => q("stock/insider-transactions", { symbol: t.replace("-", "."), from: ins3 }).then(j => { if (j && Array.isArray(j.data)) NEWS.ins[t] = j.data.filter(x => x.transactionCode === "P" || x.transactionCode === "S"); }))])
+    .finally(() => { NEWS.busy = false; NEWS.at = Date.now(); if (state.sec === "news") render(); });
+}
+function newsHtml() {
+  newsLoad();
+  const tab = state.newsTab || "mine", mine = myTickers(), now = Date.now(), bj = jsonData["briefing.json"], ij = jsonData["insider.json"];
+  const nameOf = t => { const s = rowOf(t), r = byTicker(t); return (r && r.name) || (s && s.n) || t; };
+  const ago = ms => { if (!ms) return ""; const h = Math.max(0, Math.round((now - ms) / 36e5)); return h < 1 ? "gerade eben" : h < 24 ? `vor ${h} Std.` : h < 72 ? `vor ${Math.round(h / 24)} Tg.` : new Date(ms).toLocaleDateString("de-DE"); };
+  const trU = n => n.o && /^https?:/.test(n.u || "") ? `https://translate.google.com/translate?sl=auto&tl=de&u=${encodeURIComponent(n.u)}` : n.u;
+  const row = n => `<a class="bf-r" href="${esc(trU(n) || "#")}" target="_blank" rel="noopener"${n.o ? ` title="${esc(n.o)}"` : ""}><i class="${n.s > 0 ? "g" : n.s < 0 ? "r" : "n"}"></i><span><b>${esc(n.t)}</b><em>${n.nm ? esc(n.nm) + " · " : ""}${esc(n.p || "")}${n.ms ? " · " + esc(ago(n.ms)) : ""}${n.o ? " · übersetzt" : ""}</em></span></a>`;
+  const block = (title, rows, empty) => `<div class="bf-s"><b>${title}</b><div class="bf-l">${rows.length ? rows.join("") : `<div class="bf-empty" style="padding:12px 14px">${empty}</div>`}</div></div>`;
+  const msOf = d => { const t = Date.parse(d); return isNaN(t) ? null : t; };
+  const dedup = l => { const s = new Set(); return l.filter(n => { const k = String(n.t).toLowerCase().slice(0, 70); if (s.has(k)) return false; s.add(k); return true; }); };
+  const seg = `<div class="opts seg">${[["mine", "Meine Aktien"], ["market", "Markt"], ["insider", "Insider"]].map(([v, l]) => `<button class="opt${tab === v ? " on" : ""}" data-newstab="${v}">${l}</button>`).join("")}</div>`;
+  const live = liveKey("fh"), src = live ? `Scan + live (Finnhub)${NEWS.at ? " · " + new Date(NEWS.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr" : " · lädt …"}` : "aus dem letzten Scan";
+  const head = `<div class="section-title"><span>Nachrichten</span><span>${esc(src)}</span></div>${seg}
+    ${live ? `<button class="live-btn" data-newsfresh style="margin:0 2px 4px">↻ Aktualisieren</button>` : `<p class="muted" style="font-size:13px;margin:4px 2px">Tipp: Mit einem kostenlosen Finnhub-Schlüssel (Einstellungen → Live-Kurse) kommen die Meldungen live und mit Insider-Geschäften je Aktie.</p>`}`;
+  if (tab === "mine") {
+    let pool = bj && bj.stocks ? Object.entries(bj.stocks).filter(([t]) => mine.has(t)).flatMap(([t, l]) => l.map(n => ({ ...n, nm: nameOf(t), tk: t, ms: msOf(n.d) }))) : [];
+    Object.entries(NEWS.co).forEach(([t, l]) => l.forEach(n => pool.push({ t: n.headline, u: n.url, p: n.source, ms: n.datetime * 1000, nm: nameOf(t), tk: t, s: 0 })));
+    data.results.filter(r => mine.has(r.ticker) && r.senti && r.senti.news).forEach(r => r.senti.news.forEach(n => pool.push({ ...n, nm: r.name || r.ticker, tk: r.ticker, ms: msOf(n.d) })));
+    pool = dedup(pool.filter(n => n.t && n.ms && now - n.ms < 7 * 864e5).sort((a, b) => b.ms - a.ms));
+    const hot = pool.filter(n => n.s && Math.abs(n.s) > 0).slice(0, 6), rest = pool.filter(n => !hot.includes(n)).slice(0, 40);
+    return head + (mine.size ? "" : `<p class="muted" style="margin:8px 2px">Lege Aktien in Merkliste, Depot oder Watchlist – dann siehst du hier ihre Meldungen.</p>`)
+      + (hot.length ? block("Wichtig – mit klarer Stimmung", hot.map(row), "") : "")
+      + block(`Neueste Meldungen zu deinen Aktien · 7 Tage`, rest.map(row), "Keine neuen Meldungen zu deinen Aktien.");
+  }
+  if (tab === "market") {
+    let pool = (bj && bj.market || []).map(n => ({ ...n, s: 0, ms: msOf(n.d) }));
+    (NEWS.gen || []).forEach(n => pool.push({ t: n.headline, u: n.url, p: n.source, ms: n.datetime * 1000, s: 0 }));
+    pool = dedup(pool.filter(n => n.t && n.ms && now - n.ms < 3 * 864e5).sort((a, b) => b.ms - a.ms)).slice(0, 40);
+    const mac = (calData || []).filter(e => (e.kind === "macro" || e.kind === "expiry") && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 7)
+      .map(e => `<div class="bf-r"><i class="y"></i><span><b>${esc(e.title || "Termin")}</b><em>${daysUntil(e.date) === 0 ? "Heute" : daysUntil(e.date) === 1 ? "Morgen" : dateDE(e.date)}${e.region === "us" ? " · USA" : e.region === "europe" ? " · Europa" : ""}</em></span></div>`);
+    if (!calData) loadCalendar();
+    const reg = anaData && anaData.market && anaData.market.regime;
+    return head + (reg ? `<div class="bf-mkt" style="margin:8px 2px"><i class="${reg.tone}"></i><span>Marktampel: <b>${esc(reg.label)}</b></span></div>` : "")
+      + (mac.length ? block("Termine diese Woche (Notenbanken, Konjunktur, Verfall)", mac, "") : "")
+      + block("Marktmeldungen · 3 Tage", pool.map(row), "Keine Marktmeldungen geladen.");
+  }
+  // Insider: offizielle SEC-Meldungen (Formular 4) aus dem Scan + live je Aktie (Finnhub)
+  const usd = v => { const fx = (fxEur && fxEur.USD) || 0.9, e = v * fx; return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
+  const known = t => rowOf(t) || byTicker(t);
+  const irow = x => { const tag = mine.has(x.t) ? '<span class="pill dep">Deine</span>' : byTicker(x.t) && byTicker(x.t).passed ? '<span class="pill">Treffer</span>' : "";
+    return `<a class="bf-r" href="${esc(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`)}" target="_blank" rel="noopener"><i class="${x.kind === "buy" ? "g" : "r"}"></i><span><b>${esc(x.n || x.t)} ${tag}</b><em>${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"} ${fmt(x.sh, 0)} Stk. zu ${fmt(x.px)} $ · ${dateDE(x.d)}</em></span><span class="bf-p ${x.kind === "buy" ? "up" : "down"}">${usd(x.val)}</span></a>`; };
+  const buys = ij && ij.buys || [], sells = ij && ij.sells || [];
+  const mineBuys = buys.filter(x => mine.has(x.t) || known(x.t));
+  const liveRows = Object.entries(NEWS.ins).flatMap(([t, l]) => l.map(x => ({ t, n: nameOf(t), who: String(x.name || "").replace(/\b\w+/g, w => w[0] + w.slice(1).toLowerCase()), role: "", kind: x.transactionCode === "P" ? "buy" : "sell",
+    sh: Math.abs(x.change || 0), px: x.transactionPrice || 0, val: Math.abs(x.change || 0) * (x.transactionPrice || 0), d: x.transactionDate }))).filter(x => x.val > 0).sort((a, b) => String(b.d).localeCompare(String(a.d))).slice(0, 15);
+  const when = ij && ij.generated ? new Date(ij.generated).toLocaleString("de-DE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+  return head + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quelle: offizielle US-Meldungen (SEC, Formular 4)${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
+    + (live ? block("Deine US-Aktien · 90 Tage (live)", liveRows.map(irow), NEWS.at ? "Keine Insider-Käufe oder -Verkäufe über die Börse." : "lädt …") : "")
+    + (mineBuys.length ? block("Insider-Käufe bei Aktien aus dem Kairo-Scan", mineBuys.slice(0, 15).map(irow), "") : "")
+    + block("Größte Insider-Käufe (USA, letzte Meldungen)", buys.slice(0, 25).map(irow), ij === null ? "Noch keine Insider-Daten – kommen mit dem nächsten Scan." : "lädt …")
+    + block("Größte Insider-Verkäufe", sells.slice(0, 12).map(irow), "–");
+}
 function calendarHtml() {
   if (!calData) return `<div class="section-title"><span>Kalender</span><span>lädt …</span></div>`;
   const dep = depotTickers();
@@ -1677,7 +1768,11 @@ function depotHtml() {
     return { p, i, r, cur, nowEur, val, cost };
   });
   const gv = wert - einstand;
-  const head = `<div class="section-title"><span>Mein Depot</span><span>${list.length} Positionen</span></div>`;
+  liveKick(list.map(p => p.t), "depot");
+  const nLive = list.filter(p => p.t && LIVE.map[p.t]).length;
+  const head = `<div class="section-title"><span>Mein Depot</span><span>${list.length} Positionen</span></div>
+    <div class="live-bar">${liveOn() ? `${nLive ? `<span class="live-tag">● ${nLive} von ${list.filter(p => p.t).length} live · aktualisiert alle 60 s</span>` : `<span class="muted">Live-Kurse werden geladen …</span>`}<button class="live-btn" data-liveall="depot">↻ Alle aktualisieren</button>`
+      : `<span class="muted">Kurse vom Abendscan. Für Echtzeit: Einstellungen → Live-Kurse.</span>`}</div>`;
   const sum = list.length && valued ? `<div class="dep-sum">
       <div class="fig"><span>Depotwert${valued < list.length ? " (ohne Zertifikate)" : ""}</span><b>${fmt(wert)} €</b></div>
       <div class="fig"><span>Einstand</span><b>${fmt(einstand)} €</b></div>
@@ -2482,11 +2577,34 @@ function journalInsights(m, s, byKind) {
   if (m.fees > 0 && s.gw > 0 && m.fees / s.gw > .1) out.push(["orange", "Gebühren fressen Gewinn", `${eur2(m.fees)} Ordergebühren – ${pct(m.fees / s.gw, 0)} deiner Brutto-Gewinne. Weniger, dafür größere Trades senken den Anteil.`]);
   return out.map(([tone, t, x]) => `<div class="tip tone-${tone}"><b class="t">${esc(t)}</b>${esc(x)}</div>`).join("");
 }
+// Journal-Kopf: Kairo-Strategie in R – deine gespeicherten Trades gegen die Test-Erwartung, Regeltreue, Serie
+function jStrategyHtml() {
+  const done = plansLoad().filter(p => p.st === "closed" && p.R != null).sort((a, b) => String(a.xd || "").localeCompare(String(b.xd || "")));
+  if (!done.length) return `<div class="card jcard jstrat"><div class="jc-h"><b>Kairo-Strategie</b><span>noch keine abgeschlossenen Trades</span></div>
+    <div class="note" style="margin:0">Speichere Trades im Reiter „Einstieg“ („Trade eröffnen & speichern“) und trag beim Verkauf den Kurs ein – hier siehst du dann, ob du die Test-Erwartung erreichst und wie konsequent du die Regeln einhältst.</div></div>`;
+  const rs = done.map(p => p.R), n = rs.length, avg = rs.reduce((a, b) => a + b, 0) / n, wins = rs.filter(x => x > 0).length;
+  const big = rs.filter(x => x >= 2).length, stops = done.filter(p => p.R <= -0.8).length;
+  // Regeltreue: verkauft am Stop, am Ausstiegstag (±1 Tag) oder später = regelkonform; früher mit Gewinn/kleinem Verlust = zu früh
+  const early = done.filter(p => p.R > -0.8 && p.xd && (p.exit2 || p.exit) && p.xd < isoD(subBd(new Date((p.exit2 || p.exit) + "T12:00:00"), 1))).length;
+  const rule = 1 - early / n;
+  let streak = 0; for (let i = n - 1; i >= 0; i--) { const w = rs[i] > 0; if (i === n - 1 || w === (rs[n - 1] > 0)) streak += 1; else break; }
+  let cum = 0, pk = 0, dd = 0; rs.forEach(x => { cum += x; pk = Math.max(pk, cum); dd = Math.max(dd, pk - cum); });
+  const tgt = 0.25, ok = avg >= tgt * 0.6;
+  return `<div class="card jcard jstrat"><div class="jc-h"><b>Kairo-Strategie</b><span>${n} abgeschlossene Trades · in R (Vielfache deines Risikos)</span></div>
+    <div class="cockpit jtiles">
+      <div class="fig"><span>Ø je Trade</span><b class="${avg >= 0 ? "up" : "down"}">${fmt(avg, 2).replace(/^(?!-)/, "+")} R</b><em>Test-Erwartung ≈ +${fmt(tgt, 2)} R</em></div>
+      <div class="fig"><span>Summe</span><b class="${cum >= 0 ? "up" : "down"}">${fmt(cum, 1).replace(/^(?!-)/, "+")} R</b><em>größter Rückgang −${fmt(dd, 1)} R</em></div>
+      <div class="fig"><span>Gewinner</span><b>${pct(wins / n, 0)}</b><em>Test ≈ 30 % · ${big} große (≥ 2 R)</em></div>
+      <div class="fig"><span>Regeltreue</span><b class="${rule >= 0.8 ? "up" : rule >= 0.6 ? "" : "down"}">${pct(rule, 0)}</b><em>${early ? `${early}× vor dem Ausstiegstag verkauft` : "immer bis Stop/Ausstieg gehalten"}</em></div>
+      <div class="fig"><span>Serie</span><b class="${rs[n - 1] > 0 ? "up" : "down"}">${streak} ${rs[n - 1] > 0 ? "Gewinner" : "Verlierer"}</b><em>${rs[n - 1] > 0 ? "" : "Serien von 8–10 Verlierern sind bei 30 % Trefferquote normal"}</em></div>
+      <div class="fig"><span>Stops</span><b>${stops}</b><em>${pct(stops / n, 0)} der Trades</em></div></div>
+    <div class="note" style="margin:6px 0 0">${n < 20 ? `Noch ${20 - n} Trades bis zu einer ersten belastbaren Aussage.` : ok ? "Du liegst im Rahmen der Test-Erwartung – weiter so." : "Unter der Test-Erwartung: Prüfe Regeltreue (zu frühe Verkäufe?) und ob du wirklich nur volle Treffer in der Seitwärtsphase nimmst."}${early ? " Zu frühe Verkäufe schneiden die großen Gewinner ab, von denen die Strategie lebt." : ""}</div></div>`;
+}
 function journalHtml() {
   const tx = txLoad();
   const imp = `<label class="btn${tx.length ? " ghost" : ""}" style="cursor:pointer">${tx.length ? "Neuen Export einlesen" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="jrCsv" hidden></label>`;
   const head = `<div class="section-title"><span>Journal · deine Trades</span><span>${tx.length ? tx.length + " Transaktionen" : ""}</span></div>`;
-  if (!tx.length) return head + `<div class="card jempty"><div class="jicon">📒</div><b>Dein Trading-Journal</b>
+  if (!tx.length) return head + jStrategyHtml() + `<div class="card jempty"><div class="jicon">📒</div><b>Dein Trading-Journal</b>
       <p>Lies deinen Transaktions-Export aus Scalable Capital ein (Web-Version → Transaktionen → Export). Kairo ordnet alle Käufe und Verkäufe zu Trades, rechnet Gewinne und Verluste nach Gebühren und zeigt deine Statistik.</p>
       <div class="row-actions" style="justify-content:center">${imp}</div>${depotMsg ? `<div class="tip tone-gray" style="margin-top:14px;text-align:left">${depotMsg}</div>` : ""}
       <div class="note">Die Datei bleibt auf diesem Gerät – nichts wird hochgeladen. Positionen im Depot werden dabei ebenfalls aktualisiert.</div></div>`;
@@ -2556,7 +2674,7 @@ function journalHtml() {
     ${tx.slice().reverse().map(t => `<tr class="${/executed/i.test(t.status) ? "" : "muted"}"><td>${dateDE(t.date)}<small>${esc(t.time)}</small></td><td>${esc(TYPE_DE[t.type.toLowerCase()] || t.type)}${/executed/i.test(t.status) ? "" : ` <small>${esc(t.status)}</small>`}</td>
       <td>${esc(t.desc || "–")}<small>${esc(t.isin)}</small></td><td class="num">${t.qty ? fmt(t.qty, t.qty % 1 ? 3 : 0) : ""}</td><td class="num">${t.price ? fmt(t.price, t.price < 10 ? 3 : 2) : ""}</td>
       <td class="num ${t.amount >= 0 ? "up" : ""}">${sEur2(t.amount)}</td><td class="num">${t.fee ? eur2(t.fee) : ""}</td><td class="num">${t.tax ? eur2(t.tax) : ""}</td></tr>`).join("")}</tbody></table></div></details>`;
-  return head + hero + tiles + (ins ? `<div class="jins">${ins}</div>` : "") + curve + split + tradesTbl + openTbl
+  return head + jStrategyHtml() + hero + tiles + (ins ? `<div class="jins">${ins}</div>` : "") + curve + split + tradesTbl + openTbl
     + `<div class="row-actions" style="margin:22px 0 12px">${imp}<button class="btn ghost" data-jclear>Journal löschen</button></div>${depotMsg ? `<div class="tip tone-gray" style="margin-bottom:14px">${depotMsg}</div>` : ""}`
     + txTbl + `<div class="note" style="margin:16px 2px 0">Berechnung: Käufe und Verkäufe je Wertpapier nach FIFO zugeordnet, ein Trade läuft von der Eröffnung bis der Bestand wieder 0 ist. Ergebnis = Verkaufserlös − Kaufpreis, jeweils inklusive Ordergebühren, vor Steuern. Alles bleibt nur auf diesem Gerät gespeichert.</div>`;
 }
@@ -3142,9 +3260,12 @@ const standalone = () => navigator.standalone === true || matchMedia("(display-m
 function pushCode(sub) {
   const d = depotLoad().filter(p => p.t).map(p => p.d && p.d.ko ? { t: p.t, dir: p.d.dir, ko: p.d.ko } : { t: p.t });
   const seen = new Set(), dep = d.filter(x => { const k = x.t + (x.ko || ""); if (seen.has(k)) return false; seen.add(k); return true; });
-  return JSON.stringify({ s: sub.toJSON ? sub.toJSON() : sub, m: [...favs()], d: dep });
+  // offene Trade-Pläne: nur Kursmarken und Daten (Stop, Ziel, K.-o., Verkaufstag) – keine Beträge
+  const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).startsWith("~")).map(x => ({ i: x.id, t: x.t, n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit }));
+  return JSON.stringify({ s: sub.toJSON ? sub.toJSON() : sub, d: dep, p });
 }
 let pushSub = null;
+const pushSig = () => plansLoad().filter(x => x.st === "open").map(x => x.id).join(",") + "|" + depotLoad().map(p => p.t + (p.d && p.d.ko || "")).join(",");
 async function pushInit() {
   if (!pushOk()) return;
   try { const reg = await navigator.serviceWorker.ready; pushSub = await reg.pushManager.getSubscription(); } catch (e) {}
@@ -3166,13 +3287,13 @@ function pushHtml() {
   let body;
   if (!pushOk() && !standalone()) body = `<div class="tgdesc">Mitteilungen funktionieren auf dem iPad nur, wenn Kairo als App auf dem Home-Bildschirm liegt: in Safari <b>Teilen ⬆︎ → „Zum Home-Bildschirm“</b>, dann Kairo von dort öffnen und hier aktivieren (ab iPadOS 16.4).</div>`;
   else if (!pushOk()) body = `<div class="tgdesc">Dieses Gerät unterstützt keine Web-Mitteilungen (iPadOS 16.4 oder neuer nötig).</div>`;
-  else if (!pushSub) body = `<div class="tgdesc">Nach jedem Abendscan bekommst du eine Mitteilung direkt aufs iPad – auch wenn Kairo geschlossen ist:<br>⚠️ <b>K.-o. nah</b> bei deinen Turbos · 🟢 <b>deine Aktien</b> neu als Treffer/Trend-Rücksetzer, Quartalszahlen morgen · 🌙 <b>neue Top-Treffer</b> und Zinsentscheide.</div>
+  else if (!pushSub) body = `<div class="tgdesc">Nur wenn es wichtig ist – tagsüber alle 30 Minuten geprüft, auch wenn Kairo geschlossen ist:<br>🛑 <b>Stop erreicht</b> · 🎯 <b>Kursziel erreicht</b> (falls gesetzt) · 📆 <b>Verkaufstag</b> (Tag 20) · ⚠️ <b>K.-o. nah</b> / 💥 erreicht. Jede Meldung kommt nur einmal.</div>
     <div class="row-actions" style="margin-top:12px"><button class="btn" data-push="on">Mitteilungen aktivieren</button></div>`;
   else body = `<div class="tgdesc">✓ Dieses iPad ist angemeldet. Damit der Scan die Mitteilungen senden kann, einmalig den Code als GitHub-Secret speichern:</div>
-    <ol class="steps"><li><button class="btn ghost sm" data-push="copy">Code kopieren</button> <span class="muted">(Geräte-Abo + Merkliste + Depot-Basiswerte mit K.-o., keine Beträge)</span></li>
+    <ol class="steps"><li><button class="btn ghost sm" data-push="copy">Code kopieren</button> <span class="muted">(Geräte-Abo + offene Trades mit Stop/K.-o./Verkaufstag + Depot-K.-o., keine Beträge)</span></li>
       <li><a href="${REPO}/settings/secrets/actions/new" target="_blank" rel="noopener">Neues Secret anlegen</a> → Name <code>PUSH_SUBS</code>, Wert = Code einfügen → speichern.</li>
       <li>Falls noch nicht geschehen: Secret <code>VAPID_PRIVATE_KEY</code> anlegen (den Wert hat dir Claude im Chat gegeben).</li></ol>
-    <div class="note">Nach Änderungen an Merkliste oder Depot den Code erneut kopieren und das Secret <code>PUSH_SUBS</code> aktualisieren – sonst gelten die K.-o.-Warnungen für den alten Stand.</div>
+    <div class="note">Nach jedem neuen Trade (oder Änderungen im Depot) den Code erneut kopieren und das Secret <code>PUSH_SUBS</code> aktualisieren – sonst kennt die Prüfung den neuen Trade nicht.</div>
     <textarea id="pushText" class="tgtext" readonly hidden></textarea>`;
   return `<div class="section-title"><span>Mitteilungen aufs iPad</span><span class="up">${live}</span></div><div class="card tgset">${body}</div>`;
 }
@@ -3211,7 +3332,14 @@ function settingsHtml() {
   const groups = Object.entries(CFG_LABELS).filter(([k]) => cfg[k]).map(([k, label]) =>
     `<h4>${label}</h4><div class="table-wrap"><table><tbody>${Object.entries(cfg[k]).map(([p, v]) =>
       `<tr><td>${esc(p)}</td><td class="num">${esc(Array.isArray(v) ? v.join(" – ") : typeof v === "number" ? fmt(v, Number.isInteger(v) ? 0 : 3) : v)}</td></tr>`).join("")}</tbody></table></div>`).join("");
-  return `<div class="section-title"><span>Persönlich</span><span>nur auf diesem Gerät</span></div>
+  return `<div class="section-title"><span>Live-Kurse</span><span>${liveOn() ? "aktiv" : "aus"}</span></div>
+    <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
+      <label>Finnhub-Schlüssel <small>(US-Aktien in Echtzeit · kostenlos auf finnhub.io)</small><input id="kxFh" type="password" autocomplete="off" value="${esc(liveKey("fh"))}" placeholder="z. B. c1abc…"></label>
+      <label>Twelve-Data-Schlüssel <small>(Europa/Asien + Tageskerzen für jede Aktie · kostenlos auf twelvedata.com)</small><input id="kxTd" type="password" autocomplete="off" value="${esc(liveKey("td"))}" placeholder="z. B. 9f2e…"></label>
+      <div class="row-actions"><button class="btn" data-kxsave="1">Speichern &amp; testen</button></div>
+      <div class="note">Die Schlüssel bleiben nur auf diesem Gerät – nicht im Backup, nicht auf GitHub. Der große Scan bleibt einmal täglich; live geladen werden nur die Aktien, die du öffnest, dein Depot und deine offenen Trades.</div>
+      <div id="kxMsg"></div></div></div>
+    <div class="section-title"><span>Persönlich</span><span>nur auf diesem Gerät</span></div>
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
       <label class="full">Wie soll Kairo dich nennen?<input id="cfgName" value="${esc(state.name || "")}" placeholder="z. B. Jonny" maxlength="24" autocomplete="given-name"></label></div>
       <div class="note">Erscheint in der Begrüßung oben („Guten Abend, ${esc(state.name || "…")}“). Leer lassen = ohne Namen.</div>
@@ -3252,11 +3380,68 @@ function einMatches(q) {
 function einListHtml() {
   const q = state.einQ || "", m = einMatches(q);
   if (q.length < 2 || (state.einT && m.length && m[0].t === state.einT && q === m[0].n)) return "";
-  if (!m.length) return `<div class="note" style="margin:6px 2px">Keine Aktie gefunden – gesucht wird in allen ${fmt(searchIdx.length, 0)} geprüften Aktien (ab 2 Mrd. USD).</div>`;
-  return `<div class="ein-list">${m.map(r => `<button class="ein-opt" data-ein="${esc(r.t)}"><b>${esc(r.n)}</b><span>${esc(r.t)} · ${fmt(r.c)} ${esc(r.cur || "")}</span>${einTag(r)}</button>`).join("")}</div>`;
+  const ext = `<button class="ein-opt ein-ext" data-extq="${esc(q)}"><b>🔍 „${esc(q)}“ an allen Börsen weltweit suchen</b><span>auch Aktien außerhalb des Kairo-Scans – Trade-Plan aus den aktuellen Tageskerzen</span></button>`;
+  if (!m.length) return `<div class="note" style="margin:6px 2px">Nicht unter den ${fmt(searchIdx.length, 0)} gescannten Aktien.</div><div class="ein-list">${ext}</div>`;
+  return `<div class="ein-list">${m.map(r => `<button class="ein-opt" data-ein="${esc(r.t)}"><b>${esc(r.n)}</b><span>${esc(r.ext ? r.x : r.t)} · ${fmt(r.c)} ${esc(r.cur || "")}</span>${einTag(r)}</button>`).join("")}${ext}</div>`;
 }
+// ---------- Jede Aktie: weltweite Suche + Tageskerzen (Twelve Data), Struktur wie backend/tradeplan.py – im Browser ----------
+const tdGet = async (path, params) => { const k = liveKey("td"); const j = await (await fetch(`https://api.twelvedata.com/${path}?` + new URLSearchParams({ ...params, ...(k ? { apikey: k } : {}) }))).json();
+  if (j && j.status === "error") throw new Error(j.message || "Twelve Data"); return j; };
+async function extSearch(q) {
+  const j = await tdGet("symbol_search", { symbol: q, outputsize: 15 });
+  return (j.data || []).filter(x => !x.instrument_type || /stock|depositary|equity/i.test(x.instrument_type));
+}
+const emaArr = (a, n) => { const k = 2 / (n + 1), o = []; a.forEach((x, i) => o.push(i ? x * k + o[i - 1] * (1 - k) : x)); return o; };
+function extStructure(o, h, l, c) {
+  const n = c.length, tr = c.map((x, i) => i ? Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])) : h[i] - l[i]);
+  let atr = tr.slice(1, 15).reduce((a, b) => a + b, 0) / 14; for (let i = 15; i < n; i++) atr = (atr * 13 + tr[i]) / 14;
+  let base = null;
+  for (const [k, m] of [[5, 1.5], [5, 2.5], [3, 1.5], [3, 2.5]]) { const lo = Math.min(...l.slice(-k)), hi = Math.max(...h.slice(-k));
+    if (hi - lo <= m * atr) { base = { k, lo, hi, m, w: +((hi - lo) / atr).toFixed(2) }; break; } }
+  const l10 = Math.min(...l.slice(-10)), h10 = Math.max(...h.slice(-10)), inv = base ? base.lo : l10, stop = inv - 0.25 * atr;
+  const e20 = emaArr(c, 20), e50 = emaArr(c, 50), e200 = emaArr(c, 200), last = c[n - 1];
+  const cand = [...(base ? [["Basis-Hoch", base.hi]] : []), ["10-Tage-Hoch", h10], ["EMA 20", e20[n - 1]], ["EMA 50", e50[n - 1]]].filter(x => x[1] > last + 0.1 * atr).sort((a, b) => a[1] - b[1]);
+  const tg = []; cand.forEach(([lb, v]) => { const pv = tg[tg.length - 1]; if (pv && v - pv[1] < 0.3 * atr) pv[0] += " / " + lb; else tg.push([lb, v]); });
+  const O = o[n - 1], H = h[n - 1], L = l[n - 1], rng = H - L, body = Math.abs(last - O), pos = rng ? (last - L) / rng : .5;
+  const kc = !rng ? null : body <= .1 * rng ? (pos >= .6 && Math.min(O, last) - L >= .6 * rng ? "hammer" : "doji") : last > O ? (Math.min(O, last) - L >= 2 * body && pos >= .5 ? "hammer" : pos >= .67 && body >= .5 * rng ? "bull" : "green") : (Math.min(O, last) - L >= 2 * body && pos >= .5 ? "hammer" : "red");
+  const lr = c.slice(-61).map((x, i, a) => i ? Math.log(x / a[i - 1]) : 0).slice(1), sd = Math.sqrt(lr.reduce((a, b) => a + b * b, 0) / lr.length - (lr.reduce((a, b) => a + b, 0) / lr.length) ** 2);
+  return { atr, e20: e20[n - 1], e50: e50[n - 1], e200: n >= 200 ? e200[n - 1] : null, vola: sd * Math.sqrt(252), d1: c[n - 2] ? last / c[n - 2] - 1 : null,
+           pl: { base, l3: Math.min(...l.slice(-3)), l10, h10, inv, src: base ? `Tief der ${base.k}-Tage-Basis` : "Tief der letzten 10 Tage (keine Basis)", stop, atr, sd: (last - stop) / atr, res: [], tg: tg.slice(0, 4), kc } };
+}
+async function extLoad(x) {
+  const j = await tdGet("time_series", { symbol: x.symbol, exchange: x.exchange, interval: "1day", outputsize: 260 });
+  const v = (j.values || []).slice().reverse();
+  if (v.length < 30) throw new Error("zu wenig Kursdaten");
+  const num = k => v.map(r => parseFloat(r[k]));
+  const st = extStructure(num("open"), num("high"), num("low"), num("close"));
+  const t = `~${x.symbol}:${x.exchange}`, c = num("close")[v.length - 1], cur = (j.meta && j.meta.currency) || x.currency || "";
+  const row = { t, n: x.instrument_name || x.symbol, x: `${x.symbol} · ${x.exchange}`, c, cur, s: "", m: null, km: [], tm: [], tr: 0, ap: st.atr / c, ...st,
+                ext: { symbol: x.symbol, exchange: x.exchange }, title: "Außerhalb des Kairo-Scans", text: "" };
+  searchIdx = searchIdx.filter(r => r.t !== t); searchIdx.push(row);
+  try { const l = JSON.parse(localStorage.getItem("kairo-ext") || "[]").filter(y => y.t !== t); l.unshift(row); localStorage.setItem("kairo-ext", JSON.stringify(l.slice(0, 40))); } catch (e) {}
+  if (cur && fxEur[cur] == null && cur !== "EUR") row.fxMissing = true;
+  return row;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-extq],[data-extpick]"); if (!b) return;
+  e.preventDefault(); const box = $("einList");
+  if (!liveKey("td")) { box.innerHTML = `<div class="tip tone-yellow" style="margin:6px 0">Für Aktien außerhalb des Scans braucht Kairo die Tageskerzen von Twelve Data: einmal den kostenlosen Schlüssel eintragen unter Einstellungen → Live-Kurse.</div>`; return; }
+  if (b.dataset.extq) {
+    box.innerHTML = `<div class="note" style="margin:6px 2px">Suche an allen Börsen …</div>`;
+    try { const l = await extSearch(b.dataset.extq);
+      box.innerHTML = l.length ? `<div class="ein-list">${l.map(x => `<button class="ein-opt" data-extpick='${esc(JSON.stringify(x))}'><b>${esc(x.instrument_name)}</b><span>${esc(x.symbol)} · ${esc(x.exchange)} · ${esc(x.country || "")} · ${esc(x.currency || "")}</span></button>`).join("")}</div>`
+        : `<div class="note" style="margin:6px 2px">Nichts gefunden.</div>`;
+    } catch (err) { box.innerHTML = `<div class="tip tone-yellow" style="margin:6px 0">Suche fehlgeschlagen: ${esc(err.message)}</div>`; }
+    return;
+  }
+  const x = JSON.parse(b.dataset.extpick);
+  box.innerHTML = `<div class="note" style="margin:6px 2px">Lade Tageskerzen von ${esc(x.instrument_name)} …</div>`;
+  try { const r = await extLoad(x); state.einT = r.t; state.einQ = r.n; save(); render(); }
+  catch (err) { box.innerHTML = `<div class="tip tone-yellow" style="margin:6px 0">Keine Kursdaten: ${esc(err.message)} (im kostenlosen Tarif sind nicht alle Börsen enthalten).</div>`; }
+});
 const einTag = r => r.tr === 2 ? `<i class="st trend">Trend Top</i>` : r.tr === 1 ? `<i class="st trend">Trend</i>` : r.s === "hit" ? `<i class="st hit">Kairo</i>` : r.s === "fast" ? `<i class="st fast">Kairo fast</i>` : "";
 function einSetup(r) {
+  if (r.ext) return { k: "none", tone: "gray", title: "Außerhalb des Kairo-Scans", sub: "Die 11 Kairo-Kriterien prüft nur der Abendscan. Der Trade-Plan unten rechnet Stop, Größe und Hebel aus den aktuellen Tageskerzen.", plan: null };
   if (r.tr === 2) return { k: "top", tone: "green", title: "Trend-Rücksetzer · Top", sub: "Das stärkste Setup im 6-Jahres-Test – hier lohnt sich der Einstieg am meisten.", plan: r.tp };
   if (r.tr === 1) return { k: "trend", tone: "green", title: "Trend-Rücksetzer", sub: "Aufwärtstrend mit kurzer Verschnaufpause an der EMA 50 – im Test deutlich besser als Kairo.", plan: r.tp };
   if (r.s === "hit") return { k: "kairo", tone: "yellow", title: `Kairo-Treffer${r.sc ? " · Score " + r.sc : ""}`, sub: "Umkehr nach einer Korrektur – alle 11 Kriterien erfüllt.", plan: r.kp };
@@ -3277,7 +3462,105 @@ function einTrendCheck(r) {
   return `<ul class="checks">${rows.map(([ok, l, v, hint]) => `<li><i class="${ok ? "up" : "down"}">${ok ? "✓" : "✗"}</i><b>${l}:</b> ${esc(v)}${!ok && hint ? `<small style="display:block" class="muted">${esc(hint)}</small>` : ""}</li>`).join("")}
     ${top.map(([ok, l, v]) => `<li><i class="${ok ? "up" : "muted"}">${ok ? "★" : "·"}</i><b>${l}:</b> ${esc(v)}</li>`).join("")}</ul>`;
 }
+// ---------- Echtzeit-Kurse (direkt vom iPad; Schlüssel nur lokal – nie im Repo, nicht im Backup) ----------
+// US-Aktien: Finnhub (kostenlos, Echtzeit, 60 Abfragen/Min.) · andere Börsen und Tageskerzen: Twelve Data (kostenlos, 8/Min., 800/Tag).
+// Ein Live-Kurs ersetzt im Speicher den Schlusskurs der Aktie – Trade-Plan, Scanner, Depot und Trades rechnen damit automatisch.
+const LIVE = { map: {}, busy: new Set(), ttl: 30e3 };
+const liveKey = k => { try { return localStorage.getItem("kx-" + k) || ""; } catch (e) { return ""; } };
+const liveOn = () => !!(liveKey("fh") || liveKey("td"));
+const isUS = t => !/\.[A-Z]+$/.test(t);
+function tdSymbol(t) {
+  const m = t.match(/^(.*)\.([A-Z]+)$/); if (!m) return { symbol: t.replace("-", ".") };
+  const ex = { DE: "XETR", F: "FSX", L: "LSE", PA: "Euronext", AS: "Euronext", BR: "Euronext", LS: "Euronext", SW: "SIX", MI: "MTA", MC: "BME", VI: "VSE",
+               ST: "OMX", CO: "OMXC", HE: "OMXH", OL: "OSE", TO: "TSX", HK: "HKEX", T: "JPX", AX: "ASX", NS: "NSE", KS: "KRX", SI: "SGX" }[m[2]];
+  return ex ? { symbol: m[2] === "HK" ? m[1].replace(/^0+/, "") : m[1], exchange: ex } : null;
+}
+async function liveFetch(t) {
+  const fh = liveKey("fh"), td = liveKey("td"), xr = rowOf(t), ext = xr && xr.ext;
+  if (ext) {
+    if (fh && /^(NASDAQ|NYSE|AMEX|NYSE ARCA|BATS|CBOE)/i.test(ext.exchange)) { const j = await (await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ext.symbol)}&token=${encodeURIComponent(fh)}`)).json();
+      if (j && j.c > 0) return { c: +j.c, pc: +j.pc || null, h: +j.h, l: +j.l, ts: (j.t || 0) * 1000 || Date.now(), src: "Finnhub" }; }
+    if (td) { const j = await tdGet("quote", { symbol: ext.symbol, exchange: ext.exchange }); const c = parseFloat(j && j.close);
+      if (c > 0) return { c, pc: parseFloat(j.previous_close) || null, h: parseFloat(j.high), l: parseFloat(j.low), ts: (j.timestamp || 0) * 1000 || Date.now(), src: "Twelve Data" }; }
+    return null;
+  }
+  if (isUS(t) && fh) {
+    const j = await (await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t.replace("-", "."))}&token=${encodeURIComponent(fh)}`)).json();
+    if (j && j.c > 0) return { c: +j.c, pc: +j.pc || null, h: +j.h, l: +j.l, ts: (j.t || 0) * 1000 || Date.now(), src: "Finnhub" };
+  }
+  const sy = td && tdSymbol(t);
+  if (sy) {
+    const j = await (await fetch("https://api.twelvedata.com/quote?" + new URLSearchParams({ ...sy, apikey: td }))).json();
+    const c = parseFloat(j && j.close);
+    if (c > 0) return { c, pc: parseFloat(j.previous_close) || null, h: parseFloat(j.high), l: parseFloat(j.low), ts: (j.timestamp || 0) * 1000 || Date.now(), src: "Twelve Data" };
+  }
+  return null;
+}
+async function liveQuote(t, force) {
+  const o = LIVE.map[t];
+  if (!force && o && Date.now() - o.at < LIVE.ttl) return o;
+  if (LIVE.busy.has(t)) return o;
+  LIVE.busy.add(t);
+  try { const q = await liveFetch(t); if (q) { q.at = Date.now(); LIVE.map[t] = q; liveApply(t, q); } return q; }
+  catch (e) { return null; } finally { LIVE.busy.delete(t); }
+}
+function liveApply(t, q) {
+  const r = rowOf(t);
+  if (r) { if (r.c0 == null) r.c0 = r.c; r.c = q.c; if (q.pc) r.d1 = q.c / q.pc - 1; r.live = q.at; }
+  const x = data && data.results && data.results.find(y => y.ticker === t);
+  if (x) { if (x.close0 == null) x.close0 = x.close; x.close = q.c; x.live = q.at; }
+}
+async function liveMany(ts) { const out = []; for (const t of [...new Set(ts)]) out.push(await liveQuote(t)); return out.filter(Boolean).length; }
+const liveTime = t => { const q = LIVE.map[t]; return q ? new Date(q.ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : ""; };
+const liveTag = t => LIVE.map[t] ? `<span class="live-tag" title="Live-Kurs von ${esc(LIVE.map[t].src)}">● Live ${liveTime(t)}</span>` : "";
+const liveBtn = t => `<button class="live-btn" data-live="${esc(t)}" title="Nur diese Aktie mit dem aktuellen Kurs aktualisieren">↻ Live</button>`;
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-live]"); if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  if (!liveOn()) { alert("Für Live-Kurse einmal einen kostenlosen Schlüssel eintragen: Einstellungen → Live-Kurse."); return; }
+  b.classList.add("spin"); const q = await liveQuote(b.dataset.live, true); b.classList.remove("spin");
+  if (!q) { alert("Für diese Aktie gibt es gerade keinen Live-Kurs (Börse vom Anbieter nicht abgedeckt oder Abfrage-Limit erreicht)."); return; }
+  render();
+});
+// Depot und offene Trades: alle 60 s nachladen, solange der Reiter offen und die App sichtbar ist
+setInterval(() => {
+  if (!liveOn() || document.visibilityState !== "visible" || !searchIdx) return;
+  const ts = state.sec === "depot" ? depotLoad().map(p => p.t).filter(Boolean) : state.sec === "entry" ? [...plansLoad().filter(p => p.st === "open").map(p => p.t), state.einT].filter(Boolean) : [];
+  if (ts.length) liveMany(ts).then(n => { if (n) render(); });
+}, 60e3);
+const liveStale = ts => ts.filter(t => { const o = LIVE.map[t]; return !o || Date.now() - o.at > LIVE.ttl; });
+function liveKick(ts, sec) {                                  // veraltete Kurse nachladen und einmal neu zeichnen
+  const st = liveOn() ? liveStale([...new Set(ts.filter(Boolean))]) : [];
+  if (st.length) liveMany(st).then(n => { if (n && state.sec === sec) render(); });
+}
+document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("tvbox")) { state.tvOpen = e.target.open; save(); } }, true);
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-liveall]"); if (!b) return;
+  if (!liveOn()) { alert("Für Live-Kurse einmal einen kostenlosen Schlüssel eintragen: Einstellungen → Live-Kurse."); return; }
+  b.classList.add("spin"); Object.values(LIVE.map).forEach(v => { v.at = 0; });
+  await liveMany(depotLoad().map(p => p.t).filter(Boolean)); b.classList.remove("spin"); render();
+});
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-kxsave]"); if (!b) return;
+  const fh = ($("kxFh").value || "").trim(), td = ($("kxTd").value || "").trim(), msg = $("kxMsg");
+  try { fh ? localStorage.setItem("kx-fh", fh) : localStorage.removeItem("kx-fh"); td ? localStorage.setItem("kx-td", td) : localStorage.removeItem("kx-td"); } catch (err) {}
+  LIVE.map = {};
+  const res = [];
+  if (fh) { const q = await liveFetch("AAPL").catch(() => null); res.push(q ? `✓ Finnhub: Apple ${fmt(q.c)} USD` : "✗ Finnhub: keine Antwort – Schlüssel prüfen"); }
+  if (td) { const q = await liveFetch("SAP.DE").catch(() => null); res.push(q ? `✓ Twelve Data: SAP ${fmt(q.c)} EUR` : "✗ Twelve Data: keine Antwort – Schlüssel prüfen (oder Börse im kostenlosen Tarif nicht enthalten)"); }
+  if (msg) msg.innerHTML = `<div class="tip tone-${res.some(x => x.startsWith("✗")) ? "yellow" : "green"}" style="margin-top:10px">${res.map(esc).join("<br>") || "Schlüssel gelöscht – Kurse wieder vom Abendscan."}</div>`;
+});
+const tvSym = t => { const xr = rowOf(t); if (xr && xr.ext) return `${xr.ext.exchange.toUpperCase().replace(/\s+/g, "")}:${xr.ext.symbol}`;
+  try { return new URL(tvUrl(t)).searchParams.get("symbol"); } catch (e) { return t; } };
+function tvChartHtml(t) {
+  const src = "https://s.tradingview.com/widgetembed/?" + new URLSearchParams({ symbol: tvSym(t), interval: "D", theme: isLight() ? "light" : "dark", style: "1",
+    locale: "de_DE", timezone: "Europe/Berlin", hide_side_toolbar: "1", allow_symbol_change: "0", saveimage: "0", withdateranges: "1", studies: "[]" });
+  return `<details class="hcard tvbox"${state.tvOpen === false ? "" : " open"}><summary class="plan-h">Live-Chart · TradingView</summary>
+    <iframe src="${src}" loading="lazy" title="Live-Chart ${esc(t)}" allowtransparency="true" frameborder="0" scrolling="no"></iframe>
+    <div class="note" style="margin:6px 0 0">Echtzeit bzw. leicht verzögert je nach Börse. Kerzen, Seitwärtsphase und Stop im Plan stammen aus dem Abendscan; den Kaufkurs rechnet der Plan live.</div></details>`;
+}
 function einPlanHtml(r) {
+  if (liveOn()) { const o = LIVE.map[r.t]; if (!o || Date.now() - o.at > LIVE.ttl) liveQuote(r.t).then(q => { if (q && state.sec === "entry" && state.einT === r.t) render(); }); }
   const S = einSetup(r), res = data.results.find(x => x.ticker === r.t), cur = esc(r.cur || "");
   const p = S.plan, c = r.c, atr = r.atr || (r.ap || 0) * c;
   const plan = tpHtml(r, S);
@@ -3285,9 +3568,10 @@ function einPlanHtml(r) {
   const warn = [days != null && days >= 0 && days <= 21 ? `⚠ Quartalszahlen am ${dateDE(r.ed)} (in ${days} Tagen) – Kurssprünge können den K.-o. überspringen.` : "",
     res && res.senti && res.senti.tgt ? `Analysten-Ziel Ø ${fmt(res.senti.tgt.m)} ${cur} (${sgnPct(res.senti.tgt.m / c - 1, 0)}).` : ""].filter(Boolean);
   return `<div class="hcard ein-head tone-${S.tone}">
-      <div class="ein-top"><div><h2>${favBtn(r.t)} ${esc(r.n)}</h2><div class="meta">${esc(r.t)} · ${esc(r.x || "")} · ${fmt(c)} ${cur} · Vola ${pct(r.vola, 0)}</div></div></div>
+      <div class="ein-top"><div><h2>${favBtn(r.t)} ${esc(r.n)}</h2><div class="meta">${r.ext ? esc(r.x) : `${esc(r.t)} · ${esc(r.x || "")}`} · ${fmt(c)} ${cur}${r.d1 != null ? ` <span class="${r.d1 >= 0 ? "up" : "down"}">${sgnPct(r.d1, 1)}</span>` : ""} · Vola ${pct(r.vola, 0)} ${liveTag(r.t)}</div></div>${liveBtn(r.t)}</div>
       <div class="ein-verdict"><b>${esc(S.title)}</b><span>${esc(S.sub)}</span></div>
       ${warn.length ? `<div class="note" style="margin:8px 0 0">${warn.map(esc).join("<br>")}</div>` : ""}</div>
+    ${tvChartHtml(r.t)}
     ${plan}
     <div class="hcard"><div class="plan-h">Trend-Rücksetzer · ${(r.tm || []).filter(Boolean).length}/3 erfüllt${r.tr === 2 ? " · Stufe Top" : ""}</div>${einTrendCheck(r)}</div>
     <div class="hcard"><div class="plan-h">Kairo-Setup · ${r.m ?? "–"}/11 erfüllt</div>
@@ -3305,7 +3589,7 @@ const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52,
 // (jedes feste Ziel brachte weniger) · Risiko 1 %, bei grüner Ampel (Ausverkauf) 2 % · bis zu 5 Trades gleichzeitig ·
 // Hebel = höchster bis ×10 (Scalable) mit K.-o. ≥ 1 ATR unter dem SL · alle Kurse in Euro.
 // Depot-Test: Median ≈ +55 % p. a. (10.–90. Perzentil +42 … +72 %), größter Rückgang ≈ 32 %. Fast-Treffer verschlechterten jede Variante.
-const KMAX = { hold: 20, hold2: 20, tpDays: 7, weakMult: 2, maxOpen: 5 };
+const KMAX = { hold: 20, hold2: 20, tpDays: 7, weakMult: 2, maxOpen: 5, perSector: 2 };   // perSector: Klumpenschutz
 const TP_EXIT = { hold: KMAX.hold };
 // ---- TP-Bewertung je Aktie ----
 // Kandidaten: Hoch der Seitwärtsphase, 10-Tage-Hoch, frühere Hochs (Swing), EMA 20/50, Fibonacci – Verkauf 0,1 ATR davor.
@@ -3401,6 +3685,15 @@ function tp2Calc(r, S, o = {}) {
   out.mk = tpMarket();
   out.fit = kmFit(r, out.mk);
   out.riskPct = cfg.risk * out.fit.mult;
+  // Klumpenschutz: offene Trades und Depot-Positionen im selben Sektor – höchstens 2 je Sektor
+  if (r.sec) {
+    const same = new Map();
+    plansLoad().filter(p => p.st === "open" && p.t !== r.t).forEach(p => { const x = rowOf(p.t); if (x && x.sec === r.sec) same.set(p.t, p.n || x.n); });
+    (typeof depotLoad === "function" ? depotLoad() : []).forEach(p => { const x = p.t && p.t !== r.t && rowOf(p.t); if (x && x.sec === r.sec) same.set(p.t, x.n); });
+    out.cluster = { sec: r.sec, n: same.size, names: [...same.values()] };
+    if (same.size >= KMAX.perSector) out.problems.push(["red", `Klumpenschutz: Du hast schon ${same.size} Positionen im Sektor ${r.sec} (${[...same.values()].slice(0, 3).join(", ")}). Höchstens ${KMAX.perSector} je Sektor – fällt der Sektor, fallen alle gleichzeitig. Lieber auslassen oder eine andere Position zuerst schließen.`]);
+    else if (same.size) out.problems.push(["yellow", `Klumpenschutz: ${same.size} Position im selben Sektor (${r.sec}: ${[...same.values()].join(", ")}). Diese wäre die letzte erlaubte in ${r.sec}.`]);
+  }
   out.riskEur = cfg.depot * out.riskPct / 100;
   out.expo = out.riskEur / out.dist;                          // Basiswert-Exposure in €
   const hold = o.hold || KMAX.hold, cal = hold * 7 / 5;
@@ -3458,7 +3751,7 @@ function tpInner(r, S) {
   const head = `<div class="tp2-cfg">
       <label>Kaufkurs Aktie (€)<input id="tpE" type="number" inputmode="decimal" step="any" value="${esc(entE || +(r.c * fx0).toFixed(2))}" data-t="${esc(r.t)}"></label>
       <label>Kaufdatum<input id="tpD" type="date" value="${esc(dt || isoD(tpEntryDay()))}" data-t="${esc(r.t)}"></label></div>
-    <div class="note" style="margin:4px 0 0">Vorgabe: letzter Schluss (${dateDE(String(data.generated).slice(0, 10))}). Schon gekauft? Echten Kurs und Datum eintragen – der Plan rechnet neu.${r.cur && r.cur !== "EUR" ? ` Alle Kurse in Euro (umgerechnet aus ${esc(r.cur)} zum aktuellen Devisenkurs).` : ""}</div>`;
+    <div class="note" style="margin:4px 0 0">Vorgabe: ${r.live ? `Live-Kurs ${liveTime(r.t)} Uhr` : `letzter Schluss (${dateDE(String(data.generated).slice(0, 10))})${liveOn() ? "" : " – für Live-Kurse Schlüssel in den Einstellungen eintragen"}`}. Schon gekauft? Echten Kurs und Datum eintragen – der Plan rechnet neu.${r.cur && r.cur !== "EUR" ? ` Alle Kurse in Euro (umgerechnet aus ${esc(r.cur)} zum aktuellen Devisenkurs).` : ""}</div>`;
   const acct = `<details class="tp2-acc"><summary>Konto: ${eur(cfg.depot)} · Basisrisiko ${fmt(cfg.risk, 1)} % je Trade (bei grüner Ampel ×${fmt(KMAX.weakMult, 0)})</summary>
       <div class="tp2-cfg" style="margin-top:8px"><label>Depot (€)<input id="tpDepot" type="number" inputmode="decimal" min="0" step="100" value="${esc(cfg.depot)}"></label>
       <label>Risiko je Trade (%)<input id="tpRisk" type="number" inputmode="decimal" min="0.1" max="5" step="0.1" value="${esc(cfg.risk)}"></label></div>
@@ -3472,7 +3765,7 @@ function tpInner(r, S) {
     <div class="tip tone-${m.fit.tone}" style="margin-top:12px"><b class="t">${esc(m.fit.t)}</b>${esc(m.fit.s)}</div>
     ${m.mk ? `<div class="note" style="margin:6px 2px 0">Marktampel: ${esc(m.mk.t)} – ${esc(m.mk.s)}</div>` : ""}
     ${m.problems.map(([t, x]) => `<div class="tip tone-${t}" style="margin-top:8px">${esc(x)}</div>`).join("")}
-    <div class="tp2-plan"${m.fit.ok ? "" : ' style="opacity:.6"'}>
+    <div class="tp2-plan">
       ${row("Kauf", `${X(m.E)} ${cur}`, m.base ? `in der Seitwärtsphase ${X(m.base.lo)}–${X(m.base.hi)} €` : "keine Seitwärtsphase erkannt")}
       ${row("Stop-Loss (SL)", `${X(m.stop)} ${cur}`, `${sgnPct(m.stop / m.E - 1, 1)} · Verlust ${sgnEur(at(m.stop))}`, "down")}
       ${row("Take-Profit", "keiner", "Gewinner laufen lassen – das bringt laut Test am meisten")}
@@ -3485,8 +3778,8 @@ function tpInner(r, S) {
     <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position setzen. Keinen Limit-Verkauf – an Tag ${m.hold} zum Schluss verkaufen, falls der SL nicht vorher greift. Nicht vorher verkaufen, auch wenn es gut läuft: Die großen Gewinner machen das Ergebnis. Kairo führt keine Orders aus.</div>
     <div class="note">Warum diese Werte: SL = ${esc(m.src)} (${fmt(m.riskAtr, 1)} ATR). ${m.tpWhy || ""} Hebel = höchster, bei dem der K.-o. mindestens 1 ATR unter dem SL liegt (max. ×${fmt(Math.min(10, m.maxL), 1)}, Scalable bis ×10) – so knockt eine normale Kursschwankung den Turbo nicht aus – das Risiko bleibt gleich, nur der Einsatz sinkt. Kosten ≈ ${eur2(lv.cost)} sind eingerechnet. Kurslücke unter den K.-o.: Einsatz verloren (${sgnEur(-lv.stake - 2 * cfg.fee)}).</div>
     ${lv.L > 1 ? `<div class="row-actions" style="margin-top:10px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Turbo bei onvista suchen</a></div>` : ""}
-    ${m.fit.ok ? `<div class="row-actions" style="margin-top:12px"><button class="btn" data-tpopen="${esc(r.t)}">Trade eröffnen & speichern</button></div>
-    <div class="note">Speichert den Plan unverändert. Kairo prüft ihn nach jedem Abendscan (SL, Ausstiegstag).</div>` : ""}
+    <div class="row-actions" style="margin-top:12px"><button class="btn${m.fit.ok ? "" : " ghost"}" data-tpopen="${esc(r.t)}">${m.fit.ok ? "Trade eröffnen & speichern" : "Trotzdem speichern"}</button></div>
+    <div class="note">Speichert den Plan unverändert. Kairo prüft ihn ${r.ext ? "mit Live-Kursen" : "nach jedem Abendscan"} (SL, Ausstiegstag).</div>
     ${acct}`;
 }
 // Dein echter Turbo: Stop-Kurs am Turbo und Stückzahl aus Kaufkurs (€) und K.-o.-Schwelle des Produkts.
@@ -3523,7 +3816,7 @@ function tpOpen(t) {
   if (l.filter(p => p.st === "open").length >= m.cfg.maxOpen && !confirm(`Schon ${m.cfg.maxOpen} offene Trades – Gesamtrisiko steigt. Trotzdem eröffnen?`)) return;
   l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, d: isoD(m.d0), scan: String(data.generated).slice(0, 10),
               E: +m.E, stop: m.stop, atr: m.atr, L: lv.L, ko: lv.ko, expo: Math.round(lv.expo), stake: Math.round(lv.stake), qty: lv.qty,
-              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), exit2: isoD(m.exit2), tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open" });
+              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), exit2: isoD(m.exit2), sec: r.sec || null, tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open" });
   plansSave(l); render(); window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function tpStatus(p) {
@@ -3537,6 +3830,7 @@ function tpStatus(p) {
 }
 function tpPlansHtml() {
   const l = plansLoad(), open = l.filter(p => p.st === "open"), done = l.filter(p => p.st === "closed");
+  liveKick(open.map(p => p.t), "entry");
   if (!l.length) return "";
   const row = p => { const r = rowOf(p.t), c = r ? r.c : null, s = tpStatus(p), pnl = c != null ? (c - p.E) / p.E * p.expo - p.cost : null;
     return `<div class="g-pos"><div class="g-pos-h"><button class="g-nm" data-ein="${esc(p.t)}"><b>${esc(p.n)}</b><small>${esc(p.t)} · ${p.L === 1 ? "Aktie" : `Turbo ×${p.L}`} · seit ${dateDE(p.d)} · verkaufen am ${dateDE(p.exit2 || p.exit)}</small></button>
@@ -3549,7 +3843,12 @@ function tpPlansHtml() {
   const cmp = h.length ? `<div class="tp2-cmp"><div><span>Hälfte 1 · deine Strategie (TP)</span><b class="${a1 >= 0 ? "up" : "down"}">${fmt(a1, 2).replace(/^(?!-)/, "+")} R</b><em>Treffer ${pct(h.filter(p => p.R1 > 0).length / h.length, 0)}</em></div>
       <div><span>Hälfte 2 · laufen lassen (Tag 20)</span><b class="${a2 >= 0 ? "up" : "down"}">${fmt(a2, 2).replace(/^(?!-)/, "+")} R</b><em>Treffer ${pct(h.filter(p => p.R2 > 0).length / h.length, 0)}</em></div></div>
     <div class="note" style="margin:4px 2px 12px">${h.length} Trades verglichen${h.length < 20 ? ` – aussagekräftig ab etwa 20–30` : a1 > a2 + 0.1 ? " – deine TP-Strategie liegt vorn" : a2 > a1 + 0.1 ? " – Laufenlassen liegt vorn" : " – beide etwa gleich"}.</div>` : "";
-  return `<div class="section-title"><span>Deine Trades</span><span>${open.length} offen</span></div>${open.map(row).join("") || `<div class="note">Keine offenen Trades.</div>`}
+  const pushOld = pushSub && state.pushSig != null && state.pushSig !== pushSig()
+    ? `<div class="note" style="border-left:3px solid var(--gold)">🔔 Deine Trades haben sich geändert – damit Stop-, Verkaufstag- und K.-o.-Mitteilungen stimmen: <a href="#" data-gosec="settings">Einstellungen → Mitteilungen</a> → Code kopieren → Secret <code>PUSH_SUBS</code> aktualisieren.</div>` : "";
+  return pushOld + `<div class="section-title"><span>Deine Trades</span><span>${open.length} offen</span></div>${open.map(row).join("") || `<div class="note">Keine offenen Trades.</div>`}
+    ${(() => { const cnt = {}; open.forEach(p => { const x = rowOf(p.t), k = (x && x.sec) || p.sec; if (k) cnt[k] = (cnt[k] || 0) + 1; });
+      const ks = Object.entries(cnt).sort((a, b) => b[1] - a[1]);
+      return ks.length ? `<div class="note" style="margin:4px 2px 0">Sektoren: ${ks.map(([k, n]) => `<span class="${n >= KMAX.perSector ? "down" : ""}">${esc(k)} ${n}</span>`).join(" · ")}${ks.some(([, n]) => n >= KMAX.perSector) ? ` – Klumpenschutz: höchstens ${KMAX.perSector} je Sektor` : ""}</div>` : ""; })()}
     ${stat ? `<div class="note" style="margin:6px 2px 8px">${stat}</div>` : ""}${cmp}`;
 }
 document.addEventListener("click", e => {                     // Hälfte 1 / Hälfte 2 (bzw. alles) verkauft
@@ -3628,6 +3927,7 @@ function renderMain() {
   if (state.sec === "today") { $("main").innerHTML = todayHtml(); if (isPostfach()) mountPostfach(); return; }
   if (state.sec === "bilanz") { $("main").innerHTML = bilanzHtml(); return; }
   if (state.sec === "calendar") { $("main").innerHTML = calendarHtml(); return; }
+  if (state.sec === "news") { $("main").innerHTML = newsHtml(); return; }
   if (state.sec === "entry") { $("main").innerHTML = einHtml(); return; }
   if (state.sec === "depot") { $("main").innerHTML = depotHtml(); mountDepotCharts(); return; }
   if (state.sec === "journal") { $("main").innerHTML = journalHtml(); return; }
@@ -3720,7 +4020,7 @@ function greetText() {
   const h = new Date().getHours(), nm = String(state.name || "").trim();
   return esc(h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend") + (nm ? `, <span class="nm">${esc(nm)}</span>` : "") + greetEmoji();
 }
-const SEC_T = { today: "Heute", scanner: "Scanner", entry: "Einstieg", calendar: "Kalender", depot: "Depot", journal: "Journal", game: "Spiel", settings: "Einstellungen", bilanz: "Bilanz" };
+const SEC_T = { today: "Heute", scanner: "Scanner", entry: "Einstieg", calendar: "Kalender", news: "News", depot: "Depot", journal: "Journal", game: "Spiel", settings: "Einstellungen", bilanz: "Bilanz" };
 function appleHead() {
   document.body.dataset.sec = state.sec;
   if (!isApple()) return;
@@ -3960,6 +4260,8 @@ function goSec(sec) {
 }
 document.addEventListener("click", e => {
   if (e.target.closest("[data-brief]")) { openBrief(); return; }
+  const nt = e.target.closest("[data-newstab]"); if (nt) { state.newsTab = nt.dataset.newstab; save(); render(); return; }
+  if (e.target.closest("[data-newsfresh]")) { newsLoad(true); render(); return; }
   const bc = e.target.closest("[data-briefcard]"); if (bc) { closeBrief(); openCard(bc.dataset.briefcard); return; }
   const bd = e.target.closest("[data-briefdep]"); if (bd) { closeBrief(); depOpen.add(bd.dataset.briefdep); goSec("depot"); return; }
   const bx = e.target.closest("[data-briefclose]"); if (bx) { closeBrief(); if (!bx.dataset.gosec) return; }
@@ -3984,7 +4286,7 @@ document.addEventListener("click", e => {
   const pb = e.target.closest("[data-push]");
   if (pb) {
     if (pb.dataset.push === "on") { pushEnable(); return; }
-    if (pb.dataset.push === "copy" && pushSub) { const txt = pushCode(pushSub), ta = $("pushText"); ta.value = txt; ta.hidden = false; ta.select();
+    if (pb.dataset.push === "copy" && pushSub) { state.pushSig = pushSig(); save(); const txt = pushCode(pushSub), ta = $("pushText"); ta.value = txt; ta.hidden = false; ta.select();
       (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => { pb.textContent = "✓ Kopiert"; }).catch(() => { try { document.execCommand("copy"); pb.textContent = "✓ Kopiert"; } catch (x) {} }); }
     return;
   }

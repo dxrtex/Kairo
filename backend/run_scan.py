@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -25,7 +26,7 @@ from .config import CONFIG, ROOT, as_dict
 from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
-from . import briefing, company, push, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
+from . import briefing, company, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import MARKET, SECTOR_DE, SECTOR_ETF, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -104,7 +105,8 @@ def search_row(res, meta: dict, h: dict) -> dict:
                    # technische Eckdaten für die Depot-Einschätzung
                    "e20": f.get("ema20"), "e50": f.get("ema50"), "e200": f.get("ema200"), "atr": f.get("atr"),
                    "rsi": f.get("rsi"), "mh": f.get("macd_hist"), "e20f": f.get("ema20_falling"), "H": res.zone.get("H"),
-                   "vola": f.get("volatility")})
+                   "vola": f.get("volatility"),
+                   "sec": SECTOR_DE.get(meta.get("sector") or "", meta.get("sector") or "") or None})   # Sektor (Klumpenschutz)
 
 
 def day_moves(df) -> dict:
@@ -370,6 +372,14 @@ def main(argv=None) -> int:
             print(f"Briefing: Nachrichten für {len(brief['stocks'])} Aktien, {len(brief['market'])} Marktmeldungen, {brief.get('translated', 0)} übersetzt · {brief.get('diag')}")
         except Exception as exc:
             print(f"Briefing: Fehler {exc!r}")
+    # Insider-Geschäfte (SEC Formular 4) für den Nachrichtenbereich – Fehler dürfen den Scan nicht stoppen
+    ins = None
+    if not args.end:
+        try:
+            ins = insider.fetch()
+            print(f"Insider: {ins['filings']} Meldungen, {len(ins['buys'])} Käufe, {len(ins['sells'])} Verkäufe")
+        except Exception as exc:
+            print(f"Insider: Fehler {exc!r}")
     watch_dates = {}
     if not args.end:
         for t in watch:
@@ -544,6 +554,9 @@ def main(argv=None) -> int:
     if brief is not None:
         with open(SITE / "briefing.json", "w", encoding="utf-8") as f:
             json.dump(brief, f, ensure_ascii=False, separators=(",", ":"))
+    if ins is not None and ins.get("filings"):
+        with open(SITE / "insider.json", "w", encoding="utf-8") as f:
+            json.dump(_clean(ins), f, ensure_ascii=False, separators=(",", ":"))
     with open(SITE / "search.json", "w", encoding="utf-8") as f:
         json.dump(_clean({"generated": out["generated"], "fx_eur": fx,     # NaN → null: sonst kann der Browser die Datei nicht lesen
                           "rows": sorted(search.values(), key=lambda r: r["n"].lower())}),
@@ -601,10 +614,8 @@ def main(argv=None) -> int:
         except Exception as exc:
             print(f"Telegram: Fehler {exc!r}")
             alerts = {"enabled": False, "error": True}
-        try:                                          # Mitteilungen aufs iPad (Web Push)
-            alerts["push"] = push.run(rows, market, cal["events"], search, last, today_iso)
-        except Exception as exc:
-            print(f"Push: Fehler {exc!r}")
+        # Mitteilungen aufs iPad: nur noch Wichtiges, tagsüber alle 30 Min. über alerts.yml (Stop, Ziel, Verkaufstag, K.-o.)
+        alerts["push"] = {"enabled": bool(os.environ.get("PUSH_SUBS") and os.environ.get("VAPID_PRIVATE_KEY")), "date": today_iso, "mode": "live"}
         try:
             bil = live.update(rows, data, today_iso)
             print(f"Live-Bilanz: {bil['live']['n']} Signale seit {bil['live']['since']}, neu: {len(bil['new'])}")
