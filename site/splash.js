@@ -47,6 +47,8 @@
   const seen = () => { try { return localStorage.getItem("kairo-intro") === INTRO_V; } catch (e) { return false; } };
   const mark = () => { try { localStorage.setItem("kairo-intro", INTRO_V); } catch (e) {} };
   let current = null;
+  // Nach dem Intro: Start-Schwarz entfernen, damit helle Designs ihre eigene Hintergrundfarbe zeigen
+  const unboot = () => { const b = document.getElementById("preboot"); if (b) b.remove(); document.documentElement.style.background = ""; };
 
   function play(opts = {}) {
     if (current) current.el.remove();
@@ -66,7 +68,7 @@
     current = handle;
     Promise.race([Promise.all([animDone, ready]), new Promise(r => setTimeout(r, TIMEOUT_MS))]).then(() => {
       el.classList.add("exit");
-      setTimeout(() => { el.remove(); if (current === handle) current = null; opts.onDone && opts.onDone(); }, reduce ? 280 : EXIT_MS);
+      setTimeout(() => { el.remove(); if (current === handle) current = null; unboot(); opts.onDone && opts.onDone(); }, reduce ? 280 : EXIT_MS);
     });
     if (opts.readyAfter != null) setTimeout(resolveReady, opts.readyAfter);
     return handle;
