@@ -185,6 +185,9 @@ def simulate(px: dict, r: dict) -> dict | None:
         if n_held >= hold:
             exit_, day, why = c[j], n_held, "zeit"
             break
+        if r.get("d5") is not None and n_held == r.get("d5_day", 5) and R(c[j]) < r["d5"]:   # keine Anschlussbewegung → raus
+            exit_, day, why = c[j], n_held, "tag5"
+            break
         if r.get("wkend") and _last_of_week(wd, j + 1):              # wd[0] = Signaltag → Tag j ist wd[j + 1]
             exit_, day, why = c[j], n_held, "wochenende"
             break
@@ -652,9 +655,21 @@ def _depot_real(trades: list[dict], start: float = 3000.0, max_open: int = 5, se
         for t in by_day.get(ds, []):                        # Käufe
             if len(open_) >= max_open or eq <= 0:
                 continue
+            amt, sm = eq * t["rk"], t["sm"]
+            if t.get("var"):                                 # kleinster Hebel, dessen Einsatz ins freie Kapital passt
+                free = eq - sum(p["stake"] for p in open_)
+                sm = None
+                for L in sorted(t["var"]):
+                    cand = t["var"][L]
+                    if amt / cand["rp"] / cand["lev"] <= free:
+                        sm = cand
+                        break
+                if sm is None:
+                    continue
             taken += 1
-            n = t["sm"]["d"]
-            open_.append({"start": day, "end": day + dt.timedelta(days=int(n * 7 / 5) + 1), "amt": eq * t["rk"], "sm": t["sm"]})
+            n = sm["d"]
+            open_.append({"start": day, "end": day + dt.timedelta(days=int(n * 7 / 5) + 1), "amt": amt, "sm": sm,
+                          "stake": amt / sm["rp"] / sm["lev"]})
         if mtm and day.weekday() < 5:                        # täglicher Depotwert mit offenen Trades
             val = eq
             for p in open_:
@@ -763,6 +778,97 @@ def _truth(sets: dict) -> dict:
         "2 % Ausverkauf / gelb Pause / 1 % grau": run(trades("hit", "turbo", 20, R, mixed=0.0)),
         "1 % Ausverkauf / gelb Pause / 0,5 % grau": run(trades("hit", "turbo", 20, R, weak=0.01, mixed=0.0, other=0.005)),
         "nur im Ausverkauf 2 %": run(trades("hit", "turbo", 20, R, other=0.0, mixed=0.0)),
+    }
+    # 4b) Hebel: so wenig wie das Kapital verlangt (Einsatz aller Trades ≤ Depot) statt immer bis 10×
+    lev_sims = {}
+    for L in (1, 2, 3, 5, 10):
+        rule = {**QRULE, "hold": 20, "levs": [L], "kob": 1.0}
+        for x in sims.get(("hit", "aktie", 20)) or []:
+            sm = simulate(x["e"]["px"], rule)
+            if sm and "skip" not in sm and sm["lev"] == L:
+                lev_sims.setdefault(id(x), {})[L] = sm
+    def ltrades(allowed, weak=0.02, other=0.01, mixed=None):
+        tr = []
+        for x in sims.get(("hit", "aktie", 20)) or []:
+            var = {L: v for L, v in (lev_sims.get(id(x)) or {}).items() if L in allowed}
+            if not x["rg"] or not var:
+                continue
+            rk = weak if x["rg"] == "weak" else (mixed if (mixed is not None and x["rg"] == "mixed") else other)
+            if rk > 0:
+                tr.append({"d": x["d"], "sm": next(iter(var.values())), "var": var, "rk": rk, "prio": R(x["e"])})
+        return tr
+    out["leverage"] = {
+        "immer höchster Hebel bis 10× (jetzt)": run(trades("hit", "turbo", 20, R)),
+        "kleinster passender Hebel 1–10×": run(ltrades((1, 2, 3, 5, 10))),
+        "kleinster passender Hebel 1–5×": run(ltrades((1, 2, 3, 5))),
+        "kleinster passender Hebel 2–10×": run(ltrades((2, 3, 5, 10))),
+        "nur Ausverkauf 2 %, kleinster Hebel 1–10×": run(ltrades((1, 2, 3, 5, 10), other=0.0, mixed=0.0)),
+        "nur Ausverkauf 3 %, kleinster Hebel 1–10×": run(ltrades((1, 2, 3, 5, 10), weak=0.03, other=0.0, mixed=0.0)),
+    }
+    # Walk-forward der Hebel-Regel: Lernzeit / Prüfzeit getrennt
+    def split(tr):
+        a = run([t for t in tr if t["d"] < TRAIN_END], seeds=7)
+        b = run([t for t in tr if t["d"] >= TRAIN_END], seeds=7)
+        return {"lernen": a and {"cagr": a["cagr"], "mdd": a["mdd_daily"]}, "pruefen": b and {"cagr": b["cagr"], "mdd": b["mdd_daily"]}}
+    out["leverage_wf"] = {"jetzt (bis 10×, 2 %/1 %)": split(trades("hit", "turbo", 20, R)),
+                          "kleinster Hebel, 2 %/1 %": split(ltrades((1, 2, 3, 5, 10))),
+                          "kleinster Hebel, nur Ausverkauf 2 %": split(ltrades((1, 2, 3, 5, 10), other=0.0, mixed=0.0))}
+    # 4c) Ausstieg an Tag 5 ohne Anschlussbewegung (ChatGPT-Vorschlag) und kleinere Risiken
+    def xtrades(rule_extra, weak=0.02, other=0.01, mixed=None):
+        tr = []
+        rule = {**QRULE, "hold": 20, "levs": [10, 5, 3, 1], "kob": 1.0, **rule_extra}
+        for x in sims.get(("hit", "turbo", 20)) or []:
+            if not x["rg"]:
+                continue
+            sm = simulate(x["e"]["px"], rule)
+            rk = weak if x["rg"] == "weak" else (mixed if (mixed is not None and x["rg"] == "mixed") else other)
+            if sm and "skip" not in sm and rk > 0:
+                tr.append({"d": x["d"], "sm": sm, "rk": rk, "prio": R(x["e"])})
+        return tr
+    out["exit_risk"] = {
+        "Tag 5: raus wenn im Minus": run(xtrades({"d5": 0.0})),
+        "Tag 5: raus wenn unter −0,5 R": run(xtrades({"d5": -0.5})),
+        "Tag 3: raus wenn im Minus": run(xtrades({"d5": 0.0, "d5_day": 3})),
+        "Risiko 1 % Ausverkauf / 0,5 % sonst": run(trades("hit", "turbo", 20, R, weak=0.01, other=0.005)),
+        "Risiko 1,5 % Ausverkauf / 0,5 % sonst": run(trades("hit", "turbo", 20, R, weak=0.015, other=0.005)),
+        "Risiko 2 % Ausverkauf / 0,5 % sonst": run(trades("hit", "turbo", 20, R, weak=0.02, other=0.005)),
+        "3 Plätze, 2 %/1 %": run(trades("hit", "turbo", 20, R), slots=3),
+    }
+    # 6) Finale Kandidaten – alle mit kleinstem passendem Hebel, jeweils 10 Jahre / Lernzeit / Prüfzeit
+    def lsims(k, extra=None):
+        res = []
+        for x in sims.get((k, "aktie", 20)) or []:
+            var = {}
+            for L in (1, 2, 3, 5, 10):
+                sm = simulate(x["e"]["px"], {**QRULE, "hold": 20, "levs": [L], "kob": 1.0, **(extra or {})})
+                if sm and "skip" not in sm and sm["lev"] == L:
+                    var[L] = sm
+            if var and x["rg"]:
+                res.append((x, var))
+        return res
+    def ctr(rows, weak, other, mixed=None, prio=R):
+        tr = []
+        for x, var in rows:
+            rk = weak if x["rg"] == "weak" else (mixed if (mixed is not None and x["rg"] == "mixed") else other)
+            if rk > 0:
+                tr.append({"d": x["d"], "sm": next(iter(var.values())), "var": var, "rk": rk, "prio": prio(x["e"])})
+        return tr
+    def full_split(tr, slots=5):
+        a, b, c = run(tr, slots=slots, seeds=9), run([t for t in tr if t["d"] < TRAIN_END], slots=slots, seeds=7), \
+            run([t for t in tr if t["d"] >= TRAIN_END], slots=slots, seeds=7)
+        pick = lambda z: z and {"cagr": z["cagr"], "mdd": z["mdd_daily"], "years": z.get("years"), "ohne_bestes_jahr": z.get("ohne_bestes_jahr")}
+        return {"zehn_jahre": pick(a), "lernen": pick(b), "pruefen": pick(c)}
+    hit_l, hit_d5 = lsims("hit"), lsims("hit", {"d5": 0.0})
+    base_l = lsims("base")
+    out["final"] = {
+        "A 2 %/1 % (Risiko wie jetzt)": full_split(ctr(hit_l, 0.02, 0.01)),
+        "B 1 % immer": full_split(ctr(hit_l, 0.01, 0.01)),
+        "C 1,5 %/0,75 %": full_split(ctr(hit_l, 0.015, 0.0075)),
+        "D 2 %/0,5 %": full_split(ctr(hit_l, 0.02, 0.005)),
+        "E wie A + Tag-5-Ausstieg": full_split(ctr(hit_d5, 0.02, 0.01)),
+        "F wie A, 4 Plätze": full_split(ctr(hit_l, 0.02, 0.01), slots=4),
+        "Z Zufallstage mit Regeln A": full_split(ctr(base_l, 0.02, 0.01)),
+        "Z2 Zufallstage, zufällig gewählt": full_split(ctr(base_l, 0.02, 0.01, prio=lambda e: 0)),
     }
     # 5) Walk-forward: auf 2017–2023 wählen, auf 2024–2026 prüfen (getrennte Depots mit je 3.000 €)
     wf = {}
