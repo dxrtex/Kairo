@@ -1691,23 +1691,25 @@ function newsHtml() {
       + block("Marktmeldungen · 3 Tage", pool.map(row), "Keine Marktmeldungen geladen.");
   }
   // Insider: offizielle SEC-Meldungen (Formular 4) aus dem Scan + live je Aktie (Finnhub)
+  const eurAmt = e => e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`;
   const usd = v => { const fx = (fxEur && fxEur.USD) || 0.9, e = v * fx; return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
   const known = t => rowOf(t) || byTicker(t);
   const irow = x => { const tag = mine.has(x.t) || (byTicker(x.t) && byTicker(x.t).in_watchlist) ? '<span class="pill dep">Deine</span>' : byTicker(x.t) && byTicker(x.t).passed ? '<span class="pill">Treffer</span>' : "";
-    return `<a class="bf-r" href="${esc(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`)}" target="_blank" rel="noopener"><i class="${x.kind === "buy" ? "g" : "r"}"></i><span><b>${esc(x.n || x.t)} ${tag}</b><em>${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"} ${fmt(x.sh, 0)} Stk. zu ${fmt(x.px)} $ · ${dateDE(x.d)}</em></span><span class="bf-p ${x.kind === "buy" ? "up" : "down"}">${usd(x.val)}</span></a>`; };
+    return `<a class="bf-r" href="${esc(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`)}" target="_blank" rel="noopener"><i class="${x.kind === "buy" ? "g" : "r"}"></i><span><b>${esc(x.n || x.t)} ${tag}</b><em>${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"} ${x.sh ? fmt(x.sh, 0) + " Stk. " : ""}zu ${fmt(x.px)} ${x.cur === "EUR" ? "€" : "$"} · ${dateDE(x.d)}</em></span><span class="bf-p ${x.kind === "buy" ? "up" : "down"}">${x.cur === "EUR" ? eurAmt(x.val) : usd(x.val)}</span></a>`; };
   const buys = ij && ij.buys || [], sells = ij && ij.sells || [];
   const mineBuys = buys.filter(x => mine.has(x.t) || known(x.t));
   const liveRows = Object.entries(NEWS.ins).flatMap(([t, l]) => l.map(x => ({ t, n: nameOf(t), who: String(x.name || "").replace(/\b\w+/g, w => w[0] + w.slice(1).toLowerCase()), role: "", kind: x.transactionCode === "P" ? "buy" : "sell",
     sh: Math.abs(x.change || 0), px: x.transactionPrice || 0, val: Math.abs(x.change || 0) * (x.transactionPrice || 0), d: x.transactionDate }))).filter(x => x.val > 0).sort((a, b) => String(b.d).localeCompare(String(a.d))).slice(0, 15);
   const when = ij && ij.generated ? new Date(ij.generated).toLocaleString("de-DE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
-  const wl = ij && ij.watch, wlB = (wl || []).filter(x => x.kind === "buy"), wlS = (wl || []).filter(x => x.kind === "sell").sort((a, b) => b.val - a.val);
-  const wlSum = (() => { const by = {}; wlB.forEach(x => { by[x.t] = (by[x.t] || 0) + x.val; }); return Object.entries(by).sort((a, b) => b[1] - a[1]); })();
+  const inEur = x => x.cur === "EUR" ? x.val : x.val * ((fxEur && fxEur.USD) || 0.9);
+  const wl = ij && ij.watch, wlB = (wl || []).filter(x => x.kind === "buy").sort((a, b) => inEur(b) - inEur(a)), wlS = (wl || []).filter(x => x.kind === "sell").sort((a, b) => inEur(b) - inEur(a));
+  const wlSum = (() => { const by = {}; wlB.forEach(x => { by[x.t] = (by[x.t] || 0) + inEur(x); }); return Object.entries(by).sort((a, b) => b[1] - a[1]); })();
   const wlHtml = !ij ? "" : !wl ? `<div class="note" style="margin:8px 2px">Insider-Geschäfte deiner Watchlist kommen mit dem nächsten Scan.</div>`
-    : block(`Deine Watchlist · Insider-Käufe ab 25.000 $ · 6 Monate`, wlB.slice(0, 25).map(irow), `Keine Insider-Käufe bei den ${ij.watch_n || ""} US-Aktien deiner Watchlist in den letzten 6 Monaten.`)
-      + (wlSum.length > 1 ? `<div class="note" style="margin:-4px 2px 10px">Meiste Käufe: ${wlSum.slice(0, 5).map(([t, v]) => `<b>${esc(nameOf(t))}</b> ${usd(v)}`).join(" · ")}</div>` : "")
-      + block("Deine Watchlist · größte Insider-Verkäufe · 6 Monate", wlS.slice(0, 12).map(irow), "Keine Verkäufe über 1 Mio. $.")
-      + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${ij.watch_n || 0} US-Aktien deiner Watchlist. Europäische und asiatische Werte (z. B. Rheinmetall, SAP) melden nicht an die US-Börsenaufsicht – für sie gibt es hier keine Daten.</div>`;
-  return head + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quelle: offizielle US-Meldungen (SEC, Formular 4)${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
+    : block(`Deine Watchlist · Insider-Käufe · 6 Monate`, wlB.slice(0, 25).map(irow), `Keine Insider-Käufe bei den ${ij.watch_n || ""} US-Aktien deiner Watchlist in den letzten 6 Monaten.`)
+      + (wlSum.length > 1 ? `<div class="note" style="margin:-4px 2px 10px">Meiste Käufe: ${wlSum.slice(0, 5).map(([t, v]) => `<b>${esc(nameOf(t))}</b> ${eurAmt(v)}`).join(" · ")}</div>` : "")
+      + block("Deine Watchlist · größte Insider-Verkäufe · 6 Monate", wlS.slice(0, 12).map(irow), "Keine großen Verkäufe.")
+      + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${ij.watch_n || 0} US-Aktien (SEC, Käufe ab 25.000 $, Verkäufe ab 1 Mio. $)${ij.watch_de_n ? ` und ${ij.watch_de_n} deutsche Aktien (BaFin, Käufe ab 10.000 €, Verkäufe ab 250.000 €)` : ""} deiner Watchlist. Airbus, Novo Nordisk, BYD, Xiaomi, DroneShield und Tamburi melden an andere Aufsichten – für sie gibt es hier keine Daten.</div>`;
+  return head + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) und für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften)${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
     + wlHtml
     + (live ? block("Deine US-Aktien · 90 Tage (live)", liveRows.map(irow), NEWS.at ? "Keine Insider-Käufe oder -Verkäufe über die Börse." : "lädt …") : "")
     + (mineBuys.length ? block("Insider-Käufe bei Aktien aus dem Kairo-Scan", mineBuys.slice(0, 15).map(irow), "") : "")
