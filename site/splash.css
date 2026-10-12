@@ -3,11 +3,11 @@
    Zeitplan  0,00 s  Graphit-Licht + Kachel blenden auf
              0,18 s  Docht zieht sich aus der Mitte auf
              0,42 s  Körper federt auf, blaues Leuchten blüht auf
-             0,74 s  Winkel des K fährt aus der Kerze
+             0,74 s  obere, dann untere Klinge des K gleiten an die Kerze
              1,10 s  Kachel gleitet nach links, KA|RO steigt Buchstabe für Buchstabe, Kerze der Wortmarke wächst
              1,70 s  Lichtreflex über die Kachel
    Übergang  Wortmarke blendet aus, die Kachel öffnet sich zur App. */
-.splash { --T: min(104px, 21vw); --onyx: #0b0d11;
+.splash { --T: min(104px, 21vw); --onyx: #000;
   position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; overflow: hidden;
   font-synthesis: none; -webkit-font-smoothing: antialiased; }
 .sp-ambient { position: absolute; inset: 0; pointer-events: none; z-index: 2;
@@ -27,18 +27,20 @@
 .sp-hole { position: absolute; inset: 0; border-radius: 22.4%; background: var(--onyx); box-shadow: 0 0 0 250vmax var(--onyx); }
 
 .sp-tile { position: absolute; inset: 0; border-radius: 22.4%; overflow: hidden;
-  background: radial-gradient(130% 110% at 50% 0%, #1b1f28 0%, #0b0d11 58%, #050608 100%);
+  background: radial-gradient(130% 110% at 50% 0%, #1a1c20 0%, #08090b 55%, #000 100%);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 calc(var(--T) * .18) calc(var(--T) * .5) rgba(0, 0, 0, .55);
   opacity: 0; transform: scale(.9);
   animation: sp-tile-in .7s cubic-bezier(.2, .8, .2, 1) 0s forwards, sp-snap .42s cubic-bezier(.34, 1.56, .64, 1) 1.02s; }
 .sp-tile svg { display: block; width: 100%; height: 100%; overflow: visible; }
 
-.sp-wick { transform-box: view-box; transform-origin: 323.3px 500px; transform: scaleY(0);
+.sp-wick { transform-box: view-box; transform-origin: 316.5px 496px; transform: scaleY(0);
   animation: sp-grow .5s cubic-bezier(.3, .7, .2, 1) .18s forwards; }
-.sp-body { transform-box: view-box; transform-origin: 323.1px 500px; transform: scaleY(0);
+.sp-body { transform-box: view-box; transform-origin: 315px 484px; transform: scaleY(0);
   animation: sp-spring .62s cubic-bezier(.3, .7, .3, 1) .42s forwards; }
 .sp-glow { opacity: 0; animation: sp-glow .8s ease-out .62s forwards; }
-.sp-chev { transform-box: view-box; transform: translateX(-26px); animation: sp-slide .6s cubic-bezier(.2, .8, .2, 1) .74s forwards; }
+.sp-arm { transform-box: view-box; opacity: 0; }
+.sp-up { transform: translate(70px, -70px); animation: sp-arm .58s cubic-bezier(.2, .85, .2, 1) .72s forwards; }
+.sp-lo { transform: translate(70px, 70px); animation: sp-arm .58s cubic-bezier(.2, .85, .2, 1) .84s forwards; }
 
 .sp-shine { position: absolute; inset: -20% -80%; pointer-events: none;
   background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, .13) 50%, transparent 58%);
@@ -72,7 +74,7 @@
 .splash.reduce .sp-lock { transform: none; }
 .splash.reduce .sp-tile { opacity: 1; transform: none; }
 .splash.reduce .sp-wick, .splash.reduce .sp-body, .splash.reduce .sp-wc, .splash.reduce .sp-l { transform: none; }
-.splash.reduce .sp-chevw { clip-path: none; } .splash.reduce .sp-chev { transform: none; }
+.splash.reduce .sp-arm { transform: none; opacity: 1; }
 .splash.reduce .sp-glow { opacity: .55; } .splash.reduce .sp-shine { display: none; }
 .splash.reduce .sp-ambient { opacity: 1; }
 .splash.reduce.exit { opacity: 0; transition: opacity .25s ease-out; }
@@ -87,6 +89,7 @@
 @keyframes sp-pulse   { 0%, 100% { opacity: .38; } 50% { opacity: .8; } }
 @keyframes sp-snap    { 0% { transform: scale(1); } 40% { transform: scale(1.04); } 100% { transform: scale(1); } }
 @keyframes sp-slide   { to { transform: translateX(0); } }
+@keyframes sp-arm     { to { opacity: 1; transform: translate(0, 0); } }
 @keyframes sp-rise    { to { transform: translateY(0); } }
 @keyframes sp-shine   { to { transform: translateX(75%); } }
 @keyframes sp-out     { to { opacity: 0; transform: scale(1.06); } }
