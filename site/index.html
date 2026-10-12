@@ -3547,7 +3547,15 @@ document.addEventListener("click", async e => {
   LIVE.map = {};
   const res = [];
   if (fh) { const q = await liveFetch("AAPL").catch(() => null); res.push(q ? `✓ Finnhub: Apple ${fmt(q.c)} USD` : "✗ Finnhub: keine Antwort – Schlüssel prüfen"); }
-  if (td) { const q = await liveFetch("SAP.DE").catch(() => null); res.push(q ? `✓ Twelve Data: SAP ${fmt(q.c)} EUR` : "✗ Twelve Data: keine Antwort – Schlüssel prüfen (oder Börse im kostenlosen Tarif nicht enthalten)"); }
+  if (td) {                                    // erst den Schlüssel (US-Aktie), dann eine deutsche Börse – mit der Antwort von Twelve Data
+    const ask = sy => fetch("https://api.twelvedata.com/quote?" + new URLSearchParams({ ...sy, apikey: td })).then(r => r.json()).catch(() => null);
+    const why = j => !j ? "keine Verbindung" : String(j.message || j.status || "keine Antwort").slice(0, 160);
+    const us = await ask({ symbol: "AAPL" }), de = await ask({ symbol: "SAP", exchange: "XETR" });
+    const ok = j => j && parseFloat(j.close) > 0;
+    res.push(ok(us) ? `✓ Twelve Data: Schlüssel gültig (Apple ${fmt(parseFloat(us.close))} USD)` : `✗ Twelve Data: Schlüssel abgelehnt – ${why(us)}`);
+    if (ok(us)) res.push(ok(de) ? `✓ Twelve Data: XETRA verfügbar (SAP ${fmt(parseFloat(de.close))} EUR)`
+      : `✗ Twelve Data: XETRA im kostenlosen Tarif nicht enthalten – deutsche/europäische Aktien bleiben beim Abendkurs (Live-Chart von TradingView geht trotzdem). Antwort: ${why(de)}`);
+  }
   if (msg) msg.innerHTML = `<div class="tip tone-${res.some(x => x.startsWith("✗")) ? "yellow" : "green"}" style="margin-top:10px">${res.map(esc).join("<br>") || "Schlüssel gelöscht – Kurse wieder vom Abendscan."}</div>`;
 });
 const tvSym = t => { const xr = rowOf(t); if (xr && xr.ext) return `${xr.ext.exchange.toUpperCase().replace(/\s+/g, "")}:${xr.ext.symbol}`;
