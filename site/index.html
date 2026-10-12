@@ -2029,7 +2029,7 @@ function groupHtml(g) {
     <div><div class="plan-h">Trade-Plan · Strategie</div>${stratTipHtml(st, g.t)}
     ${st ? `<div class="cockpit sp-grid">
       <div class="fig"><span>Haltedauer</span><b>Tag ${st.day} von ${st.hold}</b><em>${st.left ? `noch ${st.left} Handelstage · ` : ""}verkaufen am ${dateDE(st.sell)}${st.cut ? " (vor Zahlen)" : ""}</em></div>
-      <div class="fig"><span>Stop (Schlusskurs)</span><b>${st.fe(pl.stop)} €</b><em class="${st.slAtr != null && st.slAtr < .5 ? "down" : ""}">${st.slDist != null ? `noch ${pct(st.slDist, 1)}${st.slAtr != null ? ` · ${fmt(st.slAtr, 1)} ATR` : ""}` : ""}</em></div>
+      <div class="fig"><span>Stop (Stop-Order)</span><b>${st.fe(pl.stop)} €</b><em class="${st.slAtr != null && st.slAtr < .5 ? "down" : ""}">${st.slDist != null ? `noch ${pct(st.slDist, 1)}${st.slAtr != null ? ` · ${fmt(st.slAtr, 1)} ATR` : ""}` : ""}</em></div>
       <div class="fig"><span>Stand in R</span><b class="${(st.R ?? 0) >= 0 ? "up" : "down"}">${st.R != null ? (st.R >= 0 ? "+" : "") + fmt(st.R, 2) + " R" : "–"}</b><em>Kauf ${st.fe(pl.E)} € · 1 R = ${st.fe(pl.E - pl.stop)} €</em></div>
       <div class="fig"><span>Bis zum Stop</span><b class="down">${g.toStop != null ? (g.toStop > 0 ? "−" : "") + eur(Math.abs(g.toStop)) : "–"}</b><em>${pl.risk ? `geplant ${eur(pl.risk)} Risiko` : ""}</em></div>
     </div>
@@ -2384,7 +2384,7 @@ document.addEventListener("click", e => {
     depotSave(list);
   } else if (act === "claude") {
     const lines = list.map(p => { const r = p.t ? rowOf(p.t) : null, st = stratOf(planFor([p.t], p.d ? p.d.under : p.n));
-      const plan = st ? ` | Trade-Plan: Kauf ${st.fe(st.plan.E)} €, Stop ${st.fe(st.plan.stop)} € (Schlusskurs), Tag ${st.day} von ${st.hold}, verkaufen am ${dateDE(st.sell)}${st.R != null ? `, Stand ${fmt(st.R, 2)} R` : ""} → ${st.t}` : " | kein Trade-Plan";
+      const plan = st ? ` | Trade-Plan: Kauf ${st.fe(st.plan.E)} €, Stop ${st.fe(st.plan.stop)} € (Stop-Order), Tag ${st.day} von ${st.hold}, verkaufen am ${dateDE(st.sell)}${st.R != null ? `, Stand ${fmt(st.R, 2)} R` : ""} → ${st.t}` : " | kein Trade-Plan";
       return base(p, r) + plan; });
     function base(p, r) {
       if (p.d) return `${p.n} (ISIN ${p.isin}): ${p.qty} Stück, Kauf ${p.date || "?"} zu ${fmt(p.price)} €; Basiswert ${p.d.under} aktuell ${r ? fmt(r.c) + " " + r.cur : "?"}, K.-o. ${fmt(p.d.ko)} ${p.d.cur || ""}`;
@@ -3251,7 +3251,7 @@ function bilanzHtml() {
     <div class="hcard">${hHead("Die Regeln")}<ul class="checks rules">${[
       ["Nur volle Kairo-Treffer", "keine Fast-Treffer, keine Trend-Rücksetzer"],
       ["Kauf in der Seitwärtsphase", "innerhalb von 10 Tagen nach dem Signal, wenn der Kurs 5 Tage eng läuft (Spanne ≤ 1,5 ATR)"],
-      ["Stop = Tief der Seitwärtsphase − 0,25 ATR", "auf Schlusskurs-Basis, nie nach unten verschieben"],
+      ["Stop = Tief der Seitwärtsphase − 0,25 ATR", "als Stop-Order bei Scalable – greift auch im Tagesverlauf, nie nach unten verschieben"],
       ["20 Handelstage halten, kein Gewinnziel", "vor Quartalszahlen am Tag davor verkaufen"],
       ["Risiko 1 % je Trade, 2 % bei grüner Marktampel", "Ausverkauf: S&P 500 unter EMA 200 oder VIX ≥ 25"],
       ["Höchstens 5 Trades, ruhigste zuerst", "mehr Treffer als freie Plätze → niedrigste ATR % zuerst"],

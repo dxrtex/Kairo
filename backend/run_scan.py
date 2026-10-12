@@ -617,7 +617,11 @@ def main(argv=None) -> int:
         # Mitteilungen aufs iPad: nur noch Wichtiges, tagsüber alle 30 Min. über alerts.yml (Stop, Ziel, Verkaufstag, K.-o.)
         alerts["push"] = {"enabled": bool(os.environ.get("PUSH_SUBS") and os.environ.get("VAPID_PRIVATE_KEY")), "date": today_iso, "mode": "live"}
         try:
-            bil = live.update(rows, data, today_iso)
+            # Neue Signale nur aus dem Abendscan (nach US-Börsenschluss) – manuelle Läufe tagsüber hätten halbfertige Tageskerzen
+            evening = os.environ.get("GITHUB_EVENT_NAME", "schedule") == "schedule" or datetime.now(timezone.utc).hour >= 21
+            bil = live.update(rows, data, today_iso, record=evening)
+            if not evening:
+                print("Live-Bilanz: Lauf während der Börsenzeit – keine neuen Signale gespeichert")
             print(f"Live-Bilanz: {bil['live']['n']} Signale seit {bil['live']['since']}, neu: {len(bil['new'])}")
         except Exception as exc:
             print(f"Live-Bilanz: Fehler {exc!r}")

@@ -55,7 +55,9 @@ def strat_stats(sig: list[dict]) -> dict | None:
             "run": sum((s.get("st") or {}).get("res") in ("run", "wait") for s in sig if s.get("k") == "hit")}
 
 
-def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str) -> dict:
+def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: bool = True) -> dict:
+    """record=False: keine neuen Signale speichern (Scan während der Börsenzeit – US-Tageskerzen noch nicht fertig);
+    Ergebnisse bestehender Signale werden trotzdem nachgeführt."""
     sig = state.load("signals.json", [])
     last = state.load("last.json", {})
     prev = {"hit": set(last.get("hit", [])), "fast": set(last.get("fast", [])), "trend": set(last.get("trend", []))}
@@ -66,7 +68,7 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str) -> dict:
     new = []
     cand = [(r, "hit" if r["passed"] else "fast" if r.get("fast_hit") else None, r.get("plan") or {}) for r in rows]
     cand += [(r, "trend", r["tr"].get("plan") or {}) for r in rows if (r.get("tr") or {}).get("ok")]   # zweites Setup
-    for r, k, p in cand:
+    for r, k, p in (cand if record else []):
         if not k or not p.get("stop") or not p.get("entry"):
             continue
         d = r.get("date") or today

@@ -219,8 +219,8 @@ def scan_history(df: pd.DataFrame, ticker: str, start: int = 260, base_every: in
                           "met": int(sum(c.ok for c in r.criteria if c.key not in ("cap", "liquidity", "price", "history")))}})
         if kind:                                   # Kursverlauf danach (für den Ausstiegs-Backtest, relativ zum Schluss)
             out[-1]["px"] = pxrec(i, p["stop"], p.get("target1"), p.get("target2"), lv, r.flags.get("atr") or 0)
-        elif px_base:                              # Vergleichstage für die Kurzfrist-Studie (20 Tage genügen)
-            out[-1]["px"] = pxrec(i, p["stop"], p.get("target1"), p.get("target2"), lv, r.flags.get("atr") or 0, hold=20)
+        elif px_base:                              # Vergleichstage: 40 Tage – genug für Basis-Wartezeit (10) + 30 Tage halten
+            out[-1]["px"] = pxrec(i, p["stop"], p.get("target1"), p.get("target2"), lv, r.flags.get("atr") or 0, hold=40)
     return out
 
 
