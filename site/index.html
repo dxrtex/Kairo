@@ -1703,9 +1703,9 @@ function newsHtml() {
   const wl = ij && ij.watch, wlB = (wl || []).filter(x => x.kind === "buy"), wlS = (wl || []).filter(x => x.kind === "sell").sort((a, b) => b.val - a.val);
   const wlSum = (() => { const by = {}; wlB.forEach(x => { by[x.t] = (by[x.t] || 0) + x.val; }); return Object.entries(by).sort((a, b) => b[1] - a[1]); })();
   const wlHtml = !ij ? "" : !wl ? `<div class="note" style="margin:8px 2px">Insider-Geschäfte deiner Watchlist kommen mit dem nächsten Scan.</div>`
-    : block(`Deine Watchlist · Insider-Käufe · 6 Monate`, wlB.slice(0, 25).map(irow), `Keine Insider-Käufe bei den ${ij.watch_n || ""} US-Aktien deiner Watchlist in den letzten 6 Monaten.`)
+    : block(`Deine Watchlist · Insider-Käufe ab 25.000 $ · 6 Monate`, wlB.slice(0, 25).map(irow), `Keine Insider-Käufe bei den ${ij.watch_n || ""} US-Aktien deiner Watchlist in den letzten 6 Monaten.`)
       + (wlSum.length > 1 ? `<div class="note" style="margin:-4px 2px 10px">Meiste Käufe: ${wlSum.slice(0, 5).map(([t, v]) => `<b>${esc(nameOf(t))}</b> ${usd(v)}`).join(" · ")}</div>` : "")
-      + block("Deine Watchlist · größte Insider-Verkäufe · 6 Monate", wlS.slice(0, 12).map(irow), "Keine Verkäufe über 250.000 $.")
+      + block("Deine Watchlist · größte Insider-Verkäufe · 6 Monate", wlS.slice(0, 12).map(irow), "Keine Verkäufe über 1 Mio. $.")
       + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${ij.watch_n || 0} US-Aktien deiner Watchlist. Europäische und asiatische Werte (z. B. Rheinmetall, SAP) melden nicht an die US-Börsenaufsicht – für sie gibt es hier keine Daten.</div>`;
   return head + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quelle: offizielle US-Meldungen (SEC, Formular 4)${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
     + wlHtml

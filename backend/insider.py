@@ -149,14 +149,16 @@ def fetch_watch(watch: dict[str, str], budget_s: float = 120) -> tuple[list[dict
             got = [x for x in parse_openinsider(r.text) if x["t"] == t]
             done += 1
             for x in _merge(got):
-                if x["kind"] == "buy" or x["val"] >= 250_000:          # Verkäufe nur ab 250.000 $ – kleine sind Routine
+                if x["val"] >= (25_000 if x["kind"] == "buy" else 1_000_000):   # Mini-Käufe (Sparpläne) und Routine-Verkäufe auslassen
                     rows.append({**x, "n": x.get("n") or name, "url": f"http://openinsider.com/{t}"})
             time.sleep(0.4)
         except Exception as exc:
             print(f"Insider Watchlist {t}: {exc!r}"[:140])
-    rows.sort(key=lambda x: (x["d"], x["val"]), reverse=True)
+    buys = sorted([x for x in rows if x["kind"] == "buy"], key=lambda x: -x["val"])
+    sells = sorted([x for x in rows if x["kind"] == "sell"], key=lambda x: -x["val"])[:40]
+    rows = buys[:120] + sells
     print(f"Insider Watchlist: {done} Aktien geprüft, {sum(x['kind'] == 'buy' for x in rows)} Käufe, {sum(x['kind'] == 'sell' for x in rows)} Verkäufe")
-    return rows[:200], done
+    return rows, done
 
 
 def fetch(pages: int = 3, budget_s: float = 150, watch: dict[str, str] | None = None) -> dict:
