@@ -152,6 +152,7 @@ def simulate(px: dict, r: dict) -> dict | None:
             lev, ko = L, k
             break
     stop, pos, real, maxh, mfe, mae, orders = stop0, 1.0, 0.0, entry, 0.0, 0.0, 2
+    path = []                                      # Stand in R zum Schluss jedes gehaltenen Tags (für den täglichen Depotwert)
     be_cost = (SPREAD["turbo" if lev > 1 else "stock"] + 2 * FEE / EXPOSURE) * entry
     hold = r["hold"]
     exit_, day, why = None, None, None
@@ -180,6 +181,7 @@ def simulate(px: dict, r: dict) -> dict | None:
             break
         maxh = max(maxh, h[j])
         mfe = max(mfe, R(maxh))
+        path.append(real + pos * R(c[j]))
         if n_held >= hold:
             exit_, day, why = c[j], n_held, "zeit"
             break
@@ -201,8 +203,10 @@ def simulate(px: dict, r: dict) -> dict | None:
     cal_days = day * 7 / 5
     cost = (SPREAD["turbo" if lev > 1 else "stock"] + orders * FEE / EXPOSURE
             + (FIN_PA * (1 - 1 / lev) * cal_days / 365 if lev > 1 else 0)) / rp
+    path = path[:day - 1] + [gross]
     return {"r": gross, "net": gross - cost, "d": day, "x": why, "lev": lev, "mfe": mfe, "mae": mae, "rp": rp, "s": start,
-            "e": entry, "sl": stop0}
+            "e": entry, "sl": stop0, "path": [round(x, 3) for x in path], "orders": orders,
+            "fee_r": orders * FEE / EXPOSURE / rp}
 
 
 def _summ(rows: list[dict]) -> dict:
@@ -608,6 +612,176 @@ def _combo(sets: dict) -> dict:
     return out
 
 
+
+def _pnl(p: dict, fee_eur: float | None) -> float:
+    """Ergebnis eines Trades in Euro. fee_eur None = alte Rechnung (Gebühr anteilig auf 2.000 € Position, steckt in net)."""
+    sm = p["sm"]
+    return p["amt"] * sm["net"] if fee_eur is None else p["amt"] * (sm["net"] + sm["fee_r"]) - sm["orders"] * fee_eur
+
+
+def _depot_real(trades: list[dict], start: float = 3000.0, max_open: int = 5, seed: int = 11, fee_eur: float = 0.99,
+                mtm: bool = True) -> dict:
+    """Depot wie in der App, aber ehrlicher gerechnet:
+    - Gebühr in Euro je Order (statt anteilig auf 2.000 € Position): bei kleinem Depot ein großer Teil des Risikos.
+    - Depotwert TÄGLICH inklusive Buchverlusten offener Trades (größter Rückgang nicht nur bei Verkäufen).
+    trades: {"d": Kaufdatum, "sm": simulate-Ergebnis, "rk": Risiko-Anteil, "prio": Auswahl (größer = zuerst)}."""
+    import datetime as dt
+    if not trades:
+        return {}
+    rnd = random.Random(seed)
+    trades = sorted(trades, key=lambda t: (t["d"], -t.get("prio", 0), rnd.random()))
+    by_day = defaultdict(list)
+    for t in trades:
+        by_day[t["d"]].append(t)
+    day = dt.date.fromisoformat(trades[0]["d"])
+    end = dt.date.fromisoformat(trades[-1]["d"]) + dt.timedelta(days=60)
+    eq, peak, mdd, mdd_real, peak_real, open_, taken = start, start, 0.0, 0.0, start, [], 0
+    year0, years = {}, {}
+    while day <= end:
+        ds = day.isoformat()
+        keep = []
+        for p in open_:                                      # Verkäufe buchen
+            if p["end"] <= day:
+                eq = max(0.0, eq + _pnl(p, fee_eur))
+                peak_real = max(peak_real, eq)
+                mdd_real = max(mdd_real, 1 - eq / peak_real if peak_real else 0)
+            else:
+                keep.append(p)
+        open_ = keep
+        year0.setdefault(ds[:4], eq)
+        for t in by_day.get(ds, []):                        # Käufe
+            if len(open_) >= max_open or eq <= 0:
+                continue
+            taken += 1
+            n = t["sm"]["d"]
+            open_.append({"start": day, "end": day + dt.timedelta(days=int(n * 7 / 5) + 1), "amt": eq * t["rk"], "sm": t["sm"]})
+        if mtm and day.weekday() < 5:                        # täglicher Depotwert mit offenen Trades
+            val = eq
+            for p in open_:
+                k = min(len(p["sm"]["path"]) - 1, int((day - p["start"]).days * 5 / 7))
+                val += p["amt"] * p["sm"]["path"][max(0, k)]
+            peak = max(peak, val)
+            mdd = max(mdd, 1 - val / peak if peak else 0)
+        day += dt.timedelta(days=1)
+    for p in open_:
+        eq = max(0.0, eq + _pnl(p, fee_eur))
+    ys = sorted(year0)
+    for i, y in enumerate(ys):
+        nxt = year0[ys[i + 1]] if i + 1 < len(ys) else eq
+        years[y] = round(nxt / year0[y] - 1, 3) if year0[y] > 0 else -1.0
+    span = max(0.5, (dt.date.fromisoformat(trades[-1]["d"]) - dt.date.fromisoformat(trades[0]["d"])).days / 365)
+    return {"trades": taken, "end": round(eq), "cagr": round((eq / start) ** (1 / span) - 1, 3) if eq > 0 else -1.0,
+            "mdd_daily": round(mdd, 3), "mdd_closed": round(mdd_real, 3), "years": years}
+
+
+def _truth(sets: dict) -> dict:
+    """Wahrheits-Test der Strategie (Phase 1): Wie viel vom Backtest-Ergebnis ist echt?
+    1) Bringen Kairo-Treffer mehr als ZUFALLSTAGE derselben Aktien mit exakt denselben Regeln?
+    2) Echte Kosten: Gebühr je Order in Euro, Turbo mit Finanzierung/Spread/K.-o. bei Kurslücken.
+    3) Größter Rückgang mit täglichem Depotwert (inkl. Buchverluste).
+    4) Walk-forward: Auswahlregel/Haltedauer/Plätze nur auf 2017–2023 wählen, unverändert auf 2024–2026 prüfen.
+    5) Robustheit: Ergebnis ohne das beste Jahr."""
+    import datetime as dt
+    mk = _market()
+    out = {"market_days": len(mk)}
+    rules = {"aktie": {**QRULE, "levs": [1]}, "turbo": {**QRULE, "levs": [10, 5, 3, 1], "kob": 1.0}}
+    sims = {}
+    for k in ("hit", "fast", "base"):
+        for prod, rule0 in rules.items():
+            for hold in (10, 20, 30):
+                rule = {**rule0, "hold": hold}
+                rows = []
+                for e in sets.get(k) or []:
+                    if len(e["px"]["c"]) < hold + rule["wait"]:
+                        continue
+                    sm = simulate(e["px"], rule)
+                    if sm and "skip" not in sm:
+                        d0 = dt.date.fromisoformat(e["d"])
+                        rows.append({"e": e, "sm": sm, "d": str(d0 + dt.timedelta(days=int((sm["s"] + 1) * 7 / 5))),
+                                     "rg": _regime(mk, e["d"])})
+                sims[(k, prod, hold)] = rows
+    print("Wahrheits-Test: Simulationen fertig", {f"{a}/{b}/{c}": len(v) for (a, b, c), v in sims.items()}, flush=True)
+    # 1) Je Trade: Treffer gegen Zufallstage, gleiche Regeln (netto in R, Studien-Kosten)
+    per = {}
+    for (k, prod, hold), rows in sims.items():
+        g = defaultdict(lambda: defaultdict(list))
+        for x in rows:
+            g[x["rg"] or "?"][_period(x["e"]["d"])].append(x["sm"]["net"])
+            g["alle"][_period(x["e"]["d"])].append(x["sm"]["net"])
+            g["alle"]["all"].append(x["sm"]["net"])
+        per[f"{k} {prod} {hold}T"] = {rg: {p: {"n": len(v), "net": round(float(np.mean(v)), 3),
+                                               "win": round(float(np.mean([z > 0 for z in v])), 3)} for p, v in sorted(pp.items())}
+                                      for rg, pp in sorted(g.items())}
+        allr = [(x["e"]["d"], x["sm"]["net"]) for x in rows]
+        per[f"{k} {prod} {hold}T"]["ci_all"] = _boot(allr)
+    out["per_trade"] = per
+    calm = lambda e: -((e.get("f") or {}).get("atrp") or 1)
+    prios = {"ruhigste zuerst": calm, "zufällig": lambda e: 0, "höchster Score": lambda e: e.get("score") or 0,
+             "tiefster Rücksetzer": lambda e: (e.get("f") or {}).get("dd") or 0}
+    def trades(k, prod, hold, prio, weak=0.02, other=0.01, mixed=None, lo=None, hi=None):
+        tr = []
+        for x in sims.get((k, prod, hold)) or []:
+            if not x["rg"] or (lo and x["d"] < lo) or (hi and x["d"] >= hi):
+                continue
+            rk = weak if x["rg"] == "weak" else (mixed if (mixed is not None and x["rg"] == "mixed") else other)
+            if rk <= 0:
+                continue
+            tr.append({"d": x["d"], "sm": x["sm"], "rk": rk, "prio": prio(x["e"])})
+        return tr
+    def run(tr, slots=5, fee=0.99, mtm=True, seeds=15):
+        rs = [_depot_real(tr, max_open=slots, seed=sd, fee_eur=fee, mtm=mtm) for sd in range(seeds)]
+        rs = [r for r in rs if r]
+        if not rs:
+            return None
+        med = lambda key: sorted(r[key] for r in rs)[len(rs) // 2]
+        ys = sorted({y for r in rs for y in r["years"]})
+        yrs = {y: sorted(r["years"].get(y, 0) for r in rs)[len(rs) // 2] for y in ys}
+        best = max(yrs, key=yrs.get) if yrs else None
+        g = 1.0
+        for y, v in yrs.items():
+            if y != best:
+                g *= 1 + v
+        nyr = max(1, len(yrs) - 1)
+        return {"cagr": med("cagr"), "cagr_p10": sorted(r["cagr"] for r in rs)[len(rs) // 10], "mdd_daily": med("mdd_daily"),
+                "mdd_closed": med("mdd_closed"), "end": med("end"), "trades": rs[0]["trades"], "years": yrs,
+                "ohne_bestes_jahr": round(g ** (1 / nyr) - 1, 3), "bestes_jahr": best}
+    # 2) Schritt für Schritt von der alten Rechnung zur ehrlichen
+    steps = {}
+    R = prios["ruhigste zuerst"]
+    steps["1 wie bisher (Aktie, Gebühr anteilig, Rückgang nur bei Verkauf)"] = run(trades("hit", "aktie", 20, R), fee=None, mtm=False)
+    steps["2 + Gebühr 0,99 € je Order"] = run(trades("hit", "aktie", 20, R), fee=0.99, mtm=False)
+    steps["3 + Turbo (Finanzierung, Spread, K.-o. bei Kurslücken)"] = run(trades("hit", "turbo", 20, R), fee=0.99, mtm=False)
+    steps["4 + täglicher Depotwert (= ehrliche Rechnung)"] = run(trades("hit", "turbo", 20, R), fee=0.99, mtm=True)
+    out["steps"] = steps
+    # 3) Kernfrage: Treffer gegen Zufallstage (gleiche Regeln, gleiches Depot)
+    out["vs_random"] = {f"{k} · {pn}": run(trades(k, "turbo", 20, pf)) for k in ("hit", "fast", "base")
+                        for pn, pf in (("ruhigste zuerst", R), ("zufällig", prios["zufällig"]))}
+    # 4) Risiko-Varianten (ehrlich gerechnet)
+    out["risk"] = {
+        "2 % Ausverkauf / 1 % sonst": run(trades("hit", "turbo", 20, R)),
+        "1 % immer": run(trades("hit", "turbo", 20, R, weak=0.01)),
+        "2 % Ausverkauf / gelb Pause / 1 % grau": run(trades("hit", "turbo", 20, R, mixed=0.0)),
+        "1 % Ausverkauf / gelb Pause / 0,5 % grau": run(trades("hit", "turbo", 20, R, weak=0.01, mixed=0.0, other=0.005)),
+        "nur im Ausverkauf 2 %": run(trades("hit", "turbo", 20, R, other=0.0, mixed=0.0)),
+    }
+    # 5) Walk-forward: auf 2017–2023 wählen, auf 2024–2026 prüfen (getrennte Depots mit je 3.000 €)
+    wf = {}
+    for pn, pf in prios.items():
+        for hold in (10, 20, 30):
+            for slots in (4, 5, 6):
+                tr = run(trades("hit", "turbo", hold, pf, hi=TRAIN_END), slots=slots, seeds=7)
+                te = run(trades("hit", "turbo", hold, pf, lo=TRAIN_END), slots=slots, seeds=7)
+                if tr and te:
+                    wf[f"{pn} · {hold} T · {slots} Plätze"] = {"lernen": {"cagr": tr["cagr"], "mdd": tr["mdd_daily"]},
+                                                                "pruefen": {"cagr": te["cagr"], "mdd": te["mdd_daily"]}}
+    ranked = sorted(wf.items(), key=lambda kv: -kv[1]["lernen"]["cagr"])
+    out["walk_forward"] = {"gewaehlt_auf_lernzeit": ranked[0][0] if ranked else None,
+                           "dessen_pruefzeit": ranked[0][1]["pruefen"] if ranked else None,
+                           "rang_unserer_strategie_lernzeit": next((i + 1 for i, (k2, _) in enumerate(ranked) if k2 == "ruhigste zuerst · 20 T · 5 Plätze"), None),
+                           "alle": dict(ranked)}
+    return out
+
+
 TP_TARGETS = (None, ("R", 1.0), ("R", 1.5), ("R", 2.0), ("R", 2.5), ("R", 3.0), ("R", 4.0), ("R", 5.0), ("tp1",), ("ema20",))
 
 
@@ -658,6 +832,13 @@ def main(argv=None) -> int:
 
     if os.environ.get("SS_ONLY") == "combo":               # Strategie-Vergleich als durchgehendes Depot
         report["combo"] = _combo(sets)
+        print("===BEGIN===")
+        print(json.dumps(report, ensure_ascii=False, separators=(",", ":"), default=str))
+        print("===END===")
+        return 0
+    if os.environ.get("SS_ONLY") == "truth":             # Wahrheits-Test (Phase 1)
+        report["truth"] = _truth(sets)
+        OUT.write_text(json.dumps(report, ensure_ascii=False, separators=(",", ":"), default=str))
         print("===BEGIN===")
         print(json.dumps(report, ensure_ascii=False, separators=(",", ":"), default=str))
         print("===END===")
