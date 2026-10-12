@@ -834,6 +834,42 @@ def _truth(sets: dict) -> dict:
         "Risiko 2 % Ausverkauf / 0,5 % sonst": run(trades("hit", "turbo", 20, R, weak=0.02, other=0.005)),
         "3 Plätze, 2 %/1 %": run(trades("hit", "turbo", 20, R), slots=3),
     }
+    # 6) Finale Kandidaten – alle mit kleinstem passendem Hebel, jeweils 10 Jahre / Lernzeit / Prüfzeit
+    def lsims(k, extra=None):
+        res = []
+        for x in sims.get((k, "aktie", 20)) or []:
+            var = {}
+            for L in (1, 2, 3, 5, 10):
+                sm = simulate(x["e"]["px"], {**QRULE, "hold": 20, "levs": [L], "kob": 1.0, **(extra or {})})
+                if sm and "skip" not in sm and sm["lev"] == L:
+                    var[L] = sm
+            if var and x["rg"]:
+                res.append((x, var))
+        return res
+    def ctr(rows, weak, other, mixed=None, prio=R):
+        tr = []
+        for x, var in rows:
+            rk = weak if x["rg"] == "weak" else (mixed if (mixed is not None and x["rg"] == "mixed") else other)
+            if rk > 0:
+                tr.append({"d": x["d"], "sm": next(iter(var.values())), "var": var, "rk": rk, "prio": prio(x["e"])})
+        return tr
+    def full_split(tr, slots=5):
+        a, b, c = run(tr, slots=slots, seeds=9), run([t for t in tr if t["d"] < TRAIN_END], slots=slots, seeds=7), \
+            run([t for t in tr if t["d"] >= TRAIN_END], slots=slots, seeds=7)
+        pick = lambda z: z and {"cagr": z["cagr"], "mdd": z["mdd_daily"], "years": z.get("years"), "ohne_bestes_jahr": z.get("ohne_bestes_jahr")}
+        return {"zehn_jahre": pick(a), "lernen": pick(b), "pruefen": pick(c)}
+    hit_l, hit_d5 = lsims("hit"), lsims("hit", {"d5": 0.0})
+    base_l = lsims("base")
+    out["final"] = {
+        "A 2 %/1 % (Risiko wie jetzt)": full_split(ctr(hit_l, 0.02, 0.01)),
+        "B 1 % immer": full_split(ctr(hit_l, 0.01, 0.01)),
+        "C 1,5 %/0,75 %": full_split(ctr(hit_l, 0.015, 0.0075)),
+        "D 2 %/0,5 %": full_split(ctr(hit_l, 0.02, 0.005)),
+        "E wie A + Tag-5-Ausstieg": full_split(ctr(hit_d5, 0.02, 0.01)),
+        "F wie A, 4 Plätze": full_split(ctr(hit_l, 0.02, 0.01), slots=4),
+        "Z Zufallstage mit Regeln A": full_split(ctr(base_l, 0.02, 0.01)),
+        "Z2 Zufallstage, zufällig gewählt": full_split(ctr(base_l, 0.02, 0.01, prio=lambda e: 0)),
+    }
     # 5) Walk-forward: auf 2017–2023 wählen, auf 2024–2026 prüfen (getrennte Depots mit je 3.000 €)
     wf = {}
     for pn, pf in prios.items():
