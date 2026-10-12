@@ -12,4 +12,10 @@ globalThis.fetch = (u, o) => /spark|chart/.test(String(u)) ? Promise.resolve(new
 store.clear();
 const r2 = await w.fetch(new Request("https://x.workers.dev/?s=SAP.DE,AAPL,7203.T&debug=1"), {}, { waitUntil: p => p });
 console.log("ohne spark/chart:", JSON.stringify(await r2.json()));
-process.exit(ok >= 4 ? 0 : 1);
+
+globalThis.fetch = real;
+const sr = await (await w.fetch(new Request("https://x.workers.dev/?q=Hensoldt"), {}, { waitUntil: p => p })).json();
+console.log("Suche:", JSON.stringify(sr).slice(0, 300));
+const cd = await (await w.fetch(new Request("https://x.workers.dev/?c=HAG.DE"), {}, { waitUntil: p => p })).json();
+console.log("Kerzen:", cd.name, cd.cur, cd.exch, "n =", cd.c && cd.c.length, "letzter Schluss", cd.c && cd.c[cd.c.length - 1]);
+process.exit(ok >= 4 && sr.quotes && sr.quotes.length && cd.c && cd.c.length > 200 ? 0 : 1);
