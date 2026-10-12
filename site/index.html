@@ -2806,7 +2806,7 @@ function gameHtml() {
     <div class="card g-intro"><div class="g-big">100.000 €</div><b>Teste Kairos Vorschläge ohne echtes Geld.</b>
       <p class="note">Du bekommst ein fiktives Konto und kaufst Aktien aus den Kairo-Treffern und Trend-Rücksetzern. Jeder Kauf merkt sich Setup, Score, Rücksetzer-Check und Trade-Plan – so siehst du nach einigen Wochen, welche Signale bei dir wirklich funktionieren. Wahlweise als Aktie oder als Turbo Long mit Hebel 3–10 (mit K.-o.-Schwelle). Gehandelt wird zum Schlusskurs des letzten Scans, 0,99 € Gebühr je Order. Alles bleibt auf diesem Gerät.</p>
       <button class="btn" data-g="start">Spiel starten</button></div>`;
-  gTick(g); gSave(g);
+  gTick(g); gSave(g); liveKick(g.pos.map(p => p.t), "game");
   const T = gTotals(g), perf = T.total / G_START - 1, m = anaData && anaData.market;
   const bench = Object.entries(g.bench || {}).map(([k, v]) => m && m[k] ? `<span>${esc(m[k].name)} <b class="${m[k].c >= v ? "up" : "down"}">${sgnPct(m[k].c / v - 1, 1)}</b></span>` : "").join("");
   const days = Math.max(0, Math.round((Date.now() - new Date(g.start)) / 864e5));
@@ -3525,7 +3525,7 @@ document.addEventListener("click", async e => {
 // Depot und offene Trades: alle 60 s nachladen, solange der Reiter offen und die App sichtbar ist
 setInterval(() => {
   if (!liveOn() || document.visibilityState !== "visible" || !searchIdx) return;
-  const ts = state.sec === "depot" ? depotLoad().map(p => p.t).filter(Boolean) : state.sec === "entry" ? [...plansLoad().filter(p => p.st === "open").map(p => p.t), state.einT].filter(Boolean) : [];
+  const ts = state.sec === "depot" ? depotLoad().map(p => p.t).filter(Boolean) : state.sec === "game" ? ((gLoad() || {}).pos || []).map(p => p.t) : state.sec === "entry" ? [...plansLoad().filter(p => p.st === "open").map(p => p.t), state.einT].filter(Boolean) : [];
   if (ts.length) liveMany(ts).then(n => { if (n) render(); });
 }, 60e3);
 const liveStale = ts => ts.filter(t => { const o = LIVE.map[t]; return !o || Date.now() - o.at > LIVE.ttl; });
