@@ -11,7 +11,9 @@ Politiker-Geschäfte (US-Kongress) gibt es nicht als freie, verlässliche Quelle
 
 from __future__ import annotations
 
+import html
 import json
+import os
 import re
 import sys
 import time
@@ -20,8 +22,10 @@ from datetime import datetime, timezone
 
 import requests
 
-# SEC verlangt „Name Kontakt-E-Mail“ im User-Agent, sonst 403 („Undeclared Automated Tool“)
-UA = {"User-Agent": "Kairo Scanner kairo-bot@users.noreply.github.com", "Accept-Encoding": "gzip, deflate"}
+# SEC verlangt „Name echte-Kontakt-E-Mail“ im User-Agent (sonst 403). Ohne Secret SEC_CONTACT nutzt Kairo OpenInsider –
+# dieselben Formular-4-Meldungen, frei abrufbar und schon aufbereitet.
+UA = {"User-Agent": f"Kairo Scanner {os.environ.get('SEC_CONTACT', '')}".strip(), "Accept-Encoding": "gzip, deflate"}
+OI = {"buy": "http://openinsider.com/latest-insider-purchases-25k", "sell": "http://openinsider.com/latest-insider-sales-100k"}
 FEED = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&owner=include&count=100&start={start}&output=atom"
 MIN_BUY, MIN_SELL = 50_000, 1_000_000                 # USD: kleinere Käufe/Verkäufe sind Rauschen
 
@@ -75,12 +79,70 @@ def _merge(rows: list[dict]) -> list[dict]:
     return list(acc.values())
 
 
+def _cells(row: str) -> list[str]:
+    # Tags samt Attributen entfernen – auch wenn ein Attribut (Tooltip) selbst „>“ enthält
+    return [re.sub(r"\s+", " ", html.unescape(re.sub(r"""<(?:[^>"']|"[^"]*"|'[^']*')*>""", " ", c))).strip()
+            for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)]
+
+
+def _num_us(x: str) -> float:
+    try:
+        return float(re.sub(r"[^0-9.\-]", "", x) or 0)
+    except ValueError:
+        return 0.0
+
+
+def parse_openinsider(page: str) -> list[dict]:
+    """Tabelle „tinytable“ von OpenInsider → Geschäfte. Spalten über die Überschriften zugeordnet (robust gegen Umbauten)."""
+    m = re.search(r'<table[^>]*class="tinytable"[^>]*>(.*?)</table>', page, re.S)
+    if not m:
+        return []
+    rows = re.findall(r"<tr[^>]*>(.*?)</tr>", m.group(1), re.S)
+    if not rows:
+        return []
+    head = [h.replace("\xa0", " ").lower() for h in _cells(rows[0])]
+    col = lambda *names: next((i for i, h in enumerate(head) if any(h.startswith(n) for n in names)), None)
+    ix = {k: col(*v) for k, v in {"t": ("ticker",), "n": ("company",), "who": ("insider",), "role": ("title",), "type": ("trade type",),
+                                    "d": ("trade date",), "px": ("price",), "sh": ("qty",), "val": ("value",)}.items()}
+    if ix["t"] is None or ix["type"] is None:
+        return []
+    out = []
+    for r in rows[1:]:
+        c = _cells(r)
+        if len(c) < len(head):
+            continue
+        g = lambda k: c[ix[k]] if ix[k] is not None else ""
+        kind = "buy" if g("type").startswith("P") else "sell" if g("type").startswith("S") else None
+        val, px = abs(_num_us(g("val"))), _num_us(g("px"))
+        tk = (re.findall(r"[A-Z][A-Z0-9.\-]{0,7}", g("t").upper()) or [""])[-1]
+        if not kind or not tk or val <= 0 or px <= 0 or px > 1e5 or val >= 2e9:   # Meldefehler (Wert am Zahlen-Höchstwert 2^31) auslassen
+            continue
+        out.append({"t": tk, "n": g("n"), "who": g("who"), "role": g("role"), "kind": kind, "d": g("d")[:10],
+                    "sh": round(abs(_num_us(g("sh")))), "px": round(px, 2), "val": round(val),
+                    "url": f"http://openinsider.com/{tk}"})
+    return out
+
+
+def fetch_openinsider() -> list[dict]:
+    rows = []
+    for kind, url in OI.items():
+        try:
+            r = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (Kairo Scanner)"}, timeout=25)
+            got = parse_openinsider(r.text)
+            print(f"Insider (OpenInsider {kind}): Status {r.status_code}, {len(got)} Geschäfte")
+            rows += got
+        except Exception as exc:
+            print(f"Insider (OpenInsider {kind}): nicht erreichbar {exc!r}"[:160])
+    return rows
+
+
 def fetch(pages: int = 3, budget_s: float = 150) -> dict:
     t0, s = time.time(), requests.Session()
     s.headers.update(UA)
     rows = []
     links = []
-    for pg in range(pages):
+    sec = "@" in UA["User-Agent"]
+    for pg in range(pages if sec else 0):
         try:
             resp = s.get(FEED.format(start=pg * 100), timeout=20)
             feed = resp.text
@@ -115,11 +177,14 @@ def fetch(pages: int = 3, budget_s: float = 150) -> dict:
             if errs <= 2:
                 print("Insider: Meldung nicht lesbar", url, repr(exc)[:120])
             continue
+    src = "SEC EDGAR Formular 4"
+    if not rows:                                     # ohne SEC-Kontakt oder bei Sperre: OpenInsider (gleiche Meldungen)
+        rows, src = fetch_openinsider(), "OpenInsider (SEC Formular 4)"
     rows = _merge(rows)
     buys = sorted([r for r in rows if r["kind"] == "buy" and r["val"] >= MIN_BUY], key=lambda r: -r["val"])
     sells = sorted([r for r in rows if r["kind"] == "sell" and r["val"] >= MIN_SELL], key=lambda r: -r["val"])
-    return {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "filings": len(seen),
-            "buys": buys[:60], "sells": sells[:40], "source": "SEC EDGAR Formular 4"}
+    return {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "filings": len(seen) or len(rows),
+            "buys": buys[:60], "sells": sells[:40], "source": src}
 
 
 def main(argv=None) -> int:
