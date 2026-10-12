@@ -1,4 +1,4 @@
-// Prüft site/kursdienst.js gegen echte Yahoo-Kurse (Cloudflare-Cache nachgebildet).
+// Prüft site/kursdienst.js gegen echte Yahoo-Kurse (Cloudflare-Cache nachgebildet) – mit Diagnose der Rohantworten.
 const store = new Map();
 globalThis.caches = { default: { match: async k => store.has(k.url) ? new Response(store.get(k.url)) : undefined, put: async (k, r) => store.set(k.url, await r.text()) } };
 const w = (await import("../site/kursdienst.js")).default;

@@ -20,33 +20,46 @@ export default {
     const syms = (url.searchParams.get("s") || "").split(",").map(x => x.trim().toUpperCase())
       .filter(x => /^[A-Z0-9.\-^=]{1,20}$/.test(x)).slice(0, MAX);
     if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft. Abruf: ?s=SAP.DE,AAPL" }, cors);
-    const out = {};
-    await Promise.all(syms.map(async s => { out[s] = await quote(s, ctx); }));
-    return json(out, cors);
+    return json(await quotes(syms, ctx), cors);
   },
 };
 
-async function quote(sym, ctx) {
-  const cache = caches.default, key = new Request("https://kairo-kurse.cache/" + sym);
-  const hit = await cache.match(key);
-  if (hit) return hit.json();
-  for (const host of ["query1", "query2"]) {
-    try {
-      const r = await fetch(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d`,
-        { headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15" } });
-      if (!r.ok) continue;
-      const m = (((await r.json()).chart || {}).result || [])[0];
-      const meta = m && m.meta;
-      if (!meta || !(meta.regularMarketPrice > 0)) continue;
-      const q = { c: meta.regularMarketPrice, pc: meta.chartPreviousClose ?? meta.previousClose ?? null,
-                  h: meta.regularMarketDayHigh ?? null, l: meta.regularMarketDayLow ?? null,
-                  t: (meta.regularMarketTime || 0) * 1000, cur: meta.currency || null };
-      ctx.waitUntil(cache.put(key, new Response(JSON.stringify(q), { headers: { "Cache-Control": "max-age=20" } })));
-      return q;
-    } catch (e) { /* nächster Host */ }
+// Erst alle Aktien in einem Abruf (spark), fehlende einzeln (chart). Ohne Browser-Kennung – die beantwortet Yahoo mit 429.
+async function quotes(syms, ctx) {
+  const cache = caches.default, out = {}, miss = [];
+  await Promise.all(syms.map(async s => { const hit = await cache.match(key(s)); if (hit) out[s] = await hit.json(); else miss.push(s); }));
+  if (miss.length) {
+    for (const host of ["query1", "query2"]) {
+      const todo = miss.filter(s => !out[s]);
+      if (!todo.length) break;
+      try {
+        const r = await fetch(`https://${host}.finance.yahoo.com/v7/finance/spark?symbols=${todo.map(encodeURIComponent).join(",")}&range=1d&interval=5m`);
+        if (!r.ok) continue;
+        for (const x of ((await r.json()).spark || {}).result || []) {
+          const meta = x && x.response && x.response[0] && x.response[0].meta;
+          if (meta && meta.regularMarketPrice > 0) out[String(x.symbol).toUpperCase()] = pack(meta);
+        }
+      } catch (e) { /* nächster Host */ }
+    }
+    for (const s of miss.filter(s => !out[s])) {
+      for (const host of ["query1", "query2"]) {
+        try {
+          const r = await fetch(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?interval=1d&range=5d`);
+          if (!r.ok) continue;
+          const meta = ((((await r.json()).chart || {}).result || [])[0] || {}).meta;
+          if (meta && meta.regularMarketPrice > 0) { out[s] = pack(meta); break; }
+        } catch (e) { /* nächster Host */ }
+      }
+    }
+    for (const s of miss) if (out[s]) ctx.waitUntil(cache.put(key(s), new Response(JSON.stringify(out[s]), { headers: { "Cache-Control": "max-age=20" } })));
   }
-  return null;
+  for (const s of syms) if (!(s in out)) out[s] = null;
+  return out;
 }
+
+const key = s => new Request("https://kairo-kurse.cache/" + s);
+const pack = m => ({ c: m.regularMarketPrice, pc: m.chartPreviousClose ?? m.previousClose ?? null, h: m.regularMarketDayHigh ?? null,
+                     l: m.regularMarketDayLow ?? null, t: (m.regularMarketTime || 0) * 1000, cur: m.currency || null });
 
 function json(obj, cors) {
   return new Response(JSON.stringify(obj), { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
