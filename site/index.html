@@ -1960,6 +1960,7 @@ function analyzedListing(p, r) {
   hits.sort((a, b) => (b.cur === cur) - (a.cur === cur));
   return hits[0] || null;
 }
+const urg = g => !g.st ? 3 : ({ red: 0, yellow: 1, orange: 2 })[g.st.tone] ?? 4;
 function groupPositions(items) {
   const by = new Map();
   items.forEach(x => {
@@ -1969,7 +1970,7 @@ function groupPositions(items) {
   });
   items.forEach(({ p, i, r, t0 }) => {
     const a = anaData && p.t && anaData.tickers[p.t]; if (!a) return;
-    const m = posModel(p, r, { ...a, cur: (r && r.cur) || "" }); m.i = i;
+    const m = posModel(p, r, { ...a, c: r && r.live && r.c > 0 ? r.c : a.c, cur: (r && r.cur) || "" }); m.i = i;
     if (!by.has(p.t)) by.set(p.t, { t: p.t, a: m.a, r, cur: m.cur, name: m.d ? m.d.under : (p.n || (r && r.n) || p.t), ms: [], alias: new Set() });
     by.get(p.t).ms.push(m); by.get(p.t).alias.add(t0);
   });
@@ -1998,7 +1999,7 @@ function groupPositions(items) {
     g.atStop = stop != null && g.known ? g.atX(stop) : null;
     g.toStop = g.atStop != null ? g.value - g.atStop : null;
     return g;
-  }).sort((x, y) => y.invested - x.invested);
+  }).sort((x, y) => urg(x) - urg(y) || y.invested - x.invested);
 }
 function groupHtml(g) {
   const a = g.a, c = needChart(g.t), open = depOpen.has(g.t), st = g.st, pl = st && st.plan;
