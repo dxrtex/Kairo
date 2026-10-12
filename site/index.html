@@ -3100,14 +3100,10 @@ function soonHtml() {
       return `<div class="hev"><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.ticker ? (e.name || e.ticker) + " · " + (e.kind === "earnings" ? "Quartalszahlen" : "Dividende") : e.title)}</span><em>${n === 0 ? "heute" : n === 1 ? "morgen" : new Date(e.date + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short" })}</em></div>`; }).join("")}</div>`;
 }
 function bilanzTeaserHtml() {
-  const b = getJson("bilanz.json"); if (b === undefined) return `<div class="hcard">${hHead("Kairo-Bilanz")}<div class="skel"></div></div>`;
-  const s = b && b.backtest && b.backtest.stats && b.backtest.stats.hit;
-  const lv = b && b.live && b.live.stats && b.live.stats.hit;
-  if (!s && !lv) return "";
-  const x = s && s.n ? s : lv;
+  const M = STRAT_BT.main, b = getJson("bilanz.json"), st = b && b.live && b.live.strat;
   return `<button class="hcard bil" ${SEC_LINK("bilanz")}>${hHead("Kairo-Bilanz", "", "")}
-    <div class="bilrow"><div class="ring-s">${ringSvg(x.t1, "var(--up)")}<b>${pct(x.t1, 0)}</b></div>
-      <div><b>der Treffer erreichten Ziel 1 vor dem Stop</b><span>${fmt(x.n, 0)} Signale${s && s.n ? ` im Backtest (${b.backtest.stocks} Aktien, 2 Jahre)` : " live"} · Ø ${x.avg_r >= 0 ? "+" : ""}${fmt(x.avg_r, 2)} R je Trade</span></div></div>
+    <div class="bilrow"><div class="ring-s">${ringSvg(Math.min(1, M.cagr / .5), "var(--up)")}<b>${fmt(M.cagr * 100, 0)} %</b></div>
+      <div><b>pro Jahr mit unserer Strategie im 10-Jahres-Test</b><span>${st ? `Live: ${st.n} Treffer abgeschlossen · Ø ${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R je Trade` : "Treffer kaufen in der Seitwärtsphase · Stop · 20 Tage halten"}</span></div></div>
     <span class="hlink">Details ›</span></button>`;
 }
 function journalTeaserHtml() {
@@ -3187,105 +3183,89 @@ function todayHtml() {
     <div class="hcol">${bilanzTeaserHtml()}${depotSnapHtml()}${soonHtml()}${topHitsHtml()}${journalTeaserHtml()}${tgHint}</div></div>`;
 }
 
-// ---------- Kairo-Bilanz ----------
-const RES_TXT = { t1: ["Ziel 1 ✓", "up"], stop: ["Stop", "down"], open: ["offen (30 T.)", "muted"], running: ["läuft", "muted"] };
-function retPathSvg(groups) {
-  const xs = [0, 5, 10, 20, 40, 63].filter(d => d === 0 || groups.some(g => g.s["r" + d] != null)), D = xs[xs.length - 1];
-  const W = 560, H = 170, pl = 40, pr = 118, pt = 12, pb = 24;
-  const all = groups.flatMap(g => xs.map(d => d ? g.s["r" + d] : 0)).filter(v => v != null);
-  const lo = Math.min(0, ...all), hi = Math.max(0, ...all), sp = hi - lo || 1;
-  const X = d => pl + (W - pl - pr) * d / D, Y = v => pt + (H - pt - pb) * (hi - v) / sp;
-  return `<svg class="rp" viewBox="0 0 ${W} ${H}"><line x1="${pl}" x2="${W - pr}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line)" stroke-dasharray="4 4"/>
-    ${xs.map(d => `<text x="${X(d)}" y="${H - 6}" text-anchor="middle">${d === 63 ? "3 Mon." : d ? d + " T." : "Signal"}</text>`).join("")}
-    ${groups.map(g => { const v = xs.map(d => d ? g.s["r" + d] : 0), vl = v[v.length - 1]; const pts = xs.map((d, i) => v[i] == null ? null : `${X(d)},${Y(v[i])}`).filter(Boolean).join(" ");
-      return `<polyline points="${pts}" fill="none" stroke="${g.c}" stroke-width="2.4" stroke-linejoin="round"/>${xs.map((d, i) => v[i] == null ? "" : `<circle cx="${X(d)}" cy="${Y(v[i])}" r="3.2" fill="${g.c}"/>`).join("")}
-        <text x="${W - pr + 6}" y="${Y(vl) + 4}" fill="${g.c}" class="lb">${g.l} ${sgnPct(vl, 1)}</text>`; }).join("")}
-    <text x="4" y="${Y(hi) + 4}">${sgnPct(hi, 0)}</text><text x="4" y="${Y(lo) + 4}">${sgnPct(lo, 0)}</text></svg>`;
+// ---------- Kairo-Bilanz: unsere Strategie (10-Jahres-Studie, Live-Signale, deine Trades) ----------
+// Ergebnisse der Studie (backend/shortswing.py, 3.200 Aktien, 2017–Okt. 2026, netto mit Gebühren, Spread und Finanzierung;
+// Median aus 25 Depot-Läufen mit zufälliger Reihenfolge am selben Tag). Depot 3.000 €.
+const STRAT_BT = {
+  main: { l: "Unsere Strategie", cagr: .344, lo: .325, hi: .362, mdd: .301, trades: 944, end: 38841,
+    years: { 2017: -.055, 2018: -.128, 2019: .635, 2020: .7, 2021: .476, 2022: .351, 2023: .401, 2024: .326, 2025: .59, 2026: .029 } },
+  rnd: { l: "Treffer zufällig gewählt", cagr: .177, mdd: .424,
+    years: { 2017: -.045, 2018: -.219, 2019: .314, 2020: 1.089, 2021: .2, 2022: .079, 2023: .052, 2024: .047, 2025: .674, 2026: -.05 } },
+  alt: [["5 Plätze · 20 Tage · ruhigste zuerst · 2 %/1 %", .344, .301, true], ["Treffer zufällig statt ruhigste zuerst", .177, .424],
+    ["4 Plätze", .275, .34], ["6 Plätze", .312, .396], ["8 Plätze", .377, .463], ["30 Tage halten", .195, .409], ["40 Tage halten", .112, .54],
+    ["Nur ruhige Aktien (ATR < 3,5 %)", .277, .358], ["Ausverkauf 3 % statt 2 % Risiko", .439, .376],
+    ["Im gesunden Markt Trend-Rücksetzer statt Treffer", -.248, 1, false, "2023 Totalverlust"]],
+  perTrade: .17 };
+function yearBarsSvg() {
+  const Y = Object.keys(STRAT_BT.main.years), m = STRAT_BT.main.years, r = STRAT_BT.rnd.years;
+  const vals = Y.flatMap(y => [m[y], r[y]]), hi = Math.max(...vals), lo = Math.min(0, ...vals);
+  const W = 560, H = 190, pl = 6, pt = 18, pb = 30, bw = (W - pl * 2) / Y.length, sc = v => (H - pt - pb) * v / (hi - lo), z = pt + sc(hi);
+  return `<svg class="rp" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rendite je Jahr"><line x1="0" x2="${W}" y1="${z}" y2="${z}" stroke="var(--line)"/>
+    ${Y.map((y, i) => { const x = pl + i * bw, f = (v, dx, col) => `<rect x="${x + dx}" y="${v >= 0 ? z - sc(v) : z}" width="${bw * .34}" height="${Math.max(1, Math.abs(sc(v)))}" rx="2" fill="${col}"/>`;
+      return f(m[y], bw * .14, "var(--up)") + f(r[y], bw * .52, "var(--muted)")
+        + `<text x="${x + bw * .5}" y="${H - 14}" text-anchor="middle">${y}${y === "2026" ? "*" : ""}</text><text x="${x + bw * .31}" y="${m[y] >= 0 ? z - sc(m[y]) - 4 : z + Math.abs(sc(m[y])) + 11}" text-anchor="middle" class="lb" fill="${m[y] >= 0 ? "var(--up)" : "var(--red)"}">${fmt(m[y] * 100, 0)}</text>`; }).join("")}</svg>
+    <div class="oleg"><span class="up">■ Unsere Strategie</span><span class="muted">■ Treffer zufällig gewählt</span><span class="muted">* bis Oktober</span></div>`;
 }
-function outcomeBar(s) {
-  return `<div class="obar"><i class="t1" style="flex:${s.t1}"></i><i class="op" style="flex:${s.open}"></i><i class="st" style="flex:${s.stop}"></i></div>
-    <div class="oleg"><span class="up">Ziel 1 zuerst ${pct(s.t1, 0)}</span><span class="muted">offen ${pct(s.open, 0)}</span><span class="down">Stop zuerst ${pct(s.stop, 0)}</span></div>`;
+// Deine eigenen abgeschlossenen Trades (Trade-Pläne) gegen die Erwartung der Studie
+function myTradesHtml() {
+  const done = plansLoad().filter(p => p.st === "closed" && p.R != null).sort((a, b) => (b.xd || "") < (a.xd || "") ? -1 : 1);
+  const open = plansLoad().filter(p => p.st === "open").length;
+  if (!done.length) return `<div class="hcard">${hHead("Deine Trades")}<div class="note" style="margin:0">Noch keine abgeschlossenen Trades${open ? ` (${open} offen)` : ""}. Wenn du einen Trade im Reiter Einstieg als „Verkauft“ einträgst, erscheint er hier – mit Ergebnis in R und dem Vergleich zur Studie.</div></div>`;
+  const rs = done.map(p => p.R), avg = rs.reduce((x, y) => x + y, 0) / rs.length, win = rs.filter(x => x > 0).length / rs.length;
+  const eurOf = p => p.expo && p.E ? (p.X - p.E) / p.E * p.expo - (p.cost || 0) : null, sum = done.reduce((s, p) => s + (eurOf(p) ?? 0), 0);
+  const early = done.filter(p => p.xd && (p.exit2 || p.exit) && p.xd < (p.exit2 || p.exit) && p.R > -0.8).length;
+  const band = 1.96 * 1.6 / Math.sqrt(rs.length), e = STRAT_BT.perTrade;
+  const [ic, txt] = rs.length < 30 ? ["⏳", `noch zu früh für ein Urteil (${rs.length}/30 Trades)`] : avg < e - band ? ["🔴", "schwächer als die Studie – Regeln prüfen"] : avg > e + band ? ["🟢", "besser als die Studie"] : ["🟢", "im erwarteten Rahmen"];
+  return `<div class="hcard">${hHead("Deine Trades")}
+    <div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Abgeschlossen</span><b>${rs.length}</b><em>${open} offen</em></div>
+      <div class="mt"><span>Ø je Trade</span><b class="${avg >= 0 ? "up" : "down"}">${avg >= 0 ? "+" : ""}${fmt(avg, 2)} R</b><em>Studie ≈ +${fmt(e, 2)} R</em></div>
+      <div class="mt"><span>Gewinner</span><b>${pct(win, 0)}</b><em>wenige große tragen</em></div>
+      <div class="mt"><span>Summe</span><b class="${sum >= 0 ? "up" : "down"}">${sgnEur(sum)}</b><em>geschätzt</em></div></div>
+    <div class="note" style="margin:0 0 8px">${ic} ${txt}.${early ? ` ${early}× vor dem Verkaufstag verkauft, ohne dass der Stop griff – das weicht von den Regeln ab und kostet im Test Rendite.` : ""}</div>
+    <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Aktie</th><th class="num">Kauf → Verkauf</th><th class="num">Tage</th><th>Ergebnis</th></tr></thead><tbody>
+      ${done.slice(0, 20).map(p => `<tr><td><b>${esc(p.n)}</b><small>${p.L > 1 ? `Turbo ×${p.L}` : "Aktie"}</small></td><td class="num">${dateDE(p.d)}<small>${p.xd ? dateDE(p.xd) : ""}</small></td>
+        <td class="num">${p.xd ? bdBetween(new Date(p.d + "T12:00:00"), new Date(p.xd + "T12:00:00")) + 1 : "–"}</td>
+        <td class="${p.R >= 0 ? "up" : "down"}"><b>${p.R >= 0 ? "+" : ""}${fmt(p.R, 2)} R</b>${eurOf(p) != null ? ` <small>${sgnEur(eurOf(p))}</small>` : ""}</td></tr>`).join("")}</tbody></table></div></div>`;
 }
-// Automatische Erkenntnisse: welche Teilgruppen der Treffer schneiden deutlich besser/schlechter ab?
-function bilanzInsights(S) {
-  const all = S.hit, g = [];
-  [["score", "Score "], ["crv", "CRV "], ["zone", ""], ["div", "Divergenz "]].forEach(([k, pre]) => Object.entries(S[k] || {}).forEach(([n, s]) => {
-    if (s && s.n >= 150) g.push({ l: pre + n + (k === "zone" ? "-Zone" : ""), s }); }));
-  if (!g.length) return "";
-  g.sort((a, b) => b.s.avg_r - a.s.avg_r);
-  const fmtR = r => `${r >= 0 ? "+" : ""}${fmt(r, 2)} R`;
-  const best = g.slice(0, 2).filter(x => x.s.avg_r > all.avg_r + .03), worst = g.slice(-2).reverse().filter(x => x.s.avg_r < all.avg_r - .03);
-  return `<div class="jins" style="margin-bottom:14px">${best.map(x => `<div class="tip tone-green"><b class="t">Stärker: ${esc(x.l)}</b>Ziel 1 zuerst in ${pct(x.s.t1, 0)}, Stop in ${pct(x.s.stop, 0)} · Ø ${fmtR(x.s.avg_r)} je Trade (alle Treffer ${fmtR(all.avg_r)}) · ${fmt(x.s.n, 0)} Signale.</div>`).join("")}
-    ${worst.map(x => `<div class="tip tone-orange"><b class="t">Schwächer: ${esc(x.l)}</b>Ziel 1 zuerst in ${pct(x.s.t1, 0)}, Stop in ${pct(x.s.stop, 0)} · Ø ${fmtR(x.s.avg_r)} je Trade · ${fmt(x.s.n, 0)} Signale – hier besonders streng prüfen.</div>`).join("")}</div>`;
-}
-// Ausstiegs-Pläne im Vergleich (gleicher Einstieg und Stop, max. 3 Monate)
-function plansHtml(h, base) {
-  const R = x => x == null ? "–" : `${x >= 0 ? "+" : ""}${fmt(x, 2)} R`;
-  const rows = [
-    ["Ziel 1 (EMA 50 / Fib 0,382)", "sofort an Ziel 1 verkaufen", { hit: h.t1, stop: h.stop, open: h.open, avg_r: h.avg_r, days: h.days_t1 }],
-    h.c && ["Dein TP 1 – nächstes relevantes Hoch", "wie im Depot: erste Stufe der Hoch-Treppe", h.c],
-    h.d && ["Halb / halb", "Hälfte an Ziel 1, Stop auf Einstand, Rest bis Swing-High", { hit: null, stop: h.d.stop, open: null, avg_r: h.d.avg_r, extra: `Rest am Swing-High ${pct(h.d.full, 0)}, auf Einstand raus ${pct(h.d.be, 0)}` }],
-    h.b && ["Swing-High (Ziel 2)", "alles bis zum Hoch vor der Korrektur halten", { hit: h.b.t2, stop: h.b.stop, open: h.b.open, avg_r: h.b.avg_r, days: h.b.days }]].filter(Boolean);
-  const best = Math.max(...rows.map(r => r[2].avg_r ?? -9));
-  return `<div class="hcard">${hHead("Ausstiegs-Pläne im Vergleich")}
-    <div class="table-wrap"><table class="jt bt"><thead><tr><th>Plan</th><th class="num">Ziel erreicht</th><th class="num">Stop</th><th class="num">nach 3 Mon. offen</th><th class="num">Ø Tage bis Ziel</th><th class="num">Ø Ergebnis</th></tr></thead><tbody>
-    ${rows.map(([l, sub, x]) => `<tr${x.avg_r === best ? ' class="best"' : ""}><td><b>${l}</b><small>${sub}${x.extra ? " · " + x.extra : ""}</small></td><td class="num up">${x.hit != null ? pct(x.hit, 0) : "–"}</td><td class="num down">${pct(x.stop, 0)}</td>
-      <td class="num">${x.open != null ? pct(x.open, 0) : "–"}</td><td class="num">${x.days != null ? fmt(x.days, 0) : "–"}</td><td class="num ${x.avg_r >= 0 ? "up" : "down"}"><b>${R(x.avg_r)}</b>${x.avg_r === best ? " ★" : ""}</td></tr>`).join("")}</tbody></table></div>
-    <div class="note">Gleicher Einstieg (Schluss am Signaltag) und Stop, verkauft wird am Tag, an dem Ziel oder Stop erreicht wird – höchstens 3 Monate, dann zum Kurs von dann. R = Gewinn/Verlust geteilt durch das Risiko bis zum Stop (−1 R = Stop). Ohne Gebühren und Hebel.</div></div>`;
-}
-// Live gegen Backtest: liegt das Live-Ergebnis im erwarteten Rahmen? (Ø R, Streuung je Trade ≈ 1,2 R → 95-%-Band)
-function liveVsBt(st, bt) {
-  const exp = { hit: [bt && bt.stats && bt.stats.hit && bt.stats.hit.avg_r, "Backtest 6 J."], trend: [0.24, "Trend-Studie 6 J."], fast: [bt && bt.stats && bt.stats.fast && bt.stats.fast.avg_r, "Backtest 6 J."] };
-  const rows = [["hit", "Kairo-Treffer"], ["trend", "Trend-Rücksetzer"], ["fast", "Fast-Treffer"]].map(([k, l]) => {
-    const x = st[k], [e, src] = exp[k]; if (e == null) return "";
-    const n = x && x.n || 0, band = n ? 1.96 * 1.2 / Math.sqrt(n) : null;
-    const [ic, txt] = n < 30 ? ["⏳", `noch zu früh (${n}/30 Trades)`] : x.avg_r < e - band ? ["🔴", "schwächer als erwartet"] : x.avg_r > e + band ? ["🟢", "besser als erwartet"] : ["🟢", "im erwarteten Rahmen"];
-    return `<tr><td>${l}</td><td class="num">${n ? `${x.avg_r >= 0 ? "+" : ""}${fmt(x.avg_r, 2)} R` : "–"}<small>${n} Trades</small></td><td class="num">${e >= 0 ? "+" : ""}${fmt(e, 2)} R<small>${src}</small></td><td>${ic} ${txt}${n >= 30 ? `<small>Spanne ±${fmt(band, 2)} R</small>` : ""}</td></tr>`; }).join("");
-  return rows ? `<div class="hh" style="margin-top:6px"><b>Live gegen Backtest ${gl("r")}</b></div><div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Setup</th><th class="num">Live</th><th class="num">Erwartung</th><th>Bewertung</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="note" style="margin:4px 0 10px">Ø Ergebnis je abgeschlossenem Signal in R (Ziel 1 vor Stop, max. 3 Monate). Erst ab ~30 abgeschlossenen Trades aussagekräftig; „im Rahmen“ heißt: Abweichung im Bereich normaler Zufallsschwankung.</div>` : "";
-}
+const ST_TXT = { wait: ["wartet auf Seitwärtsphase", "muted"], nobase: ["keine Basis – kein Trade", "muted"], run: ["läuft", "gold"], stop: ["Stop", "down"], zeit: ["Tag 20 verkauft", "up"] };
 function bilanzHtml() {
   const b = getJson("bilanz.json");
-  const back = `<button class="backbtn" data-gosec="today">‹ Heute</button>`;
-  if (b === undefined) return back + `<div class="hcard"><div class="skel"></div></div>`;
-  if (!b) return back + `<div class="empty">Die Bilanz erscheint nach dem nächsten Scan.</div>`;
-  const bt = b.backtest, S = bt && bt.stats, h = S && S.hit;
-  const row = (l, s, cls = "") => s && s.n ? `<tr class="${cls}"><td>${l}</td><td class="num">${fmt(s.n, 0)}</td><td class="num up">${pct(s.t1, 0)}</td><td class="num down">${pct(s.stop, 0)}</td>
-    <td class="num ${s.avg_r >= 0 ? "up" : "down"}">${s.avg_r >= 0 ? "+" : ""}${fmt(s.avg_r, 2)} R</td>
-    <td class="num">${s.c ? pct(s.c.hit, 0) : s.b ? pct(s.b.t2, 0) : "–"}</td><td class="num ${(s.c || s.b) && (s.c || s.b).avg_r >= 0 ? "up" : "down"}">${s.c || s.b ? ((s.c || s.b).avg_r >= 0 ? "+" : "") + fmt((s.c || s.b).avg_r, 2) + " R" : "–"}</td>
-    <td class="num ${(s.r63 ?? s.r20) >= 0 ? "up" : "down"}">${sgnPct(s.r63 ?? s.r20, 1)}</td><td class="num">${pct(s.win63 ?? s.win20, 0)}</td></tr>` : "";
-  const head = `<thead><tr><th></th><th class="num">Signale</th><th class="num">Ziel 1 zuerst</th><th class="num">Stop zuerst</th><th class="num">Ø Ergebnis</th><th class="num">${S.hit.c ? "TP 1 erreicht" : "Swing-High erreicht"}</th><th class="num">${S.hit.c ? "Ø mit TP 1" : "Ø bis Swing-High"}</th><th class="num">Ø nach 3 Mon.</th><th class="num">im Plus nach 3 Mon.</th></tr></thead>`;
-  const btHtml = h && h.n ? `
-    <div class="hcard bhero"><div class="bh-l"><span>Backtest · ${bt.stocks} zufällige Aktien · ${dateDE(bt.period[0])} – ${dateDE(bt.period[1])}</span>
-      <b>${pct(h.t1, 0)}</b><em>der ${fmt(h.n, 0)} Treffer-Signale erreichten <b>Ziel 1 vor dem Stop</b> (Haltedauer max. 3 Monate).</em></div>
-      <div class="bh-r"><div class="mt"><span>Ø Ergebnis je Trade</span><b class="${h.avg_r >= 0 ? "up" : "down"}">${h.avg_r >= 0 ? "+" : ""}${fmt(h.avg_r, 2)} R</b><em>R = Risiko bis zum Stop</em></div>
-        <div class="mt"><span>Ø Tage bis Ziel 1</span><b>${fmt(h.days_t1, 0)}</b><em>Handelstage</em></div>
-        <div class="mt"><span>Halten bis Swing-High</span><b class="${h.b && h.b.avg_r >= 0 ? "up" : "down"}">${h.b ? (h.b.avg_r >= 0 ? "+" : "") + fmt(h.b.avg_r, 2) + " R" : "–"}</b><em>${h.b ? `erreicht ${pct(h.b.t2, 0)}, Ø ${fmt(h.b.days, 0)} T.` : ""}</em></div></div>
-      ${outcomeBar(h)}</div>
-    ${plansHtml(h, S.base)}
-    ${bilanzInsights(S)}
-    <div class="hcard">${hHead("Kursverlauf nach dem Signal (Ø)")}${retPathSvg([{ l: "Treffer", s: h, c: "var(--up)" }, { l: "Fast", s: S.fast, c: "var(--gold)" }, { l: "alle Tage", s: S.base, c: "var(--muted)" }])}
-      <div class="note" style="margin:4px 0 0">„alle Tage“ = Vergleich: zufällige Tage derselben Aktien ohne Signal. Liegen die Linien nah beieinander, wählt das Setup nicht die stärkeren Aktien aus – sein Vorteil liegt dann im Einstiegs-Timing mit klar definiertem Stop (siehe „Ziel 1 zuerst“ und „Halten bis Swing-High“).</div></div>
-    <div class="hcard">${hHead("Nach Score, CRV und Zone")}<div class="table-wrap"><table class="jt bt">${head}<tbody>
-      ${row("<b>Alle Treffer</b>", h)}${Object.entries(S.score).map(([k, s]) => row("Score " + k, s)).join("")}
-      ${Object.entries(S.crv).map(([k, s]) => row("CRV " + k, s)).join("")}${Object.entries(S.zone).map(([k, s]) => row(k + "-Zone", s)).join("")}
-      ${Object.entries(S.div).map(([k, s]) => row("Divergenz " + k, s)).join("")}
-      ${row("Fast-Treffer", S.fast, "muted")}</tbody></table></div>
-      <div class="note">Zwei Ausstiegs-Pläne mit demselben Stop, jeweils max. 3 Monate (63 Handelstage) – passend zum Swing-Trading: „Ziel 1“ = Verkauf an EMA 50 bzw. Fib 0,382, „Swing-High“ = halten bis zum letzten Hoch (Ziel 2). Was nach 3 Monaten keins von beiden erreicht hat, zählt mit dem Kurs nach 3 Monaten. Stop laut Trade-Plan. Liegen Stop und Ziel am selben Tag, zählt der Stop (vorsichtig). Ergebnis ohne Gebühren und Hebel; mit Turbo vervielfacht sich der Ausschlag.</div></div>` : "";
-  const L = b.live, ls = L && L.stats && L.stats.hit;
-  const sig = (b.signals || []).slice(0, 40);
-  const liveHtml = `<div class="hcard">${hHead(`Live-Bilanz <small>seit ${dateDE(L && L.since)}</small>`)}
-    ${ls && ls.n ? `${outcomeBar(ls)}<div class="note">${fmt(ls.n, 0)} abgeschlossene Treffer-Signale · Ø ${ls.avg_r >= 0 ? "+" : ""}${fmt(ls.avg_r, 2)} R</div>
-      ${L.grade && "ABC".split("").some(g => L.grade[g] && L.grade[g].n) ? `<div class="mtiles" style="margin:10px 0">${"ABC".split("").map(g => { const x = L.grade[g]; return `<div class="mt"><span>Stufe <span class="grd g-${g}">${g}</span></span><b class="${x && x.n && x.avg_r >= 0 ? "up" : "down"}">${x && x.n ? (x.avg_r >= 0 ? "+" : "") + fmt(x.avg_r, 2) + " R" : "–"}</b><em>${x && x.n ? `${x.n} Signale · Ziel 1 ${pct(x.t1, 0)}` : "noch keine"}</em></div>`; }).join("")}</div>` : ""}` : `<div class="note" style="margin:0 0 8px">Jeder neue Treffer, Fast-Treffer und Trend-Rücksetzer wird ab jetzt am Signaltag gespeichert und täglich nachverfolgt – hier entsteht Kairos echte Erfolgsbilanz.</div>`}
-    ${L && L.stats ? `<div class="mtiles" style="margin:10px 0">${[["hit", "Kairo-Treffer"], ["trend", "Trend-Rücksetzer"], ["fast", "Fast-Treffer"]].map(([k, l]) => { const x = L.stats[k];
-      return `<div class="mt"><span>${l}</span><b class="${x && x.n ? (x.avg_r >= 0 ? "up" : "down") : ""}">${x && x.n ? (x.avg_r >= 0 ? "+" : "") + fmt(x.avg_r, 2) + " R" : "–"}</b><em>${x && x.n ? `${fmt(x.n, 0)} abgeschlossen · Ziel 1 ${pct(x.t1, 0)}` : "noch keine abgeschlossen"}</em></div>`; }).join("")}</div>
-      <div class="note" style="margin:0 0 8px">Direkter Vergleich der Setups im echten Markt – nach 2–3 Monaten zeigt sich, ob der Trend-Rücksetzer hält, was der Backtest verspricht.</div>
-      ${liveVsBt(L.stats, b.backtest)}` : ""}
-    ${sig.length ? `<div class="table-wrap"><table class="jtrades"><thead><tr><th>Signal</th><th>Aktie</th><th class="num">Entry</th><th class="num">Stop / Ziel 1</th><th class="num">Stand</th><th>Ergebnis</th></tr></thead><tbody>
-      ${sig.map(s => { const [rt, rc] = RES_TXT[s.res] || RES_TXT.running; return `<tr><td>${dateDE(s.d)}<small>${s.k === "hit" ? "Treffer " + s.score : s.k === "trend" ? "Trend-Rücksetzer" : "Fast-Treffer"}</small></td>
-        <td><a href="#" data-card="${esc(s.t)}"><b>${esc(s.n || s.t)}</b></a><small>${esc(s.t)}</small></td><td class="num">${fmt(s.entry)}</td><td class="num">${fmt(s.stop)}<small>${fmt(s.t1)}</small></td>
-        <td class="num ${(s.now ?? 0) >= 0 ? "up" : "down"}">${s.now != null ? sgnPct(s.now, 1) : "–"}</td><td class="${rc}">${rt}${s.r != null && s.res !== "running" ? ` <small>${s.r >= 0 ? "+" : ""}${fmt(s.r, 2)} R</small>` : ""}</td></tr>`; }).join("")}</tbody></table></div>` : ""}</div>`;
-  return back + `<div class="section-title"><span>Kairo-Bilanz · wie gut sind die Signale?</span><span></span></div>` + btHtml + liveHtml;
+  const back = `<button class="backbtn" data-gosec="today">‹ Heute</button>`, M = STRAT_BT.main;
+  const hero = `<div class="hcard bhero"><div class="bh-l"><span>10-Jahres-Test · 3.200 Aktien · 2017 – Okt. 2026 · Depot 3.000 €</span>
+      <b>+${pct(M.cagr, 1)}</b><em>pro Jahr mit unserer Strategie (Spanne ${pct(M.lo, 0)}–${pct(M.hi, 0)}). Aus 3.000 € wurden rund <b>${fmt(M.end, 0)} €</b> – netto nach Gebühren, Spread und Finanzierung.</em></div>
+      <div class="bh-r"><div class="mt"><span>Größter Rückgang</span><b class="down">−${pct(M.mdd, 0)}</b><em>zwischendurch aushalten</em></div>
+        <div class="mt"><span>Trades</span><b>${fmt(M.trades, 0)}</b><em>≈ 2 pro Woche</em></div>
+        <div class="mt"><span>Zufällige Auswahl</span><b>+${pct(STRAT_BT.rnd.cagr, 1)}</b><em>„ruhigste zuerst“ verdoppelt fast</em></div></div></div>
+    <div class="hcard">${hHead("Rendite je Jahr")}${yearBarsSvg()}
+      <div class="note" style="margin:6px 0 0">Verlustjahre gibt es (2017, 2018) – die Strategie verdient vor allem nach Ausverkäufen. Wichtig ist, die Regeln auch dann durchzuhalten.</div></div>
+    <div class="hcard">${hHead("Die Regeln")}<ul class="checks rules">${[
+      ["Nur volle Kairo-Treffer", "keine Fast-Treffer, keine Trend-Rücksetzer"],
+      ["Kauf in der Seitwärtsphase", "innerhalb von 10 Tagen nach dem Signal, wenn der Kurs 5 Tage eng läuft (Spanne ≤ 1,5 ATR)"],
+      ["Stop = Tief der Seitwärtsphase − 0,25 ATR", "auf Schlusskurs-Basis, nie nach unten verschieben"],
+      ["20 Handelstage halten, kein Gewinnziel", "vor Quartalszahlen am Tag davor verkaufen"],
+      ["Risiko 1 % je Trade, 2 % bei grüner Marktampel", "Ausverkauf: S&P 500 unter EMA 200 oder VIX ≥ 25"],
+      ["Höchstens 5 Trades, ruhigste zuerst", "mehr Treffer als freie Plätze → niedrigste ATR % zuerst"],
+      ["Hebel höchstens 10×", "K.-o. mindestens 1 ATR unter dem Stop"]].map(([l, t]) => `<li><i class="up">✓</i><b>${l}:</b> ${t}</li>`).join("")}</ul></div>
+    <div class="hcard">${hHead("Varianten im selben Test")}<div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Variante</th><th class="num">pro Jahr</th><th class="num">größter Rückgang</th></tr></thead><tbody>
+      ${STRAT_BT.alt.map(([l, c, d, me, note]) => `<tr${me ? ' class="best"' : ""}><td>${me ? `<b>${l}</b> ★` : l}${note ? `<small class="down">${note}</small>` : ""}</td><td class="num ${c >= 0 ? "up" : "down"}">${c >= 0 ? "+" : ""}${pct(c, 1)}</td><td class="num down">−${pct(d, 0)}</td></tr>`).join("")}</tbody></table></div>
+      <div class="note" style="margin:6px 0 0">Mehr Plätze oder mehr Risiko bringen etwas mehr Rendite, aber deutlich tiefere Rückgänge. Länger halten verschlechtert das Ergebnis klar.</div></div>`;
+  if (b === undefined) return back + hero + myTradesHtml() + `<div class="hcard"><div class="skel"></div></div>`;
+  const L = b && b.live, st = L && L.strat, sig = ((b && b.signals) || []).filter(s => s.k === "hit").slice(0, 40);
+  const band = st ? 1.96 * 1.6 / Math.sqrt(st.n) : null, e = STRAT_BT.perTrade;
+  const verdict = !st ? "" : st.n < 30 ? `⏳ noch zu früh für ein Urteil (${st.n}/30 abgeschlossen)` : st.avg_r < e - band ? "🔴 schwächer als die Studie" : st.avg_r > e + band ? "🟢 besser als die Studie" : "🟢 im erwarteten Rahmen";
+  const liveHtml = `<div class="hcard">${hHead(`Live: jeder Kairo-Treffer nach unseren Regeln <small>seit ${dateDE(L && L.since)}</small>`)}
+    ${st ? `<div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Abgeschlossen</span><b>${st.n}</b><em>${st.run} laufen/warten</em></div>
+      <div class="mt"><span>Ø je Trade</span><b class="${st.avg_r >= 0 ? "up" : "down"}">${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R</b><em>Studie ≈ +${fmt(e, 2)} R</em></div>
+      <div class="mt"><span>Gewinner</span><b>${pct(st.win, 0)}</b><em>Stop ${pct(st.stop, 0)}</em></div>
+      <div class="mt"><span>Ohne Basis</span><b>${st.nobase}</b><em>kein Kauf – richtig so</em></div></div>
+      <div class="note" style="margin:0 0 8px">${verdict}. Jeder Treffer zählt hier – auch die, für die bei 5 Plätzen kein Platz wäre.</div>`
+      : `<div class="note" style="margin:0 0 8px">Jeder neue Kairo-Treffer wird ab dem Signaltag nach den Regeln verfolgt: Bildet sich eine Seitwärtsphase, wird gekauft; dann Stop oder Verkauf an Tag 20. Die ersten Ergebnisse erscheinen nach etwa 4–6 Wochen.</div>`}
+    ${sig.length ? `<div class="table-wrap"><table class="jtrades"><thead><tr><th>Signal</th><th>Aktie</th><th class="num">Kauf</th><th class="num">Stop</th><th>Ergebnis</th></tr></thead><tbody>
+      ${sig.map(s => { const x = s.st || { res: "wait" }, [rt, rc] = ST_TXT[x.res] || ST_TXT.wait;
+        return `<tr><td>${dateDE(s.d)}<small>Score ${s.score}</small></td><td><a href="#" data-card="${esc(s.t)}"><b>${esc(s.n || s.t)}</b></a><small>${esc(s.t)}</small></td>
+          <td class="num">${x.e ? fmt(x.e) : "–"}</td><td class="num">${x.sl ? fmt(x.sl) : "–"}</td>
+          <td class="${x.r != null ? (x.r >= 0 ? "up" : "down") : rc}">${rt}${x.res === "run" ? ` <small>Tag ${x.days}/20</small>` : ""}${x.r != null ? ` <small>${x.r >= 0 ? "+" : ""}${fmt(x.r, 2)} R</small>` : ""}</td></tr>`; }).join("")}</tbody></table></div>` : ""}</div>`;
+  return back + `<div class="section-title"><span>Kairo-Bilanz · unsere Strategie</span><span></span></div>` + hero + myTradesHtml() + (b ? liveHtml : "");
 }
 
 // ---------- Telegram & Backup (Einstellungen) ----------

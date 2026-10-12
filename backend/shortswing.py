@@ -201,7 +201,8 @@ def simulate(px: dict, r: dict) -> dict | None:
     cal_days = day * 7 / 5
     cost = (SPREAD["turbo" if lev > 1 else "stock"] + orders * FEE / EXPOSURE
             + (FIN_PA * (1 - 1 / lev) * cal_days / 365 if lev > 1 else 0)) / rp
-    return {"r": gross, "net": gross - cost, "d": day, "x": why, "lev": lev, "mfe": mfe, "mae": mae, "rp": rp, "s": start}
+    return {"r": gross, "net": gross - cost, "d": day, "x": why, "lev": lev, "mfe": mfe, "mae": mae, "rp": rp, "s": start,
+            "e": entry, "sl": stop0}
 
 
 def _summ(rows: list[dict]) -> dict:
