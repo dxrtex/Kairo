@@ -1,6 +1,6 @@
-/* Kairo – Start-Animation (≈ 2,2 s) nach dem finalen Markenauftritt: K-Symbol in der Kachel + Wortmarke KA|RO.
+/* Kairo – Start-Animation (≈ 2,2 s) nach dem finalen Markenauftritt: K-Symbol in der Kachel (blaue Kerze + zweiteiliges silbernes K) + Wortmarke KA|RO.
    Ablauf: Graphit-Licht und Kachel blenden auf · der Docht zieht sich aus der Mitte auf · der Körper der Kerze federt auf,
-   blaues Leuchten · der Winkel des K fährt aus der Kerze heraus · die Kachel gleitet nach links, KA|RO steigt Buchstabe
+   blaues Leuchten · die zwei Klingen des K gleiten nacheinander an die Kerze · die Kachel gleitet nach links, KA|RO steigt Buchstabe
    für Buchstabe aus der Grundlinie, die Kerze der Wortmarke wächst · Lichtreflex.
    Übergang: Kachel öffnet sich zur App (Maske). Startet erst, wenn die Animation durch ist UND die App
    KairoSplash.ready() gemeldet hat – spätestens nach 6 s. */
@@ -15,15 +15,16 @@
           <div class="sp-tile">
             <svg viewBox="0 0 1000 1000" aria-hidden="true">
               <defs>
-                <linearGradient id="spW" x1="0" y1="215" x2="0" y2="785" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#64B1FF"/><stop offset="1" stop-color="#0A84FF"/></linearGradient>
-                <linearGradient id="spB" x1="0" y1="321" x2="0" y2="679" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#62B0FF"/><stop offset="1" stop-color="#0A84FF"/></linearGradient>
+                <linearGradient id="spW" x1="0" y1="159" x2="0" y2="833" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3D9BFF"/><stop offset="1" stop-color="#0A6FFF"/></linearGradient>
+                <linearGradient id="spB" x1="0" y1="296" x2="0" y2="672" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#62B0FF"/><stop offset="1" stop-color="#0A84FF"/></linearGradient>
                 <filter id="spF" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="22"/></filter>
               </defs>
-              <rect class="sp-glow" x="276.6" y="321" width="93" height="358" rx="17" fill="#0A84FF" filter="url(#spF)"/>
-              <rect class="sp-wick" x="313.8" y="215" width="19" height="570" rx="9.5" fill="url(#spW)"/>
-              <rect class="sp-body" x="276.6" y="321" width="93" height="358" rx="17" fill="url(#spB)"/>
-              <clipPath id="spCC"><rect x="380" y="270" width="0" height="460"><animate attributeName="width" values="0;360" keyTimes="0;1" calcMode="spline" keySplines=".2 .8 .2 1" begin="0.74s" dur="0.52s" fill="freeze"/></rect></clipPath>
-              <g clip-path="url(#spCC)" class="sp-chevw"><path class="sp-chev" d="M612.2 281.5H722.8L504.4 500L722.8 718.5H612.2L393.8 500Z" fill="#F4F6FA"/></g>
+              <linearGradient id="spS" x1="413" y1="222" x2="819" y2="819" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".55" stop-color="#E3E6EB"/><stop offset="1" stop-color="#B4BAC3"/></linearGradient>
+              <rect class="sp-glow" x="240" y="296" width="150" height="376" rx="20" fill="#0A84FF" filter="url(#spF)"/>
+              <rect class="sp-wick" x="301.5" y="159" width="30" height="674" rx="15" fill="url(#spW)"/>
+              <rect class="sp-body" x="240" y="296" width="150" height="376" rx="20" fill="url(#spB)"/>
+              <path class="sp-arm sp-up" d="M413 433L627 222H816L413 590Z" fill="url(#spS)"/>
+              <path class="sp-arm sp-lo" d="M441 620L567 505L819 819H607Z" fill="url(#spS)"/>
             </svg>
             <div class="sp-shine"></div>
           </div>
