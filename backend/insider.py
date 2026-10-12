@@ -20,7 +20,8 @@ from datetime import datetime, timezone
 
 import requests
 
-UA = {"User-Agent": "KairoScanner/1.0 (+https://github.com/dxrtex/Kairo)", "Accept-Encoding": "gzip, deflate"}
+# SEC verlangt „Name Kontakt-E-Mail“ im User-Agent, sonst 403 („Undeclared Automated Tool“)
+UA = {"User-Agent": "Kairo Scanner kairo-bot@users.noreply.github.com", "Accept-Encoding": "gzip, deflate"}
 FEED = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&owner=include&count=100&start={start}&output=atom"
 MIN_BUY, MIN_SELL = 50_000, 1_000_000                 # USD: kleinere Käufe/Verkäufe sind Rauschen
 
@@ -81,12 +82,18 @@ def fetch(pages: int = 3, budget_s: float = 150) -> dict:
     links = []
     for pg in range(pages):
         try:
-            feed = s.get(FEED.format(start=pg * 100), timeout=20).text
+            resp = s.get(FEED.format(start=pg * 100), timeout=20)
+            feed = resp.text
         except Exception as exc:                    # Netz/Sperre – Scan läuft trotzdem weiter
             print("Insider: Feed nicht erreichbar", repr(exc)[:100])
             break
-        links += re.findall(r'<link[^>]+href="(https://www\.sec\.gov/Archives/edgar/data/[^"]+-index\.htm)"', feed)
-    seen = set()
+        found = re.findall(r'href="((?:https://www\.sec\.gov)?/Archives/edgar/data/[^"]+-index\.html?)"', feed)
+        if pg == 0:
+            print(f"Insider: Feed Status {resp.status_code}, {len(feed)} Zeichen, {len(found)} Links" + ("" if found else f" · Anfang: {feed[:160]!r}"))
+        links += [u if u.startswith("http") else "https://www.sec.gov" + u for u in found]
+        if not found:
+            break
+    seen, errs = set(), 0
     for url in links:
         if time.time() - t0 > budget_s:
             break
@@ -103,7 +110,10 @@ def fetch(pages: int = 3, budget_s: float = 150) -> dict:
                 r["url"] = url
                 rows.append(r)
             time.sleep(0.12)                        # SEC: höchstens ~10 Abfragen pro Sekunde
-        except Exception:
+        except Exception as exc:
+            errs += 1
+            if errs <= 2:
+                print("Insider: Meldung nicht lesbar", url, repr(exc)[:120])
             continue
     rows = _merge(rows)
     buys = sorted([r for r in rows if r["kind"] == "buy" and r["val"] >= MIN_BUY], key=lambda r: -r["val"])
