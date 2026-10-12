@@ -802,6 +802,13 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
 
 </style>
 <style id="ds-postfach-classic" media="not all">
+:root{--bg:#000;--surface:#121212;--surface-2:#1c1c1e;--surface-3:#2c2c2e;--line:#2c2c2e;--glass:#121212;--glass-line:#2c2c2e;
+--text:#fff;--muted:#8e8e93;--faint:#5a5a5e;--accent:#0a84ff;--accent-ink:#fff;--accent-bg:color-mix(in srgb,#0a84ff 16%,transparent);
+--up:#30d158;--up-bg:color-mix(in srgb,#30d158 15%,transparent);--red:#ff453a;--red-bg:color-mix(in srgb,#ff453a 14%,transparent);
+--zone:color-mix(in srgb,#0a84ff 14%,transparent);color-scheme:dark}
+body{background:#000!important;color:#fff}
+body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+nav.tabbar{background:color-mix(in srgb,#121212 88%,transparent)!important}.score::before{background:#121212!important}.cm-box{background:#121212}
 
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-feature-settings:"tnum"}
 
@@ -2482,11 +2489,34 @@ function journalInsights(m, s, byKind) {
   if (m.fees > 0 && s.gw > 0 && m.fees / s.gw > .1) out.push(["orange", "Gebühren fressen Gewinn", `${eur2(m.fees)} Ordergebühren – ${pct(m.fees / s.gw, 0)} deiner Brutto-Gewinne. Weniger, dafür größere Trades senken den Anteil.`]);
   return out.map(([tone, t, x]) => `<div class="tip tone-${tone}"><b class="t">${esc(t)}</b>${esc(x)}</div>`).join("");
 }
+// Journal-Kopf: Kairo-Strategie in R – deine gespeicherten Trades gegen die Test-Erwartung, Regeltreue, Serie
+function jStrategyHtml() {
+  const done = plansLoad().filter(p => p.st === "closed" && p.R != null).sort((a, b) => String(a.xd || "").localeCompare(String(b.xd || "")));
+  if (!done.length) return `<div class="card jcard jstrat"><div class="jc-h"><b>Kairo-Strategie</b><span>noch keine abgeschlossenen Trades</span></div>
+    <div class="note" style="margin:0">Speichere Trades im Reiter „Einstieg“ („Trade eröffnen & speichern“) und trag beim Verkauf den Kurs ein – hier siehst du dann, ob du die Test-Erwartung erreichst und wie konsequent du die Regeln einhältst.</div></div>`;
+  const rs = done.map(p => p.R), n = rs.length, avg = rs.reduce((a, b) => a + b, 0) / n, wins = rs.filter(x => x > 0).length;
+  const big = rs.filter(x => x >= 2).length, stops = done.filter(p => p.R <= -0.8).length;
+  // Regeltreue: verkauft am Stop, am Ausstiegstag (±1 Tag) oder später = regelkonform; früher mit Gewinn/kleinem Verlust = zu früh
+  const early = done.filter(p => p.R > -0.8 && p.xd && (p.exit2 || p.exit) && p.xd < isoD(subBd(new Date((p.exit2 || p.exit) + "T12:00:00"), 1))).length;
+  const rule = 1 - early / n;
+  let streak = 0; for (let i = n - 1; i >= 0; i--) { const w = rs[i] > 0; if (i === n - 1 || w === (rs[n - 1] > 0)) streak += 1; else break; }
+  let cum = 0, pk = 0, dd = 0; rs.forEach(x => { cum += x; pk = Math.max(pk, cum); dd = Math.max(dd, pk - cum); });
+  const tgt = 0.25, ok = avg >= tgt * 0.6;
+  return `<div class="card jcard jstrat"><div class="jc-h"><b>Kairo-Strategie</b><span>${n} abgeschlossene Trades · in R (Vielfache deines Risikos)</span></div>
+    <div class="cockpit jtiles">
+      <div class="fig"><span>Ø je Trade</span><b class="${avg >= 0 ? "up" : "down"}">${fmt(avg, 2).replace(/^(?!-)/, "+")} R</b><em>Test-Erwartung ≈ +${fmt(tgt, 2)} R</em></div>
+      <div class="fig"><span>Summe</span><b class="${cum >= 0 ? "up" : "down"}">${fmt(cum, 1).replace(/^(?!-)/, "+")} R</b><em>größter Rückgang −${fmt(dd, 1)} R</em></div>
+      <div class="fig"><span>Gewinner</span><b>${pct(wins / n, 0)}</b><em>Test ≈ 30 % · ${big} große (≥ 2 R)</em></div>
+      <div class="fig"><span>Regeltreue</span><b class="${rule >= 0.8 ? "up" : rule >= 0.6 ? "" : "down"}">${pct(rule, 0)}</b><em>${early ? `${early}× vor dem Ausstiegstag verkauft` : "immer bis Stop/Ausstieg gehalten"}</em></div>
+      <div class="fig"><span>Serie</span><b class="${rs[n - 1] > 0 ? "up" : "down"}">${streak} ${rs[n - 1] > 0 ? "Gewinner" : "Verlierer"}</b><em>${rs[n - 1] > 0 ? "" : "Serien von 8–10 Verlierern sind bei 30 % Trefferquote normal"}</em></div>
+      <div class="fig"><span>Stops</span><b>${stops}</b><em>${pct(stops / n, 0)} der Trades</em></div></div>
+    <div class="note" style="margin:6px 0 0">${n < 20 ? `Noch ${20 - n} Trades bis zu einer ersten belastbaren Aussage.` : ok ? "Du liegst im Rahmen der Test-Erwartung – weiter so." : "Unter der Test-Erwartung: Prüfe Regeltreue (zu frühe Verkäufe?) und ob du wirklich nur volle Treffer in der Seitwärtsphase nimmst."}${early ? " Zu frühe Verkäufe schneiden die großen Gewinner ab, von denen die Strategie lebt." : ""}</div></div>`;
+}
 function journalHtml() {
   const tx = txLoad();
   const imp = `<label class="btn${tx.length ? " ghost" : ""}" style="cursor:pointer">${tx.length ? "Neuen Export einlesen" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="jrCsv" hidden></label>`;
   const head = `<div class="section-title"><span>Journal · deine Trades</span><span>${tx.length ? tx.length + " Transaktionen" : ""}</span></div>`;
-  if (!tx.length) return head + `<div class="card jempty"><div class="jicon">📒</div><b>Dein Trading-Journal</b>
+  if (!tx.length) return head + jStrategyHtml() + `<div class="card jempty"><div class="jicon">📒</div><b>Dein Trading-Journal</b>
       <p>Lies deinen Transaktions-Export aus Scalable Capital ein (Web-Version → Transaktionen → Export). Kairo ordnet alle Käufe und Verkäufe zu Trades, rechnet Gewinne und Verluste nach Gebühren und zeigt deine Statistik.</p>
       <div class="row-actions" style="justify-content:center">${imp}</div>${depotMsg ? `<div class="tip tone-gray" style="margin-top:14px;text-align:left">${depotMsg}</div>` : ""}
       <div class="note">Die Datei bleibt auf diesem Gerät – nichts wird hochgeladen. Positionen im Depot werden dabei ebenfalls aktualisiert.</div></div>`;
@@ -2556,7 +2586,7 @@ function journalHtml() {
     ${tx.slice().reverse().map(t => `<tr class="${/executed/i.test(t.status) ? "" : "muted"}"><td>${dateDE(t.date)}<small>${esc(t.time)}</small></td><td>${esc(TYPE_DE[t.type.toLowerCase()] || t.type)}${/executed/i.test(t.status) ? "" : ` <small>${esc(t.status)}</small>`}</td>
       <td>${esc(t.desc || "–")}<small>${esc(t.isin)}</small></td><td class="num">${t.qty ? fmt(t.qty, t.qty % 1 ? 3 : 0) : ""}</td><td class="num">${t.price ? fmt(t.price, t.price < 10 ? 3 : 2) : ""}</td>
       <td class="num ${t.amount >= 0 ? "up" : ""}">${sEur2(t.amount)}</td><td class="num">${t.fee ? eur2(t.fee) : ""}</td><td class="num">${t.tax ? eur2(t.tax) : ""}</td></tr>`).join("")}</tbody></table></div></details>`;
-  return head + hero + tiles + (ins ? `<div class="jins">${ins}</div>` : "") + curve + split + tradesTbl + openTbl
+  return head + jStrategyHtml() + hero + tiles + (ins ? `<div class="jins">${ins}</div>` : "") + curve + split + tradesTbl + openTbl
     + `<div class="row-actions" style="margin:22px 0 12px">${imp}<button class="btn ghost" data-jclear>Journal löschen</button></div>${depotMsg ? `<div class="tip tone-gray" style="margin-bottom:14px">${depotMsg}</div>` : ""}`
     + txTbl + `<div class="note" style="margin:16px 2px 0">Berechnung: Käufe und Verkäufe je Wertpapier nach FIFO zugeordnet, ein Trade läuft von der Eröffnung bis der Bestand wieder 0 ist. Ergebnis = Verkaufserlös − Kaufpreis, jeweils inklusive Ordergebühren, vor Steuern. Alles bleibt nur auf diesem Gerät gespeichert.</div>`;
 }
