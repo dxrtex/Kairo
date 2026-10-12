@@ -384,6 +384,7 @@
   td .live-btn { padding: 2px 7px; font-size: 11px; margin-left: 4px; }
   .live-tag { font-size: 11px; font-weight: 700; color: var(--up); white-space: nowrap; } .live-dot { color: var(--up); font-size: 9px; }
   .live-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: -4px 2px 10px; font-size: 12px; }
+  .ein-ext b { color: var(--accent); }
   .ein-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
   .tvbox summary { cursor: pointer; list-style: none; } .tvbox iframe { width: 100%; height: 420px; border: 0; border-radius: 12px; margin-top: 8px; background: var(--surface-2); }
   @media (max-width: 560px) { .tvbox iframe { height: 320px; } }
@@ -1533,7 +1534,9 @@ const COLS = [
 let searchIdx = null, searchLoading = null, fxEur = { EUR: 1 };
 function loadSearch() {
   if (!searchLoading) searchLoading = fetch("data/search.json", { cache: "no-store" }).then(r => r.json())
-    .then(d => { searchIdx = d.rows || []; fxEur = d.fx_eur || { EUR: 1 }; render(); }).catch(() => { searchIdx = []; render(); });
+    .then(d => { searchIdx = d.rows || []; fxEur = d.fx_eur || { EUR: 1 };
+      try { (JSON.parse(localStorage.getItem("kairo-ext") || "[]")).forEach(x => { if (!searchIdx.some(r => r.t === x.t)) searchIdx.push(x); }); } catch (e) {}
+      render(); }).catch(() => { searchIdx = []; render(); });
   return searchLoading;
 }
 function tipHtml(h) {
@@ -3302,11 +3305,68 @@ function einMatches(q) {
 function einListHtml() {
   const q = state.einQ || "", m = einMatches(q);
   if (q.length < 2 || (state.einT && m.length && m[0].t === state.einT && q === m[0].n)) return "";
-  if (!m.length) return `<div class="note" style="margin:6px 2px">Keine Aktie gefunden – gesucht wird in allen ${fmt(searchIdx.length, 0)} geprüften Aktien (ab 2 Mrd. USD).</div>`;
-  return `<div class="ein-list">${m.map(r => `<button class="ein-opt" data-ein="${esc(r.t)}"><b>${esc(r.n)}</b><span>${esc(r.t)} · ${fmt(r.c)} ${esc(r.cur || "")}</span>${einTag(r)}</button>`).join("")}</div>`;
+  const ext = `<button class="ein-opt ein-ext" data-extq="${esc(q)}"><b>🔍 „${esc(q)}“ an allen Börsen weltweit suchen</b><span>auch Aktien außerhalb des Kairo-Scans – Trade-Plan aus den aktuellen Tageskerzen</span></button>`;
+  if (!m.length) return `<div class="note" style="margin:6px 2px">Nicht unter den ${fmt(searchIdx.length, 0)} gescannten Aktien.</div><div class="ein-list">${ext}</div>`;
+  return `<div class="ein-list">${m.map(r => `<button class="ein-opt" data-ein="${esc(r.t)}"><b>${esc(r.n)}</b><span>${esc(r.ext ? r.x : r.t)} · ${fmt(r.c)} ${esc(r.cur || "")}</span>${einTag(r)}</button>`).join("")}${ext}</div>`;
 }
+// ---------- Jede Aktie: weltweite Suche + Tageskerzen (Twelve Data), Struktur wie backend/tradeplan.py – im Browser ----------
+const tdGet = async (path, params) => { const k = liveKey("td"); const j = await (await fetch(`https://api.twelvedata.com/${path}?` + new URLSearchParams({ ...params, ...(k ? { apikey: k } : {}) }))).json();
+  if (j && j.status === "error") throw new Error(j.message || "Twelve Data"); return j; };
+async function extSearch(q) {
+  const j = await tdGet("symbol_search", { symbol: q, outputsize: 15 });
+  return (j.data || []).filter(x => !x.instrument_type || /stock|depositary|equity/i.test(x.instrument_type));
+}
+const emaArr = (a, n) => { const k = 2 / (n + 1), o = []; a.forEach((x, i) => o.push(i ? x * k + o[i - 1] * (1 - k) : x)); return o; };
+function extStructure(o, h, l, c) {
+  const n = c.length, tr = c.map((x, i) => i ? Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])) : h[i] - l[i]);
+  let atr = tr.slice(1, 15).reduce((a, b) => a + b, 0) / 14; for (let i = 15; i < n; i++) atr = (atr * 13 + tr[i]) / 14;
+  let base = null;
+  for (const [k, m] of [[5, 1.5], [5, 2.5], [3, 1.5], [3, 2.5]]) { const lo = Math.min(...l.slice(-k)), hi = Math.max(...h.slice(-k));
+    if (hi - lo <= m * atr) { base = { k, lo, hi, m, w: +((hi - lo) / atr).toFixed(2) }; break; } }
+  const l10 = Math.min(...l.slice(-10)), h10 = Math.max(...h.slice(-10)), inv = base ? base.lo : l10, stop = inv - 0.25 * atr;
+  const e20 = emaArr(c, 20), e50 = emaArr(c, 50), e200 = emaArr(c, 200), last = c[n - 1];
+  const cand = [...(base ? [["Basis-Hoch", base.hi]] : []), ["10-Tage-Hoch", h10], ["EMA 20", e20[n - 1]], ["EMA 50", e50[n - 1]]].filter(x => x[1] > last + 0.1 * atr).sort((a, b) => a[1] - b[1]);
+  const tg = []; cand.forEach(([lb, v]) => { const pv = tg[tg.length - 1]; if (pv && v - pv[1] < 0.3 * atr) pv[0] += " / " + lb; else tg.push([lb, v]); });
+  const O = o[n - 1], H = h[n - 1], L = l[n - 1], rng = H - L, body = Math.abs(last - O), pos = rng ? (last - L) / rng : .5;
+  const kc = !rng ? null : body <= .1 * rng ? (pos >= .6 && Math.min(O, last) - L >= .6 * rng ? "hammer" : "doji") : last > O ? (Math.min(O, last) - L >= 2 * body && pos >= .5 ? "hammer" : pos >= .67 && body >= .5 * rng ? "bull" : "green") : (Math.min(O, last) - L >= 2 * body && pos >= .5 ? "hammer" : "red");
+  const lr = c.slice(-61).map((x, i, a) => i ? Math.log(x / a[i - 1]) : 0).slice(1), sd = Math.sqrt(lr.reduce((a, b) => a + b * b, 0) / lr.length - (lr.reduce((a, b) => a + b, 0) / lr.length) ** 2);
+  return { atr, e20: e20[n - 1], e50: e50[n - 1], e200: n >= 200 ? e200[n - 1] : null, vola: sd * Math.sqrt(252), d1: c[n - 2] ? last / c[n - 2] - 1 : null,
+           pl: { base, l3: Math.min(...l.slice(-3)), l10, h10, inv, src: base ? `Tief der ${base.k}-Tage-Basis` : "Tief der letzten 10 Tage (keine Basis)", stop, atr, sd: (last - stop) / atr, res: [], tg: tg.slice(0, 4), kc } };
+}
+async function extLoad(x) {
+  const j = await tdGet("time_series", { symbol: x.symbol, exchange: x.exchange, interval: "1day", outputsize: 260 });
+  const v = (j.values || []).slice().reverse();
+  if (v.length < 30) throw new Error("zu wenig Kursdaten");
+  const num = k => v.map(r => parseFloat(r[k]));
+  const st = extStructure(num("open"), num("high"), num("low"), num("close"));
+  const t = `~${x.symbol}:${x.exchange}`, c = num("close")[v.length - 1], cur = (j.meta && j.meta.currency) || x.currency || "";
+  const row = { t, n: x.instrument_name || x.symbol, x: `${x.symbol} · ${x.exchange}`, c, cur, s: "", m: null, km: [], tm: [], tr: 0, ap: st.atr / c, ...st,
+                ext: { symbol: x.symbol, exchange: x.exchange }, title: "Außerhalb des Kairo-Scans", text: "" };
+  searchIdx = searchIdx.filter(r => r.t !== t); searchIdx.push(row);
+  try { const l = JSON.parse(localStorage.getItem("kairo-ext") || "[]").filter(y => y.t !== t); l.unshift(row); localStorage.setItem("kairo-ext", JSON.stringify(l.slice(0, 40))); } catch (e) {}
+  if (cur && fxEur[cur] == null && cur !== "EUR") row.fxMissing = true;
+  return row;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-extq],[data-extpick]"); if (!b) return;
+  e.preventDefault(); const box = $("einList");
+  if (!liveKey("td")) { box.innerHTML = `<div class="tip tone-yellow" style="margin:6px 0">Für Aktien außerhalb des Scans braucht Kairo die Tageskerzen von Twelve Data: einmal den kostenlosen Schlüssel eintragen unter Einstellungen → Live-Kurse.</div>`; return; }
+  if (b.dataset.extq) {
+    box.innerHTML = `<div class="note" style="margin:6px 2px">Suche an allen Börsen …</div>`;
+    try { const l = await extSearch(b.dataset.extq);
+      box.innerHTML = l.length ? `<div class="ein-list">${l.map(x => `<button class="ein-opt" data-extpick='${esc(JSON.stringify(x))}'><b>${esc(x.instrument_name)}</b><span>${esc(x.symbol)} · ${esc(x.exchange)} · ${esc(x.country || "")} · ${esc(x.currency || "")}</span></button>`).join("")}</div>`
+        : `<div class="note" style="margin:6px 2px">Nichts gefunden.</div>`;
+    } catch (err) { box.innerHTML = `<div class="tip tone-yellow" style="margin:6px 0">Suche fehlgeschlagen: ${esc(err.message)}</div>`; }
+    return;
+  }
+  const x = JSON.parse(b.dataset.extpick);
+  box.innerHTML = `<div class="note" style="margin:6px 2px">Lade Tageskerzen von ${esc(x.instrument_name)} …</div>`;
+  try { const r = await extLoad(x); state.einT = r.t; state.einQ = r.n; save(); render(); }
+  catch (err) { box.innerHTML = `<div class="tip tone-yellow" style="margin:6px 0">Keine Kursdaten: ${esc(err.message)} (im kostenlosen Tarif sind nicht alle Börsen enthalten).</div>`; }
+});
 const einTag = r => r.tr === 2 ? `<i class="st trend">Trend Top</i>` : r.tr === 1 ? `<i class="st trend">Trend</i>` : r.s === "hit" ? `<i class="st hit">Kairo</i>` : r.s === "fast" ? `<i class="st fast">Kairo fast</i>` : "";
 function einSetup(r) {
+  if (r.ext) return { k: "none", tone: "gray", title: "Außerhalb des Kairo-Scans", sub: "Die 11 Kairo-Kriterien prüft nur der Abendscan. Der Trade-Plan unten rechnet Stop, Größe und Hebel aus den aktuellen Tageskerzen.", plan: null };
   if (r.tr === 2) return { k: "top", tone: "green", title: "Trend-Rücksetzer · Top", sub: "Das stärkste Setup im 6-Jahres-Test – hier lohnt sich der Einstieg am meisten.", plan: r.tp };
   if (r.tr === 1) return { k: "trend", tone: "green", title: "Trend-Rücksetzer", sub: "Aufwärtstrend mit kurzer Verschnaufpause an der EMA 50 – im Test deutlich besser als Kairo.", plan: r.tp };
   if (r.s === "hit") return { k: "kairo", tone: "yellow", title: `Kairo-Treffer${r.sc ? " · Score " + r.sc : ""}`, sub: "Umkehr nach einer Korrektur – alle 11 Kriterien erfüllt.", plan: r.kp };
@@ -3341,7 +3401,14 @@ function tdSymbol(t) {
   return ex ? { symbol: m[2] === "HK" ? m[1].replace(/^0+/, "") : m[1], exchange: ex } : null;
 }
 async function liveFetch(t) {
-  const fh = liveKey("fh"), td = liveKey("td");
+  const fh = liveKey("fh"), td = liveKey("td"), xr = rowOf(t), ext = xr && xr.ext;
+  if (ext) {
+    if (fh && /^(NASDAQ|NYSE|AMEX|NYSE ARCA|BATS|CBOE)/i.test(ext.exchange)) { const j = await (await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ext.symbol)}&token=${encodeURIComponent(fh)}`)).json();
+      if (j && j.c > 0) return { c: +j.c, pc: +j.pc || null, h: +j.h, l: +j.l, ts: (j.t || 0) * 1000 || Date.now(), src: "Finnhub" }; }
+    if (td) { const j = await tdGet("quote", { symbol: ext.symbol, exchange: ext.exchange }); const c = parseFloat(j && j.close);
+      if (c > 0) return { c, pc: parseFloat(j.previous_close) || null, h: parseFloat(j.high), l: parseFloat(j.low), ts: (j.timestamp || 0) * 1000 || Date.now(), src: "Twelve Data" }; }
+    return null;
+  }
   if (isUS(t) && fh) {
     const j = await (await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t.replace("-", "."))}&token=${encodeURIComponent(fh)}`)).json();
     if (j && j.c > 0) return { c: +j.c, pc: +j.pc || null, h: +j.h, l: +j.l, ts: (j.t || 0) * 1000 || Date.now(), src: "Finnhub" };
@@ -3408,7 +3475,8 @@ document.addEventListener("click", async e => {
   if (td) { const q = await liveFetch("SAP.DE").catch(() => null); res.push(q ? `✓ Twelve Data: SAP ${fmt(q.c)} EUR` : "✗ Twelve Data: keine Antwort – Schlüssel prüfen (oder Börse im kostenlosen Tarif nicht enthalten)"); }
   if (msg) msg.innerHTML = `<div class="tip tone-${res.some(x => x.startsWith("✗")) ? "yellow" : "green"}" style="margin-top:10px">${res.map(esc).join("<br>") || "Schlüssel gelöscht – Kurse wieder vom Abendscan."}</div>`;
 });
-const tvSym = t => { try { return new URL(tvUrl(t)).searchParams.get("symbol"); } catch (e) { return t; } };
+const tvSym = t => { const xr = rowOf(t); if (xr && xr.ext) return `${xr.ext.exchange.toUpperCase().replace(/\s+/g, "")}:${xr.ext.symbol}`;
+  try { return new URL(tvUrl(t)).searchParams.get("symbol"); } catch (e) { return t; } };
 function tvChartHtml(t) {
   const src = "https://s.tradingview.com/widgetembed/?" + new URLSearchParams({ symbol: tvSym(t), interval: "D", theme: isLight() ? "light" : "dark", style: "1",
     locale: "de_DE", timezone: "Europe/Berlin", hide_side_toolbar: "1", allow_symbol_change: "0", saveimage: "0", withdateranges: "1", studies: "[]" });
@@ -3425,7 +3493,7 @@ function einPlanHtml(r) {
   const warn = [days != null && days >= 0 && days <= 21 ? `⚠ Quartalszahlen am ${dateDE(r.ed)} (in ${days} Tagen) – Kurssprünge können den K.-o. überspringen.` : "",
     res && res.senti && res.senti.tgt ? `Analysten-Ziel Ø ${fmt(res.senti.tgt.m)} ${cur} (${sgnPct(res.senti.tgt.m / c - 1, 0)}).` : ""].filter(Boolean);
   return `<div class="hcard ein-head tone-${S.tone}">
-      <div class="ein-top"><div><h2>${favBtn(r.t)} ${esc(r.n)}</h2><div class="meta">${esc(r.t)} · ${esc(r.x || "")} · ${fmt(c)} ${cur}${r.d1 != null ? ` <span class="${r.d1 >= 0 ? "up" : "down"}">${sgnPct(r.d1, 1)}</span>` : ""} · Vola ${pct(r.vola, 0)} ${liveTag(r.t)}</div></div>${liveBtn(r.t)}</div>
+      <div class="ein-top"><div><h2>${favBtn(r.t)} ${esc(r.n)}</h2><div class="meta">${r.ext ? esc(r.x) : `${esc(r.t)} · ${esc(r.x || "")}`} · ${fmt(c)} ${cur}${r.d1 != null ? ` <span class="${r.d1 >= 0 ? "up" : "down"}">${sgnPct(r.d1, 1)}</span>` : ""} · Vola ${pct(r.vola, 0)} ${liveTag(r.t)}</div></div>${liveBtn(r.t)}</div>
       <div class="ein-verdict"><b>${esc(S.title)}</b><span>${esc(S.sub)}</span></div>
       ${warn.length ? `<div class="note" style="margin:8px 0 0">${warn.map(esc).join("<br>")}</div>` : ""}</div>
     ${tvChartHtml(r.t)}
@@ -3622,7 +3690,7 @@ function tpInner(r, S) {
     <div class="tip tone-${m.fit.tone}" style="margin-top:12px"><b class="t">${esc(m.fit.t)}</b>${esc(m.fit.s)}</div>
     ${m.mk ? `<div class="note" style="margin:6px 2px 0">Marktampel: ${esc(m.mk.t)} – ${esc(m.mk.s)}</div>` : ""}
     ${m.problems.map(([t, x]) => `<div class="tip tone-${t}" style="margin-top:8px">${esc(x)}</div>`).join("")}
-    <div class="tp2-plan"${m.fit.ok ? "" : ' style="opacity:.6"'}>
+    <div class="tp2-plan">
       ${row("Kauf", `${X(m.E)} ${cur}`, m.base ? `in der Seitwärtsphase ${X(m.base.lo)}–${X(m.base.hi)} €` : "keine Seitwärtsphase erkannt")}
       ${row("Stop-Loss (SL)", `${X(m.stop)} ${cur}`, `${sgnPct(m.stop / m.E - 1, 1)} · Verlust ${sgnEur(at(m.stop))}`, "down")}
       ${row("Take-Profit", "keiner", "Gewinner laufen lassen – das bringt laut Test am meisten")}
@@ -3635,8 +3703,8 @@ function tpInner(r, S) {
     <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position setzen. Keinen Limit-Verkauf – an Tag ${m.hold} zum Schluss verkaufen, falls der SL nicht vorher greift. Nicht vorher verkaufen, auch wenn es gut läuft: Die großen Gewinner machen das Ergebnis. Kairo führt keine Orders aus.</div>
     <div class="note">Warum diese Werte: SL = ${esc(m.src)} (${fmt(m.riskAtr, 1)} ATR). ${m.tpWhy || ""} Hebel = höchster, bei dem der K.-o. mindestens 1 ATR unter dem SL liegt (max. ×${fmt(Math.min(10, m.maxL), 1)}, Scalable bis ×10) – so knockt eine normale Kursschwankung den Turbo nicht aus – das Risiko bleibt gleich, nur der Einsatz sinkt. Kosten ≈ ${eur2(lv.cost)} sind eingerechnet. Kurslücke unter den K.-o.: Einsatz verloren (${sgnEur(-lv.stake - 2 * cfg.fee)}).</div>
     ${lv.L > 1 ? `<div class="row-actions" style="margin-top:10px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Turbo bei onvista suchen</a></div>` : ""}
-    ${m.fit.ok ? `<div class="row-actions" style="margin-top:12px"><button class="btn" data-tpopen="${esc(r.t)}">Trade eröffnen & speichern</button></div>
-    <div class="note">Speichert den Plan unverändert. Kairo prüft ihn nach jedem Abendscan (SL, Ausstiegstag).</div>` : ""}
+    <div class="row-actions" style="margin-top:12px"><button class="btn${m.fit.ok ? "" : " ghost"}" data-tpopen="${esc(r.t)}">${m.fit.ok ? "Trade eröffnen & speichern" : "Trotzdem speichern"}</button></div>
+    <div class="note">Speichert den Plan unverändert. Kairo prüft ihn ${r.ext ? "mit Live-Kursen" : "nach jedem Abendscan"} (SL, Ausstiegstag).</div>
     ${acct}`;
 }
 // Dein echter Turbo: Stop-Kurs am Turbo und Stückzahl aus Kaufkurs (€) und K.-o.-Schwelle des Produkts.
