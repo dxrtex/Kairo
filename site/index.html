@@ -330,7 +330,7 @@
   nav.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: rgba(22, 22, 24, .82);
                -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border-top: 1px solid var(--line);
                padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
-  .tabs { max-width: 680px; margin: 0 auto; display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+  .tabs { max-width: 680px; margin: 0 auto; display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; }
   .tab { border: 0; background: none; cursor: pointer; color: var(--muted); display: flex; flex-direction: column; align-items: center;
          gap: 3px; font-size: 12px; font-weight: 600; padding: 6px 0; border-radius: 16px; position: relative; }
   .tab svg { width: 24px; height: 24px; }
@@ -356,7 +356,7 @@
   .opt.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 650; }
   .sheet .btn { width: 100%; margin-top: 26px; display: block; }
 
-  .tabs { max-width: 820px; grid-template-columns: repeat(8, 1fr); }
+  .tabs { max-width: 880px; grid-template-columns: repeat(9, 1fr); }
   .card h2 a { color: inherit; text-decoration: none; }
   .ampel { display: flex; gap: 5px; flex-wrap: wrap; }
   .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--up); display: inline-block; }
@@ -1022,6 +1022,9 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
     <button class="tab" data-sec="today">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z"/></svg>
       Heute</button>
+    <button class="tab" data-sec="etf">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.6 5.4 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.4-3.6-8.5S9.5 6.1 12 3.5z"/></svg>
+      ETF</button>
     <button class="tab" data-sec="scanner">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5M8 11h6M11 8v6"/></svg>
       Scanner<span class="badge" id="wlBadge" hidden></span></button>
@@ -2940,7 +2943,7 @@ function getJson(name) {
   if (!(name in jsonData)) {
     jsonData[name] = undefined;
     fetch(`data/${name}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
-      .then(d => { jsonData[name] = d || null; if (["today", "bilanz", "settings", "depot"].includes(state.sec)) render(); });
+      .then(d => { jsonData[name] = d || null; if (["today", "bilanz", "settings", "depot", "etf"].includes(state.sec)) render(); });
   }
   return jsonData[name];
 }
@@ -3188,10 +3191,94 @@ function todayHtml() {
   const al = getJson("alerts.json");
   const tgHint = al && !al.connected ? `<button class="hcard tg" ${SEC_LINK("settings")}><b>📲 Abendbericht aufs Handy</b><span>Neue Treffer, deine Aktien und Knock-out-Warnungen jeden Abend per Telegram – in 3 Minuten eingerichtet.</span><span class="hlink">Einrichten ›</span></button>` : "";
   // Postfach: Aufgaben oben, darunter dieselben Karten wie sonst (ohne „Beste Treffer“ – die stehen schon im Postfach)
-  if (isPostfach()) return postfachHtml(`${depotSnapHtml()}${myStocksHtml()}${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
-  return (isApple() ? todoHtml() : kpiHtml()) + `<div class="hgrid"><div class="hcol">${marketHtml()}${changesHtml()}${myStocksHtml()}</div>
+  if (isPostfach()) return postfachHtml(`${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
+  return (isApple() ? todoHtml() : kpiHtml()) + `<div class="hgrid"><div class="hcol">${etfTeaserHtml()}${marketHtml()}${changesHtml()}${myStocksHtml()}</div>
     <div class="hcol">${bilanzTeaserHtml()}${depotSnapHtml()}${soonHtml()}${topHitsHtml()}${journalTeaserHtml()}${tgHint}</div></div>`;
 }
+
+// ---------- ETF-Bereich (70 %): SPDR MSCI ACWI IMI – Ampel aus backend/etf.py, Plan auf dem Gerät ----------
+// Test (backend/etftest.py, Okt. 2026): gleicher Geldeinsatz je Monat, nur der Zeitpunkt verschieden. Warten auf Rücksetzer brachte
+// nichts, ein Trendfilter kostete ein Fünftel – aber nach Rücksetzern war die Folge-Rendite deutlich höher (für Extra-Geld).
+const ETF_BT = {
+  fwd: [["am Allzeithoch", .089, .233, .34], ["2–5 % unter Hoch", .088, .313, .471], ["5–10 % unter Hoch", .106, .254, .526],
+        ["10–20 % unter Hoch", .154, .14, .349], ["mehr als 20 % unter Hoch", .221, .01, .121], ["unter der 200-Tage-Linie", .185, .107, .33]],
+  plans: [["Jeden Monat gleich viel (Sparplan)", 3.077, 3.739, .33, true], ["Am Hoch 25 % zurückhalten, bei −10/−20 % nachkaufen", 3.069, 3.709, .33],
+          ["Nahe der 200-Tage-Linie nachkaufen", 3.052, 3.689, .33], ["Nur unter der 200-Tage-Linie kaufen", 2.995, 3.517, .33],
+          ["Trendfilter: unter der 200-Tage-Linie alles raus", 2.388, 2.989, .15]] };
+const ETF_TONE = { blue: ["Normal sparen", "var(--accent, #0a84ff)"], green: ["Günstig", "var(--up)"], green2: ["Ausverkauf", "#30d158"] };
+const etfCfg = () => { const e = state.etf || {}; return { total: +e.total > 0 ? +e.total : 3000, share: +e.share > 0 ? Math.min(100, +e.share) : 70, rate: +e.rate > 0 ? +e.rate : 0, units: +e.units > 0 ? +e.units : 0 }; };
+function etfLine(h) {
+  if (!h || h.length < 20) return "";
+  const W = 640, H = 220, p = 8, xs = h.map(x => x[1]), ms = h.map(x => x[2]).filter(v => v != null), lo = Math.min(...xs, ...ms) * .98, hi = Math.max(...xs, ...ms) * 1.01;
+  const X = i => p + i / (h.length - 1) * (W - 2 * p), Y = v => H - 24 - (v - lo) / (hi - lo) * (H - 40);
+  const path = k => h.map((x, i) => x[k] == null ? null : `${X(i).toFixed(1)},${Y(x[k]).toFixed(1)}`).filter(Boolean).join(" ");
+  const yrs = [...new Set(h.map(x => x[0].slice(0, 4)))].map(y => [y, h.findIndex(x => x[0].startsWith(y))]).filter(x => x[1] > 10);
+  return `<svg class="rp" viewBox="0 0 ${W} ${H}" role="img" aria-label="Kursverlauf mit 200-Tage-Linie">
+    <polyline points="${path(2)}" fill="none" stroke="var(--gold)" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <polyline points="${path(1)}" fill="none" stroke="var(--accent, #0a84ff)" stroke-width="2"/>
+    ${yrs.map(([y, i]) => `<line x1="${X(i)}" x2="${X(i)}" y1="10" y2="${H - 22}" stroke="var(--line)"/><text x="${X(i) + 3}" y="${H - 8}">${y}</text>`).join("")}</svg>
+    <div class="oleg"><span style="color:var(--accent, #0a84ff)">■ Kurs (€)</span><span class="gold">┄ 200-Tage-Linie</span></div>`;
+}
+function etfAmpelHtml(e, compact) {
+  const [lbl, col] = ETF_TONE[e.lv] || ETF_TONE.blue;
+  return `<div class="regime" style="--c:${col}"><i></i><div><b>${esc(e.t)}</b><span>${compact ? `SPYI ${fmt(e.c)} € · ${e.dd < .005 ? "am Allzeithoch" : pct(e.dd, 1) + " unter dem Hoch"} · ${e.vs_sma >= 0 ? "über" : "unter"} der 200-Tage-Linie` : esc(e.s)}</span></div></div>`;
+}
+function etfTeaserHtml() {
+  const e = getJson("etf.json");
+  if (!e) return "";
+  return `<button class="hcard" ${SEC_LINK("etf")}>${hHead("ETF-Bereich · " + etfCfg().share + " %", "", "")}${etfAmpelHtml(e, true)}<span class="hlink">ETF ›</span></button>`;
+}
+function etfHtml() {
+  const e = getJson("etf.json"), c = etfCfg();
+  if (e === undefined) return `<div class="section-title"><span>ETF-Bereich</span><span>lädt …</span></div>`;
+  const trade = tpCfg().depot, etfVal = e && c.units ? c.units * e.c : null, sum = etfVal != null ? etfVal + trade : null, ist = sum ? etfVal / sum : null;
+  const tgtT = c.total * (100 - c.share) / 100;
+  const hero = e ? `<div class="hcard">${hHead(`ETF-Ampel · ${esc(e.name)}`)}${etfAmpelHtml(e)}
+      <div class="mtiles"><div class="mt"><span>Kurs</span><b>${fmt(e.c)} €</b><em>Stand ${dateDE(e.date)}</em></div>
+        <div class="mt"><span>Abstand zum Hoch</span><b class="${e.dd >= .1 ? "up" : ""}">${e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1)}</b><em>Hoch ${fmt(e.ath)} € (${dateDE(e.ath_date)})</em></div>
+        <div class="mt"><span>200-Tage-Linie</span><b>${fmt(e.sma200)} €</b><em class="${e.vs_sma < 0 ? "up" : ""}">${e.vs_sma >= 0 ? "Kurs " + pct(e.vs_sma, 1) + " darüber" : "Kurs " + pct(-e.vs_sma, 1) + " darunter"}</em></div></div>
+      <ul class="checks" style="margin-top:10px"><li><i class="up">●</i><b>Grün (Ausverkauf):</b> 20 % oder mehr unter dem Hoch – Extra-Geld jetzt.</li>
+        <li><i class="up">●</i><b>Grün (günstig):</b> 10–20 % unter dem Hoch oder unter der 200-Tage-Linie – gern mehr.</li>
+        <li><i style="color:var(--accent, #0a84ff)">●</i><b>Blau (normal):</b> nahe am Hoch – Sparrate wie geplant.</li>
+        <li><i class="muted">–</i><b>Kein Rot:</b> „Jetzt nicht kaufen“ hat im Test immer Geld gekostet. Die Sparrate läuft bei jeder Farbe.</li></ul></div>
+    <div class="hcard">${hHead("Kurs der letzten 3 Jahre")}${etfLine(e.hist)}</div>`
+    : `<div class="hcard"><div class="note" style="margin:0">Die ETF-Daten kommen mit dem nächsten Scan.</div></div>`;
+  const plan = `<div class="hcard">${hHead("Mein Plan · 70 / 30")}
+    <div class="tp2-cfg"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
+      <label>ETF-Anteil (%)<input id="etfShare" type="number" inputmode="decimal" min="0" max="100" step="5" value="${esc(c.share)}"></label>
+      <label>Sparrate je Monat (€)<input id="etfRate" type="number" inputmode="decimal" min="0" step="25" value="${esc(c.rate || "")}" placeholder="z. B. 200"></label>
+      <label>SPYI-Anteile im Depot<input id="etfUnits" type="number" inputmode="decimal" min="0" step="1" value="${esc(c.units || "")}" placeholder="Stück"></label></div>
+    <div class="mtiles" style="margin-top:10px"><div class="mt"><span>ETF-Ziel</span><b>${eur(c.total * c.share / 100)}</b><em>${c.share} %</em></div>
+      <div class="mt"><span>Trading-Kapital</span><b>${eur(tgtT)}</b><em>${100 - c.share} % · im Einstieg: ${eur(trade)}</em></div>
+      ${etfVal != null ? `<div class="mt"><span>ETF jetzt</span><b>${eur(etfVal)}</b><em>${pct(ist, 0)} vom Ganzen</em></div>` : ""}
+      ${c.rate ? `<div class="mt"><span>Sparrate</span><b>${eur(c.rate)}</b><em>${ist != null && ist < c.share / 100 - .05 ? "ganz in den ETF (unter Ziel)" : `${eur(c.rate * c.share / 100)} ETF · ${eur(c.rate * (100 - c.share) / 100)} Trading`}</em></div>` : ""}</div>
+    ${Math.abs(tgtT - trade) > 1 ? `<button class="btn" id="etfSync" style="margin-top:10px">Trading-Kapital im Einstieg auf ${eur(tgtT)} setzen</button><div class="note" style="margin:6px 0 0">Das 1-%-Risiko je Trade rechnet mit diesem Betrag – so bleibt der Trading-Bereich bei ${100 - c.share} %.</div>` : `<div class="note" style="margin:10px 0 0">✓ Der Trading-Bereich rechnet mit ${eur(trade)} – passt zu ${100 - c.share} %.</div>`}
+    ${ist != null && Math.abs(ist - c.share / 100) > .1 ? `<div class="note" style="margin:8px 0 0">⚖️ Verteilung weicht um mehr als 10 Punkte ab (${pct(ist, 0)} ETF). Am günstigsten über die Sparrate ausgleichen – Verkaufen kostet Steuern.</div>` : ""}</div>`;
+  const how = `<div class="hcard">${hHead("So gehst du vor")}<ul class="checks rules">${[
+      ["Sparplan bei Scalable", "monatlich in den SPYI – läuft automatisch, bei jeder Ampelfarbe"],
+      ["Nie wegen Rücksetzern verkaufen", "der Welt-ETF fiel 2008/09 um mehr als 50 % und erholte sich – wer verkaufte, verpasste die Erholung"],
+      ["Extra-Geld bei Grün", "Bonus, Rücklage oder Gewinne aus dem Trading-Bereich bevorzugt investieren, wenn die Ampel grün ist"],
+      ["Ausschüttungen", "SPYI gilt als thesaurierend (Erträge werden wieder angelegt) – im Factsheet bei Scalable kurz prüfen"]].map(([l, t]) => `<li><i class="up">✓</i><b>${l}:</b> ${t}</li>`).join("")}</ul></div>`;
+  const test = `<div class="hcard">${hHead("Was der Test zeigt")}
+    <div class="hsub">Was nach welcher Lage folgte (MSCI ACWI, 2008–2026)</div>
+    <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Lage</th><th class="num">Ø 12 Monate später</th><th class="num">nach 12 Mon. im Minus</th><th class="num">zwischendurch −10 %</th></tr></thead><tbody>
+      ${ETF_BT.fwd.map(([l, f, n, d]) => `<tr${e && ((l.includes("Allzeithoch") && e.dd < .02) || (l.startsWith("mehr als") && e.dd >= .2)) ? ' class="best"' : ""}><td>${l}</td><td class="num up">+${pct(f, 0)}</td><td class="num">${pct(n, 0)}</td><td class="num">${pct(d, 0)}</td></tr>`).join("")}</tbody></table></div>
+    <div class="note" style="margin:6px 0 10px">Am Hoch ist ein Rücksetzer um 10 % in einem Drittel der Fälle gekommen – trotzdem lag der ETF ein Jahr später im Schnitt 9 % höher. Ein Allzeithoch ist kein Verkaufs- oder Wartesignal.</div>
+    <div class="hsub">Sparplan-Regeln mit gleichem Geld (Endwert ÷ Einzahlungen)</div>
+    <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Regel</th><th class="num">ACWI ab 2008</th><th class="num">Welt ab 2003</th><th class="num">größter Rückgang</th></tr></thead><tbody>
+      ${ETF_BT.plans.map(([l, a, b, d, me]) => `<tr${me ? ' class="best"' : ""}><td>${me ? `<b>${l}</b> ★` : l}</td><td class="num">${fmt(a, 2)}×</td><td class="num">${fmt(b, 2)}×</td><td class="num down">−${pct(d, 0)}</td></tr>`).join("")}</tbody></table></div>
+    <div class="note" style="margin:6px 0 0">Geld zurückhalten und auf Rücksetzer warten brachte nichts – das wartende Geld verpasst die Zeit am Markt. Ein Trendfilter halbiert die Rückgänge, kostet aber rund ein Fünftel des Endwerts. Deshalb: Sparplan immer, nur <b>zusätzliches</b> Geld nach der Ampel. Welt ab 2003 = 55 % S&amp;P 500 + 35 % Industrieländer + 10 % Schwellenländer; vor Steuern und ohne Kosten.</div></div>`;
+  return `<div class="section-title"><span>ETF-Bereich · ${c.share} % deines Kapitals</span><span>${e ? dateDE(e.date) : ""}</span></div><div class="hgrid"><div class="hcol">${hero}${how}</div><div class="hcol">${plan}${test}</div></div>`;
+}
+document.addEventListener("input", e => {
+  const k = { etfTotal: "total", etfShare: "share", etfRate: "rate", etfUnits: "units" }[e.target.id]; if (!k) return;
+  const v = parseFloat(String(e.target.value).replace(",", ".")); state.etf = { ...(state.etf || {}), [k]: v >= 0 ? v : undefined }; save();
+});
+document.addEventListener("change", e => { if (["etfTotal", "etfShare", "etfRate", "etfUnits"].includes(e.target.id) && state.sec === "etf") render(); });
+document.addEventListener("click", e => {
+  if (!e.target.closest("#etfSync")) return;
+  const c = etfCfg(); state.tpDepot = Math.round(c.total * (100 - c.share) / 100); save(); render();
+});
 
 // ---------- Kairo-Bilanz: unsere Strategie (10-Jahres-Studie, Live-Signale, deine Trades) ----------
 // Wahrheits-Test (backend/shortswing.py only=truth): zwei unabhängige Stichproben à ~3.200 Aktien, 2017–Okt. 2026, Depot 3.000 €,
@@ -3469,7 +3556,7 @@ function extStructure(o, h, l, c) {
   const n = c.length, tr = c.map((x, i) => i ? Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])) : h[i] - l[i]);
   let atr = tr.slice(1, 15).reduce((a, b) => a + b, 0) / 14; for (let i = 15; i < n; i++) atr = (atr * 13 + tr[i]) / 14;
   let base = null;
-  for (const [k, m] of [[5, 1.5]])   // wie getestet (backend/tradeplan.py) { const lo = Math.min(...l.slice(-k)), hi = Math.max(...h.slice(-k));
+  for (const [k, m] of [[5, 1.5]]) /* wie getestet (backend/tradeplan.py) */ { const lo = Math.min(...l.slice(-k)), hi = Math.max(...h.slice(-k));
     if (hi - lo <= m * atr) { base = { k, lo, hi, m, w: +((hi - lo) / atr).toFixed(2) }; break; } }
   const l10 = Math.min(...l.slice(-10)), h10 = Math.max(...h.slice(-10)), inv = base ? base.lo : l10, stop = inv - 0.25 * atr;
   const e20 = emaArr(c, 20), e50 = emaArr(c, 50), e200 = emaArr(c, 200), last = c[n - 1];
@@ -4083,6 +4170,7 @@ function renderMain() {
   if (state.sec === "settings") { $("main").innerHTML = settingsHtml(); return; }
   if (state.sec === "today") { $("main").innerHTML = todayHtml(); if (isPostfach()) mountPostfach(); return; }
   if (state.sec === "bilanz") { $("main").innerHTML = bilanzHtml(); return; }
+  if (state.sec === "etf") { $("main").innerHTML = etfHtml(); return; }
   if (state.sec === "calendar") { $("main").innerHTML = calendarHtml(); return; }
   if (state.sec === "news") { $("main").innerHTML = newsHtml(); return; }
   if (state.sec === "entry") { $("main").innerHTML = einHtml(); return; }
@@ -4177,7 +4265,7 @@ function greetText() {
   const h = new Date().getHours(), nm = String(state.name || "").trim();
   return esc(h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend") + (nm ? `, <span class="nm">${esc(nm)}</span>` : "") + greetEmoji();
 }
-const SEC_T = { today: "Heute", scanner: "Scanner", entry: "Einstieg", calendar: "Kalender", news: "News", depot: "Depot", journal: "Journal", game: "Spiel", settings: "Einstellungen", bilanz: "Bilanz" };
+const SEC_T = { today: "Heute", etf: "ETF", scanner: "Scanner", entry: "Einstieg", calendar: "Kalender", news: "News", depot: "Depot", journal: "Journal", game: "Spiel", settings: "Einstellungen", bilanz: "Bilanz" };
 function appleHead() {
   document.body.dataset.sec = state.sec;
   if (!isApple()) return;
