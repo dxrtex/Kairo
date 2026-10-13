@@ -118,7 +118,7 @@ def _trade(b: pd.DataFrame, i0: int, stop: float, exit_rule: str, max_days: int 
     if i0 >= len(b) - 1:
         return None
     e = float(b["Open"].iat[i0])
-    if not (stop < e) or (e - stop) / e > 0.25:
+    if not (stop < e) or (e - stop) / e > 0.25 or (e - stop) / e < 0.004:     # Stop zu weit / so eng, dass Kosten das Risiko übersteigen
         return None
     risk = e - stop
     o, h, l, c = (b[k].to_numpy(float) for k in ("Open", "High", "Low", "Close"))
