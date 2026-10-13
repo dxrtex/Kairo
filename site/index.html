@@ -2818,14 +2818,16 @@ function gSetup(t) {
   if (r && r.passed) return { k: "Kairo", score: r.score };
   if (s && s.s === "hit") return { k: "Kairo", score: s.sc ?? null };
   if ((r && isTrend(r)) || (s && s.tr)) return { k: "Trend" };
+  if (s && s.ext) return { k: "außerhalb des Scans" };
   return { k: "frei" };
 }
 function gListHtml() {
   const q = state.gQ || "";
   if (q.length < 2) return "";
   const m = einMatches(q);
-  if (!m.length) return `<div class="note" style="margin:6px 2px">Keine Aktie gefunden – gesucht wird in allen ${fmt(searchIdx.length, 0)} geprüften Aktien.</div>`;
-  return `<div class="ein-list">${m.map(r => `<button class="ein-opt" data-g="pick" data-t="${esc(r.t)}"><b>${esc(r.n)}</b><span>${esc(r.t)} · ${fmt(r.c)} ${esc(r.cur || "")}</span>${einTag(r)}</button>`).join("")}</div>`;
+  const ext = `<button class="ein-opt ein-ext" data-extq="${esc(q)}"><b>🔍 „${esc(q)}“ an allen Börsen weltweit suchen</b><span>jede Aktie – auch außerhalb des Kairo-Scans</span></button>`;
+  if (!m.length) return `<div class="note" style="margin:6px 2px">Nicht unter den ${fmt(searchIdx.length, 0)} gescannten Aktien.</div><div class="ein-list">${ext}</div>`;
+  return `<div class="ein-list">${m.map(r => `<button class="ein-opt" data-g="pick" data-t="${esc(r.t)}"><b>${esc(r.n)}</b><span>${esc(r.ext ? r.x : r.t)} · ${fmt(r.c)} ${esc(r.cur || "")}</span>${einTag(r)}</button>`).join("")}${ext}</div>`;
 }
 function gSpark(h) {
   if (h.length < 2) return "";
@@ -2888,7 +2890,7 @@ function gameHtml() {
       ${ep ? `<button class="btn" data-g="start">Spiel starten (70 / 30)</button>` : `<div class="note">ETF-Kurs lädt noch …</div>`}
       ${old ? `<div class="note" style="margin-top:8px">Dein altes Spiel (ohne ETF-Teil) bleibt gespeichert, wird hier aber nicht mehr angezeigt.</div>` : ""}</div>`;
   }
-  gTick(g); gSave(g); liveKick(g.pos.map(p => p.t), "game");
+  gTick(g); gSave(g); liveKick([...g.pos.map(p => p.t), state.gSel], "game");
   const T = gTotals(g), perf = T.total / G_START - 1, tperf = T.trade / g.tcap - 1, eperf = T.etfOnly ? T.etfOnly / G_START - 1 : null;
   const days = Math.max(0, Math.round((Date.now() - new Date(g.start)) / 864e5));
   const pos = g.pos.map(p => {
@@ -2953,10 +2955,11 @@ document.addEventListener("click", e => {
     const v = prompt(`Aktueller Geldkurs je Stück (€) für ${p.n}${p.wkn ? " (" + p.wkn + ")" : ""} – aus Scalable. Leer = wieder schätzen.`, p.mark ? String(p.mark.v).replace(".", ",") : "");
     if (v === null) return; const x = gNum(v); p.mark = x > 0 ? { v: x, d: String(data.generated).slice(0, 10) } : null; gSave(g); render(); return; }
   if (a === "sell") { const p = g.pos.find(x => x.id === b.dataset.id); if (!p) return;
-    if (p.exit && isoD(new Date()) < p.exit && !confirm(`Laut Strategie wird ${p.n} erst am ${dateDE(p.exit)} verkauft (Tag ${KMAX.hold}) – oder vorher am Stop. Ein früher Verkauf kostete im Test Rendite. Trotzdem jetzt verkaufen?`)) return;
-    if (p.exit && isoD(new Date()) < p.exit) p.rv = [...(p.rv || []), "vor Tag 20 verkauft"];
+    const early = p.exit && isoD(new Date()) < p.exit;
     const v = prompt(`Verkaufskurs je Stück (€) für ${fmt(p.qty, 0)} × ${p.n} – der Geldkurs aus Scalable:`, gUnit(p).toFixed(3).replace(".", ","));
-    if (v === null) return; const x = gNum(v); if (x == null || x < 0) return; gSell(g, p.id, "manuell", x); gTick(g); gSave(g); render(); return; }
+    if (v === null) return; const x = gNum(v); if (x == null || x < 0) return;
+    if (early) p.rv = [...(p.rv || []), "vor Tag 20 verkauft"];
+    gSell(g, p.id, "manuell", x); gTick(g); gSave(g); render(); return; }
   if (a === "reset") { if (confirm("Spiel wirklich neu starten? Alle Spiel-Positionen und der Verlauf werden gelöscht.")) { localStorage.removeItem(GKEY); state.gSel = ""; save(); render(); } return; }
 });
 document.addEventListener("change", e => {
@@ -3671,7 +3674,7 @@ async function extLoad(x) {
 }
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-extq],[data-extpick]"); if (!b) return;
-  e.preventDefault(); const box = $("einList");
+  e.preventDefault(); const game = state.sec === "game", box = $(game ? "gList" : "einList"); if (!box) return;
   if (!liveKey("td") && !liveKey("yq")) { box.innerHTML = `<div class="tip tone-yellow" style="margin:6px 0">Für Aktien außerhalb des Scans braucht Kairo Tageskerzen: einmal den Kairo-Kursdienst einrichten unter Einstellungen → Live-Kurse.</div>`; return; }
   if (b.dataset.extq) {
     box.innerHTML = `<div class="note" style="margin:6px 2px">Suche an allen Börsen …</div>`;
@@ -3683,7 +3686,8 @@ document.addEventListener("click", async e => {
   }
   const x = JSON.parse(b.dataset.extpick);
   box.innerHTML = `<div class="note" style="margin:6px 2px">Lade Tageskerzen von ${esc(x.instrument_name)} …</div>`;
-  try { const r = await extLoad(x); state.einT = r.t; state.einQ = r.n; save(); render(); }
+  try { const r = await extLoad(x); if (game) { state.gSel = r.t; state.gQ = ""; state.gF = {}; state.gMsg = ""; } else { state.einT = r.t; state.einQ = r.n; } save(); render();
+    if (game) setTimeout(() => { const f = document.querySelector(".g-buy"); f && f.scrollIntoView({ behavior: "smooth", block: "center" }); }, 30); }
   catch (err) { box.innerHTML = `<div class="tip tone-yellow" style="margin:6px 0">Keine Kursdaten: ${esc(err.message)} (im kostenlosen Tarif sind nicht alle Börsen enthalten).</div>`; }
 });
 const einTag = r => r.tr === 2 ? `<i class="st trend">Trend Top</i>` : r.tr === 1 ? `<i class="st trend">Trend</i>` : r.s === "hit" ? `<i class="st hit">Kairo</i>` : r.s === "fast" ? `<i class="st fast">Kairo fast</i>` : "";
