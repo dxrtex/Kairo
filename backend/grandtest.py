@@ -39,22 +39,32 @@ SECTORS = ["XLK", "XLF", "XLE", "XLV", "XLI", "XLY", "XLP", "XLU", "XLB"]
 EQ_ETF = set(["SPY", "QQQ", "EFA", "ACWI", "USMV", "MTUM", "QUAL", "VLUE", "SPY2X", "SPY3X"] + SECTORS)
 
 
-def _closes(tickers: list[str], period: str = "max") -> pd.DataFrame:
+def _closes(tickers: list[str], period: str = "max", batch: int = 60, pause: float = 4.0) -> pd.DataFrame:
+    """Schlusskurse (bereinigt) – langsam und mit Wiederholungen, weil Yahoo sonst sperrt (Rate-Limit)."""
     import yfinance as yf
-    frames = []
-    for i in range(0, len(tickers), 150):
-        batch = tickers[i:i + 150]
-        for attempt in range(4):
+    frames, todo = [], list(dict.fromkeys(tickers))
+    for rnd in range(4):
+        failed = []
+        for i in range(0, len(todo), batch):
+            part = todo[i:i + batch]
             try:
-                d = yf.download(batch, period=period, interval="1d", auto_adjust=True, progress=False, threads=True, group_by="column")
-                c = d["Close"] if isinstance(d.columns, pd.MultiIndex) else d[["Close"]].rename(columns={"Close": batch[0]})
-                frames.append(c)
-                break
+                d = yf.download(part, period=period, interval="1d", auto_adjust=True, progress=False, threads=True, group_by="column")
+                c = d["Close"] if isinstance(d.columns, pd.MultiIndex) else d[["Close"]].rename(columns={"Close": part[0]})
+                ok = [t for t in c.columns if c[t].notna().any()]
+                frames.append(c[ok])
+                failed += [t for t in part if t not in ok]
             except Exception as exc:
                 print("Download-Fehler", repr(exc)[:120], flush=True)
-                time.sleep(5 * 2 ** attempt)
+                failed += part
+            time.sleep(pause)
+        print(f"Kurse Runde {rnd + 1}: {len(todo) - len(failed)} von {len(todo)} geladen", flush=True)
+        if not failed or len(failed) == len(todo) and rnd > 0:
+            break
+        todo = failed
+        time.sleep(60)
     out = pd.concat(frames, axis=1) if frames else pd.DataFrame()
     out.index = pd.to_datetime(out.index).tz_localize(None).normalize()
+    out = out[~out.index.duplicated()]
     return out.loc[:, ~out.columns.duplicated()].sort_index()
 
 
@@ -308,7 +318,8 @@ def main(argv=None) -> int:
         us = [t for t in uni.loc[uni["region"] == "us", "ticker"].astype(str) if "." not in t and "^" not in t][: a.stocks]
         st = _closes(us, "11y").reindex(cal).ffill(limit=5)
         st = st.loc[:, st.notna().sum() > 300]
-        print(f"Aktien: {st.shape[1]} mit Kursen", f"{time.time() - t0:.0f} s", flush=True)
+        print(f"Aktien: {st.shape[1]} von {len(us)} mit Kursen", f"{time.time() - t0:.0f} s", flush=True)
+        coverage = {"aktien_geladen": int(st.shape[1]), "aktien_universum": len(us)}
         srets = st.pct_change().clip(-0.9, 3)
         mom = st.shift(21) / st.shift(252) - 1                      # 12-1 Monate
         allr = pd.concat([rets, srets], axis=1)
@@ -316,6 +327,7 @@ def main(argv=None) -> int:
         def mom_fn(me, trend=False, n=10):
             m = mom.loc[me].dropna()
             m = m[(st.loc[me, m.index] >= 5)]
+            m = m[m < 20]                                            # offensichtliche Datenfehler (Splits) auslassen
             if len(m) < 100:
                 return None
             if trend and not up(me):
@@ -348,7 +360,8 @@ def main(argv=None) -> int:
                     return None
                 if trend and not up(me):
                     return {}
-                ok = [t for t in sorted(x, key=x.get, reverse=True) if t in ipx.columns and np.isfinite(ipx.at[me, t]) and ipx.at[me, t] >= 5][:10]
+                row = ipx.loc[me]
+                ok = [t for t in sorted(x, key=x.get, reverse=True) if t in row.index and np.isfinite(float(row[t])) and float(row[t]) >= 5][:10]
                 return {t: 1 / 10 for t in ok} if len(ok) >= 3 else None
             for nm, fn in (("I1 Insider-Käufe: Top 10 je Monat", ins_fn), ("I2 Insider-Käufe + Trendfilter", lambda me: ins_fn(me, True))):
                 tg = plan(fn, "2016-01-01")
@@ -410,7 +423,7 @@ def main(argv=None) -> int:
                 s["risiko"] = risk_levels(vv, cash)
                 res[wn] = s
         results[name] = res
-    report = {"generated": time.strftime("%Y-%m-%d"), "annahmen": {"start": START, "gebuehr": FEE, "steuer": TAX, "freibetrag": ALLOW},
+    report = {"generated": time.strftime("%Y-%m-%d"), "abdeckung": locals().get("coverage"), "annahmen": {"start": START, "gebuehr": FEE, "steuer": TAX, "freibetrag": ALLOW},
               "fenster": {k: [str(a.date()), str(b.date())] for k, (a, b) in windows.items()}, "strategien": results}
     out = ROOT / "data" / "grandtest.json"
     out.write_text(json.dumps(report, ensure_ascii=False, separators=(",", ":")))
