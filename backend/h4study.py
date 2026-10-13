@@ -13,7 +13,7 @@ Tageschart-Kontext (immer Pflicht):
   M    MACD kreuzt die Signallinie nach oben;  M0  dasselbe unterhalb der Nulllinie
   B    grünes MBI-X
   RM, RB, MB, RMB  Kombinationen (alle Bedingungen zuletzt erfüllt)
-4H-Ausstieg: zeit (Tag 20 / Stop) · rsi (RSI ≥ 70) · macd (MACD kreuzt nach unten) · mbi (rotes MBI-X) · 2v3 (zwei der drei zuletzt)
+4H-Ausstieg: zeit (Tag 20 / Stop) · rsi (RSI ≥ 70) · macd (MACD kreuzt nach unten) · mbi (rotes MBI-X) · 2v3 (zwei der drei zuletzt) · 3v3 (alle drei zuletzt – Jonnys Ausstieg)
 Gegenprobe ohne Tageschart: C_R30 (RSI kreuzt 30 nach oben) und C_RMB (alle drei) gegen zufällige Einstiege mit denselben Regeln.
 Vorsicht: Viele Varianten → einzelne sehen zufällig gut aus. Zählt nur, was in BEIDEN Stichproben besser ist als der Vergleich.
 
@@ -120,7 +120,8 @@ def _trade(b: pd.DataFrame, i0: int, stop: float, exit_rule: str, max_days: int 
     risk = e - stop
     o, h, l, c = (b[k].to_numpy(float) for k in ("Open", "High", "Low", "Close"))
     r_, rx, mcd = b["rsi"].to_numpy(float), b["rx"].to_numpy(bool), b["mcd"].to_numpy(bool)
-    two = (b["xr"].to_numpy(int) + b["xm"].to_numpy(int) + b["xb"].to_numpy(int)) >= 2
+    cnt = b["xr"].to_numpy(int) + b["xm"].to_numpy(int) + b["xb"].to_numpy(int)
+    two, three = cnt >= 2, cnt >= 3
     days = b["day"].to_numpy()
     ud = np.unique(days[i0:])
     if len(ud) <= max_days:
@@ -131,7 +132,7 @@ def _trade(b: pd.DataFrame, i0: int, stop: float, exit_rule: str, max_days: int 
             px = min(stop, o[j]) if j > i0 else stop
             return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 1, "x": "stop"}
         hit = ((exit_rule == "rsi" and r_[j] >= 70) or (exit_rule == "mbi" and rx[j]) or (exit_rule == "macd" and mcd[j])
-               or (exit_rule == "2v3" and two[j]))
+               or (exit_rule == "2v3" and two[j]) or (exit_rule == "3v3" and three[j]))
         if hit and j < end:
             px = o[j + 1]
             return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 2, "x": exit_rule}
@@ -140,7 +141,7 @@ def _trade(b: pd.DataFrame, i0: int, stop: float, exit_rule: str, max_days: int 
 
 TRIG = {"R35": ["R35"], "R40": ["R40"], "M": ["M"], "M0": ["M0"], "B": ["B"], "RM": ["R40", "M"], "RB": ["R40", "B"],
         "MB": ["M", "B"], "RMB": ["R40", "M", "B"]}
-EXITS = ("zeit", "rsi", "macd", "mbi", "2v3")
+EXITS = ("zeit", "rsi", "macd", "mbi", "2v3", "3v3")
 
 
 def kairo_variants(e: dict, b: pd.DataFrame) -> dict:
@@ -183,7 +184,7 @@ def standalone(b: pd.DataFrame, atr_pct: float, rnd: random.Random) -> dict:
     """Ohne Tageschart: Einstieg beim 4H-Auslöser, Stop = Tief der letzten 10 Kerzen − 0,25 ATR, Ausstieg RSI ≥ 70 / Tag 20."""
     r_, lo, cl = b["rsi"].to_numpy(float), b["Low"].to_numpy(float), b["Close"].to_numpy(float)
     rmb = b["R40"].to_numpy(bool) & b["M"].to_numpy(bool) & b["B"].to_numpy(bool)
-    trig = {"C_R30": lambda i: r_[i - 1] < 30 <= r_[i], "C_RMB": lambda i: rmb[i]}
+    trig = {"C_R30": lambda i: r_[i - 1] < 30 <= r_[i], "C_RMB": lambda i: rmb[i]}   # Gegenprobe ohne Tageschart
     out = {k: [] for k in ("C_R30", "C_RMB", "C0_zufall")}
     for k, f in trig.items():
         i = 30
