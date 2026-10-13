@@ -39,14 +39,21 @@ def level(vix: float | None, below_sma: bool, credit_weak: bool | None) -> dict:
 
 
 def clean(c: pd.Series) -> pd.Series:
-    """Einzelne Fehlkurse von Yahoo entfernen (Sprung > 15 %, der am nächsten Tag zurückläuft) – ein Welt-ETF macht so etwas nicht."""
-    c = c[c > 0]
+    """Yahoo-Fehler beheben – ein Welt-ETF bewegt sich nie um 35 % an einem Tag:
+    1) einzelne Fehlkurse (Sprung, der am nächsten Tag zurückläuft) entfernen,
+    2) dauerhafte Sprünge = nicht bereinigter Split: alle Kurse davor auf das neue Niveau umrechnen."""
+    c = c[c > 0].astype(float)
     for _ in range(3):
         r = c.pct_change()
         bad = (r.abs() > 0.15) & ((r.shift(-1) * r) < 0) & (r.shift(-1).abs() > 0.12)
         if not bad.any():
             break
         c = c[~bad]
+    r = c / c.shift(1)
+    for t in r.index[(r > 1.35) | (r < 1 / 1.35)]:
+        i = c.index.get_loc(t)
+        k = float(c.iloc[i] / c.iloc[i - 1])
+        c.iloc[:i] = c.iloc[:i] * k
     return c
 
 
@@ -71,7 +78,7 @@ def compute(df: pd.DataFrame, vix: pd.Series | None = None, hyg: pd.Series | Non
         cr = (hyg / ief).dropna()
         if len(cr) >= 200:
             cw = bool(cr.iloc[-1] < cr.rolling(200).mean().iloc[-1])
-    out = {"ticker": TICKER, "name": NAME, "n": len(c), "date": str(c.index[-1].date()), "c": round(last, 2), "sma200": round(s, 2),
+    out = {"ticker": TICKER, "name": NAME, "n": len(c), "ok": dd < 0.6, "date": str(c.index[-1].date()), "c": round(last, 2), "sma200": round(s, 2),
            "ath": round(h, 2), "ath_date": str(c[c == h].index[-1].date()), "dd": round(dd, 4), "vs_sma": round(last / s - 1, 4),
            "vix": None if v is None else round(v, 1), "credit_weak": cw, **level(v, last < s, cw)}
     w = c[c.index >= c.index[-1] - pd.Timedelta(days=3 * 365)]

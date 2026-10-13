@@ -3211,6 +3211,15 @@ const ETF_BT = {
           ["Trendfilter: unter der 200-Tage-Linie alles raus", 2.388, 2.989, .15]] };
 const ETF_TONE = { blue: ["Normal", "var(--accent, #0a84ff)"], yellow: ["Unruhig", "var(--gold)"], green2: ["Panik", "var(--up)"], green: ["Günstig", "var(--up)"] };
 const etfCfg = () => { const e = state.etf || {}; return { total: +e.total > 0 ? +e.total : 3000, share: +e.share > 0 ? Math.min(100, +e.share) : 70, rate: +e.rate > 0 ? +e.rate : 0, units: +e.units > 0 ? +e.units : 0 }; };
+// Gebühren-Bremse (backend/capstudy.py, Okt. 2026): ~93 Trades/Jahr bei 5 Plätzen → 2 Orders je Trade. Ergebnis 10 Jahre, 1 % Risiko,
+// 0,99 € je Order: 900 € → −12 bis −25 % p. a. (bzw. Totalverlust), 1.500 € → ≈ 0 %, 3.000 € → +12/+13 %, 10.000 € → +15/+23 %; ohne Gebühren +17/+24 %.
+function feeDrag(cap) {
+  const fee = tpCfg().fee, d = cap > 0 ? 93 * 2 * fee / cap : 1;
+  return { d, tone: d >= .08 ? "red" : d >= .04 ? "yellow" : "green",
+    t: d >= .08 ? `Gebühren fressen den Vorteil: ≈ ${pct(d, 0)} des Trading-Kapitals pro Jahr. Im 10-Jahres-Test verlor die Strategie mit 900 € Geld und kam mit 1.500 € auf ≈ 0 %. Unter ~3.000 € lieber nur im Spiel/Journal üben und das Geld in den ETF.`
+      : d >= .04 ? `Gebühren kosten ≈ ${pct(d, 0)} pro Jahr – im Test brachte 3.000 € netto +12/+13 % (ohne Gebühren +17/+24 %). Machbar, aber knapp.`
+      : `Gebühren ≈ ${pct(d, 1)} pro Jahr – kein großes Hindernis mehr (Test 10.000 €: +15/+23 % pro Jahr).` };
+}
 function etfLine(h) {
   if (!h || h.length < 20) return "";
   const W = 640, H = 220, p = 8, xs = h.map(x => x[1]), ms = h.map(x => x[2]).filter(v => v != null), lo = Math.min(...xs, ...ms) * .98, hi = Math.max(...xs, ...ms) * 1.01;
@@ -3229,12 +3238,12 @@ function etfAmpelHtml(e, compact) {
 }
 function etfTeaserHtml() {
   const e = getJson("etf.json");
-  if (!e) return "";
+  if (!e || e.ok === false) return "";
   return `<button class="hcard" ${SEC_LINK("etf")}>${hHead("ETF-Bereich · " + etfCfg().share + " %", "", "")}${etfAmpelHtml(e, true)}<span class="hlink">ETF ›</span></button>`;
 }
 function etfHtml() {
-  const e = getJson("etf.json"), c = etfCfg();
-  if (e === undefined) return `<div class="section-title"><span>ETF-Bereich</span><span>lädt …</span></div>`;
+  const e0 = getJson("etf.json"), c = etfCfg(), e = e0 && e0.ok === false ? null : e0;
+  if (e0 === undefined) return `<div class="section-title"><span>ETF-Bereich</span><span>lädt …</span></div>`;
   const trade = tpCfg().depot, etfVal = e && c.units ? c.units * e.c : null, sum = etfVal != null ? etfVal + trade : null, ist = sum ? etfVal / sum : null;
   const tgtT = c.total * (100 - c.share) / 100;
   const hero = e ? `<div class="hcard">${hHead(`ETF-Ampel · ${esc(e.name)}`)}${etfAmpelHtml(e)}
@@ -3250,7 +3259,7 @@ function etfHtml() {
         .map(([l, v, c, t]) => `<li><i class="${c}">●</i><b>${l}: ${v}</b> – ${t}</li>`).join("")}</ul>
       <div class="note" style="margin:8px 0 0">🟢 Panik (VIX ≥ 30): Extra-Geld jetzt · 🟡 Unruhig (2 von 3 Warnzeichen): Extra-Geld in Raten · 🔵 Normal: Sparrate wie geplant. <b>Kein Rot</b> – „nicht kaufen“ hat im Test immer Geld gekostet. Die Sparrate läuft bei jeder Farbe.</div></ul></div>
     <div class="hcard">${hHead("Kurs der letzten 3 Jahre")}${etfLine(e.hist)}</div>`
-    : `<div class="hcard"><div class="note" style="margin:0">Die ETF-Daten kommen mit dem nächsten Scan.</div></div>`;
+    : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? "Die Kursdaten des ETF sehen gerade unplausibel aus (Datenfehler beim Anbieter) – die Ampel ist ausgeblendet, bis sie wieder stimmen." : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
   const plan = `<div class="hcard">${hHead("Mein Plan · 70 / 30")}
     <div class="tp2-cfg"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
       <label>ETF-Anteil (%)<input id="etfShare" type="number" inputmode="decimal" min="0" max="100" step="5" value="${esc(c.share)}"></label>
@@ -3260,6 +3269,7 @@ function etfHtml() {
       <div class="mt"><span>Trading-Kapital</span><b>${eur(tgtT)}</b><em>${100 - c.share} % · im Einstieg: ${eur(trade)}</em></div>
       ${etfVal != null ? `<div class="mt"><span>ETF jetzt</span><b>${eur(etfVal)}</b><em>${pct(ist, 0)} vom Ganzen</em></div>` : ""}
       ${c.rate ? `<div class="mt"><span>Sparrate</span><b>${eur(c.rate)}</b><em>${ist != null && ist < c.share / 100 - .05 ? "ganz in den ETF (unter Ziel)" : `${eur(c.rate * c.share / 100)} ETF · ${eur(c.rate * (100 - c.share) / 100)} Trading`}</em></div>` : ""}</div>
+    ${(() => { const fd = feeDrag(tgtT); return `<div class="note" style="margin:10px 0 0;border-left:3px solid var(--${fd.tone === "red" ? "red" : fd.tone === "yellow" ? "gold" : "up"})">${fd.tone === "red" ? "🔴" : fd.tone === "yellow" ? "🟡" : "🟢"} <b>Trading-Kapital ${eur(tgtT)}:</b> ${fd.t}</div>`; })()}
     ${Math.abs(tgtT - trade) > 1 ? `<button class="btn" id="etfSync" style="margin-top:10px">Trading-Kapital im Einstieg auf ${eur(tgtT)} setzen</button><div class="note" style="margin:6px 0 0">Das 1-%-Risiko je Trade rechnet mit diesem Betrag – so bleibt der Trading-Bereich bei ${100 - c.share} %.</div>` : `<div class="note" style="margin:10px 0 0">✓ Der Trading-Bereich rechnet mit ${eur(trade)} – passt zu ${100 - c.share} %.</div>`}
     ${ist != null && Math.abs(ist - c.share / 100) > .1 ? `<div class="note" style="margin:8px 0 0">⚖️ Verteilung weicht um mehr als 10 Punkte ab (${pct(ist, 0)} ETF). Am günstigsten über die Sparrate ausgleichen – Verkaufen kostet Steuern.</div>` : ""}</div>`;
   const how = `<div class="hcard">${hHead("So gehst du vor")}<ul class="checks rules">${[
@@ -4007,7 +4017,8 @@ function tpInner(r, S) {
   const acct = `<details class="tp2-acc"><summary>Konto: ${eur(cfg.depot)} · Risiko ${fmt(cfg.risk, 1)} % je Trade${KMAX.weakMult > 1 ? ` (bei grüner Ampel ×${fmt(KMAX.weakMult, 0)})` : ""}</summary>
       <div class="tp2-cfg" style="margin-top:8px"><label>Depot (€)<input id="tpDepot" type="number" inputmode="decimal" min="0" step="100" value="${esc(cfg.depot)}"></label>
       <label>Risiko je Trade (%)<input id="tpRisk" type="number" inputmode="decimal" min="0.1" max="5" step="0.1" value="${esc(cfg.risk)}"></label></div>
-      <div class="note">Einmal einstellen, gilt für alle Pläne. Empfehlung: 1 % (so getestet). Höchstens ${KMAX.maxOpen} Trades gleichzeitig.</div></details>`;
+      <div class="note">Einmal einstellen, gilt für alle Pläne. Empfehlung: 1 % (so getestet). Höchstens ${KMAX.maxOpen} Trades gleichzeitig.</div>
+      ${(() => { const fd = feeDrag(cfg.depot); return fd.tone === "green" ? "" : `<div class="tip tone-${fd.tone}" style="margin-top:6px">${esc(fd.t)}</div>`; })()}</details>`;
   if (!m.stop || (m.problems.length && m.problems[0][0] === "red" && !m.dist)) return head + m.problems.map(([t, x]) => `<div class="tip tone-${t === "red" ? "red" : "yellow"}" style="margin-top:10px">${esc(x)}</div>`).join("") + acct;
   const lv = m.levs.find(x => x.L === m.sug);
   const at = px => (px - m.E) / m.E * lv.expo - lv.cost;
