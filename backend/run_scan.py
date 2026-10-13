@@ -99,7 +99,7 @@ def search_row(res, meta: dict, h: dict) -> dict:
     f = res.flags
     return _clean({"t": res.ticker, "n": meta.get("name") or res.ticker, "r": meta.get("region") or region_of(res.ticker),
                    "x": meta.get("exchange") or "", "c": round(res.close, 4), "cur": res.flags.get("currency"),
-                   "s": "hit" if res.passed else "fast" if res.fast_hit else "",
+                   "s": "hit" if res.passed else "fast" if res.fast_hit else "near" if res.near_hit else "",
                    "m": sum(c.ok for c in res.criteria if c.key not in ("cap", "liquidity", "price", "history")),
                    "tone": h["tone"], "title": h["title"], "text": h["text"], "d": h["days"], "dl": h["days_label"],
                    # technische Eckdaten für die Depot-Einschätzung
@@ -250,7 +250,7 @@ def result_row(res, meta: dict) -> dict:
         "ticker": res.ticker, "name": meta.get("name", res.ticker), "exchange": meta.get("exchange", ""),
         "region": meta.get("region", ""), "country": meta.get("country", ""), "sector": meta.get("sector", ""),
         "currency": res.flags.get("currency"), "market_cap_usd": res.flags.get("market_cap_usd"),
-        "date": res.date, "close": res.close, "score": res.score, "passed": res.passed, "fast_hit": res.fast_hit,
+        "date": res.date, "close": res.close, "score": res.score, "passed": res.passed, "fast_hit": res.fast_hit, "near_hit": res.near_hit,
         "missing": [c.label for c in res.missing], "in_watchlist": bool(meta.get("in_watchlist")),
         "met": sum(c.ok for c in res.criteria if c.key not in ("cap", "liquidity", "price", "history")),
         "total": sum(1 for c in res.criteria if c.key not in ("cap", "liquidity", "price", "history")),
@@ -467,11 +467,11 @@ def main(argv=None) -> int:
                     search[t]["pl"] = pl
             except Exception as exc:
                 print(f"{t}: Trade-Plan-Fehler {exc!r}")
-            if not (res.passed or res.fast_hit or m.get("in_watchlist") or tr_hit):
+            if not (res.passed or res.fast_hit or res.near_hit or m.get("in_watchlist") or tr_hit):
                 search[t].pop("lw", None)                # Tagestiefs nur für Kandidaten (hält search.json klein)
         except Exception as exc:
             print(f"{t}: Hinweis-Fehler {exc!r}")
-        if res.passed or res.fast_hit or m.get("in_watchlist") or tr_hit:
+        if res.passed or res.fast_hit or res.near_hit or m.get("in_watchlist") or tr_hit:
             results.append((t, df, res))
     # Earnings-Termin, Name und Sektor nur für Treffer/Fast-Treffer abfragen (eine Anfrage je Aktie)
     infos = yf.infos([t for t, _, _ in results])
@@ -562,7 +562,7 @@ def main(argv=None) -> int:
     if FC_MODEL:
         stats["forecast"] = {"horizon": FC_MODEL["horizon"], "fitted": FC_MODEL["fitted"], **FC_MODEL["test"]}
     stats.update(trend_hits=sum(bool((r.get("tr") or {}).get("ok")) for r in rows), trend_on=TREND_ON)
-    stats.update(hits=sum(r["passed"] for r in rows), fast_hits=sum(r["fast_hit"] for r in rows),
+    stats.update(hits=sum(r["passed"] for r in rows), fast_hits=sum(r["fast_hit"] for r in rows), near_hits=sum(bool(r.get("near_hit")) for r in rows),
                  watchlist=sum(r["in_watchlist"] for r in rows),
                  duration_s=round(time.time() - started))
     stats["health"] = {"loaded": len(data), "universe": len(tickers), "info_fresh": info_fresh, "info_cached": info_cached,
@@ -651,7 +651,7 @@ def main(argv=None) -> int:
         for name, obj in (("alerts.json", alerts), ("bilanz.json", bil), ("changes.json", changes)):
             with open(SITE / name, "w", encoding="utf-8") as f:
                 json.dump(_clean(obj), f, ensure_ascii=False, separators=(",", ":"))
-    print(f"Treffer: {stats['hits']}, Fast-Treffer: {stats['fast_hits']}, Trend-Rücksetzer: {stats.get('trend_hits')}, Fehler: {stats['errors']}, "
+    print(f"Treffer: {stats['hits']}, Fast-Treffer: {stats['fast_hits']}, 9/11: {stats['near_hits']}, Trend-Rücksetzer: {stats.get('trend_hits')}, Fehler: {stats['errors']}, "
           f"Dauer {stats['duration_s']} s")
     ps = [r["tr"]["chk"]["p"] for r in rows if (r.get("tr") or {}).get("chk")]
     print(f"Rücksetzer-Check: {len(ps)} von {sum(1 for r in rows if (r.get('tr') or {}).get('ok'))} Trend-Setups · "
