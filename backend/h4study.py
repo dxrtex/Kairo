@@ -40,13 +40,20 @@ from .shortswing import QRULE, simulate
 COST = 0.0015 + 2 * 0.99 / 2000          # Spread Turbo + 2 Orders auf ~2.000 € Position (wie die 10-Jahres-Studie)
 
 
-def _hits(d: str) -> list[dict]:
+def _grp(e: dict) -> str | None:
+    """Gruppe nach erfüllten Kairo-Kriterien (Tageschart): 11/11 Treffer, 10/11 Fast-Treffer, 9/11 (zufällige Vergleichstage)."""
+    met = (e.get("f") or {}).get("met")
+    return "11" if e.get("k") == "hit" else "10" if e.get("k") == "fast" else "9" if e.get("k") == "base" and met == 9 else None
+
+
+def _hits(d: str, near: bool = False) -> list[dict]:
     seen, out = set(), []
     for p in sorted(Path(d).glob("bilanz_part_*.json")):
         for e in json.loads(p.read_text()):
-            if e.get("k") == "hit" and e.get("px") and (e["t"], e["d"]) not in seen:
-                seen.add((e["t"], e["d"]))
-                out.append(e)
+            g = _grp(e)
+            if g and (near or g == "11") and e.get("px") and (e["t"], e["d"], g) not in seen:
+                seen.add((e["t"], e["d"], g))
+                out.append({**e, "grp": g})
     return out
 
 
@@ -282,13 +289,41 @@ def robust(hits: dict, raw: dict) -> dict:
 
 def main(argv=None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
-    mode = "robust" if "--robust" in argv else "full"
+    mode = "robust" if "--robust" in argv else "near" if "--near" in argv else "full"
     dirs = [a for a in argv if not a.startswith("--")] or ["k1", "k2"]
     t0 = time.time()
-    hits = {d: _hits(d) for d in dirs}
+    hits = {d: _hits(d, near=mode == "near") for d in dirs}
     tick = sorted({e["t"] for h in hits.values() for e in h})
     print(f"Treffer: {[len(h) for h in hits.values()]}, Aktien: {len(tick)}", flush=True)
     raw = _hourly(tick)
+    if mode == "near":                                   # 11/11 gegen 10/11 und 9/11 – jeweils ohne und mit 4H-Bestätigung
+        bars = {}
+        for t, x in raw.items():
+            try:
+                b = to4h(x)
+                if len(b) > 100:
+                    bars[t] = b
+            except Exception:
+                pass
+        rep = {"generated": time.strftime("%Y-%m-%d"), "near": {}}
+        for d, hs in hits.items():
+            for g in ("11", "10", "9"):
+                res: dict[str, list] = {}
+                for e in hs:
+                    b = bars.get(e["t"])
+                    if e["grp"] != g or b is None or pd.Timestamp(e["d"]) < b["day"].iat[0] + pd.Timedelta(days=20):
+                        continue
+                    for k, v in kairo_variants(e, b).items():
+                        if k.endswith("|zeit") and k.split("|")[1] in ("–", "RMBS", "RS", "RMB"):
+                            res.setdefault(k, []).append({**v, "tk": e["t"], "atrp": e["px"]["atr"]})
+                rep["near"][f"{g}/11_{d}"] = {k: {**summary(v), "depot": depot(v)} for k, v in sorted(res.items())}
+                print(f"{g}/11 {d}", {k: (v["n"], v.get("r")) for k, v in rep["near"][f"{g}/11_{d}"].items()}, flush=True)
+        (ROOT / "data").mkdir(exist_ok=True)
+        (ROOT / "data" / "h4study.json").write_text(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
+        print("===BEGIN===")
+        print(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
+        print("===END===")
+        return 0
     if mode == "robust":
         rep = {"generated": time.strftime("%Y-%m-%d"), "robust": robust(hits, raw)}
         (ROOT / "data").mkdir(exist_ok=True)
