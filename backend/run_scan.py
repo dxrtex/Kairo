@@ -376,7 +376,10 @@ def main(argv=None) -> int:
     ins = None
     if not args.end:
         try:
-            ins = insider.fetch(watch=watch)
+            sync = state.load("telegram.json", {}).get("sync") or {}           # auch Merkliste und Depot aus der App
+            extra = [*sync.get("fav", []), *[d.get("t") for d in sync.get("depot", []) if d.get("t")]]
+            w_ins = {**{t: (meta.get(t) or {}).get("name") or t for t in extra if t}, **watch}
+            ins = insider.fetch(watch=w_ins)
             print(f"Insider: {ins['filings']} Meldungen, {len(ins['buys'])} Käufe, {len(ins['sells'])} Verkäufe")
         except Exception as exc:
             print(f"Insider: Fehler {exc!r}")

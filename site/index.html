@@ -738,6 +738,18 @@
              transition: left .32s cubic-bezier(.32,.72,0,1), top .32s cubic-bezier(.32,.72,0,1), width .32s cubic-bezier(.32,.72,0,1), height .32s cubic-bezier(.32,.72,0,1), opacity .2s; }
   .tab-ind.on { opacity: 1; }
   @media (prefers-reduced-motion: reduce) { .tab-ind { transition: none; } }
+.etf-hero{display:flex;gap:22px;align-items:center;padding:22px!important}
+.eh-lights{flex:none;display:flex;flex-direction:column;gap:10px;background:#111;border-radius:22px;padding:12px 10px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.eh-l{display:flex;flex-direction:column;align-items:center;gap:4px;opacity:.28}.eh-l i{width:44px;height:44px;border-radius:50%;background:var(--c);display:block}
+.eh-l span{font-size:11px;color:#ddd}.eh-l.on{opacity:1}.eh-l.on i{box-shadow:0 0 22px var(--c),0 0 6px var(--c)}
+.eh-main{flex:1;min-width:0}.eh-k{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.eh-t{display:block;font-size:26px;line-height:1.2;margin:4px 0 6px}.eh-do{margin:0 0 10px;font-size:15px;color:var(--text)}
+.eh-facts{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted)}.eh-facts b{color:var(--text)}
+.eh-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.eh-p{background:var(--surface-2);border-radius:999px;padding:5px 10px;font-size:13px}.eh-p i{font-style:normal;margin-right:4px}
+@media (max-width:560px){.etf-hero{gap:14px;padding:16px!important}.eh-l i{width:32px;height:32px}.eh-t{font-size:21px}}
+.etf-more>summary{cursor:pointer;font-weight:600;list-style:none}.etf-more>summary::before{content:"› ";color:var(--accent)}.etf-more[open]>summary::before{content:"⌄ "}
+.pf-x{position:absolute;top:10px;right:10px;z-index:2;width:34px;height:34px;border-radius:50%;border:0;background:var(--surface-2);color:var(--text);font-size:16px;cursor:pointer}
+.pf-detail>.card{padding-top:46px}
 </style>
 <style id="ds-auto" media="not all">
 
@@ -832,6 +844,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
   .pf-empty { padding: 16px; color: var(--muted); }
   .pf-detail .card { margin: 0; }
   @media (max-width: 1023px) { .pf-detail { display: none; } }
+
   .verdict { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); }
   .verdict > i { flex: 0 0 10px; height: 10px; border-radius: 50%; background: var(--faint); }
   .verdict.ok > i { background: var(--up); } .verdict.warn > i { background: #ff9500; }
@@ -1707,11 +1720,19 @@ function newsHtml() {
   const inEur = x => x.cur === "EUR" ? x.val : x.val * ((fxEur && fxEur.USD) || 0.9);
   const wl = ij && ij.watch, wlB = (wl || []).filter(x => x.kind === "buy").sort((a, b) => inEur(b) - inEur(a)), wlS = (wl || []).filter(x => x.kind === "sell").sort((a, b) => inEur(b) - inEur(a));
   const wlSum = (() => { const by = {}; wlB.forEach(x => { by[x.t] = (by[x.t] || 0) + inEur(x); }); return Object.entries(by).sort((a, b) => b[1] - a[1]); })();
-  const wlHtml = !ij ? "" : !wl ? `<div class="note" style="margin:8px 2px">Insider-Geschäfte deiner Watchlist kommen mit dem nächsten Scan.</div>`
-    : block(`Deine Watchlist · Insider-Käufe · 6 Monate`, wlB.slice(0, 25).map(irow), `Keine Insider-Käufe bei den ${ij.watch_n || ""} US-Aktien deiner Watchlist in den letzten 6 Monaten.`)
-      + (wlSum.length > 1 ? `<div class="note" style="margin:-4px 2px 10px">Meiste Käufe: ${wlSum.slice(0, 5).map(([t, v]) => `<b>${esc(nameOf(t))}</b> ${eurAmt(v)}`).join(" · ")}</div>` : "")
-      + block("Deine Watchlist · größte Insider-Verkäufe · 6 Monate", wlS.slice(0, 12).map(irow), "Keine großen Verkäufe.")
-      + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${ij.watch_n || 0} US-Aktien (SEC, Käufe ab 25.000 $, Verkäufe ab 1 Mio. $)${ij.watch_de_n ? ` und ${ij.watch_de_n} deutsche Aktien (BaFin, Käufe ab 10.000 €, Verkäufe ab 250.000 €)` : ""} deiner Watchlist. Airbus, Novo Nordisk, BYD, Xiaomi, DroneShield und Tamburi melden an andere Aufsichten – für sie gibt es hier keine Daten.</div>`;
+  // Cluster: mehrere verschiedene Insider kaufen dieselbe Aktie in 90 Tagen – laut Studien das stärkste Insider-Signal
+  const ageD = d => (Date.now() - new Date(d + "T12:00:00")) / 864e5;
+  const recent = wlB.filter(x => x.d && ageD(x.d) <= 90).sort((a, b) => String(b.d).localeCompare(String(a.d)));
+  const clus = (() => { const by = {}; recent.forEach(x => { (by[x.t] = by[x.t] || { who: new Set(), v: 0 }).who.add(x.who); by[x.t].v += inEur(x); });
+    return Object.entries(by).filter(([, o]) => o.who.size >= 2).sort((a, b) => b[1].who.size - a[1].who.size || b[1].v - a[1].v); })();
+  const nUS = ij && ij.watch_n || 0, nDE = ij && ij.watch_de_n || 0;
+  const wlHtml = !ij ? "" : !wl ? `<div class="note" style="margin:8px 2px">Insider-Geschäfte deiner Aktien kommen mit dem nächsten Scan.</div>`
+    : (clus.length ? `<div class="hcard" style="margin:8px 0 12px;border-left:3px solid var(--up)"><b>🔥 Mehrere Insider kaufen</b><div class="note" style="margin:4px 0 0">${clus.slice(0, 6).map(([t, o]) => `<b>${esc(nameOf(t))}</b>: ${o.who.size} Insider · ${eurAmt(o.v)}`).join("<br>")}<br><span class="muted">Mehrere Käufer in 90 Tagen gelten als stärkstes Insider-Signal – kein Kaufsignal allein, aber ein Grund genauer hinzusehen.</span></div></div>` : "")
+      + block(`Deine Aktien · neueste Insider-Käufe · 90 Tage`, recent.slice(0, 20).map(irow), `Keine Insider-Käufe in den letzten 90 Tagen.`)
+      + block(`Deine Aktien · größte Insider-Käufe · 12 Monate`, wlB.slice(0, 30).map(irow), `Keine Insider-Käufe bei deinen Aktien in den letzten 12 Monaten.`)
+      + (wlSum.length > 1 ? `<div class="note" style="margin:-4px 2px 10px">Meiste Käufe (12 Monate): ${wlSum.slice(0, 6).map(([t, v]) => `<b>${esc(nameOf(t))}</b> ${eurAmt(v)}`).join(" · ")}</div>` : "")
+      + block("Deine Aktien · größte Insider-Verkäufe · 12 Monate", wlS.slice(0, 15).map(irow), "Keine großen Verkäufe.")
+      + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${nUS} US-Aktien (SEC/OpenInsider, Käufe ab 10.000 $, Verkäufe ab 250.000 $)${nDE ? ` und ${nDE} deutsche Aktien (BaFin, Käufe ab 5.000 €, Verkäufe ab 100.000 €)` : ""} aus Watchlist, Merkliste und Depot – 12 Monate. Airbus, Novo Nordisk, BYD, Xiaomi, DroneShield und Tamburi melden an andere Aufsichten (Niederlande, Dänemark, Hongkong, Australien, Italien) – dafür gibt es keine frei abrufbare Datenquelle.</div>`;
   return head + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) und für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften)${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
     + wlHtml
     + (live ? block("Deine US-Aktien · 90 Tage (live)", liveRows.map(irow), NEWS.at ? "Keine Insider-Käufe oder -Verkäufe über die Börse." : "lädt …") : "")
@@ -3203,9 +3224,9 @@ function postfachItems() {
   data.results.filter(r => r.fast_hit && !r.passed && !isTrend(r)).slice(0, 8).forEach(r => out.prep.push({ t: r.ticker, c: "y", n: `${r.name || r.ticker} beobachten`, d: `Fast · fehlt: ${(r.missing || [])[0] || ""}` }));
   return out;
 }
-function postfachHtml(cards = "") {
+function postfachHtml(cards = "", cards2 = "") {
   const { now, prep } = postfachItems(), all = [...now, ...prep].filter(x => x.t);
-  if (!all.some(x => x.t === state.pfSel)) state.pfSel = all.length ? all[0].t : null;
+  if (!all.some(x => x.t === state.pfSel)) state.pfSel = null;      // Detail nur nach Antippen – kein Dauer-Fenster rechts
   const row = x => x.dep ? `<button class="pf-it" data-pfdep="${esc(x.dep)}"><i class="${x.c}"></i><span><b>${esc(x.t)}</b><em>${esc(x.d)}</em></span>${x.v != null ? `<strong class="${x.v >= 0 ? "up" : "down"}">${sgnPct(x.v, 0)}</strong>` : ""}<s>›</s></button>`
     : `<button class="pf-it${x.t === state.pfSel ? " on" : ""}" data-pf="${esc(x.t)}"><i class="${x.c}"></i><span><b>${esc(x.n)}</b><em>${esc(x.d)}</em></span><s>›</s></button>`;
   const r = state.pfSel && data.results.find(x => x.ticker === state.pfSel);
@@ -3215,8 +3236,8 @@ function postfachHtml(cards = "") {
     : xs.slice(0, more[k] ? xs.length : N).map(row).join("") + (xs.length > N ? `<button class="pf-more" data-pfmore="${k}">${more[k] ? "Weniger anzeigen" : `${xs.length - N} weitere anzeigen`}</button>` : "");
   return `<div class="pf"><div class="pf-left"><section class="pf-list"><div class="pf-h">Jetzt handeln · ${now.length}</div>${part("now", now, "Heute nichts Dringendes.")}
     <div class="pf-h">Vorbereiten · ${prep.length}</div>${part("prep", prep, "Nichts vorzubereiten.")}</section>
-    <div class="pf-cards">${cards}</div></div>
-    <section class="pf-detail">${r ? card(r) : ""}</section></div>`;
+    <div class="pf-cards">${cards}${r ? cards2 : ""}</div></div>
+    ${r ? `<section class="pf-detail"><button class="pf-x" data-pfclose aria-label="Schließen">✕</button>${card(r)}</section>` : `<div class="pf-cards pf-right">${cards2}</div>`}</div>`;
 }
 function mountPostfach() {
   const el = document.querySelector(".pf-detail [data-mini]"); if (!el) return;
@@ -3226,7 +3247,7 @@ function todayHtml() {
   const al = getJson("alerts.json");
   const tgHint = al && !al.connected ? `<button class="hcard tg" ${SEC_LINK("settings")}><b>📲 Abendbericht aufs Handy</b><span>Neue Treffer, deine Aktien und Knock-out-Warnungen jeden Abend per Telegram – in 3 Minuten eingerichtet.</span><span class="hlink">Einrichten ›</span></button>` : "";
   // Postfach: Aufgaben oben, darunter dieselben Karten wie sonst (ohne „Beste Treffer“ – die stehen schon im Postfach)
-  if (isPostfach()) return postfachHtml(`${startHtml()}${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
+  if (isPostfach()) return postfachHtml(`${startHtml()}${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}`, `${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
   return (isApple() ? todoHtml() : kpiHtml()) + `${startHtml()}<div class="hgrid"><div class="hcol">${etfTeaserHtml()}${marketHtml()}${changesHtml()}${myStocksHtml()}</div>
     <div class="hcol">${bilanzTeaserHtml()}${depotSnapHtml()}${soonHtml()}${topHitsHtml()}${journalTeaserHtml()}${tgHint}</div></div>`;
 }
@@ -3299,21 +3320,25 @@ function etfHtml() {
   if (e0 === undefined) return `<div class="section-title"><span>ETF-Bereich</span><span>lädt …</span></div>`;
   const trade = tpCfg().depot, etfVal = e && c.units ? c.units * e.c : null, sum = etfVal != null ? etfVal + trade : null, ist = sum ? etfVal / sum : null;
   const tgtT = c.total * (100 - c.share) / 100;
-  const hero = e ? `<div class="hcard">${hHead(`ETF-Ampel · ${esc(e.name)}`)}${etfAmpelHtml(e)}
-      <div class="mtiles"><div class="mt"><span>Kurs</span><b>${fmt(e.c)} €</b><em>Stand ${dateDE(e.date)}</em></div>
-        <div class="mt"><span>Abstand zum Hoch</span><b class="${e.dd >= .1 ? "up" : ""}">${e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1)}</b><em>Hoch ${fmt(e.ath)} € (${dateDE(e.ath_date)})</em></div>
-        <div class="mt"><span>200-Tage-Linie</span><b>${fmt(e.sma200)} €</b><em class="${e.vs_sma < 0 ? "gold" : "up"}">${e.vs_sma >= 0 ? "Kurs " + pct(e.vs_sma, 1) + " darüber" : "Kurs " + pct(-e.vs_sma, 1) + " darunter"}</em></div></div>
-      <div class="hsub" style="margin-top:12px">Gesamtlage – nur Faktoren, die in allen Testzeiträumen gleich wirkten</div>
-      <ul class="checks">${[
+  const lamp = (lv, lbl, col) => `<div class="eh-l${e && e.lv === lv ? " on" : ""}" style="--c:${col}"><i></i><span>${lbl}</span></div>`;
+  const facts = e ? [["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "" : e.vix >= 30 ? "up" : e.vix >= 20 ? "gold" : "up"],
+      ["200-Tage-Linie", e.vs_sma >= 0 ? "darüber" : "darunter", e.vs_sma >= 0 ? "up" : "gold"],
+      ["Kreditmarkt", e.credit_weak == null ? "–" : e.credit_weak ? "schwächelt" : "stabil", e.credit_weak ? "gold" : "up"]] : [];
+  const todo = e ? (e.lv === "green2" ? "Sparrate läuft · <b>Extra-Geld jetzt investieren</b> (gern in 2–3 Raten)" : e.lv === "yellow" ? "Sparrate läuft · <b>Extra-Geld auf 3–6 Monate verteilen</b>" : "Sparrate läuft · <b>Extra-Geld kann sofort rein</b>") : "";
+  const hero = e ? `<div class="hcard etf-hero">
+      <div class="eh-lights">${lamp("green2", "Panik", "var(--up)")}${lamp("yellow", "Unruhig", "var(--gold)")}${lamp("blue", "Normal", "var(--accent, #0a84ff)")}</div>
+      <div class="eh-main"><span class="eh-k">ETF-Ampel · ${esc(e.name)}</span><b class="eh-t">${esc(e.t)}</b><p class="eh-do">${todo}</p>
+        <div class="eh-facts"><span>Kurs <b>${fmt(e.c)} €</b></span><span>${e.dd < .005 ? "<b>am Allzeithoch</b>" : `<b>−${pct(e.dd, 1)}</b> unter dem Hoch`}</span><span class="muted">Stand ${dateDE(e.date)}</span></div>
+        <div class="eh-pills">${facts.map(([l, v, c]) => `<span class="eh-p"><i class="${c}">●</i>${l}: <b>${v}</b></span>`).join("")}</div></div></div>
+    <div class="hcard">${hHead("Kurs der letzten 3 Jahre")}${etfLine(e.hist)}
+      <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ⚠️ Kurs ist ${e.age} Tage alt` : ""}. Gelegentlich mit Scalable vergleichen.</div></div>`
+    : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? `Die Kursdaten des ETF sehen gerade unplausibel aus${e0.ref_ok === false ? ` (weichen ${pct(e0.ref_dev, 1)} vom Vergleichs-ETF ab)` : ""} – Datenfehler beim Anbieter. Die Ampel ist ausgeblendet, bis sie wieder stimmen.` : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
+  const why = e ? `<div class="hsub">Was die Ampel gerade sieht</div><ul class="checks">${[
         ["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "muted" : e.vix >= 30 ? "up" : e.vix >= 20 ? "gold" : "up", e.vix == null ? "keine Daten" : e.vix >= 30 ? "Panik – historisch die besten Kaufzeitpunkte" : e.vix >= 20 ? "nervös – historisch die schwächsten 12 Monate" : "ruhig – kein Warnsignal, auch nicht am Hoch"],
         ["200-Tage-Linie", e.vs_sma >= 0 ? "darüber" : "darunter", e.vs_sma >= 0 ? "up" : "gold", e.vs_sma >= 0 ? "Aufwärtstrend intakt" : "öfter noch ein weiterer Rückgang um 10 %"],
-        ["Kreditmarkt", e.credit_weak == null ? "–" : e.credit_weak ? "schwächelt" : "stabil", e.credit_weak ? "gold" : e.credit_weak == null ? "muted" : "up", e.credit_weak == null ? "keine Daten" : e.credit_weak ? "Unternehmensanleihen schwächer als Staatsanleihen – Risiko steigt" : "Unternehmensanleihen stabil"],
-        ["Abstand zum Hoch", e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1), "muted", "nur Info – im Test widersprüchlich (1990–2007 anders als ab 2008)"]]
+        ["Kreditmarkt", e.credit_weak == null ? "–" : e.credit_weak ? "schwächelt" : "stabil", e.credit_weak ? "gold" : e.credit_weak == null ? "muted" : "up", e.credit_weak == null ? "keine Daten" : e.credit_weak ? "Unternehmensanleihen schwächer als Staatsanleihen – Risiko steigt" : "Unternehmensanleihen stabil"]]
         .map(([l, v, c, t]) => `<li><i class="${c}">●</i><b>${l}: ${v}</b> – ${t}</li>`).join("")}</ul>
-      <div class="note" style="margin:8px 0 0">🟢 Panik (VIX ≥ 30): Extra-Geld jetzt · 🟡 Unruhig (2 von 3 Warnzeichen): Extra-Geld in Raten · 🔵 Normal: Sparrate wie geplant. <b>Kein Rot</b> – „nicht kaufen“ hat im Test immer Geld gekostet. Die Sparrate läuft bei jeder Farbe.</div></ul></div>
-    <div class="hcard">${hHead("Kurs der letzten 3 Jahre")}${etfLine(e.hist)}
-      <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI (Abweichung ${pct(e.ref_dev || 0, 1)} – unauffällig)` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ⚠️ Kurs ist ${e.age} Tage alt` : ""}. Bitte gelegentlich mit dem Kurs in Scalable vergleichen.</div></div>`
-    : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? `Die Kursdaten des ETF sehen gerade unplausibel aus${e0.ref_ok === false ? ` (weichen ${pct(e0.ref_dev, 1)} vom Vergleichs-ETF ab)` : ""} – Datenfehler beim Anbieter. Die Ampel ist ausgeblendet, bis sie wieder stimmen.` : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
+      <div class="note" style="margin:6px 0 12px">🟢 Panik (VIX ≥ 30) · 🟡 Unruhig (2 von 3 Warnzeichen) · 🔵 Normal. Kein Rot – „nicht kaufen“ hat im Test immer Geld gekostet.</div>` : "";
   const plan = `<div class="hcard">${hHead("Mein Plan · 70 / 30")}
     <div class="tp2-cfg"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
       <label>ETF-Anteil (%)<input id="etfShare" type="number" inputmode="decimal" min="0" max="100" step="5" value="${esc(c.share)}"></label>
@@ -3340,7 +3365,8 @@ function etfHtml() {
     <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Regel</th><th class="num">ACWI ab 2008</th><th class="num">Welt ab 2003</th><th class="num">größter Rückgang</th></tr></thead><tbody>
       ${ETF_BT.plans.map(([l, a, b, d, me]) => `<tr${me ? ' class="best"' : ""}><td>${me ? `<b>${l}</b> ★` : l}</td><td class="num">${fmt(a, 2)}×</td><td class="num">${fmt(b, 2)}×</td><td class="num down">−${pct(d, 0)}</td></tr>`).join("")}</tbody></table></div>
     <div class="note" style="margin:6px 0 0">Geld zurückhalten und auf Rücksetzer warten brachte nichts – das wartende Geld verpasst die Zeit am Markt. Ein Trendfilter halbiert die Rückgänge, kostet aber rund ein Fünftel des Endwerts. Deshalb: Sparplan immer, nur <b>zusätzliches</b> Geld nach der Ampel. Welt ab 2003 = 55 % S&amp;P 500 + 35 % Industrieländer + 10 % Schwellenländer; vor Steuern und ohne Kosten.</div></div>`;
-  return `<div class="section-title"><span>ETF-Bereich · ${c.share} % deines Kapitals</span><span>${e ? dateDE(e.date) : ""}</span></div><div class="hgrid"><div class="hcol">${hero}${how}</div><div class="hcol">${plan}${test}</div></div>`;
+  return `<div class="section-title"><span>ETF-Bereich · ${c.share} % deines Kapitals</span><span>${e ? dateDE(e.date) : ""}</span></div>${hero}${plan}
+    <details class="hcard etf-more"><summary>Hintergrund: Warum diese Ampel? (Regeln &amp; Testergebnisse)</summary><div style="margin-top:10px">${why}${how.replace('<div class="hcard">', '<div>')}${test.replace('<div class="hcard">', '<div style="margin-top:12px">')}</div></details>`;
 }
 document.addEventListener("input", e => {
   const k = { etfTotal: "total", etfShare: "share", etfRate: "rate", etfUnits: "units" }[e.target.id]; if (!k) return;
@@ -4602,7 +4628,8 @@ document.addEventListener("click", e => {
   const pm = e.target.closest("[data-pfmore]");
   if (pm) { state.pfMore = { ...(state.pfMore || {}), [pm.dataset.pfmore]: !(state.pfMore || {})[pm.dataset.pfmore] }; render(); return; }
   const pf = e.target.closest("[data-pf]");
-  if (pf) { if (innerWidth < 1024) openCard(pf.dataset.pf); else { state.pfSel = pf.dataset.pf; render(); } return; }
+  if (pf) { if (innerWidth < 1024) openCard(pf.dataset.pf); else { state.pfSel = state.pfSel === pf.dataset.pf ? null : pf.dataset.pf; render(); } return; }
+  if (e.target.closest("[data-pfclose]")) { state.pfSel = null; render(); return; }
   const pd = e.target.closest("[data-pfdep]"); if (pd) { depOpen.add(pd.dataset.pfdep); goSec("depot"); return; }
   const av = e.target.closest("[data-aview]"); if (av) { state.aView = av.dataset.aview; save(); render(); return; }
   const rg = e.target.closest("[data-rng]");

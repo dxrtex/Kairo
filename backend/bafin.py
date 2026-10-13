@@ -68,32 +68,41 @@ def parse_csv(text: str, ticker: str | None = None) -> list[dict]:
     return out
 
 
+def _short(name: str) -> str:
+    """Firmenname für die BaFin-Suche: Rechtsform und Zusätze weg (z. B. „Siemens Energy AG“ → „Siemens Energy“)."""
+    import re
+    n = re.sub(r"\b(AG|SE|KGaA|GmbH|& Co\.?|Vz\.?|St\.?|Inc\.?|N\.V\.)\b", "", str(name or ""))
+    return re.sub(r"\s+", " ", n).strip(" .,")
+
+
 def _get(s: requests.Session, **kw) -> str:
     r = s.get(BASE, params={**FORM, **kw}, timeout=40)
     r.encoding = "utf-8"
     return r.text if r.ok and "text/csv" in r.headers.get("content-type", "") else ""
 
 
-def fetch(watch: dict[str, str], days: int = 180, budget_s: float = 90) -> dict:
-    """Directors' Dealings der deutschen Watchlist-Werte (6 Monate) – Käufe ab 10.000 €, Verkäufe ab 250.000 €."""
+def fetch(watch: dict[str, str], days: int = 365, budget_s: float = 120) -> dict:
+    """Directors' Dealings der deutschen Werte (12 Monate) – Käufe ab 5.000 €, Verkäufe ab 100.000 €.
+    Bekannte ISIN direkt, sonst (.DE-Ticker aus Merkliste/Depot) Suche nach dem Firmennamen."""
     s, t0, rows, done = requests.Session(), time.time(), [], 0
     s.headers["User-Agent"] = "Mozilla/5.0 (Kairo Scanner)"
     since = (date.today() - timedelta(days=days)).isoformat()
     for t, name in watch.items():
         isin = ISIN.get(t)
-        if not isin or time.time() - t0 > budget_s:
+        if (not isin and not str(t).endswith(".DE")) or time.time() - t0 > budget_s:
             continue
         try:
-            got = [x for x in parse_csv(_get(s, emittentIsin=isin), t) if x["d"] >= since]
+            text = _get(s, emittentIsin=isin) if isin else _get(s, emittentName=_short(name))
+            got = [x for x in parse_csv(text, t) if x["d"] >= since]
             done += 1
-            rows += [{**x, "n": name} for x in got if x["val"] >= (10_000 if x["kind"] == "buy" else 250_000)]
+            rows += [{**x, "n": name} for x in got if x["val"] >= (5_000 if x["kind"] == "buy" else 100_000)]
             time.sleep(0.5)
         except Exception as exc:
             print(f"BaFin {t}: {exc!r}"[:140])
     buys = sorted([x for x in rows if x["kind"] == "buy"], key=lambda x: -x["val"])
-    sells = sorted([x for x in rows if x["kind"] == "sell"], key=lambda x: -x["val"])[:40]
+    sells = sorted([x for x in rows if x["kind"] == "sell"], key=lambda x: -x["val"])[:80]
     print(f"BaFin Watchlist: {done} deutsche Aktien geprüft, {len(buys)} Käufe, {len(sells)} Verkäufe")
-    return {"rows": buys[:80] + sells, "n": done}
+    return {"rows": buys[:200] + sells, "n": done}
 
 
 def main() -> int:
