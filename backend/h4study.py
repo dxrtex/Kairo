@@ -11,6 +11,11 @@ Varianten auf denselben Kairo-Treffern (beide Stichproben, kurz-*-Artefakte):
   X1  Einstieg wie T0, Ausstieg bei 4H-RSI ≥ 70 (sonst Tag 20 / Stop)
   X2  Einstieg wie T0, Ausstieg beim ersten roten MBI-X (4H) über dem Einstieg
   E1X1 Kombination: Einstieg E1, Ausstieg X1
+Mit den VOLLSTÄNDIGEN Tagesregeln (Kairo-Treffer + 5-Tage-Seitwärtsphase ≤ 1,5 ATR wie in shortswing.QRULE):
+  B0   heutige Strategie, in 4H-Kerzen nachgerechnet: Kauf zur Eröffnung nach fertiger Basis, Basis-Stop, Tag 20  (Vergleich)
+  B0X1 / B0X2  wie B0, Ausstieg bei 4H-RSI ≥ 70 bzw. rotem MBI-X
+  E3_35 / E3_40  Basis fertig (Tageschart) UND 4H-RSI war ≤ 35 bzw. ≤ 40 und dreht nach oben → erst dann kaufen (≤ 10 Tage)
+  E3_35X1 / E3_40X1  dasselbe mit Ausstieg bei 4H-RSI ≥ 70
 Dazu eigenständig auf ALLEN Aktien und Tagen (ohne Kairo-Signal):
   C1  4H-RSI kreuzt von unter 30 nach oben → Kauf, Stop = Tief der letzten 10 4H-Kerzen − 0,25 ATR, Ausstieg RSI ≥ 70 / 20 Tage
   C0  dieselben Regeln, aber Einstieg an zufälligen 4H-Kerzen (zeigt, ob RSI < 30 überhaupt etwas bringt)
@@ -32,6 +37,7 @@ import pandas as pd
 from .config import ROOT
 from .indicators import rsi
 from .mbi import momentum_bias_index
+from .shortswing import QRULE, simulate
 
 COST = 0.0015 + 2 * 0.99 / 2000          # Spread Turbo + 2 Orders auf ~2.000 € Position (wie die 10-Jahres-Studie)
 
@@ -136,6 +142,29 @@ def kairo_variants(e: dict, b: pd.DataFrame) -> dict:
         t = _trade(b, i_first, kstop, rule)
         if t:
             out[name] = t
+    # Vollständige Tagesregeln: Basis wie getestet (shortswing.simulate) → Einstiegstag; 4H nur als zusätzlicher Auslöser
+    days = b["day"].to_numpy()
+    ud = np.unique(days[i_first:])
+    sm = simulate(px, {**QRULE, "hold": 20, "levs": [1]})
+    if sm and "skip" not in sm and sm["s"] < len(ud):
+        i_in = int(np.flatnonzero(days == ud[sm["s"]])[0])
+        bstop = c0 * sm["sl"]
+        for name, rule in (("B0", "zeit"), ("B0X1", "rsi"), ("B0X2", "mbi")):
+            t = _trade(b, i_in, bstop, rule)
+            if t:
+                out[name] = t
+        r4 = b["rsi"].to_numpy(float)
+        lim = ud[min(len(ud) - 1, sm["s"] + 10)]
+        for th in (35, 40):
+            for j in range(max(1, i_in - 1), len(b) - 1):
+                if days[j] > lim:
+                    break
+                if r4[j - 1] <= th < r4[j] or (min(r4[max(0, j - 6):j]) <= th and r4[j - 1] <= r4[j] and r4[j] > th and r4[j - 1] <= th + 2):
+                    for nm, rule in ((f"E3_{th}", "zeit"), (f"E3_{th}X1", "rsi")):
+                        t = _trade(b, j + 1, bstop, rule)
+                        if t:
+                            out[nm] = t
+                    break
     win = after[: 10 * 2 + 1]                            # ~10 Handelstage à ~2 4H-Kerzen
     r_, gx = b["rsi"].to_numpy(float), b["gx"].to_numpy(bool)
     lo = b["Low"].to_numpy(float)
