@@ -3200,12 +3200,16 @@ function todayHtml() {
 // Test (backend/etftest.py, Okt. 2026): gleicher Geldeinsatz je Monat, nur der Zeitpunkt verschieden. Warten auf Rücksetzer brachte
 // nichts, ein Trendfilter kostete ein Fünftel – aber nach Rücksetzern war die Folge-Rendite deutlich höher (für Extra-Geld).
 const ETF_BT = {
-  fwd: [["am Allzeithoch", .089, .233, .34], ["2–5 % unter Hoch", .088, .313, .471], ["5–10 % unter Hoch", .106, .254, .526],
-        ["10–20 % unter Hoch", .154, .14, .349], ["mehr als 20 % unter Hoch", .221, .01, .121], ["unter der 200-Tage-Linie", .185, .107, .33]],
+  // Ø Rendite 12 Monate später je Lage: S&P 500 1990–2007 / S&P 500 2008–2026 / Welt 2004–2026 (backend/etffactors.py); r = Anteil mit zwischendurch −10 %
+  fac: [["VIX unter 14 (ruhig)", [.114, .109, .113], [.02, .29, .23], "ok"], ["VIX 14–20 (normal)", [.095, .115, .096], [.18, .44, .43], "ok"],
+        ["VIX 20–30 (nervös)", [.045, .078, .05], [.44, .33, .39], "warn"], ["VIX ab 30 (Panik)", [.155, .251, .279], [.36, .36, .41], "best"],
+        ["unter der 200-Tage-Linie", [.026, .114, .123], [.52, .45, .49], "warn"], ["Kreditmarkt schwächelt", [null, .098, .098], [null, .48, .49], "warn"],
+        ["am Allzeithoch (< 3 %)", [.117, .095, .091], [.15, .35, .29], "ok"], ["≥ 20 % unter dem Hoch", [.047, .184, .21], [.31, .21, .23], "mixed"],
+        ["Zinskurve invertiert", [-.052, .197, .154], [.53, .34, .29], "mixed"], ["alle Monate", [.087, .118, .106], [.23, .37, .36], "all"]],
   plans: [["Jeden Monat gleich viel (Sparplan)", 3.077, 3.739, .33, true], ["Am Hoch 25 % zurückhalten, bei −10/−20 % nachkaufen", 3.069, 3.709, .33],
           ["Nahe der 200-Tage-Linie nachkaufen", 3.052, 3.689, .33], ["Nur unter der 200-Tage-Linie kaufen", 2.995, 3.517, .33],
           ["Trendfilter: unter der 200-Tage-Linie alles raus", 2.388, 2.989, .15]] };
-const ETF_TONE = { blue: ["Normal sparen", "var(--accent, #0a84ff)"], green: ["Günstig", "var(--up)"], green2: ["Ausverkauf", "#30d158"] };
+const ETF_TONE = { blue: ["Normal", "var(--accent, #0a84ff)"], yellow: ["Unruhig", "var(--gold)"], green2: ["Panik", "var(--up)"], green: ["Günstig", "var(--up)"] };
 const etfCfg = () => { const e = state.etf || {}; return { total: +e.total > 0 ? +e.total : 3000, share: +e.share > 0 ? Math.min(100, +e.share) : 70, rate: +e.rate > 0 ? +e.rate : 0, units: +e.units > 0 ? +e.units : 0 }; };
 function etfLine(h) {
   if (!h || h.length < 20) return "";
@@ -3236,11 +3240,15 @@ function etfHtml() {
   const hero = e ? `<div class="hcard">${hHead(`ETF-Ampel · ${esc(e.name)}`)}${etfAmpelHtml(e)}
       <div class="mtiles"><div class="mt"><span>Kurs</span><b>${fmt(e.c)} €</b><em>Stand ${dateDE(e.date)}</em></div>
         <div class="mt"><span>Abstand zum Hoch</span><b class="${e.dd >= .1 ? "up" : ""}">${e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1)}</b><em>Hoch ${fmt(e.ath)} € (${dateDE(e.ath_date)})</em></div>
-        <div class="mt"><span>200-Tage-Linie</span><b>${fmt(e.sma200)} €</b><em class="${e.vs_sma < 0 ? "up" : ""}">${e.vs_sma >= 0 ? "Kurs " + pct(e.vs_sma, 1) + " darüber" : "Kurs " + pct(-e.vs_sma, 1) + " darunter"}</em></div></div>
-      <ul class="checks" style="margin-top:10px"><li><i class="up">●</i><b>Grün (Ausverkauf):</b> 20 % oder mehr unter dem Hoch – Extra-Geld jetzt.</li>
-        <li><i class="up">●</i><b>Grün (günstig):</b> 10–20 % unter dem Hoch oder unter der 200-Tage-Linie – gern mehr.</li>
-        <li><i style="color:var(--accent, #0a84ff)">●</i><b>Blau (normal):</b> nahe am Hoch – Sparrate wie geplant.</li>
-        <li><i class="muted">–</i><b>Kein Rot:</b> „Jetzt nicht kaufen“ hat im Test immer Geld gekostet. Die Sparrate läuft bei jeder Farbe.</li></ul></div>
+        <div class="mt"><span>200-Tage-Linie</span><b>${fmt(e.sma200)} €</b><em class="${e.vs_sma < 0 ? "gold" : "up"}">${e.vs_sma >= 0 ? "Kurs " + pct(e.vs_sma, 1) + " darüber" : "Kurs " + pct(-e.vs_sma, 1) + " darunter"}</em></div></div>
+      <div class="hsub" style="margin-top:12px">Gesamtlage – nur Faktoren, die in allen Testzeiträumen gleich wirkten</div>
+      <ul class="checks">${[
+        ["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "muted" : e.vix >= 30 ? "up" : e.vix >= 20 ? "gold" : "up", e.vix == null ? "keine Daten" : e.vix >= 30 ? "Panik – historisch die besten Kaufzeitpunkte" : e.vix >= 20 ? "nervös – historisch die schwächsten 12 Monate" : "ruhig – kein Warnsignal, auch nicht am Hoch"],
+        ["200-Tage-Linie", e.vs_sma >= 0 ? "darüber" : "darunter", e.vs_sma >= 0 ? "up" : "gold", e.vs_sma >= 0 ? "Aufwärtstrend intakt" : "öfter noch ein weiterer Rückgang um 10 %"],
+        ["Kreditmarkt", e.credit_weak == null ? "–" : e.credit_weak ? "schwächelt" : "stabil", e.credit_weak ? "gold" : e.credit_weak == null ? "muted" : "up", e.credit_weak == null ? "keine Daten" : e.credit_weak ? "Unternehmensanleihen schwächer als Staatsanleihen – Risiko steigt" : "Unternehmensanleihen stabil"],
+        ["Abstand zum Hoch", e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1), "muted", "nur Info – im Test widersprüchlich (1990–2007 anders als ab 2008)"]]
+        .map(([l, v, c, t]) => `<li><i class="${c}">●</i><b>${l}: ${v}</b> – ${t}</li>`).join("")}</ul>
+      <div class="note" style="margin:8px 0 0">🟢 Panik (VIX ≥ 30): Extra-Geld jetzt · 🟡 Unruhig (2 von 3 Warnzeichen): Extra-Geld in Raten · 🔵 Normal: Sparrate wie geplant. <b>Kein Rot</b> – „nicht kaufen“ hat im Test immer Geld gekostet. Die Sparrate läuft bei jeder Farbe.</div></ul></div>
     <div class="hcard">${hHead("Kurs der letzten 3 Jahre")}${etfLine(e.hist)}</div>`
     : `<div class="hcard"><div class="note" style="margin:0">Die ETF-Daten kommen mit dem nächsten Scan.</div></div>`;
   const plan = `<div class="hcard">${hHead("Mein Plan · 70 / 30")}
@@ -3257,13 +3265,13 @@ function etfHtml() {
   const how = `<div class="hcard">${hHead("So gehst du vor")}<ul class="checks rules">${[
       ["Sparplan bei Scalable", "monatlich in den SPYI – läuft automatisch, bei jeder Ampelfarbe"],
       ["Nie wegen Rücksetzern verkaufen", "der Welt-ETF fiel 2008/09 um mehr als 50 % und erholte sich – wer verkaufte, verpasste die Erholung"],
-      ["Extra-Geld bei Grün", "Bonus, Rücklage oder Gewinne aus dem Trading-Bereich bevorzugt investieren, wenn die Ampel grün ist"],
+      ["Extra-Geld nach Ampel", "Bonus, Rücklage, Trading-Gewinne: bei 🔵 und 🟢 sofort, bei 🟡 auf 3–6 Monate verteilen"],
       ["Ausschüttungen", "SPYI gilt als thesaurierend (Erträge werden wieder angelegt) – im Factsheet bei Scalable kurz prüfen"]].map(([l, t]) => `<li><i class="up">✓</i><b>${l}:</b> ${t}</li>`).join("")}</ul></div>`;
   const test = `<div class="hcard">${hHead("Was der Test zeigt")}
-    <div class="hsub">Was nach welcher Lage folgte (MSCI ACWI, 2008–2026)</div>
-    <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Lage</th><th class="num">Ø 12 Monate später</th><th class="num">nach 12 Mon. im Minus</th><th class="num">zwischendurch −10 %</th></tr></thead><tbody>
-      ${ETF_BT.fwd.map(([l, f, n, d]) => `<tr${e && ((l.includes("Allzeithoch") && e.dd < .02) || (l.startsWith("mehr als") && e.dd >= .2)) ? ' class="best"' : ""}><td>${l}</td><td class="num up">+${pct(f, 0)}</td><td class="num">${pct(n, 0)}</td><td class="num">${pct(d, 0)}</td></tr>`).join("")}</tbody></table></div>
-    <div class="note" style="margin:6px 0 10px">Am Hoch ist ein Rücksetzer um 10 % in einem Drittel der Fälle gekommen – trotzdem lag der ETF ein Jahr später im Schnitt 9 % höher. Ein Allzeithoch ist kein Verkaufs- oder Wartesignal.</div>
+    <div class="hsub">Was nach welcher Lage folgte – Ø Rendite der nächsten 12 Monate</div>
+    <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Lage</th><th class="num">S&amp;P 1990–2007</th><th class="num">S&amp;P 2008–2026</th><th class="num">Welt 2004–2026</th><th class="num">zwischendurch −10 %</th></tr></thead><tbody>
+      ${ETF_BT.fac.map(([l, f, r, k]) => `<tr${k === "best" ? ' class="best"' : ""}><td>${k === "all" ? `<b>${l}</b>` : l}${k === "mixed" ? '<small class="gold">widersprüchlich – nicht in der Ampel</small>' : k === "warn" ? '<small class="gold">Warnzeichen</small>' : ""}</td>${f.map(v => `<td class="num ${v == null ? "muted" : v >= 0 ? "up" : "down"}">${v == null ? "–" : (v >= 0 ? "+" : "−") + pct(Math.abs(v), 0)}</td>`).join("")}<td class="num">${r.filter(x => x != null).map(x => pct(x, 0)).join(" / ")}</td></tr>`).join("")}</tbody></table></div>
+    <div class="note" style="margin:6px 0 10px">Monatsende-Stichproben. Ein Faktor kommt nur in die Ampel, wenn er in allen Zeiträumen in dieselbe Richtung zeigt. Gute Stimmung (ruhiger VIX) am Allzeithoch war <b>kein</b> Warnsignal; Panik war fast immer eine Chance. Rücksetzer allein oder eine inverse Zinskurve wirkten mal so, mal so.</div>
     <div class="hsub">Sparplan-Regeln mit gleichem Geld (Endwert ÷ Einzahlungen)</div>
     <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Regel</th><th class="num">ACWI ab 2008</th><th class="num">Welt ab 2003</th><th class="num">größter Rückgang</th></tr></thead><tbody>
       ${ETF_BT.plans.map(([l, a, b, d, me]) => `<tr${me ? ' class="best"' : ""}><td>${me ? `<b>${l}</b> ★` : l}</td><td class="num">${fmt(a, 2)}×</td><td class="num">${fmt(b, 2)}×</td><td class="num down">−${pct(d, 0)}</td></tr>`).join("")}</tbody></table></div>

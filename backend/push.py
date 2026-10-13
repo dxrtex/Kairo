@@ -127,20 +127,19 @@ def etf_message(today: str, sent: dict) -> list[dict]:
     try:
         import yfinance as yf
         from . import etf
-        d = yf.download(etf.TICKER, period="2y", interval="1d", auto_adjust=True, progress=False)
-        c = d["Close"]
-        c = c.iloc[:, 0] if hasattr(c, "columns") else c
-        e = etf.compute(c.to_frame("Close"))
+        d = yf.download([etf.TICKER, "^VIX", "HYG", "IEF"], period="2y", interval="1d", auto_adjust=True, progress=False)["Close"]
+        e = etf.compute(d[etf.TICKER].to_frame("Close"), d["^VIX"], d["HYG"], d["IEF"])
     except Exception as exc:
         print(f"Push: ETF-Ampel nicht berechnet ({exc!r})")
         return []
     lv, prev = e.get("lv"), sent.get("etf:last")
     sent["etf:last"] = lv or prev
     key = f"etf:{lv}:{today[:7]}"
-    if lv not in ("green", "green2") or lv == prev or key in sent:
+    if lv not in ("yellow", "green2") or lv == prev or key in sent:
         return []
     sent[key] = today
-    return [{"title": f"🟢 ETF-Ampel: {e['t']}", "body": f"SPYI {_num(e['c'])} € · {_pct(e['dd'])} unter dem Hoch. Sparrate läuft weiter; Extra-Geld lohnt sich jetzt besonders.",
+    ic = "🟢" if lv == "green2" else "🟡"
+    return [{"title": f"{ic} ETF-Ampel: {e['t']}", "body": f"SPYI {_num(e['c'])} € · {_pct(e['dd'])} unter dem Hoch · VIX {e.get('vix') or '–'}. Die Sparrate läuft weiter.",
              "url": APP + "?sec=etf", "tag": "kairo-etf"}]
 
 

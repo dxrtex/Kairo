@@ -7,10 +7,12 @@ from backend.etf import clean, compute, level
 
 
 def test_levels():
-    assert level(100, 90, 0.01)["lv"] == "blue"
-    assert level(100, 105, 0.05)["lv"] == "green"
-    assert level(100, 90, 0.12)["lv"] == "green"
-    assert level(100, 120, 0.25)["lv"] == "green2"
+    assert level(13, False, False)["lv"] == "blue"            # Hoch + ruhig = normal, kein Warnsignal
+    assert level(22, False, False)["lv"] == "blue"            # ein Warnzeichen reicht nicht
+    assert level(22, True, False)["lv"] == "yellow"
+    assert level(18, True, True)["lv"] == "yellow"
+    assert level(35, True, True)["lv"] == "green2"            # Panik schlägt alles
+    assert level(None, True, None)["lv"] == "blue"
 
 
 def test_clean_removes_spike_and_compute():

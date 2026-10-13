@@ -399,7 +399,9 @@ def main(argv=None) -> int:
     if not args.end:
         try:
             eh = yf.history([etf.TICKER], "max").get(etf.TICKER)
-            eo = etf.compute(eh) if eh is not None else {}
+            ex = yf.history(["^VIX", "HYG", "IEF"], "2y")
+            col = lambda k: ex[k]["Close"] if ex.get(k) is not None and len(ex[k]) else None
+            eo = etf.compute(eh, col("^VIX"), col("HYG"), col("IEF")) if eh is not None else {}
             if eo:
                 with open(SITE / "etf.json", "w", encoding="utf-8") as f:
                     json.dump(_clean(eo), f, ensure_ascii=False, separators=(",", ":"))
