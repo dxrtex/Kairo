@@ -406,6 +406,10 @@ def main(argv=None) -> int:
                 SITE.mkdir(parents=True, exist_ok=True)
                 with open(SITE / "etf.json", "w", encoding="utf-8") as f:
                     json.dump(_clean(eo), f, ensure_ascii=False, separators=(",", ":"))
+            if eh is not None and len(eh):
+                rr = eh["Close"].dropna() / eh["Close"].dropna().shift(1)
+                jumps = [(str(t.date()), round(float(v), 3)) for t, v in rr[(rr > 1.35) | (rr < 1 / 1.35)].items()]
+                print(f"ETF-Rohdaten: letzte Kurse {[round(float(x), 2) for x in eh['Close'].dropna().tail(3)]}, Sprünge {jumps[:5]}")
             print(f"ETF: {eo.get('c')} € · {eo.get('dd', 0) * 100:.1f} % unter dem Hoch · {eo.get('t')} · {len(eh) - eo.get('n', 0) if eh is not None else 0} Fehlkurse entfernt")
         except Exception as exc:
             print(f"ETF: Fehler {exc!r}")

@@ -22,3 +22,11 @@ def test_clean_removes_spike_and_compute():
     assert clean(c).min() > 90
     out = compute(pd.DataFrame({"Close": c}))
     assert out["lv"] == "blue" and out["dd"] < 0.01 and len(out["hist"]) > 300
+
+
+def test_split_is_adjusted():
+    idx = pd.bdate_range("2023-01-02", periods=400)
+    c = pd.Series(np.linspace(200, 240, 400), index=idx)
+    c.iloc[350:] = c.iloc[350:] / 20                      # Split 20:1, Historie nicht bereinigt
+    out = compute(pd.DataFrame({"Close": c}))
+    assert out["dd"] < 0.02 and out["ok"] and 11 < out["c"] < 13
