@@ -130,13 +130,13 @@ def _trade(b: pd.DataFrame, i0: int, stop: float, exit_rule: str, max_days: int 
     for j in range(i0, end + 1):
         if l[j] <= stop:
             px = min(stop, o[j]) if j > i0 else stop
-            return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 1, "x": "stop"}
+            return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 1, "x": "stop", "ti": str(b.index[i0]), "to": str(b.index[j])}
         hit = ((exit_rule == "rsi" and r_[j] >= 70) or (exit_rule == "mbi" and rx[j]) or (exit_rule == "macd" and mcd[j])
                or (exit_rule == "2v3" and two[j]) or (exit_rule == "3v3" and three[j]))
         if hit and j < end:
             px = o[j + 1]
-            return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 2, "x": exit_rule}
-    return {"r": (c[end] - e) / risk - COST * e / risk, "bars": end - i0 + 1, "x": "zeit"}
+            return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 2, "x": exit_rule, "ti": str(b.index[i0]), "to": str(b.index[j + 1])}
+    return {"r": (c[end] - e) / risk - COST * e / risk, "bars": end - i0 + 1, "x": "zeit", "ti": str(b.index[i0]), "to": str(b.index[end])}
 
 
 TRIG = {"R35": ["R35"], "R40": ["R40"], "M": ["M"], "M0": ["M0"], "B": ["B"], "RM": ["R40", "M"], "RB": ["R40", "B"],
@@ -204,6 +204,35 @@ def standalone(b: pd.DataFrame, atr_pct: float, rnd: random.Random) -> dict:
     return out
 
 
+def depot(ts: list[dict], slots: int = 5, risk: float = 0.01, start: float = 10000.0) -> dict | None:
+    """Depot wie die Strategie: 1 % Risiko vom Kapital je Trade, höchstens `slots` gleichzeitig, ruhigste zuerst bei
+    gleichzeitigen Einstiegen; Gebühren stecken schon in r. Kapital nur bei Verkäufen gebucht (größter Rückgang daher eher zu klein)."""
+    if not ts:
+        return None
+    ev = sorted(ts, key=lambda t: (t["ti"], t.get("atrp", 1)))
+    eq, peak, mdd, open_, taken = start, start, 0.0, [], 0
+    for t in ev:
+        keep = []
+        for o in sorted(open_, key=lambda o: o["to"]):
+            if o["to"] <= t["ti"]:
+                eq += o["amt"] * o["r"]
+                peak = max(peak, eq)
+                mdd = max(mdd, 1 - eq / peak)
+            else:
+                keep.append(o)
+        open_ = keep
+        if len(open_) >= slots or any(o["tk"] == t["tk"] for o in open_):
+            continue
+        open_.append({**t, "amt": eq * risk})
+        taken += 1
+    for o in sorted(open_, key=lambda o: o["to"]):
+        eq += o["amt"] * o["r"]
+        peak = max(peak, eq)
+        mdd = max(mdd, 1 - eq / peak)
+    yrs = max(0.25, (pd.Timestamp(ev[-1]["to"]) - pd.Timestamp(ev[0]["ti"])).days / 365.25)
+    return {"trades": taken, "cagr": round(float((eq / start) ** (1 / yrs) - 1), 4) if eq > 0 else -1.0, "mdd": round(float(mdd), 3)}
+
+
 def summary(ts: list[dict]) -> dict:
     if not ts:
         return {"n": 0}
@@ -240,8 +269,8 @@ def main(argv=None) -> int:
                 continue
             n += 1
             for k, v in kairo_variants(e, b).items():
-                res.setdefault(k, []).append(v)
-        rep["kairo"][d] = {"treffer_im_zeitraum": n, **{k: summary(v) for k, v in sorted(res.items())}}
+                res.setdefault(k, []).append({**v, "tk": e["t"], "atrp": e["px"]["atr"]})
+        rep["kairo"][d] = {"treffer_im_zeitraum": n, **{k: {**summary(v), "depot": depot(v)} for k, v in sorted(res.items())}}
         print(d, json.dumps(rep["kairo"][d], ensure_ascii=False), flush=True)
     rnd = random.Random(7)
     for d, hs in hits.items():
