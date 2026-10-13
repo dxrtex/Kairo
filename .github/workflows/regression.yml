@@ -29,6 +29,11 @@ jobs:
           cache: pip
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest -q backend/tests
+      - name: App-Test im Browser (neuer Code, veröffentlichte Daten)
+        run: |
+          pip install -q playwright==1.55.0
+          python -m playwright install --with-deps chromium > /dev/null
+          python tools/app_smoke.py --fetch
       - run: python -m backend.regression --out regression.md
       - name: Rückblick
         run: python -m backend.regression --timeline "${{ inputs.timeline || 'TUI1.DE' }}" --days "${{ inputs.days || '20' }}"
