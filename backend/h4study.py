@@ -80,6 +80,9 @@ def _hourly(tickers: list[str], batch: int = 40, pause: float = 5.0) -> dict:
     return out
 
 
+W, L = 6, 6                                # „zuletzt“-Fenster und Strukturbruch-Rückblick (4H-Kerzen) – Robustheitstest variiert beides
+
+
 def to4h(x: pd.DataFrame) -> pd.DataFrame:
     """Je Handelstag die Stundenkerzen in 4er-Gruppen (wie TradingView 4H in der Börsenzeit)."""
     idx = x.index.tz_convert(None) if x.index.tz is not None else x.index
@@ -100,14 +103,14 @@ def to4h(x: pd.DataFrame) -> pd.DataFrame:
     up = (md["macd"] > md["signal"]) & (md["macd"].shift(1) <= md["signal"].shift(1))
     dn = (md["macd"] < md["signal"]) & (md["macd"].shift(1) >= md["signal"].shift(1))
     b["mcu"], b["mcd"], b["mcu0"] = up.values, dn.values, (up & (md["macd"] < 0)).values
-    rec = lambda x: pd.Series(x, index=b.index).astype(float).rolling(6, min_periods=1).max().to_numpy() > 0
-    rmin = b["rsi"].rolling(6, min_periods=1).min()
+    rec = lambda x: pd.Series(x, index=b.index).astype(float).rolling(W, min_periods=1).max().to_numpy() > 0
+    rmin = b["rsi"].rolling(W, min_periods=1).min()
     rising = (b["rsi"] > b["rsi"].shift(1)).to_numpy()
     b["R35"] = (rmin <= 35).to_numpy() & rising
     b["R40"] = (rmin <= 40).to_numpy() & rising
     b["M"], b["M0"], b["B"] = rec(b["mcu"]), rec(b["mcu0"]), rec(b["gx"])
     # Strukturbruch: Schluss über dem höchsten Hoch der 6 4H-Kerzen davor (≈ letztes 4H-Zwischenhoch, ~3 Tage)
-    b["S"] = (b["Close"] > b["High"].shift(1).rolling(6, min_periods=6).max()).to_numpy()
+    b["S"] = (b["Close"] > b["High"].shift(1).rolling(L, min_periods=L).max()).to_numpy()
     b["xr"] = (b["rsi"].rolling(6, min_periods=1).max() >= 70).to_numpy()
     b["xm"], b["xb"] = rec(b["mcd"]), rec(b["rx"])
     return b
@@ -246,13 +249,54 @@ def summary(ts: list[dict]) -> dict:
             "top5_anteil": round(float(np.sort(r)[-5:].sum() / r[r > 0].sum()), 3) if (r > 0).any() else None}
 
 
+def robust(hits: dict, raw: dict) -> dict:
+    """Stufe 3: Hält das beste Setup (Tageschart + Seitwärtsphase + RSI/MACD/MBI + Strukturbruch), wenn man die
+    Fenster ändert? Ein echter Effekt darf nicht nur bei genau 6/6 Kerzen funktionieren."""
+    global W, L
+    out = {}
+    for w in (4, 6, 8):
+        for lb in (4, 6, 10):
+            W, L = w, lb
+            bars = {}
+            for t, x in raw.items():
+                try:
+                    b = to4h(x)
+                    if len(b) > 100:
+                        bars[t] = b
+                except Exception:
+                    pass
+            for d, hs in hits.items():
+                res: dict[str, list] = {}
+                for e in hs:
+                    b = bars.get(e["t"])
+                    if b is None or pd.Timestamp(e["d"]) < b["day"].iat[0] + pd.Timedelta(days=20):
+                        continue
+                    for k, v in kairo_variants(e, b).items():
+                        if k.endswith("|zeit") and k.split("|")[1] in ("–", "RMBS", "RMB", "RS"):
+                            res.setdefault(k, []).append({**v, "tk": e["t"], "atrp": e["px"]["atr"]})
+                out[f"W{w}_L{lb}_{d}"] = {k: {**summary(v), "depot": depot(v)} for k, v in sorted(res.items())}
+                print(f"W{w} L{lb} {d}", {k: (v["n"], v.get("r")) for k, v in out[f"W{w}_L{lb}_{d}"].items()}, flush=True)
+    W, L = 6, 6
+    return out
+
+
 def main(argv=None) -> int:
-    dirs = (argv if argv is not None else sys.argv[1:]) or ["k1", "k2"]
+    argv = list(argv if argv is not None else sys.argv[1:])
+    mode = "robust" if "--robust" in argv else "full"
+    dirs = [a for a in argv if not a.startswith("--")] or ["k1", "k2"]
     t0 = time.time()
     hits = {d: _hits(d) for d in dirs}
     tick = sorted({e["t"] for h in hits.values() for e in h})
     print(f"Treffer: {[len(h) for h in hits.values()]}, Aktien: {len(tick)}", flush=True)
     raw = _hourly(tick)
+    if mode == "robust":
+        rep = {"generated": time.strftime("%Y-%m-%d"), "robust": robust(hits, raw)}
+        (ROOT / "data").mkdir(exist_ok=True)
+        (ROOT / "data" / "h4study.json").write_text(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
+        print("===BEGIN===")
+        print(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
+        print("===END===")
+        return 0
     bars, start = {}, None
     for t, x in raw.items():
         try:
