@@ -623,7 +623,7 @@ def _pnl(p: dict, fee_eur: float | None) -> float:
 
 
 def _depot_real(trades: list[dict], start: float = 3000.0, max_open: int = 5, seed: int = 11, fee_eur: float = 0.99,
-                mtm: bool = True) -> dict:
+                mtm: bool = True, series: dict | None = None) -> dict:
     """Depot wie in der App, aber ehrlicher gerechnet:
     - Gebühr in Euro je Order (statt anteilig auf 2.000 € Position): bei kleinem Depot ein großer Teil des Risikos.
     - Depotwert TÄGLICH inklusive Buchverlusten offener Trades (größter Rückgang nicht nur bei Verkäufen).
@@ -677,6 +677,8 @@ def _depot_real(trades: list[dict], start: float = 3000.0, max_open: int = 5, se
                 val += p["amt"] * p["sm"]["path"][max(0, k)]
             peak = max(peak, val)
             mdd = max(mdd, 1 - val / peak if peak else 0)
+            if series is not None:
+                series[ds] = round(val, 2)
         day += dt.timedelta(days=1)
     for p in open_:
         eq = max(0.0, eq + _pnl(p, fee_eur))
@@ -1129,3 +1131,31 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def kairo_series(sets: dict, seeds: int = 9) -> dict:
+    """Täglicher Depotwert (3.000 € Start) der aktuellen Kairo-Strategie für den großen Strategie-Vergleich:
+    volle Treffer, Kauf in der Seitwärtsphase, 20 Tage, 1 % Risiko, ruhigste zuerst, 5 Plätze, kleinster passender Hebel.
+    Von mehreren Reihenfolgen (gleicher Tag) wird die mit dem mittleren Ergebnis genommen."""
+    import datetime as dt
+    rows = []
+    for e in sets.get("hit") or []:
+        if len(e["px"]["c"]) < 30:
+            continue
+        var = {}
+        for L in (1, 2, 3, 5, 10):
+            sm = simulate(e["px"], {**QRULE, "hold": 20, "levs": [L], "kob": 1.0})
+            if sm and "skip" not in sm and sm["lev"] == L:
+                var[L] = sm
+        if var:
+            sm0 = next(iter(var.values()))
+            d_in = str(dt.date.fromisoformat(e["d"]) + dt.timedelta(days=int((sm0["s"] + 1) * 7 / 5)))
+            rows.append({"d": d_in, "sm": sm0, "var": var, "rk": 0.01, "prio": -((e.get("f") or {}).get("atrp") or 1)})
+    runs = []
+    for sd in range(seeds):
+        ser = {}
+        r = _depot_real(rows, seed=sd, series=ser)
+        if r:
+            runs.append((r["cagr"], ser))
+    runs.sort(key=lambda x: x[0])
+    return runs[len(runs) // 2][1] if runs else {}
