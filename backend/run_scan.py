@@ -403,6 +403,7 @@ def main(argv=None) -> int:
             col = lambda k: ex[k]["Close"] if ex.get(k) is not None and len(ex[k]) else None
             eo = etf.compute(eh, col("^VIX"), col("HYG"), col("IEF")) if eh is not None else {}
             if eo:
+                SITE.mkdir(parents=True, exist_ok=True)
                 with open(SITE / "etf.json", "w", encoding="utf-8") as f:
                     json.dump(_clean(eo), f, ensure_ascii=False, separators=(",", ":"))
             print(f"ETF: {eo.get('c')} € · {eo.get('dd', 0) * 100:.1f} % unter dem Hoch · {eo.get('t')} · {len(eh) - eo.get('n', 0) if eh is not None else 0} Fehlkurse entfernt")
