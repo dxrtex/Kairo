@@ -2806,6 +2806,11 @@ function gBuy(g, t, f) {
               wkn: (f.wkn || "").trim().toUpperCase(), P0, qty, K0, S0: x.c, fx0: x.eur / x.c, stop, cost, d: isoD(new Date()),
               scan: String(data.generated).slice(0, 10), exit: isoD(addBd(new Date(), KMAX.hold)), k: su.k, score: su.score ?? null };
   p.risk = stop && stop < x.c ? qty * (P0 - gModelAt(p, stop)) + 2 * G_FEE : null;
+  // Regeltreue: Abweichungen von der getesteten Strategie beim Kauf festhalten
+  const lossU = stop && stop < x.c ? P0 - gModelAt(p, stop) : null, sug = lossU > 0 ? gTotals(g).trade * .01 / lossU : null;
+  p.rv = [su.k !== "Kairo" && "kein Kairo-Treffer", su.k === "Kairo" && !pl.base && "ohne Seitwärtsphase", !stop && "ohne Stop",
+          turbo && stop && K0 >= stop && "K.-o. über dem Stop", sug && qty > sug * 1.15 && "mehr als 1 % Risiko",
+          g.pos.length >= KMAX.maxOpen && "mehr als 5 Trades"].filter(Boolean);
   g.cash -= cost; g.pos.push(p); return "";
 }
 function gSetup(t) {
@@ -2892,10 +2897,17 @@ function gameHtml() {
     return `<div class="g-pos"><div class="g-pos-h"><button class="g-nm" data-card="${esc(p.t)}"><b>${esc(p.n)}</b><small>${p.kind === "turbo" ? `Turbo Long${p.wkn ? " " + esc(p.wkn) : ""}` : "Aktie"} · ${esc(p.k)} · seit ${dateDE(p.d)} · noch ${left} Handelstage</small></button>
       <div class="g-pl ${pnl >= 0 ? "up" : "down"}"><b>${sEur2(pnl)}</b><small>${p.risk ? `${pnl >= 0 ? "+" : ""}${fmt(pnl / p.risk, 2)} R` : sgnPct(val / p.cost - 1, 1)}</small></div></div>
       <div class="g-row"><span>${fmt(p.qty, 0)} Stk. · Kauf ${eur2(p.P0)} → ${p.mark && p.mark.d >= String(data.generated).slice(0, 10) ? "eingetragen" : "geschätzt"} ${eur2(u)}${p.kind === "turbo" ? ` · K.-o. ${fmt(ko)}` : ""} · Basiswert ${fmt(x.c)} ${esc(p.cur)}${p.stop ? ` · Stop ${fmt(p.stop)}` : ""}</span>${tag}</div>
+      ${(p.rv || []).length ? `<div class="g-row"><span class="g-tag down">Abweichung: ${esc(p.rv.join(", "))}</span></div>` : ""}
       <div class="g-act"><button class="btn ghost sm" data-g="mark" data-id="${p.id}">Kurs eintragen</button><button class="btn ghost sm" data-g="sell" data-id="${p.id}">Verkaufen …</button></div></div>`;
   }).join("");
   const done = g.closed, rs = done.map(c => c.R).filter(r => r != null), avgR = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
-  const closed = done.slice(0, 20).map(c => `<tr><td><b>${esc(c.n)}</b><small class="muted" style="display:block">${c.kind === "turbo" ? `Turbo${c.wkn ? " " + esc(c.wkn) : ""}` : "Aktie"} · ${dateDE(c.d)} → ${dateDE(c.xd)} · ${esc(c.why)}</small></td><td class="num ${c.pnl >= 0 ? "up" : "down"}">${sEur2(c.pnl)}<small style="display:block">${c.R != null ? `${c.R >= 0 ? "+" : ""}${fmt(c.R, 2)} R` : sgnPct(c.ret, 1)}</small></td></tr>`).join("");
+  const ok = done.filter(c => !(c.rv || []).length), bad = done.filter(c => (c.rv || []).length), avg = l => { const r = l.map(c => c.R).filter(x => x != null); return r.length ? r.reduce((a, b) => a + b, 0) / r.length : null; };
+  const disc = done.length ? `<div class="hcard" style="margin-top:10px">${hHead("Regeltreue")}<div class="mtiles">
+      <div class="mt"><span>nach Regeln</span><b class="${ok.length / done.length >= .9 ? "up" : "gold"}">${pct(ok.length / done.length, 0)}</b><em>${ok.length} von ${done.length} Trades</em></div>
+      <div class="mt"><span>Ø regelkonform</span><b>${avg(ok) != null ? `${avg(ok) >= 0 ? "+" : ""}${fmt(avg(ok), 2)} R` : "–"}</b></div>
+      <div class="mt"><span>Ø mit Abweichung</span><b>${avg(bad) != null ? `${avg(bad) >= 0 ? "+" : ""}${fmt(avg(bad), 2)} R` : "–"}</b></div></div>
+      <div class="note" style="margin:6px 0 0">Nur regelkonforme Trades sagen etwas über die Strategie. Abweichungen (ohne Seitwärtsphase, zu viel Risiko, zu früh verkauft …) testen dein Bauchgefühl.</div></div>` : "";
+  const closed = done.slice(0, 20).map(c => `<tr><td><b>${esc(c.n)}</b><small class="muted" style="display:block">${c.kind === "turbo" ? `Turbo${c.wkn ? " " + esc(c.wkn) : ""}` : "Aktie"} · ${dateDE(c.d)} → ${dateDE(c.xd)} · ${esc(c.why)}${(c.rv || []).length ? ` · ⚠️ ${esc(c.rv.join(", "))}` : ""}</small></td><td class="num ${c.pnl >= 0 ? "up" : "down"}">${sEur2(c.pnl)}<small style="display:block">${c.R != null ? `${c.R >= 0 ? "+" : ""}${fmt(c.R, 2)} R` : sgnPct(c.ret, 1)}</small></td></tr>`).join("");
   const id = data.results.filter(r => r.passed).sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 10), sel = state.gSel;
   const idea = r => { const s = rowOf(r.ticker) || {}, own = g.pos.some(p => p.t === r.ticker);
     return `<button class="g-idea${sel === r.ticker ? " on" : ""}" data-g="pick" data-t="${esc(r.ticker)}"><b>${esc(r.name || r.ticker)}</b>
@@ -2908,6 +2920,9 @@ function gameHtml() {
         <div class="mt"><span>Trading</span><b class="${tperf >= 0 ? "up" : "down"}">${eur2(T.trade)}</b><em>${sgnPct(tperf, 1)} · frei ${eur2(g.cash)}</em></div>
         <div class="mt"><span>100 % ETF wäre</span><b>${T.etfOnly ? eur2(T.etfOnly) : "–"}</b><em>${eperf != null ? sgnPct(eperf, 1) : ""}</em></div>
         <div class="mt"><span>Trades</span><b>${done.length}</b><em>${avgR != null ? `Ø ${avgR >= 0 ? "+" : ""}${fmt(avgR, 2)} R · Studie ≈ +${fmt(STRAT_BT.perTrade, 2)} R` : `${g.pos.length} offen`}</em></div></div>
+      ${T.etfOnly ? (() => { const tax = gain => Math.max(0, gain - 1000) * .26375;
+          const cost0 = g.etf.units * (g.etf.px0 || 0) + G_FEE, mine = T.total - tax(Math.max(0, T.etf - cost0) * .7 + (T.trade - g.tcap)), only = T.etfOnly - tax(Math.max(0, T.etfOnly - G_START) * .7);
+          return `<div class="note" style="margin:8px 0 0">Nach Steuern, wenn heute alles verkauft würde (grob: 26,4 % inkl. Soli, 1.000 € Freibetrag, 30 % Teilfreistellung beim ETF): Dein Depot <b>${eur2(mine)}</b> · 100 % ETF <b>${eur2(only)}</b>. Trading-Gewinne werden in Wirklichkeit jedes Jahr besteuert, ETF-Gewinne erst beim Verkauf – das bremst den Trading-Teil zusätzlich.</div>`; })() : ""}
       ${T.etfOnly ? `<div class="note" style="margin:8px 0 0">${T.total >= T.etfOnly ? "🟢 Dein 70/30-Depot liegt vor „100 % ETF“" : "🔴 „100 % ETF“ liegt vorn"} (${sEur2(T.total - T.etfOnly)}). ${done.length < 30 ? `Aussagekräftig erst ab ~30–50 Trades (jetzt ${done.length}).` : ""}</div>` : ""}</div>
     ${sel ? gBuyForm(g, sel) : ""}
     <div class="section-title"><span>Kairo-Treffer</span><span>antippen zum Kaufen</span></div>
@@ -2916,6 +2931,7 @@ function gameHtml() {
     <div class="ein-search"><input id="gQ" type="search" placeholder="Aktie eingeben – z. B. Apple, SAP, Rheinmetall" autocomplete="off" value="${esc(state.gQ || "")}"><div id="gList">${searchIdx ? gListHtml() : ""}</div></div>
     <div class="section-title"><span>Offene Positionen</span><span>${g.pos.length} von ${KMAX.maxOpen}</span></div>
     ${pos || `<div class="empty">Noch keine Positionen – wähle oben einen Kairo-Treffer.</div>`}
+    ${disc}
     ${closed ? `<div class="section-title"><span>Abgeschlossen</span><span>${done.length} Trades</span></div><div class="table-wrap"><table><tbody>${closed}</tbody></table></div>` : ""}
     <div class="card" style="margin-top:18px"><label class="g-opt"><input type="checkbox" data-g="auto"${g.auto ? " checked" : ""}> Regeln automatisch befolgen – Stop wie eine Stop-Order (auch untertags über die Tagestiefs), Verkauf an Tag ${KMAX.hold}</label>
       <div class="note">Turbo-Wert zwischendurch geschätzt: Kaufkurs × (Basiswert − K.-o.) ÷ (Basiswert beim Kauf − K.-o.), K.-o. steigt mit ~3,5 % p. a. Finanzierung. Mit „Kurs eintragen“ übernimmst du den echten Geldkurs aus Scalable; beim Verkauf trägst du den tatsächlichen Verkaufskurs ein. K.-o. wird über die Tagestiefs erkannt. 0,99 € je Order, keine Steuern. Spielgeld – keine Anlageberatung.</div>
@@ -2937,6 +2953,8 @@ document.addEventListener("click", e => {
     const v = prompt(`Aktueller Geldkurs je Stück (€) für ${p.n}${p.wkn ? " (" + p.wkn + ")" : ""} – aus Scalable. Leer = wieder schätzen.`, p.mark ? String(p.mark.v).replace(".", ",") : "");
     if (v === null) return; const x = gNum(v); p.mark = x > 0 ? { v: x, d: String(data.generated).slice(0, 10) } : null; gSave(g); render(); return; }
   if (a === "sell") { const p = g.pos.find(x => x.id === b.dataset.id); if (!p) return;
+    if (p.exit && isoD(new Date()) < p.exit && !confirm(`Laut Strategie wird ${p.n} erst am ${dateDE(p.exit)} verkauft (Tag ${KMAX.hold}) – oder vorher am Stop. Ein früher Verkauf kostete im Test Rendite. Trotzdem jetzt verkaufen?`)) return;
+    if (p.exit && isoD(new Date()) < p.exit) p.rv = [...(p.rv || []), "vor Tag 20 verkauft"];
     const v = prompt(`Verkaufskurs je Stück (€) für ${fmt(p.qty, 0)} × ${p.n} – der Geldkurs aus Scalable:`, gUnit(p).toFixed(3).replace(".", ","));
     if (v === null) return; const x = gNum(v); if (x == null || x < 0) return; gSell(g, p.id, "manuell", x); gTick(g); gSave(g); render(); return; }
   if (a === "reset") { if (confirm("Spiel wirklich neu starten? Alle Spiel-Positionen und der Verlauf werden gelöscht.")) { localStorage.removeItem(GKEY); state.gSel = ""; save(); render(); } return; }
@@ -3275,8 +3293,9 @@ function etfHtml() {
         ["Abstand zum Hoch", e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1), "muted", "nur Info – im Test widersprüchlich (1990–2007 anders als ab 2008)"]]
         .map(([l, v, c, t]) => `<li><i class="${c}">●</i><b>${l}: ${v}</b> – ${t}</li>`).join("")}</ul>
       <div class="note" style="margin:8px 0 0">🟢 Panik (VIX ≥ 30): Extra-Geld jetzt · 🟡 Unruhig (2 von 3 Warnzeichen): Extra-Geld in Raten · 🔵 Normal: Sparrate wie geplant. <b>Kein Rot</b> – „nicht kaufen“ hat im Test immer Geld gekostet. Die Sparrate läuft bei jeder Farbe.</div></ul></div>
-    <div class="hcard">${hHead("Kurs der letzten 3 Jahre")}${etfLine(e.hist)}</div>`
-    : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? "Die Kursdaten des ETF sehen gerade unplausibel aus (Datenfehler beim Anbieter) – die Ampel ist ausgeblendet, bis sie wieder stimmen." : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
+    <div class="hcard">${hHead("Kurs der letzten 3 Jahre")}${etfLine(e.hist)}
+      <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI (Abweichung ${pct(e.ref_dev || 0, 1)} – unauffällig)` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ⚠️ Kurs ist ${e.age} Tage alt` : ""}. Bitte gelegentlich mit dem Kurs in Scalable vergleichen.</div></div>`
+    : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? `Die Kursdaten des ETF sehen gerade unplausibel aus${e0.ref_ok === false ? ` (weichen ${pct(e0.ref_dev, 1)} vom Vergleichs-ETF ab)` : ""} – Datenfehler beim Anbieter. Die Ampel ist ausgeblendet, bis sie wieder stimmen.` : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
   const plan = `<div class="hcard">${hHead("Mein Plan · 70 / 30")}
     <div class="tp2-cfg"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
       <label>ETF-Anteil (%)<input id="etfShare" type="number" inputmode="decimal" min="0" max="100" step="5" value="${esc(c.share)}"></label>

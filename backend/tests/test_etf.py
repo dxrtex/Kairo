@@ -30,3 +30,13 @@ def test_split_is_adjusted():
     c.iloc[350:] = c.iloc[350:] / 20                      # Split 20:1, Historie nicht bereinigt
     out = compute(pd.DataFrame({"Close": c}))
     assert out["dd"] < 0.02 and out["ok"] and 11 < out["c"] < 13
+
+
+def test_crosscheck_flags_bad_data():
+    idx = pd.bdate_range("2023-01-02", periods=400)
+    c = pd.Series(np.linspace(200, 240, 400), index=idx)
+    ref = pd.Series(np.linspace(80, 96, 400), index=idx)
+    assert compute(pd.DataFrame({"Close": c}), ref=ref)["ok"]
+    bad = c.copy(); bad.iloc[-3:] = bad.iloc[-3:] * 0.9            # 10 % daneben, Vergleichs-ETF ruhig
+    out = compute(pd.DataFrame({"Close": bad}), ref=ref)
+    assert out["ref_ok"] is False and out["ok"] is False
