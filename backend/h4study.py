@@ -287,12 +287,54 @@ def robust(hits: dict, raw: dict) -> dict:
     return out
 
 
+def miss_report(hits: dict, raw: dict) -> int:
+    """Gibt es Fast-Treffer (10/11) oder 9/11, die mit sauberem Einstieg (Seitwärtsphase + 4H) so gut sind wie volle Treffer?
+    Aufteilung nach fehlendem Kriterium, beide Stichproben und zwei Zeithälften getrennt (9/11 aus Stichprobe 1 ist
+    beschädigt → nur Stichprobe 2 zählt dort)."""
+    bars = {}
+    for t, x in raw.items():
+        try:
+            b = to4h(x)
+            if len(b) > 100:
+                bars[t] = b
+        except Exception:
+            pass
+    keep = ("HB|–|zeit", "HB|RS|zeit", "HB|RMB|zeit", "HB|RMBS|zeit")
+    rep = {"generated": time.strftime("%Y-%m-%d"), "miss": {}}
+    for d, hs in hits.items():
+        res: dict[str, dict[str, list]] = {}
+        for e in hs:
+            b = bars.get(e["t"])
+            if b is None or pd.Timestamp(e["d"]) < b["day"].iat[0] + pd.Timedelta(days=20):
+                continue
+            miss = [m for m in (e.get("miss") or []) if m not in ("cap", "liquidity", "price", "history")]
+            if e["grp"] != "11" and len(miss) != {"10": 1, "9": 2}[e["grp"]]:
+                continue                                 # Grundfilter fehlte – kein echter Fast-Treffer
+            groups = ["11/11"] if e["grp"] == "11" else [f"{e['grp']}/11", *[f"{e['grp']}/11 ohne {m}" for m in miss]]
+            for k, v in kairo_variants(e, b).items():
+                if k in keep:
+                    half = "a" if v["ti"] < "2025-04-01" else "b"
+                    for g in groups:
+                        for gg in (g, f"{g} [{half}]"):
+                            res.setdefault(gg, {}).setdefault(k, []).append({**v, "tk": e["t"], "atrp": e["px"]["atr"]})
+        rep["miss"][d] = {g: {k: {**summary(v), **({"depot": depot(v)} if "[" not in g else {})} for k, v in sorted(r.items())}
+                          for g, r in sorted(res.items())}
+        for g, r in sorted(rep["miss"][d].items()):
+            print(d, g, {k: (v["n"], v.get("r")) for k, v in r.items()}, flush=True)
+    (ROOT / "data").mkdir(exist_ok=True)
+    (ROOT / "data" / "h4study.json").write_text(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
+    print("===BEGIN===")
+    print(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
+    print("===END===")
+    return 0
+
+
 def main(argv=None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
-    mode = "robust" if "--robust" in argv else "near" if "--near" in argv else "full"
+    mode = "robust" if "--robust" in argv else "miss" if "--miss" in argv else "near" if "--near" in argv else "full"
     dirs = [a for a in argv if not a.startswith("--")] or ["k1", "k2"]
     t0 = time.time()
-    hits = {d: _hits(d, near=mode == "near") for d in dirs}
+    hits = {d: _hits(d, near=mode in ("near", "miss")) for d in dirs}
     tick = sorted({e["t"] for h in hits.values() for e in h})
     print(f"Treffer: {[len(h) for h in hits.values()]}, Aktien: {len(tick)}", flush=True)
     raw = _hourly(tick)
@@ -324,6 +366,8 @@ def main(argv=None) -> int:
         print(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
         print("===END===")
         return 0
+    if mode == "miss":                                   # 10/11 und 9/11 nach fehlendem Kriterium, ohne und mit 4H-Bestätigung
+        return miss_report(hits, raw)
     if mode == "robust":
         rep = {"generated": time.strftime("%Y-%m-%d"), "robust": robust(hits, raw)}
         (ROOT / "data").mkdir(exist_ok=True)
