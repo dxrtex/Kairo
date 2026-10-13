@@ -13,6 +13,7 @@ Tageschart-Kontext (immer Pflicht):
   M    MACD kreuzt die Signallinie nach oben;  M0  dasselbe unterhalb der Nulllinie
   B    grünes MBI-X
   RM, RB, MB, RMB  Kombinationen (alle Bedingungen zuletzt erfüllt)
+  S    Strukturbruch: 4H-Schluss über dem Hoch der 6 Kerzen davor;  RS, MS, BS, RMBS  mit den Indikatoren kombiniert
 4H-Ausstieg: zeit (Tag 20 / Stop) · rsi (RSI ≥ 70) · macd (MACD kreuzt nach unten) · mbi (rotes MBI-X) · 2v3 (zwei der drei zuletzt) · 3v3 (alle drei zuletzt – Jonnys Ausstieg)
 Gegenprobe ohne Tageschart: C_R30 (RSI kreuzt 30 nach oben) und C_RMB (alle drei) gegen zufällige Einstiege mit denselben Regeln.
 Vorsicht: Viele Varianten → einzelne sehen zufällig gut aus. Zählt nur, was in BEIDEN Stichproben besser ist als der Vergleich.
@@ -105,6 +106,8 @@ def to4h(x: pd.DataFrame) -> pd.DataFrame:
     b["R35"] = (rmin <= 35).to_numpy() & rising
     b["R40"] = (rmin <= 40).to_numpy() & rising
     b["M"], b["M0"], b["B"] = rec(b["mcu"]), rec(b["mcu0"]), rec(b["gx"])
+    # Strukturbruch: Schluss über dem höchsten Hoch der 6 4H-Kerzen davor (≈ letztes 4H-Zwischenhoch, ~3 Tage)
+    b["S"] = (b["Close"] > b["High"].shift(1).rolling(6, min_periods=6).max()).to_numpy()
     b["xr"] = (b["rsi"].rolling(6, min_periods=1).max() >= 70).to_numpy()
     b["xm"], b["xb"] = rec(b["mcd"]), rec(b["rx"])
     return b
@@ -140,7 +143,8 @@ def _trade(b: pd.DataFrame, i0: int, stop: float, exit_rule: str, max_days: int 
 
 
 TRIG = {"R35": ["R35"], "R40": ["R40"], "M": ["M"], "M0": ["M0"], "B": ["B"], "RM": ["R40", "M"], "RB": ["R40", "B"],
-        "MB": ["M", "B"], "RMB": ["R40", "M", "B"]}
+        "MB": ["M", "B"], "RMB": ["R40", "M", "B"],
+        "S": ["S"], "RS": ["R40", "S"], "MS": ["M", "S"], "BS": ["B", "S"], "RMBS": ["R40", "M", "B", "S"]}
 EXITS = ("zeit", "rsi", "macd", "mbi", "2v3", "3v3")
 
 
@@ -159,7 +163,7 @@ def kairo_variants(e: dict, b: pd.DataFrame) -> dict:
     if sm and "skip" not in sm and sm["s"] < len(ud):
         i_in = int(np.flatnonzero(days == ud[sm["s"]])[0])
         ctx["HB"] = (i_in, c0 * sm["sl"], ud[min(len(ud) - 1, sm["s"] + 10)])
-    flags = {k: b[k].to_numpy(bool) for k in ("R35", "R40", "M", "M0", "B")}
+    flags = {k: b[k].to_numpy(bool) for k in ("R35", "R40", "M", "M0", "B", "S")}
     out = {}
     for cn, (i0, stop0, lim) in ctx.items():
         s0 = int(sig[0])
