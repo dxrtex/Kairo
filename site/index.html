@@ -1720,11 +1720,19 @@ function newsHtml() {
   const inEur = x => x.cur === "EUR" ? x.val : x.val * ((fxEur && fxEur.USD) || 0.9);
   const wl = ij && ij.watch, wlB = (wl || []).filter(x => x.kind === "buy").sort((a, b) => inEur(b) - inEur(a)), wlS = (wl || []).filter(x => x.kind === "sell").sort((a, b) => inEur(b) - inEur(a));
   const wlSum = (() => { const by = {}; wlB.forEach(x => { by[x.t] = (by[x.t] || 0) + inEur(x); }); return Object.entries(by).sort((a, b) => b[1] - a[1]); })();
-  const wlHtml = !ij ? "" : !wl ? `<div class="note" style="margin:8px 2px">Insider-Geschäfte deiner Watchlist kommen mit dem nächsten Scan.</div>`
-    : block(`Deine Watchlist · Insider-Käufe · 6 Monate`, wlB.slice(0, 25).map(irow), `Keine Insider-Käufe bei den ${ij.watch_n || ""} US-Aktien deiner Watchlist in den letzten 6 Monaten.`)
-      + (wlSum.length > 1 ? `<div class="note" style="margin:-4px 2px 10px">Meiste Käufe: ${wlSum.slice(0, 5).map(([t, v]) => `<b>${esc(nameOf(t))}</b> ${eurAmt(v)}`).join(" · ")}</div>` : "")
-      + block("Deine Watchlist · größte Insider-Verkäufe · 6 Monate", wlS.slice(0, 12).map(irow), "Keine großen Verkäufe.")
-      + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${ij.watch_n || 0} US-Aktien (SEC, Käufe ab 25.000 $, Verkäufe ab 1 Mio. $)${ij.watch_de_n ? ` und ${ij.watch_de_n} deutsche Aktien (BaFin, Käufe ab 10.000 €, Verkäufe ab 250.000 €)` : ""} deiner Watchlist. Airbus, Novo Nordisk, BYD, Xiaomi, DroneShield und Tamburi melden an andere Aufsichten – für sie gibt es hier keine Daten.</div>`;
+  // Cluster: mehrere verschiedene Insider kaufen dieselbe Aktie in 90 Tagen – laut Studien das stärkste Insider-Signal
+  const ageD = d => (Date.now() - new Date(d + "T12:00:00")) / 864e5;
+  const recent = wlB.filter(x => x.d && ageD(x.d) <= 90).sort((a, b) => String(b.d).localeCompare(String(a.d)));
+  const clus = (() => { const by = {}; recent.forEach(x => { (by[x.t] = by[x.t] || { who: new Set(), v: 0 }).who.add(x.who); by[x.t].v += inEur(x); });
+    return Object.entries(by).filter(([, o]) => o.who.size >= 2).sort((a, b) => b[1].who.size - a[1].who.size || b[1].v - a[1].v); })();
+  const nUS = ij && ij.watch_n || 0, nDE = ij && ij.watch_de_n || 0;
+  const wlHtml = !ij ? "" : !wl ? `<div class="note" style="margin:8px 2px">Insider-Geschäfte deiner Aktien kommen mit dem nächsten Scan.</div>`
+    : (clus.length ? `<div class="hcard" style="margin:8px 0 12px;border-left:3px solid var(--up)"><b>🔥 Mehrere Insider kaufen</b><div class="note" style="margin:4px 0 0">${clus.slice(0, 6).map(([t, o]) => `<b>${esc(nameOf(t))}</b>: ${o.who.size} Insider · ${eurAmt(o.v)}`).join("<br>")}<br><span class="muted">Mehrere Käufer in 90 Tagen gelten als stärkstes Insider-Signal – kein Kaufsignal allein, aber ein Grund genauer hinzusehen.</span></div></div>` : "")
+      + block(`Deine Aktien · neueste Insider-Käufe · 90 Tage`, recent.slice(0, 20).map(irow), `Keine Insider-Käufe in den letzten 90 Tagen.`)
+      + block(`Deine Aktien · größte Insider-Käufe · 12 Monate`, wlB.slice(0, 30).map(irow), `Keine Insider-Käufe bei deinen Aktien in den letzten 12 Monaten.`)
+      + (wlSum.length > 1 ? `<div class="note" style="margin:-4px 2px 10px">Meiste Käufe (12 Monate): ${wlSum.slice(0, 6).map(([t, v]) => `<b>${esc(nameOf(t))}</b> ${eurAmt(v)}`).join(" · ")}</div>` : "")
+      + block("Deine Aktien · größte Insider-Verkäufe · 12 Monate", wlS.slice(0, 15).map(irow), "Keine großen Verkäufe.")
+      + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${nUS} US-Aktien (SEC/OpenInsider, Käufe ab 10.000 $, Verkäufe ab 250.000 $)${nDE ? ` und ${nDE} deutsche Aktien (BaFin, Käufe ab 5.000 €, Verkäufe ab 100.000 €)` : ""} aus Watchlist, Merkliste und Depot – 12 Monate. Airbus, Novo Nordisk, BYD, Xiaomi, DroneShield und Tamburi melden an andere Aufsichten (Niederlande, Dänemark, Hongkong, Australien, Italien) – dafür gibt es keine frei abrufbare Datenquelle.</div>`;
   return head + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) und für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften)${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
     + wlHtml
     + (live ? block("Deine US-Aktien · 90 Tage (live)", liveRows.map(irow), NEWS.at ? "Keine Insider-Käufe oder -Verkäufe über die Börse." : "lädt …") : "")

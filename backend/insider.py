@@ -26,7 +26,7 @@ import requests
 # dieselben Formular-4-Meldungen, frei abrufbar und schon aufbereitet.
 UA = {"User-Agent": f"Kairo Scanner {os.environ.get('SEC_CONTACT', '')}".strip(), "Accept-Encoding": "gzip, deflate"}
 OI = {"buy": "http://openinsider.com/latest-insider-purchases-25k", "sell": "http://openinsider.com/latest-insider-sales-100k"}
-SCREEN = "http://openinsider.com/screener?s={t}&fd=180&xp=1&xs=1&cnt=40"   # je Aktie: Käufe + Verkäufe, 180 Tage
+SCREEN = "http://openinsider.com/screener?s={t}&fd=365&xp=1&xs=1&cnt=200"  # je Aktie: Käufe + Verkäufe, 12 Monate
 FEED = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&owner=include&count=100&start={start}&output=atom"
 MIN_BUY, MIN_SELL = 50_000, 1_000_000                 # USD: kleinere Käufe/Verkäufe sind Rauschen
 
@@ -137,8 +137,8 @@ def fetch_openinsider() -> list[dict]:
     return rows
 
 
-def fetch_watch(watch: dict[str, str], budget_s: float = 120) -> tuple[list[dict], int]:
-    """Gezielt für die Watchlist: Insider-Käufe und -Verkäufe je US-Aktie der letzten 6 Monate (OpenInsider-Screener).
+def fetch_watch(watch: dict[str, str], budget_s: float = 240) -> tuple[list[dict], int]:
+    """Gezielt für Watchlist, Merkliste und Depot: Insider-Käufe und -Verkäufe je US-Aktie der letzten 12 Monate (OpenInsider-Screener).
     Nur US-Börsenkürzel (ohne Punkt) – europäische und asiatische Werte melden nicht an die SEC."""
     t0, rows, done = time.time(), [], 0
     for t, name in watch.items():
@@ -149,14 +149,14 @@ def fetch_watch(watch: dict[str, str], budget_s: float = 120) -> tuple[list[dict
             got = [x for x in parse_openinsider(r.text) if x["t"] == t]
             done += 1
             for x in _merge(got):
-                if x["val"] >= (25_000 if x["kind"] == "buy" else 1_000_000):   # Mini-Käufe (Sparpläne) und Routine-Verkäufe auslassen
+                if x["val"] >= (10_000 if x["kind"] == "buy" else 250_000):     # Kleinstkäufe (Sparpläne) und Routine-Verkäufe auslassen
                     rows.append({**x, "n": x.get("n") or name, "url": f"http://openinsider.com/{t}"})
             time.sleep(0.4)
         except Exception as exc:
             print(f"Insider Watchlist {t}: {exc!r}"[:140])
     buys = sorted([x for x in rows if x["kind"] == "buy"], key=lambda x: -x["val"])
-    sells = sorted([x for x in rows if x["kind"] == "sell"], key=lambda x: -x["val"])[:40]
-    rows = buys[:120] + sells
+    sells = sorted([x for x in rows if x["kind"] == "sell"], key=lambda x: -x["val"])[:80]
+    rows = buys[:250] + sells
     print(f"Insider Watchlist: {done} Aktien geprüft, {sum(x['kind'] == 'buy' for x in rows)} Käufe, {sum(x['kind'] == 'sell' for x in rows)} Verkäufe")
     return rows, done
 
