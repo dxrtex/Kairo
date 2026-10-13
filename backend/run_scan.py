@@ -440,7 +440,8 @@ def main(argv=None) -> int:
         try:
             search[t] = {**search_row(res, m, hint(res)), **entry_fields(res, tres, m), **day_moves(df)}
             try:                                     # Trade-Plan-Struktur (Basis, Stop, Widerstände) für den Reiter „Einstieg“
-                pl = tradeplan.structure(df, res.flags.get("atr"), ((res.zone or {}).get("fib") or {}).get("levels"))
+                pl = tradeplan.structure(df, res.flags.get("atr"), ((res.zone or {}).get("fib") or {}).get("levels"),
+                                         "trend" if tr_hit and not (res.passed or res.fast_hit) else "kairo")
                 if pl:
                     search[t]["pl"] = pl
             except Exception as exc:

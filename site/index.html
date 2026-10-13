@@ -1103,7 +1103,7 @@ const REGION = { us: "Nordamerika", europe: "Europa", asia: "Asien/Pazifik" };
 const nf = (d = 2) => new Intl.NumberFormat("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmt = (v, d = 2) => v == null || isNaN(v) ? "–" : nf(d).format(v);
 const pct = (v, d = 1) => v == null ? "–" : fmt(100 * v, d) + " %";
-const fmtCap = v => v == null ? "–" : v >= 1e12 ? fmt(v / 1e12, 1) + " Bio. $" : fmt(v / 1e9, v >= 1e10 ? 0 : 1) + " Mrd. $";
+const fmtCap = v => v == null ? "unbekannt" : v >= 1e12 ? fmt(v / 1e12, 1) + " Bio. $" : fmt(v / 1e9, v >= 1e10 ? 0 : 1) + " Mrd. $";
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const ddFmt = (v, d = 1) => v == null ? "–" : v >= 0 ? "−" + pct(v, d) : "+" + pct(-v, d);
 const dateDE = s => s ? new Date(s + "T12:00:00").toLocaleDateString("de-DE") : "–";
@@ -3469,7 +3469,7 @@ function extStructure(o, h, l, c) {
   const n = c.length, tr = c.map((x, i) => i ? Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])) : h[i] - l[i]);
   let atr = tr.slice(1, 15).reduce((a, b) => a + b, 0) / 14; for (let i = 15; i < n; i++) atr = (atr * 13 + tr[i]) / 14;
   let base = null;
-  for (const [k, m] of [[5, 1.5], [5, 2.5], [3, 1.5], [3, 2.5]]) { const lo = Math.min(...l.slice(-k)), hi = Math.max(...h.slice(-k));
+  for (const [k, m] of [[5, 1.5]])   // wie getestet (backend/tradeplan.py) { const lo = Math.min(...l.slice(-k)), hi = Math.max(...h.slice(-k));
     if (hi - lo <= m * atr) { base = { k, lo, hi, m, w: +((hi - lo) / atr).toFixed(2) }; break; } }
   const l10 = Math.min(...l.slice(-10)), h10 = Math.max(...h.slice(-10)), inv = base ? base.lo : l10, stop = inv - 0.25 * atr;
   const e20 = emaArr(c, 20), e50 = emaArr(c, 50), e200 = emaArr(c, 200), last = c[n - 1];
@@ -3882,7 +3882,9 @@ function tp2Calc(r, S, o = {}) {
   out.maxL = E / (E - (stop - TP.kob * atr));                   // höchster Hebel, bei dem der K.-o. 1 ATR unter dem Stop bleibt
   // Vorschlag: der KLEINSTE Hebel, dessen Einsatz noch ins freie Kapital passt (Depot minus Einsatz der offenen Trades).
   // Wahrheits-Test (2 × 10 Jahre): spart Finanzierungskosten – +11 bis +20 % statt +4 bis +15 % p. a., auch auf den Prüfjahren besser.
-  out.free = Math.max(0, cfg.depot - plansLoad().filter(p => p.st === "open").reduce((a, p) => a + (+p.stake || 0), 0));
+  // Frei = Kapital − Einsatz offener Pläne − Kaufwert der Depot-Positionen ohne Plan (sonst wäre Geld doppelt verplant)
+  const noPlanCost = depotLoad().filter(p => !planFor([p.t], p.d ? p.d.under : p.n)).reduce((a, p) => a + (+p.price || 0) * (+p.qty || 0), 0);
+  out.free = Math.max(0, cfg.depot - plansLoad().filter(p => p.st === "open").reduce((a, p) => a + (+p.stake || 0), 0) - noPlanCost);
   const okL = out.levs.filter(x => x.ok && !x.capped);
   out.sug = (okL.find(x => x.stake <= out.free) || okL[okL.length - 1] || out.levs.filter(x => x.ok).pop() || out.levs[0]).L;
   const mk = out.mk;
