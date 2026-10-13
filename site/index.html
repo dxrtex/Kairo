@@ -1131,6 +1131,7 @@ const trendBadge = r => isTrend(r) ? `<span class="status st-trend">Trend-Rücks
 const statusBadge = r => r.passed ? `<span class="status st-bereit">Treffer${r.score ? " · Score " + r.score : ""}</span>${gradeBadge(r, true)}${trendBadge(r)}`
   : isTrend(r) ? trendBadge(r) + (r.fast_hit ? `<span class="status st-abwarten">Kairo: Fast-Treffer · fehlt: ${esc(r.missing[0])}</span>` : "")
   : r.fast_hit ? `<span class="status st-abwarten">Fast-Treffer · fehlt: ${esc(r.missing[0])}</span>`
+  : r.near_hit ? `<span class="status st-kein_setup">9/11 · kein Treffer · fehlt: ${esc(r.missing.join(", "))}</span>`
   : `<span class="status st-kein_setup">Kein Setup · ${r.missing.length} Kriterien fehlen</span>`;
 const SETUP_KEYS = ["drawdown", "no_crash", "structure", "flattening", "zone", "rsi_div", "rsi_range", "macd_below0", "macd_turn", "mbi", "crv"];
 const tvUrl = t => {
@@ -1232,7 +1233,7 @@ function rows(kind) {
     return data.results.filter(r => r.in_watchlist && (!q || r.ticker.toLowerCase().includes(q) || (r.name || "").toLowerCase().includes(q))
       && (!+state.minCap || (r.market_cap_usd ?? 0) >= +state.minCap * 1e9) && (!+state.maxCap || (r.market_cap_usd ?? Infinity) <= +state.maxCap * 1e9) && volaIn(r))
       .sort((a, b) => b.passed - a.passed || b.fast_hit - a.fast_hit || b.score - a.score || (b.met ?? 0) - (a.met ?? 0));
-  return data.results.filter(r => (kind === "all" ? (r.passed || r.fast_hit) : kind === "fast" ? r.fast_hit : r.passed)
+  return data.results.filter(r => (kind === "all" ? (r.passed || r.fast_hit) : kind === "fast" ? r.fast_hit : kind === "near" ? r.near_hit : r.passed)
     && (!q || r.ticker.toLowerCase().includes(q) || (r.name || "").toLowerCase().includes(q))
     && (r.score >= +state.minScore || !r.passed)
     && (!+state.minCap || (r.market_cap_usd ?? 0) >= +state.minCap * 1e9)
@@ -1255,13 +1256,13 @@ function selRows() {
     && (!state.zone || r.zone_type.includes(state.zone)) && (!state.div || r.divergence === state.div) && (!state.sector || r.sector === state.sector) && chkIn(r);
   // Watchlist-Aktien: nur Suche, Börsenwert und Volatilität filtern (wie bisher) – sonst alle Filter
   const fv = favs();
-  return data.results.filter(r => ((k.has("hit") && r.passed) || (k.has("fast") && r.fast_hit) || (k.has("trend") && isTrend(r))) ? full(r) : ((k.has("watch") && r.in_watchlist) || (k.has("fav") && fv.has(r.ticker))) && light(r))
-    .sort((a, b) => b.passed - a.passed || isTrend(b) - isTrend(a) || !!(b.tr && b.tr.top) - !!(a.tr && a.tr.top) || b.fast_hit - a.fast_hit || b.score - a.score || (b.met ?? 0) - (a.met ?? 0));
+  return data.results.filter(r => ((k.has("hit") && r.passed) || (k.has("fast") && r.fast_hit) || (k.has("near") && r.near_hit) || (k.has("trend") && isTrend(r))) ? full(r) : ((k.has("watch") && r.in_watchlist) || (k.has("fav") && fv.has(r.ticker))) && light(r))
+    .sort((a, b) => b.passed - a.passed || isTrend(b) - isTrend(a) || !!(b.tr && b.tr.top) - !!(a.tr && a.tr.top) || b.fast_hit - a.fast_hit || !!b.near_hit - !!a.near_hit || b.score - a.score || (b.met ?? 0) - (a.met ?? 0));
 }
 // Zweites Setup „Trend-Rücksetzer“ (Rücksetzer im Aufwärtstrend) – erscheint nur, wenn der Scan es liefert
 const isTrend = r => !!(r.tr && r.tr.ok);
 const trendOn = () => !!(data && data.stats && data.stats.trend_on);
-const KIND_BTNS_ALL = [["fav", "★ Merkliste", r => favs().has(r.ticker)], ["hit", "Treffer", r => r.passed], ["fast", "Fast-Treffer", r => r.fast_hit], ["trend", "Trend-Rücksetzer", isTrend], ["watch", "Watchlist", r => r.in_watchlist]];
+const KIND_BTNS_ALL = [["fav", "★ Merkliste", r => favs().has(r.ticker)], ["hit", "Treffer", r => r.passed], ["fast", "Fast-Treffer", r => r.fast_hit], ["near", "9/11 · kein Treffer", r => !!r.near_hit], ["trend", "Trend-Rücksetzer", isTrend], ["watch", "Watchlist", r => r.in_watchlist]];
 let KIND_BTNS = KIND_BTNS_ALL.filter(x => x[0] !== "trend");
 // ---------- Merkliste: eigene Favoriten (Stern), nur auf diesem Gerät ----------
 const FAV_KEY = "kairo-merkliste-v1";
@@ -1420,6 +1421,7 @@ function verdictHtml(r) {
   if (isTrend(r)) return `<div class="verdict ok"><i></i><div><b>Einstieg möglich · Trend-Rücksetzer${r.tr.top ? " Top" : ""}</b><span>${r.tr.top ? "Stärkste Stufe im 6-Jahres-Test" : "Gültig, aber nicht Top – im Test schwächer"}${r.tr.chk ? ` · Rücksetzer-Check ${pct(r.tr.chk.p, 0)}` : ""}${r.tr.plan && r.tr.plan.stop ? ` · Stop ${fmt(r.tr.plan.stop)}` : ""}</span></div>${ein("Einstieg planen")}</div>`;
   const fm = filterMiss(r);
   if (fm) return `<div class="verdict warn"><i></i><div><b>Kein Einstieg · Grundfilter nicht erfüllt</b><span>Alle ${r.total} Setup-Kriterien erfüllt, aber: ${esc(fm)}</span></div></div>`;
+  if (r.near_hit) return `<div class="verdict"><i></i><div><b>Kein Treffer · 9/11 – nur beobachten</b><span>Es fehlen: ${esc((r.missing || []).join(", "))}. Im Test (10 Jahre) brachten 9/11-Einstiege im Schnitt keinen Vorteil – erst als voller Treffer handeln.</span></div></div>`;
   if (r.fast_hit) return `<div class="verdict warn"><i></i><div><b>Noch kein Einstieg · fast so weit</b><span>Es fehlt: ${esc((r.missing || []).slice(0, 2).join(", "))}</span></div></div>`;
   return `<div class="verdict"><i></i><div><b>Kein Einstieg · beobachten</b><span>${r.met ?? "–"} von ${r.total ?? 11} Kriterien erfüllt</span></div></div>`;
 }
@@ -1566,7 +1568,7 @@ const COLS = [
   { k: "ticker", l: "Ticker", g: r => r.ticker, h: r => `<span class="tk">${favBtn(r.ticker)}<a href="#" data-card="${esc(r.ticker)}">${esc(r.ticker)}</a>${wlTag(r)}</span>` },
   { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm" data-card="${esc(r.ticker)}">${esc((r.name || r.ticker).slice(0, 28))}</a>` },
   { k: "trend", l: "Prognose", g: r => r.trend ? (r.trend.fc ? r.trend.fc.d : r.trend.slope + (r.trend.d5 ?? 0) / 10) : 0, h: r => trendHtml(r) || "–" },
-  { k: "status", l: "Status", g: r => r.passed ? 3 : isTrend(r) ? 2 : r.fast_hit ? 1 : 0, h: r => (r.passed ? `<span class="st hit">Treffer</span>` : r.fast_hit && !isTrend(r) ? `<span class="st fast">Fast</span>` : isTrend(r) ? "" : `<span class="st">Watchlist</span>`) + (isTrend(r) ? `<span class="st trend">${r.tr.top ? "Trend Top" : "Trend"}</span>` : "") },
+  { k: "status", l: "Status", g: r => r.passed ? 3 : isTrend(r) ? 2 : r.fast_hit ? 1 : r.near_hit ? .5 : 0, h: r => (r.passed ? `<span class="st hit">Treffer</span>` : r.fast_hit && !isTrend(r) ? `<span class="st fast">Fast</span>` : r.near_hit && !isTrend(r) ? `<span class="st">9/11 · kein Treffer</span>` : isTrend(r) ? "" : `<span class="st">Watchlist</span>`) + (isTrend(r) ? `<span class="st trend">${r.tr.top ? "Trend Top" : "Trend"}</span>` : "") },
   { k: "chk", l: "Rücksetzer-Check", n: 1, g: r => chkP(r) ?? -1, h: r => chkCell(r) },
   { k: "grade", l: "Stufe", g: r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0, h: r => gradeBadge(r) || `<span class="muted">–</span>` },
   { k: "exchange", l: "Börse", g: r => r.exchange, h: r => esc(r.exchange) },
@@ -3106,7 +3108,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 const myTickers = () => new Set([...favs(), ...depotTickers(), ...data.results.filter(r => r.in_watchlist).map(r => r.ticker)]);
 // Alle 11 Setup-Kriterien erfüllt, aber ein Grundfilter (Börsenwert, Liquidität, Kurs, Historie) nicht → kein echter „Fast-Treffer“-Fall
 const filterMiss = r => !r.passed && r.met != null && r.met === r.total && r.missing && r.missing.length ? r.missing[0] : null;
-const statusPill = r => r.passed ? `${gradeBadge(r)}<span class="st hit">Treffer ${r.score}</span>` : r.fast_hit ? `<span class="st fast">Fast</span>` : `<span class="st">${r.met ?? "–"}/${r.total ?? 11}</span>`;
+const statusPill = r => r.passed ? `${gradeBadge(r)}<span class="st hit">Treffer ${r.score}</span>` : r.fast_hit ? `<span class="st fast">Fast</span>` : r.near_hit ? `<span class="st">9/11 · kein Treffer</span>` : `<span class="st">${r.met ?? "–"}/${r.total ?? 11}</span>`;
 const hHead = (t, link, lbl) => `<div class="hh"><b>${t}</b>${link ? `<button class="hlink" ${link}>${lbl || "Alle"} ›</button>` : ""}</div>`;
 const SEC_LINK = sec => `data-gosec="${sec}"`;
 
@@ -3192,7 +3194,8 @@ function todoHtml() {
   return `<div class="agroup-h">Heute zu tun</div><div class="agroup">
     ${row("✓", "g", "Kairo-Treffer", hits.length ? "Einstieg möglich – alle Kriterien erfüllt" : "heute keine", hits.length, "hit")}
     ${trendOn() ? row("↗", "b", "Trend-Rücksetzer", top.length ? `davon ${top.length} Top – stärkstes Setup im Test` : "Rücksetzer im Aufwärtstrend", tr.length, "trend") : ""}
-    ${row("…", "y", "Fast-Treffer", "ein Kriterium fehlt noch", fast.length, "fast")}</div>`;
+    ${row("…", "y", "Fast-Treffer", "ein Kriterium fehlt noch", fast.length, "fast")}
+    ${row("👀", "", "9/11 beobachten", "kein Treffer – zwei Kriterien fehlen", data.results.filter(r => r.near_hit && !isTrend(r)).length, "near")}</div>`;
 }
 function kpiHtml() {
   const hit = data.results.filter(r => r.passed).length, tr = data.results.filter(isTrend), top = tr.filter(r => r.tr.top).length;
@@ -3200,7 +3203,8 @@ function kpiHtml() {
   const t = (k, l, n, sub, hl) => `<button class="kpi${hl ? " hl" : ""}" data-gokinds="${k}"><span>${l}</span><b>${n}</b><em>${sub}</em></button>`;
   return `<div class="kpis">${t("hit", "Kairo-Treffer", hit, hit ? "alle Kriterien erfüllt" : "heute keine", hit > 0)}
     ${trendOn() ? t("trend", "Trend-Rücksetzer", tr.length, top ? `davon ${top} Top` : "keine Top-Stufe", top > 0) : ""}
-    ${t("fast", "Fast-Treffer", fast, "1 Kriterium fehlt", false)}</div>`;
+    ${t("fast", "Fast-Treffer", fast, "1 Kriterium fehlt", false)}
+    ${t("near", "9/11 beobachten", data.results.filter(r => r.near_hit).length, "kein Treffer", false)}</div>`;
 }
 // Aufgaben-Postfach: alles, was heute zu tun ist, nach Dringlichkeit – rechts das Detail (iPad quer)
 function postfachItems() {
@@ -3716,12 +3720,13 @@ document.addEventListener("click", async e => {
     if (game) setTimeout(() => { const f = document.querySelector(".g-buy"); f && f.scrollIntoView({ behavior: "smooth", block: "center" }); }, 30); }
   catch (err) { box.innerHTML = `<div class="tip tone-yellow" style="margin:6px 0">Keine Kursdaten: ${esc(err.message)} (im kostenlosen Tarif sind nicht alle Börsen enthalten).</div>`; }
 });
-const einTag = r => r.tr === 2 ? `<i class="st trend">Trend Top</i>` : r.tr === 1 ? `<i class="st trend">Trend</i>` : r.s === "hit" ? `<i class="st hit">Kairo</i>` : r.s === "fast" ? `<i class="st fast">Kairo fast</i>` : "";
+const einTag = r => r.tr === 2 ? `<i class="st trend">Trend Top</i>` : r.tr === 1 ? `<i class="st trend">Trend</i>` : r.s === "hit" ? `<i class="st hit">Kairo</i>` : r.s === "fast" ? `<i class="st fast">Kairo fast</i>` : r.s === "near" ? `<i class="st">9/11</i>` : "";
 function einSetup(r) {
   if (r.ext) return { k: "none", tone: "gray", title: "Außerhalb des Kairo-Scans", sub: "Die 11 Kairo-Kriterien prüft nur der Abendscan. Der Trade-Plan unten rechnet Stop, Größe und Hebel aus den aktuellen Tageskerzen.", plan: null };
   if (r.tr === 2) return { k: "top", tone: "green", title: "Trend-Rücksetzer · Top", sub: "Das stärkste Setup im 6-Jahres-Test – hier lohnt sich der Einstieg am meisten.", plan: r.tp };
   if (r.tr === 1) return { k: "trend", tone: "green", title: "Trend-Rücksetzer", sub: "Aufwärtstrend mit kurzer Verschnaufpause an der EMA 50 – im Test deutlich besser als Kairo.", plan: r.tp };
   if (r.s === "hit") return { k: "kairo", tone: "yellow", title: `Kairo-Treffer${r.sc ? " · Score " + r.sc : ""}`, sub: "Umkehr nach einer Korrektur – alle 11 Kriterien erfüllt.", plan: r.kp };
+  if (r.s === "near") return { k: "near", tone: "gray", title: "9/11 – kein Kairo-Treffer", sub: `Es fehlen: ${(r.km || []).map(k => SHORT[k] || k).join(", ") || "–"}. Nur zur Beobachtung – im Test kein Vorteil, erst als voller Treffer (11/11) handeln.`, plan: null };
   if (r.s === "fast") return { k: "fast", tone: "yellow", title: "Kairo Fast-Treffer", sub: `Es fehlt noch: ${(r.km || []).map(k => SHORT[k] || k).join(", ") || "–"}. Laut Strategie auslassen – nur volle Treffer (11/11) werden gehandelt.`, plan: null };
   return { k: "none", tone: "gray", title: "Kein Einstiegs-Setup", sub: "Weder Trend-Rücksetzer noch Kairo-Treffer. Der Trade-Plan unten rechnet nur Stop, Größe und Hebel – für diese Aktie gibt es keinen getesteten Vorteil.", plan: null };
 }
@@ -3983,6 +3988,8 @@ function kmFit(r, mk) {
       s: `Im Test schlugen die ruhigsten Treffer zufällig gewählte deutlich (zufällig gewählt verlor nach Kosten Geld). Nimm diesen nur, wenn die ruhigeren Treffer davor nicht kaufbar sind.` + rank };
     return fit;
   }
+  if (r.s === "near") return { ok: false, k: "near", tone: "red", mult: 1, t: "Auslassen – 9/11, kein Treffer",
+    s: "Zwei Kriterien fehlen. Im 10-Jahres-Test brachten 9/11-Einstiege im Schnitt keinen Vorteil (mit 4H-Bestätigung sogar Verlust). Beobachten – wird ein voller Treffer daraus, meldet sich die App." };
   if (r.s === "fast") return { ok: false, k: "fast", tone: "red", mult: 1, t: "Auslassen – Fast-Treffer",
     s: "Im Depot-Test machten Fast-Treffer jede Variante schlechter: Sie belegen Plätze, die volle Treffer bekommen sollten." };
   return { ok: false, k: "none", tone: "gray", mult: 1, t: "Kein Kairo-Treffer – nicht traden",
@@ -4411,7 +4418,7 @@ function renderHead() {
   const nm = String(state.name || "").trim();
   $("greet").innerHTML = greetText();
   const s = data.stats || {}, when = new Date(data.generated).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-  $("sub").innerHTML = `<b>${s.hits ?? 0} Treffer</b>, <b>${s.fast_hits ?? 0} Fast-Treffer</b>${s.trend_on ? ` und <b>${s.trend_hits ?? 0} Trend-Rücksetzer</b>` : ""} · ${fmt(s.universe, 0)} Aktien geprüft · Scan ${esc(when)} Uhr ${healthPill()}`;
+  $("sub").innerHTML = `<b>${s.hits ?? 0} Treffer</b>, <b>${s.fast_hits ?? 0} Fast-Treffer</b>${s.near_hits != null ? `, ${s.near_hits} × 9/11` : ""}${s.trend_on ? ` und <b>${s.trend_hits ?? 0} Trend-Rücksetzer</b>` : ""} · ${fmt(s.universe, 0)} Aktien geprüft · Scan ${esc(when)} Uhr ${healthPill()}`;
   const sectors = [...new Set(data.results.map(r => r.sector).filter(Boolean))].sort();
   $("sectorOpts").innerHTML = `<button class="opt" data-v="">alle</button>` + sectors.map(x => `<button class="opt" data-v="${esc(x)}">${esc(x)}</button>`).join("");
 }

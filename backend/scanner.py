@@ -69,6 +69,13 @@ class Result:
     def fast_hit(self) -> bool:
         return len(self.missing) == 1
 
+    @property
+    def near_hit(self) -> bool:
+        """9/11: zwei Setup-Kriterien fehlen, Grundfilter erfüllt. Nur zur Auswahl/Beobachtung – KEIN Treffer
+        (Fast-Treffer-Test Okt. 2026: 9/11 mit 4H-Bestätigung −0,34 / −0,12 R je Trade)."""
+        m = self.missing
+        return len(m) == 2 and not any(c.key in ("cap", "liquidity", "price", "history") for c in m)
+
 
 def find_rsi_divergence(low: pd.Series, r: np.ndarray, rc: SimpleNamespace):
     """Bullische RSI-Divergenz (2.4). Rückgabe: ((Art, T1, T2) oder None, jüngste Kurs-Tiefs ≤ 10 T.).
