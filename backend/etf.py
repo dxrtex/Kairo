@@ -18,6 +18,7 @@ from __future__ import annotations
 import pandas as pd
 
 TICKER = "SPYI.DE"
+REF = "IUSQ.DE"                    # Gegenprobe: iShares MSCI ACWI (Xetra) – läuft fast gleich, andere Datenreihe
 NAME = "SPDR MSCI ACWI IMI (SPYI)"
 
 
@@ -64,7 +65,20 @@ def _last(x: pd.Series | None):
     return float(x.iloc[-1]) if len(x) else None
 
 
-def compute(df: pd.DataFrame, vix: pd.Series | None = None, hyg: pd.Series | None = None, ief: pd.Series | None = None) -> dict:
+def crosscheck(c: pd.Series, ref: pd.Series | None) -> dict:
+    """Gegenprobe mit einem zweiten Welt-ETF: Entwicklung über 1/5/20 Tage darf kaum abweichen, sonst Datenfehler."""
+    if ref is None:
+        return {"ref": None}
+    r = clean(ref.dropna().astype(float))
+    j = pd.concat([c, r], axis=1, join="inner").dropna()
+    if len(j) < 25:
+        return {"ref": None}
+    dev = max(abs((j.iloc[-1, 0] / j.iloc[-1 - k, 0]) - (j.iloc[-1, 1] / j.iloc[-1 - k, 1])) for k in (1, 5, 20))
+    return {"ref": REF, "ref_dev": round(float(dev), 4), "ref_ok": bool(dev < 0.04)}
+
+
+def compute(df: pd.DataFrame, vix: pd.Series | None = None, hyg: pd.Series | None = None, ief: pd.Series | None = None,
+            ref: pd.Series | None = None, today: str | None = None) -> dict:
     c = clean(df["Close"].dropna().astype(float))
     if len(c) < 210:
         return {}
@@ -78,7 +92,9 @@ def compute(df: pd.DataFrame, vix: pd.Series | None = None, hyg: pd.Series | Non
         cr = (hyg / ief).dropna()
         if len(cr) >= 200:
             cw = bool(cr.iloc[-1] < cr.rolling(200).mean().iloc[-1])
-    out = {"ticker": TICKER, "name": NAME, "n": len(c), "ok": dd < 0.6, "date": str(c.index[-1].date()), "c": round(last, 2), "sma200": round(s, 2),
+    xc = crosscheck(c, ref)
+    age = (pd.Timestamp(today) - c.index[-1]).days if today else 0
+    out = {"ticker": TICKER, "name": NAME, "n": len(c), "ok": bool(dd < 0.6 and xc.get("ref_ok", True)), "age": int(age), **xc, "date": str(c.index[-1].date()), "c": round(last, 2), "sma200": round(s, 2),
            "ath": round(h, 2), "ath_date": str(c[c == h].index[-1].date()), "dd": round(dd, 4), "vs_sma": round(last / s - 1, 4),
            "vix": None if v is None else round(v, 1), "credit_weak": cw, **level(v, last < s, cw)}
     w = c[c.index >= c.index[-1] - pd.Timedelta(days=3 * 365)]

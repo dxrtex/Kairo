@@ -87,6 +87,12 @@ jobs:
           git add -A
           git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Zustand $(date +%F)" || exit 0
           git push -q origin kairo-data
+      - name: App-Test im Browser (bei Fehlern wird nicht veröffentlicht – die alte Version bleibt online)
+        if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'
+        run: |
+          pip install -q playwright==1.55.0
+          python -m playwright install --with-deps chromium > /dev/null
+          python tools/app_smoke.py
       - uses: actions/upload-pages-artifact@v3
         if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'
         with:
