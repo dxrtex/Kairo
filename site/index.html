@@ -3239,7 +3239,10 @@ function etfAmpelHtml(e, compact) {
 function etfTeaserHtml() {
   const e = getJson("etf.json");
   if (!e || e.ok === false) return "";
-  return `<button class="hcard" ${SEC_LINK("etf")}>${hHead("ETF-Bereich · " + etfCfg().share + " %", "", "")}${etfAmpelHtml(e, true)}<span class="hlink">ETF ›</span></button>`;
+  const c = etfCfg(), v = c.units ? c.units * e.c : null;
+  return `<button class="hcard" ${SEC_LINK("etf")}>${hHead("ETF-Bereich · " + c.share + " %", "", "")}${etfAmpelHtml(e, true)}
+    ${v != null ? `<div class="mtiles"><div class="mt"><span>ETF-Wert</span><b>${eur(v)}</b><em>${fmt(c.units, 0)} Anteile</em></div><div class="mt"><span>Trading</span><b>${eur(tpCfg().depot)}</b><em>${paperMode() ? "🧪 Übungsmodus" : "echtes Geld"}</em></div></div>` : ""}
+    <span class="hlink">ETF ›</span></button>`;
 }
 function etfHtml() {
   const e0 = getJson("etf.json"), c = etfCfg(), e = e0 && e0.ok === false ? null : e0;
@@ -3326,7 +3329,8 @@ function yearBarsSvg() {
 }
 // Deine eigenen abgeschlossenen Trades (Trade-Pläne) gegen die Erwartung der Studie
 function myTradesHtml() {
-  const done = plansLoad().filter(p => p.st === "closed" && p.R != null).sort((a, b) => (b.xd || "") < (a.xd || "") ? -1 : 1);
+  const all = plansLoad().filter(p => p.st === "closed" && p.R != null).sort((a, b) => (b.xd || "") < (a.xd || "") ? -1 : 1);
+  const done = all, nP = all.filter(p => p.paper).length, nR = all.length - nP;
   const open = plansLoad().filter(p => p.st === "open").length;
   if (!done.length) return `<div class="hcard">${hHead("Deine Trades")}<div class="note" style="margin:0">Noch keine abgeschlossenen Trades${open ? ` (${open} offen)` : ""}. Wenn du einen Trade im Reiter Einstieg als „Verkauft“ einträgst, erscheint er hier – mit Ergebnis in R und dem Vergleich zur Studie.</div></div>`;
   const rs = done.map(p => p.R), avg = rs.reduce((x, y) => x + y, 0) / rs.length, win = rs.filter(x => x > 0).length / rs.length;
@@ -3335,13 +3339,13 @@ function myTradesHtml() {
   const band = 1.96 * 1.6 / Math.sqrt(rs.length), e = STRAT_BT.perTrade;
   const [ic, txt] = rs.length < 30 ? ["⏳", `noch zu früh für ein Urteil (${rs.length}/30 Trades)`] : avg < e - band ? ["🔴", "schwächer als die Studie – Regeln prüfen"] : avg > e + band ? ["🟢", "besser als die Studie"] : ["🟢", "im erwarteten Rahmen"];
   return `<div class="hcard">${hHead("Deine Trades")}
-    <div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Abgeschlossen</span><b>${rs.length}</b><em>${open} offen</em></div>
+    <div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Abgeschlossen</span><b>${rs.length}</b><em>${nR} echt · ${nP} Übung · ${open} offen</em></div>
       <div class="mt"><span>Ø je Trade</span><b class="${avg >= 0 ? "up" : "down"}">${avg >= 0 ? "+" : ""}${fmt(avg, 2)} R</b><em>Studie ≈ +${fmt(e, 2)} R</em></div>
       <div class="mt"><span>Gewinner</span><b>${pct(win, 0)}</b><em>wenige große tragen</em></div>
       <div class="mt"><span>Summe</span><b class="${sum >= 0 ? "up" : "down"}">${sgnEur(sum)}</b><em>geschätzt</em></div></div>
     <div class="note" style="margin:0 0 8px">${ic} ${txt}.${early ? ` ${early}× vor dem Verkaufstag verkauft, ohne dass der Stop griff – das weicht von den Regeln ab und kostet im Test Rendite.` : ""}</div>
     <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Aktie</th><th class="num">Kauf → Verkauf</th><th class="num">Tage</th><th>Ergebnis</th></tr></thead><tbody>
-      ${done.slice(0, 20).map(p => `<tr><td><b>${esc(p.n)}</b><small>${p.L > 1 ? `Turbo ×${p.L}` : "Aktie"}</small></td><td class="num">${dateDE(p.d)}<small>${p.xd ? dateDE(p.xd) : ""}</small></td>
+      ${done.slice(0, 20).map(p => `<tr><td><b>${esc(p.n)}</b><small>${p.paper ? "🧪 Übung · " : ""}${p.L > 1 ? `Turbo ×${p.L}` : "Aktie"}</small></td><td class="num">${dateDE(p.d)}<small>${p.xd ? dateDE(p.xd) : ""}</small></td>
         <td class="num">${p.xd ? bdBetween(new Date(p.d + "T12:00:00"), new Date(p.xd + "T12:00:00")) + 1 : "–"}</td>
         <td class="${p.R >= 0 ? "up" : "down"}"><b>${p.R >= 0 ? "+" : ""}${fmt(p.R, 2)} R</b>${eurOf(p) != null ? ` <small>${sgnEur(eurOf(p))}</small>` : ""}</td></tr>`).join("")}</tbody></table></div></div>`;
 }
@@ -3369,6 +3373,10 @@ function bilanzHtml() {
     <div class="hcard">${hHead("Varianten im selben Test")}<div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Variante</th><th class="num">pro Jahr</th><th class="num">größter Rückgang</th></tr></thead><tbody>
       ${STRAT_BT.alt.map(([l, c, d, me, note]) => `<tr${me ? ' class="best"' : ""}><td>${me ? `<b>${l}</b> ★` : l}${note ? `<small class="down">${note}</small>` : ""}</td><td class="num">${c.map(v => `<span class="${v >= 0 ? "up" : "down"}">${sg(v)}</span>`).join(" / ")}</td><td class="num down">${rng(d, 0, "−")}</td></tr>`).join("")}</tbody></table></div>
       <div class="note" style="margin:6px 0 0">Werte: Stichprobe 1 / Stichprobe 2. Gewählt ist die Variante, die auf beiden Stichproben und auf den Prüfjahren gut abschneidet – nicht die mit der höchsten Einzelzahl.</div></div>
+    <div class="hcard">${hHead("Kapital und Gebühren entscheiden mit")}
+      <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Trading-Kapital</th><th class="num">mit 0,99 € je Order</th><th class="num">ohne Gebühren</th></tr></thead><tbody>
+        ${[["900 €", "−12 % bis Totalverlust"], ["1.500 €", "−12 % bis +4 %"], ["3.000 €", "+12 % / +13 %"], ["10.000 €", "+15 % / +23 %"]].map(([k, v], i) => `<tr${Math.abs([900, 1500, 3000, 10000][i] - tpCfg().depot) === Math.min(...[900, 1500, 3000, 10000].map(x => Math.abs(x - tpCfg().depot))) ? ' class="best"' : ""}><td>${k}</td><td class="num ${i < 2 ? "down" : "up"}">${v}</td><td class="num up">+17 % / +24 %</td></tr>`).join("")}</tbody></table></div>
+      <div class="note" style="margin:6px 0 0">Gleiche Treffer und Regeln, 10 Jahre, pro Jahr (Stichprobe 1 / 2). Rund 93 Trades im Jahr = ~186 Orders ≈ 184 € Gebühren – bei kleinem Kapital frisst das den ganzen Vorteil. Darunter: im 🧪 Übungsmodus handeln und das Geld im ETF lassen. Dein Trading-Kapital: <b>${eur(tpCfg().depot)}</b>.</div></div>
     <div class="hcard">${hHead("Was wir (noch) nicht wissen")}<ul class="checks">
       <li><i class="gold">!</i><b>Kairo-Treffer gegen Zufall:</b> Zufällige Tage mit genau denselben Regeln (Seitwärtsphase, Stop, 20 Tage, ruhigste zuerst) brachten je Trade etwa gleich viel. Der Vorteil steckt offenbar vor allem in diesen Regeln und im Ausverkauf – nicht in den einzelnen Scanner-Kriterien.</li>
       <li><i class="gold">!</i><b>Pleite-Aktien fehlen:</b> Getestet wurden Aktien, die es heute noch gibt. Das macht Rückrechnungen zu schön.</li>
@@ -3938,7 +3946,13 @@ function tp2Calc(r, S, o = {}) {
   if (out.riskAtr > TP.maxAtr) out.problems.push(["red", `Stop ${fmt(out.riskAtr, 1)} ATR entfernt (mehr als ${TP.maxAtr}) – zu weit für diese Strategie. ${pl.base ? "" : "Auf eine Basis warten."}`]);
   else if (out.riskAtr < TP.minAtr) out.problems.push(["yellow", `Stop nur ${fmt(out.riskAtr, 1)} ATR entfernt – normales Tagesrauschen kann ihn auslösen.`]);
   if (!pl.base) out.problems.push(["yellow", "Noch keine enge Seitwärtsphase (Basis) – laut Strategie erst kaufen, wenn sie da ist."]);
-  else if (pl.base && E > pl.base.hi + 0.5 * atr) out.problems.push(["yellow", `Kurs schon über der Basis (${fmt(pl.base.hi * fx)} €) – die Gegenbewegung läuft bereits, der Stop liegt entsprechend weiter weg.`]);
+  if (!trend) {                                              // getestete Regel: Seitwärtsphase innerhalb von 10 Handelstagen nach dem Signal
+    const bj = getJson("bilanz.json"), sg = bj && (bj.signals || []).find(x => x.k === "hit" && x.t === r.t);
+    if (sg) { const age = bdBetween(new Date(sg.d + "T12:00:00"), new Date()), res = (sg.st || {}).res; out.sig = { d: sg.d, age, res };
+      if (res === "nobase" || (!pl.base && age > 10)) out.problems.push(["red", `Kairo-Signal vom ${dateDE(sg.d)}: innerhalb von 10 Handelstagen keine Seitwärtsphase – laut getesteter Regel ist das Signal verfallen. Kein Trade.`]);
+      else if (!pl.base && res !== "run") out.problems.push(["yellow", `Kairo-Signal vom ${dateDE(sg.d)} – Tag ${age} von 10: Die Seitwärtsphase muss bis ${dateDE(isoD(addBd(new Date(sg.d + "T12:00:00"), 10)))} kommen, sonst verfällt es.`]);
+      else if (res === "run" && sg.st.days > 3) out.problems.push(["yellow", `Laut Strategie lief der Einstieg schon vor ${sg.st.days} Handelstagen – ein später Einstieg ist nicht getestet.`]); } }
+  if (pl.base && E > pl.base.hi + 0.5 * atr) out.problems.push(["yellow", `Kurs schon über der Basis (${fmt(pl.base.hi * fx)} €) – die Gegenbewegung läuft bereits, der Stop liegt entsprechend weiter weg.`]);
   out.dist = risk / E;
   out.mk = tpMarket();
   out.fit = kmFit(r, out.mk);
@@ -4018,7 +4032,8 @@ function tpInner(r, S) {
       <div class="tp2-cfg" style="margin-top:8px"><label>Depot (€)<input id="tpDepot" type="number" inputmode="decimal" min="0" step="100" value="${esc(cfg.depot)}"></label>
       <label>Risiko je Trade (%)<input id="tpRisk" type="number" inputmode="decimal" min="0.1" max="5" step="0.1" value="${esc(cfg.risk)}"></label></div>
       <div class="note">Einmal einstellen, gilt für alle Pläne. Empfehlung: 1 % (so getestet). Höchstens ${KMAX.maxOpen} Trades gleichzeitig.</div>
-      ${(() => { const fd = feeDrag(cfg.depot); return fd.tone === "green" ? "" : `<div class="tip tone-${fd.tone}" style="margin-top:6px">${esc(fd.t)}</div>`; })()}</details>`;
+      ${(() => { const fd = feeDrag(cfg.depot); return fd.tone === "green" ? "" : `<div class="tip tone-${fd.tone}" style="margin-top:6px">${esc(fd.t)}</div>`; })()}
+      <label class="chk" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="tpPaper" ${paperMode() ? "checked" : ""}> 🧪 Übungsmodus – neue Trades ohne echtes Geld (zählen getrennt in der Bilanz)</label></details>`;
   if (!m.stop || (m.problems.length && m.problems[0][0] === "red" && !m.dist)) return head + m.problems.map(([t, x]) => `<div class="tip tone-${t === "red" ? "red" : "yellow"}" style="margin-top:10px">${esc(x)}</div>`).join("") + acct;
   const lv = m.levs.find(x => x.L === m.sug);
   const at = px => (px - m.E) / m.E * lv.expo - lv.cost;
@@ -4041,7 +4056,7 @@ function tpInner(r, S) {
     <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position setzen. Keinen Limit-Verkauf – an Tag ${m.hold} zum Schluss verkaufen, falls der SL nicht vorher greift. Nicht vorher verkaufen, auch wenn es gut läuft: Die großen Gewinner machen das Ergebnis. Kairo führt keine Orders aus.</div>
     <div class="note">Warum diese Werte: SL = ${esc(m.src)} (${fmt(m.riskAtr, 1)} ATR). ${m.tpWhy || ""} Hebel = der kleinste, dessen Einsatz noch in dein freies Kapital passt (frei: ${eur(m.free)}) – Aktie direkt, wenn möglich, sonst ×2/3/5/10 mit K.-o. mindestens 1 ATR unter dem SL (höchstens ×${fmt(Math.min(10, m.maxL), 1)}). Weniger Hebel = weniger Finanzierungskosten; im Test brachte das deutlich mehr als immer ×10. Das Risiko bis zum SL bleibt gleich. Kosten ≈ ${eur2(lv.cost)} sind eingerechnet.${lv.L > 1 ? ` Kurslücke unter den K.-o.: Einsatz verloren (${sgnEur(-lv.stake - 2 * cfg.fee)}).` : ""}</div>
     ${lv.L > 1 ? `<div class="row-actions" style="margin-top:10px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Turbo bei onvista suchen</a></div>` : ""}
-    <div class="row-actions" style="margin-top:12px"><button class="btn${m.fit.ok ? "" : " ghost"}" data-tpopen="${esc(r.t)}">${m.fit.ok ? "Trade eröffnen & speichern" : "Trotzdem speichern"}</button></div>
+    <div class="row-actions" style="margin-top:12px"><button class="btn${m.fit.ok ? "" : " ghost"}" data-tpopen="${esc(r.t)}">${paperMode() ? "🧪 " : ""}${m.fit.ok ? (paperMode() ? "Übungs-Trade eröffnen" : "Trade eröffnen & speichern") : "Trotzdem speichern"}</button></div>
     <div class="note">Speichert den Plan unverändert. ${r.ext ? "Kairo zeigt ihn mit Live-Kursen in Deine Trades." : "Kairo prüft ihn tagsüber alle 30 Minuten (Stop, Verkaufstag, K.-o.) und meldet sich per Mitteilung."}</div>
     ${acct}`;
 }
@@ -4067,6 +4082,8 @@ function tpTurboHtml(r, m, lv) {
 function tpHtml(r, S) { return `<div class="hcard"><div class="plan-h">Trade-Plan</div><div id="tpBox">${tpInner(r, S)}</div></div>`; }
 // Gespeicherte Trades (geplant → eröffnet → geschlossen), eingefroren beim Eröffnen
 const PLAN_KEY = "kairo-plans";
+// Übungsmodus: Trades mit echten Signalen und Regeln, aber ohne echtes Geld – Standard, solange Gebühren den Vorteil fressen (backend/capstudy.py)
+const paperMode = () => state.tpPaper != null ? !!state.tpPaper : feeDrag(tpCfg().depot).tone === "red";
 const plansLoad = () => { try { return JSON.parse(localStorage.getItem(PLAN_KEY)) || []; } catch (e) { return []; } };
 const plansSave = l => { try { localStorage.setItem(PLAN_KEY, JSON.stringify(l)); } catch (e) {} kxSyncSoon(); };
 function tpOpen(t) {
@@ -4079,7 +4096,7 @@ function tpOpen(t) {
   if (l.filter(p => p.st === "open").length >= m.cfg.maxOpen && !confirm(`Schon ${m.cfg.maxOpen} offene Trades – Gesamtrisiko steigt. Trotzdem eröffnen?`)) return;
   l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, d: isoD(m.d0), scan: String(data.generated).slice(0, 10),
               E: +m.E, stop: m.stop, atr: m.atr, L: lv.L, ko: lv.ko, expo: Math.round(lv.expo), stake: Math.round(lv.stake), qty: lv.qty,
-              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), exit2: isoD(m.exit2), sec: r.sec || null, tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open" });
+              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), exit2: isoD(m.exit2), sec: r.sec || null, tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open", paper: paperMode() });
   plansSave(l); render(); window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function tpStatus(p) {
@@ -4096,7 +4113,7 @@ function tpPlansHtml() {
   liveKick(open.map(p => p.t), "entry");
   if (!l.length) return "";
   const row = p => { const r = rowOf(p.t), c = r ? r.c : null, s = tpStatus(p), pnl = c != null ? (c - p.E) / p.E * p.expo - p.cost : null;
-    return `<div class="g-pos"><div class="g-pos-h"><button class="g-nm" data-ein="${esc(p.t)}"><b>${esc(p.n)}</b><small>${esc(p.t)} · ${p.L === 1 ? "Aktie" : `Turbo ×${p.L}`} · seit ${dateDE(p.d)} · verkaufen am ${dateDE(p.exit2 || p.exit)}</small></button>
+    return `<div class="g-pos"><div class="g-pos-h"><button class="g-nm" data-ein="${esc(p.t)}"><b>${esc(p.n)}</b><small>${p.paper ? "🧪 Übung · " : ""}${esc(p.t)} · ${p.L === 1 ? "Aktie" : `Turbo ×${p.L}`} · seit ${dateDE(p.d)} · verkaufen am ${dateDE(p.exit2 || p.exit)}</small></button>
       <div class="g-pl ${pnl >= 0 ? "up" : "down"}"><b>${sgnEur(pnl)}</b><small>${c != null ? sgnPct(c / p.E - 1, 1) : ""}</small></div></div>
       <div class="g-row"><span>${(fe => `Kauf ${fe(p.E)} · SL ${fe(p.stop)}${p.tp ? ` · TP ${fe(p.tp)}` : ""} · jetzt ${fe(c)} €${p.ko ? ` · K.-o. ${fe(p.ko)} €` : ""}`)(v => fmt(v * (toEur(1, p.cur || "EUR") || 1)))}</span><span class="g-tag ${s.tone === "red" ? "down" : s.tone === "green" ? "up" : ""}">${esc(s.t)}</span></div>
       <div class="g-act">${p.tp && p.x1 == null ? `<button class="btn ghost sm" data-tph1="${p.id}">Hälfte 1 verkauft …</button>` : ""}<button class="btn ghost sm" data-tph2="${p.id}">${p.tp && p.x1 != null ? "Hälfte 2 verkauft …" : "Verkauft …"}</button><button class="btn ghost sm" data-tpdel="${p.id}">Löschen</button></div></div>`; };
@@ -4156,6 +4173,7 @@ document.addEventListener("input", e => {
   save();
 });
 document.addEventListener("change", e => { if (["tpE", "tpD", "tpDepot", "tpRisk", "tpTP", "tpKO"].includes(e.target.id)) tpRefresh(); });
+document.addEventListener("change", e => { if (e.target.id === "tpPaper") { state.tpPaper = e.target.checked; save(); render(); } });
 function einHtml() {
   if (!searchIdx) { loadSearch(); return `<div class="section-title"><span>Einstieg</span><span>lädt …</span></div>`; }
   if (!anaData) loadAnalysis();
