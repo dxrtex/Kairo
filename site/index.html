@@ -3223,8 +3223,8 @@ function todayHtml() {
   const al = getJson("alerts.json");
   const tgHint = al && !al.connected ? `<button class="hcard tg" ${SEC_LINK("settings")}><b>📲 Abendbericht aufs Handy</b><span>Neue Treffer, deine Aktien und Knock-out-Warnungen jeden Abend per Telegram – in 3 Minuten eingerichtet.</span><span class="hlink">Einrichten ›</span></button>` : "";
   // Postfach: Aufgaben oben, darunter dieselben Karten wie sonst (ohne „Beste Treffer“ – die stehen schon im Postfach)
-  if (isPostfach()) return postfachHtml(`${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
-  return (isApple() ? todoHtml() : kpiHtml()) + `<div class="hgrid"><div class="hcol">${etfTeaserHtml()}${marketHtml()}${changesHtml()}${myStocksHtml()}</div>
+  if (isPostfach()) return postfachHtml(`${startHtml()}${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
+  return (isApple() ? todoHtml() : kpiHtml()) + `${startHtml()}<div class="hgrid"><div class="hcol">${etfTeaserHtml()}${marketHtml()}${changesHtml()}${myStocksHtml()}</div>
     <div class="hcol">${bilanzTeaserHtml()}${depotSnapHtml()}${soonHtml()}${topHitsHtml()}${journalTeaserHtml()}${tgHint}</div></div>`;
 }
 
@@ -3268,6 +3268,21 @@ function etfAmpelHtml(e, compact) {
   const [lbl, col] = ETF_TONE[e.lv] || ETF_TONE.blue;
   return `<div class="regime" style="--c:${col}"><i></i><div><b>${esc(e.t)}</b><span>${compact ? `SPYI ${fmt(e.c)} € · ${e.dd < .005 ? "am Allzeithoch" : pct(e.dd, 1) + " unter dem Hoch"} · ${e.vs_sma >= 0 ? "über" : "unter"} der 200-Tage-Linie` : esc(e.s)}</span></div></div>`;
 }
+// Erste Schritte im 70/30-System – verschwindet, sobald alles erledigt ist (oder ausgeblendet wurde)
+function startHtml() {
+  if (state.startHide) return "";
+  const steps = [["ETF-Sparplan bei Scalable eingerichtet (SPYI, monatlich)", !!state.stSpar, "stSpar"],
+    ["SPYI-Anteile im ETF-Reiter eingetragen", !!etfCfg().units, null, "etf"],
+    ["Übungsdepot im Spiel gestartet (70.000 € ETF / 30.000 € Trading)", !!gLoad(), null, "game"],
+    ["Mitteilungen aufs iPad aktiviert (Stop, Verkaufstag, K.-o., ETF-Ampel)", !!pushSub, null, "settings"]];
+  const done = steps.filter(x => x[1]).length;
+  if (done === steps.length) return "";
+  return `<div class="hcard">${hHead(`Erste Schritte · ${done} von ${steps.length}`)}<ul class="checks">${steps.map(([t, ok, k, sec]) =>
+      `<li><i class="${ok ? "up" : "muted"}">${ok ? "✓" : "○"}</i>${ok ? `<span class="muted">${t}</span>` : k ? `<button class="hlink" style="text-align:left" data-start="${k}">${t} ✓</button>` : `<button class="hlink" style="text-align:left" ${SEC_LINK(sec)}>${t} ›</button>`}</li>`).join("")}</ul>
+    <button class="btn ghost sm" data-start="hide" style="margin-top:6px">Ausblenden</button></div>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-start]"); if (!b) return;
+  if (b.dataset.start === "hide") state.startHide = 1; else state[b.dataset.start] = 1; save(); render(); });
 function etfTeaserHtml() {
   const e = getJson("etf.json");
   if (!e || e.ok === false) return "";
