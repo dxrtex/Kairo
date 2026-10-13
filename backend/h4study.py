@@ -13,6 +13,7 @@ Tageschart-Kontext (immer Pflicht):
   M    MACD kreuzt die Signallinie nach oben;  M0  dasselbe unterhalb der Nulllinie
   B    grünes MBI-X
   RM, RB, MB, RMB  Kombinationen (alle Bedingungen zuletzt erfüllt)
+  S    Strukturbruch: 4H-Schluss über dem Hoch der 6 Kerzen davor;  RS, MS, BS, RMBS  mit den Indikatoren kombiniert
 4H-Ausstieg: zeit (Tag 20 / Stop) · rsi (RSI ≥ 70) · macd (MACD kreuzt nach unten) · mbi (rotes MBI-X) · 2v3 (zwei der drei zuletzt) · 3v3 (alle drei zuletzt – Jonnys Ausstieg)
 Gegenprobe ohne Tageschart: C_R30 (RSI kreuzt 30 nach oben) und C_RMB (alle drei) gegen zufällige Einstiege mit denselben Regeln.
 Vorsicht: Viele Varianten → einzelne sehen zufällig gut aus. Zählt nur, was in BEIDEN Stichproben besser ist als der Vergleich.
@@ -105,6 +106,8 @@ def to4h(x: pd.DataFrame) -> pd.DataFrame:
     b["R35"] = (rmin <= 35).to_numpy() & rising
     b["R40"] = (rmin <= 40).to_numpy() & rising
     b["M"], b["M0"], b["B"] = rec(b["mcu"]), rec(b["mcu0"]), rec(b["gx"])
+    # Strukturbruch: Schluss über dem höchsten Hoch der 6 4H-Kerzen davor (≈ letztes 4H-Zwischenhoch, ~3 Tage)
+    b["S"] = (b["Close"] > b["High"].shift(1).rolling(6, min_periods=6).max()).to_numpy()
     b["xr"] = (b["rsi"].rolling(6, min_periods=1).max() >= 70).to_numpy()
     b["xm"], b["xb"] = rec(b["mcd"]), rec(b["rx"])
     return b
@@ -115,7 +118,7 @@ def _trade(b: pd.DataFrame, i0: int, stop: float, exit_rule: str, max_days: int 
     if i0 >= len(b) - 1:
         return None
     e = float(b["Open"].iat[i0])
-    if not (stop < e) or (e - stop) / e > 0.25:
+    if not (stop < e) or (e - stop) / e > 0.25 or (e - stop) / e < 0.004:     # Stop zu weit / so eng, dass Kosten das Risiko übersteigen
         return None
     risk = e - stop
     o, h, l, c = (b[k].to_numpy(float) for k in ("Open", "High", "Low", "Close"))
@@ -130,17 +133,18 @@ def _trade(b: pd.DataFrame, i0: int, stop: float, exit_rule: str, max_days: int 
     for j in range(i0, end + 1):
         if l[j] <= stop:
             px = min(stop, o[j]) if j > i0 else stop
-            return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 1, "x": "stop"}
+            return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 1, "x": "stop", "ti": str(b.index[i0]), "to": str(b.index[j])}
         hit = ((exit_rule == "rsi" and r_[j] >= 70) or (exit_rule == "mbi" and rx[j]) or (exit_rule == "macd" and mcd[j])
                or (exit_rule == "2v3" and two[j]) or (exit_rule == "3v3" and three[j]))
         if hit and j < end:
             px = o[j + 1]
-            return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 2, "x": exit_rule}
-    return {"r": (c[end] - e) / risk - COST * e / risk, "bars": end - i0 + 1, "x": "zeit"}
+            return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 2, "x": exit_rule, "ti": str(b.index[i0]), "to": str(b.index[j + 1])}
+    return {"r": (c[end] - e) / risk - COST * e / risk, "bars": end - i0 + 1, "x": "zeit", "ti": str(b.index[i0]), "to": str(b.index[end])}
 
 
 TRIG = {"R35": ["R35"], "R40": ["R40"], "M": ["M"], "M0": ["M0"], "B": ["B"], "RM": ["R40", "M"], "RB": ["R40", "B"],
-        "MB": ["M", "B"], "RMB": ["R40", "M", "B"]}
+        "MB": ["M", "B"], "RMB": ["R40", "M", "B"],
+        "S": ["S"], "RS": ["R40", "S"], "MS": ["M", "S"], "BS": ["B", "S"], "RMBS": ["R40", "M", "B", "S"]}
 EXITS = ("zeit", "rsi", "macd", "mbi", "2v3", "3v3")
 
 
@@ -159,7 +163,7 @@ def kairo_variants(e: dict, b: pd.DataFrame) -> dict:
     if sm and "skip" not in sm and sm["s"] < len(ud):
         i_in = int(np.flatnonzero(days == ud[sm["s"]])[0])
         ctx["HB"] = (i_in, c0 * sm["sl"], ud[min(len(ud) - 1, sm["s"] + 10)])
-    flags = {k: b[k].to_numpy(bool) for k in ("R35", "R40", "M", "M0", "B")}
+    flags = {k: b[k].to_numpy(bool) for k in ("R35", "R40", "M", "M0", "B", "S")}
     out = {}
     for cn, (i0, stop0, lim) in ctx.items():
         s0 = int(sig[0])
@@ -204,6 +208,35 @@ def standalone(b: pd.DataFrame, atr_pct: float, rnd: random.Random) -> dict:
     return out
 
 
+def depot(ts: list[dict], slots: int = 5, risk: float = 0.01, start: float = 10000.0) -> dict | None:
+    """Depot wie die Strategie: 1 % Risiko vom Kapital je Trade, höchstens `slots` gleichzeitig, ruhigste zuerst bei
+    gleichzeitigen Einstiegen; Gebühren stecken schon in r. Kapital nur bei Verkäufen gebucht (größter Rückgang daher eher zu klein)."""
+    if not ts:
+        return None
+    ev = sorted(ts, key=lambda t: (t["ti"], t.get("atrp", 1)))
+    eq, peak, mdd, open_, taken = start, start, 0.0, [], 0
+    for t in ev:
+        keep = []
+        for o in sorted(open_, key=lambda o: o["to"]):
+            if o["to"] <= t["ti"]:
+                eq += o["amt"] * o["r"]
+                peak = max(peak, eq)
+                mdd = max(mdd, 1 - eq / peak)
+            else:
+                keep.append(o)
+        open_ = keep
+        if len(open_) >= slots or any(o["tk"] == t["tk"] for o in open_):
+            continue
+        open_.append({**t, "amt": eq * risk})
+        taken += 1
+    for o in sorted(open_, key=lambda o: o["to"]):
+        eq += o["amt"] * o["r"]
+        peak = max(peak, eq)
+        mdd = max(mdd, 1 - eq / peak)
+    yrs = max(0.25, (pd.Timestamp(ev[-1]["to"]) - pd.Timestamp(ev[0]["ti"])).days / 365.25)
+    return {"trades": taken, "cagr": round(float((eq / start) ** (1 / yrs) - 1), 4) if eq > 0 else -1.0, "mdd": round(float(mdd), 3)}
+
+
 def summary(ts: list[dict]) -> dict:
     if not ts:
         return {"n": 0}
@@ -240,8 +273,8 @@ def main(argv=None) -> int:
                 continue
             n += 1
             for k, v in kairo_variants(e, b).items():
-                res.setdefault(k, []).append(v)
-        rep["kairo"][d] = {"treffer_im_zeitraum": n, **{k: summary(v) for k, v in sorted(res.items())}}
+                res.setdefault(k, []).append({**v, "tk": e["t"], "atrp": e["px"]["atr"]})
+        rep["kairo"][d] = {"treffer_im_zeitraum": n, **{k: {**summary(v), "depot": depot(v)} for k, v in sorted(res.items())}}
         print(d, json.dumps(rep["kairo"][d], ensure_ascii=False), flush=True)
     rnd = random.Random(7)
     for d, hs in hits.items():
