@@ -2,7 +2,8 @@
 
 Regeln aus der Kurzfrist-Studie (backend/shortswing.py, 5 Jahre, 1.600 Aktien, netto):
 - Kairo-Reversals: am besten IN einer engen Seitwärtsphase (Basis) kaufen, nicht sofort beim Signal.
-  Basis = die letzten 5 (ersatzweise 3) Handelstage liegen in einer Spanne von höchstens 1,5 (ersatzweise 2,5) ATR.
+  Basis genau wie getestet: Kairo = die letzten 5 Handelstage in einer Spanne von höchstens 1,5 ATR;
+  Trend-Rücksetzer = die letzten 3 Handelstage in höchstens 2,5 ATR (keine ungetesteten Ersatz-Basen).
 - Stop = Tief der Basis − 0,25 ATR. Ohne Basis: Tief der letzten 10 Tage − 0,25 ATR (vorläufig, „keine Basis“).
 - Ein Stop mehr als 3 ATR unter dem Einstieg passt nicht zur Strategie (Trade ablehnen bzw. auf Basis warten);
   weniger als 0,5 ATR ist so eng, dass normales Rauschen ihn auslöst.
@@ -15,12 +16,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-BASES = ((5, 1.5), (5, 2.5), (3, 1.5), (3, 2.5))     # (Tage, max. Spanne in ATR) – strengste zuerst
+BASES = {"kairo": ((5, 1.5),), "trend": ((3, 2.5),)}   # (Tage, max. Spanne in ATR) – wie in shortswing.QRULE getestet
 STOP_BUF = 0.25                                      # ATR unter der Invalidierung
 MAX_STOP_ATR, MIN_STOP_ATR = 3.0, 0.5
 
 
-def structure(df: pd.DataFrame, atr: float | None, fib: dict | None = None) -> dict:
+def structure(df: pd.DataFrame, atr: float | None, fib: dict | None = None, kind: str = "kairo") -> dict:
     """Basis, Tiefs, Stop-Vorschlag, Widerstände und nahe Kursmarken. Leeres Dict, wenn zu wenig Daten.
 
     fib: Fibonacci-Niveaus der Kairo-Zone ({"0.618": Kurs, …}), falls vorhanden.
@@ -31,7 +32,7 @@ def structure(df: pd.DataFrame, atr: float | None, fib: dict | None = None) -> d
     h, l, c = (d[k].to_numpy(float) for k in ("High", "Low", "Close"))
     r4 = lambda x: round(float(x), 4)
     base = None
-    for k, m in BASES:
+    for k, m in BASES.get(kind, BASES["kairo"]):
         lo, hi = float(l[-k:].min()), float(h[-k:].max())
         if hi - lo <= m * atr:
             base = {"k": k, "lo": r4(lo), "hi": r4(hi), "m": m, "w": round((hi - lo) / atr, 2)}

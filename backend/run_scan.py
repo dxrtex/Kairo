@@ -26,7 +26,7 @@ from .config import CONFIG, ROOT, as_dict
 from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
-from . import briefing, company, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
+from . import briefing, company, etf, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import MARKET, SECTOR_DE, SECTOR_ETF, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -395,6 +395,17 @@ def main(argv=None) -> int:
                 hi = df["Close"]
                 aths[t] = {"p": float(hi.max()), "date": str(hi.idxmax().date()), "full": True}
         print(f"Allzeithochs: {len(aths)} von {len(watch)} Watchlist-Aktien")
+    # ETF-Bereich: Ampel für den SPDR MSCI ACWI IMI (backend/etf.py) – unabhängig vom Aktien-Scan
+    if not args.end:
+        try:
+            eh = yf.history([etf.TICKER], "max").get(etf.TICKER)
+            eo = etf.compute(eh) if eh is not None else {}
+            if eo:
+                with open(SITE / "etf.json", "w", encoding="utf-8") as f:
+                    json.dump(_clean(eo), f, ensure_ascii=False, separators=(",", ":"))
+            print(f"ETF: {eo.get('c')} € · {eo.get('dd', 0) * 100:.1f} % unter dem Hoch · {eo.get('t')} · {len(eh) - eo.get('n', 0) if eh is not None else 0} Fehlkurse entfernt")
+        except Exception as exc:
+            print(f"ETF: Fehler {exc!r}")
     ctx_hist = yf.history([t for t, _ in MARKET] + sorted(set(SECTOR_ETF.values())), CONFIG.history.period, end=args.end)
     market = market_context(ctx_hist)
     try:
@@ -440,7 +451,8 @@ def main(argv=None) -> int:
         try:
             search[t] = {**search_row(res, m, hint(res)), **entry_fields(res, tres, m), **day_moves(df)}
             try:                                     # Trade-Plan-Struktur (Basis, Stop, Widerstände) für den Reiter „Einstieg“
-                pl = tradeplan.structure(df, res.flags.get("atr"), ((res.zone or {}).get("fib") or {}).get("levels"))
+                pl = tradeplan.structure(df, res.flags.get("atr"), ((res.zone or {}).get("fib") or {}).get("levels"),
+                                         "trend" if tr_hit and not (res.passed or res.fast_hit) else "kairo")
                 if pl:
                     search[t]["pl"] = pl
             except Exception as exc:

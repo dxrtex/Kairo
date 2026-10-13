@@ -122,6 +122,28 @@ def synced(dev: dict) -> dict:
     return dev
 
 
+def etf_message(today: str, sent: dict) -> list[dict]:
+    """ETF-Ampel: Mitteilung nur, wenn sie auf Grün bzw. Dunkelgrün springt (höchstens einmal je Farbe und Monat)."""
+    try:
+        import yfinance as yf
+        from . import etf
+        d = yf.download(etf.TICKER, period="2y", interval="1d", auto_adjust=True, progress=False)
+        c = d["Close"]
+        c = c.iloc[:, 0] if hasattr(c, "columns") else c
+        e = etf.compute(c.to_frame("Close"))
+    except Exception as exc:
+        print(f"Push: ETF-Ampel nicht berechnet ({exc!r})")
+        return []
+    lv, prev = e.get("lv"), sent.get("etf:last")
+    sent["etf:last"] = lv or prev
+    key = f"etf:{lv}:{today[:7]}"
+    if lv not in ("green", "green2") or lv == prev or key in sent:
+        return []
+    sent[key] = today
+    return [{"title": f"🟢 ETF-Ampel: {e['t']}", "body": f"SPYI {_num(e['c'])} € · {_pct(e['dd'])} unter dem Hoch. Sparrate läuft weiter; Extra-Geld lohnt sich jetzt besonders.",
+             "url": APP + "?sec=etf", "tag": "kairo-etf"}]
+
+
 def run(today_iso: str | None = None) -> dict:
     from datetime import datetime
     from . import state
@@ -141,9 +163,10 @@ def run(today_iso: str | None = None) -> dict:
     prices = prices_for(devs)
     sent = {k2: v for k2, v in state.load("push_sent.json", {}).items() if v >= _days_ago(today, 60)}
     n_sent = failed = 0
+    etf_msg = etf_message(today, sent)
     for dev in devs:
         sub = dev.get("s") or dev
-        for msg in messages(dev, prices, today, sent):
+        for msg in messages(dev, prices, today, sent) + etf_msg:
             try:
                 st = webpush.send(sub, msg, k)
                 n_sent += st in (200, 201, 202)

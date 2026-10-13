@@ -65,3 +65,14 @@ def test_nan_inputs_give_no_nan_in_json():
     pl = structure(df, 1.0, {"0.618": float("nan"), "0.5": 120.0})
     json.dumps(pl, allow_nan=False)                     # wirft bei NaN/Infinity
     assert all(not math.isnan(v) for _, v in pl["tg"])
+
+
+def test_only_tested_base_counts():
+    """Kairo: nur 5 Tage ≤ 1,5 ATR; eine 3-Tage-Spanne reicht nicht (ungetestet), beim Trend-Rücksetzer schon."""
+    n = 30
+    lows = list(np.linspace(120, 100, n - 3)) + [99.0, 99.5, 99.2]
+    highs = [x + 3 for x in lows[:-3]] + [101.0, 101.5, 101.2]
+    closes = [x + 1 for x in lows]
+    df = frame(lows, highs, closes)
+    assert structure(df, atr=2.0)["base"] is None
+    assert structure(df, atr=2.0, kind="trend")["base"]["k"] == 3
