@@ -1584,7 +1584,7 @@ const COLS = [
   { k: "ticker", l: "Ticker", g: r => r.ticker, h: r => `<span class="tk">${favBtn(r.ticker)}<a href="#" data-card="${esc(r.ticker)}">${esc(r.ticker)}</a>${wlTag(r)}</span>` },
   { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm" data-card="${esc(r.ticker)}">${esc((r.name || r.ticker).slice(0, 28))}</a>` },
   { k: "trend", l: "Prognose", g: r => r.trend ? (r.trend.fc ? r.trend.fc.d : r.trend.slope + (r.trend.d5 ?? 0) / 10) : 0, h: r => trendHtml(r) || "–" },
-  { k: "status", l: "Status", g: r => r.passed ? 3 : isTrend(r) ? 2 : r.fast_hit ? 1 : r.near_hit ? .5 : 0, h: r => (r.passed ? `<span class="st hit">Treffer</span>${(it => it ? `<span class="st${h4Go(it) ? " hit" : ""}">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : "")(h4Of(r.ticker))}` : r.fast_hit && !isTrend(r) ? `<span class="st fast">Fast</span>${r.mbi_soft ? (it => it ? `<span class="st${h4Go(it) ? " hit" : ""}" title="nur das MBI-Abklingen fehlt – darf ins 4H-Setup">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : `<span class="st" title="nur das MBI-Abklingen fehlt – darf ins 4H-Setup">MBI gelockert</span>`)(h4Of(r.ticker)) : ""}` : r.near_hit && !isTrend(r) ? `<span class="st">9/11 · kein Treffer</span>` : isTrend(r) ? "" : `<span class="st" title="${esc((stageOf(r) || {}).t || "")}">Watchlist${r.met != null ? ` · ${r.met}/${r.total || 11}` : ""}</span>`) + (isTrend(r) ? `<span class="st trend">${r.tr.top ? "Trend Top" : "Trend"}</span>` : "") },
+  { k: "status", l: "Status", g: r => r.passed ? 3 : isTrend(r) ? 2 : r.fast_hit ? 1 : r.near_hit ? .5 : 0, h: r => (r.passed ? `<span class="st hit">Treffer</span>${(it => it ? `<span class="st${h4Go(it) ? " hit" : ""}">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : "")(h4Of(r.ticker))}` : r.fast_hit && !isTrend(r) ? `<span class="st fast">Fast</span>${r.mbi_soft ? (it => it ? `<span class="st${h4Go(it) ? " hit" : ""}" title="nur das MBI-Abklingen fehlt – darf ins 4H-Setup">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : `<span class="st" title="nur das MBI-Abklingen fehlt – darf ins 4H-Setup">MBI gelockert</span>`)(h4Of(r.ticker)) : h4Mini(r)}` : r.near_hit && !isTrend(r) ? `<span class="st">9/11 · kein Treffer</span>${h4Mini(r)}` : isTrend(r) ? "" : `<span class="st" title="${esc((stageOf(r) || {}).t || "")}">Watchlist${r.met != null ? ` · ${r.met}/${r.total || 11}` : ""}</span>`) + (isTrend(r) ? `<span class="st trend">${r.tr.top ? "Trend Top" : "Trend"}</span>` : "") },
   { k: "chk", l: "Rücksetzer-Check", n: 1, g: r => chkP(r) ?? -1, h: r => chkCell(r) },
   { k: "grade", l: "Stufe", g: r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0, h: r => gradeBadge(r) || `<span class="muted">–</span>` },
   { k: "exchange", l: "Börse", g: r => r.exchange, h: r => esc(r.exchange) },
@@ -2857,7 +2857,7 @@ function gBuy(g, t, f) {
 function gSetup(t) {
   const r = byTicker(t), s = rowOf(t);
   const h4 = h4Of(t);
-  if (h4Go(h4)) return { k: "Kairo 4H", score: r && r.passed ? r.score : null };
+  if (h4Go(h4)) return { k: h4Real(h4) ? "Kairo 4H" : `4H · ${h4.grp}/11`, score: r && r.passed ? r.score : null };
   if (r && r.passed) return { k: "Kairo", score: r.score };
   if (s && s.s === "hit") return { k: "Kairo", score: s.sc ?? null };
   if ((r && isTrend(r)) || (s && s.tr)) return { k: "Trend" };
@@ -3044,6 +3044,13 @@ function h4Data() {
   const m = new Map(lv.items.map(x => [x.t + "|" + x.d, x]));
   return { ...base, live: lv.generated, items: (base.items || []).map(x => m.get(x.t + "|" + x.d) || x) };
 }
+// Stufe: 11 = Treffer, 10s = 10/11 nur MBI-Abklingen fehlt (zählt wie Treffer), 10 / 9 = nur zur Auswahl (Info, keine Mitteilung)
+const h4Real = it => !!it && (!it.grp || it.grp === "11" || it.grp === "10s");
+const GRPL = { "11": "11/11", "10s": "10/11 · MBI gelockert", "10": "10/11 · kein Treffer", "9": "9/11 · kein Treffer" };
+// Test (Fast-Treffer mit Seitwärtsphase + 4H, Okt. 2026): je Trade in zwei Stichproben
+const GRPT = { "10": "−0,01 / +0,24 R", "9": "−0,37 / −0,12 R" };
+// 10/11 und 9/11: 4H-Stand als kleines Zusatz-Etikett (nur zur Auswahl)
+const h4Mini = r => (it => it && !h4Real(it) && it.st !== "weg" ? `<span class="st" title="zur Auswahl – kein Treffer, keine Mitteilung">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : "")(h4Of(r.ticker));
 const h4Of = t => { const d = h4Data(); return d && t ? (d.items || []).find(x => x.t === t) || null : null; };
 const h4Now = t => { const d = h4Data(); return d && d.now ? d.now[t] || null : null; };
 const H4F = [["R40", "RSI"], ["M", "MACD"], ["B", "MBI"], ["S", "Bruch"]];
@@ -3072,17 +3079,26 @@ const h4NowBadge = t => { const n = h4Now(t); if (!n) return ""; const f = n.fl 
 function h4CardHtml() {
   const d = h4Data(); if (!d) return "";
   // Übersichtlich: oben nur, was jetzt zählt (bestätigt, dann die nächsten Kandidaten) – der Rest als eine Zeile
-  const its = d.items || [], go = its.filter(h4Go), nf = x => H4F.filter(([k]) => (x.fl || {})[k]).length,
+  const all = d.items || [], its = all.filter(h4Real), go = its.filter(h4Go), nf = x => H4F.filter(([k]) => (x.fl || {})[k]).length,
     wait4 = its.filter(x => x.st === "4h").sort((a, b) => nf(b) - nf(a));          // am nächsten an der Bestätigung zuerst
   const nBase = its.filter(x => x.st === "basis").length, nRun = its.filter(x => x.st === "run" && !h4Go(x)).length;
   const sell = its.filter(x => x.st === "sell");                                   // Verkaufssignal (Schluss unter der EMA 20) zuerst
   const act = [...sell, ...go, ...wait4.slice(0, Math.max(0, 4 - go.length))];
   const when = d.live || d.generated, tm = when ? new Date(when).toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "–";
-  const rows = act.map(it => { const x = h4Text(it);
-    return `<button class="h4row${h4Go(it) || it.st === "sell" ? " go" : ""}" data-ein="${esc(it.t)}"><i>${x.ic}</i><span><b>${esc(it.n || it.t)} · ${esc(x.short)}${it.soft ? ` <small class="muted">· 10/11 MBI gelockert</small>` : ""}</b><em>${esc(it.st === "4h" ? `Stop ${fmt((it.base || {}).sl)} ${it.cur || ""} · ${it.lim ? "bis " + dateDE(it.lim) : `noch ${it.lim_left} Handelstage`} · ${nf(it)} von 4 Signalen` : x.s)}</em>${it.st === "4h" ? `<div>${h4Flags(it.fl)}</div>` : ""}</span></button>`; }).join("");
+  const row1 = it => { const x = h4Text(it), tag = it.soft ? "10/11 MBI gelockert" : !h4Real(it) ? GRPL[it.grp] : "";
+    return `<button class="h4row${(h4Go(it) || it.st === "sell") && h4Real(it) ? " go" : ""}" data-ein="${esc(it.t)}"><i>${x.ic}</i><span><b>${esc(it.n || it.t)} · ${esc(x.short)}${tag ? ` <small class="muted">· ${esc(tag)}</small>` : ""}</b><em>${esc(it.st === "4h" ? `Stop ${fmt((it.base || {}).sl)} ${it.cur || ""} · ${it.lim ? "bis " + dateDE(it.lim) : `noch ${it.lim_left} Handelstage`} · ${nf(it)} von 4 Signalen` : x.s)}</em>${it.st === "4h" ? `<div>${h4Flags(it.fl)}</div>` : ""}</span></button>`; };
+  const rows = act.map(row1).join("");
+  // Zur Auswahl: 10/11 und 9/11 laufen durch dieselbe Prüfung – eingeklappt, damit oben nur echte Einstiege stehen
+  const xs = all.filter(x => !h4Real(x)), xGo = xs.filter(x => h4Go(x) || x.st === "sell"), x4 = xs.filter(x => x.st === "4h").sort((a, b) => nf(b) - nf(a) || (a.grp === "10" ? -1 : 1)),
+    xRun = xs.filter(x => x.st === "run" && !h4Go(x)), xList = [...xGo, ...x4].slice(0, 8);
+  const cnt = g => (d.count || {})[g] || {};
+  const xHtml = xs.length || Object.keys(cnt("10")).length || Object.keys(cnt("9")).length ? `<details class="h4x" style="margin:8px 0 0"><summary class="note" style="margin:0;cursor:pointer">Zur Auswahl · 10/11 und 9/11 mit 4H-Prüfung (kein Treffer): ${xGo.length} bestätigt · ${x4.length} warten auf 4H${xRun.length ? ` · ${xRun.length} laufen` : ""}</summary>
+      ${xList.map(row1).join("") || `<div class="note" style="margin:6px 0 0">Gerade keiner mit fertiger Seitwärtsphase.</div>`}
+      <div class="note" style="margin:6px 0 0">${["10", "9"].map(g => `${GRPL[g]}: ${cnt(g).basis || 0} warten auf die Seitwärtsphase`).join(" · ")}. Gleiche Regeln wie bei Treffern (Seitwärtsphase → alle 4 Signale im 4H → Verkauf unter der EMA 20), aber keine Mitteilung und im Test schwächer: 10/11 ${GRPT["10"]}, 9/11 ${GRPT["9"]} je Trade (Treffer +0,41 / +0,61 R). Live getrennt gezählt in der Bilanz.</div></details>` : "";
   return `<div class="hcard">${hHead("⚡ 4H-Top-Setup " + gl("h4"))}
     ${rows || `<div class="note" style="margin:0">Gerade nichts zu tun – kein Treffer mit fertiger Seitwärtsphase.</div>`}
     ${wait4.length > act.length - go.length - sell.length || nBase || nRun ? `<div class="note" style="margin:6px 0 0">${[wait4.length - (act.length - go.length - sell.length) > 0 ? `${wait4.length - (act.length - go.length - sell.length)} weitere warten auf 4H` : "", nBase ? `${nBase} warten auf die Seitwärtsphase` : "", nRun ? `${nRun} laufende 4H-Trades` : ""].filter(Boolean).join(" · ")} – <a href="#" data-gokinds="hit">alle im Scanner</a></div>` : ""}
+    ${xHtml}
     <div class="note" style="margin:8px 0 0">Stand ${esc(tm)} · alle 30 Min. geprüft – bei Bestätigung kommt eine Mitteilung.</div></div>`;
 }
 function h4BilanzHtml() {
@@ -3093,7 +3109,9 @@ function h4BilanzHtml() {
       <div class="mt"><span>Ø je Trade · EMA 20</span><b class="${st && st.avg_r >= 0 ? "up" : st && st.avg_r != null ? "down" : ""}">${st && st.avg_r != null ? `${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R` : "–"}</b><em>Test +0,73 / +0,63 R</em></div>
       <div class="mt"><span>Gegenprobe · Tag 20</span><b class="${st && st.avg_r20 >= 0 ? "up" : st && st.avg_r20 != null ? "down" : ""}">${st && st.avg_r20 != null ? `${st.avg_r20 >= 0 ? "+" : ""}${fmt(st.avg_r20, 2)} R` : "–"}</b><em>Test +0,49 / +0,67 R</em></div>
       <div class="mt"><span>Gewinner</span><b>${st && st.win != null ? pct(st.win, 0) : "–"}</b><em>Test ≈ 35–40 %</em></div></div>
-    ${st && st.n_soft ? `<div class="note" style="margin:-4px 0 10px">Davon „MBI gelockert“ (10/11): ${st.n_soft} abgeschlossen · Ø ${st.avg_r_soft >= 0 ? "+" : ""}${fmt(st.avg_r_soft, 2)} R (Test ≈ +0,32 / +0,75 R)</div>` : ""}
+    ${st && st.by ? `<div class="table-wrap plain" style="margin:0 0 10px"><table class="jtrades"><thead><tr><th>Stufe</th><th class="num">fertig · offen</th><th class="num">Ø live</th><th class="num">Test</th></tr></thead><tbody>${
+      [["11", "11/11 Treffer", "+0,41 / +0,61 R"], ["10s", "10/11 MBI gelockert", "+0,32 / +0,75 R"], ["10", "10/11 · zur Auswahl", GRPT["10"]], ["9", "9/11 · zur Auswahl", GRPT["9"]]].map(([k, l, tv]) => { const b = st.by[k] || {};
+        return `<tr><td><b>${l}</b></td><td class="num">${b.n || 0} · ${b.open || 0}</td><td class="num ${b.avg_r == null ? "" : b.avg_r >= 0 ? "up" : "down"}">${b.avg_r != null ? `${b.avg_r >= 0 ? "+" : ""}${fmt(b.avg_r, 2)} R` : "–"}</td><td class="num"><small>${tv}</small></td></tr>`; }).join("")}</tbody></table></div>` : ""}
     ${l.length ? `<div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Aktie</th><th class="num">Einstieg</th><th>Ergebnis</th></tr></thead><tbody>${l.slice(0, 15).map(x =>
       `<tr><td><b>${esc(x.n || x.t)}</b><small>${x.soft ? "10/11 MBI gelockert" : "Treffer"} ${dateDE(x.d)}</small></td><td class="num">${dateDE(x.ed)}<small>${fmt(x.e)}</small></td><td class="${x.r == null ? "" : x.r >= 0 ? "up" : "down"}">${x.res === "run" ? `läuft · Tag ${x.day || "–"}/40 ` : x.res === "sell" ? "verkaufen " : x.res === "stop" ? "Stop " : x.res === "ema" ? "EMA 20 " : x.res === "zeit" ? (x.day || 0) > 20 || !x.r20 ? "Tag 40 " : "Tag 20 " : ""}${x.r != null ? `<b>${x.r >= 0 ? "+" : ""}${fmt(x.r, 2)} R</b>` : ""}${x.r20 != null && x.res !== "run" && x.res !== "sell" ? `<small>Tag 20: ${x.r20 >= 0 ? "+" : ""}${fmt(x.r20, 2)} R</small>` : ""}</td></tr>`).join("")}</tbody></table></div>`
       : `<div class="note" style="margin:0">Noch keine bestätigten 4H-Trades. Jeder Kairo-Treffer, der Seitwärtsphase und 4H-Bestätigung schafft, wird hier automatisch mitgezählt – getrennt von der bisherigen Strategie, damit wir Live gegen Test vergleichen können. Verkauft wird unter der EMA 20 (ab Tag 10, spätestens Tag 40); die alte Regel „Verkauf an Tag 20“ läuft als Gegenprobe mit.</div>`}</div>`;
@@ -3232,7 +3250,7 @@ function stageOf(r) {
   const it = h4Of(r.ticker), n = h4Now(r.ticker);
   if (it && it.st !== "weg") {
     const x = h4Text(it), nf = H4F.filter(([k]) => (it.fl || {})[k]);
-    const tr = it.soft ? "10/11 MBI gelockert ✓" : "Treffer ✓";
+    const tr = it.soft ? "10/11 MBI gelockert ✓" : !h4Real(it) ? `${it.grp}/11 (Auswahl) ✓` : "Treffer ✓";
     if (it.st === "4h") return { lv: 4, t: `${tr} → Basis ✓ → 4H ${nf.length}/4${nf.length < 4 ? ` · fehlt ${H4F.filter(([k]) => !(it.fl || {})[k]).map(z => z[1]).join(", ")}` : ""}` };
     if (it.st === "basis") return { lv: 3, t: `${tr} → Seitwärtsphase Tag ${it.day}/10 → 4H` };
     return { lv: h4Go(it) || it.st === "sell" ? 5 : 2, t: `${x.ic} ${x.short}` };
@@ -3310,7 +3328,7 @@ function todoHtml() {
   const fast = data.results.filter(r => r.fast_hit && !r.passed && !isTrend(r));
   const row = (ic, cls, t, sub, n, kinds) => `<button class="arow" data-gokinds="${kinds}"><i class="aic ${cls}">${ic}</i><span><b>${t}</b><em>${sub}</em></span><strong>${n}</strong><s>›</s></button>`;
   return `<div class="agroup-h">Heute zu tun</div><div class="agroup">
-    ${(() => { const d = h4Data(), g = d ? (d.items || []).filter(h4Go).length : 0, w = d ? (d.items || []).filter(x => x.st === "4h" || x.st === "basis").length : 0;
+    ${(() => { const d = h4Data(), g = d ? (d.items || []).filter(x => h4Real(x) && h4Go(x)).length : 0, w = d ? (d.items || []).filter(x => h4Real(x) && (x.st === "4h" || x.st === "basis")).length : 0;
       return d ? row("⚡", "g", "4H-Top-Setup", g ? `${g}× bestätigt – Einstieg jetzt` : w ? `${w} warten auf Seitwärtsphase/4H` : "gerade nichts in Arbeit", g, "hit") : ""; })()}
     ${row("✓", "g", "Kairo-Treffer", hits.length ? "alle Kriterien erfüllt – Einstieg nach 4H-Bestätigung" : "heute keine", hits.length, "hit")}
     ${trendOn() ? row("↗", "b", "Trend-Rücksetzer", top.length ? `davon ${top.length} Top – stärkstes Setup im Test` : "Rücksetzer im Aufwärtstrend", tr.length, "trend") : ""}
@@ -3321,7 +3339,7 @@ function kpiHtml() {
   const hit = data.results.filter(r => r.passed).length, tr = data.results.filter(isTrend), top = tr.filter(r => r.tr.top).length;
   const fast = data.results.filter(r => r.fast_hit && !r.passed).length;
   const t = (k, l, n, sub, hl) => `<button class="kpi${hl ? " hl" : ""}" data-gokinds="${k}"><span>${l}</span><b>${n}</b><em>${sub}</em></button>`;
-  const h4d = h4Data(), h4g = h4d ? (h4d.items || []).filter(h4Go).length : 0, h4w = h4d ? (h4d.items || []).filter(x => x.st === "4h" || x.st === "basis").length : 0;
+  const h4d = h4Data(), h4g = h4d ? (h4d.items || []).filter(x => h4Real(x) && h4Go(x)).length : 0, h4w = h4d ? (h4d.items || []).filter(x => h4Real(x) && (x.st === "4h" || x.st === "basis")).length : 0;
   return `<div class="kpis">${h4d ? t("hit", "4H bestätigt", h4g, h4g ? "Einstieg jetzt" : `${h4w} in Arbeit`, h4g > 0) : ""}${t("hit", "Kairo-Treffer", hit, hit ? "Einstieg nach 4H" : "heute keine", false)}
     ${trendOn() ? t("trend", "Trend-Rücksetzer", tr.length, top ? `davon ${top} Top` : "keine Top-Stufe", top > 0) : ""}
     ${t("fast", "Fast-Treffer", fast, "1 Kriterium fehlt", false)}
@@ -3352,7 +3370,7 @@ function postfachItems() {
   // Übersichtlich: „Jetzt handeln“ nur echte Einstiege (4H bestätigt), „Vorbereiten“ nur Treffer mit fertiger Seitwärtsphase –
   // Treffer, die noch auf die Seitwärtsphase warten, stehen im Scanner und in der 4H-Karte (Anzahl), nicht hier
   const nf = x => H4F.filter(([k]) => (x.fl || {})[k]).length;
-  const h4its = (h4d && h4d.items) || [];
+  const h4its = ((h4d && h4d.items) || []).filter(h4Real);
   h4its.filter(h4Go).forEach(it => out.now.push({ t: it.t, c: "g", n: `${it.n || it.t} einsteigen – 4H bestätigt`, d: h4Text(it).s }));
   h4its.filter(it => it.st === "sell").forEach(it => out.now.push({ t: it.t, c: "y", n: `${it.n || it.t}: 4H-Trade verkaufen – Schluss unter der EMA 20`, d: h4Text(it).s }));
   h4its.filter(it => it.st === "4h").sort((a, b) => nf(b) - nf(a)).forEach(it => out.prep.push({ t: it.t, c: "y", n: `${it.n || it.t} – wartet auf 4H`,
@@ -4182,7 +4200,8 @@ function tp2Calc(r, S, o = {}) {
   out.fit = kmFit(r, out.mk);
   if (h4) {                                                  // 4H-Top-Setup entscheidet über den Einstieg
     const x = h4Text(h4);
-    out.fit = { ...out.fit, ok: h4Go(h4), k: "h4", tone: x.tone === "green" ? "green" : x.tone === "gray" ? "red" : "yellow",
+    if (!h4Real(h4)) out.problems.push(["yellow", `Nur ${GRPL[h4.grp]}: Seitwärtsphase und 4H-Prüfung laufen zur Auswahl mit, im Test schwächer als volle Treffer (${GRPT[h4.grp]} je Trade statt +0,41 / +0,61 R). Kein Kairo-Einstieg – deine Entscheidung.`]);
+    out.fit = { ...out.fit, ok: h4Go(h4) && h4Real(h4), k: "h4", tone: x.tone === "green" ? "green" : x.tone === "gray" ? "red" : "yellow",
       mult: out.fit.mult || 1, t: `${x.ic} 4H-Top-Setup${h4.soft ? " (10/11, MBI gelockert)" : ""}: ${x.t}`, s: x.s + (h4.soft ? " Fast-Treffer, dem nur das Abklingen beim MBI fehlt – im Test so gut wie volle Treffer, wird getrennt gezählt." : "") };
   }
   out.riskPct = cfg.risk * out.fit.mult;

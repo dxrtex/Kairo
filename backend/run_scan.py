@@ -323,11 +323,26 @@ FC_MODEL = forecast.load_model()
 GRADE = grade.load()
 
 
-def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bool) -> dict:
+def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bool, near_all: list[dict] | None = None) -> dict:
     """4H-Top-Setup für die App und die Mitteilungen: Status jedes Kairo-Treffers der letzten Wochen
-    (wartet auf Seitwärtsphase → wartet auf 4H → bestätigt → läuft / verfallen) und Setup-Zustand der Kandidaten."""
+    (wartet auf Seitwärtsphase → wartet auf 4H → bestätigt → läuft / verfallen) und Setup-Zustand der Kandidaten.
+    Zur Auswahl laufen auch 10/11 und 9/11 durch dieselbe Prüfung (Stufe grp, keine Mitteilung, getrennt gezählt)."""
     now = datetime.now(timezone.utc)
-    cands = h4live.candidates(state.load("signals.json", []), today)
+    nsig = [x for x in state.load("h4near.json", []) if x["d"] >= (pd.Timestamp(today) - timedelta(days=95)).strftime("%Y-%m-%d")]
+    if evening and near_all:                          # 9/11-Signale wie Treffer merken: neue Phase erst nach ≥ 5 Tagen Pause
+        lastd = {}
+        for x in nsig:
+            lastd[x["t"]] = max(lastd.get(x["t"], ""), x.get("seen", x["d"]))
+        for x in near_all:
+            p = lastd.get(x["t"])
+            if p and (pd.Timestamp(x["d"]) - pd.Timestamp(p)).days <= 7:
+                for y in nsig:                         # Phase läuft weiter: zuletzt gesehen nachführen
+                    if y["t"] == x["t"] and y.get("seen", y["d"]) == p:
+                        y["seen"] = x["d"]
+                continue
+            nsig.append({"t": x["t"], "n": x["n"], "d": x["d"], "k": "near", "seen": x["d"]})
+        state.save("h4near.json", nsig)
+    cands = h4live.candidates(state.load("signals.json", []) + nsig, today)
     for c in cands:
         c["cur"] = c.get("cur") or (search.get(c["t"]) or {}).get("cur")
     setup = [r["ticker"] for r in rows if r.get("in_watchlist")]          # Watchlist: Stufen-Anzeige (1D → Basis → 4H)
@@ -339,12 +354,21 @@ def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bo
         daily = {t: df[df.index.normalize() < pd.Timestamp(today)] for t, df in data.items() if t in {c["t"] for c in cands}}
     # Stundenkerzen nur, wo die 4H-Bestätigung möglich ist (Seitwärtsphase fertig) – bei vielen Treffern sonst Hunderte Downloads
     pre = h4live.build(cands, daily, {}, now, intraday=not evening)
-    need = {it["t"] for it in pre if it["st"] == "4h"}
+    real = lambda it: (it.get("grp") or "11") in h4live.REAL
+    need = {it["t"] for it in pre if it["st"] == "4h" and real(it)}
+    need |= {it["t"] for it in sorted((x for x in pre if x["st"] == "4h" and not real(x)), key=lambda x: x["d"], reverse=True)[:400]}
     hx = h4live.hourly(sorted(need | set(setup)))
     items = h4live.build([c for c in cands if c["t"] in need], daily, hx, now, intraday=not evening)
     items += [it for it in pre if it["t"] not in need]
     cut = (pd.Timestamp(today) - timedelta(days=10)).strftime("%Y-%m-%d")
     items = [it for it in items if it["st"] != "weg" or it["d"] >= cut]   # Verfallene nur kurz zeigen
+    count = {}
+    for it in items:
+        g = it.get("grp") or "11"
+        count.setdefault(g, {})[it["st"]] = count.setdefault(g, {}).get(it["st"], 0) + 1
+    # 10/11 und 9/11 (nur zur Auswahl): in der App nur, was zählt – wartet auf 4H, bestätigt, läuft, kürzlich beendet
+    items = [it for it in items if real(it) or it["st"] in ("4h", "go", "run", "sell")
+             or (it["st"] in ("stop", "zeit", "ema") and ((it.get("trade") or {}).get("xd") or "") >= cut)]
     rank = {"sell": 0, "go": 0, "4h": 1, "basis": 2, "run": 3, "stop": 4, "zeit": 4, "ema": 4, "weg": 5}
     items.sort(key=lambda x: (rank.get(x["st"], 9), x["d"]))
     rec = h4live.track(state.load("h4trades.json", []), items)
@@ -355,11 +379,9 @@ def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bo
             st = h4live.setup_now(data[t], h4live.complete_only(hx.get(t), now) if hx.get(t) is not None else None)
             if st:
                 nowset[t] = st
-    count = {}
-    for it in items:
-        count[it["st"]] = count.get(it["st"], 0) + 1
+    tr_real = [x for x in rec if (x.get("grp") or "11") in h4live.REAL]
     return {"generated": now.isoformat(timespec="minutes"), "items": items, "now": nowset, "count": count,
-            "track": {"stats": h4live.track_stats(rec), "list": rec[:60]},
+            "track": {"stats": h4live.track_stats(rec), "list": tr_real[:60], "list_x": [x for x in rec if x not in tr_real][:40]},
             "rule": {"window": h4live.WINDOW, "hold": h4live.HOLD, "need": list(h4live.NEED), "ema": h4live.EMA_SPAN, "ema_from": h4live.EMA_FROM}}
 
 
@@ -482,6 +504,7 @@ def main(argv=None) -> int:
     print(f"Kurse geladen: {len(data)}")
 
     results, stats, near = [], {"universe": len(tickers), "loaded": len(data), "errors": 0}, []
+    near_all = []                                    # alle 9/11 (auch ohne Seitwärtsphase) – für die 4H-Prüfung zur Auswahl
     search = {}
     for t, df in data.items():
         m = meta.get(t, {})
@@ -512,6 +535,8 @@ def main(argv=None) -> int:
                 search[t].pop("lw", None)                # Tagestiefs nur für Kandidaten (hält search.json klein)
         except Exception as exc:
             print(f"{t}: Hinweis-Fehler {exc!r}")
+        if res.near_hit:
+            near_all.append({"t": t, "n": (m.get("name") or t)[:40], "d": res.date})
         if res.passed or res.fast_hit or m.get("in_watchlist") or tr_hit:
             results.append((t, df, res))
         elif res.near_hit:                           # 9/11: nur mit enger Seitwärtsphase (sonst ~900 Aktien) – siehe unten
@@ -697,7 +722,7 @@ def main(argv=None) -> int:
             print(f"Live-Bilanz: Fehler {exc!r}")
             bil = {"live": None, "signals": [], "backtest": None}
         try:                                          # 4H-Top-Setup: Treffer → Seitwärtsphase → 4H-Bestätigung (backend/h4live.py)
-            h4 = h4_block(rows, data, search, today_iso, evening)
+            h4 = h4_block(rows, data, search, today_iso, evening, near_all)
             print(f"4H-Top-Setup: {len(h4['items'])} Treffer verfolgt – " + ", ".join(f"{k} {v}" for k, v in h4["count"].items()))
         except Exception as exc:
             print(f"4H-Top-Setup: Fehler {exc!r}")
