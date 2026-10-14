@@ -3428,7 +3428,8 @@ const ETF_DG = "#0b7a35";
 // wait = abwarten, höchstens 3 Monate (backend/etfextra.py: kostete nur −0,1 bis −0,7 % gegenüber „sofort“)
 const ETF_TONE = { go: ["Grün · jetzt investieren", "var(--up)"], go2: ["Dunkelgrün · Panik, jetzt investieren", ETF_DG], wait: ["Gelb · abwarten", "var(--gold)"],
   blue: ["Grün · jetzt investieren", "var(--up)"], yellow: ["Gelb · abwarten", "var(--gold)"], green2: ["Dunkelgrün · Panik", ETF_DG] };
-const etfCfg = () => { const e = state.etf || {}; return { total: +e.total > 0 ? +e.total : 3000, share: +e.share > 0 ? Math.min(100, +e.share) : 70, rate: +e.rate > 0 ? +e.rate : 0, units: +e.units > 0 ? +e.units : 0 }; };
+const etfCfg = () => { const e = state.etf || {}; return { total: +e.total > 0 ? +e.total : 3000, share: +e.share > 0 ? Math.min(100, +e.share) : 70, rate: +e.rate > 0 ? +e.rate : 0, units: +e.units > 0 ? +e.units : 0,
+  buy: +e.buy > 0 ? +e.buy : 0, since: /^\d{4}-\d\d-\d\d$/.test(e.since || "") ? e.since : "" }; };
 // Gebühren-Bremse (backend/capstudy.py, Okt. 2026): ~93 Trades/Jahr bei 5 Plätzen → 2 Orders je Trade. Ergebnis 10 Jahre, 1 % Risiko,
 // 0,99 € je Order: 900 € → −12 bis −25 % p. a. (bzw. Totalverlust), 1.500 € → ≈ 0 %, 3.000 € → +12/+13 %, 10.000 € → +15/+23 %; ohne Gebühren +17/+24 %.
 function feeDrag(cap) {
@@ -3438,17 +3439,18 @@ function feeDrag(cap) {
       : d >= .04 ? `Gebühren kosten ≈ ${pct(d, 0)} pro Jahr – im Test brachte 3.000 € netto +12/+13 % (ohne Gebühren +17/+24 %). Machbar, aber knapp.`
       : `Gebühren ≈ ${pct(d, 1)} pro Jahr – kein großes Hindernis mehr (Test 10.000 €: +15/+23 % pro Jahr).` };
 }
-function etfLine(h) {
+function etfLine(h, buy) {
   if (!h || h.length < 20) return "";
-  const W = 640, H = 220, p = 8, xs = h.map(x => x[1]), ms = h.map(x => x[2]).filter(v => v != null), lo = Math.min(...xs, ...ms) * .98, hi = Math.max(...xs, ...ms) * 1.01;
+  const W = 640, H = 220, p = 8, xs = h.map(x => x[1]), ms = h.map(x => x[2]).filter(v => v != null), bl = buy > 0 ? [buy] : [], lo = Math.min(...xs, ...ms, ...bl) * .98, hi = Math.max(...xs, ...ms, ...bl) * 1.01;
   const X = i => p + i / (h.length - 1) * (W - 2 * p), Y = v => H - 24 - (v - lo) / (hi - lo) * (H - 40);
   const path = k => h.map((x, i) => x[k] == null ? null : `${X(i).toFixed(1)},${Y(x[k]).toFixed(1)}`).filter(Boolean).join(" ");
   const yrs = [...new Set(h.map(x => x[0].slice(0, 4)))].map(y => [y, h.findIndex(x => x[0].startsWith(y))]).filter(x => x[1] > 10);
   return `<svg class="rp" viewBox="0 0 ${W} ${H}" role="img" aria-label="Kursverlauf mit 200-Tage-Linie">
     <polyline points="${path(2)}" fill="none" stroke="var(--gold)" stroke-width="1.5" stroke-dasharray="4 3"/>
     <polyline points="${path(1)}" fill="none" stroke="var(--accent, #0a84ff)" stroke-width="2"/>
+    ${buy > 0 ? `<line x1="${p}" x2="${W - p}" y1="${Y(buy).toFixed(1)}" y2="${Y(buy).toFixed(1)}" stroke="var(--up)" stroke-width="1.5" stroke-dasharray="2 4"/>` : ""}
     ${yrs.map(([y, i]) => `<line x1="${X(i)}" x2="${X(i)}" y1="10" y2="${H - 22}" stroke="var(--line)"/><text x="${X(i) + 3}" y="${H - 8}">${y}</text>`).join("")}</svg>
-    <div class="oleg"><span style="color:var(--accent, #0a84ff)">■ Kurs (€)</span><span class="gold">┄ 200-Tage-Linie</span></div>`;
+    <div class="oleg"><span style="color:var(--accent, #0a84ff)">■ Kurs (€)</span><span class="gold">┄ 200-Tage-Linie</span>${buy > 0 ? `<span class="up">┈ dein Ø Kaufkurs ${fmt(buy)} €</span>` : ""}</div>`;
 }
 function etfAmpelHtml(e, compact) {
   const [lbl, col] = ETF_TONE[e.lv] || ETF_TONE.go;
@@ -3477,6 +3479,22 @@ function etfTeaserHtml() {
     ${v != null ? `<div class="mtiles"><div class="mt"><span>ETF-Wert</span><b>${eur(v)}</b><em>${fmt(c.units, 0)} Anteile</em></div><div class="mt"><span>Trading</span><b>${eur(tpCfg().depot)}</b><em>${paperMode() ? "🧪 Übungsmodus" : "echtes Geld"}</em></div></div>` : ""}
     <span class="hlink">ETF ›</span></button>`;
 }
+// Deine ETF-Entwicklung: Anteile × Ø Kaufkurs (aus Scalable) gegen aktuellen Kurs; pro Jahr grob für einen Sparplan
+// (gleichmäßige Einzahlungen seit dem ersten Kauf → Geld im Schnitt halb so lange angelegt)
+function etfDevHtml(e, c) {
+  if (!e || !c.units) return "";
+  if (!c.buy) return `<div class="hcard">${hHead("Deine ETF-Entwicklung")}<div class="note" style="margin:0">Trag unten unter „Mein Plan“ deinen Ø Kaufkurs aus Scalable ein (bei der Position „Einstandskurs“) – dann siehst du hier Gewinn, Verlust und Rendite.</div></div>`;
+  const paid = c.units * c.buy, val = c.units * e.c, pnl = val - paid, r = paid > 0 ? val / paid - 1 : 0;
+  const yrs = c.since ? (Date.now() - new Date(c.since + "T12:00:00")) / 3.156e10 : 0;
+  const pa = yrs >= .5 && paid > 0 ? Math.pow(val / paid, 1 / (c.rate ? yrs / 2 : yrs)) - 1 : null;
+  const cls = v => v >= 0 ? "up" : "down", sg = v => (v >= 0 ? "+" : "") ;
+  return `<div class="hcard">${hHead("Deine ETF-Entwicklung")}
+    <div class="mtiles"><div class="mt"><span>Eingezahlt</span><b>${eur(paid)}</b><em>${fmt(c.units, c.units % 1 ? 3 : 0)} Anteile × ${fmt(c.buy)} €</em></div>
+      <div class="mt"><span>Wert jetzt</span><b>${eur(val)}</b><em>Kurs ${fmt(e.c)} € · ${dateDE(e.date)}</em></div>
+      <div class="mt"><span>Gewinn / Verlust</span><b class="${cls(pnl)}">${sg(pnl)}${eur(pnl)}</b><em class="${cls(r)}">${sg(r)}${pct(r, 1)}</em></div>
+      ${pa != null ? `<div class="mt"><span>≈ pro Jahr</span><b class="${cls(pa)}">${sg(pa)}${pct(pa, 1)}</b><em>seit ${dateDE(c.since)}${c.rate ? " · Sparplan" : ""}</em></div>` : ""}</div>
+    ${!c.since ? `<div class="note" style="margin:8px 0 0">Mit dem Datum deines ersten Kaufs zeigt Kairo auch die Rendite pro Jahr.</div>` : ""}</div>`;
+}
 function etfHtml() {
   const e0 = getJson("etf.json"), c = etfCfg(), e = e0 && e0.ok === false ? null : e0;
   if (e0 === undefined) return `<div class="section-title"><span>ETF-Bereich</span><span>lädt …</span></div>`;
@@ -3494,7 +3512,7 @@ function etfHtml() {
       <div class="eh-main"><span class="eh-k">ETF-Ampel · ${esc(e.name)}</span><b class="eh-t">${esc(e.t)}</b><p class="eh-do">${todo}</p>
         <div class="eh-facts"><span>Kurs <b>${fmt(e.c)} €</b></span><span>${e.dd < .005 ? "<b>am Allzeithoch</b>" : `<b>−${pct(e.dd, 1)}</b> unter dem Hoch`}</span><span class="muted">Stand ${dateDE(e.date)}</span></div>
         <div class="eh-pills">${facts.map(([l, v, c]) => `<span class="eh-p"><i class="${c}">●</i>${l}: <b>${v}</b></span>`).join("")}</div></div></div>
-    <div class="hcard">${hHead("Kurs der letzten 3 Jahre")}${etfLine(e.hist)}
+    <div class="hcard">${hHead("Kurs der letzten 3 Jahre")}${etfLine(e.hist, c.buy)}
       <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ⚠️ Kurs ist ${e.age} Tage alt` : ""}. Gelegentlich mit Scalable vergleichen.</div></div>`
     : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? `Die Kursdaten des ETF sehen gerade unplausibel aus${e0.ref_ok === false ? ` (weichen ${pct(e0.ref_dev, 1)} vom Vergleichs-ETF ab)` : ""} – Datenfehler beim Anbieter. Die Ampel ist ausgeblendet, bis sie wieder stimmen.` : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
   const why = e ? `<div class="hsub">Was die Ampel gerade sieht</div><ul class="checks">${[
@@ -3507,7 +3525,9 @@ function etfHtml() {
     <div class="tp2-cfg"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
       <label>ETF-Anteil (%)<input id="etfShare" type="number" inputmode="decimal" min="0" max="100" step="5" value="${esc(c.share)}"></label>
       <label>Sparrate je Monat (€)<input id="etfRate" type="number" inputmode="decimal" min="0" step="25" value="${esc(c.rate || "")}" placeholder="z. B. 200"></label>
-      <label>SPYI-Anteile im Depot<input id="etfUnits" type="number" inputmode="decimal" min="0" step="1" value="${esc(c.units || "")}" placeholder="Stück"></label></div>
+      <label>SPYI-Anteile im Depot<input id="etfUnits" type="number" inputmode="decimal" min="0" step="1" value="${esc(c.units || "")}" placeholder="Stück"></label>
+      <label>Ø Kaufkurs (€)<input id="etfBuy" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(c.buy || "")}" placeholder="aus Scalable"></label>
+      <label>Erster Kauf<input id="etfSince" type="date" value="${esc(c.since || "")}"></label></div>
     <div class="mtiles" style="margin-top:10px"><div class="mt"><span>ETF-Ziel</span><b>${eur(c.total * c.share / 100)}</b><em>${c.share} %</em></div>
       <div class="mt"><span>Trading-Kapital</span><b>${eur(tgtT)}</b><em>${100 - c.share} % · im Einstieg: ${eur(trade)}</em></div>
       ${etfVal != null ? `<div class="mt"><span>ETF jetzt</span><b>${eur(etfVal)}</b><em>${pct(ist, 0)} vom Ganzen</em></div>` : ""}
@@ -3529,14 +3549,15 @@ function etfHtml() {
     <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Regel</th><th class="num">ACWI ab 2008</th><th class="num">Welt ab 2003</th><th class="num">größter Rückgang</th></tr></thead><tbody>
       ${ETF_BT.plans.map(([l, a, b, d, me]) => `<tr${me ? ' class="best"' : ""}><td>${me ? `<b>${l}</b> ★` : l}</td><td class="num">${fmt(a, 2)}×</td><td class="num">${fmt(b, 2)}×</td><td class="num down">−${pct(d, 0)}</td></tr>`).join("")}</tbody></table></div>
     <div class="note" style="margin:6px 0 0">Geld zurückhalten und auf Rücksetzer warten brachte nichts – das wartende Geld verpasst die Zeit am Markt. Ein Trendfilter halbiert die Rückgänge, kostet aber rund ein Fünftel des Endwerts. Deshalb: Sparplan immer, nur <b>zusätzliches</b> Geld nach der Ampel. Welt ab 2003 = 55 % S&amp;P 500 + 35 % Industrieländer + 10 % Schwellenländer; vor Steuern und ohne Kosten.</div></div>`;
-  return `<div class="section-title"><span>ETF-Bereich · ${c.share} % deines Kapitals</span><span>${e ? dateDE(e.date) : ""}</span></div>${hero}${plan}
+  return `<div class="section-title"><span>ETF-Bereich · ${c.share} % deines Kapitals</span><span>${e ? dateDE(e.date) : ""}</span></div>${hero}${etfDevHtml(e, c)}${plan}
     <details class="hcard etf-more"><summary>Hintergrund: Warum diese Ampel? (Regeln &amp; Testergebnisse)</summary><div style="margin-top:10px">${why}${how.replace('<div class="hcard">', '<div>')}${test.replace('<div class="hcard">', '<div style="margin-top:12px">')}</div></details>`;
 }
 document.addEventListener("input", e => {
-  const k = { etfTotal: "total", etfShare: "share", etfRate: "rate", etfUnits: "units" }[e.target.id]; if (!k) return;
+  if (e.target.id === "etfSince") { state.etf = { ...(state.etf || {}), since: e.target.value || undefined }; save(); return; }
+  const k = { etfTotal: "total", etfShare: "share", etfRate: "rate", etfUnits: "units", etfBuy: "buy" }[e.target.id]; if (!k) return;
   const v = parseFloat(String(e.target.value).replace(",", ".")); state.etf = { ...(state.etf || {}), [k]: v >= 0 ? v : undefined }; save();
 });
-document.addEventListener("change", e => { if (["etfTotal", "etfShare", "etfRate", "etfUnits"].includes(e.target.id) && state.sec === "etf") render(); });
+document.addEventListener("change", e => { if (["etfTotal", "etfShare", "etfRate", "etfUnits", "etfBuy", "etfSince"].includes(e.target.id) && state.sec === "etf") render(); });
 document.addEventListener("click", e => {
   if (!e.target.closest("#etfSync")) return;
   const c = etfCfg(); state.tpDepot = Math.round(c.total * (100 - c.share) / 100); save(); render();
