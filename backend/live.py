@@ -116,11 +116,12 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
             except Exception as exc:               # Bilanz darf den Scan nie stoppen
                 print("Strategie-Bilanz:", s["t"], repr(exc)[:100])
     state.save("signals.json", sig)
-    state.save("last.json", {"date": today, "hit": [r["ticker"] for r in rows if r["passed"]],
-                             "fast": [r["ticker"] for r in rows if r.get("fast_hit")],
-                             "trend": [r["ticker"] for r in rows if (r.get("tr") or {}).get("ok")],
-                             "soft": [r["ticker"] for r in rows if r.get("mbi_soft")],
-                             "met": {r["ticker"]: r.get("met") for r in rows}})
+    if record:                                     # Läufe tagsüber nicht merken – sonst gälten deren Treffer abends als „schon bekannt“
+        state.save("last.json", {"date": today, "hit": [r["ticker"] for r in rows if r["passed"]],
+                                 "fast": [r["ticker"] for r in rows if r.get("fast_hit")],
+                                 "trend": [r["ticker"] for r in rows if (r.get("tr") or {}).get("ok")],
+                                 "soft": [r["ticker"] for r in rows if r.get("mbi_soft")],
+                                 "met": {r["ticker"]: r.get("met") for r in rows}})
     try:
         bt = json.loads((ROOT / "data" / "bilanz_backtest.json").read_text(encoding="utf-8"))
     except Exception:
