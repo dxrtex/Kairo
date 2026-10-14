@@ -90,6 +90,17 @@ def _hourly(tickers: list[str], batch: int = 40, pause: float = 5.0) -> dict:
 W, L = 6, 6                                # „zuletzt“-Fenster und Strukturbruch-Rückblick (4H-Kerzen) – Robustheitstest variiert beides
 
 
+def _bull_div(lo: np.ndarray, r: np.ndarray) -> np.ndarray:
+    """Bullische RSI-Divergenz im 4H-Chart: jüngstes Tief (letzte 10 Kerzen) höchstens 1 % über dem früheren Tief
+    (10–30 Kerzen zurück) oder tiefer, der RSI dort aber mindestens 3 Punkte höher. Nur Vergangenheit."""
+    out = np.zeros(len(lo), bool)
+    for j in range(30, len(lo)):
+        a, b2 = j - 30 + int(np.argmin(lo[j - 30:j - 9])), j - 9 + int(np.argmin(lo[j - 9:j + 1]))
+        if lo[b2] <= lo[a] * 1.01 and r[b2] >= r[a] + 3 and r[a] < 45:
+            out[j] = True
+    return out
+
+
 def to4h(x: pd.DataFrame) -> pd.DataFrame:
     """Je Handelstag die Stundenkerzen in 4er-Gruppen (wie TradingView 4H in der Börsenzeit)."""
     idx = x.index.tz_convert(None) if x.index.tz is not None else x.index
@@ -115,6 +126,10 @@ def to4h(x: pd.DataFrame) -> pd.DataFrame:
     rising = (b["rsi"] > b["rsi"].shift(1)).to_numpy()
     b["R35"] = (rmin <= 35).to_numpy() & rising
     b["R40"] = (rmin <= 40).to_numpy() & rising
+    b["R30"] = (rmin <= 30).to_numpy() & rising            # nur für den Kriterien-Test (--variants)
+    b["R45"] = (rmin <= 45).to_numpy() & rising
+    b["D"] = rec(_bull_div(b["Low"].to_numpy(float), b["rsi"].to_numpy(float))) & rising   # 4H-RSI-Divergenz, RSI steigt
+    b["RD"] = b["R40"].to_numpy() | b["D"].to_numpy()
     b["M"], b["M0"], b["B"] = rec(b["mcu"]), rec(b["mcu0"]), rec(b["gx"])
     # Strukturbruch: Schluss über dem höchsten Hoch der 6 4H-Kerzen davor (≈ letztes 4H-Zwischenhoch, ~3 Tage)
     b["S"] = (b["Close"] > b["High"].shift(1).rolling(L, min_periods=L).max()).to_numpy()
@@ -173,7 +188,7 @@ def kairo_variants(e: dict, b: pd.DataFrame) -> dict:
     if sm and "skip" not in sm and sm["s"] < len(ud):
         i_in = int(np.flatnonzero(days == ud[sm["s"]])[0])
         ctx["HB"] = (i_in, c0 * sm["sl"], ud[min(len(ud) - 1, sm["s"] + 10)])
-    flags = {k: b[k].to_numpy(bool) for k in ("R35", "R40", "M", "M0", "B", "S")}
+    flags = {k: b[k].to_numpy(bool) for k in {f for need in TRIG.values() for f in need}}
     out = {}
     for cn, (i0, stop0, lim) in ctx.items():
         s0 = int(sig[0])
@@ -287,6 +302,52 @@ def robust(hits: dict, raw: dict) -> dict:
     return out
 
 
+VARIANTS = {   # Kairo live = RMBS (RSI ≤ 40, MACD, MBI, Strukturbruch). Gegenproben: RSI-Schwelle, 4H-Divergenz, je ein Baustein weniger
+    "RMBS": ["R40", "M", "B", "S"], "R30·MBS": ["R30", "M", "B", "S"], "R35·MBS": ["R35", "M", "B", "S"], "R45·MBS": ["R45", "M", "B", "S"],
+    "Div·MBS": ["D", "M", "B", "S"], "(R40 oder Div)·MBS": ["RD", "M", "B", "S"], "R40·Div·MBS": ["R40", "D", "M", "B", "S"],
+    "ohne RSI: MBS": ["M", "B", "S"], "ohne MACD: RBS": ["R40", "B", "S"], "ohne MBI: RMS": ["R40", "M", "S"], "ohne Bruch: RMB": ["R40", "M", "B"],
+    "MACD unter 0: R·M0·BS": ["R40", "M0", "B", "S"], "ohne 4H": []}
+
+
+def variants_report(hits: dict, raw: dict) -> int:
+    """Gegenprobe der 4H-Kriterien: jede Variante mit Seitwärtsphase (HB), Verkauf an Tag 20, beide Stichproben und
+    beide Zeithälften getrennt. Zählt nur, was überall besser ist – sonst bleibt es bei RMBS."""
+    global TRIG, EXITS
+    bars = {}
+    for t, x in raw.items():
+        try:
+            b = to4h(x)
+            if len(b) > 100:
+                bars[t] = b
+        except Exception:
+            pass
+    TRIG, EXITS = {k: v for k, v in VARIANTS.items() if v}, ("zeit",)
+    rep = {"generated": time.strftime("%Y-%m-%d"), "variants": {}}
+    for d, hs in hits.items():
+        res: dict[str, list] = {}
+        for e in hs:
+            b = bars.get(e["t"])
+            if e["grp"] != "11" or b is None or pd.Timestamp(e["d"]) < b["day"].iat[0] + pd.Timedelta(days=20):
+                continue
+            for k, v in kairo_variants(e, b).items():
+                c, tn, ex = k.split("|")
+                if c != "HB" or ex != "zeit":
+                    continue
+                name = "ohne 4H" if tn == "–" else tn
+                half = "a" if v["ti"] < "2025-04-01" else "b"
+                for g in (name, f"{name} [{half}]"):
+                    res.setdefault(g, []).append({**v, "tk": e["t"], "atrp": e["px"]["atr"]})
+        rep["variants"][d] = {g: {**summary(v), **({"depot": depot(v)} if "[" not in g else {})} for g, v in sorted(res.items())}
+        for g, v in sorted(rep["variants"][d].items()):
+            print(d, g, (v["n"], v.get("r"), (v.get("depot") or {}).get("cagr")), flush=True)
+    (ROOT / "data").mkdir(exist_ok=True)
+    (ROOT / "data" / "h4study.json").write_text(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
+    print("===BEGIN===")
+    print(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
+    print("===END===")
+    return 0
+
+
 def miss_report(hits: dict, raw: dict) -> int:
     """Gibt es Fast-Treffer (10/11) oder 9/11, die mit sauberem Einstieg (Seitwärtsphase + 4H) so gut sind wie volle Treffer?
     Aufteilung nach fehlendem Kriterium, beide Stichproben und zwei Zeithälften getrennt (9/11 aus Stichprobe 1 ist
@@ -331,7 +392,8 @@ def miss_report(hits: dict, raw: dict) -> int:
 
 def main(argv=None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
-    mode = "robust" if "--robust" in argv else "miss" if "--miss" in argv else "near" if "--near" in argv else "full"
+    mode = ("robust" if "--robust" in argv else "miss" if "--miss" in argv else "variants" if "--variants" in argv
+            else "near" if "--near" in argv else "full")
     dirs = [a for a in argv if not a.startswith("--")] or ["k1", "k2"]
     t0 = time.time()
     hits = {d: _hits(d, near=mode in ("near", "miss")) for d in dirs}
@@ -366,6 +428,8 @@ def main(argv=None) -> int:
         print(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
         print("===END===")
         return 0
+    if mode == "variants":                               # Sind die 4H-Kriterien richtig gewählt? (nur volle Treffer)
+        return variants_report(hits, raw)
     if mode == "miss":                                   # 10/11 und 9/11 nach fehlendem Kriterium, ohne und mit 4H-Bestätigung
         return miss_report(hits, raw)
     if mode == "robust":
