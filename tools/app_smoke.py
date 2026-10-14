@@ -65,6 +65,28 @@ async def run(port: int) -> list[str]:
             if w > vp["width"] + 2:
                 errs.append(f"{name}: Seite breiter als der Bildschirm ({w}px)")
             await ctx.close()
+        # Postfach-Designs (iPad quer): linke Liste und rechter Bereich dürfen sich nie überlappen
+        for des in ("postfach-classic", "postfach", "postfach-aktien"):
+            for vw, vh in ((1180, 820), (1024, 768)):
+                ctx = await b.new_context(viewport={"width": vw, "height": vh})
+                pg = await ctx.new_page()
+                await pg.add_init_script(f"localStorage.setItem('reversal-finder-v1', JSON.stringify({{design: '{des}'}}))")
+                await pg.goto(f"{url}?nosplash=1&sec=today")
+                await pg.wait_for_timeout(2500)
+                for step in ("Liste", "Detail"):
+                    if step == "Detail":
+                        it = await pg.query_selector(".pf-it[data-pf]")
+                        if not it:
+                            break
+                        await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.remove())')
+                        await it.click()
+                        await pg.wait_for_timeout(1200)
+                    r = await pg.evaluate("""() => { const b = s => { const e = document.querySelector(s); return e && e.getBoundingClientRect(); };
+                        const L = b('.pf-list'), R = b('.pf-detail') || b('.pf-right');
+                        return { ov: !!(L && R && R.left > L.left + 10 && R.left < L.right + 4), sw: document.documentElement.scrollWidth }; }""")
+                    if r["ov"] or r["sw"] > vw + 2:
+                        errs.append(f"{des} {vw}px ({step}): Bereiche überlappen oder Seite zu breit ({r})")
+                await ctx.close()
         # Spiel: starten, Treffer wählen, Turbo eintragen, Vorschlag übernehmen, kaufen
         ctx = await b.new_context(viewport={"width": 820, "height": 1180})
         pg = await ctx.new_page()
