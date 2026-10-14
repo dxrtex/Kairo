@@ -1205,7 +1205,7 @@ const GLOSS = {
   trend: ["Prognose", "Wohin sich die Zahl der erfüllten Kriterien in den nächsten 5 Tagen voraussichtlich bewegt: ▲ mehr, ▼ weniger, ► gleich. Hilft bei Fast-Treffern einzuschätzen, ob bald ein Treffer daraus wird."],
   grade: ["Stufe A/B/C", "Qualitätsstufe der Treffer aus einem geprüften Modell. A = im Test die besten Signale."],
   status: ["Treffer, Fast, Trend", "Treffer: alle 11 Kairo-Kriterien erfüllt (Wende nach Korrektur). Fast: 1–2 fehlen. Trend: zweites Setup – Rücksetzer an die EMA 50 im klaren Aufwärtstrend; „Top“ = im Test stärkste Stufe."],
-  h4: ["4H-Top-Setup", "Kairo-Treffer (11/11) → 5 enge Tage (Seitwärtsphase) → in derselben 4-Stunden-Kerze: RSI war ≤ 40 und steigt, MACD kreuzt nach oben, grünes MBI-X (beides in den letzten 6 Kerzen ≈ 3 Tage) und Schluss über dem Hoch der 6 Kerzen davor. Dann Kauf zur nächsten 4H-Kerze, Stop unter der Basis. Verkauf: ab Tag 10 am Morgen nach dem ersten Tagesschluss unter der EMA 20, spätestens an Tag 40. Im Test (Sept. 2023 – Okt. 2026) +0,41 / +0,61 R je Trade statt +0,10 / +0,11 R ohne 4H; der EMA-Ausstieg brachte im Depot +43 % / +31 % p. a. statt +20 % / +26 % mit „Verkauf an Tag 20“."],
+  h4: ["4H-Top-Setup", "Kairo-Treffer (11/11) → 5 enge Tage (Seitwärtsphase) → in derselben 4-Stunden-Kerze: RSI war ≤ 40 und steigt, MACD kreuzt nach oben, grünes MBI-X (beides in den letzten 6 Kerzen ≈ 3 Tage) und Schluss über dem Hoch der 6 Kerzen davor. Dann Kauf zur nächsten 4H-Kerze, Stop unter der Basis. Verkauf: ab Tag 10 am Morgen nach dem ersten Tagesschluss unter der EMA 20, spätestens an Tag 40. Auch Fast-Treffer, denen nur das Abklingen beim MBI fehlt (frisches grünes X, Rot noch über 70 % der Spitze), dürfen ins 4H-Setup – im Feinregel-Test ≈ +0,32 / +0,75 R je Trade, getrennt gezählt. Im Test (Sept. 2023 – Okt. 2026) +0,41 / +0,61 R je Trade statt +0,10 / +0,11 R ohne 4H; der EMA-Ausstieg brachte im Depot +43 % / +31 % p. a. statt +20 % / +26 % mit „Verkauf an Tag 20“."],
   ko: ["Knock-out (K.-o.)", "Fällt der Kurs auf die K.-o.-Schwelle, verfällt der Turbo fast wertlos – auch untertags. Je näher die Schwelle am Kurs, desto höher der Hebel und das Risiko."],
   lev: ["Hebel", "Um wie viel stärker sich der Turbo bewegt als die Aktie: Hebel 5 → +2 % Aktie ≈ +10 % Turbo. Ergibt sich aus dem Abstand zur K.-o.-Schwelle (Kurs ÷ Abstand)."],
   r: ["R (Risiko-Einheit)", "Ergebnis gemessen am Risiko bis zum Stop: −1 R = Stop erreicht, +2 R = doppelt so viel gewonnen wie riskiert. Macht Trades unabhängig von der Positionsgröße vergleichbar."],
@@ -1431,7 +1431,7 @@ function chkHtml(c) {
 // Urteil: die Antwort zuerst – Einstieg ja/nein, warum, und der nächste Schritt (nur im neuen Design sichtbar)
 function verdictHtml(r) {
   const ein = t => `<button class="btn" data-ein="${esc(r.ticker)}">${t}</button>`;
-  const h4 = r.passed && h4Of(r.ticker);
+  const h4 = (r.passed || r.mbi_soft) && h4Of(r.ticker);
   if (h4 && !h4Go(h4)) { const x = h4Text(h4); return `<div class="verdict warn"><i></i><div><b>Kairo-Treffer · ${esc(x.t)}</b><span>${esc(x.s)}</span></div>${ein("Plan ansehen")}</div>`; }
   if (r.passed) return `<div class="verdict ok"><i></i><div><b>Einstieg möglich · Kairo-Treffer${h4 ? " · 4H bestätigt ✅" : ""}</b><span>Score ${r.score ?? "–"} · CRV ${fmt(r.crv, 1)}${r.plan && r.plan.stop ? ` · Setup ungültig unter ${fmt(r.plan.stop)}` : ""}</span></div>${ein("Einstieg planen")}</div>`;
   if (isTrend(r)) return `<div class="verdict ok"><i></i><div><b>Einstieg möglich · Trend-Rücksetzer${r.tr.top ? " Top" : ""}</b><span>${r.tr.top ? "Stärkste Stufe im 6-Jahres-Test" : "Gültig, aber nicht Top – im Test schwächer"}${r.tr.chk ? ` · Rücksetzer-Check ${pct(r.tr.chk.p, 0)}` : ""}${r.tr.plan && r.tr.plan.stop ? ` · Stop ${fmt(r.tr.plan.stop)}` : ""}</span></div>${ein("Einstieg planen")}</div>`;
@@ -1584,7 +1584,7 @@ const COLS = [
   { k: "ticker", l: "Ticker", g: r => r.ticker, h: r => `<span class="tk">${favBtn(r.ticker)}<a href="#" data-card="${esc(r.ticker)}">${esc(r.ticker)}</a>${wlTag(r)}</span>` },
   { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm" data-card="${esc(r.ticker)}">${esc((r.name || r.ticker).slice(0, 28))}</a>` },
   { k: "trend", l: "Prognose", g: r => r.trend ? (r.trend.fc ? r.trend.fc.d : r.trend.slope + (r.trend.d5 ?? 0) / 10) : 0, h: r => trendHtml(r) || "–" },
-  { k: "status", l: "Status", g: r => r.passed ? 3 : isTrend(r) ? 2 : r.fast_hit ? 1 : r.near_hit ? .5 : 0, h: r => (r.passed ? `<span class="st hit">Treffer</span>${(it => it ? `<span class="st${h4Go(it) ? " hit" : ""}">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : "")(h4Of(r.ticker))}` : r.fast_hit && !isTrend(r) ? `<span class="st fast">Fast</span>` : r.near_hit && !isTrend(r) ? `<span class="st">9/11 · kein Treffer</span>` : isTrend(r) ? "" : `<span class="st" title="${esc((stageOf(r) || {}).t || "")}">Watchlist${r.met != null ? ` · ${r.met}/${r.total || 11}` : ""}</span>`) + (isTrend(r) ? `<span class="st trend">${r.tr.top ? "Trend Top" : "Trend"}</span>` : "") },
+  { k: "status", l: "Status", g: r => r.passed ? 3 : isTrend(r) ? 2 : r.fast_hit ? 1 : r.near_hit ? .5 : 0, h: r => (r.passed ? `<span class="st hit">Treffer</span>${(it => it ? `<span class="st${h4Go(it) ? " hit" : ""}">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : "")(h4Of(r.ticker))}` : r.fast_hit && !isTrend(r) ? `<span class="st fast">Fast</span>${r.mbi_soft ? (it => it ? `<span class="st${h4Go(it) ? " hit" : ""}" title="nur das MBI-Abklingen fehlt – darf ins 4H-Setup">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : `<span class="st" title="nur das MBI-Abklingen fehlt – darf ins 4H-Setup">MBI gelockert</span>`)(h4Of(r.ticker)) : ""}` : r.near_hit && !isTrend(r) ? `<span class="st">9/11 · kein Treffer</span>` : isTrend(r) ? "" : `<span class="st" title="${esc((stageOf(r) || {}).t || "")}">Watchlist${r.met != null ? ` · ${r.met}/${r.total || 11}` : ""}</span>`) + (isTrend(r) ? `<span class="st trend">${r.tr.top ? "Trend Top" : "Trend"}</span>` : "") },
   { k: "chk", l: "Rücksetzer-Check", n: 1, g: r => chkP(r) ?? -1, h: r => chkCell(r) },
   { k: "grade", l: "Stufe", g: r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0, h: r => gradeBadge(r) || `<span class="muted">–</span>` },
   { k: "exchange", l: "Börse", g: r => r.exchange, h: r => esc(r.exchange) },
@@ -3079,7 +3079,7 @@ function h4CardHtml() {
   const act = [...sell, ...go, ...wait4.slice(0, Math.max(0, 4 - go.length))];
   const when = d.live || d.generated, tm = when ? new Date(when).toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "–";
   const rows = act.map(it => { const x = h4Text(it);
-    return `<button class="h4row${h4Go(it) || it.st === "sell" ? " go" : ""}" data-ein="${esc(it.t)}"><i>${x.ic}</i><span><b>${esc(it.n || it.t)} · ${esc(x.short)}</b><em>${esc(it.st === "4h" ? `Stop ${fmt((it.base || {}).sl)} ${it.cur || ""} · ${it.lim ? "bis " + dateDE(it.lim) : `noch ${it.lim_left} Handelstage`} · ${nf(it)} von 4 Signalen` : x.s)}</em>${it.st === "4h" ? `<div>${h4Flags(it.fl)}</div>` : ""}</span></button>`; }).join("");
+    return `<button class="h4row${h4Go(it) || it.st === "sell" ? " go" : ""}" data-ein="${esc(it.t)}"><i>${x.ic}</i><span><b>${esc(it.n || it.t)} · ${esc(x.short)}${it.soft ? ` <small class="muted">· 10/11 MBI gelockert</small>` : ""}</b><em>${esc(it.st === "4h" ? `Stop ${fmt((it.base || {}).sl)} ${it.cur || ""} · ${it.lim ? "bis " + dateDE(it.lim) : `noch ${it.lim_left} Handelstage`} · ${nf(it)} von 4 Signalen` : x.s)}</em>${it.st === "4h" ? `<div>${h4Flags(it.fl)}</div>` : ""}</span></button>`; }).join("");
   return `<div class="hcard">${hHead("⚡ 4H-Top-Setup " + gl("h4"))}
     ${rows || `<div class="note" style="margin:0">Gerade nichts zu tun – kein Treffer mit fertiger Seitwärtsphase.</div>`}
     ${wait4.length > act.length - go.length - sell.length || nBase || nRun ? `<div class="note" style="margin:6px 0 0">${[wait4.length - (act.length - go.length - sell.length) > 0 ? `${wait4.length - (act.length - go.length - sell.length)} weitere warten auf 4H` : "", nBase ? `${nBase} warten auf die Seitwärtsphase` : "", nRun ? `${nRun} laufende 4H-Trades` : ""].filter(Boolean).join(" · ")} – <a href="#" data-gokinds="hit">alle im Scanner</a></div>` : ""}
@@ -3093,8 +3093,9 @@ function h4BilanzHtml() {
       <div class="mt"><span>Ø je Trade · EMA 20</span><b class="${st && st.avg_r >= 0 ? "up" : st && st.avg_r != null ? "down" : ""}">${st && st.avg_r != null ? `${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R` : "–"}</b><em>Test +0,73 / +0,63 R</em></div>
       <div class="mt"><span>Gegenprobe · Tag 20</span><b class="${st && st.avg_r20 >= 0 ? "up" : st && st.avg_r20 != null ? "down" : ""}">${st && st.avg_r20 != null ? `${st.avg_r20 >= 0 ? "+" : ""}${fmt(st.avg_r20, 2)} R` : "–"}</b><em>Test +0,49 / +0,67 R</em></div>
       <div class="mt"><span>Gewinner</span><b>${st && st.win != null ? pct(st.win, 0) : "–"}</b><em>Test ≈ 35–40 %</em></div></div>
+    ${st && st.n_soft ? `<div class="note" style="margin:-4px 0 10px">Davon „MBI gelockert“ (10/11): ${st.n_soft} abgeschlossen · Ø ${st.avg_r_soft >= 0 ? "+" : ""}${fmt(st.avg_r_soft, 2)} R (Test ≈ +0,32 / +0,75 R)</div>` : ""}
     ${l.length ? `<div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Aktie</th><th class="num">Einstieg</th><th>Ergebnis</th></tr></thead><tbody>${l.slice(0, 15).map(x =>
-      `<tr><td><b>${esc(x.n || x.t)}</b><small>Treffer ${dateDE(x.d)}</small></td><td class="num">${dateDE(x.ed)}<small>${fmt(x.e)}</small></td><td class="${x.r == null ? "" : x.r >= 0 ? "up" : "down"}">${x.res === "run" ? `läuft · Tag ${x.day || "–"}/40 ` : x.res === "sell" ? "verkaufen " : x.res === "stop" ? "Stop " : x.res === "ema" ? "EMA 20 " : x.res === "zeit" ? (x.day || 0) > 20 || !x.r20 ? "Tag 40 " : "Tag 20 " : ""}${x.r != null ? `<b>${x.r >= 0 ? "+" : ""}${fmt(x.r, 2)} R</b>` : ""}${x.r20 != null && x.res !== "run" && x.res !== "sell" ? `<small>Tag 20: ${x.r20 >= 0 ? "+" : ""}${fmt(x.r20, 2)} R</small>` : ""}</td></tr>`).join("")}</tbody></table></div>`
+      `<tr><td><b>${esc(x.n || x.t)}</b><small>${x.soft ? "10/11 MBI gelockert" : "Treffer"} ${dateDE(x.d)}</small></td><td class="num">${dateDE(x.ed)}<small>${fmt(x.e)}</small></td><td class="${x.r == null ? "" : x.r >= 0 ? "up" : "down"}">${x.res === "run" ? `läuft · Tag ${x.day || "–"}/40 ` : x.res === "sell" ? "verkaufen " : x.res === "stop" ? "Stop " : x.res === "ema" ? "EMA 20 " : x.res === "zeit" ? (x.day || 0) > 20 || !x.r20 ? "Tag 40 " : "Tag 20 " : ""}${x.r != null ? `<b>${x.r >= 0 ? "+" : ""}${fmt(x.r, 2)} R</b>` : ""}${x.r20 != null && x.res !== "run" && x.res !== "sell" ? `<small>Tag 20: ${x.r20 >= 0 ? "+" : ""}${fmt(x.r20, 2)} R</small>` : ""}</td></tr>`).join("")}</tbody></table></div>`
       : `<div class="note" style="margin:0">Noch keine bestätigten 4H-Trades. Jeder Kairo-Treffer, der Seitwärtsphase und 4H-Bestätigung schafft, wird hier automatisch mitgezählt – getrennt von der bisherigen Strategie, damit wir Live gegen Test vergleichen können. Verkauft wird unter der EMA 20 (ab Tag 10, spätestens Tag 40); die alte Regel „Verkauf an Tag 20“ läuft als Gegenprobe mit.</div>`}</div>`;
 }
 // ---------- Tagesbriefing: das Wichtigste seit dem letzten Scan, als Fenster beim Öffnen ----------
@@ -3231,8 +3232,9 @@ function stageOf(r) {
   const it = h4Of(r.ticker), n = h4Now(r.ticker);
   if (it && it.st !== "weg") {
     const x = h4Text(it), nf = H4F.filter(([k]) => (it.fl || {})[k]);
-    if (it.st === "4h") return { lv: 4, t: `Treffer ✓ → Basis ✓ → 4H ${nf.length}/4${nf.length < 4 ? ` · fehlt ${H4F.filter(([k]) => !(it.fl || {})[k]).map(z => z[1]).join(", ")}` : ""}` };
-    if (it.st === "basis") return { lv: 3, t: `Treffer ✓ → Seitwärtsphase Tag ${it.day}/10 → 4H` };
+    const tr = it.soft ? "10/11 MBI gelockert ✓" : "Treffer ✓";
+    if (it.st === "4h") return { lv: 4, t: `${tr} → Basis ✓ → 4H ${nf.length}/4${nf.length < 4 ? ` · fehlt ${H4F.filter(([k]) => !(it.fl || {})[k]).map(z => z[1]).join(", ")}` : ""}` };
+    if (it.st === "basis") return { lv: 3, t: `${tr} → Seitwärtsphase Tag ${it.day}/10 → 4H` };
     return { lv: h4Go(it) || it.st === "sell" ? 5 : 2, t: `${x.ic} ${x.short}` };
   }
   if (r.met == null || r.met < 8) return null;
@@ -4181,7 +4183,7 @@ function tp2Calc(r, S, o = {}) {
   if (h4) {                                                  // 4H-Top-Setup entscheidet über den Einstieg
     const x = h4Text(h4);
     out.fit = { ...out.fit, ok: h4Go(h4), k: "h4", tone: x.tone === "green" ? "green" : x.tone === "gray" ? "red" : "yellow",
-      mult: out.fit.mult || 1, t: `${x.ic} 4H-Top-Setup: ${x.t}`, s: x.s };
+      mult: out.fit.mult || 1, t: `${x.ic} 4H-Top-Setup${h4.soft ? " (10/11, MBI gelockert)" : ""}: ${x.t}`, s: x.s + (h4.soft ? " Fast-Treffer, dem nur das Abklingen beim MBI fehlt – im Test so gut wie volle Treffer, wird getrennt gezählt." : "") };
   }
   out.riskPct = cfg.risk * out.fit.mult;
   // Klumpenschutz: offene Trades und Depot-Positionen im selben Sektor – höchstens 2 je Sektor
