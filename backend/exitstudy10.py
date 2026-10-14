@@ -29,6 +29,12 @@ RULES = {"Tag 20 (heute)": {"hold": 20}, "Tag 30": {"hold": 30}, "Tag 40": {"hol
          "EMA20 ab Tag 15 · max 40": {"hold": 40, "ema_x": 20, "ema_from": 15},
          "EMA20 ab Tag 10 · max 50": {"hold": 50, "ema_x": 20, "ema_from": 10},
          "Einstand ab +1 R · Tag 20": {"hold": 20, "be": 1.0}}
+# Indikator-Ausstiege im Tageschart (--ind): sofort / ab Tag 10 / ab +1 R / ab +2 R, höchstens 20 bzw. 40 Tage
+IND = {"Tag 20 (heute)": {"hold": 20}, "Tag 40": {"hold": 40}, "EMA20 ab Tag 10 · max 40": {"hold": 40, "ema_x": 20, "ema_from": 10}}
+for _k, _n in (("rsi", "RSI≥70 dreht"), ("macd", "MACD kreuzt runter"), ("mbi", "rotes MBI-X"), ("2v3", "2 von 3"), ("3v3", "3 von 3")):
+    for _gn, _g in (("sofort", None), ("ab Tag 10", ("day", 10)), ("ab +1R", ("R", 1.0)), ("ab +2R", ("R", 2.0))):
+        for _mx in (20, 40):
+            IND[f"{_n} {_gn} · max {_mx}"] = {"hold": _mx, "ind_x": _k, "ind_gate": _g}
 
 
 def rows_for(hits: list[dict], rule: dict) -> list[dict]:
@@ -58,11 +64,13 @@ def per_trade(rows: list[dict]) -> dict:
 
 
 def main(argv=None) -> int:
-    dirs = (argv if argv is not None else sys.argv[1:]) or ["k1", "k2"]
+    argv = list(argv if argv is not None else sys.argv[1:])
+    rules = IND if "--ind" in argv else RULES
+    dirs = [a for a in argv if not a.startswith("--")] or ["k1", "k2"]
     t0 = time.time()
     hits = {d: _hits(d) for d in dirs}
     rep = {"generated": time.strftime("%Y-%m-%d"), "regeln": {}}
-    for name, rule in RULES.items():
+    for name, rule in rules.items():
         rep["regeln"][name] = {}
         for d, h in hits.items():
             rows = rows_for(h, rule)

@@ -90,6 +90,17 @@ def _hourly(tickers: list[str], batch: int = 40, pause: float = 5.0) -> dict:
 W, L = 6, 6                                # „zuletzt“-Fenster und Strukturbruch-Rückblick (4H-Kerzen) – Robustheitstest variiert beides
 
 
+def _bear_div(hi: np.ndarray, r: np.ndarray) -> np.ndarray:
+    """Bärische RSI-Divergenz (Googles Ausstieg): jüngstes Hoch (letzte 10 Kerzen) mindestens so hoch wie das frühere
+    (10–30 Kerzen zurück), der RSI dort aber mindestens 3 Punkte tiefer; das frühere Hoch mit RSI ≥ 60. Nur Vergangenheit."""
+    out = np.zeros(len(hi), bool)
+    for j in range(30, len(hi)):
+        a, b2 = j - 30 + int(np.argmax(hi[j - 30:j - 9])), j - 9 + int(np.argmax(hi[j - 9:j + 1]))
+        if b2 == j and hi[b2] >= hi[a] * 0.995 and r[b2] <= r[a] - 3 and r[a] >= 60:
+            out[j] = True
+    return out
+
+
 def _bull_div(lo: np.ndarray, r: np.ndarray) -> np.ndarray:
     """Bullische RSI-Divergenz im 4H-Chart: jüngstes Tief (letzte 10 Kerzen) höchstens 1 % über dem früheren Tief
     (10–30 Kerzen zurück) oder tiefer, der RSI dort aber mindestens 3 Punkte höher. Nur Vergangenheit."""
@@ -325,6 +336,7 @@ def _exit_sim(b: pd.DataFrame, i0: int, stop: float, rule: dict, ema20: np.ndarr
     end = int(np.flatnonzero(days == ud[T - 1])[-1])
     end20 = int(np.flatnonzero(days == ud[19])[-1]) if len(ud) > 20 else end
     st, hh, half, done = stop, e, None, 0.0
+    sig = b[f"x_{rule['sig']}"].to_numpy(bool) if rule.get("sig") else None
     cost = COST * e / risk
     for j in range(i0, end + 1):
         if l[j] <= st:                                   # Stop / Nachlauf-Stop
@@ -347,18 +359,30 @@ def _exit_sim(b: pd.DataFrame, i0: int, stop: float, rule: dict, ema20: np.ndarr
         if rule.get("ema") and dn >= rule.get("from", 10) and lastbar[j] and c[j] < ema20[j] and j < end:
             r = (o[j + 1] - e) / risk
             return {"r": r - cost, "to": str(b.index[j + 1])}
+        if sig is not None and sig[j] and j < end:       # Indikator-Ausstieg (erst wenn der Trade „reif“ ist)
+            g = rule.get("gate")
+            if g is None or (g[0] == "day" and dn >= g[1]) or (g[0] == "R" and hh >= e + g[1] * risk):
+                r = (o[j + 1] - e) / risk
+                return {"r": r - cost, "to": str(b.index[j + 1])}
         if rule.get("tp") and j == end20 and T == 20:
             break
     r = (c[end] - e) / risk
     return {"r": (0.5 * half + 0.5 * r if half is not None else r) - cost, "to": str(b.index[end])}
 
 
-def exits_report(hits: dict, raw: dict, fine: bool = False) -> int:
+def exits_report(hits: dict, raw: dict, fine: bool = False, ind: bool = False) -> int:
     """Gibt es einen besseren Ausstieg als Tag 20? Alle Regeln auf denselben Einstiegen (nur Trades, bei denen jede
     Regel zu Ende laufen konnte), beide Stichproben und beide Zeithälften getrennt, Depot wie die Strategie."""
     global TRIG, EXITS
     global EXIT_RULES
     TRIG, EXITS = {"RMBS": ["R40", "M", "B", "S"]}, ("zeit",)
+    if ind:                                              # Indikator-Ausstiege mit „Reife“-Bedingung, alle bis höchstens Tag 20 bzw. 40
+        EXIT_RULES = {"T20 (heute)": {"T": 20}, "T40": {"T": 40}, "EMA20 ab T10·T40": {"T": 40, "ema": 20, "from": 10}}
+        for sg, sn in (("rsi", "RSI≥70 dreht"), ("macd", "MACD kreuzt runter"), ("mbi", "rotes MBI-X"), ("2v3", "2 von 3"),
+                       ("3v3", "3 von 3"), ("bdiv", "bär. Divergenz"), ("bdiv_mbi", "Divergenz oder MBI-X am Hoch")):
+            for gn, g in (("sofort", None), ("ab Tag 10", ("day", 10)), ("ab +1R", ("R", 1)), ("ab +2R", ("R", 2))):
+                for mx in (20, 40):
+                    EXIT_RULES[f"{sn} {gn}·T{mx}"] = {"T": mx, "sig": sg, "gate": g}
     if fine:                             # Feinprüfung des EMA-Ausstiegs: Nachbar-Einstellungen
         EXIT_RULES = {"T20 (heute)": {"T": 20}, **{f"EMA{sp} ab T{fr}·T{mx}": {"T": mx, "ema": sp, "from": fr}
                       for sp in (10, 20, 30, 50) for fr in (5, 10, 15) for mx in (30, 40, 60)}}
@@ -369,6 +393,13 @@ def exits_report(hits: dict, raw: dict, fine: bool = False) -> int:
             b = to4h(x)
             if len(b) > 100:
                 dc = b.groupby("day")["Close"].last()
+                rs = b["rsi"].to_numpy(float)
+                b["x_rsi"] = (b["rsi"].rolling(6, min_periods=1).max() >= 70).to_numpy() & (rs < np.roll(rs, 1))   # war ≥ 70, dreht nach unten
+                b["x_macd"], b["x_mbi"] = b["mcd"].to_numpy(bool), b["rx"].to_numpy(bool)
+                cnt = b["xr"].to_numpy(int) + b["xm"].to_numpy(int) + b["xb"].to_numpy(int)
+                b["x_2v3"], b["x_3v3"] = cnt >= 2, cnt >= 3
+                b["x_bdiv"] = _bear_div(b["High"].to_numpy(float), rs)
+                b["x_bdiv_mbi"] = b["x_bdiv"].to_numpy() | (b["x_mbi"].to_numpy() & (b["rsi"].rolling(6, min_periods=1).max() >= 65).to_numpy())
                 for sp in (10, 20, 30, 50):
                     b[f"ema{sp}d"] = b["day"].map(dc.ewm(span=sp, adjust=False).mean()).to_numpy()
                 b["lastbar"] = (b["day"] != b["day"].shift(-1)).to_numpy()
@@ -532,7 +563,7 @@ def main(argv=None) -> int:
         print("===END===")
         return 0
     if mode == "exits":                                  # Gibt es einen besseren Ausstieg als Tag 20?
-        return exits_report(hits, raw, fine="--fine" in argv)
+        return exits_report(hits, raw, fine="--fine" in argv, ind="--ind" in argv)
     if mode == "variants":                               # Sind die 4H-Kriterien richtig gewählt? (nur volle Treffer)
         return variants_report(hits, raw)
     if mode == "miss":                                   # 10/11 und 9/11 nach fehlendem Kriterium, ohne und mit 4H-Bestätigung
