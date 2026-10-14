@@ -3311,12 +3311,18 @@ function postfachItems() {
         d: [st ? `Tag ${st.day} von ${st.hold} · Stop ${st.fe(st.plan.stop)} €` : "Plan anlegen für Stop und Verkaufstag", evTxt && st && !now ? evTxt + " – am Tag davor verkaufen" : "", g.pl != null ? sgnPct(g.pl, 0) : ""].filter(Boolean).join(" · ") };
       if (now) out.now.push(it); else out.prep.unshift(it); });
   } else if (!anaData) loadAnalysis();
-  const ent = data.results.filter(r => r.passed || isTrend(r)).sort((a, b) => (isTrend(b) && b.tr.top) - (isTrend(a) && a.tr.top) || (b.score ?? 0) - (a.score ?? 0));
+  const ent = data.results.filter(r => r.passed || (isTrend(r) && r.tr.top))   // Trend: nur die Top-Stufe (Rest im Scanner).sort((a, b) => (isTrend(b) && b.tr.top) - (isTrend(a) && a.tr.top) || (b.score ?? 0) - (a.score ?? 0));
   const h4d = h4Data(), h4seen = new Set();
-  (h4d && h4d.items || []).filter(it => ["go", "4h", "basis"].includes(it.st) || h4Go(it)).forEach(it => { const x = h4Text(it); h4seen.add(it.t);
-    (h4Go(it) ? out.now : out.prep).push({ t: it.t, c: h4Go(it) ? "g" : "y", n: `${it.n || it.t} ${h4Go(it) ? "einsteigen – 4H bestätigt" : "– " + x.short}`, d: x.s }); });
-  ent.filter(r => !h4seen.has(r.ticker)).forEach(r => out.now.push({ t: r.ticker, c: "g", n: `${r.name || r.ticker} einsteigen`, d: r.passed ? `Kairo-Treffer · Score ${r.score ?? "–"} · CRV ${fmt(r.crv, 1)}` : `Trend-Rücksetzer${r.tr.top ? " Top" : ""} · CRV ${fmt(r.tr.plan && r.tr.plan.crv, 1)}` }));
-  data.results.filter(r => r.fast_hit && !r.passed && !isTrend(r)).slice(0, 8).forEach(r => out.prep.push({ t: r.ticker, c: "y", n: `${r.name || r.ticker} beobachten`, d: `Fast · fehlt: ${(r.missing || [])[0] || ""}` }));
+  // Übersichtlich: „Jetzt handeln“ nur echte Einstiege (4H bestätigt), „Vorbereiten“ nur Treffer mit fertiger Seitwärtsphase –
+  // Treffer, die noch auf die Seitwärtsphase warten, stehen im Scanner und in der 4H-Karte (Anzahl), nicht hier
+  const nf = x => H4F.filter(([k]) => (x.fl || {})[k]).length;
+  const h4its = (h4d && h4d.items) || [];
+  h4its.filter(h4Go).forEach(it => out.now.push({ t: it.t, c: "g", n: `${it.n || it.t} einsteigen – 4H bestätigt`, d: h4Text(it).s }));
+  h4its.filter(it => it.st === "4h").sort((a, b) => nf(b) - nf(a)).forEach(it => out.prep.push({ t: it.t, c: "y", n: `${it.n || it.t} – wartet auf 4H`,
+    d: `${nf(it)} von 4 Signalen · Stop ${fmt((it.base || {}).sl)} ${it.cur || ""}` }));
+  if (h4d) h4its.forEach(it => h4seen.add(it.t));
+  ent.filter(r => !h4seen.has(r.ticker) && !(h4d && r.passed && !isTrend(r))).forEach(r => out.now.push({ t: r.ticker, c: "g", n: `${r.name || r.ticker} einsteigen`, d: r.passed ? `Kairo-Treffer · Score ${r.score ?? "–"} · CRV ${fmt(r.crv, 1)}` : `Trend-Rücksetzer${r.tr.top ? " Top" : ""} · CRV ${fmt(r.tr.plan && r.tr.plan.crv, 1)}` }));
+  if (!h4d) data.results.filter(r => r.fast_hit && !r.passed && !isTrend(r)).slice(0, 8).forEach(r => out.prep.push({ t: r.ticker, c: "y", n: `${r.name || r.ticker} beobachten`, d: `Fast · fehlt: ${(r.missing || [])[0] || ""}` }));
   return out;
 }
 function postfachHtml(cards = "", cards2 = "") {
