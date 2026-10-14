@@ -367,7 +367,9 @@ def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bo
         g = it.get("grp") or "11"
         count.setdefault(g, {})[it["st"]] = count.setdefault(g, {}).get(it["st"], 0) + 1
     # 10/11 und 9/11 (nur zur Auswahl): in der App nur, was zählt – wartet auf 4H, bestätigt, läuft, kürzlich beendet
+    shown = {r["ticker"] for r in rows}               # im Scanner sichtbare 10/11 und 9/11: auch „wartet auf Seitwärtsphase“ zeigen
     items = [it for it in items if real(it) or it["st"] in ("4h", "go", "run", "sell")
+             or (it["st"] == "basis" and it["t"] in shown)
              or (it["st"] in ("stop", "zeit", "ema") and ((it.get("trade") or {}).get("xd") or "") >= cut)]
     rank = {"sell": 0, "go": 0, "4h": 1, "basis": 2, "run": 3, "stop": 4, "zeit": 4, "ema": 4, "weg": 5}
     items.sort(key=lambda x: (rank.get(x["st"], 9), x["d"]))
