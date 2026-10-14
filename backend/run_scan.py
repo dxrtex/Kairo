@@ -361,15 +361,17 @@ def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bo
     items = h4live.build([c for c in cands if c["t"] in need], daily, hx, now, intraday=not evening)
     items += [it for it in pre if it["t"] not in need]
     cut = (pd.Timestamp(today) - timedelta(days=10)).strftime("%Y-%m-%d")
-    items = [it for it in items if it["st"] != "weg" or it["d"] >= cut]   # Verfallene nur kurz zeigen
+    shown = {r["ticker"] for r in rows}
+    # Verfallene nur kurz zeigen – außer die Aktie steht heute noch im Scanner (dann sieht man, warum kein Einstieg)
+    items = [it for it in items if it["st"] != "weg" or it["d"] >= cut or it["t"] in shown]
     count = {}
     for it in items:
         g = it.get("grp") or "11"
         count.setdefault(g, {})[it["st"]] = count.setdefault(g, {}).get(it["st"], 0) + 1
     # 10/11 und 9/11 (nur zur Auswahl): in der App nur, was zählt – wartet auf 4H, bestätigt, läuft, kürzlich beendet
-    shown = {r["ticker"] for r in rows}               # im Scanner sichtbare 10/11 und 9/11: auch „wartet auf Seitwärtsphase“ zeigen
+    # im Scanner sichtbare 10/11 und 9/11: auch „wartet auf Seitwärtsphase“ und „verfallen“ zeigen
     items = [it for it in items if real(it) or it["st"] in ("4h", "go", "run", "sell")
-             or (it["st"] == "basis" and it["t"] in shown)
+             or (it["st"] in ("basis", "weg") and it["t"] in shown)
              or (it["st"] in ("stop", "zeit", "ema") and ((it.get("trade") or {}).get("xd") or "") >= cut)]
     rank = {"sell": 0, "go": 0, "4h": 1, "basis": 2, "run": 3, "stop": 4, "zeit": 4, "ema": 4, "weg": 5}
     items.sort(key=lambda x: (rank.get(x["st"], 9), x["d"]))

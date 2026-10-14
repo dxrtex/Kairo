@@ -74,9 +74,13 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
         if not k or not p.get("stop") or not p.get("entry"):
             continue
         d = r.get("date") or today
-        if r["ticker"] in prev[k] or (r["ticker"], k, d) in known:
-            continue
         lastd = recent.get((r["ticker"], k))
+        if (r["ticker"], k, d) in known:
+            continue
+        # schon beim letzten Scan dabei: nur überspringen, wenn die laufende Phase auch gespeichert ist
+        # (sonst fehlte das Signal für immer – z. B. wenn ein Lauf tagsüber den Stand vorweggenommen hatte)
+        if r["ticker"] in prev[k] and lastd and (pd.Timestamp(d) - pd.Timestamp(lastd)).days <= 60:
+            continue
         if lastd and (pd.Timestamp(d) - pd.Timestamp(lastd)).days <= GAP + 2:
             continue
         s = {"t": r["ticker"], "n": (r.get("name") or r["ticker"])[:40], "k": k, "d": d, "score": r.get("score", 0),
