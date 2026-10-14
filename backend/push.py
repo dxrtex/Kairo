@@ -146,7 +146,7 @@ def synced(dev: dict) -> dict:
 
 
 def etf_message(today: str, sent: dict) -> list[dict]:
-    """ETF-Ampel: Mitteilung nur, wenn sie auf Grün bzw. Dunkelgrün springt (höchstens einmal je Farbe und Monat)."""
+    """ETF-Ampel: Mitteilung nur, wenn sie von „abwarten“ auf „jetzt investieren“ bzw. auf Panik springt (einmal je Farbe und Monat)."""
     try:
         import yfinance as yf
         from . import etf
@@ -158,11 +158,12 @@ def etf_message(today: str, sent: dict) -> list[dict]:
     lv, prev = e.get("lv"), sent.get("etf:last")
     sent["etf:last"] = lv or prev
     key = f"etf:{lv}:{today[:7]}"
-    if lv not in ("yellow", "green2") or lv == prev or key in sent:
+    # nur beim Wechsel auf „jetzt investieren“ (aus „abwarten“) bzw. auf Panik – höchstens einmal je Farbe und Monat
+    if lv not in ("go", "go2") or lv == prev or (lv == "go" and prev == "go2") or key in sent:
         return []
     sent[key] = today
-    ic = "🟢" if lv == "green2" else "🟡"
-    return [{"title": f"{ic} ETF-Ampel: {e['t']}", "body": f"SPYI {_num(e['c'])} € · {_pct(e['dd'])} unter dem Hoch · VIX {e.get('vix') or '–'}. Die Sparrate läuft weiter.",
+    return [{"title": f"🟢 ETF-Ampel: {e['t']}", "body": f"SPYI {_num(e['c'])} € · {_pct(e['dd'])} unter dem Hoch · VIX {e.get('vix') or '–'}. "
+             "Zurückgelegtes Extra-Geld jetzt investieren – die Sparrate läuft ohnehin weiter.",
              "url": APP + "?sec=etf", "tag": "kairo-etf"}]
 
 
