@@ -700,6 +700,17 @@
   .tone-green { --c: var(--up); --cb: var(--up-bg); } .tone-yellow { --c: var(--gold); --cb: var(--gold-bg); }
   .tone-orange { --c: #ff9f43; --cb: rgba(255, 159, 67, .12); } .tone-red { --c: var(--red); --cb: var(--red-bg); }
   .tone-gray { --c: var(--muted); --cb: var(--surface-2); }
+  .tone-blue { --c: var(--accent); --cb: var(--accent-bg); }
+  .h4f { display: inline-block; font-style: normal; font-size: 12px; font-weight: 700; padding: 2px 8px; margin: 4px 4px 0 0; border-radius: 999px;
+         background: var(--surface-2); color: var(--muted); }
+  .h4f.on { background: var(--up-bg); color: var(--up); }
+  .h4row { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; font: inherit; color: var(--text); background: none;
+           border: 0; border-top: 1px solid var(--line); padding: 10px 0; cursor: pointer; }
+  .h4row:first-of-type { border-top: 0; }
+  .h4row > i { font-style: normal; font-size: 18px; line-height: 1.3; width: 24px; text-align: center; flex: none; }
+  .h4row > span { flex: 1; min-width: 0; } .h4row b { display: block; } .h4row em { display: block; font-style: normal; color: var(--muted); font-size: 13px; }
+  .h4row.go b { color: var(--up); }
+  .st-h4go { color: var(--up); background: var(--up-bg); } .st-h4 { color: var(--gold); background: var(--gold-bg); }
   .sres { display: grid; grid-template-columns: 1fr; gap: 14px; }
   @media (min-width: 760px) { .sres { grid-template-columns: 1fr 1fr; } }
   .sres .card { gap: 12px; padding: 18px; }
@@ -1128,10 +1139,10 @@ const SHORT = { drawdown: "Rückgang", no_crash: "kein Crash", structure: "unter
   mbi: "MBI-Signal", crv: "CRV ≥ 2", cap: "Börsenwert", liquidity: "Liquidität", price: "Kurs ≥ 1", history: "Historie" };
 const gradeBadge = (r, big) => r.grade ? `<span class="grd g-${r.grade.g}${big ? " big" : ""}" title="Qualitätsstufe ${r.grade.g} – aus dem Backtest, siehe Score antippen">${r.grade.g}</span>` : "";
 const trendBadge = r => isTrend(r) ? `<span class="status st-trend">Trend-Rücksetzer${r.tr.top ? " · Top" : ""}</span>` : "";
-const statusBadge = r => r.passed ? `<span class="status st-bereit">Treffer${r.score ? " · Score " + r.score : ""}</span>${gradeBadge(r, true)}${trendBadge(r)}`
+const statusBadge = r => r.passed ? `<span class="status st-bereit">Treffer${r.score ? " · Score " + r.score : ""}</span>${gradeBadge(r, true)}${h4Badge(h4Of(r.ticker))}${trendBadge(r)}`
   : isTrend(r) ? trendBadge(r) + (r.fast_hit ? `<span class="status st-abwarten">Kairo: Fast-Treffer · fehlt: ${esc(r.missing[0])}</span>` : "")
-  : r.fast_hit ? `<span class="status st-abwarten">Fast-Treffer · fehlt: ${esc(r.missing[0])}</span>`
-  : r.near_hit ? `<span class="status st-kein_setup">9/11 · kein Treffer · fehlt: ${esc(r.missing.join(", "))}</span>`
+  : r.fast_hit ? `<span class="status st-abwarten">Fast-Treffer · fehlt: ${esc(r.missing[0])}</span>${h4NowBadge(r.ticker)}`
+  : r.near_hit ? `<span class="status st-kein_setup">9/11 · kein Treffer · fehlt: ${esc(r.missing.join(", "))}</span>${h4NowBadge(r.ticker)}`
   : `<span class="status st-kein_setup">Kein Setup · ${r.missing.length} Kriterien fehlen</span>`;
 const SETUP_KEYS = ["drawdown", "no_crash", "structure", "flattening", "zone", "rsi_div", "rsi_range", "macd_below0", "macd_turn", "mbi", "crv"];
 const tvUrl = t => {
@@ -1192,6 +1203,7 @@ const GLOSS = {
   trend: ["Prognose", "Wohin sich die Zahl der erfüllten Kriterien in den nächsten 5 Tagen voraussichtlich bewegt: ▲ mehr, ▼ weniger, ► gleich. Hilft bei Fast-Treffern einzuschätzen, ob bald ein Treffer daraus wird."],
   grade: ["Stufe A/B/C", "Qualitätsstufe der Treffer aus einem geprüften Modell. A = im Test die besten Signale."],
   status: ["Treffer, Fast, Trend", "Treffer: alle 11 Kairo-Kriterien erfüllt (Wende nach Korrektur). Fast: 1–2 fehlen. Trend: zweites Setup – Rücksetzer an die EMA 50 im klaren Aufwärtstrend; „Top“ = im Test stärkste Stufe."],
+  h4: ["4H-Top-Setup", "Kairo-Treffer (11/11) → 5 enge Tage (Seitwärtsphase) → in derselben 4-Stunden-Kerze: RSI war ≤ 40 und steigt, MACD kreuzt nach oben, grünes MBI-X (beides in den letzten 6 Kerzen ≈ 3 Tage) und Schluss über dem Hoch der 6 Kerzen davor. Dann Kauf zur nächsten 4H-Kerze, Stop unter der Basis, Verkauf zum Schluss von Tag 20. Im Test (Sept. 2023 – Okt. 2026) +0,39 / +0,54 R je Trade statt +0,10 / +0,11 R ohne 4H."],
   ko: ["Knock-out (K.-o.)", "Fällt der Kurs auf die K.-o.-Schwelle, verfällt der Turbo fast wertlos – auch untertags. Je näher die Schwelle am Kurs, desto höher der Hebel und das Risiko."],
   lev: ["Hebel", "Um wie viel stärker sich der Turbo bewegt als die Aktie: Hebel 5 → +2 % Aktie ≈ +10 % Turbo. Ergibt sich aus dem Abstand zur K.-o.-Schwelle (Kurs ÷ Abstand)."],
   r: ["R (Risiko-Einheit)", "Ergebnis gemessen am Risiko bis zum Stop: −1 R = Stop erreicht, +2 R = doppelt so viel gewonnen wie riskiert. Macht Trades unabhängig von der Positionsgröße vergleichbar."],
@@ -1417,7 +1429,9 @@ function chkHtml(c) {
 // Urteil: die Antwort zuerst – Einstieg ja/nein, warum, und der nächste Schritt (nur im neuen Design sichtbar)
 function verdictHtml(r) {
   const ein = t => `<button class="btn" data-ein="${esc(r.ticker)}">${t}</button>`;
-  if (r.passed) return `<div class="verdict ok"><i></i><div><b>Einstieg möglich · Kairo-Treffer</b><span>Score ${r.score ?? "–"} · CRV ${fmt(r.crv, 1)}${r.plan && r.plan.stop ? ` · Setup ungültig unter ${fmt(r.plan.stop)}` : ""}</span></div>${ein("Einstieg planen")}</div>`;
+  const h4 = r.passed && h4Of(r.ticker);
+  if (h4 && !h4Go(h4)) { const x = h4Text(h4); return `<div class="verdict warn"><i></i><div><b>Kairo-Treffer · ${esc(x.t)}</b><span>${esc(x.s)}</span></div>${ein("Plan ansehen")}</div>`; }
+  if (r.passed) return `<div class="verdict ok"><i></i><div><b>Einstieg möglich · Kairo-Treffer${h4 ? " · 4H bestätigt ✅" : ""}</b><span>Score ${r.score ?? "–"} · CRV ${fmt(r.crv, 1)}${r.plan && r.plan.stop ? ` · Setup ungültig unter ${fmt(r.plan.stop)}` : ""}</span></div>${ein("Einstieg planen")}</div>`;
   if (isTrend(r)) return `<div class="verdict ok"><i></i><div><b>Einstieg möglich · Trend-Rücksetzer${r.tr.top ? " Top" : ""}</b><span>${r.tr.top ? "Stärkste Stufe im 6-Jahres-Test" : "Gültig, aber nicht Top – im Test schwächer"}${r.tr.chk ? ` · Rücksetzer-Check ${pct(r.tr.chk.p, 0)}` : ""}${r.tr.plan && r.tr.plan.stop ? ` · Stop ${fmt(r.tr.plan.stop)}` : ""}</span></div>${ein("Einstieg planen")}</div>`;
   const fm = filterMiss(r);
   if (fm) return `<div class="verdict warn"><i></i><div><b>Kein Einstieg · Grundfilter nicht erfüllt</b><span>Alle ${r.total} Setup-Kriterien erfüllt, aber: ${esc(fm)}</span></div></div>`;
@@ -1568,7 +1582,7 @@ const COLS = [
   { k: "ticker", l: "Ticker", g: r => r.ticker, h: r => `<span class="tk">${favBtn(r.ticker)}<a href="#" data-card="${esc(r.ticker)}">${esc(r.ticker)}</a>${wlTag(r)}</span>` },
   { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm" data-card="${esc(r.ticker)}">${esc((r.name || r.ticker).slice(0, 28))}</a>` },
   { k: "trend", l: "Prognose", g: r => r.trend ? (r.trend.fc ? r.trend.fc.d : r.trend.slope + (r.trend.d5 ?? 0) / 10) : 0, h: r => trendHtml(r) || "–" },
-  { k: "status", l: "Status", g: r => r.passed ? 3 : isTrend(r) ? 2 : r.fast_hit ? 1 : r.near_hit ? .5 : 0, h: r => (r.passed ? `<span class="st hit">Treffer</span>` : r.fast_hit && !isTrend(r) ? `<span class="st fast">Fast</span>` : r.near_hit && !isTrend(r) ? `<span class="st">9/11 · kein Treffer</span>` : isTrend(r) ? "" : `<span class="st">Watchlist</span>`) + (isTrend(r) ? `<span class="st trend">${r.tr.top ? "Trend Top" : "Trend"}</span>` : "") },
+  { k: "status", l: "Status", g: r => r.passed ? 3 : isTrend(r) ? 2 : r.fast_hit ? 1 : r.near_hit ? .5 : 0, h: r => (r.passed ? `<span class="st hit">Treffer</span>${(it => it ? `<span class="st${h4Go(it) ? " hit" : ""}">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : "")(h4Of(r.ticker))}` : r.fast_hit && !isTrend(r) ? `<span class="st fast">Fast</span>` : r.near_hit && !isTrend(r) ? `<span class="st">9/11 · kein Treffer</span>` : isTrend(r) ? "" : `<span class="st">Watchlist</span>`) + (isTrend(r) ? `<span class="st trend">${r.tr.top ? "Trend Top" : "Trend"}</span>` : "") },
   { k: "chk", l: "Rücksetzer-Check", n: 1, g: r => chkP(r) ?? -1, h: r => chkCell(r) },
   { k: "grade", l: "Stufe", g: r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0, h: r => gradeBadge(r) || `<span class="muted">–</span>` },
   { k: "exchange", l: "Börse", g: r => r.exchange, h: r => esc(r.exchange) },
@@ -2838,6 +2852,8 @@ function gBuy(g, t, f) {
 }
 function gSetup(t) {
   const r = byTicker(t), s = rowOf(t);
+  const h4 = h4Of(t);
+  if (h4Go(h4)) return { k: "Kairo 4H", score: r && r.passed ? r.score : null };
   if (r && r.passed) return { k: "Kairo", score: r.score };
   if (s && s.s === "hit") return { k: "Kairo", score: s.sc ?? null };
   if ((r && isTrend(r)) || (s && s.tr)) return { k: "Trend" };
@@ -3006,6 +3022,68 @@ function getJson(name) {
   return jsonData[name];
 }
 const byTicker = t => data.results.find(r => r.ticker === t);
+// ---------- 4H-Top-Setup (backend/h4live.py): Treffer → Seitwärtsphase → 4H-Bestätigung → Kauf → Verkauf an Tag 20 ----------
+// Test (h4study.py, Okt. 2026): +0,39 / +0,54 R je Trade statt +0,10 / +0,11 R ohne 4H. Abends kommt h4.json mit dem Scan,
+// tagsüber prüft der Mitteilungsdienst alle 30 Min. nach jeder fertigen 4H-Kerze (h4live.json im Branch kairo-alerts).
+const H4LIVE_URL = REPO.replace("https://github.com/", "https://raw.githubusercontent.com/") + "/kairo-alerts/h4live.json";
+let h4LiveData;
+function h4Data() {
+  const base = getJson("h4.json");
+  if (h4LiveData === undefined) {
+    h4LiveData = null;
+    fetch(H4LIVE_URL + "?v=" + Math.floor(Date.now() / 3e5)).then(r => r.ok ? r.json() : null).then(d => {
+      if (d && d.items) { h4LiveData = d; if (["today", "bilanz"].includes(state.sec)) render(); } }).catch(() => {});
+  }
+  if (!base) return null;
+  const lv = h4LiveData;
+  if (!lv || !(String(lv.generated) > String(base.generated))) return base;
+  const m = new Map(lv.items.map(x => [x.t + "|" + x.d, x]));
+  return { ...base, live: lv.generated, items: (base.items || []).map(x => m.get(x.t + "|" + x.d) || x) };
+}
+const h4Of = t => { const d = h4Data(); return d && t ? (d.items || []).find(x => x.t === t) || null : null; };
+const h4Now = t => { const d = h4Data(); return d && d.now ? d.now[t] || null : null; };
+const H4F = [["R40", "RSI"], ["M", "MACD"], ["B", "MBI"], ["S", "Bruch"]];
+const h4Flags = fl => fl ? H4F.map(([k, l]) => `<i class="h4f${fl[k] ? " on" : ""}">${fl[k] ? "✓" : "·"} ${l}</i>`).join("") : "";
+const h4Go = it => it && (it.st === "go" || (it.st === "run" && ((it.trade || {}).day || 99) <= 1));
+function h4Text(it) {
+  const cur = it.cur || "", b = it.base || {}, tr = it.trade || {}, P = v => `${fmt(v)} ${cur}`.trim();
+  const R = v => v == null ? "" : `${v >= 0 ? "+" : ""}${fmt(v, 2)} R`;
+  if (h4Go(it)) return { tone: "green", ic: "✅", short: "4H bestätigt", t: "4H bestätigt – Einstieg jetzt",
+    s: `${tr.e ? `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)}` : `Kauf zur Eröffnung der nächsten 4H-Kerze (zuletzt ${P((it.trig || {}).c)})`} · Stop ${P(b.sl)} · Verkauf zum Schluss von Tag 20.` };
+  if (it.st === "4h") return { tone: "yellow", ic: "⏳", short: "wartet auf 4H", t: "Seitwärtsphase fertig – wartet auf die 4H-Bestätigung",
+    s: `Stop ${P(b.sl)} (Basis ${P(b.lo)}–${P(b.hi)})${b.pending ? " · Basis gilt, wenn die nächste Eröffnung darin liegt" : ""} · ${it.lim ? `Fenster bis ${dateDE(it.lim)}` : `noch ${it.lim_left} Handelstage Zeit`}. Erst kaufen, wenn alle vier Signale zugleich stehen – die Mitteilung kommt automatisch.` };
+  if (it.st === "basis") return { tone: "yellow", ic: "⏳", short: `Basis Tag ${it.day}/10`, t: `Wartet auf die Seitwärtsphase · Tag ${it.day} von 10`,
+    s: `Treffer vom ${dateDE(it.d)}. Noch ${it.left} Handelstage Zeit für 5 enge Tage – danach beginnt die 4H-Prüfung.` };
+  if (it.st === "run") return { tone: "blue", ic: "▶", short: `läuft Tag ${tr.day}/20`, t: `4H-Trade läuft · Tag ${tr.day} von 20`,
+    s: `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)} · Stop ${P(tr.sl)} · Stand ${R(tr.r)}. Ein späterer Einstieg ist nicht getestet.` };
+  if (it.st === "stop" || it.st === "zeit") return { tone: "gray", ic: it.st === "stop" ? "🛑" : "🏁", short: it.st === "stop" ? "Stop" : "Tag 20",
+    t: `Beendet: ${it.st === "stop" ? "Stop" : "Verkauf an Tag 20"} · ${R(tr.r)}`, s: `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)}, Verkauf ${dateDE(tr.xd)} zu ${P(tr.x)}.` };
+  return { tone: "gray", ic: "✕", short: "verfallen", t: "Verfallen – kein Trade", s: `${it.why || "Bedingungen nicht erfüllt"} (Treffer vom ${dateDE(it.d)}).` };
+}
+const h4Badge = it => { if (!it) return ""; const x = h4Text(it); return `<span class="status ${x.tone === "green" ? "st-h4go" : x.tone === "yellow" ? "st-h4" : "st-kein_setup"}">${x.ic} 4H: ${esc(x.short)}</span>`; };
+const h4NowBadge = t => { const n = h4Now(t); if (!n) return ""; const f = n.fl || "";
+  return `<span class="status st-kein_setup" title="Setup-Zustand – nur Information, kein Treffer">Basis ${n.b ? "✓" : "✗"} · 4H ${f ? H4F.filter(([k]) => f.includes(k[0])).map(x => x[1]).join(" ") : "–"}</span>`; };
+function h4CardHtml() {
+  const d = h4Data(); if (!d) return "";
+  const act = (d.items || []).filter(x => ["go", "4h", "basis", "run"].includes(x.st));
+  const when = d.live || d.generated, tm = when ? new Date(when).toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "–";
+  const rows = act.slice(0, 8).map(it => { const x = h4Text(it);
+    return `<button class="h4row${h4Go(it) ? " go" : ""}" data-ein="${esc(it.t)}"><i>${x.ic}</i><span><b>${esc(it.n || it.t)} · ${esc(x.short)}</b><em>${esc(x.s)}</em>${it.st === "4h" ? `<div>${h4Flags(it.fl)}</div>` : ""}</span></button>`; }).join("");
+  return `<div class="hcard">${hHead("⚡ 4H-Top-Setup")}
+    ${rows || `<div class="note" style="margin:0">Gerade kein Kairo-Treffer in Arbeit. Neue Treffer erscheinen hier nach dem Abendscan.</div>`}
+    <div class="note" style="margin:8px 0 0">Kairo-Treffer → Seitwärtsphase → 4H-Bestätigung (RSI, MACD, MBI, Strukturbruch) → Kauf, Verkauf an Tag 20. Im Test ≈ 4× so viel je Trade wie ohne 4H. Stand ${esc(tm)} – tagsüber alle 30 Min. geprüft, bei Bestätigung kommt eine Mitteilung.</div></div>`;
+}
+function h4BilanzHtml() {
+  const d = h4Data(); if (!d || !d.track) return "";
+  const st = d.track.stats, l = d.track.list || [];
+  return `<div class="hcard">${hHead("4H-Top-Setup · live gezählt")}
+    <div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Abgeschlossen</span><b>${st ? st.n : 0}</b><em>${st ? st.open : 0} laufen</em></div>
+      <div class="mt"><span>Ø je Trade</span><b class="${st && st.avg_r >= 0 ? "up" : st && st.avg_r != null ? "down" : ""}">${st && st.avg_r != null ? `${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R` : "–"}</b><em>Test +0,39 / +0,54 R</em></div>
+      <div class="mt"><span>Gewinner</span><b>${st && st.win != null ? pct(st.win, 0) : "–"}</b><em>Test ≈ 35–40 %</em></div></div>
+    ${l.length ? `<div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Aktie</th><th class="num">Einstieg</th><th>Ergebnis</th></tr></thead><tbody>${l.slice(0, 15).map(x =>
+      `<tr><td><b>${esc(x.n || x.t)}</b><small>Treffer ${dateDE(x.d)}</small></td><td class="num">${dateDE(x.ed)}<small>${fmt(x.e)}</small></td><td class="${x.r == null ? "" : x.r >= 0 ? "up" : "down"}">${x.res === "run" ? `läuft · Tag ${x.day || "–"}/20 ` : x.res === "stop" ? "Stop " : "Tag 20 "}${x.r != null ? `<b>${x.r >= 0 ? "+" : ""}${fmt(x.r, 2)} R</b>` : ""}</td></tr>`).join("")}</tbody></table></div>`
+      : `<div class="note" style="margin:0">Noch keine bestätigten 4H-Trades. Jeder Kairo-Treffer, der Seitwärtsphase und 4H-Bestätigung schafft, wird hier automatisch mitgezählt – getrennt von der bisherigen Strategie, damit wir Live gegen Test vergleichen können.</div>`}</div>`;
+}
 // ---------- Tagesbriefing: das Wichtigste seit dem letzten Scan, als Fenster beim Öffnen ----------
 function briefHtml() {
   const mine = myTickers(), ch = jsonData["changes.json"], m = anaData && anaData.market, reg = m && m.regime;
@@ -3174,7 +3252,7 @@ function bilanzTeaserHtml() {
   const M = STRAT_BT.main, b = getJson("bilanz.json"), st = b && b.live && b.live.strat;
   return `<button class="hcard bil" ${SEC_LINK("bilanz")}>${hHead("Kairo-Bilanz", "", "")}
     <div class="bilrow"><div class="ring-s">${ringSvg(Math.min(1, (M.cagr[0] + M.cagr[1]) / 2 / .5), "var(--up)")}<b>${fmt((M.cagr[0] + M.cagr[1]) / 2 * 100, 0)} %</b></div>
-      <div><b>pro Jahr im ehrlichen 10-Jahres-Test (nach allen Kosten)</b><span>${st ? `Live: ${st.n} Treffer abgeschlossen · Ø ${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R je Trade` : "Treffer kaufen in der Seitwärtsphase · Stop · 20 Tage halten"}</span></div></div>
+      <div><b>pro Jahr im ehrlichen 10-Jahres-Test (nach allen Kosten)</b><span>${st ? `Live: ${st.n} Treffer abgeschlossen · Ø ${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R je Trade` : "Treffer → Seitwärtsphase → 4H-Bestätigung → Kauf · Stop · Verkauf an Tag 20"}</span></div></div>
     <span class="hlink">Details ›</span></button>`;
 }
 function journalTeaserHtml() {
@@ -3192,7 +3270,9 @@ function todoHtml() {
   const fast = data.results.filter(r => r.fast_hit && !r.passed && !isTrend(r));
   const row = (ic, cls, t, sub, n, kinds) => `<button class="arow" data-gokinds="${kinds}"><i class="aic ${cls}">${ic}</i><span><b>${t}</b><em>${sub}</em></span><strong>${n}</strong><s>›</s></button>`;
   return `<div class="agroup-h">Heute zu tun</div><div class="agroup">
-    ${row("✓", "g", "Kairo-Treffer", hits.length ? "Einstieg möglich – alle Kriterien erfüllt" : "heute keine", hits.length, "hit")}
+    ${(() => { const d = h4Data(), g = d ? (d.items || []).filter(h4Go).length : 0, w = d ? (d.items || []).filter(x => x.st === "4h" || x.st === "basis").length : 0;
+      return d ? row("⚡", "g", "4H-Top-Setup", g ? `${g}× bestätigt – Einstieg jetzt` : w ? `${w} warten auf Seitwärtsphase/4H` : "gerade nichts in Arbeit", g, "hit") : ""; })()}
+    ${row("✓", "g", "Kairo-Treffer", hits.length ? "alle Kriterien erfüllt – Einstieg nach 4H-Bestätigung" : "heute keine", hits.length, "hit")}
     ${trendOn() ? row("↗", "b", "Trend-Rücksetzer", top.length ? `davon ${top.length} Top – stärkstes Setup im Test` : "Rücksetzer im Aufwärtstrend", tr.length, "trend") : ""}
     ${row("…", "y", "Fast-Treffer", "ein Kriterium fehlt noch", fast.length, "fast")}
     ${row("👀", "", "9/11 beobachten", "kein Treffer – zwei Kriterien fehlen", data.results.filter(r => r.near_hit && !isTrend(r)).length, "near")}</div>`;
@@ -3201,7 +3281,8 @@ function kpiHtml() {
   const hit = data.results.filter(r => r.passed).length, tr = data.results.filter(isTrend), top = tr.filter(r => r.tr.top).length;
   const fast = data.results.filter(r => r.fast_hit && !r.passed).length;
   const t = (k, l, n, sub, hl) => `<button class="kpi${hl ? " hl" : ""}" data-gokinds="${k}"><span>${l}</span><b>${n}</b><em>${sub}</em></button>`;
-  return `<div class="kpis">${t("hit", "Kairo-Treffer", hit, hit ? "alle Kriterien erfüllt" : "heute keine", hit > 0)}
+  const h4d = h4Data(), h4g = h4d ? (h4d.items || []).filter(h4Go).length : 0, h4w = h4d ? (h4d.items || []).filter(x => x.st === "4h" || x.st === "basis").length : 0;
+  return `<div class="kpis">${h4d ? t("hit", "4H bestätigt", h4g, h4g ? "Einstieg jetzt" : `${h4w} in Arbeit`, h4g > 0) : ""}${t("hit", "Kairo-Treffer", hit, hit ? "Einstieg nach 4H" : "heute keine", false)}
     ${trendOn() ? t("trend", "Trend-Rücksetzer", tr.length, top ? `davon ${top} Top` : "keine Top-Stufe", top > 0) : ""}
     ${t("fast", "Fast-Treffer", fast, "1 Kriterium fehlt", false)}
     ${t("near", "9/11 beobachten", data.results.filter(r => r.near_hit).length, "kein Treffer", false)}</div>`;
@@ -3224,7 +3305,10 @@ function postfachItems() {
       if (now) out.now.push(it); else out.prep.unshift(it); });
   } else if (!anaData) loadAnalysis();
   const ent = data.results.filter(r => r.passed || isTrend(r)).sort((a, b) => (isTrend(b) && b.tr.top) - (isTrend(a) && a.tr.top) || (b.score ?? 0) - (a.score ?? 0));
-  ent.forEach(r => out.now.push({ t: r.ticker, c: "g", n: `${r.name || r.ticker} einsteigen`, d: r.passed ? `Kairo-Treffer · Score ${r.score ?? "–"} · CRV ${fmt(r.crv, 1)}` : `Trend-Rücksetzer${r.tr.top ? " Top" : ""} · CRV ${fmt(r.tr.plan && r.tr.plan.crv, 1)}` }));
+  const h4d = h4Data(), h4seen = new Set();
+  (h4d && h4d.items || []).filter(it => ["go", "4h", "basis"].includes(it.st) || h4Go(it)).forEach(it => { const x = h4Text(it); h4seen.add(it.t);
+    (h4Go(it) ? out.now : out.prep).push({ t: it.t, c: h4Go(it) ? "g" : "y", n: `${it.n || it.t} ${h4Go(it) ? "einsteigen – 4H bestätigt" : "– " + x.short}`, d: x.s }); });
+  ent.filter(r => !h4seen.has(r.ticker)).forEach(r => out.now.push({ t: r.ticker, c: "g", n: `${r.name || r.ticker} einsteigen`, d: r.passed ? `Kairo-Treffer · Score ${r.score ?? "–"} · CRV ${fmt(r.crv, 1)}` : `Trend-Rücksetzer${r.tr.top ? " Top" : ""} · CRV ${fmt(r.tr.plan && r.tr.plan.crv, 1)}` }));
   data.results.filter(r => r.fast_hit && !r.passed && !isTrend(r)).slice(0, 8).forEach(r => out.prep.push({ t: r.ticker, c: "y", n: `${r.name || r.ticker} beobachten`, d: `Fast · fehlt: ${(r.missing || [])[0] || ""}` }));
   return out;
 }
@@ -3232,7 +3316,7 @@ function postfachHtml(cards = "", cards2 = "") {
   const { now, prep } = postfachItems(), all = [...now, ...prep].filter(x => x.t);
   if (!all.some(x => x.t === state.pfSel)) state.pfSel = null;      // Detail nur nach Antippen – kein Dauer-Fenster rechts
   const row = x => x.dep ? `<button class="pf-it" data-pfdep="${esc(x.dep)}"><i class="${x.c}"></i><span><b>${esc(x.t)}</b><em>${esc(x.d)}</em></span>${x.v != null ? `<strong class="${x.v >= 0 ? "up" : "down"}">${sgnPct(x.v, 0)}</strong>` : ""}<s>›</s></button>`
-    : `<button class="pf-it${x.t === state.pfSel ? " on" : ""}" data-pf="${esc(x.t)}"><i class="${x.c}"></i><span><b>${esc(x.n)}</b><em>${esc(x.d)}</em></span><s>›</s></button>`;
+    : `<button class="pf-it${x.t === state.pfSel ? " on" : ""}" ${data.results.some(r => r.ticker === x.t) ? `data-pf="${esc(x.t)}"` : `data-ein="${esc(x.t)}"`}><i class="${x.c}"></i><span><b>${esc(x.n)}</b><em>${esc(x.d)}</em></span><s>›</s></button>`;
   const r = state.pfSel && data.results.find(x => x.ticker === state.pfSel);
   // Listen gekürzt: je 4 Einträge, Rest über „mehr“
   const N = 4, more = state.pfMore || {};
@@ -3251,8 +3335,8 @@ function todayHtml() {
   const al = getJson("alerts.json");
   const tgHint = al && !al.connected ? `<button class="hcard tg" ${SEC_LINK("settings")}><b>📲 Abendbericht aufs Handy</b><span>Neue Treffer, deine Aktien und Knock-out-Warnungen jeden Abend per Telegram – in 3 Minuten eingerichtet.</span><span class="hlink">Einrichten ›</span></button>` : "";
   // Postfach: Aufgaben oben, darunter dieselben Karten wie sonst (ohne „Beste Treffer“ – die stehen schon im Postfach)
-  if (isPostfach()) return postfachHtml(`${startHtml()}${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}`, `${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
-  return (isApple() ? todoHtml() : kpiHtml()) + `${startHtml()}<div class="hgrid"><div class="hcol">${etfTeaserHtml()}${marketHtml()}${changesHtml()}${myStocksHtml()}</div>
+  if (isPostfach()) return postfachHtml(`${startHtml()}${h4CardHtml()}${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}`, `${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
+  return (isApple() ? todoHtml() : kpiHtml()) + `${startHtml()}<div class="hgrid"><div class="hcol">${h4CardHtml()}${etfTeaserHtml()}${marketHtml()}${changesHtml()}${myStocksHtml()}</div>
     <div class="hcol">${bilanzTeaserHtml()}${depotSnapHtml()}${soonHtml()}${topHitsHtml()}${journalTeaserHtml()}${tgHint}</div></div>`;
 }
 
@@ -3426,7 +3510,7 @@ function myTradesHtml() {
       <div class="mt"><span>Summe</span><b class="${sum >= 0 ? "up" : "down"}">${sgnEur(sum)}</b><em>geschätzt</em></div></div>
     <div class="note" style="margin:0 0 8px">${ic} ${txt}.${early ? ` ${early}× vor dem Verkaufstag verkauft, ohne dass der Stop griff – das weicht von den Regeln ab und kostet im Test Rendite.` : ""}</div>
     <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Aktie</th><th class="num">Kauf → Verkauf</th><th class="num">Tage</th><th>Ergebnis</th></tr></thead><tbody>
-      ${done.slice(0, 20).map(p => `<tr><td><b>${esc(p.n)}</b><small>${p.paper ? "🧪 Übung · " : ""}${p.L > 1 ? `Turbo ×${p.L}` : "Aktie"}</small></td><td class="num">${dateDE(p.d)}<small>${p.xd ? dateDE(p.xd) : ""}</small></td>
+      ${done.slice(0, 20).map(p => `<tr><td><b>${esc(p.n)}</b><small>${p.paper ? "🧪 Übung · " : ""}${p.h4 === "go" ? "⚡ 4H · " : ""}${p.L > 1 ? `Turbo ×${p.L}` : "Aktie"}</small></td><td class="num">${dateDE(p.d)}<small>${p.xd ? dateDE(p.xd) : ""}</small></td>
         <td class="num">${p.xd ? bdBetween(new Date(p.d + "T12:00:00"), new Date(p.xd + "T12:00:00")) + 1 : "–"}</td>
         <td class="${p.R >= 0 ? "up" : "down"}"><b>${p.R >= 0 ? "+" : ""}${fmt(p.R, 2)} R</b>${eurOf(p) != null ? ` <small>${sgnEur(eurOf(p))}</small>` : ""}</td></tr>`).join("")}</tbody></table></div></div>`;
 }
@@ -3478,7 +3562,7 @@ function bilanzHtml() {
         return `<tr><td>${dateDE(s.d)}<small>Score ${s.score}</small></td><td><a href="#" data-card="${esc(s.t)}"><b>${esc(s.n || s.t)}</b></a><small>${esc(s.t)}</small></td>
           <td class="num">${x.e ? fmt(x.e) : "–"}</td><td class="num">${x.sl ? fmt(x.sl) : "–"}</td>
           <td class="${x.r != null ? (x.r >= 0 ? "up" : "down") : rc}">${rt}${x.res === "run" ? ` <small>Tag ${x.days}/20</small>` : ""}${x.r != null ? ` <small>${x.r >= 0 ? "+" : ""}${fmt(x.r, 2)} R</small>` : ""}</td></tr>`; }).join("")}</tbody></table></div>` : ""}</div>`;
-  return back + `<div class="section-title"><span>Kairo-Bilanz · unsere Strategie</span><span></span></div>` + hero + myTradesHtml() + (b ? liveHtml : "");
+  return back + `<div class="section-title"><span>Kairo-Bilanz · unsere Strategie</span><span></span></div>` + hero + h4BilanzHtml() + myTradesHtml() + (b ? liveHtml : "");
 }
 
 // ---------- Telegram & Backup (Einstellungen) ----------
@@ -3496,7 +3580,8 @@ function pushCode(sub) {
   // offene Trade-Pläne: nur Kursmarken und Daten (Stop, Ziel, K.-o., Verkaufstag) – keine Beträge
   const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).includes(":")).map(x => ({ i: x.id, t: String(x.t).replace(/^~/, ""), n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit }));
   const yq = liveKey("yq");                                   // mit Kursdienst: Trades holt die Prüfung dort – kein Secret-Update je Trade
-  return JSON.stringify({ s: sub.toJSON ? sub.toJSON() : sub, d: dep, p, ...(yq ? { sync: yq, key: syncKey() } : {}) });
+  const rk = Math.round(tpCfg().depot * tpCfg().risk / 100);   // Risiko je Trade in € – nur für die Stückzahl in der 4H-Mitteilung
+  return JSON.stringify({ s: sub.toJSON ? sub.toJSON() : sub, d: dep, p, rk, ...(yq ? { sync: yq, key: syncKey() } : {}) });
 }
 let pushSub = null;
 // ---------- Abgleich der offenen Trades mit dem eigenen Kursdienst (für die Mitteilungen – ohne Secret-Update je Trade) ----------
@@ -4018,20 +4103,22 @@ const bdBetween = (a, b) => { let k = 0; const x = new Date(a); while (x < b) { 
 function tp2Calc(r, S, o = {}) {
   const cfg = tpCfg(), pl = r.pl || {}, atr = pl.atr || r.atr || (r.ap || 0) * r.c;
   const trend = S && (S.k === "top" || S.k === "trend");
-  const stop = pl.stop;                                      // für alle Setups gleich (so getestet): Basis-Tief − 0,25 ATR
+  // 4H-Top-Setup: Stop = Basis aus dem Scan (Seitwärtsphase nach dem Treffer, genau wie im Test) statt der heutigen Struktur
+  const h4 = !trend ? h4Of(r.t) : null, h4b = h4 && h4.base && ["4h", "go", "run"].includes(h4.st) ? h4.base : null;
+  const stop = h4b ? h4b.sl : pl.stop;                       // für alle Setups gleich (so getestet): Basis-Tief − 0,25 ATR
   const src = pl.src ? `${pl.src} − 0,25 ATR` : "";
   const E = o.entry > 0 ? o.entry : r.c, fx = toEur(1, r.cur || "EUR") || 1;
   // Kursmarken: nahe Marken aus dem Scan (Basis-Hoch, EMA 20/50, Fibonacci), sonst die Swing-Widerstände
   const tg = (pl.tg && pl.tg.length ? pl.tg : (pl.res || []).map((x, i) => [`Widerstand ${i + 1}`, x])).filter(x => x[1] > E);
-  const out = { E, stop, atr, src, trend, cfg, fx, cur: r.cur || "", base: pl.base, tg, res: tg.map(x => x[1]), problems: [] };
+  const out = { E, stop, atr, src: h4b ? `Basis-Tief ${fmt(h4b.lo * fx)} € − 0,25 ATR (Seitwärtsphase nach dem Treffer)` : src, trend, cfg, fx, cur: r.cur || "", h4, base: h4b ? { lo: h4b.lo, hi: h4b.hi } : pl.base, tg, res: tg.map(x => x[1]), problems: [] };
   if (!stop || !atr) { out.problems.push(["red", "Keine Kursstruktur für diese Aktie – kein Trade-Plan möglich."]); return out; }
   const risk = E - stop;
   out.riskAtr = risk / atr;
   if (risk <= 0) { out.problems.push(["red", `Kurs liegt schon unter dem Stop ${fmt(stop * fx)} € – Setup gescheitert.`]); return out; }
   if (out.riskAtr > TP.maxAtr) out.problems.push(["red", `Stop ${fmt(out.riskAtr, 1)} ATR entfernt (mehr als ${TP.maxAtr}) – zu weit für diese Strategie. ${pl.base ? "" : "Auf eine Basis warten."}`]);
   else if (out.riskAtr < TP.minAtr) out.problems.push(["yellow", `Stop nur ${fmt(out.riskAtr, 1)} ATR entfernt – normales Tagesrauschen kann ihn auslösen.`]);
-  if (!pl.base) out.problems.push(["yellow", "Noch keine enge Seitwärtsphase (Basis) – laut Strategie erst kaufen, wenn sie da ist."]);
-  if (!trend) {                                              // getestete Regel: Seitwärtsphase innerhalb von 10 Handelstagen nach dem Signal
+  if (!pl.base && !h4b) out.problems.push(["yellow", "Noch keine enge Seitwärtsphase (Basis) – laut Strategie erst kaufen, wenn sie da ist."]);
+  if (!trend && !h4) {                                              // getestete Regel: Seitwärtsphase innerhalb von 10 Handelstagen nach dem Signal
     const bj = getJson("bilanz.json"), sg = bj && (bj.signals || []).find(x => x.k === "hit" && x.t === r.t);
     if (sg) { const age = bdBetween(new Date(sg.d + "T12:00:00"), new Date()), res = (sg.st || {}).res; out.sig = { d: sg.d, age, res };
       if (res === "nobase" || (!pl.base && age > 10)) out.problems.push(["red", `Kairo-Signal vom ${dateDE(sg.d)}: innerhalb von 10 Handelstagen keine Seitwärtsphase – laut getesteter Regel ist das Signal verfallen. Kein Trade.`]);
@@ -4041,6 +4128,11 @@ function tp2Calc(r, S, o = {}) {
   out.dist = risk / E;
   out.mk = tpMarket();
   out.fit = kmFit(r, out.mk);
+  if (h4) {                                                  // 4H-Top-Setup entscheidet über den Einstieg
+    const x = h4Text(h4);
+    out.fit = { ...out.fit, ok: h4Go(h4), k: "h4", tone: x.tone === "green" ? "green" : x.tone === "gray" ? "red" : "yellow",
+      mult: out.fit.mult || 1, t: `${x.ic} 4H-Top-Setup: ${x.t}`, s: x.s };
+  }
   out.riskPct = cfg.risk * out.fit.mult;
   // Klumpenschutz: offene Trades und Depot-Positionen im selben Sektor – höchstens 2 je Sektor
   if (r.sec) {
@@ -4179,7 +4271,7 @@ function tpOpen(t) {
   const lv = m.levs.find(x => x.L === m.sug);
   const l = plansLoad();
   if (l.filter(p => p.st === "open").length >= m.cfg.maxOpen && !confirm(`Schon ${m.cfg.maxOpen} offene Trades – Gesamtrisiko steigt. Trotzdem eröffnen?`)) return;
-  l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, d: isoD(m.d0), scan: String(data.generated).slice(0, 10),
+  l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, h4: m.h4 ? (h4Go(m.h4) ? "go" : m.h4.st) : null, d: isoD(m.d0), scan: String(data.generated).slice(0, 10),
               E: +m.E, stop: m.stop, atr: m.atr, L: lv.L, ko: lv.ko, expo: Math.round(lv.expo), stake: Math.round(lv.stake), qty: lv.qty,
               risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), exit2: isoD(m.exit2), sec: r.sec || null, tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open", paper: paperMode() });
   plansSave(l); render(); window.scrollTo({ top: 0, behavior: "smooth" });

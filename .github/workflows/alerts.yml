@@ -15,7 +15,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,7 +27,7 @@ jobs:
         run: |
           if git fetch -q origin kairo-alerts:kairo-alerts 2>/dev/null; then git worktree add -q state kairo-alerts;
           else git worktree add -q --orphan -b kairo-alerts state; fi
-      - name: Stop, Kursziel, Verkaufstag, K.-o. prüfen
+      - name: Stop, Kursziel, Verkaufstag, K.-o. und 4H-Bestätigung prüfen
         run: python -m backend.push
         env:
           PUSH_SUBS: ${{ secrets.PUSH_SUBS }}
