@@ -3051,6 +3051,12 @@ const GRPL = { "11": "11/11", "10s": "10/11 · MBI gelockert", "10": "10/11 · k
 const GRPT = { "10": "−0,01 / +0,24 R", "9": "−0,37 / −0,12 R" };
 // 10/11 und 9/11: 4H-Stand als kleines Zusatz-Etikett (nur zur Auswahl)
 const h4Mini = r => (it => it && !h4Real(it) && it.st !== "weg" ? `<span class="st" title="zur Auswahl – kein Treffer, keine Mitteilung">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : "")(h4Of(r.ticker));
+// Reihenfolge im Scanner: echte Einstiege (11/11, MBI gelockert) – 4H bestätigt/verkaufen > wartet auf 4H > läuft;
+// danach 10/11 und 9/11 mit 4H-Bestätigung (nur zur Auswahl); alles andere nach Score (stabile Sortierung)
+const h4Prio = r => { const it = h4Of(r.ticker); if (!it || it.st === "weg") return 0;
+  const real = h4Real(it);
+  if (h4Go(it) || it.st === "sell") return real ? 5 : 1;
+  return real ? ({ "4h": 4, run: 3 }[it.st] || 0) : 0; };
 const h4Of = t => { const d = h4Data(); return d && t ? (d.items || []).find(x => x.t === t) || null : null; };
 const h4Now = t => { const d = h4Data(); return d && d.now ? d.now[t] || null : null; };
 const H4F = [["R40", "RSI"], ["M", "MACD"], ["B", "MBI"], ["S", "Bruch"]];
@@ -4513,6 +4519,7 @@ function renderMain() {
   }
   const col = COLS.find(c => c.k === state.tableSort) || COLS.find(c => c.k === "score");
   if (state.tableSort !== "score" || state.tableAsc) list.sort((a, b) => { const x = col.g(a), y = col.g(b); const c = typeof x === "string" ? x.localeCompare(y) : x - y; return state.tableAsc ? c : -c; });
+  else list.sort((a, b) => h4Prio(b) - h4Prio(a));          // Standard: „perfekte“ Aktien (Treffer + 4H bestätigt) ganz oben, sonst Score
   const onlyHits = k.size === 1 && k.has("hit");
   const lead = ["ticker", "name", "grade", "status", "met", "trend", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)));   // Status bleibt: zeigt den 4H-Stand
   const hid = new Set(state.hiddenCols || []);
