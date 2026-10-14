@@ -1,4 +1,4 @@
-"""4H-Top-Setup live: Kairo-Treffer (11/11) → Seitwärtsphase → 4H-Bestätigung → Kauf → Verkauf an Tag 20.
+"""4H-Top-Setup live: Kairo-Treffer (11/11) → Seitwärtsphase → 4H-Bestätigung → Kauf → Verkauf unter der EMA 20.
 
 Genau die Regeln aus dem 4H-Test (h4study.py, Variante „HB|RMBS|zeit“, Okt. 2026: +0,39 / +0,54 R je Trade gegenüber
 +0,10 / +0,11 R ohne 4H, Depot +14 % / +20 % p. a.):
@@ -9,7 +9,10 @@ Genau die Regeln aus dem 4H-Test (h4study.py, Variante „HB|RMBS|zeit“, Okt. 
      in derselben 4H-Kerze gleichzeitig RSI zuletzt ≤ 40 und steigend, MACD-Kreuz nach oben, grünes MBI-X (beides in den
      letzten 6 4H-Kerzen) und Strukturbruch (Schluss über dem Hoch der 6 Kerzen davor).
   4. Kauf zur Eröffnung der nächsten 4H-Kerze. Nur wenn Stop darunter und 0,4–25 % entfernt.
-  5. Verkauf am Stop (auch untertags) oder zum Schluss des 20. Handelstags (Einstiegstag = Tag 1).
+  5. Verkauf am Stop (auch untertags); ab Tag 10 (Einstiegstag = Tag 1) zur nächsten Eröffnung, sobald ein Tag unter der
+     EMA 20 (Tagesschlusskurse) schließt; spätestens zum Schluss von Tag 40. Im Ausstiegs-Test (Okt. 2026) +0,73 / +0,63 R
+     je Trade statt +0,49 / +0,67 R mit „Tag 20“, Depot +43 % / +31 % statt +20 % / +26 % p. a., kleinere Rückgänge.
+     Die alte Regel läuft als Gegenprobe mit (r20 / res20), damit die Bilanz beide live vergleicht.
 
 Nur abgeschlossene 4H-Kerzen zählen – ein Signal mitten in der Kerze kann wieder verschwinden.
 Fast-Treffer und 9/11 bekommen nur den Setup-Zustand (Seitwärtsphase, 4H-Signale) zur Information – kein Handelssignal.
@@ -29,7 +32,8 @@ from .shortswing import QRULE
 
 NEED = ("R40", "M", "B", "S")
 WINDOW = 10                                        # 4H-Fenster: bis 10 Handelstage nach dem Einstiegstag der Basis
-HOLD = 20
+HOLD = 40                                          # spätestens Tag 40 (Okt. 2026: EMA-Ausstieg statt Tag 20)
+EMA_SPAN, EMA_FROM = 20, 10                        # ab Tag 10: Tagesschluss unter der EMA 20 → Verkauf zur nächsten Eröffnung
 FLAG_DE = {"R40": "RSI", "M": "MACD", "B": "MBI", "S": "Bruch"}
 
 
@@ -216,8 +220,15 @@ def evaluate(df: pd.DataFrame, d: str, hx: pd.DataFrame | None, now: datetime | 
         return {**out, "st": "weg", "why": "Einstieg zu nah am / unter dem Stop"}
     o_, l_, c_ = (b[k].to_numpy(float) for k in ("Open", "Low", "Close"))
     risk = e - sl
+    cost = COST * e / risk
+    R = lambda x: round((x - e) / risk - cost, 3)
     ud = list(dict.fromkeys(days[trig + 1:]))
+    ema, last = _ema_daily(b)
     out["trade"] = {"e": round(e, 4), "sl": round(sl, 4), "ed": str(days[trig + 1]), "ti": str(b.index[trig + 1])}
+    # Gegenprobe (Schatten): alte Regel „Verkauf an Tag 20“ auf demselben Trade
+    sh = _t20(days, o_, l_, c_, trig + 1, sl, ud)
+    if sh:
+        out["trade"].update(r20=R(sh[0]), res20=sh[1])
     end_day = ud[HOLD - 1] if len(ud) >= HOLD else None
     out["trade"]["xd"] = end_day
     for j in range(trig + 1, len(b)):
@@ -225,16 +236,52 @@ def evaluate(df: pd.DataFrame, d: str, hx: pd.DataFrame | None, now: datetime | 
             break
         if l_[j] <= sl:
             x = min(sl, o_[j]) if j > trig + 1 else sl
-            out["trade"].update(x=round(x, 4), r=round((x - e) / risk - COST * e / risk, 3), res="stop", xd=str(days[j]))
+            out["trade"].update(x=round(x, 4), r=R(x), res="stop", xd=str(days[j]))
             return {**out, "st": "stop"}
+        dn = ud.index(days[j]) + 1                 # Handelstag des Trades (1 = Kauftag)
+        if dn >= EMA_FROM and last[j] and c_[j] < ema[j] and days[j] != end_day:
+            out["trade"].update(ema=round(float(ema[j]), 4), xc=round(float(c_[j]), 4), sig=str(days[j]), day=dn)
+            if j + 1 < len(b):                     # Verkauf zur Eröffnung der nächsten 4H-Kerze (nächster Handelstag)
+                x = o_[j + 1]
+                out["trade"].update(x=round(x, 4), r=R(x), res="ema", xd=str(days[j + 1]))
+                return {**out, "st": "ema"}
+            out["trade"].update(now=round(float(c_[j]), 4), r=R(c_[j]))
+            return {**out, "st": "sell"}
     if end_day is not None:
         jx = int(np.flatnonzero(days == end_day)[-1])
         x = c_[jx]
-        out["trade"].update(x=round(x, 4), r=round((x - e) / risk - COST * e / risk, 3), res="zeit")
+        out["trade"].update(x=round(x, 4), r=R(x), res="zeit")
         return {**out, "st": "zeit"}
     x = c_[-1]
-    out["trade"].update(now=round(x, 4), r=round((x - e) / risk - COST * e / risk, 3), day=len(ud))
+    dn = len(ud)
+    out["trade"].update(now=round(x, 4), r=R(x), day=dn, ema=round(float(ema[-1]), 4))
     return {**out, "st": "run"}
+
+
+def _ema_daily(b: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """EMA 20 der Tagesschlusskurse (aus den 4H-Kerzen, wie im Test) je 4H-Kerze und ob die Kerze den Tag abschließt.
+    Die letzte Kerze schließt den Tag nur, wenn der Tag vollständig ist (so viele 4H-Kerzen wie an normalen Tagen)."""
+    dc = b.groupby("day")["Close"].last()
+    ema = b["day"].map(dc.ewm(span=EMA_SPAN, adjust=False).mean()).to_numpy(float)
+    last = (b["day"] != b["day"].shift(-1)).to_numpy()
+    per = b.groupby("day").size()
+    full = int(per.iloc[:-1].tail(15).mode().max()) if len(per) > 1 else 99
+    if int(per.iloc[-1]) < full:
+        last[-1] = False
+    return ema, last
+
+
+def _t20(days, o_, l_, c_, i0: int, sl: float, ud: list) -> tuple[float, str] | None:
+    """Alte Regel: Stop oder Schluss von Tag 20 (für die Gegenprobe in der Bilanz)."""
+    end = ud[19] if len(ud) >= 20 else None
+    for j in range(i0, len(days)):
+        if end is not None and days[j] > end:
+            break
+        if l_[j] <= sl:
+            return (min(sl, o_[j]) if j > i0 else sl), "stop"
+    if end is None:
+        return None
+    return c_[int(np.flatnonzero(days == end)[-1])], "zeit"
 
 
 def setup_now(df: pd.DataFrame, hx: pd.DataFrame | None) -> dict | None:
@@ -264,24 +311,26 @@ def track(old: list[dict], items: list[dict]) -> list[dict]:
             continue
         key = (it["t"], it["d"])
         rec = by.get(key, {"t": it["t"], "n": it.get("n"), "d": it["d"]})
-        rec.update({"e": tr["e"], "sl": tr["sl"], "ed": tr["ed"], "res": tr.get("res") or "run", "r": tr.get("r"),
-                    "xd": tr.get("xd"), "day": tr.get("day")})
+        rec.update({"e": tr["e"], "sl": tr["sl"], "ed": tr["ed"], "res": tr.get("res") or ("sell" if it["st"] == "sell" else "run"),
+                    "r": tr.get("r"), "xd": tr.get("xd"), "day": tr.get("day"), "r20": tr.get("r20"), "res20": tr.get("res20")})
         by[key] = rec
     return sorted(by.values(), key=lambda x: x["ed"], reverse=True)
 
 
 def track_stats(rec: list[dict]) -> dict | None:
-    done = [x for x in rec if x.get("res") in ("stop", "zeit") and x.get("r") is not None]
+    done = [x for x in rec if x.get("res") in ("stop", "zeit", "ema") and x.get("r") is not None]
     if not rec:
         return None
     r = [x["r"] for x in done]
-    return {"n": len(done), "open": sum(x.get("res") == "run" for x in rec),
-            "avg_r": round(sum(r) / len(r), 3) if r else None, "win": round(sum(v > 0 for v in r) / len(r), 3) if r else None}
+    r20 = [x["r20"] for x in done if x.get("r20") is not None]   # Gegenprobe: dieselben Trades mit „Verkauf an Tag 20“
+    return {"n": len(done), "open": sum(x.get("res") in ("run", "sell") for x in rec),
+            "avg_r": round(sum(r) / len(r), 3) if r else None, "win": round(sum(v > 0 for v in r) / len(r), 3) if r else None,
+            "n20": len(r20), "avg_r20": round(sum(r20) / len(r20), 3) if r20 else None}
 
 
-def candidates(sig: list[dict], today: str, days: int = 62) -> list[dict]:
-    """Kairo-Treffer, deren Status noch offen sein kann: bis 10 Tage Basis + 10 Tage 4H-Fenster + 20 Tage Haltedauer
-    ≈ 42 Handelstage ≈ 62 Kalendertage (je Aktie nur der jüngste Treffer)."""
+def candidates(sig: list[dict], today: str, days: int = 90) -> list[dict]:
+    """Kairo-Treffer, deren Status noch offen sein kann: bis 10 Tage Basis + 10 Tage 4H-Fenster
+    + bis 40 Tage halten ≈ 62 Handelstage ≈ 90 Kalendertage (je Aktie nur der jüngste Treffer)."""
     cut = (pd.Timestamp(today) - timedelta(days=days)).strftime("%Y-%m-%d")
     seen, out = set(), []
     for s in sorted(sig, key=lambda x: x["d"], reverse=True):
@@ -303,5 +352,5 @@ def build(cands: list[dict], daily: dict[str, pd.DataFrame], hx: dict[str, pd.Da
             items.append({**c, **evaluate(df, c["d"], hx.get(c["t"]), now, intraday)})
         except Exception as exc:
             print(f"4H: {c['t']} Fehler {exc!r}")
-    rank = {"go": 0, "4h": 1, "basis": 2, "run": 3, "stop": 4, "zeit": 4, "weg": 5}
+    rank = {"sell": 0, "go": 0, "4h": 1, "basis": 2, "run": 3, "stop": 4, "zeit": 4, "ema": 4, "weg": 5}
     return sorted(items, key=lambda x: (rank.get(x["st"], 9), x["d"]))

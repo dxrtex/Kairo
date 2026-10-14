@@ -43,3 +43,35 @@ def test_synced_overrides_from_kursdienst(monkeypatch):
     out = synced(dev)
     assert out["p"][0]["t"] == "RHM.DE" and out["d"] == [] and seen["url"] == "https://k.workers.dev/trades" and seen["params"]["key"] == "k" * 20
     assert synced({"p": [1]}) == {"p": [1]}
+
+
+def test_ema_exit_only_from_day_10_and_closed_days():
+    closes = [100 + i for i in range(30)] + [110]                 # Trend, dann ein Schluss unter der EMA 20
+    idx = [str(d.date()) for d in pd.bdate_range("2026-08-03", periods=len(closes))]
+    df = pd.DataFrame({"Low": closes, "High": closes, "Close": closes}, index=idx)
+    p = {"i": "e1", "t": "X", "n": "X", "d": idx[-12], "sl": 50.0, "x": "2026-12-31", "e": 1}
+    today = str((pd.Timestamp(idx[-1]) + pd.offsets.BDay(1)).date())
+    m = messages({"p": [p]}, {"X": df}, today, {})
+    assert any("EMA 20" in x["title"] for x in m)
+    assert not messages({"p": [{**p, "d": idx[-5]}]}, {"X": df}, today, {})          # erst Tag 5 – zu früh
+    assert not messages({"p": [{**p, "e": None}]}, {"X": df}, today, {})              # kein 4H-Trade – alte Regel
+    assert not messages({"p": [p]}, {"X": df}, idx[-1], {})                           # laufender Tag (110) zählt noch nicht
+
+
+def test_watchlist_only_on_upgrade(monkeypatch):
+    from backend import push, state
+    store = {}
+    monkeypatch.setattr(state, "load", lambda n, d: store.get(n, d))
+    monkeypatch.setattr(state, "save", lambda n, o: store.__setitem__(n, o))
+    rows = [{"ticker": "1211.HK", "name": "BYD", "in_watchlist": True, "fast_hit": True, "missing": ["MBI: grünes X auf roter Spitze"]},
+            {"ticker": "TUI1.DE", "name": "TUI", "in_watchlist": True}, {"ticker": "ZZZ", "name": "Z", "fast_hit": True}]
+    m = push.watch_messages("2026-10-14", rows)
+    assert len(m) == 1 and "BYD" in m[0]["title"] and "MBI" in m[0]["body"]
+    assert push.watch_messages("2026-10-15", rows) == []                            # gleicher Stand: nichts
+    rows[0].update(passed=True)
+    m = push.watch_messages("2026-10-16", rows)
+    assert len(m) == 1 and "Treffer" in m[0]["title"]
+    rows[0].update(passed=False, fast_hit=False)
+    push.watch_messages("2026-10-17", rows)
+    rows[0].update(fast_hit=True)
+    assert push.watch_messages("2026-10-18", rows) == []                            # kurz weg und wieder da: kein zweites Mal

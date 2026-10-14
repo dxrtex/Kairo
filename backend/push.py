@@ -1,6 +1,7 @@
 """Push-Mitteilungen aufs iPad – nur wenn es wichtig ist (Web Push, siehe webpush.py).
 
-Stop erreicht, Kursziel erreicht, Verkaufstag (Tag 20), K.-o. nah/erreicht. Läuft tagsüber alle 30 Minuten (alerts.yml)
+Stop erreicht, Kursziel erreicht, Verkaufstag (Tag 20 bzw. 40), Schluss unter der EMA 20 (4H-Trades ab Tag 10), K.-o. nah/erreicht,
+4H-Bestätigung, Watchlist-Aktie wird Fast-Treffer (10/11) oder Treffer (11/11). Läuft tagsüber alle 30 Minuten (alerts.yml)
 und nach dem Abendscan; jede Meldung kommt nur einmal (state/push_sent.json).
 
 Einrichtung (einmalig): In der App unter Einstellungen → Mitteilungen aktivieren, den angezeigten Code kopieren und als
@@ -54,6 +55,11 @@ def messages(dev: dict, prices: dict, today: str, sent: dict) -> list[dict]:
             add(f"exit:{p.get('i')}", f"📆 Verkaufstag: {n}", "Tag 20 erreicht – laut Kairo-Strategie heute verkaufen (Turbo im Depot verkaufen, Trade im Journal schließen).")
         if df is None or not len(df):
             continue
+        ex = ema_exit(df, p.get("d"), today) if p.get("e") else None
+        if ex:                                         # 4H-Trade: ab Tag 10 Schluss unter der EMA 20 → zur nächsten Eröffnung verkaufen
+            add(f"ema:{p.get('i')}", f"📉 Verkaufen: {n} – Schluss unter der EMA 20",
+                f"Tag {ex['day']}: Schluss {_num(ex['c'])} {cur} unter der EMA 20 ({_num(ex['ema'])} {cur}). Laut 4H-Regel zur nächsten Eröffnung "
+                "verkaufen – egal ob Gewinn oder Verlust (Turbo im Depot verkaufen, Trade im Journal schließen).")
         lo, hi = _hit(df, p.get("d"), "Low", min), _hit(df, p.get("d"), "High", max)
         if p.get("sl") and lo is not None and lo <= p["sl"]:
             add(f"sl:{p.get('i')}", f"🛑 Stop erreicht: {n}", f"Tief {_num(lo)} {cur} unter dem Stop {_num(p['sl'])} {cur}. Prüfe, ob die Stop-Order ausgeführt wurde, und schließe den Trade im Journal.")
@@ -68,6 +74,23 @@ def messages(dev: dict, prices: dict, today: str, sent: dict) -> list[dict]:
             continue
         _ko(add, (d.get("n") or d["t"])[:28], float(df["Close"].dropna().iloc[-1]), float(d["ko"]), d.get("dir", "long"), today, "", "depot")
     return out
+
+
+def ema_exit(df, since: str | None, today: str, span: int = 20, start: int = 10) -> dict | None:
+    """Letzter fertiger Tagesschluss (vor heute) unter der EMA 20 und mindestens Tag 10 des Trades (Kauftag = Tag 1)?"""
+    import numpy as np
+    if not since:
+        return None
+    c = df["Close"].dropna()
+    c = c[[str(i) < today for i in c.index]]
+    if len(c) < span:
+        return None
+    ema = c.ewm(span=span, adjust=False).mean()
+    d = str(c.index[-1])
+    day = int(np.busday_count(since, d)) + 1
+    if day < start or d < since or not float(c.iloc[-1]) < float(ema.iloc[-1]):
+        return None
+    return {"day": day, "c": float(c.iloc[-1]), "ema": float(ema.iloc[-1]), "d": d}
 
 
 def _ko(add, n, c, ko, direction, today, cur, sec):
@@ -90,7 +113,7 @@ def prices_for(devs: list[dict]) -> dict:
                  if x.get("t") and not str(x.get("t")).startswith("~")})
     if not ts:
         return {}
-    h = yf.download(ts, period="2mo", interval="1d", group_by="ticker", auto_adjust=False, progress=False, threads=True)
+    h = yf.download(ts, period="6mo", interval="1d", group_by="ticker", auto_adjust=False, progress=False, threads=True)   # 6 Monate: EMA 20 eingeschwungen
     out = {}
     for t in ts:
         try:
@@ -159,7 +182,7 @@ def h4_update(today: str) -> list[dict]:
     except Exception as exc:
         print(f"4H: Kandidaten nicht geladen ({exc!r})")
         return []
-    cands = [{k: it.get(k) for k in ("t", "n", "d", "cur")} for it in base.get("items") or [] if it.get("st") in ("4h", "go") or (it.get("st") == "run" and ((it.get("trade") or {}).get("day") or 99) <= 2)]   # Basis entsteht erst zum Tagesschluss (Abendscan)
+    cands = [{k: it.get(k) for k in ("t", "n", "d", "cur")} for it in base.get("items") or [] if it.get("st") in ("4h", "go", "run", "sell")]   # Basis entsteht erst zum Tagesschluss (Abendscan); laufende Trades: Stop untertags
     if not cands:
         state.save("h4live.json", {"generated": datetime.now(timezone.utc).isoformat(timespec="minutes"), "items": []})
         print("4H: keine offenen Kandidaten")
@@ -205,8 +228,65 @@ def h4_messages(items: list[dict], today: str, sent: dict, rk: float | None) -> 
         qty = (f" · bei {rk:.0f} € Risiko ≈ {int(rk / dist)} Aktien" if rk and cur == "EUR" else f" · Risiko je Aktie {_num(dist)} {cur}") + " – Turbo-Stückzahl im Einstieg"
         out.append({"title": f"✅ 4H bestätigt: {n} – Einstieg",
                     "body": f"Kairo-Treffer + Seitwärtsphase + 4H (RSI, MACD, MBI, Strukturbruch). Kauf jetzt bzw. zur nächsten Eröffnung "
-                            f"(~{_num(px)} {cur}). Stop {_num(sl)} {cur} ({_pct(dist / px)} Abstand){qty}. Verkauf an Tag 20.{gate}",
+                            f"(~{_num(px)} {cur}). Stop {_num(sl)} {cur} ({_pct(dist / px)} Abstand){qty}. Verkauf ab Tag 10 bei Schluss unter der EMA 20, "
+                            f"spätestens Tag 40 – Kairo meldet sich.{gate}",
                     "url": APP + f"?sec=entry&t={it['t']}", "tag": "kairo-h4"})
+    return out
+
+
+def _short(label: str) -> str:
+    return label.split(":")[0].split("(")[0].strip()
+
+
+def watch_messages(today: str, rows: list[dict] | None = None) -> list[dict]:
+    """Watchlist (data/watchlist.json): Mitteilung, wenn eine Aktie zum Fast-Treffer (10/11) oder Treffer (11/11) wird –
+    nur beim Wechsel nach oben (Zustand in state/watch_state.json), je Firma einmal. Nur Vorbereitung, kein Kaufsignal."""
+    from . import state
+    if rows is None:
+        try:
+            loc = __import__("pathlib").Path(__file__).resolve().parents[1] / "site" / "data" / "results.json"
+            if loc.exists():
+                rows = json.loads(loc.read_text(encoding="utf-8")).get("results") or []
+            else:
+                import requests
+                rows = requests.get(APP + "data/results.json", timeout=60).json().get("results") or []
+        except Exception as exc:
+            print(f"Watchlist: Ergebnisse nicht geladen ({exc!r})")
+            return []
+    lvl = {}
+    for r in rows:
+        if not r.get("in_watchlist"):
+            continue
+        n = (r.get("name") or r["ticker"])[:28]
+        v = 2 if r.get("passed") else 1 if r.get("fast_hit") else 0
+        if v > lvl.get(n, (0,))[0]:
+            lvl[n] = (v, r)
+    # Zustand je Firma: [Stufe, zuletzt gesehen] – eine Woche gemerkt, damit ein kurzes Hin und Her nicht doppelt meldet
+    old = {n: x for n, x in state.load("watch_state.json", {}).items() if isinstance(x, list) and x[1] >= _days_ago(today, 7)}
+    first = not old
+    out = []
+    for n, (v, r) in sorted(lvl.items(), key=lambda x: -x[1][0]):
+        if v <= (old.get(n) or [0])[0]:
+            continue
+        t = r["ticker"]
+        if v == 2:
+            out.append({"title": f"⭐ Treffer aus deiner Watchlist: {n}",
+                        "body": "Alle 11 Kriterien im Tageschart erfüllt. Noch nicht kaufen: erst die Seitwärtsphase (bis 10 Tage), dann die "
+                                "4H-Bestätigung – dafür kommt eine eigene Mitteilung.",
+                        "url": APP + f"?sec=entry&t={t}", "tag": "kairo-watch"})
+        else:
+            miss = ", ".join(_short(m) for m in (r.get("missing") or [])[:2]) or "ein Kriterium"
+            out.append({"title": f"👀 Bald Treffer? {n} – 10 von 11",
+                        "body": f"Fehlt nur noch: {miss}. Noch kein Kaufsignal – Kairo meldet sich, wenn es ein Treffer wird.",
+                        "url": APP + f"?sec=entry&t={t}", "tag": "kairo-watch"})
+    new = {n: [max(v, (old.get(n) or [0])[0]), today] for n, (v, r) in lvl.items() if v}
+    state.save("watch_state.json", {**old, **new})
+    if len(out) > 5:                                   # erste Prüfung bzw. viele auf einmal: eine Sammel-Mitteilung statt Flut
+        names = [m["title"].split(": ", 1)[1].split(" – ")[0] for m in out]
+        out = [{"title": f"👀 Watchlist: {len(out)} Aktien kurz vor oder bei einem Treffer",
+                "body": ", ".join(names[:10]) + (" …" if len(names) > 10 else "") + ". Details in der App unter Watchlist.",
+                "url": APP + "?sec=scanner", "tag": "kairo-watch"}]
+    print(f"Watchlist: {len(out)} Mitteilung(en){' (erste Prüfung)' if first else ''}")
     return out
 
 
@@ -236,9 +316,14 @@ def run(today_iso: str | None = None) -> dict:
     n_sent = failed = 0
     etf_msg = etf_message(today, sent)
     h4_msg = h4_messages(h4_items, today, sent, next((d.get("rk") for d in devs if d.get("rk")), None))
+    try:
+        watch_msg = watch_messages(today)
+    except Exception as exc:
+        print(f"Watchlist: Fehler {exc!r}")
+        watch_msg = []
     for dev in devs:
         sub = dev.get("s") or dev
-        for msg in messages(dev, prices, today, sent) + etf_msg + h4_msg:
+        for msg in messages(dev, prices, today, sent) + etf_msg + h4_msg + watch_msg:
             try:
                 st = webpush.send(sub, msg, k)
                 n_sent += st in (200, 201, 202)

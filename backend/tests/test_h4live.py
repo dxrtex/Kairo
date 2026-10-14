@@ -9,12 +9,13 @@ from backend import h4live as hl
 from backend import h4study as hs
 
 
-def _series(seed: int):
+def _series(seed: int, drift: float = 0.0):
     rng = np.random.default_rng(seed)
     days = pd.bdate_range("2025-01-02", "2026-03-31")
     idx = pd.DatetimeIndex([d + pd.Timedelta(hours=13.5 + k) for d in days for k in range(7)]).tz_localize("UTC")
     reg = np.repeat(rng.choice([0.35, 1.0, 1.6], size=len(days)), 7)
-    c = 50 * np.exp(np.cumsum(rng.normal(0, 1, len(idx)) * np.where(rng.random(len(idx)) < .5, .004, .009) * reg))
+    c = 50 * np.exp(np.cumsum(rng.normal(0, 1, len(idx)) * np.where(rng.random(len(idx)) < .5, .004, .009) * reg
+                                + drift * np.sin(np.arange(len(idx)) / 90)))   # Wellen: Trends, die unter die EMA fallen
     o = np.r_[c[0], c[:-1]]
     h = np.maximum(o, c) * (1 + np.abs(rng.normal(0, .002, len(idx))))
     l = np.minimum(o, c) * (1 - np.abs(rng.normal(0, .002, len(idx))))
@@ -38,12 +39,41 @@ def test_same_trades_as_study():
             cut = daily.index[i + 40]
             r = hl.evaluate(daily[daily.index <= cut], d, hx[hx.index <= (cut + pd.Timedelta(hours=23)).tz_localize("UTC")],
                             now=(cut + pd.Timedelta(days=1)).tz_localize("UTC").to_pydatetime())
-            lv = r.get("trade") if r["st"] in ("stop", "zeit") else None
+            lv = r.get("trade")                    # Gegenprobe „Tag 20“ (r20) = Trade des 4H-Tests
+            lv = lv if lv and lv.get("r20") is not None else None
             assert (v is None) == (lv is None), (seed, d, v, r)
             if v:
                 trades += 1
-                assert v["ti"] == lv["ti"] and abs(v["r"] - lv["r"]) < 2e-3, (seed, d, v, lv)
+                assert v["ti"] == lv["ti"] and abs(v["r"] - lv["r20"]) < 2e-3, (seed, d, v, lv)
     assert trades > 0
+
+
+def test_ema_exit_same_as_exit_study():
+    """Neuer Ausstieg (EMA 20 ab Tag 10, max. Tag 40) = Regel „EMA20 ab T10·T40“ aus dem Ausstiegs-Test."""
+    trades, ema_exits = 0, 0
+    for seed, drift in ((3, 0), (5, 0), (7, .002)):
+        hx, daily = _series(seed, drift)
+        b = hs.to4h(hx)
+        dc = b.groupby("day")["Close"].last()
+        ema = b["day"].map(dc.ewm(span=20, adjust=False).mean()).to_numpy(float)
+        lastbar = (b["day"] != b["day"].shift(-1)).to_numpy()
+        for i in range(60, len(daily) - 70, 2):
+            d = str(daily.index[i].date())
+            px = {**hl._px(daily, i), "s": 0.95}
+            v = hs.kairo_variants({"d": d, "px": px}, b).get("HB|RMBS|zeit")
+            if not v:
+                continue
+            i0 = int(b.index.get_loc(pd.Timestamp(v["ti"])))
+            x = hs._exit_sim(b, i0, v["sl"], {"T": 40, "ema": 20, "from": 10}, ema, lastbar)
+            cut = daily.index[i + 65]
+            r = hl.evaluate(daily[daily.index <= cut], d, hx[hx.index <= (cut + pd.Timedelta(hours=23)).tz_localize("UTC")],
+                            now=(cut + pd.Timedelta(days=1)).tz_localize("UTC").to_pydatetime())
+            if x is None or r["st"] not in ("stop", "zeit", "ema"):
+                continue
+            trades += 1
+            ema_exits += r["st"] == "ema"
+            assert abs(x["r"] - r["trade"]["r"]) < 2e-3, (seed, d, x, r["st"], r["trade"])
+    assert trades > 0 and ema_exits > 0
 
 
 def test_complete_only_drops_running_bars():
