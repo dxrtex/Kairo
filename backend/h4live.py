@@ -15,7 +15,9 @@ Genau die Regeln aus dem 4H-Test (h4study.py, Variante „HB|RMBS|zeit“, Okt. 
      Die alte Regel läuft als Gegenprobe mit (r20 / res20), damit die Bilanz beide live vergleicht.
 
 Nur abgeschlossene 4H-Kerzen zählen – ein Signal mitten in der Kerze kann wieder verschwinden.
-Fast-Treffer und 9/11 bekommen nur den Setup-Zustand (Seitwärtsphase, 4H-Signale) zur Information – kein Handelssignal.
+Ausnahme (Okt. 2026, Feinregel-Test): Fast-Treffer, denen nur das Abklingen beim MBI fehlt (frisches grünes X, Rot noch
+über 70 % der Spitze), laufen genauso durchs 4H-Setup – Kennzeichen „soft“, in der Bilanz getrennt gezählt.
+Übrige Fast-Treffer und 9/11 bekommen nur den Setup-Zustand (Seitwärtsphase, 4H-Signale) zur Information – kein Handelssignal.
 """
 
 from __future__ import annotations
@@ -310,7 +312,7 @@ def track(old: list[dict], items: list[dict]) -> list[dict]:
         if not tr:
             continue
         key = (it["t"], it["d"])
-        rec = by.get(key, {"t": it["t"], "n": it.get("n"), "d": it["d"]})
+        rec = by.get(key, {"t": it["t"], "n": it.get("n"), "d": it["d"], **({"soft": True} if it.get("soft") else {})})
         rec.update({"e": tr["e"], "sl": tr["sl"], "ed": tr["ed"], "res": tr.get("res") or ("sell" if it["st"] == "sell" else "run"),
                     "r": tr.get("r"), "xd": tr.get("xd"), "day": tr.get("day"), "r20": tr.get("r20"), "res20": tr.get("res20")})
         by[key] = rec
@@ -323,7 +325,8 @@ def track_stats(rec: list[dict]) -> dict | None:
         return None
     r = [x["r"] for x in done]
     r20 = [x["r20"] for x in done if x.get("r20") is not None]   # Gegenprobe: dieselben Trades mit „Verkauf an Tag 20“
-    return {"n": len(done), "open": sum(x.get("res") in ("run", "sell") for x in rec),
+    rs = [x["r"] for x in done if x.get("soft")]                  # davon „MBI gelockert“ (10/11)
+    return {"n_soft": len(rs), "avg_r_soft": round(sum(rs) / len(rs), 3) if rs else None,"n": len(done), "open": sum(x.get("res") in ("run", "sell") for x in rec),
             "avg_r": round(sum(r) / len(r), 3) if r else None, "win": round(sum(v > 0 for v in r) / len(r), 3) if r else None,
             "n20": len(r20), "avg_r20": round(sum(r20) / len(r20), 3) if r20 else None}
 
@@ -334,10 +337,10 @@ def candidates(sig: list[dict], today: str, days: int = 90) -> list[dict]:
     cut = (pd.Timestamp(today) - timedelta(days=days)).strftime("%Y-%m-%d")
     seen, out = set(), []
     for s in sorted(sig, key=lambda x: x["d"], reverse=True):
-        if s.get("k") != "hit" or s["d"] < cut or s["t"] in seen:
+        if s.get("k") not in ("hit", "soft") or s["d"] < cut or s["t"] in seen:
             continue
         seen.add(s["t"])
-        out.append({"t": s["t"], "n": s.get("n") or s["t"], "d": s["d"], "cur": s.get("cur")})
+        out.append({"t": s["t"], "n": s.get("n") or s["t"], "d": s["d"], "cur": s.get("cur"), **({"soft": True} if s["k"] == "soft" else {})})
     return out
 
 

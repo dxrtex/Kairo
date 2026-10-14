@@ -182,7 +182,7 @@ def h4_update(today: str) -> list[dict]:
     except Exception as exc:
         print(f"4H: Kandidaten nicht geladen ({exc!r})")
         return []
-    cands = [{k: it.get(k) for k in ("t", "n", "d", "cur")} for it in base.get("items") or [] if it.get("st") in ("4h", "go", "run", "sell")]   # Basis entsteht erst zum Tagesschluss (Abendscan); laufende Trades: Stop untertags
+    cands = [{k: it.get(k) for k in ("t", "n", "d", "cur", "soft") if k != "soft" or it.get(k)} for it in base.get("items") or [] if it.get("st") in ("4h", "go", "run", "sell")]   # Basis entsteht erst zum Tagesschluss (Abendscan); laufende Trades: Stop untertags
     if not cands:
         state.save("h4live.json", {"generated": datetime.now(timezone.utc).isoformat(timespec="minutes"), "items": []})
         print("4H: keine offenen Kandidaten")
@@ -227,7 +227,7 @@ def h4_messages(items: list[dict], today: str, sent: dict, rk: float | None) -> 
                 if b.get("pending") and it["st"] == "go" else "")
         qty = (f" · bei {rk:.0f} € Risiko ≈ {int(rk / dist)} Aktien" if rk and cur == "EUR" else f" · Risiko je Aktie {_num(dist)} {cur}") + " – Turbo-Stückzahl im Einstieg"
         out.append({"title": f"✅ 4H bestätigt: {n} – Einstieg",
-                    "body": f"Kairo-Treffer + Seitwärtsphase + 4H (RSI, MACD, MBI, Strukturbruch). Kauf jetzt bzw. zur nächsten Eröffnung "
+                    "body": f"{'Fast-Treffer (nur MBI-Abklingen fehlt, getrennt gezählt)' if it.get('soft') else 'Kairo-Treffer'} + Seitwärtsphase + 4H (RSI, MACD, MBI, Strukturbruch). Kauf jetzt bzw. zur nächsten Eröffnung "
                             f"(~{_num(px)} {cur}). Stop {_num(sl)} {cur} ({_pct(dist / px)} Abstand){qty}. Verkauf ab Tag 10 bei Schluss unter der EMA 20, "
                             f"spätestens Tag 40 – Kairo meldet sich.{gate}",
                     "url": APP + f"?sec=entry&t={it['t']}", "tag": "kairo-h4"})
@@ -277,7 +277,8 @@ def watch_messages(today: str, rows: list[dict] | None = None) -> list[dict]:
         else:
             miss = ", ".join(_short(m) for m in (r.get("missing") or [])[:2]) or "ein Kriterium"
             out.append({"title": f"👀 Bald Treffer? {n} – 10 von 11",
-                        "body": f"Fehlt nur noch: {miss}. Noch kein Kaufsignal – Kairo meldet sich, wenn es ein Treffer wird.",
+                        "body": f"Fehlt nur noch: {miss}. " + ("Nur das MBI-Abklingen fehlt – darf ins 4H-Setup: Kairo meldet sich bei der 4H-Bestätigung."
+                                if r.get("mbi_soft") else "Noch kein Kaufsignal – Kairo meldet sich, wenn es ein Treffer wird."),
                         "url": APP + f"?sec=entry&t={t}", "tag": "kairo-watch"})
     new = {n: [max(v, (old.get(n) or [0])[0]), today] for n, (v, r) in lvl.items() if v}
     state.save("watch_state.json", {**old, **new})

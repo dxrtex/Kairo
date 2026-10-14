@@ -60,7 +60,8 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
     Ergebnisse bestehender Signale werden trotzdem nachgeführt."""
     sig = state.load("signals.json", [])
     last = state.load("last.json", {})
-    prev = {"hit": set(last.get("hit", [])), "fast": set(last.get("fast", [])), "trend": set(last.get("trend", []))}
+    prev = {"hit": set(last.get("hit", [])), "fast": set(last.get("fast", [])), "trend": set(last.get("trend", [])),
+            "soft": set(last.get("soft", []))}
     known = {(s["t"], s["k"], s["d"]) for s in sig}
     recent = {}
     for s in sig:                                  # letztes Signal je Aktie/Art
@@ -68,6 +69,7 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
     new = []
     cand = [(r, "hit" if r["passed"] else "fast" if r.get("fast_hit") else None, r.get("plan") or {}) for r in rows]
     cand += [(r, "trend", r["tr"].get("plan") or {}) for r in rows if (r.get("tr") or {}).get("ok")]   # zweites Setup
+    cand += [(r, "soft", r.get("plan") or {}) for r in rows if r.get("mbi_soft")]   # 10/11 nur MBI-Abklingen fehlt → 4H-Setup
     for r, k, p in (cand if record else []):
         if not k or not p.get("stop") or not p.get("entry"):
             continue
@@ -117,6 +119,7 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
     state.save("last.json", {"date": today, "hit": [r["ticker"] for r in rows if r["passed"]],
                              "fast": [r["ticker"] for r in rows if r.get("fast_hit")],
                              "trend": [r["ticker"] for r in rows if (r.get("tr") or {}).get("ok")],
+                             "soft": [r["ticker"] for r in rows if r.get("mbi_soft")],
                              "met": {r["ticker"]: r.get("met") for r in rows}})
     try:
         bt = json.loads((ROOT / "data" / "bilanz_backtest.json").read_text(encoding="utf-8"))

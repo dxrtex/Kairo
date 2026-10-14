@@ -251,7 +251,7 @@ def result_row(res, meta: dict) -> dict:
         "ticker": res.ticker, "name": meta.get("name", res.ticker), "exchange": meta.get("exchange", ""),
         "region": meta.get("region", ""), "country": meta.get("country", ""), "sector": meta.get("sector", ""),
         "currency": res.flags.get("currency"), "market_cap_usd": res.flags.get("market_cap_usd"),
-        "date": res.date, "close": res.close, "score": res.score, "passed": res.passed, "fast_hit": res.fast_hit, "near_hit": res.near_hit,
+        "date": res.date, "close": res.close, "score": res.score, "passed": res.passed, "fast_hit": res.fast_hit, "near_hit": res.near_hit, "mbi_soft": res.mbi_soft,
         "missing": [c.label for c in res.missing], "in_watchlist": bool(meta.get("in_watchlist")),
         "met": sum(c.ok for c in res.criteria if c.key not in ("cap", "liquidity", "price", "history")),
         "total": sum(1 for c in res.criteria if c.key not in ("cap", "liquidity", "price", "history")),
