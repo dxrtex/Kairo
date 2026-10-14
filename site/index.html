@@ -1205,7 +1205,7 @@ const GLOSS = {
   trend: ["Prognose", "Wohin sich die Zahl der erfüllten Kriterien in den nächsten 5 Tagen voraussichtlich bewegt: ▲ mehr, ▼ weniger, ► gleich. Hilft bei Fast-Treffern einzuschätzen, ob bald ein Treffer daraus wird."],
   grade: ["Stufe A/B/C", "Qualitätsstufe der Treffer aus einem geprüften Modell. A = im Test die besten Signale."],
   status: ["Treffer, Fast, Trend", "Treffer: alle 11 Kairo-Kriterien erfüllt (Wende nach Korrektur). Fast: 1–2 fehlen. Trend: zweites Setup – Rücksetzer an die EMA 50 im klaren Aufwärtstrend; „Top“ = im Test stärkste Stufe."],
-  h4: ["4H-Top-Setup", "Kairo-Treffer (11/11) → 5 enge Tage (Seitwärtsphase) → in derselben 4-Stunden-Kerze: RSI war ≤ 40 und steigt, MACD kreuzt nach oben, grünes MBI-X (beides in den letzten 6 Kerzen ≈ 3 Tage) und Schluss über dem Hoch der 6 Kerzen davor. Dann Kauf zur nächsten 4H-Kerze, Stop unter der Basis, Verkauf zum Schluss von Tag 20. Im Test (Sept. 2023 – Okt. 2026) +0,39 / +0,54 R je Trade statt +0,10 / +0,11 R ohne 4H."],
+  h4: ["4H-Top-Setup", "Kairo-Treffer (11/11) → 5 enge Tage (Seitwärtsphase) → in derselben 4-Stunden-Kerze: RSI war ≤ 40 und steigt, MACD kreuzt nach oben, grünes MBI-X (beides in den letzten 6 Kerzen ≈ 3 Tage) und Schluss über dem Hoch der 6 Kerzen davor. Dann Kauf zur nächsten 4H-Kerze, Stop unter der Basis. Verkauf: ab Tag 10 am Morgen nach dem ersten Tagesschluss unter der EMA 20, spätestens an Tag 40. Im Test (Sept. 2023 – Okt. 2026) +0,41 / +0,61 R je Trade statt +0,10 / +0,11 R ohne 4H; der EMA-Ausstieg brachte im Depot +43 % / +31 % p. a. statt +20 % / +26 % mit „Verkauf an Tag 20“."],
   ko: ["Knock-out (K.-o.)", "Fällt der Kurs auf die K.-o.-Schwelle, verfällt der Turbo fast wertlos – auch untertags. Je näher die Schwelle am Kurs, desto höher der Hebel und das Risiko."],
   lev: ["Hebel", "Um wie viel stärker sich der Turbo bewegt als die Aktie: Hebel 5 → +2 % Aktie ≈ +10 % Turbo. Ergibt sich aus dem Abstand zur K.-o.-Schwelle (Kurs ÷ Abstand)."],
   r: ["R (Risiko-Einheit)", "Ergebnis gemessen am Risiko bis zum Stop: −1 R = Stop erreicht, +2 R = doppelt so viel gewonnen wie riskiert. Macht Trades unabhängig von der Positionsgröße vergleichbar."],
@@ -1584,7 +1584,7 @@ const COLS = [
   { k: "ticker", l: "Ticker", g: r => r.ticker, h: r => `<span class="tk">${favBtn(r.ticker)}<a href="#" data-card="${esc(r.ticker)}">${esc(r.ticker)}</a>${wlTag(r)}</span>` },
   { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm" data-card="${esc(r.ticker)}">${esc((r.name || r.ticker).slice(0, 28))}</a>` },
   { k: "trend", l: "Prognose", g: r => r.trend ? (r.trend.fc ? r.trend.fc.d : r.trend.slope + (r.trend.d5 ?? 0) / 10) : 0, h: r => trendHtml(r) || "–" },
-  { k: "status", l: "Status", g: r => r.passed ? 3 : isTrend(r) ? 2 : r.fast_hit ? 1 : r.near_hit ? .5 : 0, h: r => (r.passed ? `<span class="st hit">Treffer</span>${(it => it ? `<span class="st${h4Go(it) ? " hit" : ""}">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : "")(h4Of(r.ticker))}` : r.fast_hit && !isTrend(r) ? `<span class="st fast">Fast</span>` : r.near_hit && !isTrend(r) ? `<span class="st">9/11 · kein Treffer</span>` : isTrend(r) ? "" : `<span class="st">Watchlist</span>`) + (isTrend(r) ? `<span class="st trend">${r.tr.top ? "Trend Top" : "Trend"}</span>` : "") },
+  { k: "status", l: "Status", g: r => r.passed ? 3 : isTrend(r) ? 2 : r.fast_hit ? 1 : r.near_hit ? .5 : 0, h: r => (r.passed ? `<span class="st hit">Treffer</span>${(it => it ? `<span class="st${h4Go(it) ? " hit" : ""}">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : "")(h4Of(r.ticker))}` : r.fast_hit && !isTrend(r) ? `<span class="st fast">Fast</span>` : r.near_hit && !isTrend(r) ? `<span class="st">9/11 · kein Treffer</span>` : isTrend(r) ? "" : `<span class="st" title="${esc((stageOf(r) || {}).t || "")}">Watchlist${r.met != null ? ` · ${r.met}/${r.total || 11}` : ""}</span>`) + (isTrend(r) ? `<span class="st trend">${r.tr.top ? "Trend Top" : "Trend"}</span>` : "") },
   { k: "chk", l: "Rücksetzer-Check", n: 1, g: r => chkP(r) ?? -1, h: r => chkCell(r) },
   { k: "grade", l: "Stufe", g: r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0, h: r => gradeBadge(r) || `<span class="muted">–</span>` },
   { k: "exchange", l: "Börse", g: r => r.exchange, h: r => esc(r.exchange) },
@@ -1840,7 +1840,7 @@ function planFor(ts, name) {
 function stratOf(plan) {
   if (!plan) return null;
   const today = new Date(isoD(new Date()) + "T12:00:00"), d0 = new Date(plan.d + "T12:00:00"), sell = plan.exit2 || plan.exit;
-  const hold = KMAX.hold, day = bdBetween(d0, today) + 1, left = Math.max(0, bdBetween(today, new Date(sell + "T12:00:00")));
+  const hold = plan.hold || KMAX.hold, day = bdBetween(d0, today) + 1, left = Math.max(0, bdBetween(today, new Date(sell + "T12:00:00")));
   const r = rowOf(plan.t) || rowOf(tkClean(plan.t)), c = r ? r.c : null, fx = toEur(1, plan.cur || "EUR") || 1, fe = v => v == null ? "–" : fmt(v * fx);
   const risk1 = plan.E - plan.stop, R = c != null && risk1 > 0 ? (c - plan.E) / risk1 : null;
   const slDist = c != null ? (c - plan.stop) / c : null, slAtr = c != null && plan.atr ? (c - plan.stop) / plan.atr : null;
@@ -1850,7 +1850,9 @@ function stratOf(plan) {
   if (c == null) [tone, t, s] = ["gray", "Kein aktueller Kurs", "Stop und Verkaufstag gelten trotzdem – in Scalable prüfen."];
   else if (c <= plan.stop) [tone, t, s] = ["red", "Stop unterschritten – verkaufen", `Kurs ${fe(c)} € liegt unter dem Stop ${fe(plan.stop)} €. Regel: raus, nicht auf Erholung hoffen.`];
   else if (isoD(today) >= sell) [tone, t, s] = ["yellow", "Verkaufstag erreicht – heute verkaufen", cut ? "Vor den Quartalszahlen raus – egal ob Gewinn oder Verlust." : `Tag ${hold} erreicht – egal ob Gewinn oder Verlust. So hat die Strategie im Test am meisten verdient.`];
+  else if (emaExit(plan, r)) [tone, t, s] = ["yellow", "Schluss unter der EMA 20 – verkaufen", `Ab Tag ${H4X.from} gilt: schließt ein Tag unter der EMA 20 (${fe(r.e20)} €), zur nächsten Eröffnung verkaufen – egal ob Gewinn oder Verlust.`];
   else if (slAtr != null && slAtr < .5) [tone, t, s] = ["orange", "Stop nah – nichts tun", `Nur noch ${fmt(slAtr, 1)} Tagesspannen (ATR) bis zum Stop. Stop arbeiten lassen, nie nach unten verschieben.`];
+  else if (plan.ema) [tone, t, s] = ["green", `Halten bis Stop, EMA 20 oder ${dateDE(sell)}`, `Kein Gewinnziel. Ab Tag ${H4X.from} raus, sobald ein Tag unter der EMA 20 schließt${r && r.e20 ? ` (jetzt ${fe(r.e20)} €)` : ""}, spätestens ${cut ? "vor den Quartalszahlen" : `an Tag ${hold}`}. Stop nicht verschieben.`];
   else [tone, t, s] = ["green", `Halten bis Stop oder ${dateDE(sell)}`, `Kein Gewinnziel: Gewinner laufen bis zum Verkaufstag${cut ? " (vor den Quartalszahlen)" : ` (Tag ${hold})`}. Nicht vorher verkaufen, Stop nicht verschieben.`];
   return { plan, day, hold, sell, left, c, R, slDist, slAtr, koAtr, cut, tone, t, s, fe };
 }
@@ -3024,7 +3026,7 @@ function getJson(name) {
   return jsonData[name];
 }
 const byTicker = t => data.results.find(r => r.ticker === t);
-// ---------- 4H-Top-Setup (backend/h4live.py): Treffer → Seitwärtsphase → 4H-Bestätigung → Kauf → Verkauf an Tag 20 ----------
+// ---------- 4H-Top-Setup (backend/h4live.py): Treffer → Seitwärtsphase → 4H-Bestätigung → Kauf → Verkauf unter der EMA 20 (ab Tag 10, max. 40) ----------
 // Test (h4study.py, Okt. 2026): +0,39 / +0,54 R je Trade statt +0,10 / +0,11 R ohne 4H. Abends kommt h4.json mit dem Scan,
 // tagsüber prüft der Mitteilungsdienst alle 30 Min. nach jeder fertigen 4H-Kerze (h4live.json im Branch kairo-alerts).
 const H4LIVE_URL = REPO.replace("https://github.com/", "https://raw.githubusercontent.com/") + "/kairo-alerts/h4live.json";
@@ -3051,15 +3053,17 @@ function h4Text(it) {
   const cur = it.cur || "", b = it.base || {}, tr = it.trade || {}, P = v => `${fmt(v)} ${cur}`.trim();
   const R = v => v == null ? "" : `${v >= 0 ? "+" : ""}${fmt(v, 2)} R`;
   if (h4Go(it)) return { tone: "green", ic: "✅", short: "4H bestätigt", t: "4H bestätigt – Einstieg jetzt",
-    s: `${tr.e ? `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)}` : `Kauf zur Eröffnung der nächsten 4H-Kerze (zuletzt ${P((it.trig || {}).c)})`} · Stop ${P(b.sl)} · Verkauf zum Schluss von Tag 20.${b.pending && !tr.e ? ` Nur kaufen, wenn die Eröffnung zwischen ${P(b.lo)} und ${P(b.hi)} liegt – sonst verfällt das Setup (so getestet).` : ""}` };
+    s: `${tr.e ? `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)}` : `Kauf zur Eröffnung der nächsten 4H-Kerze (zuletzt ${P((it.trig || {}).c)})`} · Stop ${P(b.sl)} · Verkauf ab Tag 10 bei Schluss unter der EMA 20, spätestens Tag 40.${b.pending && !tr.e ? ` Nur kaufen, wenn die Eröffnung zwischen ${P(b.lo)} und ${P(b.hi)} liegt – sonst verfällt das Setup (so getestet).` : ""}` };
   if (it.st === "4h") return { tone: "yellow", ic: "⏳", short: "wartet auf 4H", t: "Seitwärtsphase fertig – wartet auf die 4H-Bestätigung",
     s: `Stop ${P(b.sl)} (Basis ${P(b.lo)}–${P(b.hi)})${b.pending ? " · Basis gilt, wenn die nächste Eröffnung darin liegt" : ""} · ${it.lim ? `Fenster bis ${dateDE(it.lim)}` : `noch ${it.lim_left} Handelstage Zeit`}. Erst kaufen, wenn alle vier Signale zugleich stehen – die Mitteilung kommt automatisch.` };
   if (it.st === "basis") return { tone: "yellow", ic: "⏳", short: `Basis Tag ${it.day}/10`, t: `Wartet auf die Seitwärtsphase · Tag ${it.day} von 10`,
     s: `Treffer vom ${dateDE(it.d)}. Noch ${it.left} Handelstage Zeit für 5 enge Tage – danach beginnt die 4H-Prüfung.` };
-  if (it.st === "run") return { tone: "blue", ic: "▶", short: `läuft Tag ${tr.day}/20`, t: `4H-Trade läuft · Tag ${tr.day} von 20`,
-    s: `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)} · Stop ${P(tr.sl)} · Stand ${R(tr.r)}. Ein späterer Einstieg ist nicht getestet.` };
-  if (it.st === "stop" || it.st === "zeit") return { tone: "gray", ic: it.st === "stop" ? "🛑" : "🏁", short: it.st === "stop" ? "Stop" : "Tag 20",
-    t: `Beendet: ${it.st === "stop" ? "Stop" : "Verkauf an Tag 20"} · ${R(tr.r)}`, s: `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)}, Verkauf ${dateDE(tr.xd)} zu ${P(tr.x)}.` };
+  if (it.st === "sell") return { tone: "yellow", ic: "📉", short: "verkaufen", t: `Schluss unter der EMA 20 – zur nächsten Eröffnung verkaufen`,
+    s: `Tag ${tr.day}: Schluss ${P(tr.xc)} unter der EMA 20 (${P(tr.ema)}). Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)} · Stand ${R(tr.r)}.` };
+  if (it.st === "run") return { tone: "blue", ic: "▶", short: `läuft Tag ${tr.day}/40`, t: `4H-Trade läuft · Tag ${tr.day} von höchstens 40`,
+    s: `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)} · Stop ${P(tr.sl)} · Stand ${R(tr.r)}${tr.ema ? ` · EMA 20 ${P(tr.ema)}${tr.day >= 10 ? " (gilt jetzt)" : ` (gilt ab Tag 10)`}` : ""}. Ein späterer Einstieg ist nicht getestet.` };
+  if (["stop", "zeit", "ema"].includes(it.st)) return { tone: "gray", ic: it.st === "stop" ? "🛑" : "🏁", short: { stop: "Stop", zeit: "Tag 40", ema: "EMA 20" }[it.st],
+    t: `Beendet: ${{ stop: "Stop", zeit: "Verkauf an Tag 40", ema: "Schluss unter der EMA 20" }[it.st]} · ${R(tr.r)}${tr.r20 != null ? ` (mit „Tag 20“: ${R(tr.r20)})` : ""}`, s: `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)}, Verkauf ${dateDE(tr.xd)} zu ${P(tr.x)}.` };
   return { tone: "gray", ic: "✕", short: "verfallen", t: "Verfallen – kein Trade", s: `${it.why || "Bedingungen nicht erfüllt"} (Treffer vom ${dateDE(it.d)}).` };
 }
 const h4Badge = it => { if (!it) return ""; const x = h4Text(it); return `<span class="status ${x.tone === "green" ? "st-h4go" : x.tone === "yellow" ? "st-h4" : "st-kein_setup"}">${x.ic} 4H: ${esc(x.short)}</span>`; };
@@ -3071,13 +3075,14 @@ function h4CardHtml() {
   const its = d.items || [], go = its.filter(h4Go), nf = x => H4F.filter(([k]) => (x.fl || {})[k]).length,
     wait4 = its.filter(x => x.st === "4h").sort((a, b) => nf(b) - nf(a));          // am nächsten an der Bestätigung zuerst
   const nBase = its.filter(x => x.st === "basis").length, nRun = its.filter(x => x.st === "run" && !h4Go(x)).length;
-  const act = [...go, ...wait4.slice(0, Math.max(0, 4 - go.length))];
+  const sell = its.filter(x => x.st === "sell");                                   // Verkaufssignal (Schluss unter der EMA 20) zuerst
+  const act = [...sell, ...go, ...wait4.slice(0, Math.max(0, 4 - go.length))];
   const when = d.live || d.generated, tm = when ? new Date(when).toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "–";
   const rows = act.map(it => { const x = h4Text(it);
-    return `<button class="h4row${h4Go(it) ? " go" : ""}" data-ein="${esc(it.t)}"><i>${x.ic}</i><span><b>${esc(it.n || it.t)} · ${esc(x.short)}</b><em>${esc(it.st === "4h" ? `Stop ${fmt((it.base || {}).sl)} ${it.cur || ""} · ${it.lim ? "bis " + dateDE(it.lim) : `noch ${it.lim_left} Handelstage`} · ${nf(it)} von 4 Signalen` : x.s)}</em>${it.st === "4h" ? `<div>${h4Flags(it.fl)}</div>` : ""}</span></button>`; }).join("");
+    return `<button class="h4row${h4Go(it) || it.st === "sell" ? " go" : ""}" data-ein="${esc(it.t)}"><i>${x.ic}</i><span><b>${esc(it.n || it.t)} · ${esc(x.short)}</b><em>${esc(it.st === "4h" ? `Stop ${fmt((it.base || {}).sl)} ${it.cur || ""} · ${it.lim ? "bis " + dateDE(it.lim) : `noch ${it.lim_left} Handelstage`} · ${nf(it)} von 4 Signalen` : x.s)}</em>${it.st === "4h" ? `<div>${h4Flags(it.fl)}</div>` : ""}</span></button>`; }).join("");
   return `<div class="hcard">${hHead("⚡ 4H-Top-Setup " + gl("h4"))}
     ${rows || `<div class="note" style="margin:0">Gerade nichts zu tun – kein Treffer mit fertiger Seitwärtsphase.</div>`}
-    ${wait4.length > act.length - go.length || nBase || nRun ? `<div class="note" style="margin:6px 0 0">${[wait4.length - (act.length - go.length) > 0 ? `${wait4.length - (act.length - go.length)} weitere warten auf 4H` : "", nBase ? `${nBase} warten auf die Seitwärtsphase` : "", nRun ? `${nRun} laufende 4H-Trades` : ""].filter(Boolean).join(" · ")} – <a href="#" data-gokinds="hit">alle im Scanner</a></div>` : ""}
+    ${wait4.length > act.length - go.length - sell.length || nBase || nRun ? `<div class="note" style="margin:6px 0 0">${[wait4.length - (act.length - go.length - sell.length) > 0 ? `${wait4.length - (act.length - go.length - sell.length)} weitere warten auf 4H` : "", nBase ? `${nBase} warten auf die Seitwärtsphase` : "", nRun ? `${nRun} laufende 4H-Trades` : ""].filter(Boolean).join(" · ")} – <a href="#" data-gokinds="hit">alle im Scanner</a></div>` : ""}
     <div class="note" style="margin:8px 0 0">Stand ${esc(tm)} · alle 30 Min. geprüft – bei Bestätigung kommt eine Mitteilung.</div></div>`;
 }
 function h4BilanzHtml() {
@@ -3085,11 +3090,12 @@ function h4BilanzHtml() {
   const st = d.track.stats, l = d.track.list || [];
   return `<div class="hcard">${hHead("4H-Top-Setup · live gezählt")}
     <div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Abgeschlossen</span><b>${st ? st.n : 0}</b><em>${st ? st.open : 0} laufen</em></div>
-      <div class="mt"><span>Ø je Trade</span><b class="${st && st.avg_r >= 0 ? "up" : st && st.avg_r != null ? "down" : ""}">${st && st.avg_r != null ? `${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R` : "–"}</b><em>Test +0,39 / +0,54 R</em></div>
+      <div class="mt"><span>Ø je Trade · EMA 20</span><b class="${st && st.avg_r >= 0 ? "up" : st && st.avg_r != null ? "down" : ""}">${st && st.avg_r != null ? `${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R` : "–"}</b><em>Test +0,73 / +0,63 R</em></div>
+      <div class="mt"><span>Gegenprobe · Tag 20</span><b class="${st && st.avg_r20 >= 0 ? "up" : st && st.avg_r20 != null ? "down" : ""}">${st && st.avg_r20 != null ? `${st.avg_r20 >= 0 ? "+" : ""}${fmt(st.avg_r20, 2)} R` : "–"}</b><em>Test +0,49 / +0,67 R</em></div>
       <div class="mt"><span>Gewinner</span><b>${st && st.win != null ? pct(st.win, 0) : "–"}</b><em>Test ≈ 35–40 %</em></div></div>
     ${l.length ? `<div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Aktie</th><th class="num">Einstieg</th><th>Ergebnis</th></tr></thead><tbody>${l.slice(0, 15).map(x =>
-      `<tr><td><b>${esc(x.n || x.t)}</b><small>Treffer ${dateDE(x.d)}</small></td><td class="num">${dateDE(x.ed)}<small>${fmt(x.e)}</small></td><td class="${x.r == null ? "" : x.r >= 0 ? "up" : "down"}">${x.res === "run" ? `läuft · Tag ${x.day || "–"}/20 ` : x.res === "stop" ? "Stop " : "Tag 20 "}${x.r != null ? `<b>${x.r >= 0 ? "+" : ""}${fmt(x.r, 2)} R</b>` : ""}</td></tr>`).join("")}</tbody></table></div>`
-      : `<div class="note" style="margin:0">Noch keine bestätigten 4H-Trades. Jeder Kairo-Treffer, der Seitwärtsphase und 4H-Bestätigung schafft, wird hier automatisch mitgezählt – getrennt von der bisherigen Strategie, damit wir Live gegen Test vergleichen können.</div>`}</div>`;
+      `<tr><td><b>${esc(x.n || x.t)}</b><small>Treffer ${dateDE(x.d)}</small></td><td class="num">${dateDE(x.ed)}<small>${fmt(x.e)}</small></td><td class="${x.r == null ? "" : x.r >= 0 ? "up" : "down"}">${x.res === "run" ? `läuft · Tag ${x.day || "–"}/40 ` : x.res === "sell" ? "verkaufen " : x.res === "stop" ? "Stop " : x.res === "ema" ? "EMA 20 " : x.res === "zeit" ? (x.day || 0) > 20 || !x.r20 ? "Tag 40 " : "Tag 20 " : ""}${x.r != null ? `<b>${x.r >= 0 ? "+" : ""}${fmt(x.r, 2)} R</b>` : ""}${x.r20 != null && x.res !== "run" && x.res !== "sell" ? `<small>Tag 20: ${x.r20 >= 0 ? "+" : ""}${fmt(x.r20, 2)} R</small>` : ""}</td></tr>`).join("")}</tbody></table></div>`
+      : `<div class="note" style="margin:0">Noch keine bestätigten 4H-Trades. Jeder Kairo-Treffer, der Seitwärtsphase und 4H-Bestätigung schafft, wird hier automatisch mitgezählt – getrennt von der bisherigen Strategie, damit wir Live gegen Test vergleichen können. Verkauft wird unter der EMA 20 (ab Tag 10, spätestens Tag 40); die alte Regel „Verkauf an Tag 20“ läuft als Gegenprobe mit.</div>`}</div>`;
 }
 // ---------- Tagesbriefing: das Wichtigste seit dem letzten Scan, als Fenster beim Öffnen ----------
 function briefHtml() {
@@ -3219,13 +3225,30 @@ function changesHtml() {
     ${moves.length || lostMine.length ? `<div class="hsub">Deine Aktien</div>${moves.slice(0, 6).map(([t, a, b]) => rowL(t, `<span class="mv ${b > a ? "up" : "down"}">${a} → ${b}/11</span>`)).join("")}${lostMine.map(t => rowL(t, `<span class="mv down">kein Treffer mehr</span>`)).join("")}` : ""}
     ${nh.length ? `<div class="hsub">Neue Treffer</div>${nh.slice(0, 6).map(r => rowL(r.ticker)).join("")}` : ""}</div>`;
 }
+// Stufe einer Aktie auf dem Weg zum Einstieg: 1D-Kriterien (x/11, was fehlt) → Seitwärtsphase → 4H-Signale → Kauf
+const shortCrit = l => String(l || "").split(":")[0].split("(")[0].replace(/^RSI aktuell.*/, "RSI 28–48").trim();
+function stageOf(r) {
+  const it = h4Of(r.ticker), n = h4Now(r.ticker);
+  if (it && it.st !== "weg") {
+    const x = h4Text(it), nf = H4F.filter(([k]) => (it.fl || {})[k]);
+    if (it.st === "4h") return { lv: 4, t: `Treffer ✓ → Basis ✓ → 4H ${nf.length}/4${nf.length < 4 ? ` · fehlt ${H4F.filter(([k]) => !(it.fl || {})[k]).map(z => z[1]).join(", ")}` : ""}` };
+    if (it.st === "basis") return { lv: 3, t: `Treffer ✓ → Seitwärtsphase Tag ${it.day}/10 → 4H` };
+    return { lv: h4Go(it) || it.st === "sell" ? 5 : 2, t: `${x.ic} ${x.short}` };
+  }
+  if (r.met == null || r.met < 8) return null;
+  const miss = (r.missing || []).map(shortCrit).slice(0, 2).join(", ");
+  const base = n ? ` · Basis ${n.b ? "✓" : "✗"}` : "";
+  return { lv: r.passed ? 3 : r.fast_hit ? 2 : 1, t: `1D ${r.met}/${r.total || 11}${miss ? ` · fehlt ${miss}` : ""}${base}` };
+}
 function myStocksHtml() {
+  const lvOf = r => (stageOf(r) || { lv: 0 }).lv;
   const mine = myTickers(), list = data.results.filter(r => mine.has(r.ticker))
-    .sort((a, b) => b.passed - a.passed || b.fast_hit - a.fast_hit || (b.met ?? 0) - (a.met ?? 0));
+    .sort((a, b) => lvOf(b) - lvOf(a) || b.passed - a.passed || b.fast_hit - a.fast_hit || (b.met ?? 0) - (a.met ?? 0));
   if (!list.length) return `<div class="hcard">${hHead("Deine Aktien")}<div class="note" style="margin:0">Tippe im Scanner bei einer Aktie auf ☆ – dann erscheint sie hier mit Status und Prognose.</div></div>`;
   return `<div class="hcard">${hHead("Deine Aktien", `data-gokinds="fav,watch"`, "Liste")}
-    ${list.slice(0, 9).map(r => `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${favs().has(r.ticker) ? "★ " : depotTickers().has(r.ticker) ? "◆ " : ""}${esc((r.name || r.ticker).slice(0, 28))}<small>${esc(r.hint && r.hint.title || "")}</small></span>${statusPill(r)}${trendHtml(r)}</button>`).join("")}
-    ${list.length > 9 ? `<div class="note" style="margin:6px 0 0">+ ${list.length - 9} weitere</div>` : ""}</div>`;
+    ${list.slice(0, 9).map(r => `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${favs().has(r.ticker) ? "★ " : depotTickers().has(r.ticker) ? "◆ " : ""}${esc((r.name || r.ticker).slice(0, 28))}<small>${esc((stageOf(r) || {}).t || r.hint && r.hint.title || "")}</small></span>${statusPill(r)}${trendHtml(r)}</button>`).join("")}
+    ${list.length > 9 ? `<div class="note" style="margin:6px 0 0">+ ${list.length - 9} weitere</div>` : ""}
+    <div class="note" style="margin:6px 0 0">Weg zum Einstieg: 1D 11/11 → Seitwärtsphase → 4H-Bestätigung → Kauf. Bei 10/11 und 11/11 aus deiner Watchlist kommt eine Mitteilung.</div></div>`;
 }
 function topHitsHtml() {
   const gv = r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0;
@@ -3329,6 +3352,7 @@ function postfachItems() {
   const nf = x => H4F.filter(([k]) => (x.fl || {})[k]).length;
   const h4its = (h4d && h4d.items) || [];
   h4its.filter(h4Go).forEach(it => out.now.push({ t: it.t, c: "g", n: `${it.n || it.t} einsteigen – 4H bestätigt`, d: h4Text(it).s }));
+  h4its.filter(it => it.st === "sell").forEach(it => out.now.push({ t: it.t, c: "y", n: `${it.n || it.t}: 4H-Trade verkaufen – Schluss unter der EMA 20`, d: h4Text(it).s }));
   h4its.filter(it => it.st === "4h").sort((a, b) => nf(b) - nf(a)).forEach(it => out.prep.push({ t: it.t, c: "y", n: `${it.n || it.t} – wartet auf 4H`,
     d: `${nf(it)} von 4 Signalen · Stop ${fmt((it.base || {}).sl)} ${it.cur || ""}` }));
   if (h4d) h4its.forEach(it => h4seen.add(it.t));
@@ -3603,7 +3627,7 @@ function pushCode(sub) {
   const d = depotLoad().filter(p => p.t).map(p => p.d && p.d.ko ? { t: p.t, dir: p.d.dir, ko: p.d.ko } : { t: p.t });
   const seen = new Set(), dep = d.filter(x => { const k = x.t + (x.ko || ""); if (seen.has(k)) return false; seen.add(k); return true; });
   // offene Trade-Pläne: nur Kursmarken und Daten (Stop, Ziel, K.-o., Verkaufstag) – keine Beträge
-  const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).includes(":")).map(x => ({ i: x.id, t: String(x.t).replace(/^~/, ""), n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit }));
+  const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).includes(":")).map(x => ({ i: x.id, t: String(x.t).replace(/^~/, ""), n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit, ...(x.ema ? { e: 1 } : {}) }));
   const yq = liveKey("yq");                                   // mit Kursdienst: Trades holt die Prüfung dort – kein Secret-Update je Trade
   const rk = Math.round(tpCfg().depot * tpCfg().risk / 100);   // Risiko je Trade in € – nur für die Stückzahl in der 4H-Mitteilung
   return JSON.stringify({ s: sub.toJSON ? sub.toJSON() : sub, d: dep, p, rk, ...(yq ? { sync: yq, key: syncKey() } : {}) });
@@ -3613,7 +3637,7 @@ let pushSub = null;
 const syncKey = () => { let k = liveKey("sk"); if (!k) { k = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()).replace(/-/g, ""); try { localStorage.setItem("kx-sk", k); } catch (e) {} } return k; };
 function syncPayload() {
   const d = depotLoad().filter(p => p.t).map(p => p.d && p.d.ko ? { t: p.t, dir: p.d.dir, ko: p.d.ko } : { t: p.t });
-  const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).includes(":")).map(x => ({ i: x.id, t: String(x.t).replace(/^~/, ""), n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit }));
+  const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).includes(":")).map(x => ({ i: x.id, t: String(x.t).replace(/^~/, ""), n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit, ...(x.ema ? { e: 1 } : {}) }));
   return { d, p };
 }
 async function kxSync() {
@@ -4033,6 +4057,7 @@ const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52,
 // Kapital passt (1× = Aktie, sonst 2/3/5/10× mit K.-o. ≥ 1 ATR unter dem SL) – Finanzierung kostet bei 10× rund die Hälfte des Vorteils.
 // Ehrlich gerechnet (Turbo-Kosten, täglicher Depotwert): +11 bis +20 % p. a. je nach Aktien-Stichprobe, Prüfjahre 2024–26 +4 bis +18 %,
 // größter Rückgang 35–50 %. Risiko-Verdopplung im Ausverkauf und Tag-5-Ausstieg hielten auf beiden Stichproben nicht.
+const H4X = { hold: 40, from: 10 };   // 4H-Top-Setup: Ausstieg EMA 20 ab Tag 10, spätestens Tag 40 (Ausstiegs-Test Okt. 2026)
 const KMAX = { hold: 20, hold2: 20, tpDays: 7, weakMult: 1, maxOpen: 5, perSector: 2 };   // perSector: Klumpenschutz
 const TP_EXIT = { hold: KMAX.hold };
 // ---- TP-Bewertung je Aktie ----
@@ -4170,13 +4195,15 @@ function tp2Calc(r, S, o = {}) {
   }
   out.riskEur = cfg.depot * out.riskPct / 100;
   out.expo = out.riskEur / out.dist;                          // Basiswert-Exposure in €
-  const hold = o.hold || KMAX.hold, cal = hold * 7 / 5;
+  const hold = o.hold || (h4 ? H4X.hold : KMAX.hold), cal = hold * 7 / 5;
   out.hold = hold;
+  out.ema = !!h4;                                              // 4H-Trades: ab Tag 10 raus bei Schluss unter der EMA 20, spätestens Tag 40
   // TP: erste echte Kursmarke der Aktie mit mindestens 1,5 × Risiko Abstand (lohnendes Chance-Risiko-Verhältnis), höchstens 4 ×;
   // keine passende Marke → 2 × Risiko
   // TP individuell: alle echten Kursmarken der Aktie bewerten (Chance, sie in der Haltedauer VOR dem SL zu erreichen × Gewinn)
   out.tp = null;                                               // kein TP: Gewinner laufen lassen (Kursziel-Vergleich: jedes feste Ziel brachte weniger)
   out.tpWhy = "Kein TP: Im Test brachte jedes feste Kursziel (1–5 R, Widerstände, EMA 20/50) weniger als Laufenlassen – die wenigen großen Gewinner bezahlen die Verluste. Verkauft wird am SL oder an Tag 20.";
+  if (h4) out.tpWhy = `Kein TP: Im Ausstiegs-Test brachte jedes feste Ziel (auch Fibonacci, altes Hoch, Extensions) weniger. Verkauft wird am SL, ab Tag ${H4X.from} bei einem Tagesschluss unter der EMA 20 (am nächsten Morgen) – spätestens an Tag ${H4X.hold}.`;
   out.d0 = tpEntryDay(o.date);
   out.exit = addBd(out.d0, hold - 1);
   // Quartalszahlen in der Haltedauer: spätestens am Handelstag davor raus (Kurslücke kann Stop und K.-o. überspringen)
@@ -4249,13 +4276,14 @@ function tpInner(r, S) {
       ${row("Kauf", `${X(m.E)} ${cur}`, m.base ? `in der Seitwärtsphase ${X(m.base.lo)}–${X(m.base.hi)} €` : "keine Seitwärtsphase erkannt")}
       ${row("Stop-Loss (SL)", `${X(m.stop)} ${cur}`, `${sgnPct(m.stop / m.E - 1, 1)} · Verlust ${sgnEur(at(m.stop))}`, "down")}
       ${row("Take-Profit", "keiner", "Gewinner laufen lassen – das bringt laut Test am meisten")}
-      ${row("Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `zum Schluss – nach ${m.hold} Handelstagen, falls der SL nicht vorher greift`)}
+      ${m.ema ? row("Verkaufen", `ab Tag ${H4X.from} unter EMA 20`, `Schließt ein Tag unter der EMA 20, am nächsten Morgen verkaufen – spätestens ${m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" })}${m.edCut ? " (vor den Quartalszahlen)" : ` (Tag ${m.hold})`}. Kairo meldet sich.`)
+        : row("Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `zum Schluss – nach ${m.hold} Handelstagen, falls der SL nicht vorher greift`)}
       ${row("Produkt", prod, lv.L > 1 ? `K.-o. höchstens ${X(lv.ko)} ${cur}` : (lv.qty != null ? `${lv.qty} Stück` : ""))}
       ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(m.riskPct, 1)} %${m.fit.mult > 1 ? " – Ausverkauf" : ""})`)}
       ${lv.L > 1 ? row("SL am Turbo", sgnPct(-lv.tStop, 0), `vom Kaufkurs des Turbos${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
     </div>
     ${tpTurboHtml(r, m, lv)}
-    <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position setzen. Keinen Limit-Verkauf – an Tag ${m.hold} zum Schluss verkaufen, falls der SL nicht vorher greift. Nicht vorher verkaufen, auch wenn es gut läuft: Die großen Gewinner machen das Ergebnis. Kairo führt keine Orders aus.</div>
+    <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position setzen. Keinen Limit-Verkauf – ${m.ema ? `ab Tag ${H4X.from} verkaufen, sobald ein Tag unter der EMA 20 schließt (Mitteilung kommt), spätestens an Tag ${m.hold}` : `an Tag ${m.hold} zum Schluss verkaufen, falls der SL nicht vorher greift`}. Nicht vorher verkaufen, auch wenn es gut läuft: Die großen Gewinner machen das Ergebnis. Kairo führt keine Orders aus.</div>
     <div class="note">Warum diese Werte: SL = ${esc(m.src)} (${fmt(m.riskAtr, 1)} ATR). ${m.tpWhy || ""} Hebel = der kleinste, dessen Einsatz noch in dein freies Kapital passt (frei: ${eur(m.free)}) – Aktie direkt, wenn möglich, sonst ×2/3/5/10 mit K.-o. mindestens 1 ATR unter dem SL (höchstens ×${fmt(Math.min(10, m.maxL), 1)}). Weniger Hebel = weniger Finanzierungskosten; im Test brachte das deutlich mehr als immer ×10. Das Risiko bis zum SL bleibt gleich. Kosten ≈ ${eur2(lv.cost)} sind eingerechnet.${lv.L > 1 ? ` Kurslücke unter den K.-o.: Einsatz verloren (${sgnEur(-lv.stake - 2 * cfg.fee)}).` : ""}</div>
     ${lv.L > 1 ? `<div class="row-actions" style="margin-top:10px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Turbo bei onvista suchen</a></div>` : ""}
     <div class="row-actions" style="margin-top:12px"><button class="btn${m.fit.ok ? "" : " ghost"}" data-tpopen="${esc(r.t)}">${paperMode() ? "🧪 " : ""}${m.fit.ok ? (paperMode() ? "Übungs-Trade eröffnen" : "Trade eröffnen & speichern") : "Trotzdem speichern"}</button></div>
@@ -4298,9 +4326,11 @@ function tpOpen(t) {
   if (l.filter(p => p.st === "open").length >= m.cfg.maxOpen && !confirm(`Schon ${m.cfg.maxOpen} offene Trades – Gesamtrisiko steigt. Trotzdem eröffnen?`)) return;
   l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, h4: m.h4 ? (h4Go(m.h4) ? "go" : m.h4.st) : null, d: isoD(m.d0), scan: String(data.generated).slice(0, 10),
               E: +m.E, stop: m.stop, atr: m.atr, L: lv.L, ko: lv.ko, expo: Math.round(lv.expo), stake: Math.round(lv.stake), qty: lv.qty,
-              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, exit: isoD(m.exit), exit2: isoD(m.exit2), sec: r.sec || null, tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open", paper: paperMode() });
+              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, ema: m.ema ? 1 : 0, exit: isoD(m.exit), exit2: isoD(m.exit2), sec: r.sec || null, tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open", paper: paperMode() });
   plansSave(l); render(); window.scrollTo({ top: 0, behavior: "smooth" });
 }
+// 4H-Trades: ab Tag 10 Verkauf, sobald ein Tag unter der EMA 20 schließt (Kurs und EMA vom letzten Scan = Tagesschluss)
+const emaExit = (p, r) => !!(p && p.ema && r && r.c != null && r.e20 && r.c < r.e20 && bdBetween(new Date(p.d + "T12:00:00"), new Date(isoD(new Date()) + "T12:00:00")) + 1 > H4X.from);
 function tpStatus(p) {
   const r = rowOf(p.t), c = r ? r.c : null, today = isoD(new Date());
   if (c == null) return { tone: "gray", t: "Kein aktueller Kurs" };
@@ -4308,6 +4338,7 @@ function tpStatus(p) {
   if (c <= p.stop) return { tone: "red", t: `Schluss ${fe(c)} € unter dem Stop – Position schließen` };
   if (p.x1 == null && p.tp && c >= p.tp) return { tone: "green", t: `TP ${fe(p.tp)} € erreicht – Hälfte 1 verkaufen` };     // ältere Trades mit TP
   if (today >= (p.exit2 || p.exit)) return { tone: "yellow", t: "Ausstiegstag erreicht – verkaufen" };
+  if (emaExit(p, r)) return { tone: "yellow", t: `Schluss unter der EMA 20 (${fe(r.e20)} €) – zur nächsten Eröffnung verkaufen` };
   return { tone: "blue", t: `läuft · noch ${Math.max(0, Math.round((new Date(p.exit) - new Date(today)) / 864e5))} Kalendertage` };
 }
 function tpPlansHtml() {

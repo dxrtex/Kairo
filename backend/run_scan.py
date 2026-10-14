@@ -330,9 +330,10 @@ def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bo
     cands = h4live.candidates(state.load("signals.json", []), today)
     for c in cands:
         c["cur"] = c.get("cur") or (search.get(c["t"]) or {}).get("cur")
-    setup = [r["ticker"] for r in rows if r.get("passed") or r.get("near_hit")]
+    setup = [r["ticker"] for r in rows if r.get("in_watchlist")]          # Watchlist: Stufen-Anzeige (1D → Basis → 4H)
+    setup += [r["ticker"] for r in rows if r.get("passed") or r.get("near_hit")]
     setup += [r["ticker"] for r in rows if r.get("fast_hit") and r["ticker"] in data and (h4live.setup_now(data[r["ticker"]], None) or {}).get("b")]
-    setup = list(dict.fromkeys(setup))[:450]
+    setup = list(dict.fromkeys(setup))[:550]
     daily = data
     if not evening:                                   # tagsüber: laufende Tageskerze weglassen (noch nicht fertig)
         daily = {t: df[df.index.normalize() < pd.Timestamp(today)] for t, df in data.items() if t in {c["t"] for c in cands}}
@@ -344,7 +345,7 @@ def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bo
     items += [it for it in pre if it["t"] not in need]
     cut = (pd.Timestamp(today) - timedelta(days=10)).strftime("%Y-%m-%d")
     items = [it for it in items if it["st"] != "weg" or it["d"] >= cut]   # Verfallene nur kurz zeigen
-    rank = {"go": 0, "4h": 1, "basis": 2, "run": 3, "stop": 4, "zeit": 4, "weg": 5}
+    rank = {"sell": 0, "go": 0, "4h": 1, "basis": 2, "run": 3, "stop": 4, "zeit": 4, "ema": 4, "weg": 5}
     items.sort(key=lambda x: (rank.get(x["st"], 9), x["d"]))
     rec = h4live.track(state.load("h4trades.json", []), items)
     state.save("h4trades.json", rec)
@@ -359,7 +360,7 @@ def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bo
         count[it["st"]] = count.get(it["st"], 0) + 1
     return {"generated": now.isoformat(timespec="minutes"), "items": items, "now": nowset, "count": count,
             "track": {"stats": h4live.track_stats(rec), "list": rec[:60]},
-            "rule": {"window": h4live.WINDOW, "hold": h4live.HOLD, "need": list(h4live.NEED)}}
+            "rule": {"window": h4live.WINDOW, "hold": h4live.HOLD, "need": list(h4live.NEED), "ema": h4live.EMA_SPAN, "ema_from": h4live.EMA_FROM}}
 
 
 def main(argv=None) -> int:
