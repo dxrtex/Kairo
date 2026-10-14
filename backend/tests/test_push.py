@@ -83,3 +83,13 @@ def test_h4_messages_only_for_real_entries():
     items = [base, {**base, "t": "B", "n": "B", "grp": "10"}, {**base, "t": "C", "n": "C", "grp": "9"}, {**base, "t": "D", "n": "D", "grp": "10s", "soft": True}]
     m = h4_messages(items, "2026-10-14", {}, None)
     assert [x["title"].split(": ")[1].split(" –")[0] for x in m] == ["A", "D"]
+
+
+def test_watchlist_many_become_one_message(monkeypatch):
+    from backend import push, state
+    store = {}
+    monkeypatch.setattr(state, "load", lambda n, d: store.get(n, d))
+    monkeypatch.setattr(state, "save", lambda n, o: store.__setitem__(n, o))
+    rows = [{"ticker": f"T{i}", "name": f"Firma {i}", "in_watchlist": True, "fast_hit": True, "missing": ["MBI: x"]} for i in range(7)]
+    m = push.watch_messages("2026-10-14", rows)
+    assert len(m) == 1 and "7 Aktien" in m[0]["title"] and "Firma 0" in m[0]["body"] and "_n" not in m[0]
