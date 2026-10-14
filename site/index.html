@@ -1270,13 +1270,15 @@ function selRows() {
     && (!state.zone || r.zone_type.includes(state.zone)) && (!state.div || r.divergence === state.div) && (!state.sector || r.sector === state.sector) && chkIn(r);
   // Watchlist-Aktien: nur Suche, Börsenwert und Volatilität filtern (wie bisher) – sonst alle Filter
   const fv = favs();
-  return data.results.filter(r => ((k.has("hit") && r.passed) || (k.has("fast") && r.fast_hit) || (k.has("near") && r.near_hit) || (k.has("trend") && isTrend(r))) ? full(r) : ((k.has("watch") && r.in_watchlist) || (k.has("fav") && fv.has(r.ticker))) && light(r))
+  return data.results.filter(r => ((k.has("hit") && r.passed) || (k.has("fast") && r.fast_hit) || (k.has("near") && r.near_hit) || (k.has("trend") && isTrend(r))) ? full(r) : ((k.has("watch") && r.in_watchlist) || (k.has("fav") && fv.has(r.ticker)) || (k.has("h4") && isH4(r))) && light(r))
     .sort((a, b) => b.passed - a.passed || isTrend(b) - isTrend(a) || !!(b.tr && b.tr.top) - !!(a.tr && a.tr.top) || b.fast_hit - a.fast_hit || !!b.near_hit - !!a.near_hit || b.score - a.score || (b.met ?? 0) - (a.met ?? 0));
 }
 // Zweites Setup „Trend-Rücksetzer“ (Rücksetzer im Aufwärtstrend) – erscheint nur, wenn der Scan es liefert
 const isTrend = r => !!(r.tr && r.tr.ok);
 const trendOn = () => !!(data && data.stats && data.stats.trend_on);
-const KIND_BTNS_ALL = [["fav", "★ Merkliste", r => favs().has(r.ticker)], ["hit", "Treffer", r => r.passed], ["fast", "Fast-Treffer", r => r.fast_hit], ["near", "9/11 · kein Treffer", r => !!r.near_hit], ["trend", "Trend-Rücksetzer", isTrend], ["watch", "Watchlist", r => r.in_watchlist]];
+// ⚡ 4H-Setup: Arbeitsliste – echte Einstiege mit fertiger Seitwärtsphase (4H bestätigt, wartet auf 4H, läuft, verkaufen)
+const isH4 = r => h4Prio(r) >= 3;
+const KIND_BTNS_ALL = [["fav", "★ Merkliste", r => favs().has(r.ticker)], ["h4", "⚡ 4H-Setup", isH4], ["hit", "Treffer", r => r.passed], ["fast", "Fast-Treffer", r => r.fast_hit], ["near", "9/11 · kein Treffer", r => !!r.near_hit], ["trend", "Trend-Rücksetzer", isTrend], ["watch", "Watchlist", r => r.in_watchlist]];
 let KIND_BTNS = KIND_BTNS_ALL.filter(x => x[0] !== "trend");
 // ---------- Merkliste: eigene Favoriten (Stern), nur auf diesem Gerät ----------
 const FAV_KEY = "kairo-merkliste-v1";
@@ -3103,7 +3105,7 @@ function h4CardHtml() {
       <div class="note" style="margin:6px 0 0">${["10", "9"].map(g => `${GRPL[g]}: ${cnt(g).basis || 0} warten auf die Seitwärtsphase`).join(" · ")}. Gleiche Regeln wie bei Treffern (Seitwärtsphase → alle 4 Signale im 4H → Verkauf unter der EMA 20), aber keine Mitteilung und im Test schwächer: 10/11 ${GRPT["10"]}, 9/11 ${GRPT["9"]} je Trade (Treffer +0,41 / +0,61 R). Live getrennt gezählt in der Bilanz.</div></details>` : "";
   return `<div class="hcard">${hHead("⚡ 4H-Top-Setup " + gl("h4"))}
     ${rows || `<div class="note" style="margin:0">Gerade nichts zu tun – kein Treffer mit fertiger Seitwärtsphase.</div>`}
-    ${wait4.length > act.length - go.length - sell.length || nBase || nRun ? `<div class="note" style="margin:6px 0 0">${[wait4.length - (act.length - go.length - sell.length) > 0 ? `${wait4.length - (act.length - go.length - sell.length)} weitere warten auf 4H` : "", nBase ? `${nBase} warten auf die Seitwärtsphase` : "", nRun ? `${nRun} laufende 4H-Trades` : ""].filter(Boolean).join(" · ")} – <a href="#" data-gokinds="hit">alle im Scanner</a></div>` : ""}
+    ${wait4.length > act.length - go.length - sell.length || nBase || nRun ? `<div class="note" style="margin:6px 0 0">${[wait4.length - (act.length - go.length - sell.length) > 0 ? `${wait4.length - (act.length - go.length - sell.length)} weitere warten auf 4H` : "", nBase ? `${nBase} warten auf die Seitwärtsphase` : "", nRun ? `${nRun} laufende 4H-Trades` : ""].filter(Boolean).join(" · ")} – <a href="#" data-gokinds="h4">alle im Scanner</a></div>` : ""}
     ${xHtml}
     <div class="note" style="margin:8px 0 0">Stand ${esc(tm)} · alle 30 Min. geprüft – bei Bestätigung kommt eine Mitteilung.</div></div>`;
 }
@@ -3335,7 +3337,7 @@ function todoHtml() {
   const row = (ic, cls, t, sub, n, kinds) => `<button class="arow" data-gokinds="${kinds}"><i class="aic ${cls}">${ic}</i><span><b>${t}</b><em>${sub}</em></span><strong>${n}</strong><s>›</s></button>`;
   return `<div class="agroup-h">Heute zu tun</div><div class="agroup">
     ${(() => { const d = h4Data(), g = d ? (d.items || []).filter(x => h4Real(x) && h4Go(x)).length : 0, w = d ? (d.items || []).filter(x => h4Real(x) && (x.st === "4h" || x.st === "basis")).length : 0;
-      return d ? row("⚡", "g", "4H-Top-Setup", g ? `${g}× bestätigt – Einstieg jetzt` : w ? `${w} warten auf Seitwärtsphase/4H` : "gerade nichts in Arbeit", g, "hit") : ""; })()}
+      return d ? row("⚡", "g", "4H-Top-Setup", g ? `${g}× bestätigt – Einstieg jetzt` : w ? `${w} warten auf Seitwärtsphase/4H` : "gerade nichts in Arbeit", g, "h4") : ""; })()}
     ${row("✓", "g", "Kairo-Treffer", hits.length ? "alle Kriterien erfüllt – Einstieg nach 4H-Bestätigung" : "heute keine", hits.length, "hit")}
     ${trendOn() ? row("↗", "b", "Trend-Rücksetzer", top.length ? `davon ${top.length} Top – stärkstes Setup im Test` : "Rücksetzer im Aufwärtstrend", tr.length, "trend") : ""}
     ${row("…", "y", "Fast-Treffer", "ein Kriterium fehlt noch", fast.length, "fast")}
@@ -3346,7 +3348,7 @@ function kpiHtml() {
   const fast = data.results.filter(r => r.fast_hit && !r.passed).length;
   const t = (k, l, n, sub, hl) => `<button class="kpi${hl ? " hl" : ""}" data-gokinds="${k}"><span>${l}</span><b>${n}</b><em>${sub}</em></button>`;
   const h4d = h4Data(), h4g = h4d ? (h4d.items || []).filter(x => h4Real(x) && h4Go(x)).length : 0, h4w = h4d ? (h4d.items || []).filter(x => h4Real(x) && (x.st === "4h" || x.st === "basis")).length : 0;
-  return `<div class="kpis">${h4d ? t("hit", "4H bestätigt", h4g, h4g ? "Einstieg jetzt" : `${h4w} in Arbeit`, h4g > 0) : ""}${t("hit", "Kairo-Treffer", hit, hit ? "Einstieg nach 4H" : "heute keine", false)}
+  return `<div class="kpis">${h4d ? t("h4", "4H bestätigt", h4g, h4g ? "Einstieg jetzt" : `${h4w} in Arbeit`, h4g > 0) : ""}${t("hit", "Kairo-Treffer", hit, hit ? "Einstieg nach 4H" : "heute keine", false)}
     ${trendOn() ? t("trend", "Trend-Rücksetzer", tr.length, top ? `davon ${top} Top` : "keine Top-Stufe", top > 0) : ""}
     ${t("fast", "Fast-Treffer", fast, "1 Kriterium fehlt", false)}
     ${t("near", "9/11 beobachten", data.results.filter(r => r.near_hit).length, "kein Treffer", false)}</div>`;
@@ -4511,10 +4513,10 @@ function renderMain() {
       ${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       <button class="kchip filt" data-sub="filter">Filter${nFilt ? ` <small>${nFilt}</small>` : ""}</button></div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
-  const head = searchHtml() + bar + `<div class="section-title"><span>${[...k].map(x => ({ fav: "Merkliste", hit: "Treffer", fast: "Fast-Treffer", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>`;
+  const head = searchHtml() + bar + `<div class="section-title"><span>${[...k].map(x => ({ fav: "Merkliste", h4: "⚡ 4H-Setup", hit: "Treffer", fast: "Fast-Treffer", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>`;
   if (!list.length && $("search").value.trim().length >= 2) { $("main").innerHTML = searchHtml() + bar; return; }
   if (!list.length) {
-    $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.size === 1 && k.has("fav") ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
+    $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.size === 1 && k.has("h4") ? "Gerade kein Treffer mit fertiger Seitwärtsphase – die 4H-Prüfung beginnt, sobald eine da ist. Stand aller Treffer: unter „Treffer“ in der Status-Spalte." : k.size === 1 && k.has("fav") ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
     return;
   }
   const col = COLS.find(c => c.k === state.tableSort) || COLS.find(c => c.k === "score");
