@@ -3234,6 +3234,14 @@ function topHitsHtml() {
   return `<div class="hcard">${hHead("Beste Treffer heute", `data-gokinds="hit"`)}
     ${list.map(r => `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${esc((r.name || r.ticker).slice(0, 28))}<small>${esc(r.ticker)} · CRV ${fmt(r.crv, 1)}${r.earnings_risk ? " · ⚠ Earnings" : ""}</small></span>${statusPill(r)}${trendHtml(r)}</button>`).join("")}</div>`;
 }
+function trendCardHtml() {
+  if (!trendOn()) return "";
+  const all = data.results.filter(isTrend), top = all.filter(r => r.tr.top).sort((a, b) => (b.tr.plan && b.tr.plan.crv || 0) - (a.tr.plan && a.tr.plan.crv || 0));
+  return `<div class="hcard">${hHead("↗ Trend-Rücksetzer · eigene Strategie", `data-gokinds="trend"`)}
+    ${top.slice(0, 4).map(r => `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${esc((r.name || r.ticker).slice(0, 28))}<small>${esc(r.ticker)} · CRV ${fmt(r.tr.plan && r.tr.plan.crv, 1)}</small></span><span class="st trend">Top</span></button>`).join("")
+      || `<div class="note" style="margin:0">Heute keine Top-Setups.</div>`}
+    <div class="note" style="margin:8px 0 0">Rücksetzer im Aufwärtstrend – andere Regeln als Kairo, getrennt gezählt. ${all.length} insgesamt, davon ${top.length} Top.</div></div>`;
+}
 function depotSnapHtml() {
   const list = depotLoad(); if (!list.length) return "";
   if (!searchIdx) { loadSearch(); return ""; }
@@ -3296,7 +3304,7 @@ function kpiHtml() {
 }
 // Aufgaben-Postfach: alles, was heute zu tun ist, nach Dringlichkeit – rechts das Detail (iPad quer)
 function postfachItems() {
-  const out = { now: [], prep: [] };
+  const out = { now: [], prep: [], trend: [] };
   if (anaData && searchIdx) {
     const items = depotLoad().map((p, i) => ({ p, i, r: p.t ? rowOf(p.t) : null }));
     if (!calData) loadCalendar();
@@ -3311,7 +3319,10 @@ function postfachItems() {
         d: [st ? `Tag ${st.day} von ${st.hold} · Stop ${st.fe(st.plan.stop)} €` : "Plan anlegen für Stop und Verkaufstag", evTxt && st && !now ? evTxt + " – am Tag davor verkaufen" : "", g.pl != null ? sgnPct(g.pl, 0) : ""].filter(Boolean).join(" · ") };
       if (now) out.now.push(it); else out.prep.unshift(it); });
   } else if (!anaData) loadAnalysis();
-  const ent = data.results.filter(r => r.passed || (isTrend(r) && r.tr.top))   // Trend: nur die Top-Stufe (Rest im Scanner).sort((a, b) => (isTrend(b) && b.tr.top) - (isTrend(a) && a.tr.top) || (b.score ?? 0) - (a.score ?? 0));
+  // Kairo und Trend-Rücksetzer sind zwei Strategien – getrennte Listen (Trend: eigener Abschnitt, nur Top-Stufe)
+  const ent = data.results.filter(r => r.passed && !isTrend(r)).sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  out.trend = data.results.filter(r => isTrend(r) && r.tr.top).sort((a, b) => (b.tr.plan && b.tr.plan.crv || 0) - (a.tr.plan && a.tr.plan.crv || 0))
+    .map(r => ({ t: r.ticker, c: "b", n: `${r.name || r.ticker}`, d: `Trend-Rücksetzer Top · CRV ${fmt(r.tr.plan && r.tr.plan.crv, 1)}` }));
   const h4d = h4Data(), h4seen = new Set();
   // Übersichtlich: „Jetzt handeln“ nur echte Einstiege (4H bestätigt), „Vorbereiten“ nur Treffer mit fertiger Seitwärtsphase –
   // Treffer, die noch auf die Seitwärtsphase warten, stehen im Scanner und in der 4H-Karte (Anzahl), nicht hier
@@ -3326,7 +3337,7 @@ function postfachItems() {
   return out;
 }
 function postfachHtml(cards = "", cards2 = "") {
-  const { now, prep } = postfachItems(), all = [...now, ...prep].filter(x => x.t);
+  const { now, prep, trend } = postfachItems(), all = [...now, ...prep, ...trend].filter(x => x.t);
   if (!all.some(x => x.t === state.pfSel)) state.pfSel = null;      // Detail nur nach Antippen – kein Dauer-Fenster rechts
   const row = x => x.dep ? `<button class="pf-it" data-pfdep="${esc(x.dep)}"><i class="${x.c}"></i><span><b>${esc(x.t)}</b><em>${esc(x.d)}</em></span>${x.v != null ? `<strong class="${x.v >= 0 ? "up" : "down"}">${sgnPct(x.v, 0)}</strong>` : ""}<s>›</s></button>`
     : `<button class="pf-it${x.t === state.pfSel ? " on" : ""}" ${data.results.some(r => r.ticker === x.t) ? `data-pf="${esc(x.t)}"` : `data-ein="${esc(x.t)}"`}><i class="${x.c}"></i><span><b>${esc(x.n)}</b><em>${esc(x.d)}</em></span><s>›</s></button>`;
@@ -3337,6 +3348,7 @@ function postfachHtml(cards = "", cards2 = "") {
     : xs.slice(0, more[k] ? xs.length : N).map(row).join("") + (xs.length > N ? `<button class="pf-more" data-pfmore="${k}">${more[k] ? "Weniger anzeigen" : `${xs.length - N} weitere anzeigen`}</button>` : "");
   return `<div class="pf"><div class="pf-left"><section class="pf-list"><div class="pf-h">Jetzt handeln · ${now.length}</div>${part("now", now, "Heute nichts Dringendes.")}
     <div class="pf-h">Vorbereiten · ${prep.length}</div>${part("prep", prep, "Nichts vorzubereiten.")}</section>
+    ${trendOn() ? `<section class="pf-list"><div class="pf-h">↗ Trend-Rücksetzer · eigene Strategie · ${trend.length} Top</div>${part("trend", trend, "Heute keine Top-Setups.")}</section>` : ""}
     <div class="pf-cards">${cards}${r ? cards2 : ""}</div></div>
     ${r ? `<section class="pf-detail"><button class="pf-x" data-pfclose aria-label="Schließen">✕</button>${card(r)}</section>` : `<div class="pf-cards pf-right">${cards2}</div>`}</div>`;
 }
@@ -3350,7 +3362,7 @@ function todayHtml() {
   // Postfach: Aufgaben oben, darunter dieselben Karten wie sonst (ohne „Beste Treffer“ – die stehen schon im Postfach)
   if (isPostfach()) return postfachHtml(`${startHtml()}${h4CardHtml()}${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}`, `${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
   return (isApple() ? todoHtml() : kpiHtml()) + `${startHtml()}<div class="hgrid"><div class="hcol">${h4CardHtml()}${etfTeaserHtml()}${marketHtml()}${changesHtml()}${myStocksHtml()}</div>
-    <div class="hcol">${bilanzTeaserHtml()}${depotSnapHtml()}${soonHtml()}${topHitsHtml()}${journalTeaserHtml()}${tgHint}</div></div>`;
+    <div class="hcol">${bilanzTeaserHtml()}${depotSnapHtml()}${soonHtml()}${topHitsHtml()}${trendCardHtml()}${journalTeaserHtml()}${tgHint}</div></div>`;
 }
 
 // ---------- ETF-Bereich (70 %): SPDR MSCI ACWI IMI – Ampel aus backend/etf.py, Plan auf dem Gerät ----------
