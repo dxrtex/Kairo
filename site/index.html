@@ -3422,10 +3422,12 @@ const ETF_BT = {
   plans: [["Jeden Monat gleich viel (Sparplan)", 3.077, 3.739, .33, true], ["Am Hoch 25 % zurückhalten, bei −10/−20 % nachkaufen", 3.069, 3.709, .33],
           ["Nahe der 200-Tage-Linie nachkaufen", 3.052, 3.689, .33], ["Nur unter der 200-Tage-Linie kaufen", 2.995, 3.517, .33],
           ["Trendfilter: unter der 200-Tage-Linie alles raus", 2.388, 2.989, .15]] };
-// Ampel-Farben: Grün = weiter investieren (normal), Gelb = Sparrate weiter, Extra-Geld in Raten, Dunkelgrün = Panik, Extra-Geld jetzt.
-// Kein Rot: „nicht investieren“ hat in allen Testzeiträumen Geld gekostet (backend/etf.py).
+// Ampel für Extra-Geld: Grün jetzt investieren, Gelb abwarten (höchstens 3 Monate), Dunkelgrün Panik. Die Sparrate läuft immer.
 const ETF_DG = "#0b7a35";
-const ETF_TONE = { blue: ["Grün · weiter investieren", "var(--up)"], yellow: ["Gelb · in Raten", "var(--gold)"], green2: ["Dunkelgrün · Extra kaufen", ETF_DG], green: ["Günstig", "var(--up)"] };
+// go = Extra-Geld jetzt (Rücksetzer: unter EMA 100, ≥ 5 % unter Hoch, VIX ≥ 25 – oder 3 Monate gewartet) · go2 = Panik (VIX ≥ 30)
+// wait = abwarten, höchstens 3 Monate (backend/etfextra.py: kostete nur −0,1 bis −0,7 % gegenüber „sofort“)
+const ETF_TONE = { go: ["Grün · jetzt investieren", "var(--up)"], go2: ["Dunkelgrün · Panik, jetzt investieren", ETF_DG], wait: ["Gelb · abwarten", "var(--gold)"],
+  blue: ["Grün · jetzt investieren", "var(--up)"], yellow: ["Gelb · abwarten", "var(--gold)"], green2: ["Dunkelgrün · Panik", ETF_DG] };
 const etfCfg = () => { const e = state.etf || {}; return { total: +e.total > 0 ? +e.total : 3000, share: +e.share > 0 ? Math.min(100, +e.share) : 70, rate: +e.rate > 0 ? +e.rate : 0, units: +e.units > 0 ? +e.units : 0 }; };
 // Gebühren-Bremse (backend/capstudy.py, Okt. 2026): ~93 Trades/Jahr bei 5 Plätzen → 2 Orders je Trade. Ergebnis 10 Jahre, 1 % Risiko,
 // 0,99 € je Order: 900 € → −12 bis −25 % p. a. (bzw. Totalverlust), 1.500 € → ≈ 0 %, 3.000 € → +12/+13 %, 10.000 € → +15/+23 %; ohne Gebühren +17/+24 %.
@@ -3449,8 +3451,8 @@ function etfLine(h) {
     <div class="oleg"><span style="color:var(--accent, #0a84ff)">■ Kurs (€)</span><span class="gold">┄ 200-Tage-Linie</span></div>`;
 }
 function etfAmpelHtml(e, compact) {
-  const [lbl, col] = ETF_TONE[e.lv] || ETF_TONE.blue;
-  return `<div class="regime" style="--c:${col}"><i></i><div><b>${esc(e.t)}</b><span>${compact ? `SPYI ${fmt(e.c)} € · ${e.dd < .005 ? "am Allzeithoch" : pct(e.dd, 1) + " unter dem Hoch"} · ${e.vs_sma >= 0 ? "über" : "unter"} der 200-Tage-Linie` : esc(e.s)}</span></div></div>`;
+  const [lbl, col] = ETF_TONE[e.lv] || ETF_TONE.go;
+  return `<div class="regime" style="--c:${col}"><i></i><div><b>${esc(e.t)}</b><span>${compact ? `SPYI ${fmt(e.c)} € · ${e.dd < .005 ? "am Allzeithoch" : pct(e.dd, 1) + " unter dem Hoch"} · ${e.vs_e100 != null ? (e.vs_e100 >= 0 ? "über" : "unter") + " der EMA 100" : (e.vs_sma >= 0 ? "über" : "unter") + " der 200-Tage-Linie"}` : esc(e.s)}</span></div></div>`;
 }
 // Erste Schritte im 70/30-System – verschwindet, sobald alles erledigt ist (oder ausgeblendet wurde)
 function startHtml() {
@@ -3482,11 +3484,13 @@ function etfHtml() {
   const tgtT = c.total * (100 - c.share) / 100;
   const lamp = (lv, lbl, col) => `<div class="eh-l${e && e.lv === lv ? " on" : ""}" style="--c:${col}"><i></i><span>${lbl}</span></div>`;
   const facts = e ? [["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "" : e.vix >= 30 ? "up" : e.vix >= 20 ? "gold" : "up"],
-      ["200-Tage-Linie", e.vs_sma >= 0 ? "darüber" : "darunter", e.vs_sma >= 0 ? "up" : "gold"],
-      ["Kreditmarkt", e.credit_weak == null ? "–" : e.credit_weak ? "schwächelt" : "stabil", e.credit_weak ? "gold" : "up"]] : [];
-  const todo = e ? (e.lv === "green2" ? "Sparrate läuft · <b>Extra-Geld jetzt investieren</b> (gern in 2–3 Raten)" : e.lv === "yellow" ? "Sparrate läuft · <b>Extra-Geld auf 3–6 Monate verteilen</b>" : "Sparrate läuft · <b>Extra-Geld kann sofort rein</b>") : "";
+      ["EMA 100", e.vs_e100 == null ? "–" : e.vs_e100 >= 0 ? "darüber" : "darunter", e.vs_e100 != null && e.vs_e100 < 0 ? "up" : "gold"],
+      ["Abstand zum Hoch", e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1), e.dd >= .05 ? "up" : "gold"]] : [];
+  const goLv = e && ["go", "go2", "blue", "green2"].includes(e.lv);
+  const todo = e ? (goLv ? `Sparrate läuft · <b>Extra-Geld jetzt investieren</b>${e.lv === "go2" ? " (gern in 2–3 Raten)" : ""}`
+    : `Sparrate läuft · <b>Extra-Geld zurücklegen</b> – spätestens nach 3 Monaten trotzdem investieren${e.last_go ? ` (letzter Rücksetzer: ${dateDE(e.last_go)})` : ""}`) : "";
   const hero = e ? `<div class="hcard etf-hero">
-      <div class="eh-lights">${lamp("green2", "Panik · extra kaufen", ETF_DG)}${lamp("blue", "Weiter investieren", "var(--up)")}${lamp("yellow", "In Raten", "var(--gold)")}</div>
+      <div class="eh-lights">${lamp("go2", "Panik · jetzt", ETF_DG)}${lamp("go", "Jetzt investieren", "var(--up)")}${lamp("wait", "Abwarten", "var(--gold)")}</div>
       <div class="eh-main"><span class="eh-k">ETF-Ampel · ${esc(e.name)}</span><b class="eh-t">${esc(e.t)}</b><p class="eh-do">${todo}</p>
         <div class="eh-facts"><span>Kurs <b>${fmt(e.c)} €</b></span><span>${e.dd < .005 ? "<b>am Allzeithoch</b>" : `<b>−${pct(e.dd, 1)}</b> unter dem Hoch`}</span><span class="muted">Stand ${dateDE(e.date)}</span></div>
         <div class="eh-pills">${facts.map(([l, v, c]) => `<span class="eh-p"><i class="${c}">●</i>${l}: <b>${v}</b></span>`).join("")}</div></div></div>
@@ -3494,11 +3498,11 @@ function etfHtml() {
       <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ⚠️ Kurs ist ${e.age} Tage alt` : ""}. Gelegentlich mit Scalable vergleichen.</div></div>`
     : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? `Die Kursdaten des ETF sehen gerade unplausibel aus${e0.ref_ok === false ? ` (weichen ${pct(e0.ref_dev, 1)} vom Vergleichs-ETF ab)` : ""} – Datenfehler beim Anbieter. Die Ampel ist ausgeblendet, bis sie wieder stimmen.` : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
   const why = e ? `<div class="hsub">Was die Ampel gerade sieht</div><ul class="checks">${[
-        ["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "muted" : e.vix >= 30 ? "up" : e.vix >= 20 ? "gold" : "up", e.vix == null ? "keine Daten" : e.vix >= 30 ? "Panik – historisch die besten Kaufzeitpunkte" : e.vix >= 20 ? "nervös – historisch die schwächsten 12 Monate" : "ruhig – kein Warnsignal, auch nicht am Hoch"],
-        ["200-Tage-Linie", e.vs_sma >= 0 ? "darüber" : "darunter", e.vs_sma >= 0 ? "up" : "gold", e.vs_sma >= 0 ? "Aufwärtstrend intakt" : "öfter noch ein weiterer Rückgang um 10 %"],
-        ["Kreditmarkt", e.credit_weak == null ? "–" : e.credit_weak ? "schwächelt" : "stabil", e.credit_weak ? "gold" : e.credit_weak == null ? "muted" : "up", e.credit_weak == null ? "keine Daten" : e.credit_weak ? "Unternehmensanleihen schwächer als Staatsanleihen – Risiko steigt" : "Unternehmensanleihen stabil"]]
+        ["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "muted" : e.vix >= 25 ? "up" : "gold", e.vix == null ? "keine Daten" : e.vix >= 30 ? "Panik – historisch die besten Kaufzeitpunkte" : e.vix >= 25 ? "Angst – Kaufsignal" : "ruhig – kein Kaufsignal"],
+        ["EMA 100", e.vs_e100 == null ? "–" : e.vs_e100 >= 0 ? "darüber" : "darunter", e.vs_e100 == null ? "muted" : e.vs_e100 < 0 ? "up" : "gold", e.vs_e100 == null ? "keine Daten" : e.vs_e100 < 0 ? "Rücksetzer – Kaufsignal" : "Kurs läuft über der EMA 100 – kein Rücksetzer"],
+        ["Abstand zum Hoch", e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1), e.dd >= .05 ? "up" : "gold", e.dd >= .05 ? "mindestens 5 % unter dem Hoch – Kaufsignal" : "weniger als 5 % unter dem Hoch"]]
         .map(([l, v, c, t]) => `<li><i class="${c}">●</i><b>${l}: ${v}</b> – ${t}</li>`).join("")}</ul>
-      <div class="note" style="margin:6px 0 12px">🟢 Grün: normal – weiter investieren · 🟡 Gelb: unruhig (2 von 3 Warnzeichen) – Sparrate weiter, Extra-Geld in Raten · Dunkelgrün: Panik (VIX ≥ 30) – Extra-Geld jetzt. Kein Rot: „nicht investieren, weil es bald fällt“ hat in allen Testzeiträumen (1990–2026) Geld gekostet – Rückgänge lassen sich nicht zuverlässig vorhersagen, und gerade nach starken Rückgängen kamen die besten Jahre.</div>` : "";
+      <div class="note" style="margin:6px 0 12px">🟢 <b>Jetzt investieren</b>, sobald eins davon passt: Kurs unter der EMA 100, mindestens 5 % unter dem Hoch oder VIX ≥ 25 (Dunkelgrün: VIX ≥ 30, Panik). 🟡 <b>Abwarten</b>, wenn nichts davon passt – Extra-Geld zurücklegen, aber höchstens 3 Monate, dann trotzdem investieren. Die Sparrate läuft immer. Im Test (S&P 500 ab 1990, Welt ab 2003) kostete diese Regel gegenüber „immer sofort“ nur 0,1–0,7 % Endwert; länger warten (z. B. nur bei Panik kaufen) kostete 7–15 %.</div>` : "";
   const plan = `<div class="hcard">${hHead("Mein Plan · 70 / 30")}
     <div class="tp2-cfg"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
       <label>ETF-Anteil (%)<input id="etfShare" type="number" inputmode="decimal" min="0" max="100" step="5" value="${esc(c.share)}"></label>
@@ -3514,7 +3518,7 @@ function etfHtml() {
   const how = `<div class="hcard">${hHead("So gehst du vor")}<ul class="checks rules">${[
       ["Sparplan bei Scalable", "monatlich in den SPYI – läuft automatisch, bei jeder Ampelfarbe"],
       ["Nie wegen Rücksetzern verkaufen", "der Welt-ETF fiel 2008/09 um mehr als 50 % und erholte sich – wer verkaufte, verpasste die Erholung"],
-      ["Extra-Geld nach Ampel", "Bonus, Rücklage, Trading-Gewinne: bei Grün und Dunkelgrün sofort, bei Gelb auf 3–6 Monate verteilen"],
+      ["Extra-Geld nach Ampel", "Bonus, Rücklage, Trading-Gewinne: bei Grün sofort, bei Gelb zurücklegen bis Grün – höchstens 3 Monate"],
       ["Ausschüttungen", "SPYI gilt als thesaurierend (Erträge werden wieder angelegt) – im Factsheet bei Scalable kurz prüfen"]].map(([l, t]) => `<li><i class="up">✓</i><b>${l}:</b> ${t}</li>`).join("")}</ul></div>`;
   const test = `<div class="hcard">${hHead("Was der Test zeigt")}
     <div class="hsub">Was nach welcher Lage folgte – Ø Rendite der nächsten 12 Monate</div>

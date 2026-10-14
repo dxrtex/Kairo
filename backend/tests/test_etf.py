@@ -1,4 +1,4 @@
-"""ETF-Ampel: Fehlkurse raus, Farben nach Abstand zum Hoch und 200-Tage-Linie, nie Rot."""
+"""ETF-Ampel: Fehlkurse raus; Extra-Geld jetzt (Rücksetzer/VIX) oder abwarten (höchstens 3 Monate)."""
 
 import numpy as np
 import pandas as pd
@@ -7,12 +7,13 @@ from backend.etf import clean, compute, level
 
 
 def test_levels():
-    assert level(13, False, False)["lv"] == "blue"            # Hoch + ruhig = normal, kein Warnsignal
-    assert level(22, False, False)["lv"] == "blue"            # ein Warnzeichen reicht nicht
-    assert level(22, True, False)["lv"] == "yellow"
-    assert level(18, True, True)["lv"] == "yellow"
-    assert level(35, True, True)["lv"] == "green2"            # Panik schlägt alles
-    assert level(None, True, None)["lv"] == "blue"
+    assert level(13, False, 0.01, "2026-09-01", "2026-10-14")["lv"] == "wait"   # nahe Hoch, über EMA 100, ruhig → abwarten
+    assert level(13, False, 0.01, "2026-06-01", "2026-10-14")["lv"] == "go"     # über 3 Monate gewartet → trotzdem rein
+    assert level(13, True, 0.01)["lv"] == "go"                                   # unter der EMA 100
+    assert level(13, False, 0.06)["lv"] == "go"                                  # ≥ 5 % unter dem Hoch
+    assert level(26, False, 0.0)["lv"] == "go"                                   # VIX ≥ 25
+    assert level(35, True, 0.2)["lv"] == "go2"                                   # Panik
+    assert level(None, False, 0.0)["lv"] == "wait"
 
 
 def test_clean_removes_spike_and_compute():
@@ -21,7 +22,7 @@ def test_clean_removes_spike_and_compute():
     c.iloc[300] = 5.0                                   # Fehlkurs
     assert clean(c).min() > 90
     out = compute(pd.DataFrame({"Close": c}))
-    assert out["lv"] == "blue" and out["dd"] < 0.01 and len(out["hist"]) > 300
+    assert out["lv"] in ("wait", "go") and out["dd"] < 0.01 and len(out["hist"]) > 300
 
 
 def test_split_is_adjusted():
