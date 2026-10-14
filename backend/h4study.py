@@ -308,7 +308,7 @@ def robust(hits: dict, raw: dict) -> dict:
 # Nachlauf-Stop weiterlaufen lassen (höchstens 40 Tage) · TP = Hälfte am Kursziel (+2/+3 R), Rest Tag 20.
 EXIT_RULES = {"T10": {"T": 10}, "T15": {"T": 15}, "T20 (heute)": {"T": 20}, "T30": {"T": 30}, "T40": {"T": 40},
               "BE1·T20": {"T": 20, "be": 1}, "TR2·T40": {"T": 40, "tr": 2}, "TR3·T60": {"T": 60, "tr": 3}, "TR2·T20": {"T": 20, "tr": 2},
-              "EMA20·T40": {"T": 40, "ema": 1}, "EXT2·T40": {"T": 40, "ext": 2}, "EXT3·T60": {"T": 60, "ext": 3},
+              "EMA20·T40": {"T": 40, "ema": 20}, "EXT2·T40": {"T": 40, "ext": 2}, "EXT3·T60": {"T": 60, "ext": 3},
               "TP2 halb·T20": {"T": 20, "tp": 2}, "TP3 halb·T20": {"T": 20, "tp": 3}}
 
 
@@ -344,7 +344,7 @@ def _exit_sim(b: pd.DataFrame, i0: int, stop: float, rule: dict, ema20: np.ndarr
                 r = (c[j] - e) / risk
                 return {"r": (0.5 * half + 0.5 * r if half is not None else r) - cost, "to": str(b.index[j])}
             st = max(st, hh - rule["ext"] * risk)
-        if rule.get("ema") and dn >= 10 and lastbar[j] and c[j] < ema20[j] and j < end:
+        if rule.get("ema") and dn >= rule.get("from", 10) and lastbar[j] and c[j] < ema20[j] and j < end:
             r = (o[j + 1] - e) / risk
             return {"r": r - cost, "to": str(b.index[j + 1])}
         if rule.get("tp") and j == end20 and T == 20:
@@ -353,11 +353,15 @@ def _exit_sim(b: pd.DataFrame, i0: int, stop: float, rule: dict, ema20: np.ndarr
     return {"r": (0.5 * half + 0.5 * r if half is not None else r) - cost, "to": str(b.index[end])}
 
 
-def exits_report(hits: dict, raw: dict) -> int:
+def exits_report(hits: dict, raw: dict, fine: bool = False) -> int:
     """Gibt es einen besseren Ausstieg als Tag 20? Alle Regeln auf denselben Einstiegen (nur Trades, bei denen jede
     Regel zu Ende laufen konnte), beide Stichproben und beide Zeithälften getrennt, Depot wie die Strategie."""
     global TRIG, EXITS
+    global EXIT_RULES
     TRIG, EXITS = {"RMBS": ["R40", "M", "B", "S"]}, ("zeit",)
+    if fine:                             # Feinprüfung des EMA-Ausstiegs: Nachbar-Einstellungen
+        EXIT_RULES = {"T20 (heute)": {"T": 20}, **{f"EMA{sp} ab T{fr}·T{mx}": {"T": mx, "ema": sp, "from": fr}
+                      for sp in (10, 20, 30, 50) for fr in (5, 10, 15) for mx in (30, 40, 60)}}
     rep = {"generated": time.strftime("%Y-%m-%d"), "exits": {}}
     bars = {}
     for t, x in raw.items():
@@ -365,8 +369,8 @@ def exits_report(hits: dict, raw: dict) -> int:
             b = to4h(x)
             if len(b) > 100:
                 dc = b.groupby("day")["Close"].last()
-                em = dc.ewm(span=20, adjust=False).mean()
-                b["ema20d"] = b["day"].map(em).to_numpy()
+                for sp in (10, 20, 30, 50):
+                    b[f"ema{sp}d"] = b["day"].map(dc.ewm(span=sp, adjust=False).mean()).to_numpy()
                 b["lastbar"] = (b["day"] != b["day"].shift(-1)).to_numpy()
                 bars[t] = b
         except Exception:
@@ -381,7 +385,8 @@ def exits_report(hits: dict, raw: dict) -> int:
             if not v:
                 continue
             i0 = int(b.index.get_loc(pd.Timestamp(v["ti"])))
-            outs = {k: _exit_sim(b, i0, v["sl"], rl, b["ema20d"].to_numpy(float), b["lastbar"].to_numpy(bool)) for k, rl in EXIT_RULES.items()}
+            outs = {k: _exit_sim(b, i0, v["sl"], rl, b[f"ema{rl.get('ema', 20)}d"].to_numpy(float), b["lastbar"].to_numpy(bool))
+                    for k, rl in EXIT_RULES.items()}
             if any(x is None for x in outs.values()):
                 continue                                 # gleiche Stichprobe für alle Regeln
             half = "a" if v["ti"] < "2025-04-01" else "b"
@@ -527,7 +532,7 @@ def main(argv=None) -> int:
         print("===END===")
         return 0
     if mode == "exits":                                  # Gibt es einen besseren Ausstieg als Tag 20?
-        return exits_report(hits, raw)
+        return exits_report(hits, raw, fine="--fine" in argv)
     if mode == "variants":                               # Sind die 4H-Kriterien richtig gewählt? (nur volle Treffer)
         return variants_report(hits, raw)
     if mode == "miss":                                   # 10/11 und 9/11 nach fehlendem Kriterium, ohne und mit 4H-Bestätigung
