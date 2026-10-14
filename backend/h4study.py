@@ -345,6 +345,14 @@ def _exit_sim(b: pd.DataFrame, i0: int, stop: float, rule: dict, ema20: np.ndarr
             return {"r": (0.5 * half + 0.5 * r if half is not None else r) - cost, "to": str(b.index[j])}
         if rule.get("tp") and half is None and h[j] >= e + rule["tp"] * risk:
             half = float(rule["tp"])
+        lv = rule.get("_lvl")
+        if lv and h[j] >= lv:
+            px_ = max(o[j], lv) if j > i0 else lv
+            if rule.get("tpx"):                          # ganzes Ziel
+                return {"r": (px_ - e) / risk - cost, "to": str(b.index[j])}
+            if half is None:                             # Split: Hälfte am Ziel, Rest Stop auf Einstand
+                half = (px_ - e) / risk
+                st = max(st, e)
         hh = max(hh, h[j])
         dn = int(np.searchsorted(ud, days[j])) + 1       # Handelstag des Trades (1 = Kauftag)
         if rule.get("be") and hh >= e + rule["be"] * risk:
@@ -370,12 +378,24 @@ def _exit_sim(b: pd.DataFrame, i0: int, stop: float, rule: dict, ema20: np.ndarr
     return {"r": (0.5 * half + 0.5 * r if half is not None else r) - cost, "to": str(b.index[end])}
 
 
-def exits_report(hits: dict, raw: dict, fine: bool = False, ind: bool = False) -> int:
+def exits_report(hits: dict, raw: dict, fine: bool = False, ind: bool = False, google: bool = False) -> int:
     """Gibt es einen besseren Ausstieg als Tag 20? Alle Regeln auf denselben Einstiegen (nur Trades, bei denen jede
     Regel zu Ende laufen konnte), beide Stichproben und beide Zeithälften getrennt, Depot wie die Strategie."""
     global TRIG, EXITS
     global EXIT_RULES
     TRIG, EXITS = {"RMBS": ["R40", "M", "B", "S"]}, ("zeit",)
+    if google:                                           # Googles Vorschläge: Fibonacci-Ziele, altes Hoch, Split, ATR-Puffer
+        EXIT_RULES = {"T20 (heute)": {"T": 20}, "EMA20 ab T10·T40": {"T": 40, "ema": 20, "from": 10},
+                      "TP 61,8 % Fib · sonst T20": {"T": 20, "tpx": ("fib", 0.618)},
+                      "TP altes Hoch · sonst T20": {"T": 20, "tpx": ("hi",)},
+                      "TP 127,2 % Ext · sonst T40": {"T": 40, "tpx": ("fib", 1.272)},
+                      "TP 161,8 % Ext · sonst T40": {"T": 40, "tpx": ("fib", 1.618)},
+                      "Split ½ altes Hoch, Rest Einstand + T20": {"T": 20, "split": ("hi",)},
+                      "Split ½ altes Hoch, Rest Einstand + EMA20 (max T40)": {"T": 40, "split": ("hi",), "ema": 20, "from": 1},
+                      "Split ½ 61,8 %, Rest Einstand + EMA20 (max T40)": {"T": 40, "split": ("fib", 0.618), "ema": 20, "from": 1},
+                      "Split ½ altes Hoch, Rest Einstand + EMA20 ab T10": {"T": 40, "split": ("hi",), "ema": 20, "from": 10},
+                      "Stop 1 ATR Puffer · T20": {"T": 20, "buf": 1.0}, "Stop 1,5 ATR Puffer · T20": {"T": 20, "buf": 1.5},
+                      "Stop 2 ATR Puffer · T20": {"T": 20, "buf": 2.0}}
     if ind:                                              # Indikator-Ausstiege mit „Reife“-Bedingung, alle bis höchstens Tag 20 bzw. 40
         EXIT_RULES = {"T20 (heute)": {"T": 20}, "T40": {"T": 40}, "EMA20 ab T10·T40": {"T": 40, "ema": 20, "from": 10}}
         for sg, sn in (("rsi", "RSI≥70 dreht"), ("macd", "MACD kreuzt runter"), ("mbi", "rotes MBI-X"), ("2v3", "2 von 3"),
@@ -416,8 +436,30 @@ def exits_report(hits: dict, raw: dict, fine: bool = False, ind: bool = False) -
             if not v:
                 continue
             i0 = int(b.index.get_loc(pd.Timestamp(v["ti"])))
-            outs = {k: _exit_sim(b, i0, v["sl"], rl, b[f"ema{rl.get('ema', 20)}d"].to_numpy(float), b["lastbar"].to_numpy(bool))
-                    for k, rl in EXIT_RULES.items()}
+            days_ = b["day"].to_numpy()
+            sig_i = np.flatnonzero(days_ == np.datetime64(pd.Timestamp(e["d"])))
+            c0 = float(b["Close"].iat[int(sig_i[-1])]) if len(sig_i) else None
+            dd = (e.get("f") or {}).get("dd")
+            H = c0 / (1 - dd) if c0 and dd and 0 < dd < 0.95 else None
+            Lo = c0 * min(e["px"]["pl"]) if c0 else None
+            atr_abs = c0 * e["px"]["atr"] if c0 else 0
+            e0 = float(b["Open"].iat[i0])
+
+            def lvl(spec):
+                if not H or not Lo or H <= Lo:
+                    return None
+                t = H if spec[0] == "hi" else Lo + spec[1] * (H - Lo)
+                return t if t > e0 + 0.25 * atr_abs else None
+
+            def run1(rl):
+                rl2 = dict(rl)
+                if rl.get("tpx") or rl.get("split"):
+                    rl2["_lvl"] = lvl(rl.get("tpx") or rl.get("split"))
+                st = v["sl"] - (rl["buf"] - 0.25) * atr_abs if rl.get("buf") else v["sl"]
+                if st >= e0:
+                    return None
+                return _exit_sim(b, i0, st, rl2, b[f"ema{rl.get('ema', 20)}d"].to_numpy(float), b["lastbar"].to_numpy(bool))
+            outs = {k: run1(rl) for k, rl in EXIT_RULES.items()}
             if any(x is None for x in outs.values()):
                 continue                                 # gleiche Stichprobe für alle Regeln
             half = "a" if v["ti"] < "2025-04-01" else "b"
@@ -563,7 +605,7 @@ def main(argv=None) -> int:
         print("===END===")
         return 0
     if mode == "exits":                                  # Gibt es einen besseren Ausstieg als Tag 20?
-        return exits_report(hits, raw, fine="--fine" in argv, ind="--ind" in argv)
+        return exits_report(hits, raw, fine="--fine" in argv, ind="--ind" in argv, google="--google" in argv)
     if mode == "variants":                               # Sind die 4H-Kriterien richtig gewählt? (nur volle Treffer)
         return variants_report(hits, raw)
     if mode == "miss":                                   # 10/11 und 9/11 nach fehlendem Kriterium, ohne und mit 4H-Bestätigung

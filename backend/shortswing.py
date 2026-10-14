@@ -59,6 +59,16 @@ def _last_of_week(wd: list[int], j: int) -> bool:
     return j + 1 < len(wd) and wd[j + 1] <= wd[j]
 
 
+def _lvl(px: dict, spec: tuple, entry: float, atr: float) -> float | None:
+    """Kursziel aus der Korrektur: ("hi",) = Hoch vor der Korrektur, ("fib", k) = Tief + k × (Hoch − Tief)
+    (0,618 Retracement, 1,0 altes Hoch, 1,272 / 1,618 Extension). Nur wenn es mindestens 0,25 ATR über dem Kauf liegt."""
+    H, L = px.get("H"), px.get("L")
+    if not H or not L or H <= L:
+        return None
+    t = H if spec[0] == "hi" else L + spec[1] * (H - L)
+    return t if t > entry + 0.25 * atr else None
+
+
 def _ind_sig(px: dict, j: int, kind: str) -> bool:
     """Ausstiegssignale im Tageschart am Tag j (nur bis dahin bekannte Werte): RSI war ≥ 70 und dreht nach unten,
     MACD kreuzt die Signallinie nach unten (Histogramm wird negativ), rotes MBI-X; 2v3/3v3 = so viele davon in den letzten 3 Tagen."""
@@ -166,8 +176,13 @@ def simulate(px: dict, r: dict) -> dict | None:
         elif tgt_kind[0] == "tp1":
             tp = [x for x in (px.get("tp") or []) if x > entry + 0.25 * atr]
             target = tp[0] if tp and tp[0] <= entry + 4 * atr else entry + 1.5 * risk
-    part = r.get("part")                           # (Anteil, R-Vielfaches)
-    ptarget = entry + part[1] * risk if part else None
+        elif tgt_kind[0] in ("fib", "hi"):
+            target = _lvl(px, tgt_kind, entry, atr)
+    part = r.get("part")                           # (Anteil, R-Vielfaches) oder (Anteil, ("fib", k) / ("hi",))
+    if part and isinstance(part[1], tuple):
+        ptarget = _lvl(px, part[1], entry, atr)
+    else:
+        ptarget = entry + part[1] * risk if part else None
     # Hebel / K.-o.
     lev, ko = 1, None
     for L in sorted(r.get("levs", [1]), reverse=True):
