@@ -35,6 +35,19 @@ for _k, _n in (("rsi", "RSI≥70 dreht"), ("macd", "MACD kreuzt runter"), ("mbi"
     for _gn, _g in (("sofort", None), ("ab Tag 10", ("day", 10)), ("ab +1R", ("R", 1.0)), ("ab +2R", ("R", 2.0))):
         for _mx in (20, 40):
             IND[f"{_n} {_gn} · max {_mx}"] = {"hold": _mx, "ind_x": _k, "ind_gate": _g}
+# Googles Vorschläge (--google): Fibonacci-Ziele, altes Hoch, Extensions, Split-Ausstieg, ATR-Puffer beim Stop
+GOOGLE = {"Tag 20 (heute)": {"hold": 20}, "EMA20 ab Tag 10 · max 40": {"hold": 40, "ema_x": 20, "ema_from": 10},
+          "TP 61,8 % Fibonacci · sonst Tag 20": {"hold": 20, "tgt": ("fib", 0.618)},
+          "TP altes Hoch (100 %) · sonst Tag 20": {"hold": 20, "tgt": ("hi",)},
+          "TP 127,2 % Extension · sonst Tag 40": {"hold": 40, "tgt": ("fib", 1.272)},
+          "TP 161,8 % Extension · sonst Tag 40": {"hold": 40, "tgt": ("fib", 1.618)},
+          "Split: ½ am alten Hoch, Rest Einstand + Tag 20": {"hold": 20, "part": (0.5, ("hi",)), "be_after_part": True},
+          "Split: ½ am alten Hoch, Rest Einstand + EMA20 (max 40)": {"hold": 40, "part": (0.5, ("hi",)), "be_after_part": True, "ema_x": 20, "ema_from": 1},
+          "Split: ½ bei 61,8 %, Rest Einstand + EMA20 (max 40)": {"hold": 40, "part": (0.5, ("fib", 0.618)), "be_after_part": True, "ema_x": 20, "ema_from": 1},
+          "Split: ½ am alten Hoch, Rest Einstand + EMA20 ab Tag 10": {"hold": 40, "part": (0.5, ("hi",)), "be_after_part": True, "ema_x": 20, "ema_from": 10},
+          "Stop mit 1 ATR Puffer · Tag 20": {"hold": 20, "buf": 1.0, "maxd": 4.5},
+          "Stop mit 1,5 ATR Puffer · Tag 20": {"hold": 20, "buf": 1.5, "maxd": 4.5},
+          "Stop mit 2 ATR Puffer · Tag 20": {"hold": 20, "buf": 2.0, "maxd": 4.5}}
 
 
 def rows_for(hits: list[dict], rule: dict) -> list[dict]:
@@ -43,8 +56,12 @@ def rows_for(hits: list[dict], rule: dict) -> list[dict]:
         if len(e["px"]["c"]) < 60:                  # genug Verlauf für jede Regel (gleiche Trades überall)
             continue
         var = {}
+        px = e["px"]
+        dd = (e.get("f") or {}).get("dd")
+        if dd and 0 < dd < 0.95 and "H" not in px:     # Hoch vor der Korrektur und Korrekturtief (relativ zum Signaltag)
+            px = {**px, "H": 1 / (1 - dd), "L": min(px["pl"])}
         for L in (1, 2, 3, 5, 10):
-            sm = simulate(e["px"], {**QRULE, **rule, "levs": [L], "kob": 1.0})
+            sm = simulate(px, {**QRULE, **rule, "levs": [L], "kob": 1.0})
             if sm and "skip" not in sm and sm["lev"] == L:
                 var[L] = sm
         if var:
@@ -65,7 +82,7 @@ def per_trade(rows: list[dict]) -> dict:
 
 def main(argv=None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
-    rules = IND if "--ind" in argv else RULES
+    rules = GOOGLE if "--google" in argv else IND if "--ind" in argv else RULES
     dirs = [a for a in argv if not a.startswith("--")] or ["k1", "k2"]
     t0 = time.time()
     hits = {d: _hits(d) for d in dirs}
