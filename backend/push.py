@@ -275,25 +275,25 @@ def watch_messages(today: str, rows: list[dict] | None = None) -> list[dict]:
             continue
         t = r["ticker"]
         if v == 2:
-            out.append({"title": f"⭐ Treffer aus deiner Watchlist: {n}",
+            out.append({"_n": n, "title": f"⭐ Treffer aus deiner Watchlist: {n}",
                         "body": "Alle 11 Kriterien im Tageschart erfüllt. Noch nicht kaufen: erst die Seitwärtsphase (bis 10 Tage), dann die "
                                 "4H-Bestätigung – dafür kommt eine eigene Mitteilung.",
                         "url": APP + f"?sec=entry&t={t}", "tag": "kairo-watch"})
         else:
             miss = ", ".join(_short(m) for m in (r.get("missing") or [])[:2]) or "ein Kriterium"
-            out.append({"title": f"👀 Bald Treffer? {n} – 10 von 11",
+            out.append({"_n": n, "title": f"👀 Bald Treffer? {n} – 10 von 11",
                         "body": f"Fehlt nur noch: {miss}. " + ("Nur das MBI-Abklingen fehlt – darf ins 4H-Setup: Kairo meldet sich bei der 4H-Bestätigung."
                                 if r.get("mbi_soft") else "Noch kein Kaufsignal – Kairo meldet sich, wenn es ein Treffer wird."),
                         "url": APP + f"?sec=entry&t={t}", "tag": "kairo-watch"})
     new = {n: [max(v, (old.get(n) or [0])[0]), today] for n, (v, r) in lvl.items() if v}
     state.save("watch_state.json", {**old, **new})
     if len(out) > 5:                                   # erste Prüfung bzw. viele auf einmal: eine Sammel-Mitteilung statt Flut
-        names = [m["title"].split(": ", 1)[1].split(" – ")[0] for m in out]
+        names = [m["_n"] for m in out]
         out = [{"title": f"👀 Watchlist: {len(out)} Aktien kurz vor oder bei einem Treffer",
                 "body": ", ".join(names[:10]) + (" …" if len(names) > 10 else "") + ". Details in der App unter Watchlist.",
                 "url": APP + "?sec=scanner", "tag": "kairo-watch"}]
     print(f"Watchlist: {len(out)} Mitteilung(en){' (erste Prüfung)' if first else ''}")
-    return out
+    return [{k: v for k, v in m.items() if k != "_n"} for m in out]
 
 
 def run(today_iso: str | None = None) -> dict:
