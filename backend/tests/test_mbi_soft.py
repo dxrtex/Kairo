@@ -23,4 +23,14 @@ def test_candidates_take_soft_signals():
     sig = [{"t": "1211.HK", "k": "soft", "d": "2026-10-14"}, {"t": "X", "k": "fast", "d": "2026-10-14"},
            {"t": "Y", "k": "hit", "d": "2026-10-13"}]
     c = {x["t"]: x for x in candidates(sig, "2026-10-14")}
-    assert c["1211.HK"]["soft"] and "X" not in c and not c["Y"].get("soft")
+    assert c["1211.HK"]["soft"] and c["1211.HK"]["grp"] == "10s" and not c["Y"].get("soft")
+    assert c["X"]["grp"] == "10" and c["Y"]["grp"] == "11"                         # 10/11 zur Auswahl mit dabei
+
+
+def test_candidates_prefer_real_hit_over_newer_near():
+    sig = [{"t": "A", "k": "hit", "d": "2026-10-08"}, {"t": "A", "k": "near", "d": "2026-10-14"},
+           {"t": "B", "k": "near", "d": "2026-10-10"}, {"t": "B", "k": "near", "d": "2026-10-14"},
+           {"t": "C", "k": "near", "d": "2026-06-01"}]
+    c = {x["t"]: x for x in candidates(sig, "2026-10-14")}
+    assert c["A"]["grp"] == "11" and c["A"]["d"] == "2026-10-08"                   # laufender Treffer bleibt
+    assert c["B"]["d"] == "2026-10-14" and c["B"]["grp"] == "9" and "C" not in c

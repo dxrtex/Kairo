@@ -312,23 +312,38 @@ def track(old: list[dict], items: list[dict]) -> list[dict]:
         if not tr:
             continue
         key = (it["t"], it["d"])
-        rec = by.get(key, {"t": it["t"], "n": it.get("n"), "d": it["d"], **({"soft": True} if it.get("soft") else {})})
+        rec = by.get(key, {"t": it["t"], "n": it.get("n"), "d": it["d"], "grp": it.get("grp") or "11",
+                           **({"soft": True} if it.get("soft") else {})})
         rec.update({"e": tr["e"], "sl": tr["sl"], "ed": tr["ed"], "res": tr.get("res") or ("sell" if it["st"] == "sell" else "run"),
                     "r": tr.get("r"), "xd": tr.get("xd"), "day": tr.get("day"), "r20": tr.get("r20"), "res20": tr.get("res20")})
         by[key] = rec
     return sorted(by.values(), key=lambda x: x["ed"], reverse=True)
 
 
-def track_stats(rec: list[dict]) -> dict | None:
-    done = [x for x in rec if x.get("res") in ("stop", "zeit", "ema") and x.get("r") is not None]
-    if not rec:
-        return None
+def _st(done: list[dict]) -> dict:
     r = [x["r"] for x in done]
     r20 = [x["r20"] for x in done if x.get("r20") is not None]   # Gegenprobe: dieselben Trades mit „Verkauf an Tag 20“
-    rs = [x["r"] for x in done if x.get("soft")]                  # davon „MBI gelockert“ (10/11)
-    return {"n_soft": len(rs), "avg_r_soft": round(sum(rs) / len(rs), 3) if rs else None,"n": len(done), "open": sum(x.get("res") in ("run", "sell") for x in rec),
-            "avg_r": round(sum(r) / len(r), 3) if r else None, "win": round(sum(v > 0 for v in r) / len(r), 3) if r else None,
+    return {"n": len(done), "avg_r": round(sum(r) / len(r), 3) if r else None,
+            "win": round(sum(v > 0 for v in r) / len(r), 3) if r else None,
             "n20": len(r20), "avg_r20": round(sum(r20) / len(r20), 3) if r20 else None}
+
+
+def track_stats(rec: list[dict]) -> dict | None:
+    """Kennzahlen der echten Einstiege (11/11 und „MBI gelockert“) und je Stufe getrennt (by: 11, 10s, 10, 9)."""
+    if not rec:
+        return None
+    done = [x for x in rec if x.get("res") in ("stop", "zeit", "ema") and x.get("r") is not None]
+    g = lambda x: x.get("grp") or ("10s" if x.get("soft") else "11")
+    real = [x for x in done if g(x) in REAL]
+    rs = [x["r"] for x in real if g(x) == "10s"]
+    return {**_st(real), "open": sum(x.get("res") in ("run", "sell") and g(x) in REAL for x in rec),
+            "n_soft": len(rs), "avg_r_soft": round(sum(rs) / len(rs), 3) if rs else None,
+            "by": {k: {**_st([x for x in done if g(x) == k]), "open": sum(x.get("res") in ("run", "sell") and g(x) == k for x in rec)}
+                   for k in ("11", "10s", "10", "9")}}
+
+
+GRP = {"hit": "11", "soft": "10s", "fast": "10", "near": "9"}   # 10s = 10/11, nur MBI-Abklingen fehlt (zählt wie ein Treffer)
+REAL = ("11", "10s")                                            # echte Einstiege; 10/11 und 9/11 nur zur Auswahl (Info, keine Mitteilung)
 
 
 def candidates(sig: list[dict], today: str, days: int = 90) -> list[dict]:
@@ -336,11 +351,15 @@ def candidates(sig: list[dict], today: str, days: int = 90) -> list[dict]:
     + bis 40 Tage halten ≈ 62 Handelstage ≈ 90 Kalendertage (je Aktie nur der jüngste Treffer)."""
     cut = (pd.Timestamp(today) - timedelta(days=days)).strftime("%Y-%m-%d")
     seen, out = set(), []
-    for s in sorted(sig, key=lambda x: x["d"], reverse=True):
-        if s.get("k") not in ("hit", "soft") or s["d"] < cut or s["t"] in seen:
+    # je Aktie ein Kandidat: der jüngste echte (11/11 bzw. MBI gelockert), sonst der jüngste 10/11, sonst 9/11
+    pri = {"hit": 0, "soft": 0, "fast": 1, "near": 2}
+    sel = sorted((x for x in sig if x.get("k") in pri and x["d"] >= cut), key=lambda x: x["d"], reverse=True)
+    for s in sorted(sel, key=lambda x: pri[x["k"]]):                     # stabil: innerhalb der Stufe der jüngste zuerst
+        if s["t"] in seen:
             continue
         seen.add(s["t"])
-        out.append({"t": s["t"], "n": s.get("n") or s["t"], "d": s["d"], "cur": s.get("cur"), **({"soft": True} if s["k"] == "soft" else {})})
+        out.append({"t": s["t"], "n": s.get("n") or s["t"], "d": s["d"], "cur": s.get("cur"), "grp": GRP[s["k"]],
+                    **({"soft": True} if s["k"] == "soft" else {})})
     return out
 
 
