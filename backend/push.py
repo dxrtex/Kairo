@@ -182,9 +182,10 @@ def h4_update(today: str) -> list[dict]:
     except Exception as exc:
         print(f"4H: Kandidaten nicht geladen ({exc!r})")
         return []
-    # Basis entsteht erst zum Tagesschluss (Abendscan); laufende Trades: Stop untertags. 10/11 und 9/11: nur Abendstand, keine Mitteilung
+    # Basis entsteht erst zum Tagesschluss (Abendscan) – tagsüber nur, wer auf 4H wartet oder läuft (Stop untertags).
+    # Alle Stufen (11/11, 10/11, 9/11); Mitteilungen nur für echte Einstiege (h4_messages)
     cands = [{k: it.get(k) for k in ("t", "n", "d", "cur", "soft", "grp") if it.get(k) is not None} for it in base.get("items") or []
-             if it.get("st") in ("4h", "go", "run", "sell") and (it.get("grp") or "11") in ("11", "10s")]
+             if it.get("st") in ("4h", "go", "run", "sell")]
     if not cands:
         state.save("h4live.json", {"generated": datetime.now(timezone.utc).isoformat(timespec="minutes"), "items": []})
         print("4H: keine offenen Kandidaten")
@@ -211,6 +212,8 @@ def h4_messages(items: list[dict], today: str, sent: dict, rk: float | None) -> 
     """Nur eine Mitteilung je Treffer: wenn die 4H-Bestätigung da ist (Kauf zur Eröffnung der nächsten 4H-Kerze)."""
     out = []
     for it in items:
+        if (it.get("grp") or "11") not in ("11", "10s"):
+            continue                                   # 10/11 und 9/11: nur Status in der App, keine Mitteilung
         tr = it.get("trade") or {}
         fresh = it["st"] == "go" or (it["st"] == "run" and (tr.get("day") or 99) <= 1)
         key = f"h4:{it['t']}:{it['d']}"

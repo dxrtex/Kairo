@@ -75,3 +75,11 @@ def test_watchlist_only_on_upgrade(monkeypatch):
     push.watch_messages("2026-10-17", rows)
     rows[0].update(fast_hit=True)
     assert push.watch_messages("2026-10-18", rows) == []                            # kurz weg und wieder da: kein zweites Mal
+
+
+def test_h4_messages_only_for_real_entries():
+    from backend.push import h4_messages
+    base = {"t": "A", "n": "A", "d": "2026-10-10", "st": "go", "cur": "USD", "base": {"sl": 9.0, "lo": 9.5, "hi": 10.5}, "trig": {"c": 10.0}}
+    items = [base, {**base, "t": "B", "n": "B", "grp": "10"}, {**base, "t": "C", "n": "C", "grp": "9"}, {**base, "t": "D", "n": "D", "grp": "10s", "soft": True}]
+    m = h4_messages(items, "2026-10-14", {}, None)
+    assert [x["title"].split(": ")[1].split(" –")[0] for x in m] == ["A", "D"]
