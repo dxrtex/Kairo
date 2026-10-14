@@ -3065,13 +3065,18 @@ const h4NowBadge = t => { const n = h4Now(t); if (!n) return ""; const f = n.fl 
   return `<span class="status st-kein_setup" title="Setup-Zustand – nur Information, kein Treffer">Basis ${n.b ? "✓" : "✗"} · 4H ${f ? H4F.filter(([k]) => f.includes(k[0])).map(x => x[1]).join(" ") : "–"}</span>`; };
 function h4CardHtml() {
   const d = h4Data(); if (!d) return "";
-  const act = (d.items || []).filter(x => ["go", "4h", "basis", "run"].includes(x.st));
+  // Übersichtlich: oben nur, was jetzt zählt (bestätigt, dann die nächsten Kandidaten) – der Rest als eine Zeile
+  const its = d.items || [], go = its.filter(h4Go), nf = x => H4F.filter(([k]) => (x.fl || {})[k]).length,
+    wait4 = its.filter(x => x.st === "4h").sort((a, b) => nf(b) - nf(a));          // am nächsten an der Bestätigung zuerst
+  const nBase = its.filter(x => x.st === "basis").length, nRun = its.filter(x => x.st === "run" && !h4Go(x)).length;
+  const act = [...go, ...wait4.slice(0, Math.max(0, 4 - go.length))];
   const when = d.live || d.generated, tm = when ? new Date(when).toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "–";
-  const rows = act.slice(0, 8).map(it => { const x = h4Text(it);
-    return `<button class="h4row${h4Go(it) ? " go" : ""}" data-ein="${esc(it.t)}"><i>${x.ic}</i><span><b>${esc(it.n || it.t)} · ${esc(x.short)}</b><em>${esc(x.s)}</em>${it.st === "4h" ? `<div>${h4Flags(it.fl)}</div>` : ""}</span></button>`; }).join("");
-  return `<div class="hcard">${hHead("⚡ 4H-Top-Setup")}
-    ${rows || `<div class="note" style="margin:0">Gerade kein Kairo-Treffer in Arbeit. Neue Treffer erscheinen hier nach dem Abendscan.</div>`}
-    <div class="note" style="margin:8px 0 0">Kairo-Treffer → Seitwärtsphase → 4H-Bestätigung (RSI, MACD, MBI, Strukturbruch) → Kauf, Verkauf an Tag 20. Im Test ≈ 4× so viel je Trade wie ohne 4H. Stand ${esc(tm)} – tagsüber alle 30 Min. geprüft, bei Bestätigung kommt eine Mitteilung.</div></div>`;
+  const rows = act.map(it => { const x = h4Text(it);
+    return `<button class="h4row${h4Go(it) ? " go" : ""}" data-ein="${esc(it.t)}"><i>${x.ic}</i><span><b>${esc(it.n || it.t)} · ${esc(x.short)}</b><em>${esc(it.st === "4h" ? `Stop ${fmt((it.base || {}).sl)} ${it.cur || ""} · ${it.lim ? "bis " + dateDE(it.lim) : `noch ${it.lim_left} Handelstage`} · ${nf(it)} von 4 Signalen` : x.s)}</em>${it.st === "4h" ? `<div>${h4Flags(it.fl)}</div>` : ""}</span></button>`; }).join("");
+  return `<div class="hcard">${hHead("⚡ 4H-Top-Setup " + gl("h4"))}
+    ${rows || `<div class="note" style="margin:0">Gerade nichts zu tun – kein Treffer mit fertiger Seitwärtsphase.</div>`}
+    ${wait4.length > act.length - go.length || nBase || nRun ? `<div class="note" style="margin:6px 0 0">${[wait4.length - (act.length - go.length) > 0 ? `${wait4.length - (act.length - go.length)} weitere warten auf 4H` : "", nBase ? `${nBase} warten auf die Seitwärtsphase` : "", nRun ? `${nRun} laufende 4H-Trades` : ""].filter(Boolean).join(" · ")} – <a href="#" data-gokinds="hit">alle im Scanner</a></div>` : ""}
+    <div class="note" style="margin:8px 0 0">Stand ${esc(tm)} · alle 30 Min. geprüft – bei Bestätigung kommt eine Mitteilung.</div></div>`;
 }
 function h4BilanzHtml() {
   const d = h4Data(); if (!d || !d.track) return "";
