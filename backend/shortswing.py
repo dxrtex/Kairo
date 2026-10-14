@@ -59,6 +59,30 @@ def _last_of_week(wd: list[int], j: int) -> bool:
     return j + 1 < len(wd) and wd[j + 1] <= wd[j]
 
 
+def _ind_sig(px: dict, j: int, kind: str) -> bool:
+    """Ausstiegssignale im Tageschart am Tag j (nur bis dahin bekannte Werte): RSI war ≥ 70 und dreht nach unten,
+    MACD kreuzt die Signallinie nach unten (Histogramm wird negativ), rotes MBI-X; 2v3/3v3 = so viele davon in den letzten 3 Tagen."""
+    rs, mh, rx = px.get("rsi") or [], px.get("mh") or [], px.get("rx") or []
+    if j >= len(rs) or j >= len(mh) or j >= len(rx):
+        return False
+    def r_(k):
+        return k >= 1 and max(rs[max(0, k - 5):k + 1]) >= 70 and rs[k] < rs[k - 1]
+    def m_(k):
+        prev = mh[k - 1] if k >= 1 else px.get("mh0", 0)
+        return mh[k] < 0 <= prev
+    def b_(k):
+        return bool(rx[k])
+    if kind == "rsi":
+        return r_(j)
+    if kind == "macd":
+        return m_(j)
+    if kind == "mbi":
+        return b_(j)
+    ks = range(max(0, j - 2), j + 1)
+    n = any(r_(k) for k in ks) + any(m_(k) for k in ks) + any(b_(k) for k in ks)
+    return n >= (2 if kind == "2v3" else 3)
+
+
 def simulate(px: dict, r: dict) -> dict | None:
     o, h, l, c = px["o"], px["h"], px["l"], px["c"]
     wd = px.get("wd") or []
@@ -189,6 +213,11 @@ def simulate(px: dict, r: dict) -> dict | None:
         if n_held >= hold:
             exit_, day, why = c[j], n_held, "zeit"
             break
+        if r.get("ind_x") and j + 1 < len(c):      # Indikator-Ausstieg im Tageschart (RSI/MACD/MBI), erst wenn der Trade „reif“ ist
+            g = r.get("ind_gate")
+            if (g is None or (g[0] == "day" and n_held >= g[1]) or (g[0] == "R" and mfe >= g[1])) and _ind_sig(px, j, r["ind_x"]):
+                exit_, day, why = o[j + 1], n_held + 1, "ind"
+                break
         if r.get("ema_x"):                         # Ausstieg: ab Tag ema_from Tagesschluss unter der EMA → Verkauf zur nächsten Eröffnung
             ema_v = ema_v + (c[j] - ema_v) * 2 / (r["ema_x"] + 1)
             if n_held >= r.get("ema_from", 10) and c[j] < ema_v and j + 1 < len(c):
