@@ -26,7 +26,7 @@ from .config import CONFIG, ROOT, as_dict
 from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
-from . import briefing, company, etf, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
+from . import briefing, company, etf, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import MARKET, SECTOR_DE, SECTOR_ETF, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -228,6 +228,7 @@ def fx_to_eur(currencies: set[str]) -> dict[str, float]:
     return out
 
 
+NEAR_MAX = 250
 TREND_ON = bool(getattr(getattr(CONFIG, "trend", None), "enabled", False))
 
 
@@ -320,6 +321,45 @@ def score_trend(df: pd.DataFrame, info: dict, ticker: str, res) -> dict:
 
 FC_MODEL = forecast.load_model()
 GRADE = grade.load()
+
+
+def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bool) -> dict:
+    """4H-Top-Setup für die App und die Mitteilungen: Status jedes Kairo-Treffers der letzten Wochen
+    (wartet auf Seitwärtsphase → wartet auf 4H → bestätigt → läuft / verfallen) und Setup-Zustand der Kandidaten."""
+    now = datetime.now(timezone.utc)
+    cands = h4live.candidates(state.load("signals.json", []), today)
+    for c in cands:
+        c["cur"] = c.get("cur") or (search.get(c["t"]) or {}).get("cur")
+    setup = [r["ticker"] for r in rows if r.get("passed") or r.get("near_hit")]
+    setup += [r["ticker"] for r in rows if r.get("fast_hit") and r["ticker"] in data and (h4live.setup_now(data[r["ticker"]], None) or {}).get("b")]
+    setup = list(dict.fromkeys(setup))[:450]
+    daily = data
+    if not evening:                                   # tagsüber: laufende Tageskerze weglassen (noch nicht fertig)
+        daily = {t: df[df.index.normalize() < pd.Timestamp(today)] for t, df in data.items() if t in {c["t"] for c in cands}}
+    # Stundenkerzen nur, wo die 4H-Bestätigung möglich ist (Seitwärtsphase fertig) – bei vielen Treffern sonst Hunderte Downloads
+    pre = h4live.build(cands, daily, {}, now, intraday=not evening)
+    need = {it["t"] for it in pre if it["st"] == "4h"}
+    hx = h4live.hourly(sorted(need | set(setup)))
+    items = h4live.build([c for c in cands if c["t"] in need], daily, hx, now, intraday=not evening)
+    items += [it for it in pre if it["t"] not in need]
+    cut = (pd.Timestamp(today) - timedelta(days=10)).strftime("%Y-%m-%d")
+    items = [it for it in items if it["st"] != "weg" or it["d"] >= cut]   # Verfallene nur kurz zeigen
+    rank = {"go": 0, "4h": 1, "basis": 2, "run": 3, "stop": 4, "zeit": 4, "weg": 5}
+    items.sort(key=lambda x: (rank.get(x["st"], 9), x["d"]))
+    rec = h4live.track(state.load("h4trades.json", []), items)
+    state.save("h4trades.json", rec)
+    nowset = {}
+    for t in setup:
+        if t in data:
+            st = h4live.setup_now(data[t], h4live.complete_only(hx.get(t), now) if hx.get(t) is not None else None)
+            if st:
+                nowset[t] = st
+    count = {}
+    for it in items:
+        count[it["st"]] = count.get(it["st"], 0) + 1
+    return {"generated": now.isoformat(timespec="minutes"), "items": items, "now": nowset, "count": count,
+            "track": {"stats": h4live.track_stats(rec), "list": rec[:60]},
+            "rule": {"window": h4live.WINDOW, "hold": h4live.HOLD, "need": list(h4live.NEED)}}
 
 
 def main(argv=None) -> int:
@@ -440,7 +480,7 @@ def main(argv=None) -> int:
     data = prov.history(tickers, CONFIG.history.period, end=args.end)
     print(f"Kurse geladen: {len(data)}")
 
-    results, stats = [], {"universe": len(tickers), "loaded": len(data), "errors": 0}
+    results, stats, near = [], {"universe": len(tickers), "loaded": len(data), "errors": 0}, []
     search = {}
     for t, df in data.items():
         m = meta.get(t, {})
@@ -471,8 +511,15 @@ def main(argv=None) -> int:
                 search[t].pop("lw", None)                # Tagestiefs nur für Kandidaten (hält search.json klein)
         except Exception as exc:
             print(f"{t}: Hinweis-Fehler {exc!r}")
-        if res.passed or res.fast_hit or res.near_hit or m.get("in_watchlist") or tr_hit:
+        if res.passed or res.fast_hit or m.get("in_watchlist") or tr_hit:
             results.append((t, df, res))
+        elif res.near_hit:                           # 9/11: nur mit enger Seitwärtsphase (sonst ~900 Aktien) – siehe unten
+            su = h4live.setup_now(df, None)
+            if su and su.get("b"):
+                near.append((su.get("br") or 9, t, df, res))
+    near.sort(key=lambda x: x[0])                    # 9/11 mit dem saubersten Setup: engste Seitwärtsphase zuerst, höchstens 250
+    results += [(t, df, res) for _, t, df, res in near[:NEAR_MAX]]
+    print(f"9/11: {len(near)} mit Seitwärtsphase, {min(len(near), NEAR_MAX)} in der Liste")
     # Earnings-Termin, Name und Sektor nur für Treffer/Fast-Treffer abfragen (eine Anfrage je Aktie)
     infos = yf.infos([t for t, _, _ in results])
     # Stammdaten-Cache (Zustands-Branch): blockt Yahoo die Einzelabfragen, gelten die Daten vom letzten erfolgreichen Abruf
@@ -648,7 +695,13 @@ def main(argv=None) -> int:
         except Exception as exc:
             print(f"Live-Bilanz: Fehler {exc!r}")
             bil = {"live": None, "signals": [], "backtest": None}
-        for name, obj in (("alerts.json", alerts), ("bilanz.json", bil), ("changes.json", changes)):
+        try:                                          # 4H-Top-Setup: Treffer → Seitwärtsphase → 4H-Bestätigung (backend/h4live.py)
+            h4 = h4_block(rows, data, search, today_iso, evening)
+            print(f"4H-Top-Setup: {len(h4['items'])} Treffer verfolgt – " + ", ".join(f"{k} {v}" for k, v in h4["count"].items()))
+        except Exception as exc:
+            print(f"4H-Top-Setup: Fehler {exc!r}")
+            h4 = {"generated": datetime.now(timezone.utc).isoformat(timespec="minutes"), "items": [], "now": {}, "error": True}
+        for name, obj in (("alerts.json", alerts), ("bilanz.json", bil), ("changes.json", changes), ("h4.json", h4)):
             with open(SITE / name, "w", encoding="utf-8") as f:
                 json.dump(_clean(obj), f, ensure_ascii=False, separators=(",", ":"))
     print(f"Treffer: {stats['hits']}, Fast-Treffer: {stats['fast_hits']}, 9/11: {stats['near_hits']}, Trend-Rücksetzer: {stats.get('trend_hits')}, Fehler: {stats['errors']}, "

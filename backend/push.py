@@ -143,10 +143,79 @@ def etf_message(today: str, sent: dict) -> list[dict]:
              "url": APP + "?sec=etf", "tag": "kairo-etf"}]
 
 
+def h4_update(today: str) -> list[dict]:
+    """4H-Top-Setup tagsüber: Kairo-Treffer, die auf die 4H-Bestätigung warten, nach jeder abgeschlossenen 4H-Kerze neu
+    prüfen. Kandidaten aus dem Abendscan (h4.json), Ergebnis für die App in state/h4live.json (Branch kairo-alerts)."""
+    from datetime import datetime, timezone
+    import pandas as pd
+    from . import h4live, state
+    try:
+        loc = __import__("pathlib").Path(__file__).resolve().parents[1] / "site" / "data" / "h4.json"
+        if loc.exists():
+            base = json.loads(loc.read_text(encoding="utf-8"))
+        else:
+            import requests
+            base = requests.get(APP + "data/h4.json", timeout=30).json()
+    except Exception as exc:
+        print(f"4H: Kandidaten nicht geladen ({exc!r})")
+        return []
+    cands = [{k: it.get(k) for k in ("t", "n", "d", "cur")} for it in base.get("items") or [] if it.get("st") in ("4h", "go") or (it.get("st") == "run" and ((it.get("trade") or {}).get("day") or 99) <= 2)]   # Basis entsteht erst zum Tagesschluss (Abendscan)
+    if not cands:
+        state.save("h4live.json", {"generated": datetime.now(timezone.utc).isoformat(timespec="minutes"), "items": []})
+        print("4H: keine offenen Kandidaten")
+        return []
+    import yfinance as yf
+    ts = sorted({c["t"] for c in cands})
+    h = yf.download(ts, period="1y", interval="1d", group_by="ticker", auto_adjust=True, progress=False, threads=True)
+    daily = {}
+    for t in ts:
+        try:
+            df = (h[t] if isinstance(h.columns, pd.MultiIndex) else h)[["Open", "High", "Low", "Close"]].dropna()
+            df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
+            daily[t] = df[df.index < pd.Timestamp(today)]            # laufender Tag: noch keine fertige Tageskerze
+        except Exception:
+            pass
+    now = datetime.now(timezone.utc)
+    items = h4live.build(cands, daily, h4live.hourly(ts), now, intraday=True)
+    state.save("h4live.json", {"generated": now.isoformat(timespec="minutes"), "items": items})
+    print("4H: " + ", ".join(f"{it['t']} {it['st']}" for it in items))
+    return items
+
+
+def h4_messages(items: list[dict], today: str, sent: dict, rk: float | None) -> list[dict]:
+    """Nur eine Mitteilung je Treffer: wenn die 4H-Bestätigung da ist (Kauf zur Eröffnung der nächsten 4H-Kerze)."""
+    out = []
+    for it in items:
+        tr = it.get("trade") or {}
+        fresh = it["st"] == "go" or (it["st"] == "run" and (tr.get("day") or 99) <= 1)
+        key = f"h4:{it['t']}:{it['d']}"
+        if not fresh or key in sent:
+            continue
+        sent[key] = today
+        cur = it.get("cur") or ""
+        sl = (it.get("base") or {}).get("sl")
+        px = tr.get("e") or (it.get("trig") or {}).get("c")
+        n = (it.get("n") or it["t"])[:28]
+        if not sl or not px:
+            continue
+        dist = px - sl
+        qty = (f" · bei {rk:.0f} € Risiko ≈ {int(rk / dist)} Aktien" if rk and cur == "EUR" else f" · Risiko je Aktie {_num(dist)} {cur}") + " – Turbo-Stückzahl im Einstieg"
+        out.append({"title": f"✅ 4H bestätigt: {n} – Einstieg",
+                    "body": f"Kairo-Treffer + Seitwärtsphase + 4H (RSI, MACD, MBI, Strukturbruch). Kauf jetzt bzw. zur nächsten Eröffnung "
+                            f"(~{_num(px)} {cur}). Stop {_num(sl)} {cur} ({_pct(dist / px)} Abstand){qty}. Verkauf an Tag 20.",
+                    "url": APP + f"?sec=entry&t={it['t']}", "tag": "kairo-h4"})
+    return out
+
+
 def run(today_iso: str | None = None) -> dict:
     from datetime import datetime
     from . import state
     raw, key = os.environ.get("PUSH_SUBS"), os.environ.get("VAPID_PRIVATE_KEY")
+    try:                                               # 4H-Status immer aktualisieren (auch ohne Mitteilungen – die App zeigt ihn)
+        h4_items = h4_update(today_iso or datetime.now().strftime("%Y-%m-%d"))
+    except Exception as exc:
+        print(f"4H: Fehler {exc!r}")
+        h4_items = []
     if not raw or not key:
         print("Push: nicht eingerichtet (Secrets PUSH_SUBS / VAPID_PRIVATE_KEY fehlen)")
         return {"enabled": False}
@@ -163,9 +232,10 @@ def run(today_iso: str | None = None) -> dict:
     sent = {k2: v for k2, v in state.load("push_sent.json", {}).items() if v >= _days_ago(today, 60)}
     n_sent = failed = 0
     etf_msg = etf_message(today, sent)
+    h4_msg = h4_messages(h4_items, today, sent, next((d.get("rk") for d in devs if d.get("rk")), None))
     for dev in devs:
         sub = dev.get("s") or dev
-        for msg in messages(dev, prices, today, sent) + etf_msg:
+        for msg in messages(dev, prices, today, sent) + etf_msg + h4_msg:
             try:
                 st = webpush.send(sub, msg, k)
                 n_sent += st in (200, 201, 202)
