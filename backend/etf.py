@@ -34,7 +34,7 @@ def level(vix: float | None, below_sma: bool, credit_weak: bool | None) -> dict:
         return {"lv": "yellow", "t": "Unruhig – Extra-Geld in Raten", "risk": risk,
                 "s": "Mehrere Warnzeichen (" + ", ".join(risk) + "). Historisch nicht unbedingt schlechtere Rendite, aber oft noch ein "
                      "weiterer Rückgang um 10 %. Sparrate unbedingt weiterlaufen lassen; Extra-Geld über 3–6 Monate verteilen."}
-    return {"lv": "blue", "t": "Normal – Sparrate wie geplant", "risk": risk,
+    return {"lv": "blue", "t": "Grün – weiter investieren", "risk": risk,
             "s": "Keine Panik, höchstens ein Warnzeichen" + (f" ({risk[0]})" if risk else "") + ". Auch nahe am Hoch lag der ETF ein Jahr "
                  "später im Schnitt rund 9–12 % höher – ein Allzeithoch ist kein Wartesignal. Extra-Geld kann sofort investiert werden."}
 
