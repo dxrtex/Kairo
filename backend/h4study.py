@@ -566,13 +566,80 @@ def miss_report(hits: dict, raw: dict) -> int:
     return 0
 
 
+def fine_report(hits: dict, raw: dict) -> int:
+    """Sind die Feinregeln im Tageschart zu streng? Fast-Treffer (10/11), denen NUR das MBI bzw. NUR die MACD-Wende fehlt,
+    aufgeteilt nach dem Grund (MBI: Rot noch über 70 % der Spitze – wie weit darüber; X älter als 15 Kerzen / fehlt;
+    Spitze nicht über der Linie / neue Spitze. MACD: Alter des letzten Kreuzes). Jeweils mit Seitwärtsphase + 4H wie live,
+    beide Stichproben und Zeithälften getrennt. Lohnt eine gelockerte Regel, müssen diese Gruppen so gut sein wie 11/11."""
+    bars = {}
+    for t, x in raw.items():
+        try:
+            b = to4h(x)
+            if len(b) > 100:
+                bars[t] = b
+        except Exception:
+            pass
+
+    def why(e):
+        miss = [m for m in (e.get("miss") or []) if m not in ("cap", "liquidity", "price", "history")]
+        if e["grp"] == "11":
+            return ["11/11"]
+        if e["grp"] != "10" or len(miss) != 1:
+            return []
+        f = e.get("f") or {}
+        rw = f.get("raw") or {}
+        if miss[0] == "mbi":
+            age, fade, ref = rw.get("mbi_age"), rw.get("mbi_fade"), rw.get("mbi_ref")
+            if age is None or age > 15:
+                return ["MBI: X älter als 15 / fehlt", "MBI alle"]
+            if ref is not None and ref <= 1:
+                return ["MBI: Spitze nicht über der Linie", "MBI alle"]
+            if fade is None:
+                return ["MBI: sonst", "MBI alle"]
+            g = ("MBI: Rot 70–80 %" if fade <= 0.8 else "MBI: Rot 80–90 %" if fade <= 0.9 else "MBI: Rot 90–100 %" if fade <= 1.0
+                 else "MBI: Rot über Spitze (neue Spitze)")
+            return [g, "MBI: Rot ≤ 90 % (gelockert)" if fade <= 0.9 else "MBI: Rot > 90 %", "MBI alle"]
+        if miss[0] == "macd_turn":
+            a = f.get("macd_age")
+            g = ("MACD: Kreuz 8–10 T." if a is not None and 8 <= a <= 10 else "MACD: Kreuz 11–15 T." if a is not None and 11 <= a <= 15
+                 else "MACD: Kreuz älter / keins")
+            return [g, "MACD alle"]
+        return []
+
+    keep = ("HB|–|zeit", "HB|RMBS|zeit")
+    rep = {"generated": time.strftime("%Y-%m-%d"), "fine": {}}
+    for d, hs in hits.items():
+        res: dict[str, dict[str, list]] = {}
+        for e in hs:
+            b = bars.get(e["t"])
+            gs = why(e)
+            if not gs or b is None or pd.Timestamp(e["d"]) < b["day"].iat[0] + pd.Timedelta(days=20):
+                continue
+            for k, v in kairo_variants(e, b).items():
+                if k in keep:
+                    half = "a" if v["ti"] < "2025-04-01" else "b"
+                    for g in gs:
+                        for gg in (g, f"{g} [{half}]"):
+                            res.setdefault(gg, {}).setdefault(k, []).append({**v, "tk": e["t"], "atrp": e["px"]["atr"]})
+        rep["fine"][d] = {g: {k: {**summary(v), **({"depot": depot(v)} if "[" not in g else {})} for k, v in sorted(r.items())}
+                          for g, r in sorted(res.items())}
+        for g, r in sorted(rep["fine"][d].items()):
+            print(d, g, {k: (v["n"], v.get("r"), (v.get("depot") or {}).get("cagr")) for k, v in r.items()}, flush=True)
+    (ROOT / "data").mkdir(exist_ok=True)
+    (ROOT / "data" / "h4study.json").write_text(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
+    print("===BEGIN===")
+    print(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
+    print("===END===")
+    return 0
+
+
 def main(argv=None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
-    mode = ("robust" if "--robust" in argv else "miss" if "--miss" in argv else "variants" if "--variants" in argv
+    mode = ("robust" if "--robust" in argv else "miss" if "--miss" in argv else "fine" if "--finerules" in argv else "variants" if "--variants" in argv
             else "exits" if "--exits" in argv else "near" if "--near" in argv else "full")
     dirs = [a for a in argv if not a.startswith("--")] or ["k1", "k2"]
     t0 = time.time()
-    hits = {d: _hits(d, near=mode in ("near", "miss")) for d in dirs}
+    hits = {d: _hits(d, near=mode in ("near", "miss", "fine")) for d in dirs}
     tick = sorted({e["t"] for h in hits.values() for e in h})
     print(f"Treffer: {[len(h) for h in hits.values()]}, Aktien: {len(tick)}", flush=True)
     raw = _hourly(tick)
@@ -608,6 +675,8 @@ def main(argv=None) -> int:
         return exits_report(hits, raw, fine="--fine" in argv, ind="--ind" in argv, google="--google" in argv)
     if mode == "variants":                               # Sind die 4H-Kriterien richtig gewählt? (nur volle Treffer)
         return variants_report(hits, raw)
+    if mode == "fine":                                   # Feinregeln (MBI 70 %, X-Alter, MACD-Kreuz-Alter) zu streng?
+        return fine_report(hits, raw)
     if mode == "miss":                                   # 10/11 und 9/11 nach fehlendem Kriterium, ohne und mit 4H-Bestätigung
         return miss_report(hits, raw)
     if mode == "robust":
