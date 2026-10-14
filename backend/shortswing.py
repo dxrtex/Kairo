@@ -156,6 +156,10 @@ def simulate(px: dict, r: dict) -> dict | None:
     be_cost = (SPREAD["turbo" if lev > 1 else "stock"] + 2 * FEE / EXPOSURE) * entry
     hold = r["hold"]
     exit_, day, why = None, None, None
+    if r.get("ema_x"):                             # EMA ab dem Signaltag fortschreiben (e20 = EMA 20 am Signaltag; andere Längen angenähert)
+        ema_v = px.get("e20") or c[0]
+        for jj in range(start):
+            ema_v = ema_v + (c[jj] - ema_v) * 2 / (r["ema_x"] + 1)
     for j in range(start, len(c)):
         oj = o[j] if j > start else entry
         n_held = j - start + 1
@@ -185,6 +189,11 @@ def simulate(px: dict, r: dict) -> dict | None:
         if n_held >= hold:
             exit_, day, why = c[j], n_held, "zeit"
             break
+        if r.get("ema_x"):                         # Ausstieg: ab Tag ema_from Tagesschluss unter der EMA → Verkauf zur nächsten Eröffnung
+            ema_v = ema_v + (c[j] - ema_v) * 2 / (r["ema_x"] + 1)
+            if n_held >= r.get("ema_from", 10) and c[j] < ema_v and j + 1 < len(c):
+                exit_, day, why = o[j + 1], n_held + 1, "ema"
+                break
         if r.get("d5") is not None and n_held == r.get("d5_day", 5) and R(c[j]) < r["d5"]:   # keine Anschlussbewegung → raus
             exit_, day, why = c[j], n_held, "tag5"
             break
