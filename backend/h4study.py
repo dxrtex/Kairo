@@ -158,13 +158,13 @@ def _trade(b: pd.DataFrame, i0: int, stop: float, exit_rule: str, max_days: int 
     for j in range(i0, end + 1):
         if l[j] <= stop:
             px = min(stop, o[j]) if j > i0 else stop
-            return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 1, "x": "stop", "ti": str(b.index[i0]), "to": str(b.index[j])}
+            return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 1, "x": "stop", "ti": str(b.index[i0]), "to": str(b.index[j]), "sl": stop}
         hit = ((exit_rule == "rsi" and r_[j] >= 70) or (exit_rule == "mbi" and rx[j]) or (exit_rule == "macd" and mcd[j])
                or (exit_rule == "2v3" and two[j]) or (exit_rule == "3v3" and three[j]))
         if hit and j < end:
             px = o[j + 1]
-            return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 2, "x": exit_rule, "ti": str(b.index[i0]), "to": str(b.index[j + 1])}
-    return {"r": (c[end] - e) / risk - COST * e / risk, "bars": end - i0 + 1, "x": "zeit", "ti": str(b.index[i0]), "to": str(b.index[end])}
+            return {"r": (px - e) / risk - COST * e / risk, "bars": j - i0 + 2, "x": exit_rule, "ti": str(b.index[i0]), "to": str(b.index[j + 1]), "sl": stop}
+    return {"r": (c[end] - e) / risk - COST * e / risk, "bars": end - i0 + 1, "x": "zeit", "ti": str(b.index[i0]), "to": str(b.index[end]), "sl": stop}
 
 
 TRIG = {"R35": ["R35"], "R40": ["R40"], "M": ["M"], "M0": ["M0"], "B": ["B"], "RM": ["R40", "M"], "RB": ["R40", "B"],
@@ -302,6 +302,104 @@ def robust(hits: dict, raw: dict) -> dict:
     return out
 
 
+# Ausstiegs-Test (--exits): gleiche Einstiege (Treffer + Seitwärtsphase + 4H RMBS), verschiedene Ausstiege.
+# T = Verkauf zum Schluss von Tag n · BE = Stop auf Einstand ab +1 R · TR = Nachlauf-Stop (höchstes Hoch − k R) ·
+# EMA = ab Tag 10 raus, wenn der Tagesschluss unter der EMA 20 (Tageschart) liegt · EXT = Tag 20, aber ab +1 R mit
+# Nachlauf-Stop weiterlaufen lassen (höchstens 40 Tage) · TP = Hälfte am Kursziel (+2/+3 R), Rest Tag 20.
+EXIT_RULES = {"T10": {"T": 10}, "T15": {"T": 15}, "T20 (heute)": {"T": 20}, "T30": {"T": 30}, "T40": {"T": 40},
+              "BE1·T20": {"T": 20, "be": 1}, "TR2·T40": {"T": 40, "tr": 2}, "TR3·T60": {"T": 60, "tr": 3}, "TR2·T20": {"T": 20, "tr": 2},
+              "EMA20·T40": {"T": 40, "ema": 1}, "EXT2·T40": {"T": 40, "ext": 2}, "EXT3·T60": {"T": 60, "ext": 3},
+              "TP2 halb·T20": {"T": 20, "tp": 2}, "TP3 halb·T20": {"T": 20, "tp": 3}}
+
+
+def _exit_sim(b: pd.DataFrame, i0: int, stop: float, rule: dict, ema20: np.ndarray, lastbar: np.ndarray) -> dict | None:
+    """Ein Trade mit Ausstiegsregel; Stop/Nachlauf-Stop gelten ab der Kerze danach (kein Blick in die Zukunft)."""
+    e = float(b["Open"].iat[i0])
+    risk = e - stop
+    o, h, l, c = (b[k].to_numpy(float) for k in ("Open", "High", "Low", "Close"))
+    days = b["day"].to_numpy()
+    ud = np.unique(days[i0:])
+    T = rule["T"]
+    if len(ud) <= T:
+        return None
+    end = int(np.flatnonzero(days == ud[T - 1])[-1])
+    end20 = int(np.flatnonzero(days == ud[19])[-1]) if len(ud) > 20 else end
+    st, hh, half, done = stop, e, None, 0.0
+    cost = COST * e / risk
+    for j in range(i0, end + 1):
+        if l[j] <= st:                                   # Stop / Nachlauf-Stop
+            px = min(st, o[j]) if j > i0 else st
+            r = (px - e) / risk
+            return {"r": (0.5 * half + 0.5 * r if half is not None else r) - cost, "to": str(b.index[j])}
+        if rule.get("tp") and half is None and h[j] >= e + rule["tp"] * risk:
+            half = float(rule["tp"])
+        hh = max(hh, h[j])
+        dn = int(np.searchsorted(ud, days[j])) + 1       # Handelstag des Trades (1 = Kauftag)
+        if rule.get("be") and hh >= e + rule["be"] * risk:
+            st = max(st, e)
+        if rule.get("tr") and hh >= e + risk:
+            st = max(st, hh - rule["tr"] * risk)
+        if rule.get("ext") and j >= end20:
+            if j == end20 and c[j] < e + risk:           # an Tag 20 unter +1 R → wie bisher verkaufen
+                r = (c[j] - e) / risk
+                return {"r": (0.5 * half + 0.5 * r if half is not None else r) - cost, "to": str(b.index[j])}
+            st = max(st, hh - rule["ext"] * risk)
+        if rule.get("ema") and dn >= 10 and lastbar[j] and c[j] < ema20[j] and j < end:
+            r = (o[j + 1] - e) / risk
+            return {"r": r - cost, "to": str(b.index[j + 1])}
+        if rule.get("tp") and j == end20 and T == 20:
+            break
+    r = (c[end] - e) / risk
+    return {"r": (0.5 * half + 0.5 * r if half is not None else r) - cost, "to": str(b.index[end])}
+
+
+def exits_report(hits: dict, raw: dict) -> int:
+    """Gibt es einen besseren Ausstieg als Tag 20? Alle Regeln auf denselben Einstiegen (nur Trades, bei denen jede
+    Regel zu Ende laufen konnte), beide Stichproben und beide Zeithälften getrennt, Depot wie die Strategie."""
+    global TRIG, EXITS
+    TRIG, EXITS = {"RMBS": ["R40", "M", "B", "S"]}, ("zeit",)
+    rep = {"generated": time.strftime("%Y-%m-%d"), "exits": {}}
+    bars = {}
+    for t, x in raw.items():
+        try:
+            b = to4h(x)
+            if len(b) > 100:
+                dc = b.groupby("day")["Close"].last()
+                em = dc.ewm(span=20, adjust=False).mean()
+                b["ema20d"] = b["day"].map(em).to_numpy()
+                b["lastbar"] = (b["day"] != b["day"].shift(-1)).to_numpy()
+                bars[t] = b
+        except Exception:
+            pass
+    for d, hs in hits.items():
+        res: dict[str, list] = {}
+        for e in hs:
+            b = bars.get(e["t"])
+            if e["grp"] != "11" or b is None or pd.Timestamp(e["d"]) < b["day"].iat[0] + pd.Timedelta(days=20):
+                continue
+            v = kairo_variants(e, b).get("HB|RMBS|zeit")
+            if not v:
+                continue
+            i0 = int(b.index.get_loc(pd.Timestamp(v["ti"])))
+            outs = {k: _exit_sim(b, i0, v["sl"], rl, b["ema20d"].to_numpy(float), b["lastbar"].to_numpy(bool)) for k, rl in EXIT_RULES.items()}
+            if any(x is None for x in outs.values()):
+                continue                                 # gleiche Stichprobe für alle Regeln
+            half = "a" if v["ti"] < "2025-04-01" else "b"
+            for k, x in outs.items():
+                tr = {"r": x["r"], "bars": 1, "ti": v["ti"], "to": x["to"], "tk": e["t"], "atrp": e["px"]["atr"]}
+                for g in (k, f"{k} [{half}]"):
+                    res.setdefault(g, []).append(tr)
+        rep["exits"][d] = {g: {**summary(v), **({"depot": depot(v)} if "[" not in g else {})} for g, v in res.items()}
+        for g, v in rep["exits"][d].items():
+            print(d, g, (v["n"], v.get("r"), v.get("gewinner"), (v.get("depot") or {}).get("cagr"), (v.get("depot") or {}).get("mdd")), flush=True)
+    (ROOT / "data").mkdir(exist_ok=True)
+    (ROOT / "data" / "h4study.json").write_text(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
+    print("===BEGIN===")
+    print(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
+    print("===END===")
+    return 0
+
+
 VARIANTS = {   # Kairo live = RMBS (RSI ≤ 40, MACD, MBI, Strukturbruch). Gegenproben: RSI-Schwelle, 4H-Divergenz, je ein Baustein weniger
     "RMBS": ["R40", "M", "B", "S"], "R30·MBS": ["R30", "M", "B", "S"], "R35·MBS": ["R35", "M", "B", "S"], "R45·MBS": ["R45", "M", "B", "S"],
     "Div·MBS": ["D", "M", "B", "S"], "(R40 oder Div)·MBS": ["RD", "M", "B", "S"], "R40·Div·MBS": ["R40", "D", "M", "B", "S"],
@@ -393,7 +491,7 @@ def miss_report(hits: dict, raw: dict) -> int:
 def main(argv=None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
     mode = ("robust" if "--robust" in argv else "miss" if "--miss" in argv else "variants" if "--variants" in argv
-            else "near" if "--near" in argv else "full")
+            else "exits" if "--exits" in argv else "near" if "--near" in argv else "full")
     dirs = [a for a in argv if not a.startswith("--")] or ["k1", "k2"]
     t0 = time.time()
     hits = {d: _hits(d, near=mode in ("near", "miss")) for d in dirs}
@@ -428,6 +526,8 @@ def main(argv=None) -> int:
         print(json.dumps(rep, ensure_ascii=False, separators=(",", ":")))
         print("===END===")
         return 0
+    if mode == "exits":                                  # Gibt es einen besseren Ausstieg als Tag 20?
+        return exits_report(hits, raw)
     if mode == "variants":                               # Sind die 4H-Kriterien richtig gewählt? (nur volle Treffer)
         return variants_report(hits, raw)
     if mode == "miss":                                   # 10/11 und 9/11 nach fehlendem Kriterium, ohne und mit 4H-Bestätigung
