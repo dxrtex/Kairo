@@ -199,10 +199,13 @@ def h4_messages(items: list[dict], today: str, sent: dict, rk: float | None) -> 
         if not sl or not px:
             continue
         dist = px - sl
+        b = it.get("base") or {}
+        gate = (f" Nur kaufen, wenn die Eröffnung zwischen {_num(b.get('lo'))} und {_num(b.get('hi'))} {cur} liegt – sonst verfällt das Setup."
+                if b.get("pending") and it["st"] == "go" else "")
         qty = (f" · bei {rk:.0f} € Risiko ≈ {int(rk / dist)} Aktien" if rk and cur == "EUR" else f" · Risiko je Aktie {_num(dist)} {cur}") + " – Turbo-Stückzahl im Einstieg"
         out.append({"title": f"✅ 4H bestätigt: {n} – Einstieg",
                     "body": f"Kairo-Treffer + Seitwärtsphase + 4H (RSI, MACD, MBI, Strukturbruch). Kauf jetzt bzw. zur nächsten Eröffnung "
-                            f"(~{_num(px)} {cur}). Stop {_num(sl)} {cur} ({_pct(dist / px)} Abstand){qty}. Verkauf an Tag 20.",
+                            f"(~{_num(px)} {cur}). Stop {_num(sl)} {cur} ({_pct(dist / px)} Abstand){qty}. Verkauf an Tag 20.{gate}",
                     "url": APP + f"?sec=entry&t={it['t']}", "tag": "kairo-h4"})
     return out
 
