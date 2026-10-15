@@ -7,6 +7,7 @@ import requests
 
 H = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 API = "https://api.onvista.de/api/v1"
+NOISE = re.compile(r"topBroker|logo|urls|\\.chart\\.|\\.quote\\.|cnPerformance|finderUnderlying|derivativesUnderlyingList\\.list\\[\\d\\]\\.(chart|quote)", re.I)
 HIT = re.compile(r"knock|barrier|ratio|cover|strike|leverage|hebel|direction|underly|financing|stoploss|bezug", re.I)
 
 
@@ -56,7 +57,7 @@ for q in [a for x in sys.argv[1:] for a in x.split()]:
             if m:
                 nd = json.loads(m.group(1))
                 for p, v in walk(nd):
-                    if HIT.search(p):
+                    if HIT.search(p) and not NOISE.search(p):
                         print("  NEXT", p, "=", str(v)[:120])
             for u in sorted(set(re.findall(r"api\.onvista\.de/api/v1/[A-Za-z0-9_/{}.:-]+", html)))[:40]:
                 print("  API-URL", u)
