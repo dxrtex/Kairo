@@ -37,6 +37,22 @@ for (const nm of NAMES) {
     await sleep(150);
   }
 }
+// Listen von onvista-Webseiten (Knock-Out-/Mini-Future-Übersichten, Aktienseiten) – WKNs aus den Links
+const PAGES = ["https://www.onvista.de/derivate/Knock-Outs", "https://www.onvista.de/derivate/Mini-Futures", "https://www.onvista.de/derivate",
+  "https://www.onvista.de/aktien/AXON-ENTERPRISE-Aktie-US05464C1018", "https://www.onvista.de/aktien/Apple-Aktie-US0378331005",
+  "https://www.onvista.de/aktien/NVIDIA-Aktie-US67066G1040", "https://www.onvista.de/aktien/SAP-Aktie-DE0007164600",
+  "https://www.onvista.de/aktien/Rheinmetall-Aktie-DE0007030033", "https://www.onvista.de/aktien/Tesla-Aktie-US88160R1014",
+  "https://www.onvista.de/aktien/Nestle-Aktie-CH0038863350", "https://www.onvista.de/aktien/Shell-Aktie-GB00BP6MXD84",
+  "https://www.onvista.de/aktien/Toyota-Motor-Aktie-JP3633400001", "https://www.onvista.de/aktien/Novo-Nordisk-Aktie-DK0062498333",
+  "https://www.onvista.de/index/DAX-Index-20735", "https://www.onvista.de/aktien/Alibaba-Group-Holding-Aktie-KYG017191142"];
+for (const url of PAGES) {
+  try {
+    const h = await (await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } })).text();
+    const w = [...new Set([...h.matchAll(/\/derivate\/(?:Knock-Outs|Mini-Futures|Turbos?)[^"'\s]*?\/\d+-([A-Z0-9]{6})-/g)].map(m => m[1]))];
+    console.log(`${url.split("/").slice(-1)[0]}: ${w.length} WKNs`);
+    for (const x of w.slice(0, 8)) { if (found.has(x)) continue; const q = await get(`/instruments/query?searchValue=${x}&limit=1`); add(((q || {}).list || [])[0], "Webseite"); await sleep(120); }
+  } catch (e) { console.log(url, e.message); }
+}
 console.log(`gefunden: ${found.size} Derivate`);
 
 // ---- jeden Turbo prüfen ----
