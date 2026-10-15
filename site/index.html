@@ -4441,7 +4441,7 @@ function tpTurboHtml(r, m, lv) {
   const BP = t.cr > 0 && +t.bp > 0 && +t.bp <= (+t.ko || 0) * 1.0001 ? +t.bp / m.fx : KO;
   const tv = S => t.cr > 0 ? Math.max(0, (S - BP) * t.cr * m.fx + (+t.off || 0)) : P * (S - KO) / (m.E - KO);
   const sl = tv(m.stop), lossU = P - sl, qty = Math.max(1, Math.floor(m.riskEur / Math.max(lossU, P * 0.05)));
-  const lev = m.E / (m.E - KO), near = KO > m.stop - TP.kob * m.atr;
+  const lev = t.cr > 0 ? m.E * t.cr * m.fx / P : m.E / (m.E - KO), near = KO > m.stop - TP.kob * m.atr;
   return form + `<div class="tp2-plan">
       <div class="tp2-row"><span>Stop-Loss am Turbo</span><b class="down">${fmt(sl)} €</b><em>${sgnPct(sl / P - 1, 0)} vom Kaufkurs · entspricht Aktie ${X(m.stop)} ${cur}</em></div>
       ${m.tp ? `<div class="tp2-row"><span>Take-Profit am Turbo</span><b class="up">${fmt(tv(m.tp))} €</b><em>${sgnPct(tv(m.tp) / P - 1, 0)} vom Kaufkurs · entspricht Aktie ${X(m.tp)} ${cur}</em></div>` : ""}
