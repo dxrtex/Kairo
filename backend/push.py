@@ -194,16 +194,17 @@ def h4_update(today: str) -> list[dict]:
     import yfinance as yf
     ts = sorted({c["t"] for c in cands})
     h = yf.download(ts, period="1y", interval="1d", group_by="ticker", auto_adjust=True, progress=False, threads=True)
+    now = datetime.now(timezone.utc)
+    closed = now.hour >= 21                                    # ab 21 Uhr UTC haben alle Börsen geschlossen – Tageskerze ist fertig
     daily = {}
     for t in ts:
         try:
             df = (h[t] if isinstance(h.columns, pd.MultiIndex) else h)[["Open", "High", "Low", "Close"]].dropna()
             df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
-            daily[t] = df[df.index < pd.Timestamp(today)]            # laufender Tag: noch keine fertige Tageskerze
+            daily[t] = df if closed else df[df.index < pd.Timestamp(today)]   # tagsüber: laufende Tageskerze noch nicht fertig
         except Exception:
             pass
-    now = datetime.now(timezone.utc)
-    items = h4live.build(cands, daily, h4live.hourly(ts), now, intraday=True)
+    items = h4live.build(cands, daily, h4live.hourly(ts), now, intraday=not closed)
     state.save("h4live.json", {"generated": now.isoformat(timespec="minutes"), "items": items})
     print("4H: " + ", ".join(f"{it['t']} {it['st']}" for it in items))
     return items
