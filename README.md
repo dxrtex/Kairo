@@ -28,8 +28,12 @@ Leiste unten: **Scanner** (eine Tabelle; oben frei kombinierbar ★ Merkliste / 
 - **Turbo-Plan** (Detailseite, ersetzt Trade-Plan und Positionsrechner): Entry, Setup-Grenze (Stop), Ziel 1/2; Rechner mit Einsatz und K.-o.-Schwelle (Vorschlag ½ ATR unter der Setup-Grenze) → Hebel, Turbo-Ergebnis in % und € je Szenario (Ziele, Stop, Knock-out), Chance : Risiko.
 
 - **Kalender:** Quartalszahlen, Ex-Dividende und Dividendenzahlung (Yahoo Finance) für Watchlist-, Depot- und
-  Treffer-Aktien, dazu Fed- und EZB-Zinsentscheide, US-Inflation (CPI) und US-Arbeitsmarktbericht – automatisch von den offiziellen Seiten
-  (`backend/macro.py`, Ersatz: `data/macro_events.json`) – und der große Verfall. Fehlende Quartalstermine von Watchlist-Aktien
+  Treffer-Aktien plus Quartalszahlen der Markt-Schwergewichte (Nvidia, Apple, TSMC, ASML …). Dazu **alle wichtigen
+  Wirtschaftstermine weltweit** (Zinsentscheide, Inflation, Erzeugerpreise, Arbeitsmarkt, BIP, Einzelhandel, Einkaufsmanager,
+  Fed-Protokolle, Reden der Notenbank-Chefs, Feiertage; USA, Eurozone, China, Japan, UK …) mit Uhrzeit, Wichtigkeit,
+  Prognose und Vorwert – aus dem Wirtschaftskalender von Forex Factory (2 Wochen voraus, gesehene Termine bleiben im
+  Zustand `macro_seen.json`) und offiziell von Fed, EZB, BLS (`backend/macro.py`), Ersatz für die nächsten Monate:
+  `data/macro_events.json` (Fed, EZB, BoE, CPI, BIP, PCE). Die letzten 14 Tage bleiben sichtbar. Und der große Verfall. Fehlende Quartalstermine von Watchlist-Aktien
   werden einzeln nachgeholt.
   Datei: `site/data/calendar.json`.
 - **Depot:** Positionen von Hand oder per Import des Transaktions-Exports aus Scalable Capital (Excel, auch mit
