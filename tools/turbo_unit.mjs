@@ -143,5 +143,13 @@ async function load(wkn, snapshot, row, { entityType = "DERIVATIVE", found = tru
   ok(t.kc === "GBP" && t.kon === 23.1, "Laden Pence-Aktie: K.-o. bleibt in GBP", JSON.stringify(t));
 }
 
+{
+  // Index in Punkten („$$$“ bei onvista) → wie Euro
+  const t = await load("MR9XYL", snap({ ko: 1300, cr: 0.01, ucur: "$$$", spot: 1335, bid: 0.34, ask: 0.35, name: "STOXX Europe 600 Chemicals" }), { n: "STOXX Europe 600 Chemicals", cur: "EUR" });
+  ok(t.kc === "EUR" && t.kon === 1300 && t.cr === 0.01, "Laden Index-Turbo (Punkte) → EUR", JSON.stringify(t));
+  const sb = sandbox({ fx: FX }); sb.state.tpT.X = t;
+  const r = parse(sb.tpTurboHtml({ t: "X", cur: "EUR" }, { fx: 1, E: 1335, stop: 1320, atr: 10, riskEur: 30 }, {}));
+  ok(near(r.sl, 0.2), "Index-Turbo → SL (1320 − 1300) × 0,01", r.sl);
+}
 console.log(`${n - fails}/${n} Prüfungen bestanden`);
 process.exit(fails ? 1 : 0);

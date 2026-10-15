@@ -63,7 +63,7 @@ for (const [wkn, it] of [...found].slice(0, 60)) {
   const s = await get(`/derivatives/${it.entityValue}/snapshot`);
   const u = (((s || {}).derivativesUnderlyingList || {}).list || [])[0];
   const fig = (s || {}).derivativesFigure || {};
-  const ucur = (u && u.isoCurrency) || fig.isoCurrencyUnderlying || "EUR";
+  const ucur0 = (u && u.isoCurrency) || fig.isoCurrencyUnderlying || "EUR", ucur = /^[A-Z]{3}$|^GB[Xp]$/.test(ucur0) ? ucur0 : "EUR";
   const name = (u && u.instrument && u.instrument.name) || it.name;
   const row = { n: name, cur: fx[ucur] != null ? ucur : "EUR" };      // Aktie in Kairo in der Währung des Basiswerts
   const sb = sandbox({ fx, rows: { X: row }, fetchImpl: (url, o) => fetch(url, { ...o, headers: { "User-Agent": "Mozilla/5.0" } }) });
@@ -84,7 +84,8 @@ for (const [wkn, it] of [...found].slice(0, 60)) {
   const exp = cr ? (toK(stop) - bp) * cr / f : null;
   const ivK = cr ? (toK(spotS) - bp) * cr / f : null, ivOv = +fig.intrinsicValue;
   const slOk = cr ? Math.abs(r.sl - +exp.toFixed(exp < 1 ? 3 : 2)) <= 0.006 : r.sl > 0;
-  const ivOk = !cr || !(ivOv > 0) || Math.abs(ivK / ivOv - 1) < 0.04;              // gegen onvistas inneren Wert (anderer Devisenkurs → 4 %)
+  const ivUse = ivOv > 0 && ivOv < 20 * (+t.p || 1);                               // onvista-Wert bei Indexpunkten teils unsinnig
+  const ivOk = !cr || !ivUse || Math.abs(ivK / ivOv - 1) < 0.04;              // gegen onvistas inneren Wert (anderer Devisenkurs → 4 %)
   const askOk = !cr || !(+t.p > 0) || Math.abs(+t.p / ivK - 1) < 0.5;
   const okAll = slOk && ivOk && !r.red;
   if (!okAll) bad++;

@@ -4407,7 +4407,7 @@ async function turboLoad(tk, id) {
     const und = d.und || (sn.instrument && sn.instrument.underlyingEntity && sn.instrument.underlyingEntity.name) || "";
     const nm = String(r.n || "").split(/\s+/)[0].toLowerCase(), mism = und && nm && !und.toLowerCase().includes(nm);
     // Werte in der Währung der Emittentin speichern (wie auf deren Seite) – Kairo rechnet selbst um
-    let kc = d.ucur || "EUR", kon = ko0 ? ko0.v : null, bpn = d.strike || null;
+    let kc = /^[A-Z]{3}$/.test(d.ucur || "") || /^GB[Xp]$/.test(d.ucur || "") ? d.ucur : "EUR", kon = ko0 ? ko0.v : null, bpn = d.strike || null;
     if (/^GB[XP]$/i.test(kc) && kc !== "GBP" && /^GB[Xp]$/.test(r.cur || "")) kc = r.cur;   // Pence wie die Aktie
     if (!tpKcOpts(r.cur || "EUR").includes(kc)) { const q2 = toEur(1, kc); if (q2 > 0) { kon = kon && kon * q2; bpn = bpn && bpn * q2; kc = "EUR"; } }
     const f = kc === "EUR" ? 1 : 1 / (toEur(1, kc) || NaN);
