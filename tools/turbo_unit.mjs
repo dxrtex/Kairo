@@ -61,6 +61,14 @@ for (const [name, sc, t, m] of cases) {
   ok(/^2\.480,00 Pence/.test(g.chartSl || ""), "Chart-Stop London in Pence", g.chartSl);
 }
 
+// ---------- 1c. Briefkurs passt zu anderem Aktienkurs (Kairo-Kurs veraltet) ----------
+{
+  const r = card("HKD", { p: 2.54, kon: 7.6197, kc: "EUR", cr: 3 }, { E: 8.30 / 0.11, stop: 8.0864 / 0.11 });
+  ok(/entspricht einem Aktienkurs von ≈ 76,97 HKD \(8,466 €\) – Kairo rechnet oben mit 75,45 HKD \(8,300 €\).*\+2,0 %.*-4,5 % bis zum Stop/.test(r.txt), "BYD: Briefkurs 2,54 € ↔ Aktie ≈ 8,47 €", (r.txt.match(/Dein Briefkurs[^.]*\.[^.]*\./) || [])[0]);
+  const q = card("USD", { p: 0.2375, kon: 382.0278, kc: "USD", cr: 0.01, fxr: 1.1207 }, { E: 408.64, stop: 395 });
+  ok(!/entspricht einem Aktienkurs/.test(q.txt), "passender Briefkurs → kein Hinweis");
+}
+
 // ---------- 2. Mini-Future: Basispreis unter dem K.-o. ----------
 {
   const r = card("USD", { p: 3.0, kon: 160, bpn: 152, kc: "USD", cr: 0.1, fxr: 1.12 }, { E: 186.7, stop: 178 });
