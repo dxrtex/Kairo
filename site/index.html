@@ -4408,7 +4408,8 @@ async function turboLoad(tk, id) {
     const nm = String(r.n || "").split(/\s+/)[0].toLowerCase(), mism = und && nm && !und.toLowerCase().includes(nm);
     // Werte in der Währung der Emittentin speichern (wie auf deren Seite) – Kairo rechnet selbst um
     let kc = d.ucur || "EUR", kon = ko0 ? ko0.v : null, bpn = d.strike || null;
-    if (kc !== "EUR" && kc !== (r.cur || "EUR")) { const q2 = toEur(1, kc); if (q2 > 0) { kon = kon && kon * q2; bpn = bpn && bpn * q2; kc = "EUR"; } }
+    if (/^GB[XP]$/i.test(kc) && kc !== "GBP" && /^GB[Xp]$/.test(r.cur || "")) kc = r.cur;   // Pence wie die Aktie
+    if (!tpKcOpts(r.cur || "EUR").includes(kc)) { const q2 = toEur(1, kc); if (q2 > 0) { kon = kon && kon * q2; bpn = bpn && bpn * q2; kc = "EUR"; } }
     const f = kc === "EUR" ? 1 : 1 / (toEur(1, kc) || NaN);
     // Plausibilität: innerer Wert aus (evtl. veraltetem) Basiswert-Kurs muss grob zum Geldkurs passen, sonst Bezugsverhältnis nicht übernehmen
     let cr = d.cr && kon ? d.cr : null;
@@ -4423,6 +4424,7 @@ async function turboLoad(tk, id) {
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-tpload]"); if (!b) return; turboLoad(b.dataset.tpload, ($("tpW") || {}).value); });
 document.addEventListener("keydown", e => { if (e.target.id === "tpW" && e.key === "Enter") { e.preventDefault(); turboLoad(e.target.dataset.t, e.target.value); } });
+const tpKcOpts = sc => [...new Set(["EUR", sc, ...(/^GB[Xp]$/.test(sc) ? ["GBP"] : [])])];   // Währungen der K.-o.-Schwelle
 function tpTurboHtml(r, m, lv) {
   const t = (state.tpT || {})[r.t] || {}, P = +t.p || 0, sc = r.cur || "EUR", cur = "€", X = v => fmt(v * m.fx);
   // Alte Speicherung (K.-o. in €) übernehmen
@@ -4440,7 +4442,7 @@ function tpTurboHtml(r, m, lv) {
     <div class="tp2-cfg">
       <label>Briefkurs Turbo (€)<input id="tpTP" type="number" inputmode="decimal" step="any" value="${esc(t.p || "")}" placeholder="z. B. 0,28" data-t="${esc(r.t)}"></label>
       <label>K.-o.-Schwelle<span style="display:flex;gap:6px"><input id="tpKO" type="number" inputmode="decimal" step="any" value="${esc(kon || "")}" placeholder="wie bei der Emittentin" data-t="${esc(r.t)}" style="flex:1;min-width:0">
-        ${sc !== "EUR" ? `<select id="tpKC" data-t="${esc(r.t)}" style="font:inherit;font-size:15px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);padding:0 6px">${opt("EUR", "EUR")}${opt(sc, sc)}</select>` : `<span style="align-self:center">EUR</span>`}</span></label>
+        ${sc !== "EUR" ? `<select id="tpKC" data-t="${esc(r.t)}" style="font:inherit;font-size:15px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);padding:0 6px">${tpKcOpts(sc).map(c => opt(c, c === "GBp" || c === "GBX" ? "Pence" : c)).join("")}</select>` : `<span style="align-self:center">EUR</span>`}</span></label>
       <label>Bezugsverhältnis<input id="tpCR" type="number" inputmode="decimal" step="any" value="${esc(t.cr || "")}" placeholder="z. B. 0,01" data-t="${esc(r.t)}"></label>
       ${kc !== "EUR" ? `<label>Wechselkurs EUR/${esc(kc)}<input id="tpFX" type="number" inputmode="decimal" step="any" value="${esc(t.fxr || "")}" placeholder="${appF > 0 ? fmt(appF, 4) : "z. B. 1,12"}" data-t="${esc(r.t)}"></label>` : ""}
     </div>
@@ -4454,12 +4456,14 @@ function tpTurboHtml(r, m, lv) {
   const fp = v => fmt(v, v < 1 ? 3 : 2), sl = tv(m.stop), lossU = P - sl, qty = Math.max(1, Math.floor(m.riskEur / Math.max(lossU, P * 0.05)));
   const lev = cr > 0 ? g(m.E) * cr / f / P : m.E / (m.E - KOs), near = KOs > m.stop - TP.kob * m.atr;
   const iv = cr > 0 ? tv(m.E) : 0, prem = cr > 0 ? P - iv : 0, odd = cr > 0 && (iv <= 0 || Math.abs(prem) > Math.max(0.35 * P, 0.05));
+  const fxOff = kc !== "EUR" && +t.fxr > 0 && appF > 0 && Math.abs(+t.fxr / appF - 1) > 0.08;   // z. B. USD/EUR statt EUR/USD getippt
   const calc = cr > 0 ? `(${n4(g(m.stop))} − ${n4(bpn)}) ${esc(kc)} × ${n4(cr)}${kc !== "EUR" ? ` ÷ ${n4(f)}` : ""} = ${fmt(sl, 3)} €` : "";
   return form + `<div class="tp2-plan">
       <div class="tp2-row"><span>Stop-Loss am Turbo</span><b class="down">${fp(sl)} €</b><em>${sgnPct(sl / P - 1, 0)} vom Briefkurs · wenn die Aktie ${X(m.stop)} ${cur}${sc !== "EUR" ? ` (${fmt(m.stop)} ${esc(sc)})` : ""} erreicht</em></div>
       ${m.tp ? `<div class="tp2-row"><span>Take-Profit am Turbo</span><b class="up">${fp(tv(m.tp))} €</b><em>${sgnPct(tv(m.tp) / P - 1, 0)} vom Briefkurs · entspricht Aktie ${X(m.tp)} ${cur}</em></div>` : ""}
       <div class="tp2-row"><span>Stückzahl</span><b>${fmt(qty, 0)} Stück</b><em>Einsatz ${eur(qty * P)} · Verlust am Stop ≈ ${eur2(qty * lossU)} · Hebel ≈ ×${fmt(lev, 1)}</em></div></div>
     ${calc ? `<div class="note" style="margin:6px 0 0">Rechnung: ${calc}${kc !== "EUR" && !(+t.fxr > 0) ? " (Wechselkurs aus Kairo)" : ""}</div>` : `<div class="tip tone-yellow" style="margin-top:8px">Ohne Bezugsverhältnis rechnet Kairo verhältnisgleich – das stimmt nur, wenn Briefkurs und Aktienkurs (${X(m.E)} ${cur}) zur selben Zeit gelten. Trag das Bezugsverhältnis ein, dann ist der Stop genau.</div>`}
+    ${fxOff ? `<div class="tip tone-yellow" style="margin-top:8px">Wechselkurs ${n4(+t.fxr)} weicht stark vom aktuellen Kurs ab (EUR/${esc(kc)} ≈ ${n4(appF)}) – verkehrt herum eingetippt? Gemeint ist: 1 € = … ${esc(kc)}.</div>` : ""}
     ${odd ? `<div class="tip tone-yellow" style="margin-top:8px">Briefkurs ${fmt(P)} € passt nicht zum Aktienkurs in Kairo (${X(m.E)} ${cur} → innerer Wert ${fmt(iv)} €). Entweder ist der Kairo-Kurs veraltet (dann stimmt der Stop trotzdem) oder K.-o./Bezugsverhältnis/Wechselkurs sind falsch eingetippt – bitte prüfen.</div>` : ""}
     ${near ? `<div class="tip tone-yellow" style="margin-top:8px">K.-o. liegt weniger als 1 ATR unter dem Stop – eine Kurslücke kann den Turbo ausknocken, bevor der Stop greift. Besser einen Turbo mit K.-o. unter ${X(m.stop - TP.kob * m.atr)} ${cur}.</div>` : ""}
     <div class="note" style="margin:6px 0 0">Stop-Order (${fp(sl)} €)${m.tp ? ` und Limit-Verkauf (${fp(tv(m.tp))} €)` : ""} bei Scalable direkt auf den Turbo setzen. Der echte Turbo-Kurs liegt meist ein paar Cent über dem inneren Wert – die Order löst also knapp unter deinem Stop aus. Der K.-o. von Open-End-Turbos steigt täglich leicht (Finanzierung)${kc !== "EUR" ? ", der Wechselkurs schwankt" : ""}: bei längeren Trades ab und zu neu eintragen.</div>`;
