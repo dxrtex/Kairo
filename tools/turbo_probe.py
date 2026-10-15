@@ -46,18 +46,8 @@ for q in [a for x in sys.argv[1:] for a in x.split()]:
             s = get(f"{API}/{path}")
             if not s:
                 continue
-            print("==== ", path)
-            for p, v in walk(s):
-                if HIT.search(p) or "derivative" in p.lower():
-                    print("  *", p, "=", str(v)[:120])
-        url = (it.get("urls") or {}).get("WEBSITE")
-        html = get(url, js=False) if url else None
-        if html:
-            m = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.S)
-            if m:
-                nd = json.loads(m.group(1))
-                for p, v in walk(nd):
-                    if HIT.search(p) and not NOISE.search(p):
-                        print("  NEXT", p, "=", str(v)[:120])
-            for u in sorted(set(re.findall(r"api\.onvista\.de/api/v1/[A-Za-z0-9_/{}.:-]+", html)))[:40]:
-                print("  API-URL", u)
+            u0 = ((s.get("derivativesUnderlyingList") or {}).get("list") or [{}])[0]
+            print("==== ", path, "keys:", sorted(s)[:20], "coverRatio:", u0.get("coverRatio"),
+                  "barrier:", [(b.get("typeBarrier"), b.get("barrier")) for b in (u0.get("derivativesBarrierList") or {}).get("list", [])],
+                  "quote.ask:", (s.get("quote") or {}).get("ask"))
+
