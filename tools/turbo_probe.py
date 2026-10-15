@@ -38,6 +38,9 @@ def snapshot(q):
     return it, get(f"{API}/instruments/{it['entityType']}/{it['entityValue']}/snapshot")
 
 
+# Darf die App (Browser, andere Domain) die API direkt abfragen? → CORS-Kopfzeilen
+r = requests.get(f"{API}/instruments/query?searchValue=703000&limit=1", headers={**H, "Origin": "https://dxrtex.github.io"}, timeout=20)
+print("CORS:", r.status_code, {k: v for k, v in r.headers.items() if k.lower().startswith("access-control")})
 ids = [a for x in sys.argv[1:] for a in x.split()] or ["703000"]
 for q in ids:
     it, s = snapshot(q)
