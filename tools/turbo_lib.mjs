@@ -37,6 +37,7 @@ export function parse(html) {
   const g = re => { const m = html.match(re); return m ? num(m[1]) : null; };
   return {
     sl: g(/Stop-Loss am Turbo<\/span><b class="down">([\d.,]+) €/),
+    chartSl: (html.match(/Stop-Loss im Chart \(Aktie\)<\/span><b class="down">([^<]+)<\/b><em>([^<]*)/) || []).slice(1).join(" | ") || null,
     tp: g(/Take-Profit am Turbo<\/span><b class="up">([\d.,]+) €/),
     qty: g(/<b>([\d.]+) Stück<\/b>/),
     lev: g(/Hebel ≈ ×([\d.,]+)/),

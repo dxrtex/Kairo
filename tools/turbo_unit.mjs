@@ -49,6 +49,18 @@ for (const [name, sc, t, m] of cases) {
   ok(r.qty * Math.max(lossU, 0) <= 30.5, name + " – Risiko ≤ 30 €", `${r.qty} × ${lossU}`);
 }
 
+// ---------- 1b. Stop-Loss im Chart (Aktienkurs für TradingView) ----------
+{
+  const r = card("USD", { p: 0.28, kon: 382.0278, kc: "USD", cr: 0.01, fxr: 1.1207 }, { E: 406.64, stop: 395 });
+  ok(/^395,00 USD \| = 352,46 € · .*K\.-o\. liegt bei 382,03 USD/.test(r.chartSl || ""), "Chart-Stop Axon in USD + €", r.chartSl);
+  const b = card("HKD", { p: 2.54, kon: 7.6197, kc: "EUR", cr: 3 }, { E: 8.30 / 0.11, stop: 8.0864 / 0.11 });
+  ok(/^73,51 HKD \| = 8,086 € · .*K\.-o\. liegt bei 69,27 HKD \(7,620 €\)/.test(b.chartSl || ""), "Chart-Stop BYD in HKD + €", b.chartSl);
+  const e = card("EUR", { p: 2.35, kon: 210.5, kc: "EUR", cr: 0.1 }, { E: 233.9, stop: 225.2 });
+  ok(/^225,20 € \| diese Linie/.test(e.chartSl || ""), "Chart-Stop SAP nur in €", e.chartSl);
+  const g = card("GBp", { p: 2.6, kon: 23.1, kc: "GBP", cr: 1, fxr: 0.87 }, { E: 2560, stop: 2480 });
+  ok(/^2\.480,00 Pence/.test(g.chartSl || ""), "Chart-Stop London in Pence", g.chartSl);
+}
+
 // ---------- 2. Mini-Future: Basispreis unter dem K.-o. ----------
 {
   const r = card("USD", { p: 3.0, kon: 160, bpn: 152, kc: "USD", cr: 0.1, fxr: 1.12 }, { E: 186.7, stop: 178 });
