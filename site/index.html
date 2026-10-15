@@ -4384,9 +4384,9 @@ function ovTurbo(sn) {
   const u = (((sn || {}).derivativesUnderlyingList || {}).list || [])[0];
   if (!u) return null;
   const bl = (u.derivativesBarrierList || {}).list || [], pick = k => bl.find(x => x.typeBarrier === k && +x.barrier > 0);
-  const b = pick("KNOCK_OUT") || pick("STOP_LOSS") || pick("STRIKE");
+  const b = pick("KNOCK_OUT") || pick("STOP_LOSS") || pick("STRIKE"), k = pick("STRIKE");   // K.-o. löst aus, Basispreis bestimmt den Wert
   const fig = sn.derivativesFigure || {}, desc = JSON.stringify((sn.derivativesDetails || {}).description || "");
-  return { ko: b ? +b.barrier : null, hit: !!(b && b.hasBeenHit), cr: +u.coverRatio || null, ucur: u.isoCurrency || (b && b.isoCurrencyUnderlying) || fig.isoCurrencyUnderlying || "",
+  return { ko: b ? +b.barrier : null, strike: k ? +k.barrier : null, hit: !!(b && b.hasBeenHit), cr: +u.coverRatio || null, ucur: u.isoCurrency || (b && b.isoCurrencyUnderlying) || fig.isoCurrencyUnderlying || "",
            spot: +fig.priceUnderlying || +((u.quote || {}).last) || null, und: (u.instrument && u.instrument.name) || u.shortName || "",
            put: /\((Put|Short)\)|\bShort\b/i.test(desc) && !/\((Call|Long)\)/i.test(desc), bid: +fig.bidPriceCalculation || null, ask: +fig.askPriceCalculation || null };
 }
@@ -4411,11 +4411,11 @@ async function turboLoad(tk, id) {
     // onvistas Basiswert-Kurs ist oft Stunden alt (BYD: 8,29 € vs. Geldkurs ≙ 8,41 €) – ein daraus gerechnetes „Aufgeld“ wäre falsch.
     let cr = d.cr && d.ko ? d.cr : null, off = 0;
     if (cr && d.spot > d.ko && bid > 0) {
-      const iv = (d.spot - d.ko) * cr * fx;
+      const iv = (d.spot - (d.strike || d.ko)) * cr * fx;
       if (!(iv > 0 && Math.abs(bid / iv - 1) < 0.5)) cr = null;
     }
     set({ busy: 0, p: ask > 0 ? +(+ask).toFixed(3) : undefined, ko: ko0 ? +(ko0.v * fx).toFixed(4) : (((state.tpT || {})[tk] || {}).ko),
-      cr: cr || undefined, off: cr ? +off.toFixed(4) : undefined, kow: ko0 ? +(ko0.v * fx).toFixed(4) : undefined,
+      cr: cr || undefined, off: cr ? +off.toFixed(4) : undefined, bp: cr && d.strike ? +(d.strike * fx).toFixed(4) : undefined, kow: ko0 ? +(ko0.v * fx).toFixed(4) : undefined,
       src: { n: (sn.instrument && sn.instrument.name) || it.name, u: und, ask, ko: ko0 ? ko0.v : null, ucur: d.ucur || "", cr: cr || null, at: qt.datetimeAsk ? new Date(qt.datetimeAsk).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "",
         warn: [it.entityType === "STOCK" ? "das ist eine Aktie, kein Turbo" : "", d.hit ? "K.-o. wurde schon erreicht – Turbo ist wertlos" : "", d.put ? "das ist ein Short/Put – Kairo plant Long" : "", mism ? `Basiswert passt nicht zu ${r.n}` : ""].filter(Boolean).join(" · ") } });
   } catch (e) { set({ busy: 0, src: { err: "onvista nicht erreichbar – Kurs und K.-o. bitte von Hand eintragen." } }); }
@@ -4437,7 +4437,9 @@ function tpTurboHtml(r, m, lv) {
   if (KO >= m.E) return form + `<div class="tip tone-red" style="margin-top:8px">K.-o. liegt über dem Kaufkurs der Aktie – Eingabe prüfen (Long-Turbo).</div>`;
   // Mit Bezugsverhältnis: Turbo-Wert = (Aktie − K.-o.) × Bezugsverhältnis in € (innerer Wert) → unabhängig vom Kaufzeitpunkt.
   // Ohne: verhältnisgleich zum Kaufkurs (stimmt nur, wenn Kaufkurs Turbo und Kurs der Aktie zur selben Zeit gelten).
-  const tv = S => t.cr > 0 ? Math.max(0, (S - KO) * t.cr * m.fx + (+t.off || 0)) : P * (S - KO) / (m.E - KO);
+  // Wert hängt am Basispreis (bei Turbos = K.-o., bei Mini-Futures/Smart-Turbos liegt der K.-o. darüber)
+  const BP = t.cr > 0 && +t.bp > 0 && +t.bp <= (+t.ko || 0) * 1.0001 ? +t.bp / m.fx : KO;
+  const tv = S => t.cr > 0 ? Math.max(0, (S - BP) * t.cr * m.fx + (+t.off || 0)) : P * (S - KO) / (m.E - KO);
   const sl = tv(m.stop), lossU = P - sl, qty = Math.max(1, Math.floor(m.riskEur / Math.max(lossU, P * 0.05)));
   const lev = m.E / (m.E - KO), near = KO > m.stop - TP.kob * m.atr;
   return form + `<div class="tp2-plan">
