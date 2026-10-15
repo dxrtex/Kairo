@@ -56,3 +56,12 @@ for q in [a for x in sys.argv[1:] for a in x.split()]:
                       "spot:", f.get("priceUnderlying"), f.get("isoCurrencyUnderlying"), "gearing:", f.get("gearing"),
                       "intrinsic:", f.get("intrinsicValue"), "desc:", str((s.get("derivativesDetails") or {}).get("description"))[:200])
 
+
+# CORS-Check: darf der Browser (Origin github.io) die Endpunkte lesen?
+for q in [a for x in sys.argv[1:] for a in x.split()]:
+    j = requests.get(f"{API}/instruments/query?searchValue={q}&limit=1", headers=H, timeout=20).json()
+    ev = j["list"][0]["entityValue"]
+    for path in (f"instruments/query?searchValue={q}&limit=1", f"derivatives/{ev}/snapshot", f"instruments/DERIVATIVE/{ev}/snapshot"):
+        r = requests.get(f"{API}/{path}", headers={**H, "Origin": "https://dxrtex.github.io"}, timeout=20)
+        o = requests.options(f"{API}/{path}", headers={"Origin": "https://dxrtex.github.io", "Access-Control-Request-Method": "GET"}, timeout=20)
+        print("CORS", path, r.status_code, "ACAO:", r.headers.get("Access-Control-Allow-Origin"), "| OPTIONS", o.status_code, o.headers.get("Access-Control-Allow-Origin"))
