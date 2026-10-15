@@ -4378,25 +4378,45 @@ function ovFind(o, re, path = "") {                           // erste Zahl, der
   }
   return null;
 }
+const ovGet = async u => { try { const r = await fetch(OV + u); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+// K.-o.-Schwelle und Bezugsverhältnis stehen nur im Derivate-Snapshot (derivativesUnderlyingList), nicht im Kurs-Snapshot
+function ovTurbo(sn) {
+  const u = (((sn || {}).derivativesUnderlyingList || {}).list || [])[0];
+  if (!u) return null;
+  const bl = (u.derivativesBarrierList || {}).list || [], pick = k => bl.find(x => x.typeBarrier === k && +x.barrier > 0);
+  const b = pick("KNOCK_OUT") || pick("STOP_LOSS") || pick("STRIKE");
+  const fig = sn.derivativesFigure || {}, desc = JSON.stringify((sn.derivativesDetails || {}).description || "");
+  return { ko: b ? +b.barrier : null, hit: !!(b && b.hasBeenHit), cr: +u.coverRatio || null, ucur: u.isoCurrency || (b && b.isoCurrencyUnderlying) || fig.isoCurrencyUnderlying || "",
+           spot: +fig.priceUnderlying || +((u.quote || {}).last) || null, und: (u.instrument && u.instrument.name) || u.shortName || "",
+           put: /\((Put|Short)\)|\bShort\b/i.test(desc) && !/\((Call|Long)\)/i.test(desc), bid: +fig.bidPriceCalculation || null, ask: +fig.askPriceCalculation || null };
+}
 async function turboLoad(tk, id) {
   id = String(id || "").trim().toUpperCase().replace(/\s+/g, "");
   const set = x => { state.tpT = { ...(state.tpT || {}), [tk]: { ...((state.tpT || {})[tk] || {}), ...x } }; save(); tpRefresh(); };
   if (!/^[A-Z0-9]{6}$|^[A-Z]{2}[A-Z0-9]{10}$/.test(id)) return set({ w: id, src: { err: "Bitte eine WKN (6 Zeichen) oder ISIN (12 Zeichen) eingeben." } });
   set({ w: id, busy: 1 });
   try {
-    const q = await (await fetch(`${OV}/instruments/query?searchValue=${encodeURIComponent(id)}&limit=1`)).json();
-    const it = (q.list || [])[0];
-    if (!it) return set({ busy: 0, src: { err: `${id} nicht gefunden – Kurs und K.-o. bitte von Hand eintragen.` } });
-    const sn = await (await fetch(`${OV}/instruments/${it.entityType}/${it.entityValue}/snapshot`)).json();
-    const qt = sn.quote || {}, ask = qt.ask || qt.last, r = rowOf(tk) || {};
-    const ko = ovFind(sn, /^(knock_?out|knockOut(Barrier|Level)?|barrier|stopLoss(Barrier|Level)?)$/i) || ovFind(sn, /knock|barrier/i) || ovFind(sn, /^strike(Abs|Price)?$/i);
-    const und = (sn.instrument && sn.instrument.underlyingEntity && sn.instrument.underlyingEntity.name) || "";
-    const txt = JSON.stringify(sn).toUpperCase(), short = /"(PUT|SHORT)"/.test(txt) && !/"(CALL|LONG)"/.test(txt);
+    const q = await ovGet(`/instruments/query?searchValue=${encodeURIComponent(id)}&limit=1`);
+    const it = ((q || {}).list || [])[0];
+    if (!it) return set({ busy: 0, src: { err: q ? `${id} nicht gefunden – Kurs und K.-o. bitte von Hand eintragen.` : "onvista nicht erreichbar – Kurs und K.-o. bitte von Hand eintragen." } });
+    const der = it.entityType === "DERIVATIVE" ? await ovGet(`/derivatives/${it.entityValue}/snapshot`) : null;
+    const sn = (der && der.quote ? der : await ovGet(`/instruments/${it.entityType}/${it.entityValue}/snapshot`)) || der || {};
+    const d = ovTurbo(der) || ovTurbo(sn) || {};
+    const qt = sn.quote || (der || {}).quote || {}, ask = +qt.ask || d.ask || +qt.last, bid = +qt.bid || d.bid || 0, r = rowOf(tk) || {};
+    const ko0 = d.ko ? { v: d.ko } : (ovFind(sn, /^(knock_?out|knockOut(Barrier|Level)?|stopLoss(Barrier|Level)?)$/i) || ovFind(sn, /knock/i));
+    const und = d.und || (sn.instrument && sn.instrument.underlyingEntity && sn.instrument.underlyingEntity.name) || "";
     const nm = String(r.n || "").split(/\s+/)[0].toLowerCase(), mism = und && nm && !und.toLowerCase().includes(nm);
-    const fx = toEur(1, r.cur || "EUR") || 1;
-    set({ busy: 0, p: ask > 0 ? +(+ask).toFixed(3) : undefined, ko: ko ? +(ko.v * fx).toFixed(4) : (((state.tpT || {})[tk] || {}).ko),
-      src: { n: (sn.instrument && sn.instrument.name) || it.name, u: und, ask, ko: ko ? ko.v : null, at: qt.datetimeAsk ? new Date(qt.datetimeAsk).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "",
-        warn: [it.entityType === "STOCK" ? "das ist eine Aktie, kein Turbo" : "", short ? "sieht nach Short/Put aus – Kairo plant Long" : "", mism ? `Basiswert passt nicht zu ${r.n}` : ""].filter(Boolean).join(" · ") } });
+    const fx = toEur(1, d.ucur || r.cur || "EUR") || 1;
+    // Aufgeld (Briefkurs minus innerer Wert) – kommt beim Verkaufen am Stop wieder dazu; nur wenn plausibel
+    let cr = d.cr && d.ko ? d.cr : null, off = 0;
+    if (cr && d.spot > d.ko && bid > 0) {
+      const iv = (d.spot - d.ko) * cr * fx;
+      if (iv > 0 && Math.abs(bid / iv - 1) < 0.5) off = Math.max(0, bid - iv); else cr = null;   // Bezugsverhältnis passt nicht zum Kurs → alte Rechnung
+    }
+    set({ busy: 0, p: ask > 0 ? +(+ask).toFixed(3) : undefined, ko: ko0 ? +(ko0.v * fx).toFixed(4) : (((state.tpT || {})[tk] || {}).ko),
+      cr: cr || undefined, off: cr ? +off.toFixed(4) : undefined, kow: ko0 ? +(ko0.v * fx).toFixed(4) : undefined,
+      src: { n: (sn.instrument && sn.instrument.name) || it.name, u: und, ask, ko: ko0 ? ko0.v : null, ucur: d.ucur || "", cr: cr || null, at: qt.datetimeAsk ? new Date(qt.datetimeAsk).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "",
+        warn: [it.entityType === "STOCK" ? "das ist eine Aktie, kein Turbo" : "", d.hit ? "K.-o. wurde schon erreicht – Turbo ist wertlos" : "", d.put ? "das ist ein Short/Put – Kairo plant Long" : "", mism ? `Basiswert passt nicht zu ${r.n}` : ""].filter(Boolean).join(" · ") } });
   } catch (e) { set({ busy: 0, src: { err: "onvista nicht erreichbar – Kurs und K.-o. bitte von Hand eintragen." } }); }
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-tpload]"); if (!b) return; turboLoad(b.dataset.tpload, ($("tpW") || {}).value); });
@@ -4408,20 +4428,23 @@ function tpTurboHtml(r, m, lv) {
     <div class="tp2-cfg"><label style="grid-column:1/-1">WKN oder ISIN deines Turbos – Kairo holt Kurs und K.-o. selbst
       <span style="display:flex;gap:8px"><input id="tpW" type="text" autocapitalize="characters" autocomplete="off" value="${esc(t.w || "")}" placeholder="z. B. HS2B7X" data-t="${esc(r.t)}" style="flex:1">
       <button class="btn sm" data-tpload="${esc(r.t)}" type="button">${t.busy ? "lädt …" : "Laden"}</button></span></label></div>
-    ${src ? `<div class="note" style="margin:2px 0 8px">${src.err ? `⚠️ ${esc(src.err)}` : `✓ ${esc(src.n || "")}${src.u ? ` · Basiswert ${esc(src.u)}` : ""} · Brief ${fmt(src.ask)} € ${src.at ? `· Stand ${esc(src.at)}` : ""}${src.ko ? "" : " · K.-o. nicht gefunden – bitte unten eintragen"}${src.warn ? ` · ⚠️ ${esc(src.warn)}` : ""}`}</div>` : ""}
+    ${src ? `<div class="note" style="margin:2px 0 8px">${src.err ? `⚠️ ${esc(src.err)}` : `✓ ${esc(src.n || "")}${src.u ? ` · Basiswert ${esc(src.u)}` : ""} · Brief ${fmt(src.ask)} € ${src.at ? `· Stand ${esc(src.at)}` : ""}${src.ko ? ` · K.-o. ${fmt(src.ko)} ${esc(src.ucur || "")}${src.cr ? ` · Bezugsverhältnis ${String(src.cr).replace(".", ",")}` : ""}` : " · K.-o. nicht gefunden – bitte unten eintragen"}${src.warn ? ` · ⚠️ ${esc(src.warn)}` : ""}`}</div>` : ""}
     <div class="tp2-cfg"><label>Kaufkurs Turbo (€)<input id="tpTP" type="number" inputmode="decimal" step="any" value="${esc(t.p || "")}" placeholder="z. B. 8,40" data-t="${esc(r.t)}"></label>
       <label>K.-o.-Schwelle (€)<input id="tpKO" type="number" inputmode="decimal" step="any" value="${esc(t.ko || "")}" placeholder="z. B. ${X(lv.ko || m.stop * 0.85)}" data-t="${esc(r.t)}"></label></div>`;
   if (!(P > 0 && KO > 0)) return form + `<div class="note" style="margin:4px 0 0">Trag Kaufkurs und K.-o. deines Turbos ein – dann rechnet Kairo den Stop-Kurs für den Turbo in € und die Stückzahl.</div>`;
   if (KO >= m.stop) return form + `<div class="tip tone-red" style="margin-top:8px">K.-o. ${X(KO)} € liegt über dem Stop ${X(m.stop)} € – der Turbo würde vor dem Stop ausgeknockt. Einen Turbo mit tieferem K.-o. wählen.</div>`;
   if (KO >= m.E) return form + `<div class="tip tone-red" style="margin-top:8px">K.-o. liegt über dem Kaufkurs der Aktie – Eingabe prüfen (Long-Turbo).</div>`;
-  const sl = P * (m.stop - KO) / (m.E - KO), lossU = P - sl, qty = Math.max(1, Math.floor(m.riskEur / lossU));
+  // Mit Bezugsverhältnis: Turbo-Wert = (Aktie − K.-o.) × Bezugsverhältnis in € + Aufgeld → unabhängig vom Kaufzeitpunkt.
+  // Ohne: verhältnisgleich zum Kaufkurs (stimmt nur, wenn Kaufkurs Turbo und Kurs der Aktie zur selben Zeit gelten).
+  const tv = S => t.cr > 0 ? Math.max(0, (S - KO) * t.cr * m.fx + (+t.off || 0)) : P * (S - KO) / (m.E - KO);
+  const sl = tv(m.stop), lossU = P - sl, qty = Math.max(1, Math.floor(m.riskEur / Math.max(lossU, P * 0.05)));
   const lev = m.E / (m.E - KO), near = KO > m.stop - TP.kob * m.atr;
   return form + `<div class="tp2-plan">
       <div class="tp2-row"><span>Stop-Loss am Turbo</span><b class="down">${fmt(sl)} €</b><em>${sgnPct(sl / P - 1, 0)} vom Kaufkurs · entspricht Aktie ${X(m.stop)} ${cur}</em></div>
-      ${m.tp ? `<div class="tp2-row"><span>Take-Profit am Turbo</span><b class="up">${fmt(P * (m.tp - KO) / (m.E - KO))} €</b><em>${sgnPct((m.tp - KO) / (m.E - KO) - 1, 0)} vom Kaufkurs · entspricht Aktie ${X(m.tp)} ${cur}</em></div>` : ""}
+      ${m.tp ? `<div class="tp2-row"><span>Take-Profit am Turbo</span><b class="up">${fmt(tv(m.tp))} €</b><em>${sgnPct(tv(m.tp) / P - 1, 0)} vom Kaufkurs · entspricht Aktie ${X(m.tp)} ${cur}</em></div>` : ""}
       <div class="tp2-row"><span>Stückzahl</span><b>${fmt(qty, 0)} Stück</b><em>Einsatz ${eur(qty * P)} · Verlust am Stop ≈ ${eur2(qty * lossU)} · Hebel ≈ ×${fmt(lev, 1)}</em></div></div>
     ${near ? `<div class="tip tone-yellow" style="margin-top:8px">K.-o. liegt weniger als 1 ATR unter dem Stop – eine Kurslücke kann den Turbo ausknocken, bevor der Stop greift. Besser einen Turbo mit K.-o. unter ${X(m.stop - TP.kob * m.atr)} ${cur}.</div>` : ""}
-    <div class="note" style="margin:6px 0 0">Stop-Order (${fmt(sl)} €)${m.tp ? ` und Limit-Verkauf (${fmt(P * (m.tp - KO) / (m.E - KO))} €)` : ""} bei Scalable direkt auf den Turbo setzen. Genau gilt sie nur, solange der Devisenkurs gleich bleibt; der K.-o. von Open-End-Turbos steigt außerdem täglich leicht (Finanzierung). Prüfe den Stop deshalb ab und zu gegen den Kurs der Aktie (${X(m.stop)} ${cur}).</div>`;
+    <div class="note" style="margin:6px 0 0">Stop-Order (${fmt(sl)} €)${m.tp ? ` und Limit-Verkauf (${fmt(tv(m.tp))} €)` : ""} bei Scalable direkt auf den Turbo setzen.${t.cr > 0 ? ` Gerechnet mit Bezugsverhältnis ${fmt(t.cr, 4).replace(/0+$/, "")} von onvista.` : ""} Genau gilt sie nur, solange der Devisenkurs gleich bleibt; der K.-o. von Open-End-Turbos steigt außerdem täglich leicht (Finanzierung). Prüfe den Stop deshalb ab und zu gegen den Kurs der Aktie (${X(m.stop)} ${cur}).</div>`;
 }
 function tpHtml(r, S) { return `<div class="hcard"><div class="plan-h">Trade-Plan</div><div id="tpBox">${tpInner(r, S)}</div></div>`; }
 // Gespeicherte Trades (geplant → eröffnet → geschlossen), eingefroren beim Eröffnen
