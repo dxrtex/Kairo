@@ -4356,7 +4356,7 @@ function tpInner(r, S) {
         : row("Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `zum Schluss – nach ${m.hold} Handelstagen, falls der SL nicht vorher greift`)}
       ${row("Produkt", prod, lv.L > 1 ? `K.-o. höchstens ${X(lv.ko)} ${cur}` : (lv.qty != null ? `${lv.qty} Stück` : ""))}
       ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(m.riskPct, 1)} %${m.fit.mult > 1 ? " – Ausverkauf" : ""})`)}
-      ${lv.L > 1 ? row("SL am Turbo", sgnPct(-lv.tStop, 0), `vom Kaufkurs des Turbos${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
+      ${lv.L > 1 && !(((state.tpT || {})[r.t] || {}).p > 0) ? row("SL am Turbo", sgnPct(-lv.tStop, 0), `vom Kaufkurs des Turbos${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
     </div>
     ${tpTurboHtml(r, m, lv)}
     <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position setzen. Keinen Limit-Verkauf – ${m.ema ? `ab Tag ${H4X.from} verkaufen, sobald ein Tag unter der EMA 20 schließt (Mitteilung kommt), spätestens an Tag ${m.hold}` : `an Tag ${m.hold} zum Schluss verkaufen, falls der SL nicht vorher greift`}. Nicht vorher verkaufen, auch wenn es gut läuft: Die großen Gewinner machen das Ergebnis. Kairo führt keine Orders aus.</div>
@@ -4422,11 +4422,14 @@ async function turboLoad(tk, id) {
         warn: [it.entityType === "STOCK" ? "das ist eine Aktie, kein Turbo" : "", d.hit ? "K.-o. wurde schon erreicht – Turbo ist wertlos" : "", d.put ? "das ist ein Short/Put – Kairo plant Long" : "", mism ? `Basiswert passt nicht zu ${r.n}` : ""].filter(Boolean).join(" · ") } });
   } catch (e) { set({ busy: 0, src: { err: "onvista nicht erreichbar – Kurs und K.-o. bitte von Hand eintragen." } }); }
 }
+document.addEventListener("click", e => { const b = e.target.closest("[data-tpus]"); if (!b) return; const t = b.dataset.tpus; state.tpT = { ...(state.tpT || {}), [t]: { ...((state.tpT || {})[t] || {}), us: undefined } }; save(); tpRefresh(); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-tpload]"); if (!b) return; turboLoad(b.dataset.tpload, ($("tpW") || {}).value); });
 document.addEventListener("keydown", e => { if (e.target.id === "tpW" && e.key === "Enter") { e.preventDefault(); turboLoad(e.target.dataset.t, e.target.value); } });
 const tpKcOpts = sc => [...new Set(["EUR", sc, ...(/^GB[Xp]$/.test(sc) ? ["GBP"] : [])])];   // Währungen der K.-o.-Schwelle
 function tpTurboHtml(r, m, lv) {
   const t = (state.tpT || {})[r.t] || {}, P = +t.p || 0, sc = r.cur || "EUR", cur = "€", X = v => fmt(v * m.fx);
+  // Eigener Stop (in €, wie im TradingView-Chart) – sonst Kairo-Vorschlag
+  const own = +t.us > 0 && m.fx > 0, stop = own ? +t.us / m.fx : m.stop, cp0 = v => fmt(v, v < 10 ? 3 : 2).replace(/(,\d\d)0$/, "$1");
   // Alte Speicherung (K.-o. in €) übernehmen
   const kc = t.kc || "EUR", kon = +t.kon || (t.ko > 0 ? +t.ko : 0), cr = +t.cr || 0;
   const appF = kc === "EUR" ? 1 : 1 / (toEur(1, kc) || NaN), f = kc === "EUR" ? 1 : (+t.fxr > 0 ? +t.fxr : appF);   // Einheiten K.-o.-Währung je 1 €
@@ -4446,29 +4449,39 @@ function tpTurboHtml(r, m, lv) {
       <label>Bezugsverhältnis<input id="tpCR" type="number" inputmode="decimal" step="any" value="${esc(t.cr || "")}" placeholder="z. B. 0,01" data-t="${esc(r.t)}"></label>
       ${kc !== "EUR" ? `<label>Wechselkurs EUR/${esc(kc)}<input id="tpFX" type="number" inputmode="decimal" step="any" value="${esc(t.fxr || "")}" placeholder="${appF > 0 ? fmt(appF, 4) : "z. B. 1,12"}" data-t="${esc(r.t)}"></label>` : ""}
     </div>
-    <div class="note" style="margin:2px 0 0">Alle Zahlen genau so abtippen, wie sie auf der Seite der Emittentin stehen (z. B. hsbc-zertifikate.de): Briefkurs, Knock-out-Barriere mit Währung, Bezugsverhältnis${kc !== "EUR" ? `, „verwendeter Wechselkurs" (leer = ${fmt(appF, 4)} aus Kairo)` : ""}.</div>`;
+    <div class="note" style="margin:2px 0 0">Alle Zahlen genau so abtippen, wie sie auf der Seite der Emittentin stehen (z. B. hsbc-zertifikate.de): Briefkurs, Knock-out-Barriere mit Währung, Bezugsverhältnis${kc !== "EUR" ? `, „verwendeter Wechselkurs" (leer = ${fmt(appF, 4)} aus Kairo)` : ""}.</div>
+    <div class="tp2-cfg" style="margin-top:10px">
+      <label style="grid-column:1/-1">Mein Stop-Loss bei der Aktie (€) – leer = Kairo-Vorschlag ${cp0(m.stop * m.fx)} €
+        <span style="display:flex;gap:8px"><input id="tpUS" type="number" inputmode="decimal" step="any" value="${esc(t.us || "")}" placeholder="${esc(cp0(m.stop * m.fx))}" data-t="${esc(r.t)}" style="flex:1">
+        ${t.us > 0 ? `<button class="btn ghost sm" data-tpus="${esc(r.t)}" type="button">Vorschlag nehmen</button>` : ""}</span></label></div>`;
   if (!(P > 0 && kon > 0)) return form + `<div class="note" style="margin:4px 0 0">Trag Briefkurs und K.-o.-Schwelle ein – dann rechnet Kairo den Stop-Loss am Turbo und die Stückzahl.</div>`;
   if (!(f > 0)) return form + `<div class="tip tone-red" style="margin-top:8px">Wechselkurs EUR/${esc(kc)} fehlt – bitte eintragen.</div>`;
-  if (KOs >= m.stop) return form + `<div class="tip tone-red" style="margin-top:8px">K.-o. ${X(KOs)} € liegt über dem Stop ${X(m.stop)} € – der Turbo würde vor dem Stop ausgeknockt. Einen Turbo mit tieferem K.-o. wählen.</div>`;
+  if (own && stop >= m.E) return form + `<div class="tip tone-red" style="margin-top:8px">Dein Stop ${X(stop)} € liegt über dem Kaufkurs ${X(m.E)} € – bitte prüfen.</div>`;
+  if (KOs >= stop) return form + `<div class="tip tone-red" style="margin-top:8px">K.-o. ${X(KOs)} € liegt über dem Stop ${X(stop)} € – der Turbo würde vor dem Stop ausgeknockt. ${own ? "Stop höher setzen oder einen" : "Einen"} Turbo mit tieferem K.-o. wählen.</div>`;
   if (KOs >= m.E) return form + `<div class="tip tone-red" style="margin-top:8px">K.-o. liegt über dem Kurs der Aktie – Eingabe prüfen (Long-Turbo, Währung der K.-o.-Schwelle?).</div>`;
   // Genau: Turbo-Wert (€) = (Aktie − Basispreis) × Bezugsverhältnis ÷ Wechselkurs. Ohne Bezugsverhältnis: verhältnisgleich zum Briefkurs.
   const tv = S => cr > 0 ? Math.max(0, (g(S) - bpn) * cr / f) : P * (S - KOs) / (m.E - KOs);
   // Aktienkurs wie im Chart: in der Währung der Aktie (Pence als „GBp“), kleine Kurse mit 3 Nachkommastellen
   const cp = v => fmt(v, v < 10 ? 3 : 2), chart = v => `${cp(v)} ${sc === "EUR" ? "€" : esc(/^GB[Xp]$/.test(sc) ? "Pence" : sc)}`;
-  const fp = v => fmt(v, v < 1 ? 3 : 2), sl = tv(m.stop), lossU = P - sl, qty = Math.max(1, Math.floor(m.riskEur / Math.max(lossU, P * 0.05)));
-  const lev = cr > 0 ? g(m.E) * cr / f / P : m.E / (m.E - KOs), near = KOs > m.stop - TP.kob * m.atr;
+  const fp = v => fmt(v, v < 1 ? 3 : 2), sl = tv(stop), lossU = P - sl, qty = Math.max(1, Math.floor(m.riskEur / Math.max(lossU, P * 0.05)));
+  const lev = cr > 0 ? g(m.E) * cr / f / P : m.E / (m.E - KOs), near = KOs > stop - TP.kob * m.atr;
   const iv = cr > 0 ? tv(m.E) : 0, prem = cr > 0 ? P - iv : 0, odd = cr > 0 && (iv <= 0 || Math.abs(prem) > Math.max(0.35 * P, 0.05));
   const fxOff = kc !== "EUR" && +t.fxr > 0 && appF > 0 && Math.abs(+t.fxr / appF - 1) > 0.08;   // z. B. USD/EUR statt EUR/USD getippt
-  const calc = cr > 0 ? `(${n4(g(m.stop))} − ${n4(bpn)}) ${esc(kc)} × ${n4(cr)}${kc !== "EUR" ? ` ÷ ${n4(f)}` : ""} = ${fmt(sl, 3)} €` : "";
-  return form + `<div class="tp2-plan">
+  const calc = cr > 0 ? `(${n4(g(stop))} − ${n4(bpn)}) ${esc(kc)} × ${n4(cr)}${kc !== "EUR" ? ` ÷ ${n4(f)}` : ""} = ${fmt(sl, 3)} €` : "";
+  const slK = tv(m.stop), fairMax = iv > 0 ? iv * 1.04 + 0.01 : 0, impl = cr > 0 ? ((P * f / cr + bpn) / (kc === sc ? 1 : f * m.fx)) : 0;
+  const head = `<div class="tip tone-blue" style="margin-top:10px;text-align:center"><div style="font-size:13px;opacity:.8">Stop-Order auf den Turbo</div>
+      <div style="font-size:30px;font-weight:700;margin:2px 0" class="down">${fp(sl)} €</div>
+      <div style="font-size:13px">${own ? "aus deinem Stop" : "aus dem Kairo-Vorschlag"} ${cp(stop * m.fx)} € bei der Aktie · ${fmt(qty, 0)} Stück</div>
+      ${own && Math.abs(stop / m.stop - 1) > 0.001 ? `<div style="font-size:13px;margin-top:6px;opacity:.85">Kairo-Vorschlag: Aktie ${cp(m.stop * m.fx)} € → Turbo ${fp(slK)} €</div>` : ""}</div>`;
+  return form + head + `<div class="tp2-plan">
       <div class="tp2-row"><span>Stop-Loss am Turbo</span><b class="down">${fp(sl)} €</b><em>${sgnPct(sl / P - 1, 0)} vom Briefkurs · Stop-Order bei Scalable auf den Turbo</em></div>
-      <div class="tp2-row"><span>Stop-Loss im Chart (Aktie)</span><b class="down">${chart(m.stop)}</b><em>${sc !== "EUR" ? `= ${cp(m.stop * m.fx)} € · ` : ""}diese Linie in TradingView einzeichnen · K.-o. liegt bei ${chart(KOs)}${sc !== "EUR" ? ` (${cp(KOs * m.fx)} €)` : ""}</em></div>
+      <div class="tp2-row"><span>Stop-Loss im Chart (Aktie)</span><b class="down">${chart(stop)}</b><em>${sc !== "EUR" ? `= ${cp(stop * m.fx)} € · ` : ""}${own ? "dein Stop · " : "Kairo-Vorschlag · "}diese Linie in TradingView einzeichnen · K.-o. liegt bei ${chart(KOs)}${sc !== "EUR" ? ` (${cp(KOs * m.fx)} €)` : ""}</em></div>
       ${m.tp ? `<div class="tp2-row"><span>Take-Profit am Turbo</span><b class="up">${fp(tv(m.tp))} €</b><em>${sgnPct(tv(m.tp) / P - 1, 0)} vom Briefkurs · entspricht Aktie ${X(m.tp)} ${cur}</em></div>` : ""}
       <div class="tp2-row"><span>Stückzahl</span><b>${fmt(qty, 0)} Stück</b><em>Einsatz ${eur(qty * P)} · Verlust am Stop ≈ ${eur2(qty * lossU)} · Hebel ≈ ×${fmt(lev, 1)}</em></div></div>
     ${calc ? `<div class="note" style="margin:6px 0 0">Rechnung: ${calc}${kc !== "EUR" && !(+t.fxr > 0) ? " (Wechselkurs aus Kairo)" : ""}</div>` : `<div class="tip tone-yellow" style="margin-top:8px">Ohne Bezugsverhältnis rechnet Kairo verhältnisgleich – das stimmt nur, wenn Briefkurs und Aktienkurs (${X(m.E)} ${cur}) zur selben Zeit gelten. Trag das Bezugsverhältnis ein, dann ist der Stop genau.</div>`}
     ${fxOff ? `<div class="tip tone-yellow" style="margin-top:8px">Wechselkurs ${n4(+t.fxr)} weicht stark vom aktuellen Kurs ab (EUR/${esc(kc)} ≈ ${n4(appF)}) – verkehrt herum eingetippt? Gemeint ist: 1 € = … ${esc(kc)}.</div>` : ""}
-    ${odd ? `<div class="tip tone-yellow" style="margin-top:8px">Briefkurs ${fmt(P)} € passt nicht zum Aktienkurs in Kairo (${X(m.E)} ${cur} → innerer Wert ${fmt(iv)} €). Entweder ist der Kairo-Kurs veraltet (dann stimmt der Stop trotzdem) oder K.-o./Bezugsverhältnis/Wechselkurs sind falsch eingetippt – bitte prüfen.</div>` : ""}
-    ${near ? `<div class="tip tone-yellow" style="margin-top:8px">K.-o. liegt weniger als 1 ATR unter dem Stop – eine Kurslücke kann den Turbo ausknocken, bevor der Stop greift. Besser einen Turbo mit K.-o. unter ${X(m.stop - TP.kob * m.atr)} ${cur}.</div>` : ""}
+    ${odd ? `<div class="tip tone-yellow" style="margin-top:8px">Turbo zu teuer? Bei Aktie ${cp(m.E * m.fx)} € ist der Turbo fair ≈ ${fp(Math.max(0, iv))} € wert – verlangt werden ${fp(P)} €. Der Briefkurs passt zu einer Aktie bei ≈ ${cp(impl * m.fx)} €. Prüf den Aktienkurs (z. B. gettex): Stimmt ${cp(m.E * m.fx)} €, nur mit <b>Limit höchstens ${fp(fairMax)} €</b> kaufen – sonst zahlst du drauf. Der Stop (${fp(sl)} €) stimmt in beiden Fällen.</div>` : ""}
+    ${near ? `<div class="tip tone-yellow" style="margin-top:8px">K.-o. liegt weniger als 1 ATR unter dem Stop – eine Kurslücke kann den Turbo ausknocken, bevor der Stop greift. Besser einen Turbo mit K.-o. unter ${X(stop - TP.kob * m.atr)} ${cur}.</div>` : ""}
     <div class="note" style="margin:6px 0 0">Stop-Order (${fp(sl)} €)${m.tp ? ` und Limit-Verkauf (${fp(tv(m.tp))} €)` : ""} bei Scalable direkt auf den Turbo setzen. Der echte Turbo-Kurs liegt meist ein paar Cent über dem inneren Wert – die Order löst also knapp unter deinem Stop aus. Der K.-o. von Open-End-Turbos steigt täglich leicht (Finanzierung)${kc !== "EUR" ? ", der Wechselkurs schwankt" : ""}: bei längeren Trades ab und zu neu eintragen.</div>`;
 }
 function tpHtml(r, S) { return `<div class="hcard"><div class="plan-h">Trade-Plan</div><div id="tpBox">${tpInner(r, S)}</div></div>`; }
@@ -4487,7 +4500,7 @@ function tpOpen(t) {
   const l = plansLoad();
   if (l.filter(p => p.st === "open").length >= m.cfg.maxOpen && !confirm(`Schon ${m.cfg.maxOpen} offene Trades – Gesamtrisiko steigt. Trotzdem eröffnen?`)) return;
   l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, h4: m.h4 ? (h4Go(m.h4) ? "go" : m.h4.st) : null, d: isoD(m.d0), scan: String(data.generated).slice(0, 10),
-              E: +m.E, stop: m.stop, atr: m.atr, L: lv.L, ko: lv.ko, expo: Math.round(lv.expo), stake: Math.round(lv.stake), qty: lv.qty,
+              E: +m.E, stop: (((state.tpT || {})[t] || {}).us > 0 ? ((state.tpT || {})[t]).us / (toEur(1, r.cur || "EUR") || 1) : m.stop), atr: m.atr, L: lv.L, ko: lv.ko, expo: Math.round(lv.expo), stake: Math.round(lv.stake), qty: lv.qty,
               risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, ema: m.ema ? 1 : 0, exit: isoD(m.exit), exit2: isoD(m.exit2), sec: r.sec || null, tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open", paper: paperMode() });
   plansSave(l); render(); window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -4556,7 +4569,7 @@ document.addEventListener("click", e => {
 function tpRefresh() { const r = state.einT && searchIdx && searchIdx.find(x => x.t === state.einT), box = $("tpBox"); if (r && box) box.innerHTML = tpInner(r, einSetup(r)); }
 document.addEventListener("input", e => {
   if (e.target.id === "tpD") { state.tpD = { ...(state.tpD || {}), [e.target.dataset.t]: e.target.value || undefined }; save(); return; }
-  const TPF = { tpTP: "p", tpKO: "kon", tpCR: "cr", tpFX: "fxr" };
+  const TPF = { tpTP: "p", tpKO: "kon", tpCR: "cr", tpFX: "fxr", tpUS: "us" };
   if (TPF[e.target.id]) {
     const v = parseFloat(String(e.target.value).replace(",", ".")), t = e.target.dataset.t, cur = (state.tpT || {})[t] || {}, k = TPF[e.target.id];
     const x = { ...cur, [k]: v > 0 ? v : undefined };
@@ -4572,7 +4585,7 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("change", e => {
   if (e.target.id === "tpKC") { const t = e.target.dataset.t, cur = (state.tpT || {})[t] || {}; state.tpT = { ...(state.tpT || {}), [t]: { ...cur, kc: e.target.value, fxr: undefined } }; save(); }
-  if (["tpE", "tpD", "tpDepot", "tpRisk", "tpTP", "tpKO", "tpCR", "tpFX", "tpKC"].includes(e.target.id)) tpRefresh();
+  if (["tpE", "tpD", "tpDepot", "tpRisk", "tpTP", "tpKO", "tpCR", "tpFX", "tpKC", "tpUS"].includes(e.target.id)) tpRefresh();
 });
 document.addEventListener("change", e => { if (e.target.id === "tpPaper") { state.tpPaper = e.target.checked; save(); render(); } });
 function einHtml() {
