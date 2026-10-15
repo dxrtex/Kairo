@@ -4407,11 +4407,12 @@ async function turboLoad(tk, id) {
     const und = d.und || (sn.instrument && sn.instrument.underlyingEntity && sn.instrument.underlyingEntity.name) || "";
     const nm = String(r.n || "").split(/\s+/)[0].toLowerCase(), mism = und && nm && !und.toLowerCase().includes(nm);
     const fx = toEur(1, d.ucur || r.cur || "EUR") || 1;
-    // Aufgeld (Briefkurs minus innerer Wert) – kommt beim Verkaufen am Stop wieder dazu; nur wenn plausibel
+    // Plausibilität: innerer Wert aus Basiswert-Kurs muss grob zum Geldkurs passen, sonst alte Rechnung. Kein Aufgeld addieren:
+    // onvistas Basiswert-Kurs ist oft Stunden alt (BYD: 8,29 € vs. Geldkurs ≙ 8,41 €) – ein daraus gerechnetes „Aufgeld“ wäre falsch.
     let cr = d.cr && d.ko ? d.cr : null, off = 0;
     if (cr && d.spot > d.ko && bid > 0) {
       const iv = (d.spot - d.ko) * cr * fx;
-      if (iv > 0 && Math.abs(bid / iv - 1) < 0.5) off = Math.max(0, bid - iv); else cr = null;   // Bezugsverhältnis passt nicht zum Kurs → alte Rechnung
+      if (!(iv > 0 && Math.abs(bid / iv - 1) < 0.5)) cr = null;
     }
     set({ busy: 0, p: ask > 0 ? +(+ask).toFixed(3) : undefined, ko: ko0 ? +(ko0.v * fx).toFixed(4) : (((state.tpT || {})[tk] || {}).ko),
       cr: cr || undefined, off: cr ? +off.toFixed(4) : undefined, kow: ko0 ? +(ko0.v * fx).toFixed(4) : undefined,
@@ -4434,7 +4435,7 @@ function tpTurboHtml(r, m, lv) {
   if (!(P > 0 && KO > 0)) return form + `<div class="note" style="margin:4px 0 0">Trag Kaufkurs und K.-o. deines Turbos ein – dann rechnet Kairo den Stop-Kurs für den Turbo in € und die Stückzahl.</div>`;
   if (KO >= m.stop) return form + `<div class="tip tone-red" style="margin-top:8px">K.-o. ${X(KO)} € liegt über dem Stop ${X(m.stop)} € – der Turbo würde vor dem Stop ausgeknockt. Einen Turbo mit tieferem K.-o. wählen.</div>`;
   if (KO >= m.E) return form + `<div class="tip tone-red" style="margin-top:8px">K.-o. liegt über dem Kaufkurs der Aktie – Eingabe prüfen (Long-Turbo).</div>`;
-  // Mit Bezugsverhältnis: Turbo-Wert = (Aktie − K.-o.) × Bezugsverhältnis in € + Aufgeld → unabhängig vom Kaufzeitpunkt.
+  // Mit Bezugsverhältnis: Turbo-Wert = (Aktie − K.-o.) × Bezugsverhältnis in € (innerer Wert) → unabhängig vom Kaufzeitpunkt.
   // Ohne: verhältnisgleich zum Kaufkurs (stimmt nur, wenn Kaufkurs Turbo und Kurs der Aktie zur selben Zeit gelten).
   const tv = S => t.cr > 0 ? Math.max(0, (S - KO) * t.cr * m.fx + (+t.off || 0)) : P * (S - KO) / (m.E - KO);
   const sl = tv(m.stop), lossU = P - sl, qty = Math.max(1, Math.floor(m.riskEur / Math.max(lossU, P * 0.05)));

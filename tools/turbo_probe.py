@@ -49,5 +49,10 @@ for q in [a for x in sys.argv[1:] for a in x.split()]:
             u0 = ((s.get("derivativesUnderlyingList") or {}).get("list") or [{}])[0]
             print("==== ", path, "keys:", sorted(s)[:20], "coverRatio:", u0.get("coverRatio"),
                   "barrier:", [(b.get("typeBarrier"), b.get("barrier")) for b in (u0.get("derivativesBarrierList") or {}).get("list", [])],
-                  "quote.ask:", (s.get("quote") or {}).get("ask"))
+                  "quote.ask:", (s.get("quote") or {}).get("ask"), "bid:", (s.get("quote") or {}).get("bid"))
+            f = s.get("derivativesFigure") or {}
+            if u0:
+                print("   und:", (u0.get("instrument") or {}).get("name"), (u0.get("instrument") or {}).get("isin"), "ucur:", u0.get("isoCurrency"),
+                      "spot:", f.get("priceUnderlying"), f.get("isoCurrencyUnderlying"), "gearing:", f.get("gearing"),
+                      "intrinsic:", f.get("intrinsicValue"), "desc:", str((s.get("derivativesDetails") or {}).get("description"))[:200])
 
