@@ -1,10 +1,12 @@
-"""Probe: Lassen sich Turbo-Daten (Kurs, K.-o., Hebel, Basiswert) frei per WKN/ISIN abrufen? (onvista-API)"""
+"""Probe: Turbo-Daten (Kurs, K.-o., Hebel, Basiswert) per WKN/ISIN über die onvista-API."""
 import json
+import re
 import sys
 
 import requests
 
 H = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+API = "https://api.onvista.de/api/v1"
 
 
 def get(url):
@@ -17,24 +19,47 @@ def get(url):
         return None
 
 
-def short(x, n=2500):
-    return json.dumps(x, ensure_ascii=False)[:n]
+def walk(x, path=""):
+    if isinstance(x, dict):
+        for k, v in x.items():
+            yield from walk(v, f"{path}.{k}")
+    elif isinstance(x, list):
+        for i, v in enumerate(x[:30]):
+            yield from walk(v, f"{path}[{i}]")
+    else:
+        yield path, x
 
 
-for q in [a for x in sys.argv[1:] for a in x.split()] or ["703000"]:
-    j = get(f"https://api.onvista.de/api/v1/instruments/query?searchValue={requests.utils.quote(q)}&limit=5")
-    print(short(j, 1500))
-    items = (j or {}).get("list") or []
-    for it in items[:2]:
-        ev, typ = it.get("entityValue"), it.get("entityType")
-        print("Treffer:", typ, it.get("wkn"), it.get("isin"), it.get("name"), ev)
-        for path in (f"derivatives/{ev}/snapshot", f"derivatives/ISIN:{it.get('isin')}/snapshot", f"instruments/{typ}/{ev}/snapshot",
-                     f"{(typ or '').lower()}s/{ev}/snapshot", f"stocks/{ev}/snapshot"):
-            s = get(f"https://api.onvista.de/api/v1/{path}")
-            if s:
-                print(short(s, 4000))
-                break
-    # direkte Abfrage per WKN/ISIN
-    if items:
-        w = items[0].get("wkn")
-        print(short(get(f"https://api.onvista.de/api/v1/instruments/query?searchValue={w}&limit=1"), 800))
+def snapshot(q):
+    j = get(f"{API}/instruments/query?searchValue={requests.utils.quote(q)}&limit=3")
+    it = ((j or {}).get("list") or [None])[0]
+    if not it:
+        return None, None
+    return it, get(f"{API}/instruments/{it['entityType']}/{it['entityValue']}/snapshot")
+
+
+ids = [a for x in sys.argv[1:] for a in x.split()] or ["703000"]
+for q in ids:
+    it, s = snapshot(q)
+    print("==", q, it and (it["entityType"], it.get("name")))
+    if not s:
+        continue
+    # alle Derivate, die irgendwo im Snapshot vorkommen (z. B. Turbo-Box der Aktie)
+    ders = sorted({(p, v) for p, v in walk(s) if re.search(r"entityType$", p) and v not in ("STOCK", "INDEX", "FUND")})
+    print("Derivat-Typen im Snapshot:", ders[:10])
+    wk = [v for p, v in walk(s) if p.endswith(".wkn") and isinstance(v, str)]
+    print("WKNs im Snapshot:", wk[:15])
+    for p, v in walk(s):
+        if re.search(r"knock|barrier|strike|leverage|lever|ratio|cap|underlying|gearing|nameUnderlying|issuer", p, re.I):
+            print("  ", p, "=", v)
+    # ersten Turbo/Optionsschein aus dem Aktien-Snapshot genauer ansehen
+    if it["entityType"] == "STOCK":
+        for w in wk:
+            if w != it.get("wkn"):
+                it2, s2 = snapshot(w)
+                if it2 and it2["entityType"] not in ("STOCK",):
+                    print("== Derivat", w, it2["entityType"], it2.get("name"))
+                    for p, v in walk(s2):
+                        if re.search(r"knock|barrier|strike|leverage|ratio|underlying|bid|ask|last|issuer|subType|name$|currency", p, re.I):
+                            print("  ", p, "=", v)
+                    break
