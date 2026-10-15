@@ -175,8 +175,15 @@ def big_expiry_dates(start: pd.Timestamp, days: int = 120) -> list[str]:
     return out
 
 
+# Markt-Schwergewichte: ihre Quartalszahlen bewegen Indizes und ganze Branchen (z. B. TSMC → alle Chip-Aktien)
+BIG_CAPS = {"NVDA": ("Nvidia", "us"), "AAPL": ("Apple", "us"), "MSFT": ("Microsoft", "us"), "GOOGL": ("Alphabet", "us"),
+            "AMZN": ("Amazon", "us"), "META": ("Meta", "us"), "TSLA": ("Tesla", "us"), "AVGO": ("Broadcom", "us"),
+            "JPM": ("JPMorgan", "us"), "NFLX": ("Netflix", "us"), "TSM": ("TSMC", "asia"), "ASML": ("ASML", "europe"),
+            "SAP": ("SAP", "europe"), "005930.KS": ("Samsung", "asia"), "0700.HK": ("Tencent", "asia"), "9988.HK": ("Alibaba", "asia")}
+
+
 def build_calendar(rows: list[dict], infos: dict) -> dict:
-    """Termine der geprüften Watchlist-/Treffer-Aktien + Notenbanken + großer Verfall (nächste ~4 Monate)."""
+    """Termine der Watchlist-/Treffer-Aktien, Schwergewichte, alle wichtigen Wirtschaftstermine, großer Verfall (−2 Wochen bis +4 Monate)."""
     today = pd.Timestamp.now().normalize()
     horizon = today + pd.Timedelta(days=120)
     events = []
@@ -191,17 +198,23 @@ def build_calendar(rows: list[dict], infos: dict) -> dict:
     macro, stats = fetch_macro_events()
     print(f"Markt-Termine automatisch: {stats}")
     macro_path = ROOT / "data" / "macro_events.json"
-    if macro_path.exists():                       # von Hand gepflegte Termine als Ersatz/Ergänzung
+    if macro_path.exists():                       # offizielle Termine von Hand: Ersatz, falls eine Quelle ausfällt
         with open(macro_path, encoding="utf-8") as f:
-            manual = json.load(f).get("events", [])
-        have = {e["title"] for e in macro}
-        macro += [e for e in manual if e["title"] not in have]
+            macro += json.load(f).get("events", [])
+    past = today - pd.Timedelta(days=14)           # auch die letzten zwei Wochen zeigen („was war gestern?“)
     seen = set()
-    for e in sorted(macro, key=lambda e: e["date"]):
-        if (e["date"], e["title"]) in seen or not today <= pd.Timestamp(e["date"]) <= horizon:
+    for e in macro:                                # erste Angabe gewinnt: Wirtschaftskalender (genaue Uhrzeit) vor Ersatz
+        if (e["date"], e["title"]) in seen or not past <= pd.Timestamp(e["date"]) <= horizon:
             continue
         seen.add((e["date"], e["title"]))
-        events.append({"kind": "macro", "date": e["date"], "title": e["title"], "region": e.get("region", "all")})
+        events.append({"kind": "macro", **{k: v for k, v in e.items() if k in ("date", "title", "region", "imp", "time", "why", "fc", "prev")},
+                       "region": e.get("region", "all")})
+    for t, (name, reg) in BIG_CAPS.items():       # Quartalszahlen der Schwergewichte bewegen den ganzen Markt
+        if any(ev.get("ticker") == t and ev["kind"] == "earnings" for ev in events):
+            continue
+        d = ticker_calendar(t).get("earnings_date")
+        if d and today <= pd.Timestamp(d) <= horizon:
+            events.append({"ticker": t, "name": name, "region": reg, "watch": False, "big": True, "kind": "earnings", "date": d})
     for d in big_expiry_dates(today):
         events.append({"kind": "expiry", "date": d, "title": "Großer Verfall (Optionen & Futures)", "region": "all"})
     events.sort(key=lambda e: (e["date"], e["kind"], e.get("name", "")))
