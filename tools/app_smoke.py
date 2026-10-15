@@ -61,6 +61,22 @@ async def run(port: int) -> list[str]:
                 txt = (await pg.inner_text("#main")).strip() if await pg.query_selector("#main") else ""
                 if len(txt) < 20:
                     errs.append(f"{name}: Reiter {sec} ist leer")
+            # Scanner: jede Ansicht (⚡ Einstiege · Treffer · Beobachten · Trend · Meine) und die Unterreiter von Depot/Markt
+            await pg.goto(f"{url}?nosplash=1&sec=scanner")
+            await pg.wait_for_timeout(2000)
+            for v in await pg.eval_on_selector_all("[data-view]", "els => els.map(e => e.dataset.view)"):
+                await pg.click(f'[data-view="{v}"]')
+                await pg.wait_for_timeout(500)
+                if not (await pg.query_selector(f'[data-view="{v}"].on')):
+                    errs.append(f"{name}: Scanner-Ansicht {v} lässt sich nicht wählen")
+            for sec in ("depot", "news"):
+                await pg.goto(f"{url}?nosplash=1&sec={sec}")
+                await pg.wait_for_timeout(1500)
+                for sub in await pg.eval_on_selector_all("[data-gosub]", "els => els.map(e => e.dataset.gosub)"):
+                    await pg.click(f'[data-gosub="{sub}"]')
+                    await pg.wait_for_timeout(800)
+                    if len((await pg.inner_text("#main")).strip()) < 20:
+                        errs.append(f"{name}: Unterreiter {sub} ist leer")
             w = await pg.evaluate("document.documentElement.scrollWidth")
             if w > vp["width"] + 2:
                 errs.append(f"{name}: Seite breiter als der Bildschirm ({w}px)")
