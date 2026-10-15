@@ -4368,9 +4368,47 @@ function tpInner(r, S) {
 }
 // Dein echter Turbo: Stop-Kurs am Turbo und Stückzahl aus Kaufkurs (€) und K.-o.-Schwelle des Produkts.
 // Turbo-Wert ≈ (Kurs − K.-o.) × Bezugsverhältnis ÷ Devisenkurs → verhältnisgleich: SL-Turbo = Kauf × (SL − K.-o.) ÷ (Kauf Aktie − K.-o.).
+// Turbo per WKN/ISIN: onvista-API (frei, erlaubt Abfragen aus dem Browser) → Briefkurs und K.-o.-Schwelle
+const OV = "https://api.onvista.de/api/v1";
+function ovFind(o, re, path = "") {                           // erste Zahl, deren Schlüssel passt (Tiefensuche)
+  if (!o || typeof o !== "object") return null;
+  for (const [k, v] of Object.entries(o)) {
+    if (typeof v === "number" && re.test(k) && v > 0) return { v, k: path + k };
+    if (v && typeof v === "object") { const x = ovFind(v, re, path + k + "."); if (x) return x; }
+  }
+  return null;
+}
+async function turboLoad(tk, id) {
+  id = String(id || "").trim().toUpperCase().replace(/\s+/g, "");
+  const set = x => { state.tpT = { ...(state.tpT || {}), [tk]: { ...((state.tpT || {})[tk] || {}), ...x } }; save(); tpRefresh(); };
+  if (!/^[A-Z0-9]{6}$|^[A-Z]{2}[A-Z0-9]{10}$/.test(id)) return set({ w: id, src: { err: "Bitte eine WKN (6 Zeichen) oder ISIN (12 Zeichen) eingeben." } });
+  set({ w: id, busy: 1 });
+  try {
+    const q = await (await fetch(`${OV}/instruments/query?searchValue=${encodeURIComponent(id)}&limit=1`)).json();
+    const it = (q.list || [])[0];
+    if (!it) return set({ busy: 0, src: { err: `${id} nicht gefunden – Kurs und K.-o. bitte von Hand eintragen.` } });
+    const sn = await (await fetch(`${OV}/instruments/${it.entityType}/${it.entityValue}/snapshot`)).json();
+    const qt = sn.quote || {}, ask = qt.ask || qt.last, r = rowOf(tk) || {};
+    const ko = ovFind(sn, /^(knock_?out|knockOut(Barrier|Level)?|barrier|stopLoss(Barrier|Level)?)$/i) || ovFind(sn, /knock|barrier/i) || ovFind(sn, /^strike(Abs|Price)?$/i);
+    const und = (sn.instrument && sn.instrument.underlyingEntity && sn.instrument.underlyingEntity.name) || "";
+    const txt = JSON.stringify(sn).toUpperCase(), short = /"(PUT|SHORT)"/.test(txt) && !/"(CALL|LONG)"/.test(txt);
+    const nm = String(r.n || "").split(/\s+/)[0].toLowerCase(), mism = und && nm && !und.toLowerCase().includes(nm);
+    const fx = toEur(1, r.cur || "EUR") || 1;
+    set({ busy: 0, p: ask > 0 ? +(+ask).toFixed(3) : undefined, ko: ko ? +(ko.v * fx).toFixed(4) : (((state.tpT || {})[tk] || {}).ko),
+      src: { n: (sn.instrument && sn.instrument.name) || it.name, u: und, ask, ko: ko ? ko.v : null, at: qt.datetimeAsk ? new Date(qt.datetimeAsk).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "",
+        warn: [it.entityType === "STOCK" ? "das ist eine Aktie, kein Turbo" : "", short ? "sieht nach Short/Put aus – Kairo plant Long" : "", mism ? `Basiswert passt nicht zu ${r.n}` : ""].filter(Boolean).join(" · ") } });
+  } catch (e) { set({ busy: 0, src: { err: "onvista nicht erreichbar – Kurs und K.-o. bitte von Hand eintragen." } }); }
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-tpload]"); if (!b) return; turboLoad(b.dataset.tpload, ($("tpW") || {}).value); });
+document.addEventListener("keydown", e => { if (e.target.id === "tpW" && e.key === "Enter") { e.preventDefault(); turboLoad(e.target.dataset.t, e.target.value); } });
 function tpTurboHtml(r, m, lv) {
   const t = (state.tpT || {})[r.t] || {}, P = +t.p || 0, KO = (+t.ko || 0) / m.fx, cur = "€", X = v => fmt(v * m.fx);   // K.-o. in € eingegeben
+  const src = t.src;
   const form = `<div class="plan-h" style="margin-top:14px">Dein Turbo</div>
+    <div class="tp2-cfg"><label style="grid-column:1/-1">WKN oder ISIN deines Turbos – Kairo holt Kurs und K.-o. selbst
+      <span style="display:flex;gap:8px"><input id="tpW" type="text" autocapitalize="characters" autocomplete="off" value="${esc(t.w || "")}" placeholder="z. B. HS2B7X" data-t="${esc(r.t)}" style="flex:1">
+      <button class="btn sm" data-tpload="${esc(r.t)}" type="button">${t.busy ? "lädt …" : "Laden"}</button></span></label></div>
+    ${src ? `<div class="note" style="margin:2px 0 8px">${src.err ? `⚠️ ${esc(src.err)}` : `✓ ${esc(src.n || "")}${src.u ? ` · Basiswert ${esc(src.u)}` : ""} · Brief ${fmt(src.ask)} € ${src.at ? `· Stand ${esc(src.at)}` : ""}${src.ko ? "" : " · K.-o. nicht gefunden – bitte unten eintragen"}${src.warn ? ` · ⚠️ ${esc(src.warn)}` : ""}`}</div>` : ""}
     <div class="tp2-cfg"><label>Kaufkurs Turbo (€)<input id="tpTP" type="number" inputmode="decimal" step="any" value="${esc(t.p || "")}" placeholder="z. B. 8,40" data-t="${esc(r.t)}"></label>
       <label>K.-o.-Schwelle (€)<input id="tpKO" type="number" inputmode="decimal" step="any" value="${esc(t.ko || "")}" placeholder="z. B. ${X(lv.ko || m.stop * 0.85)}" data-t="${esc(r.t)}"></label></div>`;
   if (!(P > 0 && KO > 0)) return form + `<div class="note" style="margin:4px 0 0">Trag Kaufkurs und K.-o. deines Turbos ein – dann rechnet Kairo den Stop-Kurs für den Turbo in € und die Stückzahl.</div>`;
