@@ -145,6 +145,8 @@ FF_DE = (
 
 def _ff_title(title: str, cur: str) -> tuple[str, str]:
     land = FF_LAND.get(cur, cur)
+    if cur != "USD" and re.search(r"^(Unemployment Rate|Employment Change|Average Hourly Earnings|Claimant Count)", title, re.I):
+        return f"{land}: Arbeitsmarkt", "Zustand Arbeitsmarkt"
     for pat, de, why in FF_DE:
         if re.search(pat, title, re.I):
             if de is None:                               # Reden: Namen behalten („Fed Chair Powell Speaks“)
