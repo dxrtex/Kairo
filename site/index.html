@@ -1680,16 +1680,19 @@ function loadCalendar() {
 const daysUntil = iso => Math.round((new Date(iso + "T12:00:00") - new Date(new Date().toDateString() + " 12:00")) / 864e5);
 const depotTickers = () => new Set(depotLoad().map(p => p.t));
 function calRelevant(e) {   // betrifft Watchlist oder Depot?
-  if (!e.ticker) return true;
+  if (!e.ticker || e.big) return true;
   return e.watch || depotTickers().has(e.ticker) || favs().has(e.ticker);
 }
 function calBadge() {
   if (!calData) return;
-  const n = calData.filter(e => e.ticker && calRelevant(e) && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 7).length;
+  const n = calData.filter(e => e.ticker && !e.big && calRelevant(e) && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 7).length;
   $("calBadge").hidden = !n; $("calBadge").textContent = n;
 }
 const CAL_KIND = { earnings: ["Q", "k-earn", "Quartalszahlen"], exdiv: ["Div", "k-div", "Ex-Dividende"], dividend: ["Div", "k-div", "Dividendenzahlung"],
-                   macro: ["%", "k-macro", "Notenbank"], expiry: ["V", "k-exp", "Großer Verfall"] };
+                   macro: ["%", "k-macro", "Wirtschaft & Zinsen"], expiry: ["V", "k-exp", "Großer Verfall"] };
+const REG_DE = { us: "USA", europe: "Europa", asia: "Asien", all: "weltweit" };
+const macWhen = e => [e.time ? e.time + " Uhr" : "", e.imp === "high" ? "sehr wichtig" : e.imp === "mid" ? "wichtig" : "", e.why || "",
+  e.fc ? `Prognose ${e.fc}` : "", e.prev ? `vorher ${e.prev}` : ""].filter(Boolean).join(" · ");
 let calMonth = 0, calDay = null;   // Monatsansicht: Versatz zum aktuellen Monat, ausgewählter Tag
 const isoOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 // ---------- Nachrichten: deine Aktien, Markt, Insider-Käufe (SEC) – Scan-Daten + live über Finnhub (Schlüssel nur lokal) ----------
@@ -1738,11 +1741,11 @@ function newsHtml() {
     (NEWS.gen || []).forEach(n => pool.push({ t: n.headline, u: n.url, p: n.source, ms: n.datetime * 1000, s: 0 }));
     pool = dedup(pool.filter(n => n.t && n.ms && now - n.ms < 3 * 864e5).sort((a, b) => b.ms - a.ms)).slice(0, 40);
     const mac = (calData || []).filter(e => (e.kind === "macro" || e.kind === "expiry") && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 7)
-      .map(e => `<div class="bf-r"><i class="y"></i><span><b>${esc(e.title || "Termin")}</b><em>${daysUntil(e.date) === 0 ? "Heute" : daysUntil(e.date) === 1 ? "Morgen" : dateDE(e.date)}${e.region === "us" ? " · USA" : e.region === "europe" ? " · Europa" : ""}</em></span></div>`);
+      .map(e => `<div class="bf-r"><i class="y"></i><span><b>${esc(e.title || "Termin")}</b><em>${daysUntil(e.date) === 0 ? "Heute" : daysUntil(e.date) === 1 ? "Morgen" : dateDE(e.date)}${e.kind === "macro" && macWhen(e) ? " · " + esc(macWhen(e)) : ""}</em></span></div>`);
     if (!calData) loadCalendar();
     const reg = anaData && anaData.market && anaData.market.regime;
     return head + (reg ? `<div class="bf-mkt" style="margin:8px 2px"><i class="${reg.tone}"></i><span>Marktampel: <b>${esc(reg.label)}</b></span></div>` : "")
-      + (mac.length ? block("Termine diese Woche (Notenbanken, Konjunktur, Verfall)", mac, "") : "")
+      + (mac.length ? block("Termine diese Woche (Zinsen, Inflation, Konjunktur, Verfall)", mac, "") : "")
       + block("Marktmeldungen · 3 Tage", pool.map(row), "Keine Marktmeldungen geladen.");
   }
   // Insider: offizielle SEC-Meldungen (Formular 4) aus dem Scan + live je Aktie (Finnhub)
@@ -1790,15 +1793,16 @@ function calendarHtml() {
   const seg = (key, opts) => `<div class="opts seg">${opts.map(([v, l]) => `<button class="opt${(state[key] || "") === v ? " on" : ""}" data-cal="${key}" data-v="${v}">${l}</button>`).join("")}</div>`;
   const head = `<div class="section-title"><span>Kalender · Termine für deine Aktien</span><span>${list.length} Termine</span></div>
     <div class="cal-top"><div class="vtog">${[["month", "Monat"], ["list", "Liste"]].map(([v, l]) => `<button class="${(month ? "month" : "list") === v ? "on" : ""}" data-cal="calView" data-v="${v}">${v === "month" ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M9.5 10v10M14.5 10v10"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>'}${l}</button>`).join("")}</div>${seg("calScope", [["mine", "Meine Aktien"], ["all", "inkl. Treffer"]])}</div>`
-    + seg("calKind", [["", "Alle"], ["earnings", "Quartalszahlen"], ["div", "Dividenden"], ["macro", "Notenbanken & Markt"]]);
+    + seg("calKind", [["", "Alle"], ["earnings", "Quartalszahlen"], ["div", "Dividenden"], ["macro", "Wirtschaft & Zinsen"]]);
   const evRow = e => {
     const [icon, cls] = CAL_KIND[e.kind] || ["•", "k-exp", ""];
     if (!e.ticker) {
       const reg = e.region || "all", n2 = watchByRegion(reg);
-      return `<div class="ev"><span class="k ${cls}">${icon}</span><div class="b"><b>${esc(e.title)}</b><span>${reg === "us" ? "wichtig für US-Aktien" : reg === "europe" ? "wichtig für europäische Aktien" : "betrifft den ganzen Markt"} · ${n2} deiner Aktien</span></div></div>`;
+      const info = e.kind === "macro" ? macWhen(e) : "";
+      return `<div class="ev"><span class="k ${cls}"${e.imp === "high" ? ' style="outline:2px solid var(--down);outline-offset:1px"' : ""}>${icon}</span><div class="b"><b>${esc(e.title)}</b><span>${info ? esc(info) + "<br>" : ""}${e.kind === "macro" && reg !== "all" ? `${REG_DE[reg] || reg} – ${n2} deiner Aktien dort, bewegt aber oft alle Börsen` : "betrifft den ganzen Markt"}</span></div></div>`;
     }
     const inRes = data.results.some(r => r.ticker === e.ticker);
-    const sub = e.kind === "earnings" ? (e.estimate ? "Quartalszahlen · Datum geschätzt" : "Quartalszahlen")
+    const sub = e.kind === "earnings" ? (e.big && !e.watch && !dep.has(e.ticker) ? "Quartalszahlen · Schwergewicht – bewegt Index und Branche" : e.estimate ? "Quartalszahlen · Datum geschätzt" : "Quartalszahlen")
       : e.kind === "exdiv" ? `Ex-Dividende${e.rate ? " · " + fmt(e.rate) + " je Aktie p. a." : ""}` : `Dividendenzahlung${e.rate ? " · " + fmt(e.rate) + " je Aktie p. a." : ""}`;
     return `<div class="ev"><span class="k ${cls}">${icon}</span><div class="b"><b>${esc(e.name || e.ticker)}${dep.has(e.ticker) ? '<span class="pill dep">Depot</span>' : favs().has(e.ticker) ? '<span class="pill fv">★</span>' : e.watch ? '<span class="pill">WL</span>' : ""}</b><span>${esc(e.ticker)} · ${sub}</span></div>
       ${inRes ? `<a class="btnlink" href="#" data-card="${esc(e.ticker)}">Übersicht</a>` : ""}</div>`;
@@ -1807,7 +1811,7 @@ function calendarHtml() {
     const n = daysUntil(d), when = n === 0 ? "heute" : n === 1 ? "morgen" : n === -1 ? "gestern" : n < 0 ? `vor ${-n} Tagen` : `in ${n} Tagen`;
     return `<div class="cal-day"><b>${new Date(d + "T12:00:00").toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}</b><span>${when}</span></div>`;
   };
-  const foot = `<div class="note" style="margin:16px 2px 0">Quartalszahlen und Dividenden: Yahoo Finance (Watchlist-, Depot- und Treffer-Aktien, sofern im Scan). Notenbank- und Wirtschaftstermine: automatisch von Fed, EZB und US-Arbeitsministerium (BLS), Ersatz in <code>data/macro_events.json</code>. Keine Gewähr – vor wichtigen Entscheidungen bitte gegenprüfen.</div>`;
+  const foot = `<div class="note" style="margin:16px 2px 0">Quartalszahlen und Dividenden: Yahoo Finance (Watchlist-, Depot- und Treffer-Aktien, sofern im Scan). Zinsentscheide, Inflation, Arbeitsmarkt, BIP, Stimmungsindizes, Reden der Notenbank-Chefs und Feiertage weltweit: Wirtschaftskalender (Forex Factory, jeweils 2 Wochen voraus) plus offizielle Termine von Fed, EZB, BoE, BLS und BEA für die nächsten Monate. Dazu die Quartalszahlen der Markt-Schwergewichte (Nvidia, Apple, TSMC, ASML …). Rot umrandet = sehr wichtig. Keine Gewähr – vor wichtigen Entscheidungen bitte gegenprüfen.</div>`;
   const byDay = {};
   if (!month) {
     if (!list.length) return head + `<div class="empty">Keine Termine in den nächsten Wochen.</div>`;
@@ -1829,7 +1833,7 @@ function calendarHtml() {
   for (const d = new Date(start); d <= last || d.getDay() !== 1; d.setDate(d.getDate() + 1)) {
     const wd = d.getDay(); if (wd === 0 || wd === 6) { if (d > last) break; continue; }
     const iso = isoOf(d), inM = d.getMonth() === first.getMonth(), evs = byDay[iso] || [];
-    const tag = e => { const [icon, cls] = CAL_KIND[e.kind] || ["•", "k-exp"]; const lbl = e.ticker ? (e.name || e.ticker).replace(/,? (Inc|AG|SE|Corp|N\.V|plc)\.?$/i, "") : (e.title || "").replace(/\s*\(.*$/, "").split(":")[0].trim();
+    const tag = e => { const [icon, cls] = CAL_KIND[e.kind] || ["•", "k-exp"]; const lbl = e.ticker ? (e.name || e.ticker).replace(/,? (Inc|AG|SE|Corp|N\.V|plc)\.?$/i, "") : (e.title || "").replace(/\s*\(.*$/, "").replace(/^[^:]{2,20}:\s*/, "").trim();
       return `<span class="ct ${cls}${e.ticker && dep.has(e.ticker) ? " dep" : ""}"><i>${icon}</i>${esc(lbl)}</span>`; };
     cells += `<button class="mc${inM ? "" : " out"}${iso === todayIso ? " today" : ""}${iso === calDay ? " sel" : ""}${iso < todayIso ? " past" : ""}" data-calday="${iso}">
       <span class="dn">${d.getDate()}</span>${evs.slice(0, 3).map(tag).join("")}${evs.length > 3 ? `<span class="more">+${evs.length - 3}</span>` : ""}${evs.length ? `<span class="dots">${evs.slice(0, 4).map(e => `<i class="${(CAL_KIND[e.kind] || [])[1] || ""}"></i>`).join("")}</span>` : ""}</button>`;
@@ -1840,7 +1844,7 @@ function calendarHtml() {
   return head + `<div class="mcal">
       <div class="mh"><button class="mnav" data-calmonth="-1" aria-label="Vormonat">‹</button><b>${mname}</b>${calMonth ? `<button class="mtoday" data-calmonth="0">Heute</button>` : ""}<button class="mnav" data-calmonth="1" aria-label="Nächster Monat">›</button></div>
       <div class="mg">${["Mo", "Di", "Mi", "Do", "Fr"].map(x => `<span class="wd">${x}</span>`).join("")}${cells}</div>
-      <div class="mlegend">${[["k-earn", "Quartalszahlen"], ["k-div", "Dividende"], ["k-macro", "Notenbank / Konjunktur"], ["k-exp", "Verfall"]].map(([c, l]) => `<span><i class="${c}"></i>${l}</span>`).join("")}</div>
+      <div class="mlegend">${[["k-earn", "Quartalszahlen"], ["k-div", "Dividende"], ["k-macro", "Wirtschaft & Zinsen"], ["k-exp", "Verfall"]].map(([c, l]) => `<span><i class="${c}"></i>${l}</span>`).join("")}</div>
     </div>` + sel + foot;
 }
 
@@ -3193,7 +3197,7 @@ function briefHtml() {
     .slice(0, 6).map(n => nl(n, n.nm)).join("");
   // 5) Markt & Zinsen: Notenbank-/Konjunkturtermine heute und morgen + marktweite Schlagzeilen
   const mac = (calData || []).filter(e => (e.kind === "macro" || e.kind === "expiry") && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 1)
-    .map(e => row("y", e.title || "Termin", `${daysUntil(e.date) === 0 ? "Heute" : "Morgen"}${e.region === "us" ? " · USA" : e.region === "europe" ? " · Europa" : ""} – betrifft den ganzen Markt`, "", ""));
+    .map(e => row("y", e.title || "Termin", `${daysUntil(e.date) === 0 ? "Heute" : "Morgen"}${e.kind === "macro" && macWhen(e) ? " · " + macWhen(e) : " – betrifft den ganzen Markt"}`, "", ""));
   const mnews = (bj && bj.market || []).filter(n => fresh(n.d)).slice(0, 4).map(n => nl({ ...n, s: 0 }, ""));
   const macro = mac.join("") + mnews.join("");
   return `<div class="bf-k">Tagesbriefing · Scan ${esc(when)}</div>

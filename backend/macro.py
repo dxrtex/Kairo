@@ -59,7 +59,7 @@ def fed_meetings(html: str) -> list[dict]:
                 continue
             months = [m for m in re.split(r"[/-]", mon) if m.strip()]
             m = _month(months[-1]) if len(nums) > 1 and nums[-1] < nums[0] and len(months) > 1 else _month(months[0])
-            out.append({"date": date(year, m, nums[-1]).isoformat(), "title": "Fed-Zinsentscheid (FOMC)", "region": "us"})
+            out.append({"date": date(year, m, nums[-1]).isoformat(), "title": "USA: Fed-Zinsentscheid", "region": "us", "imp": "high", "time": "20:00", "why": "Leitzins USA – bewegt alle Aktien weltweit"})
     return out
 
 
@@ -69,17 +69,17 @@ def ecb_meetings(html: str) -> list[dict]:
     for d, mth, y, text in re.findall(r"(\d{1,2})/(\d{1,2})/(\d{4})\s*</dt>\s*<dd[^>]*>(.*?)</dd>", html, re.S):
         t = re.sub(r"<[^>]+>", " ", text).lower()
         if "monetary policy meeting" in t and ("day 2" in t or "press conference" in t):
-            out.append({"date": date(int(y), int(mth), int(d)).isoformat(), "title": "EZB-Zinsentscheid", "region": "europe"})
+            out.append({"date": date(int(y), int(mth), int(d)).isoformat(), "title": "Eurozone: EZB-Zinsentscheid", "region": "europe", "imp": "high", "time": "14:15", "why": "Leitzins Eurozone"})
     return out
 
 
-def bls_releases(html: str, title: str) -> list[dict]:
+def bls_releases(html: str, title: str, why: str = "") -> list[dict]:
     """Release-Termine aus einer BLS-Kalenderseite (z. B. „Oct. 15, 2026“)."""
     out = []
     cells = r"<td[^>]*>\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2}),\s+(\d{4})"
     for mon, d, y in re.findall(cells, html):
         try:
-            out.append({"date": date(int(y), _month(mon), int(d)).isoformat(), "title": title, "region": "us"})
+            out.append({"date": date(int(y), _month(mon), int(d)).isoformat(), "title": title, "region": "us", "imp": "high", "time": "14:30", "why": why})
         except ValueError:
             continue
     return out
@@ -88,9 +88,9 @@ def bls_releases(html: str, title: str) -> list[dict]:
 SOURCES = (
     ("Fed", "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm", fed_meetings),
     ("EZB", "https://www.ecb.europa.eu/press/calendars/mgcgc/html/index.en.html", ecb_meetings),
-    ("US-CPI", "https://www.bls.gov/schedule/news_release/cpi.htm", lambda h: bls_releases(h, "US-Inflation (CPI)")),
+    ("US-CPI", "https://www.bls.gov/schedule/news_release/cpi.htm", lambda h: bls_releases(h, "USA: Inflation (CPI)", "Inflation – wichtig für Zinsen")),
     ("US-Arbeitsmarkt", "https://www.bls.gov/schedule/news_release/empsit.htm",
-     lambda h: bls_releases(h, "US-Arbeitsmarktbericht (Non-Farm Payrolls)")),
+     lambda h: bls_releases(h, "USA: Arbeitsmarktbericht (Non-Farm Payrolls)", "neue Jobs – stark marktbewegend")),
 )
 
 
@@ -104,7 +104,7 @@ FF_LAND = {"USD": "USA", "EUR": "Eurozone", "GBP": "Großbritannien", "CHF": "Sc
 FF_MEDIUM = {"USD", "EUR", "CNY"}            # mittlere Wichtigkeit nur für die großen Märkte
 # (Muster im englischen Titel, deutscher Titel, kurze Erklärung) – erstes passendes Muster gewinnt
 FF_DE = (
-    (r"^Federal Funds Rate|^FOMC Statement", "Fed-Zinsentscheid", "Leitzins USA – bewegt alle Aktien weltweit"),
+    (r"^Federal Funds Rate|^FOMC Statement|^FOMC Economic Projections", "Fed-Zinsentscheid", "Leitzins USA – bewegt alle Aktien weltweit"),
     (r"^FOMC Press Conference", "Fed-Pressekonferenz", "Ausblick auf weitere Zinsschritte"),
     (r"^FOMC Meeting Minutes", "Fed-Protokoll", "Protokoll der letzten Zinssitzung"),
     (r"^Main Refinancing Rate|^Monetary Policy Statement", "EZB-Zinsentscheid", "Leitzins Eurozone"),
@@ -113,17 +113,17 @@ FF_DE = (
     (r"^BOJ Policy Rate|^BOJ Outlook", "BoJ-Zinsentscheid", "Leitzins Japan – bewegt Yen und Asien-Börsen"),
     (r"^SNB Policy Rate", "SNB-Zinsentscheid", "Leitzins Schweiz"),
     (r"^(1-y|5-y)? ?Loan Prime Rate", "China: Leitzins (LPR)", "Kreditzins China"),
-    (r"^Core CPI", "Kerninflation (CPI)", "Inflation ohne Energie/Nahrung – wichtig für Zinsen"),
+    (r"^Core CPI", "Inflation (CPI)", "Inflation – wichtig für Zinsen"),
     (r"^CPI Flash Estimate", "Inflation (Schnellschätzung)", "Inflation – wichtig für Zinsen"),
-    (r"^Core PCE", "PCE-Kerninflation", "Lieblings-Inflationsmaß der Fed"),
+    (r"^Core PCE|^PCE Price", "PCE-Inflation", "Lieblings-Inflationsmaß der Fed"),
     (r"^CPI", "Inflation (CPI)", "Inflation – wichtig für Zinsen"),
     (r"^Core PPI|^PPI", "Erzeugerpreise (PPI)", "Vorlauf für die Inflation"),
     (r"^Non-Farm Employment Change", "Arbeitsmarktbericht (Non-Farm Payrolls)", "neue Jobs – stark marktbewegend"),
-    (r"^Unemployment Rate", "Arbeitslosenquote", "Zustand Arbeitsmarkt"),
+    (r"^Unemployment Rate", "Arbeitsmarktbericht (Non-Farm Payrolls)", "neue Jobs – stark marktbewegend"),
     (r"^Unemployment Claims", "Erstanträge Arbeitslosenhilfe", "wöchentlicher Arbeitsmarkt-Check"),
     (r"^JOLTS", "Offene Stellen (JOLTS)", "Arbeitsmarkt"),
     (r"^ADP Non-Farm", "ADP-Arbeitsmarkt", "Vorbote für den Arbeitsmarktbericht"),
-    (r"^Average Hourly Earnings", "Löhne", "Lohninflation"),
+    (r"^Average Hourly Earnings", "Arbeitsmarktbericht (Non-Farm Payrolls)", "neue Jobs – stark marktbewegend"),
     (r"GDP", "BIP (Wirtschaftswachstum)", "Konjunktur"),
     (r"^Core Retail Sales|^Retail Sales", "Einzelhandelsumsatz", "Konsum"),
     (r"ISM Manufacturing PMI", "ISM Industrie", "Konjunktur-Stimmung Industrie"),
@@ -177,7 +177,8 @@ def ff_events(items: list[dict]) -> list[dict]:
         for k, k2 in (("forecast", "fc"), ("previous", "prev")):
             if str(it.get(k) or "").strip():
                 ev[k2] = str(it[k]).strip()
-        out.append(ev)
+        if not any(o["date"] == ev["date"] and o["title"] == ev["title"] for o in out):
+            out.append(ev)
     return out
 
 
