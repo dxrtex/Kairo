@@ -44,13 +44,34 @@ const PAGES = ["https://www.onvista.de/derivate/Knock-Outs", "https://www.onvist
   "https://www.onvista.de/aktien/Rheinmetall-Aktie-DE0007030033", "https://www.onvista.de/aktien/Tesla-Aktie-US88160R1014",
   "https://www.onvista.de/aktien/Nestle-Aktie-CH0038863350", "https://www.onvista.de/aktien/Shell-Aktie-GB00BP6MXD84",
   "https://www.onvista.de/aktien/Toyota-Motor-Aktie-JP3633400001", "https://www.onvista.de/aktien/Novo-Nordisk-Aktie-DK0062498333",
-  "https://www.onvista.de/index/DAX-Index-20735", "https://www.onvista.de/aktien/Alibaba-Group-Holding-Aktie-KYG017191142"];
+  "https://www.onvista.de/index/DAX-Index-20735", "https://www.onvista.de/aktien/Alibaba-Group-Holding-Aktie-KYG017191142",
+  "https://www.onvista.de/aktien/Microsoft-Aktie-US5949181045",
+  "https://www.onvista.de/aktien/Amazon-Aktie-US0231351067",
+  "https://www.onvista.de/aktien/Meta-Platforms-Aktie-US30303M1027",
+  "https://www.onvista.de/aktien/Alphabet-A-Aktie-US02079K3059",
+  "https://www.onvista.de/aktien/Palantir-Aktie-US69608A1088",
+  "https://www.onvista.de/aktien/AMD-Aktie-US0079031078",
+  "https://www.onvista.de/aktien/Netflix-Aktie-US64110L1061",
+  "https://www.onvista.de/aktien/Allianz-Aktie-DE0008404005",
+  "https://www.onvista.de/aktien/Siemens-Aktie-DE0007236101",
+  "https://www.onvista.de/aktien/Deutsche-Bank-Aktie-DE0005140008",
+  "https://www.onvista.de/aktien/Mercedes-Benz-Group-Aktie-DE0007100000",
+  "https://www.onvista.de/aktien/Infineon-Aktie-DE0006231004",
+  "https://www.onvista.de/aktien/Airbus-Aktie-NL0000235190",
+  "https://www.onvista.de/aktien/BASF-Aktie-DE000BASF111",
+  "https://www.onvista.de/aktien/Volkswagen-Vz-Aktie-DE0007664039",
+  "https://www.onvista.de/aktien/Commerzbank-Aktie-DE000CBK1001",
+  "https://www.onvista.de/aktien/Coinbase-Aktie-US19260Q1076",
+  "https://www.onvista.de/aktien/ASML-Aktie-NL0010273215",
+  "https://www.onvista.de/aktien/LVMH-Aktie-FR0000121014",
+  "https://www.onvista.de/aktien/Tencent-Aktie-KYG875721634",
+  "https://www.onvista.de/aktien/BYD-Aktie-CNE100000296"];
 for (const url of PAGES) {
   try {
     const h = await (await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } })).text();
     const w = [...new Set([...h.matchAll(/\/derivate\/(?:Knock-Outs|Mini-Futures|Turbos?)[^"'\s]*?\/\d+-([A-Z0-9]{6})-/g)].map(m => m[1]))];
     console.log(`${url.split("/").slice(-1)[0]}: ${w.length} WKNs`);
-    for (const x of w.slice(0, 8)) { if (found.has(x)) continue; const q = await get(`/instruments/query?searchValue=${x}&limit=1`); add(((q || {}).list || [])[0], "Webseite"); await sleep(120); }
+    for (const x of w.slice(0, url.endsWith("Knock-Outs") ? 20 : 4)) { if (found.has(x)) continue; const q = await get(`/instruments/query?searchValue=${x}&limit=1`); add(((q || {}).list || [])[0], "Webseite"); await sleep(120); }
   } catch (e) { console.log(url, e.message); }
 }
 console.log(`gefunden: ${found.size} Derivate`);
@@ -58,7 +79,7 @@ console.log(`gefunden: ${found.size} Derivate`);
 // ---- jeden Turbo prüfen ----
 let n = 0, bad = 0, skip = 0;
 const rows = [];
-for (const [wkn, it] of [...found].slice(0, 60)) {
+for (const [wkn, it] of [...found].slice(0, 140)) {
   await sleep(250);
   const s = await get(`/derivatives/${it.entityValue}/snapshot`);
   const u = (((s || {}).derivativesUnderlyingList || {}).list || [])[0];
