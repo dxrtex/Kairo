@@ -21,7 +21,7 @@ const CODE = [
 export function sandbox({ fx = { EUR: 1 }, rows = {}, fetchImpl = globalThis.fetch } = {}) {
   const ctx = {
     state: { tpT: {} }, save() {}, tpRefresh() {}, fetch: fetchImpl, console, Intl, Math, JSON, Date, Number, String, Set, Object, isNaN,
-    TP: { kob: 1.0 }, rowOf: t => rows[t] || null,
+    TP: { kob: 1.0 }, rowOf: t => rows[t] || null, document: { addEventListener() {} }, $: () => null,
   };
   ctx.fxEur = fx;
   ctx.toEur = (v, cur) => v == null ? null : v * (ctx.fxEur[cur] ?? (cur === "EUR" ? 1 : NaN));
@@ -42,7 +42,7 @@ export function parse(html) {
     qty: g(/<b>([\d.]+) Stück<\/b>/),
     lev: g(/Hebel ≈ ×([\d.,]+)/),
     calc: (txt.match(/Rechnung: ([^·]*?€)/) || [])[1] || null,
-    red: /tone-red/.test(html), odd: /passt nicht zum Aktienkurs/.test(html), near: /weniger als 1 ATR/.test(html),
+    red: /tone-red/.test(html), odd: /passt nicht zum Aktienkurs|Turbo zu teuer|Eingabe prüfen: Der Briefkurs/.test(html), near: /weniger als 1 ATR/.test(html),
     rough: /Ohne Bezugsverhältnis/.test(html), prompt: /Trag Briefkurs und K\.-o\.-Schwelle ein/.test(html), fxMissing: /Wechselkurs EUR\/\S+ fehlt/.test(html), fxWarn: /verkehrt herum/.test(html),
     txt,
   };

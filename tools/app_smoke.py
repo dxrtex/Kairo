@@ -103,6 +103,41 @@ async def run(port: int) -> list[str]:
                     if r["ov"] or r["sw"] > vw + 2:
                         errs.append(f"{des} {vw}px ({step}): Bereiche überlappen oder Seite zu breit ({r})")
                 await ctx.close()
+        # Einstieg: Aktie wählen, Turbo von Hand eintragen (Briefkurs, K.-o. + Währung, Bezugsverhältnis) → Stop-Loss am Turbo prüfen
+        ctx = await b.new_context(viewport={"width": 820, "height": 1180})
+        pg = await ctx.new_page()
+        pg.on("pageerror", lambda e: errs.append(f"Einstieg: JS-Fehler {e}"))
+        await pg.goto(f"{url}?nosplash=1&sec=entry")
+        await pg.wait_for_timeout(3000)
+        await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.remove())')
+        info = await pg.evaluate("""() => { if (!searchIdx) return null;
+            const r = searchIdx.find(x => x.s === "hit" && x.cur && x.cur !== "EUR") || searchIdx.find(x => x.s === "hit") || searchIdx.find(x => x.c > 0);
+            if (!r) return null; state.einT = r.t; state.tpT = {}; render();
+            const m = tp2Calc(r, einSetup(r)); return m && m.stop ? { t: r.t, cur: r.cur || "EUR", E: m.E, stop: m.stop, fx: m.fx } : null; }""")
+        await pg.wait_for_timeout(1500)
+        if info and await pg.query_selector("#tpKO"):
+            ko = info["stop"] - (info["E"] - info["stop"])            # K.-o. in Aktienwährung, Abstand wie Kauf→Stop
+            p_brief = (info["E"] - ko) * 0.1 * info["fx"]
+            if await pg.query_selector("#tpKC"):
+                await pg.select_option("#tpKC", info["cur"])
+                await pg.wait_for_timeout(500)
+            for sel, val in (("#tpTP", f"{p_brief:.4f}"), ("#tpKO", f"{ko:.4f}"), ("#tpCR", "0.1")):
+                await pg.fill(sel, val)
+                await pg.dispatch_event(sel, "input")
+                await pg.dispatch_event(sel, "change")
+                await pg.wait_for_timeout(300)
+            box = await pg.inner_text("#tpBox")
+            exp = (info["stop"] - ko) * 0.1 * info["fx"]
+            import re as _re
+            m = _re.search(r"Stop-Loss am Turbo\s*([\d.,]+) €", box)
+            got = float(m.group(1).replace(".", "").replace(",", ".")) if m else None
+            if got is None or abs(got - exp) > 0.011 or "Stop-Loss im Chart" not in box or "Rechnung:" not in box:
+                errs.append(f"Einstieg {info['t']}: Turbo von Hand → SL {got} statt {exp:.3f} ({box[box.find('Stop-Loss am Turbo'):][:200]!r})")
+            else:
+                print(f"Einstieg {info['t']} ({info['cur']}): Turbo von Hand eingetippt → SL {got} € ✓")
+        else:
+            print("Einstieg: kein planbarer Treffer – Turbo-Eingabe-Test übersprungen")
+        await ctx.close()
         # Spiel: starten, Treffer wählen, Turbo eintragen, Vorschlag übernehmen, kaufen
         ctx = await b.new_context(viewport={"width": 820, "height": 1180})
         pg = await ctx.new_page()

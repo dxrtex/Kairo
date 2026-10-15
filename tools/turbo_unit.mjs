@@ -56,9 +56,19 @@ for (const [name, sc, t, m] of cases) {
   const b = card("HKD", { p: 2.54, kon: 7.6197, kc: "EUR", cr: 3 }, { E: 8.30 / 0.11, stop: 8.0864 / 0.11 });
   ok(/^73,51 HKD \| = 8,086 € · .*K\.-o\. liegt bei 69,27 HKD \(7,620 €\)/.test(b.chartSl || ""), "Chart-Stop BYD in HKD + €", b.chartSl);
   const e = card("EUR", { p: 2.35, kon: 210.5, kc: "EUR", cr: 0.1 }, { E: 233.9, stop: 225.2 });
-  ok(/^225,20 € \| diese Linie/.test(e.chartSl || ""), "Chart-Stop SAP nur in €", e.chartSl);
+  ok(/^225,20 € \| Kairo-Vorschlag · diese Linie/.test(e.chartSl || ""), "Chart-Stop SAP nur in €", e.chartSl);
+  const o = card("EUR", { p: 2.35, kon: 210.5, kc: "EUR", cr: 0.1, us: 222.0 }, { E: 233.9, stop: 225.2 });
+  ok(/^222,00 € \| dein Stop/.test(o.chartSl || "") && near(o.sl, (222 - 210.5) * 0.1), "eigener Stop 222 € → Chart + Turbo-SL", `${o.chartSl} | ${o.sl}`);
   const g = card("GBp", { p: 2.6, kon: 23.1, kc: "GBP", cr: 1, fxr: 0.87 }, { E: 2560, stop: 2480 });
   ok(/^2\.480,00 Pence/.test(g.chartSl || ""), "Chart-Stop London in Pence", g.chartSl);
+}
+
+// ---------- 1c. Briefkurs passt zu anderem Aktienkurs (Kairo-Kurs veraltet) ----------
+{
+  const r = card("HKD", { p: 2.54, kon: 7.6197, kc: "EUR", cr: 3 }, { E: 8.30 / 0.11, stop: 8.0864 / 0.11 });
+  ok(/entspricht einem Aktienkurs von ≈ 76,97 HKD \(8,466 €\) – Kairo rechnet oben mit 75,45 HKD \(8,300 €\).*\+2,0 %.*-4,5 % bis zum Stop/.test(r.txt), "BYD: Briefkurs 2,54 € ↔ Aktie ≈ 8,47 €", (r.txt.match(/Dein Briefkurs[^.]*\.[^.]*\./) || [])[0]);
+  const q = card("USD", { p: 0.2375, kon: 382.0278, kc: "USD", cr: 0.01, fxr: 1.1207 }, { E: 408.64, stop: 395 });
+  ok(!/entspricht einem Aktienkurs/.test(q.txt), "passender Briefkurs → kein Hinweis");
 }
 
 // ---------- 2. Mini-Future: Basispreis unter dem K.-o. ----------

@@ -146,6 +146,15 @@
   .ein-search { position: relative; margin: 0 0 12px; } .ein-search input { width: 100%; font-size: 17px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2, #1c1c1e); color: var(--text); }
   .ein-list { display: grid; gap: 6px; margin-top: 8px; } .ein-opt { display: grid; grid-template-columns: 1fr auto; text-align: left; gap: 2px 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2, #1c1c1e); color: var(--text); cursor: pointer; }
   .ein-opt span { color: var(--muted); font-size: 13px; grid-column: 1; } .ein-opt i { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-style: normal; }
+  .ein-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+  .ein-steps .es { padding: 7px 8px; border-radius: 10px; background: var(--surface-2, rgba(255,255,255,.05)); border: 1px solid var(--line); min-width: 0; }
+  .ein-steps .es span { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }
+  .ein-steps .es b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ein-steps .es.ok { border-color: rgba(48,209,88,.55); } .ein-steps .es.ok b { color: #30d158; }
+  .ein-steps .es.wait { border-color: rgba(244,183,64,.55); } .ein-steps .es.wait b { color: #f4b740; }
+  .ein-steps .es.no b { color: var(--muted); }
+  .ein-next { margin-top: 8px; font-size: 14px; } .ein-data { margin-top: 6px; font-size: 12px; color: var(--muted); }
+  .kfoot { margin: 22px 2px 6px; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.5; }
   .ein-head h2 { margin: 0; font-size: 21px; } .ein-verdict { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--cb, rgba(255,255,255,.05)); } .ein-verdict b { display: block; color: var(--c, var(--text)); font-size: 18px; } .ein-verdict span { font-size: 14px; }
   .mt.rec { outline: 1px solid var(--accent); }
   .ein-tiles .mt span { white-space: normal; overflow: visible; text-overflow: clip; } .ein-tiles .mt em b { font-size: inherit; display: inline; color: var(--text); }
@@ -4105,6 +4114,29 @@ function tvChartHtml(t) {
     <iframe src="${src}" loading="lazy" title="Live-Chart ${esc(t)}" allowtransparency="true" frameborder="0" scrolling="no"></iframe>
     <div class="note" style="margin:6px 0 0">Der eingebettete Chart ist je nach Börse verzögert (XETRA ca. 15 Min.) – bei deutschen Aktien oben gettex oder Tradegate wählen. Maßgeblich für den Plan ist der Live-Kurs oben (Kursdienst/Finnhub); Kerzen, Seitwärtsphase und Stop stammen aus dem Abendscan.</div></details>`;
 }
+// Weg zum Einstieg: 1D-Signal → Seitwärtsphase → 4H-Bestätigung → Einstieg (aus Abendscan + 4H-Prüfung alle 30 Min.)
+function einSteps(r) {
+  const it = h4Of(r.t), now = h4Now(r.t), st = it && it.st !== "weg" ? it.st : null, done = ["go", "run", "sell", "stop", "zeit", "ema"].includes(st) || h4Go(it);
+  const sig = it && h4Real(it) ? (it.soft ? "10/11 ✓" : "11/11 ✓") : r.s === "hit" ? "11/11 ✓" : r.m != null ? `${r.m}/11` : "–";
+  const s1 = it && h4Real(it) || r.s === "hit" ? "ok" : r.s === "fast" || r.s === "near" ? "wait" : "no";
+  const s2 = st === "basis" ? ["wait", `Tag ${it.day}/10`] : st === "4h" || done ? ["ok", "✓"] : it && it.st === "weg" ? ["no", "verfallen"] : now ? [now.b ? "ok" : "no", now.b ? "✓" : "✗"] : ["no", "–"];
+  const nf = it && it.fl ? H4F.filter(([k]) => it.fl[k]).length : now && now.fl ? H4F.filter(([k]) => now.fl.includes(k[0])).length : null;
+  const s3 = done ? ["ok", "✓"] : st === "4h" ? ["wait", `${nf ?? 0}/4`] : nf != null ? ["no", `${nf}/4`] : ["no", "–"];
+  const s4 = h4Go(it) ? ["ok", "jetzt"] : st === "run" ? ["ok", `läuft T${(it.trade || {}).day || "–"}`] : st === "sell" ? ["wait", "verkaufen"] : ["stop", "zeit", "ema"].includes(st) ? ["no", "beendet"] : ["no", "–"];
+  const next = it && it.st !== "weg" ? h4Text(it).t : it ? `Verfallen: ${it.why || "Bedingungen nicht erfüllt"}`
+    : r.s === "hit" ? "Treffer – jetzt beginnt die Suche nach der Seitwärtsphase (Abendscan), danach die 4H-Prüfung."
+    : r.s === "fast" || r.s === "near" ? `Noch kein Treffer – es fehlt: ${(r.km || []).map(k => SHORT[k] || k).join(", ") || "–"}. Erst ab 11/11 handeln.` : "";
+  if (!it && !["hit", "fast", "near"].includes(r.s)) return "";
+  const box = (l, [c, v]) => `<div class="es ${c}"><span>${l}</span><b>${esc(v)}</b></div>`;
+  return `<div class="ein-steps">${box("1 · Tages-Signal", [s1, sig])}${box("2 · Seitwärtsphase", s2)}${box("3 · 4H-Bestätigung", s3)}${box("4 · Einstieg", s4)}</div>
+    ${next ? `<div class="ein-next">${esc(next)}</div>` : ""}`;
+}
+// Datenstand: wann wurden Tageskerzen/Stop, 4H-Stand und Kurs zuletzt aktualisiert?
+function einDataHtml(r) {
+  const T = v => new Date(v).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const d = h4Data(), h4t = d && (d.live || d.generated);
+  return `<div class="ein-data">Stand: Tageskerzen &amp; Stop ${data && data.generated ? T(data.generated) : "–"}${h4t ? ` · 4H-Prüfung ${T(h4t)}` : ""} · Kurs ${LIVE.map[r.t] ? `live ${liveTime(r.t)}` : "vom Abendscan"}</div>`;
+}
 function einPlanHtml(r) {
   if (liveOn()) { const o = LIVE.map[r.t]; if (!o || Date.now() - o.at > LIVE.ttl) liveQuote(r.t).then(q => { if (q && state.sec === "entry" && state.einT === r.t) render(); }); }
   const S = einSetup(r), res = data.results.find(x => x.ticker === r.t), cur = esc(r.cur || "");
@@ -4116,6 +4148,7 @@ function einPlanHtml(r) {
   return `<div class="hcard ein-head tone-${S.tone}">
       <div class="ein-top"><div><h2>${favBtn(r.t)} ${esc(r.n)}</h2><div class="meta">${r.ext ? esc(r.x) : `${esc(r.t)} · ${esc(r.x || "")}`} · ${fmt(c)} ${cur}${r.d1 != null ? ` <span class="${r.d1 >= 0 ? "up" : "down"}">${sgnPct(r.d1, 1)}</span>` : ""} · Vola ${pct(r.vola, 0)} ${liveTag(r.t)}</div></div>${liveBtn(r.t)}</div>
       <div class="ein-verdict"><b>${esc(S.title)}</b><span>${esc(S.sub)}</span></div>
+      ${einSteps(r)}${einDataHtml(r)}
       ${warn.length ? `<div class="note" style="margin:8px 0 0">${warn.map(esc).join("<br>")}</div>` : ""}</div>
     ${tvChartHtml(r.t)}
     ${plan}
@@ -4360,7 +4393,7 @@ function tpInner(r, S) {
         : row("Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `zum Schluss – nach ${m.hold} Handelstagen, falls der SL nicht vorher greift`)}
       ${row("Produkt", prod, lv.L > 1 ? `K.-o. höchstens ${X(lv.ko)} ${cur}` : (lv.qty != null ? `${lv.qty} Stück` : ""))}
       ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(m.riskPct, 1)} %${m.fit.mult > 1 ? " – Ausverkauf" : ""})`)}
-      ${lv.L > 1 && !(((state.tpT || {})[r.t] || {}).p > 0) ? row("SL am Turbo", sgnPct(-lv.tStop, 0), `vom Kaufkurs des Turbos${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
+      ${lv.L > 1 && !(((state.tpT || {})[r.t] || {}).p > 0) ? row("SL am Turbo (Schätzung)", sgnPct(-lv.tStop, 0), `für einen ×${lv.L}-Turbo bei Kauf zu ${X(m.E)} ${cur} – genau rechnet „Dein Turbo“ unten${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
     </div>
     ${tpTurboHtml(r, m, lv)}
     <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position setzen. Keinen Limit-Verkauf – ${m.ema ? `ab Tag ${H4X.from} verkaufen, sobald ein Tag unter der EMA 20 schließt (Mitteilung kommt), spätestens an Tag ${m.hold}` : `an Tag ${m.hold} zum Schluss verkaufen, falls der SL nicht vorher greift`}. Nicht vorher verkaufen, auch wenn es gut läuft: Die großen Gewinner machen das Ergebnis. Kairo führt keine Orders aus.</div>
@@ -4429,6 +4462,14 @@ async function turboLoad(tk, id) {
 document.addEventListener("click", e => { const b = e.target.closest("[data-tpus]"); if (!b) return; const t = b.dataset.tpus; state.tpT = { ...(state.tpT || {}), [t]: { ...((state.tpT || {})[t] || {}), us: undefined } }; save(); tpRefresh(); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-tpload]"); if (!b) return; turboLoad(b.dataset.tpload, ($("tpW") || {}).value); });
 document.addEventListener("keydown", e => { if (e.target.id === "tpW" && e.key === "Enter") { e.preventDefault(); turboLoad(e.target.dataset.t, e.target.value); } });
+// K.-o. deines eingetragenen Turbos im Aktienkurs (für die Linie im Chart)
+function tpKoStock(t, sc) {
+  const x = (state.tpT || {})[t]; if (!x || !sc) return null;
+  const kc = x.kc || "EUR", kon = +x.kon || +x.ko || 0, fx = toEur(1, sc); if (!(kon > 0) || !(fx > 0)) return null;
+  if (kc === sc) return kon;
+  const f = kc === "EUR" ? 1 : (+x.fxr > 0 ? +x.fxr : 1 / (toEur(1, kc) || NaN));
+  return f > 0 ? kon / f / fx : null;
+}
 const tpKcOpts = sc => [...new Set(["EUR", sc, ...(/^GB[Xp]$/.test(sc) ? ["GBP"] : [])])];   // Währungen der K.-o.-Schwelle
 function tpTurboHtml(r, m, lv) {
   const t = (state.tpT || {})[r.t] || {}, P = +t.p || 0, sc = r.cur || "EUR", cur = "€", X = v => fmt(v * m.fx);
@@ -4470,9 +4511,12 @@ function tpTurboHtml(r, m, lv) {
   const fp = v => fmt(v, v < 1 ? 3 : 2), sl = tv(stop), lossU = P - sl, qty = Math.max(1, Math.floor(m.riskEur / Math.max(lossU, P * 0.05)));
   const lev = cr > 0 ? g(m.E) * cr / f / P : m.E / (m.E - KOs), near = KOs > stop - TP.kob * m.atr;
   const iv = cr > 0 ? tv(m.E) : 0, prem = cr > 0 ? P - iv : 0, odd = cr > 0 && (iv <= 0 || Math.abs(prem) > Math.max(0.35 * P, 0.05));
+  // Welcher Aktienkurs steckt im Briefkurs? (Basispreis + Brief × Wechselkurs ÷ BV) – zeigt, wenn der Kairo-Kurs veraltet ist
+  const implK = cr > 0 ? bpn + P * f / cr : 0, impl = implK > 0 ? (kc === sc ? implK : implK / f / m.fx) : 0;
+  const implGap = impl ? impl / m.E - 1 : 0, implShow = impl && Math.abs(implGap) > 0.01 && Math.abs(implGap) < 0.3;
   const fxOff = kc !== "EUR" && +t.fxr > 0 && appF > 0 && Math.abs(+t.fxr / appF - 1) > 0.08;   // z. B. USD/EUR statt EUR/USD getippt
   const calc = cr > 0 ? `(${n4(g(stop))} − ${n4(bpn)}) ${esc(kc)} × ${n4(cr)}${kc !== "EUR" ? ` ÷ ${n4(f)}` : ""} = ${fmt(sl, 3)} €` : "";
-  const slK = tv(m.stop), fairMax = iv > 0 ? iv * 1.04 + 0.01 : 0, impl = cr > 0 ? ((P * f / cr + bpn) / (kc === sc ? 1 : f * m.fx)) : 0;
+  const slK = tv(m.stop), fairMax = iv > 0 ? iv * 1.04 + 0.01 : 0;   // impl: siehe oben
   const head = `<div class="tip tone-blue" style="margin-top:10px;text-align:center"><div style="font-size:13px;opacity:.8">Stop-Order auf den Turbo</div>
       <div style="font-size:30px;font-weight:700;margin:2px 0" class="down">${fp(sl)} €</div>
       <div style="font-size:13px">${own ? "aus deinem Stop" : "aus dem Kairo-Vorschlag"} ${cp(stop * m.fx)} € bei der Aktie · ${fmt(qty, 0)} Stück</div>
@@ -4483,8 +4527,10 @@ function tpTurboHtml(r, m, lv) {
       ${m.tp ? `<div class="tp2-row"><span>Take-Profit am Turbo</span><b class="up">${fp(tv(m.tp))} €</b><em>${sgnPct(tv(m.tp) / P - 1, 0)} vom Briefkurs · entspricht Aktie ${X(m.tp)} ${cur}</em></div>` : ""}
       <div class="tp2-row"><span>Stückzahl</span><b>${fmt(qty, 0)} Stück</b><em>Einsatz ${eur(qty * P)} · Verlust am Stop ≈ ${eur2(qty * lossU)} · Hebel ≈ ×${fmt(lev, 1)}</em></div></div>
     ${calc ? `<div class="note" style="margin:6px 0 0">Rechnung: ${calc}${kc !== "EUR" && !(+t.fxr > 0) ? " (Wechselkurs aus Kairo)" : ""}</div>` : `<div class="tip tone-yellow" style="margin-top:8px">Ohne Bezugsverhältnis rechnet Kairo verhältnisgleich – das stimmt nur, wenn Briefkurs und Aktienkurs (${X(m.E)} ${cur}) zur selben Zeit gelten. Trag das Bezugsverhältnis ein, dann ist der Stop genau.</div>`}
+    ${implShow ? `<div class="note" style="margin:6px 0 0">Dein Briefkurs ${fp(P)} € entspricht einem Aktienkurs von ≈ <b>${chart(impl)}</b>${sc !== "EUR" ? ` (${cp(impl * m.fx)} €)` : ""} – Kairo rechnet oben mit ${chart(m.E)}${sc !== "EUR" ? ` (${cp(m.E * m.fx)} €)` : ""}${implGap > 0 ? ` (Aktie ist seitdem ${sgnPct(impl / m.E - 1, 1)} gelaufen)` : ` (${sgnPct(impl / m.E - 1, 1)})`}. Der Stop bleibt gleich; vom aktuellen Kurs sind es ${sgnPct(stop / impl - 1, 1)} bis zum Stop, Stückzahl ist danach berechnet.</div>` : ""}
     ${fxOff ? `<div class="tip tone-yellow" style="margin-top:8px">Wechselkurs ${n4(+t.fxr)} weicht stark vom aktuellen Kurs ab (EUR/${esc(kc)} ≈ ${n4(appF)}) – verkehrt herum eingetippt? Gemeint ist: 1 € = … ${esc(kc)}.</div>` : ""}
-    ${odd ? `<div class="tip tone-yellow" style="margin-top:8px">Turbo zu teuer? Bei Aktie ${cp(m.E * m.fx)} € ist der Turbo fair ≈ ${fp(Math.max(0, iv))} € wert – verlangt werden ${fp(P)} €. Der Briefkurs passt zu einer Aktie bei ≈ ${cp(impl * m.fx)} €. Prüf den Aktienkurs (z. B. gettex): Stimmt ${cp(m.E * m.fx)} €, nur mit <b>Limit höchstens ${fp(fairMax)} €</b> kaufen – sonst zahlst du drauf. Der Stop (${fp(sl)} €) stimmt in beiden Fällen.</div>` : ""}
+    ${odd && prem < 0 ? `<div class="tip tone-yellow" style="margin-top:8px">Eingabe prüfen: Der Briefkurs ${fp(P)} € liegt deutlich <b>unter</b> dem inneren Wert (≈ ${fp(Math.max(0, iv))} € bei Aktie ${cp(m.E * m.fx)} €) – das gibt es praktisch nicht. Meist ist das Bezugsverhältnis, die K.-o.-Schwelle oder deren Währung falsch eingetippt.</div>` : ""}
+    ${odd && prem >= 0 ? `<div class="tip tone-yellow" style="margin-top:8px">Turbo zu teuer? Bei Aktie ${cp(m.E * m.fx)} € ist der Turbo fair ≈ ${fp(Math.max(0, iv))} € wert – verlangt werden ${fp(P)} €. Der Briefkurs passt zu einer Aktie bei ≈ ${cp(impl * m.fx)} €. Prüf den Aktienkurs (z. B. gettex): Stimmt ${cp(m.E * m.fx)} €, nur mit <b>Limit höchstens ${fp(fairMax)} €</b> kaufen – sonst zahlst du drauf. Der Stop (${fp(sl)} €) stimmt in beiden Fällen.</div>` : ""}
     ${near ? `<div class="tip tone-yellow" style="margin-top:8px">K.-o. liegt weniger als 1 ATR unter dem Stop – eine Kurslücke kann den Turbo ausknocken, bevor der Stop greift. Besser einen Turbo mit K.-o. unter ${X(stop - TP.kob * m.atr)} ${cur}.</div>` : ""}
     <div class="note" style="margin:6px 0 0">Stop-Order (${fp(sl)} €)${m.tp ? ` und Limit-Verkauf (${fp(tv(m.tp))} €)` : ""} bei Scalable direkt auf den Turbo setzen. Der echte Turbo-Kurs liegt meist ein paar Cent über dem inneren Wert – die Order löst also knapp unter deinem Stop aus. Der K.-o. von Open-End-Turbos steigt täglich leicht (Finanzierung)${kc !== "EUR" ? ", der Wechselkurs schwankt" : ""}: bei längeren Trades ab und zu neu eintragen.</div>`;
 }
@@ -4620,7 +4666,8 @@ document.addEventListener("keydown", e => {
 const SUBNAV = { depot: [["depot", "Positionen"], ["journal", "Journal"], ["bilanz", "Bilanz"], ["game", "Übung"]], news: [["news", "News"], ["calendar", "Kalender"]] };
 const groupOf = sec => Object.keys(SUBNAV).find(g => SUBNAV[g].some(x => x[0] === sec)) || sec;
 const subNavHtml = sec => { const g = groupOf(sec); return SUBNAV[g] ? `<div class="subnav">${SUBNAV[g].map(([s, l]) => `<button class="${s === sec ? "on" : ""}" data-gosub="${s}">${l}</button>`).join("")}</div>` : ""; };
-function render() { renderMain(); if (data) appleHead(); }
+const KFOOT = `<div class="kfoot">Keine Anlageberatung – Kairo zeigt getestete Regeln, Entscheidungen triffst du selbst. Kairo führt keine Orders aus.<br>Deine Trades, Watchlist und Einstellungen bleiben auf diesem Gerät · Kurse: Yahoo Finance, onvista, Finnhub · Charts: TradingView</div>`;
+function render() { renderMain(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); }
 function renderMain() {
   if (!data) return;
   const hits = data.results.filter(r => r.passed).length, fast = data.results.filter(r => r.fast_hit).length;
@@ -4891,6 +4938,7 @@ function drawCharts(c, r) {
   if (fib) [["0", "Fib 0"], ["0.618", "0,618"], ["0.706", "0,706"], ["0.79", "0,79"], ["1", "Fib 1"]].forEach(([k, l]) => line(fib.levels[k], l, "#f4b740"));
   if (sup) { line(sup.band[1], "Support oben", "#4aa3ff"); line(sup.center, "Support", "#4aa3ff", 0); line(sup.band[0], "Support unten", "#4aa3ff"); }
   line(p.entry, "Entry", "#eceef2", 0); line(p.stop, "Stop", "#ff453a", 0); line(p.target1, "Ziel 1", "#30d158", 0); line(p.target2, "Ziel 2", "#30d158", 0);
+  line(tpKoStock(r.ticker, r.currency || r.cur), "K.-o. Turbo", "#ff9f0a", 1);
 
   const rsiC = LW.createChart($("cRsi"), opts($("cRsi")));
   const rs = rsiC.addLineSeries({ color: "#b07cff", lineWidth: 1.5, priceLineVisible: false });
