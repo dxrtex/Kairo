@@ -49,12 +49,12 @@ def ranking(mk, tickers, d: pd.Timestamp) -> list[tuple[str, float]]:
     return sorted(out, key=lambda z: -z[1])
 
 
-def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, tickers, equity, close_pos) -> None:
+def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, tickers, equity, close_pos, n: int = N) -> None:
     """Ein Handelstag: am ersten Tag eines neuen Monats (oder beim ersten Lauf ohne Positionen) umschichten."""
     last = st.get("rebal")
     due = (last is None and not st["positions"]) or (last is not None and pd.Timestamp(last).to_period("M") != D.to_period("M"))
     if due:
-        top = [t for t, _ in ranking(mk, tickers, D_prev)[:N]]
+        top = [t for t, _ in ranking(mk, tickers, D_prev)[:n]]
         st["rebal"] = str(D.date())
         st["top"] = top
         for p in [p for p in st["positions"] if p["t"] not in top]:
@@ -75,7 +75,7 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, tickers, equity, cl
             px = op * (1 + sp / 2)
             if not (np.isfinite(rate) and px > 0):
                 continue
-            q = int(math.floor(min(eq * 0.99 / N, st["cash"] - core.FEE) * rate / px))
+            q = int(math.floor(min(eq * 0.99 / n, st["cash"] - core.FEE) * rate / px))
             if q <= 0:
                 st["events"].append(f"{D.date()} {t}: zu wenig Cash – kein Kauf")
                 continue
@@ -83,6 +83,6 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, tickers, equity, cl
             st["cash"] -= cost
             st["positions"].append({"sid": st["sid"], "t": t, "entry_ts": str(D.date()), "entry": op, "stop": 0.0, "stop0": op,
                                     "qty": q, "cost_eur": cost, "risk_eur": None, "regime": "-"})
-            st["events"].append(f"{D.date()} KAUF {t} {q} Stk @ {op:.4g} (Momentum Top {N})")
-        st["events"].append(f"{D.date()} Umschichtung: Top {N} = {', '.join(top)}")
+            st["events"].append(f"{D.date()} KAUF {t} {q} Stk @ {op:.4g} (Momentum Top {n})")
+        st["events"].append(f"{D.date()} Umschichtung: Top {n} = {', '.join(top)}")
     st["equity"].append({"date": str(D.date()), "eur": round(equity(st, mk, D), 2), "open": len(st["positions"])})
