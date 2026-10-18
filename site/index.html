@@ -4704,6 +4704,7 @@ function paperCard(sid, st, sm, bench) {
       <div class="mt"><span>Ø Ergebnis</span><b>${avgR == null ? "–" : (avgR >= 0 ? "+" : "") + fmt(avgR, 2) + " R"}</b><em>je Trade</em></div>
       <div class="mt"><span>Größter Rückgang</span><b class="down">${s.max_dd != null ? pct(s.max_dd, 1) : "–"}</b><em>${(st.positions || []).length} offen · ${pend.length} warten</em></div></div>
     ${paperSpark(st, bench)}
+    ${st.funnel ? `<div class="note" style="margin-top:8px"><b>Filter am ${esc(String(st.funnel.date).slice(5))}:</b> ${Object.entries(st.funnel).filter(([k]) => !["date", "Branchen-ETF fehlt"].includes(k)).map(([k, v]) => `${esc(k)} <b>${v}</b>`).join(" → ")}${st.funnel["Branchen-ETF fehlt"] ? ` · Branchen-Daten fehlen bei ${st.funnel["Branchen-ETF fehlt"]}` : ""}</div>` : ""}
     ${pos ? `<div class="hh" style="margin-top:12px"><b>Offene Papier-Positionen</b></div><div class="tscroll"><table class="ptab"><tr><th>Titel</th><th>Kauf</th><th>Einstieg</th><th>Stop</th><th>Stück</th><th></th></tr>${pos}</table></div>` : ""}
     ${pend.length ? `<div class="hh" style="margin-top:12px"><b>Warten auf den 4H-Auslöser</b></div><div class="note">${pend.slice(0, 40).map(q => `<b>${esc(q.t)}</b> bis ${esc(String(q.expiry).slice(5))}`).join(" · ")}${pend.length > 40 ? ` · … +${pend.length - 40}` : ""}</div>` : ""}
     ${last ? `<div class="hh" style="margin-top:12px"><b>Letzte Trades</b></div><div class="tscroll"><table class="ptab"><tr><th>Titel</th><th>Kauf</th><th>Verkauf</th><th>Grund</th><th>R</th><th>€</th></tr>${last}</table></div>` : ""}
