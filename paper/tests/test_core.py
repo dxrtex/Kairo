@@ -76,3 +76,10 @@ def test_s19_variants_volume_and_sigma():
     assert not core.vol_exhausted(V, 3, "strict") and core.vol_exhausted(V, 3, "2of3")
     assert not core.vol_exhausted(np.array([80, 90, 95, 100.0]), 3, "2of3")
     assert core.S19_VARIANTS == {"S19": (2.5, "strict"), "S19B": (2.5, "2of3"), "S19C": (2.0, "2of3")}
+
+
+def test_s19_variant_positions_hit_ema20_target():
+    bar = pd.Series({"Open": 100.0, "High": 106.0, "Low": 99.0, "Close": 105.0})
+    for sid in ("S19", "S19B", "S19C"):
+        p = {"sid": sid, "entry": 100.0, "stop": 95.0, "stop0": 95.0}
+        assert core.step_position(p, bar, None, 105.0) == (105.0, "ziel_ema20")

@@ -4724,6 +4724,20 @@ function paperCard(sid, st, sm, bench) {
     <details style="margin-top:10px"><summary class="note">Regeln &amp; Protokoll</summary><div class="note">${esc(rule)}</div>
       <div class="note">${(st.events || []).slice(-15).reverse().map(e => esc(e)).join("<br>")}</div></details></div>`;
 }
+function shadowHtml(sh) {
+  if (!sh) return "";
+  const M = sh.matrix || [], get = (f, m, v, c, e) => M.find(r => r.fam === f && r.mode === m && r.var === v && r.crv_min === c && r.exit === e);
+  const cell = r => !r || !r.n ? `<td class="note">–</td>` : `<td class="${r.avg_R_net >= 0 ? "up" : "down"}">${(r.avg_R_net >= 0 ? "+" : "") + fmt(r.avg_R_net, 2)} R<br><span class="note">${r.n} · ${pct(r.win, 0)}</span></td>`;
+  const crvs = [[null, "alle"], [1, "CRV ≥ 1"], [1.5, "CRV ≥ 1,5"], [2, "CRV ≥ 2"]];
+  const block = (mode, title) => `<div class="hh" style="margin-top:10px"><b>${title}</b></div><div class="tscroll"><table class="ptab"><tr><th></th><th>Ziel EMA20</th><th>nach 5 Tagen</th><th>nach 10 Tagen</th></tr>
+    ${crvs.map(([c, l]) => `<tr><td>${l}</td>${["ema20", "t5", "t10"].map(e => cell(get("S19", mode, "S19C", c, e))).join("")}</tr>`).join("")}</table></div>`;
+  return `<div class="hcard">${hHead("Schattenbuch · Forschung")}
+    <div class="note">Jedes Signal wird hier mit echten 4H-Kerzen weiterverfolgt – auch wenn das Depot es ablehnt (CRV, voll, Cash). So sehen wir später, ob ein anderes Mindest-CRV oder ein anderer Ausstieg besser wäre. Ändert nichts an den Depots. Je Feld: Ø R nach Kosten, Anzahl · Trefferquote. Aussagekräftig erst ab etwa 30 Trades je Feld.</div>
+    <div class="note" style="margin-top:6px">Seit ${esc(sh.start || "–")}: ${sh.abgeschlossen} abgeschlossen · ${sh.offen} offen · ${sh.wartend} warten auf Auslöser</div>
+    ${block("4h", "S19-Familie · Kauf nach 4H-Auslöser")}${block("frueh", "S19-Familie · Kauf am nächsten Morgen (ohne Bestätigung)")}
+    <div class="hh" style="margin-top:10px"><b>S20 · Kauf nach 4H-Auslöser</b></div><div class="tscroll"><table class="ptab"><tr><th>Einstand + Nachziehen</th><th>nach 5 Tagen</th><th>nach 10 Tagen</th></tr>
+    <tr>${["trail", "t5", "t10"].map(e => cell(get("S20", "4h", "S20", null, e))).join("")}</tr></table></div></div>`;
+}
 function paperHtml() {
   paperLoad();
   const d = PAPER.d;
@@ -4733,6 +4747,7 @@ function paperHtml() {
   const sm = d.sum || {}, bench = sm.bench || [];
   return head + paperCard("S19", d.s19, sm.S19, bench) + paperCard("S19B", d.s19b, sm.S19B, bench)
     + paperCard("S19C", d.s19c, sm.S19C, bench) + paperCard("S20", d.s20, sm.S20, bench)
+    + shadowHtml(sm.shadow)
     + `<div class="note" style="margin:6px 2px">Stand: ${esc(sm.ts ? new Date(sm.ts).toLocaleString("de-DE") : "–")}. Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser (so real nachhandelbar). 4H-Kerzen wie TradingView (US: 9:30–13:30 und 13:30–16:00). R nach Gebühren und Spread. Grenzen: Yahoo-Stundenkerzen teils verzögert, Fundamentaldaten wöchentlich von Yahoo.</div>`;
 }
 

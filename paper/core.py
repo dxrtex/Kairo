@@ -152,7 +152,7 @@ def step_position(p: dict, bar: pd.Series, prev_bar: pd.Series | None, tp_level:
         return o, "stop_gap"
     if l <= p["stop"]:
         return p["stop"], "stop" if p["stop"] < p["entry"] else "trail"
-    if p["sid"] == "S19" and tp_level is not None and np.isfinite(tp_level) and h >= tp_level:
+    if p["sid"].startswith("S19") and tp_level is not None and np.isfinite(tp_level) and h >= tp_level:
         return max(tp_level, o), "ziel_ema20"
     if p["sid"] == "S20" and not p.get("be") and h >= p["entry"] + 2 * p["atr"]:
         p["be"] = True

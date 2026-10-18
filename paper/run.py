@@ -361,7 +361,32 @@ def stats(st: dict) -> dict:
     return out
 
 
-def report(d: Path, states: list[dict], bench: list[dict] | None = None) -> None:
+def run_shadow(sd: Path, mk: Market, cal, bull, s19_t, s20_t, fund, sec3) -> dict | None:
+    """Schattenbuch (paper/shadow.py) – reine Forschung; ein Fehler hier darf die Depots nicht stören."""
+    from . import shadow
+    try:
+        sb = shadow.load(sd)
+        last = cal[-1]
+        if sb["last_day"] is None:
+            sb["start"] = sb["last_day"] = str(last.date())
+            shadow.collect(sb, mk, last, cal, s19_t, s20_t, bool(bull.loc[last]), fund, sec3)
+        for D in [d for d in cal if d > pd.Timestamp(sb["last_day"])]:
+            prev = cal[cal < D][-1]
+            miss = sorted(({q["t"] for q in sb["pending"]} | {x["t"] for x in sb["open"]}) - set(mk.h4))
+            if miss:
+                for t, h in download(miss, period="60d", interval="60m", batch=40).items():
+                    mk.h4[t] = core.to_h4(h)
+            shadow.step_day(sb, mk, D, prev, cal, bool(bull.loc[prev]))
+            shadow.collect(sb, mk, D, cal, s19_t, s20_t, bool(bull.loc[D]), fund, sec3)
+            sb["last_day"] = str(D.date())
+        shadow.save(sd, sb)
+        return shadow.summary(sb)
+    except Exception as e:                             # noqa: BLE001
+        print("Schattenbuch-Fehler:", repr(e)[:300])
+        return None
+
+
+def report(d: Path, states: list[dict], bench: list[dict] | None = None, shadow: dict | None = None) -> None:
     lines = ["# Papier-Handel S19 / S19-B / S19-C / S20 (echte 4-Stunden-Kerzen, keine echten Orders)", "",
              f"Stand: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · Startkapital je Strategie {START_CASH:,.0f} € · "
              "Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5; S19-B/-C: v1.7). Kosten: 0,99 €/Order + halber Spread je Seite.", ""]
@@ -389,7 +414,8 @@ def report(d: Path, states: list[dict], bench: list[dict] | None = None) -> None
     lines += ["---", "Grenzen: Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser, Yahoo-Stundenkerzen (teils verzögert),",
               "heutige Fundamentaldaten (Yahoo, wöchentlich), Sektor-ETFs der US-Branchen. Keine Anlageberatung."]
     (d / "README.md").write_text("\n".join(lines))
-    (d / "summary.json").write_text(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), **summ, "bench": bench or []},
+    (d / "summary.json").write_text(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), **summ, "bench": bench or [],
+                                                "shadow": shadow},
                                                indent=1, default=str))
 
 
@@ -451,7 +477,7 @@ def main(argv=None) -> int:
             bench = [{"date": str(i.date()), "eur": round(START_CASH * v / a.iloc[0], 2)} for i, v in a.items()]
     for st in states:
         save_state(sd, st)
-    report(sd, states, bench)
+    report(sd, states, bench, run_shadow(sd, mk, cal, bull, s19_t, s20_t, fund, sec3))
     print(json.dumps({s["sid"]: stats(s) for s in states}, indent=1, default=str))
     return 0
 
