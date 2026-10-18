@@ -116,10 +116,11 @@ def main(argv=None) -> int:
     ap.add_argument("--extra", required=True)
     ap.add_argument("--out", default="c7_out")
     ap.add_argument("--period", default="train", choices=["train", "validation"])
+    ap.add_argument("--only", nargs="*", default=None)
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    _, _, fx, bench, (start, end) = load(a.data, a.period, tickers=[])
+    _, _, fx, bench, (start, end) = load(a.data, a.period, tickers=["__keine__"])
     ext = _cut(pd.read_parquet(Path(a.extra) / "bench_extra_v1.parquet"), end)
     frames = {t: g.drop(columns="ticker").set_index("date").sort_index() for t, g in ext.groupby("ticker")}
     frames.update({t: bench[t] for t in ("SPY", "EFA", "SHY", "BIL", "ACWI")})
@@ -131,11 +132,12 @@ def main(argv=None) -> int:
     costs = {"prime": Costs(fee_eur=0.99, spread=0.001, fee_free_from=250.0),
              "prime_stress": Costs(fee_eur=1.99, spread=0.002, slippage=0.0005, fx_fee=0.001, fee_free_from=250.0)}
     _G.update(frames=frames, fx=fx, me=me, dates=ds, adj=adj, cal=cal, costs=costs)
-    jobs = [(s, c, cn, None) for s in U for c in CAPS for cn in costs] + [(s, 6000, "prime", k) for s in U for k in range(SEEDS)]
+    ids = a.only or list(U)
+    jobs = [(s, c, cn, None) for s in ids for c in CAPS for cn in costs] + [(s, 6000, "prime", k) for s in ids for k in range(SEEDS)]
     with Pool() as pool:
         rr = pool.map(_job, jobs, chunksize=4)
     res = {f"{k[0]} · {k[1]} € · {k[2]}": v for k, v in rr if len(k) == 3}
-    for s in U:
+    for s in ids:
         null = np.array([v for k, v in rr if len(k) == 2 and k[0] == s])
         c = res[f"{s} · 6000 € · prime"]["cagr"]
         res[f"{s} · 6000 € · prime"].update(p_zufall=float((null >= c).mean()), zufall_median=float(np.median(null)))
@@ -143,7 +145,7 @@ def main(argv=None) -> int:
                calendar=cal)
     res["ACWI halten · 6000 € · prime"] = {k: metrics(acwi).get(k) for k in ("cagr", "max_dd", "sharpe")}
     (out / f"c7_{a.period}.json").write_text(json.dumps(res, indent=1, default=str, ensure_ascii=False))
-    for s in list(U) + ["ACWI halten"]:
+    for s in ids + ["ACWI halten"]:
         b = res[f"{s} · 6000 € · prime"]
         st = res.get(f"{s} · 6000 € · prime_stress", {})
         print(f"{s:12s} {b['cagr']:+.1%} stress {st.get('cagr', float('nan')):+.1%} DD {b['max_dd']:.0%} Sharpe {b['sharpe']:.2f} "
