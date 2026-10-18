@@ -575,6 +575,8 @@
   .bh-r .mt span { white-space: normal; line-height: 1.25; }
   .obar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; }
   .obar i.t1 { background: var(--up); } .obar i.op { background: var(--surface-3); } .obar i.st { background: var(--red); }
+  .pkpi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0 4px; } @media (min-width: 760px) { .pkpi { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .ptab { width: 100%; border-collapse: collapse; font-size: 13px; } .ptab th { text-align: left; color: var(--muted); font-weight: 600; padding: 4px 6px; } .ptab td { padding: 5px 6px; border-top: 1px solid var(--line); white-space: nowrap; } .tscroll { overflow-x: auto; }
   .oleg { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; font-weight: 650; margin-top: 6px; }
   svg.rp { width: 100%; height: auto; max-height: 260px; display: block; } svg.rp text { fill: var(--muted); font-size: 11px; } svg.rp text.lb { font-weight: 700; font-size: 12px; }
   table.bt th { white-space: normal; line-height: 1.25; vertical-align: bottom; } table.bt tr.best td { background: var(--up-bg); } table.bt td small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 500; }
@@ -4661,9 +4663,67 @@ document.addEventListener("keydown", e => {
   if (e.target.id === "einQ" && e.key === "Enter") { const m = einMatches(e.target.value); if (m[0]) { state.einT = m[0].t; state.einQ = m[0].n; save(); render(); } }
 });
 
+// ---------- Papier-Test S19 / S20 (paper/run.py): Vorwärtstest mit echten 4H-Kerzen, nur virtuelle Depots, keine Orders ----------
+const PAPER_URL = REPO.replace("https://github.com/", "https://raw.githubusercontent.com/") + "/paper-data/";
+const PAPER = { d: null, busy: false, at: 0, err: false };
+function paperLoad() {
+  if (PAPER.busy || (PAPER.d && Date.now() - PAPER.at < 3e5)) return;
+  PAPER.busy = true;
+  const v = "?v=" + Math.floor(Date.now() / 3e5), get = f => fetch(PAPER_URL + f + v).then(r => r.ok ? r.json() : null);
+  Promise.all([get("summary.json"), get("s19.json"), get("s20.json")])
+    .then(([sum, s19, s20]) => { PAPER.d = sum || s19 || s20 ? { sum, s19, s20 } : null; PAPER.err = !PAPER.d; })
+    .catch(() => { PAPER.err = true; })
+    .finally(() => { PAPER.busy = false; PAPER.at = Date.now(); if (state.sec === "paper") render(); });
+}
+function paperSpark(st, bench) {
+  const e = (st.equity || []).map(x => x.eur), b0 = Object.fromEntries((bench || []).map(x => [x.date, x.eur]));
+  const b = (st.equity || []).map(x => b0[x.date] ?? null);
+  if (e.length < 2) return `<div class="note">Depotkurve erscheint ab dem zweiten Handelstag.</div>`;
+  const S = st.start_cash || 5000, all = [...e, ...b.filter(z => z != null), S], lo = Math.min(...all), hi = Math.max(...all);
+  const W = 600, H = 90, y = z => (H - 6 - (z - lo) / ((hi - lo) || 1) * (H - 12)).toFixed(1), X = i => (i / (e.length - 1) * W).toFixed(1);
+  const line = a => a.map((z, i) => z == null ? null : `${X(i)},${y(z)}`).filter(Boolean).join(" ");
+  return `<svg class="g-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><line x1="0" x2="${W}" y1="${y(S)}" y2="${y(S)}" class="g-base"/>
+    <polyline points="${line(b)}" style="fill:none;stroke:var(--gold);stroke-width:1.5;stroke-dasharray:4 3"/><polyline points="${line(e)}" class="${e[e.length - 1] >= S ? "up" : "down"}"/></svg>
+    <div class="oleg"><span class="${e[e.length - 1] >= S ? "up" : "down"}">■ Papier-Depot</span><span class="gold">┄ ACWI kaufen &amp; halten (gleicher Start)</span></div>`;
+}
+function paperCard(sid, st, sm, bench) {
+  const name = sid === "S19" ? "S19 · Hybride Mean Reversion" : "S20 · Trendfolge / VCP";
+  const rule = sid === "S19"
+    ? "Große US-Qualitätsaktie (≥ 10 Mrd. $, operative Marge > 0) fällt 3 Tage mit sinkendem Volumen ≥ 2,5 Std unter die EMA20 und stärker als ihre Branche → Kauf, wenn eine grüne 4H-Kerze über dem Hoch der letzten roten schließt (CRV ≥ 2). Stop unter Panik-Tief − 0,5 ATR, Ziel EMA20. Bärenmarkt: halbes Risiko, max. 2 Positionen."
+    : "S&P 500 über EMA200, Aktie über EMA50 > EMA200, Bollinger-Bänder ziehen sich zusammen, Kurs an EMA50 bzw. 50–61,8 %-Zone → Kauf, wenn eine 4H-Kerze ≥ 1 % über der 4H-EMA20 mit Volumen schließt. Stop 1,5 ATR, ab +2 ATR Einstand, dann unter das Tief der letzten 4H-Kerze nachziehen.";
+  if (!st) return `<div class="hcard">${hHead(name)}<div class="note">Noch keine Daten – der erste Lauf startet nach US-Börsenschluss.</div></div>`;
+  const s = sm || {}, eq = (st.equity || []).slice(-1)[0], val = eq ? eq.eur : st.start_cash, ret = val / st.start_cash - 1;
+  const tr = st.trades || [], wins = tr.filter(x => x.pnl_eur > 0).length, rs = tr.map(x => x.R).filter(x => x != null);
+  const avgR = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
+  const pos = (st.positions || []).map(p => `<tr><td><b>${esc(p.t)}</b></td><td>${esc(String(p.entry_ts).slice(0, 10))}</td><td>${fmt(p.entry)}</td><td class="down">${fmt(p.stop)}</td><td>${p.qty}</td><td>${p.be ? "Einstand ✓" : p.regime === "bear" ? "Bärenmarkt" : ""}</td></tr>`).join("");
+  const pend = (st.pending || []).slice().sort((a, b) => String(a.expiry).localeCompare(String(b.expiry)));
+  const last = tr.slice(-12).reverse().map(x => `<tr><td><b>${esc(x.t)}</b></td><td>${esc(String(x.entry_ts).slice(0, 10))}</td><td>${esc(String(x.exit_ts).slice(0, 10))}</td><td>${esc({ stop: "Stop", stop_gap: "Stop (Lücke)", trail: "Trailing", ziel_ema20: "Ziel EMA20" }[x.why] || x.why)}</td><td class="${x.pnl_eur >= 0 ? "up" : "down"}">${x.R == null ? "–" : (x.R >= 0 ? "+" : "") + fmt(x.R, 2) + " R"}</td><td class="${x.pnl_eur >= 0 ? "up" : "down"}">${eur2(x.pnl_eur)}</td></tr>`).join("");
+  return `<div class="hcard">${hHead(name)}
+    <div class="pkpi"><div class="mt"><span>Papier-Depot</span><b class="${ret >= 0 ? "up" : "down"}">${eur2(val)}</b><em>${sgnPct(ret, 1)} seit ${esc(st.start || "–")}</em></div>
+      <div class="mt"><span>Trades</span><b>${tr.length}</b><em>${tr.length ? `${pct(wins / tr.length, 0)} Gewinner` : "noch keine"}</em></div>
+      <div class="mt"><span>Ø Ergebnis</span><b>${avgR == null ? "–" : (avgR >= 0 ? "+" : "") + fmt(avgR, 2) + " R"}</b><em>je Trade</em></div>
+      <div class="mt"><span>Größter Rückgang</span><b class="down">${s.max_dd != null ? pct(s.max_dd, 1) : "–"}</b><em>${(st.positions || []).length} offen · ${pend.length} warten</em></div></div>
+    ${paperSpark(st, bench)}
+    ${pos ? `<div class="hh" style="margin-top:12px"><b>Offene Papier-Positionen</b></div><div class="tscroll"><table class="ptab"><tr><th>Titel</th><th>Kauf</th><th>Einstieg</th><th>Stop</th><th>Stück</th><th></th></tr>${pos}</table></div>` : ""}
+    ${pend.length ? `<div class="hh" style="margin-top:12px"><b>Warten auf den 4H-Auslöser</b></div><div class="note">${pend.slice(0, 40).map(q => `<b>${esc(q.t)}</b> bis ${esc(String(q.expiry).slice(5))}`).join(" · ")}${pend.length > 40 ? ` · … +${pend.length - 40}` : ""}</div>` : ""}
+    ${last ? `<div class="hh" style="margin-top:12px"><b>Letzte Trades</b></div><div class="tscroll"><table class="ptab"><tr><th>Titel</th><th>Kauf</th><th>Verkauf</th><th>Grund</th><th>R</th><th>€</th></tr>${last}</table></div>` : ""}
+    <details style="margin-top:10px"><summary class="note">Regeln &amp; Protokoll</summary><div class="note">${esc(rule)}</div>
+      <div class="note">${(st.events || []).slice(-15).reverse().map(e => esc(e)).join("<br>")}</div></details></div>`;
+}
+function paperHtml() {
+  paperLoad();
+  const d = PAPER.d;
+  const head = `<div class="section-title"><span>Papier-Test</span><span>S19 · S20 mit echten 4H-Kerzen</span></div>
+    <div class="note" style="margin:0 2px 10px">Vorwärtstest deiner beiden Strategien – je 5.000 € virtuelles Startkapital, 0,99 € je Order + Spread. Läuft automatisch jeden Werktag nach US-Börsenschluss. <b>Keine echten Orders</b>, keine Anlageberatung. Aussagekräftig erst nach vielen Trades (eher 6–12 Monate).</div>`;
+  if (!d) return head + `<div class="hcard"><div class="note">${PAPER.err ? "Papier-Daten noch nicht verfügbar – der erste Lauf erscheint nach dem nächsten US-Börsenschluss." : "Lade Papier-Daten …"}</div></div>`;
+  const sm = d.sum || {}, bench = sm.bench || [];
+  return head + paperCard("S19", d.s19, sm.S19, bench) + paperCard("S20", d.s20, sm.S20, bench)
+    + `<div class="note" style="margin:6px 2px">Stand: ${esc(sm.ts ? new Date(sm.ts).toLocaleString("de-DE") : "–")}. Grenzen: Kauf genau zum Schluss der 4H-Kerze (real etwas später), Yahoo-Stundenkerzen teils verzögert, Fundamentaldaten wöchentlich von Yahoo.</div>`;
+}
+
 // ---------- Rendern ----------
 // Reiter gebündelt: Depot (Positionen · Journal · Bilanz · Übung) und Markt (News · Kalender) – Unterreiter oben im Bereich
-const SUBNAV = { depot: [["depot", "Positionen"], ["journal", "Journal"], ["bilanz", "Bilanz"], ["game", "Übung"]], news: [["news", "News"], ["calendar", "Kalender"]] };
+const SUBNAV = { depot: [["depot", "Positionen"], ["journal", "Journal"], ["bilanz", "Bilanz"], ["game", "Übung"], ["paper", "Papier"]], news: [["news", "News"], ["calendar", "Kalender"]] };
 const groupOf = sec => Object.keys(SUBNAV).find(g => SUBNAV[g].some(x => x[0] === sec)) || sec;
 const subNavHtml = sec => { const g = groupOf(sec); return SUBNAV[g] ? `<div class="subnav">${SUBNAV[g].map(([s, l]) => `<button class="${s === sec ? "on" : ""}" data-gosub="${s}">${l}</button>`).join("")}</div>` : ""; };
 const KFOOT = `<div class="kfoot">Keine Anlageberatung – Kairo zeigt getestete Regeln, Entscheidungen triffst du selbst. Kairo führt keine Orders aus.<br>Deine Trades, Watchlist und Einstellungen bleiben auf diesem Gerät · Kurse: Yahoo Finance, onvista, Finnhub · Charts: TradingView</div>`;
@@ -4683,6 +4743,7 @@ function renderMain() {
   if (state.sec === "depot") { $("main").innerHTML = subNavHtml("depot") + depotHtml(); mountDepotCharts(); return; }
   if (state.sec === "journal") { $("main").innerHTML = subNavHtml("journal") + journalHtml(); return; }
   if (state.sec === "game") { $("main").innerHTML = subNavHtml("game") + gameHtml(); return; }
+  if (state.sec === "paper") { $("main").innerHTML = subNavHtml("paper") + paperHtml(); return; }
   if (depCharts.size) { depCharts.forEach(ch => ch.remove()); depCharts.clear(); }
   KIND_BTNS = trendOn() ? KIND_BTNS_ALL : KIND_BTNS_ALL.filter(x => x[0] !== "trend");
   if (trendOn() && !state.trendSeen) { state.trendSeen = 1; save(); }
@@ -4778,7 +4839,7 @@ function greetText() {
   const h = new Date().getHours(), nm = String(state.name || "").trim();
   return esc(h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend") + (nm ? `, <span class="nm">${esc(nm)}</span>` : "") + greetEmoji();
 }
-const SEC_T = { today: "Heute", etf: "ETF", scanner: "Scanner", entry: "Einstieg", calendar: "Kalender", news: "News", depot: "Depot", journal: "Journal", game: "Spiel", settings: "Einstellungen", bilanz: "Bilanz" };
+const SEC_T = { today: "Heute", etf: "ETF", scanner: "Scanner", entry: "Einstieg", calendar: "Kalender", news: "News", depot: "Depot", journal: "Journal", game: "Spiel", paper: "Papier-Test", settings: "Einstellungen", bilanz: "Bilanz" };
 function appleHead() {
   document.body.dataset.sec = state.sec;
   if (!isApple()) return;
