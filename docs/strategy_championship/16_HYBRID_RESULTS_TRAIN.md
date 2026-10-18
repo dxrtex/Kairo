@@ -28,3 +28,20 @@ Bilanzprüfung in 134 von 135 Läufen bestanden (Ausnahme H3-A1 · 10.000 € ·
    deutlich weniger Rendite. Bei 2.000 € kippt Momentum unter Stresskosten fast auf null.
 4. Folgerung: Aktiver Kurzfrist-Handel (Tage) passt nicht zu kleinem Kapital mit fixen Ordergebühren; nur Strategien mit
    wenig Umschlag (Wochen–Monate) haben eine Chance. Kein Kandidat für die Validierung aus dieser Runde.
+
+## Nachtrag: Kostenmodell Scalable PRIME+ (Nutzer-Tarif; ab 250 € Orderwert gebührenfrei, sonst 0,99 €)
+
+Rohdaten c5_prime_train.json (Stress: 1,99 € unter 250 €, doppelter Spread, Slippage, FX). CAGR Basis / Stress, größter Rückgang.
+
+| Variante | 2.000 € | 5.000 € | 10.000 € |
+|---|---|---|---|
+| T1 Momentum Top 10 | +16,8 % / −1,6 % · −36 % | +18,8 % / +14,5 % · −36 % | +18,9 % / +14,6 % · −36 % |
+| **T1 Momentum Top 5** | **+18,9 % / +14,2 % · −38 %** | +18,8 % / +14,2 % · −38 % | +18,7 % / +14,0 % · −38 % |
+| T1-A1 Top 10 | +14,7 % / +11,1 % · −31 % | +15,8 % / +12,4 % · −31 % | +15,9 % / +12,6 % · −31 % |
+| T1-A2 Top 10 | +9,8 % / +7,0 % · −21 % | +10,6 % / +8,4 % · −21 % | +10,6 % / +8,4 % · −21 % |
+| M2 / M3 nur bei roter Ampel (A1) | −24 … −26 % | +0,2 / −1,5 % | +1,4 / +0,3 % |
+| Hybride H1/H2-A1 | −24 … −32 % | +10,7 / +12,2 % | +11,6 / +13,7 % |
+
+Befund unverändert: Mean Reversion bringt auch ohne Ordergebühren ≈ 0 % und macht jede Kombination schlechter als Momentum
+allein. PRIME+ macht dagegen Momentum mit 5 Titeln schon ab ≈ 1.300 € Trading-Kapital nahezu gebührenfrei (Positionen ≥ 250 €).
+Top 5 ist eine neue, nicht vorregistrierte Variante → nur Kandidat für den Papier-Test, keine Validierung verbraucht.
