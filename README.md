@@ -1,6 +1,6 @@
 # Papier-Handel S19 / S20 (echte 4-Stunden-Kerzen, keine echten Orders)
 
-Stand: 2026-10-18 16:35 UTC · Startkapital je Strategie 5,000 € · Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5). Kosten: 0,99 €/Order + halber Spread je Seite.
+Stand: 2026-10-18 16:40 UTC · Startkapital je Strategie 5,000 € · Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5). Kosten: 0,99 €/Order + halber Spread je Seite.
 
 ## S19 Hybride Mean Reversion
 
