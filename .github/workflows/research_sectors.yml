@@ -1,0 +1,25 @@
+name: Research – Branchen (S19)
+
+on:
+  push:
+    branches: ["research/**"]
+    paths: [".github/workflows/research_sectors.yml", "research/strategy_championship/sectors.py"]
+
+permissions:
+  contents: write
+
+jobs:
+  sectors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - run: python -m research.strategy_championship.sectors --out sectors
+      - name: Als Entwurfs-Release sichern
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          gh release create "research-sectors-${GITHUB_RUN_ID}" sectors/* --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Research Branchen v1 (heute)" --notes "Yahoo-Branche je US-Titel, Stand Abruf. Nur Forschung."
