@@ -227,3 +227,13 @@ Nutzer-Auftrag: beste Strategie für den Trading-Teil (10–30 % des Kapitals), 
   schlechter als T1-top5, Ergebnis ohne beste 1 % der Trades positiv. Sonst bleibt T1-top5 einziger Kandidat.
 - Danach einmalige Validierung 2017–2021 für T1-top5 und ggf. einen Finalisten (zweiter Blick in die Validierung – wird
   als solcher gekennzeichnet). Holdout bleibt versiegelt.
+
+
+## Addendum v2.0 (19.10.2026, vor dem Lauf) – Welle 4 Multi-Asset-Trendfolge (ETFs)
+
+Grund: Endauswahl für den einmaligen Holdout soll alle gut belegten, mit Gratisdaten testbaren Familien enthalten.
+Neue Daten: Zusatz-ETFs (etf_freeze.py, gleiche Spanne wie v1). Kandidaten (keine weiteren, Details c7_multiasset.py):
+G1 Faber GTAA-5, G2 GTAA Aggressiv Top 3 aus 13 ETFs, G3 GEM (Antonacci), G4 Zeitreihen-Momentum 6 ETFs mit 1/Vol-Gewichten.
+Kosten PRIME+ (Basis/Stress), Kapital 2.000/6.000/20.000 €, Zufall 100 Seeds (gleiche Anzahl zufälliger ETFs je Monat).
+Finalist-Regel: auf Train p vs. Zufall ≤ 0,10 und Sharpe ≥ ACWI halten; höchstens zwei Finalisten (beste Sharpe) gehen
+einmalig in die Validierung 2017–2021. Danach Endauswahl für den Holdout (max. 3 Strategien, inkl. S07-B Top 10, S16-B).
