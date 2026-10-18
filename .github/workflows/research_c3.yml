@@ -16,6 +16,7 @@ env:
   BENCH_ASSET: "653201146"
   FX_ASSET: "653201143"
   MANIFEST_ASSET: "653201145"
+  SECTORS_ASSET: "653834377"
   PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
 
 jobs:
@@ -44,8 +45,7 @@ jobs:
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
           mkdir -p sectors
-          A=$(gh api repos/$GITHUB_REPOSITORY/releases -q '[.[]|select(.tag_name|startswith("research-sectors"))][0].assets[]|select(.name=="sectors_v1.csv")|.id')
-          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$A > sectors/sectors_v1.csv
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SECTORS_ASSET > sectors/sectors_v1.csv
           wc -l sectors/sectors_v1.csv
       - name: Rechnen
         run: |
