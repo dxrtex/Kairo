@@ -89,3 +89,11 @@ def test_fill_next_open_priority_and_net_r():
     assert pd.Timestamp((t or st["positions"][0])["entry_ts"]) > trig     # Kauf erst nach der Auslöse-Kerze
     if t:
         assert t["R_net"] < t["R"]                                         # netto nach Kosten schlechter
+
+
+def test_s19_variant_funnel_label():
+    mk, days, D_prev, D = market()
+    st = run.load_state(__import__("pathlib").Path("/nonexistent"), "S19C")
+    fund = {"AAA": {"mcap": 2e11, "opm": 0.2, "sector": "Technology"}}
+    run.new_setups(st, mk, D, days, ["AAA"], True, fund, {"XLK": {D: 0.01}}, dry=True)
+    assert "≥ 2,0 Std unter EMA20" in st["funnel"] and st["funnel"]["Signale"] == 0

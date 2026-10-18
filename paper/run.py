@@ -216,12 +216,12 @@ def process_day(st: dict, mk: Market, D: pd.Timestamp, D_prev: pd.Timestamp, cal
             if len(st["positions"]) >= MAX_OPEN or (cap is not None and len(st["positions"]) >= cap):
                 st["events"].append(f"{ts} {a['t']}: Auslöser, aber Depot voll")
                 continue
-            stop = a["stop"] if sid == "S19" else op - 1.5 * a["atr"]
+            stop = a["stop"] if sid.startswith("S19") else op - 1.5 * a["atr"]
             if op <= stop:
                 st["events"].append(f"{ts} {a['t']}: Eröffnung {op:.4g} schon unter dem Stop – kein Kauf")
                 continue
             extra = {"regime": a["regime"]}
-            extra.update({"crv": a["crv"]} if sid == "S19" else {"atr": a["atr"], "be": False})
+            extra.update({"crv": a["crv"]} if sid.startswith("S19") else {"atr": a["atr"], "be": False})
             open_pos(st, mk, a["t"], ts, op, stop, a["risk"], extra, D_prev)
         # (2) offene Positionen (eine eben eröffnete zählt ab ihrer Eröffnung mit)
         for t, j in slots[ts]:
@@ -231,7 +231,7 @@ def process_day(st: dict, mk: Market, D: pd.Timestamp, D_prev: pd.Timestamp, cal
                 if pd.Timestamp(p["entry_ts"]) > ts:
                     continue
                 tp = None
-                if sid == "S19":
+                if sid.startswith("S19"):
                     x = mk.f(t)
                     v = x["ema20"][x.index < bar["day"]]
                     tp = float(v.iloc[-1]) if len(v) else None
@@ -248,7 +248,7 @@ def process_day(st: dict, mk: Market, D: pd.Timestamp, D_prev: pd.Timestamp, cal
                 if any(p["t"] == t for p in st["positions"]) or any(a["t"] == t for a in st["armed"]):
                     st["pending"].remove(q)
                     continue
-                if sid == "S19":
+                if sid.startswith("S19"):
                     lows = b["Low"][(b["day"] > pd.Timestamp(q["day"])) & (b.index <= ts)]
                     q["panic"] = min(q["panic"], float(lows.min())) if len(lows) else q["panic"]
                     if not core.s19_trigger(b, j):
@@ -277,17 +277,18 @@ def process_day(st: dict, mk: Market, D: pd.Timestamp, D_prev: pd.Timestamp, cal
     st["equity"].append({"date": str(D.date()), "eur": round(equity(st, mk, D), 2), "open": len(st["positions"])})
 
 
-def s19_funnel(x: pd.DataFrame, i: int, sec_ret3) -> list[bool]:
+def s19_funnel(x: pd.DataFrame, i: int, sec_ret3, sigma: float = 2.5, vol: str = "strict") -> list[bool]:
     """Die S19-Stufen einzeln (für die Filter-Übersicht): überdehnt, 3 Tage fallend, Volumen sinkt, schwächer als Branche."""
     r, C, V = x.iloc[i], x["Close"].to_numpy(), x["Volume"].to_numpy()
-    return [bool(r["Close"] <= r["ema20"] - 2.5 * r["std20"]), bool(C[i] < C[i - 1] < C[i - 2] < C[i - 3]),
-            bool(V[i] < V[i - 1] < V[i - 2]), bool(sec_ret3 is not None and np.isfinite(sec_ret3) and r["ret3"] < sec_ret3)]
+    return [bool(r["Close"] <= r["ema20"] - sigma * r["std20"]), bool(C[i] < C[i - 1] < C[i - 2] < C[i - 3]),
+            core.vol_exhausted(V, i, vol), bool(sec_ret3 is not None and np.isfinite(sec_ret3) and r["ret3"] < sec_ret3)]
 
 
 def new_setups(st: dict, mk: Market, D: pd.Timestamp, cal: pd.DatetimeIndex, tickers, bull_D: bool, fund: dict, sec3: dict,
                dry: bool = False):
     sid = st["sid"]
-    fun = {"Qualität": 0, "Kursdaten": 0, "liquide": 0, "≥ 2,5 Std unter EMA20": 0, "3 Tage fallend": 0, "Volumen sinkt": 0,
+    ov = f"≥ {str(core.S19_VARIANTS.get(sid, (2.5,))[0]).replace('.', ',')} Std unter EMA20"
+    fun = {"Qualität": 0, "Kursdaten": 0, "liquide": 0, ov: 0, "3 Tage fallend": 0, "Volumen sinkt": 0,
            "schwächer als Branche": 0, "Branchen-ETF fehlt": 0}
     k = int(np.searchsorted(cal.values, np.datetime64(D)))
     expiry = cal[min(k + core.WINDOW, len(cal) - 1)] if k + core.WINDOW < len(cal) else D + pd.tseries.offsets.BDay(core.WINDOW)
@@ -296,7 +297,7 @@ def new_setups(st: dict, mk: Market, D: pd.Timestamp, cal: pd.DatetimeIndex, tic
     for t in tickers:
         if t in busy:
             continue
-        if sid == "S19":
+        if sid.startswith("S19"):
             fun["Qualität"] += 1
         x = mk.f(t)
         if x is None or D not in x.index:
@@ -305,12 +306,12 @@ def new_setups(st: dict, mk: Market, D: pd.Timestamp, cal: pd.DatetimeIndex, tic
         if i < 210:
             continue
         r = x.iloc[i]
-        if sid == "S19":
+        if sid.startswith("S19"):
             fun["Kursdaten"] += 1
         usd = 1.0 if mk.cur.get(t, "USD") == "USD" else mk.rate("SPY", D) / mk.rate(t, D)
         if not (r["adv"] * usd >= 5e6 and r["Close"] * usd >= 1.0):
             continue
-        if sid == "S19":
+        if sid.startswith("S19"):
             fd = fund.get(t) or {}
             if not ((fd.get("mcap") or 0) >= 10e9 and (fd.get("opm") or 0) > 0):
                 continue
@@ -319,12 +320,13 @@ def new_setups(st: dict, mk: Market, D: pd.Timestamp, cal: pd.DatetimeIndex, tic
             sr = sec3.get(etf, {}).get(D)
             if sr is None:
                 fun["Branchen-ETF fehlt"] += 1
-            f4 = s19_funnel(x, i, sr)
-            for k, key in enumerate(["≥ 2,5 Std unter EMA20", "3 Tage fallend", "Volumen sinkt", "schwächer als Branche"]):
+            sg, vm = core.S19_VARIANTS[sid]
+            f4 = s19_funnel(x, i, sr, sg, vm)
+            for k, key in enumerate([ov, "3 Tage fallend", "Volumen sinkt", "schwächer als Branche"]):
                 if not all(f4[:k + 1]):
                     break
                 fun[key] += 1
-            s = core.s19_signal(x, i, sr)
+            s = core.s19_signal(x, i, sr, sg, vm)
             if s and not dry:
                 st["pending"].append({"t": t, "day": str(D.date()), "expiry": str(pd.Timestamp(expiry).date()), **s})
             found += bool(s)
@@ -336,7 +338,7 @@ def new_setups(st: dict, mk: Market, D: pd.Timestamp, cal: pd.DatetimeIndex, tic
                 st["pending"].append({"t": t, "day": str(D.date()), "expiry": str(pd.Timestamp(expiry).date()),
                                       "vr": float(r["Volume"] / x["Volume"].rolling(20).mean().iloc[i]), **s})
                 found += 1
-    if sid == "S19":
+    if sid.startswith("S19"):
         st["funnel"] = {"date": str(D.date()), **fun, "Signale": found}
         st["events"].append(f"{D.date()} Filter: " + " → ".join(f"{k} {v}" for k, v in fun.items() if k != "Branchen-ETF fehlt")
                             + (f" (Branchen-ETF fehlt bei {fun['Branchen-ETF fehlt']})" if fun["Branchen-ETF fehlt"] else ""))
@@ -360,14 +362,15 @@ def stats(st: dict) -> dict:
 
 
 def report(d: Path, states: list[dict], bench: list[dict] | None = None) -> None:
-    lines = ["# Papier-Handel S19 / S20 (echte 4-Stunden-Kerzen, keine echten Orders)", "",
+    lines = ["# Papier-Handel S19 / S19-B / S19-C / S20 (echte 4-Stunden-Kerzen, keine echten Orders)", "",
              f"Stand: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · Startkapital je Strategie {START_CASH:,.0f} € · "
-             "Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5). Kosten: 0,99 €/Order + halber Spread je Seite.", ""]
+             "Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5; S19-B/-C: v1.7). Kosten: 0,99 €/Order + halber Spread je Seite.", ""]
     summ = {}
     for st in states:
         s = stats(st)
         summ[st["sid"]] = s
-        name = "S19 Hybride Mean Reversion" if st["sid"] == "S19" else "S20 Trendfolge / VCP"
+        name = {"S19": "S19 Hybride Mean Reversion (Original)", "S19B": "S19-B (Volumen 2 von 3 Tagen)",
+                "S19C": "S19-C (2,0 Std, Volumen 2 von 3)"}.get(st["sid"], "S20 Trendfolge / VCP")
         lines += [f"## {name}", "", f"- Start: {s['start']} · Handelstage: {s['tage']}",
                   f"- Depot: **{s['depot_eur']:,.2f} €** ({s['rendite']:+.2%}) · größter Rückgang {s['max_dd']:.1%}",
                   f"- Abgeschlossene Trades: {s['trades']}" + (f" · Trefferquote {s['trefferquote']:.0%} · Ø R {s['avg_R']:+.2f}"
@@ -383,7 +386,7 @@ def report(d: Path, states: list[dict], bench: list[dict] | None = None) -> None
                       for x in st["trades"][-15:]]
             lines.append("")
         lines += ["Letzte Ereignisse:", "", *[f"- {e}" for e in st["events"][-12:]], ""]
-    lines += ["---", "Grenzen: Füllung zum Schluss der Auslöse-Kerze (ohne Ausführungsverzögerung), Yahoo-Stundenkerzen (teils verzögert),",
+    lines += ["---", "Grenzen: Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser, Yahoo-Stundenkerzen (teils verzögert),",
               "heutige Fundamentaldaten (Yahoo, wöchentlich), Sektor-ETFs der US-Branchen. Keine Anlageberatung."]
     (d / "README.md").write_text("\n".join(lines))
     (d / "summary.json").write_text(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), **summ, "bench": bench or []},
@@ -402,7 +405,7 @@ def main(argv=None) -> int:
     fund = refresh_fund(sd / "fund_cache.json", uni)
     s19_t = [t for t, v in fund.items() if (v.get("mcap") or 0) >= 10e9 and (v.get("opm") or 0) > 0]
     s20_t = list(uni["ticker"])
-    states = [load_state(sd, "S19"), load_state(sd, "S20")]
+    states = [load_state(sd, "S19"), load_state(sd, "S19B"), load_state(sd, "S19C"), load_state(sd, "S20")]
     need = set(s19_t) | set(s20_t) | {p["t"] for s in states for p in s["positions"]}
     daily = download(sorted(need) + ["^GSPC"] + ETFS)
     fxd = download(list(FX_T.values()), period="2y")
@@ -422,10 +425,10 @@ def main(argv=None) -> int:
         if st["last_day"] is None:                     # erster Lauf: vorwärts ab heute
             st["start"] = str(last.date())
             st["equity"].append({"date": str(last.date()), "eur": st["start_cash"], "open": 0})
-            new_setups(st, mk, last, cal, s19_t if st["sid"] == "S19" else s20_t, bool(bull.loc[last]), fund, sec3)
+            new_setups(st, mk, last, cal, s19_t if st["sid"].startswith("S19") else s20_t, bool(bull.loc[last]), fund, sec3)
             st["last_day"] = str(last.date())
             continue
-        if a.recheck and st["sid"] == "S19":
+        if a.recheck and st["sid"].startswith("S19"):
             new_setups(st, mk, pd.Timestamp(st["last_day"]), cal, s19_t, bool(bull.loc[pd.Timestamp(st["last_day"])]), fund, sec3,
                        dry=True)
         days = [d for d in cal if d > pd.Timestamp(st["last_day"])]
@@ -438,7 +441,7 @@ def main(argv=None) -> int:
                 for t, h in hx.items():
                     mk.h4[t] = core.to_h4(h)
             process_day(st, mk, D, prev, cal, bool(bull.loc[prev]))
-            new_setups(st, mk, D, cal, s19_t if st["sid"] == "S19" else s20_t, bool(bull.loc[D]), fund, sec3)
+            new_setups(st, mk, D, cal, s19_t if st["sid"].startswith("S19") else s20_t, bool(bull.loc[D]), fund, sec3)
             st["last_day"] = str(D.date())
     bench = []
     if "ACWI" in daily and fx_usd is not None and states[0]["start"]:

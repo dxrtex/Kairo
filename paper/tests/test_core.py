@@ -69,3 +69,10 @@ def test_s19_signal_and_s20_setup():
     assert s is not None and s["z"] <= -2.5
     assert core.s19_signal(x, n - 1, sec_ret3=-0.5) is None                  # Branche fiel stärker
     assert core.s20_setup(x, n - 1) is None                                  # kein Aufwärtstrend am Ende
+
+
+def test_s19_variants_volume_and_sigma():
+    V = np.array([100, 90, 95, 80.0])                     # nur 2 von 3 Rückgängen
+    assert not core.vol_exhausted(V, 3, "strict") and core.vol_exhausted(V, 3, "2of3")
+    assert not core.vol_exhausted(np.array([80, 90, 95, 100.0]), 3, "2of3")
+    assert core.S19_VARIANTS == {"S19": (2.5, "strict"), "S19B": (2.5, "2of3"), "S19C": (2.0, "2of3")}
