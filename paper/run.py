@@ -29,7 +29,7 @@ START_CASH = 5000.0
 MAX_OPEN = 5
 FX_T = {"USD": "EURUSD=X", "GBP": "EURGBP=X", "CHF": "EURCHF=X", "SEK": "EURSEK=X", "NOK": "EURNOK=X",
         "DKK": "EURDKK=X", "PLN": "EURPLN=X", "CAD": "EURCAD=X", "JPY": "EURJPY=X"}
-ETFS = sorted(set(core.SECTOR_ETF.values())) + ["SPY"]
+ETFS = sorted(set(core.SECTOR_ETF.values())) + ["SPY", "ACWI"]
 
 
 # ------------------------------------------------------------------ Daten
@@ -298,7 +298,7 @@ def stats(st: dict) -> dict:
     return out
 
 
-def report(d: Path, states: list[dict]) -> None:
+def report(d: Path, states: list[dict], bench: list[dict] | None = None) -> None:
     lines = ["# Papier-Handel S19 / S20 (echte 4-Stunden-Kerzen, keine echten Orders)", "",
              f"Stand: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · Startkapital je Strategie {START_CASH:,.0f} € · "
              "Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5). Kosten: 0,99 €/Order + halber Spread je Seite.", ""]
@@ -325,7 +325,8 @@ def report(d: Path, states: list[dict]) -> None:
     lines += ["---", "Grenzen: Füllung zum Schluss der Auslöse-Kerze (ohne Ausführungsverzögerung), Yahoo-Stundenkerzen (teils verzögert),",
               "heutige Fundamentaldaten (Yahoo, wöchentlich), Sektor-ETFs der US-Branchen. Keine Anlageberatung."]
     (d / "README.md").write_text("\n".join(lines))
-    (d / "summary.json").write_text(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), **summ}, indent=1, default=str))
+    (d / "summary.json").write_text(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), **summ, "bench": bench or []},
+                                               indent=1, default=str))
 
 
 # ------------------------------------------------------------------ Lauf
@@ -374,9 +375,15 @@ def main(argv=None) -> int:
             process_day(st, mk, D, prev, cal, bool(bull.loc[prev]))
             new_setups(st, mk, D, cal, s19_t if st["sid"] == "S19" else s20_t, bool(bull.loc[D]), fund, sec3)
             st["last_day"] = str(D.date())
+    bench = []
+    if "ACWI" in daily and fx_usd is not None and states[0]["start"]:
+        a = daily["ACWI"]["Close"] / fx_usd.reindex(daily["ACWI"].index, method="ffill")
+        a = a[a.index >= pd.Timestamp(states[0]["start"])].dropna()
+        if len(a):
+            bench = [{"date": str(i.date()), "eur": round(START_CASH * v / a.iloc[0], 2)} for i, v in a.items()]
     for st in states:
         save_state(sd, st)
-    report(sd, states)
+    report(sd, states, bench)
     print(json.dumps({s["sid"]: stats(s) for s in states}, indent=1, default=str))
     return 0
 
