@@ -1,0 +1,49 @@
+name: Research – Datensatz einfrieren (B0)
+
+on:
+  push:
+    branches: ["research/**"]
+    paths: ["research/strategy_championship/data_freeze.py", ".github/workflows/research_data.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - run: python -m research.strategy_championship.data_freeze --universe research/strategy_championship/data/universe_frozen_2026-10-16.csv --shard ${{ matrix.shard }} --shards 12
+      - uses: actions/upload-artifact@v4
+        with: { name: "rdata-${{ matrix.shard }}", path: out/, retention-days: 7 }
+  combine:
+    needs: shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "rdata-*", merge-multiple: true, path: parts }
+      - run: python -m research.strategy_championship.data_freeze --combine parts --out frozen
+      - uses: actions/upload-artifact@v4
+        with: { name: research-data-v1, path: frozen/, retention-days: 90 }
+      - name: Dauerhaft als Entwurfs-Release
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          gh release create research-data-v1 frozen/* --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Research-Datensatz v1 (eingefroren)" --notes "Tageskerzen 2005-01-01 bis 2026-10-16, Universum US+EU (eingefroren 16.10.2026), Benchmarks, FX. Nur Forschung."
