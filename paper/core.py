@@ -12,7 +12,12 @@ import numpy as np
 import pandas as pd
 
 WINDOW = 5                       # Handelstage, in denen nach dem Tagessignal ein H4-Auslöser kommen darf
-FEE = 0.99                       # € je Order
+FEE = 0.99                       # € je Order unter FEE_FREE_FROM
+FEE_FREE_FROM = 250.0            # Scalable PRIME+ (Nutzer-Tarif): ab 250 € Orderwert gebührenfrei (gettex)
+
+
+def fee(value_eur: float) -> float:
+    return 0.0 if value_eur >= FEE_FREE_FROM else FEE
 MIN_FILL = 0.5                   # Kauf entfällt, wenn das Cash < 50 % der geplanten Stückzahl erlaubt
 SECTOR_ETF = {"Technology": "XLK", "Financial Services": "XLF", "Healthcare": "XLV", "Consumer Cyclical": "XLY",
               "Consumer Defensive": "XLP", "Energy": "XLE", "Industrials": "XLI", "Basic Materials": "XLB",

@@ -83,3 +83,7 @@ def test_s19_variant_positions_hit_ema20_target():
     for sid in ("S19", "S19B", "S19C"):
         p = {"sid": sid, "entry": 100.0, "stop": 95.0, "stop0": 95.0}
         assert core.step_position(p, bar, None, 105.0) == (105.0, "ziel_ema20")
+
+
+def test_prime_plus_fee():
+    assert core.fee(250.0) == 0.0 and core.fee(249.99) == 0.99

@@ -156,8 +156,9 @@ def close_pos(st, mk, p, px, why, ts):
     sp = mk.spread(p["t"], pd.Timestamp(ts).normalize())
     rate = mk.rate(p["t"], pd.Timestamp(ts).normalize())
     sell = px * (1 - sp / 2)
-    st["cash"] += p["qty"] * sell / rate - core.FEE
-    pnl = p["qty"] * sell / rate - core.FEE - p["cost_eur"]
+    f_out = core.fee(p["qty"] * sell / rate)
+    st["cash"] += p["qty"] * sell / rate - f_out
+    pnl = p["qty"] * sell / rate - f_out - p["cost_eur"]
     R = (px - p["entry"]) / (p["entry"] - p["stop0"]) if p["entry"] > p["stop0"] else None
     rn = pnl / p["risk_eur"] if p.get("risk_eur") else None      # netto: nach Gebühren und Spread, je eingesetztem Risiko
     st["trades"].append({**{k: p[k] for k in ("t", "entry_ts", "entry", "stop0", "qty", "regime")}, "exit_ts": str(ts), "exit": px,
@@ -179,7 +180,7 @@ def open_pos(st, mk, t, ts, entry, stop, risk, extra, d_prev):
         st["events"].append(f"{ts} {t}: Auslöser, aber zu wenig Cash/Mindestgröße – kein Kauf")
         return
     px = entry * (1 + sp / 2)
-    cost = q * px / rate + core.FEE
+    cost = q * px / rate + core.fee(q * px / rate)
     st["cash"] -= cost
     st["positions"].append({"sid": st["sid"], "t": t, "entry_ts": str(ts), "entry": entry, "stop": stop, "stop0": stop, "qty": q,
                             "cost_eur": cost, "risk_eur": round(q * (px - stop) / rate, 2), **extra})
@@ -389,7 +390,7 @@ def run_shadow(sd: Path, mk: Market, cal, bull, s19_t, s20_t, fund, sec3) -> dic
 def report(d: Path, states: list[dict], bench: list[dict] | None = None, shadow: dict | None = None) -> None:
     lines = ["# Papier-Handel S19 / S19-B / S19-C / S20 (echte 4-Stunden-Kerzen, keine echten Orders)", "",
              f"Stand: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · Startkapital je Strategie {START_CASH:,.0f} € · "
-             "Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5; S19-B/-C: v1.7). Kosten: 0,99 €/Order + halber Spread je Seite.", ""]
+             "Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5; S19-B/-C: v1.7). Kosten: Scalable PRIME+ (ab 250 € Orderwert gebührenfrei, sonst 0,99 €) + halber Spread je Seite.", ""]
     summ = {}
     for st in states:
         s = stats(st)
