@@ -25,7 +25,7 @@ import pandas as pd
 from . import core
 
 HERE = Path(__file__).resolve().parent
-START_CASH = 5000.0
+START_CASH = 2000.0                                # Nutzer-Startkapital (18.10.2026)
 MAX_OPEN = 5
 FX_T = {"USD": "EURUSD=X", "GBP": "EURGBP=X", "CHF": "EURCHF=X", "SEK": "EURSEK=X", "NOK": "EURNOK=X",
         "DKK": "EURDKK=X", "PLN": "EURPLN=X", "CAD": "EURCAD=X", "JPY": "EURJPY=X"}
@@ -88,7 +88,13 @@ def refresh_fund(path: Path, uni: pd.DataFrame, max_age_days=7) -> dict:
 def load_state(d: Path, sid: str) -> dict:
     p = d / f"{sid.lower()}.json"
     if p.exists():
-        return json.loads(p.read_text())
+        st = json.loads(p.read_text())
+        if st.get("start_cash") != START_CASH and not st["trades"] and not st["positions"]:
+            # Startkapital geändert, bevor gehandelt wurde: Depot neu aufsetzen, wartende Signale behalten
+            st.update(start_cash=START_CASH, cash=START_CASH,
+                      equity=[{"date": e["date"], "eur": START_CASH, "open": 0} for e in st["equity"]])
+            st["events"].append(f"Startkapital auf {START_CASH:,.0f} € gesetzt (vor dem ersten Trade)")
+        return st
     return {"sid": sid, "start": None, "start_cash": START_CASH, "cash": START_CASH, "positions": [], "pending": [],
             "trades": [], "equity": [], "events": [], "last_day": None}
 

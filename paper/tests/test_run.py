@@ -42,3 +42,14 @@ def test_s19_crv_reject():
     st["pending"] = [{"t": "AAA", "day": str(D_prev.date()), "expiry": str(D.date()), "panic": 90.0, "atr": 2.0, "z": -3}]
     run.process_day(st, mk, D, D_prev, days, True)
     assert not st["positions"] and any("CRV" in e for e in st["events"]), st["events"]
+
+
+def test_start_cash_migration(tmp_path):
+    import json
+    st = run.load_state(tmp_path, "S20")
+    st.update(start_cash=5000.0, cash=5000.0, equity=[{"date": "2026-10-16", "eur": 5000.0, "open": 0}],
+              pending=[{"t": "AAA", "day": "2026-10-16", "expiry": "2026-10-23", "atr": 1.0}])
+    (tmp_path / "s20.json").write_text(json.dumps(st))
+    st2 = run.load_state(tmp_path, "S20")
+    assert st2["start_cash"] == st2["cash"] == run.START_CASH == 2000.0
+    assert st2["equity"][0]["eur"] == 2000.0 and len(st2["pending"]) == 1
