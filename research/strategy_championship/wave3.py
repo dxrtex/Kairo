@@ -183,3 +183,55 @@ def s20_orders(P, cand: pd.DataFrame) -> list[Order]:
         out.append(Order(x.date, x.ticker, stop_from_fill=1.5 * a, risk_frac=0.01, trail=("be_prevlow", 2.0 * a),
                          prio=float(x.prio), tag="S20"))
     return out
+
+
+# ------------------------------------------------------------------ S19-Varianten (Protokoll v1.7)
+def s19_variant(P, sigma: float = 2.5, vol: str = "strict", entry: str = "trigger") -> tuple[pd.DataFrame, dict]:
+    """Wie s19_candidates, aber mit Schwelle `sigma`, Volumen „strict“ (V_t<V_t−1<V_t−2) oder „2of3“ (mind. 2 der letzten 3
+    Tagesvergleiche sinkend) und Einstieg „trigger“ (Tageskerzen-Ersatz H4, wie v1.5) oder „open“ (nächste Eröffnung, CRV am
+    Signaltag mit Stop = Signaltag-Tief − 0,5 ATR). → Kandidaten + Zähler (Signale, Auslöser, CRV ok)."""
+    rows, n = [], {"signale": 0, "ausloeser": 0, "crv_ok": 0}
+    for t, x in P.G.items():
+        if not x["us"].iloc[0]:
+            continue
+        C, O, H, L, V = x["C"], x["O"], x["H"], x["L"], x["V"]
+        down3 = (C < C.shift(1)) & (C.shift(1) < C.shift(2)) & (C.shift(2) < C.shift(3))
+        if vol == "strict":
+            vex = (V < V.shift(1)) & (V.shift(1) < V.shift(2))
+        else:
+            vex = ((V < V.shift(1)).astype(int) + (V.shift(1) < V.shift(2)).astype(int) + (V.shift(2) < V.shift(3)).astype(int)) >= 2
+        sig = x["elig"] & x["qual"] & (x["ret3"] < x["sec3"]) & (C <= x["ema20"] - sigma * x["std20"]) & down3 & vex
+        sig = sig & (x.index >= P.start) & (x.index <= P.end)
+        if not sig.any():
+            continue
+        red_high = H.where(C < O).ffill().shift(1)
+        trig = (C > O) & (C > red_high)
+        idx, last_t = x.index, -1
+        for s in np.flatnonzero(sig.to_numpy()):
+            if s <= last_t:
+                continue
+            n["signale"] += 1
+            z = (C.iloc[s] - x["ema20"].iloc[s]) / x["std20"].iloc[s]
+            if entry == "open":
+                sl = L.iloc[s] - 0.5 * x["atr"].iloc[s]
+                c, tp = C.iloc[s], x["ema20"].iloc[s]
+                n["ausloeser"] += 1
+                if c > sl and tp - c >= 2 * (c - sl) and s + 1 < len(idx) and idx[s] <= P.end:
+                    n["crv_ok"] += 1
+                    rows.append({"date": idx[s], "ticker": t, "stop_adj": sl, "prio": -z, "bull": bool(x["bull"].iloc[s])})
+                    last_t = s + WINDOW
+                continue
+            for k in range(s + 1, min(s + 1 + WINDOW, len(idx))):
+                if idx[k] > P.end:
+                    break
+                if not trig.iloc[k]:
+                    continue
+                n["ausloeser"] += 1
+                sl = L.iloc[s:k + 1].min() - 0.5 * x["atr"].iloc[k]
+                c, tp = C.iloc[k], x["ema20"].iloc[k]
+                if c > sl and tp - c >= 2 * (c - sl):
+                    n["crv_ok"] += 1
+                    rows.append({"date": idx[k], "ticker": t, "stop_adj": sl, "prio": -z, "bull": bool(x["bull"].iloc[k])})
+                last_t = k
+                break
+    return pd.DataFrame(rows, columns=["date", "ticker", "stop_adj", "prio", "bull"]), n
