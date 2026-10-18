@@ -1,0 +1,72 @@
+name: Research – Rohdaten sichern (D0)
+
+# Sichert die Ereignis-Dateien der beiden 10-Jahres-Stichproben (kurz-*), die nach 14 Tagen ablaufen würden.
+# Läuft nur bei Push auf research/** mit Änderung an dieser Datei oder manuell. Keine App-/Produktivänderung.
+on:
+  push:
+    branches: ["research/**"]
+    paths: [".github/workflows/research_archive.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: kurz-*
+          merge-multiple: true
+          path: s1
+          run-id: 38183381057
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: kurz-*
+          merge-multiple: true
+          path: s2
+          run-id: 38263294012
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Packen und Prüfsummen
+        run: |
+          set -e
+          ls s1 | wc -l; ls s2 | wc -l; du -sh s1 s2
+          tar -cf - s1 | xz -T0 -6 > sample1_run38183381057.tar.xz
+          tar -cf - s2 | xz -T0 -6 > sample2_run38263294012.tar.xz
+          sha256sum s1/*.json s2/*.json > MANIFEST_files.sha256
+          sha256sum *.tar.xz > MANIFEST_archives.sha256
+          ls -la *.tar.xz; cat MANIFEST_archives.sha256
+          python3 - <<'PY'
+          import json, glob, collections
+          for s in ("s1", "s2"):
+              ev = []
+              for p in sorted(glob.glob(f"{s}/*.json")):
+                  ev += json.load(open(p))
+              t = {e["t"] for e in ev}
+              k = collections.Counter(e["k"] for e in ev)
+              d = sorted(e["d"] for e in ev)
+              print(s, "events", len(ev), "stocks", len(t), dict(k), d[0], d[-1])
+              open(f"{s}_tickers.txt", "w").write("\n".join(sorted(t)))
+          a, b = set(open("s1_tickers.txt").read().split()), set(open("s2_tickers.txt").read().split())
+          print("overlap", len(a & b), "of", len(a), len(b))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: research-raw-samples
+          path: |
+            *.tar.xz
+            MANIFEST_*.sha256
+            s*_tickers.txt
+          retention-days: 90
+      - name: Dauerhaft als Entwurfs-Release (nur für Repo-Berechtigte sichtbar)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create research-raw-2026-10 *.tar.xz MANIFEST_*.sha256 s1_tickers.txt s2_tickers.txt \
+            --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Research-Rohdaten 10-Jahres-Stichproben (Okt. 2026)" \
+            --notes "Ereignis-Dateien der Runs 38183381057 und 38263294012 (bilanz.py --px-base). Nur Forschung, nicht für die App."
