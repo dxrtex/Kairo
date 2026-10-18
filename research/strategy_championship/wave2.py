@@ -70,14 +70,18 @@ def _resid_scores(P, bench) -> dict:
     return out
 
 
-def monthly_stock(P, sid: str, bench=None, rng=None, n: int = 10) -> tuple[list, dict]:
-    """S06-P, S07-A/B: Top 10 je Monatsende unter den zulässigen Titeln; Null: 10 zufällige zulässige."""
+def monthly_stock(P, sid: str, bench=None, rng=None, n: int = 10, regime=None) -> tuple[list, dict]:
+    """S06-P, S07-A/B: Top 10 je Monatsende unter den zulässigen Titeln; Null: 10 zufällige zulässige.
+    regime: Menge der Monatsenden, an denen investiert werden darf (sonst alles verkaufen) – Phase D, S07-B-T."""
     if sid == "S06-P" and not hasattr(P, "_resid"):
         P._resid = _resid_scores(P, bench)
     tops, prev, orders, ex = {}, [], [], {}
     for d in _month_ends(P):
         pool = P.pool.get(d)
         if pool is None or not len(pool):
+            continue
+        if regime is not None and d not in regime:
+            tops[d] = []
             continue
         if rng is not None:
             tops[d] = list(rng.choice(pool, min(n, len(pool)), replace=False))
