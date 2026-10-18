@@ -3611,6 +3611,7 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("change", e => { if (["etfTotal", "etfShare", "etfRate", "etfUnits", "etfBuy", "etfSince"].includes(e.target.id) && state.sec === "etf") render(); });
 document.addEventListener("click", e => {
+  if (e.target.closest("[data-statusok]")) { e.preventDefault(); state.statusSeen = 1; save(); render(); return; }
   if (e.target.closest("[data-etfauto]")) { const x = { ...(state.etf || {}) }; delete x.shareManual; delete x.share; state.etf = x; save(); render(); return; }
   if (!e.target.closest("#etfSync")) return;
   const c = etfCfg(); state.tpDepot = Math.round(c.total * (100 - c.share) / 100); save(); render();
@@ -4657,6 +4658,7 @@ function einHtml() {
   const r = state.einT && searchIdx.find(x => x.t === state.einT);
   const best = kmRank().hits.slice(0, 8), free = kmSlots();
   return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span>Setup · Trade-Plan · Hebel</span></div>
+    <div class="note" style="margin:0 2px 10px">ℹ️ <b>Forschungsstand 10/2026:</b> Kurzfristige Setups (Kairo-Treffer, 4H, Trend-Rücksetzer) zeigten im Test 2008–2021 keinen belegten Vorteil gegenüber Zufall. Hebel (Turbos) verstärkt Verluste und Kosten zusätzlich – nur zum Lernen oder mit Spielgeld (Reiter Übung). Gebühren mit PRIME+: Orders ab 250 € kostenlos, darunter 0,99 €.</div>
     <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
     ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Kairo-Treffer</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
       ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Kairo-Treffer · ruhigste zuerst${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Schwankung ${x.ap != null ? pct(x.ap, 1) : "–"}${i < free ? "" : " · nur bei freiem Platz"}</span>${einTag(x)}</button>`).join("")}</div>` : ""}`}`;
@@ -4791,7 +4793,7 @@ function renderMain() {
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       <button class="kchip filt" data-sub="filter">Filter${nFilt ? ` <small>${nFilt}</small>` : ""}</button></div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
-  const head = searchHtml() + bar + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "⚡ Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>`;
+  const head = searchHtml() + bar + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "⚡ Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen ? "" : `<div class="note" style="margin:0 2px 10px">ℹ️ <b>Forschungsstand 10/2026:</b> Das Kairo-Setup (Treffer · 4H-Einstiege) war 2008–2016 nicht besser als Zufall und hat den Test 2017–2021 nicht bestanden. Nutze die Liste zum Lernen und Beobachten – nicht als Kaufempfehlung. Am besten belegt sind bisher Welt-ETF und Momentum (Depot → Papier). <a href="#" data-statusok>Verstanden, ausblenden</a></div>`);
   if (!list.length && $("search").value.trim().length >= 2) { $("main").innerHTML = searchHtml() + bar; return; }
   if (!list.length) {
     $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.has("h4") ? "Gerade kein Treffer mit fertiger Seitwärtsphase – die 4H-Prüfung beginnt, sobald eine da ist. Wo die Treffer stehen, siehst du unter „Treffer“ in der Status-Spalte." : k.has("fav") && !data.results.some(r => r.in_watchlist) ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
