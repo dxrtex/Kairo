@@ -1,0 +1,109 @@
+name: Research – Gate C Validierung 2017–2021 (einmalig)
+
+# Freigabe „Gate C freigeben mit 8“ (18.10.2026). Rechnet NUR die 8 Finalisten aus 08_VALIDATION_PLAN.md im
+# Validierungszeitraum; Holdout bleibt versiegelt. Keine Deployments, keine Orders. Ergebnis: Entwurfs-Release research-v-<Lauf>.
+on:
+  push:
+    branches: ["research/**"]
+    paths: [".github/workflows/research_v.yml", "research/strategy_championship/v_trigger.txt"]
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  MANIFEST_ASSET: "653201145"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+
+jobs:
+  s01sig:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+                20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Datensatz v1 laden und prüfen
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$MANIFEST_ASSET > v1/MANIFEST_v1.json
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - run: python -m research.strategy_championship.run_s01 --data v1 --shard ${{ matrix.shard }} --shards 40 --out out --period validation
+      - uses: actions/upload-artifact@v4
+        with: { name: "vsig-${{ matrix.shard }}", path: out/, retention-days: 30 }
+  finalist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        finalist: [ETF, S07-B, S05-B, S02-B, S08-A]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Datensatz v1 laden und prüfen
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$MANIFEST_ASSET > v1/MANIFEST_v1.json
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - run: python -m research.strategy_championship.v_run --data v1 --finalist ${{ matrix.finalist }} --out out --seeds 200
+      - uses: actions/upload-artifact@v4
+        with: { name: "v-${{ matrix.finalist }}", path: out/, retention-days: 30 }
+  kairo:
+    needs: s01sig
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Datensatz v1 laden und prüfen
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$MANIFEST_ASSET > v1/MANIFEST_v1.json
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - uses: actions/download-artifact@v4
+        with: { pattern: "vsig-*", merge-multiple: true, path: vsig }
+      - run: python -m research.strategy_championship.v_run --data v1 --finalist S01-B --signals vsig --out out --seeds 200
+      - run: cp vsig/crosscheck_*.json out/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        with: { name: "v-S01-B", path: out/, retention-days: 30 }
+  collect:
+    needs: [finalist, kairo]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { pattern: "v-*", merge-multiple: true, path: v }
+      - run: tar -cJf v_results.tar.xz v && ls -la v
+      - name: Als Entwurfs-Release sichern
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          gh release create "research-v-${GITHUB_RUN_ID}" v_results.tar.xz v/v_*.json \
+            --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Research Gate C Validierung 2017–2021" --notes "Nur Forschung. Einmalige Validierung der 8 Finalisten. Holdout versiegelt."
