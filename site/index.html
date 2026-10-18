@@ -4683,8 +4683,8 @@ function paperLoad() {
   if (PAPER.busy || (PAPER.d && Date.now() - PAPER.at < 3e5)) return;
   PAPER.busy = true;
   const v = "?v=" + Math.floor(Date.now() / 3e5), get = f => fetch(PAPER_URL + f + v).then(r => r.ok ? r.json() : null);
-  Promise.all([get("summary.json"), get("s19.json"), get("s19b.json"), get("s19c.json"), get("s20.json"), get("mom5.json")])
-    .then(([sum, s19, s19b, s19c, s20, mom5]) => { PAPER.d = sum || s19 || s20 ? { sum, s19, s19b, s19c, s20, mom5 } : null; PAPER.err = !PAPER.d; })
+  Promise.all([get("summary.json"), get("s19.json"), get("s19b.json"), get("s19c.json"), get("s20.json"), get("mom5.json"), get("mom10.json")])
+    .then(([sum, s19, s19b, s19c, s20, mom5, mom10]) => { PAPER.d = sum || s19 || s20 ? { sum, s19, s19b, s19c, s20, mom5, mom10 } : null; PAPER.err = !PAPER.d; })
     .catch(() => { PAPER.err = true; })
     .finally(() => { PAPER.busy = false; PAPER.at = Date.now(); if (state.sec === "paper") render(); });
 }
@@ -4701,16 +4701,17 @@ function paperSpark(st, bench) {
     <div class="oleg"><span class="${e[e.length - 1] >= S ? "up" : "down"}">■ Papier-Depot</span><span class="gold">┄ ACWI kaufen &amp; halten (gleicher Start)</span></div>`;
 }
 function paperCard(sid, st, sm, bench) {
-  const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3", MOM5: "MOM5 · Momentum Top 5 (monatlich)" }[sid] || "S20 · Trendfolge / VCP";
+  const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3", MOM5: "MOM5 · Momentum Top 5 (monatlich)", MOM10: "MOM10 · Momentum Top 10 (monatlich)" }[sid] || "S20 · Trendfolge / VCP";
   const vr = { S19B: "Variante B: wie S19, aber das Volumen muss nur an 2 der letzten 3 Tage sinken. ", S19C: "Variante C: Überdehnung schon ab 2,0 Std und Volumen an 2 der letzten 3 Tage sinkend. " }[sid] || "";
-  const rule = sid === "MOM5" ? "Am ersten Handelstag jedes Monats: die 5 Aktien mit dem stärksten Kursanstieg der letzten 6 Monate (ohne den letzten Monat), geteilt durch ihre Schwankung. Kauf zur Eröffnung, gleich gewichtet; was aus den Top 5 fällt, wird verkauft. Kein Stop. Einzige Aktienstrategie, die unsere Validierung 2017–2021 bestanden hat (mit 10 Titeln) – mit 5 Titeln liegt jede Order über 250 € (PRIME+ gebührenfrei). Rückgänge von 30–40 % sind historisch normal."
+  const rule = sid === "MOM10" ? "Wie MOM5, aber die 10 stärksten Aktien – genau die Fassung, die die Validierung 2017–2021 bestanden hat (+27,9 % p. a., größter Rückgang −47 %, deutlich besser als Zufall, nicht von wenigen Ausreißern abhängig). Mit PRIME+ ist jede Order ab etwa 2.600 € Trading-Kapital gebührenfrei. Aktueller Favorit für deinen Trading-Teil."
+    : sid === "MOM5" ? "Am ersten Handelstag jedes Monats: die 5 Aktien mit dem stärksten Kursanstieg der letzten 6 Monate (ohne den letzten Monat), geteilt durch ihre Schwankung. Kauf zur Eröffnung, gleich gewichtet; was aus den Top 5 fällt, wird verkauft. Kein Stop. Einzige Aktienstrategie, die unsere Validierung 2017–2021 bestanden hat (mit 10 Titeln) – mit 5 Titeln liegt jede Order über 250 € (PRIME+ gebührenfrei). Rückgänge von 30–40 % sind historisch normal."
     : sid.startsWith("S19")
     ? vr + "Große US-Qualitätsaktie (≥ 10 Mrd. $, operative Marge > 0) fällt 3 Tage mit sinkendem Volumen ≥ 2,5 Std unter die EMA20 und stärker als ihre Branche → Kauf, wenn eine grüne 4H-Kerze über dem Hoch der letzten roten schließt (CRV ≥ 2). Stop unter Panik-Tief − 0,5 ATR, Ziel EMA20. Bärenmarkt: halbes Risiko, max. 2 Positionen."
     : "S&P 500 über EMA200, Aktie über EMA50 > EMA200, Bollinger-Bänder ziehen sich zusammen, Kurs an EMA50 bzw. 50–61,8 %-Zone → Kauf, wenn eine 4H-Kerze ≥ 1 % über der 4H-EMA20 mit Volumen schließt. Stop 1,5 ATR, ab +2 ATR Einstand, dann unter das Tief der letzten 4H-Kerze nachziehen.";
   if (!st) return `<div class="hcard">${hHead(name)}<div class="note">Noch keine Daten – der erste Lauf startet nach US-Börsenschluss.</div></div>`;
   const s = sm || {}, eq = (st.equity || []).slice(-1)[0], val = eq ? eq.eur : st.start_cash, ret = val / st.start_cash - 1;
   const tr = st.trades || [], wins = tr.filter(x => x.pnl_eur > 0).length, rs = tr.map(x => x.R_net ?? x.R).filter(x => x != null);
-  const avgR = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null, mom = sid === "MOM5";
+  const avgR = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null, mom = sid.startsWith("MOM");
   const rets = tr.map(x => x.ret).filter(x => x != null), avgRet = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : null;
   const pos = (st.positions || []).map(p => `<tr><td><b>${esc(p.t)}</b></td><td>${esc(String(p.entry_ts).slice(0, 10))}</td><td>${fmt(p.entry)}</td><td class="down">${p.stop ? fmt(p.stop) : "–"}</td><td>${p.qty}</td><td>${p.be ? "Einstand ✓" : p.regime === "bear" ? "Bärenmarkt" : ""}</td></tr>`).join("");
   const pend = (st.pending || []).slice().sort((a, b) => String(a.expiry).localeCompare(String(b.expiry)));
@@ -4750,7 +4751,7 @@ function paperHtml() {
   if (!d) return head + `<div class="hcard"><div class="note">${PAPER.err ? "Papier-Daten noch nicht verfügbar – der erste Lauf erscheint nach dem nächsten US-Börsenschluss." : "Lade Papier-Daten …"}</div></div>`;
   const sm = d.sum || {}, bench = sm.bench || [];
   return head + paperCard("S19", d.s19, sm.S19, bench) + paperCard("S19B", d.s19b, sm.S19B, bench)
-    + paperCard("S19C", d.s19c, sm.S19C, bench) + paperCard("S20", d.s20, sm.S20, bench) + paperCard("MOM5", d.mom5, sm.MOM5, bench)
+    + paperCard("S19C", d.s19c, sm.S19C, bench) + paperCard("S20", d.s20, sm.S20, bench) + paperCard("MOM10", d.mom10, sm.MOM10, bench) + paperCard("MOM5", d.mom5, sm.MOM5, bench)
     + shadowHtml(sm.shadow)
     + `<div class="note" style="margin:6px 2px">Stand: ${esc(sm.ts ? new Date(sm.ts).toLocaleString("de-DE") : "–")}. Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser (so real nachhandelbar). 4H-Kerzen wie TradingView (US: 9:30–13:30 und 13:30–16:00). R nach Gebühren und Spread. Grenzen: Yahoo-Stundenkerzen teils verzögert, Fundamentaldaten wöchentlich von Yahoo.</div>`;
 }
