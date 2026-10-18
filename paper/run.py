@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import core, momentum
+from . import core, dualmom, momentum
 
 HERE = Path(__file__).resolve().parent
 START_CASH = 2000.0                                # Nutzer-Startkapital (18.10.2026)
@@ -399,7 +399,8 @@ def report(d: Path, states: list[dict], bench: list[dict] | None = None, shadow:
         summ[st["sid"]] = s
         name = {"S19": "S19 Hybride Mean Reversion (Original)", "S19B": "S19-B (Volumen 2 von 3 Tagen)",
                 "S19C": "S19-C (2,0 Std, Volumen 2 von 3)", "MOM5": "MOM5 Momentum Top 5 (monatlich)",
-                "MOM10": "MOM10 Momentum Top 10 (monatlich, validiert)"}.get(st["sid"], "S20 Trendfolge / VCP")
+                "MOM10": "MOM10 Momentum Top 10 (monatlich; Holdout nicht bestanden)",
+                "DM": "DM Dual Momentum SPY/EFA/QQQ → SHY"}.get(st["sid"], "S20 Trendfolge / VCP")
         lines += [f"## {name}", "", f"- Start: {s['start']} · Handelstage: {s['tage']}",
                   f"- Depot: **{s['depot_eur']:,.2f} €** ({s['rendite']:+.2%}) · größter Rückgang {s['max_dd']:.1%}",
                   f"- Abgeschlossene Trades: {s['trades']}" + (f" · Trefferquote {s['trefferquote']:.0%} · Ø R {s['avg_R']:+.2f}"
@@ -435,9 +436,9 @@ def main(argv=None) -> int:
     fund = refresh_fund(sd / "fund_cache.json", uni)
     s19_t = [t for t, v in fund.items() if (v.get("mcap") or 0) >= 10e9 and (v.get("opm") or 0) > 0]
     s20_t = list(uni["ticker"])
-    states = [load_state(sd, "S19"), load_state(sd, "S19B"), load_state(sd, "S19C"), load_state(sd, "S20"), load_state(sd, "MOM5"), load_state(sd, "MOM10")]
+    states = [load_state(sd, "S19"), load_state(sd, "S19B"), load_state(sd, "S19C"), load_state(sd, "S20"), load_state(sd, "MOM5"), load_state(sd, "MOM10"), load_state(sd, "DM")]
     need = set(s19_t) | set(s20_t) | {p["t"] for s in states for p in s["positions"]}
-    daily = download(sorted(need) + ["^GSPC"] + ETFS)
+    daily = download(sorted(set(need) | set(dualmom.TICKERS)) + ["^GSPC"] + ETFS)
     fxd = download(list(FX_T.values()), period="2y")
     fx = {c: fxd[t]["Close"] for c, t in FX_T.items() if t in fxd}
     fx_usd = fx.get("USD")
@@ -456,7 +457,7 @@ def main(argv=None) -> int:
             st["start"] = str(last.date())
             st["equity"].append({"date": str(last.date()), "eur": st["start_cash"], "open": 0})
             st["last_day"] = str(last.date())
-            if st["sid"].startswith("MOM"):            # Momentum kauft am nächsten Handelstag zur Eröffnung
+            if st["sid"].startswith("MOM") or st["sid"] == "DM":   # kaufen am nächsten Handelstag zur Eröffnung
                 continue
             new_setups(st, mk, last, cal, s19_t if st["sid"].startswith("S19") else s20_t, bool(bull.loc[last]), fund, sec3)
             st["last_day"] = str(last.date())
@@ -467,6 +468,10 @@ def main(argv=None) -> int:
         days = [d for d in cal if d > pd.Timestamp(st["last_day"])]
         for D in days:
             prev = cal[cal < D][-1]
+            if st["sid"] == "DM":
+                dualmom.day(st, mk, D, prev, equity, close_pos)
+                st["last_day"] = str(D.date())
+                continue
             if st["sid"].startswith("MOM"):
                 momentum.day(st, mk, D, prev, s20_t, equity, close_pos, int(st["sid"][3:]))
                 st["last_day"] = str(D.date())
