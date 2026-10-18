@@ -63,6 +63,7 @@ class Result:
     trades: pd.DataFrame
     skipped: dict
     checks: dict = field(default_factory=dict)
+    invested: pd.Series | None = None
 
 
 class _Px:
@@ -123,6 +124,8 @@ class _Pos:
     exit_rule: tuple | None
     tag: str
     cost_eur: float
+    risk_eur: float = 0.0
+    spread_eur: float = 0.0
     days: int = 0
 
 
@@ -147,7 +150,7 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
     sell_next: set[str] = set()
     filled_groups: set[str] = set()
     cash, pos = float(start_cash), {}
-    led, trades, eq = [], [], {}
+    led, trades, eq, inv = [], [], {}, {}
     skipped = {"no_data": 0, "open_below_stop": 0, "band": 0, "risk_atr": 0, "full": 0, "held": 0, "no_cash": 0, "group": 0}
 
     def close_of(t, d):
@@ -169,9 +172,11 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
         cur = currency.get(p.ticker, "EUR")
         price = raw_px * (1 - costs.side(p.ticker, cur))
         flow = book(d, "SELL", p.ticker, p.qty, price, costs.fee_eur, why)
+        spread_out = p.qty * (raw_px - price) / fxo.rate(cur, d)
         trades.append({"ticker": p.ticker, "tag": p.tag, "entry_date": pd.Timestamp(p.entry_date), "exit_date": pd.Timestamp(d),
                        "entry_px": p.entry_px, "exit_px": price, "qty": p.qty, "days": p.days, "why": why,
-                       "pnl_eur": flow - p.cost_eur, "stop": p.stop, "cost_eur": p.cost_eur})
+                       "pnl_eur": flow - p.cost_eur, "stop": p.stop, "cost_eur": p.cost_eur, "risk_eur": p.risk_eur,
+                       "fees_eur": 2 * costs.fee_eur, "spread_eur": p.spread_eur + spread_out})
         del pos[p.ticker]
 
     def equity(d):
@@ -222,6 +227,8 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
                 rr = (op - o.stop) / o.atr
                 if not (o.risk_atr[0] <= rr <= o.risk_atr[1]):
                     skipped["risk_atr"] += 1
+                    if o.group is not None:             # wie im Original: Signal verworfen, kein späterer Versuch
+                        filled_groups.add(o.group)
                     continue
             cur = currency.get(o.ticker, "EUR")
             rate = fxo.rate(cur, d)
@@ -239,7 +246,9 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
                 skipped["no_cash"] += 1
                 continue
             flow = book(d, "BUY", o.ticker, qty, price, costs.fee_eur, o.tag)
-            pos[o.ticker] = _Pos(o.ticker, qty, d, price, o.stop, o.target, o.max_days, o.exit_rule, o.tag, -flow)
+            pos[o.ticker] = _Pos(o.ticker, qty, d, price, o.stop, o.target, o.max_days, o.exit_rule, o.tag, -flow,
+                                 risk_eur=qty * (price - o.stop) / rate if o.stop is not None else 0.0,
+                                 spread_eur=qty * (price - op) / rate)
             if o.group is not None:
                 filled_groups.add(o.group)
         # 2) Tagesverlauf: Dividende, Stop, Ziel, Zeit; Ausstiegsregel EMA → nächste Eröffnung
@@ -271,12 +280,15 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
         for t in exit_sig.get(d, ()):
             if t in pos:
                 sell_next.add(t)
-        eq[pd.Timestamp(d)] = equity(d)
+        e_ = equity(d)
+        eq[pd.Timestamp(d)] = e_
+        inv[pd.Timestamp(d)] = (e_ - cash) / e_ if e_ > 0 else 0.0
     for t in list(pos):
         sell(cal[-1], pos[t], close_of(t, cal[-1]), "end")
     if len(cal):
         eq[pd.Timestamp(cal[-1])] = cash
-    res = Result(pd.Series(eq, name="equity"), pd.DataFrame(led), pd.DataFrame(trades), skipped)
+    res = Result(pd.Series(eq, name="equity"), pd.DataFrame(led), pd.DataFrame(trades), skipped,
+                 invested=pd.Series(inv, name="invested"))
     res.checks = audit(res, start_cash)
     return res
 

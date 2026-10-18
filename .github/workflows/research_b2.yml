@@ -1,0 +1,89 @@
+name: Research – Baselines Train 2008–2016 (B2)
+
+# Nur Forschung: rechnet ausschließlich den Entwicklungszeitraum (Validierung/Holdout bleiben gesperrt),
+# keine Deployments, keine Orders. Ergebnis als Entwurfs-Release research-b2-<Lauf>.
+on:
+  push:
+    branches: ["research/**"]
+    paths: [".github/workflows/research_b2.yml", "research/strategy_championship/b2_trigger.txt"]
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  MANIFEST_ASSET: "653201145"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+
+jobs:
+  signals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+                20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Datensatz v1 laden und prüfen
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$MANIFEST_ASSET > v1/MANIFEST_v1.json
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - run: python -m research.strategy_championship.run_s01 --data v1 --shard ${{ matrix.shard }} --shards 40 --out out
+      - uses: actions/upload-artifact@v4
+        with: { name: "b2sig-${{ matrix.shard }}", path: out/, retention-days: 14 }
+  baselines:
+    needs: signals
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Datensatz v1 laden und prüfen
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$MANIFEST_ASSET > v1/MANIFEST_v1.json
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - uses: actions/download-artifact@v4
+        with: { pattern: "b2sig-*", merge-multiple: true, path: sig }
+      - run: python -m research.strategy_championship.b2_baselines --data v1 --signals sig --out b2 --seeds 200
+      - name: Gegenrechnung zusammenfassen
+        run: |
+          python - <<'EOF'
+          import json, glob
+          rows = [r for f in sorted(glob.glob("sig/crosscheck_*.json")) for r in json.load(open(f))]
+          trades = [r for r in rows if r.get("old") or r.get("new")]
+          bad = [r for r in rows if not r.get("match")]
+          s = {"signals": len(rows), "with_trade": len(trades), "match": sum(1 for r in rows if r.get("match")),
+               "trade_match": sum(1 for r in trades if r.get("match")), "mismatch_examples": bad[:60]}
+          json.dump(s, open("b2/crosscheck_summary.json", "w"), indent=1, default=str)
+          print({k: v for k, v in s.items() if k != "mismatch_examples"})
+          EOF
+          cp sig/s01_signals_*.parquet b2/ 2>/dev/null || true
+          tar -cJf b2_results.tar.xz b2
+      - uses: actions/upload-artifact@v4
+        with: { name: research-b2, path: b2/, retention-days: 90 }
+      - name: Als Entwurfs-Release sichern
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          gh release create "research-b2-${GITHUB_RUN_ID}" b2_results.tar.xz b2/b2_results.json b2/crosscheck_summary.json \
+            --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Research B2 Baselines (Train 2008–2016)" --notes "Nur Forschung. Validierung/Holdout nicht berechnet."
