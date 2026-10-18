@@ -1,0 +1,42 @@
+name: Papier-Handel S19/S20 (H4, ohne echte Orders)
+
+# Vorwärtstest der Nutzer-Strategien S19 (Hybride Mean Reversion) und S20 (Trendfolge/VCP) mit echten 4-Stunden-Kerzen.
+# Nur virtuelle Depots – keine Broker-Verbindung, keine Orders. Zustand und Bericht im Branch „paper-data“.
+on:
+  schedule:
+    - cron: "15 22 * * 1-5"       # nach US-Börsenschluss (18:15 EDT / 17:15 EST)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paper-trading
+  cancel-in-progress: false
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt pytest
+      - run: python -m pytest -q paper/tests
+      - name: Zustand laden (Branch paper-data)
+        run: |
+          if git ls-remote --exit-code --heads origin paper-data >/dev/null; then
+            git clone --depth 1 --branch paper-data "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" state
+          else
+            mkdir state && cd state && git init -q -b paper-data && git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git"
+          fi
+      - run: python -m paper.run --state state
+      - name: Zustand speichern
+        run: |
+          cd state
+          git config user.name "kairo-paper-bot"
+          git config user.email "kairo-paper-bot@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Papier-Handel $(date -u +%F)" || echo "keine Änderung"
+          git push -q origin paper-data
