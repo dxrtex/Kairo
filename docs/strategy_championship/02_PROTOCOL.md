@@ -205,3 +205,12 @@ Eröffnung nach dem Signaltag, CRV ≥ 2 am Signaltag (Ziel EMA20, Stop Signalta
 selbst etwas taugt. Größe: S19-PIT (Ø-Dollarvolumen ≥ 100 Mio. USD) und S19-TODAY (heutige Marktkap. ≥ 10 Mrd., Rückschaufehler).
 Kennzahlen: Signale/Jahr, davon CRV ≥ 2, Trades/Jahr, Ø R netto, Trefferquote, Depot 2.000 € und 20.000 € (Basis + Stress bei 2.000 €).
 Papier-Test: S19-B und S19-C laufen zusätzlich zum Original als eigene Depots (je 2.000 €).
+
+
+## Addendum v1.8 (18.10.2026) – Schattenbuch im Papier-Test
+
+- paper/shadow.py verfolgt ab 19.10.2026 jedes S19-Familien-Signal (gesammelt mit Variante C; Zugehörigkeit zu S19/B/C je Signal gespeichert) und jedes S20-Signal mit echten 4H-Kerzen, unabhängig von den Depots.
+- S19: Einstieg „4h“ (Auslöser wie Depot, CRV gespeichert, nicht gefiltert) und „frueh“ (nächste Eröffnung, Stop Signaltag-Tief − 0,5 ATR). Ausstiege parallel: EMA20-Ziel, 5 Tage, 10 Tage (alle mit Stop; Notausstieg 40 Tage).
+- S20: Ausstiege Nutzerregel (Einstand ab +2 ATR, dann nachziehen), 5 Tage, 10 Tage.
+- Auswertung vorab festgelegt: Mindest-CRV {alle, 1, 1,5, 2} × Ausstieg; Kennzahl Ø R netto (Stückzahl 2.000-€-Depot, 1 % Risiko). Frühestens ab 30 Trades je Feld; Entscheidung zusammen mit dem Nutzer. Keine weiteren Parameter.
+- Plan für Phase 2 (Hybrid Trend + Mean Reversion): 15_HYBRID_PLAN.md.
