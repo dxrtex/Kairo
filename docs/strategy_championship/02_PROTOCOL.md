@@ -237,3 +237,13 @@ G1 Faber GTAA-5, G2 GTAA Aggressiv Top 3 aus 13 ETFs, G3 GEM (Antonacci), G4 Zei
 Kosten PRIME+ (Basis/Stress), Kapital 2.000/6.000/20.000 €, Zufall 100 Seeds (gleiche Anzahl zufälliger ETFs je Monat).
 Finalist-Regel: auf Train p vs. Zufall ≤ 0,10 und Sharpe ≥ ACWI halten; höchstens zwei Finalisten (beste Sharpe) gehen
 einmalig in die Validierung 2017–2021. Danach Endauswahl für den Holdout (max. 3 Strategien, inkl. S07-B Top 10, S16-B).
+
+
+## Addendum v2.1 (19.10.2026) – Nutzer-Freigabe „FINALEN HOLDOUT FREIGEGEBEN“
+
+Einmaliger Holdout 2022-01-01 … 2026-10-16, Plan unverändert aus 18/19 (keine Parameter-Änderung nach Öffnung):
+- H1 S07-B Momentum 6-1/Vol Top 10 (monatlich) gegen 100 Zufalls-Depots (10 zufällige zulässige Titel) und gegen ACWI halten.
+- H2 S16-B Dual Momentum SPY/EFA/QQQ → SHY gegen 100 Zufalls-Depots (zufälliger ETF derselben Auswahl) und ACWI halten.
+- Kosten PRIME+ Basis und Stress; Kapital 2.000 / 5.000 / 10.000 € (Strategie allein), Gesamtsystem 20.000 € (ACWI + 20/30 %).
+- Bestanden je Strategie: Stress-CAGR > ACWI halten (gleicher Zeitraum, gleiche Kosten) UND p vs. Zufall ≤ 0,05 (Bonferroni für 2).
+- Ergebnis wird unabhängig vom Ausgang vollständig berichtet.
