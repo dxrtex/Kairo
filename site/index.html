@@ -4681,14 +4681,15 @@ function paperLoad() {
   if (PAPER.busy || (PAPER.d && Date.now() - PAPER.at < 3e5)) return;
   PAPER.busy = true;
   const v = "?v=" + Math.floor(Date.now() / 3e5), get = f => fetch(PAPER_URL + f + v).then(r => r.ok ? r.json() : null);
-  Promise.all([get("summary.json"), get("s19.json"), get("s20.json")])
-    .then(([sum, s19, s20]) => { PAPER.d = sum || s19 || s20 ? { sum, s19, s20 } : null; PAPER.err = !PAPER.d; })
+  Promise.all([get("summary.json"), get("s19.json"), get("s19b.json"), get("s19c.json"), get("s20.json")])
+    .then(([sum, s19, s19b, s19c, s20]) => { PAPER.d = sum || s19 || s20 ? { sum, s19, s19b, s19c, s20 } : null; PAPER.err = !PAPER.d; })
     .catch(() => { PAPER.err = true; })
     .finally(() => { PAPER.busy = false; PAPER.at = Date.now(); if (state.sec === "paper") render(); });
 }
 function paperSpark(st, bench) {
   const e = (st.equity || []).map(x => x.eur), b0 = Object.fromEntries((bench || []).map(x => [x.date, x.eur]));
-  const b = (st.equity || []).map(x => b0[x.date] ?? null);
+  const S0 = st.start_cash || 2000, bf = (st.equity || []).map(x => b0[x.date]).find(z => z != null);
+  const b = (st.equity || []).map(x => b0[x.date] == null ? null : b0[x.date] / bf * S0);   // ACWI ab dem Start dieses Depots
   if (e.length < 2) return `<div class="note">Depotkurve erscheint ab dem zweiten Handelstag.</div>`;
   const S = st.start_cash || 5000, all = [...e, ...b.filter(z => z != null), S], lo = Math.min(...all), hi = Math.max(...all);
   const W = 600, H = 90, y = z => (H - 6 - (z - lo) / ((hi - lo) || 1) * (H - 12)).toFixed(1), X = i => (i / (e.length - 1) * W).toFixed(1);
@@ -4698,9 +4699,10 @@ function paperSpark(st, bench) {
     <div class="oleg"><span class="${e[e.length - 1] >= S ? "up" : "down"}">■ Papier-Depot</span><span class="gold">┄ ACWI kaufen &amp; halten (gleicher Start)</span></div>`;
 }
 function paperCard(sid, st, sm, bench) {
-  const name = sid === "S19" ? "S19 · Hybride Mean Reversion" : "S20 · Trendfolge / VCP";
-  const rule = sid === "S19"
-    ? "Große US-Qualitätsaktie (≥ 10 Mrd. $, operative Marge > 0) fällt 3 Tage mit sinkendem Volumen ≥ 2,5 Std unter die EMA20 und stärker als ihre Branche → Kauf, wenn eine grüne 4H-Kerze über dem Hoch der letzten roten schließt (CRV ≥ 2). Stop unter Panik-Tief − 0,5 ATR, Ziel EMA20. Bärenmarkt: halbes Risiko, max. 2 Positionen."
+  const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3" }[sid] || "S20 · Trendfolge / VCP";
+  const vr = { S19B: "Variante B: wie S19, aber das Volumen muss nur an 2 der letzten 3 Tage sinken. ", S19C: "Variante C: Überdehnung schon ab 2,0 Std und Volumen an 2 der letzten 3 Tage sinkend. " }[sid] || "";
+  const rule = sid.startsWith("S19")
+    ? vr + "Große US-Qualitätsaktie (≥ 10 Mrd. $, operative Marge > 0) fällt 3 Tage mit sinkendem Volumen ≥ 2,5 Std unter die EMA20 und stärker als ihre Branche → Kauf, wenn eine grüne 4H-Kerze über dem Hoch der letzten roten schließt (CRV ≥ 2). Stop unter Panik-Tief − 0,5 ATR, Ziel EMA20. Bärenmarkt: halbes Risiko, max. 2 Positionen."
     : "S&P 500 über EMA200, Aktie über EMA50 > EMA200, Bollinger-Bänder ziehen sich zusammen, Kurs an EMA50 bzw. 50–61,8 %-Zone → Kauf, wenn eine 4H-Kerze ≥ 1 % über der 4H-EMA20 mit Volumen schließt. Stop 1,5 ATR, ab +2 ATR Einstand, dann unter das Tief der letzten 4H-Kerze nachziehen.";
   if (!st) return `<div class="hcard">${hHead(name)}<div class="note">Noch keine Daten – der erste Lauf startet nach US-Börsenschluss.</div></div>`;
   const s = sm || {}, eq = (st.equity || []).slice(-1)[0], val = eq ? eq.eur : st.start_cash, ret = val / st.start_cash - 1;
@@ -4725,11 +4727,12 @@ function paperCard(sid, st, sm, bench) {
 function paperHtml() {
   paperLoad();
   const d = PAPER.d;
-  const head = `<div class="section-title"><span>Papier-Test</span><span>S19 · S20 mit echten 4H-Kerzen</span></div>
-    <div class="note" style="margin:0 2px 10px">Vorwärtstest deiner beiden Strategien – je ${fmt(((d && (d.s19 || d.s20)) || {}).start_cash || 2000, 0)} € virtuelles Startkapital (wie dein echtes Kapital), 0,99 € je Order + Spread. Läuft automatisch jeden Werktag nach US-Börsenschluss. <b>Keine echten Orders</b>, keine Anlageberatung. Aussagekräftig erst nach vielen Trades (eher 6–12 Monate).</div>`;
+  const head = `<div class="section-title"><span>Papier-Test</span><span>S19 · S19-B · S19-C · S20 mit echten 4H-Kerzen</span></div>
+    <div class="note" style="margin:0 2px 10px">Vorwärtstest deiner Strategien (S19 dazu in zwei lockereren Varianten B und C) – je ${fmt(((d && (d.s19 || d.s20)) || {}).start_cash || 2000, 0)} € virtuelles Startkapital (wie dein echtes Kapital), 0,99 € je Order + Spread. Läuft automatisch jeden Werktag nach US-Börsenschluss. <b>Keine echten Orders</b>, keine Anlageberatung. Aussagekräftig erst nach vielen Trades (eher 6–12 Monate).</div>`;
   if (!d) return head + `<div class="hcard"><div class="note">${PAPER.err ? "Papier-Daten noch nicht verfügbar – der erste Lauf erscheint nach dem nächsten US-Börsenschluss." : "Lade Papier-Daten …"}</div></div>`;
   const sm = d.sum || {}, bench = sm.bench || [];
-  return head + paperCard("S19", d.s19, sm.S19, bench) + paperCard("S20", d.s20, sm.S20, bench)
+  return head + paperCard("S19", d.s19, sm.S19, bench) + paperCard("S19B", d.s19b, sm.S19B, bench)
+    + paperCard("S19C", d.s19c, sm.S19C, bench) + paperCard("S20", d.s20, sm.S20, bench)
     + `<div class="note" style="margin:6px 2px">Stand: ${esc(sm.ts ? new Date(sm.ts).toLocaleString("de-DE") : "–")}. Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser (so real nachhandelbar). 4H-Kerzen wie TradingView (US: 9:30–13:30 und 13:30–16:00). R nach Gebühren und Spread. Grenzen: Yahoo-Stundenkerzen teils verzögert, Fundamentaldaten wöchentlich von Yahoo.</div>`;
 }
 

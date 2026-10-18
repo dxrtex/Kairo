@@ -70,16 +70,27 @@ def to_h4(h: pd.DataFrame) -> pd.DataFrame:
 
 
 # ------------------------------------------------------------------ Tagessignale
-def s19_signal(x: pd.DataFrame, i: int, sec_ret3: float | None) -> dict | None:
-    """Hybride Mean Reversion am Tag i (Schluss): Überdehnung ≥ 2,5 Std unter EMA20, 3 fallende Tage mit sinkendem Volumen,
+# Varianten (Protokoll v1.7): Überdehnung in Std unter der EMA20, Volumen „strict“ (V_t < V_t−1 < V_t−2) oder „2of3“
+# (an mindestens 2 der letzten 3 Tage gesunken). S19 = Nutzer-Original.
+S19_VARIANTS = {"S19": (2.5, "strict"), "S19B": (2.5, "2of3"), "S19C": (2.0, "2of3")}
+
+
+def vol_exhausted(V, i: int, mode: str = "strict") -> bool:
+    if mode == "strict":
+        return bool(V[i] < V[i - 1] < V[i - 2])
+    return (int(V[i] < V[i - 1]) + int(V[i - 1] < V[i - 2]) + int(V[i - 2] < V[i - 3])) >= 2
+
+
+def s19_signal(x: pd.DataFrame, i: int, sec_ret3: float | None, sigma: float = 2.5, vol: str = "strict") -> dict | None:
+    """Hybride Mean Reversion am Tag i (Schluss): Überdehnung ≥ sigma Std unter EMA20, 3 fallende Tage mit sinkendem Volumen,
     stärker gefallen als die eigene Branche. (Qualität/Größe/Regime prüft der Aufrufer.)"""
     if i < 3 or sec_ret3 is None or not np.isfinite(sec_ret3):
         return None
     r = x.iloc[i]
     C, V = x["Close"].to_numpy(), x["Volume"].to_numpy()
     down3 = C[i] < C[i - 1] < C[i - 2] < C[i - 3]
-    vex = V[i] < V[i - 1] < V[i - 2]
-    if not (down3 and vex and r["Close"] <= r["ema20"] - 2.5 * r["std20"] and r["ret3"] < sec_ret3):
+    vex = vol_exhausted(V, i, vol)
+    if not (down3 and vex and r["Close"] <= r["ema20"] - sigma * r["std20"] and r["ret3"] < sec_ret3):
         return None
     return {"panic": float(r["Low"]), "atr": float(r["atr"]), "z": float((r["Close"] - r["ema20"]) / r["std20"])}
 
