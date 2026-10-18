@@ -185,3 +185,23 @@ gekennzeichneten Varianten gerechnet:
 Vorab-Befund aus dem Funktionstest (Train, ohne Branchen-Datei): von 2,08 Mio. Titel-Tagen erfüllen 64 alle Tagesfilter; 39 davon
 lösen den Tageskerzen-Ersatz des H4-Triggers aus, **keiner** erfüllt danach CRV ≥ 2 (Kurs ist beim Auslösen schon nahe der EMA20).
 Der Tageskerzen-Ersatz ist für S19 daher **nicht geeignet**; ein echter Test braucht 4-Std.-Daten (nur vorwärts im Papier-Handel).
+
+---
+
+## Nachtrag v1.7 — S19-Varianten (18.10.2026, vor dem Lauf; Nutzer: „Ja beides umsetzen!“)
+
+Anlass: externe Kritik „S19 zu streng“. **Nur Train 2008–2016**, nur zur Orientierung (EXPLORATIV); Validierung/Holdout
+werden dafür nicht angefasst. Entscheidung fällt im Papier-Test (echter H4-Auslöser), nicht in diesem Lauf.
+
+| Variante | Überdehnung | Volumen | sonst |
+|---|---|---|---|
+| S19 (Original) | ≥ 2,5 Std unter EMA20 | V_t < V_t−1 < V_t−2 | wie v1.5 |
+| S19-A | ≥ 2,0 | streng sinkend | wie v1.5 |
+| S19-B | ≥ 2,5 | an mindestens 2 der letzten 3 Tage gesunken (V_t<V_t−1, V_t−1<V_t−2, V_t−2<V_t−3) | wie v1.5 |
+| S19-C | ≥ 2,0 | mindestens 2 von 3 | wie v1.5 |
+
+Je Variante zwei Einstiegsarten: (1) Tageskerzen-Ersatz des H4-Auslösers wie v1.5, (2) **ohne Auslöser**: Kauf zur nächsten
+Eröffnung nach dem Signaltag, CRV ≥ 2 am Signaltag (Ziel EMA20, Stop Signaltag-Tief − 0,5 ATR) — misst, ob das Tages-Setup
+selbst etwas taugt. Größe: S19-PIT (Ø-Dollarvolumen ≥ 100 Mio. USD) und S19-TODAY (heutige Marktkap. ≥ 10 Mrd., Rückschaufehler).
+Kennzahlen: Signale/Jahr, davon CRV ≥ 2, Trades/Jahr, Ø R netto, Trefferquote, Depot 2.000 € und 20.000 € (Basis + Stress bei 2.000 €).
+Papier-Test: S19-B und S19-C laufen zusätzlich zum Original als eigene Depots (je 2.000 €).
