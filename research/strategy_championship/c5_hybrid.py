@@ -43,11 +43,13 @@ def build(P, bench, cal) -> dict:
     me = wave2._month_ends(P)
     strat = {}
     strat["T1"] = wave2.monthly_stock(P, "S07-B", bench)
+    strat["T1-top5"] = wave2.monthly_stock(P, "S07-B", bench, n=5)       # PRIME+: größere Positionen (≥ 250 € ab ~1.300 €)
     t1r = {}
     for a, s in reg.items():
         good = {d for d in me if bool(s.get(pd.Timestamp(d), False))}
         t1r[a] = wave2.monthly_stock(P, "S07-B", bench, regime=good)
         strat[f"T1-{a}"] = t1r[a]
+        strat[f"T1-{a}-top5"] = wave2.monthly_stock(P, "S07-B", bench, regime=good, n=5)
     mr = {}
     for mid, sid in (("M2", "S11-A"), ("M3", "S04-M")):
         cand = P.candidates(sid)
@@ -87,6 +89,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
     ap.add_argument("--out", default="c5_out")
+    ap.add_argument("--only-prime", action="store_true", help="nur Kostenmodell Scalable PRIME+ (ab 250 € gebührenfrei)")
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -99,19 +102,23 @@ def main(argv=None) -> int:
     sp = spreads(P.raw, cur, region)
     costs = {"base": Costs(fee_eur=0.99, spread=0.001, spread_by_ticker=sp),
              "stress": Costs(fee_eur=1.99, spread=0.002, slippage=0.0005, fx_fee=0.001, spread_by_ticker={k: 2 * v for k, v in sp.items()}),
-             "null": Costs(fee_eur=0.0, spread=0.0)}
+             "null": Costs(fee_eur=0.0, spread=0.0),
+             "prime": Costs(fee_eur=0.99, spread=0.001, spread_by_ticker=sp, fee_free_from=250.0),
+             "prime_stress": Costs(fee_eur=1.99, spread=0.002, slippage=0.0005, fx_fee=0.001, fee_free_from=250.0,
+                                   spread_by_ticker={k: 2 * v for k, v in sp.items()})}
+    if a.only_prime:
+        costs = {k: v for k, v in costs.items() if k.startswith("prime")}
     strat, share = build(P, bench, cal)
     _G.update(P=P, cur=cur, fx=fx, cal=cal, costs=costs, strat=strat)
     jobs = [(s, c, cn) for s in strat for c in CAPS for cn in costs]
     with Pool() as pool:
         rr = pool.map(_job, jobs, chunksize=1)
     res = {f"{k[0]} · {k[1]} € · {k[2]}": v for k, v in rr}
-    (out / "c5_hybrid.json").write_text(json.dumps({"ampel_gut_anteil": share, "results": res}, indent=1, default=str,
+    (out / ("c5_prime.json" if a.only_prime else "c5_hybrid.json")).write_text(json.dumps({"ampel_gut_anteil": share, "results": res}, indent=1, default=str,
                                                    ensure_ascii=False))
     for s in strat:
-        b, st, z = (res[f"{s} · 5000 € · {cn}"] for cn in ("base", "stress", "null"))
-        print(f"{s:20s} 5k base {b['cagr']:+.1%} DD {b['max_dd']:.0%} T {b['trades']} | stress {st['cagr']:+.1%} | "
-              f"ohne Kosten {z['cagr']:+.1%}", flush=True)
+        print(s, " | ".join(f"{k.split(' · ', 1)[1]}: {v['cagr']:+.1%} DD {v['max_dd']:.0%}" for k, v in res.items()
+                            if k.startswith(s + " · ")), flush=True)
     print("Ampel gut (Anteil Tage):", share)
     return 0
 

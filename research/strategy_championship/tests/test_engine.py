@@ -211,3 +211,12 @@ def test_stop_from_fill():
     r = one({"A": px}, [Order(D[0], "A", stop_from_fill=1.5, risk_frac=0.01)], start_cash=1000, costs=NOCOST)
     t = r.trades.iloc[0]
     assert t["stop"] == 10.5 and t["qty"] == 6 and t["why"] == "stop" and t["exit_px"] == 10.5   # 10 € Risiko / 1,5
+
+
+def test_prime_plus_fee_free_from_250():
+    # 30 Stück à 10 € = 300 € ≥ 250 € → keine Gebühr; 20 Stück = 200 € → 0,99 € je Seite
+    c = Costs(fee_eur=0.99, spread=0.0, fee_free_from=250.0)
+    for w, fee in ((0.3, 0.0), (0.2, 0.99)):
+        r = one({"A": flat()}, [Order(D[0], "A", weight=w, max_days=3)], start_cash=1000.0, costs=c)
+        assert r.trades["fees_eur"].iloc[0] == pytest.approx(2 * fee)
+        assert r.equity.iloc[-1] == pytest.approx(1000.0 - 2 * fee)

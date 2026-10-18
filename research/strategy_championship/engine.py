@@ -32,6 +32,10 @@ class Costs:
     slippage: float = 0.0           # zusätzlich je Seite (Anteil)
     fx_fee: float = 0.0             # zusätzlich je Seite für Nicht-EUR-Titel
     spread_by_ticker: dict = field(default_factory=dict)
+    fee_free_from: float | None = None  # Orderwert (EUR) ab dem keine Gebühr anfällt (Scalable PRIME+: 250 €, gettex)
+
+    def fee(self, value_eur: float) -> float:
+        return 0.0 if self.fee_free_from is not None and value_eur >= self.fee_free_from else self.fee_eur
 
     def side(self, t: str, cur: str) -> float:
         return self.spread_by_ticker.get(t, self.spread) / 2 + self.slippage + (self.fx_fee if cur not in ("EUR",) else 0.0)
@@ -133,6 +137,7 @@ class _Pos:
     trail: tuple | None = None
     entry_raw: float = 0.0
     be_on: bool = False
+    fee_in: float = 0.0
 
 
 def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str, pd.Series], orders: list[Order],
@@ -180,12 +185,13 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
     def sell(d, p: _Pos, raw_px, why):
         cur = currency.get(p.ticker, "EUR")
         price = raw_px * (1 - costs.side(p.ticker, cur))
-        flow = book(d, "SELL", p.ticker, p.qty, price, costs.fee_eur, why)
+        fee_out = costs.fee(p.qty * price / fxo.rate(cur, d))
+        flow = book(d, "SELL", p.ticker, p.qty, price, fee_out, why)
         spread_out = p.qty * (raw_px - price) / fxo.rate(cur, d)
         trades.append({"ticker": p.ticker, "tag": p.tag, "entry_date": pd.Timestamp(p.entry_date), "exit_date": pd.Timestamp(d),
                        "entry_px": p.entry_px, "exit_px": price, "qty": p.qty, "days": p.days, "why": why,
                        "pnl_eur": flow - p.cost_eur, "stop": p.stop, "cost_eur": p.cost_eur, "risk_eur": p.risk_eur,
-                       "fees_eur": 2 * costs.fee_eur, "spread_eur": p.spread_eur + spread_out})
+                       "fees_eur": p.fee_in + fee_out, "spread_eur": p.spread_eur + spread_out})
         del pos[p.ticker]
 
     def equity(d):
@@ -260,10 +266,11 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
             if qty <= 0:
                 skipped["no_cash"] += 1
                 continue
-            flow = book(d, "BUY", o.ticker, qty, price, costs.fee_eur, o.tag)
+            fee_in = costs.fee(qty * price / rate)
+            flow = book(d, "BUY", o.ticker, qty, price, fee_in, o.tag)
             pos[o.ticker] = _Pos(o.ticker, qty, d, price, o.stop, o.target, o.max_days, o.exit_rule, o.tag, -flow,
                                  risk_eur=qty * (price - o.stop) / rate if o.stop is not None else 0.0,
-                                 spread_eur=qty * (price - op) / rate, trail=o.trail, entry_raw=op)
+                                 spread_eur=qty * (price - op) / rate, trail=o.trail, entry_raw=op, fee_in=fee_in)
             if o.group is not None:
                 filled_groups.add(o.group)
         # 2) Tagesverlauf: Dividende, Stop, Ziel, Zeit; Ausstiegsregel EMA → nächste Eröffnung
