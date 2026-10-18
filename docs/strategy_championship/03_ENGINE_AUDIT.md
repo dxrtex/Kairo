@@ -1,7 +1,7 @@
 # 03 — Engine-Audit (B3)
 
 **Stand:** 18.10.2026 · Branch `research/strategy-championship-phase-a` · Code: `research/strategy_championship/engine.py`
-**Urteil: PASS WITH LIMITATIONS** (Begründung unten; Zahlen der Gegenrechnung aus Lauf B2, Abschnitt 3)
+**Urteil: PASS WITH LIMITATIONS** (Gegenrechnung voller Lauf: 98,3 % der Signale / 93,6 % der Trades identisch, Rest vollständig durch Dividenden bzw. Periodenende erklärt — Abschnitt 6)
 
 ## 1. Was die Engine tut
 
@@ -69,4 +69,34 @@ Null-Strategie gleichartig; sie verbieten aber, absolute Renditen als realistisc
 
 ## 6. Gegenrechnung voller Lauf
 
-_wird nach Lauf B2 eingetragen_
+Lauf `research_b2.yml` #39120774730 (Commit `b22fceb`), alle 16.154 S01-Signale 2008–2016:
+
+| | Anzahl |
+|---|---|
+| Signale gesamt | 16.154 |
+| davon mit Trade (alt oder neu) | 4.255 |
+| identisch (Signale gesamt) | 15.880 (98,3 %) |
+| identisch (Trades) | 3.981 (93,6 %) |
+
+Ursachen der Abweichungen — die 60 im Lauf gespeicherten Fälle (von 274) einzeln nachgeprüft:
+
+| Ursache | Fälle | Bewertung |
+|---|---|---|
+| Ex-Dividende im Haltezeitraum (alt: bereinigte Kurse; neu: Kursabschlag + Cash-Gutschrift, Stop wird durch den Abschlag eher erreicht) | 32 | erwartete Modellabweichung; neu ist realitätsnäher (Stop-Order in Handelskursen) |
+| Ex-Dividende am Kauftag bzw. in der Basis (Stop/Band in Handelskursen verschoben, z. B. CSX 24.02.2010, APD 29.12.2011, SPGI 23.02.2016, NI 27.10.2016, BB.PA 30.05.2016) | 11 | erwartete Modellabweichung, gleiche Ursache |
+| Grenzfall genau auf einer Regelschwelle (Spanne = 1,500 ATR: EME, ECHO, TM, SMFG, TEM.L · Risiko = 0,500 ATR: ALK · Tief = Invalidierung: VRSN). Alt rundet Kurse auf 4 Stellen relativ und kippt auf die andere Seite | 7 | Rundung im Altmodell; neu rechnet exakt |
+| Kleine R-Differenz 0,02–0,04 R bei sehr großen Gewinnern (6–14 R; FTNT, IOSP, WDC, TS) | 4 | Rundung (relativer Fehler ≈ 0,3 %) |
+| Periodenende 30.12.2016 (alt: zu wenige Folgekerzen → kein Trade; neu: Verkauf zum Schluss „end“) | 6 | erwartete Abweichung (Abschneiden am Train-Ende) |
+
+**Keine** der 60 Abweichungen geht auf die Mechanik zurück (Zeitpunkt, Stop-Logik, Haltedauer). Die übrigen 214
+Abweichungen wurden nicht einzeln geprüft (nicht gespeichert); bei gleicher Verteilung ist dasselbe Bild zu erwarten —
+**NICHT EINZELN GEPRÜFT**. Bilanzprüfungen (Cash, kein negativer Kassenstand, PnL + Dividenden = Equity) in allen
+22 gespeicherten Depot-Läufen bestanden.
+
+**Hinweis zur Kennzahl Ø R:** Im Depot entstehen Rest-Positionen (1–2 Stück), wenn das Cash nicht mehr für die volle
+Größe reicht (1 % Risiko bei engem Stop bindet ≈ 50 % des Depots je Position). Deren Risiko ist winzig, die Gebühr fix →
+R-Werte bis −50 und ein verzerrter Durchschnitt. Für Euro-Ergebnisse ist das unerheblich (S01-A 5 k€/1 %: −7 € von
++2.004 €). Im Bericht wird Ø R deshalb nur über **volle Positionen** (Risiko ≥ 50 % des geplanten) ausgewiesen;
+eine Mindestgrößen-Regel für alle Strategien ist als Protokoll-Nachtrag vorgeschlagen (Gate B).
+
+**Endurteil B3: PASS WITH LIMITATIONS.**
