@@ -130,3 +130,43 @@ ETF-Strategien handeln US-ETFs (USD, FX zum Tageskurs) als **Proxy** für UCITS-
 S10 Earnings-Drift (keine historischen Termine/Überraschungen), S12 Multi-Faktor (keine zeitpunktgenauen Fundamentaldaten),
 S18 Insider-Cluster-Käufe (EDGAR-Form-4-Historie müsste erst aufgebaut werden — möglich, eigener Schritt mit Freigabe).
 S15/S17 bleiben **NICHT VALIDE TESTBAR**.
+
+---
+
+## Nachtrag v1.5 — Nutzer-Spezifikationen S19 und S20 (18.10.2026)
+
+Vom Nutzer exakt vorgegeben (Chat 18.10.2026), **keine** Parametersuche. Da nichts an Train-Ergebnissen ausgewählt wird,
+werden beide **im selben Lauf** auf Train (2008–2016) und — als ihre einmalige Validierung — auf 2017–2021 gerechnet.
+Bestehensregeln wie `08_VALIDATION_PLAN.md` (Bezug 5.000 € und 20.000 €). Holdout bleibt versiegelt.
+
+**S19 Hybride Mean Reversion** (nur US-Aktien, weil Fundamentaldaten nur aus EDGAR):
+1. Regime: S&P 500 (^GSPC) Schluss > EMA200 → 1 % Risiko; sonst 0,5 % und höchstens 2 offene Positionen.
+2. Qualität: Marktkapitalisierung ≥ 10 Mrd. USD **und** operative Marge > 0. *Ersatz:* EDGAR `EntityPublicFloat` ≥ 10 Mrd. USD
+   (Streubesitz-Wert aus dem letzten 10-K, ≤ 18 Monate alt; konservativ, da ≤ Marktkapitalisierung) und operatives Ergebnis /
+   Umsatz des letzten veröffentlichten Geschäftsjahrs > 0 (ohne operatives Ergebnis: Jahresüberschuss). Nur Werte mit
+   Veröffentlichungsdatum ≤ Handelstag.
+3. Branche: 3-Tage-Rendite der Aktie < 3-Tage-Rendite ihres Sektor-ETFs (XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY;
+   *Zuordnung über den SIC-Code*, Telekom/Medien → XLK, Rest → SPY).
+4. Signal: Schluss ≤ EMA20 − 2,5 × Std20 (Schlusskurse, 20 Tage) **und** Volumen-Erschöpfung: die letzten 3 Tage schlossen
+   jeweils tiefer (C_t < C_t−1 < C_t−2 < C_t−3) und V_t < V_t−1 < V_t−2.
+5. Auslöser H4: *Ersatz Tageskerze* (keine historischen 4-Std.-Daten): an einem der 5 Folgetage schließt eine Kerze grün
+   (Schluss > Eröffnung) **und** über dem Hoch der letzten roten Kerze → Kauf zur nächsten Eröffnung.
+6. Stop = tiefstes Tief seit dem Signaltag („Panik-Tief“) − 0,5 × ATR14. Ziel = erste Berührung der EMA20 (EMA des Vortags).
+   CRV ≥ 2 am Auslösetag (Ziel − Schluss ≥ 2 × (Schluss − Stop)). Kein Zeit-Ausstieg.
+   Ranking: stärkste Überdehnung (C − EMA20)/Std20.
+   Null: gleiche Anzahl je Tag, zufällige US-Titel aus demselben Qualitäts-Pool, die unter ihrer EMA20 liegen; Stop = Tagestief
+   − 0,5 ATR, Ziel EMA20, gleiche CRV-Prüfung und gleiches Regime.
+
+**S20 Prozyklische Trendfolge / VCP** (alle Titel des Universums):
+1. Kein neuer Kauf, wenn ^GSPC < EMA200.
+2. Schluss > EMA50 > EMA200.
+3. Bollinger-Bandbreite (20, 2) = (oben − unten)/Mitte < SMA20 der Bandbreite **und** Schluss höchstens 1,5 % von der EMA50
+   entfernt **oder** in der Zone 50–61,8 % Retracement zwischen 50-T.-Hoch und 50-T.-Tief (± 1,5 %).
+4. Auslöser H4: *Ersatz Tageskerze*: an einem der 5 Folgetage Schluss > EMA20 × 1,01 („signifikant“ = 1 %) **und**
+   Volumen > SMA20 des Volumens, Regime weiterhin positiv → Kauf zur nächsten Eröffnung.
+5. Stop = Kaufkurs − 1,5 × ATR14. Ab Hoch ≥ Kaufkurs + 2 × ATR14: Stop auf Einstand, danach täglich unter das Vortagestief
+   nachgezogen (*Ersatz* für „neue H4-Tiefs“). Kein festes Ziel, kein Zeit-Ausstieg. Risiko 1 % des Gesamtkapitals.
+   Ranking: Volumen / SMA20 des Volumens. Null: zufällige zulässige Titel am selben Tag, gleiche Stop-/Trailing-Regel.
+
+Echte H4-Auslöser sind mit Gratisdaten nur für ≈ 2 Jahre verfügbar (liegt im versiegelten Holdout) → **nur vorwärts im
+Papier-Handel** prüfbar. Max. offene Positionen 5 (5.000 €) bzw. 10 (20.000 €). Kosten und Mindestgröße wie v1.1.

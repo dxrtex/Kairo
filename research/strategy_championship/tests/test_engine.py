@@ -204,3 +204,10 @@ def test_max_open_cap():
     o = [Order(D[0], k, stop=9, weight=0.2, prio=3 - i, max_open_cap=2) for i, k in enumerate("ABC")]
     r = one(p, o, start_cash=1000, costs=NOCOST, max_open=5)
     assert set(r.trades["ticker"]) == {"A", "B"}
+
+
+def test_stop_from_fill():
+    px = bars([10, 12, 12, 11, 11], [10, 12, 12, 11, 11], [10, 12, 12, 10.4, 11], [10, 12, 12, 11, 11])
+    r = one({"A": px}, [Order(D[0], "A", stop_from_fill=1.5, risk_frac=0.01)], start_cash=1000, costs=NOCOST)
+    t = r.trades.iloc[0]
+    assert t["stop"] == 10.5 and t["qty"] == 6 and t["why"] == "stop" and t["exit_px"] == 10.5   # 10 € Risiko / 1,5

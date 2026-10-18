@@ -54,6 +54,7 @@ class Order:
     group: str | None = None
     exit_rule: tuple | None = None  # ("ema", from_day)
     valid_days: int = 1             # so viele Eröffnungen des Titels bleibt die Order gültig
+    stop_from_fill: float | None = None  # Stop = Kaufkurs (Eröffnung) − dieser Abstand (überschreibt stop)
     max_open_cap: int | None = None # Kauf nur, wenn weniger als so viele Positionen offen (z. B. Bärenmarkt-Regime)
     trail: tuple | None = None      # ("be_prevlow", Abstand): ab Kurs ≥ Einstieg + Abstand Stop auf Einstand, danach unter Vortagestief
 
@@ -223,6 +224,8 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
                 skipped["full"] += 1
                 continue
             op = p_.o[i]
+            if o.stop_from_fill is not None and np.isfinite(op):
+                o.stop = op - o.stop_from_fill
             if not np.isfinite(op) or op <= 0 or (o.stop is not None and op <= o.stop):
                 skipped["open_below_stop"] += 1
                 continue

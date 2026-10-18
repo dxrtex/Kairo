@@ -22,7 +22,8 @@ import pandas as pd
 
 from .data import UNIVERSE
 
-UA = {"User-Agent": "Kairo strategy research (github.com/dxrtex/Kairo)", "Accept-Encoding": "identity"}
+UA = {"User-Agent": "Kairo Research kairo-research@users.noreply.github.com", "Accept-Encoding": "identity"}
+DIAG: list[str] = []
 REV = ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet",
        "RevenueFromContractWithCustomerIncludingAssessedTax", "RevenuesNetOfInterestExpense", "SalesRevenueGoodsNet"]
 OPI = ["OperatingIncomeLoss"]
@@ -35,6 +36,8 @@ def get(url: str, tries: int = 4):
             with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
                 return json.loads(r.read())
         except Exception as e:                      # 404 = keine XBRL-Daten
+            if len(DIAG) < 40:
+                DIAG.append(f"{url} -> {e!r}")
             if "404" in str(e):
                 return None
             time.sleep(1.5 * (k + 1))
@@ -68,6 +71,7 @@ def main(argv=None) -> int:
     uni = pd.read_csv(UNIVERSE)
     us = [t for t in uni.loc[uni["region"] == "us", "ticker"] if not t.endswith(".TO")]
     m = get("https://www.sec.gov/files/company_tickers.json") or {}
+    DIAG.append(f"company_tickers: {len(m)} Einträge")
     cik = {v["ticker"].upper().replace(".", "-"): int(v["cik_str"]) for v in m.values()}
     rows, sic, miss = [], [], []
     for k, t in enumerate(us):
@@ -92,6 +96,10 @@ def main(argv=None) -> int:
                 rows.append({"ticker": t, "kind": kind, **x})
         if k % 100 == 0:
             print(f"{k + 1}/{len(us)} {t}: {len(rows)} Werte", flush=True)
+    (out / "edgar_diag.txt").write_text("\n".join(DIAG))
+    if not rows:
+        print("keine Daten – siehe edgar_diag.txt")
+        return 1
     df = pd.DataFrame(rows).drop_duplicates(["ticker", "kind", "end", "filed"])
     df.to_parquet(out / "edgar_fund_v1.parquet", index=False)
     pd.DataFrame(sic).to_csv(out / "edgar_sic_v1.csv", index=False)
