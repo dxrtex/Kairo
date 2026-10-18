@@ -251,8 +251,18 @@ def process_day(st: dict, mk: Market, D: pd.Timestamp, D_prev: pd.Timestamp, cal
     st["equity"].append({"date": str(D.date()), "eur": round(equity(st, mk, D), 2), "open": len(st["positions"])})
 
 
-def new_setups(st: dict, mk: Market, D: pd.Timestamp, cal: pd.DatetimeIndex, tickers, bull_D: bool, fund: dict, sec3: dict):
+def s19_funnel(x: pd.DataFrame, i: int, sec_ret3) -> list[bool]:
+    """Die S19-Stufen einzeln (für die Filter-Übersicht): überdehnt, 3 Tage fallend, Volumen sinkt, schwächer als Branche."""
+    r, C, V = x.iloc[i], x["Close"].to_numpy(), x["Volume"].to_numpy()
+    return [bool(r["Close"] <= r["ema20"] - 2.5 * r["std20"]), bool(C[i] < C[i - 1] < C[i - 2] < C[i - 3]),
+            bool(V[i] < V[i - 1] < V[i - 2]), bool(sec_ret3 is not None and np.isfinite(sec_ret3) and r["ret3"] < sec_ret3)]
+
+
+def new_setups(st: dict, mk: Market, D: pd.Timestamp, cal: pd.DatetimeIndex, tickers, bull_D: bool, fund: dict, sec3: dict,
+               dry: bool = False):
     sid = st["sid"]
+    fun = {"Qualität": 0, "Kursdaten": 0, "liquide": 0, "≥ 2,5 Std unter EMA20": 0, "3 Tage fallend": 0, "Volumen sinkt": 0,
+           "schwächer als Branche": 0, "Branchen-ETF fehlt": 0}
     k = int(np.searchsorted(cal.values, np.datetime64(D)))
     expiry = cal[min(k + core.WINDOW, len(cal) - 1)] if k + core.WINDOW < len(cal) else D + pd.tseries.offsets.BDay(core.WINDOW)
     busy = {p["t"] for p in st["positions"]} | {q["t"] for q in st["pending"]}
@@ -260,6 +270,8 @@ def new_setups(st: dict, mk: Market, D: pd.Timestamp, cal: pd.DatetimeIndex, tic
     for t in tickers:
         if t in busy:
             continue
+        if sid == "S19":
+            fun["Qualität"] += 1
         x = mk.f(t)
         if x is None or D not in x.index:
             continue
@@ -267,6 +279,8 @@ def new_setups(st: dict, mk: Market, D: pd.Timestamp, cal: pd.DatetimeIndex, tic
         if i < 210:
             continue
         r = x.iloc[i]
+        if sid == "S19":
+            fun["Kursdaten"] += 1
         usd = 1.0 if mk.cur.get(t, "USD") == "USD" else mk.rate("SPY", D) / mk.rate(t, D)
         if not (r["adv"] * usd >= 5e6 and r["Close"] * usd >= 1.0):
             continue
@@ -274,11 +288,20 @@ def new_setups(st: dict, mk: Market, D: pd.Timestamp, cal: pd.DatetimeIndex, tic
             fd = fund.get(t) or {}
             if not ((fd.get("mcap") or 0) >= 10e9 and (fd.get("opm") or 0) > 0):
                 continue
+            fun["liquide"] += 1
             etf = core.SECTOR_ETF.get(fd.get("sector"), "SPY")
-            s = core.s19_signal(x, i, sec3.get(etf, {}).get(D))
-            if s:
+            sr = sec3.get(etf, {}).get(D)
+            if sr is None:
+                fun["Branchen-ETF fehlt"] += 1
+            f4 = s19_funnel(x, i, sr)
+            for k, key in enumerate(["≥ 2,5 Std unter EMA20", "3 Tage fallend", "Volumen sinkt", "schwächer als Branche"]):
+                if not all(f4[:k + 1]):
+                    break
+                fun[key] += 1
+            s = core.s19_signal(x, i, sr)
+            if s and not dry:
                 st["pending"].append({"t": t, "day": str(D.date()), "expiry": str(pd.Timestamp(expiry).date()), **s})
-                found += 1
+            found += bool(s)
         else:
             if not bull_D:
                 return
@@ -287,7 +310,12 @@ def new_setups(st: dict, mk: Market, D: pd.Timestamp, cal: pd.DatetimeIndex, tic
                 st["pending"].append({"t": t, "day": str(D.date()), "expiry": str(pd.Timestamp(expiry).date()),
                                       "vr": float(r["Volume"] / x["Volume"].rolling(20).mean().iloc[i]), **s})
                 found += 1
-    st["events"].append(f"{D.date()} neue Tagessignale: {found} (wartend gesamt {len(st['pending'])})")
+    if sid == "S19":
+        st["funnel"] = {"date": str(D.date()), **fun, "Signale": found}
+        st["events"].append(f"{D.date()} Filter: " + " → ".join(f"{k} {v}" for k, v in fun.items() if k != "Branchen-ETF fehlt")
+                            + (f" (Branchen-ETF fehlt bei {fun['Branchen-ETF fehlt']})" if fun["Branchen-ETF fehlt"] else ""))
+    if not dry:
+        st["events"].append(f"{D.date()} neue Tagessignale: {found} (wartend gesamt {len(st['pending'])})")
 
 
 # ------------------------------------------------------------------ Bericht
@@ -339,6 +367,7 @@ def report(d: Path, states: list[dict], bench: list[dict] | None = None) -> None
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--state", default="state")
+    ap.add_argument("--recheck", action="store_true", help="S19-Filterübersicht für den letzten Tag neu zählen (ohne neue Signale)")
     a = ap.parse_args(argv)
     sd = Path(a.state)
     sd.mkdir(parents=True, exist_ok=True)
@@ -369,6 +398,9 @@ def main(argv=None) -> int:
             new_setups(st, mk, last, cal, s19_t if st["sid"] == "S19" else s20_t, bool(bull.loc[last]), fund, sec3)
             st["last_day"] = str(last.date())
             continue
+        if a.recheck and st["sid"] == "S19":
+            new_setups(st, mk, pd.Timestamp(st["last_day"]), cal, s19_t, bool(bull.loc[pd.Timestamp(st["last_day"])]), fund, sec3,
+                       dry=True)
         days = [d for d in cal if d > pd.Timestamp(st["last_day"])]
         for D in days:
             prev = cal[cal < D][-1]

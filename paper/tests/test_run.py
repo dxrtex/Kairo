@@ -53,3 +53,13 @@ def test_start_cash_migration(tmp_path):
     st2 = run.load_state(tmp_path, "S20")
     assert st2["start_cash"] == st2["cash"] == run.START_CASH == 2000.0
     assert st2["equity"][0]["eur"] == 2000.0 and len(st2["pending"]) == 1
+
+
+def test_s19_funnel_counts():
+    mk, days, D_prev, D = market()
+    st = run.load_state(__import__("pathlib").Path("/nonexistent"), "S19")
+    fund = {"AAA": {"mcap": 2e11, "opm": 0.2, "sector": "Technology"}}
+    run.new_setups(st, mk, D, days, ["AAA"], True, fund, {"XLK": {D: 0.01}}, dry=True)
+    f = st["funnel"]
+    assert f["Qualität"] == 1 and f["Kursdaten"] == 1 and f["liquide"] == 1 and f["Signale"] == 0
+    assert f["≥ 2,5 Std unter EMA20"] == 0 and not st["pending"]          # gleichmäßiger Aufwärtstrend: keine Überdehnung
