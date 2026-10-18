@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import core
+from . import core, momentum
 
 HERE = Path(__file__).resolve().parent
 START_CASH = 2000.0                                # Nutzer-Startkapital (18.10.2026)
@@ -162,7 +162,8 @@ def close_pos(st, mk, p, px, why, ts):
     R = (px - p["entry"]) / (p["entry"] - p["stop0"]) if p["entry"] > p["stop0"] else None
     rn = pnl / p["risk_eur"] if p.get("risk_eur") else None      # netto: nach Gebühren und Spread, je eingesetztem Risiko
     st["trades"].append({**{k: p[k] for k in ("t", "entry_ts", "entry", "stop0", "qty", "regime")}, "exit_ts": str(ts), "exit": px,
-                         "why": why, "pnl_eur": round(pnl, 2), "R": None if R is None else round(R, 3),
+                         "why": why, "pnl_eur": round(pnl, 2), "ret": round(pnl / p["cost_eur"], 4) if p.get("cost_eur") else None,
+                         "R": None if R is None else round(R, 3),
                          "R_net": None if rn is None else round(rn, 3)})
     st["positions"].remove(p)
     st["events"].append(f"{ts} VERKAUF {p['t']} {why} @ {px:.4g} PnL {pnl:+.2f} €")
@@ -358,7 +359,8 @@ def stats(st: dict) -> dict:
     if len(tr):
         rc = tr["R_net"] if "R_net" in tr and tr["R_net"].notna().any() else tr["R"]
         out.update(trefferquote=float((tr["pnl_eur"] > 0).mean()), avg_R=float(rc.dropna().mean()) if rc.notna().any() else None,
-                   pnl_eur=round(float(tr["pnl_eur"].sum()), 2))
+                   pnl_eur=round(float(tr["pnl_eur"].sum()), 2),
+                   avg_ret=float(tr["ret"].dropna().mean()) if "ret" in tr and tr["ret"].notna().any() else None)
     return out
 
 
@@ -396,7 +398,7 @@ def report(d: Path, states: list[dict], bench: list[dict] | None = None, shadow:
         s = stats(st)
         summ[st["sid"]] = s
         name = {"S19": "S19 Hybride Mean Reversion (Original)", "S19B": "S19-B (Volumen 2 von 3 Tagen)",
-                "S19C": "S19-C (2,0 Std, Volumen 2 von 3)"}.get(st["sid"], "S20 Trendfolge / VCP")
+                "S19C": "S19-C (2,0 Std, Volumen 2 von 3)", "MOM5": "MOM5 Momentum Top 5 (monatlich)"}.get(st["sid"], "S20 Trendfolge / VCP")
         lines += [f"## {name}", "", f"- Start: {s['start']} · Handelstage: {s['tage']}",
                   f"- Depot: **{s['depot_eur']:,.2f} €** ({s['rendite']:+.2%}) · größter Rückgang {s['max_dd']:.1%}",
                   f"- Abgeschlossene Trades: {s['trades']}" + (f" · Trefferquote {s['trefferquote']:.0%} · Ø R {s['avg_R']:+.2f}"
@@ -432,7 +434,7 @@ def main(argv=None) -> int:
     fund = refresh_fund(sd / "fund_cache.json", uni)
     s19_t = [t for t, v in fund.items() if (v.get("mcap") or 0) >= 10e9 and (v.get("opm") or 0) > 0]
     s20_t = list(uni["ticker"])
-    states = [load_state(sd, "S19"), load_state(sd, "S19B"), load_state(sd, "S19C"), load_state(sd, "S20")]
+    states = [load_state(sd, "S19"), load_state(sd, "S19B"), load_state(sd, "S19C"), load_state(sd, "S20"), load_state(sd, "MOM5")]
     need = set(s19_t) | set(s20_t) | {p["t"] for s in states for p in s["positions"]}
     daily = download(sorted(need) + ["^GSPC"] + ETFS)
     fxd = download(list(FX_T.values()), period="2y")
@@ -452,6 +454,9 @@ def main(argv=None) -> int:
         if st["last_day"] is None:                     # erster Lauf: vorwärts ab heute
             st["start"] = str(last.date())
             st["equity"].append({"date": str(last.date()), "eur": st["start_cash"], "open": 0})
+            st["last_day"] = str(last.date())
+            if st["sid"] == "MOM5":                    # Momentum kauft am nächsten Handelstag zur Eröffnung
+                continue
             new_setups(st, mk, last, cal, s19_t if st["sid"].startswith("S19") else s20_t, bool(bull.loc[last]), fund, sec3)
             st["last_day"] = str(last.date())
             continue
@@ -461,6 +466,10 @@ def main(argv=None) -> int:
         days = [d for d in cal if d > pd.Timestamp(st["last_day"])]
         for D in days:
             prev = cal[cal < D][-1]
+            if st["sid"] == "MOM5":
+                momentum.day(st, mk, D, prev, s20_t, equity, close_pos)
+                st["last_day"] = str(D.date())
+                continue
             tick = sorted({p["t"] for p in st["positions"]} | {q["t"] for q in st["pending"]} | {a["t"] for a in st.get("armed", [])})
             miss = [t for t in tick if t not in mk.h4]
             if miss:
