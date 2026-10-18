@@ -3470,7 +3470,12 @@ const ETF_DG = "#0b7a35";
 // wait = abwarten, höchstens 3 Monate (backend/etfextra.py: kostete nur −0,1 bis −0,7 % gegenüber „sofort“)
 const ETF_TONE = { go: ["Grün · jetzt investieren", "var(--up)"], go2: ["Dunkelgrün · Panik, jetzt investieren", ETF_DG], wait: ["Gelb · abwarten", "var(--gold)"],
   blue: ["Grün · jetzt investieren", "var(--up)"], yellow: ["Gelb · abwarten", "var(--gold)"], green2: ["Dunkelgrün · Panik", ETF_DG] };
-const etfCfg = () => { const e = state.etf || {}; return { total: +e.total > 0 ? +e.total : 3000, share: +e.share > 0 ? Math.min(100, +e.share) : 70, rate: +e.rate > 0 ? +e.rate : 0, units: +e.units > 0 ? +e.units : 0,
+// Aufteilung nach Kapitalgröße (Strategie-Forschung Okt. 2026, Phase D, Train + Validierung 2008–2021, Option A ≈ 22 % Rückgang):
+// unter 10.000 € trägt kein Satellit die festen Gebühren → 100 % ETF; 10–20 k€: 80 % ETF + 20 % Momentum-Satellit (+10,5 % p. a., −20 %);
+// ab 20 k€: 70 / 30 (+12,4 % p. a., −22 %). Satellit = Momentum mit Marktfilter, nicht Kairo-Swing (der läuft nur im Papier-Test).
+const autoShare = total => total < 10000 ? 100 : total < 20000 ? 80 : 70;
+const etfCfg = () => { const e = state.etf || {}, total = +e.total > 0 ? +e.total : 3000, man = !!e.shareManual && +e.share > 0;
+  return { total, auto: !man, share: man ? Math.min(100, +e.share) : autoShare(total), rate: +e.rate > 0 ? +e.rate : 0, units: +e.units > 0 ? +e.units : 0,
   buy: +e.buy > 0 ? +e.buy : 0, since: /^\d{4}-\d\d-\d\d$/.test(e.since || "") ? e.since : "" }; };
 // Gebühren-Bremse (backend/capstudy.py, Okt. 2026): ~93 Trades/Jahr bei 5 Plätzen → 2 Orders je Trade. Ergebnis 10 Jahre, 1 % Risiko,
 // 0,99 € je Order: 900 € → −12 bis −25 % p. a. (bzw. Totalverlust), 1.500 € → ≈ 0 %, 3.000 € → +12/+13 %, 10.000 € → +15/+23 %; ohne Gebühren +17/+24 %.
@@ -3563,7 +3568,11 @@ function etfHtml() {
         ["Abstand zum Hoch", e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1), e.dd >= .05 ? "up" : "gold", e.dd >= .05 ? "mindestens 5 % unter dem Hoch – Kaufsignal" : "weniger als 5 % unter dem Hoch"]]
         .map(([l, v, c, t]) => `<li><i class="${c}">●</i><b>${l}: ${v}</b> – ${t}</li>`).join("")}</ul>
       <div class="note" style="margin:6px 0 12px">🟢 <b>Jetzt investieren</b>, sobald eins davon passt: Kurs unter der EMA 100, mindestens 5 % unter dem Hoch oder VIX ≥ 25 (Dunkelgrün: VIX ≥ 30, Panik). 🟡 <b>Abwarten</b>, wenn nichts davon passt – Extra-Geld zurücklegen, aber höchstens 3 Monate, dann trotzdem investieren. Die Sparrate läuft immer. Im Test (S&P 500 ab 1990, Welt ab 2003) kostete diese Regel gegenüber „immer sofort“ nur 0,1–0,7 % Endwert; länger warten (z. B. nur bei Panik kaufen) kostete 7–15 %.</div>` : "";
-  const plan = `<div class="hcard">${hHead("Mein Plan · 70 / 30")}
+  const tiers = [["unter 10.000 €", "100 % ETF", "Satellit wäre zu klein – Gebühren fressen den Vorteil"], ["10.000 – 20.000 €", "80 % ETF · 20 % Satellit", "≈ +10,5 % p. a., größter Rückgang ≈ −20 %"], ["ab 20.000 €", "70 % ETF · 30 % Satellit", "≈ +12,4 % p. a., größter Rückgang ≈ −22 %"]];
+  const tierHtml = `<div class="note" style="margin:10px 0 0"><b>Aufteilung nach Kapitalgröße</b> ${c.auto ? "(automatisch aktiv)" : `· du hast ${c.share} % fest eingestellt – <button class="hlink" data-etfauto>wieder automatisch (${autoShare(c.total)} %)</button>`}
+      <ul class="checks" style="margin:6px 0 0">${tiers.map(([k, v, t], i) => `<li><i class="${autoShare(c.total) === [100, 80, 70][i] ? "up" : "muted"}">●</i><b>${k}:</b> ${v} – ${t}</li>`).join("")}</ul>
+      Satellit = Momentum mit Marktfilter (monatlich die 10 stärksten Aktien, nur wenn der Welt-ETF über seinem 10-Monats-Schnitt liegt) – <b>nicht</b> Kairo-Swing-Trades; die laufen nur im Papier-Test. Werte aus dem Strategie-Test 2008–2021, noch ohne finale Prüfung – keine Anlageberatung.</div>`;
+  const plan = `<div class="hcard">${hHead(`Mein Plan · ${c.share} / ${100 - c.share}`)}
     <div class="tp2-cfg"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
       <label>ETF-Anteil (%)<input id="etfShare" type="number" inputmode="decimal" min="0" max="100" step="5" value="${esc(c.share)}"></label>
       <label>Sparrate je Monat (€)<input id="etfRate" type="number" inputmode="decimal" min="0" step="25" value="${esc(c.rate || "")}" placeholder="z. B. 200"></label>
@@ -3574,8 +3583,9 @@ function etfHtml() {
       <div class="mt"><span>Trading-Kapital</span><b>${eur(tgtT)}</b><em>${100 - c.share} % · im Einstieg: ${eur(trade)}</em></div>
       ${etfVal != null ? `<div class="mt"><span>ETF jetzt</span><b>${eur(etfVal)}</b><em>${pct(ist, 0)} vom Ganzen</em></div>` : ""}
       ${c.rate ? `<div class="mt"><span>Sparrate</span><b>${eur(c.rate)}</b><em>${ist != null && ist < c.share / 100 - .05 ? "ganz in den ETF (unter Ziel)" : `${eur(c.rate * c.share / 100)} ETF · ${eur(c.rate * (100 - c.share) / 100)} Trading`}</em></div>` : ""}</div>
-    ${(() => { const fd = feeDrag(tgtT); return `<div class="note" style="margin:10px 0 0;border-left:3px solid var(--${fd.tone === "red" ? "red" : fd.tone === "yellow" ? "gold" : "up"})">${fd.tone === "red" ? "🔴" : fd.tone === "yellow" ? "🟡" : "🟢"} <b>Trading-Kapital ${eur(tgtT)}:</b> ${fd.t}</div>`; })()}
-    ${Math.abs(tgtT - trade) > 1 ? `<button class="btn" id="etfSync" style="margin-top:10px">Trading-Kapital im Einstieg auf ${eur(tgtT)} setzen</button><div class="note" style="margin:6px 0 0">Das 1-%-Risiko je Trade rechnet mit diesem Betrag – so bleibt der Trading-Bereich bei ${100 - c.share} %.</div>` : `<div class="note" style="margin:10px 0 0">✓ Der Trading-Bereich rechnet mit ${eur(trade)} – passt zu ${100 - c.share} %.</div>`}
+    ${tierHtml}
+    ${tgtT <= 0 ? "" : (() => { const fd = feeDrag(tgtT); return `<div class="note" style="margin:10px 0 0;border-left:3px solid var(--${fd.tone === "red" ? "red" : fd.tone === "yellow" ? "gold" : "up"})">${fd.tone === "red" ? "🔴" : fd.tone === "yellow" ? "🟡" : "🟢"} <b>Trading-Kapital ${eur(tgtT)}:</b> ${fd.t}</div>`; })()}
+    ${tgtT <= 0 ? `<div class="note" style="margin:10px 0 0">✓ Bei ${eur(c.total)} ist alles im ETF. Swing-Trades verfolgst du risikolos im <button class="hlink" ${SEC_LINK("paper")}>Papier-Test ›</button></div>` : Math.abs(tgtT - trade) > 1 ? `<button class="btn" id="etfSync" style="margin-top:10px">Trading-Kapital im Einstieg auf ${eur(tgtT)} setzen</button><div class="note" style="margin:6px 0 0">Das 1-%-Risiko je Trade rechnet mit diesem Betrag – so bleibt der Trading-Bereich bei ${100 - c.share} %.</div>` : `<div class="note" style="margin:10px 0 0">✓ Der Trading-Bereich rechnet mit ${eur(trade)} – passt zu ${100 - c.share} %.</div>`}
     ${ist != null && Math.abs(ist - c.share / 100) > .1 ? `<div class="note" style="margin:8px 0 0">⚖️ Verteilung weicht um mehr als 10 Punkte ab (${pct(ist, 0)} ETF). Am günstigsten über die Sparrate ausgleichen – Verkaufen kostet Steuern.</div>` : ""}</div>`;
   const how = `<div class="hcard">${hHead("So gehst du vor")}<ul class="checks rules">${[
       ["Sparplan bei Scalable", "monatlich in den SPYI – läuft automatisch, bei jeder Ampelfarbe"],
@@ -3597,10 +3607,11 @@ function etfHtml() {
 document.addEventListener("input", e => {
   if (e.target.id === "etfSince") { state.etf = { ...(state.etf || {}), since: e.target.value || undefined }; save(); return; }
   const k = { etfTotal: "total", etfShare: "share", etfRate: "rate", etfUnits: "units", etfBuy: "buy" }[e.target.id]; if (!k) return;
-  const v = parseFloat(String(e.target.value).replace(",", ".")); state.etf = { ...(state.etf || {}), [k]: v >= 0 ? v : undefined }; save();
+  const v = parseFloat(String(e.target.value).replace(",", ".")); state.etf = { ...(state.etf || {}), [k]: v >= 0 ? v : undefined, ...(k === "share" ? { shareManual: 1 } : {}) }; save();
 });
 document.addEventListener("change", e => { if (["etfTotal", "etfShare", "etfRate", "etfUnits", "etfBuy", "etfSince"].includes(e.target.id) && state.sec === "etf") render(); });
 document.addEventListener("click", e => {
+  if (e.target.closest("[data-etfauto]")) { const x = { ...(state.etf || {}) }; delete x.shareManual; delete x.share; state.etf = x; save(); render(); return; }
   if (!e.target.closest("#etfSync")) return;
   const c = etfCfg(); state.tpDepot = Math.round(c.total * (100 - c.share) / 100); save(); render();
 });
