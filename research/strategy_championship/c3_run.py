@@ -46,7 +46,8 @@ def _null(args):
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
-    ap.add_argument("--fund")
+    ap.add_argument("--sectors")
+    ap.add_argument("--qmode", default="pit", choices=["pit", "today"])
     ap.add_argument("--sid", required=True, choices=["S19", "S20"])
     ap.add_argument("--period", required=True, choices=["train", "validation"])
     ap.add_argument("--out", default="c3_out")
@@ -60,12 +61,11 @@ def main(argv=None) -> int:
     if a.sid == "S19":                               # nur US-Aktien
         prices = {t: v for t, v in prices.items() if region.get(t) == "us" and not t.endswith(".TO")}
     P = Panel(prices, cur, region, bench, start, end)
-    fund, sic = None, {}
-    if a.sid == "S19":
-        fund = pd.read_parquet(Path(a.fund) / "edgar_fund_v1.parquet")
-        sc = pd.read_csv(Path(a.fund) / "edgar_sic_v1.csv")
-        sic = dict(zip(sc["ticker"], sc["sic"]))
-    wave3.prepare(P, bench, fund, sic)
+    sectors = {}
+    if a.sid == "S19" and a.sectors:
+        sc = pd.read_csv(Path(a.sectors) / "sectors_v1.csv")
+        sectors = dict(zip(sc["ticker"], sc["sector"]))
+    wave3.prepare(P, bench, sectors, a.qmode, dict(zip(uni["ticker"], uni["market_cap_usd"])))
     P.raw_ema = {t: s01.with_ema(df) for t, df in P.raw.items()}
     cal = pd.DatetimeIndex(sorted(set().union(*[f.index[(f.index >= start) & (f.index <= end)] for f in P.raw.values()])))
     sp = spreads(P.raw, cur, region)
@@ -93,7 +93,7 @@ def main(argv=None) -> int:
             res = depot(orders, cash, costs)
             m = metrics(res, acwi_r)
             m.update(bootstrap(res))
-            name = f"{a.sid} · {cash} €" + (" · Kostenstress" if cname == "stress" else "")
+            name = f"{a.sid}{'-' + a.qmode.upper() if a.sid == 'S19' else ''} · {cash} €" + (" · Kostenstress" if cname == "stress" else "")
             results[name] = {"config": {"cash": cash, "costs": cname}, "metrics": m}
             log.append({"id": f"C3-{a.sid}-{a.period}-{len(log) + 1:03d}", "name": name, "period": a.period, "protocol": "v1.5",
                         "commit": commit, "ts": ts(), "cagr": m.get("cagr"), "max_dd": m.get("max_dd"), "sharpe": m.get("sharpe"),
@@ -107,7 +107,7 @@ def main(argv=None) -> int:
             nulls = pool.map(_null, [(a.sid, c, s) for c in (5000, 20000) for s in range(a.seeds)], chunksize=2)
         for c in (5000, 20000):
             arr = pd.DataFrame([{"seed": s, **m} for cc, s, m in nulls if cc == c])
-            ref = results[f"{a.sid} · {c} €"]["metrics"]
+            ref = results[f"{a.sid}{'-' + a.qmode.upper() if a.sid == 'S19' else ''} · {c} €"]["metrics"]
             summ = {"n": int(len(arr)), "cagr_median": float(arr["cagr"].median()),
                     "cagr_p05_p95": [float(arr["cagr"].quantile(.05)), float(arr["cagr"].quantile(.95))],
                     "sharpe_median": float(arr["sharpe"].median()) if arr["sharpe"].notna().any() else None,
@@ -117,7 +117,7 @@ def main(argv=None) -> int:
             log.append({"id": f"C3-{a.sid}-{a.period}-{len(log) + 1:03d}", "name": f"Null {a.sid} · {c} €", "period": a.period,
                         "protocol": "v1.5", "seeds": a.seeds, "commit": commit, "ts": ts(), **summ})
             print(f"Null {c}: {summ}", flush=True)
-    tag = f"{a.sid}_{a.period}"
+    tag = f"{a.sid}{'-' + a.qmode.upper() if a.sid == 'S19' else ''}_{a.period}"
     (out / f"c3_{tag}.json").write_text(json.dumps(results, indent=1, default=str, ensure_ascii=False))
     (out / f"c3_{tag}_experiments.jsonl").write_text("\n".join(json.dumps(x, default=str, ensure_ascii=False) for x in log) + "\n")
     return 0

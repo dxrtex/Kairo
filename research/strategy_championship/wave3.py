@@ -1,6 +1,6 @@
-"""S19 Hybride Mean Reversion und S20 Trendfolge/VCP nach Nutzer-Spezifikation (Protokoll v1.5).
+"""S19 Hybride Mean Reversion und S20 Trendfolge/VCP nach Nutzer-Spezifikation (Protokoll v1.5/v1.6).
 
-H4-Auslöser als Tageskerzen-Ersatz; Fundamentaldaten aus EDGAR (nur US). Siehe 02_PROTOCOL.md, Nachtrag v1.5.
+H4-Auslöser als Tageskerzen-Ersatz; Größe zeitpunktgenau über Liquidität bzw. heutige Marktkapitalisierung (nur US).
 """
 
 from __future__ import annotations
@@ -14,68 +14,17 @@ from .wave1 import fresh
 
 SECTOR_ETF = ["XLB", "XLE", "XLF", "XLI", "XLK", "XLP", "XLU", "XLV", "XLY"]
 WINDOW = 5
-STALE = pd.Timedelta(days=548)
 
 
-def sic_to_etf(sic) -> str:
-    try:
-        s = int(sic)
-    except (TypeError, ValueError):
-        return "SPY"
-    if 6000 <= s <= 6799:
-        return "XLF"
-    if 4900 <= s <= 4999:
-        return "XLU"
-    if 1300 <= s <= 1399 or 2900 <= s <= 2999:
-        return "XLE"
-    if 2830 <= s <= 2836 or 3840 <= s <= 3851 or 8000 <= s <= 8099:
-        return "XLV"
-    if 3570 <= s <= 3579 or 3660 <= s <= 3679 or 7370 <= s <= 7379 or 3820 <= s <= 3829 or 4800 <= s <= 4899:
-        return "XLK"
-    if 2000 <= s <= 2199 or 2840 <= s <= 2844 or 5400 <= s <= 5499 or 5140 <= s <= 5149 or 5912 == s:
-        return "XLP"
-    if 3710 <= s <= 3716 or 5000 <= s <= 5999 or 7000 <= s <= 7299 or 7800 <= s <= 7999 or 2300 <= s <= 2399 \
-            or 2500 <= s <= 2599 or 3630 <= s <= 3652 or 3940 <= s <= 3949 or 1520 <= s <= 1531 or 2700 <= s <= 2799:
-        return "XLY"
-    if 1000 <= s <= 1499 or 2600 <= s <= 2699 or 2800 <= s <= 2829 or 2850 <= s <= 2899 or 3200 <= s <= 3399:
-        return "XLB"
-    if 1500 <= s <= 1799 or 3400 <= s <= 3569 or 3580 <= s <= 3659 or 3680 <= s <= 3839 or 3852 <= s <= 3999 \
-            or 4000 <= s <= 4799 or 7300 <= s <= 7369 or 7380 <= s <= 7399 or 8700 <= s <= 8799:
-        return "XLI"
-    return "SPY"
+YAHOO_ETF = {"Technology": "XLK", "Financial Services": "XLF", "Healthcare": "XLV", "Consumer Cyclical": "XLY",
+             "Consumer Defensive": "XLP", "Energy": "XLE", "Industrials": "XLI", "Basic Materials": "XLB",
+             "Utilities": "XLU", "Real Estate": "XLF", "Communication Services": "XLK"}   # XLRE/XLC gab es 2008 noch nicht
 
 
-def quality(fund: pd.DataFrame, t: str, idx: pd.DatetimeIndex) -> pd.Series:
-    """Je Handelstag: Streubesitz ≥ 10 Mrd. USD (≤ 18 Mon. alt) und operative Marge > 0 (letztes veröffentlichtes GJ)."""
-    f = fund[fund["ticker"] == t]
-    if f.empty:
-        return pd.Series(False, index=idx)
-    days = pd.DataFrame({"date": idx})
-    fl = f[f["kind"] == "float"].assign(filed=lambda x: pd.to_datetime(x["filed"])).sort_values("filed")
-    ok_f = pd.Series(False, index=idx)
-    if len(fl):
-        m = pd.merge_asof(days, fl[["filed", "val"]], left_on="date", right_on="filed", direction="backward")
-        ok_f = pd.Series(((m["val"] >= 10e9) & (m["date"] - m["filed"] <= STALE)).to_numpy(), index=idx)
-    an = f[f["kind"].isin(["rev", "opinc", "netinc"])].copy()
-    ok_m = pd.Series(False, index=idx)
-    if len(an):
-        an["filed"] = pd.to_datetime(an["filed"])
-        piv = an.sort_values("filed").groupby(["end", "kind"]).agg(val=("val", "first"), filed=("filed", "first")).reset_index()
-        w = piv.pivot(index="end", columns="kind", values="val")
-        fd = piv.groupby("end")["filed"].max()
-        if "rev" in w:
-            inc = w["opinc"] if "opinc" in w else pd.Series(np.nan, index=w.index)
-            if "netinc" in w:
-                inc = inc.fillna(w["netinc"])
-            mg = (inc / w["rev"]).rename("mg")
-            mm = pd.DataFrame({"filed": fd, "mg": mg}).dropna().sort_values("filed")
-            if len(mm):
-                m = pd.merge_asof(days, mm, left_on="date", right_on="filed", direction="backward")
-                ok_m = pd.Series(((m["mg"] > 0) & (m["date"] - m["filed"] <= STALE)).to_numpy(), index=idx)
-    return ok_f & ok_m
-
-
-def prepare(P, bench: dict, fund: pd.DataFrame | None, sic: dict) -> None:
+def prepare(P, bench: dict, sectors: dict | None = None, qmode: str = "pit", mcap: dict | None = None) -> None:
+    """qmode „pit“: Größe zeitpunktgenau über Ø-Dollarvolumen 20 T. ≥ 100 Mio. USD; „today“: heutige Marktkapitalisierung
+    ≥ 10 Mrd. USD (Rückschaufehler). Operative Marge: mit Gratisdaten nicht zeitpunktgenau verfügbar → nicht geprüft."""
+    from backend.scanner import FX_USD
     g = bench["^GSPC"]["Close"]
     P.bull = (g > g.ewm(span=200, adjust=False).mean())
     sec = {e: (bench[e]["AdjClose"] / bench[e]["AdjClose"].shift(3) - 1) for e in SECTOR_ETF + ["SPY"]}
@@ -99,9 +48,13 @@ def prepare(P, bench: dict, fund: pd.DataFrame | None, sic: dict) -> None:
         x["elig"] = f["elig"]
         us = P.region.get(t) == "us" and not t.endswith(".TO")
         x["us"] = us
-        if us and fund is not None:
-            x["qual"] = quality(fund, t, a.index).to_numpy()
-            etf = sic_to_etf(sic.get(t))
+        if us:
+            if qmode == "today":
+                x["qual"] = bool((mcap or {}).get(t, 0) >= 10e9)
+            else:
+                dv = (C * V).rolling(20).mean() * FX_USD.get("USD", 1.0)
+                x["qual"] = (dv >= 100e6).to_numpy()
+            etf = YAHOO_ETF.get((sectors or {}).get(t), "SPY")
             x["sec3"] = sec[etf].reindex(a.index, method="ffill").to_numpy()
         else:
             x["qual"] = False

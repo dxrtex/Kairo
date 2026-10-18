@@ -170,3 +170,18 @@ Bestehensregeln wie `08_VALIDATION_PLAN.md` (Bezug 5.000 € und 20.000 €). Ho
 
 Echte H4-Auslöser sind mit Gratisdaten nur für ≈ 2 Jahre verfügbar (liegt im versiegelten Holdout) → **nur vorwärts im
 Papier-Handel** prüfbar. Max. offene Positionen 5 (5.000 €) bzw. 10 (20.000 €). Kosten und Mindestgröße wie v1.1.
+
+### Nachtrag v1.6 — Datenrealität S19 (18.10.2026, vor dem ersten Lauf)
+
+SEC EDGAR verweigert Abrufe aus GitHub Actions und aus dieser Umgebung (HTTP 403 für alle Header-Varianten, Diagnose im Release
+`research-edgar-*`). Zeitpunktgenaue Fundamentaldaten sind damit **nicht verfügbar**. S19 wird deshalb in zwei offen
+gekennzeichneten Varianten gerechnet:
+
+- **S19-PIT:** Größe zeitpunktgenau über Ø-Dollarvolumen 20 T. ≥ 100 Mio. USD (Ersatz für ≥ 10 Mrd. Marktkapitalisierung).
+- **S19-TODAY:** heutige Marktkapitalisierung ≥ 10 Mrd. USD (Stand 16.10.2026) — **Rückschaufehler**, nur zum Vergleich.
+- Operative Marge > 0: **NICHT UMGESETZT** (keine historischen Daten).
+- Branche: heutige Yahoo-Branche → Sektor-ETF (Real Estate → XLF, Communication Services → XLK, da XLRE/XLC 2008 nicht existierten).
+
+Vorab-Befund aus dem Funktionstest (Train, ohne Branchen-Datei): von 2,08 Mio. Titel-Tagen erfüllen 64 alle Tagesfilter; 39 davon
+lösen den Tageskerzen-Ersatz des H4-Triggers aus, **keiner** erfüllt danach CRV ≥ 2 (Kurs ist beim Auslösen schon nahe der EMA20).
+Der Tageskerzen-Ersatz ist für S19 daher **nicht geeignet**; ein echter Test braucht 4-Std.-Daten (nur vorwärts im Papier-Handel).
