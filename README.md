@@ -1,6 +1,6 @@
 # Papier-Handel S19 / S19-B / S19-C / S20 (echte 4-Stunden-Kerzen, keine echten Orders)
 
-Stand: 2026-10-18 21:19 UTC · Startkapital je Strategie 2,000 € · Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5; S19-B/-C: v1.7). Kosten: Scalable PRIME+ (ab 250 € Orderwert gebührenfrei, sonst 0,99 €) + halber Spread je Seite.
+Stand: 2026-10-18 22:55 UTC · Startkapital je Strategie 2,000 € · Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5; S19-B/-C: v1.7). Kosten: Scalable PRIME+ (ab 250 € Orderwert gebührenfrei, sonst 0,99 €) + halber Spread je Seite.
 
 ## S19 Hybride Mean Reversion (Original)
 
@@ -61,7 +61,17 @@ Letzte Ereignisse:
 Letzte Ereignisse:
 
 
-## MOM10 Momentum Top 10 (monatlich, validiert)
+## MOM10 Momentum Top 10 (monatlich; Holdout nicht bestanden)
+
+- Start: 2026-10-16 · Handelstage: 1
+- Depot: **2,000.00 €** (+0.00%) · größter Rückgang 0.0%
+- Abgeschlossene Trades: 0
+- Offen: 0 · warten auf H4-Auslöser: 0
+
+Letzte Ereignisse:
+
+
+## DM Dual Momentum SPY/EFA/QQQ → SHY
 
 - Start: 2026-10-16 · Handelstage: 1
 - Depot: **2,000.00 €** (+0.00%) · größter Rückgang 0.0%
