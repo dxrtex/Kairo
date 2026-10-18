@@ -34,7 +34,7 @@ def _sleeve(args):
     o, ex = _G["orders"][sid]
     etf = sid in CORES
     res = run(_G["etf_frames"] if etf else _G["P"].raw, _G["etf_cur"] if etf else _G["cur"], _G["fx"], o, cash,
-              _G["costs"][cn], 1 if etf else 7, calendar=_G["cal"], exit_when=ex, min_fill=0.5)
+              _G["costs"][cn], 1 if etf else 12, calendar=_G["cal"], exit_when=ex, min_fill=0.5)
     return (sid, cash, cn), res.equity
 
 
@@ -42,6 +42,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
     ap.add_argument("--out", default="d2_out")
+    ap.add_argument("--n", type=int, default=5, help="Titel im Momentum-Teil (5 oder 10)")
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -59,7 +60,7 @@ def main(argv=None) -> int:
     _G.update(P=P, fx=fx, cal=cal, cur=cur, costs=costs, etf_frames=etf_frames, etf_cur={"ACWI": "USD"})
     _G["orders"] = {"ACWI": ([Order(cal[0], "ACWI", weight=0.995, tag="ACWI")], {}),
                     "S13-ETF": s13_orders(bench["ACWI"], fx["USD"], start, end),
-                    SAT: wave2.monthly_stock(P, "S07-B", bench, n=5)}
+                    SAT: wave2.monthly_stock(P, "S07-B", bench, n=a.n)}
     amounts = sorted({round(c * s) for c in CAPS for s in SHARES + [1 - x for x in SHARES] + [1.0]})
     jobs = [(sid, amt, cn) for sid in CORES + [SAT] for amt in amounts for cn in costs]
     with Pool() as pool:
@@ -74,7 +75,7 @@ def main(argv=None) -> int:
                 for sh in SHARES:
                     e = eq[(core, round(cap * (1 - sh)), cn)] + eq[(SAT, round(cap * sh), cn)]
                     res[f"{core} + {int(sh * 100)} % {SAT} · {cap} € · {cn}"] = seg(e)
-    (out / "d2_results.json").write_text(json.dumps(res, indent=1, default=str, ensure_ascii=False))
+    (out / f"d2_results_top{a.n}.json").write_text(json.dumps(res, indent=1, default=str, ensure_ascii=False))
     for k, v in res.items():
         if "20000 € · prime" in k and "stress" not in k:
             g = v["gesamt"]
