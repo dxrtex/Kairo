@@ -214,3 +214,16 @@ Papier-Test: S19-B und S19-C laufen zusätzlich zum Original als eigene Depots (
 - S20: Ausstiege Nutzerregel (Einstand ab +2 ATR, dann nachziehen), 5 Tage, 10 Tage.
 - Auswertung vorab festgelegt: Mindest-CRV {alle, 1, 1,5, 2} × Ausstieg; Kennzahl Ø R netto (Stückzahl 2.000-€-Depot, 1 % Risiko). Frühestens ab 30 Trades je Feld; Entscheidung zusammen mit dem Nutzer. Keine weiteren Parameter.
 - Plan für Phase 2 (Hybrid Trend + Mean Reversion): 15_HYBRID_PLAN.md.
+
+
+## Addendum v1.9 (18.10.2026, vor dem Lauf) – Welle 3 Position-Trading, Kosten Scalable PRIME+
+
+Nutzer-Auftrag: beste Strategie für den Trading-Teil (10–30 % des Kapitals), Haltedauer Wochen–Monate. Kostenmodell PRIME+
+(ab 250 € Orderwert gebührenfrei, sonst 0,99 €; Stress 1,99 € + doppelter Spread + Slippage + FX). Train 2008–2016.
+- Referenz T1-top5 (S07-B mit 5 Titeln). Kandidaten (keine weiteren): P1 52-Wochen-Hoch-Nähe, P2 Rangmittel Momentum + 52W,
+  P3 T1-top5 mit Marktvolatilitäts-Skalierung (15 % Ziel, S&P-Vol 6 M.), P4 T1-top5 nur Titel über EMA200.
+- Zufall: 5 zufällige zulässige Titel monatlich, 100 Seeds (5.000 €, PRIME+).
+- Finalist nur, wenn: Stress-CAGR (5.000 €) > T1-top5, p vs. Zufall ≤ 0,05, größter Rückgang höchstens 5 Prozentpunkte
+  schlechter als T1-top5, Ergebnis ohne beste 1 % der Trades positiv. Sonst bleibt T1-top5 einziger Kandidat.
+- Danach einmalige Validierung 2017–2021 für T1-top5 und ggf. einen Finalisten (zweiter Blick in die Validierung – wird
+  als solcher gekennzeichnet). Holdout bleibt versiegelt.
