@@ -1,0 +1,70 @@
+name: Research – Phase C Welle 1 (Train 2008–2016)
+
+# Nur Forschung: rechnet ausschließlich den Entwicklungszeitraum (Validierung/Holdout gesperrt), keine Deployments,
+# keine Orders. Ergebnis als Entwurfs-Release research-c1-<Lauf>.
+on:
+  push:
+    branches: ["research/**"]
+    paths: [".github/workflows/research_c1.yml", "research/strategy_championship/c1_trigger.txt"]
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  MANIFEST_ASSET: "653201145"
+  B2_ASSET: "653368919"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+
+jobs:
+  family:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        family: [S01, S02, S03, S04, S05, S08, S11, S13]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Datensatz v1 laden und prüfen
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$MANIFEST_ASSET > v1/MANIFEST_v1.json
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - name: S01 mit Protokoll v1.1 (Signale aus B2)
+        if: matrix.family == 'S01'
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$B2_ASSET > b2.tar.xz
+          tar -xJf b2.tar.xz
+          python -m research.strategy_championship.b2_baselines --data v1 --signals b2 --out out --seeds 200 --min-fill 0.5
+          mv out/b2_results.json out/c1_S01.json; mv out/b2_experiments.jsonl out/c1_S01_experiments.jsonl
+      - name: Familie rechnen
+        if: matrix.family != 'S01'
+        run: python -m research.strategy_championship.c1_run --data v1 --family ${{ matrix.family }} --out out --seeds 200
+      - uses: actions/upload-artifact@v4
+        with: { name: "c1-${{ matrix.family }}", path: out/, retention-days: 30 }
+  collect:
+    needs: family
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { pattern: "c1-*", merge-multiple: true, path: c1 }
+      - run: tar -cJf c1_results.tar.xz c1 && ls -la c1
+      - name: Als Entwurfs-Release sichern
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          gh release create "research-c1-${GITHUB_RUN_ID}" c1_results.tar.xz c1/c1_*.json \
+            --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Research C1 Welle 1 (Train 2008–2016)" --notes "Nur Forschung. Validierung/Holdout nicht berechnet."

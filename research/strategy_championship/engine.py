@@ -131,9 +131,11 @@ class _Pos:
 
 def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str, pd.Series], orders: list[Order],
         start_cash: float = 5000.0, costs: Costs = Costs(), max_open: int = 5, exit_signals: set | None = None,
-        calendar: pd.DatetimeIndex | None = None) -> Result:
+        calendar: pd.DatetimeIndex | None = None, exit_when: dict | None = None, min_fill: float = 0.0) -> Result:
     """prices[t]: DataFrame (Index Datum; Open/High/Low/Close, optional AdjClose, EMA). exit_signals: {(Datum, Ticker)} →
-    Verkauf zur nächsten Eröffnung (Entscheidung nach Schluss dieses Tages)."""
+    Verkauf zur nächsten Eröffnung (Entscheidung nach Schluss dieses Tages). exit_when: {Ticker: Datumsliste} – dasselbe,
+    platzsparend je Titel. min_fill: Kauf entfällt, wenn das Cash weniger als diesen Anteil der geplanten Stückzahl zulässt
+    (Protokoll v1.1: 0,5)."""
     need = {o.ticker for o in orders}
     px = {t: _Px(prices[t]) for t in need if t in prices}
     fxo = FX(fx)
@@ -141,6 +143,7 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
         calendar = pd.DatetimeIndex(sorted(set().union(*[df.index for df in prices.values()]))) if prices else pd.DatetimeIndex([])
     cal = calendar.values.astype("datetime64[ns]")
     exit_sig = {}
+    exm = {t: np.sort(pd.DatetimeIndex(v).values.astype("datetime64[ns]")) for t, v in (exit_when or {}).items()}
     for (sd, t) in (exit_signals or set()):
         exit_sig.setdefault(np.datetime64(pd.Timestamp(sd), "ns"), set()).add(t)
     pending: dict[np.datetime64, list[Order]] = {}
@@ -151,7 +154,7 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
     filled_groups: set[str] = set()
     cash, pos = float(start_cash), {}
     led, trades, eq, inv = [], [], {}, {}
-    skipped = {"no_data": 0, "open_below_stop": 0, "band": 0, "risk_atr": 0, "full": 0, "held": 0, "no_cash": 0, "group": 0}
+    skipped = {"no_data": 0, "open_below_stop": 0, "band": 0, "risk_atr": 0, "full": 0, "held": 0, "no_cash": 0, "group": 0, "small": 0}
 
     def close_of(t, d):
         p = px[t]
@@ -241,7 +244,11 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
                 qty = int(math.floor(eq_now * o.weight / (price / rate)))
             else:
                 qty = 0
+            plan = qty
             qty = min(qty, int(math.floor(max(0.0, cash - costs.fee_eur) / (price / rate))))
+            if qty > 0 and qty < min_fill * plan:
+                skipped["small"] += 1
+                continue
             if qty <= 0:
                 skipped["no_cash"] += 1
                 continue
@@ -280,6 +287,12 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
         for t in exit_sig.get(d, ()):
             if t in pos:
                 sell_next.add(t)
+        for t in pos:
+            a = exm.get(t)
+            if a is not None and len(a):
+                k = int(np.searchsorted(a, d))
+                if k < len(a) and a[k] == d:
+                    sell_next.add(t)
         e_ = equity(d)
         eq[pd.Timestamp(d)] = e_
         inv[pd.Timestamp(d)] = (e_ - cash) / e_ if e_ > 0 else 0.0

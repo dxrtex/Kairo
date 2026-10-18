@@ -142,7 +142,7 @@ def _null_run(args):
     orders = s01_orders(ns, "A", risk)
     for o in orders:                                # Ranking „zufällig“ (Protokoll)
         o.prio = float(np.random.default_rng(zlib.crc32(f"{seed}|{o.group}".encode())).random())
-    res = run(_G["frames"], _G["cur"], _G["fx"], orders, 5000, _G["costs"], 5, calendar=_G["cal"])
+    res = run(_G["frames"], _G["cur"], _G["fx"], orders, 5000, _G["costs"], 5, calendar=_G["cal"], min_fill=_G["minfill"])
     m = metrics(res)
     return seed, risk, {k: m.get(k) for k in ("cagr", "max_dd", "sharpe", "avg_r_net", "trades", "win_rate", "final_eur")}
 
@@ -173,6 +173,7 @@ def main(argv=None) -> int:
     ap.add_argument("--signals", required=True)
     ap.add_argument("--out", default="b2_out")
     ap.add_argument("--seeds", type=int, default=200)
+    ap.add_argument("--min-fill", type=float, default=0.0)
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -199,7 +200,7 @@ def main(argv=None) -> int:
     sp = spreads(prices, cur, region)
     base = Costs(fee_eur=0.99, spread=0.001, spread_by_ticker=sp)
     stress = Costs(fee_eur=1.99, spread=0.002, slippage=0.0005, fx_fee=0.001, spread_by_ticker={k: 2 * v for k, v in sp.items()})
-    _G.update(frames=frames, adj=adj, atr=atr, pos=pos, pool=pool, cal=cal, cur=cur, fx=fx, sig=sig, costs=base)
+    _G.update(minfill=a.min_fill, frames=frames, adj=adj, atr=atr, pos=pos, pool=pool, cal=cal, cur=cur, fx=fx, sig=sig, costs=base)
     acwi = bench["ACWI"]
     acwi_r = (acwi["AdjClose"] / fx["USD"].reindex(acwi.index, method="ffill")).pct_change()
     frames_b = {"ACWI": acwi[["Open", "High", "Low", "Close", "AdjClose"]]}
@@ -228,12 +229,12 @@ def main(argv=None) -> int:
         for risk in RISKS:
             orders = s01_orders(sig, variant, risk)
             for cash, mo in SLEEVES.items():
-                res = run(frames, cur, fx, orders, cash, base, mo, calendar=cal)
+                res = run(frames, cur, fx, orders, cash, base, mo, calendar=cal, min_fill=a.min_fill)
                 record(f"S01-{variant} · {cash} € · Risiko {risk:.1%}", res, {"variant": variant, "risk": risk, "cash": cash, "max_open": mo,
-                                                                            "costs": "base"})
+                                                                            "costs": "base", "min_fill": a.min_fill})
                 if cash == 5000:
                     res.trades.to_csv(out / f"trades_S01-{variant}_{risk}.csv", index=False)
-            res = run(frames, cur, fx, orders, 5000, stress, 5, calendar=cal)
+            res = run(frames, cur, fx, orders, 5000, stress, 5, calendar=cal, min_fill=a.min_fill)
             record(f"S01-{variant} · 5000 € · Risiko {risk:.1%} · Kostenstress", res,
                    {"variant": variant, "risk": risk, "cash": 5000, "max_open": 5, "costs": "stress"})
     # Benchmarks

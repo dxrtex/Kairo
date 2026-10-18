@@ -155,3 +155,24 @@ def test_ema_exit_next_open():
     r = one({"A": px}, [Order(D[0], "A", stop=1, weight=0.5, exit_rule=("ema", 2))], start_cash=1000, costs=NOCOST)
     t = r.trades.iloc[0]
     assert t["why"] == "signal" and t["exit_date"] == D[4] and t["exit_px"] == 8   # Schluss D[3] < EMA → Eröffnung D[4]
+
+
+def test_exit_when_mask_sells_next_open():
+    px = bars([10, 10, 10, 11, 12, 12], [10, 10, 10, 11, 12, 12], [10, 10, 10, 11, 12, 12], [10, 10, 10, 11, 12, 12])
+    r = run({"A": px}, {"A": "EUR"}, {}, [Order(D[0], "A", stop=5, weight=0.5)], start_cash=1000, costs=NOCOST,
+            exit_when={"A": [D[3]]})
+    t = r.trades.iloc[0]
+    assert t["why"] == "signal" and t["exit_date"] == D[4] and t["exit_px"] == 12
+
+
+def test_min_fill_skips_rest_position():
+    p = {k: flat() for k in "AB"}
+    o = [Order(D[0], "A", stop=9.9, risk_frac=0.01, prio=2), Order(D[0], "B", stop=9.9, risk_frac=0.01, prio=1)]
+    # A: 1 % von 1000 = 10 € Risiko / 0,1 = 100 Stück = 1000 € → ganzes Cash; B bekäme 0 → kein Kauf
+    r = one(p, o, start_cash=1000, costs=NOCOST, min_fill=0.5)
+    assert list(r.trades["ticker"]) == ["A"]
+    o2 = [Order(D[0], "A", stop=9.9, risk_frac=0.006, prio=2), Order(D[0], "B", stop=9.9, risk_frac=0.006, prio=1)]
+    r2 = one(p, o2, start_cash=1000, costs=NOCOST, min_fill=0.5)   # A 600 €, B nur 40 von 60 Stück → 0,67 ≥ 0,5 → kauft
+    assert set(r2.trades["ticker"]) == {"A", "B"}
+    r3 = one(p, o2, start_cash=1000, costs=NOCOST, min_fill=0.7)
+    assert list(r3.trades["ticker"]) == ["A"] and r3.skipped["small"] == 1

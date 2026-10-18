@@ -89,3 +89,22 @@ Welle 2 (S06, S07, S09, S10-Proxy, S12-Proxy, S14, S16, S18-Insider) wird erst n
 ## 8. Was dieses Protokoll ausdrücklich nicht erlaubt
 
 Rasterweise Parametersuche; nachträgliches Hinzufügen von Filtern nach Einsicht in Train-Ergebnisse ohne neue Protokoll-Version und Registereintrag; jeder Blick auf 2022–2026 vor Phase E; synthetische 4H-/Earnings-Reihen als Ersatz für echte Daten.
+
+---
+
+## Nachtrag v1.1 (18.10.2026, nach Gate B — vom Nutzer freigegeben: „Ja ich schalte alles frei“)
+
+Gilt für **alle** Strategien und ihre Null-Strategien gleich; festgelegt vor jedem Lauf von Welle 1.
+
+1. **Mindest-Positionsgröße:** Ein Kauf entfällt, wenn das freie Cash weniger als 50 % der geplanten Stückzahl zulässt
+   (`min_fill = 0.5`). Grund: Rest-Positionen von 1–2 Stück mit fixer Gebühr (B2, 03 §6). S01-A/B werden mit v1.1
+   nachgerechnet; die v1-Zahlen bleiben im Register.
+2. **Ø R** wird damit über volle Positionen gerechnet; Hauptkriterium bleibt Netto-CAGR/Drawdown in EUR.
+3. **1.000-€-Sleeve** entfällt im Screening (nur Kosten-Warnfall aus B2).
+4. **Umsetzungsdetails Welle 1** (vorab, für alle Varianten + Null gleich): Ereignis-Signale nur „frisch“ (5 Vortage ohne
+   Bedingung); höchstens 20 Kandidaten je Tag und Strategie (nach Ranking); Stop „n ATR“ = Schluss am Signaltag − n·ATR14;
+   Terzile/Dezile je Kalendertag über die zulässigen Titel; S04-Markt = SPY (US) bzw. STOXX 600 (EU); S05: Top 10,
+   je 9,9 % Gewicht, Verkauf bei Ausscheiden aus den Top 10; S13-Stock: Gewicht 99 %/max. Positionen, täglich die bis zu
+   20 momentumstärksten Trend-Titel als Kandidaten. Null je Variante: gleiche Kandidatenzahl je Tag, zufällige zulässige
+   Titel desselben Tages, Stop/Ausstieg nach derselben Regel, zufällige Reihenfolge; 200 Seeds (5.000 €, 1 % bzw. Gewicht).
+5. Kostenpflichtige Daten bleiben **ohne Einzelfreigabe** ausgeschlossen (Anbieter + Preis werden vorher vorgelegt).
