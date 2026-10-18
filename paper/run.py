@@ -159,8 +159,10 @@ def close_pos(st, mk, p, px, why, ts):
     st["cash"] += p["qty"] * sell / rate - core.FEE
     pnl = p["qty"] * sell / rate - core.FEE - p["cost_eur"]
     R = (px - p["entry"]) / (p["entry"] - p["stop0"]) if p["entry"] > p["stop0"] else None
+    rn = pnl / p["risk_eur"] if p.get("risk_eur") else None      # netto: nach Gebühren und Spread, je eingesetztem Risiko
     st["trades"].append({**{k: p[k] for k in ("t", "entry_ts", "entry", "stop0", "qty", "regime")}, "exit_ts": str(ts), "exit": px,
-                         "why": why, "pnl_eur": round(pnl, 2), "R": None if R is None else round(R, 3)})
+                         "why": why, "pnl_eur": round(pnl, 2), "R": None if R is None else round(R, 3),
+                         "R_net": None if rn is None else round(rn, 3)})
     st["positions"].remove(p)
     st["events"].append(f"{ts} VERKAUF {p['t']} {why} @ {px:.4g} PnL {pnl:+.2f} €")
 
@@ -180,73 +182,97 @@ def open_pos(st, mk, t, ts, entry, stop, risk, extra, d_prev):
     cost = q * px / rate + core.FEE
     st["cash"] -= cost
     st["positions"].append({"sid": st["sid"], "t": t, "entry_ts": str(ts), "entry": entry, "stop": stop, "stop0": stop, "qty": q,
-                            "cost_eur": cost, **extra})
+                            "cost_eur": cost, "risk_eur": round(q * (px - stop) / rate, 2), **extra})
     st["events"].append(f"{ts} KAUF {t} {q} Stk @ {entry:.4g}, Stop {stop:.4g}, Risiko {risk:.1%}")
 
 
 # ------------------------------------------------------------------ ein Handelstag
 def process_day(st: dict, mk: Market, D: pd.Timestamp, D_prev: pd.Timestamp, cal: pd.DatetimeIndex, bull_prev: bool):
+    """Kerzen von D chronologisch. Je Zeitpunkt: (1) vorgemerkte Käufe zur Eröffnung dieser Kerze (Auslöser kam mit der
+    vorherigen Kerze; bei mehreren zuerst das stärkste Signal), (2) offene Positionen, (3) neue Auslöser zum Kerzenschluss →
+    Kauf vormerken für die Eröffnung der nächsten Kerze (real nachhandelbar, wie das Kairo-4H-System)."""
     sid = st["sid"]
-    tick = sorted({p["t"] for p in st["positions"]} | {q["t"] for q in st["pending"]})
-    bars = []
+    st.setdefault("armed", [])
+    tick = sorted({p["t"] for p in st["positions"]} | {q["t"] for q in st["pending"]} | {a["t"] for a in st["armed"]})
+    slots: dict = {}
     for t in tick:
         b = mk.h4.get(t)
         if b is None or not len(b):
             continue
         m = (b["day"] > D_prev) & (b["day"] <= D)
         for j in np.flatnonzero(m.to_numpy()):
-            bars.append((b.index[j], t, j))
-    bars.sort()
-    for ts, t, j in bars:
-        b = mk.h4[t]
-        bar, prev = b.iloc[j], (b.iloc[j - 1] if j > 0 else None)
-        for p in [p for p in st["positions"] if p["t"] == t]:
-            if pd.Timestamp(p["entry_ts"]) >= ts:
+            slots.setdefault(b.index[j], []).append((t, j))
+    for ts in sorted(slots):
+        here = dict(slots[ts])
+        # (1) Käufe zur Eröffnung
+        due = sorted([a for a in st["armed"] if a["t"] in here and pd.Timestamp(a["trigger_ts"]) < ts], key=lambda a: -a["prio"])
+        for a in due:
+            st["armed"].remove(a)
+            bar = mk.h4[a["t"]].iloc[here[a["t"]]]
+            op = float(bar["Open"])
+            if any(p["t"] == a["t"] for p in st["positions"]):
                 continue
-            tp = None
-            if sid == "S19":
-                x = mk.f(t)
-                v = x["ema20"][x.index < bar["day"]]
-                tp = float(v.iloc[-1]) if len(v) else None
-            r = core.step_position(p, bar, prev, tp)
-            if r:
-                close_pos(st, mk, p, r[0], r[1], ts)
-        for q in [q for q in st["pending"] if q["t"] == t]:
-            if not (pd.Timestamp(q["day"]) < bar["day"] <= pd.Timestamp(q["expiry"])):
+            cap = a.get("cap")
+            if len(st["positions"]) >= MAX_OPEN or (cap is not None and len(st["positions"]) >= cap):
+                st["events"].append(f"{ts} {a['t']}: Auslöser, aber Depot voll")
                 continue
-            if any(p["t"] == t for p in st["positions"]):
-                st["pending"].remove(q)
+            stop = a["stop"] if sid == "S19" else op - 1.5 * a["atr"]
+            if op <= stop:
+                st["events"].append(f"{ts} {a['t']}: Eröffnung {op:.4g} schon unter dem Stop – kein Kauf")
                 continue
-            if sid == "S19":
-                lows = b["Low"][(b["day"] > pd.Timestamp(q["day"])) & (b.index <= ts)]
-                q["panic"] = min(q["panic"], float(lows.min())) if len(lows) else q["panic"]
-                if not core.s19_trigger(b, j):
+            extra = {"regime": a["regime"]}
+            extra.update({"crv": a["crv"]} if sid == "S19" else {"atr": a["atr"], "be": False})
+            open_pos(st, mk, a["t"], ts, op, stop, a["risk"], extra, D_prev)
+        # (2) offene Positionen (eine eben eröffnete zählt ab ihrer Eröffnung mit)
+        for t, j in slots[ts]:
+            b = mk.h4[t]
+            bar, prev = b.iloc[j], (b.iloc[j - 1] if j > 0 else None)
+            for p in [p for p in st["positions"] if p["t"] == t]:
+                if pd.Timestamp(p["entry_ts"]) > ts:
                     continue
-                st["pending"].remove(q)
-                entry = float(bar["Close"])
-                sl = q["panic"] - 0.5 * q["atr"]
-                x = mk.f(t)
-                v = x["ema20"][x.index < bar["day"]]
-                tp = float(v.iloc[-1]) if len(v) else float("nan")
-                crv = (tp - entry) / (entry - sl) if entry > sl else -1
-                if not crv >= 2:
-                    st["events"].append(f"{ts} {t}: H4-Auslöser, CRV {crv:.2f} < 2 – kein Trade")
+                tp = None
+                if sid == "S19":
+                    x = mk.f(t)
+                    v = x["ema20"][x.index < bar["day"]]
+                    tp = float(v.iloc[-1]) if len(v) else None
+                r = core.step_position(p, bar, prev if pd.Timestamp(p["entry_ts"]) < ts else None, tp)
+                if r:
+                    close_pos(st, mk, p, r[0], r[1], ts)
+        # (3) neue Auslöser zum Kerzenschluss
+        for t, j in slots[ts]:
+            b = mk.h4[t]
+            bar = b.iloc[j]
+            for q in [q for q in st["pending"] if q["t"] == t]:
+                if not (pd.Timestamp(q["day"]) < bar["day"] <= pd.Timestamp(q["expiry"])):
                     continue
-                cap = None if bull_prev else 2
-                if len(st["positions"]) >= MAX_OPEN or (cap is not None and len(st["positions"]) >= cap):
-                    st["events"].append(f"{ts} {t}: Auslöser, aber Depot voll")
+                if any(p["t"] == t for p in st["positions"]) or any(a["t"] == t for a in st["armed"]):
+                    st["pending"].remove(q)
                     continue
-                open_pos(st, mk, t, ts, entry, sl, 0.01 if bull_prev else 0.005,
-                         {"regime": "bull" if bull_prev else "bear", "crv": round(crv, 2)}, D_prev)
-            else:
-                if not bull_prev or not core.s20_trigger(b, j):
-                    continue
-                st["pending"].remove(q)
-                if len(st["positions"]) >= MAX_OPEN:
-                    st["events"].append(f"{ts} {t}: Auslöser, aber Depot voll")
-                    continue
-                entry = float(bar["Close"])
-                open_pos(st, mk, t, ts, entry, entry - 1.5 * q["atr"], 0.01, {"regime": "bull", "atr": q["atr"], "be": False}, D_prev)
+                if sid == "S19":
+                    lows = b["Low"][(b["day"] > pd.Timestamp(q["day"])) & (b.index <= ts)]
+                    q["panic"] = min(q["panic"], float(lows.min())) if len(lows) else q["panic"]
+                    if not core.s19_trigger(b, j):
+                        continue
+                    st["pending"].remove(q)
+                    c = float(bar["Close"])
+                    sl = q["panic"] - 0.5 * q["atr"]
+                    x = mk.f(t)
+                    v = x["ema20"][x.index < bar["day"]]
+                    tp = float(v.iloc[-1]) if len(v) else float("nan")
+                    crv = (tp - c) / (c - sl) if c > sl else -1
+                    if not crv >= 2:
+                        st["events"].append(f"{ts} {t}: H4-Auslöser, CRV {crv:.2f} < 2 – kein Trade")
+                        continue
+                    st["armed"].append({"t": t, "trigger_ts": str(ts), "stop": sl, "crv": round(crv, 2), "prio": -q.get("z", 0),
+                                        "risk": 0.01 if bull_prev else 0.005, "cap": None if bull_prev else 2,
+                                        "regime": "bull" if bull_prev else "bear"})
+                else:
+                    if not bull_prev or not core.s20_trigger(b, j):
+                        continue
+                    st["pending"].remove(q)
+                    vr = float(bar["Volume"] / bar["vma20"]) if bar["vma20"] else 0.0
+                    st["armed"].append({"t": t, "trigger_ts": str(ts), "atr": q["atr"], "prio": vr, "risk": 0.01, "regime": "bull"})
+                st["events"].append(f"{ts} {t}: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt")
     st["pending"] = [q for q in st["pending"] if pd.Timestamp(q["expiry"]) > D]
     st["equity"].append({"date": str(D.date()), "eur": round(equity(st, mk, D), 2), "open": len(st["positions"])})
 
@@ -265,7 +291,7 @@ def new_setups(st: dict, mk: Market, D: pd.Timestamp, cal: pd.DatetimeIndex, tic
            "schwächer als Branche": 0, "Branchen-ETF fehlt": 0}
     k = int(np.searchsorted(cal.values, np.datetime64(D)))
     expiry = cal[min(k + core.WINDOW, len(cal) - 1)] if k + core.WINDOW < len(cal) else D + pd.tseries.offsets.BDay(core.WINDOW)
-    busy = {p["t"] for p in st["positions"]} | {q["t"] for q in st["pending"]}
+    busy = {p["t"] for p in st["positions"]} | {q["t"] for q in st["pending"]} | {a["t"] for a in st.get("armed", [])}
     found = 0
     for t in tickers:
         if t in busy:
@@ -325,9 +351,10 @@ def stats(st: dict) -> dict:
     out = {"start": st["start"], "tage": len(eq), "depot_eur": round(float(eq.iloc[-1]), 2) if len(eq) else st["start_cash"],
            "rendite": float(eq.iloc[-1] / st["start_cash"] - 1) if len(eq) else 0.0,
            "max_dd": float((eq / eq.cummax() - 1).min()) if len(eq) else 0.0, "trades": int(len(tr)),
-           "offen": len(st["positions"]), "wartend": len(st["pending"])}
+           "offen": len(st["positions"]), "wartend": len(st["pending"]), "vorgemerkt": len(st.get("armed", []))}
     if len(tr):
-        out.update(trefferquote=float((tr["pnl_eur"] > 0).mean()), avg_R=float(tr["R"].dropna().mean()) if tr["R"].notna().any() else None,
+        rc = tr["R_net"] if "R_net" in tr and tr["R_net"].notna().any() else tr["R"]
+        out.update(trefferquote=float((tr["pnl_eur"] > 0).mean()), avg_R=float(rc.dropna().mean()) if rc.notna().any() else None,
                    pnl_eur=round(float(tr["pnl_eur"].sum()), 2))
     return out
 
@@ -404,7 +431,7 @@ def main(argv=None) -> int:
         days = [d for d in cal if d > pd.Timestamp(st["last_day"])]
         for D in days:
             prev = cal[cal < D][-1]
-            tick = sorted({p["t"] for p in st["positions"]} | {q["t"] for q in st["pending"]})
+            tick = sorted({p["t"] for p in st["positions"]} | {q["t"] for q in st["pending"]} | {a["t"] for a in st.get("armed", [])})
             miss = [t for t in tick if t not in mk.h4]
             if miss:
                 hx = download(miss, period="60d", interval="60m", batch=40)

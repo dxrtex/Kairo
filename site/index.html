@@ -4693,16 +4693,16 @@ function paperCard(sid, st, sm, bench) {
     : "S&P 500 über EMA200, Aktie über EMA50 > EMA200, Bollinger-Bänder ziehen sich zusammen, Kurs an EMA50 bzw. 50–61,8 %-Zone → Kauf, wenn eine 4H-Kerze ≥ 1 % über der 4H-EMA20 mit Volumen schließt. Stop 1,5 ATR, ab +2 ATR Einstand, dann unter das Tief der letzten 4H-Kerze nachziehen.";
   if (!st) return `<div class="hcard">${hHead(name)}<div class="note">Noch keine Daten – der erste Lauf startet nach US-Börsenschluss.</div></div>`;
   const s = sm || {}, eq = (st.equity || []).slice(-1)[0], val = eq ? eq.eur : st.start_cash, ret = val / st.start_cash - 1;
-  const tr = st.trades || [], wins = tr.filter(x => x.pnl_eur > 0).length, rs = tr.map(x => x.R).filter(x => x != null);
+  const tr = st.trades || [], wins = tr.filter(x => x.pnl_eur > 0).length, rs = tr.map(x => x.R_net ?? x.R).filter(x => x != null);
   const avgR = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
   const pos = (st.positions || []).map(p => `<tr><td><b>${esc(p.t)}</b></td><td>${esc(String(p.entry_ts).slice(0, 10))}</td><td>${fmt(p.entry)}</td><td class="down">${fmt(p.stop)}</td><td>${p.qty}</td><td>${p.be ? "Einstand ✓" : p.regime === "bear" ? "Bärenmarkt" : ""}</td></tr>`).join("");
   const pend = (st.pending || []).slice().sort((a, b) => String(a.expiry).localeCompare(String(b.expiry)));
-  const last = tr.slice(-12).reverse().map(x => `<tr><td><b>${esc(x.t)}</b></td><td>${esc(String(x.entry_ts).slice(0, 10))}</td><td>${esc(String(x.exit_ts).slice(0, 10))}</td><td>${esc({ stop: "Stop", stop_gap: "Stop (Lücke)", trail: "Trailing", ziel_ema20: "Ziel EMA20" }[x.why] || x.why)}</td><td class="${x.pnl_eur >= 0 ? "up" : "down"}">${x.R == null ? "–" : (x.R >= 0 ? "+" : "") + fmt(x.R, 2) + " R"}</td><td class="${x.pnl_eur >= 0 ? "up" : "down"}">${eur2(x.pnl_eur)}</td></tr>`).join("");
+  const last = tr.slice(-12).reverse().map(x => `<tr><td><b>${esc(x.t)}</b></td><td>${esc(String(x.entry_ts).slice(0, 10))}</td><td>${esc(String(x.exit_ts).slice(0, 10))}</td><td>${esc({ stop: "Stop", stop_gap: "Stop (Lücke)", trail: "Trailing", ziel_ema20: "Ziel EMA20" }[x.why] || x.why)}</td><td class="${x.pnl_eur >= 0 ? "up" : "down"}">${(x.R_net ?? x.R) == null ? "–" : ((x.R_net ?? x.R) >= 0 ? "+" : "") + fmt(x.R_net ?? x.R, 2) + " R"}</td><td class="${x.pnl_eur >= 0 ? "up" : "down"}">${eur2(x.pnl_eur)}</td></tr>`).join("");
   return `<div class="hcard">${hHead(name)}
     <div class="pkpi"><div class="mt"><span>Papier-Depot</span><b class="${ret >= 0 ? "up" : "down"}">${eur2(val)}</b><em>${sgnPct(ret, 1)} seit ${esc(st.start || "–")}</em></div>
       <div class="mt"><span>Trades</span><b>${tr.length}</b><em>${tr.length ? `${pct(wins / tr.length, 0)} Gewinner` : "noch keine"}</em></div>
-      <div class="mt"><span>Ø Ergebnis</span><b>${avgR == null ? "–" : (avgR >= 0 ? "+" : "") + fmt(avgR, 2) + " R"}</b><em>je Trade</em></div>
-      <div class="mt"><span>Größter Rückgang</span><b class="down">${s.max_dd != null ? pct(s.max_dd, 1) : "–"}</b><em>${(st.positions || []).length} offen · ${pend.length} warten</em></div></div>
+      <div class="mt"><span>Ø Ergebnis</span><b>${avgR == null ? "–" : (avgR >= 0 ? "+" : "") + fmt(avgR, 2) + " R"}</b><em>je Trade, nach Kosten</em></div>
+      <div class="mt"><span>Größter Rückgang</span><b class="down">${s.max_dd != null ? pct(s.max_dd, 1) : "–"}</b><em>${(st.positions || []).length} offen · ${(st.armed || []).length} Kauf vorgemerkt · ${pend.length} warten</em></div></div>
     ${paperSpark(st, bench)}
     ${st.funnel ? `<div class="note" style="margin-top:8px"><b>Filter am ${esc(String(st.funnel.date).slice(5))}:</b> ${Object.entries(st.funnel).filter(([k]) => !["date", "Branchen-ETF fehlt"].includes(k)).map(([k, v]) => `${esc(k)} <b>${v}</b>`).join(" → ")}${st.funnel["Branchen-ETF fehlt"] ? ` · Branchen-Daten fehlen bei ${st.funnel["Branchen-ETF fehlt"]}` : ""}</div>` : ""}
     ${pos ? `<div class="hh" style="margin-top:12px"><b>Offene Papier-Positionen</b></div><div class="tscroll"><table class="ptab"><tr><th>Titel</th><th>Kauf</th><th>Einstieg</th><th>Stop</th><th>Stück</th><th></th></tr>${pos}</table></div>` : ""}
@@ -4719,7 +4719,7 @@ function paperHtml() {
   if (!d) return head + `<div class="hcard"><div class="note">${PAPER.err ? "Papier-Daten noch nicht verfügbar – der erste Lauf erscheint nach dem nächsten US-Börsenschluss." : "Lade Papier-Daten …"}</div></div>`;
   const sm = d.sum || {}, bench = sm.bench || [];
   return head + paperCard("S19", d.s19, sm.S19, bench) + paperCard("S20", d.s20, sm.S20, bench)
-    + `<div class="note" style="margin:6px 2px">Stand: ${esc(sm.ts ? new Date(sm.ts).toLocaleString("de-DE") : "–")}. Grenzen: Kauf genau zum Schluss der 4H-Kerze (real etwas später), Yahoo-Stundenkerzen teils verzögert, Fundamentaldaten wöchentlich von Yahoo.</div>`;
+    + `<div class="note" style="margin:6px 2px">Stand: ${esc(sm.ts ? new Date(sm.ts).toLocaleString("de-DE") : "–")}. Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser (so real nachhandelbar). 4H-Kerzen wie TradingView (US: 9:30–13:30 und 13:30–16:00). R nach Gebühren und Spread. Grenzen: Yahoo-Stundenkerzen teils verzögert, Fundamentaldaten wöchentlich von Yahoo.</div>`;
 }
 
 // ---------- Rendern ----------
