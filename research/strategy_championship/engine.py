@@ -54,6 +54,8 @@ class Order:
     group: str | None = None
     exit_rule: tuple | None = None  # ("ema", from_day)
     valid_days: int = 1             # so viele Eröffnungen des Titels bleibt die Order gültig
+    max_open_cap: int | None = None # Kauf nur, wenn weniger als so viele Positionen offen (z. B. Bärenmarkt-Regime)
+    trail: tuple | None = None      # ("be_prevlow", Abstand): ab Kurs ≥ Einstieg + Abstand Stop auf Einstand, danach unter Vortagestief
 
 
 @dataclass
@@ -127,6 +129,9 @@ class _Pos:
     risk_eur: float = 0.0
     spread_eur: float = 0.0
     days: int = 0
+    trail: tuple | None = None
+    entry_raw: float = 0.0
+    be_on: bool = False
 
 
 def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str, pd.Series], orders: list[Order],
@@ -214,7 +219,7 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
             if o.ticker in pos:
                 skipped["held"] += 1
                 continue
-            if len(pos) >= max_open:
+            if len(pos) >= max_open or (o.max_open_cap is not None and len(pos) >= o.max_open_cap):
                 skipped["full"] += 1
                 continue
             op = p_.o[i]
@@ -255,7 +260,7 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
             flow = book(d, "BUY", o.ticker, qty, price, costs.fee_eur, o.tag)
             pos[o.ticker] = _Pos(o.ticker, qty, d, price, o.stop, o.target, o.max_days, o.exit_rule, o.tag, -flow,
                                  risk_eur=qty * (price - o.stop) / rate if o.stop is not None else 0.0,
-                                 spread_eur=qty * (price - op) / rate)
+                                 spread_eur=qty * (price - op) / rate, trail=o.trail, entry_raw=op)
             if o.group is not None:
                 filled_groups.add(o.group)
         # 2) Tagesverlauf: Dividende, Stop, Ziel, Zeit; Ausstiegsregel EMA → nächste Eröffnung
@@ -266,6 +271,8 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
                 continue
             o_, h_, l_, c_ = P.o[i], P.h[i], P.l[i], P.c[i]
             p.days += 1
+            if p.trail and p.be_on and i > 0:
+                p.stop = max(p.stop, P.l[i - 1])        # Trailing unter dem Vortagestief (Tageskerzen-Näherung)
             if P.div[i] > 0 and p.days > 1:
                 book(d, "DIV", t, p.qty, P.div[i], 0.0, "dividende")
             if p.stop is not None and p.days > 1 and o_ <= p.stop:
@@ -274,6 +281,13 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
                 sell(d, p, p.stop, "stop"); continue
             if p.target is not None and h_ >= p.target:
                 sell(d, p, max(p.target, o_) if p.days > 1 else p.target, "target"); continue
+            if p.exit_rule and p.exit_rule[0] == "touch_ema" and P.ema is not None and i > 0 and np.isfinite(P.ema[i - 1]) \
+                    and h_ >= P.ema[i - 1]:
+                lvl = P.ema[i - 1]                      # EMA des Vortags = bekanntes Ziel zur Eröffnung
+                sell(d, p, max(lvl, o_) if p.days > 1 else max(lvl, p.entry_raw), "target"); continue
+            if p.trail and not p.be_on and h_ >= p.entry_raw + p.trail[1]:
+                p.be_on = True                          # ab morgen: Stop ≥ Einstand, dann Vortagestief
+                p.stop = max(p.stop, p.entry_raw)
             if p.max_days is not None and p.days >= p.max_days:
                 sell(d, p, c_, "time"); continue
             if p.exit_rule and p.exit_rule[0] == "ema" and P.ema is not None and p.days >= p.exit_rule[1] and c_ < P.ema[i]:

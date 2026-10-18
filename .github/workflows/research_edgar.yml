@@ -1,0 +1,27 @@
+name: Research – EDGAR-Fundamentaldaten (S19)
+
+# Frei zugängliche SEC-Daten (XBRL companyfacts + submissions), keine Zugangsdaten, keine Kosten.
+on:
+  push:
+    branches: ["research/**"]
+    paths: [".github/workflows/research_edgar.yml", "research/strategy_championship/edgar.py"]
+
+permissions:
+  contents: write
+
+jobs:
+  edgar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - run: python -m research.strategy_championship.edgar --out fund
+      - run: sha256sum fund/* | tee fund/SHA256SUMS.txt
+      - name: Als Entwurfs-Release sichern
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          gh release create "research-edgar-${GITHUB_RUN_ID}" fund/* --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Research EDGAR-Fundamentaldaten v1" --notes "SEC XBRL: EntityPublicFloat, Umsatz, operatives Ergebnis (10-K), SIC. Nur Forschung."

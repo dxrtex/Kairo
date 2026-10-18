@@ -176,3 +176,31 @@ def test_min_fill_skips_rest_position():
     assert set(r2.trades["ticker"]) == {"A", "B"}
     r3 = one(p, o2, start_cash=1000, costs=NOCOST, min_fill=0.7)
     assert list(r3.trades["ticker"]) == ["A"] and r3.skipped["small"] == 1
+
+
+def test_touch_ema_target_sells_at_prior_ema():
+    o = [10, 10, 10, 10.5, 11, 11]
+    h = [10, 10, 10.2, 11.2, 11, 11]
+    px = bars(o, h, [10, 9.9, 9.9, 10.4, 11, 11], [10, 10, 10.1, 11, 11, 11])
+    px["EMA"] = 11.0
+    r = one({"A": px}, [Order(D[0], "A", stop=9, weight=0.5, exit_rule=("touch_ema",))], start_cash=1000, costs=NOCOST)
+    t = r.trades.iloc[0]
+    assert t["why"] == "target" and t["exit_date"] == D[3] and t["exit_px"] == 11.0
+
+
+def test_trailing_breakeven_then_prev_low():
+    o = [10, 10, 11, 12.5, 12.6, 12.0]
+    h = [10, 10.5, 12.2, 13.0, 12.8, 12.1]
+    l = [10, 9.8, 10.9, 12.3, 12.2, 11.0]
+    px = bars(o, h, l, [10, 10.4, 12.0, 12.8, 12.4, 11.5])
+    r = one({"A": px}, [Order(D[0], "A", stop=8.5, weight=0.5, trail=("be_prevlow", 2.0))], start_cash=1000, costs=NOCOST)
+    t = r.trades.iloc[0]
+    # Kauf 10 (D1); D2 Hoch 12,2 ≥ 12 → Einstand; D3 Stop = Vortagestief 10,9; D4 Stop = Vortagestief 12,3, Tief 12,2 → Stop 12,3
+    assert t["why"] == "stop" and t["exit_date"] == D[4] and t["exit_px"] == 12.3
+
+
+def test_max_open_cap():
+    p = {k: flat() for k in "ABC"}
+    o = [Order(D[0], k, stop=9, weight=0.2, prio=3 - i, max_open_cap=2) for i, k in enumerate("ABC")]
+    r = one(p, o, start_cash=1000, costs=NOCOST, max_open=5)
+    assert set(r.trades["ticker"]) == {"A", "B"}
