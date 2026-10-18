@@ -87,7 +87,7 @@ def _close(mk, x: dict, rule: str, px: float, why: str, ts) -> None:
         buy = e * (1 + x["sp"] / 2)
         sell = px * (1 - x["sp"] / 2)
         risk = x["qty"] * (buy - s0) / x["rate"]
-        pnl = x["qty"] * (sell - buy) / x["rate"] - 2 * core.FEE
+        pnl = x["qty"] * (sell - buy) / x["rate"] - core.fee(x["qty"] * buy / x["rate"]) - core.fee(x["qty"] * sell / x["rate"])
         rn = pnl / risk if risk > 0 else None
     x["exits"][rule] = {"px": round(px, 4), "why": why, "ts": str(ts), "R": None if R is None else round(R, 3),
                         "R_net": None if rn is None else round(rn, 3)}
