@@ -33,7 +33,8 @@ IDS = ["T1-top5", "P1-52W", "P2-KOMBI", "P3-VOLSK", "P4-TREND"]
 _G: dict = {}
 
 
-def monthly(P, sid: str, bench, rng=None) -> tuple[list, dict]:
+def monthly(P, sid: str, bench, rng=None, n: int | None = None) -> tuple[list, dict]:
+    n = n or (10 if sid.endswith("top10") else N)
     me = wave2._month_ends(P)
     g = bench["^GSPC"]["Close"]
     mvol = np.log(g).diff().rolling(126).std() * np.sqrt(252)
@@ -43,8 +44,8 @@ def monthly(P, sid: str, bench, rng=None) -> tuple[list, dict]:
         if pool is None or not len(pool):
             continue
         if rng is not None:
-            tops[d] = list(rng.choice(pool, min(N, len(pool)), replace=False))
-            wts[d] = 0.99 / N
+            tops[d] = list(rng.choice(pool, min(n, len(pool)), replace=False))
+            wts[d] = 0.99 / n
             continue
         rows = []
         for t in pool:
@@ -66,8 +67,8 @@ def monthly(P, sid: str, bench, rng=None) -> tuple[list, dict]:
             df = df.sort_values("s", ascending=False)
         else:
             df = df.dropna(subset=["m"]).sort_values("m", ascending=False)
-        tops[d] = df["t"].head(N).tolist()
-        w = 0.99 / N
+        tops[d] = df["t"].head(n).tolist()
+        w = 0.99 / n
         if sid == "P3-VOLSK":
             v = mvol.asof(pd.Timestamp(d))
             w *= min(1.0, 0.15 / v) if v and np.isfinite(v) else 1.0
@@ -87,8 +88,8 @@ def _job(args):
     if seed is None:
         o, ex = _G["orders"][sid]
     else:
-        o, ex = monthly(_G["P"], "null", _G["bench"], np.random.default_rng(seed))
-    r = run(_G["P"].raw, _G["cur"], _G["fx"], o, cash, _G["costs"][cn], N + 2, calendar=_G["cal"], exit_when=ex, min_fill=0.5)
+        o, ex = monthly(_G["P"], "null", _G["bench"], np.random.default_rng(seed), _G["null_n"])
+    r = run(_G["P"].raw, _G["cur"], _G["fx"], o, cash, _G["costs"][cn], 12, calendar=_G["cal"], exit_when=ex, min_fill=0.5)
     m = metrics(r)
     keep = ("cagr", "max_dd", "sharpe", "trades", "win_rate", "calmar", "worst_year") if seed is None else ("cagr", "max_dd")
     out = {k: m.get(k) for k in keep}
@@ -108,7 +109,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
     ap.add_argument("--out", default="c6_out")
-    ap.add_argument("--period", default="train", choices=["train", "validation"])
+    ap.add_argument("--period", default="train", choices=["train", "validation", "holdout"])
     ap.add_argument("--only", nargs="*", default=None)
     a = ap.parse_args(argv)
     out = Path(a.out)
@@ -126,7 +127,8 @@ def main(argv=None) -> int:
              "prime_stress": Costs(fee_eur=1.99, spread=0.002, slippage=0.0005, fx_fee=0.001, fee_free_from=250.0,
                                    spread_by_ticker={k: 2 * v for k, v in sp.items()})}
     ids = a.only or IDS
-    _G.update(P=P, cur=cur, fx=fx, cal=cal, costs=costs, bench=bench, orders={s: monthly(P, s, bench) for s in ids})
+    _G.update(P=P, cur=cur, fx=fx, cal=cal, costs=costs, bench=bench, orders={s: monthly(P, s, bench) for s in ids},
+              null_n=10 if all(s.endswith("top10") for s in ids) else N)
     jobs = [(s, c, cn, None) for s in ids for c in CAPS for cn in costs]
     jobs += [("null", 5000, "prime", s) for s in range(SEEDS)]
     with Pool() as pool:
@@ -138,7 +140,7 @@ def main(argv=None) -> int:
         res[f"{s} · 5000 € · prime"]["p_zufall"] = float((null >= c).mean())
     summ = {"period": a.period, "zufall_median_cagr": float(np.median(null)), "zufall_p90_cagr": float(np.quantile(null, 0.9)),
             "results": res}
-    (out / f"c6_{a.period}.json").write_text(json.dumps(summ, indent=1, default=str, ensure_ascii=False))
+    (out / f"c6_{a.period}{'_top10' if _G['null_n'] == 10 else ''}.json").write_text(json.dumps(summ, indent=1, default=str, ensure_ascii=False))
     for s in ids:
         b, st = res[f"{s} · 5000 € · prime"], res[f"{s} · 5000 € · prime_stress"]
         print(f"{s:10s} 5k {b['cagr']:+.1%} stress {st['cagr']:+.1%} DD {b['max_dd']:.0%} Sharpe {b['sharpe']:.2f} "

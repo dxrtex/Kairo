@@ -16,14 +16,14 @@ from pathlib import Path
 import pandas as pd
 
 from . import d_run, wave2
-from .d_run import seg
+from .d_run import seg, stats
 from .data import UNIVERSE, load
 from .engine import Costs, Order, run
 from .v_run import s13_orders
 from .wave1 import Panel, spreads
 
 CORES = ["ACWI", "S13-ETF"]
-SAT = "T1-top5"
+SAT = "Momentum"
 SHARES = [0.1, 0.2, 0.3]
 CAPS = [10000, 20000, 50000]
 _G = d_run._G
@@ -42,11 +42,12 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
     ap.add_argument("--out", default="d2_out")
+    ap.add_argument("--period", default="trainval", choices=["trainval", "holdout"])
     ap.add_argument("--n", type=int, default=5, help="Titel im Momentum-Teil (5 oder 10)")
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    prices, cur, fx, bench, (start, end) = load(a.data, "trainval")
+    prices, cur, fx, bench, (start, end) = load(a.data, a.period)
     uni = pd.read_csv(UNIVERSE)
     region = dict(zip(uni["ticker"], uni["region"]))
     P = Panel(prices, cur, region, bench, start, end)
@@ -67,20 +68,20 @@ def main(argv=None) -> int:
         rr = pool.map(_sleeve, jobs, chunksize=1)
     eq = {k: e.reindex(cal).ffill().bfill() for k, e in rr}
     res = {}
+    sg = (lambda e: {"gesamt": stats(e)}) if a.period == "holdout" else seg
     for cap in CAPS:
         for cn in costs:
             for sid in CORES + [SAT]:
-                res[f"{sid} rein · {cap} € · {cn}"] = seg(eq[(sid, cap, cn)])
+                res[f"{sid} rein · {cap} € · {cn}"] = sg(eq[(sid, cap, cn)])
             for core in CORES:
                 for sh in SHARES:
                     e = eq[(core, round(cap * (1 - sh)), cn)] + eq[(SAT, round(cap * sh), cn)]
-                    res[f"{core} + {int(sh * 100)} % {SAT} · {cap} € · {cn}"] = seg(e)
-    (out / f"d2_results_top{a.n}.json").write_text(json.dumps(res, indent=1, default=str, ensure_ascii=False))
+                    res[f"{core} + {int(sh * 100)} % {SAT} · {cap} € · {cn}"] = sg(e)
+    (out / f"d2_{a.period}_top{a.n}.json").write_text(json.dumps(res, indent=1, default=str, ensure_ascii=False))
     for k, v in res.items():
         if "20000 € · prime" in k and "stress" not in k:
             g = v["gesamt"]
-            print(f"{k:50s} {g['cagr']:+.1%} DD {g['max_dd']:.0%} Sharpe {g['sharpe']:.2f} | Val {v['validierung']['cagr']:+.1%} "
-                  f"DD {v['validierung']['max_dd']:.0%}", flush=True)
+            print(f"{k:50s} {g['cagr']:+.1%} DD {g['max_dd']:.0%} Sharpe {g['sharpe']:.2f}", flush=True)
     return 0
 
 
