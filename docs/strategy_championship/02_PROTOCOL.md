@@ -108,3 +108,25 @@ Gilt für **alle** Strategien und ihre Null-Strategien gleich; festgelegt vor je
    20 momentumstärksten Trend-Titel als Kandidaten. Null je Variante: gleiche Kandidatenzahl je Tag, zufällige zulässige
    Titel desselben Tages, Stop/Ausstieg nach derselben Regel, zufällige Reihenfolge; 200 Seeds (5.000 €, 1 % bzw. Gewicht).
 5. Kostenpflichtige Daten bleiben **ohne Einzelfreigabe** ausgeschlossen (Anbieter + Preis werden vorher vorgelegt).
+
+---
+
+## Nachtrag v1.2 — Welle 2 (18.10.2026, nach Zwischenbericht Welle 1; Nutzer: „Ja weiter mit A“)
+
+Registriert **vor** dem ersten Lauf. Gleiche Daten, Kosten, Kapital, Mindestgröße, Kennzahlen und Null-Logik wie v1.1;
+nur Train 2008–2016. Ziel danach: Validierung 2017–2021 **einmal gemeinsam** für alle Finalisten beider Wellen.
+
+| ID | Variante(n) | Einstieg / Ausstieg | Ranking | Null |
+|---|---|---|---|---|
+| **S06-P** | Residual-Momentum (**Proxy**: nur Marktfaktor SPY bzw. STOXX 600, Regression über 36 Monate; Score = Σ Residuen Monat −11…−1 / Std der Residuen) | Top 10 je Monatsende, 9,9 % je Titel, Verkauf bei Ausscheiden | Score | 10 zufällige zulässige Titel monatlich |
+| **S07** | A: 12-1-Momentum / Volatilität 1 J. · B: 6-1 / Volatilität 6 M. | wie S06-P | Score | wie S06-P |
+| **S09** | A: 20-T.-Spanne (Hoch−Tief)/Schluss ≤ 10 % · B: ATR10/ATR50 < 0,6; jeweils Schluss > 20-T.-Hoch, Volumen > 1,5 × Ø50, Schluss > EMA200 | nächste Eröffnung; Stop = 20-T.-Tief − 0,25 ATR; Ausstieg Schluss < 20-T.-Tief (Signal) oder Tag 60 | Volumenanstieg | gleiche Anzahl je Tag, zufällige zulässige Titel, gleiche Stop-/Ausstiegsregel |
+| **S14** | US-Sektor-ETFs (XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY): A: Top 3 nach 6-M.-Rendite · B: Top 3 nach 12-1 | monatlich, je 33 %, Verkauf bei Ausscheiden | Rendite | 3 zufällige Sektoren monatlich |
+| **S16** | A: Dual Momentum SPY vs. EFA (12 M.), absolut gegen BIL, sonst SHY · B: Top 1 aus SPY/EFA/QQQ, absolut gegen BIL, sonst SHY | monatlich, 99 % | Rendite | 1 zufälliger ETF der Auswahl monatlich |
+
+ETF-Strategien handeln US-ETFs (USD, FX zum Tageskurs) als **Proxy** für UCITS-Gegenstücke (Kosten/Steuern dort anders).
+
+**Nicht getestet in Welle 2** (Daten fehlen bzw. Aufbau außerhalb des Rahmens, ehrlich ausgewiesen statt Ersatzdaten):
+S10 Earnings-Drift (keine historischen Termine/Überraschungen), S12 Multi-Faktor (keine zeitpunktgenauen Fundamentaldaten),
+S18 Insider-Cluster-Käufe (EDGAR-Form-4-Historie müsste erst aufgebaut werden — möglich, eigener Schritt mit Freigabe).
+S15/S17 bleiben **NICHT VALIDE TESTBAR**.
