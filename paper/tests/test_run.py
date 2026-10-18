@@ -63,3 +63,29 @@ def test_s19_funnel_counts():
     f = st["funnel"]
     assert f["Qualität"] == 1 and f["Kursdaten"] == 1 and f["liquide"] == 1 and f["Signale"] == 0
     assert f["≥ 2,5 Std unter EMA20"] == 0 and not st["pending"]          # gleichmäßiger Aufwärtstrend: keine Überdehnung
+
+
+def test_fill_next_open_priority_and_net_r():
+    mk, days, D_prev, D = market()
+    mk.h4["BBB"] = mk.h4["AAA"].copy()
+    mk.daily["BBB"] = mk.daily["AAA"]
+    mk.cur["BBB"], mk.region["BBB"] = "USD", "us"
+    for t in ("AAA", "BBB"):
+        mk.h4[t]["ema20"] = 95.0
+    mk.h4["AAA"]["vma20"] = 100.0                        # AAA: Volumen 20× Ø, BBB: 40× Ø → BBB zuerst
+    mk.h4["BBB"]["vma20"] = 50.0
+    st = run.load_state(__import__("pathlib").Path("/nonexistent"), "S20")
+    st["pending"] = [{"t": t, "day": str(D_prev.date()), "expiry": str(D.date()), "atr": 1.0} for t in ("AAA", "BBB")]
+    run.MAX_OPEN, old = 1, run.MAX_OPEN
+    try:
+        run.process_day(st, mk, D, D_prev, days, True)
+    finally:
+        run.MAX_OPEN = old
+    buys = [e for e in st["events"] if " KAUF " in e]
+    assert len(buys) == 1 and "KAUF BBB" in buys[0]                    # stärkeres Signal bekommt den einzigen Platz
+    assert any("AAA: Auslöser, aber Depot voll" in e for e in st["events"])
+    t = (st["trades"] or [None])[0]
+    trig = mk.h4["BBB"].index[2]
+    assert pd.Timestamp((t or st["positions"][0])["entry_ts"]) > trig     # Kauf erst nach der Auslöse-Kerze
+    if t:
+        assert t["R_net"] < t["R"]                                         # netto nach Kosten schlechter
