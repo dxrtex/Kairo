@@ -735,6 +735,11 @@ def main(argv=None) -> int:
             if not evening:
                 print("Live-Bilanz: Lauf während der Börsenzeit – keine neuen Signale gespeichert")
             print(f"Live-Bilanz: {bil['live']['n']} Signale seit {bil['live']['since']}, neu: {len(bil['new'])}")
+            try:                                      # öffentliche Live-Bilanz (site/track/), statisch
+                from . import trackpage
+                trackpage.write(state.load("signals.json", []), today_iso, ROOT)
+            except Exception as exc:
+                print(f"Live-Bilanz-Seite: Fehler {exc!r}")
         except Exception as exc:
             print(f"Live-Bilanz: Fehler {exc!r}")
             bil = {"live": None, "signals": [], "backtest": None}

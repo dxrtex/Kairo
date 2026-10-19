@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kairo – Forschung &amp; Backtests</title>
+<meta name="description" content="Alle Strategien, die für die Kairo-App getestet wurden: Regeln, Methodik, Ergebnisse 2008–2026 mit echten Kosten (Scalable PRIME+).">
+<style>
+:root{--bg:#fff;--fg:#1d1d1f;--mut:#6e6e73;--line:#e5e5ea;--acc:#0a84ff}
+@media (prefers-color-scheme:dark){:root{--bg:#000;--fg:#f5f5f7;--mut:#a1a1a6;--line:#2c2c2e}}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;padding:24px 16px}
+main{max-width:980px;margin:0 auto} h1{font-size:28px;margin:0 0 4px} h2{margin-top:32px;font-size:20px}
+a{color:var(--acc)} .mut{color:var(--mut)} .tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px} td,th{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600} li{margin:4px 0}
+</style></head><body><main>
+<h1>Kairo – Forschung &amp; Backtests</h1>
+<p class="mut">Stand 19.10.2026 · <a href="../">zur App</a> · <a href="../track/">Live-Bilanz aller Treffer</a> · Diese Seite ist absichtlich ohne JavaScript, damit Menschen und KI-Assistenten sie vollständig lesen können.</p>
+
+<h2>Worum es geht</h2>
+<p>Kairo ist ein privater Aktien-Scanner (PWA): Er prüft einmal täglich rund 6.000 Aktien (Nordamerika, Europa, Asien/Pazifik) nach festen Regeln und nennt die besten Einstiegs-Setups – eine regelbasierte Auswahl, keine Anlageberatung. Ziel der Forschung: die renditestärkste Strategie finden, die nach echten Kosten, auf unbekannten Zeiträumen, gegen Zufall und live besteht. Keine Broker-Anbindung, keine automatischen Orders.</p>
+
+<h2>Methodik</h2>
+<ul>
+<li><b>Vorregistrierung:</b> Jede Regel und jedes Bestehens-Kriterium wird vor dem Lauf im <a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/02_PROTOCOL.md">Protokoll</a> festgeschrieben (Versionen v1 … v2.9), keine nachträglichen Anpassungen.</li>
+<li><b>Zeiträume:</b> Train 2008–2016 (Entwicklung) · Validierung 2017–2021 (einmalig) · Holdout 2022-01-01 … 2026-10-16 (einmalig geöffnet am 19.10.2026). Neuere Tests (v2.8, v2.9) kennen den Holdout bereits und gelten nur als Hinweis.</li>
+<li><b>Kosten:</b> Scalable Capital PRIME+ (0,99 € je Order unter 250 €, darüber 0 €), gemessener Spread je Titel; zusätzlich ein Stress-Szenario (1,99 €, doppelter Spread, Slippage, FX-Gebühr).</li>
+<li><b>Gegen Zufall:</b> Jede Einzeltitel-Strategie wird mit Zufalls-Einstiegen derselben Tage und identischen Ausstiegsregeln verglichen (Permutations-/Bootstrap-p-Werte, Bonferroni bei mehreren Kandidaten).</li>
+<li><b>Ledger-Engine:</b> tagesgenaue Depot-Simulation mit Eröffnungskursen, Stops inkl. Kurslücken, Mindestfüllung, Kapitalgrenze, FX (<a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/03_ENGINE_AUDIT.md">Engine-Audit</a>).</li>
+<li><b>Bekannte Schwächen:</b> Kursdaten von Yahoo; Aktienuniversum mit Survivorship-Bias (nur heute gelistete Titel → Einzelaktien-Ergebnisse eher zu gut); keine zeitpunktgenauen Fundamentaldaten; keine historischen 4-Stunden-Kerzen.</li>
+</ul>
+
+<h2>Alle getesteten Strategien</h2>
+<div class="tw"><table><thead><tr><th>Strategie</th><th>Art</th><th>Ergebnis (netto)</th><th>Urteil</th></tr></thead><tbody>
+<tr><td>Welt-ETF halten (ACWI)</td><td>Referenz</td><td>2008–2026 +9,1 % p. a., größter Rückgang −46 %; Holdout 2022–26 +9,8 %</td><td><b>belegt – Kern des Depots</b></td></tr>
+<tr><td>S16-B Dual Momentum (SPY/EFA/QQQ → SHY, monatlich)</td><td>Trend/Rotation</td><td>in Train, Validierung und Holdout netto besser als ACWI; Holdout +11,6 % (Stress) vs. +9,7 %, Rückgang −22 %; p vs. Zufall 0,07</td><td>bester Kandidat, Hürde knapp verfehlt → Papier-Test</td></tr>
+<tr><td>70 % ACWI + 30 % Dual Momentum</td><td>Kombination</td><td>2008–26 Stress +10,9 % p. a., Rückgang −31 %, Sharpe 0,64 (ACWI 0,54); in allen drei Abschnitten vorn</td><td>nur beschreibend (nicht Hauptmischung von v2.8)</td></tr>
+<tr><td>S01 Kairo-Scanner (Long-Reversal-Setup, Basis-Einstieg)</td><td>Swing, Einzelaktien</td><td>49.134 Treffer 2008–26: Ø +0,14 R je Trade netto (PRIME+) vs. Zufall +0,107 R, in allen Abschnitten positiv; Ausstieg max. 60 statt 40 Tage besser (p 0,0002); schwaches Vormomentum besser</td><td>Vorteil je Trade belegt</td></tr>
+<tr><td>Kairo als Depot 5 × 1 % Risiko</td><td>Swing-Depot</td><td>+8 % p. a., Rückgang −53 %, mit Stress-Kosten negativ</td><td>nicht bestanden</td></tr>
+<tr><td>Kairo-S als Depot 20 × 0,25 % Risiko</td><td>Swing-Depot</td><td>+7,0–7,3 % p. a., Rückgang −25/−27 %, Basis-Kosten in allen Abschnitten positiv, Stress ≈ 0 %</td><td>kostenabhängig → Papier-Test + Kosten-Check</td></tr>
+<tr><td>S07-B Momentum 6-1 / Volatilität, Top 10</td><td>Momentum</td><td>Train +16,9 % (p 0,015), Validierung +27,9 %; Holdout +8,3 % vs. ACWI +9,8 %, Rückgang −57 %</td><td>Holdout nicht bestanden</td></tr>
+<tr><td>S05 / S06-P / S07-A / Top 5 / 52-Wochen-Hoch / Momentum-Kombis</td><td>Momentum-Varianten</td><td>schwächer als S07-B oder zu abhängig von wenigen Gewinnern</td><td>verworfen</td></tr>
+<tr><td>System ETF + DM + Kairo-S 70/15/15 (v2.8)</td><td>Kombination</td><td>Stress +8,7 % vs. ACWI +9,1 %, Sharpe nicht in allen Abschnitten höher, p 0,26</td><td>nicht bestanden</td></tr>
+<tr><td>Hebel 1,25/1,5 und Zielvolatilität (v2.9)</td><td>Risikosteuerung</td><td>Hebel: kaum Mehrrendite nach 6 % Finanzierung, Rückgang bis −47 % (ACWI 1,5×: −64 %); Zielvola: Rückgang −17 %, aber ~3 Pp weniger Rendite</td><td>nicht besser</td></tr>
+<tr><td>S19 Hybride Mean Reversion (+ Varianten A/B/C), S11 RSI(2), S04 Verlierer</td><td>Kurzfrist-Mean-Reversion</td><td>vor Kosten ≈ 0 … +9 %, nach Kosten negativ – auch mit PRIME+</td><td>nicht bestanden</td></tr>
+<tr><td>S20 Trendfolge/VCP, S08 Ausbrüche, S09 Volatilitäts-Kontraktion</td><td>Ausbruch</td><td>kein Vorteil gegenüber Zufall / Validierung nicht bestanden</td><td>nicht bestanden</td></tr>
+<tr><td>S02 Trend-Pullback, S03-P Qualität-Proxy</td><td>Rücksetzer</td><td>kein robuster Vorteil</td><td>nicht bestanden</td></tr>
+<tr><td>Hybrid Trend + Mean Reversion nach Marktampel</td><td>Hybrid</td><td>schlechter als Trend allein, auch ohne Kosten</td><td>nicht bestanden</td></tr>
+<tr><td>S13 Trendfilter (SMA 10 Monate / EMA200)</td><td>Trendfilter</td><td>senkt Rückgänge, kostet Rendite</td><td>nicht besser</td></tr>
+<tr><td>S14 Sektor-Rotation</td><td>Rotation</td><td>nicht besser als zufällige Sektoren</td><td>nicht bestanden</td></tr>
+<tr><td>Multi-Asset-Trendfolge (Welle 4)</td><td>Multi-Asset</td><td>nicht besser als ACWI</td><td>nicht bestanden</td></tr>
+<tr><td>Hypothese „Konsolidierung an Fib 0,79“</td><td>Nutzer-Hypothese</td><td>Treffer an der 0,79 nicht besser als 0,618–0,75 (zwei Anker-Varianten, Permutationstest)</td><td>nicht bestätigt</td></tr>
+</tbody></table></div>
+<p class="mut">Nicht valide testbar mit den vorhandenen Daten: Earnings-Drift (keine historischen Termine/Überraschungen), Multi-Faktor/Value/Qualität (keine zeitpunktgenauen Fundamentaldaten), Insider-Cluster (Historie nicht aufgebaut), 4H-Einstieg (keine Stundenkerzen ab 2010).</p>
+
+<h2>Aktueller Stand des Systems</h2>
+<ol>
+<li><b>Kern:</b> breiter Welt-ETF per Sparplan – belegt.</li>
+<li><b>Trading-Teil (10–30 %):</b> Dual Momentum ist der beste Kandidat; läuft seit 16.10.2026 als Papier-Depot. Entscheidung über echtes Geld nach ca. 12 Monaten.</li>
+<li><b>Kairo-Scanner:</b> echter Vorteil je Trade; ob er nach den echten Kosten des Nutzers im Depot Geld bringt, zeigen Papier-Depot (Kairo-S, 20 × 0,25 % Risiko) und der Kosten-Check im Journal.</li>
+</ol>
+<p>Live laufende Papier-Depots (ohne echtes Geld): KAIRO, KAIROS, DM, MOM5, MOM10, S19, S19B, S19C, S20 – Zustand und Bericht im Branch <a href="https://github.com/dxrtex/Kairo/tree/paper-data">paper-data</a>. Weiteres: <a href="https://github.com/dxrtex/Kairo/blob/main/docs/ROADMAP.md">Roadmap</a>.</p>
+
+<h2>Alle Berichte (vollständig, mit Zahlen)</h2>
+<ul>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/00_REPO_AND_BACKTEST_AUDIT.md">00_REPO_AND_BACKTEST_AUDIT.md</a> – 00 — Repo- und Backtest-Audit (Phase A)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/01_DATA_FEASIBILITY.md">01_DATA_FEASIBILITY.md</a> – 01 — Daten- und Machbarkeitsinventar (Phase A)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/02_PROTOCOL.md">02_PROTOCOL.md</a> – 02 — Vorregistriertes Forschungsprotokoll (Version 1, eingefroren vor jedem Screening)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/03_ENGINE_AUDIT.md">03_ENGINE_AUDIT.md</a> – 03 — Engine-Audit (B3)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/05_BASELINES_TRAIN.md">05_BASELINES_TRAIN.md</a> – 05 — Baselines im Entwicklungszeitraum (Train 2008–2016)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/06_WAVE1_TRAIN.md">06_WAVE1_TRAIN.md</a> – 06 — Zwischenbericht Welle 1 (Train 2008–2016, Protokoll v1.1)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/07_WAVE2_AND_GATE_C.md">07_WAVE2_AND_GATE_C.md</a> – 07 — Welle 2 (Train 2008–2016) und Vorschlag Gate C</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/08_VALIDATION_PLAN.md">08_VALIDATION_PLAN.md</a> – 08 — Validierungsplan Gate C (vorab festgelegt, vor dem Öffnen der Daten 2017–2021)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/09_VALIDATION_RESULTS.md">09_VALIDATION_RESULTS.md</a> – 09 — Ergebnis Gate C: Validierung 2017–2021 (einmalig)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/10_PHASE_D_PLAN.md">10_PHASE_D_PLAN.md</a> – 10 — Phase D: Kern + Satellit (vorab festgelegt)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/11_PHASE_D_RESULTS.md">11_PHASE_D_RESULTS.md</a> – 11 — Phase D: Ergebnis Kern + Satellit (2008–2021)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/12_S19_S20_RESULTS.md">12_S19_S20_RESULTS.md</a> – 12 — Nutzer-Systeme S19 (Hybride Mean Reversion) und S20 (Trendfolge/VCP)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/13_DEFAULT_DECISION.md">13_DEFAULT_DECISION.md</a> – 13 — Vorläufiger Standard bis zu ersten Papier-Ergebnissen (18.10.2026)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/14_S19_VARIANTS_TRAIN.md">14_S19_VARIANTS_TRAIN.md</a> – 14 · S19-Varianten (Original / A / B / C) – nur Train 2008–2016</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/15_HYBRID_PLAN.md">15_HYBRID_PLAN.md</a> – 15 · Phase 2: Hybrid-System Trend + Mean Reversion (Plan, vorab festgelegt)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/16_HYBRID_RESULTS_TRAIN.md">16_HYBRID_RESULTS_TRAIN.md</a> – 16 · Hybrid Trend + Mean Reversion – Ergebnisse Train 2008–2016</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/17_POSITION_WAVE3.md">17_POSITION_WAVE3.md</a> – 17 · Welle 3 Position-Trading (Protokoll v1.9) – Train 2008–2016, Kosten Scalable PRIME+</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/18_FINAL_CANDIDATE.md">18_FINAL_CANDIDATE.md</a> – 18 · Bester Kandidat für den Trading-Teil – Stand 19.10.2026</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/19_MULTIASSET_WAVE4.md">19_MULTIASSET_WAVE4.md</a> – 19 · Welle 4 Multi-Asset-Trendfolge (Protokoll v2.0) – Kosten Scalable PRIME+</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/20_HOLDOUT_RESULTS.md">20_HOLDOUT_RESULTS.md</a> – 20 · Finaler Holdout 2022-01-01 … 2026-10-16 (Freigabe 19.10.2026, Protokoll v2.1)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/21_FIB079_HYPOTHESIS.md">21_FIB079_HYPOTHESIS.md</a> – 21 · Nutzer-Hypothese „Konsolidierung an der Fib 0,79“ (Protokoll v2.2/a/b)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/22_KAIRO_PRIME_AND_FEATURES.md">22_KAIRO_PRIME_AND_FEATURES.md</a> – 22 · Kairo mit PRIME+-Kosten gegen Zufall (v2.3) und Merkmale besserer Treffer (v2.4)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/23_KAIRO_EXITS.md">23_KAIRO_EXITS.md</a> – 23 · Ausstiegsregeln für Kairo-Treffer (Protokoll v2.5)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/24_KAIRO_DEPOT.md">24_KAIRO_DEPOT.md</a> – 24 · Kairo als echtes Depot (Protokoll v2.6) – 2008–2026, Kosten PRIME+</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/25_SYSTEM_MIX.md">25_SYSTEM_MIX.md</a> – 25 – Systemtest Welt-ETF + Dual Momentum + Kairo-S (Protokoll v2.8)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/26_RISK_OVERLAY.md">26_RISK_OVERLAY.md</a> – 26 – Risikosteuerung und Hebel (Protokoll v2.9)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/A_GATE_RECOMMENDATION.md">A_GATE_RECOMMENDATION.md</a> – A — Gate-Empfehlung (Phase A)</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/B_GATE_RECOMMENDATION.md">B_GATE_RECOMMENDATION.md</a> – Gate B — Zusammenfassung und Empfehlung</li>
+
+</ul>
+<p>Rohdaten der Ergebnisse (JSON) und der Forschungs-Code: <a href="https://github.com/dxrtex/Kairo/tree/research/strategy-championship-phase-a/docs/strategy_championship">docs/strategy_championship</a> · <a href="https://github.com/dxrtex/Kairo/tree/research/strategy-championship-phase-a/research/strategy_championship">research/strategy_championship</a>.</p>
+
+<h2>Hinweis für KI-Assistenten</h2>
+<p>Wenn du diese App bewertest oder neue Strategien vorschlägst: Prüfe bitte zuerst die Tabelle oben – viele naheliegende Ideen (Momentum, Mean Reversion, Ausbrüche, Sektor-Rotation, Trendfilter, Hebel, Fibonacci-Zonen) sind bereits mit echten Kosten und gegen Zufall getestet. Neue Vorschläge sind willkommen, wenn sie vorab festgelegt und mit den genannten Kriterien prüfbar sind.</p>
+</main></body></html>

@@ -379,6 +379,8 @@ def evaluate(df: pd.DataFrame, info: dict | None = None, cfg: SimpleNamespace = 
     res.flags["overlap"] = bool(zone_a and zone_a["ok"] and zone_b
                                 and zone_a["levels"]["0.79"] * 0.97 <= zone_b["center"] <= zone_a["levels"]["0.618"] * 1.03)
     res.flags["ema200_in_zone"] = bool(bands and any(lo * 0.98 <= e200[-1] <= hi * 1.02 for lo, hi in bands))
+    # Vormomentum (Rendite Monat −6 … −1) – nur zur Rangfolge der Top-Setups (Forschung v2.4), kein Kriterium
+    res.flags["mom61"] = float(c[-22] / c[-127] - 1) if n >= 127 and c[-127] > 0 else None
 
     res.score, res.bonuses = score_setup(res, cfg)
     return res
