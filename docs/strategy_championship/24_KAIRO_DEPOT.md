@@ -17,3 +17,17 @@ Der kleine Vorteil je Trade (+0,03 R gegenüber Zufall, +0,14…0,16 R absolut) 
 Treffer bekommen keinen Platz, Rückgänge bis −50 % und mehr, Kosten unter Stress fressen den Rest.
 Folgerung: Kairo bleibt Scanner + Papier-Test; für echtes Geld derzeit nicht empfohlen. Offene Frage für eine eigene, vorab
 festgelegte Runde: Depot-Aufbau (mehr Positionen, kleineres Risiko je Trade).
+
+## Nachtrag v2.7 – Depot-Aufbau (K60S), CAGR Basis / Stress, größter Rückgang (Basis)
+
+| Aufbau | 10.000 € | 20.000 € | 2008–16 / 2017–21 / 2022–26 (10.000 €, Basis) |
+|---|---|---|---|
+| 5 × 1 % | +6,7 % / −1,6 % · −56 % | +7,9 % / +1,0 % · −56 % | +15,7 / −8,2 / +7,2 % |
+| 10 × 0,5 % | +6,8 % / −1,7 % · −33 % | +6,2 % / −2,8 % · −32 % | +8,8 / +0,2 / +10,0 % |
+| **20 × 0,25 %** | **+7,0 % / −0,1 % · −27 %** | **+7,3 % / −0,6 % · −25 %** | **+8,7 / +4,7 / +6,0 %** (Sharpe 0,54–0,56) |
+| ACWI halten | +9,0 % · −46 % | | +7,8 / +11,1 / +9,0 % |
+
+Ergebnis: Kriterium (Stress > 0 in allen Abschnitten) **nicht erfüllt**. Breit gestreut (20 × 0,25 %) ist Kairo aber ein
+stabileres System: in allen drei Abschnitten positiv (Basis-Kosten), halber Rückgang des ETF, Rendite knapp darunter.
+Entscheidend sind die tatsächlichen Handelskosten (Spread/Slippage) – das klärt nur der Live-Test.
+Umgesetzt: Papier-Depot KAIRO-S mit 20 × 0,25 % und 20.000 € virtuell; KAIRO bleibt Referenz (5 × 1 %).
