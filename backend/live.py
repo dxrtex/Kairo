@@ -13,9 +13,12 @@ from .indicators import atr as _atr
 from .shortswing import QRULE, simulate
 
 HOLD = 20                                          # Strategie: 20 Handelstage halten, kein Gewinnziel
+# Aktuelle Kairo-Regel (Forschung v2.5, S01-B): Ausstieg ab Tag 10 bei Schluss unter EMA20 zur nächsten Eröffnung, spätestens Tag 60
+RULE60 = {"hold": 60, "ema_x": 20, "ema_from": 10}
+DONE = ("stop", "zeit", "ema", "nobase")
 
 
-def strat(df: pd.DataFrame, idx: int) -> dict:
+def strat(df: pd.DataFrame, idx: int, extra: dict | None = None) -> dict:
     """Ein Kairo-Treffer nach unseren Regeln: Kauf in der Seitwärtsphase (≤ 10 Tage nach dem Signal), Stop = Basistief
     − 0,25 ATR, Verkauf am Stop oder zum Schluss von Tag 20. Wie in der 10-Jahres-Studie (shortswing.simulate), netto in R.
     Ergebnis: res = wait (Basis noch offen) · nobase (keine Basis/gescheitert) · run (läuft) · stop · zeit; r = Netto-R."""
@@ -25,18 +28,19 @@ def strat(df: pd.DataFrame, idx: int) -> dict:
         return {"res": "nobase"}
     nx = lambda k: [float(x) / c0 for x in df[k].iloc[idx + 1:]]
     px = {"o": nx("Open"), "h": nx("High"), "l": nx("Low"), "c": nx("Close"), "atr": a,
-          "pl": [float(x) / c0 for x in df["Low"].iloc[max(0, idx - 9):idx + 1]], "s": None}
+          "pl": [float(x) / c0 for x in df["Low"].iloc[max(0, idx - 9):idx + 1]], "s": None,
+          "e20": float(df["Close"].iloc[:idx + 1].ewm(span=20, adjust=False).mean().iloc[-1]) / c0}
     n = len(px["c"])
     if n < 2:
         return {"res": "wait"}
-    rule = {**QRULE, "hold": HOLD}
+    rule = {**QRULE, "hold": HOLD, **(extra or {})}
     sm = simulate(px, rule)
     if sm and "skip" in sm:
         return {"res": "wait"} if sm["skip"] == "nofill" and n - 1 < rule["wait"] else {"res": "nobase", "why": sm["skip"]}
     if sm:
-        return {"res": "stop" if sm["x"] == "stop" else "zeit", "r": round(sm["net"], 3), "days": sm["d"],
+        return {"res": {"stop": "stop", "ema": "ema"}.get(sm["x"], "zeit"), "r": round(sm["net"], 3), "days": sm["d"],
                 "e": round(sm["e"] * c0, 4), "sl": round(sm["sl"] * c0, 4)}
-    for h in range(HOLD - 1, 0, -1):               # läuft noch: Stand zum letzten Schluss
+    for h in range(rule["hold"] - 1, 0, -1):       # läuft noch: Stand zum letzten Schluss
         sm = simulate(px, {**rule, "hold": h})
         if sm and "skip" not in sm:
             return {"res": "stop" if sm["x"] == "stop" else "run", "r": round(sm["net"], 3), "days": sm["d"],
@@ -100,7 +104,7 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
         new.append(s)
     # Ergebnisse nachführen
     for s in sig:
-        if s.get("final") and (s["k"] != "hit" or (s.get("st") or {}).get("res") in ("stop", "zeit", "nobase")):
+        if s.get("final") and (s["k"] != "hit" or all((s.get(k) or {}).get("res") in DONE for k in ("st", "st60"))):
             continue
         df = data.get(s["t"])
         if df is None:
@@ -114,11 +118,12 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
         if oc:
             s.update(oc)
             s["now"] = round(float(c[-1] / s["entry"] - 1), 4)
-        if s["k"] == "hit" and (s.get("st") or {}).get("res") not in ("stop", "zeit", "nobase"):
-            try:
-                s["st"] = strat(df, idx)
-            except Exception as exc:               # Bilanz darf den Scan nie stoppen
-                print("Strategie-Bilanz:", s["t"], repr(exc)[:100])
+        for key, extra in (("st", None), ("st60", RULE60)):
+            if s["k"] == "hit" and (s.get(key) or {}).get("res") not in DONE:
+                try:
+                    s[key] = strat(df, idx, extra)
+                except Exception as exc:           # Bilanz darf den Scan nie stoppen
+                    print("Strategie-Bilanz:", s["t"], repr(exc)[:100])
     state.save("signals.json", sig)
     if record:                                     # Läufe tagsüber nicht merken – sonst gälten deren Treffer abends als „schon bekannt“
         state.save("last.json", {"date": today, "hit": [r["ticker"] for r in rows if r["passed"]],
