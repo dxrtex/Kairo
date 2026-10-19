@@ -276,3 +276,11 @@ Signale aus research_fib (49.134 Treffer, unveränderter Scanner). Je Trade (kei
 Zufall: an jedem Treffer-Tag gleich viele zufällige zulässige Titel mit derselben Basis-Regel (20 Seeds).
 Kairo gilt als belegt, wenn: R netto (5.000-€-Depot, PRIME+) in allen drei Abschnitten > 0 UND Kairo-R in allen drei
 Abschnitten über dem Zufalls-Median UND gepoolt p vs. Zufall ≤ 0,05. Sonst: kein belegter Vorteil.
+
+
+## Addendum v2.4 (19.10.2026, vor dem Lauf) – Merkmale besserer Kairo-Treffer
+
+Ziel: Rangfolge im Scanner nach Belegen. Merkmale (nur Info bis Signaltag): Score, Zone (Fib/Support), Markt (S&P > EMA200),
+eigenes Momentum 6-1, Volatilität (ATR/Kurs), Region, Tiefe unter dem Swing-Hoch. Terzil-Grenzen nur aus Train; beste und
+schlechteste Gruppe aus Train. Bestätigt, wenn dieselbe Reihenfolge in Validierung UND Holdout gilt und gepoolt (Val+Holdout)
+p ≤ 0,05/7. Kennzahl: R netto (5.000 €, PRIME+). Bestätigte Merkmale → Kandidat für Rangfolge/Filter im Scanner → Papier-Test.
