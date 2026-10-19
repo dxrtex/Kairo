@@ -2727,6 +2727,35 @@ function jStrategyHtml() {
       <div class="fig"><span>Stops</span><b>${stops}</b><em>${pct(stops / n, 0)} der Trades</em></div></div>
     <div class="note" style="margin:6px 0 0">${n < 20 ? `Noch ${20 - n} Trades bis zu einer ersten belastbaren Aussage.` : ok ? "Du liegst im Rahmen der Test-Erwartung – weiter so." : "Unter der Test-Erwartung: Prüfe Regeltreue (zu frühe Verkäufe?) und ob du wirklich nur volle Treffer in der Seitwärtsphase nimmst."}${early ? " Zu frühe Verkäufe schneiden die großen Gewinner ab, von denen die Strategie lebt." : ""}</div></div>`;
 }
+// Kosten-Check: echte Ausführungskurse (Aktien in €) gegen den Tages-Durchschnittskurs (Hoch+Tief+Schluss)/3 – zeigt Spread
+// und Ausführung, die der Backtest nur schätzt (Basis ≈ 0,05–0,1 % je Order, Stress ≈ 0,2 %). Kursschwankung im Tag mittelt sich bei vielen Orders heraus.
+function jCostHtml(tx) {
+  const ok = tx.filter(t => (/executed|ausgeführt/i.test(t.status) || !t.status) && t.qty && t.price);
+  const small = ok.filter(t => /buy|kauf|sell|verkauf/i.test(t.type) && t.qty * t.price < 250).length;
+  const dev = []; let wait = 0;
+  if (searchIdx) ok.forEach(t => {
+    const sell = /sell|verkauf/i.test(t.type), buy = !sell && /buy|kauf/i.test(t.type) && !/spar|savings/i.test(t.type);
+    if ((!buy && !sell) || txKind(t.desc, t.isin).k !== "stock") return;
+    const r = matchName(t.desc); if (!r || (r.cur || "EUR") !== "EUR" || !data.results.some(x => x.ticker === r.t)) return;
+    const c = needChart(r.t); if (c === null && chartReady[r.t] === null) { wait++; return; } if (!c) return;
+    const i = c.t.indexOf(t.date); if (i < 0 || c.h[i] == null) return;
+    const ref = (c.h[i] + c.l[i] + c.c[i]) / 3; if (!(ref > 0)) return;
+    const d = (buy ? 1 : -1) * (t.price / ref - 1);
+    if (Math.abs(d) < 0.05) dev.push(d);                           // > 5 % Abweichung = vermutlich falsche Zuordnung
+  });
+  const n = dev.length, mean = n ? dev.reduce((a, b) => a + b, 0) / n : null;
+  const se = n > 1 ? Math.sqrt(dev.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1) / n) : null;
+  const verdict = n < 30 ? `Noch ${30 - n} Orders bis zu einer ersten belastbaren Aussage.`
+    : mean <= 0.001 ? "Im Bereich der Basis-Kosten – Kairo-Ergebnis aus dem Test (Basis) ist für dich realistisch."
+    : mean <= 0.002 ? "Zwischen Basis und Stress – Kairo-Vorteil ist bei dir knapp."
+    : "Über den Stress-Kosten – Kairo lohnt sich bei dieser Ausführung nicht; Limit-Orders und liquide Börsenzeiten helfen.";
+  return `<div class="card jcard"><div class="jc-h"><b>Kosten-Check</b><span>deine Ausführung gegen den Tages-Durchschnittskurs</span></div>
+    <div class="cockpit jtiles">
+      <div class="fig"><span>Ø Kosten je Order</span><b class="${mean == null ? "" : mean <= 0.001 ? "up" : mean <= 0.002 ? "" : "down"}">${mean == null ? "–" : sgnPct(mean, 2)}</b><em>${n ? `${n} Aktien-Orders in €${se ? ` · ± ${pct(1.96 * se, 2)}` : ""}` : wait ? "Chartdaten laden …" : "keine passenden Orders"}</em></div>
+      <div class="fig"><span>Test-Annahme</span><b>0,05–0,1 %</b><em>Basis · Stress ≈ 0,2 %</em></div>
+      <div class="fig"><span>Orders unter 250 €</span><b class="${small ? "down" : "up"}">${small}</b><em>je 0,99 € Gebühr (PRIME+)</em></div></div>
+    <div class="note" style="margin:6px 0 0">${verdict} Gezählt werden Aktien-Käufe/-Verkäufe in Euro, deren Aktie im aktuellen Scan Chartdaten hat (Turbos und US-Kurse in Dollar lassen sich so nicht messen). Positiv = teurer gekauft bzw. billiger verkauft als der Tagesdurchschnitt.</div></div>`;
+}
 function journalHtml() {
   const tx = txLoad();
   const imp = `<label class="btn${tx.length ? " ghost" : ""}" style="cursor:pointer">${tx.length ? "Neuen Export einlesen" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="jrCsv" hidden></label>`;
@@ -2801,7 +2830,7 @@ function journalHtml() {
     ${tx.slice().reverse().map(t => `<tr class="${/executed/i.test(t.status) ? "" : "muted"}"><td>${dateDE(t.date)}<small>${esc(t.time)}</small></td><td>${esc(TYPE_DE[t.type.toLowerCase()] || t.type)}${/executed/i.test(t.status) ? "" : ` <small>${esc(t.status)}</small>`}</td>
       <td>${esc(t.desc || "–")}<small>${esc(t.isin)}</small></td><td class="num">${t.qty ? fmt(t.qty, t.qty % 1 ? 3 : 0) : ""}</td><td class="num">${t.price ? fmt(t.price, t.price < 10 ? 3 : 2) : ""}</td>
       <td class="num ${t.amount >= 0 ? "up" : ""}">${sEur2(t.amount)}</td><td class="num">${t.fee ? eur2(t.fee) : ""}</td><td class="num">${t.tax ? eur2(t.tax) : ""}</td></tr>`).join("")}</tbody></table></div></details>`;
-  return head + jStrategyHtml() + hero + tiles + (ins ? `<div class="jins">${ins}</div>` : "") + curve + split + tradesTbl + openTbl
+  return head + jStrategyHtml() + hero + tiles + (ins ? `<div class="jins">${ins}</div>` : "") + jCostHtml(tx) + curve + split + tradesTbl + openTbl
     + `<div class="row-actions" style="margin:22px 0 12px">${imp}<button class="btn ghost" data-jclear>Journal löschen</button></div>${depotMsg ? `<div class="tip tone-gray" style="margin-bottom:14px">${depotMsg}</div>` : ""}`
     + txTbl + `<div class="note" style="margin:16px 2px 0">Berechnung: Käufe und Verkäufe je Wertpapier nach FIFO zugeordnet, ein Trade läuft von der Eröffnung bis der Bestand wieder 0 ist. Ergebnis = Verkaufserlös − Kaufpreis, jeweils inklusive Ordergebühren, vor Steuern. Alles bleibt nur auf diesem Gerät gespeichert.</div>`;
 }
