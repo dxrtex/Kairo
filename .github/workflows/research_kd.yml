@@ -1,0 +1,68 @@
+name: Research – Kairo als Depot (v2.6)
+
+on:
+  push:
+    branches: ["research/**"]
+    paths: [".github/workflows/research_kd.yml"]
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  SIGNALS_ASSET: "655351724"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        part: ["kairo", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1 sig
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SIGNALS_ASSET > sig/s01_signals_full.parquet
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - name: Rechnen
+        run: |
+          if [ "${{ matrix.part }}" = "kairo" ]; then
+            python -W ignore -m research.strategy_championship.kairo_depot --data v1 --signals sig/s01_signals_full.parquet --out out --part kairo
+          else
+            python -W ignore -m research.strategy_championship.kairo_depot --data v1 --signals sig/s01_signals_full.parquet --out out --part null --seed-start $(( ${{ matrix.part }} * 2 )) --seed-n 2
+          fi
+      - uses: actions/upload-artifact@v4
+        with: { name: "kd-${{ matrix.part }}", path: out/, retention-days: 14 }
+  combine:
+    needs: run
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "kd-*", merge-multiple: true, path: parts }
+      - run: python -m research.strategy_championship.kairo_depot --combine parts --out kn && cp parts/kairo_depot.json kn/
+      - name: Als Entwurfs-Release sichern
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          gh release create "research-kd-${GITHUB_RUN_ID}" kn/* --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Research Kairo als Depot" --notes "Protokoll v2.6. Nur Forschung."

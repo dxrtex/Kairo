@@ -291,3 +291,11 @@ p ≤ 0,05/7. Kennzahl: R netto (5.000 €, PRIME+). Bestätigte Merkmale → Ka
 Basis-Einstieg unverändert. V0 Basis (EMA20 ab Tag 10, max. 40) gegen V1 Zeit 20 T., V2 EMA ab Tag 5, V3 Nachziehen
 (ab +2 ATR Einstand, dann Vortagestief, max. 40), V4 max. 60 Tage. Besser nur, wenn Ø R netto (5.000 €, PRIME+) in allen drei
 Abschnitten höher UND gepaarter Permutationstest gepoolt p ≤ 0,0125. Sonst bleibt V0.
+
+
+## Addendum v2.6 (19.10.2026, vor dem Lauf) – Kairo als echtes Depot
+
+Depot-Simulation 2008–2026 (begrenztes Kapital 5.000/10.000 €, 1 % Risiko, max. 5 Positionen, PRIME+ Basis/Stress).
+Varianten K40 (Original), K60 (v2.5), K60S (v2.5 + Vorrang schwaches Vormomentum v2.4). Zufall: K60-Regeln mit zufälligen
+Titeln (20 Seeds). Vergleich ACWI halten. „Kairo fürs echte Geld“ nur, wenn K60S: Stress-CAGR in allen drei Abschnitten > 0,
+gesamt Sharpe > ACWI, und in allen drei Abschnitten über dem Zufalls-Median.
