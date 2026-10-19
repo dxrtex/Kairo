@@ -1,6 +1,7 @@
 """Protokoll v2.3 – Kairo (S01-B) mit Kosten Scalable PRIME+ gegen Zufalls-Einstiege, 2008–2026, je Trade.
 
-python -m research.strategy_championship.kairo_null --data DIR --signals FILE --out OUT [--seeds 20]
+python -m research.strategy_championship.kairo_null --data DIR --signals FILE --out OUT --part kairo|null [--seed-start K --seed-n N]
+        python -m research.strategy_championship.kairo_null --combine DIR --out OUT
 
 Kairo: jeder Treffer → S01-B-Basis-Einstieg (Seitwärtsphase, Stop unter der Basis, EMA20-Ausstieg ab Tag 10, max. 40 T.).
 Zufall: an jedem Treffer-Tag stattdessen ein zufälliger zulässiger Titel (gleicher Grundfilter), gleiche Basis-Regel.
@@ -80,20 +81,51 @@ def _null(seed: int) -> dict:
     return summarize(evaluate(rows))
 
 
+def combine(d: Path) -> dict:
+    kairo = json.loads((d / "kairo_summary.json").read_text())
+    nulls = [x for f in sorted(d.glob("null_*.json")) for x in json.loads(f.read_text())]
+    res = {"kairo": kairo, "zufall": {}, "seeds": len(nulls)}
+    for ab in kairo:
+        z = np.array([n[ab]["R_net_5000"] for n in nulls if n[ab]["R_net_5000"] is not None])
+        zr = np.array([n[ab]["R"] for n in nulls if n[ab]["R"] is not None])
+        res["zufall"][ab] = {"R_median": float(np.median(zr)), "R_net_5000_median": float(np.median(z)),
+                             "p_R": float((zr >= kairo[ab]["R"]).mean()), "seeds": int(len(z))}
+    for ab in kairo:
+        k, z = kairo[ab], res["zufall"][ab]
+        print(f"{ab:12s} Kairo R {k['R']:+.3f} netto5k {k['R_net_5000']:+.3f} netto10k {k['R_net_10000']:+.3f} (n {k['n']}) | "
+              f"Zufall R {z['R_median']:+.3f} netto5k {z['R_net_5000_median']:+.3f} | p {z['p_R']:.2f}", flush=True)
+    return res
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", required=True)
-    ap.add_argument("--signals", required=True)
+    ap.add_argument("--data")
+    ap.add_argument("--signals")
     ap.add_argument("--out", default="kn_out")
-    ap.add_argument("--seeds", type=int, default=20)
+    ap.add_argument("--part", choices=["kairo", "null"], default=None)
+    ap.add_argument("--seed-start", type=int, default=0)
+    ap.add_argument("--seed-n", type=int, default=2)
+    ap.add_argument("--combine")
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
+    if a.combine:
+        (out / "kairo_null.json").write_text(json.dumps(combine(Path(a.combine)), indent=1, ensure_ascii=False))
+        return 0
     sig = pd.read_parquet(a.signals)
     prices, cur, fx, _b, (start, end) = load(a.data, "full")
     prices = {t: df for t, df in prices.items() if len(s01.clean(df)) >= 300}
     adj = {t: s01.adjusted(s01.clean(df)) for t, df in prices.items()}
     raw = {t: s01.with_ema(df) for t, df in prices.items()}
+    cal = pd.DatetimeIndex(sorted(set().union(*[f.index[(f.index >= start) & (f.index <= end)] for f in raw.values()])))
+    _G.update(prices=prices, adj=adj, raw=raw, cur=cur, fx=fx, cal=cal)
+    sig = sig[sig["ticker"].isin(prices)]
+    if a.part == "kairo":
+        kt = evaluate([(r.ticker, r.i, r.atr, f"{r.ticker}|{pd.Timestamp(r.date).date()}") for r in sig.itertuples(index=False)])
+        kt.to_csv(out / "kairo_trades.csv", index=False)
+        (out / "kairo_summary.json").write_text(json.dumps(summarize(kt), indent=1))
+        print(json.dumps(summarize(kt), indent=1))
+        return 0
     pool, pos, atr = {}, {}, {}
     for t, A in adj.items():
         ok = s01.eligible(A, cur.get(t, "USD"))
@@ -101,27 +133,13 @@ def main(argv=None) -> int:
         atr[t] = s01.atr14(prices[t]).to_dict()
         for d in A.index[ok & (A.index >= start)]:
             pool.setdefault(d, []).append(t)
-    pool = {d: np.array(v) for d, v in pool.items()}
-    cal = pd.DatetimeIndex(sorted(set().union(*[f.index[(f.index >= start) & (f.index <= end)] for f in raw.values()])))
-    _G.update(prices=prices, adj=adj, raw=raw, cur=cur, fx=fx, cal=cal, pool=pool, pos=pos, atr=atr,
+    _G.update(pool={d: np.array(v) for d, v in pool.items()}, pos=pos, atr=atr,
               per_day=pd.to_datetime(sig["date"]).value_counts().to_dict())
-    sig = sig[sig["ticker"].isin(prices)]
-    kt = evaluate([(r.ticker, r.i, r.atr, f"{r.ticker}|{pd.Timestamp(r.date).date()}") for r in sig.itertuples(index=False)])
-    kairo = summarize(kt)
-    with Pool() as p:
-        nulls = p.map(_null, range(a.seeds), chunksize=1)
-    res = {"kairo": kairo, "zufall": {}}
-    for ab in kairo:
-        z = np.array([n[ab]["R_net_5000"] for n in nulls if n[ab]["R_net_5000"] is not None])
-        zr = np.array([n[ab]["R"] for n in nulls if n[ab]["R"] is not None])
-        res["zufall"][ab] = {"R_median": float(np.median(zr)), "R_net_5000_median": float(np.median(z)),
-                             "p_R": float((zr >= kairo[ab]["R"]).mean()), "seeds": int(len(z))}
-    kt.to_csv(out / "kairo_trades.csv", index=False)
-    (out / "kairo_null.json").write_text(json.dumps(res, indent=1, ensure_ascii=False))
-    for ab in kairo:
-        k, z = kairo[ab], res["zufall"][ab]
-        print(f"{ab:12s} Kairo R {k['R']:+.3f} netto5k {k['R_net_5000']:+.3f} netto10k {k['R_net_10000']:+.3f} (n {k['n']}) | "
-              f"Zufall R {z['R_median']:+.3f} netto5k {z['R_net_5000_median']:+.3f} | p {z['p_R']:.2f}", flush=True)
+    seeds = list(range(a.seed_start, a.seed_start + a.seed_n))
+    with Pool(min(len(seeds), 4)) as p:
+        nulls = p.map(_null, seeds, chunksize=1)
+    (out / f"null_{a.seed_start}.json").write_text(json.dumps(nulls))
+    print(f"Zufall {seeds}: R " + ", ".join(f"{n['Gesamt']['R']:+.3f}" for n in nulls))
     return 0
 
 
