@@ -50,6 +50,12 @@ def month_table(P, tl: pd.DataFrame, t2c: dict, splits: pd.DataFrame | None, clo
         for t in us_pool(P, d, us):
             rows.append((d, t, t2c[t]))
     q = pd.DataFrame(rows, columns=["date", "ticker", "cik"]).sort_values("date")
+    q["date"] = pd.to_datetime(q["date"]).astype("datetime64[ns]")
+    q["cik"] = q["cik"].astype("int64")
+    tl = tl.copy()
+    for c in ("avail", "filed", "shares_end"):
+        tl[c] = pd.to_datetime(tl[c]).astype("datetime64[ns]")
+    tl["cik"] = tl["cik"].astype("int64")
     m = pd.merge_asof(q, tl.sort_values("avail"), left_on="date", right_on="avail", by="cik", direction="backward")
     m = m[(m["date"] - m["filed"]).dt.days <= 200].copy()
     px, mom, sf = [], [], []
