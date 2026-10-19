@@ -4683,8 +4683,8 @@ function paperLoad() {
   if (PAPER.busy || (PAPER.d && Date.now() - PAPER.at < 3e5)) return;
   PAPER.busy = true;
   const v = "?v=" + Math.floor(Date.now() / 3e5), get = f => fetch(PAPER_URL + f + v).then(r => r.ok ? r.json() : null);
-  Promise.all([get("summary.json"), get("s19.json"), get("s19b.json"), get("s19c.json"), get("s20.json"), get("mom5.json"), get("mom10.json"), get("dm.json")])
-    .then(([sum, s19, s19b, s19c, s20, mom5, mom10, dm]) => { PAPER.d = sum || s19 || s20 ? { sum, s19, s19b, s19c, s20, mom5, mom10, dm } : null; PAPER.err = !PAPER.d; })
+  Promise.all([get("summary.json"), get("s19.json"), get("s19b.json"), get("s19c.json"), get("s20.json"), get("mom5.json"), get("mom10.json"), get("dm.json"), get("kairo.json"), get("kairos.json")])
+    .then(([sum, s19, s19b, s19c, s20, mom5, mom10, dm, kairo, kairos]) => { PAPER.d = sum || s19 || s20 ? { sum, s19, s19b, s19c, s20, mom5, mom10, dm, kairo, kairos } : null; PAPER.err = !PAPER.d; })
     .catch(() => { PAPER.err = true; })
     .finally(() => { PAPER.busy = false; PAPER.at = Date.now(); if (state.sec === "paper") render(); });
 }
@@ -4701,9 +4701,10 @@ function paperSpark(st, bench) {
     <div class="oleg"><span class="${e[e.length - 1] >= S ? "up" : "down"}">■ Papier-Depot</span><span class="gold">┄ ACWI kaufen &amp; halten (gleicher Start)</span></div>`;
 }
 function paperCard(sid, st, sm, bench) {
-  const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3", MOM5: "MOM5 · Momentum Top 5 (monatlich)", MOM10: "MOM10 · Momentum Top 10 (monatlich)", DM: "DM · Dual Momentum (ETF)" }[sid] || "S20 · Trendfolge / VCP";
+  const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3", MOM5: "MOM5 · Momentum Top 5 (monatlich)", MOM10: "MOM10 · Momentum Top 10 (monatlich)", DM: "DM · Dual Momentum (ETF)", KAIRO: "KAIRO · Scanner-Treffer", KAIROS: "KAIRO-S · Scanner-Treffer, schwache Aktien zuerst" }[sid] || "S20 · Trendfolge / VCP";
   const vr = { S19B: "Variante B: wie S19, aber das Volumen muss nur an 2 der letzten 3 Tage sinken. ", S19C: "Variante C: Überdehnung schon ab 2,0 Std und Volumen an 2 der letzten 3 Tage sinkend. " }[sid] || "";
-  const rule = sid === "DM" ? "Am ersten Handelstag jedes Monats: Von SPY (USA), EFA (Industrieländer) und QQQ (Nasdaq 100) wird der ETF mit der besten 12-Monats-Rendite gehalten – aber nur, wenn sie über dem Geldmarkt (BIL) liegt, sonst kurze US-Anleihen (SHY). Ein ETF, etwa 1–4 Wechsel im Jahr. Einzige Strategie, die 2008–2016, 2017–2021 und im finalen Test 2022–2026 nach Kosten besser als der Welt-ETF war (2022–26: +11,6 % statt +9,7 % p. a. unter Stress-Kosten) – aber knapp nicht signifikant besser als Zufall (p = 0,07). Bester Kandidat, kein Beweis."
+  const rule = sid === "KAIRO" || sid === "KAIROS" ? "Handelt jeden echten Kairo-Treffer (USA und Europa) nach der getesteten Regel: bis zu 10 Tage auf eine Seitwärtsphase warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung innerhalb der Spanne, Stop unter dem Basis-Tief − 0,25 ATR, 1 % Risiko, max. 5 Positionen. Ausstieg: Stop, ab Tag 10 Schluss unter EMA20, spätestens Tag 40. 2008–2026 mit PRIME+-Kosten besser als Zufall (+0,14 R je Trade gegenüber +0,11 R) – kleiner, aber belegter Vorteil." + (sid === "KAIROS" ? " Variante S: bei mehreren Einstiegen zuerst Aktien mit dem schwächsten Kursverlauf der letzten Monate (im Test in allen drei Zeiträumen besser; Vorbehalt: kann am Datensatz liegen)." : " Bei mehreren Einstiegen zuerst die ruhigeren Aktien (wie im Test).") + " Läuft einen Handelstag hinter dem Scan."
+    : sid === "DM" ? "Am ersten Handelstag jedes Monats: Von SPY (USA), EFA (Industrieländer) und QQQ (Nasdaq 100) wird der ETF mit der besten 12-Monats-Rendite gehalten – aber nur, wenn sie über dem Geldmarkt (BIL) liegt, sonst kurze US-Anleihen (SHY). Ein ETF, etwa 1–4 Wechsel im Jahr. Einzige Strategie, die 2008–2016, 2017–2021 und im finalen Test 2022–2026 nach Kosten besser als der Welt-ETF war (2022–26: +11,6 % statt +9,7 % p. a. unter Stress-Kosten) – aber knapp nicht signifikant besser als Zufall (p = 0,07). Bester Kandidat, kein Beweis."
     : sid === "MOM10" ? "Wie MOM5, aber die 10 stärksten Aktien. Hat 2008–2021 überzeugt (+27,9 % p. a. 2017–2021), ist im finalen Test 2022–2026 aber durchgefallen: +8,3 % statt +9,8 % beim Welt-ETF, Rückgang −57 %, nicht besser als Zufall. Läuft nur noch zum Vergleich weiter."
     : sid === "MOM5" ? "Am ersten Handelstag jedes Monats: die 5 Aktien mit dem stärksten Kursanstieg der letzten 6 Monate (ohne den letzten Monat), geteilt durch ihre Schwankung. Kauf zur Eröffnung, gleich gewichtet; was aus den Top 5 fällt, wird verkauft. Kein Stop. Momentum hat im finalen Test 2022–2026 nicht bestanden – läuft nur noch zum Vergleich."
     : sid.startsWith("S19")
@@ -4747,11 +4748,11 @@ function shadowHtml(sh) {
 function paperHtml() {
   paperLoad();
   const d = PAPER.d;
-  const head = `<div class="section-title"><span>Papier-Test</span><span>S19 · S20 · Momentum · Dual Momentum</span></div>
+  const head = `<div class="section-title"><span>Papier-Test</span><span>Kairo · Dual Momentum · S19/S20 · Momentum</span></div>
     <div class="note" style="margin:0 2px 10px">Vorwärtstest deiner Strategien (S19 dazu in zwei lockereren Varianten B und C) – je ${fmt(((d && (d.s19 || d.s20)) || {}).start_cash || 2000, 0)} € virtuelles Startkapital (wie dein echtes Kapital), Kosten wie dein Scalable PRIME+: ab 250 € Orderwert gebührenfrei, darunter 0,99 €, plus Spread. Läuft automatisch jeden Werktag nach US-Börsenschluss. <b>Keine echten Orders</b>, keine Anlageberatung. Aussagekräftig erst nach vielen Trades (eher 6–12 Monate).</div>`;
   if (!d) return head + `<div class="hcard"><div class="note">${PAPER.err ? "Papier-Daten noch nicht verfügbar – der erste Lauf erscheint nach dem nächsten US-Börsenschluss." : "Lade Papier-Daten …"}</div></div>`;
   const sm = d.sum || {}, bench = sm.bench || [];
-  return head + paperCard("S19", d.s19, sm.S19, bench) + paperCard("S19B", d.s19b, sm.S19B, bench)
+  return head + paperCard("KAIRO", d.kairo, sm.KAIRO, bench) + paperCard("KAIROS", d.kairos, sm.KAIROS, bench) + paperCard("S19", d.s19, sm.S19, bench) + paperCard("S19B", d.s19b, sm.S19B, bench)
     + paperCard("S19C", d.s19c, sm.S19C, bench) + paperCard("S20", d.s20, sm.S20, bench) + paperCard("DM", d.dm, sm.DM, bench) + paperCard("MOM10", d.mom10, sm.MOM10, bench) + paperCard("MOM5", d.mom5, sm.MOM5, bench)
     + shadowHtml(sm.shadow)
     + `<div class="note" style="margin:6px 2px">Stand: ${esc(sm.ts ? new Date(sm.ts).toLocaleString("de-DE") : "–")}. Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser (so real nachhandelbar). 4H-Kerzen wie TradingView (US: 9:30–13:30 und 13:30–16:00). R nach Gebühren und Spread. Grenzen: Yahoo-Stundenkerzen teils verzögert, Fundamentaldaten wöchentlich von Yahoo.</div>`;
