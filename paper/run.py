@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import core, dualmom, momentum
+from . import core, dualmom, kairo, momentum
 
 HERE = Path(__file__).resolve().parent
 START_CASH = 2000.0                                # Nutzer-Startkapital (18.10.2026)
@@ -364,6 +364,32 @@ def stats(st: dict) -> dict:
     return out
 
 
+def load_signals() -> list:
+    """Scanner-Treffer (Branch kairo-data, signals.json) – öffentlich lesbar."""
+    import urllib.request
+    url = "https://raw.githubusercontent.com/dxrtex/Kairo/kairo-data/signals.json"
+    try:
+        with urllib.request.urlopen(url, timeout=60) as r:
+            return json.loads(r.read().decode())
+    except Exception as e:                             # noqa: BLE001
+        print("signals.json nicht geladen:", repr(e)[:200])
+        return []
+
+
+def run_kairo(kstates: list, mk: Market, cal, signals: list) -> None:
+    """Kairo-Papier-Depots einen Handelstag hinter dem Scan (der Scan des letzten Tages ist dann sicher fertig)."""
+    kcal = cal[:-1]
+    for st in kstates:
+        if st["last_day"] is None:
+            st["start"] = st["last_day"] = str(kcal[-1].date())
+            st["equity"].append({"date": st["start"], "eur": st["start_cash"], "open": 0})
+            continue
+        for D in [d for d in kcal if d > pd.Timestamp(st["last_day"])]:
+            prev = kcal[kcal < D][-1]
+            kairo.day(st, mk, D, prev, signals, equity, close_pos, open_pos)
+            st["last_day"] = str(D.date())
+
+
 def run_shadow(sd: Path, mk: Market, cal, bull, s19_t, s20_t, fund, sec3) -> dict | None:
     """Schattenbuch (paper/shadow.py) – reine Forschung; ein Fehler hier darf die Depots nicht stören."""
     from . import shadow
@@ -400,7 +426,8 @@ def report(d: Path, states: list[dict], bench: list[dict] | None = None, shadow:
         name = {"S19": "S19 Hybride Mean Reversion (Original)", "S19B": "S19-B (Volumen 2 von 3 Tagen)",
                 "S19C": "S19-C (2,0 Std, Volumen 2 von 3)", "MOM5": "MOM5 Momentum Top 5 (monatlich)",
                 "MOM10": "MOM10 Momentum Top 10 (monatlich; Holdout nicht bestanden)",
-                "DM": "DM Dual Momentum SPY/EFA/QQQ → SHY"}.get(st["sid"], "S20 Trendfolge / VCP")
+                "DM": "DM Dual Momentum SPY/EFA/QQQ → SHY",
+                "KAIRO": "KAIRO Scanner-Treffer (Basis-Einstieg)", "KAIROS": "KAIROS Scanner-Treffer, schwache Aktien zuerst"}.get(st["sid"], "S20 Trendfolge / VCP")
         lines += [f"## {name}", "", f"- Start: {s['start']} · Handelstage: {s['tage']}",
                   f"- Depot: **{s['depot_eur']:,.2f} €** ({s['rendite']:+.2%}) · größter Rückgang {s['max_dd']:.1%}",
                   f"- Abgeschlossene Trades: {s['trades']}" + (f" · Trefferquote {s['trefferquote']:.0%} · Ø R {s['avg_R']:+.2f}"
@@ -438,12 +465,17 @@ def main(argv=None) -> int:
     s20_t = list(uni["ticker"])
     states = [load_state(sd, "S19"), load_state(sd, "S19B"), load_state(sd, "S19C"), load_state(sd, "S20"), load_state(sd, "MOM5"), load_state(sd, "MOM10"), load_state(sd, "DM")]
     need = set(s19_t) | set(s20_t) | {p["t"] for s in states for p in s["positions"]}
-    daily = download(sorted(set(need) | set(dualmom.TICKERS)) + ["^GSPC"] + ETFS)
+    kstates = [load_state(sd, "KAIRO"), load_state(sd, "KAIROS")]
+    signals = load_signals()
+    k_t = kairo.tickers(signals, kstates, pd.Timestamp.now().normalize() - pd.Timedelta(days=90))
+    daily = download(sorted(set(need) | set(dualmom.TICKERS) | set(k_t)) + ["^GSPC"] + ETFS)
     fxd = download(list(FX_T.values()), period="2y")
     fx = {c: fxd[t]["Close"] for c, t in FX_T.items() if t in fxd}
     fx_usd = fx.get("USD")
     mk = Market(uni, daily, fx)
     mk.cur["SPY"] = "USD"
+    for t in k_t:
+        mk.cur.setdefault(t, kairo.currency(t))
     g = daily["^GSPC"]["Close"]
     bull = g > core.ema(g, 200)
     cal = g.index
@@ -485,6 +517,8 @@ def main(argv=None) -> int:
             process_day(st, mk, D, prev, cal, bool(bull.loc[prev]))
             new_setups(st, mk, D, cal, s19_t if st["sid"].startswith("S19") else s20_t, bool(bull.loc[D]), fund, sec3)
             st["last_day"] = str(D.date())
+    run_kairo(kstates, mk, cal, signals)
+    states += kstates
     bench = []
     if "ACWI" in daily and fx_usd is not None and states[0]["start"]:
         a = daily["ACWI"]["Close"] / fx_usd.reindex(daily["ACWI"].index, method="ffill")
