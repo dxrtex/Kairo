@@ -21,6 +21,11 @@ PERIODS = {
     "holdout": ("2022-01-01", "2026-10-16"),
     "trainval": ("2008-01-01", "2021-12-31"),     # Phase D: Train + Validierung durchgehend (nach Gate C)
     "full": ("2008-01-01", "2026-10-16"),         # nach Holdout-Freigabe (19.10.2026): alle drei Abschnitte
+    # Protokoll v3.0 (27_PROTOCOL_V3.md): Train ab 2010 (XBRL-Pflicht ab 2009/2011)
+    "v3_train": ("2010-01-01", "2016-12-31"),
+    "v3_validation": ("2017-01-01", "2021-12-31"),
+    "v3_trainval": ("2010-01-01", "2021-12-31"),
+    "v3_holdout": ("2022-01-01", "2026-10-16"),
 }
 WARMUP_START = "2005-01-01"
 FX_TICKERS = {"USD": "EURUSD=X", "GBP": "EURGBP=X", "CHF": "EURCHF=X", "SEK": "EURSEK=X", "NOK": "EURNOK=X",
@@ -28,9 +33,9 @@ FX_TICKERS = {"USD": "EURUSD=X", "GBP": "EURGBP=X", "CHF": "EURCHF=X", "SEK": "E
 
 
 def period(name: str) -> tuple[pd.Timestamp, pd.Timestamp]:
-    if name in ("validation", "trainval", "full") and os.environ.get("KAIRO_VALIDATION_UNSEALED") != "1":
+    if name in ("validation", "trainval", "full", "v3_validation", "v3_trainval", "v3_holdout") and os.environ.get("KAIRO_VALIDATION_UNSEALED") != "1":
         raise PermissionError("Validierung gesperrt (KAIRO_VALIDATION_UNSEALED=1 erst nach Gate C)")
-    if name in ("holdout", "full") and os.environ.get("KAIRO_HOLDOUT_UNSEALED") != "1":
+    if name in ("holdout", "full", "v3_holdout") and os.environ.get("KAIRO_HOLDOUT_UNSEALED") != "1":
         raise PermissionError("Finaler Holdout versiegelt – nur nach „FINALEN HOLDOUT FREIGEGEBEN“")
     a, b = PERIODS[name]
     return pd.Timestamp(a), pd.Timestamp(b)
