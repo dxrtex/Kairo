@@ -39,6 +39,10 @@ async def main(out: Path) -> None:
             if ein:
                 await pg.goto(f"{url}?nosplash=1&sec=entry")
                 await pg.wait_for_timeout(1500)
+            for page in ("track", "research"):
+                await pg.goto(f"https://dxrtex.github.io/Kairo/{page}/")
+                await pg.wait_for_timeout(2000)
+                await pg.screenshot(path=str(out / f"{name}_page_{page}.png"))
             await ctx.close()
         await b.close()
 
