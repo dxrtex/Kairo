@@ -284,3 +284,10 @@ Ziel: Rangfolge im Scanner nach Belegen. Merkmale (nur Info bis Signaltag): Scor
 eigenes Momentum 6-1, Volatilität (ATR/Kurs), Region, Tiefe unter dem Swing-Hoch. Terzil-Grenzen nur aus Train; beste und
 schlechteste Gruppe aus Train. Bestätigt, wenn dieselbe Reihenfolge in Validierung UND Holdout gilt und gepoolt (Val+Holdout)
 p ≤ 0,05/7. Kennzahl: R netto (5.000 €, PRIME+). Bestätigte Merkmale → Kandidat für Rangfolge/Filter im Scanner → Papier-Test.
+
+
+## Addendum v2.5 (19.10.2026, vor dem Lauf) – Ausstiegsregeln für Kairo-Treffer
+
+Basis-Einstieg unverändert. V0 Basis (EMA20 ab Tag 10, max. 40) gegen V1 Zeit 20 T., V2 EMA ab Tag 5, V3 Nachziehen
+(ab +2 ATR Einstand, dann Vortagestief, max. 40), V4 max. 60 Tage. Besser nur, wenn Ø R netto (5.000 €, PRIME+) in allen drei
+Abschnitten höher UND gepaarter Permutationstest gepoolt p ≤ 0,0125. Sonst bleibt V0.
