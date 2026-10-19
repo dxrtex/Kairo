@@ -24,17 +24,22 @@ Details: Branch `research/strategy-championship-phase-a`, Ordner `docs/strategy_
 
 ## Phase 1 – Eigengebrauch maximieren (jetzt bis ca. April 2027)
 
+**Kern von Kairo ist der Scanner:** einmal täglich alle ~6.000 Aktien nach klaren Regeln prüfen und die besten Einstiegs-Setups
+nennen – eine regelbasierte Auswahl, keine Anlageberatung. Ziel: die renditestärkste Strategie, die nach echten Kosten,
+auf unbekannten Zeiträumen, gegen Zufall und live besteht.
+
 | # | Baustein | Nutzen |
 |---|---|---|
-| 1 | **Track-Record-Seite**: alle Strategien live seit Start vs. ETF (Rendite, Rückgang, Trades, Status-Label) | ein Blick: was funktioniert wirklich |
-| 2 | **Persönliche Journal-Auswertung**: eigene Trades nach Setup, Fib-Tiefe, Haltedauer, Wochentag, Hebel; R und Trefferquote | eigene Stärken und Schwächen mit eigenen Zahlen prüfen |
-| 3 | **Startseite neu**: ETF-Status, Dual-Momentum-Signal (Papier), Kairo-Treffer, offene Positionen; Labor-Bereich für Tests | weniger Ablenkung, Fokus auf Belegtes |
-| 4 | **Kostenrechner im Einstieg** (PRIME+, Spread, Positionsgröße) | jede Order kennt ihre echten Kosten |
-| 5 | **Monatliche Auswertung** der Papier-Depots (eingerichtet, ab 02.11.2026) | Entscheidungen nach Live-Daten |
-| 6 | **Technik-Hygiene**: Ausfall-Warnung bei fehlgeschlagenen Läufen, mehr Tests, aufgeräumter Code | Verlässlichkeit |
+| 1 | **Kairo mit PRIME+-Kosten gegen Zufall** (Protokoll v2.3, 49.134 Treffer 2008–2026) | hat das Setup einen echten Vorteil? |
+| 2 | **Merkmale besserer Treffer** (v2.4: Score, Zone, Markt, Momentum, Volatilität, Region, Tiefe) | Rangfolge „beste Setups zuerst“ nach Belegen |
+| 3 | **Gezielte Erweiterungen** (z. B. Marktfilter, relative Stärke) – nur vorab festgelegt, Train → Validierung → Holdout → Papier | Scanner wird besser, ohne Zufallstreffer |
+| 4 | **Tagesliste „Top-Setups“**: Einstiegszone, Stop, Ziel, Positionsgröße, echte Kosten (PRIME+, Spread) | klare Entscheidungsgrundlage |
+| 5 | **Live-Bilanz des Scanners**: jeder genannte Treffer wird automatisch verfolgt | ehrliche Erfolgsquote der Empfehlungen |
+| 6 | **Persönliche Journal-Auswertung** eigener Trades (Setup, Fib-Tiefe, Haltedauer, Hebel) | eigene Hypothesen mit eigenen Zahlen prüfen |
+| 7 | **Technik-Hygiene**: Ausfall-Warnung, Tests, aufgeräumter Code | Verlässlichkeit |
 
-Entscheidung nach 12 Monaten Papier-Test: Dual Momentum für 10–30 % Trading-Teil ja/nein (Kriterien vorab: nach Kosten ≥ ETF,
-Rückgang höchstens ~5 Prozentpunkte schlechter, Wechsel exakt nach Regel).
+Im Hintergrund: Papier-Depots (Dual Momentum u. a.) und monatliche Auswertung (ab 02.11.2026). Entscheidung nach 12 Monaten:
+Dual Momentum für 10–30 % Trading-Teil ja/nein (nach Kosten ≥ ETF, Rückgang höchstens ~5 Prozentpunkte schlechter).
 
 ## Phase 2 – Prüfen, ob andere es wollen (frühestens nach Phase 1)
 
