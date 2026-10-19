@@ -1,0 +1,40 @@
+name: Research – Systemtest ETF + DM + Kairo-S (v2.8)
+
+on:
+  push:
+    branches: ["research/**"]
+    paths: [".github/workflows/research_mix.yml"]
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  SIGNALS_ASSET: "655351724"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1 sig
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SIGNALS_ASSET > sig/s01_signals_full.parquet
+      - run: python -W ignore -m research.strategy_championship.system_mix --data v1 --signals sig/s01_signals_full.parquet --out out
+      - name: Sichern
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: gh release create "research-mix-${GITHUB_RUN_ID}" out/* --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Systemtest" --notes "v2.8"

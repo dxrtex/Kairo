@@ -305,3 +305,15 @@ gesamt Sharpe > ACWI, und in allen drei Abschnitten über dem Zufalls-Median.
 
 K60S mit 5×1 % (Referenz), 10×0,5 %, 20×0,25 % Risiko; 10.000 und 20.000 €, PRIME+ Basis/Stress. Kriterium wie v2.6
 (Stress-CAGR in allen drei Abschnitten > 0, gesamt Sharpe > ACWI 0,5x). Danach keine weiteren Depot-Varianten.
+
+
+## Addendum v2.8 (19.10.2026, vor dem Lauf) – Systemtest: Welt-ETF + Dual Momentum + Kairo-S
+
+Frage: Bringt die Kombination der drei Bausteine mehr Rendite je Risiko als der reine Welt-ETF?
+Bausteine (je 2008–2026, PRIME+ Basis und Stress, Regeln unverändert): ACWI halten; S16-B Dual Momentum (SPY/EFA/QQQ → SHY);
+Kairo-S = K60S mit 20 × 0,25 % Risiko (v2.7), 20.000 €. Mischung aus den Tageskurven, Rebalancing einmal jährlich
+(erster Handelstag des Jahres), Umschichtungskosten = Umsatz × 0,1 % (Basis) bzw. 0,2 % (Stress).
+Mischungen: M0 100 % ACWI · **M1 70/15/15 (Hauptmischung)** · M2 70/30 ACWI/DM · M3 70/30 ACWI/Kairo-S · M4 50/25/25.
+Bestanden (nur M1 gegen M0, Stress-Kosten): Sharpe in allen drei Abschnitten höher UND gesamt max. Rückgang höchstens
+2 Prozentpunkte schlechter UND Block-Bootstrap (21 Tage, 2.000×) der gesamten Sharpe-Differenz p ≤ 0,05.
+M2–M4 nur beschreibend. Ergebnis wird unabhängig vom Ausgang berichtet; danach keine weiteren Mischungen.
