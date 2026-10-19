@@ -5,7 +5,7 @@ Nach dem Treffer-Tag bis zu 10 Handelstage: Treffer verworfen, sobald ein Tief u
 Treffer fällt. Ab dem 5. Tag: bilden die letzten 5 Kerzen eine Seitwärtsphase (Hoch − Tief ≤ 1,5 ATR), Kauf zur nächsten
 Eröffnung, wenn sie in der Spanne liegt (Tief < Eröffnung ≤ Hoch) und der Abstand zum Stop 0,5–3 ATR beträgt.
 Stop = Basis-Tief − 0,25 ATR, Risiko 1 % des Depots, max. 5 Positionen. Ausstieg: Stop; ab Tag 10 Schluss unter EMA20 →
-Verkauf zur nächsten Eröffnung; spätestens Schluss von Tag 40.
+Verkauf zur nächsten Eröffnung; spätestens Schluss von Tag 60 (v2.5).
 KAIRO: Vorrang ruhigere Titel (kleineres ATR ÷ Kurs, wie im Backtest). KAIROS: Vorrang schwächeres Vormomentum
 (Rendite Monat −6…−1, Merkmal v2.4 bestätigt). Die Depots laufen einen Handelstag hinter dem Scan (Scan muss fertig sein).
 """
@@ -17,6 +17,7 @@ import pandas as pd
 
 WAIT, CK, CM, BUF, RISK_ATR = 10, 5, 1.5, 0.25, (0.5, 3.0)
 MAX_OPEN, RISK = 5, 0.01
+HOLD = 60                        # spätestens Tag 60 (Forschung v2.5: in allen drei Zeiträumen besser als Tag 40, p 0,0002)
 REGIONS = ("us", "europe")
 
 
@@ -86,7 +87,7 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, signals: list, equi
             close_pos(st, mk, p, float(r["Open"]), "stop_gap", str(D.date())); continue
         if r["Low"] <= p["stop"]:
             close_pos(st, mk, p, float(p["stop"]), "stop", str(D.date())); continue
-        if p["days"] >= 40:
+        if p["days"] >= HOLD:
             close_pos(st, mk, p, float(r["Close"]), "zeit", str(D.date())); continue
         if p["days"] >= 10 and r["Close"] < r["ema20"]:
             p["sell_next"] = True
