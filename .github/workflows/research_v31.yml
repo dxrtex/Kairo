@@ -1,0 +1,113 @@
+name: Research – Protokoll v3.1 (S19/S20 mit echten 4H-Kerzen)
+
+# Nur manueller Start. Regeln: docs/strategy_championship/29_PROTOCOL_V3_1.md
+on:
+  workflow_dispatch:
+    inputs:
+      teil:
+        description: "alles = Hauptlauf + Zufall + Entscheidung, main = nur Hauptlauf"
+        default: "alles"
+        type: choice
+        options: [alles, main]
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { ref: "research-data/v3", path: dataref }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1 duka
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          for f in $(ls dataref/duka_v3/*.zip.part00 2>/dev/null); do b=${f%.part00}; cat $b.part* > duka/$(basename $b); done
+          cp dataref/duka_v3/*.zip duka/ 2>/dev/null || true
+          ls -la duka
+      - name: Hauptlauf
+        run: |
+          set +e
+          python -W ignore -m research.strategy_championship.v3.s19s20 main --data v1 --sec dataref/sec_v3 --duka duka --splits dataref/splits/splits_v3.csv --out out 2>&1 | tee lauf.log
+          rc=${PIPESTATUS[0]}
+          echo "::notice title=v3.1 Hauptlauf::$(grep -E '^(Setup|Tagessignale|ACWI|S19|S20)' lauf.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          [ $rc -ne 0 ] && echo "::error title=Fehler::$(tail -40 lauf.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          exit $rc
+      - uses: actions/upload-artifact@v4
+        with: { name: "v31-main", path: out/, retention-days: 30 }
+
+  zufall:
+    if: inputs.teil == 'alles'
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        sid: [S19, S19B, S19C, S20]
+        start: [0, 25, 50, 75]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { ref: "research-data/v3", path: dataref }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1 duka
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          for f in $(ls dataref/duka_v3/*.zip.part00 2>/dev/null); do b=${f%.part00}; cat $b.part* > duka/$(basename $b); done
+          cp dataref/duka_v3/*.zip duka/ 2>/dev/null || true
+          ls -la duka
+      - name: Zufall
+        run: |
+          set +e
+          python -W ignore -m research.strategy_championship.v3.s19s20 null --data v1 --sec dataref/sec_v3 --duka duka --splits dataref/splits/splits_v3.csv --sid ${{ matrix.sid }} --seed-start ${{ matrix.start }} --seed-n 25 --out out 2>&1 | tee lauf.log
+          rc=${PIPESTATUS[0]}
+          [ $rc -ne 0 ] && echo "::error title=Fehler Zufall::$(tail -40 lauf.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          exit $rc
+      - uses: actions/upload-artifact@v4
+        with: { name: "v31-null-${{ matrix.sid }}-${{ matrix.start }}", path: out/, retention-days: 30 }
+
+  combine:
+    needs: [main, zufall]
+    if: always() && inputs.teil == 'alles'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "v31-*", merge-multiple: true, path: parts }
+      - run: |
+          set +e
+          python -W ignore -m research.strategy_championship.v3.s19s20 combine --inp parts --out res 2>&1 | tee comb.log
+          rc=${PIPESTATUS[0]}
+          echo "::notice title=Entscheidung v3.1::$(tail -80 comb.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          exit $rc
+      - name: Als Entwurfs-Release sichern
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          cp parts/* res/ 2>/dev/null || true
+          gh release create "research-v31-${GITHUB_RUN_ID}" res/* --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Research Protokoll v3.1 – S19/S20 mit echten 4H-Kerzen" --notes "Läufe nach 29_PROTOCOL_V3_1.md (Commit $GITHUB_SHA). Nur Forschung."

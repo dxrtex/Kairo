@@ -63,6 +63,23 @@ def read_hourly(files: dict, sym: str) -> pd.DataFrame | None:
     return df[["Open", "High", "Low", "Close"]].astype(float)
 
 
+def read_hourly_v(files: dict, sym: str) -> pd.DataFrame | None:
+    """Wie read_hourly, mit Volumen (für S20-Auslöser: 4H-Volumen gegen eigenen Schnitt)."""
+    rows = []
+    for k in sorted(x for x in files if x.startswith(f"h1/{sym}/") and x.endswith(".bi5")):
+        y, m = map(int, Path(k).stem.split("-"))
+        t0 = int(datetime(y, m + 1, 1, tzinfo=timezone.utc).timestamp())
+        raw = lzma.decompress(files[k], format=lzma.FORMAT_ALONE)
+        for ts, o, c, lo, hi, v in struct.iter_unpack(">5if", raw):
+            rows.append((t0 + ts, o, hi, lo, c, v))
+    if not rows:
+        return None
+    df = pd.DataFrame(rows, columns=["ts", "Open", "High", "Low", "Close", "Volume"]).drop_duplicates("ts")
+    df.index = pd.to_datetime(df["ts"], unit="s", utc=True)
+    df = df[df["Volume"] > 0]
+    return df[["Open", "High", "Low", "Close", "Volume"]].astype(float)
+
+
 def session(hx: pd.DataFrame, reg: str) -> pd.DataFrame:
     tz, h0, h1 = TZ[reg]
     loc = hx.index.tz_convert(tz)

@@ -23,6 +23,7 @@ FLOW = {
              "CostOfGoodsAndServiceExcludingDepreciationDepletionAndAmortization", "CostOfServices"],
     "gp": ["GrossProfit"],
     "ocf": ["NetCashProvidedByUsedInOperatingActivities", "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"],
+    "oi": ["OperatingIncomeLoss"],
 }
 INSTANT = {
     "assets": ["Assets"],
@@ -122,6 +123,16 @@ def firm_timeline(rows: pd.DataFrame) -> list[dict]:
             if best is not None:
                 r[f"{c}_ttm"], r[f"{c}_end"] = best[1], best[2]
                 qs[c] = best[3]
+            fy = None                                   # letztes veröffentlichtes Geschäftsjahr (S19: operative Marge)
+            for pri, tag in enumerate(tl):
+                if tag in state:
+                    _, a = quarters(state[tag])
+                    if a:
+                        e = max(a)
+                        if fy is None or (e, -pri) > fy[0]:
+                            fy = ((e, -pri), a[e], e)
+            if fy is not None:
+                r[f"{c}_fy"], r[f"{c}_fy_end"] = fy[1], fy[2]
         if qs.get("ni"):                                # Earnings Momentum: Quartal − Vorjahresquartal
             q = qs["ni"]
             E = max(q)
@@ -158,6 +169,11 @@ def build(fund: pd.DataFrame) -> pd.DataFrame:
     df["gpa"] = gp / A
     df["roa"] = df["ni_ttm"] / A
     df["em"] = (df["ni_q"] - df["ni_q_prev"]) / A
+    # S19 (v3.1): operative Marge des letzten Geschäftsjahres; ohne operatives Ergebnis: Jahresüberschuss
+    same = df.get("oi_fy_end") == df.get("rev_fy_end") if "oi_fy_end" in df else False
+    num = df["oi_fy"].where(same) if "oi_fy" in df else pd.Series(np.nan, index=df.index)
+    num = num.where(num.notna(), df.get("ni_fy"))
+    df["opm_fy"] = num / df["rev_fy"].where(df["rev_fy"] > 0)
     return df.sort_values(["cik", "avail"]).reset_index(drop=True)
 
 
