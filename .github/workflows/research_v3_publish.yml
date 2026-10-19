@@ -47,10 +47,15 @@ jobs:
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
           cd dataref && sha256sum sec_v3/* splits/* > SHA256SUMS.txt
+          ls -la . sec_v3 splits
+          set +e
           gh release create "research-sec-v3" sec_v3/* splits/* SHA256SUMS.txt README.md --repo "$GITHUB_REPOSITORY" --draft \
             --target "$GITHUB_SHA" --title "Research SEC-Daten v3 (eingefroren 19.10.2026)" \
             --notes "SEC EDGAR (XBRL companyfacts, submissions/8-K, Insider Form 4 2006Q1–2026Q1), über den PC des Nutzers geladen (User-Agent mit Kontakt), aufbereitet mit v3/sec_extract.py + fundamentals.py; Yahoo-Splits. Rohdatei-Prüfsummen: RAW_SHA256.txt. Nur Forschung." \
-            || gh release upload "research-sec-v3" sec_v3/* splits/* SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
+            > rel.log 2>&1
+          rc=$?
+          echo "::notice title=Release::$(cat rel.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          exit $rc
 
   duka:
     if: inputs.teil == 'duka'
@@ -63,6 +68,10 @@ jobs:
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
           sha256sum duka_v3/* > SHA256SUMS_duka.txt
+          set +e
           gh release create "research-duka-v3" duka_v3/* SHA256SUMS_duka.txt --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
             --title "Research Dukascopy-Stundenkerzen v3 (US/DE-Aktien ab 2017)" \
-            --notes "Dukascopy BID-Stundenkerzen (Datafeed), über den eingebauten Browser auf dem PC des Nutzers geladen (Dukascopy blockiert Kommandozeilen-/Cloud-Abrufe). Nur Forschung."
+            --notes "Dukascopy BID-Stundenkerzen (Datafeed), über den eingebauten Browser auf dem PC des Nutzers geladen (Dukascopy blockiert Kommandozeilen-/Cloud-Abrufe). Nur Forschung." > rel.log 2>&1
+          rc=$?
+          echo "::notice title=Release::$(cat rel.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          exit $rc
