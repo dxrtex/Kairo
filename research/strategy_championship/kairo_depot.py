@@ -96,7 +96,7 @@ def main(argv=None) -> int:
         (out / "kairo_depot_final.json").write_text(json.dumps(res, indent=1, ensure_ascii=False, default=str))
         for k, v in res.items():
             if isinstance(v, dict) and "gesamt" in v:
-                print(k, {ab: (round(v[ab]["cagr"], 3), round(v[ab]["max_dd"], 2)) for ab in ("Train", "Validierung", "Holdout", "gesamt") if v.get(ab)})
+                print(k, {ab: (round(v[ab]["cagr"], 3), round(v[ab]["max_dd"], 2)) for ab in ("Train", "Validierung", "Holdout", "gesamt") if isinstance(v.get(ab), dict) and "cagr" in v[ab]})
         print("Zufall", res["zufall_K60_5000_base"])
         return 0
     sig = pd.read_parquet(a.signals)
