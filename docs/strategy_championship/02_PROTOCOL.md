@@ -329,3 +329,11 @@ Varianten: S1 statisch 1,25 · S2 statisch 1,5 · V0 Zielvola 12 %, max. 1,0 · 
 V2 Zielvola 15 %, max. 1,5. Gleiche Varianten zusätzlich auf M0 (100 % ACWI), nur beschreibend.
 Kandidat für den Papier-Test nur, wenn V1 auf M2: CAGR in allen drei Abschnitten > M2 ungehebelt UND gesamt max. Rückgang
 nicht schlechter als 100 % ACWI (−46 %) UND gesamt Sharpe ≥ M2. Danach keine weiteren Varianten.
+
+
+## Protokoll v3.0 (19.10.2026, vor jedem Lauf) – siehe `27_PROTOCOL_V3.md`
+
+Neue kostenlose Datenquellen (SEC XBRL/8-K/Form 4 über den PC des Nutzers, Dukascopy-Stundenkerzen ab 2017). Vier Kandidaten
+K1 Quality + Earnings Momentum, K2 Multi-Faktor, K3 PEAD, K4 Insider-Cluster (US); Nebenanalyse 4H-Einstieg für Kairo-Signale.
+Train 2010–2016, Validierung 2017–2021, Holdout nur Hinweis. PRIME+ Basis/Stress, deutsche Steuern, Zufall mit Bonferroni (4),
+Benchmarks ACWI, S16-B, 70 % ACWI / 30 % Nasdaq-100. Alle Regeln und Bestehenskriterien in 27.
