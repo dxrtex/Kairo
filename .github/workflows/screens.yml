@@ -1,0 +1,26 @@
+name: Screenshots für UX-Prüfung
+
+on:
+  push:
+    branches: ["claude/screens"]
+    paths: [".github/workflows/screens.yml", "tools/screens.py"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: |
+          pip install -q playwright==1.55.0
+          python -m playwright install --with-deps chromium > /dev/null
+      - run: python tools/screens.py shots
+      - name: Sichern
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: gh release create "screens-${GITHUB_RUN_ID}" shots/*.png --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Screenshots" --notes "UX-Prüfung"
