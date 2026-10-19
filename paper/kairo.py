@@ -17,6 +17,8 @@ import pandas as pd
 
 WAIT, CK, CM, BUF, RISK_ATR = 10, 5, 1.5, 0.25, (0.5, 3.0)
 MAX_OPEN, RISK = 5, 0.01
+# Depot-Aufbau je Variante: KAIRO = Backtest-Original (5 × 1 %), KAIROS = bester Aufbau aus v2.7 (20 × 0,25 %, 20.000 € virtuell)
+DESIGN = {"KAIRO": (5, 0.01), "KAIROS": (20, 0.0025)}
 HOLD = 60                        # spätestens Tag 60 (Forschung v2.5: in allen drei Zeiträumen besser als Tag 40, p 0,0002)
 REGIONS = ("us", "europe")
 
@@ -62,7 +64,7 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, signals: list, equi
         x = mk.f(a["t"])
         if x is None or D not in x.index or any(p["t"] == a["t"] for p in st["positions"]):
             continue
-        if len(st["positions"]) >= MAX_OPEN:
+        if len(st["positions"]) >= DESIGN.get(sid, (MAX_OPEN, RISK))[0]:
             st["events"].append(f"{D.date()} {a['t']}: Basis-Einstieg, aber Depot voll")
             continue
         op = float(x.loc[D, "Open"])
@@ -72,7 +74,7 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, signals: list, equi
             st["pending"] = [q for q in st["pending"] if q["t"] != a["t"]]
             continue
         n0 = len(st["positions"])
-        open_pos(st, mk, a["t"], str(D.date()), op, a["stop"], RISK, {"regime": "-", "days": 0}, D_prev)
+        open_pos(st, mk, a["t"], str(D.date()), op, a["stop"], DESIGN.get(sid, (MAX_OPEN, RISK))[1], {"regime": "-", "days": 0}, D_prev)
         if len(st["positions"]) > n0:
             st["pending"] = [q for q in st["pending"] if q["t"] != a["t"]]
     st["armed"] = [a for a in st["armed"] if pd.Timestamp(a["after"]) >= D]        # je Vormerkung genau eine Eröffnung
