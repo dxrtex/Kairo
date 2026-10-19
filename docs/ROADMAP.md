@@ -17,10 +17,11 @@ nachweislich Geld bringt, wird über ein Produkt für andere aktive Trader nachg
 | Welt-ETF per Sparplan | belegt – Kern des Depots |
 | Dual Momentum (SPY/EFA/QQQ → SHY) | bester Kandidat: in allen drei Zeiträumen besser als ETF, im Holdout knapp nicht signifikant (p 0,07) → Papier-Test |
 | Momentum Top 5/10 | Holdout 2022–26 nicht bestanden → nur Vergleich |
-| Kairo-Setup (Scanner) | bleibt; Neubewertung mit PRIME+-Kosten gegen Zufall läuft (Protokoll v2.3) |
+| Kairo-Setup (Scanner) | je Trade echter Vorteil gegen Zufall (v2.3); als Depot 20 × 0,25 % (Kairo-S) nur mit Basis-Kosten positiv → echte Kosten entscheiden (Kosten-Check im Journal, Papier-Depot) |
+| System ETF + DM + Kairo-S (v2.8) | Hauptmischung 70/15/15 nicht besser als reiner ETF (Stress-Kosten); ETF + Dual Momentum 70/30 beschreibend in allen Abschnitten vorn |
 | S19/S20, Hybrid, Mean Reversion, Multi-Asset, Fib-0,79-Hypothese | nicht bestätigt; S19/S20 laufen im Papier-Test |
 
-Details: Branch `research/strategy-championship-phase-a`, Ordner `docs/strategy_championship/` (Berichte 05–21).
+Details: Branch `research/strategy-championship-phase-a`, Ordner `docs/strategy_championship/` (Berichte 05–25).
 
 ## Phase 1 – Eigengebrauch maximieren (jetzt bis ca. April 2027)
 
@@ -35,7 +36,7 @@ auf unbekannten Zeiträumen, gegen Zufall und live besteht.
 | 3 | **Gezielte Erweiterungen** (z. B. Marktfilter, relative Stärke) – nur vorab festgelegt, Train → Validierung → Holdout → Papier | Scanner wird besser, ohne Zufallstreffer |
 | 4 | **Tagesliste „Top-Setups“**: Einstiegszone, Stop, Ziel, Positionsgröße, echte Kosten (PRIME+, Spread) | klare Entscheidungsgrundlage |
 | 5 | **Live-Bilanz des Scanners**: jeder genannte Treffer wird automatisch verfolgt | ehrliche Erfolgsquote der Empfehlungen |
-| 6 | **Persönliche Journal-Auswertung** eigener Trades (Setup, Fib-Tiefe, Haltedauer, Hebel) | eigene Hypothesen mit eigenen Zahlen prüfen |
+| 6 | **Persönliche Journal-Auswertung** eigener Trades (Setup, Fib-Tiefe, Haltedauer, Hebel); ✅ Kosten-Check (echte Ausführung vs. Test-Annahme) | eigene Hypothesen mit eigenen Zahlen prüfen |
 | 7 | **Technik-Hygiene**: Ausfall-Warnung (✅ seit 19.10.: Push bei Fehler in Scan, Mitteilungen, Papier-Handel), Tests, aufgeräumter Code | Verlässlichkeit |
 
 Im Hintergrund: Papier-Depots (Dual Momentum u. a.) und monatliche Auswertung (ab 02.11.2026). Entscheidung nach 12 Monaten:
