@@ -91,10 +91,27 @@ def main(argv=None) -> int:
         blo = float(A["Low"].iloc[max(0, k - s01.CK + 1): k + 1].min())
         uf.append((H - rl) / (H - L)); ub.append((H - blo) / (H - L))
     t["u_fib_ret"], t["u_base_ret"] = uf, ub
+    # Groß-Anker (großer Trend): höchstes Hoch der 300 Tage bis zum Signal, L = tiefstes Tief der 300 Tage davor
+    gf, gb = [], []
+    for x in t.itertuples(index=False):
+        A = adj[x.ticker]
+        i = int(np.searchsorted(A.index.values, np.datetime64(pd.Timestamp(x.date))))
+        h, lo = A["High"].to_numpy(float), A["Low"].to_numpy(float)
+        if i >= len(A) or i < 60:
+            gf.append(np.nan); gb.append(np.nan); continue
+        j = max(0, i - 300) + int(np.argmax(h[max(0, i - 300): i + 1]))
+        if j == 0:
+            gf.append(np.nan); gb.append(np.nan); continue
+        H, L = h[j], lo[max(0, j - 300) + int(np.argmin(lo[max(0, j - 300): j]))]
+        rl = min(float(A["Close"].iloc[i]), float(lo[max(0, i - 9): i + 1].min()))
+        k = int(np.searchsorted(A.index.values, np.datetime64(x.entry_date))) - 1
+        blo = float(lo[max(0, k - s01.CK + 1): k + 1].min())
+        gf.append((H - rl) / (H - L) if H > L else np.nan); gb.append((H - blo) / (H - L) if H > L else np.nan)
+    t["g_fib_ret"], t["g_base_ret"] = gf, gb
     t["abschnitt"] = np.select([t["date"] <= pd.Timestamp(PERIODS["train"][1]), t["date"] <= pd.Timestamp(PERIODS["validation"][1])],
                                ["Train", "Validierung"], "Holdout")
     res = {"signale": int(len(sig)), "trades": int(len(t))}
-    for col in ("u_base_ret", "u_fib_ret", "fib_ret", "base_ret"):
+    for col in ("u_base_ret", "g_base_ret", "u_fib_ret", "g_fib_ret", "fib_ret", "base_ret"):
         t["g"] = t[col].map(bucket)
         tab = {}
         for ab in ("Train", "Validierung", "Holdout", "Gesamt"):
@@ -109,7 +126,7 @@ def main(argv=None) -> int:
         res[col] = tab
     t.to_csv(out / "fib_trades.csv", index=False)
     (out / "fib_result.json").write_text(json.dumps(res, indent=1, ensure_ascii=False, default=str))
-    for col in ("u_base_ret", "u_fib_ret", "fib_ret", "base_ret"):
+    for col in ("u_base_ret", "g_base_ret", "u_fib_ret", "g_fib_ret", "fib_ret", "base_ret"):
         print("==", col)
         for ab, v in res[col].items():
             c = v["_vergleich"]

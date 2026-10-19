@@ -263,3 +263,8 @@ die Konsolidierung bildet. Test mit dem unveränderten Kairo-Scanner (S01) und s
   nicht übertroffen wurde; L = tiefstes Tief seit der Kurs zuletzt über H lag, und L ist das tiefste Tief der 120 Tage vor H;
   Impuls ≥ 15 %. Prüfung an den vier Nutzer-Charts (TUI, Axon, Uber, Telekom, Stand 16.10.2026): alle Anker identisch.
   Hauptkennzahl = Tiefe des Basis-Tiefs (Konsolidierung) mit Nutzer-Anker; Scanner-Anker nur zum Vergleich.
+- Nachtrag v2.2b (vor Ergebnissen): Weitere Nutzer-Charts (Rocket Lab, D-Wave, AST SpaceMobile) zeigen einen zweiten Anker-Typ
+  „großer Trend“ (Allzeithoch bzw. Hoch der 300 Tage, L = tiefstes Tief der 300 Tage davor). Treffer: Rocket Lab mit
+  Nutzer-Anker A, AST mit Groß-Anker B, D-Wave mit keinem (Nutzer-Tief Jan 2025 statt absolutem Tief). Getestet werden
+  A und B gleichwertig; die Hypothese gilt als bestätigt, wenn sie unter A **oder** B alle Kriterien erfüllt
+  (Bonferroni: p ≤ 0,025 je Variante).
