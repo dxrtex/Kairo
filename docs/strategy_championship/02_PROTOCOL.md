@@ -337,3 +337,8 @@ Neue kostenlose Datenquellen (SEC XBRL/8-K/Form 4 über den PC des Nutzers, Duka
 K1 Quality + Earnings Momentum, K2 Multi-Faktor, K3 PEAD, K4 Insider-Cluster (US); Nebenanalyse 4H-Einstieg für Kairo-Signale.
 Train 2010–2016, Validierung 2017–2021, Holdout nur Hinweis. PRIME+ Basis/Stress, deutsche Steuern, Zufall mit Bonferroni (4),
 Benchmarks ACWI, S16-B, 70 % ACWI / 30 % Nasdaq-100. Alle Regeln und Bestehenskriterien in 27.
+
+## Protokoll v3.1 (19.10.2026, vor jedem Lauf) – siehe `29_PROTOCOL_V3_1.md`
+
+S19, S19-B, S19-C und S20 erstmals in Originalform: echte 4H-Auslöser (Dukascopy ab 2017), Börsenwert und operative Marge
+aus SEC-XBRL (zeitpunktgenau), Simulation mit dem Code des Papier-Handels. Test 2017–2021, Zufall 100 Seeds, Bonferroni (4).
