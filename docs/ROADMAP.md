@@ -36,7 +36,7 @@ auf unbekannten Zeiträumen, gegen Zufall und live besteht.
 | 4 | **Tagesliste „Top-Setups“**: Einstiegszone, Stop, Ziel, Positionsgröße, echte Kosten (PRIME+, Spread) | klare Entscheidungsgrundlage |
 | 5 | **Live-Bilanz des Scanners**: jeder genannte Treffer wird automatisch verfolgt | ehrliche Erfolgsquote der Empfehlungen |
 | 6 | **Persönliche Journal-Auswertung** eigener Trades (Setup, Fib-Tiefe, Haltedauer, Hebel) | eigene Hypothesen mit eigenen Zahlen prüfen |
-| 7 | **Technik-Hygiene**: Ausfall-Warnung, Tests, aufgeräumter Code | Verlässlichkeit |
+| 7 | **Technik-Hygiene**: Ausfall-Warnung (✅ seit 19.10.: Push bei Fehler in Scan, Mitteilungen, Papier-Handel), Tests, aufgeräumter Code | Verlässlichkeit |
 
 Im Hintergrund: Papier-Depots (Dual Momentum u. a.) und monatliche Auswertung (ab 02.11.2026). Entscheidung nach 12 Monaten:
 Dual Momentum für 10–30 % Trading-Teil ja/nein (nach Kosten ≥ ETF, Rückgang höchstens ~5 Prozentpunkte schlechter).
