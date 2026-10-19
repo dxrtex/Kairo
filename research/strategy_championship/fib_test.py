@@ -77,10 +77,24 @@ def main(argv=None) -> int:
         lo = float(A["Low"].iloc[max(0, k - s01.CK + 1): k + 1].min())
         deep.append((x.fib_H - lo) / (x.fib_H - x.fib_L) if x.fib_H > x.fib_L else np.nan)
     t["base_ret"] = deep
+    # Nutzer-Anker (Hoch der letzten großen Aufwärtsbewegung → deren Startpunkt), nur mit Kursen bis zum Signaltag
+    uf, ub = [], []
+    for x in t.itertuples(index=False):
+        A = adj[x.ticker]
+        i = int(np.searchsorted(A.index.values, np.datetime64(pd.Timestamp(x.date))))
+        an = user_anchor(A, i) if i < len(A) else None
+        if an is None:
+            uf.append(np.nan); ub.append(np.nan); continue
+        H, L, _, _ = an
+        rl = min(float(A["Close"].iloc[i]), float(A["Low"].iloc[max(0, i - 9): i + 1].min()))
+        k = int(np.searchsorted(A.index.values, np.datetime64(x.entry_date))) - 1
+        blo = float(A["Low"].iloc[max(0, k - s01.CK + 1): k + 1].min())
+        uf.append((H - rl) / (H - L)); ub.append((H - blo) / (H - L))
+    t["u_fib_ret"], t["u_base_ret"] = uf, ub
     t["abschnitt"] = np.select([t["date"] <= pd.Timestamp(PERIODS["train"][1]), t["date"] <= pd.Timestamp(PERIODS["validation"][1])],
                                ["Train", "Validierung"], "Holdout")
     res = {"signale": int(len(sig)), "trades": int(len(t))}
-    for col in ("fib_ret", "base_ret"):
+    for col in ("u_base_ret", "u_fib_ret", "fib_ret", "base_ret"):
         t["g"] = t[col].map(bucket)
         tab = {}
         for ab in ("Train", "Validierung", "Holdout", "Gesamt"):
@@ -95,7 +109,7 @@ def main(argv=None) -> int:
         res[col] = tab
     t.to_csv(out / "fib_trades.csv", index=False)
     (out / "fib_result.json").write_text(json.dumps(res, indent=1, ensure_ascii=False, default=str))
-    for col in ("fib_ret", "base_ret"):
+    for col in ("u_base_ret", "u_fib_ret", "fib_ret", "base_ret"):
         print("==", col)
         for ab, v in res[col].items():
             c = v["_vergleich"]
@@ -105,3 +119,27 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def user_anchor(a: pd.DataFrame, i: int, pl: int = 5, min_imp: float = 0.15, look: int = 252, major: int = 120):
+    """Fib-Anker nach Nutzer-Regel (nur Kurse bis Tag i): jüngstes Pivot-Hoch H, das seitdem nicht übertroffen wurde und
+    dessen Impuls ≥ 15 % ist; L = tiefstes Tief zwischen dem letzten Tag vor H mit Hoch > H (max. 252 T. zurück) und H,
+    und L muss das tiefste Tief der 120 Tage vor H sein (großer Impuls, kein Zwischenhoch).
+    → (H, L, H_idx, L_idx) oder None."""
+    h, lo = a["High"].to_numpy(float), a["Low"].to_numpy(float)
+    first = max(pl, i - look)
+    after_max = -np.inf
+    for j in range(i - pl, first - 1, -1):
+        after_max = max(after_max, h[j + 1]) if j + 1 <= i else after_max
+        if not (h[j] >= h[j - pl:j].max() and h[j] >= h[j + 1:j + pl + 1].max()) or h[j] < after_max:
+            continue
+        above = np.flatnonzero(h[max(0, j - look):j] > h[j])
+        k0 = max(0, j - look) + (above[-1] + 1 if len(above) else 0)
+        if k0 >= j:
+            continue
+        L_idx = k0 + int(np.argmin(lo[k0:j]))
+        if lo[L_idx] > lo[max(0, j - major):j].min():
+            continue
+        if (h[j] - lo[L_idx]) / lo[L_idx] >= min_imp:
+            return float(h[j]), float(lo[L_idx]), j, L_idx
+    return None

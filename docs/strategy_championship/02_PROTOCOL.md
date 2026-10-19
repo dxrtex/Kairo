@@ -258,3 +258,8 @@ die Konsolidierung bildet. Test mit dem unveränderten Kairo-Scanner (S01) und s
 - Hauptvergleich (vorab): Ø R je Trade (S01-B: Einstieg in der Basis, Ausstieg EMA20 ab Tag 10, max. 40 Tage) der Gruppe
   0,75–0,83 gegen 0,618–0,75; Signifikanz per Permutationstest (10.000×), getrennt für Train, Validierung, Holdout.
 - Bestätigt nur, wenn die Gruppe in allen drei Abschnitten besser ist und gepoolt p ≤ 0,05. Keine weiteren Schwellen.
+
+- Nachtrag v2.2a (vor Ergebnissen, Hinweis des Nutzers): **Hauptvariante = Nutzer-Anker** – H = jüngstes Pivot-Hoch, das seitdem
+  nicht übertroffen wurde; L = tiefstes Tief seit der Kurs zuletzt über H lag, und L ist das tiefste Tief der 120 Tage vor H;
+  Impuls ≥ 15 %. Prüfung an den vier Nutzer-Charts (TUI, Axon, Uber, Telekom, Stand 16.10.2026): alle Anker identisch.
+  Hauptkennzahl = Tiefe des Basis-Tiefs (Konsolidierung) mit Nutzer-Anker; Scanner-Anker nur zum Vergleich.
