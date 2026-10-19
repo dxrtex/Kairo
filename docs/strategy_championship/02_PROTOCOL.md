@@ -268,3 +268,11 @@ die Konsolidierung bildet. Test mit dem unveränderten Kairo-Scanner (S01) und s
   Nutzer-Anker A, AST mit Groß-Anker B, D-Wave mit keinem (Nutzer-Tief Jan 2025 statt absolutem Tief). Getestet werden
   A und B gleichwertig; die Hypothese gilt als bestätigt, wenn sie unter A **oder** B alle Kriterien erfüllt
   (Bonferroni: p ≤ 0,025 je Variante).
+
+
+## Addendum v2.3 (19.10.2026, vor dem Lauf) – Kairo mit Kosten PRIME+ gegen Zufall (2008–2026)
+
+Signale aus research_fib (49.134 Treffer, unveränderter Scanner). Je Trade (keine Kapitalgrenze), S01-B-Basis-Regel.
+Zufall: an jedem Treffer-Tag gleich viele zufällige zulässige Titel mit derselben Basis-Regel (20 Seeds).
+Kairo gilt als belegt, wenn: R netto (5.000-€-Depot, PRIME+) in allen drei Abschnitten > 0 UND Kairo-R in allen drei
+Abschnitten über dem Zufalls-Median UND gepoolt p vs. Zufall ≤ 0,05. Sonst: kein belegter Vorteil.
