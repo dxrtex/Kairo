@@ -117,9 +117,6 @@ def main(argv=None) -> int:
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
-
 
 def user_anchor(a: pd.DataFrame, i: int, pl: int = 5, min_imp: float = 0.15, look: int = 252, major: int = 120):
     """Fib-Anker nach Nutzer-Regel (nur Kurse bis Tag i): jüngstes Pivot-Hoch H, das seitdem nicht übertroffen wurde und
@@ -143,3 +140,7 @@ def user_anchor(a: pd.DataFrame, i: int, pl: int = 5, min_imp: float = 0.15, loo
         if (h[j] - lo[L_idx]) / lo[L_idx] >= min_imp:
             return float(h[j]), float(lo[L_idx]), j, L_idx
     return None
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
