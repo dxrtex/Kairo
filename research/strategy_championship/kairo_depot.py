@@ -33,11 +33,11 @@ VARS = {"K40": (40, "vol"), "K60": (60, "vol"), "K60S": (60, "mom")}
 CAPS = (5000, 10000)
 
 
-def orders(rows, hold: int, prio: str) -> list:
+def orders(rows, hold: int, prio: str, risk: float = 0.01) -> list:
     out = []
     for t, i, atr, gid, close, mom in rows:
         p = -(atr / close) if prio == "vol" else (-(mom) if np.isfinite(mom) else -9.0)
-        for o in s01.base_orders(_G["prices"][t], int(i), float(atr), t, gid, "B", 0.01, prio=float(p), adj=_G["adj"][t]):
+        for o in s01.base_orders(_G["prices"][t], int(i), float(atr), t, gid, "B", risk, prio=float(p), adj=_G["adj"][t]):
             o.max_days = hold
             out.append(o)
     return out
@@ -52,8 +52,9 @@ def segs(e: pd.Series) -> dict:
     return out
 
 
-def sim(rows, hold, prio, cash, cn) -> dict:
-    r = run(_G["raw"], _G["cur"], _G["fx"], orders(rows, hold, prio), cash, _G["costs"][cn], 5, calendar=_G["cal"], min_fill=0.5)
+def sim(rows, hold, prio, cash, cn, max_open: int = 5, risk: float = 0.01) -> dict:
+    r = run(_G["raw"], _G["cur"], _G["fx"], orders(rows, hold, prio, risk), cash, _G["costs"][cn], max_open, calendar=_G["cal"],
+            min_fill=0.5)
     out = segs(r.equity)
     out["trades"] = int(len(r.trades))
     out["checks_ok"] = all(v for v in r.checks.values() if isinstance(v, bool))
@@ -84,6 +85,7 @@ def main(argv=None) -> int:
     ap.add_argument("--seed-start", type=int, default=0)
     ap.add_argument("--seed-n", type=int, default=2)
     ap.add_argument("--combine")
+    ap.add_argument("--design", action="store_true", help="v2.7: Depot-Aufbau K60S mit 10×0,5 % und 20×0,25 %")
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -123,6 +125,17 @@ def main(argv=None) -> int:
             mom = C[i - 21] / C[i - 126] - 1 if i >= 126 else np.nan
             rows.append((r.ticker, i, r.atr, f"{r.ticker}|{pd.Timestamp(r.date).date()}", float(C[i]), float(mom)))
         res = {}
+        if a.design:
+            for mo, rk in ((5, 0.01), (10, 0.005), (20, 0.0025)):
+                for cash in (10000, 20000):
+                    for cn in costs:
+                        k = f"K60S {mo}×{rk:.2%} · {cash} € · {cn}"
+                        res[k] = sim(rows, 60, "mom", cash, cn, mo, rk)
+                        g = res[k]["gesamt"]
+                        print(k, {ab: (round(res[k][ab]["cagr"], 3), round(res[k][ab]["max_dd"], 2)) for ab in ("Train", "Validierung", "Holdout", "gesamt")},
+                              f"Sharpe {g['sharpe']:.2f} Trades {res[k]['trades']}", flush=True)
+            (out / "kairo_design.json").write_text(json.dumps(res, indent=1, ensure_ascii=False, default=str))
+            return 0
         for name, (hold, prio) in VARS.items():
             for cash in CAPS:
                 for cn in costs:

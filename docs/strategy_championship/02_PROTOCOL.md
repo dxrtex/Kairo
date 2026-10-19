@@ -299,3 +299,9 @@ Depot-Simulation 2008–2026 (begrenztes Kapital 5.000/10.000 €, 1 % Risiko, m
 Varianten K40 (Original), K60 (v2.5), K60S (v2.5 + Vorrang schwaches Vormomentum v2.4). Zufall: K60-Regeln mit zufälligen
 Titeln (20 Seeds). Vergleich ACWI halten. „Kairo fürs echte Geld“ nur, wenn K60S: Stress-CAGR in allen drei Abschnitten > 0,
 gesamt Sharpe > ACWI, und in allen drei Abschnitten über dem Zufalls-Median.
+
+
+## Addendum v2.7 (19.10.2026, vor dem Lauf) – Depot-Aufbau für Kairo (letzte Runde dazu)
+
+K60S mit 5×1 % (Referenz), 10×0,5 %, 20×0,25 % Risiko; 10.000 und 20.000 €, PRIME+ Basis/Stress. Kriterium wie v2.6
+(Stress-CAGR in allen drei Abschnitten > 0, gesamt Sharpe > ACWI 0,5x). Danach keine weiteren Depot-Varianten.
