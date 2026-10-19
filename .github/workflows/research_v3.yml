@@ -50,7 +50,12 @@ jobs:
           if [ "${{ inputs.teil }}" = "smoke" ] && [ "${{ matrix.period }}" != "v3_train" ]; then exit 0; fi
           ONLY=""; [ "${{ inputs.teil }}" = "smoke" ] && ONLY="--only K1 K3 ACWI"
           SPL=""; [ -f dataref/splits/splits_v3.csv ] && SPL="--splits dataref/splits/splits_v3.csv"
-          python -W ignore -m research.strategy_championship.v3.run main --data v1 --sec dataref/sec_v3 $SPL --period ${{ matrix.period }} --out out $ONLY
+          set +e
+          python -W ignore -m research.strategy_championship.v3.run main --data v1 --sec dataref/sec_v3 $SPL --period ${{ matrix.period }} --out out $ONLY 2>&1 | tee lauf.log
+          rc=${PIPESTATUS[0]}
+          echo "::notice title=v3 ${{ matrix.period }}::$(grep -E '^(Setup|K[1-4] |ACWI|S16-B|70/30)' lauf.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          [ $rc -ne 0 ] && echo "::error title=Fehler ${{ matrix.period }}::$(tail -40 lauf.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          exit $rc
       - uses: actions/upload-artifact@v4
         with: { name: "v3-main-${{ matrix.period }}", path: out/, retention-days: 30 }
 
@@ -79,7 +84,12 @@ jobs:
       - name: Zufall (25 Seeds je Kandidat)
         run: |
           SPL=""; [ -f dataref/splits/splits_v3.csv ] && SPL="--splits dataref/splits/splits_v3.csv"
-          python -W ignore -m research.strategy_championship.v3.run null --data v1 --sec dataref/sec_v3 $SPL --period v3_trainval --seed-start ${{ matrix.shard }} --seed-n 25 --out out
+          set +e
+          python -W ignore -m research.strategy_championship.v3.run null --data v1 --sec dataref/sec_v3 $SPL --period v3_trainval --seed-start ${{ matrix.shard }} --seed-n 25 --out out 2>&1 | tee lauf.log
+          rc=${PIPESTATUS[0]}
+          echo "::notice title=Zufall ${{ matrix.shard }}::$(tail -3 lauf.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          [ $rc -ne 0 ] && echo "::error title=Fehler Zufall ${{ matrix.shard }}::$(tail -40 lauf.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          exit $rc
       - uses: actions/upload-artifact@v4
         with: { name: "v3-null-${{ matrix.shard }}", path: out/, retention-days: 30 }
 
@@ -95,7 +105,12 @@ jobs:
       - run: pip install -r research/requirements.txt
       - uses: actions/download-artifact@v4
         with: { pattern: "v3-*", merge-multiple: true, path: parts }
-      - run: python -W ignore -m research.strategy_championship.v3.run combine --inp parts --out res
+      - run: |
+          set +e
+          python -W ignore -m research.strategy_championship.v3.run combine --inp parts --out res 2>&1 | tee comb.log
+          rc=${PIPESTATUS[0]}
+          echo "::notice title=Entscheidung::$(tail -60 comb.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          exit $rc
       - name: Als Entwurfs-Release sichern
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
