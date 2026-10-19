@@ -10,7 +10,7 @@ on:
         description: "sec = SEC-Tabellen + Splits, duka = Dukascopy-Stundenkerzen"
         default: "sec"
         type: choice
-        options: [sec, duka]
+        options: [sec, duka, h4liste]
 
 permissions:
   contents: write
@@ -56,6 +56,27 @@ jobs:
           rc=$?
           echo "::notice title=Release::$(cat rel.log | sed ':a;N;$!ba;s/\n/%0A/g')"
           exit $rc
+
+  h4liste:
+    if: inputs.teil == 'h4liste'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { ref: "research-data/v3", path: dataref }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Monatsliste rund um Kairo-Treffer
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p sig dataref/duka_v3
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/655351724 > sig/s01_signals_full.parquet
+          python -m research.strategy_championship.v3.h4_side liste sig/s01_signals_full.parquet dataref/duka_v3/monate_um_treffer.txt | tee l.log
+          echo "::notice title=Liste::$(cat l.log)"
+          cd dataref && git config user.name "github-actions[bot]" && git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add duka_v3/monate_um_treffer.txt && git commit -m "Dukascopy-Monatsliste um Kairo-Treffer" && git push origin HEAD:research-data/v3
 
   duka:
     if: inputs.teil == 'duka'

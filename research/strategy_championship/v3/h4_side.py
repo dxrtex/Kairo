@@ -34,6 +34,7 @@ SLIP = 0.001
 SECTIONS = {"2017–2021": ("2017-01-01", "2021-12-31"), "2022–2026 (Hinweis)": ("2022-01-01", "2026-10-16")}
 TZ = {"us": ("America/New_York", 9, 15), "de": ("Europe/Berlin", 9, 17)}   # Stundenkerzen mit Beginn in [von, bis] Ortszeit
 NOW = datetime(2030, 1, 1, tzinfo=timezone.utc)
+PRE, POST = 90, 100        # Stundenkerzen je Signal: 90 Tage Vorlauf (Indikatoren), 100 Tage danach (Basis + 4H-Fenster + max. 40 Tage)
 _G: dict = {}
 
 
@@ -119,7 +120,7 @@ def _one(args):
     i = int(df.index.searchsorted(D))
     if i >= len(df) or df.index[i] != D:
         return None
-    sub = hx[(hx.index >= D - pd.Timedelta(days=150)) & (hx.index <= D + pd.Timedelta(days=120))]
+    sub = hx[(hx.index >= D - pd.Timedelta(days=PRE)) & (hx.index <= D + pd.Timedelta(days=POST))]
     if len(sub) < 200:
         return {"t": t, "d": d, "skip": "zu wenig Stundenkerzen"}
     dfw = df.iloc[: min(len(df), i + 80)]
@@ -158,7 +159,28 @@ def perm_p(b: np.ndarray, a: np.ndarray, n: int = 10_000, seed: int = 7) -> floa
     return float((cnt + 1) / (n + 1))
 
 
+def needed_months(signals: str, out: str) -> int:
+    """Liste der Dukascopy-Monatsdateien rund um jeden Kairo-Treffer ab 2017 (Monat 0-basiert wie im Datafeed)."""
+    sig = pd.read_parquet(signals, columns=["ticker", "date"])
+    sig["date"] = pd.to_datetime(sig["date"])
+    sig = sig[sig["date"] >= "2017-01-01"]
+    keys = set()
+    for t, d in sig.itertuples(index=False):
+        m = duka_symbol(t)
+        if not m:
+            continue
+        for p in pd.period_range(d - pd.Timedelta(days=PRE), d + pd.Timedelta(days=POST), freq="M"):
+            if p <= pd.Period("2026-09", "M"):
+                keys.add(f"h1/{m[0]}/{p.year}-{p.month - 1:02d}.bi5")
+    Path(out).write_text("\n".join(sorted(keys)))
+    print(len(sig), "Signale →", len(keys), "Monatsdateien")
+    return 0
+
+
 def main(argv=None) -> int:
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "liste":
+        return needed_months(sys.argv[2], sys.argv[3])
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
     ap.add_argument("--signals", required=True)
