@@ -1,0 +1,46 @@
+name: Research – v3 Nebenanalyse 4H-Einstieg (Dukascopy)
+
+# Nur manueller Start. Regeln: docs/strategy_championship/27_PROTOCOL_V3.md §8
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PRICES_ASSET: "653201144"
+  SIGNALS_ASSET: "655351724"
+
+jobs:
+  h4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { ref: "research-data/v3", path: dataref }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1 sig duka
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SIGNALS_ASSET > sig/s01_signals_full.parquet
+          for f in $(ls dataref/duka_v3/*.zip.part00 2>/dev/null); do b=${f%.part00}; cat $b.part* > duka/$(basename $b); done
+          cp dataref/duka_v3/*.zip duka/ 2>/dev/null || true
+          ls -la duka
+      - name: Lauf
+        run: |
+          set +e
+          python -W ignore -m research.strategy_championship.v3.h4_side --data v1 --signals sig/s01_signals_full.parquet --duka duka --out out 2>&1 | tee lauf.log
+          rc=${PIPESTATUS[0]}
+          echo "::notice title=4H::$(tail -60 lauf.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          exit $rc
+      - name: Als Entwurfs-Release sichern
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          gh release create "research-v3h4-${GITHUB_RUN_ID}" out/* --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Research v3 – 4H-Einstieg (Dukascopy)" --notes "Nebenanalyse N1 nach 27_PROTOCOL_V3.md §8. Nur Forschung."
