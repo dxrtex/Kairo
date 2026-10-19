@@ -1,0 +1,104 @@
+name: Research – Protokoll v3.0 (K1–K4 gegen Zufall und Benchmarks)
+
+# Nur manueller Start (kein Lauf bei Push). Regeln: docs/strategy_championship/27_PROTOCOL_V3.md
+on:
+  workflow_dispatch:
+    inputs:
+      teil:
+        description: "main = Kandidaten + Benchmarks, null = nur Zufall, alles = beides + Bericht, smoke = Funktionstest (nur Train, K1+K3)"
+        default: "alles"
+        type: choice
+        options: [alles, main, null, smoke]
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"   # Nutzer-Auftrag 19.10.2026 (v3.0): Validierung 2017–2021 für K1–K4
+  KAIRO_HOLDOUT_UNSEALED: "1"      # Holdout ist seit v2.1 geöffnet → nur Hinweis
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+
+jobs:
+  main:
+    if: inputs.teil != 'null'
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        period: [v3_train, v3_validation, v3_trainval, v3_holdout]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { ref: "research-data/v3", path: dataref }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          ls -la dataref/sec_v3 dataref/splits || true
+      - name: Lauf
+        run: |
+          if [ "${{ inputs.teil }}" = "smoke" ] && [ "${{ matrix.period }}" != "v3_train" ]; then exit 0; fi
+          ONLY=""; [ "${{ inputs.teil }}" = "smoke" ] && ONLY="--only K1 K3 ACWI"
+          SPL=""; [ -f dataref/splits/splits_v3.csv ] && SPL="--splits dataref/splits/splits_v3.csv"
+          python -W ignore -m research.strategy_championship.v3.run main --data v1 --sec dataref/sec_v3 $SPL --period ${{ matrix.period }} --out out $ONLY
+      - uses: actions/upload-artifact@v4
+        with: { name: "v3-main-${{ matrix.period }}", path: out/, retention-days: 30 }
+
+  null:
+    if: inputs.teil == 'alles' || inputs.teil == 'null'
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 25, 50, 75, 100, 125, 150, 175]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { ref: "research-data/v3", path: dataref }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+      - name: Zufall (25 Seeds je Kandidat)
+        run: |
+          SPL=""; [ -f dataref/splits/splits_v3.csv ] && SPL="--splits dataref/splits/splits_v3.csv"
+          python -W ignore -m research.strategy_championship.v3.run null --data v1 --sec dataref/sec_v3 $SPL --period v3_trainval --seed-start ${{ matrix.shard }} --seed-n 25 --out out
+      - uses: actions/upload-artifact@v4
+        with: { name: "v3-null-${{ matrix.shard }}", path: out/, retention-days: 30 }
+
+  combine:
+    needs: [main, null]
+    if: always() && inputs.teil == 'alles'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "v3-*", merge-multiple: true, path: parts }
+      - run: python -W ignore -m research.strategy_championship.v3.run combine --inp parts --out res
+      - name: Als Entwurfs-Release sichern
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          cp parts/* res/ 2>/dev/null || true
+          gh release create "research-v3-${GITHUB_RUN_ID}" res/* --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Research Protokoll v3.0 – K1–K4" --notes "Läufe nach 27_PROTOCOL_V3.md (Commit $GITHUB_SHA). Nur Forschung."
