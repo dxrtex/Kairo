@@ -46,3 +46,16 @@ def test_top10_variant_uses_n():
     momentum.day(st, m, feb[0], days[days < feb[0]][-1], tick, run.equity, run.close_pos, 10)
     held = len(st["positions"])                         # 7 zulässige Titel; ein teurer passt nicht in 1/10 des Depots
     assert held > 5 and held + sum("zu wenig Cash" in e for e in st["events"]) == 7
+
+
+def test_missing_price_bought_later_same_month():
+    m, days, tick = mk_market()
+    st = run.load_state(Path("/nonexistent"), "MOM5")
+    feb = days[days.to_period("M") == pd.Period("2025-02")]
+    m.daily["T6"] = m.daily["T6"].drop(feb[0])                                         # Datenlücke am Umschichtungstag
+    momentum.day(st, m, feb[0], days[days < feb[0]][-1], tick, run.equity, run.close_pos)
+    assert "T6" not in {p["t"] for p in st["positions"]} and st["todo"] == ["T6"]
+    momentum.day(st, m, feb[1], feb[0], tick, run.equity, run.close_pos)
+    p = next(p for p in st["positions"] if p["t"] == "T6")
+    assert p["entry_ts"] == str(feb[1].date()) and p["entry"] == m.daily["T6"]["Open"][feb[1]] and st["todo"] == []
+    assert len(st["positions"]) == 5 and st["cash"] >= 0
