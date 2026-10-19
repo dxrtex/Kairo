@@ -5,6 +5,8 @@ Am ersten Handelstag jedes Monats: Rangliste aus dem Schluss des Vortags (= letz
   Zulässig: Ø-Dollarvolumen 20 T. ≥ 5 Mio. USD, Kurs ≥ 1 USD, ≥ 300 Handelstage Historie (Grundfilter wie in der Forschung).
 Ausführung zur Tageseröffnung: erst verkaufen, was nicht mehr in den Top 5 ist, dann gleichgewichtet (Depotwert ÷ 5) kaufen.
 Bestehende Titel werden nicht umgeschichtet (wie im Backtest). Kein Stop – Ausstieg nur beim Monatswechsel.
+Fehlt am Umschichtungstag der Kurs eines Titels (Datenlücke), wird der Kauf an den folgenden Handelstagen desselben Monats
+zur Eröffnung nachgeholt (Größe wie am Umschichtungstag).
 """
 
 from __future__ import annotations
@@ -49,6 +51,28 @@ def ranking(mk, tickers, d: pd.Timestamp) -> list[tuple[str, float]]:
     return sorted(out, key=lambda z: -z[1])
 
 
+def _buy(st: dict, mk, t: str, D: pd.Timestamp, D_prev: pd.Timestamp, slot: float, n: int) -> str:
+    """Kauf zur Eröffnung von D. Rückgabe: "ok", "nokurs" (heute kein Kurs) oder "cash" (Anteil reicht nicht für 1 Stück)."""
+    x = mk.daily.get(t)
+    if x is None or not (x.index == D).any():
+        return "nokurs"
+    op = float(x["Open"][x.index == D].iloc[0])
+    sp, rate = mk.spread(t, D_prev), mk.rate(t, D_prev)
+    px = op * (1 + sp / 2)
+    if not (np.isfinite(rate) and px > 0):
+        return "nokurs"
+    q = int(math.floor(min(slot, st["cash"] - core.FEE) * rate / px))
+    if q <= 0:
+        st["events"].append(f"{D.date()} {t}: zu wenig Cash – kein Kauf")
+        return "cash"
+    cost = q * px / rate + core.fee(q * px / rate)
+    st["cash"] -= cost
+    st["positions"].append({"sid": st["sid"], "t": t, "entry_ts": str(D.date()), "entry": op, "stop": 0.0, "stop0": op,
+                            "qty": q, "cost_eur": cost, "risk_eur": None, "regime": "-"})
+    st["events"].append(f"{D.date()} KAUF {t} {q} Stk @ {op:.4g} (Momentum Top {n})")
+    return "ok"
+
+
 def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, tickers, equity, close_pos, n: int = N) -> None:
     """Ein Handelstag: am ersten Tag eines neuen Monats (oder beim ersten Lauf ohne Positionen) umschichten."""
     last = st.get("rebal")
@@ -62,27 +86,21 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, tickers, equity, cl
             op = float(x["Open"][x.index == D].iloc[0]) if x is not None and (x.index == D).any() else mk.last_close(p["t"], D_prev)
             close_pos(st, mk, p, op, "monatswechsel", str(D.date()))
         held = {p["t"] for p in st["positions"]}
-        eq = equity(st, mk, D_prev)
+        slot = equity(st, mk, D_prev) * 0.99 / n
+        st["slot"], st["todo"] = slot, []
         for t in top:
-            if t in held:
-                continue
-            x = mk.daily.get(t)
-            if x is None or not (x.index == D).any():
-                st["events"].append(f"{D.date()} {t}: heute kein Kurs – Kauf entfällt bis zum nächsten Monat")
-                continue
-            op = float(x["Open"][x.index == D].iloc[0])
-            sp, rate = mk.spread(t, D_prev), mk.rate(t, D_prev)
-            px = op * (1 + sp / 2)
-            if not (np.isfinite(rate) and px > 0):
-                continue
-            q = int(math.floor(min(eq * 0.99 / n, st["cash"] - core.FEE) * rate / px))
-            if q <= 0:
-                st["events"].append(f"{D.date()} {t}: zu wenig Cash – kein Kauf")
-                continue
-            cost = q * px / rate + core.fee(q * px / rate)
-            st["cash"] -= cost
-            st["positions"].append({"sid": st["sid"], "t": t, "entry_ts": str(D.date()), "entry": op, "stop": 0.0, "stop0": op,
-                                    "qty": q, "cost_eur": cost, "risk_eur": None, "regime": "-"})
-            st["events"].append(f"{D.date()} KAUF {t} {q} Stk @ {op:.4g} (Momentum Top {n})")
+            if t not in held and _buy(st, mk, t, D, D_prev, slot, n) == "nokurs":
+                st["todo"].append(t)
+                st["events"].append(f"{D.date()} {t}: heute kein Kurs – Kauf an den nächsten Handelstagen")
         st["events"].append(f"{D.date()} Umschichtung: Top {n} = {', '.join(top)}")
+    if not due and "todo" not in st and st.get("top"):  # Zustand von vor dieser Regel: fehlende Titel des laufenden Monats nachholen
+        st["todo"] = [t for t in st["top"] if not any(p["t"] == t for p in st["positions"])]
+    if not due and st.get("todo"):                     # Datenlücke am Umschichtungstag: Kauf nachholen (gleicher Monat)
+        left = []
+        for t in st["todo"]:
+            if any(p["t"] == t for p in st["positions"]):
+                continue
+            if _buy(st, mk, t, D, D_prev, st.get("slot") or equity(st, mk, D_prev) * 0.99 / n, n) == "nokurs":
+                left.append(t)
+        st["todo"] = left
     st["equity"].append({"date": str(D.date()), "eur": round(equity(st, mk, D), 2), "open": len(st["positions"])})
