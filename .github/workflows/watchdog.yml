@@ -1,0 +1,25 @@
+name: Ausfall-Warnung
+
+# Schlägt ein wichtiger Ablauf fehl, kommt eine Mitteilung aufs iPad (sonst merkt man es erst an alten Daten in der App).
+on:
+  workflow_run:
+    workflows: ["Täglicher Scan", "Wichtige Mitteilungen (tagsüber)", "Papier-Handel Kairo / S19 / S20 / Momentum / DM (ohne echte Orders)"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  warn:
+    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python -m backend.watchdog "${{ github.event.workflow_run.name }}" "${{ github.event.workflow_run.html_url }}"
+        env:
+          PUSH_SUBS: ${{ secrets.PUSH_SUBS }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
