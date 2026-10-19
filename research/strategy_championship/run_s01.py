@@ -25,7 +25,7 @@ def _one(t):
     except Exception as ex:                          # pragma: no cover - im Lauf protokolliert
         return t, [], [{"ticker": t, "error": repr(ex)}]
     cc = []
-    for x in sg:
+    for x in ([] if _CTX.get("nocc") else sg):
         try:
             cc.append(crosscheck.compare(df, t, x))
         except Exception as ex:
@@ -41,11 +41,12 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default="out")
     ap.add_argument("--period", default="train")
     ap.add_argument("--tickers", nargs="*")
+    ap.add_argument("--no-crosscheck", action="store_true")
     a = ap.parse_args(argv)
     uni = sorted(pd.read_csv(UNIVERSE)["ticker"])
     mine = a.tickers or [t for k, t in enumerate(uni) if k % a.shards == a.shard]
     p, cur, _fx, _b, per = load(a.data, a.period, mine)
-    _CTX.update(p=p, cur=cur, per=per)
+    _CTX.update(p=p, cur=cur, per=per, nocc=a.no_crosscheck)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     sigs, ccs = [], []
@@ -55,7 +56,8 @@ def main(argv=None) -> int:
             ccs += cc
             if k % 10 == 0:
                 print(f"{k + 1}/{len(p)} {t}: {len(sg)} Signale", flush=True)
-    pd.DataFrame(sigs, columns=["ticker", "date", "i", "atr", "close", "score"]).to_parquet(out / f"s01_signals_{a.shard}.parquet", index=False)
+    pd.DataFrame(sigs, columns=["ticker", "date", "i", "atr", "close", "score", "fib_ok", "fib_ret", "fib_H", "fib_L",
+                                "fib_079", "support_ok"]).to_parquet(out / f"s01_signals_{a.shard}.parquet", index=False)
     (out / f"crosscheck_{a.shard}.json").write_text(json.dumps(ccs, default=str))
     ok = sum(1 for c in ccs if c.get("match"))
     print(f"Shard {a.shard}: {len(p)} Titel, {len(sigs)} Signale, Gegenrechnung {ok}/{len(ccs)} gleich")

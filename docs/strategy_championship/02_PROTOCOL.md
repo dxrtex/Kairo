@@ -247,3 +247,14 @@ Einmaliger Holdout 2022-01-01 … 2026-10-16, Plan unverändert aus 18/19 (keine
 - Kosten PRIME+ Basis und Stress; Kapital 2.000 / 5.000 / 10.000 € (Strategie allein), Gesamtsystem 20.000 € (ACWI + 20/30 %).
 - Bestanden je Strategie: Stress-CAGR > ACWI halten (gleicher Zeitraum, gleiche Kosten) UND p vs. Zufall ≤ 0,05 (Bonferroni für 2).
 - Ergebnis wird unabhängig vom Ausgang vollständig berichtet.
+
+
+## Addendum v2.2 (19.10.2026, vor dem Lauf) – Nutzer-Hypothese „Konsolidierung an Fib 0,79“
+
+Hypothese (Nutzer): Kairo-Treffer funktionieren am besten, wenn der Kurs bis zur 0,79-Linie gefallen ist und sich dort
+die Konsolidierung bildet. Test mit dem unveränderten Kairo-Scanner (S01) und seinem eigenen Fib-Anker (H/L des Scanners).
+- Tiefe = Fib-Retracement des Scanners beim Signal; zusätzlich Tiefe des Basis-Tiefs beim Einstieg (S01-B-Basis).
+- Gruppen: < 0,70 · 0,70–0,75 · **0,75–0,83 („an der 0,79“)** · 0,83–0,886 · > 0,886 / nur Support.
+- Hauptvergleich (vorab): Ø R je Trade (S01-B: Einstieg in der Basis, Ausstieg EMA20 ab Tag 10, max. 40 Tage) der Gruppe
+  0,75–0,83 gegen 0,618–0,75; Signifikanz per Permutationstest (10.000×), getrennt für Train, Validierung, Holdout.
+- Bestätigt nur, wenn die Gruppe in allen drei Abschnitten besser ist und gepoolt p ≤ 0,05. Keine weiteren Schwellen.

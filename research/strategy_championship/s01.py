@@ -56,8 +56,13 @@ def signals(raw: pd.DataFrame, cur: str, start: pd.Timestamp, end: pd.Timestamp,
             continue
         fresh, last = i - last > GAP, i
         if fresh and idx[i] >= start and idx[i] <= end:
+            fz = (r.zone or {}).get("fib") or {}
+            lv = fz.get("levels") or {}
             out.append({"ticker": ticker, "date": idx[i], "i": i, "atr": float(r.flags.get("atr") or np.nan),
-                        "close": float(r.close), "score": int(r.score)})
+                        "close": float(r.close), "score": int(r.score),
+                        "fib_ok": bool(fz.get("ok")), "fib_ret": float(fz.get("retracement", np.nan)),
+                        "fib_H": float((r.zone or {}).get("H") or np.nan), "fib_L": float(fz.get("L", np.nan)),
+                        "fib_079": float(lv.get("0.79", np.nan)), "support_ok": bool((r.zone or {}).get("support"))})
     return out
 
 
