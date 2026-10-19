@@ -92,6 +92,9 @@
   .hello h1 { margin: 0; font-size: 32px; letter-spacing: -.02em; line-height: 1.15; }
   .hello p { margin: 6px 0 0; color: var(--muted); font-size: 16px; }
   .hello p b { color: var(--accent); }
+  /* Kompakter Kopf außerhalb von „Heute“: mehr Platz für den Inhalt (v. a. auf dem Handy) */
+  body[data-sec]:not([data-sec="today"]) .hello h1 { font-size: 24px; }
+  body[data-sec]:not([data-sec="today"]):not([data-sec="scanner"]) .hello #sub { display: none; }
 
   /* Suche */
   .search { margin: 22px 0 24px; position: relative; }
@@ -3643,7 +3646,7 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("change", e => { if (["etfTotal", "etfShare", "etfRate", "etfUnits", "etfBuy", "etfSince"].includes(e.target.id) && state.sec === "etf") render(); });
 document.addEventListener("click", e => {
-  if (e.target.closest("[data-statusok]")) { e.preventDefault(); state.statusSeen = 1; save(); render(); return; }
+  if (e.target.closest("[data-statusok]")) { e.preventDefault(); state.statusSeen = 2; save(); render(); return; }
   if (e.target.closest("[data-etfauto]")) { const x = { ...(state.etf || {}) }; delete x.shareManual; delete x.share; state.etf = x; save(); render(); return; }
   if (!e.target.closest("#etfSync")) return;
   const c = etfCfg(); state.tpDepot = Math.round(c.total * (100 - c.share) / 100); save(); render();
@@ -3703,7 +3706,15 @@ function bilanzHtml() {
   const back = `<button class="backbtn" data-gosec="today">‹ Heute</button>`, M = STRAT_BT.main;
   const rng = (a, d = 0, p = "") => a[0] === a[1] ? p + pct(a[0], d) : `${p}${pct(Math.min(...a), d)} bis ${p}${pct(Math.max(...a), d)}`;
   const sg = v => (v >= 0 ? "+" : "−") + pct(Math.abs(v), 0);
-  const hero = `<div class="hcard bhero"><div class="bh-l"><span>Ehrlicher 10-Jahres-Test · 2 Stichproben à ~3.200 Aktien · 2017 – Okt. 2026 · Depot 3.000 €</span>
+  const now = `<div class="hcard bhero"><div class="bh-l"><span>Forschung 10/2026 · 49.134 Kairo-Treffer · 2008 – 2026 · Kosten Scalable PRIME+</span>
+      <b>+0,14 R</b><em>Ø je Trade nach Kosten – Zufalls-Einstiege mit denselben Regeln: +0,11 R. In allen drei Zeiträumen positiv: ein kleiner, echter Vorteil.
+      Als Depot (Kairo-S, 20 Trades × 0,25 % Risiko): <b>≈ +7 % pro Jahr</b>, mit hohen Kosten ≈ 0 % – Welt-ETF im selben Zeitraum ≈ +9 %.</em></div>
+      <div class="bh-r"><div class="mt"><span>Größter Rückgang</span><b class="down">−25 %</b><em>Kairo-S · mit 5 × 1 % Risiko −53 %</em></div>
+        <div class="mt"><span>Entscheidend</span><b>Kosten</b><em>Spread und Ausführung → Kosten-Check im Journal</em></div>
+        <div class="mt"><span>Eher weniger</span><b>live</b><em>Pleite-Aktien fehlen im Test</em></div></div></div>
+    <div class="note" style="margin:0 2px 14px">Alle Strategien und Berichte: <a href="research/" target="_blank" rel="noopener">Forschung &amp; Backtests</a> · öffentliche <a href="track/" target="_blank" rel="noopener">Live-Bilanz</a> aller Treffer. Darunter die <b>ältere Studie</b> (09/2026, Turbo-Hebel, Stichproben 2017–2026) – sie war zu optimistisch und ist durch die neue Forschung überholt.</div>
+    <div class="section-title"><span>Ältere Studie (09/2026, überholt)</span><span></span></div>`;
+  const hero = now + `<div class="hcard bhero" style="opacity:.75"><div class="bh-l"><span>Ältere Studie · 2 Stichproben à ~3.200 Aktien · 2017 – Okt. 2026 · Depot 3.000 € · überholt</span>
       <b>≈ +${pct((M.cagr[0] + M.cagr[1]) / 2, 0)}</b><em>pro Jahr – netto nach Gebühren, Turbo-Finanzierung und Kurslücken. Auf den Prüfjahren 2024–26 (Regeln vorher festgelegt): <b>${rng(M.test, 0, "+")}</b> pro Jahr.</em></div>
       <div class="bh-r"><div class="mt"><span>Größter Rückgang</span><b class="down">${rng(M.mdd, 0, "−")}</b><em>zwischendurch aushalten</em></div>
         <div class="mt"><span>Verlustjahre</span><b>2–3 von 10</b><em>je nach Stichprobe</em></div>
@@ -3726,7 +3737,7 @@ function bilanzHtml() {
         ${[["900 €", "−12 % bis Totalverlust"], ["1.500 €", "−12 % bis +4 %"], ["3.000 €", "+12 % / +13 %"], ["10.000 €", "+15 % / +23 %"]].map(([k, v], i) => `<tr${Math.abs([900, 1500, 3000, 10000][i] - tpCfg().depot) === Math.min(...[900, 1500, 3000, 10000].map(x => Math.abs(x - tpCfg().depot))) ? ' class="best"' : ""}><td>${k}</td><td class="num ${i < 2 ? "down" : "up"}">${v}</td><td class="num up">+17 % / +24 %</td></tr>`).join("")}</tbody></table></div>
       <div class="note" style="margin:6px 0 0">Gleiche Treffer und Regeln, 10 Jahre, pro Jahr (Stichprobe 1 / 2). Rund 93 Trades im Jahr = ~186 Orders ≈ 184 € Gebühren – bei kleinem Kapital frisst das den ganzen Vorteil. Darunter: im 🧪 Übungsmodus handeln und das Geld im ETF lassen. Dein Trading-Kapital: <b>${eur(tpCfg().depot)}</b>.</div></div>
     <div class="hcard">${hHead("Was wir (noch) nicht wissen")}<ul class="checks">
-      <li><i class="gold">!</i><b>Kairo-Treffer gegen Zufall:</b> Zufällige Tage mit genau denselben Regeln (Seitwärtsphase, Stop, 20 Tage, ruhigste zuerst) brachten je Trade etwa gleich viel. Der Vorteil steckt offenbar vor allem in diesen Regeln und im Ausverkauf – nicht in den einzelnen Scanner-Kriterien.</li>
+      <li><i class="gold">!</i><b>Kairo-Treffer gegen Zufall:</b> Damals: etwa gleich viel je Trade. Die neue Forschung (2008–2026, 49.134 Treffer, PRIME+-Kosten) findet einen kleinen Vorteil: Ø +0,14 R statt +0,11 R – siehe oben.</li>
       <li><i class="gold">!</i><b>Pleite-Aktien fehlen:</b> Getestet wurden Aktien, die es heute noch gibt. Das macht Rückrechnungen zu schön.</li>
       <li><i class="gold">!</i><b>Die Live-Bilanz entscheidet:</b> Ab ~30 abgeschlossenen Trades zeigt sie, ob die Strategie im echten Markt hält.</li></ul></div>`;
   if (b === undefined) return back + hero + myTradesHtml() + `<div class="hcard"><div class="skel"></div></div>`;
@@ -4691,7 +4702,7 @@ function einHtml() {
   const r = state.einT && searchIdx.find(x => x.t === state.einT);
   const best = kmRank().hits.slice(0, 8), free = kmSlots();
   return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span>Setup · Trade-Plan · Hebel</span></div>
-    <div class="note" style="margin:0 2px 10px">ℹ️ <b>Forschungsstand 10/2026:</b> Kurzfristige Setups (Kairo-Treffer, 4H, Trend-Rücksetzer) zeigten im Test 2008–2021 keinen belegten Vorteil gegenüber Zufall. Hebel (Turbos) verstärkt Verluste und Kosten zusätzlich – nur zum Lernen oder mit Spielgeld (Reiter Übung). Gebühren mit PRIME+: Orders ab 250 € kostenlos, darunter 0,99 €.</div>
+    <div class="note" style="margin:0 2px 10px">ℹ️ <b>Forschungsstand 10/2026:</b> Kairo-Treffer haben je Trade einen kleinen Vorteil gegenüber Zufall, der aber von den Kosten abhängt (Kosten-Check im Journal). Trend-Rücksetzer und 4H-Varianten sind nicht belegt. Hebel (Turbos) verstärkt Verluste und Kosten zusätzlich – nur zum Lernen oder mit Spielgeld (Reiter Übung). Gebühren mit PRIME+: Orders ab 250 € kostenlos, darunter 0,99 €.</div>
     <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
     ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Kairo-Treffer</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
       ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Kairo-Treffer · ruhigste zuerst${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Schwankung ${x.ap != null ? pct(x.ap, 1) : "–"}${i < free ? "" : " · nur bei freiem Platz"}</span>${einTag(x)}</button>`).join("")}</div>` : ""}`}`;
@@ -4804,7 +4815,7 @@ function paperHtml() {
   paperLoad();
   const d = PAPER.d;
   const head = `<div class="section-title"><span>Papier-Test</span><span>Kairo · Dual Momentum · S19/S20 · Momentum</span></div>
-    <div class="note" style="margin:0 2px 10px">Vorwärtstest deiner Strategien (S19 dazu in zwei lockereren Varianten B und C) – je ${fmt(((d && (d.s19 || d.s20)) || {}).start_cash || 2000, 0)} € virtuelles Startkapital (wie dein echtes Kapital), Kosten wie dein Scalable PRIME+: ab 250 € Orderwert gebührenfrei, darunter 0,99 €, plus Spread. Läuft automatisch jeden Werktag nach US-Börsenschluss. <b>Keine echten Orders</b>, keine Anlageberatung. Aussagekräftig erst nach vielen Trades (eher 6–12 Monate).</div>`;
+    <div class="note" style="margin:0 2px 10px">Vorwärtstest deiner Strategien (S19 dazu in zwei lockereren Varianten B und C) – je ${fmt(((d && (d.s19 || d.s20)) || {}).start_cash || 2000, 0)} € virtuelles Startkapital (Kairo-S: 20.000 €, damit 20 Positionen à 0,25 % Risiko gebührenfrei möglich sind), Kosten wie dein Scalable PRIME+: ab 250 € Orderwert gebührenfrei, darunter 0,99 €, plus Spread. Läuft automatisch jeden Werktag nach US-Börsenschluss. <b>Keine echten Orders</b>, keine Anlageberatung. Aussagekräftig erst nach vielen Trades (eher 6–12 Monate).</div>`;
   if (!d) return head + `<div class="hcard"><div class="note">${PAPER.err ? "Papier-Daten noch nicht verfügbar – der erste Lauf erscheint nach dem nächsten US-Börsenschluss." : "Lade Papier-Daten …"}</div></div>`;
   const sm = d.sum || {}, bench = sm.bench || [];
   return head + paperCard("KAIRO", d.kairo, sm.KAIRO, bench) + paperCard("KAIROS", d.kairos, sm.KAIROS, bench) + paperCard("S19", d.s19, sm.S19, bench) + paperCard("S19B", d.s19b, sm.S19B, bench)
@@ -4851,7 +4862,7 @@ function renderMain() {
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       <button class="kchip filt" data-sub="filter">Filter${nFilt ? ` <small>${nFilt}</small>` : ""}</button></div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
-  const head = searchHtml() + bar + (["hit", "go"].includes(state.view) ? topSetupsHtml() : "") + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "⚡ Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen ? "" : `<div class="note" style="margin:0 2px 10px">ℹ️ <b>Forschungsstand 10/2026:</b> Das Kairo-Setup (Treffer · 4H-Einstiege) war 2008–2016 nicht besser als Zufall und hat den Test 2017–2021 nicht bestanden. Nutze die Liste zum Lernen und Beobachten – nicht als Kaufempfehlung. Belegt ist bisher nur: ein breiter Welt-ETF. Bester Kandidat für den Trading-Teil: Dual Momentum (Depot → Papier, noch kein Beweis). <a href="#" data-statusok>Verstanden, ausblenden</a></div>`);
+  const head = searchHtml() + bar + (["hit", "go"].includes(state.view) ? topSetupsHtml() : "") + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "⚡ Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">ℹ️ <b>Forschungsstand 10/2026:</b> Kairo-Treffer haben je Trade einen kleinen, echten Vorteil gegenüber Zufall (Ø +0,14 R statt +0,11 R, 49.134 Treffer 2008–2026, Kosten PRIME+). Als Depot brachten sie aber weniger als ein Welt-ETF – und mit hohen Kosten ≈ 0 %. Belegt ist: breiter Welt-ETF. Bester Kandidat für den Trading-Teil: Dual Momentum (Depot → Papier). Die Liste ist eine regelbasierte Auswahl, keine Anlageberatung. <a href="research/" target="_blank" rel="noopener">Details</a> · <a href="#" data-statusok>Verstanden, ausblenden</a></div>`);
   if (!list.length && $("search").value.trim().length >= 2) { $("main").innerHTML = searchHtml() + bar; return; }
   if (!list.length) {
     $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.has("h4") ? "Gerade kein Treffer mit fertiger Seitwärtsphase – die 4H-Prüfung beginnt, sobald eine da ist. Wo die Treffer stehen, siehst du unter „Treffer“ in der Status-Spalte." : k.has("fav") && !data.results.some(r => r.in_watchlist) ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
@@ -4934,9 +4945,9 @@ function greetText() {
 const SEC_T = { today: "Heute", etf: "ETF", scanner: "Scanner", entry: "Einstieg", calendar: "Kalender", news: "News", depot: "Depot", journal: "Journal", game: "Spiel", paper: "Papier-Test", settings: "Einstellungen", bilanz: "Bilanz" };
 function appleHead() {
   document.body.dataset.sec = state.sec;
-  if (!isApple()) return;
   const t = SEC_T[state.sec] || "Kairo";
-  $("greet").innerHTML = state.sec === "today" ? greetText() : esc(t);
+  $("greet").innerHTML = state.sec === "today" ? greetText() : esc(t);   // Begrüßung nur auf „Heute“, sonst Name des Bereichs
+  if (!isApple()) return;
   $("adate").textContent = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
   $("abarT").textContent = t;
 }
@@ -4960,7 +4971,7 @@ const healthPill = () => { const hs = health(), bad = hs.some(x => x[0] === "r")
 function renderHead() {
   const h = new Date().getHours();
   const nm = String(state.name || "").trim();
-  $("greet").innerHTML = greetText();
+  $("greet").innerHTML = state.sec === "today" ? greetText() : esc(SEC_T[state.sec] || "Kairo");
   const s = data.stats || {}, when = new Date(data.generated).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   $("sub").innerHTML = `<b>${s.hits ?? 0} Treffer</b> · ${(s.fast_hits ?? 0) + (s.near_hits ?? 0)} zum Beobachten · ${fmt(s.universe, 0)} Aktien geprüft · Scan ${esc(when)} Uhr ${healthPill()}`;
   const sectors = [...new Set(data.results.map(r => r.sector).filter(Boolean))].sort();
