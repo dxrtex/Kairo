@@ -4747,6 +4747,26 @@ function shadowHtml(sh) {
     <div class="hh" style="margin-top:10px"><b>S20 · Kauf nach 4H-Auslöser</b></div><div class="tscroll"><table class="ptab"><tr><th>Einstand + Nachziehen</th><th>nach 5 Tagen</th><th>nach 10 Tagen</th></tr>
     <tr>${["trail", "t5", "t10"].map(e => cell(get("S20", "4h", "S20", null, e))).join("")}</tr></table></div></div>`;
 }
+// ---------- Top-Setups: heutige Kairo-Treffer (USA/Europa), Rangfolge nach Forschung v2.4 (schwaches Vormomentum zuerst) ----------
+function topSetupsHtml() {
+  if (!searchIdx) loadSearch();
+  const c = tpCfg(), riskEur = c.depot * c.risk / 100;
+  const hits = data.results.filter(r => r.passed && ["us", "europe"].includes(String(r.region || "").toLowerCase()));
+  if (!hits.length) return "";
+  const m = r => (r.flags || {}).mom61;
+  const list = hits.slice().sort((a, b) => (m(a) ?? 9) - (m(b) ?? 9)).slice(0, 8);
+  const rows = list.map((r, k) => {
+    const p = r.plan || {}, e = toEur(p.entry, r.currency), st = toEur(p.stop, r.currency), per = e != null && st != null ? e - st : null;
+    const qty = per > 0 ? Math.floor(riskEur / per) : null, val = qty ? qty * e : null, fee = val == null ? null : val >= 250 ? 0 : 0.99;
+    return `<tr><td>${k + 1}</td><td><b>${esc(r.ticker)}</b><br><span class="note">${esc(String(r.name || "").slice(0, 24))}</span></td>
+      <td>${m(r) == null ? "–" : sgnPct(m(r), 0)}</td><td>${fmt(p.entry)}<br><span class="down">${fmt(p.stop)}</span></td>
+      <td>${qty ? `${qty} Stk.<br><span class="note">${eur2(val)}</span>` : "–"}</td><td>${fee == null ? "–" : fee ? "0,99 €" : "0 €"}</td>
+      <td><button class="mini-btn" data-open="${esc(r.ticker)}">Chart</button></td></tr>`;
+  }).join("");
+  return `<div class="hcard" style="margin-bottom:12px">${hHead("Top-Setups heute")}
+    <div class="note">Kairo-Treffer aus USA und Europa, sortiert nach der Forschung: <b>schwächerer Kursverlauf der letzten Monate zuerst</b> (in allen drei Testzeiträumen bessere Trades; Vorbehalt: muss sich live bestätigen). Kauf erst, wenn sich eine Seitwärtsphase bildet – die Live-Probe läuft im Papier-Depot KAIRO-S. Stückzahl für ${pct(c.risk / 100, 1)} Risiko von ${eur2(c.depot)} (Einstellung im Einstieg), Gebühr nach Scalable PRIME+. Regelbasierte Auswahl, keine Anlageberatung.</div>
+    <div class="tscroll" style="margin-top:8px"><table class="ptab"><tr><th>#</th><th>Aktie</th><th>Vormomentum</th><th>Einstieg / Stop</th><th>Größe</th><th>Gebühr</th><th></th></tr>${rows}</table></div></div>`;
+}
 function paperHtml() {
   paperLoad();
   const d = PAPER.d;
@@ -4798,7 +4818,7 @@ function renderMain() {
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       <button class="kchip filt" data-sub="filter">Filter${nFilt ? ` <small>${nFilt}</small>` : ""}</button></div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
-  const head = searchHtml() + bar + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "⚡ Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen ? "" : `<div class="note" style="margin:0 2px 10px">ℹ️ <b>Forschungsstand 10/2026:</b> Das Kairo-Setup (Treffer · 4H-Einstiege) war 2008–2016 nicht besser als Zufall und hat den Test 2017–2021 nicht bestanden. Nutze die Liste zum Lernen und Beobachten – nicht als Kaufempfehlung. Belegt ist bisher nur: ein breiter Welt-ETF. Bester Kandidat für den Trading-Teil: Dual Momentum (Depot → Papier, noch kein Beweis). <a href="#" data-statusok>Verstanden, ausblenden</a></div>`);
+  const head = searchHtml() + bar + (["hit", "go"].includes(state.view) ? topSetupsHtml() : "") + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "⚡ Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen ? "" : `<div class="note" style="margin:0 2px 10px">ℹ️ <b>Forschungsstand 10/2026:</b> Das Kairo-Setup (Treffer · 4H-Einstiege) war 2008–2016 nicht besser als Zufall und hat den Test 2017–2021 nicht bestanden. Nutze die Liste zum Lernen und Beobachten – nicht als Kaufempfehlung. Belegt ist bisher nur: ein breiter Welt-ETF. Bester Kandidat für den Trading-Teil: Dual Momentum (Depot → Papier, noch kein Beweis). <a href="#" data-statusok>Verstanden, ausblenden</a></div>`);
   if (!list.length && $("search").value.trim().length >= 2) { $("main").innerHTML = searchHtml() + bar; return; }
   if (!list.length) {
     $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.has("h4") ? "Gerade kein Treffer mit fertiger Seitwärtsphase – die 4H-Prüfung beginnt, sobald eine da ist. Wo die Treffer stehen, siehst du unter „Treffer“ in der Status-Spalte." : k.has("fav") && !data.results.some(r => r.in_watchlist) ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
