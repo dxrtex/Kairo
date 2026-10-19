@@ -317,3 +317,15 @@ Mischungen: M0 100 % ACWI · **M1 70/15/15 (Hauptmischung)** · M2 70/30 ACWI/DM
 Bestanden (nur M1 gegen M0, Stress-Kosten): Sharpe in allen drei Abschnitten höher UND gesamt max. Rückgang höchstens
 2 Prozentpunkte schlechter UND Block-Bootstrap (21 Tage, 2.000×) der gesamten Sharpe-Differenz p ≤ 0,05.
 M2–M4 nur beschreibend. Ergebnis wird unabhängig vom Ausgang berichtet; danach keine weiteren Mischungen.
+
+
+## Addendum v2.9 (19.10.2026, vor dem Lauf) – Risikosteuerung und Hebel (letzte Runde)
+
+Hinweis: Der Holdout 2022–26 ist seit v2.1 geöffnet → Ergebnis ist **nicht mehr unberührt** und gilt nur als Kandidat für den
+Papier-Test, nicht als Beleg. Basis: Tageskurven aus v2.8 (Stress-Kosten), Hauptbasis M2 = 70 % ACWI + 30 % Dual Momentum.
+Exposure L wird freitags festgelegt und gilt ab dem nächsten Tag; Volatilität = Std. der letzten 21 Tagesrenditen × √252.
+Kosten: Umschichtung |ΔL| × 0,2 %; geliehener Anteil (L − 1) kostet 6 % p. a.; nicht investierter Anteil verzinst sich nicht.
+Varianten: S1 statisch 1,25 · S2 statisch 1,5 · V0 Zielvola 12 %, max. 1,0 · **V1 Zielvola 12 %, max. 1,5 (Haupt)** ·
+V2 Zielvola 15 %, max. 1,5. Gleiche Varianten zusätzlich auf M0 (100 % ACWI), nur beschreibend.
+Kandidat für den Papier-Test nur, wenn V1 auf M2: CAGR in allen drei Abschnitten > M2 ungehebelt UND gesamt max. Rückgang
+nicht schlechter als 100 % ACWI (−46 %) UND gesamt Sharpe ≥ M2. Danach keine weiteren Varianten.
