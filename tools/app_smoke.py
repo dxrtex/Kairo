@@ -132,6 +132,7 @@ async def ui_check(b, url, errs):
     pg.on("pageerror", lambda e: errs.append(f"UI: JS-Fehler {e}"))
     await pg.goto(f"{url}?nosplash=1&sec=scanner")
     await pg.wait_for_timeout(2500)
+    await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.hidden = true)')
     t = await pg.evaluate("(() => { const r = data.results.find(r => r.passed); return r ? r.ticker : null; })()")
     if t:
         await pg.evaluate(f"openCard({t!r})")
@@ -148,6 +149,7 @@ async def ui_check(b, url, errs):
         await pg.evaluate("closeCard()")
     await pg.goto(f"{url}?nosplash=1&sec=settings")
     await pg.wait_for_timeout(1500)
+    await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.hidden = true)')
     await pg.click('[data-tsize="big"]')
     await pg.wait_for_timeout(300)
     if not await pg.evaluate("document.documentElement.classList.contains('big')"):
