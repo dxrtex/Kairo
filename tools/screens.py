@@ -102,6 +102,7 @@ async def main(out: Path) -> None:
             errs = []
             ep.on("pageerror", lambda e: errs.append(str(e)))
             await ep.goto(f"{url}?nosplash=1&sec=calendar"); await ep.wait_for_timeout(3500)
+            await ep.evaluate("(() => { const n = document.getElementById('newsBox'); if (n) n.remove(); })()")
             await ep.screenshot(path=str(out / f"earn_{nm}_list.png"))
             for tag, sel in (("done", ".ev[data-earn]:has(.ev-res)"), ("next", ".ev[data-earn]:not(:has(.ev-res))")):
                 el = await ep.query_selector(sel)
