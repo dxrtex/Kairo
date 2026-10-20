@@ -199,6 +199,10 @@
   abbr.term { font: inherit; color: inherit; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: 3px; cursor: help; }
   .glpop b { display: block; margin-bottom: 4px; }
   .chart-miss { display: grid; place-items: center; gap: 6px; height: 150px; color: var(--muted); font-size: 14px; text-align: center; background: var(--surface-2); border-radius: var(--radius-s); }
+  #netToast { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 10px); transform: translate(-50%, -140%); z-index: 90; padding: 9px 16px; border-radius: 999px;
+    background: var(--gold); color: #000; font-size: 14px; font-weight: 650; box-shadow: 0 6px 20px rgba(0,0,0,.25); transition: transform .3s ease; pointer-events: none; }
+  #netToast.on { transform: translate(-50%, 0); } #netToast.ok { background: var(--up); }
+  .boot { margin-top: 18px; } .boot .skel + .skel { margin-top: 10px; }
   .kplan { --kc: var(--muted); border-radius: 16px; padding: 14px; background: color-mix(in srgb, var(--kc) 9%, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--kc) 28%, transparent); }
   .kplan.k-g { --kc: var(--up); } .kplan.k-y { --kc: var(--gold); } .kplan.k-r { --kc: var(--red); } .kplan.k-b { --kc: var(--accent); }
   .kp-h { display: flex; gap: 12px; align-items: flex-start; } .kp-h > i { flex: none; width: 12px; height: 12px; margin-top: 5px; border-radius: 50%; background: var(--kc); box-shadow: 0 0 10px var(--kc); }
@@ -1261,7 +1265,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
     <input type="search" id="search" placeholder="Aktie suchen – Name oder Ticker (alle Aktien)" autocomplete="off">
   </div>
 
-  <main id="main"></main>
+  <main id="main"><div class="hgrid boot" aria-busy="true" aria-label="Lädt"><div class="hcard"><div class="skel"></div><div class="skel"></div></div><div class="hcard"><div class="skel"></div><div class="skel"></div></div></div></main>
 
 </div>
 
@@ -5541,7 +5545,8 @@ function health() {
   return out;
 }
 const healthPill = () => { const hs = health(), bad = hs.some(x => x[0] === "r");
-  return bad ? `<button class="hpill r" data-gosec="settings" title="${esc(hs.map(x => x[1]).join(" · "))}">⚠ Daten unvollständig</button>` : ""; };   // gelb/grün: nur in den Einstellungen
+  const stale = hs.some(x => x[0] === "r" && /Letzter Scan/.test(x[1]));
+  return bad ? `<button class="hpill r" data-gosec="settings" title="${esc(hs.map(x => x[1]).join(" · "))}">${stale ? "Stand veraltet – neuer Scan steht aus" : "Daten unvollständig"} ›</button>` : ""; };   // gelb/grün: nur in den Einstellungen
 function renderHead() {
   const h = new Date().getHours();
   const nm = String(state.name || "").trim();
@@ -5840,7 +5845,18 @@ fetch("data/results.json", { cache: "no-store" }).then(r => r.json()).then(d => 
   requestAnimationFrame(() => window.KairoSplash && KairoSplash.ready());   // App steht → Start-Animation darf übergeben
   if (state.sec === "depot") loadSearch();
   if (location.hash) openDetail(decodeURIComponent(location.hash.slice(1)));
-}).catch(() => { $("sub").textContent = "Noch keine Scan-Ergebnisse vorhanden."; window.KairoSplash && KairoSplash.ready(); });
+}).catch(() => {                                // Laden fehlgeschlagen: ehrlich sagen warum, mit „Erneut versuchen“
+  const off = navigator.onLine === false;
+  $("sub").textContent = off ? "Keine Internetverbindung." : "Die Daten konnten gerade nicht geladen werden.";
+  $("main").innerHTML = `<div class="card empty-st"><div class="es-ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${off ? '<path d="M6 18a28 28 0 0 1 36 0M12 25a19 19 0 0 1 24 0M18 32a10 10 0 0 1 12 0"/><circle cx="24" cy="38" r="2"/><path d="M8 8l32 32"/>' : '<circle cx="24" cy="24" r="16"/><path d="M24 15v11M24 32v1"/>'}</svg></div>
+    <b>${off ? "Du bist offline" : "Daten gerade nicht erreichbar"}</b><p>${off ? "Kairo braucht für den heutigen Scan eine Internetverbindung. Deine Trades, das Journal und die Übung sind sicher auf diesem Gerät gespeichert." : "Meist dauert das nur einen Moment – z. B. während der Scan neue Daten veröffentlicht. Deine eigenen Daten sind sicher auf diesem Gerät."}</p>
+    <button class="btn" onclick="location.reload()">Erneut versuchen</button></div>`;
+  window.KairoSplash && KairoSplash.ready(); });
+// Verbindung weg / wieder da: kurzer Hinweis oben, Daten bleiben sichtbar
+function netToast(on) { let t = $("netToast"); if (!t) { t = document.createElement("div"); t.id = "netToast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.className = on ? "on ok" : "on"; t.textContent = on ? "Wieder online" : `Offline – du siehst den Stand vom ${data ? new Date(data.generated).toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "letzten Laden"}`;
+  clearTimeout(netToast.t); if (on) netToast.t = setTimeout(() => { t.className = ""; }, 2500); }
+addEventListener("offline", () => netToast(false)); addEventListener("online", () => netToast(true));
 </script>
 </body>
 </html>
