@@ -12,19 +12,19 @@ table{border-collapse:collapse;width:100%;font-size:14px} td,th{border-bottom:1p
 th{color:var(--mut);font-weight:600} li{margin:4px 0}
 </style></head><body><main>
 <h1>Kairo – Forschung &amp; Backtests</h1>
-<p class="mut">Stand 19.10.2026 · <a href="../">zur App</a> · <a href="../track/">Live-Bilanz aller Treffer</a> · Diese Seite ist absichtlich ohne JavaScript, damit Menschen und KI-Assistenten sie vollständig lesen können.</p>
+<p class="mut">Stand 19.10.2026 (Protokoll v3.0 ergänzt) · <a href="../">zur App</a> · <a href="../track/">Live-Bilanz aller Treffer</a> · Diese Seite ist absichtlich ohne JavaScript, damit Menschen und KI-Assistenten sie vollständig lesen können.</p>
 
 <h2>Worum es geht</h2>
 <p>Kairo ist ein privater Aktien-Scanner (PWA): Er prüft einmal täglich rund 6.000 Aktien (Nordamerika, Europa, Asien/Pazifik) nach festen Regeln und nennt die besten Einstiegs-Setups – eine regelbasierte Auswahl, keine Anlageberatung. Ziel der Forschung: die renditestärkste Strategie finden, die nach echten Kosten, auf unbekannten Zeiträumen, gegen Zufall und live besteht. Keine Broker-Anbindung, keine automatischen Orders.</p>
 
 <h2>Methodik</h2>
 <ul>
-<li><b>Vorregistrierung:</b> Jede Regel und jedes Bestehens-Kriterium wird vor dem Lauf im <a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/02_PROTOCOL.md">Protokoll</a> festgeschrieben (Versionen v1 … v2.9), keine nachträglichen Anpassungen.</li>
+<li><b>Vorregistrierung:</b> Jede Regel und jedes Bestehens-Kriterium wird vor dem Lauf im <a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/02_PROTOCOL.md">Protokoll</a> festgeschrieben (Versionen v1 … v2.9, <a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/27_PROTOCOL_V3.md">v3.0</a>), keine nachträglichen Anpassungen.</li>
 <li><b>Zeiträume:</b> Train 2008–2016 (Entwicklung) · Validierung 2017–2021 (einmalig) · Holdout 2022-01-01 … 2026-10-16 (einmalig geöffnet am 19.10.2026). Neuere Tests (v2.8, v2.9) kennen den Holdout bereits und gelten nur als Hinweis.</li>
 <li><b>Kosten:</b> Scalable Capital PRIME+ (0,99 € je Order unter 250 €, darüber 0 €), gemessener Spread je Titel; zusätzlich ein Stress-Szenario (1,99 €, doppelter Spread, Slippage, FX-Gebühr).</li>
 <li><b>Gegen Zufall:</b> Jede Einzeltitel-Strategie wird mit Zufalls-Einstiegen derselben Tage und identischen Ausstiegsregeln verglichen (Permutations-/Bootstrap-p-Werte, Bonferroni bei mehreren Kandidaten).</li>
 <li><b>Ledger-Engine:</b> tagesgenaue Depot-Simulation mit Eröffnungskursen, Stops inkl. Kurslücken, Mindestfüllung, Kapitalgrenze, FX (<a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/03_ENGINE_AUDIT.md">Engine-Audit</a>).</li>
-<li><b>Bekannte Schwächen:</b> Kursdaten von Yahoo; Aktienuniversum mit Survivorship-Bias (nur heute gelistete Titel → Einzelaktien-Ergebnisse eher zu gut); keine zeitpunktgenauen Fundamentaldaten; keine historischen 4-Stunden-Kerzen.</li>
+<li><b>Bekannte Schwächen:</b> Kursdaten von Yahoo; Aktienuniversum mit Survivorship-Bias (nur heute gelistete Titel → Einzelaktien-Ergebnisse eher zu gut, deshalb der Vergleich gegen Zufall). Seit v3.0: zeitpunktgenaue US-Fundamentaldaten, 8-K-Termine und Insider-Käufe aus SEC EDGAR (erst ab Einreichungsdatum verwendet); Stundenkerzen von Dukascopy erst ab 2017.</li>
 </ul>
 
 <h2>Alle getesteten Strategien</h2>
@@ -41,6 +41,14 @@ th{color:var(--mut);font-weight:600} li{margin:4px 0}
 <tr><td>Hebel 1,25/1,5 und Zielvolatilität (v2.9)</td><td>Risikosteuerung</td><td>Hebel: kaum Mehrrendite nach 6 % Finanzierung, Rückgang bis −47 % (ACWI 1,5×: −64 %); Zielvola: Rückgang −17 %, aber ~3 Pp weniger Rendite</td><td>nicht besser</td></tr>
 <tr><td>S19 Hybride Mean Reversion (+ Varianten A/B/C), S11 RSI(2), S04 Verlierer</td><td>Kurzfrist-Mean-Reversion</td><td>vor Kosten ≈ 0 … +9 %, nach Kosten negativ – auch mit PRIME+</td><td>nicht bestanden</td></tr>
 <tr><td>S20 Trendfolge/VCP, S08 Ausbrüche, S09 Volatilitäts-Kontraktion</td><td>Ausbruch</td><td>kein Vorteil gegenüber Zufall / Validierung nicht bestanden</td><td>nicht bestanden</td></tr>
+<tr><td>K1 Quality + Earnings Momentum (v3.0, SEC-Bilanzen, Top 10 monatlich)</td><td>Fundamental</td><td>Stress: Train 2010–16 +19,0 %, Validierung 2017–21 +11,2 % (ACWI +11,6 %); 2010–21 nach Steuern +12,0 % (ACWI +9,6 %); p vs. Zufall 0,41</td><td>nicht bestanden</td></tr>
+<tr><td>K2 Multi-Faktor Value/Quality/Momentum (v3.0)</td><td>Fundamental</td><td>Stress: Train +15,6 %, Validierung +6,9 %, Rückgang −53 %; p vs. Zufall 0,81</td><td>nicht bestanden</td></tr>
+<tr><td>K3 PEAD – Drift nach Quartalszahlen (8-K, Kursreaktion ≥ 5 %, 60 Tage)</td><td>Ereignis</td><td>Stress: Train +11,1 %, Validierung +9,9 %; p vs. Zufall 0,57</td><td>nicht bestanden</td></tr>
+<tr><td>K4 Insider-Cluster-Käufe (≥ 3 Insider, ≥ 100.000 USD, 60 Tage)</td><td>Ereignis</td><td>Stress: Train +13,6 %, Validierung +6,5 %, Rückgang −53 %; p vs. Zufall 0,65</td><td>nicht bestanden</td></tr>
+<tr><td>70 % ACWI + 30 % Nasdaq-100 (Benchmark v3.0)</td><td>Referenz</td><td>2010–21 Stress +15,3 % vor / +13,5 % nach Steuern, Rückgang −32 % (Dual Momentum: +17,8 % / +14,9 %)</td><td>nur Benchmark</td></tr>
+<tr><td>4H-Einstieg für Kairo-Signale (Dukascopy-Stundenkerzen)</td><td>Einstiegs-Zeitpunkt</td><td>2017–21 Stress +0,28 R je Trade (42 Trades) gegen +0,04 R auf Tagesbasis (441), p 0,22; pro Jahr weniger R; 2022–26 −0,36 R</td><td>nicht besser</td></tr>
+<tr><td>S19 / S19-B / S19-C mit echtem 4H-Auslöser + SEC-Marge/Börsenwert (v3.1)</td><td>Kurzfrist-Mean-Reversion</td><td>2017–21 Stress −0,1 / +0,2 / +1,0 % p. a. bei 1 / 8 / 54 Trades; p vs. Zufall 0,56 / 0,06 / 0,04</td><td>nicht bestanden</td></tr>
+<tr><td>S20 Trendfolge/VCP mit echtem 4H-Auslöser (v3.1)</td><td>Ausbruch</td><td>2017–21 Basis +7,6 %, Stress −8,7 % p. a. (≈ 120 Trades/Jahr), Rückgang −53 %; p 0,25</td><td>nicht bestanden</td></tr>
 <tr><td>S02 Trend-Pullback, S03-P Qualität-Proxy</td><td>Rücksetzer</td><td>kein robuster Vorteil</td><td>nicht bestanden</td></tr>
 <tr><td>Hybrid Trend + Mean Reversion nach Marktampel</td><td>Hybrid</td><td>schlechter als Trend allein, auch ohne Kosten</td><td>nicht bestanden</td></tr>
 <tr><td>S13 Trendfilter (SMA 10 Monate / EMA200)</td><td>Trendfilter</td><td>senkt Rückgänge, kostet Rendite</td><td>nicht besser</td></tr>
@@ -48,7 +56,7 @@ th{color:var(--mut);font-weight:600} li{margin:4px 0}
 <tr><td>Multi-Asset-Trendfolge (Welle 4)</td><td>Multi-Asset</td><td>nicht besser als ACWI</td><td>nicht bestanden</td></tr>
 <tr><td>Hypothese „Konsolidierung an Fib 0,79“</td><td>Nutzer-Hypothese</td><td>Treffer an der 0,79 nicht besser als 0,618–0,75 (zwei Anker-Varianten, Permutationstest)</td><td>nicht bestätigt</td></tr>
 </tbody></table></div>
-<p class="mut">Nicht valide testbar mit den vorhandenen Daten: Earnings-Drift (keine historischen Termine/Überraschungen), Multi-Faktor/Value/Qualität (keine zeitpunktgenauen Fundamentaldaten), Insider-Cluster (Historie nicht aufgebaut), 4H-Einstieg (keine Stundenkerzen ab 2010).</p>
+<p class="mut">Seit Protokoll v3.0 getestet (SEC-Daten): Earnings-Drift, Multi-Faktor/Value/Qualität, Insider-Cluster – alle vier nicht besser als zufällige Aktien derselben Auswahl. Mit Dukascopy-Stundenkerzen ab 2017 (v3.0 §8, v3.1): 4H-Einstieg für Kairo sowie S19/S20 in Originalform – keine Verbesserung, Dual Momentum bleibt vorn.</p>
 
 <h2>Aktueller Stand des Systems</h2>
 <ol>
@@ -88,10 +96,13 @@ th{color:var(--mut);font-weight:600} li{margin:4px 0}
 <li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/26_RISK_OVERLAY.md">26_RISK_OVERLAY.md</a> – 26 – Risikosteuerung und Hebel (Protokoll v2.9)</li>
 <li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/A_GATE_RECOMMENDATION.md">A_GATE_RECOMMENDATION.md</a> – A — Gate-Empfehlung (Phase A)</li>
 <li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/B_GATE_RECOMMENDATION.md">B_GATE_RECOMMENDATION.md</a> – Gate B — Zusammenfassung und Empfehlung</li>
-
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/27_PROTOCOL_V3.md">27_PROTOCOL_V3.md</a> – 27 — Vorregistriertes Protokoll v3.0: Fundamental-, Ereignis- und Insider-Strategien + 4H-Einstieg</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/28_V3_RESULTS.md">28_V3_RESULTS.md</a> – 28 · Ergebnisse Protokoll v3.0</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/29_PROTOCOL_V3_1.md">29_PROTOCOL_V3_1.md</a> – 29 — Vorregistriertes Protokoll v3.1: S19/S20 mit echten 4H-Kerzen</li>
+<li><a href="https://github.com/dxrtex/Kairo/blob/research/strategy-championship-phase-a/docs/strategy_championship/30_V31_RESULTS.md">30_V31_RESULTS.md</a> – 30 · Ergebnisse Protokoll v3.1</li>
 </ul>
 <p>Rohdaten der Ergebnisse (JSON) und der Forschungs-Code: <a href="https://github.com/dxrtex/Kairo/tree/research/strategy-championship-phase-a/docs/strategy_championship">docs/strategy_championship</a> · <a href="https://github.com/dxrtex/Kairo/tree/research/strategy-championship-phase-a/research/strategy_championship">research/strategy_championship</a>.</p>
 
 <h2>Hinweis für KI-Assistenten</h2>
-<p>Wenn du diese App bewertest oder neue Strategien vorschlägst: Prüfe bitte zuerst die Tabelle oben – viele naheliegende Ideen (Momentum, Mean Reversion, Ausbrüche, Sektor-Rotation, Trendfilter, Hebel, Fibonacci-Zonen) sind bereits mit echten Kosten und gegen Zufall getestet. Neue Vorschläge sind willkommen, wenn sie vorab festgelegt und mit den genannten Kriterien prüfbar sind.</p>
+<p>Wenn du diese App bewertest oder neue Strategien vorschlägst: Prüfe bitte zuerst die Tabelle oben – viele naheliegende Ideen (Momentum, Mean Reversion, Ausbrüche, Sektor-Rotation, Trendfilter, Hebel, Fibonacci-Zonen, Qualität/Value/Multi-Faktor, Earnings-Drift, Insider-Käufe) sind bereits mit echten Kosten und gegen Zufall getestet. Neue Vorschläge sind willkommen, wenn sie vorab festgelegt und mit den genannten Kriterien prüfbar sind.</p>
 </main></body></html>
