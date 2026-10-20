@@ -29,6 +29,20 @@ from backend.shortswing import QRULE
 from ..data import UNIVERSE, adjusted
 from ..s01 import clean
 
+def _ema_daily_rw(b: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """Wie backend.h4live._ema_daily, aber mit beschreibbaren Arrays (neuere pandas-Versionen liefern read-only)."""
+    dc = b.groupby("day")["Close"].last()
+    ema = np.array(b["day"].map(dc.ewm(span=HL.EMA_SPAN, adjust=False).mean()).to_numpy(float), copy=True)
+    last = np.array((b["day"] != b["day"].shift(-1)).to_numpy(), copy=True)
+    per = b.groupby("day").size()
+    full = int(per.iloc[:-1].tail(15).mode().max()) if len(per) > 1 else 99
+    if int(per.iloc[-1]) < full:
+        last[-1] = False
+    return ema, last
+
+
+HL._ema_daily = _ema_daily_rw          # gleiche Logik, nur ohne Schreibschutz-Fehler
+
 SPREAD = {"us": 0.001, "de": 0.0015}
 SLIP = 0.001
 SECTIONS = {"2017–2021": ("2017-01-01", "2021-12-31"), "2022–2026 (Hinweis)": ("2022-01-01", "2026-10-16")}
