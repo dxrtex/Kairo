@@ -563,7 +563,12 @@
   .hgrid { display: grid; gap: 14px; margin-top: 22px; grid-template-columns: minmax(0, 1fr); }
   .backbtn { margin-top: 18px !important; } @media (min-width: 900px) { .hgrid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; } }
   .hcol { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
-  .hgrid > *, .hcol > * { min-width: 0; }   /* lange Namen dürfen die Seite nicht verbreitern */
+  .hgrid > *, .hcol > * { min-width: 0; }
+  .todo-today { margin-bottom: 14px; } .tdo { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 11px 0; cursor: pointer; color: var(--text); }
+  .tdo i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); } .tdo.g i { background: var(--up); } .tdo.red i { background: var(--red); }
+  .tdo.yellow i { background: var(--gold); } .tdo.green i { background: var(--up); } .tdo span { flex: 1; min-width: 0; } .tdo b { display: block; font-weight: 650; }
+  .tdo small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; } .tdo s { text-decoration: none; color: var(--muted); }
+  .tdo-none b { display: block; font-size: 17px; color: var(--up); } .tdo-none span { font-size: 13.5px; color: var(--muted); }   /* lange Namen dürfen die Seite nicht verbreitern */
   .hcard { display: block; width: 100%; text-align: left; color: var(--text); font: inherit; background: var(--glass); border: 1px solid var(--glass-line); border-radius: var(--radius); padding: 16px 16px 14px;
            -webkit-backdrop-filter: blur(24px) saturate(140%); backdrop-filter: blur(24px) saturate(140%); }
   button.hcard { cursor: pointer; } button.hcard:active { transform: scale(.99); }
@@ -3655,7 +3660,7 @@ function todayHtml() {
   const tgHint = "";                       // Telegram-Abendbericht: ersetzt durch Push-Mitteilungen (10/2026)
   // Postfach: Aufgaben oben, darunter dieselben Karten wie sonst (ohne „Beste Treffer“ – die stehen schon im Postfach)
   if (isPostfach()) return postfachHtml(`${startHtml()}${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}`, `${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
-  return (isApple() ? todoHtml() : kpiHtml()) + `${startHtml()}<div class="hgrid"><div class="hcol">${topHitsHtml()}${myStocksHtml()}${depotSnapHtml()}${soonHtml()}</div>
+  return (isApple() ? todoHtml() : kpiHtml()) + `${todoTodayHtml()}${startHtml()}<div class="hgrid"><div class="hcol">${topHitsHtml()}${myStocksHtml()}${depotSnapHtml()}${soonHtml()}</div>
     <div class="hcol">${etfTeaserHtml()}${marketHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}</div></div>`;   // oben: was heute zu tun ist
 }
 
@@ -3712,6 +3717,24 @@ function etfAmpelHtml(e, compact) {
   return `<div class="regime" style="--c:${col}"><i></i><div><b>${esc(e.t)}</b><span>${compact ? `SPYI ${fmt(e.c)} € · ${e.dd < .005 ? "am Allzeithoch" : pct(e.dd, 1) + " unter dem Hoch"} · ${e.vs_e100 != null ? (e.vs_e100 >= 0 ? "über" : "unter") + " der EMA 100" : (e.vs_sma >= 0 ? "über" : "unter") + " der 200-Tage-Linie"}` : esc(e.s)}</span></div></div>`;
 }
 // Erste Schritte im 70/30-System – verschwindet, sobald alles erledigt ist (oder ausgeblendet wurde)
+// „Heute zu tun“: offene Trades mit Handlungsbedarf + Kaufkandidaten (Kairo-Treffer mit fertiger Seitwärtsphase) nach der Kairo-Regel
+function todoTodayHtml() {
+  if (!searchIdx) { loadSearch(); return ""; }
+  const sell = [], buy = [], watch = [];
+  plansLoad().filter(p => p.st === "open").forEach(p => { const st = tpStatus(p);
+    const row = `<button class="tdo ${st.tone}" data-ein="${esc(p.t)}"><i></i><span><b>${esc(p.n || p.t)}</b><small>${esc(st.t)}</small></span><s>›</s></button>`;
+    (["red", "yellow", "green"].includes(st.tone) ? sell : watch).push(row); });
+  const free = kmSlots(), ready = kmRank().hits.filter(x => { const it = h4Of(x.t);   // Seitwärtsphase im 10-Tage-Fenster fertig (Abend-/4H-Prüfung), sonst Basis aus dem Scan
+    return kmTested(x) && (it ? it.st === "4h" : ((rowOf(x.t) || {}).pl || {}).base) && !plansLoad().some(p => p.st === "open" && p.t === x.t); }).slice(0, Math.max(0, free));
+  ready.forEach(x => { const pl = (rowOf(x.t) || {}).pl || {};
+    buy.push(`<button class="tdo g" data-ein="${esc(x.t)}"><i></i><span><b>${esc(x.n)}</b><small>Seitwärtsphase fertig – Kauf zur nächsten Eröffnung${pl.base ? ` in der Spanne ${fmt(pl.base.lo)}–${fmt(pl.base.hi)} ${esc(x.cur || "")}` : ""} · Stop ${fmt(pl.stop)} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}</small></span><s>›</s></button>`); });
+  const n = sell.length + buy.length;
+  return `<div class="hcard todo-today">${hHead(`Heute zu tun${n ? ` · ${n}` : ""}`, SEC_LINK("entry"), "Einstieg")}
+    ${sell.length ? `<div class="hsub">Deine Trades</div>${sell.join("")}` : ""}
+    ${buy.length ? `<div class="hsub">Kaufkandidaten · ${free} ${free === 1 ? "Platz" : "Plätze"} frei</div>${buy.join("")}` : ""}
+    ${!n ? `<div class="tdo-none"><b>Nichts zu tun ✓</b><span>${watch.length ? `${watch.length} ${watch.length === 1 ? "Trade läuft" : "Trades laufen"} nach Plan. ` : ""}${free ? "Kein Kairo-Treffer mit fertiger Seitwärtsphase." : "Alle Plätze belegt."} Der Sparplan läuft.</span></div>` : ""}
+    ${watch.length && n ? `<div class="note" style="margin:8px 0 0">${watch.length} weitere ${watch.length === 1 ? "Trade läuft" : "Trades laufen"} nach Plan.</div>` : ""}</div>`;
+}
 function startHtml() {
   if (state.startHide) return "";
   const steps = [["ETF-Sparplan bei Scalable eingerichtet (SPYI, monatlich)", !!state.stSpar, "stSpar"],
