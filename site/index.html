@@ -203,6 +203,7 @@
   .st-step { display: flex; align-items: center; gap: 8px; } .st-step > span { flex: 1; } .st-step s { text-decoration-color: color-mix(in srgb, currentColor 50%, transparent); }
   .tz { display: inline-block; font-size: 12px; font-weight: 650; padding: 2px 8px; border-radius: 999px; color: var(--muted); background: color-mix(in srgb, var(--muted) 12%, transparent); white-space: nowrap; }
   .tz.on { color: var(--gold); background: color-mix(in srgb, var(--gold) 16%, transparent); }
+  .btn.danger { color: var(--red); }
   .st.wait { background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--muted); } .st.own { background: var(--accent-bg); color: var(--accent); }
   .empty-st { text-align: center; padding: 28px 22px; margin-bottom: 14px; } .empty-st .es-ic, .jicon { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 18px; display: grid; place-items: center; color: #fff; background: linear-gradient(145deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000)); } .es-ic svg, .jicon svg { width: 34px; height: 34px; }
   .vdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 7px 1px 0; vertical-align: middle; background: var(--gold); } .vdot.g { background: var(--up); } .vdot.r { background: var(--red); } .vdot.y { background: var(--gold); }
@@ -2117,8 +2118,10 @@ function depotHtml() {
   const form = depotEdit != null ? depotFormHtml(depotEdit >= 0 ? list[depotEdit] : null) : "";
   const actions = `<div class="row-actions" style="margin:16px 0">
       <button class="btn" data-dep="add">+ Position</button>
-      <label class="btn ghost" style="cursor:pointer">Scalable-Export importieren<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="depCsv" hidden></label>
-      <button class="btn ghost" data-dep="claude">Für Claude kopieren</button></div>
+      <label class="btn ghost" style="cursor:pointer">${list.some(isImported) ? "Neuen Scalable-Export hochladen" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="depCsv" hidden></label>
+      <button class="btn ghost" data-dep="claude">Für Claude kopieren</button>
+      ${list.length ? `<button class="btn ghost danger" data-dep="clearimp">Depot leeren …</button>` : ""}</div>
+    ${list.some(isImported) ? `<div class="note" style="margin:-6px 2px 12px">Ein neuer Export ersetzt den alten Import vollständig (Depot und Journal). Von Hand angelegte Positionen bleiben.</div>` : ""}
     ${depotMsg ? `<div class="tip tone-gray" style="margin-bottom:14px">${depotMsg}</div>` : ""}`;
   if (!anaData) loadAnalysis();
   const groups = anaData ? groupPositions(items) : [];
@@ -2574,7 +2577,7 @@ function importRows(rows) {
   let added = 0, turbos = 0;
   Object.values(pos).filter(p => p.qty > 1e-9).forEach(p => {
     const d = parseDerivative(p.name), r = d ? matchUnderlying(d.under, d.cur) : matchName(p.name);
-    const entry = { t: r ? r.t : "", n: d ? p.name : r ? r.n : p.name, isin: p.isin, qty: +p.qty.toFixed(6), price: +(p.cost / p.qty).toFixed(4), date: p.date };
+    const entry = { t: r ? r.t : "", n: d ? p.name : r ? r.n : p.name, isin: p.isin, qty: +p.qty.toFixed(6), price: +(p.cost / p.qty).toFixed(4), date: p.date, src: "csv" };
     if (d) { entry.d = d; turbos++; }
     if (!r) noData.push(d ? d.under : p.name);
     const j = list.findIndex(x => (p.isin && x.isin === p.isin) || (!x.isin && !d && r && x.t === r.t));
@@ -2629,7 +2632,10 @@ document.addEventListener("click", e => {
   if (jr) { const k = jr.dataset.jrow; jOpen.has(k) ? jOpen.delete(k) : jOpen.add(k); render(); return; }
   const jf = e.target.closest("[data-jfilter]"); if (jf) { jFilter = jf.dataset.jfilter; render(); return; }
   const jp = e.target.closest("[data-jper]"); if (jp) { state.jPer = jp.dataset.jper; save(); render(); return; }
-  if (e.target.closest("[data-jclear]")) { if (confirm("Alle Transaktionen aus dem Journal auf diesem Gerät löschen? (Das Depot bleibt.)")) { txSave([]); depotMsg = ""; render(); } return; }
+  if (e.target.closest("[data-impclear]")) { const imp = depotLoad().filter(isImported).length, nTx = txLoad().length;
+    if (!imp && !nTx) { alert("Es sind keine Scalable-Daten gespeichert."); return; }
+    if (confirm(`Scalable-Daten löschen? ${imp} importierte Positionen und ${nTx} Transaktionen im Journal werden von diesem Gerät entfernt.`)) { importClear(); depotMsg = ""; render(); } return; }
+  if (e.target.closest("[data-jclear]")) { if (confirm("Alle Transaktionen aus dem Journal auf diesem Gerät löschen? Das Depot bleibt. Danach kannst du einen neuen Export hochladen.")) { txSave([]); depotMsg = "Journal gelöscht."; render(); } return; }
   const b = e.target.closest("[data-cal]");
   if (b) { state[b.dataset.cal] = b.dataset.v; save(); render(); return; }
   const d = e.target.closest("[data-dep]"); if (!d) return;
@@ -2639,11 +2645,18 @@ document.addEventListener("click", e => {
   else if (act === "edit") depotEdit = i;
   else if (act === "cancel") depotEdit = null;
   else if (act === "del") { if (confirm(`${list[i].n || list[i].t} aus dem Depot löschen?`)) { list.splice(i, 1); depotSave(list); } }
+  else if (act === "clearimp") {
+    const imp = list.filter(isImported).length, hand = list.length - imp;
+    if (hand && imp) {
+      const all = confirm(`Depot leeren?\n\nOK = alles löschen (${list.length} Positionen)\nAbbrechen = nur den Scalable-Import löschen (${imp}), deine ${hand} von Hand angelegten bleiben`);
+      if (all) depotSave([]); else if (confirm(`Nur die ${imp} importierten Positionen löschen?`)) depotSave(list.filter(p => !isImported(p)));
+    } else if (confirm(`Alle ${list.length} Positionen aus dem Depot löschen? Das Journal bleibt.`)) depotSave([]);
+    const left = depotLoad().length; depotMsg = left === list.length ? "" : left ? `${list.length - left} Positionen gelöscht, ${left} von Hand angelegte bleiben.` : "Depot geleert."; }
   else if (act === "save") {
     const r = findStock($("dfStock").value), qty = parseFloat(String($("dfQty").value).replace(",", ".")), price = parseFloat(String($("dfPrice").value).replace(",", "."));
     if (!r) { depotMsg = "Aktie nicht gefunden – bitte aus der Vorschlagsliste wählen."; render(); return; }
     if (!(qty > 0) || !(price > 0)) { depotMsg = "Bitte Stück und Kaufkurs angeben."; render(); return; }
-    const entry = { t: r.t, n: r.n, qty, price, date: $("dfDate").value || "" };
+    const entry = { t: r.t, n: r.n, qty, price, date: $("dfDate").value || "", src: "hand" };
     if (depotEdit >= 0) list[depotEdit] = entry; else list.push(entry);
     depotSave(list); depotEdit = null;
   } else if (act === "mark") {
@@ -2693,8 +2706,12 @@ document.addEventListener("change", async e => {
   await loadAnalysis();
   const buf = await e.target.files[0].arrayBuffer(), u = new Uint8Array(buf);
   try { const rows = u[0] === 0x50 && u[1] === 0x4b ? await xlsxRows(buf) : csvRows(new TextDecoder().decode(buf));
-    const nTx = txImport(rows), msg = importRows(rows);
-    depotMsg = e.target.id === "jrCsv" ? `${nTx} neue Transaktionen ins Journal übernommen. Depot: ${msg}` : msg + (nTx ? ` Journal: ${nTx} neue Transaktionen.` : ""); }
+    const head = (rows[0] || []).map(h => String(h).toLowerCase());
+    const has = rx => head.some(h => rx.test(h));            // erst prüfen, dann löschen – eine falsche Datei ändert nichts
+    if (rows.length < 2 || !has(/date|datum/) || !has(/type|typ|transaktion|art/) || !has(/shares|stück|stueck|anzahl|quantity|menge/) || !has(/price|kurs|preis/))
+      throw new Error("kein Scalable-Transaktions-Export erkannt – nichts geändert");
+    const old = importClear(), nTx = txImport(rows), msg = importRows(rows);   // neuer Export ersetzt den alten vollständig
+    depotMsg = `<b>Neuer Export übernommen</b> – der alte Import wurde ersetzt${old.n || old.nTx ? ` (${old.n} Positionen, ${old.nTx} Transaktionen entfernt)` : ""}. Depot: ${msg} Journal: ${nTx} Transaktionen.`; }
   catch (err) { depotMsg = "Datei konnte nicht gelesen werden (" + esc(err.message || err) + ")."; }
   e.target.value = ""; render();
 });
@@ -2703,6 +2720,13 @@ document.addEventListener("change", async e => {
 const TX_KEY = "kairo-tx-v1";
 function txLoad() { try { return JSON.parse(localStorage.getItem(TX_KEY) || "[]"); } catch (e) { return []; } }
 function txSave(list) { try { localStorage.setItem(TX_KEY, JSON.stringify(list)); } catch (e) {} }
+// Scalable-Import ersetzen: importierte Depot-Positionen (Markierung „csv“ oder mit ISIN aus älteren Importen) und das Journal leeren.
+// Von Hand angelegte Positionen bleiben. Notizen im Journal bleiben (sie hängen am Trade und passen wieder, wenn er neu kommt).
+const isImported = p => p.src === "csv" || (!!p.isin && p.src !== "hand");
+function importClear() {
+  const all = depotLoad(), keep = all.filter(p => !isImported(p)), n = all.length - keep.length, nTx = txLoad().length;
+  depotSave(keep); txSave([]); return { n, nTx };
+}
 // Export-Zeilen → einheitliche Transaktionen; neue werden über die Referenz (sonst Datum+ISIN+Typ+Stück) ergänzt
 function txImport(rows) {
   if (rows.length < 2) return 0;
@@ -2997,7 +3021,7 @@ function jBarsHtml(rows) {                       // horizontale Balken: Ergebnis
 function jStreaks(ts) { let w = 0, l = 0, cw = 0, cl = 0; ts.slice().sort((a, b) => a.close.localeCompare(b.close)).forEach(t => { if (t.pnl > 0) { cw++; cl = 0; } else { cl++; cw = 0; } w = Math.max(w, cw); l = Math.max(l, cl); }); return [w, l]; }
 function journalHtml() {
   const tx = txLoad();
-  const imp = `<label class="btn${tx.length ? " ghost" : ""}" style="cursor:pointer">${tx.length ? "Neuen Export einlesen" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="jrCsv" hidden></label>`;
+  const imp = `<label class="btn${tx.length ? " ghost" : ""}" style="cursor:pointer">${tx.length ? "Neuen Export hochladen (ersetzt den alten)" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="jrCsv" hidden></label>`;
   const head = `<div class="section-title"><span>Journal · deine Trades</span><span>${tx.length ? tx.length + " Transaktionen" : ""}</span></div>`;
   if (!tx.length) return head + jStrategyHtml() + `<div class="card jempty"><div class="jicon"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="7" width="26" height="34" rx="4"/><path d="M17 16h14M17 23h14M17 30h8"/></svg></div><b>Dein Trading-Journal</b>
       <p>Lies deinen Transaktions-Export aus Scalable Capital ein (Web-Version → Transaktionen → Export). Kairo ordnet alle Käufe und Verkäufe zu Trades, rechnet Gewinne und Verluste nach Gebühren und zeigt deine Statistik.</p>
@@ -4252,7 +4276,9 @@ function backupHtml() {
   return `<div class="section-title"><span>Daten &amp; Backup</span><span>${n} Bereiche gespeichert</span></div>
     <div class="card"><div class="tgdesc">Merkliste, Depot, Journal und Einstellungen liegen nur auf diesem Gerät. Mit einem Backup überträgst du sie aufs iPhone/iPad oder sicherst sie.</div>
     <div class="row-actions" style="margin-top:12px"><button class="btn" data-backup>Backup speichern</button>
-      <label class="btn ghost" style="cursor:pointer">Backup einlesen<input type="file" accept=".json,application/json" id="restoreFile" hidden></label></div>
+      <label class="btn ghost" style="cursor:pointer">Backup einlesen<input type="file" accept=".json,application/json" id="restoreFile" hidden></label>
+      <button class="btn ghost danger" data-impclear>Scalable-Daten löschen</button></div>
+    <div class="note">„Scalable-Daten löschen“ entfernt den importierten Export (Depot-Positionen aus der Datei und das Journal) – danach einfach den neuen Export hochladen. Von Hand angelegte Positionen, Übung und Einstellungen bleiben.</div>
     <div class="note">Die Datei enthält deine Depot- und Journal-Daten – nur an sichere Orte speichern (z. B. iCloud Drive).</div></div>`;
 }
 

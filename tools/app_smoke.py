@@ -98,6 +98,32 @@ async def gate_check(b, url, errs):
     await ctx.close()
 
 
+
+HEAD = "date;time;status;reference;description;assetType;type;isin;shares;price;amount;fee;tax;currency"
+
+
+async def import_check(b, url, errs):
+    """Neuer Scalable-Export ersetzt den alten (Depot-Import + Journal); Hand-Positionen bleiben; falsche Datei ändert nichts."""
+    ctx = await new_ctx(b, viewport={"width": 820, "height": 1180})
+    await ctx.add_init_script("""try{if(!localStorage.getItem('kx-imp')){localStorage.setItem('kx-imp','1');
+      localStorage.setItem('kairo-depot-v1', JSON.stringify([{t:'MSFT',n:'Microsoft',qty:1,price:300,date:'2026-01-02',src:'hand'}]))}}catch(e){}""")
+    pg = await ctx.new_page()
+    await pg.goto(f"{url}?nosplash=1&sec=depot")
+    await pg.wait_for_timeout(2500)
+    await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.remove())')
+    a = HEAD + "\n2026-03-02;10:00:00;Executed;R1;Apple Inc.;Security;Buy;US0378331005;2;200;-400;0;0;EUR" \
+             "\n2026-03-05;10:00:00;Executed;R2;Apple Inc.;Security;Buy;US0378331005;1;210;-210;0;0;EUR"
+    bb = HEAD + "\n2026-04-01;10:00:00;Executed;R9;SAP SE;Security;Buy;DE0007164600;3;150;-450;0;0;EUR"
+    state = "(() => { const d = JSON.parse(localStorage.getItem('kairo-depot-v1') || '[]'); return { isins: d.map(x => x.isin || x.t).sort().join(','), tx: JSON.parse(localStorage.getItem('kairo-tx-v1') || '[]').length }; })()"
+    for name, body, want_isins, want_tx in (("a.csv", a, "MSFT,US0378331005", 2), ("b.csv", bb, "DE0007164600,MSFT", 1),
+                                             ("falsch.csv", "foo;bar\n1;2", "DE0007164600,MSFT", 1)):
+        await pg.set_input_files("#depCsv", files=[{"name": name, "mimeType": "text/csv", "buffer": body.encode()}])
+        await pg.wait_for_timeout(1500)
+        got = await pg.evaluate(state)
+        if got["isins"] != want_isins or got["tx"] != want_tx:
+            errs.append(f"Import {name}: erwartet {want_isins} / {want_tx} Transaktionen, bekommen {got}")
+    await ctx.close()
+
 async def run(port: int) -> list[str]:
     from playwright.async_api import async_playwright
     url = f"http://127.0.0.1:{port}/"
@@ -107,6 +133,7 @@ async def run(port: int) -> list[str]:
         b = await p.chromium.launch(**({"executable_path": exe} if exe else {}), args=["--no-proxy-server"])
         await gate_check(b, url, errs)
         await tour_check(b, url, errs)
+        await import_check(b, url, errs)
         for name, vp in (("iPad", {"width": 820, "height": 1180}), ("Handy", {"width": 390, "height": 844})):
             ctx = await new_ctx(b, viewport=vp)
             pg = await ctx.new_page()
