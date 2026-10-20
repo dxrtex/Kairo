@@ -203,6 +203,9 @@
     background: var(--gold); color: #000; font-size: 14px; font-weight: 650; box-shadow: 0 6px 20px rgba(0,0,0,.25); transition: transform .3s ease; pointer-events: none; }
   #netToast.on { transform: translate(-50%, 0); } #netToast.ok { background: var(--up); }
   .boot { margin-top: 18px; } .boot .skel + .skel { margin-top: 10px; }
+  .nw-box { width: min(480px, 100%); } .nw-v { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 10px; } .nw-v b { font-size: 22px; letter-spacing: -.02em; } .nw-v small { color: var(--muted); }
+  .nw-l { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .nw-l li { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+  .nw-l span { font-size: 14px; color: var(--muted); } .nw-all { margin-top: 14px; }
   .kplan { --kc: var(--muted); border-radius: 16px; padding: 14px; background: color-mix(in srgb, var(--kc) 9%, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--kc) 28%, transparent); }
   .kplan.k-g { --kc: var(--up); } .kplan.k-y { --kc: var(--gold); } .kplan.k-r { --kc: var(--red); } .kplan.k-b { --kc: var(--accent); }
   .kp-h { display: flex; gap: 12px; align-items: flex-start; } .kp-h > i { flex: none; width: 12px; height: 12px; margin-top: 5px; border-radius: 50%; background: var(--kc); box-shadow: 0 0 10px var(--kc); }
@@ -3776,6 +3779,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-tour
 function maybeBrief() {
   if (!data) return;
   if (!state.tourDone && !/nosplash/.test(location.search) || /[?&]tour=1/.test(location.search)) { openTour(); return; }   // erstes Öffnen: Rundgang statt Briefing
+  if (maybeNews()) return;
   if (state.briefOff) return;
   if (state.briefSeen !== data.generated || Date.now() - (state.briefAt || 0) > 6 * 3600e3) openBrief();
 }
@@ -4366,6 +4370,49 @@ function telegramHtml() {
     <textarea id="tgText" class="tgtext" readonly hidden></textarea></div>`;
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
+// ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
+const APP_VER = "2026.10.21";
+const APP_NEWS = [["2026.10.21", "Oktober-Update", [
+  ["Kairo-Plan in jeder Aktie", "Oben steht jetzt die Antwort: kaufbereit oder nicht, Kaufzone, Stop, Ausstieg und Kursziel."],
+  ["Stimmung / Angst am Markt", "Neben der Trend-Ampel: 0–100 aus VIX, Tech/KI, Marktbreite und Kreditmarkt."],
+  ["Kairo-Ziel", "Deine Idee als Papier-Depot: Treffer mit attraktivem Kursziel, halten bis zum Ziel."],
+  ["Scalable-Import ersetzt", "Ein neuer Export ersetzt den alten – Löschen jederzeit."],
+  ["Design „Hell“", "Jetzt auch immer hell wählbar – unabhängig vom iPad."],
+  ["Rundgang & Begriffe", "Kurzer Rundgang beim ersten Öffnen, Fachbegriffe antippbar."]]]];
+function newsHtml(all) {
+  return APP_NEWS.slice(0, all ? APP_NEWS.length : 1).map(([v, t, items]) => `<div class="nw-v"><b>${esc(t)}</b><small>${esc(v.split(".").reverse().join("."))}</small></div>
+    <ul class="nw-l">${items.map(([a, b]) => `<li><b>${esc(a)}</b><span>${esc(b)}</span></li>`).join("")}</ul>`).join("");
+}
+function maybeNews() {
+  if (!state.tourDone) { state.newsSeen = APP_VER; save(); return false; }   // neue Nutzer bekommen den Rundgang, nicht die Neuigkeiten
+  if (state.newsSeen === APP_VER || /nosplash/.test(location.search)) return false;   // Tests/Vorschau: ohne Fenster
+  state.newsSeen = APP_VER; save();
+  let el = $("newsBox"); if (!el) { el = document.createElement("div"); el.id = "newsBox"; el.className = "bmodal"; document.body.appendChild(el); }
+  el.hidden = false; el.innerHTML = `<div class="bm-back" data-newsclose></div><div class="bm-box nw-box" role="dialog" aria-modal="true" aria-label="Was ist neu"><button class="cm-x" data-newsclose aria-label="Schließen">✕</button>
+    <div class="bf-k">Was ist neu</div>${newsHtml(false)}<button class="btn" data-newsclose style="width:100%;margin-top:14px">Weiter</button></div>`;
+  return true;
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-newsclose]")) { const el = $("newsBox"); if (el) el.remove(); }
+  if (e.target.closest("[data-newsall]")) { const b = e.target.closest(".card").querySelector(".nw-all"); b.hidden = !b.hidden; } });
+function reportText(msg) {
+  const r = data || {}, sec = (SEC_T && SEC_T[state.sec]) || state.sec;
+  return [`Kairo – Problem/Idee (${new Date().toLocaleString("de-DE")})`, msg ? `Beschreibung: ${msg}` : "",
+    `Bereich: ${sec}${document.body.classList.contains("card-open") ? " · Detailansicht offen" : ""}`, `App-Version: ${APP_VER} · Design: ${state.design || "classic"}`,
+    `Scan: ${r.generated ? new Date(r.generated).toLocaleString("de-DE") : "–"} · Treffer: ${r.results ? r.results.filter(x => x.passed).length : "–"}`,
+    `Gerät: ${navigator.userAgent.replace(/\s*\(KHTML.*$/, "")} · ${innerWidth}×${innerHeight}${navigator.onLine === false ? " · offline" : ""}`].filter(Boolean).join("\n");
+}
+function feedbackHtml() {
+  return `<div class="section-title"><span>Hilfe &amp; Feedback</span><span>Version ${APP_VER.split(".").reverse().join(".")}</span></div>
+    <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0"><label class="full">Was ist dir aufgefallen?<textarea id="fbText" rows="3" placeholder="z. B. „Im Depot stimmt der Wert von SAP nicht“ oder eine Idee"></textarea></label></div>
+      <div class="row-actions" style="margin-top:10px"><button class="btn" data-fb="copy">Für Claude kopieren</button>${navigator.share ? `<button class="btn ghost" data-fb="share">Teilen …</button>` : ""}<button class="btn ghost" data-newsall>Was ist neu</button></div>
+      <div class="note" id="fbMsg">Kopiert Beschreibung plus Bereich, Datenstand, Version und Gerät – keine Depot- oder Journal-Daten. Einfach im Chat mit Claude einfügen.</div>
+      <div class="nw-all" hidden>${newsHtml(true)}</div></div>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-fb]"); if (!b) return;
+  const t = reportText(($("fbText") || {}).value || ""), m = $("fbMsg");
+  if (b.dataset.fb === "share" && navigator.share) { navigator.share({ title: "Kairo – Feedback", text: t }).catch(() => {}); return; }
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { if (m) m.textContent = "Kopiert ✓ – jetzt im Chat mit Claude einfügen."; },
+    () => { if (m) m.innerHTML = `<pre style="white-space:pre-wrap;user-select:all">${esc(t)}</pre>`; }); });
 function backupHtml() {
   const n = Object.keys(localStorage).filter(BACKUP_KEYS).length;
   return `<div class="section-title"><span>Daten &amp; Backup</span><span>${n} Bereiche gespeichert</span></div>
@@ -4396,6 +4443,7 @@ function settingsHtml() {
       <div class="set-lbl">Rundgang</div><button type="button" class="btn ghost sm" data-tour="0">Rundgang noch einmal ansehen</button>
       <div class="set-lbl">Design</div><div class="set-chips">${DESIGNS.map(([k, l]) => `<button type="button" class="opt${(state.design || "classic") === k ? " on" : ""}" data-design="${k}">${l}</button>`).join("")}</div>
       <div class="note">Wechselt sofort, alle Funktionen und Daten bleiben gleich.</div></div>
+    ${feedbackHtml()}
     ${pushHtml()}
     <div class="section-title"><span>Live-Kurse</span><span class="${liveOn() ? "up" : ""}">${liveOn() ? "aktiv" : "aus – Kurse vom Abendscan"}</span></div>
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
