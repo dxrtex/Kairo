@@ -23,15 +23,17 @@ import pandas as pd
 PAST_DAYS, NEXT_DAYS = 14, 21
 
 GUIDE_UP = re.compile(
-    r"\b(rais(es|ed|ing)?|lifts?|lifted|boosts?|boosted|hikes?|hiked|ups|increases?|increased)\b[^|]{0,45}\b(guidance|outlook|forecast|view|targets?)\b"
+    r"\b(rais(es|ed|ing)?|lifts?|lifted|boosts?|boosted|hikes?|hiked|ups|increases?|increased)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
     r"|\b(guidance|outlook|forecast)\b[^|]{0,25}\b(above|tops|beats|ahead of)\b"
     r"|\b(strong|upbeat|bullish|upgraded|rosy|robust)\b[^|]{0,20}\b(guidance|outlook|forecast)\b"
     r"|\b(hebt|erhöht|erhoeht)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
 GUIDE_DOWN = re.compile(
-    r"\b(cuts?|lowers?|lowered|slash(es|ed)?|reduces?|reduced|trims?|trimmed|withdraws?|withdrew|pulls?|pulled)\b[^|]{0,45}\b(guidance|outlook|forecast|view|targets?)\b"
+    r"\b(cuts?|lowers?|lowered|slash(es|ed)?|reduces?|reduced|trims?|trimmed|withdraws?|withdrew|pulls?|pulled)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
     r"|\b(guidance|outlook|forecast)\b[^|]{0,25}\b(below|misses|missed|disappoints?|weak|falls short)\b"
     r"|\b(weak|soft|disappointing|downbeat|gloomy|lowered)\b[^|]{0,20}\b(guidance|outlook|forecast)\b"
     r"|\b(senkt|kappt|kassiert|streicht)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
+ANALYST = re.compile(r"\b(price target|target price|kursziel|rating|upgrades?|downgrades?|upgraded|downgraded|analysts? (see|expect)|"
+                     r"(raises|lifts|cuts|lowers|trims|boosts)\b[^|]{0,30}\btarget\b)", re.I)
 GUIDE_KEEP = re.compile(
     r"\b(reaffirms?|reaffirmed|reiterates?|reiterated|maintains?|maintained|confirms?|confirmed)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
     r"|\bbestätigt\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
@@ -74,6 +76,8 @@ def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Time
                     continue
             except Exception:
                 pass
+        if ANALYST.search(title):                        # Kursziele/Einstufungen von Analysten sind kein Ausblick der Firma
+            continue
         d = None
         for rx, val in ((GUIDE_UP, 1), (GUIDE_DOWN, -1), (GUIDE_KEEP, 0)):
             m = rx.search(title)
