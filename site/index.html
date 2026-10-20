@@ -198,11 +198,12 @@
   .glpop { position: fixed; z-index: 90; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; box-shadow: 0 12px 40px rgba(0,0,0,.45); font-size: 14px; line-height: 1.45; text-transform: none; letter-spacing: 0; font-weight: 400; animation: secin .18s ease both; }
   abbr.term { font: inherit; color: inherit; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: 3px; cursor: help; }
   .glpop b { display: block; margin-bottom: 4px; }
+  .chart-miss { display: grid; place-items: center; gap: 6px; height: 150px; color: var(--muted); font-size: 14px; text-align: center; background: var(--surface-2); border-radius: var(--radius-s); }
   .kplan { --kc: var(--muted); border-radius: 16px; padding: 14px; background: color-mix(in srgb, var(--kc) 9%, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--kc) 28%, transparent); }
   .kplan.k-g { --kc: var(--up); } .kplan.k-y { --kc: var(--gold); } .kplan.k-r { --kc: var(--red); } .kplan.k-b { --kc: var(--accent); }
   .kp-h { display: flex; gap: 12px; align-items: flex-start; } .kp-h > i { flex: none; width: 12px; height: 12px; margin-top: 5px; border-radius: 50%; background: var(--kc); box-shadow: 0 0 10px var(--kc); }
   .kp-h b { display: block; font-size: 18px; letter-spacing: -.01em; color: var(--kc); } .kplan.k-n .kp-h b { color: var(--text); } .kp-h span { display: block; font-size: 14px; color: var(--muted); margin-top: 2px; }
-  .kp-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-top: 12px; }
+  .kp-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(124px, 1fr)); gap: 8px; margin-top: 12px; }
   .kp-cells > div { background: var(--surface); border-radius: 12px; padding: 10px 12px; min-width: 0; } .kp-cells span { display: block; font-size: 12px; color: var(--muted); }
   .kp-cells b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; margin: 2px 0; } .kp-cells em { display: block; font-style: normal; font-size: 12px; color: var(--muted); }
   .kp-act { margin-top: 12px; display: flex; gap: 8px; } .kp-act .btn { flex: 1; }
@@ -1532,11 +1533,13 @@ function favExtraHtml() {
 // Übersichtskarte als Fenster (Antippen von Name/Ticker in der Tabelle)
 function openCard(t) {
   const r = data.results.find(x => x.ticker === t); if (!r) return;
+  if (!searchIdx) Promise.resolve(loadSearch()).then(() => { if (document.body.classList.contains("card-open") && $("cardModalBody").querySelector(`[data-mini="${CSS.escape(t)}"]`)) openCard(t); });
   $("cardModalBody").innerHTML = card(r);
   document.body.classList.add("card-open");
   document.querySelectorAll(".aitem").forEach(x => x.classList.toggle("sel", x.dataset.card === t));
   const el = $("cardModalBody").querySelector("[data-mini]");
-  if (el) loadChart(t).then(c => paintChart(el, c, r)).catch(() => {});
+  if (el) loadChart(t).then(c => paintChart(el, c, r)).catch(() => { delete chartCache[t];
+    el.innerHTML = `<div class="chart-miss">Chart gerade nicht verfügbar <a href="${tvUrl(t)}" target="_blank" rel="noopener">in TradingView öffnen ›</a></div>`; });
 }
 function closeCard() { document.body.classList.remove("card-open"); document.querySelectorAll(".aitem.sel").forEach(x => x.classList.remove("sel")); }
 (() => {   // Apple-Look: Sheet nach unten wischen schließt die Übersicht (nur iPhone / iPad hochkant)
@@ -1661,7 +1664,9 @@ function chkHtml(c) {
 }
 // Kairo-Plan: die Antwort zuerst – Status, Kaufzone, Stop, Ausstieg, Kursziel (alle Designs)
 function kplanHtml(r) {
-  const x = kSt(r), pl = (rowOf(r.ticker) || {}).pl || {}, cur = esc(r.currency || ""), tz = tgtZ(r);
+  const x = kSt(r), it = h4Of(r.ticker), pl0 = (rowOf(r.ticker) || {}).pl || {}, cur = esc(r.currency || ""), tz = tgtZ(r);
+  const ib = it && it.base && it.base.lo != null ? it.base : null;          // Seitwärtsphase aus der Abend-Prüfung, sonst aus dem Scan
+  const pl = { base: pl0.base || ib, stop: pl0.base ? pl0.stop : ib ? ib.sl : pl0.stop };
   const head = { ready: ["g", "Kaufbereit", "Seitwärtsphase fertig – Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt."],
     wait: ["y", "Treffer – noch nicht kaufen", `${x.s}. Gekauft wird erst nach 5 ruhigen Tagen.`],
     late: ["y", "Einstieg vorbei", "Der Kauftag nach der Seitwärtsphase ist schon vorbei – nicht nachkaufen, auf den nächsten Treffer warten."],
