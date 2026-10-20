@@ -132,6 +132,12 @@ async def main(out: Path) -> None:
                         await pg.evaluate("(() => { const t = document.querySelector('b.term'); t.scrollIntoView({block:'center'}); t.click(); })()")
                         await pg.wait_for_timeout(500)
                         await pg.screenshot(path=str(out / f"ipad_term_{sec}_{n}.png"))
+            for k in range(3):                             # Rundgang
+                await pg.goto(f"{url}?tour=1"); await pg.wait_for_timeout(2500)
+                await pg.evaluate("document.querySelectorAll('.splash').forEach(x => x.remove())")
+                for _ in range(k):
+                    await pg.click('.tour-act .btn:not(.ghost)'); await pg.wait_for_timeout(300)
+                await pg.screenshot(path=str(out / f"{name}_tour{k + 1}.png"))
             for page in ("track", "research"):
                 await pg.goto(f"https://dxrtex.github.io/Kairo/{page}/")
                 await pg.wait_for_timeout(2000)
