@@ -38,6 +38,30 @@ def demo_tx() -> str:
 
 
 async def main(out: Path) -> None:
+    try:                                               # Datenprobe Quartalszahlen (yfinance)
+        import io, contextlib, yfinance as yf, pandas as pd
+        pd.set_option("display.width", 220); pd.set_option("display.max_columns", 20)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            for t in ("NFLX", "JPM", "ASML.AS", "SAP.DE", "TSLA"):
+                print("=====", t)
+                tk = yf.Ticker(t)
+                for name, fn in (("earnings_dates", lambda: tk.get_earnings_dates(limit=6)),
+                                 ("earnings_history", lambda: tk.get_earnings_history()),
+                                 ("earnings_estimate", lambda: tk.get_earnings_estimate()),
+                                 ("revenue_estimate", lambda: tk.get_revenue_estimate()),
+                                 ("q_revenue", lambda: tk.quarterly_income_stmt.loc[["Total Revenue", "Diluted EPS"]].iloc[:, :5]),
+                                 ("calendar", lambda: tk.calendar),
+                                 ("news", lambda: [(n.get("content", n).get("title"), n.get("content", n).get("pubDate"), (n.get("content", n).get("canonicalUrl") or {}).get("url")) for n in (tk.news or [])[:8]]),
+                                 ("hist", lambda: tk.history(period="1mo")["Close"].tail(8))):
+                    try:
+                        print("--", name); print(fn())
+                    except Exception as exc:
+                        print("ERR", repr(exc)[:200])
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "probe.txt").write_text(buf.getvalue()[:60000])
+    except Exception as exc:
+        out.mkdir(parents=True, exist_ok=True); (out / "probe.txt").write_text(repr(exc))
     from playwright.async_api import async_playwright
     app_smoke.fetch()
     try:                                               # Größe je Feld in results.json / search.json (für die Ladezeit)
