@@ -195,6 +195,7 @@
   .gl { border: 0; background: none; color: var(--muted); font-size: 12px; padding: 0 2px; margin-left: 2px; cursor: pointer; vertical-align: 1px; line-height: 1; }
   .gl:hover { color: var(--accent); }
   .glpop { position: fixed; z-index: 90; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; box-shadow: 0 12px 40px rgba(0,0,0,.45); font-size: 14px; line-height: 1.45; text-transform: none; letter-spacing: 0; font-weight: 400; animation: secin .18s ease both; }
+  b.term { font-weight: inherit; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: 3px; cursor: help; }
   .glpop b { display: block; margin-bottom: 4px; } .glpop p { margin: 0; color: var(--muted); }
   .gloss details { border-bottom: 1px solid var(--line); padding: 8px 0; } .gloss details:last-child { border-bottom: 0; } .gloss summary { cursor: pointer; font-weight: 600; } .gloss p { margin: 6px 0 2px; color: var(--muted); font-size: 14px; }
   .tfind { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -1275,26 +1276,53 @@ const save = () => { try { const { tableSort, tableAsc, ...p } = state; localSto
 
 // ---------- Begriffe kurz erklärt (ⓘ antippen) ----------
 const GLOSS = {
-  score: ["Score", "Kairo-Bewertung 0–100 für Treffer: je näher am idealen Einstieg (Zone, Divergenz, MACD-Wende, CRV), desto höher. Nur für Kairo-Treffer, nicht für Trend-Rücksetzer."],
-  crv: ["CRV (Chance-Risiko)", "Möglicher Gewinn bis Ziel 2 geteilt durch das Risiko bis zum Stop. CRV 3 heißt: 3 € Chance je 1 € Risiko. Kairo verlangt mindestens 2."],
-  chk: ["Rücksetzer-Check", "Nur bei Trend-Rücksetzern: Wahrscheinlichkeit, dass es ein kurzer Rücksetzer bleibt (neues Hoch, bevor der Kurs unter 50 % Fibonacci fällt). ↑ ab 55 %, → 40–55 %, ↓ unter 40 %. Studie mit 7.310 Signalen aus 9 Jahren – Einordnung, kein Ausschlusskriterium."],
-  vola: ["Volatilität", "Wie stark die Aktie schwankt: Standardabweichung der Tagesrenditen der letzten 30 Tage, aufs Jahr hochgerechnet. Über 50 % = sehr unruhig – mit Hebel besonders riskant."],
-  atr: ["ATR (Tagesspanne)", "Average True Range: durchschnittliche Tagesschwankung in Kurs-Einheiten (14 Tage). Kairo setzt Stops und K.-o.-Abstände in ATR, damit normale Schwankungen nicht sofort auslösen."],
-  rsi: ["RSI", "Relative Stärke 0–100 (14 Tage). Unter 30 überverkauft, über 70 überkauft. Kairo sucht Wenden im Bereich 28–48, Trend-Rücksetzer 35–50."],
+  score: ["Score", "Kairo-Bewertung 0–100 für Treffer: je näher am idealen Einstieg (Zone, Divergenz, MACD-Wende, CRV), desto höher. Für die Rangfolge nutzt Kairo inzwischen das Vormomentum – der Score war in der Forschung kein belegtes Merkmal."],
+  crv: ["CRV (Chance-Risiko)", "Möglicher Gewinn bis zum Ziel geteilt durch das Risiko bis zum Stop. CRV 3 heißt: 3 € Chance je 1 € Risiko."],
+  vola: ["Volatilität", "Wie stark die Aktie schwankt: Schwankung der Tagesrenditen der letzten 30 Tage, aufs Jahr hochgerechnet. Über 50 % = sehr unruhig – mit Hebel besonders riskant."],
+  atr: ["ATR (Tagesspanne)", "Durchschnittliche Tagesschwankung der Aktie (14 Tage) in Kurs-Einheiten. Kairo misst Stop-Abstände in ATR, damit normale Schwankungen nicht sofort den Stop auslösen."],
+  rsi: ["RSI", "Relative Stärke 0–100 (14 Tage). Unter 30 überverkauft, über 70 überkauft. Kairo sucht Wenden im Bereich 28–48."],
   mbi: ["MBI", "Momentum Bias Index (AlgoAlpha): misst, ob Kauf- oder Verkaufsdruck überwiegt. Ein grünes X nach einer Korrektur zeigt nachlassenden Verkaufsdruck."],
   macd: ["MACD", "Trendfolge-Indikator aus zwei gleitenden Durchschnitten. Kairo will das MACD-Kreuz nach oben unter der Nulllinie – eine frühe Wende."],
-  div: ["Divergenz", "Kurs macht ein tieferes Tief, der RSI aber ein höheres: die Abwärtsbewegung verliert Kraft (klassisch). Versteckte Divergenz: Bestätigung im Aufwärtstrend."],
+  div: ["Divergenz", "Kurs macht ein tieferes Tief, der RSI aber ein höheres: die Abwärtsbewegung verliert Kraft."],
   zone: ["Zone", "Einstiegsbereich: Fibonacci (Rücklauf 0,5–0,786 des letzten Anstiegs) oder Support (frühere Tiefs/Unterstützung)."],
-  trend: ["Prognose", "Wohin sich die Zahl der erfüllten Kriterien in den nächsten 5 Tagen voraussichtlich bewegt: ▲ mehr, ▼ weniger, ► gleich. Hilft bei Fast-Treffern einzuschätzen, ob bald ein Treffer daraus wird."],
+  trend: ["Prognose", "Wohin sich die Zahl der erfüllten Kriterien in den nächsten 5 Tagen voraussichtlich bewegt: ▲ mehr, ▼ weniger, ► gleich."],
   grade: ["Stufe A/B/C", "Qualitätsstufe der Treffer aus einem geprüften Modell. A = im Test die besten Signale."],
-  status: ["Treffer, Fast, Trend", "Treffer: alle 11 Kairo-Kriterien erfüllt (Wende nach Korrektur). Fast: 1–2 fehlen. Trend: zweites Setup – Rücksetzer an die EMA 50 im klaren Aufwärtstrend; „Top“ = im Test stärkste Stufe."],
-  h4: ["4H-Top-Setup", "Kairo-Treffer (11/11) → 5 enge Tage (Seitwärtsphase) → in derselben 4-Stunden-Kerze: RSI war ≤ 40 und steigt, MACD kreuzt nach oben, grünes MBI-X (beides in den letzten 6 Kerzen ≈ 3 Tage) und Schluss über dem Hoch der 6 Kerzen davor. Dann Kauf zur nächsten 4H-Kerze, Stop unter der Basis. Verkauf: ab Tag 10 am Morgen nach dem ersten Tagesschluss unter der EMA 20, spätestens an Tag 40. Auch Fast-Treffer, denen nur das Abklingen beim MBI fehlt (frisches grünes X, Rot noch über 70 % der Spitze), dürfen ins 4H-Setup – im Feinregel-Test ≈ +0,32 / +0,75 R je Trade, getrennt gezählt. Im Test (Sept. 2023 – Okt. 2026) +0,41 / +0,61 R je Trade statt +0,10 / +0,11 R ohne 4H; der EMA-Ausstieg brachte im Depot +43 % / +31 % p. a. statt +20 % / +26 % mit „Verkauf an Tag 20“."],
+  status: ["Treffer, Fast, 9/11", "Treffer: alle 11 Kairo-Kriterien erfüllt (Wende nach einer Korrektur). Fast: eins fehlt, 9/11: zwei fehlen – beides nur zum Beobachten, kein Kaufsignal."],
   ko: ["Knock-out (K.-o.)", "Fällt der Kurs auf die K.-o.-Schwelle, verfällt der Turbo fast wertlos – auch untertags. Je näher die Schwelle am Kurs, desto höher der Hebel und das Risiko."],
-  lev: ["Hebel", "Um wie viel stärker sich der Turbo bewegt als die Aktie: Hebel 5 → +2 % Aktie ≈ +10 % Turbo. Ergibt sich aus dem Abstand zur K.-o.-Schwelle (Kurs ÷ Abstand)."],
-  r: ["R (Risiko-Einheit)", "Ergebnis gemessen am Risiko bis zum Stop: −1 R = Stop erreicht, +2 R = doppelt so viel gewonnen wie riskiert. Macht Trades unabhängig von der Positionsgröße vergleichbar."],
-  ema: ["EMA 20/50/200", "Exponentiell gleitende Durchschnitte über 20, 50 und 200 Tage. Über der EMA 200 = langfristiger Aufwärtstrend; die EMA 50 ist oft die Unterstützung bei Rücksetzern."],
-  fib: ["Fibonacci", "Rücklauf-Niveaus eines Anstiegs (38,2 %, 50 %, 61,8 %, 78,6 %). Kurze Rücksetzer drehen oft vor 50 %, richtige Korrekturen laufen bis 61,8 % oder tiefer."],
+  lev: ["Hebel", "Um wie viel stärker sich der Turbo bewegt als die Aktie: Hebel 5 → +2 % Aktie ≈ +10 % Turbo. Ergibt sich aus dem Abstand zur K.-o.-Schwelle."],
+  r: ["R (Risiko-Einheit)", "Ergebnis gemessen am Risiko bis zum Stop: −1 R = Stop erreicht, +2 R = doppelt so viel gewonnen wie riskiert. So sind Trades unabhängig von der Größe vergleichbar."],
+  ema: ["EMA 20/50/200", "Gleitende Durchschnitte über 20, 50 und 200 Tage. Über der EMA 200 = langfristiger Aufwärtstrend."],
+  fib: ["Fibonacci", "Rücklauf-Niveaus eines Anstiegs (38,2 %, 50 %, 61,8 %, 78,6 %). Kurze Rücksetzer drehen oft vor 50 %, tiefe Korrekturen laufen bis 61,8 % oder weiter."],
+  base: ["Seitwärtsphase (Basis)", "Nach einem Kairo-Treffer 5 Tage, in denen der Kurs eng läuft (Hoch bis Tief höchstens 1,5 ATR). Erst dann wird gekauft – zur nächsten Eröffnung, wenn sie in dieser Spanne liegt. Kommt sie nicht innerhalb von 10 Handelstagen, verfällt der Treffer."],
+  stop: ["Stop (Stop-Loss)", "Kurs, bei dem du verkaufst, um den Verlust zu begrenzen. Kairo: Tief der Seitwärtsphase minus 0,25 ATR. Direkt nach dem Kauf als Stop-Order setzen und nie nach unten verschieben."],
+  ema20x: ["Ausstieg EMA 20", "Kairo-Regel: Ab dem 10. Handelstag wird verkauft, sobald ein Tag unter der EMA 20 schließt – zur Eröffnung am nächsten Morgen. Spätestens an Tag 60 wird in jedem Fall verkauft."],
+  mom: ["Vormomentum", "Wie stark die Aktie in den Monaten vor dem Treffer gelaufen ist (Monat −6 bis −1). In der Forschung brachten Treffer mit schwächerem Vormomentum in allen drei Testzeiträumen bessere Trades – deshalb stehen sie oben."],
+  pf: ["Profit-Faktor", "Summe aller Gewinne geteilt durch die Summe aller Verluste. Über 1 = insgesamt im Plus, über 1,5 = stark."],
+  hit: ["Trefferquote", "Anteil der Trades mit Gewinn. Bei Kairo sind etwa 30–35 % normal – wenige große Gewinner tragen das Ergebnis."],
+  dd: ["Rückgang (Drawdown)", "Größter Verlust vom bisherigen Höchststand bis zum folgenden Tief. Zeigt, wie viel du zwischendurch aushalten musst."],
+  prime: ["Scalable PRIME+", "Dein Tarif: Orders ab 250 € Orderwert kosten keine Gebühr, darunter 0,99 €. Dazu kommt der Spread (Differenz zwischen Kauf- und Verkaufskurs)."],
+  paper: ["Papier-Test", "Virtuelle Depots, die die Strategien jeden Tag automatisch nach ihren Regeln handeln – ohne echtes Geld. Sie zeigen, ob die Backtests im echten Markt halten."],
+  dm: ["Dual Momentum", "Einmal im Monat: Von S&P 500, Nasdaq-100 und Industrieländern wird der ETF mit der besten 12-Monats-Rendite gehalten – nur wenn sie über dem Geldmarkt liegt, sonst kurze Anleihen. Bester Kandidat für den Trading-Teil, läuft im Papier-Test."],
+  spread: ["Spread", "Unterschied zwischen Kauf- (Brief) und Verkaufskurs (Geld). Versteckte Kosten jeder Order – bei Turbos und kleinen Aktien höher."],
+  exp: ["Erwartung je Trade", "Durchschnittliches Ergebnis aller Trades. Positiv heißt: Die Strategie verdient im Schnitt – auch wenn viele Trades verlieren."],
+  sharpe: ["Sharpe", "Rendite im Verhältnis zur Schwankung. Höher ist besser: gleiche Rendite mit weniger Auf und Ab."],
+  etfa: ["ETF-Ampel", "Für Extra-Geld neben dem Sparplan: Grün = jetzt investieren (Rücksetzer oder Angst am Markt), Gelb = höchstens 3 Monate abwarten. Die monatliche Sparrate läuft immer."],
 };
+const TERMS = [[/\bATR\b/, "atr"], [/Seitwärtsphase/, "base"], [/Vormomentum/, "mom"], [/EMA ?20\b/, "ema20x"], [/K\.-o\.-Schwelle|\bK\.-o\./, "ko"],
+  [/Profit-Faktor/, "pf"], [/Trefferquote/, "hit"], [/[Mm]ax\. Rückgang|[Gg]rößter Rückgang/, "dd"], [/PRIME\+/, "prime"], [/Papier-Test|Papier-Depot/, "paper"],
+  [/Dual Momentum/, "dm"], [/\bCRV\b/, "crv"], [/Stop-Loss/, "stop"], [/\bSpread\b/, "spread"], [/Erwartung je Trade/, "exp"], [/\bHebel\b/, "lev"], [/\bSharpe\b/, "sharpe"], [/ETF-Ampel/, "etfa"]];
+function linkTerms() {
+  const m = $("main"); if (!m) return;
+  m.querySelectorAll(".note, .tip, .vdesc, .jrow2 > span, .mt > span, .jk > span, .fig > span, .tdo small, .ein-next, .hsub").forEach(el => {
+    if (el.dataset.tl || el.closest("button, a, label, .jdet, .kfoot")) return; el.dataset.tl = 1;
+    const used = new Set(), walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), nodes = [];
+    while (walk.nextNode()) nodes.push(walk.currentNode);
+    nodes.forEach(n => { if (n.parentElement.closest("button, a, b.term")) return;
+      for (const [rx, k] of TERMS) { if (used.has(k)) continue; const mm = rx.exec(n.nodeValue); if (!mm) continue;
+        used.add(k); const after = n.splitText(mm.index); after.nodeValue = after.nodeValue.slice(mm[0].length);
+        const t = document.createElement("b"); t.className = "term"; t.dataset.gl = k; t.textContent = mm[0]; n.parentNode.insertBefore(t, after); break; } });
+  });
+}
 const gl = k => GLOSS[k] ? `<button type="button" class="gl" data-gl="${k}" aria-label="Erklärung: ${esc(GLOSS[k][0])}">ⓘ</button>` : "";
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-gl]"); const pop = $("glPop");
@@ -5066,7 +5094,7 @@ function clampNotes() {                          // lange Hinweise auf 3 Zeilen 
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-notemore]"); if (!b) return;
   const n = b.previousElementSibling; if (!n) return; const open = n.classList.toggle("clamp"); b.textContent = open ? "mehr" : "weniger"; });
-function render() { renderMain(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); }
+function render() { renderMain(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); linkTerms(); }
 function renderMain() {
   if (!data) return;
   const hits = data.results.filter(r => r.passed).length, fast = data.results.filter(r => r.fast_hit).length;
