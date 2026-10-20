@@ -8,6 +8,12 @@ Stop = Basis-Tief − 0,25 ATR, Risiko 1 % des Depots, max. 5 Positionen. Aussti
 Verkauf zur nächsten Eröffnung; spätestens Schluss von Tag 60 (v2.5).
 KAIRO: Vorrang ruhigere Titel (kleineres ATR ÷ Kurs, wie im Backtest). KAIROS: Vorrang schwächeres Vormomentum
 (Rendite Monat −6…−1, Merkmal v2.4 bestätigt). Die Depots laufen einen Handelstag hinter dem Scan (Scan muss fertig sein).
+
+Langfrist-Idee des Nutzers (20.10.2026, ungetestet – nur Vorwärtstest): gleicher Basis-Einstieg, dann halten bis zum Ziel.
+KAIROZ (Kairo-Ziel): nur Treffer mit attraktivem Analysten-Kursziel am Signaltag – Abstand zum Ziel ≥ 1 × Jahresschwankung,
+mindestens 3 Analysten. Verkauf, sobald 80 % des Wegs zum Kursziel geschafft sind. KAIROL (Vergleich, „Kairo lang“): dieselben
+Treffer ohne Kursziel-Filter, Ziel = Einstieg + 80 % einer Jahresschwankung. Beide: Sicherheitsnetz −30 %, spätestens nach
+24 Monaten, 20 Plätze à 5 % des Depots (20.000 € virtuell). Kursziele stammen aus dem Scan des Signaltags (kein Rückblick).
 """
 
 from __future__ import annotations
@@ -20,6 +26,19 @@ MAX_OPEN, RISK = 5, 0.01
 # Depot-Aufbau je Variante: KAIRO = Backtest-Original (5 × 1 %), KAIROS = bester Aufbau aus v2.7 (20 × 0,25 %, 20.000 € virtuell)
 DESIGN = {"KAIRO": (5, 0.01), "KAIROS": (20, 0.0025)}
 HOLD = 60                        # spätestens Tag 60 (Forschung v2.5: in allen drei Zeiträumen besser als Tag 40, p 0,0002)
+LONG = {"KAIROZ", "KAIROL"}      # Langfrist-Varianten (halten bis zum Ziel)
+DESIGN.update({"KAIROZ": (20, 0.015), "KAIROL": (20, 0.015)})   # −30 % Netz × 1,5 % Risiko = 5 % je Position
+CAT, GOAL_SHARE, LONG_HOLD = 0.30, 0.80, 504                    # Sicherheitsnetz, Anteil des Wegs zum Ziel, ~24 Monate
+ATTR, MIN_AN = 1.0, 3                                           # Ziel-Abstand ≥ 1 × Jahresschwankung, ≥ 3 Analysten
+
+
+def attractive(s: dict) -> float | None:
+    """Kursziel-Abstand im Verhältnis zur Jahresschwankung (am Signaltag) – None, wenn nicht attraktiv genug."""
+    up, vol, na = s.get("tup"), s.get("vol"), s.get("na") or 0
+    if up is None or not vol or vol <= 0 or na < MIN_AN:
+        return None
+    z = up / vol
+    return z if z >= ATTR else None
 REGIONS = ("us", "europe")
 
 
@@ -59,7 +78,7 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, signals: list, equi
         x = mk.f(p["t"])
         if x is not None and D in x.index:
             close_pos(st, mk, p, float(x.loc[D, "Open"]), "ema20", str(D.date()))
-    key = (lambda a: a["mom"]) if sid == "KAIROS" else (lambda a: a["vol"])
+    key = {"KAIROS": lambda a: a["mom"], "KAIROL": lambda a: a["mom"], "KAIROZ": lambda a: -(a.get("z") or 0)}.get(sid, lambda a: a["vol"])
     for a in sorted([a for a in st["armed"] if pd.Timestamp(a["after"]) < D], key=lambda a: np.nan_to_num(key(a), nan=9.0)):
         x = mk.f(a["t"])
         if x is None or D not in x.index or any(p["t"] == a["t"] for p in st["positions"]):
@@ -74,7 +93,15 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, signals: list, equi
             st["pending"] = [q for q in st["pending"] if q["t"] != a["t"]]
             continue
         n0 = len(st["positions"])
-        open_pos(st, mk, a["t"], str(D.date()), op, a["stop"], DESIGN.get(sid, (MAX_OPEN, RISK))[1], {"regime": "-", "days": 0}, D_prev)
+        if sid in LONG:                          # halten bis zum Ziel: Sicherheitsnetz statt Basis-Stop
+            goal = op + GOAL_SHARE * (a["tg"] - op) if sid == "KAIROZ" else op * (1 + GOAL_SHARE * (a.get("va") or 0.3))
+            if sid == "KAIROZ" and not (a.get("tg") and a["tg"] > op * 1.05):
+                st["events"].append(f"{D.date()} {a['t']}: Kurs schon nahe am Kursziel – kein Kauf")
+                st["pending"] = [q for q in st["pending"] if q["t"] != a["t"]]
+                continue
+            open_pos(st, mk, a["t"], str(D.date()), op, op * (1 - CAT), DESIGN[sid][1], {"regime": "-", "days": 0, "goal": round(goal, 4)}, D_prev)
+        else:
+            open_pos(st, mk, a["t"], str(D.date()), op, a["stop"], DESIGN.get(sid, (MAX_OPEN, RISK))[1], {"regime": "-", "days": 0}, D_prev)
         if len(st["positions"]) > n0:
             st["pending"] = [q for q in st["pending"] if q["t"] != a["t"]]
     st["armed"] = [a for a in st["armed"] if pd.Timestamp(a["after"]) >= D]        # je Vormerkung genau eine Eröffnung
@@ -89,6 +116,12 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, signals: list, equi
             close_pos(st, mk, p, float(r["Open"]), "stop_gap", str(D.date())); continue
         if r["Low"] <= p["stop"]:
             close_pos(st, mk, p, float(p["stop"]), "stop", str(D.date())); continue
+        if sid in LONG:
+            if p.get("goal") and r["High"] >= p["goal"]:
+                close_pos(st, mk, p, float(max(p["goal"], r["Open"])), "ziel", str(D.date())); continue
+            if p["days"] >= LONG_HOLD:
+                close_pos(st, mk, p, float(r["Close"]), "zeit", str(D.date()))
+            continue
         if p["days"] >= HOLD:
             close_pos(st, mk, p, float(r["Close"]), "zeit", str(D.date())); continue
         if p["days"] >= 10 and r["Close"] < r["ema20"]:
@@ -110,7 +143,8 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, signals: list, equi
             hi, lo = float(x["High"].iloc[k - CK + 1:k + 1].max()), float(x["Low"].iloc[k - CK + 1:k + 1].min())
             if hi - lo <= CM * q["atr"]:
                 st["armed"].append({"t": q["t"], "after": str(D.date()), "lo": lo, "hi": hi,
-                                    "stop": lo - BUF * q["atr"], "atr": q["atr"], "mom": q["mom"], "vol": q["vol"]})
+                                    "stop": lo - BUF * q["atr"], "atr": q["atr"], "mom": q["mom"], "vol": q["vol"],
+                                    **{k: q[k] for k in ("tg", "z", "va") if k in q}})
     st["pending"] = keep
     # 4) neue Treffer dieses Tages
     for s in new_hits(signals, set(st["seen"]), D):
@@ -121,8 +155,16 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, signals: list, equi
         i = int(x.index.get_loc(D))
         if any(q["t"] == s["t"] for q in st["pending"]) or any(p["t"] == s["t"] for p in st["positions"]):
             continue
+        extra = {}
+        if sid == "KAIROZ":                      # nur attraktives Kursziel (Stand Signaltag)
+            z = attractive(s)
+            if z is None:
+                continue
+            extra = {"tg": float(x["Close"].iloc[i]) * (1 + float(s["tup"])), "z": round(z, 2)}   # Ziel relativ (Währung/Pence-sicher)
+        if sid in LONG:
+            extra["va"] = s.get("vol") or float(np.log(x["Close"]).diff().iloc[max(1, i - 29):i + 1].std() * np.sqrt(252))
         a14 = float(x["atr"].iloc[i])
         st["pending"].append({"t": s["t"], "d": str(D.date()), "inv": float(x["Low"].iloc[max(0, i - 9):i + 1].min()),
-                              "atr": a14, "mom": momentum(x, i), "vol": a14 / float(x["Close"].iloc[i])})
+                              "atr": a14, "mom": momentum(x, i), "vol": a14 / float(x["Close"].iloc[i]), **extra})
     st["seen"] = st["seen"][-3000:]
     st["equity"].append({"date": str(D.date()), "eur": round(equity(st, mk, D), 2), "open": len(st["positions"])})

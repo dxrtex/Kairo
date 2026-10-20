@@ -26,7 +26,7 @@ from . import core, dualmom, kairo, momentum
 
 HERE = Path(__file__).resolve().parent
 START_CASH = 2000.0                                # Nutzer-Startkapital (18.10.2026)
-CASH_BY_SID = {"KAIROS": 20000.0}                  # Kairo-S: 20 Positionen × 0,25 % brauchen Orders ≥ 250 € (PRIME+)
+CASH_BY_SID = {"KAIROS": 20000.0, "KAIROZ": 20000.0, "KAIROL": 20000.0}                  # Kairo-S: 20 Positionen × 0,25 % brauchen Orders ≥ 250 € (PRIME+)
 
 
 def cash_for(sid: str) -> float:
@@ -432,7 +432,8 @@ def report(d: Path, states: list[dict], bench: list[dict] | None = None, shadow:
                 "S19C": "S19-C (2,0 Std, Volumen 2 von 3)", "MOM5": "MOM5 Momentum Top 5 (monatlich)",
                 "MOM10": "MOM10 Momentum Top 10 (monatlich; Holdout nicht bestanden)",
                 "DM": "DM Dual Momentum SPY/EFA/QQQ → SHY",
-                "KAIRO": "KAIRO Scanner-Treffer (Basis-Einstieg)", "KAIROS": "KAIROS Scanner-Treffer, schwache Aktien zuerst"}.get(st["sid"], "S20 Trendfolge / VCP")
+                "KAIRO": "KAIRO Scanner-Treffer (Basis-Einstieg)", "KAIROS": "KAIROS Scanner-Treffer, schwache Aktien zuerst",
+                "KAIROZ": "KAIROZ Kairo-Ziel (attraktives Kursziel, halten bis zum Ziel)", "KAIROL": "KAIROL Kairo lang (Vergleich ohne Kursziel)"}.get(st["sid"], "S20 Trendfolge / VCP")
         lines += [f"## {name}", "", f"- Start: {s['start']} · Handelstage: {s['tage']}",
                   f"- Depot: **{s['depot_eur']:,.2f} €** ({s['rendite']:+.2%}) · größter Rückgang {s['max_dd']:.1%}",
                   f"- Abgeschlossene Trades: {s['trades']}" + (f" · Trefferquote {s['trefferquote']:.0%} · Ø R {s['avg_R']:+.2f}"
@@ -470,7 +471,7 @@ def main(argv=None) -> int:
     s20_t = list(uni["ticker"])
     states = [load_state(sd, "S19"), load_state(sd, "S19B"), load_state(sd, "S19C"), load_state(sd, "S20"), load_state(sd, "MOM5"), load_state(sd, "MOM10"), load_state(sd, "DM")]
     need = set(s19_t) | set(s20_t) | {p["t"] for s in states for p in s["positions"]}
-    kstates = [load_state(sd, "KAIRO"), load_state(sd, "KAIROS")]
+    kstates = [load_state(sd, "KAIRO"), load_state(sd, "KAIROS"), load_state(sd, "KAIROZ"), load_state(sd, "KAIROL")]
     signals = load_signals()
     k_t = kairo.tickers(signals, kstates, pd.Timestamp.now().normalize() - pd.Timedelta(days=90))
     daily = download(sorted(set(need) | set(dualmom.TICKERS) | set(k_t)) + ["^GSPC"] + ETFS)
