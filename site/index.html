@@ -4024,7 +4024,8 @@ function bilanzHtml() {
       <div class="note" style="margin:6px 0 0">Rund 93 Trades im Jahr ≈ 184 € Gebühren – bei kleinem Kapital frisst das den Vorteil. Mit PRIME+ (ab 250 € gebührenfrei) entfällt das weitgehend.</div></div></details>`;
   if (b === undefined) return back + `<div class="section-title"><span>Kairo-Bilanz</span><span></span></div><div class="hcard"><div class="skel"></div></div>` + research + rules;
   const L = b && b.live, hits = ((b && b.signals) || []).filter(s => s.k === "hit"), X = s => s.st60 || s.st || { res: "wait" };
-  const st = L && (L.strat60 || L.strat), e = 0.14, band = st ? 1.96 * 1.6 / Math.sqrt(st.n) : null;
+  const st = L && (L.strat60 || (() => { const d = hits.map(X).filter(x => ["stop", "ema", "zeit"].includes(x.res) && x.r != null); if (!d.length) return null;
+    return { n: d.length, avg_r: d.reduce((a, x) => a + x.r, 0) / d.length, win: d.filter(x => x.r > 0).length / d.length, stop: d.filter(x => x.res === "stop").length / d.length }; })()), e = 0.14, band = st ? 1.96 * 1.6 / Math.sqrt(st.n) : null;
   const verdict = !st ? "" : st.n < 30 ? `⏳ Noch zu früh für ein Urteil: ${st.n} von ~30 Trades abgeschlossen. Einzelne Wochen schwanken stark.` : st.avg_r < e - band ? "🔴 Schwächer als die Forschung – genauer prüfen." : st.avg_r > e + band ? "🟢 Besser als die Forschung." : "🟢 Im erwarteten Rahmen der Forschung.";
   const act = hits.filter(s => ["run", "stop", "ema", "zeit"].includes(X(s).res)).sort((a, b2) => (X(a).res === "run") - (X(b2).res === "run") || String(b2.d).localeCompare(a.d));
   const nWait = hits.filter(s => X(s).res === "wait").length, nNo = hits.filter(s => X(s).res === "nobase").length;
