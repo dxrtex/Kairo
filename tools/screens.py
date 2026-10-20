@@ -94,8 +94,31 @@ async def main(out: Path) -> None:
                     if await pg.query_selector('[data-g="buy"]'):
                         await pg.click('[data-g="buy"]'); await pg.wait_for_timeout(1200)
                         await pg.screenshot(path=str(out / "ipad_g4_after.png"))
+                await pg.click('[data-g="tab"][data-v="trade"]'); await pg.wait_for_timeout(800)
+                if await pg.query_selector('.g-idea'):              # Limit-Order aufgeben
+                    await pg.click('.g-idea'); await pg.wait_for_timeout(1000)
+                    await pg.click('[data-g="otype"][data-v="limit"]'); await pg.wait_for_timeout(600)
+                    c = await pg.evaluate("(() => gPx(state.gSel).c)()")
+                    for sel, v in (("#gWkn", "DEMO456"), ("#gP0", "2.00"), ("#gK0", f"{c * 0.8:.2f}"), ("#gQty", "100"), ("#gTrig", f"{c * 0.95:.2f}")):
+                        if await pg.query_selector(sel):
+                            await pg.fill(sel, v); await pg.dispatch_event(sel, "input")
+                    await pg.screenshot(path=str(out / "ipad_g6_limit.png"))
+                    await pg.click('[data-g="review"]'); await pg.wait_for_timeout(800)
+                    await pg.screenshot(path=str(out / "ipad_g7_limitreview.png"))
+                    if await pg.query_selector('[data-g="buy"]'):
+                        await pg.click('[data-g="buy"]'); await pg.wait_for_timeout(1200)
                 await pg.click('[data-g="tab"][data-v="orders"]'); await pg.wait_for_timeout(800)
                 await pg.screenshot(path=str(out / "ipad_g5_orders.png"))
+                await pg.click('[data-g="tab"][data-v="depot"]'); await pg.wait_for_timeout(800)
+                await pg.screenshot(path=str(out / "ipad_g8_depot.png"))
+                (out / "errors.txt").write_text("\n".join(errs) or "keine Fehler")
+                for sec in ("journal", "today"):                  # Begriff antippen
+                    await pg.goto(f"{url}?nosplash=1&sec={sec}"); await pg.wait_for_timeout(2500)
+                    n = await pg.evaluate("document.querySelectorAll('b.term').length")
+                    if n:
+                        await pg.evaluate("(() => { const t = document.querySelector('b.term'); t.scrollIntoView({block:'center'}); t.click(); })()")
+                        await pg.wait_for_timeout(500)
+                        await pg.screenshot(path=str(out / f"ipad_term_{sec}_{n}.png"))
             for page in ("track", "research"):
                 await pg.goto(f"https://dxrtex.github.io/Kairo/{page}/")
                 await pg.wait_for_timeout(2000)
