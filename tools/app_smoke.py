@@ -109,6 +109,7 @@ async def run(port: int) -> list[str]:
         pg.on("pageerror", lambda e: errs.append(f"Übung: JS-Fehler {e}"))
         await pg.goto(f"{url}?nosplash=1&sec=game")
         await pg.wait_for_timeout(2500)
+        await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.remove())')
         if await pg.query_selector('[data-g="start"]'):
             await pg.click('[data-g="start"]')
             await pg.wait_for_timeout(1200)

@@ -58,7 +58,7 @@ def messages(dev: dict, prices: dict, today: str, sent: dict) -> list[dict]:
         ex = ema_exit(df, p.get("d"), today) if p.get("e") else None
         if ex:                                         # 4H-Trade: ab Tag 10 Schluss unter der EMA 20 → zur nächsten Eröffnung verkaufen
             add(f"ema:{p.get('i')}", f"📉 Verkaufen: {n} – Schluss unter der EMA 20",
-                f"Tag {ex['day']}: Schluss {_num(ex['c'])} {cur} unter der EMA 20 ({_num(ex['ema'])} {cur}). Laut 4H-Regel zur nächsten Eröffnung "
+                f"Tag {ex['day']}: Schluss {_num(ex['c'])} {cur} unter der EMA 20 ({_num(ex['ema'])} {cur}). Laut Kairo-Regel zur nächsten Eröffnung "
                 "verkaufen – egal ob Gewinn oder Verlust (Turbo im Depot verkaufen, Trade im Journal schließen).")
         lo, hi = _hit(df, p.get("d"), "Low", min), _hit(df, p.get("d"), "High", max)
         if p.get("sl") and lo is not None and lo <= p["sl"]:
@@ -298,6 +298,9 @@ def watch_messages(today: str, rows: list[dict] | None = None) -> list[dict]:
     return [{k: v for k, v in m.items() if k != "_n"} for m in out]
 
 
+H4_PUSH = False
+
+
 def run(today_iso: str | None = None) -> dict:
     from datetime import datetime
     from . import state
@@ -323,7 +326,8 @@ def run(today_iso: str | None = None) -> dict:
     sent = {k2: v for k2, v in state.load("push_sent.json", {}).items() if v >= _days_ago(today, 60)}
     n_sent = failed = 0
     etf_msg = etf_message(today, sent)
-    h4_msg = h4_messages(h4_items, today, sent, next((d.get("rk") for d in devs if d.get("rk")), None))
+    # 4H-Bestätigungen: seit 10/2026 keine Mitteilungen mehr (eine Kairo-Regel ohne 4H); der 4H-Status wird weiter berechnet
+    h4_msg = h4_messages(h4_items, today, sent, next((d.get("rk") for d in devs if d.get("rk")), None)) if H4_PUSH else []
     try:
         watch_msg = watch_messages(today)
     except Exception as exc:
