@@ -2240,7 +2240,7 @@ function cockpitHtml(groups, items) {
   const z = depStrat(groups);
   return `<div class="cockpit">
     <div class="fig"><span>Wert (geschätzt)</span><b class="${val - invK >= 0 ? "up" : "down"}">${known.length ? eur(val) : eur(inv)}</b><em>${known.length ? `${sgnEur(val - invK)} · ${sgnPct(invK ? val / invK - 1 : null, 1)}` : `eingesetzt`}</em></div>
-    <div class="fig"><span>Trades</span><b class="${z.open > z.cfg.maxOpen ? "down" : ""}">${z.open} von ${z.cfg.maxOpen}</b><em>${z.open < z.cfg.maxOpen ? `${z.cfg.maxOpen - z.open} frei – ruhigste Treffer zuerst` : "alle Plätze belegt"}</em></div>
+    <div class="fig"><span>Trades</span><b class="${z.open > z.cfg.maxOpen ? "down" : ""}">${z.open} von ${z.cfg.maxOpen}</b><em>${z.open < z.cfg.maxOpen ? `${z.cfg.maxOpen - z.open} frei – schwächeres Vormomentum zuerst` : "alle Plätze belegt"}</em></div>
     <div class="fig"><span>Bis zu allen Stops</span><b class="down">${z.toStop ? "−" + eur(z.toStop) : "–"}</b><em>${z.riskPct != null && z.toStop ? `${pct(z.riskPct, 1)} vom Depot (${eur(z.cfg.depot)})` : ""}${z.noPlan ? `${z.toStop ? " · " : ""}${z.noPlan} ohne Plan` : ""}</em></div>
     <div class="fig"><span>Nächster Verkaufstag</span><b>${z.next ? dateDE(z.next.st.sell) : "–"}</b><em>${z.next ? esc(z.next.name) + (z.next.st.left ? ` · in ${z.next.st.left} Handelstagen` : " · heute") : ""}</em></div>
   </div>`;
@@ -4271,9 +4271,13 @@ function tpEval(r, E, stop, atr, days) {
   const best = (real.length ? real : ok.length ? ok : list).reduce((a, b) => b.sc > a.sc + 1e-9 ? b : a);
   return { list, best };
 }
-// Rangfolge der heutigen Kairo-Treffer: ruhigste (kleinste ATR in % vom Kurs) zuerst
+// Rangfolge der heutigen Kairo-Treffer wie „Top-Setups“ im Scanner (Forschung v2.4): erst USA/Europa (getestet), darin
+// schwächeres Vormomentum (Rendite Monat −6…−1) zuerst; übrige Regionen danach. Score/Volatilität waren kein belegtes Merkmal.
+const kmMom = t => { const r = ((data && data.results) || []).find(x => x.ticker === t); return r ? (r.flags || {}).mom61 : null; };
+const kmTested = x => ["us", "europe"].includes(String(x.r || "").toLowerCase());
 function kmRank() {
-  const hits = (searchIdx || []).filter(x => x.s === "hit" && !x.ext).sort((a, b) => (a.ap ?? 9) - (b.ap ?? 9));
+  const hits = (searchIdx || []).filter(x => x.s === "hit" && !x.ext).map(x => ({ ...x, mom: kmMom(x.t) }))
+    .sort((a, b) => (kmTested(b) - kmTested(a)) || ((a.mom ?? 9) - (b.mom ?? 9)));
   const pos = {}; hits.forEach((x, i) => { pos[x.t] = i + 1; });
   return { hits, pos };
 }
@@ -4282,7 +4286,8 @@ function kmFit(r, mk) {
   const weak = mk && mk.k === "weak";
   if (r.s === "hit") {
     const { hits, pos } = kmRank(), rk = pos[r.t], free = kmSlots();
-    const rank = rk ? ` Rang ${rk} von ${hits.length} heutigen Treffern (Schwankung ${r.ap != null ? pct(r.ap, 1) : "–"} pro Tag) – bei mehr Treffern als freien Plätzen nimmt Kairo die ruhigsten zuerst.` : "";
+    const mo = kmMom(r.t);
+    const rank = rk ? ` Rang ${rk} von ${hits.length} heutigen Treffern (Vormomentum ${mo != null ? sgnPct(mo, 0) : "–"}${kmTested(r) ? "" : ", Region nicht getestet"}) – bei mehr Treffern als freien Plätzen zuerst USA/Europa mit schwächerem Vormomentum (Forschung: in allen drei Testzeiträumen bessere Trades; muss sich live bestätigen).` : "";
     const fit = weak
       ? { ok: true, k: "hit", tone: "green", mult: KMAX.weakMult, t: "A-Setup – Kairo-Treffer im Ausverkauf: traden",
           s: "Die stärkste Phase der Strategie. Risiko trotzdem nur 1 % – die Verdopplung hielt im Test auf neuen Jahren nicht." + rank }
@@ -4290,7 +4295,7 @@ function kmFit(r, mk) {
           s: "Setup der Strategie. Kauf in der Seitwärtsphase, 20 Tage halten, 1 % Risiko." + rank };
     if (!free) return { ...fit, tone: "yellow", t: "Kairo-Treffer – aber alle Plätze belegt", s: `Du hast schon ${tpCfg().maxOpen} offene Trades. Erst wenn einer endet (SL oder Tag 20), ist wieder Platz.` + rank };
     if (rk && rk > free) return { ...fit, tone: "yellow", t: `Kairo-Treffer – Rang ${rk}, nur ${free} ${free > 1 ? "Plätze" : "Platz"} frei`,
-      s: `Im Test schlugen die ruhigsten Treffer zufällig gewählte deutlich (zufällig gewählt verlor nach Kosten Geld). Nimm diesen nur, wenn die ruhigeren Treffer davor nicht kaufbar sind.` + rank };
+      s: `Die Treffer davor hatten in der Forschung die besseren Chancen (schwächeres Vormomentum). Nimm diesen nur, wenn die davor nicht kaufbar sind.` + rank };
     return fit;
   }
   if (r.s === "near") return { ok: false, k: "near", tone: "red", mult: 1, t: "Auslassen – 9/11, kein Treffer",
@@ -4705,7 +4710,7 @@ function einHtml() {
     <div class="note" style="margin:0 2px 10px">ℹ️ <b>Forschungsstand 10/2026:</b> Kairo-Treffer haben je Trade einen kleinen Vorteil gegenüber Zufall, der aber von den Kosten abhängt (Kosten-Check im Journal). Trend-Rücksetzer und 4H-Varianten sind nicht belegt. Hebel (Turbos) verstärkt Verluste und Kosten zusätzlich – nur zum Lernen oder mit Spielgeld (Reiter Übung). Gebühren mit PRIME+: Orders ab 250 € kostenlos, darunter 0,99 €.</div>
     <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
     ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Kairo-Treffer</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
-      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Kairo-Treffer · ruhigste zuerst${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Schwankung ${x.ap != null ? pct(x.ap, 1) : "–"}${i < free ? "" : " · nur bei freiem Platz"}</span>${einTag(x)}</button>`).join("")}</div>` : ""}`}`;
+      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Kairo-Treffer · USA/Europa, schwächeres Vormomentum zuerst${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}${kmTested(x) ? "" : " · Region nicht getestet"}${i < free ? "" : " · nur bei freiem Platz"}</span>${einTag(x)}</button>`).join("")}</div>` : ""}`}`;
 }
 document.addEventListener("input", e => {
   if (e.target.id === "gQ") { state.gQ = e.target.value; const l = $("gList"); if (l) l.innerHTML = gListHtml(); }
@@ -4871,20 +4876,25 @@ function renderMain() {
   const col = COLS.find(c => c.k === state.tableSort) || COLS.find(c => c.k === "score");
   if (state.tableSort !== "score" || state.tableAsc) list.sort((a, b) => { const x = col.g(a), y = col.g(b); const c = typeof x === "string" ? x.localeCompare(y) : x - y; return state.tableAsc ? c : -c; });
   else list.sort((a, b) => h4Prio(b) - h4Prio(a));          // Standard: „perfekte“ Aktien (Treffer + 4H bestätigt) ganz oben, sonst Score
+  const full = list.length, rows = scanAll || full <= SCAN_LIM ? list : list.slice(0, SCAN_LIM);   // lange Listen: erst die besten 60
+  const more = rows.length < full ? `<div class="row-actions" style="justify-content:center;margin:12px 0"><button class="btn ghost" data-scanall>Alle ${full} anzeigen</button></div>` : "";
   const onlyHits = k.size === 1 && k.has("hit");
   const lead = ["ticker", "name", "grade", "status", "met", "trend", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)));   // Status bleibt: zeigt den 4H-Stand
   const hid = new Set(state.hiddenCols || []);
   if (!(data.stats && data.stats.grade)) hid.add("grade");    // Stufen nur, wenn ein geprüftes Modell aktiv ist
   const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss"].includes(c.k))].filter(c => c.k === "ticker" || !hid.has(c.k));
   $("main").innerHTML = head + `<div class="table-wrap"><table><thead><tr>${cols.map(c => `<th class="${c.n ? "num " : ""}${c.k === col.k ? "sorted" + (state.tableAsc ? " asc" : "") : ""}" data-k="${c.k}">${c.l}${gl(c.k === "dd" ? "" : c.k)}</th>`).join("")}</tr></thead>
-    <tbody>${list.map(r => `<tr class="${r.passed ? "r-hit" : r.fast_hit ? "r-fast" : ""}">${cols.map(c => `<td class="${c.n ? "num" : ""}">${c.h(r)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` + (isApple() ? "" : mListHtml(list, col)) + extra;
+    <tbody>${rows.map(r => `<tr class="${r.passed ? "r-hit" : r.fast_hit ? "r-fast" : ""}">${cols.map(c => `<td class="${c.n ? "num" : ""}">${c.h(r)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` + (isApple() ? "" : mListHtml(rows, col)) + more + extra;
   if (isApple()) {
     const tools = `<div class="atools"><div class="aseg"><button data-aview="list" class="${state.aView !== "table" ? "on" : ""}">Liste</button><button data-aview="table" class="${state.aView === "table" ? "on" : ""}">Tabelle</button></div>${aSortHtml(col)}</div>`;
     if (state.aView === "table") { const st = $("main").querySelector(".section-title"); if (st) st.insertAdjacentHTML("afterend", tools); }
-    else { $("main").innerHTML = head + tools + aListHtml(list) + extra; observeSparks(); }
+    else { $("main").innerHTML = head + tools + aListHtml(rows) + more + extra; observeSparks(); }
   }
 }
 
+const SCAN_LIM = 60;
+let scanAll = false;
+document.addEventListener("click", e => { if (e.target.closest("[data-scanall]")) { scanAll = true; render(); } else if (e.target.closest("[data-view]")) scanAll = false; });
 // Kompakte Liste fürs iPhone (nur im neuen Design, nur schmale Bildschirme – sonst bleibt die Tabelle)
 function mListHtml(list, col) {
   const sortable = COLS.filter(c => ["score", "met", "status", "name", "cap", "close", "tgt", "trend", "grade"].includes(c.k));
