@@ -198,6 +198,25 @@
   .glpop { position: fixed; z-index: 90; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; box-shadow: 0 12px 40px rgba(0,0,0,.45); font-size: 14px; line-height: 1.45; text-transform: none; letter-spacing: 0; font-weight: 400; animation: secin .18s ease both; }
   abbr.term { font: inherit; color: inherit; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: 3px; cursor: help; }
   .glpop b { display: block; margin-bottom: 4px; }
+  .chart-miss { display: grid; place-items: center; gap: 6px; height: 150px; color: var(--muted); font-size: 14px; text-align: center; background: var(--surface-2); border-radius: var(--radius-s); }
+  #netToast { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 10px); transform: translate(-50%, -140%); z-index: 90; padding: 9px 16px; border-radius: 999px;
+    background: var(--gold); color: #000; font-size: 14px; font-weight: 650; box-shadow: 0 6px 20px rgba(0,0,0,.25); transition: transform .3s ease; pointer-events: none; }
+  #netToast.on { transform: translate(-50%, 0); } #netToast.ok { background: var(--up); }
+  .boot { margin-top: 18px; } .boot .skel + .skel { margin-top: 10px; }
+  .nw-box { width: min(480px, 100%); } .nw-v { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 10px; } .nw-v b { font-size: 22px; letter-spacing: -.02em; } .nw-v small { color: var(--muted); }
+  .nw-l { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .nw-l li { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+  .nw-l span { font-size: 14px; color: var(--muted); } .nw-all { margin-top: 14px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
+  html.big { zoom: 1.12; } html.bigger { zoom: 1.25; }
+  .kplan { --kc: var(--muted); border-radius: 16px; padding: 14px; background: color-mix(in srgb, var(--kc) 9%, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--kc) 28%, transparent); }
+  .kplan.k-g { --kc: var(--up); } .kplan.k-y { --kc: var(--gold); } .kplan.k-r { --kc: var(--red); } .kplan.k-b { --kc: var(--accent); }
+  .kp-h { display: flex; gap: 12px; align-items: flex-start; } .kp-h > i { flex: none; width: 12px; height: 12px; margin-top: 5px; border-radius: 50%; background: var(--kc); box-shadow: 0 0 10px var(--kc); }
+  .kp-h b { display: block; font-size: 18px; letter-spacing: -.01em; color: var(--kc); } .kplan.k-n .kp-h b { color: var(--text); } .kp-h span { display: block; font-size: 14px; color: var(--muted); margin-top: 2px; }
+  .kp-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(124px, 1fr)); gap: 8px; margin-top: 12px; }
+  .kp-cells > div { background: var(--surface); border-radius: 12px; padding: 10px 12px; min-width: 0; } .kp-cells span { display: block; font-size: 12px; color: var(--muted); }
+  .kp-cells b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; margin: 2px 0; } .kp-cells em { display: block; font-style: normal; font-size: 12px; color: var(--muted); }
+  .kp-act { margin-top: 12px; display: flex; gap: 8px; } .kp-act .btn { flex: 1; }
   .pgrp > summary { cursor: pointer; list-style: none; } .pgrp > summary::-webkit-details-marker { display: none; }
   .st-step .btn { flex: none; width: auto; } .ein-opt > .st { grid-column: 2; grid-row: 1 / span 2; justify-self: end; align-self: center; width: auto; }
   .st-step { display: flex; align-items: center; gap: 8px; } .st-step > span { flex: 1; } .st-step s { text-decoration-color: color-mix(in srgb, currentColor 50%, transparent); }
@@ -938,6 +957,39 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
 @media (max-width:640px){.kbar{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;margin-left:-20px;margin-right:-20px;padding:2px 20px 6px}.kbar::-webkit-scrollbar{display:none}.kbar .kchip{flex:0 0 auto}}
 
 </style>
+<style id="ds-light" media="not all">
+/* Hell (immer): wie „Automatisch“ im hellen Modus */
+
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-feature-settings:"tnum"}
+
+
+:root{--bg:#f2f2f7;--surface:#fff;--surface-2:#f2f2f7;--surface-3:#e5e5ea;--line:#e1e1e6;--glass:#fff;--glass-line:#e1e1e6;
+--text:#000;--muted:#6e6e73;--faint:#aeaeb2;--accent:#007aff;--accent-ink:#fff;--accent-bg:color-mix(in srgb,#007aff 16%,transparent);
+--up:#248a3d;--up-bg:color-mix(in srgb,#248a3d 15%,transparent);--red:#d70015;--red-bg:color-mix(in srgb,#d70015 14%,transparent);--gold:#b25000;--gold-bg:color-mix(in srgb,#b25000 14%,transparent);
+--zone:color-mix(in srgb,#007aff 14%,transparent);--candle-up:#248a3d;--candle-down:#d70015;--radius:24px;--radius-s:16px;color-scheme:light}
+body{background:#f2f2f7;color:#000}
+.score::before{background:#fff!important} nav.tabbar{background:color-mix(in srgb,#fff 88%,transparent)!important}
+.cm-box{background:#fff}
+body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}.chip.ok,.wl{color:var(--text)!important}.st-kein_setup{background:var(--surface-2)}.score::before{box-shadow:none}
+.cm-back{background:rgba(0,0,0,.25)!important}.hello h1{letter-spacing:-.028em}.section-title{letter-spacing:.06em}th{font-weight:600}
+.flag{color:var(--muted)!important;background:var(--surface-2)!important}.section-title{text-transform:uppercase;font-size:12.5px;font-weight:500;letter-spacing:.02em;margin:24px 16px 7px}
+.card,.hcard,.table-wrap{border:0!important;border-radius:12px!important}/* Korrekturen für helle Designs */
+.grd.g-A{color:#fff}.candles{background:var(--surface-2)}
+.cockpit .fig,.dep-sum .fig{background:var(--surface)}
+
+
+
+/* gemeinsame Korrekturen für alle wählbaren Designs */
+.chip.ok{color:var(--text)}.wl{color:var(--muted)}
+/* Nebenbuttons klar als Buttons erkennbar (grau wie in iOS), auch bei dunkler Schrift auf Akzent */
+.btn.ghost{background:color-mix(in srgb,var(--accent) 13%,transparent)!important;color:var(--accent)!important;border:0!important}
+/* Auswahlfelder in Formularen */
+.form select{appearance:none;-webkit-appearance:none;width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px 40px 12px 14px;margin-top:6px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 20px) 52%,calc(100% - 15px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+/* iPhone: Filter-Chips in einer Zeile zum Wischen statt drei Zeilen */
+@media (max-width:640px){.kbar{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;margin-left:-20px;margin-right:-20px;padding:2px 20px 6px}.kbar::-webkit-scrollbar{display:none}.kbar .kchip{flex:0 0 auto}}
+
+</style>
 <style id="ds-postfach" media="not all">
 
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-feature-settings:"tnum"}
@@ -1219,7 +1271,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
     <input type="search" id="search" placeholder="Aktie suchen – Name oder Ticker (alle Aktien)" autocomplete="off">
   </div>
 
-  <main id="main"></main>
+  <main id="main"><div class="hgrid boot" aria-busy="true" aria-label="Lädt"><div class="hcard"><div class="skel"></div><div class="skel"></div></div><div class="hcard"><div class="skel"></div><div class="skel"></div></div></div></main>
 
 </div>
 
@@ -1320,11 +1372,9 @@ const SHORT = { drawdown: "Rückgang", no_crash: "kein Crash", structure: "unter
   zone: "Zone", rsi_div: "RSI-Divergenz", rsi_range: "RSI 28–48", macd_below0: "MACD < 0", macd_turn: "MACD dreht",
   mbi: "MBI-Signal", crv: "CRV ≥ 2", cap: "Börsenwert", liquidity: "Liquidität", price: "Kurs ≥ 1", history: "Historie" };
 const gradeBadge = (r, big) => r.grade ? `<span class="grd g-${r.grade.g}${big ? " big" : ""}" title="Qualitätsstufe ${r.grade.g} – aus dem Backtest, siehe Score antippen">${r.grade.g}</span>` : "";
-const trendBadge = r => isTrend(r) ? `<span class="status st-trend">Trend-Rücksetzer${r.tr.top ? " · Top" : ""}</span>` : "";
-const statusBadge = r => r.passed ? `<span class="status st-bereit">Treffer${r.score ? " · Score " + r.score : ""}</span>${gradeBadge(r, true)}${h4Badge(h4Of(r.ticker))}${trendBadge(r)}`
-  : isTrend(r) ? trendBadge(r) + (r.fast_hit ? `<span class="status st-abwarten">Kairo: Fast-Treffer · fehlt: ${esc(r.missing[0])}</span>` : "")
-  : r.fast_hit ? `<span class="status st-abwarten">Fast-Treffer · fehlt: ${esc(r.missing[0])}</span>${h4NowBadge(r.ticker)}`
-  : r.near_hit ? `<span class="status st-kein_setup">9/11 · kein Treffer · fehlt: ${esc(r.missing.join(", "))}</span>${h4NowBadge(r.ticker)}`
+const statusBadge = r => r.passed ? `<span class="status st-bereit">Treffer</span>${kPill(r)}`
+  : r.fast_hit ? `<span class="status st-abwarten">Fast-Treffer · fehlt: ${esc(shortCrit(r.missing[0]))}</span>`
+  : r.near_hit ? `<span class="status st-kein_setup">9/11 · fehlt: ${esc(r.missing.map(shortCrit).join(", "))}</span>`
   : `<span class="status st-kein_setup">Kein Setup · ${r.missing.length} Kriterien fehlen</span>`;
 const SETUP_KEYS = ["drawdown", "no_crash", "structure", "flattening", "zone", "rsi_div", "rsi_range", "macd_below0", "macd_turn", "mbi", "crv"];
 const tvUrl = t => {
@@ -1360,13 +1410,15 @@ if (state.tab === "settings" || state.tab === "filter") state.tab = "cards";
 state.sec = "today";   // App startet immer auf „Heute“
 // Design: "new" (Standard) oder "classic" (ursprüngliches Design) – Umschalten in den Einstellungen
 const isApple = () => state.design === "apple";
-const isLight = () => ["ioslight", "postfach"].includes(state.design) || (state.design === "auto" && matchMedia("(prefers-color-scheme: light)").matches);
+const isLight = () => ["ioslight", "postfach", "light"].includes(state.design) || (state.design === "auto" && matchMedia("(prefers-color-scheme: light)").matches);
 const LC = () => isLight() ? { t: "#6e6e73", g: "#ececf0", b: "#d1d1d6", k: "#3a3a3c" } : { t: "#9a9a9f", g: "#1d1d1f", b: "#2a2a2d", k: "#e5e5ea" };
 // Designs: Klassisch (Standard) oder eines der wählbaren Designs – jedes ist ein eigenes Stylesheet
-const DESIGNS = [["classic", "Klassisch (Standard)"], ["auto", "Automatisch (tagsüber hell, abends dunkel)"], ["postfach-classic", "Aufgaben-Postfach · Klassisch"], ["postfach-aktien", "Aufgaben-Postfach · Apple Aktien"], ["postfach", "Aufgaben-Postfach · Hell"]];
+const DESIGNS = [["classic", "Dunkel (Standard)"], ["light", "Hell"], ["auto", "Automatisch (wie das iPad)"], ["postfach-classic", "Aufgaben-Postfach · Klassisch"], ["postfach-aktien", "Aufgaben-Postfach · Apple Aktien"], ["postfach", "Aufgaben-Postfach · Hell"]];
 if (!DESIGNS.some(([k]) => k === state.design)) state.design = "classic";   // frühere Test-Designs (Apple-Look, Pro) → Klassisch
 const isPostfach = () => String(state.design).startsWith("postfach");
+const applyTextSize = () => { document.documentElement.classList.toggle("big", state.textSize === "big"); document.documentElement.classList.toggle("bigger", state.textSize === "bigger"); };
 const applyDesign = () => {
+  applyTextSize();
   DESIGNS.forEach(([k]) => { const el = document.getElementById("ds-" + k); if (el) el.media = k === state.design ? "all" : "not all"; });
   const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = isLight() ? "#f2f2f7" : getComputedStyle(document.body).backgroundColor;
 };
@@ -1525,11 +1577,13 @@ function favExtraHtml() {
 // Übersichtskarte als Fenster (Antippen von Name/Ticker in der Tabelle)
 function openCard(t) {
   const r = data.results.find(x => x.ticker === t); if (!r) return;
+  if (!searchIdx) Promise.resolve(loadSearch()).then(() => { if (document.body.classList.contains("card-open") && $("cardModalBody").querySelector(`[data-mini="${CSS.escape(t)}"]`)) openCard(t); });
   $("cardModalBody").innerHTML = card(r);
   document.body.classList.add("card-open");
   document.querySelectorAll(".aitem").forEach(x => x.classList.toggle("sel", x.dataset.card === t));
   const el = $("cardModalBody").querySelector("[data-mini]");
-  if (el) loadChart(t).then(c => paintChart(el, c, r)).catch(() => {});
+  if (el) loadChart(t).then(c => paintChart(el, c, r)).catch(() => { delete chartCache[t];
+    el.innerHTML = `<div class="chart-miss">Chart gerade nicht verfügbar <a href="${tvUrl(t)}" target="_blank" rel="noopener">in TradingView öffnen ›</a></div>`; });
 }
 function closeCard() { document.body.classList.remove("card-open"); document.querySelectorAll(".aitem.sel").forEach(x => x.classList.remove("sel")); }
 (() => {   // Apple-Look: Sheet nach unten wischen schließt die Übersicht (nur iPhone / iPad hochkant)
@@ -1570,7 +1624,7 @@ function scoreBoxHtml(r) {
       <table class="check"><tbody>${(r.bonuses || []).map(b => `<tr><td class="${b.points >= 0 ? "ok" : "no"}">${b.points > 0 ? "+" : ""}${b.points}</td><td>${esc(b.label)}</td></tr>`).join("")}
       <tr><td><b>${sum}</b></td><td><b>Summe${sum > 100 ? " (gedeckelt auf 100)" : ""}</b></td></tr></tbody></table>${gradeBox}${trend}${past}`;
   }
-  const miss = r.criteria.filter(c => !c.ok && !["cap", "liquidity", "price", "history"].includes(c.key));
+  const miss = (r.criteria || []).filter(c => !c.ok && !["cap", "liquidity", "price", "history"].includes(c.key));
   return `<div class="sb-h">${r.met ?? "–"} von ${r.total ?? 11} Kriterien erfüllt – Score gibt es erst, wenn alle erfüllt sind</div>
     <table class="check"><tbody>${miss.map(c => `<tr><td class="no">✗</td><td><b>${esc(c.label)}</b><br>${esc(c.value)}</td></tr>`).join("")}</tbody></table>${trend}${past}`;
 }
@@ -1622,48 +1676,42 @@ function fundHtml(r) {
 // ---------- Karte ----------
 function ampel(r) {
   return `<div class="ampel" title="Pflichtkriterien">${SETUP_KEYS.map(k => {
-    const c = r.criteria.find(x => x.key === k); return c ? `<span class="dot ${c.ok ? "" : "no"}" title="${esc(SHORT[k])}: ${c.ok ? "erfüllt" : "fehlt"}"></span>` : "";
+    const c = (r.criteria || []).find(x => x.key === k); return c ? `<span class="dot ${c.ok ? "" : "no"}" title="${esc(SHORT[k])}: ${c.ok ? "erfüllt" : "fehlt"}"></span>` : "";
   }).join("")}</div>`;
 }
 function chips(r) {
   return SETUP_KEYS.map(k => {
-    const c = r.criteria.find(x => x.key === k); if (!c) return "";
+    const c = (r.criteria || []).find(x => x.key === k); if (!c) return "";
     return `<span class="chip ${c.ok ? "ok" : "miss"}"><i>${c.ok ? "✓" : "✗"}</i> ${esc(SHORT[k])}</span>`;
   }).join("");
-}
-function trendBoxHtml(r) {
-  const t = r.tr; if (!t) return "";
-  const p = t.plan || {};
-  return `<div class="trendbox${t.ok ? " ok" : ""}"><div class="plan-h">Trend-Rücksetzer · ${t.met}/${t.total} erfüllt${t.ok ? " ✓" : ""}${t.top ? " · Stufe Top" : ""}</div>
-    ${t.ok ? `<div class="note" style="margin:0 0 6px">${t.top ? "<b>Top:</b> nah am Hoch, ruhige Aktie, Trend nicht überdehnt – im 6-Jahres-Test die besten Trend-Rücksetzer. Zuerst diese handeln." : "Nicht Top: weiter vom Hoch entfernt, sehr volatil oder Trend schon überdehnt – im Test deutlich schwächer."}</div>` : ""}
-    <ul class="checks">${t.criteria.map(c => `<li><i class="${c.ok ? "up" : "down"}">${c.ok ? "✓" : "✗"}</i><b>${esc(c.l)}:</b> ${esc(c.v)}</li>`).join("")}</ul>
-    ${t.ok ? chkHtml(t.chk) : ""}
-    ${t.ok && p.stop ? `<div class="exrow" style="margin-top:6px"><span>Stop (unter 10-Tage-Tief)</span><b>${fmt(p.stop)}</b><span>Ziel 1 / Ziel 2</span><b>${fmt(p.target1)} / ${fmt(p.target2)}</b><span>K.-o.-Vorschlag (1–1,5 ATR unter Stop)</span><b>${r.atr_pct ? `${fmt(p.stop - 1.5 * r.atr_pct * r.close)} – ${fmt(p.stop - r.atr_pct * r.close)}` : "–"}</b></div>` : ""}
-    <div class="note" style="margin:6px 0 0">Zweites Setup: Aktie im klaren Aufwärtstrend macht eine kurze Verschnaufpause an der EMA 50 – Wette auf die Fortsetzung (Kairo: Wende nach einer Korrektur).</div></div>`;
 }
 // Rücksetzer-Check (Studie 6 J.): bleibt es ein Rücksetzer oder wird es eine richtige Korrektur?
 const chkTone = c => c.p >= .55 ? "g" : c.p >= .4 ? "y" : "r";
 const chkLabel = c => c.p >= .55 ? "wahrscheinlich nur Rücksetzer" : c.p >= .4 ? "offen" : "Korrektur-Risiko erhöht";
-function chkHtml(c) {
-  if (!c) return "";
-  const tn = chkTone(c), li = (a, cls) => a.map(x => `<li><i class="${cls}">${cls === "up" ? "+" : "–"}</i>${esc(x)}</li>`).join("");
-  return `<div class="chk tone-${tn}"><div class="chk-h"><b>Rücksetzer-Check: ${pct(c.p, 0)} ${gl("chk")}</b><span>${chkLabel(c)}</span></div>
-    <div class="chk-bar"><i style="width:${Math.round(c.p * 100)}%"></i></div>
-    ${c.pro.length || c.con.length ? `<ul class="checks">${li(c.pro, "up")}${li(c.con, "down")}</ul>` : ""}
-    <div class="note" style="margin:6px 0 0">Wahrscheinlichkeit für ein neues Hoch, bevor der Kurs unter das 50-%-Fibonacci-Niveau (${fmt(c.fib50)}) des letzten Anstiegs fällt. ${c.korr != null ? `In vergleichbaren Fällen der Studie fiel der Kurs in ${pct(c.korr, 0)} der Fälle zuerst darunter. ` : ""}${tn === "r" ? "Rechne mit einem tieferen Rücksetzer – K.-o. mit Abstand wählen (unter das 61,8-%-Niveau). " : ""}Zur Einordnung, nicht zum Aussortieren: Im Test (7.310 Signale, 9 J.) hätte Weglassen der roten Signale Rendite gekostet – sie korrigieren oft erst und steigen danach trotzdem.</div></div>`;
-}
-// Urteil: die Antwort zuerst – Einstieg ja/nein, warum, und der nächste Schritt (nur im neuen Design sichtbar)
-function verdictHtml(r) {
-  const ein = t => `<button class="btn" data-ein="${esc(r.ticker)}">${t}</button>`;
-  const h4 = (r.passed || r.mbi_soft) && h4Of(r.ticker);
-  if (h4 && !h4Go(h4)) { const x = h4Text(h4); return `<div class="verdict warn"><i></i><div><b>Kairo-Treffer · ${esc(x.t)}</b><span>${esc(x.s)}</span></div>${ein("Plan ansehen")}</div>`; }
-  if (r.passed) return `<div class="verdict ok"><i></i><div><b>Einstieg möglich · Kairo-Treffer${h4 ? " · 4H bestätigt ✅" : ""}</b><span>Score ${r.score ?? "–"} · CRV ${fmt(r.crv, 1)}${r.plan && r.plan.stop ? ` · Setup ungültig unter ${fmt(r.plan.stop)}` : ""}</span></div>${ein("Einstieg planen")}</div>`;
-  if (isTrend(r)) return `<div class="verdict ok"><i></i><div><b>Einstieg möglich · Trend-Rücksetzer${r.tr.top ? " Top" : ""}</b><span>${r.tr.top ? "Stärkste Stufe im 6-Jahres-Test" : "Gültig, aber nicht Top – im Test schwächer"}${r.tr.chk ? ` · Rücksetzer-Check ${pct(r.tr.chk.p, 0)}` : ""}${r.tr.plan && r.tr.plan.stop ? ` · Stop ${fmt(r.tr.plan.stop)}` : ""}</span></div>${ein("Einstieg planen")}</div>`;
+// Kairo-Plan: die Antwort zuerst – Status, Kaufzone, Stop, Ausstieg, Kursziel (alle Designs)
+function kplanHtml(r) {
+  const x = kSt(r), it = h4Of(r.ticker), pl0 = (rowOf(r.ticker) || {}).pl || {}, cur = esc(r.currency || ""), tz = tgtZ(r);
+  const ib = it && it.base && it.base.lo != null ? it.base : null;          // Seitwärtsphase aus der Abend-Prüfung, sonst aus dem Scan
+  const pl = { base: pl0.base || ib, stop: pl0.base ? pl0.stop : ib ? ib.sl : pl0.stop };
+  const head = { ready: ["g", "Kaufbereit", "Seitwärtsphase fertig – Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt."],
+    wait: ["y", "Treffer – noch nicht kaufen", `${x.s}. Gekauft wird erst nach 5 ruhigen Tagen.`],
+    late: ["y", "Einstieg vorbei", "Der Kauftag nach der Seitwärtsphase ist schon vorbei – nicht nachkaufen, auf den nächsten Treffer warten."],
+    gone: ["r", "Verfallen", "Innerhalb von 10 Tagen keine Seitwärtsphase – kein Trade."],
+    own: ["b", "Im Depot", "Der Trade läuft – Stop und Ausstieg siehst du im Depot."],
+    fast: ["y", "Fast-Treffer – beobachten", `Es fehlt ${esc((r.missing || []).slice(0, 2).map(shortCrit).join(", "))}. Erst als voller Treffer handeln.`],
+    near: ["n", "Kein Signal – 9/11", `Es fehlen ${esc((r.missing || []).map(shortCrit).join(", "))}.`],
+    none: ["n", "Kein Signal", `${r.met ?? "–"} von ${r.total ?? 11} Kriterien erfüllt.`] }[x.k] || ["n", "Kein Signal", ""];
   const fm = filterMiss(r);
-  if (fm) return `<div class="verdict warn"><i></i><div><b>Kein Einstieg · Grundfilter nicht erfüllt</b><span>Alle ${r.total} Setup-Kriterien erfüllt, aber: ${esc(fm)}</span></div></div>`;
-  if (r.near_hit) return `<div class="verdict"><i></i><div><b>Kein Treffer · 9/11 – nur beobachten</b><span>Es fehlen: ${esc((r.missing || []).join(", "))}. Im Test (10 Jahre) brachten 9/11-Einstiege im Schnitt keinen Vorteil – erst als voller Treffer handeln.</span></div></div>`;
-  if (r.fast_hit) return `<div class="verdict warn"><i></i><div><b>Noch kein Einstieg · fast so weit</b><span>Es fehlt: ${esc((r.missing || []).slice(0, 2).join(", "))}</span></div></div>`;
-  return `<div class="verdict"><i></i><div><b>Kein Einstieg · beobachten</b><span>${r.met ?? "–"} von ${r.total ?? 11} Kriterien erfüllt</span></div></div>`;
+  const cells = [];
+  if (r.passed && x.k !== "gone") {
+    cells.push(["Kaufzone", pl.base ? `${fmt(pl.base.lo)}–${fmt(pl.base.hi)}` : "nach Seitwärtsphase", pl.base ? cur : "5 ruhige Tage abwarten"]);
+    cells.push(["Stop", pl.base && pl.stop ? fmt(pl.stop) : "–", pl.base && pl.stop ? `${cur} · ${pct((pl.base.hi - pl.stop) / pl.base.hi, 1)} unter der Zone` : "Tief der Seitwärtsphase − 0,25 ATR"]);
+    cells.push(["Ausstieg", "EMA 20", "ab Tag 10 bei Schluss darunter, spätestens Tag 60"]);
+  }
+  if (tz && tz.u > 0) cells.push(["Kursziel Analysten", sgnPct(tz.u, 0), `${fmt(tz.z, 1)} × Jahresschwankung · ${tz.n} Analysten${tz.z >= 1 ? " · attraktiv" : ""}`]);
+  return `<div class="kplan k-${fm ? "n" : head[0]}"><div class="kp-h"><i></i><div><b>${fm ? "Kein Signal – Grundfilter" : head[1]}</b><span>${fm ? `Alle Setup-Kriterien erfüllt, aber: ${esc(fm)}` : head[2]}</span></div></div>
+    ${cells.length ? `<div class="kp-cells">${cells.map(([l, v, sub]) => `<div><span>${l}</span><b>${v}</b><em>${sub}</em></div>`).join("")}</div>` : ""}
+    ${r.passed && !["gone", "own"].includes(x.k) ? `<div class="kp-act"><button class="btn" data-ein="${esc(r.ticker)}">Trade planen</button></div>` : ""}</div>`;
 }
 const agrp = (t, h, open) => !h ? "" : isApple() ? `<details class="agrp"${open ? " open" : ""}><summary>${esc(t)}</summary><div>${h}</div></details>` : h;
 function card(r) {
@@ -1684,7 +1732,7 @@ function card(r) {
       ${trendHtml(r)}</div>
     </div>
     ${isApple() ? `<div class="apx"><b>${fmt(r.close)} <small>${esc(r.currency || "")}</small></b><i class="chgp" data-chg="${esc(r.ticker)}"></i></div>` : ""}
-    ${verdictHtml(r)}
+    ${kplanHtml(r)}
     <div class="aboutbox" hidden>${aboutHtml(r)}</div>
     <div class="scorebox" hidden>${scoreBoxHtml(r)}</div>
     <div class="figures">
@@ -1695,7 +1743,7 @@ function card(r) {
     </div>
     ${isApple() ? `<div class="aseg rng">${[["1M", 21], ["3M", 63], ["6M", 126], ["1J", 252]].map(([l, n]) => `<button data-rng="${n}" class="${(state.aRng || 63) === n ? "on" : ""}">${l}</button>`).join("")}</div>` : ""}
     <div class="chart" data-mini="${esc(r.ticker)}"><svg class="candles" viewBox="0 0 600 220" preserveAspectRatio="none"></svg></div>
-    ${agrp(`Kriterien · ${r.met ?? "–"}/${r.total ?? 11}`, `<div class="chips">${chips(r)}</div>`, true)}
+    ${agrp(`Kriterien · ${r.met ?? "–"}/${r.total ?? 11}`, r.criteria ? `<div class="chips">${chips(r)}</div>` : `<div class="note" style="margin:0">${r.met ?? "–"} von ${r.total ?? 11} Kriterien erfüllt${(r.missing || []).length ? ` – es fehlen: ${esc(r.missing.map(shortCrit).join(", "))}` : ""}.</div>`, true)}
     ${tipHtml(r.hint)}
     ${agrp("Marktstimmung", sentiHtml(r))}
     ${agrp("Fundament & Wochentrend", fundHtml(r))}
@@ -1829,7 +1877,7 @@ const COLS = [
   { k: "met", l: "Erfüllt", n: 1, watch: 1, g: r => r.met ?? 0, h: r => !r.passed && !r.fast_hit && isTrend(r) ? `<b class="up">${r.tr.met} / ${r.tr.total}</b><small class="muted" style="display:block">Trend · Kairo ${r.met}/${r.total}</small>` : `<b class="${r.passed ? "up" : r.fast_hit ? "" : "muted"}">${r.met ?? "–"} / ${r.total ?? 11}</b>${filterMiss(r) ? `<small class="down" style="display:block">Filter ✗</small>` : ""}` },
   { k: "miss", l: "Fehlt", fast: 1, g: r => r.missing[0] || "", h: r => { if (r.passed) return `<span class="up">– (Treffer)</span>`;
     if (isTrend(r) && !r.fast_hit) return `<span class="up">– (Trend-Rücksetzer)</span>`;
-    const miss = r.criteria.filter(x => !x.ok && SETUP_KEYS.includes(x.key)).map(x => SHORT[x.key]);
+    const miss = (r.criteria || []).filter(x => !x.ok && SETUP_KEYS.includes(x.key)).map(x => SHORT[x.key]);
     const text = miss.length <= 2 ? miss.join(", ") : `${miss.slice(0, 2).join(", ")} +${miss.length - 2}`;
     return `<span class="down" title="${esc(r.missing.join(" · "))}">${esc(text || r.missing[0] || "–")}</span>`; } },
 ];
@@ -2690,6 +2738,7 @@ document.addEventListener("click", e => {
   render();
 });
 document.addEventListener("click", e => {
+  const ts = e.target.closest("[data-tsize]"); if (ts) { state.textSize = ts.dataset.tsize; save(); applyTextSize(); render(); return; }
   const d = e.target.closest("[data-design]"); if (d) { state.design = d.dataset.design; save(); applyDesign(); renderHead(); render(); return; }
   const b = e.target.closest("[data-emoji]"); if (!b) return;
   state.emoji = b.dataset.emoji; save(); renderHead(); appleHead();
@@ -3276,15 +3325,6 @@ function gListHtml() {
   if (!m.length) return `<div class="note" style="margin:6px 2px">Nicht unter den ${fmt(searchIdx.length, 0)} gescannten Aktien.</div><div class="ein-list">${ext}</div>`;
   return `<div class="ein-list">${m.map(r => `<button class="ein-opt" data-g="pick" data-t="${esc(r.t)}"><b>${esc(r.n)}</b><span>${esc(r.ext ? r.x : r.t)} · ${fmt(r.c)} ${esc(r.cur || "")}</span>${einTag(r)}</button>`).join("")}${ext}</div>`;
 }
-function gSpark(h) {
-  if (h.length < 2) return "";
-  const v = h.map(x => x.v), e = h.map(x => x.e).filter(z => z != null), all = [...v, ...e, G_START], lo = Math.min(...all), hi = Math.max(...all);
-  const W = 600, H = 90, y = z => H - 6 - (z - lo) / ((hi - lo) || 1) * (H - 12), X = i => (i / (h.length - 1) * W).toFixed(1);
-  const line = (k, cls) => h.map((x, i) => x[k] == null ? null : `${X(i)},${y(x[k]).toFixed(1)}`).filter(Boolean).join(" ");
-  return `<svg class="g-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><line x1="0" x2="${W}" y1="${y(G_START)}" y2="${y(G_START)}" class="g-base"/>
-    <polyline points="${line("e")}" style="fill:none;stroke:var(--gold);stroke-width:1.5;stroke-dasharray:4 3"/><polyline points="${line("v")}" class="${v[v.length - 1] >= G_START ? "up" : "down"}"/></svg>
-    <div class="oleg"><span class="up">■ Dein Depot</span><span class="gold">┄ 100 % ETF zum Vergleich</span></div>`;
-}
 // Rechnung zum Kaufformular (wird beim Tippen live aktualisiert, ohne das Formular neu aufzubauen)
 function gCalc(g, t) {
   const x = gPx(t), pl = (rowOf(t) || {}).pl || {}, su = gSetup(t), f = state.gF || {}, turbo = (f.kind || "turbo") === "turbo";
@@ -3323,7 +3363,7 @@ function gBuyForm(g, t) {
   if (state.gReview && state.gReview.t === t) return gReviewHtml(g, t, state.gReview);
   const x = gPx(t), pl = (rowOf(t) || {}).pl || {}, su = gSetup(t), f = state.gF || {}, turbo = (f.kind || "turbo") === "turbo";
   const stop = +f.stop > 0 ? +f.stop : pl.stop || null;
-  return `<div class="card g-buy"><div class="g-pos-h"><div><b>${esc(x.n)}</b><small class="muted" style="display:block">${esc(t)} · ${esc(su.k)}${su.score != null ? ` · Score ${su.score}` : ""} · Basiswert ${fmt(x.c)} ${esc(x.cur)}</small></div><button class="btn ghost sm" data-g="pick" data-t="">✕</button></div>
+  return `<div class="card g-buy"><div class="g-pos-h"><div><b>${esc(x.n)}</b><small class="muted" style="display:block">${esc(t)} · ${esc(su.k)}${su.score != null ? ` · Score ${su.score}` : ""} · Basiswert ${fmt(x.c)} ${esc(x.cur)}</small></div><button class="btn ghost sm" data-g="pick" data-t="" aria-label="Order-Ticket schließen">✕</button></div>
     <div class="g-row muted"><span>Plan: Stop ${stop ? fmt(stop) + " " + esc(x.cur) : "–"} (${pl.src ? esc(pl.src) + " − 0,25 ATR" : "selbst eintragen"}) · Verkauf an Tag ${KMAX.hold} (${dateDE(isoD(addBd(new Date(), KMAX.hold)))})</span></div>
     <div class="g-mode"><button class="opt${turbo ? " on" : ""}" data-g="kind" data-v="turbo">Turbo Long</button><button class="opt${turbo ? "" : " on"}" data-g="kind" data-v="stock">Aktie</button></div>
     <div class="tp2-cfg" style="margin-top:10px">
@@ -3504,8 +3544,6 @@ const h4Real = it => !!it && (!it.grp || it.grp === "11" || it.grp === "10s");
 const GRPL = { "11": "11/11", "10s": "10/11 · MBI gelockert", "10": "10/11 · kein Treffer", "9": "9/11 · kein Treffer" };
 // Test (Fast-Treffer mit Seitwärtsphase + 4H, Okt. 2026): je Trade in zwei Stichproben
 const GRPT = { "10": "−0,01 / +0,24 R", "9": "−0,37 / −0,12 R" };
-// 10/11 und 9/11: 4H-Stand als kleines Zusatz-Etikett (nur zur Auswahl)
-const h4Mini = r => (it => it && !h4Real(it) && it.st !== "weg" ? `<span class="st" title="zur Auswahl – kein Treffer, keine Mitteilung">${h4Text(it).ic} ${esc(h4Text(it).short)}</span>` : "")(h4Of(r.ticker));
 // Reihenfolge im Scanner: echte Einstiege (11/11, MBI gelockert) – 4H bestätigt/verkaufen > wartet auf 4H > läuft;
 // danach 10/11 und 9/11 mit 4H-Bestätigung (nur zur Auswahl); alles andere nach Score (stabile Sortierung)
 const h4Prio = r => { const it = h4Of(r.ticker); if (!it || it.st === "weg") return 0;
@@ -3515,7 +3553,6 @@ const h4Prio = r => { const it = h4Of(r.ticker); if (!it || it.st === "weg") ret
 const h4Of = t => { const d = h4Data(); return d && t ? (d.items || []).find(x => x.t === t) || null : null; };
 const h4Now = t => { const d = h4Data(); return d && d.now ? d.now[t] || null : null; };
 const H4F = [["R40", "RSI"], ["M", "MACD"], ["B", "MBI"], ["S", "Bruch"]];
-const h4Flags = fl => fl ? H4F.map(([k, l]) => `<i class="h4f${fl[k] ? " on" : ""}">${fl[k] ? "✓" : "·"} ${l}</i>`).join("") : "";
 const h4Go = it => it && (it.st === "go" || (it.st === "run" && ((it.trade || {}).day || 99) <= 1));
 function h4Text(it) {
   const cur = it.cur || "", b = it.base || {}, tr = it.trade || {}, P = v => `${fmt(v)} ${cur}`.trim();
@@ -3533,49 +3570,6 @@ function h4Text(it) {
   if (["stop", "zeit", "ema"].includes(it.st)) return { tone: "gray", ic: it.st === "stop" ? "🛑" : "🏁", short: { stop: "Stop", zeit: "Tag 40", ema: "EMA 20" }[it.st],
     t: `Beendet: ${{ stop: "Stop", zeit: "Verkauf an Tag 40", ema: "Schluss unter der EMA 20" }[it.st]} · ${R(tr.r)}${tr.r20 != null ? ` (mit „Tag 20“: ${R(tr.r20)})` : ""}`, s: `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)}, Verkauf ${dateDE(tr.xd)} zu ${P(tr.x)}.` };
   return { tone: "gray", ic: "✕", short: "verfallen", t: "Verfallen – kein Trade", s: `${it.why || "Bedingungen nicht erfüllt"} (Treffer vom ${dateDE(it.d)}).` };
-}
-const h4Badge = it => { if (!it) return ""; const x = h4Text(it); return `<span class="status ${x.tone === "green" ? "st-h4go" : x.tone === "yellow" ? "st-h4" : "st-kein_setup"}">${x.ic} 4H: ${esc(x.short)}</span>`; };
-const h4NowBadge = t => { const n = h4Now(t); if (!n) return ""; const f = n.fl || "";
-  return `<span class="status st-kein_setup" title="Setup-Zustand – nur Information, kein Treffer">Basis ${n.b ? "✓" : "✗"} · 4H ${f ? H4F.filter(([k]) => f.includes(k[0])).map(x => x[1]).join(" ") : "–"}</span>`; };
-function h4CardHtml() {
-  const d = h4Data(); if (!d) return "";
-  // Übersichtlich: oben nur, was jetzt zählt (bestätigt, dann die nächsten Kandidaten) – der Rest als eine Zeile
-  const all = d.items || [], its = all.filter(h4Real), go = its.filter(h4Go), nf = x => H4F.filter(([k]) => (x.fl || {})[k]).length,
-    wait4 = its.filter(x => x.st === "4h").sort((a, b) => nf(b) - nf(a));          // am nächsten an der Bestätigung zuerst
-  const nBase = its.filter(x => x.st === "basis").length, nRun = its.filter(x => x.st === "run" && !h4Go(x)).length;
-  const sell = its.filter(x => x.st === "sell");                                   // Verkaufssignal (Schluss unter der EMA 20) zuerst
-  const act = [...sell, ...go, ...wait4.slice(0, Math.max(0, 4 - go.length))];
-  const when = d.live || d.generated, tm = when ? new Date(when).toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "–";
-  const row1 = it => { const x = h4Text(it), tag = it.soft ? "10/11 MBI gelockert" : !h4Real(it) ? GRPL[it.grp] : "";
-    return `<button class="h4row${(h4Go(it) || it.st === "sell") && h4Real(it) ? " go" : ""}" data-ein="${esc(it.t)}"><i>${x.ic}</i><span><b>${esc(it.n || it.t)} · ${esc(x.short)}${tag ? ` <small class="muted">· ${esc(tag)}</small>` : ""}</b><em>${esc(it.st === "4h" ? `Stop ${fmt((it.base || {}).sl)} ${it.cur || ""} · ${it.lim ? "bis " + dateDE(it.lim) : `noch ${it.lim_left} Handelstage`} · ${nf(it)} von 4 Signalen` : x.s)}</em>${it.st === "4h" ? `<div>${h4Flags(it.fl)}</div>` : ""}</span></button>`; };
-  const rows = act.map(row1).join("");
-  // Zur Auswahl: 10/11 und 9/11 laufen durch dieselbe Prüfung – eingeklappt, damit oben nur echte Einstiege stehen
-  const xs = all.filter(x => !h4Real(x)), xGo = xs.filter(x => h4Go(x) || x.st === "sell"), x4 = xs.filter(x => x.st === "4h").sort((a, b) => nf(b) - nf(a) || (a.grp === "10" ? -1 : 1)),
-    xRun = xs.filter(x => x.st === "run" && !h4Go(x)), xList = [...xGo, ...x4].slice(0, 8);
-  const cnt = g => (d.count || {})[g] || {};
-  const xHtml = xs.length || Object.keys(cnt("10")).length || Object.keys(cnt("9")).length ? `<details class="h4x" style="margin:8px 0 0"><summary class="note" style="margin:0;cursor:pointer">Zur Auswahl · 10/11 und 9/11 mit 4H-Prüfung (kein Treffer): ${xGo.length} bestätigt · ${x4.length} warten auf 4H${xRun.length ? ` · ${xRun.length} laufen` : ""}</summary>
-      ${xList.map(row1).join("") || `<div class="note" style="margin:6px 0 0">Gerade keiner mit fertiger Seitwärtsphase.</div>`}
-      <div class="note" style="margin:6px 0 0">${["10", "9"].map(g => `${GRPL[g]}: ${cnt(g).basis || 0} warten auf die Seitwärtsphase`).join(" · ")}. Gleiche Regeln wie bei Treffern (Seitwärtsphase → alle 4 Signale im 4H → Verkauf unter der EMA 20), aber keine Mitteilung und im Test schwächer: 10/11 ${GRPT["10"]}, 9/11 ${GRPT["9"]} je Trade (Treffer +0,41 / +0,61 R). Live getrennt gezählt in der Bilanz.</div></details>` : "";
-  return `<div class="hcard">${hHead("⚡ 4H-Top-Setup " + gl("h4"))}
-    ${rows || `<div class="note" style="margin:0">Gerade nichts zu tun – kein Treffer mit fertiger Seitwärtsphase.</div>`}
-    ${wait4.length > act.length - go.length - sell.length || nBase || nRun ? `<div class="note" style="margin:6px 0 0">${[wait4.length - (act.length - go.length - sell.length) > 0 ? `${wait4.length - (act.length - go.length - sell.length)} weitere warten auf 4H` : "", nBase ? `${nBase} warten auf die Seitwärtsphase` : "", nRun ? `${nRun} laufende 4H-Trades` : ""].filter(Boolean).join(" · ")} – <a href="#" data-gokinds="h4">alle im Scanner</a></div>` : ""}
-    ${xHtml}
-    <div class="note" style="margin:8px 0 0">Stand ${esc(tm)} · alle 30 Min. geprüft – bei Bestätigung kommt eine Mitteilung.</div></div>`;
-}
-function h4BilanzHtml() {
-  const d = h4Data(); if (!d || !d.track) return "";
-  const st = d.track.stats, l = d.track.list || [];
-  return `<div class="hcard">${hHead("4H-Top-Setup · live gezählt")}
-    <div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Abgeschlossen</span><b>${st ? st.n : 0}</b><em>${st ? st.open : 0} laufen</em></div>
-      <div class="mt"><span>Ø je Trade · EMA 20</span><b class="${st && st.avg_r >= 0 ? "up" : st && st.avg_r != null ? "down" : ""}">${st && st.avg_r != null ? `${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R` : "–"}</b><em>Test +0,73 / +0,63 R</em></div>
-      <div class="mt"><span>Gegenprobe · Tag 20</span><b class="${st && st.avg_r20 >= 0 ? "up" : st && st.avg_r20 != null ? "down" : ""}">${st && st.avg_r20 != null ? `${st.avg_r20 >= 0 ? "+" : ""}${fmt(st.avg_r20, 2)} R` : "–"}</b><em>Test +0,49 / +0,67 R</em></div>
-      <div class="mt"><span>Gewinner</span><b>${st && st.win != null ? pct(st.win, 0) : "–"}</b><em>Test ≈ 35–40 %</em></div></div>
-    ${st && st.by ? `<div class="table-wrap plain" style="margin:0 0 10px"><table class="jtrades"><thead><tr><th>Stufe</th><th class="num">fertig · offen</th><th class="num">Ø live</th><th class="num">Test</th></tr></thead><tbody>${
-      [["11", "11/11 Treffer", "+0,41 / +0,61 R"], ["10s", "10/11 MBI gelockert", "+0,32 / +0,75 R"], ["10", "10/11 · zur Auswahl", GRPT["10"]], ["9", "9/11 · zur Auswahl", GRPT["9"]]].map(([k, l, tv]) => { const b = st.by[k] || {};
-        return `<tr><td><b>${l}</b></td><td class="num">${b.n || 0} · ${b.open || 0}</td><td class="num ${b.avg_r == null ? "" : b.avg_r >= 0 ? "up" : "down"}">${b.avg_r != null ? `${b.avg_r >= 0 ? "+" : ""}${fmt(b.avg_r, 2)} R` : "–"}</td><td class="num"><small>${tv}</small></td></tr>`; }).join("")}</tbody></table></div>` : ""}
-    ${l.length ? `<div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Aktie</th><th class="num">Einstieg</th><th>Ergebnis</th></tr></thead><tbody>${l.slice(0, 15).map(x =>
-      `<tr><td><b>${esc(x.n || x.t)}</b><small>${x.soft ? "10/11 MBI gelockert" : "Treffer"} ${dateDE(x.d)}</small></td><td class="num">${dateDE(x.ed)}<small>${fmt(x.e)}</small></td><td class="${x.r == null ? "" : x.r >= 0 ? "up" : "down"}">${x.res === "run" ? `läuft · Tag ${x.day || "–"}/40 ` : x.res === "sell" ? "verkaufen " : x.res === "stop" ? "Stop " : x.res === "ema" ? "EMA 20 " : x.res === "zeit" ? (x.day || 0) > 20 || !x.r20 ? "Tag 40 " : "Tag 20 " : ""}${x.r != null ? `<b>${x.r >= 0 ? "+" : ""}${fmt(x.r, 2)} R</b>` : ""}${x.r20 != null && x.res !== "run" && x.res !== "sell" ? `<small>Tag 20: ${x.r20 >= 0 ? "+" : ""}${fmt(x.r20, 2)} R</small>` : ""}</td></tr>`).join("")}</tbody></table></div>`
-      : `<div class="note" style="margin:0">Noch keine bestätigten 4H-Trades. Jeder Kairo-Treffer, der Seitwärtsphase und 4H-Bestätigung schafft, wird hier automatisch mitgezählt – getrennt von der bisherigen Strategie, damit wir Live gegen Test vergleichen können. Verkauft wird unter der EMA 20 (ab Tag 10, spätestens Tag 40); die alte Regel „Verkauf an Tag 20“ läuft als Gegenprobe mit.</div>`}</div>`;
 }
 // ---------- Tagesbriefing: das Wichtigste seit dem letzten Scan, als Fenster beim Öffnen ----------
 function briefHtml() {
@@ -3704,6 +3698,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-tour
 function maybeBrief() {
   if (!data) return;
   if (!state.tourDone && !/nosplash/.test(location.search) || /[?&]tour=1/.test(location.search)) { openTour(); return; }   // erstes Öffnen: Rundgang statt Briefing
+  if (maybeNews()) return;
   if (state.briefOff) return;
   if (state.briefSeen !== data.generated || Date.now() - (state.briefAt || 0) > 6 * 3600e3) openBrief();
 }
@@ -3789,14 +3784,6 @@ function topHitsHtml() {
   return `<div class="hcard">${hHead("Top-Setups heute", `data-gokinds="hit"`)}
     ${list.map(r => `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${esc((r.name || r.ticker).slice(0, 28))}<small>${esc(r.ticker)} · Vormomentum ${mo(r) == null ? "–" : sgnPct(mo(r), 0)}${r.earnings_risk ? " · ⚠ Quartalszahlen bald" : ""} ${tgtChip(r)}</small></span>${statusPill(r)}${trendHtml(r)}</button>`).join("")}</div>`;
 }
-function trendCardHtml() {
-  if (!trendOn()) return "";
-  const all = data.results.filter(isTrend), top = all.filter(r => r.tr.top).sort((a, b) => (b.tr.plan && b.tr.plan.crv || 0) - (a.tr.plan && a.tr.plan.crv || 0));
-  return `<div class="hcard">${hHead("↗ Trend-Rücksetzer · eigene Strategie", `data-gokinds="trend"`)}
-    ${top.slice(0, 4).map(r => `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${esc((r.name || r.ticker).slice(0, 28))}<small>${esc(r.ticker)} · CRV ${fmt(r.tr.plan && r.tr.plan.crv, 1)}</small></span><span class="st trend">Top</span></button>`).join("")
-      || `<div class="note" style="margin:0">Heute keine Top-Setups.</div>`}
-    <div class="note" style="margin:8px 0 0">Rücksetzer im Aufwärtstrend – andere Regeln als Kairo, getrennt gezählt. ${all.length} insgesamt, davon ${top.length} Top.</div></div>`;
-}
 function depotSnapHtml() {
   const list = depotLoad(); if (!list.length) return "";
   if (!searchIdx) { loadSearch(); return ""; }
@@ -3823,7 +3810,7 @@ function bilanzTeaserHtml() {                    // Forschungsstand 10/2026 + Li
     return d.length ? { n: d.length, avg_r: d.reduce((a, x) => a + x.r, 0) / d.length } : null; })());
   return `<button class="hcard bil" ${SEC_LINK("bilanz")}>${hHead("Kairo-Bilanz", "", "")}
     <div class="bilrow"><div class="ring-s">${ringSvg(0.33, "var(--up)")}<b>+0,14 R</b></div>
-      <div><b>Ø je Trade nach Kosten (Forschung 2008–2026, Zufall +0,11 R)</b><span>${st ? `Live: ${st.n} Treffer abgeschlossen · Ø ${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R je Trade` : "Live-Bilanz läuft seit 30.09.2026 – aussagekräftig ab einigen hundert Trades"}</span></div></div>
+      <div><b>Ø je Trade nach Kosten (Forschung 2008–2026, Zufall +0,11 R)</b><span>${st ? `Live: ${st.n} Trades abgeschlossen · Ø ${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R${st.n < 30 ? " (noch früh – zuerst schließen die Stops)" : " je Trade"}` : "Live-Bilanz läuft seit 30.09.2026 – aussagekräftig ab einigen hundert Trades"}</span></div></div>
     <span class="hlink">Details ›</span></button>`;
 }
 function journalTeaserHtml() {
@@ -4194,7 +4181,7 @@ function bilanzHtml() {
   const L = b && b.live, hits = ((b && b.signals) || []).filter(s => s.k === "hit"), X = s => s.st60 || s.st || { res: "wait" };
   const st = L && (L.strat60 || (() => { const d = hits.map(X).filter(x => ["stop", "ema", "zeit"].includes(x.res) && x.r != null); if (!d.length) return null;
     return { n: d.length, avg_r: d.reduce((a, x) => a + x.r, 0) / d.length, win: d.filter(x => x.r > 0).length / d.length, stop: d.filter(x => x.res === "stop").length / d.length }; })()), e = 0.14, band = st ? 1.96 * 1.6 / Math.sqrt(st.n) : null;
-  const verdict = !st ? "" : st.n < 30 ? `<i class="vdot y"></i>Noch zu früh für ein Urteil: ${st.n} von ~30 Trades abgeschlossen. Einzelne Wochen schwanken stark.` : st.avg_r < e - band ? '<i class="vdot r"></i>Schwächer als die Forschung – genauer prüfen.' : st.avg_r > e + band ? '<i class="vdot g"></i>Besser als die Forschung.' : '<i class="vdot g"></i>Im erwarteten Rahmen der Forschung.';
+  const verdict = !st ? "" : st.n < 30 ? `<i class="vdot y"></i>Noch zu früh für ein Urteil: ${st.n} von ~30 Trades abgeschlossen. Am Anfang schließen fast nur Stops – Gewinner laufen bis zur EMA 20 oder Tag 60 und kommen erst später dazu. Das Bild ist deshalb anfangs zu schlecht.` : st.avg_r < e - band ? '<i class="vdot r"></i>Schwächer als die Forschung – genauer prüfen.' : st.avg_r > e + band ? '<i class="vdot g"></i>Besser als die Forschung.' : '<i class="vdot g"></i>Im erwarteten Rahmen der Forschung.';
   const act = hits.filter(s => ["run", "stop", "ema", "zeit"].includes(X(s).res)).sort((a, b2) => (X(a).res === "run") - (X(b2).res === "run") || String(b2.d).localeCompare(a.d));
   const nWait = hits.filter(s => X(s).res === "wait").length, nNo = hits.filter(s => X(s).res === "nobase").length;
   const row = s => { const x = X(s), [rt, rc] = ST_TXT[x.res] || ST_TXT.wait;
@@ -4277,23 +4264,50 @@ function pushHtml() {
     <textarea id="pushText" class="tgtext" readonly hidden></textarea>`;
   return `<div class="section-title"><span>Mitteilungen aufs iPad</span><span class="up">${live}</span></div><div class="card tgset">${body}</div>`;
 }
-function telegramHtml() {
-  const a = getJson("alerts.json");
-  const st = a === undefined ? "lädt …" : !a || !a.enabled ? "noch nicht eingerichtet" : !a.connected ? `Bot @${esc(a.bot)} bereit – schreibe ihm /start` : `verbunden mit @${esc(a.bot)}${a.last_sent ? ` · letzter Bericht ${dateDE(a.last_sent)}` : ""}${a.synced ? ` · Merkliste/Depot vom ${dateDE(a.synced)} (${a.n_fav} / ${a.n_dep})` : ""}`;
-  const ok = a && a.enabled && a.connected;
-  return `<div class="section-title"><span>Telegram-Abendbericht</span><span class="${ok ? "up" : ""}">${ok ? "● aktiv" : ""}</span></div>
-    <div class="card tgset"><div class="note" style="margin:0 0 10px">Status: <b>${st}</b></div>
-    <div class="tgdesc">Jeden Abend nach dem Scan: Markt-Lage, neue Treffer, was sich bei <b>deinen Aktien</b> (Merkliste, Watchlist, Depot) getan hat, <b>Knock-out-Warnungen</b> (unter 8 % Abstand) und Termine der nächsten Tage.</div>
-    ${ok ? "" : `<ol class="steps">
-      <li>In Telegram <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> öffnen → <code>/newbot</code> → Namen wählen, z. B. „Kairo Jonny“. Du bekommst einen <b>Token</b>.</li>
-      <li>Token in GitHub speichern: <a href="${REPO}/settings/secrets/actions/new" target="_blank" rel="noopener">Neues Secret anlegen</a> → Name <code>TELEGRAM_TOKEN</code>, Wert = Token. (Der Token bleibt geheim, er steht nirgends in der App.)</li>
-      <li>Deinem neuen Bot in Telegram <code>/start</code> schreiben.</li>
-      <li><a href="${REPO}/actions/workflows/scan.yml" target="_blank" rel="noopener">Scan starten</a> (oder bis heute Abend warten) – der Bot bestätigt die Verbindung.</li></ol>`}
-    <div class="row-actions" style="margin-top:12px"><button class="btn${ok ? "" : " ghost"}" data-tgsync>Merkliste &amp; Depot an den Bot senden</button></div>
-    <div class="note">Kopiert eine Nachricht <code>/sync …</code> (nur Ticker und K.-o.-Schwellen, keine Beträge) und öffnet den Bot – dort einfügen und senden. Gilt ab dem nächsten Scan. Pausieren mit <code>/stop</code>, weiter mit <code>/weiter</code>.</div>
-    <textarea id="tgText" class="tgtext" readonly hidden></textarea></div>`;
-}
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
+// ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
+const APP_VER = "2026.10.21";
+const APP_NEWS = [["2026.10.21", "Oktober-Update", [
+  ["Kairo-Plan in jeder Aktie", "Oben steht jetzt die Antwort: kaufbereit oder nicht, Kaufzone, Stop, Ausstieg und Kursziel."],
+  ["Stimmung / Angst am Markt", "Neben der Trend-Ampel: 0–100 aus VIX, Tech/KI, Marktbreite und Kreditmarkt."],
+  ["Kairo-Ziel", "Deine Idee als Papier-Depot: Treffer mit attraktivem Kursziel, halten bis zum Ziel."],
+  ["Scalable-Import ersetzt", "Ein neuer Export ersetzt den alten – Löschen jederzeit."],
+  ["Design „Hell“", "Jetzt auch immer hell wählbar – unabhängig vom iPad."],
+  ["Rundgang & Begriffe", "Kurzer Rundgang beim ersten Öffnen, Fachbegriffe antippbar."]]]];
+function newsHtml(all) {
+  return APP_NEWS.slice(0, all ? APP_NEWS.length : 1).map(([v, t, items]) => `<div class="nw-v"><b>${esc(t)}</b><small>${esc(v.split(".").reverse().join("."))}</small></div>
+    <ul class="nw-l">${items.map(([a, b]) => `<li><b>${esc(a)}</b><span>${esc(b)}</span></li>`).join("")}</ul>`).join("");
+}
+function maybeNews() {
+  if (!state.tourDone) { state.newsSeen = APP_VER; save(); return false; }   // neue Nutzer bekommen den Rundgang, nicht die Neuigkeiten
+  if (state.newsSeen === APP_VER || /nosplash/.test(location.search)) return false;   // Tests/Vorschau: ohne Fenster
+  state.newsSeen = APP_VER; save();
+  let el = $("newsBox"); if (!el) { el = document.createElement("div"); el.id = "newsBox"; el.className = "bmodal"; document.body.appendChild(el); }
+  el.hidden = false; el.innerHTML = `<div class="bm-back" data-newsclose></div><div class="bm-box nw-box" role="dialog" aria-modal="true" aria-label="Was ist neu"><button class="cm-x" data-newsclose aria-label="Schließen">✕</button>
+    <div class="bf-k">Was ist neu</div>${newsHtml(false)}<button class="btn" data-newsclose style="width:100%;margin-top:14px">Weiter</button></div>`;
+  return true;
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-newsclose]")) { const el = $("newsBox"); if (el) el.remove(); }
+  if (e.target.closest("[data-newsall]")) { const b = e.target.closest(".card").querySelector(".nw-all"); b.hidden = !b.hidden; } });
+function reportText(msg) {
+  const r = data || {}, sec = (SEC_T && SEC_T[state.sec]) || state.sec;
+  return [`Kairo – Problem/Idee (${new Date().toLocaleString("de-DE")})`, msg ? `Beschreibung: ${msg}` : "",
+    `Bereich: ${sec}${document.body.classList.contains("card-open") ? " · Detailansicht offen" : ""}`, `App-Version: ${APP_VER} · Design: ${state.design || "classic"}`,
+    `Scan: ${r.generated ? new Date(r.generated).toLocaleString("de-DE") : "–"} · Treffer: ${r.results ? r.results.filter(x => x.passed).length : "–"}`,
+    `Gerät: ${navigator.userAgent.replace(/\s*\(KHTML.*$/, "")} · ${innerWidth}×${innerHeight}${navigator.onLine === false ? " · offline" : ""}`].filter(Boolean).join("\n");
+}
+function feedbackHtml() {
+  return `<div class="section-title"><span>Hilfe &amp; Feedback</span><span>Version ${APP_VER.split(".").reverse().join(".")}</span></div>
+    <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0"><label class="full">Was ist dir aufgefallen?<textarea id="fbText" rows="3" placeholder="z. B. „Im Depot stimmt der Wert von SAP nicht“ oder eine Idee"></textarea></label></div>
+      <div class="row-actions" style="margin-top:10px"><button class="btn" data-fb="copy">Für Claude kopieren</button>${navigator.share ? `<button class="btn ghost" data-fb="share">Teilen …</button>` : ""}<button class="btn ghost" data-newsall>Was ist neu</button></div>
+      <div class="note" id="fbMsg">Kopiert Beschreibung plus Bereich, Datenstand, Version und Gerät – keine Depot- oder Journal-Daten. Einfach im Chat mit Claude einfügen.</div>
+      <div class="nw-all" hidden>${newsHtml(true)}</div></div>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-fb]"); if (!b) return;
+  const t = reportText(($("fbText") || {}).value || ""), m = $("fbMsg");
+  if (b.dataset.fb === "share" && navigator.share) { navigator.share({ title: "Kairo – Feedback", text: t }).catch(() => {}); return; }
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { if (m) m.textContent = "Kopiert ✓ – jetzt im Chat mit Claude einfügen."; },
+    () => { if (m) m.innerHTML = `<pre style="white-space:pre-wrap;user-select:all">${esc(t)}</pre>`; }); });
 function backupHtml() {
   const n = Object.keys(localStorage).filter(BACKUP_KEYS).length;
   return `<div class="section-title"><span>Daten &amp; Backup</span><span>${n} Bereiche gespeichert</span></div>
@@ -4321,9 +4335,11 @@ function settingsHtml() {
       <div class="form" style="margin:14px 0 0"><label class="full">Emoji in der Begrüßung<input id="cfgEmoji" value="${esc(state.emoji == null ? (isApple() ? "" : "👋") : state.emoji)}" placeholder="z. B. 🚀 – leer = kein Emoji" maxlength="8"></label></div>
       <div class="emo-pick">${EMOJIS.map(e => `<button type="button" class="opt${(state.emoji ?? "👋") === e ? " on" : ""}" data-emoji="${e}">${e}</button>`).join("")}<button type="button" class="opt${state.emoji === "" ? " on" : ""}" data-emoji="">keins</button></div>
       <div class="note">Antippen oder ein eigenes Emoji ins Feld tippen (Emoji-Tastatur 🌐).</div>
+      <div class="set-lbl">Textgröße</div><div class="set-chips">${[["", "Normal"], ["big", "Größer"], ["bigger", "Sehr groß"]].map(([k, l]) => `<button type="button" class="opt${(state.textSize || "") === k ? " on" : ""}" data-tsize="${k}">${l}</button>`).join("")}</div>
       <div class="set-lbl">Rundgang</div><button type="button" class="btn ghost sm" data-tour="0">Rundgang noch einmal ansehen</button>
       <div class="set-lbl">Design</div><div class="set-chips">${DESIGNS.map(([k, l]) => `<button type="button" class="opt${(state.design || "classic") === k ? " on" : ""}" data-design="${k}">${l}</button>`).join("")}</div>
       <div class="note">Wechselt sofort, alle Funktionen und Daten bleiben gleich.</div></div>
+    ${feedbackHtml()}
     ${pushHtml()}
     <div class="section-title"><span>Live-Kurse</span><span class="${liveOn() ? "up" : ""}">${liveOn() ? "aktiv" : "aus – Kurse vom Abendscan"}</span></div>
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
@@ -4366,8 +4382,6 @@ function settingsHtml() {
 }
 
 // ---------- Einstieg: Aktie suchen → Setup erkennen → Trade-Plan, Turbo & Hebel ----------
-// Erwartung je Setup aus dem 6-Jahres-Test (Turbo-Rendite je Trade, K.-o. 1 ATR unter Stop, Verkauf ab 4 von 5)
-const EIN_EXP = { top: [0.71, 0.60], trend: [0.37, 0.60], kairo: [0.195, 0.54] };
 function einMatches(q) {
   if (!searchIdx || q.length < 2) return [];
   const qq = q.toLowerCase().replace(/\s+/g, " ");
@@ -4463,20 +4477,6 @@ function einSetup(r) {
   if (r.s === "near") return { k: "near", tone: "gray", title: "9/11 – kein Kairo-Treffer", sub: `Es fehlen: ${(r.km || []).map(k => SHORT[k] || k).join(", ") || "–"}. Nur zur Beobachtung – im Test kein Vorteil, erst als voller Treffer (11/11) handeln.`, plan: null };
   if (r.s === "fast") return { k: "fast", tone: "yellow", title: "Kairo Fast-Treffer", sub: `Es fehlt noch: ${(r.km || []).map(k => SHORT[k] || k).join(", ") || "–"}. Laut Strategie auslassen – nur volle Treffer (11/11) werden gehandelt.`, plan: null };
   return { k: "none", tone: "gray", title: "Kein Einstiegs-Setup", sub: "Kein Kairo-Treffer. Der Trade-Plan unten rechnet nur Stop, Größe und Hebel – für diese Aktie gibt es keinen getesteten Vorteil.", plan: null };
-}
-function einTrendCheck(r) {
-  const g200 = r.e200 ? r.c / r.e200 - 1 : null, g50 = r.e50 ? r.c / r.e50 - 1 : null;
-  const rows = [
-    [g200 != null && g200 >= 0.15, "Aufwärtstrend: Kurs ≥ 15 % über der EMA 200", g200 == null ? "–" : `${sgnPct(g200, 1)} (EMA 200 ${fmt(r.e200)})`,
-      g200 != null && g200 < 0.15 ? "Kein ausreichend starker Aufwärtstrend." : ""],
-    [g50 != null && g50 >= -0.08 && g50 <= 0, "Rücksetzer an die EMA 50 (0 bis −8 %)", g50 == null ? "–" : `${sgnPct(g50, 1)} (EMA 50 ${fmt(r.e50)})`,
-      g50 > 0 ? `Noch ${pct(g50, 1)} über der EMA 50 – Rücksetzer bis ca. ${fmt(r.e50)} abwarten.` : g50 < -0.08 ? "Schon zu weit unter die EMA 50 gefallen – Trend wackelt." : ""],
-    [r.rsi >= 35 && r.rsi <= 50, "RSI 35–50", fmt(r.rsi, 1), r.rsi > 50 ? "RSI noch zu hoch – Verschnaufpause abwarten." : r.rsi < 35 ? "RSI zu tief – Verkaufsdruck zu stark." : ""]];
-  const top = r.tr ? [[(r.tdd ?? 1) < 0.15, "Top: höchstens 15 % unter dem letzten Hoch", r.tdd != null ? "−" + pct(r.tdd, 1) : "–"],
-    [(r.ap ?? 1) < 0.045, "Top: ruhige Aktie (Tagesspanne < 4,5 %)", r.ap != null ? pct(r.ap, 1) : "–"],
-    [g200 != null && g200 < 0.30, "Top: Trend nicht überhitzt (< +30 % über EMA 200)", g200 != null ? sgnPct(g200, 0) : "–"]] : [];
-  return `<ul class="checks">${rows.map(([ok, l, v, hint]) => `<li><i class="${ok ? "up" : "down"}">${ok ? "✓" : "✗"}</i><b>${l}:</b> ${esc(v)}${!ok && hint ? `<small style="display:block" class="muted">${esc(hint)}</small>` : ""}</li>`).join("")}
-    ${top.map(([ok, l, v]) => `<li><i class="${ok ? "up" : "muted"}">${ok ? "★" : "·"}</i><b>${l}:</b> ${esc(v)}</li>`).join("")}</ul>`;
 }
 // ---------- Echtzeit-Kurse (direkt vom iPad; Schlüssel nur lokal – nie im Repo, nicht im Backup) ----------
 // US-Aktien: Finnhub (kostenlos, Echtzeit, 60 Abfragen/Min.) · andere Börsen und Tageskerzen: Twelve Data (kostenlos, 8/Min., 800/Tag).
@@ -4705,32 +4705,6 @@ function mcPaths(days) {
     for (let j = 0; j < st; j++) { const u = rnd() || 1e-9, v = rnd(); x += sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); out[i * st + j] = x; } }
   return (MC.cache[days] = { p: out, st });
 }
-function tpProb(days, upAtr, dnAtr) {                          // Anteil der Pfade, die +upAtr vor −dnAtr erreichen
-  const { p, st } = mcPaths(days); let hit = 0;
-  for (let i = 0; i < MC.n; i++) for (let j = 0; j < st; j++) { const x = p[i * st + j]; if (x >= upAtr) { hit++; break; } if (x <= -dnAtr) break; }
-  return hit / MC.n;
-}
-function tpEval(r, E, stop, atr, days) {
-  const pl = r.pl || {}, risk = E - stop, raw = [];
-  if (pl.base) raw.push(["Hoch der Seitwärtsphase", pl.base.hi]);
-  if (pl.h10) raw.push(["10-Tage-Hoch", pl.h10]);
-  (pl.res || []).forEach(x => raw.push(["früheres Hoch", x]));
-  (pl.tg || []).forEach(([l, x]) => raw.push([l, x]));
-  if (r.e20) raw.push(["EMA 20", +r.e20]); if (r.e50) raw.push(["EMA 50", +r.e50]);
-  const lv = [];
-  raw.filter(([, x]) => x > E + 0.35 * atr && x <= E + 6 * atr).sort((a, b) => a[1] - b[1]).forEach(([l, x]) => {
-    const prev = lv[lv.length - 1];
-    if (prev && x - prev.lvl < 0.25 * atr) { const parts = new Set([...prev.lbl.split(" / "), ...l.split(" / ")]); prev.lbl = [...parts].join(" / "); }
-    else lv.push({ lbl: [...new Set(l.split(" / "))].join(" / "), lvl: x });
-  });
-  if (!lv.length) lv.push({ lbl: "1,5 × Risiko", lvl: E + 1.5 * risk + 0.1 * atr });
-  const list = lv.map(c => { const tp = c.lvl - 0.1 * atr, R = (tp - E) / risk, p = tpProb(days, (tp - E) / atr, risk / atr);
-    return { lbl: c.lbl, lvl: c.lvl, tp, R, p, sc: p * R }; });
-  // realistisch zuerst: Marken mit ≥ 30 % Chance und mindestens 1 : 1; sonst ab 0,6 : 1; sonst alle
-  const real = list.filter(x => x.p >= 0.3 && x.R >= 1), ok = list.filter(x => x.R >= 0.6);
-  const best = (real.length ? real : ok.length ? ok : list).reduce((a, b) => b.sc > a.sc + 1e-9 ? b : a);
-  return { list, best };
-}
 // Rangfolge der heutigen Kairo-Treffer wie „Top-Setups“ im Scanner (Forschung v2.4): erst USA/Europa (getestet), darin
 // schwächeres Vormomentum (Rendite Monat −6…−1) zuerst; übrige Regionen danach. Score/Volatilität waren kein belegtes Merkmal.
 const kmMom = t => { const r = ((data && data.results) || []).find(x => x.ticker === t); return r ? (r.flags || {}).mom61 : null; };
@@ -4875,15 +4849,6 @@ function tp2Calc(r, S, o = {}) {
   const ex = trend ? [TP_EXP_TREND[hold], null, null] : TP_EXP[hold] || [];
   out.expR = mk && mk.k === "weak" && ex[1] != null ? ex[1] : mk && mk.k === "strong" && ex[2] != null ? ex[2] : ex[0];
   return out;
-}
-// Szenarien netto für einen Hebel
-function tpScen(m, lv) {
-  const rows = [];
-  const at = (px) => (px - m.E) / m.E * lv.expo - lv.cost;
-  m.tg.slice(0, 3).forEach(([l, x]) => rows.push([esc(l), x, "up", at(x)]));
-  rows.push(["Stop (Plan)", m.stop, "down", at(m.stop)]);
-  if (lv.L > 1) rows.push(["Kurslücke unter den K.-o.", lv.ko, "down", -lv.stake - 2 * m.cfg.fee]);
-  return rows;
 }
 function tpInner(r, S) {
   const dt = (state.tpD || {})[r.t], entE = (state.tpEe || {})[r.t], fx0 = toEur(1, r.cur || "EUR") || 1;
@@ -5473,7 +5438,8 @@ function health() {
   return out;
 }
 const healthPill = () => { const hs = health(), bad = hs.some(x => x[0] === "r");
-  return bad ? `<button class="hpill r" data-gosec="settings" title="${esc(hs.map(x => x[1]).join(" · "))}">⚠ Daten unvollständig</button>` : ""; };   // gelb/grün: nur in den Einstellungen
+  const stale = hs.some(x => x[0] === "r" && /Letzter Scan/.test(x[1]));
+  return bad ? `<button class="hpill r" data-gosec="settings" title="${esc(hs.map(x => x[1]).join(" · "))}">${stale ? "Stand veraltet – neuer Scan steht aus" : "Daten unvollständig"} ›</button>` : ""; };   // gelb/grün: nur in den Einstellungen
 function renderHead() {
   const h = new Date().getHours();
   const nm = String(state.name || "").trim();
@@ -5532,7 +5498,7 @@ async function openDetail(t) {
     <div class="pane"><div class="pane-label">Momentum Bias Index [AlgoAlpha] · grün/rot · Referenzlinie · X-Signale</div><div class="lw" id="cMbi" style="height:150px"></div></div>
     <div class="two">
       <div class="pane"><div class="pane-label">Checkliste – alle Kriterien</div>
-        <table class="check"><tbody>${r.criteria.map(c => `<tr><td class="${c.ok ? "ok" : "no"}">${c.ok ? "✓" : "✗"}</td><td><b>${esc(c.label)}</b><br>${esc(c.value)}<div class="th">Schwelle: ${esc(c.threshold)}</div></td></tr>`).join("")}</tbody></table>
+        <table class="check"><tbody>${(r.criteria || []).map(c => `<tr><td class="${c.ok ? "ok" : "no"}">${c.ok ? "✓" : "✗"}</td><td><b>${esc(c.label)}</b><br>${esc(c.value)}<div class="th">Schwelle: ${esc(c.threshold)}</div></td></tr>`).join("")}</tbody></table>
         ${r.bonuses && r.bonuses.length ? `<div class="pane-label" style="margin-top:12px">Score-Bausteine</div><table class="check"><tbody>${r.bonuses.map(b => `<tr><td class="${b.points >= 0 ? "ok" : "no"}">${b.points > 0 ? "+" : ""}${b.points}</td><td>${esc(b.label)}</td></tr>`).join("")}</tbody></table>` : ""}
       </div>
       <div class="pane"><div class="pane-label">Einstieg · Trade-Plan, Turbo &amp; Hebel</div>
@@ -5565,21 +5531,6 @@ function tpOutHtml(r) {
   return `<table class="tpt"><thead><tr><th>Szenario</th><th class="num">Aktie</th><th class="num">Turbo</th><th class="num">bei ${eur(m.bud)}</th></tr></thead><tbody>
     ${m.rows.map(x => `<tr><td>${x.l}<small>${fmt(x.x)}</small></td><td class="num ${x.c}">${sgnPct(x.und, 1)}</td><td class="num ${x.c}">${sgnPct(x.t, 0)}</td><td class="num ${x.c}"><b>${sgnEur(x.eur)}</b></td></tr>`).join("")}</tbody></table>
     <div class="tp-sum"><span>Hebel ca. <b>${fmt(m.lev, 1)}×</b></span><span>Abstand K.-o. <b>${pct(1 - m.ko / m.p.entry, 1)}</b></span>${crv ? `<span>Chance : Risiko <b class="${crv >= 2 ? "up" : ""}">${fmt(crv, 1)} : 1</b></span>` : ""}</div>`;
-}
-function turboPlanHtml(r) {
-  const p = r.plan || {};
-  if (!p.entry || !p.stop) return `<div class="note">Kein Trade-Plan – keine gültige Unterstützungszone.</div>`;
-  const m = tpCalc(r);
-  return `<div class="plan">
-      <div class="fig"><span>Entry (Schluss)</span><b>${fmt(p.entry)}</b></div>
-      <div class="fig"><span>Setup ungültig unter</span><b class="down">${fmt(p.stop)}</b><em class="sub">−${pct(p.stop_pct)} · hier aussteigen</em></div>
-      <div class="fig"><span>Ziel 1</span><b class="up">${fmt(p.target1)}</b></div>
-      <div class="fig"><span>Ziel 2 (Swing-High)</span><b class="up">${fmt(p.target2)}</b></div></div>
-    <div class="form tpform">
-      <label>Einsatz in €<input id="tpBudget" type="number" inputmode="decimal" min="0" step="50" value="${esc(state.budget ?? 400)}"></label>
-      <label>K.-o.-Schwelle (Long)<input id="tpKo" type="number" inputmode="decimal" step="any" value="${m.ko}" data-t="${esc(r.ticker)}"></label></div>
-    <div id="tpOut">${tpOutHtml(r)}</div>
-    <div class="note">Vorschlag K.-o.: 1 Tagesspanne (ATR ${pct(r.atr_pct, 1)}) unter der Setup-Grenze – darunter ist die Idee ohnehin vorbei. Tippe die Schwelle deines Turbos ein, um ihn durchzurechnen. Näherung ohne Finanzierungskosten, Spread und Bezugsverhältnis. Volatilität (30 T.) ${pct(r.volatility, 0)}${r.earnings_risk ? ` · ⚠ Quartalszahlen ${dateDE(r.earnings_date)} – Kurssprünge können den K.-o. überspringen` : ""}.</div>`;
 }
 document.addEventListener("input", e => {
   if (e.target.id !== "tpBudget" && e.target.id !== "tpKo") return;
@@ -5763,16 +5714,41 @@ document.addEventListener("click", e => {
   const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); closeCard(); openDetail(o.dataset.open); return; }
   const th = e.target.closest("th[data-k]"); if (th) { if (th.dataset.k === state.tableSort) state.tableAsc = !state.tableAsc; else { state.tableSort = th.dataset.k; state.tableAsc = false; } render(); }
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape") { closeDetail(); closeCard(); closeBrief(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeDetail(); closeCard(); closeBrief(); const t = $("tour"); if (t) t.remove(); const n = $("newsBox"); if (n) n.remove(); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey || /input|textarea|select/i.test((e.target.tagName || "")) || e.target.isContentEditable || document.getElementById("gate")) return;
+  const k = { "1": "today", "2": "etf", "3": "scanner", "4": "entry", "5": "news", "6": "depot" }[e.key];
+  if (k) { e.preventDefault(); closeCard(); goSec(k); return; }
+  if (e.key === "/") { e.preventDefault(); if (state.sec !== "scanner") goSec("scanner"); setTimeout(() => { const s = $("search"); if (s) s.focus(); }, 50); } });
 
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").then(pushInit).catch(() => {});
 try { const q = new URLSearchParams(location.search).get("sec"); if (q && SEC_T[q]) { state.sec = q; history.replaceState(null, "", location.pathname + location.hash); } } catch (e) {}
-fetch("data/results.json", { cache: "no-store" }).then(r => r.json()).then(d => {
-  data = d; renderHead(); syncOpts(); render(); loadCalendar(); setTimeout(maybeBrief, 400);
+// Schneller Start: zuletzt geladene Daten sofort zeigen (Gerätespeicher), parallel frisch laden und nur bei neuem Scan neu zeichnen
+let booted = false;
+function boot(d) {
+  const first = !booted; data = d; booted = true; renderHead(); syncOpts(); render();
+  if (!first) return;
+  loadCalendar(); setTimeout(maybeBrief, 400);
   requestAnimationFrame(() => window.KairoSplash && KairoSplash.ready());   // App steht → Start-Animation darf übergeben
   if (state.sec === "depot") loadSearch();
   if (location.hash) openDetail(decodeURIComponent(location.hash.slice(1)));
-}).catch(() => { $("sub").textContent = "Noch keine Scan-Ergebnisse vorhanden."; window.KairoSplash && KairoSplash.ready(); });
+}
+(async () => { try { if (window.caches && !/nosplash/.test(location.search)) { const c = await caches.match("data/results.json", { ignoreSearch: true });
+  if (c && !booted) boot(await c.json()); } } catch (e) {} })();
+fetch("data/results.json", { cache: "no-store" }).then(r => r.json()).then(d => {
+  if (!booted || !data || d.generated !== data.generated) boot(d);
+}).catch(() => { if (booted) { if (navigator.onLine === false) netToast(false); return; }   // gespeicherter Stand läuft weiter
+  // Laden fehlgeschlagen: ehrlich sagen warum, mit „Erneut versuchen“
+  const off = navigator.onLine === false;
+  $("sub").textContent = off ? "Keine Internetverbindung." : "Die Daten konnten gerade nicht geladen werden.";
+  $("main").innerHTML = `<div class="card empty-st"><div class="es-ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${off ? '<path d="M6 18a28 28 0 0 1 36 0M12 25a19 19 0 0 1 24 0M18 32a10 10 0 0 1 12 0"/><circle cx="24" cy="38" r="2"/><path d="M8 8l32 32"/>' : '<circle cx="24" cy="24" r="16"/><path d="M24 15v11M24 32v1"/>'}</svg></div>
+    <b>${off ? "Du bist offline" : "Daten gerade nicht erreichbar"}</b><p>${off ? "Kairo braucht für den heutigen Scan eine Internetverbindung. Deine Trades, das Journal und die Übung sind sicher auf diesem Gerät gespeichert." : "Meist dauert das nur einen Moment – z. B. während der Scan neue Daten veröffentlicht. Deine eigenen Daten sind sicher auf diesem Gerät."}</p>
+    <button class="btn" onclick="location.reload()">Erneut versuchen</button></div>`;
+  window.KairoSplash && KairoSplash.ready(); });
+// Verbindung weg / wieder da: kurzer Hinweis oben, Daten bleiben sichtbar
+function netToast(on) { let t = $("netToast"); if (!t) { t = document.createElement("div"); t.id = "netToast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.className = on ? "on ok" : "on"; t.textContent = on ? "Wieder online" : `Offline – du siehst den Stand vom ${data ? new Date(data.generated).toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "letzten Laden"}`;
+  clearTimeout(netToast.t); if (on) netToast.t = setTimeout(() => { t.className = ""; }, 2500); }
+addEventListener("offline", () => netToast(false)); addEventListener("online", () => netToast(true));
 </script>
 </body>
 </html>
