@@ -26,7 +26,7 @@ from .config import CONFIG, ROOT, as_dict
 from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
-from . import briefing, company, etf, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
+from . import briefing, company, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import MARKET, SECTOR_DE, SECTOR_ETF, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -496,7 +496,7 @@ def main(argv=None) -> int:
             print(f"ETF: {eo.get('c')} € · {eo.get('dd', 0) * 100:.1f} % unter dem Hoch · {eo.get('t')} · {len(eh) - eo.get('n', 0) if eh is not None else 0} Fehlkurse entfernt")
         except Exception as exc:
             print(f"ETF: Fehler {exc!r}")
-    ctx_hist = yf.history([t for t, _ in MARKET] + sorted(set(SECTOR_ETF.values())), CONFIG.history.period, end=args.end)
+    ctx_hist = yf.history(sorted({t for t, _ in MARKET} | set(SECTOR_ETF.values()) | set(fear.TICKERS)), CONFIG.history.period, end=args.end)
     market = market_context(ctx_hist)
     try:
         vix_now = float(ctx_hist["^VIX"]["Close"].dropna().iloc[-1])
@@ -703,6 +703,11 @@ def main(argv=None) -> int:
             ana[t] = _clean(a)
         except Exception as exc:
             print(f"{t}: Analyse-Fehler {exc!r}")
+    try:                                           # Stimmung/Angst (backend/fear.py) – reine Anzeige, ändert keine Kriterien
+        market["fear"] = fear.fear(ctx_hist, fear.breadth(df for df, _, _ in final.values()))
+        print("Stimmung:", {k: v for k, v in (market["fear"] or {}).items() if k in ("score", "label")})
+    except Exception as exc:
+        print(f"Stimmung: Fehler {exc!r}")
     with open(SITE / "analysis.json", "w", encoding="utf-8") as f:
         json.dump(_clean({"generated": out["generated"], "market": market, "tickers": ana}), f, ensure_ascii=False, separators=(",", ":"))
     print(f"Analyse: {len(ana)} Aktien")

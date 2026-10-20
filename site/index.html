@@ -616,6 +616,14 @@
   .regime { display: flex; gap: 12px; align-items: flex-start; background: var(--surface-2); border-radius: 14px; padding: 12px; margin-bottom: 10px; }
   .regime i { flex: none; width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; background: var(--c, var(--muted)); box-shadow: 0 0 12px var(--c, transparent); }
   .regime.tone-green { --c: var(--up); } .regime.tone-red { --c: var(--red); } .regime.tone-yellow { --c: var(--gold); }
+  .fear { background: var(--surface-2); border-radius: 14px; padding: 12px; margin-bottom: 10px; }
+  .fear-h { display: flex; align-items: center; gap: 6px; } .fear-h small { font-weight: 600; color: var(--muted); margin-left: 4px; }
+  .fear.tone-red .fear-h b { color: var(--red); } .fear.tone-yellow .fear-h b { color: var(--gold); }
+  .fear-bar { position: relative; height: 8px; border-radius: 4px; margin: 10px 0 4px; background: linear-gradient(90deg, var(--up) 0%, var(--up) 22%, var(--gold) 50%, var(--red) 78%, #8b0000 100%); opacity: .9; }
+  .fear-bar i { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--text); box-shadow: 0 0 0 2px var(--surface-2); }
+  .fear-sc { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+  .fear-p { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 13px; color: var(--muted); } .fear-p b { color: var(--text); font-weight: 650; }
+  .fear-p .down b { color: var(--red); } .fear-p .gold b { color: var(--gold); }
   .regime b { display: block; } .regime span { font-size: 13px; color: var(--muted); }
   .hev { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); } .hev:first-of-type { border-top: 0; }
   .hev .k { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
@@ -1399,6 +1407,7 @@ const GLOSS = {
   spread: ["Spread", "Unterschied zwischen Kauf- (Brief) und Verkaufskurs (Geld). Versteckte Kosten jeder Order – bei Turbos und kleinen Aktien höher."],
   exp: ["Erwartung je Trade", "Durchschnittliches Ergebnis aller Trades. Positiv heißt: Die Strategie verdient im Schnitt – auch wenn viele Trades verlieren."],
   sharpe: ["Sharpe", "Rendite im Verhältnis zur Schwankung. Höher ist besser: gleiche Rendite mit weniger Auf und Ab."],
+  fear: ["Stimmung / Angst (0–100)", "Fasst sieben Messgrößen zusammen: VIX-Höhe und -Anstieg, kurz- gegen langfristige Angst (VIX ÷ VIX3M), Tech/KI (Nasdaq 100 und Halbleiter vom Hoch), Anteil der gescannten Aktien über der EMA 50, Aktien am 52-Wochen-Tief und den Kreditmarkt. Die Trend-Ampel sagt, wohin der Markt läuft – die Stimmung, wie nervös er ist. Erfahrungswerte, keine getestete Handelsregel."],
   etfa: ["ETF-Ampel", "Für Extra-Geld neben dem Sparplan: Grün = jetzt investieren (Rücksetzer oder Angst am Markt), Gelb = höchstens 3 Monate abwarten. Die monatliche Sparrate läuft immer."],
 };
 const TERMS = [[/\bATR\b/, "atr"], [/Seitwärtsphase/, "base"], [/Vormomentum/, "mom"], [/EMA ?20\b/, "ema20x"], [/K\.-o\.-Schwelle|\bK\.-o\./, "ko"],
@@ -3729,9 +3738,23 @@ function marketHtml() {
   const reg = m.regime, ids = ["^GSPC", "^NDX", "^GDAXI", "^STOXX", "^VIX"].filter(k => m[k]);
   const tone = { green: "up", red: "down", yellow: "" };
   return `<div class="hcard mkt">${hHead("Markt")}
-    ${reg ? `<div class="regime tone-${reg.tone}"><i></i><div><b>${esc(reg.label)}</b><span>${reg.tone === "green" ? "Rückenwind für Long-Setups – S&P 500 über der EMA 50, VIX ruhig." : reg.tone === "red" ? "Gegenwind – Reversal-Einstiege scheitern häufiger. Kleiner positionieren." : "Gemischtes Umfeld – Einstiege selektiv."}</span></div></div>` : ""}
+    ${reg ? `<div class="regime tone-${reg.tone}"><i></i><div><b>Trend: ${esc(reg.label)}</b><span>${reg.tone === "green" ? "Rückenwind für Long-Setups – S&P 500 über der EMA 50, VIX ruhig." : reg.tone === "red" ? "Gegenwind – Reversal-Einstiege scheitern häufiger. Kleiner positionieren." : "Gemischtes Umfeld – Einstiege selektiv."}</span></div></div>` : ""}
+    ${fearHtml(m.fear)}
     <div class="mtiles">${ids.map(k => { const x = m[k]; return `<div class="mt"><span>${esc(x.name)}</span><b>${fmt(x.c, k === "^VIX" ? 1 : 0)}</b>
       <em class="${k === "^VIX" ? (x.tone === "green" ? "up" : x.tone === "red" ? "down" : "") : x.chg1m == null ? "" : x.chg1m >= 0 ? "up" : "down"}" title="${k === "^VIX" ? "" : "Veränderung 1 Monat"}">${k === "^VIX" ? esc(x.label) : `${sgnPct(x.chg1m, 1)} · 1 Mon.`}</em></div>`; }).join("")}</div></div>`;
+}
+// Stimmung/Angst 0–100 (backend/fear.py): eigene Skala neben dem Trend – Information, keine Handelsregel
+function fearHtml(f) {
+  if (!f) return "";
+  const hint = f.score >= 65 ? "Angst hoch: Kurslücken sind häufiger, Stops können übersprungen werden – Positionen eher kleiner. Für Extra-Geld in den ETF historisch ein guter Zeitpunkt (siehe ETF-Ampel)."
+    : f.score >= 45 ? "Die Nervosität steigt – Stops konsequent setzen, nicht nachkaufen, was fällt."
+    : f.score >= 25 ? "Normale Stimmung." : "Sehr ruhig – oft sorglos; Rücksetzer kommen dann überraschend.";
+  const top = (f.parts || []).slice().sort((a, b) => b.s - a.s).slice(0, 4);
+  return `<div class="fear tone-${f.tone}"><div class="fear-h"><b>Stimmung: ${esc(f.label)} <small>${f.score}/100</small></b>${gl("fear")}</div>
+    <div class="fear-bar" role="img" aria-label="Angst ${f.score} von 100"><i style="left:${f.score}%"></i></div>
+    <div class="fear-sc"><span>Sorglos</span><span>Neutral</span><span>Vorsicht</span><span>Angst</span><span>Panik</span></div>
+    <div class="fear-p">${top.map(p => `<span class="${p.s >= 65 ? "down" : p.s >= 45 ? "gold" : ""}">${esc(p.l)} <b>${esc(p.v)}</b></span>`).join("")}</div>
+    <div class="note" style="margin:6px 0 0">${hint}</div></div>`;
 }
 function changesHtml() {
   const ch = getJson("changes.json");
