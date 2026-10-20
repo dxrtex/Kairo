@@ -69,6 +69,25 @@ async def main(out: Path) -> None:
             if ein:
                 await pg.goto(f"{url}?nosplash=1&sec=entry")
                 await pg.wait_for_timeout(1500)
+            if name == "ipad":                             # Übung als Broker: Spiel starten, Order-Ticket, Order prüfen, Aufträge
+                await pg.goto(f"{url}?nosplash=1&sec=game"); await pg.wait_for_timeout(2500)
+                if await pg.query_selector('[data-g="start"]'):
+                    await pg.click('[data-g="start"]'); await pg.wait_for_timeout(1200)
+                await pg.screenshot(path=str(out / "ipad_g1_depot.png"))
+                await pg.click('[data-g="tab"][data-v="trade"]'); await pg.wait_for_timeout(800)
+                if await pg.query_selector('.g-idea'):
+                    await pg.click('.g-idea'); await pg.wait_for_timeout(1200)
+                    await pg.screenshot(path=str(out / "ipad_g2_ticket.png"))
+                    for sel, v in (("#gWkn", "DEMO123"), ("#gP0", "2,50"), ("#gK0", "1"), ("#gQty", "200")):
+                        if await pg.query_selector(sel):
+                            await pg.fill(sel, v)
+                    await pg.click('[data-g="review"]'); await pg.wait_for_timeout(800)
+                    await pg.screenshot(path=str(out / "ipad_g3_review.png"))
+                    if await pg.query_selector('[data-g="buy"]'):
+                        await pg.click('[data-g="buy"]'); await pg.wait_for_timeout(1200)
+                        await pg.screenshot(path=str(out / "ipad_g4_after.png"))
+                await pg.click('[data-g="tab"][data-v="orders"]'); await pg.wait_for_timeout(800)
+                await pg.screenshot(path=str(out / "ipad_g5_orders.png"))
             for page in ("track", "research"):
                 await pg.goto(f"https://dxrtex.github.io/Kairo/{page}/")
                 await pg.wait_for_timeout(2000)
@@ -79,4 +98,3 @@ async def main(out: Path) -> None:
 
 if __name__ == "__main__":
     asyncio.run(main(Path(sys.argv[1] if len(sys.argv) > 1 else "screens")))
-# Vorschau Journal
