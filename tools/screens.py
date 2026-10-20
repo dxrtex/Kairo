@@ -43,19 +43,16 @@ async def main(out: Path) -> None:
         pd.set_option("display.width", 220); pd.set_option("display.max_columns", 20)
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            for t in ("NFLX", "JPM", "ASML.AS", "SAP.DE", "TSLA"):
-                print("=====", t)
-                tk = yf.Ticker(t)
-                for name, fn in (("earnings_dates", lambda: tk.get_earnings_dates(limit=6)),
-                                 ("earnings_history", lambda: tk.get_earnings_history()),
-                                 ("earnings_estimate", lambda: tk.get_earnings_estimate()),
-                                 ("revenue_estimate", lambda: tk.get_revenue_estimate()),
-                                 ("q_revenue", lambda: tk.quarterly_income_stmt.loc[["Total Revenue", "Diluted EPS"]].iloc[:, :5]),
-                                 ("calendar", lambda: tk.calendar),
-                                 ("news", lambda: [(n.get("content", n).get("title"), n.get("content", n).get("pubDate"), (n.get("content", n).get("canonicalUrl") or {}).get("url")) for n in (tk.news or [])[:8]]),
-                                 ("hist", lambda: tk.history(period="1mo")["Close"].tail(8))):
+            import urllib.request, urllib.parse, re as _re
+            for q in ("Netflix earnings guidance", "JPMorgan earnings outlook", "ASML quarterly results guidance", "SAP Prognose Quartal"):
+                for base in ("https://news.google.com/rss/search?hl=en-US&gl=US&ceid=US:en&q=", "https://feeds.finance.yahoo.com/rss/2.0/headline?region=US&lang=en-US&s="):
+                    url = base + urllib.parse.quote(q if "google" in base else q.split()[0])
+                    print("=====", url)
                     try:
-                        print("--", name); print(fn())
+                        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                        x = urllib.request.urlopen(req, timeout=20).read().decode("utf-8", "replace")
+                        items = _re.findall(r"<item>.*?<title>(.*?)</title>.*?<pubDate>(.*?)</pubDate>", x, _re.S)
+                        print(len(x), len(items)); [print(" ", d, "|", t[:140]) for t, d in items[:12]]
                     except Exception as exc:
                         print("ERR", repr(exc)[:200])
         out.mkdir(parents=True, exist_ok=True)
