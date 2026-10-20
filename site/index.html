@@ -198,6 +198,7 @@
   abbr.term { font: inherit; color: inherit; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: 3px; cursor: help; }
   .glpop b { display: block; margin-bottom: 4px; }
   .pgrp > summary { cursor: pointer; list-style: none; } .pgrp > summary::-webkit-details-marker { display: none; }
+  .st-step .btn { flex: none; width: auto; } .ein-opt > .st { grid-column: 2; grid-row: 1 / span 2; justify-self: end; align-self: center; width: auto; }
   .st-step { display: flex; align-items: center; gap: 8px; } .st-step > span { flex: 1; } .st-step s { text-decoration-color: color-mix(in srgb, currentColor 50%, transparent); }
   .st.wait { background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--muted); } .st.own { background: var(--accent-bg); color: var(--accent); }
   .empty-st { text-align: center; padding: 28px 22px; margin-bottom: 14px; } .empty-st .es-ic { font-size: 34px; margin-bottom: 6px; }
@@ -5004,12 +5005,12 @@ function einHtml() {
   if (!anaData) loadAnalysis();
   const r = state.einT && searchIdx.find(x => x.t === state.einT);
   const lvT = x => { const r0 = data.results.find(y => y.ticker === x.t); return r0 ? kSt(r0).lv : 0; };
-  const best = kmRank().hits.slice(0, 8).sort((a, b) => lvT(b) - lvT(a)), free = kmSlots();
+  const best = kmRank().hits.filter(kmTested).sort((a, b) => lvT(b) - lvT(a)).slice(0, 8), free = kmSlots();
   return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span>Setup · Trade-Plan · Hebel</span></div>
     <div class="note" style="margin:0 2px 10px">Turbos verstärken Gewinne, Verluste und Kosten – zum Lernen erst in der <a href="#" data-gosec="game">Übung</a>. PRIME+: Orders ab 250 € gebührenfrei.</div>
     <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
     ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Kairo-Treffer</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
-      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Kairo-Treffer · USA/Europa, schwächeres Vormomentum zuerst${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}${kmTested(x) ? "" : " · Region nicht getestet"}${i < free ? "" : " · nur bei freiem Platz"}</span>${(r0 => r0 ? kPill(r0) : einTag(x))(data.results.find(y => y.ticker === x.t))}</button>`).join("")}</div>` : ""}`}`;
+      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Kairo-Treffer · USA/Europa · kaufbereit zuerst, dann schwächeres Vormomentum${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}${kmTested(x) ? "" : " · Region nicht getestet"}${i < free ? "" : " · nur bei freiem Platz"}</span>${(r0 => r0 ? kPill(r0) : einTag(x))(data.results.find(y => y.ticker === x.t))}</button>`).join("")}</div>` : ""}`}`;
 }
 document.addEventListener("input", e => {
   if (e.target.id === "gQ") { state.gQ = e.target.value; const l = $("gList"); if (l) l.innerHTML = gListHtml(); }
@@ -5214,7 +5215,7 @@ function renderMain() {
   const lead = ["ticker", "name", "grade", "status", "met", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)));   // Status bleibt: zeigt den 4H-Stand
   const hid = new Set(state.hiddenCols || []);
   if (!(data.stats && data.stats.grade)) hid.add("grade");    // Stufen nur, wenn ein geprüftes Modell aktiv ist
-  const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss"].includes(c.k))].filter(c => c.k === "ticker" || !hid.has(c.k));
+  const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss", "chk"].includes(c.k))].filter(c => c.k === "ticker" || !hid.has(c.k));
   $("main").innerHTML = head + `<div class="table-wrap"><table><thead><tr>${cols.map(c => `<th class="${c.n ? "num " : ""}${c.k === col.k ? "sorted" + (state.tableAsc ? " asc" : "") : ""}" data-k="${c.k}">${c.l}${gl(c.k === "dd" ? "" : c.k)}</th>`).join("")}</tr></thead>
     <tbody>${rows.map(r => `<tr class="${r.passed ? "r-hit" : r.fast_hit ? "r-fast" : ""}">${cols.map(c => `<td class="${c.n ? "num" : ""}">${c.h(r)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` + (isApple() ? "" : mListHtml(rows, col)) + more + extra;
   if (isApple()) {
