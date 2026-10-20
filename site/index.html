@@ -107,7 +107,9 @@
 
   .section-title { margin: 30px 2px 14px; font-size: 14px; font-weight: 600; color: var(--muted);
                    text-transform: uppercase; letter-spacing: .08em; display: flex; justify-content: space-between; }
-  .section-title span:last-child { text-transform: none; letter-spacing: 0; font-weight: 500; }
+  .section-title span:last-child { text-transform: none; letter-spacing: 0; font-weight: 500; text-align: right; flex: 0 1 auto; }
+  .section-title { gap: 12px; align-items: baseline; } .section-title span:first-child { min-width: 0; }
+  @media (max-width: 520px) { .section-title { font-size: 13px; letter-spacing: .06em; } .section-title span:last-child { font-size: 13px; max-width: 42%; } }
 
   /* Karten */
   .grid { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
@@ -870,6 +872,8 @@
   .tour-rows { display: grid; gap: 8px; text-align: left; } .tour-rows > div { background: var(--surface-2); border-radius: 14px; padding: 11px 14px; display: grid; gap: 2px; }
   .tour-rows b { font-size: 15px; } .tour-rows span { font-size: 14px; color: var(--muted); }
   .tour-dots { display: flex; justify-content: center; gap: 7px; margin: 20px 0 16px; } .tour-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); transition: width .2s; } .tour-dots i.on { width: 20px; border-radius: 4px; background: var(--accent); }
+  .tour-name { display: grid; gap: 6px; text-align: left; margin-top: 14px; font-size: 14px; color: var(--muted); } .tour-name small { color: var(--faint); }
+  .tour-name input { font: inherit; font-size: 16px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); }
   .tour-act { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   @media (pointer: coarse) {                   /* Touch: Tippflächen mind. ~44 pt (Apple-Richtlinie) */
     .btn.sm, .mini-btn, .kchip, .opt, .g-tabs button, .jper button { min-height: 44px; }
@@ -1403,7 +1407,7 @@ const tgtChip = r => { const t = tgtZ(r); if (!t || t.u <= 0) return "";
 const tgtIn = r => !state.minTgt || (tgtUp(r) ?? -1) >= +state.minTgt;
 const volaIn = r => { const b = VOLA[state.vola]; return !b || (r.volatility != null && r.volatility >= b[0] && r.volatility < b[1]); };
 const volaCls = v => v == null ? "muted" : v < .3 ? "up" : v < .5 ? "" : "down";
-const state = { name: "Jonny", calView: "month", budget: 400, sec: "scanner", tab: "table", tableKind: "hit", kinds: ["hit", "fast"], calScope: "mine", calKind: "", ...DEFAULTS, tableSort: "score", tableAsc: false };
+const state = { name: "", calView: "month", budget: 400, sec: "scanner", tab: "table", tableKind: "hit", kinds: ["hit", "fast"], calScope: "mine", calKind: "", ...DEFAULTS, tableSort: "score", tableAsc: false };
 const PREF = "reversal-finder-v1";
 try { Object.assign(state, JSON.parse(localStorage.getItem(PREF) || "{}")); } catch (e) {}
 if (state.tab === "settings" || state.tab === "filter") state.tab = "cards";
@@ -1915,7 +1919,7 @@ function searchHtml() {
     .sort((a, b) => rank(a) - rank(b) || (b.s === "hit") - (a.s === "hit") || (b.s === "fast") - (a.s === "fast") || a.n.localeCompare(b.n));
   const shown = found.slice(0, 12);
   const body = shown.length ? `<div class="sres">${shown.map(searchCard).join("")}</div>` : `<div class="empty">Keine Aktie gefunden. Gesucht wird in allen ${fmt(searchIdx.length, 0)} geprüften Aktien (ab 2 Mrd. USD).</div>`;
-  return `<div class="section-title"><span>Suche in allen Aktien · mit Kurz-Hinweis</span><span>${found.length > 12 ? "12 von " + found.length : found.length} Treffer</span></div>${body}
+  return `<div class="section-title"><span>Suche in allen Aktien</span><span>${found.length > 12 ? "12 von " + found.length : found.length} Treffer</span></div>${body}
     <div class="note" style="margin:8px 2px 0">Tage sind Handelstage und grobe Schätzungen aus den Regeln (z. B. bis ein Signal sein Zeitfenster verlässt). Stand: letzter Scan.</div>`;
 }
 
@@ -2046,7 +2050,7 @@ function calendarHtml() {
   const all = calData.filter(e => (state.calScope === "all" || calRelevant(e)) && kinds[state.calKind || ""](e));
   const list = all.filter(e => daysUntil(e.date) >= 0);
   const seg = (key, opts) => `<div class="opts seg">${opts.map(([v, l]) => `<button class="opt${(state[key] || "") === v ? " on" : ""}" data-cal="${key}" data-v="${v}">${l}</button>`).join("")}</div>`;
-  const head = `<div class="section-title"><span>Kalender · ${state.calScope === "all" ? "alle Termine" : "was den Markt wirklich bewegt"}</span><span>${list.length} Termine</span></div>
+  const head = `<div class="section-title"><span>Kalender · ${state.calScope === "all" ? "alle Termine" : "nur wichtige"}</span><span>${list.length} Termine</span></div>
     <div class="cal-top"><div class="vtog">${[["month", "Monat"], ["list", "Liste"]].map(([v, l]) => `<button class="${(month ? "month" : "list") === v ? "on" : ""}" data-cal="calView" data-v="${v}">${v === "month" ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M9.5 10v10M14.5 10v10"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>'}${l}</button>`).join("")}</div>${seg("calScope", [["mine", "Nur wichtige"], ["all", "Alle Termine"]])}</div>`
     + seg("calKind", [["", "Alle"], ["earnings", "Quartalszahlen"], ["div", "Dividenden"], ["macro", "Wirtschaft & Zinsen"]]);
   const evRow = e => {
@@ -3457,7 +3461,7 @@ function gameHtml() {
     <div class="card jpro"><div class="jc-h"><b>Ausgeführt</b><span>${orders.length}</span></div>
       ${orders.slice(0, 60).map(o => `<div class="g-ord"><span><b><i class="${o.side === "Kauf" ? "up" : o.side === "Verkauf" ? "down" : "muted"}">${o.side}</i> · ${esc(o.n)}</b><small>${new Date(o.ts).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit", hour: String(o.ts).length > 10 ? "2-digit" : undefined, minute: String(o.ts).length > 10 ? "2-digit" : undefined })} · ${o.kind === "turbo" ? `Turbo${o.wkn ? " " + esc(o.wkn) : ""}` : o.kind === "etf" ? "ETF" : "Aktie"} · ${fmt(o.qty, 0)} × ${eur2(o.px)}${o.why ? " · " + esc(o.why) : ""}</small></span><em>${eur2(o.qty * o.px)}${o.fee ? `<small>+ ${eur2(o.fee)} Gebühr</small>` : o.fee === 0 ? "<small>gebührenfrei</small>" : ""}</em></div>`).join("") || `<div class="note" style="margin:0">Noch keine Orders.</div>`}</div>
     ${closed ? `<div class="section-title"><span>Abgeschlossene Trades</span><span>${done.length}</span></div><div class="table-wrap"><table><tbody>${closed}</tbody></table></div>` : ""}`;
-  return `<div class="section-title"><span>Übung · Broker-Simulation</span><span>seit ${days} ${days === 1 ? "Tag" : "Tagen"}</span></div>` + head
+  return `<div class="section-title"><span>Übung</span><span>seit ${days} ${days === 1 ? "Tag" : "Tagen"}</span></div>` + head
     + (tab === "trade" ? trade : tab === "orders" ? ordList : depot) + `
     <div class="card" style="margin-top:18px"><label class="g-opt"><input type="checkbox" data-g="auto"${g.auto ? " checked" : ""}> Regeln automatisch befolgen – Stop wie eine Stop-Order (auch untertags über die Tagestiefs), ab Tag 10 Verkauf bei Schluss unter der EMA 20, spätestens Tag ${KMAX.hold}</label>
       <div class="note">Turbo-Wert zwischendurch geschätzt: Kaufkurs × (Basiswert − K.-o.) ÷ (Basiswert beim Kauf − K.-o.), K.-o. steigt mit ~3,5 % p. a. Finanzierung. Mit „Kurs eintragen“ übernimmst du den echten Geldkurs aus Scalable; beim Verkauf trägst du den tatsächlichen Verkaufskurs ein. K.-o. wird über die Tagestiefs erkannt. 0,99 € je Order, keine Steuern. Spielgeld – keine Anlageberatung.</div>
@@ -3680,6 +3684,7 @@ function tourHtml(i) {
   const [ic, t, x, rows] = TOUR[i], last = i === TOUR.length - 1;
   return `<div class="tour-ic">${TOUR_IC[ic]}</div><div class="tour-k">Schritt ${i + 1} von ${TOUR.length}</div><h2 class="tour-h">${t}</h2><p class="tour-p">${x}</p>
     <div class="tour-rows">${rows.map(([a, b]) => `<div><b>${a}</b><span>${b}</span></div>`).join("")}</div>
+    ${last ? `<label class="tour-name">Wie soll Kairo dich nennen? <small>(optional)</small><input id="tourName" maxlength="24" autocomplete="given-name" placeholder="Vorname" value="${esc(state.name || "")}"></label>` : ""}
     <div class="tour-dots">${TOUR.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("")}</div>
     <div class="tour-act">${i ? `<button class="btn ghost" data-tour="${i - 1}">Zurück</button>` : `<button class="btn ghost" data-tour="end">Überspringen</button>`}
       <button class="btn" data-tour="${last ? "end" : i + 1}">${last ? "Los geht’s" : "Weiter"}</button></div>`;
@@ -3689,7 +3694,7 @@ function openTour(i = 0) {
   el.hidden = false; el.innerHTML = `<div class="bm-back"></div><div class="bm-box tour-box" role="dialog" aria-modal="true" aria-label="Rundgang">${tourHtml(i)}</div>`; el.dataset.i = i;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-tour]"); if (!b) return;
-  const v = b.dataset.tour; if (v === "end") { state.tourDone = 1; save(); const el = $("tour"); if (el) el.remove(); return; }
+  const v = b.dataset.tour; if (v === "end") { const n = $("tourName"); if (n) { state.name = n.value.trim(); renderHead(); } state.tourDone = 1; save(); const el = $("tour"); if (el) el.remove(); return; }
   const box = document.querySelector(".tour-box"); if (box) { box.innerHTML = tourHtml(+v); $("tour").dataset.i = v; } else openTour(+v); });
 (() => { let x0 = null; document.addEventListener("touchstart", e => { if (e.target.closest(".tour-box")) x0 = e.touches[0].clientX; }, { passive: true });   // wischen
   document.addEventListener("touchend", e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0, el = $("tour"); x0 = null; if (!el || Math.abs(dx) < 50) return;
@@ -5132,11 +5137,11 @@ function einHtml() {
   const r = state.einT && searchIdx.find(x => x.t === state.einT);
   const lvT = x => { const r0 = data.results.find(y => y.ticker === x.t); return r0 ? kSt(r0).lv : 0; };
   const best = kmRank().hits.filter(kmTested).sort((a, b) => lvT(b) - lvT(a)).slice(0, 8), free = kmSlots();
-  return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span>Setup · Trade-Plan · Hebel</span></div>
+  return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span></span></div>
     <div class="note" style="margin:0 2px 10px">Turbos verstärken Gewinne, Verluste und Kosten – zum Lernen erst in der <a href="#" data-gosec="game">Übung</a>. PRIME+: Orders ab 250 € gebührenfrei.</div>
     <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
     ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Kairo-Treffer</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
-      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Kairo-Treffer · USA/Europa · kaufbereit zuerst, dann schwächeres Vormomentum${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}${kmTested(x) ? "" : " · Region nicht getestet"}${i < free ? "" : " · nur bei freiem Platz"}</span>${(r0 => r0 ? kPill(r0) : einTag(x))(data.results.find(y => y.ticker === x.t))}</button>`).join("")}</div>` : ""}`}`;
+      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Treffer · USA/Europa${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}${kmTested(x) ? "" : " · Region nicht getestet"}${i < free ? "" : " · nur bei freiem Platz"}</span>${(r0 => r0 ? kPill(r0) : einTag(x))(data.results.find(y => y.ticker === x.t))}</button>`).join("")}</div>` : ""}`}`;
 }
 document.addEventListener("input", e => {
   if (e.target.id === "gQ") { state.gQ = e.target.value; const l = $("gList"); if (l) l.innerHTML = gListHtml(); }
@@ -5267,7 +5272,7 @@ function topSetupsHtml() {
 function paperHtml() {
   paperLoad();
   const d = PAPER.d;
-  const head = `<div class="section-title"><span>Papier-Test</span><span>Kairo · Dual Momentum · S19/S20 · Momentum</span></div>
+  const head = `<div class="section-title"><span>Papier-Test</span><span>${Object.keys(PAPER_NAME).filter(k => d && d[k.toLowerCase()]).length || ""} Depots</span></div>
     <div class="note" style="margin:0 2px 10px">Virtuelle Depots handeln jede Strategie automatisch nach ihren Regeln – mit echten Kursen und Kosten wie bei Scalable PRIME+, ohne echtes Geld. Keine Anlageberatung.</div>`;
   if (!d) return head + `<div class="hcard"><div class="note">${PAPER.err ? "Papier-Daten noch nicht verfügbar – der erste Lauf erscheint nach dem nächsten US-Börsenschluss." : "Lade Papier-Daten …"}</div></div>`;
   const sm = d.sum || {}, bench = sm.bench || [];

@@ -714,7 +714,7 @@ def main(argv=None) -> int:
         except Exception as exc:
             print(f"{t}: Analyse-Fehler {exc!r}")
     try:                                           # Stimmung/Angst (backend/fear.py) – reine Anzeige, ändert keine Kriterien
-        market["fear"] = fear.fear(ctx_hist, fear.breadth(df for df, _, _ in final.values()))
+        market["fear"] = fear.fear(ctx_hist, fear.breadth(data.values()))   # Marktbreite über ALLE gescannten Aktien (nicht nur Kandidaten)
         print("Stimmung:", {k: v for k, v in (market["fear"] or {}).items() if k in ("score", "label")})
     except Exception as exc:
         print(f"Stimmung: Fehler {exc!r}")
