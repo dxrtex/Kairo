@@ -40,6 +40,16 @@ def demo_tx() -> str:
 async def main(out: Path) -> None:
     from playwright.async_api import async_playwright
     app_smoke.fetch()
+    try:                                               # Prüfdienst tagsüber testen (wie Workflow earnings.yml)
+        import time as _t
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from backend import earnings as _e
+        out.mkdir(parents=True, exist_ok=True)
+        t0 = _t.time(); _e.live_main(str(out / "live"), None)
+        (out / "earn_live.txt").write_text(f"{_t.time() - t0:.0f} s\n" + (out / "live" / "earnings_live.json").read_text()[:100000])
+    except Exception:
+        import traceback
+        out.mkdir(parents=True, exist_ok=True); (out / "earn_live.txt").write_text(traceback.format_exc())
     try:                                               # Quartalszahlen wie im Scan erzeugen (echte Daten) – für die Kalender-Ansicht
         sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
         from backend import earnings
