@@ -107,7 +107,9 @@
 
   .section-title { margin: 30px 2px 14px; font-size: 14px; font-weight: 600; color: var(--muted);
                    text-transform: uppercase; letter-spacing: .08em; display: flex; justify-content: space-between; }
-  .section-title span:last-child { text-transform: none; letter-spacing: 0; font-weight: 500; }
+  .section-title span:last-child { text-transform: none; letter-spacing: 0; font-weight: 500; text-align: right; flex: 0 1 auto; }
+  .section-title { gap: 12px; align-items: baseline; } .section-title span:first-child { min-width: 0; }
+  @media (max-width: 520px) { .section-title { font-size: 13px; letter-spacing: .06em; } .section-title span:last-child { font-size: 13px; max-width: 42%; } }
 
   /* Karten */
   .grid { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
@@ -865,11 +867,14 @@
   .tour-box { width: min(460px, 100%); text-align: center; padding: 34px 28px 24px; }
   .tour-ic { width: 76px; height: 76px; margin: 0 auto 18px; border-radius: 22px; display: grid; place-items: center; color: #fff; background: linear-gradient(145deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000)); box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 35%, transparent); }
   .tour-ic svg { width: 40px; height: 40px; }
+  .tour-ic.brand { background: #000; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 12px 34px rgba(10,132,255,.28); } .tour-ic.brand img { width: 100%; height: 100%; display: block; }
   .tour-k { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   .tour-h { font-size: 26px; font-weight: 800; letter-spacing: -.02em; margin: 6px 0 8px; } .tour-p { color: var(--muted); margin: 0 auto 18px; max-width: 380px; line-height: 1.5; }
   .tour-rows { display: grid; gap: 8px; text-align: left; } .tour-rows > div { background: var(--surface-2); border-radius: 14px; padding: 11px 14px; display: grid; gap: 2px; }
   .tour-rows b { font-size: 15px; } .tour-rows span { font-size: 14px; color: var(--muted); }
   .tour-dots { display: flex; justify-content: center; gap: 7px; margin: 20px 0 16px; } .tour-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); transition: width .2s; } .tour-dots i.on { width: 20px; border-radius: 4px; background: var(--accent); }
+  .tour-name { display: grid; gap: 6px; text-align: left; margin-top: 14px; font-size: 14px; color: var(--muted); } .tour-name small { color: var(--faint); }
+  .tour-name input { font: inherit; font-size: 16px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); }
   .tour-act { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   @media (pointer: coarse) {                   /* Touch: Tippflächen mind. ~44 pt (Apple-Richtlinie) */
     .btn.sm, .mini-btn, .kchip, .opt, .g-tabs button, .jper button { min-height: 44px; }
@@ -1403,7 +1408,7 @@ const tgtChip = r => { const t = tgtZ(r); if (!t || t.u <= 0) return "";
 const tgtIn = r => !state.minTgt || (tgtUp(r) ?? -1) >= +state.minTgt;
 const volaIn = r => { const b = VOLA[state.vola]; return !b || (r.volatility != null && r.volatility >= b[0] && r.volatility < b[1]); };
 const volaCls = v => v == null ? "muted" : v < .3 ? "up" : v < .5 ? "" : "down";
-const state = { name: "Jonny", calView: "month", budget: 400, sec: "scanner", tab: "table", tableKind: "hit", kinds: ["hit", "fast"], calScope: "mine", calKind: "", ...DEFAULTS, tableSort: "score", tableAsc: false };
+const state = { name: "", calView: "month", budget: 400, sec: "scanner", tab: "table", tableKind: "hit", kinds: ["hit", "fast"], calScope: "mine", calKind: "", ...DEFAULTS, tableSort: "score", tableAsc: false };
 const PREF = "reversal-finder-v1";
 try { Object.assign(state, JSON.parse(localStorage.getItem(PREF) || "{}")); } catch (e) {}
 if (state.tab === "settings" || state.tab === "filter") state.tab = "cards";
@@ -1704,8 +1709,8 @@ function kplanHtml(r) {
   const fm = filterMiss(r);
   const cells = [];
   if (r.passed && x.k !== "gone") {
-    cells.push(["Kaufzone", pl.base ? `${fmt(pl.base.lo)}–${fmt(pl.base.hi)}` : "nach Seitwärtsphase", pl.base ? cur : "5 ruhige Tage abwarten"]);
-    cells.push(["Stop", pl.base && pl.stop ? fmt(pl.stop) : "–", pl.base && pl.stop ? `${cur} · ${pct((pl.base.hi - pl.stop) / pl.base.hi, 1)} unter der Zone` : "Tief der Seitwärtsphase − 0,25 ATR"]);
+    cells.push(["Kaufzone", pl.base ? `${fmt(pl.base.lo)}–${fmt(pl.base.hi)}` : "offen", pl.base ? cur : "kommt nach 5 ruhigen Tagen"]);
+    cells.push(["Stop", pl.base && pl.stop ? fmt(pl.stop) : "–", pl.base && pl.stop ? `${cur} · ${pct((pl.base.hi - pl.stop) / pl.base.hi, 1)} unter der Zone` : "kommt mit der Kaufzone"]);
     cells.push(["Ausstieg", "EMA 20", "ab Tag 10 bei Schluss darunter, spätestens Tag 60"]);
   }
   if (tz && tz.u > 0) cells.push(["Kursziel Analysten", sgnPct(tz.u, 0), `${fmt(tz.z, 1)} × Jahresschwankung · ${tz.n} Analysten${tz.z >= 1 ? " · attraktiv" : ""}`]);
@@ -1713,6 +1718,7 @@ function kplanHtml(r) {
     ${cells.length ? `<div class="kp-cells">${cells.map(([l, v, sub]) => `<div><span>${l}</span><b>${v}</b><em>${sub}</em></div>`).join("")}</div>` : ""}
     ${r.passed && !["gone", "own"].includes(x.k) ? `<div class="kp-act"><button class="btn" data-ein="${esc(r.ticker)}">Trade planen</button></div>` : ""}</div>`;
 }
+const crvTxt = v => v == null ? "–" : v > 10 ? "über 10" : fmt(v, 1);
 const agrp = (t, h, open) => !h ? "" : isApple() ? `<details class="agrp"${open ? " open" : ""}><summary>${esc(t)}</summary><div>${h}</div></details>` : h;
 function card(r) {
   return `<article class="card">
@@ -1738,7 +1744,7 @@ function card(r) {
     <div class="figures">
       <div class="fig"><span>Rückgang</span><b class="${(r.drawdown ?? 0) >= 0 ? "down" : "up"}">${ddFmt(r.drawdown, 0)}</b></div>
       <div class="fig"><span>Kurs${r.live ? " · live" : ""}</span><b>${fmt(r.close)}</b></div>
-      <div class="fig"><span>CRV</span><b class="${(r.crv ?? 0) >= 2 ? "up" : "muted"}">${fmt(r.crv, 1)}</b></div>
+      <div class="fig"><span>CRV</span><b class="${(r.crv ?? 0) >= 2 ? "up" : "muted"}">${crvTxt(r.crv)}</b></div>
       <div class="fig"><span>Börsenwert</span><b>${fmtCap(r.market_cap_usd)}</b></div>
     </div>
     ${isApple() ? `<div class="aseg rng">${[["1M", 21], ["3M", 63], ["6M", 126], ["1J", 252]].map(([l, n]) => `<button data-rng="${n}" class="${(state.aRng || 63) === n ? "on" : ""}">${l}</button>`).join("")}</div>` : ""}
@@ -1870,7 +1876,7 @@ const COLS = [
   { k: "div", l: "Divergenz", g: r => r.divergence || "", h: r => esc(r.divergence || "–") },
   { k: "macd", l: "MACD", g: r => r.macd_status, h: r => esc(r.macd_status) },
   { k: "mbi", l: "MBI", g: r => r.mbi_status, h: r => esc(r.mbi_status) },
-  { k: "crv", l: "CRV", n: 1, g: r => r.crv ?? -1, h: r => `<span class="${(r.crv ?? 0) >= 2 ? "up" : "down"}">${fmt(r.crv, 1)}</span>` },
+  { k: "crv", l: "CRV", n: 1, g: r => r.crv ?? -1, h: r => `<span class="${(r.crv ?? 0) >= 2 ? "up" : "down"}">${crvTxt(r.crv)}</span>` },
   { k: "score", l: "Score", n: 1, g: r => r.score, h: r => `<b>${r.score}</b>` },
   { k: "earn", l: "Earnings", g: r => r.earnings_date || "9", h: r => `<span class="${r.earnings_risk ? "down" : ""}">${dateDE(r.earnings_date)}</span>` },
   { k: "amp", l: "Kriterien", g: r => -r.missing.length, h: r => ampel(r) },
@@ -1915,7 +1921,7 @@ function searchHtml() {
     .sort((a, b) => rank(a) - rank(b) || (b.s === "hit") - (a.s === "hit") || (b.s === "fast") - (a.s === "fast") || a.n.localeCompare(b.n));
   const shown = found.slice(0, 12);
   const body = shown.length ? `<div class="sres">${shown.map(searchCard).join("")}</div>` : `<div class="empty">Keine Aktie gefunden. Gesucht wird in allen ${fmt(searchIdx.length, 0)} geprüften Aktien (ab 2 Mrd. USD).</div>`;
-  return `<div class="section-title"><span>Suche in allen Aktien · mit Kurz-Hinweis</span><span>${found.length > 12 ? "12 von " + found.length : found.length} Treffer</span></div>${body}
+  return `<div class="section-title"><span>Suche in allen Aktien</span><span>${found.length > 12 ? "12 von " + found.length : found.length} Treffer</span></div>${body}
     <div class="note" style="margin:8px 2px 0">Tage sind Handelstage und grobe Schätzungen aus den Regeln (z. B. bis ein Signal sein Zeitfenster verlässt). Stand: letzter Scan.</div>`;
 }
 
@@ -2046,7 +2052,7 @@ function calendarHtml() {
   const all = calData.filter(e => (state.calScope === "all" || calRelevant(e)) && kinds[state.calKind || ""](e));
   const list = all.filter(e => daysUntil(e.date) >= 0);
   const seg = (key, opts) => `<div class="opts seg">${opts.map(([v, l]) => `<button class="opt${(state[key] || "") === v ? " on" : ""}" data-cal="${key}" data-v="${v}">${l}</button>`).join("")}</div>`;
-  const head = `<div class="section-title"><span>Kalender · ${state.calScope === "all" ? "alle Termine" : "was den Markt wirklich bewegt"}</span><span>${list.length} Termine</span></div>
+  const head = `<div class="section-title"><span>Kalender · ${state.calScope === "all" ? "alle Termine" : "nur wichtige"}</span><span>${list.length} Termine</span></div>
     <div class="cal-top"><div class="vtog">${[["month", "Monat"], ["list", "Liste"]].map(([v, l]) => `<button class="${(month ? "month" : "list") === v ? "on" : ""}" data-cal="calView" data-v="${v}">${v === "month" ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M9.5 10v10M14.5 10v10"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>'}${l}</button>`).join("")}</div>${seg("calScope", [["mine", "Nur wichtige"], ["all", "Alle Termine"]])}</div>`
     + seg("calKind", [["", "Alle"], ["earnings", "Quartalszahlen"], ["div", "Dividenden"], ["macro", "Wirtschaft & Zinsen"]]);
   const evRow = e => {
@@ -2176,8 +2182,7 @@ function depotHtml() {
   const actions = `<div class="row-actions" style="margin:16px 0">
       <button class="btn" data-dep="add">+ Position</button>
       <label class="btn ghost" style="cursor:pointer">${list.some(isImported) ? "Neuen Scalable-Export hochladen" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="depCsv" hidden></label>
-      <button class="btn ghost" data-dep="claude">Für Claude kopieren</button>
-      ${list.length ? `<button class="btn ghost danger" data-dep="clearimp">Depot leeren …</button>` : ""}</div>
+      ${list.length ? `<button class="btn ghost" data-dep="claude">Für Claude kopieren</button><button class="btn ghost danger" data-dep="clearimp">Depot leeren …</button>` : ""}</div>
     ${list.some(isImported) ? `<div class="note" style="margin:-6px 2px 12px">Ein neuer Export ersetzt den alten Import vollständig (Depot und Journal). Von Hand angelegte Positionen bleiben.</div>` : ""}
     ${depotMsg ? `<div class="tip tone-gray" style="margin-bottom:14px">${depotMsg}</div>` : ""}`;
   if (!anaData) loadAnalysis();
@@ -3364,7 +3369,7 @@ function gBuyForm(g, t) {
   const x = gPx(t), pl = (rowOf(t) || {}).pl || {}, su = gSetup(t), f = state.gF || {}, turbo = (f.kind || "turbo") === "turbo";
   const stop = +f.stop > 0 ? +f.stop : pl.stop || null;
   return `<div class="card g-buy"><div class="g-pos-h"><div><b>${esc(x.n)}</b><small class="muted" style="display:block">${esc(t)} · ${esc(su.k)}${su.score != null ? ` · Score ${su.score}` : ""} · Basiswert ${fmt(x.c)} ${esc(x.cur)}</small></div><button class="btn ghost sm" data-g="pick" data-t="" aria-label="Order-Ticket schließen">✕</button></div>
-    <div class="g-row muted"><span>Plan: Stop ${stop ? fmt(stop) + " " + esc(x.cur) : "–"} (${pl.src ? esc(pl.src) + " − 0,25 ATR" : "selbst eintragen"}) · Verkauf an Tag ${KMAX.hold} (${dateDE(isoD(addBd(new Date(), KMAX.hold)))})</span></div>
+    <div class="g-row muted"><span>Plan: Stop ${stop ? fmt(stop) + " " + esc(x.cur) : "–"} (${pl.src ? esc(pl.src) + " − 0,25 ATR" : "selbst eintragen"}) · Ausstieg ab Tag 10 unter der EMA 20, spätestens Tag ${KMAX.hold} (${dateDE(isoD(addBd(new Date(), KMAX.hold)))})</span></div>
     <div class="g-mode"><button class="opt${turbo ? " on" : ""}" data-g="kind" data-v="turbo">Turbo Long</button><button class="opt${turbo ? "" : " on"}" data-g="kind" data-v="stock">Aktie</button></div>
     <div class="tp2-cfg" style="margin-top:10px">
       ${turbo ? `<label>WKN / ISIN<input id="gWkn" value="${esc(f.wkn || "")}" placeholder="z. B. HT1ABC" autocapitalize="characters"></label>` : ""}
@@ -3416,7 +3421,7 @@ function gameHtml() {
   const id = data.results.filter(r => r.passed).sort((a, b) => (tst(b) - tst(a)) || ((mo6(a) ?? 9) - (mo6(b) ?? 9))).slice(0, 10), sel = state.gSel;
   const idea = r => { const s = rowOf(r.ticker) || {}, own = g.pos.some(p => p.t === r.ticker);
     return `<button class="g-idea${sel === r.ticker ? " on" : ""}" data-g="pick" data-t="${esc(r.ticker)}"><b>${esc(r.name || r.ticker)}</b>
-      <small>Kairo · Score ${r.score}${s.pl && s.pl.base ? " · Seitwärtsphase ✓" : " · wartet auf Seitwärtsphase"}${own ? " · im Depot" : ""}</small><span>${fmt(r.close)} ${esc(r.currency || "")}</span></button>`; };
+      <small>${kPill(r)} ${tgtChip(r)}${own ? " · im Depot" : ""}</small><span>${fmt(r.close)} ${esc(r.currency || "")}</span></button>`; };
   // Broker-Ansicht: Depot · Handeln · Aufträge
   const tab = state.gTab || "depot", dayChg = (() => { const h = g.hist; return h.length > 1 ? h[h.length - 1].v - h[h.length - 2].v : 0; })();
   const ev = []; let prev = G_START; g.hist.forEach(h => { ev.push({ date: h.d, pnl: h.v - prev }); prev = h.v; });
@@ -3457,7 +3462,7 @@ function gameHtml() {
     <div class="card jpro"><div class="jc-h"><b>Ausgeführt</b><span>${orders.length}</span></div>
       ${orders.slice(0, 60).map(o => `<div class="g-ord"><span><b><i class="${o.side === "Kauf" ? "up" : o.side === "Verkauf" ? "down" : "muted"}">${o.side}</i> · ${esc(o.n)}</b><small>${new Date(o.ts).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit", hour: String(o.ts).length > 10 ? "2-digit" : undefined, minute: String(o.ts).length > 10 ? "2-digit" : undefined })} · ${o.kind === "turbo" ? `Turbo${o.wkn ? " " + esc(o.wkn) : ""}` : o.kind === "etf" ? "ETF" : "Aktie"} · ${fmt(o.qty, 0)} × ${eur2(o.px)}${o.why ? " · " + esc(o.why) : ""}</small></span><em>${eur2(o.qty * o.px)}${o.fee ? `<small>+ ${eur2(o.fee)} Gebühr</small>` : o.fee === 0 ? "<small>gebührenfrei</small>" : ""}</em></div>`).join("") || `<div class="note" style="margin:0">Noch keine Orders.</div>`}</div>
     ${closed ? `<div class="section-title"><span>Abgeschlossene Trades</span><span>${done.length}</span></div><div class="table-wrap"><table><tbody>${closed}</tbody></table></div>` : ""}`;
-  return `<div class="section-title"><span>Übung · Broker-Simulation</span><span>seit ${days} ${days === 1 ? "Tag" : "Tagen"}</span></div>` + head
+  return `<div class="section-title"><span>Übung</span><span>seit ${days} ${days === 1 ? "Tag" : "Tagen"}</span></div>` + head
     + (tab === "trade" ? trade : tab === "orders" ? ordList : depot) + `
     <div class="card" style="margin-top:18px"><label class="g-opt"><input type="checkbox" data-g="auto"${g.auto ? " checked" : ""}> Regeln automatisch befolgen – Stop wie eine Stop-Order (auch untertags über die Tagestiefs), ab Tag 10 Verkauf bei Schluss unter der EMA 20, spätestens Tag ${KMAX.hold}</label>
       <div class="note">Turbo-Wert zwischendurch geschätzt: Kaufkurs × (Basiswert − K.-o.) ÷ (Basiswert beim Kauf − K.-o.), K.-o. steigt mit ~3,5 % p. a. Finanzierung. Mit „Kurs eintragen“ übernimmst du den echten Geldkurs aus Scalable; beim Verkauf trägst du den tatsächlichen Verkaufskurs ein. K.-o. wird über die Tagestiefs erkannt. 0,99 € je Order, keine Steuern. Spielgeld – keine Anlageberatung.</div>
@@ -3666,11 +3671,10 @@ function countUp(root) {
 function closeBrief() { $("brief").hidden = true; }
 // ---------- Rundgang: drei Schritte beim ersten Öffnen ----------
 const TOUR_IC = {
-  scan: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="21" cy="21" r="12"/><path d="M30 30l9 9"/><path d="M15 23l4-5 4 4 5-6"/></svg>`,
   rule: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 34l9-10 7 5 7-11"/><path d="M31 18h7v7"/><path d="M8 40h32"/></svg>`,
   go: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M24 6c7 4 11 11 11 19l-5 6H18l-5-6c0-8 4-15 11-19z"/><circle cx="24" cy="20" r="3.5"/><path d="M18 31l-4 9 7-3M30 31l4 9-7-3"/></svg>` };
 const TOUR = [
-  ["scan", "Willkommen bei Kairo", "Jeden Abend prüft Kairo rund 6.000 Aktien nach festen, getesteten Regeln – und zeigt dir morgens nur, was heute wirklich zu tun ist.",
+  ["brand", "Willkommen bei Kairo", "Jeden Abend prüft Kairo rund 6.000 Aktien nach festen, getesteten Regeln – und zeigt dir morgens nur, was heute wirklich zu tun ist.",
     [["Heute", "deine Aufgaben und die besten Treffer"], ["Scanner", "alle Treffer mit Status"], ["Depot", "Positionen, Journal, Übung, Bilanz"]]],
   ["rule", "Die Kairo-Regel", "Eine Regel für jeden Trade – kein Bauchgefühl.",
     [["1 · Treffer", "alle 11 Kriterien einer Wende erfüllt"], ["2 · Seitwärtsphase", "5 ruhige Tage abwarten, dann kaufen"], ["3 · Stop & Ausstieg", "Stop unter der Seitwärtsphase · ab Tag 10 unter der EMA 20 verkaufen, spätestens Tag 60"]]],
@@ -3678,8 +3682,9 @@ const TOUR = [
     [["ETF", "Sparplan einrichten – die Ampel sagt, wann Extra-Geld sinnvoll ist"], ["Übung", "Trades mit Spielgeld, wie bei Scalable"], ["Mitteilungen", "Stop, Verkaufstag und Ampel aufs iPad"]]]];
 function tourHtml(i) {
   const [ic, t, x, rows] = TOUR[i], last = i === TOUR.length - 1;
-  return `<div class="tour-ic">${TOUR_IC[ic]}</div><div class="tour-k">Schritt ${i + 1} von ${TOUR.length}</div><h2 class="tour-h">${t}</h2><p class="tour-p">${x}</p>
+  return `${ic === "brand" ? `<div class="tour-ic brand"><img src="icon-180.png?v=9" alt=""></div>` : `<div class="tour-ic">${TOUR_IC[ic]}</div>`}<div class="tour-k">Schritt ${i + 1} von ${TOUR.length}</div><h2 class="tour-h">${t}</h2><p class="tour-p">${x}</p>
     <div class="tour-rows">${rows.map(([a, b]) => `<div><b>${a}</b><span>${b}</span></div>`).join("")}</div>
+    ${last ? `<label class="tour-name">Wie soll Kairo dich nennen? <small>(optional)</small><input id="tourName" maxlength="24" autocomplete="given-name" placeholder="Vorname" value="${esc(state.name || "")}"></label>` : ""}
     <div class="tour-dots">${TOUR.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("")}</div>
     <div class="tour-act">${i ? `<button class="btn ghost" data-tour="${i - 1}">Zurück</button>` : `<button class="btn ghost" data-tour="end">Überspringen</button>`}
       <button class="btn" data-tour="${last ? "end" : i + 1}">${last ? "Los geht’s" : "Weiter"}</button></div>`;
@@ -3689,7 +3694,7 @@ function openTour(i = 0) {
   el.hidden = false; el.innerHTML = `<div class="bm-back"></div><div class="bm-box tour-box" role="dialog" aria-modal="true" aria-label="Rundgang">${tourHtml(i)}</div>`; el.dataset.i = i;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-tour]"); if (!b) return;
-  const v = b.dataset.tour; if (v === "end") { state.tourDone = 1; save(); const el = $("tour"); if (el) el.remove(); return; }
+  const v = b.dataset.tour; if (v === "end") { const n = $("tourName"); if (n) { state.name = n.value.trim(); renderHead(); } state.tourDone = 1; save(); const el = $("tour"); if (el) el.remove(); return; }
   const box = document.querySelector(".tour-box"); if (box) { box.innerHTML = tourHtml(+v); $("tour").dataset.i = v; } else openTour(+v); });
 (() => { let x0 = null; document.addEventListener("touchstart", e => { if (e.target.closest(".tour-box")) x0 = e.touches[0].clientX; }, { passive: true });   // wischen
   document.addEventListener("touchend", e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0, el = $("tour"); x0 = null; if (!el || Math.abs(dx) < 50) return;
@@ -4032,7 +4037,7 @@ function etfHtml() {
   const todo = e ? (goLv ? `Sparrate läuft · <b>Extra-Geld jetzt investieren</b>${e.lv === "go2" ? " (gern in 2–3 Raten)" : ""}`
     : `Sparrate läuft · <b>Extra-Geld zurücklegen</b> – spätestens nach 3 Monaten trotzdem investieren${e.last_go ? ` (letzter Rücksetzer: ${dateDE(e.last_go)})` : ""}`) : "";
   const hero = e ? `<div class="hcard etf-hero">
-      <div class="eh-lights">${lamp("go2", "Panik · jetzt", ETF_DG)}${lamp("go", "Jetzt investieren", "var(--up)")}${lamp("wait", "Abwarten", "var(--gold)")}</div>
+      <div class="eh-lights">${lamp("go2", "Panik – kaufen", ETF_DG)}${lamp("go", "Jetzt investieren", "var(--up)")}${lamp("wait", "Abwarten", "var(--gold)")}</div>
       <div class="eh-main"><span class="eh-k">ETF-Ampel · ${esc(e.name)}</span><b class="eh-t">${esc(e.t)}</b><p class="eh-do">${todo}</p>
         <div class="eh-facts"><span>Kurs <b>${fmt(e.c)} €</b></span><span>${e.dd < .005 ? "<b>am Allzeithoch</b>" : `<b>−${pct(e.dd, 1)}</b> unter dem Hoch`}</span>${etfStale(e) ? `<span class="gold">Tageskurs vom ${dateDE(e.date)} – Yahoo liefert verzögert, aktueller Kurs im Chart unten</span>` : `<span class="muted">Stand ${dateDE(e.date)}</span>`}</div>
         <div class="eh-pills">${facts.map(([l, v, c]) => `<span class="eh-p"><i class="${c}">●</i>${l}: <b>${v}</b></span>`).join("")}</div></div></div>
@@ -4045,12 +4050,12 @@ function etfHtml() {
         ["EMA 100", e.vs_e100 == null ? "–" : e.vs_e100 >= 0 ? "darüber" : "darunter", e.vs_e100 == null ? "muted" : e.vs_e100 < 0 ? "up" : "gold", e.vs_e100 == null ? "keine Daten" : e.vs_e100 < 0 ? "Rücksetzer – Kaufsignal" : "Kurs läuft über der EMA 100 – kein Rücksetzer"],
         ["Abstand zum Hoch", e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1), e.dd >= .05 ? "up" : "gold", e.dd >= .05 ? "mindestens 5 % unter dem Hoch – Kaufsignal" : "weniger als 5 % unter dem Hoch"]]
         .map(([l, v, c, t]) => `<li><i class="${c}">●</i><b>${l}: ${v}</b> – ${t}</li>`).join("")}</ul>
-      <div class="note" style="margin:6px 0 12px"><i class="vdot g"></i><b>Jetzt investieren</b>, sobald eins davon passt: Kurs unter der EMA 100, mindestens 5 % unter dem Hoch oder VIX ≥ 25 (Dunkelgrün: VIX ≥ 30, Panik). 🟡 <b>Abwarten</b>, wenn nichts davon passt – Extra-Geld zurücklegen, aber höchstens 3 Monate, dann trotzdem investieren. Die Sparrate läuft immer. Im Test (S&P 500 ab 1990, Welt ab 2003) kostete diese Regel gegenüber „immer sofort“ nur 0,1–0,7 % Endwert; länger warten (z. B. nur bei Panik kaufen) kostete 7–15 %.</div>` : "";
+      <div class="note" style="margin:6px 0 12px"><i class="vdot g"></i><b>Jetzt investieren</b>, sobald eins davon passt: Kurs unter der EMA 100, mindestens 5 % unter dem Hoch oder VIX ≥ 25 (Dunkelgrün: VIX ≥ 30, Panik).<br><i class="vdot y"></i><b>Abwarten</b>, wenn nichts davon passt – Extra-Geld zurücklegen, aber höchstens 3 Monate, dann trotzdem investieren. Die Sparrate läuft immer. Im Test (S&P 500 ab 1990, Welt ab 2003) kostete diese Regel gegenüber „immer sofort“ nur 0,1–0,7 % Endwert; länger warten (z. B. nur bei Panik kaufen) kostete 7–15 %.</div>` : "";
   const tiers = [["unter 10.000 €", "100 % ETF", "Trading-Teil wäre zu klein für gebührenfreie Orders"], ["10.000 – 20.000 €", "80 % ETF · 20 % Trading-Teil", "erst wenn der Papier-Test bestätigt"], ["ab 20.000 €", "70 % ETF · 30 % Trading-Teil", "erst wenn der Papier-Test bestätigt"]];
   const tierHtml = `<div class="note" style="margin:10px 0 0"><b>Aufteilung nach Kapitalgröße</b> ${c.auto ? "(automatisch aktiv)" : `· du hast ${c.share} % fest eingestellt – <button class="hlink" data-etfauto>wieder automatisch (${autoShare(c.total)} %)</button>`}
       <ul class="checks" style="margin:6px 0 0">${tiers.map(([k, v, t], i) => `<li><i class="${autoShare(c.total) === [100, 80, 70][i] ? "up" : "muted"}">●</i><b>${k}:</b> ${v} – ${t}</li>`).join("")}</ul>
       Forschungsstand 10/2026: Für den Trading-Teil gibt es noch <b>keine belegte</b> Strategie. Bester Kandidat ist Dual Momentum (in allen drei Testzeiträumen besser als der Welt-ETF, im letzten aber nicht sicher von Glück zu unterscheiden) – er läuft im Papier-Test, Entscheidung nach etwa 12 Monaten. Bis dahin ist 100 % ETF die belegte Wahl. Keine Anlageberatung.</div>`;
-  const plan = `<div class="hcard">${hHead(`Mein Plan · ${c.share} / ${100 - c.share}`)}
+  const plan = `<div class="hcard">${hHead(`Mein Plan · ${c.share} % ETF${c.share < 100 ? ` · ${100 - c.share} % Trading` : ""}`)}
     <div class="tp2-cfg"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
       <label>ETF-Anteil (%)<input id="etfShare" type="number" inputmode="decimal" min="0" max="100" step="5" value="${esc(c.share)}"></label>
       <label>Sparrate je Monat (€)<input id="etfRate" type="number" inputmode="decimal" min="0" step="25" value="${esc(c.rate || "")}" placeholder="z. B. 200"></label>
@@ -4274,7 +4279,7 @@ const APP_NEWS = [["2026.10.21", "Oktober-Update", [
   ["Scalable-Import ersetzt", "Ein neuer Export ersetzt den alten – Löschen jederzeit."],
   ["Design „Hell“", "Jetzt auch immer hell wählbar – unabhängig vom iPad."],
   ["Rundgang & Begriffe", "Kurzer Rundgang beim ersten Öffnen, Fachbegriffe antippbar."]]]];
-function newsHtml(all) {
+function appNewsHtml(all) {
   return APP_NEWS.slice(0, all ? APP_NEWS.length : 1).map(([v, t, items]) => `<div class="nw-v"><b>${esc(t)}</b><small>${esc(v.split(".").reverse().join("."))}</small></div>
     <ul class="nw-l">${items.map(([a, b]) => `<li><b>${esc(a)}</b><span>${esc(b)}</span></li>`).join("")}</ul>`).join("");
 }
@@ -4284,7 +4289,7 @@ function maybeNews() {
   state.newsSeen = APP_VER; save();
   let el = $("newsBox"); if (!el) { el = document.createElement("div"); el.id = "newsBox"; el.className = "bmodal"; document.body.appendChild(el); }
   el.hidden = false; el.innerHTML = `<div class="bm-back" data-newsclose></div><div class="bm-box nw-box" role="dialog" aria-modal="true" aria-label="Was ist neu"><button class="cm-x" data-newsclose aria-label="Schließen">✕</button>
-    <div class="bf-k">Was ist neu</div>${newsHtml(false)}<button class="btn" data-newsclose style="width:100%;margin-top:14px">Weiter</button></div>`;
+    <div class="bf-k">Was ist neu</div>${appNewsHtml(false)}<button class="btn" data-newsclose style="width:100%;margin-top:14px">Weiter</button></div>`;
   return true;
 }
 document.addEventListener("click", e => { if (e.target.closest("[data-newsclose]")) { const el = $("newsBox"); if (el) el.remove(); }
@@ -4301,7 +4306,7 @@ function feedbackHtml() {
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0"><label class="full">Was ist dir aufgefallen?<textarea id="fbText" rows="3" placeholder="z. B. „Im Depot stimmt der Wert von SAP nicht“ oder eine Idee"></textarea></label></div>
       <div class="row-actions" style="margin-top:10px"><button class="btn" data-fb="copy">Für Claude kopieren</button>${navigator.share ? `<button class="btn ghost" data-fb="share">Teilen …</button>` : ""}<button class="btn ghost" data-newsall>Was ist neu</button></div>
       <div class="note" id="fbMsg">Kopiert Beschreibung plus Bereich, Datenstand, Version und Gerät – keine Depot- oder Journal-Daten. Einfach im Chat mit Claude einfügen.</div>
-      <div class="nw-all" hidden>${newsHtml(true)}</div></div>`;
+      <div class="nw-all" hidden>${appNewsHtml(true)}</div></div>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-fb]"); if (!b) return;
   const t = reportText(($("fbText") || {}).value || ""), m = $("fbMsg");
@@ -5132,11 +5137,11 @@ function einHtml() {
   const r = state.einT && searchIdx.find(x => x.t === state.einT);
   const lvT = x => { const r0 = data.results.find(y => y.ticker === x.t); return r0 ? kSt(r0).lv : 0; };
   const best = kmRank().hits.filter(kmTested).sort((a, b) => lvT(b) - lvT(a)).slice(0, 8), free = kmSlots();
-  return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span>Setup · Trade-Plan · Hebel</span></div>
+  return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span></span></div>
     <div class="note" style="margin:0 2px 10px">Turbos verstärken Gewinne, Verluste und Kosten – zum Lernen erst in der <a href="#" data-gosec="game">Übung</a>. PRIME+: Orders ab 250 € gebührenfrei.</div>
     <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
     ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Kairo-Treffer</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
-      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Kairo-Treffer · USA/Europa · kaufbereit zuerst, dann schwächeres Vormomentum${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}${kmTested(x) ? "" : " · Region nicht getestet"}${i < free ? "" : " · nur bei freiem Platz"}</span>${(r0 => r0 ? kPill(r0) : einTag(x))(data.results.find(y => y.ticker === x.t))}</button>`).join("")}</div>` : ""}`}`;
+      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Treffer · USA/Europa${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}${kmTested(x) ? "" : " · Region nicht getestet"}${i < free ? "" : " · nur bei freiem Platz"}</span>${(r0 => r0 ? kPill(r0) : einTag(x))(data.results.find(y => y.ticker === x.t))}</button>`).join("")}</div>` : ""}`}`;
 }
 document.addEventListener("input", e => {
   if (e.target.id === "gQ") { state.gQ = e.target.value; const l = $("gList"); if (l) l.innerHTML = gListHtml(); }
@@ -5267,7 +5272,7 @@ function topSetupsHtml() {
 function paperHtml() {
   paperLoad();
   const d = PAPER.d;
-  const head = `<div class="section-title"><span>Papier-Test</span><span>Kairo · Dual Momentum · S19/S20 · Momentum</span></div>
+  const head = `<div class="section-title"><span>Papier-Test</span><span>${Object.keys(PAPER_NAME).filter(k => d && d[k.toLowerCase()]).length || ""} Depots</span></div>
     <div class="note" style="margin:0 2px 10px">Virtuelle Depots handeln jede Strategie automatisch nach ihren Regeln – mit echten Kursen und Kosten wie bei Scalable PRIME+, ohne echtes Geld. Keine Anlageberatung.</div>`;
   if (!d) return head + `<div class="hcard"><div class="note">${PAPER.err ? "Papier-Daten noch nicht verfügbar – der erste Lauf erscheint nach dem nächsten US-Börsenschluss." : "Lade Papier-Daten …"}</div></div>`;
   const sm = d.sum || {}, bench = sm.bench || [];

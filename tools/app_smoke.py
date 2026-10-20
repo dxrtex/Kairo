@@ -161,6 +161,10 @@ async def ui_check(b, url, errs):
         errs.append("Design Hell: wird nicht aktiv")
     if not await pg.query_selector('[data-fb="copy"]'):
         errs.append("Einstellungen: Feedback fehlt")
+    await pg.goto(f"{url}?nosplash=1&sec=news")
+    await pg.wait_for_timeout(1500)
+    if await pg.query_selector("#main .nw-l"):
+        errs.append("News: zeigt „Was ist neu“ statt der Nachrichten")
     await ctx.close()
 
 async def run(port: int) -> list[str]:
