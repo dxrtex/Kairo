@@ -525,6 +525,10 @@
             background: var(--glass); border: 1px solid var(--glass-line); margin: 0 0 18px; }
   .subnav button { border: 0; background: none; color: var(--muted); font-weight: 650; font-size: 14px; padding: 10px 4px; border-radius: 12px; cursor: pointer; }
   .subnav button.on { background: var(--accent); color: var(--accent-ink); }
+  /* Unterreiter in einer Zeile: eigenes Geld (Positionen, Journal, Übung) | Ergebnisse der Strategien (Bilanz, Papier) */
+  .subnav { display: flex; align-items: stretch; }
+  .subnav button { flex: 1 1 0; min-width: 0; padding: 10px 2px; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .subnav .sn-sep { flex: 0 0 1px; margin: 6px 3px; background: var(--glass-line); }
   /* Kalender */
   /* Heute */
   .brand .gear { margin-left: auto; width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--glass-line); background: var(--glass); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
@@ -4831,9 +4835,9 @@ function paperHtml() {
 
 // ---------- Rendern ----------
 // Reiter gebündelt: Depot (Positionen · Journal · Bilanz · Übung) und Markt (News · Kalender) – Unterreiter oben im Bereich
-const SUBNAV = { depot: [["depot", "Positionen"], ["journal", "Journal"], ["bilanz", "Bilanz"], ["game", "Übung"], ["paper", "Papier"]], news: [["news", "News"], ["calendar", "Kalender"]] };
+const SUBNAV = { depot: [["depot", "Positionen"], ["journal", "Journal"], ["game", "Übung"], "|", ["bilanz", "Bilanz"], ["paper", "Papier"]], news: [["news", "News"], ["calendar", "Kalender"]] };
 const groupOf = sec => Object.keys(SUBNAV).find(g => SUBNAV[g].some(x => x[0] === sec)) || sec;
-const subNavHtml = sec => { const g = groupOf(sec); return SUBNAV[g] ? `<div class="subnav">${SUBNAV[g].map(([s, l]) => `<button class="${s === sec ? "on" : ""}" data-gosub="${s}">${l}</button>`).join("")}</div>` : ""; };
+const subNavHtml = sec => { const g = groupOf(sec); return SUBNAV[g] ? `<div class="subnav">${SUBNAV[g].map(x => x === "|" ? `<i class="sn-sep" title="Ergebnisse der Strategien"></i>` : `<button class="${x[0] === sec ? "on" : ""}" data-gosub="${x[0]}">${x[1]}</button>`).join("")}</div>` : ""; };
 const KFOOT = `<div class="kfoot">Keine Anlageberatung – Kairo zeigt getestete Regeln, Entscheidungen triffst du selbst. Kairo führt keine Orders aus.<br>Deine Trades, Watchlist und Einstellungen bleiben auf diesem Gerät · Kurse: Yahoo Finance, onvista, Finnhub · Charts: TradingView</div>`;
 function render() { renderMain(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); }
 function renderMain() {
