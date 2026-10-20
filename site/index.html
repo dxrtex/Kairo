@@ -5888,12 +5888,22 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") { closeDetai
 
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").then(pushInit).catch(() => {});
 try { const q = new URLSearchParams(location.search).get("sec"); if (q && SEC_T[q]) { state.sec = q; history.replaceState(null, "", location.pathname + location.hash); } } catch (e) {}
-fetch("data/results.json", { cache: "no-store" }).then(r => r.json()).then(d => {
-  data = d; renderHead(); syncOpts(); render(); loadCalendar(); setTimeout(maybeBrief, 400);
+// Schneller Start: zuletzt geladene Daten sofort zeigen (Gerätespeicher), parallel frisch laden und nur bei neuem Scan neu zeichnen
+let booted = false;
+function boot(d) {
+  const first = !booted; data = d; booted = true; renderHead(); syncOpts(); render();
+  if (!first) return;
+  loadCalendar(); setTimeout(maybeBrief, 400);
   requestAnimationFrame(() => window.KairoSplash && KairoSplash.ready());   // App steht → Start-Animation darf übergeben
   if (state.sec === "depot") loadSearch();
   if (location.hash) openDetail(decodeURIComponent(location.hash.slice(1)));
-}).catch(() => {                                // Laden fehlgeschlagen: ehrlich sagen warum, mit „Erneut versuchen“
+}
+(async () => { try { if (window.caches && !/nosplash/.test(location.search)) { const c = await caches.match("data/results.json", { ignoreSearch: true });
+  if (c && !booted) boot(await c.json()); } } catch (e) {} })();
+fetch("data/results.json", { cache: "no-store" }).then(r => r.json()).then(d => {
+  if (!booted || !data || d.generated !== data.generated) boot(d);
+}).catch(() => { if (booted) { if (navigator.onLine === false) netToast(false); return; }   // gespeicherter Stand läuft weiter
+  // Laden fehlgeschlagen: ehrlich sagen warum, mit „Erneut versuchen“
   const off = navigator.onLine === false;
   $("sub").textContent = off ? "Keine Internetverbindung." : "Die Daten konnten gerade nicht geladen werden.";
   $("main").innerHTML = `<div class="card empty-st"><div class="es-ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${off ? '<path d="M6 18a28 28 0 0 1 36 0M12 25a19 19 0 0 1 24 0M18 32a10 10 0 0 1 12 0"/><circle cx="24" cy="38" r="2"/><path d="M8 8l32 32"/>' : '<circle cx="24" cy="24" r="16"/><path d="M24 15v11M24 32v1"/>'}</svg></div>
