@@ -90,6 +90,11 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
         s = {"t": r["ticker"], "n": (r.get("name") or r["ticker"])[:40], "k": k, "d": d, "score": r.get("score", 0),
              "entry": p["entry"], "stop": p["stop"], "t1": p.get("target1"), "t2": p.get("target2"), "crv": p.get("crv"),
              "region": r.get("region"), "grade": (r.get("grade") or {}).get("g"), "res": "running"}
+        sn = r.get("senti") or {}                  # Analysten-Kursziel am Signaltag (für KAIROZ – später nicht mehr rekonstruierbar)
+        if (sn.get("tgt") or {}).get("m"):
+            s.update(tg=sn["tgt"]["m"], tup=sn["tgt"].get("up"), na=(sn.get("an") or {}).get("n"))
+        if (r.get("flags") or {}).get("volatility"):
+            s["vol"] = round(float(r["flags"]["volatility"]), 3)
         chk = (r.get("tr") or {}).get("chk") if k == "trend" else None
         if chk:                                    # Rücksetzer-Check am Signaltag – für die spätere Live-Prüfung
             s.update(chk=chk["p"], f50=chk.get("fib50"), hi=chk.get("hi"))

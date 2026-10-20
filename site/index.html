@@ -201,6 +201,8 @@
   .pgrp > summary { cursor: pointer; list-style: none; } .pgrp > summary::-webkit-details-marker { display: none; }
   .st-step .btn { flex: none; width: auto; } .ein-opt > .st { grid-column: 2; grid-row: 1 / span 2; justify-self: end; align-self: center; width: auto; }
   .st-step { display: flex; align-items: center; gap: 8px; } .st-step > span { flex: 1; } .st-step s { text-decoration-color: color-mix(in srgb, currentColor 50%, transparent); }
+  .tz { display: inline-block; font-size: 12px; font-weight: 650; padding: 2px 8px; border-radius: 999px; color: var(--muted); background: color-mix(in srgb, var(--muted) 12%, transparent); white-space: nowrap; }
+  .tz.on { color: var(--gold); background: color-mix(in srgb, var(--gold) 16%, transparent); }
   .st.wait { background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--muted); } .st.own { background: var(--accent-bg); color: var(--accent); }
   .empty-st { text-align: center; padding: 28px 22px; margin-bottom: 14px; } .empty-st .es-ic, .jicon { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 18px; display: grid; place-items: center; color: #fff; background: linear-gradient(145deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000)); } .es-ic svg, .jicon svg { width: 34px; height: 34px; }
   .vdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 7px 1px 0; vertical-align: middle; background: var(--gold); } .vdot.g { background: var(--up); } .vdot.r { background: var(--red); } .vdot.y { background: var(--gold); }
@@ -1334,6 +1336,11 @@ const DEFAULTS = { grade: "", minScore: "0", minCap: "0", maxCap: "0", vola: "",
 const VOLA = { low: [0, .3], mid: [.3, .5], high: [.5, .8], xhigh: [.8, Infinity] };
 // Analysten: Ø Kursziel und Abstand zum aktuellen Kurs (aus der Marktstimmung)
 const tgtUp = r => { const t = r.senti && r.senti.tgt; return t && t.m && r.close ? t.m / r.close - 1 : null; };
+// Kursziel attraktiv? Abstand zum Analystenziel ÷ Jahresschwankung (Bank +38 % ≈ Risikoaktie +105 %) – wie im Papier-Depot Kairo-Ziel
+const tgtZ = r => { const u = tgtUp(r), v = (r.flags || {}).volatility, n = ((r.senti || {}).an || {}).n || 0;
+  return u != null && v > 0 && n >= 3 ? { u, z: u / v, n } : null; };
+const tgtChip = r => { const t = tgtZ(r); if (!t || t.u <= 0) return "";
+  return `<span class="tz${t.z >= 1 ? " on" : ""}" title="Analysten-Kursziel ${sgnPct(t.u, 0)} = ${fmt(t.z, 1)} × Jahresschwankung · ${t.n} Analysten${t.z >= 1 ? " – attraktiv" : ""}">Ziel ${sgnPct(t.u, 0)}${t.z >= 1 ? ` · ${fmt(t.z, 1)}×` : ""}</span>`; };
 const tgtIn = r => !state.minTgt || (tgtUp(r) ?? -1) >= +state.minTgt;
 const volaIn = r => { const b = VOLA[state.vola]; return !b || (r.volatility != null && r.volatility >= b[0] && r.volatility < b[1]); };
 const volaCls = v => v == null ? "muted" : v < .3 ? "up" : v < .5 ? "" : "down";
@@ -3700,7 +3707,7 @@ function marketHtml() {
   return `<div class="hcard mkt">${hHead("Markt")}
     ${reg ? `<div class="regime tone-${reg.tone}"><i></i><div><b>${esc(reg.label)}</b><span>${reg.tone === "green" ? "Rückenwind für Long-Setups – S&P 500 über der EMA 50, VIX ruhig." : reg.tone === "red" ? "Gegenwind – Reversal-Einstiege scheitern häufiger. Kleiner positionieren." : "Gemischtes Umfeld – Einstiege selektiv."}</span></div></div>` : ""}
     <div class="mtiles">${ids.map(k => { const x = m[k]; return `<div class="mt"><span>${esc(x.name)}</span><b>${fmt(x.c, k === "^VIX" ? 1 : 0)}</b>
-      <em class="${k === "^VIX" ? (x.tone === "green" ? "up" : x.tone === "red" ? "down" : "") : tone[x.tone]}">${k === "^VIX" ? esc(x.label) : `${sgnPct(x.chg1m, 1)} · 1 Mon.`}</em></div>`; }).join("")}</div></div>`;
+      <em class="${k === "^VIX" ? (x.tone === "green" ? "up" : x.tone === "red" ? "down" : "") : x.chg1m == null ? "" : x.chg1m >= 0 ? "up" : "down"}" title="${k === "^VIX" ? "" : "Veränderung 1 Monat"}">${k === "^VIX" ? esc(x.label) : `${sgnPct(x.chg1m, 1)} · 1 Mon.`}</em></div>`; }).join("")}</div></div>`;
 }
 function changesHtml() {
   const ch = getJson("changes.json");
@@ -3733,7 +3740,7 @@ function topHitsHtml() {
   const list = data.results.filter(r => r.passed && tested(r)).sort(kOrder).slice(0, 5);   // wie Top-Setups: kaufbereit zuerst
   if (!list.length) return "";
   return `<div class="hcard">${hHead("Top-Setups heute", `data-gokinds="hit"`)}
-    ${list.map(r => `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${esc((r.name || r.ticker).slice(0, 28))}<small>${esc(r.ticker)} · Vormomentum ${mo(r) == null ? "–" : sgnPct(mo(r), 0)}${r.earnings_risk ? " · ⚠ Quartalszahlen bald" : ""}</small></span>${statusPill(r)}${trendHtml(r)}</button>`).join("")}</div>`;
+    ${list.map(r => `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${esc((r.name || r.ticker).slice(0, 28))}<small>${esc(r.ticker)} · Vormomentum ${mo(r) == null ? "–" : sgnPct(mo(r), 0)}${r.earnings_risk ? " · ⚠ Quartalszahlen bald" : ""} ${tgtChip(r)}</small></span>${statusPill(r)}${trendHtml(r)}</button>`).join("")}</div>`;
 }
 function trendCardHtml() {
   if (!trendOn()) return "";
@@ -5137,8 +5144,8 @@ function paperLoad() {
   if (PAPER.busy || (PAPER.d && Date.now() - PAPER.at < 3e5)) return;
   PAPER.busy = true;
   const v = "?v=" + Math.floor(Date.now() / 3e5), get = f => fetch(PAPER_URL + f + v).then(r => r.ok ? r.json() : null);
-  Promise.all([get("summary.json"), get("s19.json"), get("s19b.json"), get("s19c.json"), get("s20.json"), get("mom5.json"), get("mom10.json"), get("dm.json"), get("kairo.json"), get("kairos.json")])
-    .then(([sum, s19, s19b, s19c, s20, mom5, mom10, dm, kairo, kairos]) => { PAPER.d = sum || s19 || s20 ? { sum, s19, s19b, s19c, s20, mom5, mom10, dm, kairo, kairos } : null; PAPER.err = !PAPER.d; })
+  Promise.all([get("summary.json"), get("s19.json"), get("s19b.json"), get("s19c.json"), get("s20.json"), get("mom5.json"), get("mom10.json"), get("dm.json"), get("kairo.json"), get("kairos.json"), get("kairoz.json"), get("kairol.json")])
+    .then(([sum, s19, s19b, s19c, s20, mom5, mom10, dm, kairo, kairos, kairoz, kairol]) => { PAPER.d = sum || s19 || s20 ? { sum, s19, s19b, s19c, s20, mom5, mom10, dm, kairo, kairos, kairoz, kairol } : null; PAPER.err = !PAPER.d; })
     .catch(() => { PAPER.err = true; })
     .finally(() => { PAPER.busy = false; PAPER.at = Date.now(); if (state.sec === "paper") render(); });
 }
@@ -5155,17 +5162,17 @@ function paperSpark(st, bench) {
     <div class="oleg"><span class="${e[e.length - 1] >= S ? "up" : "down"}">■ Papier-Depot</span><span class="gold">┄ ACWI kaufen &amp; halten (gleicher Start)</span></div>`;
 }
 // Papier-Test: Übersicht aller Depots in einer Tabelle, Details je Depot aufklappbar (Kandidaten zuerst und offen)
-const PAPER_TAG = { DM: ["Bester Kandidat", "up"], KAIROS: ["Kandidat · Kosten offen", "gold"], KAIRO: ["Referenz", ""], MOM10: ["Vergleich · durchgefallen", "down"],
+const PAPER_TAG = { KAIROZ: ["Deine Idee · neu", "gold"], KAIROL: ["Vergleich zu Kairo-Ziel", ""], DM: ["Bester Kandidat", "up"], KAIROS: ["Kandidat · Kosten offen", "gold"], KAIRO: ["Referenz", ""], MOM10: ["Vergleich · durchgefallen", "down"],
   MOM5: ["Vergleich · durchgefallen", "down"], S20: ["Idee · nicht bestätigt", "down"], S19: ["Idee · nicht bestätigt", "down"], S19B: ["Idee · nicht bestätigt", "down"], S19C: ["Idee · nicht bestätigt", "down"] };
-const PAPER_NAME = { DM: "Dual Momentum (ETF)", KAIROS: "Kairo-S · 20 × 0,25 %", KAIRO: "Kairo · 5 × 1 %", MOM10: "Momentum Top 10", MOM5: "Momentum Top 5", S20: "S20 Trendfolge", S19: "S19 Mean Reversion", S19B: "S19-B", S19C: "S19-C" };
+const PAPER_NAME = { KAIROZ: "Kairo-Ziel · Kursziel, lang halten", KAIROL: "Kairo lang · ohne Kursziel", DM: "Dual Momentum (ETF)", KAIROS: "Kairo-S · 20 × 0,25 %", KAIRO: "Kairo · 5 × 1 %", MOM10: "Momentum Top 10", MOM5: "Momentum Top 5", S20: "S20 Trendfolge", S19: "S19 Mean Reversion", S19B: "S19-B", S19C: "S19-C" };
 const paperVal = st => { const eq = st && (st.equity || []).slice(-1)[0], v = eq ? eq.eur : st && st.start_cash; return { v, ret: st && v != null ? v / st.start_cash - 1 : null }; };
 function paperOverview(d, order) {
   const row = sid => { const st = d[sid.toLowerCase()], { v, ret } = paperVal(st), [tag, tone] = PAPER_TAG[sid];
     return `<div class="prow"><span><b>${PAPER_NAME[sid]}</b><small class="${tone}">${tag}</small></span>
       <span class="pr-r"><b class="${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "–" : sgnPct(ret, 1)}</b><small>${v == null ? "–" : eur(v)} · ${st ? (st.positions || []).length : 0} offen</small></span></div>`; };
   const grp = (t, ids) => `<div class="hsub">${t}</div>${ids.filter(x => order.includes(x)).map(row).join("")}`;
-  return `<div class="hcard">${hHead("Alle Papier-Depots")}${grp("Kandidaten für echtes Geld", ["DM", "KAIROS"])}${grp("Referenz", ["KAIRO"])}
-    <details class="pgrp"><summary class="hsub">Vergleich und Ideen · ${order.length - 3} Depots ›</summary>${order.filter(x => !["DM", "KAIROS", "KAIRO"].includes(x)).map(row).join("")}</details>
+  return `<div class="hcard">${hHead("Alle Papier-Depots")}${grp("Kandidaten für echtes Geld", ["DM", "KAIROS"])}${grp("Referenz", ["KAIRO"])}${d.kairoz ? grp("Deine Idee: Kursziel + lang halten", ["KAIROZ", "KAIROL"]) : ""}
+    <details class="pgrp"><summary class="hsub">Vergleich und Ideen · ${order.filter(x => !["DM", "KAIROS", "KAIRO", "KAIROZ", "KAIROL"].includes(x)).length} Depots ›</summary>${order.filter(x => !["DM", "KAIROS", "KAIRO", "KAIROZ", "KAIROL"].includes(x)).map(row).join("")}</details>
     <div class="note" style="margin-top:8px">Entscheidung über echtes Geld nach etwa 12 Monaten.</div></div>`;
 }
 function paperBox(sid, st, sm, bench) {
@@ -5173,10 +5180,12 @@ function paperBox(sid, st, sm, bench) {
   return `<details class="pdet"${["DM", "KAIROS"].includes(sid) ? " open" : ""}><summary class="psum"><b>${PAPER_NAME[sid]}</b><span class="ptag ${tone}">${tag}</span><span class="${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "" : sgnPct(ret, 1)}</span></summary>${paperCard(sid, st, sm, bench)}</details>`;
 }
 function paperCard(sid, st, sm, bench) {
-  const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3", MOM5: "MOM5 · Momentum Top 5 (monatlich)", MOM10: "MOM10 · Momentum Top 10 (monatlich)", DM: "DM · Dual Momentum (ETF)", KAIRO: "KAIRO · Scanner-Treffer", KAIROS: "KAIRO-S · Scanner-Treffer, schwache Aktien zuerst" }[sid] || "S20 · Trendfolge / VCP";
+  const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3", MOM5: "MOM5 · Momentum Top 5 (monatlich)", MOM10: "MOM10 · Momentum Top 10 (monatlich)", DM: "DM · Dual Momentum (ETF)", KAIROZ: "KAIROZ · Kairo-Ziel (attraktives Kursziel, halten bis zum Ziel)", KAIROL: "KAIROL · Kairo lang (Vergleich ohne Kursziel)", KAIRO: "KAIRO · Scanner-Treffer", KAIROS: "KAIRO-S · Scanner-Treffer, schwache Aktien zuerst" }[sid] || "S20 · Trendfolge / VCP";
   const vr = { S19B: "Variante B: wie S19, aber das Volumen muss nur an 2 der letzten 3 Tage sinken. ", S19C: "Variante C: Überdehnung schon ab 2,0 Std und Volumen an 2 der letzten 3 Tage sinkend. " }[sid] || "";
   const rule = sid === "KAIRO" || sid === "KAIROS" ? "Handelt jeden echten Kairo-Treffer (USA und Europa) nach der getesteten Regel: bis zu 10 Tage auf eine Seitwärtsphase warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung innerhalb der Spanne, Stop unter dem Basis-Tief − 0,25 ATR, 1 % Risiko, max. 5 Positionen. Ausstieg: Stop, ab Tag 10 Schluss unter EMA20, spätestens Tag 60 (im Test in allen drei Zeiträumen besser als Tag 40). 2008–2026 mit PRIME+-Kosten besser als Zufall (+0,14 R je Trade gegenüber +0,11 R) – kleiner, aber belegter Vorteil." + (sid === "KAIROS" ? " Variante S: bei mehreren Einstiegen zuerst Aktien mit dem schwächsten Kursverlauf der letzten Monate (im Test in allen drei Zeiträumen besser; Vorbehalt: kann am Datensatz liegen). Depot-Aufbau wie der beste Test: 20 Positionen × 0,25 % Risiko, 20.000 € virtuell (2008–2026: +7 % p. a., größter Rückgang −25 %; mit strengen Kosten ≈ 0 % – Kosten entscheiden)." : " Bei mehreren Einstiegen zuerst die ruhigeren Aktien (wie im Test).") + " Läuft einen Handelstag hinter dem Scan."
     : sid === "DM" ? "Am ersten Handelstag jedes Monats: Von SPY (USA), EFA (Industrieländer) und QQQ (Nasdaq 100) wird der ETF mit der besten 12-Monats-Rendite gehalten – aber nur, wenn sie über dem Geldmarkt (BIL) liegt, sonst kurze US-Anleihen (SHY). Ein ETF, etwa 1–4 Wechsel im Jahr. Einzige Strategie, die 2008–2016, 2017–2021 und im finalen Test 2022–2026 nach Kosten besser als der Welt-ETF war (2022–26: +11,6 % statt +9,7 % p. a. unter Stress-Kosten) – aber knapp nicht signifikant besser als Zufall (p = 0,07). Bester Kandidat, kein Beweis."
+    : sid === "KAIROZ" ? "Deine Idee (20.10.2026): Kairo-Treffer mit fertiger Seitwärtsphase (USA/Europa) und attraktivem Analysten-Kursziel am Signaltag – Abstand zum Ziel mindestens 1 × Jahresschwankung (Bank ab ≈ +25–40 %, Risikoaktie ab ≈ +70–100 %), mindestens 3 Analysten. Halten, bis 80 % des Wegs zum Kursziel geschafft sind; Sicherheitsnetz −30 %, spätestens 24 Monate. 20 Plätze à 5 %. Noch nicht getestet – historische Kursziele gibt es nicht kostenlos, deshalb nur dieser Vorwärtstest."
+    : sid === "KAIROL" ? "Vergleich zu Kairo-Ziel: dieselben Treffer und Einstiege, aber ohne Kursziel-Filter. Ziel = Einstieg + 80 % einer Jahresschwankung, Sicherheitsnetz −30 %, spätestens 24 Monate. Liegt Kairo-Ziel nach 1–2 Jahren klar vorn, bringen die Analystenziele wirklich etwas."
     : sid === "MOM10" ? "Wie MOM5, aber die 10 stärksten Aktien. Hat 2008–2021 überzeugt (+27,9 % p. a. 2017–2021), ist im finalen Test 2022–2026 aber durchgefallen: +8,3 % statt +9,8 % beim Welt-ETF, Rückgang −57 %, nicht besser als Zufall. Läuft nur noch zum Vergleich weiter."
     : sid === "MOM5" ? "Am ersten Handelstag jedes Monats: die 5 Aktien mit dem stärksten Kursanstieg der letzten 6 Monate (ohne den letzten Monat), geteilt durch ihre Schwankung. Kauf zur Eröffnung, gleich gewichtet; was aus den Top 5 fällt, wird verkauft. Kein Stop. Momentum hat im finalen Test 2022–2026 nicht bestanden – läuft nur noch zum Vergleich."
     : sid.startsWith("S19")
@@ -5189,7 +5198,7 @@ function paperCard(sid, st, sm, bench) {
   const rets = tr.map(x => x.ret).filter(x => x != null), avgRet = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : null;
   const pos = (st.positions || []).map(p => `<tr><td><b>${esc(p.t)}</b></td><td>${dateDE(String(p.entry_ts).slice(0, 10))}</td><td>${fmt(p.entry)}</td><td class="down">${p.stop ? fmt(p.stop) : "–"}</td><td>${p.qty}</td><td>${p.be ? "Einstand ✓" : p.regime === "bear" ? "Bärenmarkt" : ""}</td></tr>`).join("");
   const pend = (st.pending || []).slice().sort((a, b) => String(a.expiry).localeCompare(String(b.expiry)));
-  const last = tr.slice(-12).reverse().map(x => `<tr><td><b>${esc(x.t)}</b></td><td>${dateDE(String(x.entry_ts).slice(0, 10))}</td><td>${dateDE(String(x.exit_ts).slice(0, 10))}</td><td>${esc({ stop: "Stop", stop_gap: "Stop (Lücke)", trail: "Trailing", ziel_ema20: "Ziel EMA20", monatswechsel: "Monatswechsel" }[x.why] || x.why)}</td><td class="${x.pnl_eur >= 0 ? "up" : "down"}">${mom && x.ret != null ? sgnPct(x.ret, 1) : (x.R_net ?? x.R) == null ? "–" : ((x.R_net ?? x.R) >= 0 ? "+" : "") + fmt(x.R_net ?? x.R, 2) + " R"}</td><td class="${x.pnl_eur >= 0 ? "up" : "down"}">${eur2(x.pnl_eur)}</td></tr>`).join("");
+  const last = tr.slice(-12).reverse().map(x => `<tr><td><b>${esc(x.t)}</b></td><td>${dateDE(String(x.entry_ts).slice(0, 10))}</td><td>${dateDE(String(x.exit_ts).slice(0, 10))}</td><td>${esc({ stop: "Stop", stop_gap: "Stop (Lücke)", trail: "Trailing", ziel_ema20: "Ziel EMA20", monatswechsel: "Monatswechsel", ziel: "Ziel erreicht", ema20: "unter EMA 20", zeit: "Zeitende" }[x.why] || x.why)}</td><td class="${x.pnl_eur >= 0 ? "up" : "down"}">${mom && x.ret != null ? sgnPct(x.ret, 1) : (x.R_net ?? x.R) == null ? "–" : ((x.R_net ?? x.R) >= 0 ? "+" : "") + fmt(x.R_net ?? x.R, 2) + " R"}</td><td class="${x.pnl_eur >= 0 ? "up" : "down"}">${eur2(x.pnl_eur)}</td></tr>`).join("");
   return `<div class="hcard">${hHead(name)}
     <div class="pkpi"><div class="mt"><span>Papier-Depot</span><b class="${ret >= 0 ? "up" : "down"}">${eur2(val)}</b><em>${sgnPct(ret, 1)} seit ${st.start ? dateDE(String(st.start).slice(0, 10)) : "–"}</em></div>
       <div class="mt"><span>Trades</span><b>${tr.length}</b><em>${tr.length ? `${pct(wins / tr.length, 0)} Gewinner` : "noch keine"}</em></div>
@@ -5230,7 +5239,7 @@ function topSetupsHtml() {
   const rows = list.map((r, k) => {
     const p = r.plan || {}, e = toEur(p.entry, r.currency), st = toEur(p.stop, r.currency), per = e != null && st != null ? e - st : null;
     const qty = per > 0 ? Math.floor(riskEur / per) : null, val = qty ? qty * e : null, fee = val == null ? null : val >= 250 ? 0 : 0.99;
-    return `<tr><td>${k + 1}</td><td><b>${esc(r.ticker)}</b> ${kPill(r)}<br><span class="note">${esc(String(r.name || "").slice(0, 24))}</span></td>
+    return `<tr><td>${k + 1}</td><td><b>${esc(r.ticker)}</b> ${kPill(r)} ${tgtChip(r)}<br><span class="note">${esc(String(r.name || "").slice(0, 24))}</span></td>
       <td>${m(r) == null ? "–" : sgnPct(m(r), 0)}</td><td>${fmt(p.entry)}<br><span class="down">${fmt(p.stop)}</span></td>
       <td>${qty ? `${qty} Stk.<br><span class="note">${eur2(val)}</span>` : "–"}</td><td>${fee == null ? "–" : fee ? "0,99 €" : "0 €"}</td>
       <td><button class="mini-btn" data-open="${esc(r.ticker)}">Chart</button></td></tr>`;
@@ -5238,7 +5247,7 @@ function topSetupsHtml() {
   return `<div class="hcard" style="margin-bottom:12px">${hHead("Top-Setups heute")}
     <div class="note">USA und Europa · kaufbereit zuerst, dann schwächeres Vormomentum (laut Forschung bessere Trades). Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)}.</div>
     <div class="ts-list">${list.map((r, k) => { const p = r.plan || {}, e = toEur(p.entry, r.currency), st = toEur(p.stop, r.currency), per = e != null && st != null ? e - st : null, qty = per > 0 ? Math.floor(riskEur / per) : null;
-      return `<button class="hrow" data-open="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${kPill(r)} ${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${qty ? `${qty} Stk.<small>${eur2(qty * e)}</small>` : "–"}</span></button>`; }).join("")}</div>
+      return `<button class="hrow" data-open="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${kPill(r)} ${tgtChip(r)} ${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${qty ? `${qty} Stk.<small>${eur2(qty * e)}</small>` : "–"}</span></button>`; }).join("")}</div>
     <div class="tscroll ts-tab" style="margin-top:8px"><table class="ptab ts"><tr><th>#</th><th>Aktie</th><th>Vormomentum</th><th>Einstieg / Stop</th><th>Größe</th><th>Gebühr</th><th></th></tr>${rows}</table></div></div>`;
 }
 function paperHtml() {
@@ -5248,7 +5257,7 @@ function paperHtml() {
     <div class="note" style="margin:0 2px 10px">Virtuelle Depots handeln jede Strategie automatisch nach ihren Regeln – mit echten Kursen und Kosten wie bei Scalable PRIME+, ohne echtes Geld. Keine Anlageberatung.</div>`;
   if (!d) return head + `<div class="hcard"><div class="note">${PAPER.err ? "Papier-Daten noch nicht verfügbar – der erste Lauf erscheint nach dem nächsten US-Börsenschluss." : "Lade Papier-Daten …"}</div></div>`;
   const sm = d.sum || {}, bench = sm.bench || [];
-  const order = ["DM", "KAIROS", "KAIRO", "MOM10", "MOM5", "S20", "S19", "S19B", "S19C"];
+  const order = ["DM", "KAIROS", "KAIRO", "KAIROZ", "KAIROL", "MOM10", "MOM5", "S20", "S19", "S19B", "S19C"].filter(x => x !== "KAIROZ" && x !== "KAIROL" || d[x.toLowerCase()]);
   return head + paperOverview(d, order) + order.map(sid => paperBox(sid, d[sid.toLowerCase()], sm[sid], bench)).join("")
     + `<details class="pdet"><summary class="psum"><b>Schattenbuch S19/S20</b><span class="ptag">Forschung</span></summary>${shadowHtml(sm.shadow)}</details>`
     + `<div class="note" style="margin:6px 2px">Stand: ${esc(sm.ts ? new Date(sm.ts).toLocaleString("de-DE") : "–")}. Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser (so real nachhandelbar). 4H-Kerzen wie TradingView (US: 9:30–13:30 und 13:30–16:00). R nach Gebühren und Spread. Grenzen: Yahoo-Stundenkerzen teils verzögert, Fundamentaldaten wöchentlich von Yahoo.</div>`;
