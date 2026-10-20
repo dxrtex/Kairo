@@ -39,6 +39,17 @@ def demo_tx() -> str:
 async def main(out: Path) -> None:
     from playwright.async_api import async_playwright
     app_smoke.fetch()
+    try:                                               # Charts der Treffer (für die Detailansicht)
+        import json as _j, urllib.request as _u
+        res = _j.loads((app_smoke.SITE / "data" / "results.json").read_text())["results"]
+        (app_smoke.SITE / "data" / "charts").mkdir(parents=True, exist_ok=True)
+        for r in [r for r in res if r.get("passed") or r.get("fast_hit")][:60]:
+            try:
+                (app_smoke.SITE / "data" / "charts" / f"{r['ticker']}.json").write_bytes(_u.urlopen(app_smoke.LIVE + f"charts/{r['ticker']}.json", timeout=30).read())
+            except Exception:
+                pass
+    except Exception as exc:
+        print("Charts:", exc)
     port = app_smoke.serve()
     url = f"http://127.0.0.1:{port}/"
     out.mkdir(parents=True, exist_ok=True)
