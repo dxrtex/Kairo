@@ -195,8 +195,17 @@
   .gl { border: 0; background: none; color: var(--muted); font-size: 12px; padding: 0 2px; margin-left: 2px; cursor: pointer; vertical-align: 1px; line-height: 1; }
   .gl:hover { color: var(--accent); }
   .glpop { position: fixed; z-index: 90; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; box-shadow: 0 12px 40px rgba(0,0,0,.45); font-size: 14px; line-height: 1.45; text-transform: none; letter-spacing: 0; font-weight: 400; animation: secin .18s ease both; }
-  b.term { font-weight: inherit; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: 3px; cursor: help; }
-  .glpop b { display: block; margin-bottom: 4px; } .glpop p { margin: 0; color: var(--muted); }
+  abbr.term { font: inherit; color: inherit; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: 3px; cursor: help; }
+  .glpop b { display: block; margin-bottom: 4px; }
+  .empty-st { text-align: center; padding: 28px 22px; margin-bottom: 14px; } .empty-st .es-ic { font-size: 34px; margin-bottom: 6px; }
+  .empty-st > b { font-size: 19px; } .empty-st > p { color: var(--muted); margin: 6px auto 18px; max-width: 460px; }
+  .empty-st .rule-steps { text-align: left; max-width: 520px; margin: 0 auto; }
+  .dsrow { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 14px; color: var(--muted); } .dsrow i { flex: 0 0 8px; height: 8px; border-radius: 50%; background: var(--gold); } .dsrow i.g { background: var(--up); } .dsrow i.r { background: var(--down); }
+  .set-lbl { margin: 16px 0 8px; font-size: 13px; color: var(--muted); } .set-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .rule-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .rule-steps li { display: flex; gap: 12px; align-items: flex-start; } .rule-steps li > span { display: grid; gap: 2px; font-size: 14px; color: var(--muted); }
+  .rule-steps li b { color: var(--text); font-size: 15px; }
+  .rule-steps i { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 700; font-size: 13px; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); } .glpop p { margin: 0; color: var(--muted); }
   .gloss details { border-bottom: 1px solid var(--line); padding: 8px 0; } .gloss details:last-child { border-bottom: 0; } .gloss summary { cursor: pointer; font-weight: 600; } .gloss p { margin: 6px 0 2px; color: var(--muted); font-size: 14px; }
   .tfind { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
   .tf-grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; } .tf-grid > span { color: var(--muted); }
@@ -543,6 +552,7 @@
   .g-hold[role="button"] { cursor: pointer; } .g-hold:last-child { border-bottom: 0; }
   .g-h-n b, .g-h-v b { display: block; font-weight: 650; } .g-h-n small, .g-h-v small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
   .g-h-v { text-align: right; white-space: nowrap; } .g-h-v small.up { color: var(--up); } .g-h-v small.down { color: var(--red); }
+  .g-ord-x { display: grid; justify-items: end; gap: 6px; } .g-ord-x i { font-style: normal; }
   .g-otype { margin-top: 12px; } .g-otype .g-mode { margin-top: 6px; } .g-trig { display: grid; gap: 4px; margin-top: 10px; font-size: 13px; color: var(--muted); }
   .g-hold i.up, .g-hold i.down, .g-ord i.muted { font-style: normal; }
   .g-hold-det { padding: 4px 0 12px; border-bottom: 1px solid var(--line); }
@@ -1319,10 +1329,10 @@ function linkTerms() {
     if (el.dataset.tl || el.closest("button, a, label, .jdet, .kfoot")) return; el.dataset.tl = 1;
     const used = new Set(), walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), nodes = [];
     while (walk.nextNode()) nodes.push(walk.currentNode);
-    nodes.forEach(n => { if (n.parentElement.closest("button, a, b.term")) return;
+    nodes.forEach(n => { if (n.parentElement.closest("button, a, .term")) return;
       for (const [rx, k] of TERMS) { if (used.has(k)) continue; const mm = rx.exec(n.nodeValue); if (!mm) continue;
         used.add(k); const after = n.splitText(mm.index); after.nodeValue = after.nodeValue.slice(mm[0].length);
-        const t = document.createElement("b"); t.className = "term"; t.dataset.gl = k; t.textContent = mm[0]; n.parentNode.insertBefore(t, after); break; } });
+        const t = document.createElement("abbr"); t.className = "term"; t.dataset.gl = k; t.textContent = mm[0]; n.parentNode.insertBefore(t, after); break; } });
   });
 }
 const gl = k => GLOSS[k] ? `<button type="button" class="gl" data-gl="${k}" aria-label="Erklärung: ${esc(GLOSS[k][0])}">ⓘ</button>` : "";
@@ -2055,7 +2065,11 @@ function depotHtml() {
         <button class="mini-btn" data-dep="edit" data-i="${i}">Bearbeiten</button><button class="mini-btn del" data-dep="del" data-i="${i}">Löschen</button></div>
     </article>`;
   }).join("");
-  const empty = list.length ? "" : `<div class="empty">Noch keine Positionen. Füge sie mit „+ Position“ hinzu oder importiere den Transaktions-Export aus Scalable Capital (Web-Version → Transaktionen → Export).</div>`;
+  const empty = list.length ? "" : `<div class="card empty-st"><div class="es-ic">📊</div><b>Dein Depot ist noch leer</b>
+    <p>Trag deine Positionen ein – Kairo prüft sie dann jeden Tag: Stop, EMA 20, Verkaufstag und nächste Termine.</p>
+    <ol class="rule-steps"><li><i>1</i><span><b>Schnell: Scalable-Export</b>Scalable (Web) → Transaktionen → Export, dann oben „Scalable-Export importieren“.</span></li>
+      <li><i>2</i><span><b>Oder von Hand</b>„+ Position“ – Aktie, Stückzahl und Kaufkurs reichen.</span></li>
+      <li><i>3</i><span><b>Noch nichts gekauft?</b><a href="#" data-gosec="today">Heute zu tun</a> zeigt die Kaufkandidaten nach der Kairo-Regel, die <a href="#" data-gosec="game">Übung</a> das Gleiche mit Spielgeld.</span></li></ol></div>`;
   return head + (groups.length ? cockpitHtml(groups, items) : sum) + actions + form + empty
     + (groups.length ? `<div class="plan-h" style="margin:4px 2px 8px">Deine Positionen · antippen zum Aufklappen</div>${groups.map(groupHtml).join("")}` : "")
     + (cards.length ? `${groups.length ? `<div class="plan-h" style="margin:18px 2px 8px">Ohne Analyse (nicht auf der Watchlist)</div>` : ""}<div class="grid">${cards}</div>` : "")
@@ -2574,6 +2588,7 @@ document.addEventListener("click", e => {
   render();
 });
 document.addEventListener("click", e => {
+  const d = e.target.closest("[data-design]"); if (d) { state.design = d.dataset.design; save(); applyDesign(); renderHead(); render(); return; }
   const b = e.target.closest("[data-emoji]"); if (!b) return;
   state.emoji = b.dataset.emoji; save(); renderHead(); appleHead();
   const inp = $("cfgEmoji"); if (inp) inp.value = state.emoji;
@@ -2583,7 +2598,6 @@ document.addEventListener("input", e => {
   if (e.target.dataset && e.target.dataset.jnote) { const o = jnLoad(), k = e.target.dataset.jnote; (o[k] = o[k] || {}).note = e.target.value; jnSave(o); return; }
   if (e.target.id === "cfgName") { state.name = e.target.value.trim(); save(); renderHead(); }
   if (e.target.id === "cfgEmoji") { state.emoji = e.target.value.trim(); save(); renderHead(); appleHead(); document.querySelectorAll("[data-emoji]").forEach(b => b.classList.toggle("on", b.dataset.emoji === state.emoji)); }
-  if (e.target.id === "cfgDesign") { state.design = e.target.value; save(); applyDesign(); renderHead(); render(); }
 });
 document.addEventListener("change", async e => {
   if (e.target.id === "restoreFile" && e.target.files[0]) {
@@ -3206,7 +3220,7 @@ function gBuyForm(g, t) {
       <label>Stop (${esc(x.cur)}, Basiswert)<input id="gStop" type="number" inputmode="decimal" step="0.01" min="0" value="${esc(f.stop ?? (stop ? stop.toFixed(2) : ""))}"></label>
       <label>Stückzahl<input id="gQty" type="number" inputmode="numeric" step="1" min="1" value="${esc(f.qty ?? "")}"></label></div>
     <div class="g-otype"><span class="jlbl">Ordertyp</span><div class="g-mode">${Object.entries(G_OT).map(([k, l]) => `<button class="opt${(f.otype || "market") === k ? " on" : ""}" data-g="otype" data-v="${k}">${l}</button>`).join("")}</div>
-      ${(f.otype || "market") !== "market" ? `<label class="g-trig">Auslösen, wenn der Basiswert ${f.otype === "limit" ? "auf oder unter" : "auf oder über"} … (${esc(x.cur)})<input id="gTrig" type="number" inputmode="decimal" step="0.01" min="0" value="${esc(f.trig ?? "")}" placeholder="${f.otype === "limit" ? "z. B. Unterkante der Seitwärtsphase" : "z. B. Oberkante der Seitwärtsphase"}"></label>
+      ${(f.otype || "market") !== "market" ? `<div class="tp2-cfg" style="margin-top:10px"><label>Auslösen, wenn der Basiswert ${f.otype === "limit" ? "auf oder unter" : "auf oder über"} … (${esc(x.cur)})<input id="gTrig" type="number" inputmode="decimal" step="0.01" min="0" value="${esc(f.trig ?? "")}" placeholder="${f.otype === "limit" ? "z. B. Unterkante der Seitwärtsphase" : "z. B. Oberkante der Seitwärtsphase"}"></label></div>
       <div class="note" style="margin:6px 0 0">${f.otype === "limit" ? "Limit: kauft erst, wenn der Kurs fällt – du zahlst nicht mehr als geplant." : "Stop-Buy: kauft erst, wenn der Kurs steigt – z. B. beim Ausbruch aus der Seitwärtsphase."} Gilt 10 Handelstage, der Betrag wird so lange reserviert.${pl.base ? ` Seitwärtsphase: ${fmt(pl.base.lo ?? pl.base[0])}–${fmt(pl.base.hi ?? pl.base[1])} ${esc(x.cur)}.` : ""}</div>` : ""}</div>
     <div id="gCalc">${gCalc(g, t)}</div>
     <div class="note" style="margin:8px 0">Tipp: Den passenden Turbo findest du im Reiter Einstieg (Turbo-Finder). Bei Scalable stehen Kaufkurs (Brief), K.-o.-Schwelle und WKN im Produktblatt.${turbo ? "" : ` Aktueller Kurs ≈ ${eur2(x.eur)}.`}</div>
@@ -3283,7 +3297,7 @@ function gameHtml() {
   const orders = (g.orders && g.orders.length ? g.orders : [...g.pos.map(p => ({ ts: p.d, side: "Kauf", n: p.n, kind: p.kind, wkn: p.wkn, qty: p.qty, px: p.P0, fee: null, why: "" })),
     ...g.closed.flatMap(c => [{ ts: c.xd, side: "Verkauf", n: c.n, kind: c.kind, wkn: c.wkn, qty: c.qty, px: c.xu, fee: null, why: c.why }, { ts: c.d, side: "Kauf", n: c.n, kind: c.kind, wkn: c.wkn, qty: c.qty, px: c.P0, fee: null, why: "" }])]
     .sort((a, b) => String(b.ts).localeCompare(String(a.ts))));
-  const pend = (g.pend || []).map(o => `<div class="g-ord"><span><b>${G_OT[o.f.otype]}-Kauf · ${esc(o.n)}</b><small>${fmt(o.f.qty, 0)} Stk. ${o.f.kind === "turbo" ? `Turbo${o.f.wkn ? " " + esc(o.f.wkn) : ""}` : "Aktie"}, wenn der Basiswert ${o.f.otype === "limit" ? "≤" : "≥"} ${fmt(o.trig)} ${esc(o.cur)} (jetzt ${fmt(gPx(o.t).c)}) · reserviert ${eur2(o.resv)} · gültig bis ${dateDE(o.until)}</small></span><em class="gold">offen<button class="btn ghost sm" data-g="cancel" data-id="${o.id}" style="margin-top:4px">Streichen</button></em></div>`).join("");
+  const pend = (g.pend || []).map(o => `<div class="g-ord"><span><b>${G_OT[o.f.otype]}-Kauf · ${esc(o.n)}</b><small>${fmt(o.f.qty, 0)} Stk. ${o.f.kind === "turbo" ? `Turbo${o.f.wkn ? " " + esc(o.f.wkn) : ""}` : "Aktie"}, wenn der Basiswert ${o.f.otype === "limit" ? "≤" : "≥"} ${fmt(o.trig)} ${esc(o.cur)} (jetzt ${fmt(gPx(o.t).c)}) · reserviert ${eur2(o.resv)} · gültig bis ${dateDE(o.until)}</small></span><em class="g-ord-x"><i class="gold">offen</i><button class="btn ghost sm" data-g="cancel" data-id="${o.id}">Streichen</button></em></div>`).join("");
   const active = pend + g.pos.flatMap(p => [p.stop ? `<div class="g-ord"><span><b>Stop-Loss · ${esc(p.n)}</b><small>Verkauf ${fmt(p.qty, 0)} Stk., wenn der Basiswert ${fmt(p.stop)} ${esc(p.cur)} erreicht${g.auto ? "" : " (automatisch aus)"}</small></span><em class="gold">aktiv</em></div>` : "",
     p.exit ? `<div class="g-ord"><span><b>Verkaufstag · ${esc(p.n)}</b><small>spätestens ${dateDE(p.exit)}</small></span><em>geplant</em></div>` : ""]).join("");
   const ordList = `<div class="card jpro"><div class="jc-h"><b>Aktive Orders</b><span>${(g.pend || []).length ? `${g.pend.length} Kauf · ` : ""}${g.pos.length} Positionen</span></div>${active || `<div class="note" style="margin:0">Keine aktiven Orders.</div>`}</div>
@@ -3974,63 +3988,59 @@ function myTradesHtml() {
         <td class="num">${p.xd ? bdBetween(new Date(p.d + "T12:00:00"), new Date(p.xd + "T12:00:00")) + 1 : "–"}</td>
         <td class="${p.R >= 0 ? "up" : "down"}"><b>${p.R >= 0 ? "+" : ""}${fmt(p.R, 2)} R</b>${eurOf(p) != null ? ` <small>${sgnEur(eurOf(p))}</small>` : ""}</td></tr>`).join("")}</tbody></table></div></div>`;
 }
-const ST_TXT = { wait: ["wartet auf Seitwärtsphase", "muted"], nobase: ["keine Basis – kein Trade", "muted"], run: ["läuft", "gold"], stop: ["Stop", "down"], zeit: ["Tag 20 verkauft", "up"] };
+const ST_TXT = { wait: ["wartet auf Seitwärtsphase", "muted"], nobase: ["kein Einstieg", "muted"], run: ["läuft", "gold"], stop: ["Stop", "down"], ema: ["Ausstieg EMA 20", ""], zeit: ["Ausstieg Tag 60", ""] };
 function bilanzHtml() {
   const b = getJson("bilanz.json");
   const back = `<button class="backbtn" data-gosec="today">‹ Heute</button>`, M = STRAT_BT.main;
   const rng = (a, d = 0, p = "") => a[0] === a[1] ? p + pct(a[0], d) : `${p}${pct(Math.min(...a), d)} bis ${p}${pct(Math.max(...a), d)}`;
-  const sg = v => (v >= 0 ? "+" : "−") + pct(Math.abs(v), 0);
-  const now = `<div class="hcard bhero"><div class="bh-l"><span>Forschung 10/2026 · 49.134 Kairo-Treffer · 2008 – 2026 · Kosten Scalable PRIME+</span>
-      <b>+0,14 R</b><em>Ø je Trade nach Kosten – Zufalls-Einstiege mit denselben Regeln: +0,11 R. In allen drei Zeiträumen positiv: ein kleiner, echter Vorteil.
+  const sg = v => (v >= 0 ? "+" : "−") + pct(Math.abs(v), 0), R = v => `${v >= 0 ? "+" : "−"}${fmt(Math.abs(v), 2)} R`;
+  const research = `<div class="hcard bhero"><div class="bh-l"><span>Forschung 10/2026 · 49.134 Kairo-Treffer · 2008 – 2026 · Kosten Scalable PRIME+</span>
+      <b>+0,14 R</b><em>Ø je Trade nach Kosten – Zufalls-Einstiege mit denselben Regeln: +0,11 R. In allen drei Testzeiträumen positiv: ein kleiner, echter Vorteil.
       Als Depot (Kairo-S, 20 Trades × 0,25 % Risiko): <b>≈ +7 % pro Jahr</b>, mit hohen Kosten ≈ 0 % – Welt-ETF im selben Zeitraum ≈ +9 %.</em></div>
       <div class="bh-r"><div class="mt"><span>Größter Rückgang</span><b class="down">−25 %</b><em>Kairo-S · mit 5 × 1 % Risiko −53 %</em></div>
         <div class="mt"><span>Entscheidend</span><b>Kosten</b><em>Spread und Ausführung → Kosten-Check im Journal</em></div>
-        <div class="mt"><span>Eher weniger</span><b>live</b><em>Pleite-Aktien fehlen im Test</em></div></div></div>
-    <div class="note" style="margin:0 2px 14px">Alle Strategien und Berichte: <a href="research/" target="_blank" rel="noopener">Forschung &amp; Backtests</a> · öffentliche <a href="track/" target="_blank" rel="noopener">Live-Bilanz</a> aller Treffer. Darunter die <b>ältere Studie</b> (09/2026, Turbo-Hebel, Stichproben 2017–2026) – sie war zu optimistisch und ist durch die neue Forschung überholt.</div>
-    <div class="section-title"><span>Ältere Studie (09/2026, überholt)</span><span></span></div>`;
-  const hero = now + `<div class="hcard bhero" style="opacity:.75"><div class="bh-l"><span>Ältere Studie · 2 Stichproben à ~3.200 Aktien · 2017 – Okt. 2026 · Depot 3.000 € · überholt</span>
-      <b>≈ +${pct((M.cagr[0] + M.cagr[1]) / 2, 0)}</b><em>pro Jahr – netto nach Gebühren, Turbo-Finanzierung und Kurslücken. Auf den Prüfjahren 2024–26 (Regeln vorher festgelegt): <b>${rng(M.test, 0, "+")}</b> pro Jahr.</em></div>
-      <div class="bh-r"><div class="mt"><span>Größter Rückgang</span><b class="down">${rng(M.mdd, 0, "−")}</b><em>zwischendurch aushalten</em></div>
-        <div class="mt"><span>Verlustjahre</span><b>2–3 von 10</b><em>je nach Stichprobe</em></div>
-        <div class="mt"><span>Eher weniger</span><b>live</b><em>Pleite-Aktien fehlen im Test</em></div></div></div>
-    <div class="hcard">${hHead("Rendite je Jahr – zwei Stichproben")}${yearBarsSvg()}
-      <div class="note" style="margin:6px 0 0">Gleiche Regeln, zwei zufällige Aktien-Stichproben – und trotzdem sehr unterschiedliche Jahre (2022: +19 % gegen −41 %). So groß ist der Zufall. Die Strategie verdient vor allem nach Ausverkäufen; ein einzelnes Jahr sagt wenig.</div></div>
-    <div class="hcard">${hHead("Die Regeln")}<ul class="checks rules">${[
-      ["Nur volle Kairo-Treffer", "keine Fast-Treffer, keine Trend-Rücksetzer"],
-      ["Kauf in der Seitwärtsphase", "innerhalb von 10 Tagen nach dem Signal, wenn der Kurs 5 Tage eng läuft (Spanne ≤ 1,5 ATR)"],
-      ["Stop = Tief der Seitwärtsphase − 0,25 ATR", "als Stop-Order bei Scalable – greift auch im Tagesverlauf, nie nach unten verschieben"],
-      ["20 Handelstage halten, kein Gewinnziel", "vor Quartalszahlen am Tag davor verkaufen"],
-      ["Risiko immer 1 % je Trade", "auch im Ausverkauf – die Verdopplung hielt auf neuen Jahren nicht und vergrößerte die Rückgänge"],
-      ["Kleinster passender Hebel", "Aktie direkt, wenn dein freies Kapital reicht – sonst ×2/3/5/10; spart Finanzierungskosten"],
-      ["Höchstens 5 Trades, ruhigste zuerst", "mehr Treffer als freie Plätze → niedrigste ATR % zuerst; zufällige Auswahl verlor Geld"]].map(([l, t]) => `<li><i class="up">✓</i><b>${l}:</b> ${t}</li>`).join("")}</ul></div>
-    <div class="hcard">${hHead("Varianten im selben Test")}<div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Variante</th><th class="num">pro Jahr</th><th class="num">größter Rückgang</th></tr></thead><tbody>
-      ${STRAT_BT.alt.map(([l, c, d, me, note]) => `<tr${me ? ' class="best"' : ""}><td>${me ? `<b>${l}</b> ★` : l}${note ? `<small class="down">${note}</small>` : ""}</td><td class="num">${c.map(v => `<span class="${v >= 0 ? "up" : "down"}">${sg(v)}</span>`).join(" / ")}</td><td class="num down">${rng(d, 0, "−")}</td></tr>`).join("")}</tbody></table></div>
-      <div class="note" style="margin:6px 0 0">Werte: Stichprobe 1 / Stichprobe 2. Gewählt ist die Variante, die auf beiden Stichproben und auf den Prüfjahren gut abschneidet – nicht die mit der höchsten Einzelzahl.</div></div>
-    <div class="hcard">${hHead("Kapital und Gebühren entscheiden mit")}
-      <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Trading-Kapital</th><th class="num">mit 0,99 € je Order</th><th class="num">ohne Gebühren</th></tr></thead><tbody>
-        ${[["900 €", "−12 % bis Totalverlust"], ["1.500 €", "−12 % bis +4 %"], ["3.000 €", "+12 % / +13 %"], ["10.000 €", "+15 % / +23 %"]].map(([k, v], i) => `<tr${Math.abs([900, 1500, 3000, 10000][i] - tpCfg().depot) === Math.min(...[900, 1500, 3000, 10000].map(x => Math.abs(x - tpCfg().depot))) ? ' class="best"' : ""}><td>${k}</td><td class="num ${i < 2 ? "down" : "up"}">${v}</td><td class="num up">+17 % / +24 %</td></tr>`).join("")}</tbody></table></div>
-      <div class="note" style="margin:6px 0 0">Gleiche Treffer und Regeln, 10 Jahre, pro Jahr (Stichprobe 1 / 2). Rund 93 Trades im Jahr = ~186 Orders ≈ 184 € Gebühren – bei kleinem Kapital frisst das den ganzen Vorteil. Darunter: im 🧪 Übungsmodus handeln und das Geld im ETF lassen. Dein Trading-Kapital: <b>${eur(tpCfg().depot)}</b>.</div></div>
-    <div class="hcard">${hHead("Was wir (noch) nicht wissen")}<ul class="checks">
-      <li><i class="gold">!</i><b>Kairo-Treffer gegen Zufall:</b> Damals: etwa gleich viel je Trade. Die neue Forschung (2008–2026, 49.134 Treffer, PRIME+-Kosten) findet einen kleinen Vorteil: Ø +0,14 R statt +0,11 R – siehe oben.</li>
+        <div class="mt"><span>Realistisch</span><b>eher weniger</b><em>Pleite-Aktien fehlen im Test</em></div></div></div>`;
+  const rules = `<div class="hcard">${hHead("Die Kairo-Regel")}<ol class="rule-steps">${[
+      ["Treffer", "alle 11 Kriterien erfüllt – Fast-Treffer und 9/11 nur beobachten"],
+      ["Seitwärtsphase abwarten", "5 enge Tage (Spanne ≤ 1,5 ATR) innerhalb von 10 Handelstagen – dann Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt"],
+      ["Stop setzen", "Tief der Seitwärtsphase − 0,25 ATR, direkt als Stop-Order – nie nach unten verschieben"],
+      ["Risiko fest", "1 % je Trade, höchstens 5 gleichzeitig (Kairo-S: 0,25 % bei bis zu 20) – Reihenfolge: USA/Europa, dann schwächeres Vormomentum"],
+      ["Ausstieg", "ab Tag 10 bei Schluss unter der EMA 20 zur nächsten Eröffnung, spätestens an Tag 60 – kein festes Kursziel"],
+      ["Kosten klein halten", "Orders ab 250 € (PRIME+ gebührenfrei), Aktie statt Turbo, wenn das Kapital reicht"]].map(([l, t], k) => `<li><i>${k + 1}</i><span><b>${l}</b>${t}</span></li>`).join("")}</ol></div>`;
+  const unknown = `<div class="hcard">${hHead("Was wir (noch) nicht wissen")}<ul class="checks">
+      <li><i class="gold">!</i><b>Hält der Vorteil live?</b> +0,14 R gegen +0,11 R bei Zufalls-Einstiegen ist klein. Erst ~30–50 abgeschlossene Live-Trades zeigen, ob er im echten Markt bleibt.</li>
       <li><i class="gold">!</i><b>Pleite-Aktien fehlen:</b> Getestet wurden Aktien, die es heute noch gibt. Das macht Rückrechnungen zu schön.</li>
-      <li><i class="gold">!</i><b>Die Live-Bilanz entscheidet:</b> Ab ~30 abgeschlossenen Trades zeigt sie, ob die Strategie im echten Markt hält.</li></ul></div>`;
-  if (b === undefined) return back + hero + myTradesHtml() + `<div class="hcard"><div class="skel"></div></div>`;
-  const L = b && b.live, st = L && L.strat, sig = ((b && b.signals) || []).filter(s => s.k === "hit").slice(0, 40);
-  const band = st ? 1.96 * 1.6 / Math.sqrt(st.n) : null, e = STRAT_BT.perTrade;
-  const verdict = !st ? "" : st.n < 30 ? `⏳ noch zu früh für ein Urteil (${st.n}/30 abgeschlossen)` : st.avg_r < e - band ? "🔴 schwächer als die Studie" : st.avg_r > e + band ? "🟢 besser als die Studie" : "🟢 im erwarteten Rahmen";
-  const liveHtml = `<div class="hcard">${hHead(`Live: jeder Kairo-Treffer nach unseren Regeln <small>seit ${dateDE(L && L.since)}</small>`)}
-    ${st ? `<div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Abgeschlossen</span><b>${st.n}</b><em>${st.run} laufen/warten</em></div>
-      <div class="mt"><span>Ø je Trade</span><b class="${st.avg_r >= 0 ? "up" : "down"}">${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R</b><em>Studie ≈ +${fmt(e, 2)} R</em></div>
-      <div class="mt"><span>Gewinner</span><b>${pct(st.win, 0)}</b><em>Stop ${pct(st.stop, 0)}</em></div>
-      <div class="mt"><span>Ohne Basis</span><b>${st.nobase}</b><em>kein Kauf – richtig so</em></div></div>
-      <div class="note" style="margin:0 0 8px">${verdict}. Jeder Treffer zählt hier – auch die, für die bei 5 Plätzen kein Platz wäre.</div>`
-      : `<div class="note" style="margin:0 0 8px">Jeder neue Kairo-Treffer wird ab dem Signaltag nach den Regeln verfolgt: Bildet sich eine Seitwärtsphase, wird gekauft; dann Stop oder Verkauf nach der Live-Regel. Die ersten Ergebnisse erscheinen nach etwa 4–6 Wochen.</div>`}
-    ${sig.length ? `<div class="table-wrap"><table class="jtrades"><thead><tr><th>Signal</th><th>Aktie</th><th class="num">Kauf</th><th class="num">Stop</th><th>Ergebnis</th></tr></thead><tbody>
-      ${sig.map(s => { const x = s.st || { res: "wait" }, [rt, rc] = ST_TXT[x.res] || ST_TXT.wait;
-        return `<tr><td>${dateDE(s.d)}<small>Score ${s.score}</small></td><td><a href="#" data-card="${esc(s.t)}"><b>${esc(s.n || s.t)}</b></a><small>${esc(s.t)}</small></td>
-          <td class="num">${x.e ? fmt(x.e) : "–"}</td><td class="num">${x.sl ? fmt(x.sl) : "–"}</td>
-          <td class="${x.r != null ? (x.r >= 0 ? "up" : "down") : rc}">${rt}${x.res === "run" ? ` <small>Tag ${x.days}/20</small>` : ""}${x.r != null ? ` <small>${x.r >= 0 ? "+" : ""}${fmt(x.r, 2)} R</small>` : ""}</td></tr>`; }).join("")}</tbody></table></div>` : ""}</div>`;
-  return back + `<div class="section-title"><span>Kairo-Bilanz · unsere Strategie</span><span></span></div>` + hero + h4BilanzHtml() + myTradesHtml() + (b ? liveHtml : "");
+      <li><i class="gold">!</i><b>Kosten im echten Handel:</b> Spread und Ausführung bei kleinen Werten können den Vorteil auffressen – deshalb der Kosten-Check im Journal.</li></ul>
+    <div class="note" style="margin:8px 0 0">Alle Strategien und Berichte – auch die gescheiterten: <a href="research/" target="_blank" rel="noopener">Forschung &amp; Backtests</a>.</div></div>`;
+  const old = `<details class="pdet"><summary class="psum"><b>Ältere Studie (09/2026)</b><span class="ptag">überholt · zu optimistisch</span></summary>
+    <div class="hcard bhero" style="opacity:.8"><div class="bh-l"><span>2 Stichproben à ~3.200 Aktien · 2017 – Okt. 2026 · Depot 3.000 € · Turbo-Hebel · Verkauf an Tag 20</span>
+      <b>≈ +${pct((M.cagr[0] + M.cagr[1]) / 2, 0)}</b><em>pro Jahr laut damaliger Rechnung; Prüfjahre 2024–26: <b>${rng(M.test, 0, "+")}</b>. Die neue Forschung mit 18 Jahren, allen Treffern und echten PRIME+-Kosten kommt auf deutlich weniger – deshalb gilt oben.</em></div>
+      <div class="bh-r"><div class="mt"><span>Größter Rückgang</span><b class="down">${rng(M.mdd, 0, "−")}</b><em>zwischendurch</em></div><div class="mt"><span>Verlustjahre</span><b>2–3 von 10</b><em>je nach Stichprobe</em></div></div></div>
+    <div class="hcard">${hHead("Rendite je Jahr – zwei Stichproben")}${yearBarsSvg()}
+      <div class="note" style="margin:6px 0 0">Gleiche Regeln, zwei zufällige Aktien-Stichproben – und trotzdem sehr unterschiedliche Jahre (2022: +19 % gegen −41 %). So groß ist der Zufall.</div></div>
+    <div class="hcard">${hHead("Varianten im selben Test")}${STRAT_BT.alt.map(([l, c, d, me, note]) => `<div class="jrow2"><span>${me ? `<b>${l}</b> ★` : l}${note ? ` <small class="down">${note}</small>` : ""}</span><b>${c.map(v => `<span class="${v >= 0 ? "up" : "down"}">${sg(v)}</span>`).join(" / ")} <small class="down">${rng(d, 0, "−")}</small></b></div>`).join("")}
+      <div class="note" style="margin:6px 0 0">Pro Jahr Stichprobe 1 / 2, dahinter der größte Rückgang.</div></div>
+    <div class="hcard">${hHead("Kapital und Gebühren (0,99 € je Order)")}${[["900 €", "−12 % bis Totalverlust"], ["1.500 €", "−12 % bis +4 %"], ["3.000 €", "+12 % / +13 %"], ["10.000 €", "+15 % / +23 %"]].map(([k, v], i) => `<div class="jrow2"><span>${k}</span><b class="${i < 2 ? "down" : "up"}">${v}</b></div>`).join("")}
+      <div class="note" style="margin:6px 0 0">Rund 93 Trades im Jahr ≈ 184 € Gebühren – bei kleinem Kapital frisst das den Vorteil. Mit PRIME+ (ab 250 € gebührenfrei) entfällt das weitgehend.</div></div></details>`;
+  if (b === undefined) return back + `<div class="section-title"><span>Kairo-Bilanz</span><span></span></div><div class="hcard"><div class="skel"></div></div>` + research + rules;
+  const L = b && b.live, hits = ((b && b.signals) || []).filter(s => s.k === "hit"), X = s => s.st60 || s.st || { res: "wait" };
+  const st = L && (L.strat60 || L.strat), e = 0.14, band = st ? 1.96 * 1.6 / Math.sqrt(st.n) : null;
+  const verdict = !st ? "" : st.n < 30 ? `⏳ Noch zu früh für ein Urteil: ${st.n} von ~30 Trades abgeschlossen. Einzelne Wochen schwanken stark.` : st.avg_r < e - band ? "🔴 Schwächer als die Forschung – genauer prüfen." : st.avg_r > e + band ? "🟢 Besser als die Forschung." : "🟢 Im erwarteten Rahmen der Forschung.";
+  const act = hits.filter(s => ["run", "stop", "ema", "zeit"].includes(X(s).res)).sort((a, b2) => (X(a).res === "run") - (X(b2).res === "run") || String(b2.d).localeCompare(a.d));
+  const nWait = hits.filter(s => X(s).res === "wait").length, nNo = hits.filter(s => X(s).res === "nobase").length;
+  const row = s => { const x = X(s), [rt, rc] = ST_TXT[x.res] || ST_TXT.wait;
+    return `<div class="g-hold" data-card="${esc(s.t)}" role="button"><span class="g-h-n"><b>${esc(s.n || s.t)}</b><small>Treffer ${dateDE(s.d)} · ${esc(s.t)}${x.res === "run" && x.days ? ` · Tag ${x.days} von 60` : ""}</small></span>
+      <span class="g-h-v"><b class="${x.r == null ? rc : x.r >= 0 ? "up" : "down"}">${x.r != null ? R(x.r) : "–"}</b><small class="${rc}">${rt}</small></span></div>`; };
+  const live = `<div class="hcard">${hHead(`Live-Bilanz · Kairo-Regel <small>seit ${dateDE(L && L.since)}</small>`)}
+    ${st ? `<div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Abgeschlossen</span><b>${st.n}</b><em>${act.filter(s => X(s).res === "run").length} laufen</em></div>
+      <div class="mt"><span>Ø je Trade</span><b class="${st.avg_r >= 0 ? "up" : "down"}">${R(st.avg_r)}</b><em>Forschung +0,14 R</em></div>
+      <div class="mt"><span>Gewinner</span><b>${pct(st.win, 0)}</b><em>Forschung ≈ 30–35 %</em></div>
+      <div class="mt"><span>Am Stop</span><b>${pct(st.stop, 0)}</b><em>der abgeschlossenen</em></div></div>
+      <div class="note" style="margin:0 0 10px">${verdict}</div>`
+      : `<div class="note" style="margin:0 0 10px">Jeder neue Kairo-Treffer wird ab dem Signaltag nach der Kairo-Regel verfolgt: Seitwärtsphase → Kauf → Stop oder Ausstieg (EMA 20 ab Tag 10, spätestens Tag 60). Erste Ergebnisse nach etwa 4–6 Wochen.</div>`}
+    ${act.slice(0, 15).map(row).join("")}
+    <div class="note" style="margin:10px 0 0">${nWait} Treffer warten auf die Seitwärtsphase · ${nNo} ohne Einstieg (keine Seitwärtsphase – richtig so). Jeder Treffer zählt, auch ohne freien Platz. Alles öffentlich und unveränderbar: <a href="track/" target="_blank" rel="noopener">Live-Bilanz aller Treffer</a>.</div></div>`;
+  return back + `<div class="section-title"><span>Kairo-Bilanz</span><span>live · Forschung · Regeln</span></div>` + (b ? live : "") + research + rules + myTradesHtml() + unknown + old;
 }
 
 // ---------- Telegram & Backup (Einstellungen) ----------
@@ -4133,8 +4143,17 @@ function settingsHtml() {
   const groups = Object.entries(CFG_LABELS).filter(([k]) => cfg[k]).map(([k, label]) =>
     `<h4>${label}</h4><div class="table-wrap"><table><tbody>${Object.entries(cfg[k]).map(([p, v]) =>
       `<tr><td>${esc(p)}</td><td class="num">${esc(Array.isArray(v) ? v.join(" – ") : typeof v === "number" ? fmt(v, Number.isInteger(v) ? 0 : 3) : v)}</td></tr>`).join("")}</tbody></table></div>`).join("");
-  return `<div class="card" style="margin-bottom:18px"><b>Forschung &amp; Backtests</b><div class="note" style="margin:4px 0 0">Alle getesteten Strategien mit Regeln und Ergebnissen – auch zum Teilen mit ChatGPT oder Claude: <a href="research/" target="_blank" rel="noopener">dxrtex.github.io/Kairo/research/</a> · öffentliche Live-Bilanz aller Treffer: <a href="track/" target="_blank" rel="noopener">dxrtex.github.io/Kairo/track/</a></div></div>
-    <div class="section-title"><span>Live-Kurse</span><span>${liveOn() ? "aktiv" : "aus"}</span></div>
+  return `<div class="section-title"><span>Persönlich</span><span>nur auf diesem Gerät</span></div>
+    <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
+      <label class="full">Wie soll Kairo dich nennen?<input id="cfgName" value="${esc(state.name || "")}" placeholder="z. B. Jonny" maxlength="24" autocomplete="given-name"></label></div>
+      <div class="note">Erscheint in der Begrüßung oben („Guten Abend, ${esc(state.name || "…")}“). Leer lassen = ohne Namen.</div>
+      <div class="form" style="margin:14px 0 0"><label class="full">Emoji in der Begrüßung<input id="cfgEmoji" value="${esc(state.emoji == null ? (isApple() ? "" : "👋") : state.emoji)}" placeholder="z. B. 🚀 – leer = kein Emoji" maxlength="8"></label></div>
+      <div class="emo-pick">${EMOJIS.map(e => `<button type="button" class="opt${(state.emoji ?? "👋") === e ? " on" : ""}" data-emoji="${e}">${e}</button>`).join("")}<button type="button" class="opt${state.emoji === "" ? " on" : ""}" data-emoji="">keins</button></div>
+      <div class="note">Antippen oder ein eigenes Emoji ins Feld tippen (Emoji-Tastatur 🌐).</div>
+      <div class="set-lbl">Design</div><div class="set-chips">${DESIGNS.map(([k, l]) => `<button type="button" class="opt${(state.design || "classic") === k ? " on" : ""}" data-design="${k}">${l}</button>`).join("")}</div>
+      <div class="note">Wechselt sofort, alle Funktionen und Daten bleiben gleich.</div></div>
+    ${pushHtml()}
+    <div class="section-title"><span>Live-Kurse</span><span class="${liveOn() ? "up" : ""}">${liveOn() ? "aktiv" : "aus – Kurse vom Abendscan"}</span></div>
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
       <label>Finnhub-Schlüssel <small>(US-Aktien in Echtzeit · kostenlos auf finnhub.io)</small><input id="kxFh" type="password" autocomplete="off" value="${esc(liveKey("fh"))}" placeholder="z. B. c1abc…"></label>
       <label>Twelve-Data-Schlüssel <small>(Tageskerzen für Aktien außerhalb des Scans · kostenlos auf twelvedata.com, Gratis-Tarif nur US-Börsen)</small><input id="kxTd" type="password" autocomplete="off" value="${esc(liveKey("td"))}" placeholder="z. B. 9f2e…"></label>
@@ -4156,24 +4175,14 @@ function settingsHtml() {
         <textarea id="kdCode" class="tgtext" readonly rows="6" placeholder="Code wird geladen …"></textarea>
         <div class="note">Kurse von Yahoo Finance, je nach Börse leicht verzögert (XETRA ca. 15 Min.). Der Dienst läuft in deinem Cloudflare-Konto; nur die Kairo-App darf ihn nutzen. Kostenlos bis 100.000 Abrufe am Tag.</div>
       </details></div></div>
-    <div class="section-title"><span>Persönlich</span><span>nur auf diesem Gerät</span></div>
-    <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
-      <label class="full">Wie soll Kairo dich nennen?<input id="cfgName" value="${esc(state.name || "")}" placeholder="z. B. Jonny" maxlength="24" autocomplete="given-name"></label></div>
-      <div class="note">Erscheint in der Begrüßung oben („Guten Abend, ${esc(state.name || "…")}“). Leer lassen = ohne Namen.</div>
-      <div class="form" style="margin:14px 0 0"><label class="full">Emoji in der Begrüßung<input id="cfgEmoji" value="${esc(state.emoji == null ? (isApple() ? "" : "👋") : state.emoji)}" placeholder="z. B. 🚀 – leer = kein Emoji" maxlength="8"></label></div>
-      <div class="emo-pick">${EMOJIS.map(e => `<button type="button" class="opt${(state.emoji ?? "👋") === e ? " on" : ""}" data-emoji="${e}">${e}</button>`).join("")}<button type="button" class="opt${state.emoji === "" ? " on" : ""}" data-emoji="">keins</button></div>
-      <div class="note">Antippen oder ein eigenes Emoji ins Feld tippen (Emoji-Tastatur 🌐).</div>
-      <div class="form" style="margin:14px 0 0"><label class="full">Design<select id="cfgDesign">
-        ${DESIGNS.map(([k, l]) => `<option value="${k}"${state.design === k ? " selected" : ""}>${l}</option>`).join("")}</select></label></div>
-      <div class="note">Wechselt sofort, alle Funktionen und Daten bleiben gleich.</div></div>
-    <div class="section-title"><span>Datenstatus</span><span>letzter Scan</span></div>
-    <div class="card" style="margin-bottom:18px">${health().length ? health().map(([c, t]) => `<div class="hrow"><i class="${c}"></i>${esc(t)}</div>`).join("") : `<div class="hrow"><i class="g"></i>Alle Daten vollständig – Kurse, Stammdaten, Termine und Nachrichten.</div>`}
-      ${(data.stats || {}).health ? `<div class="note">${fmt(data.stats.health.loaded, 0)} von ${fmt(data.stats.health.universe, 0)} Kursen · Stammdaten ${data.stats.health.info_fresh} frisch / ${data.stats.health.info_cached} aus Cache · Nachrichten für ${data.stats.health.news ?? "–"} Aktien</div>` : ""}</div>
-    ${pushHtml()}${backupHtml()}
+    ${backupHtml()}
     <div class="section-title"><span>Begriffe A–Z</span><span>${Object.keys(GLOSS).length} Erklärungen</span></div>
     <div class="card gloss">${Object.values(GLOSS).sort((a, b) => a[0].localeCompare(b[0], "de")).map(([t, x]) => `<details><summary>${esc(t)}</summary><p>${esc(x)}</p></details>`).join("")}</div>
-    <div class="section-title"><span>Scanner-Parameter</span><span>aus config.yaml</span></div>
-    <div class="card cfg">
+    <div class="section-title"><span>Forschung &amp; Live-Bilanz</span><span>öffentlich</span></div><div class="card" style="margin-bottom:18px"><div class="note" style="margin:0">Alle getesteten Strategien mit Regeln und Ergebnissen – auch zum Teilen mit ChatGPT oder Claude: <a href="research/" target="_blank" rel="noopener">dxrtex.github.io/Kairo/research/</a> · öffentliche Live-Bilanz aller Treffer: <a href="track/" target="_blank" rel="noopener">dxrtex.github.io/Kairo/track/</a></div></div>
+    <div class="section-title"><span>Datenstatus</span><span>letzter Scan</span></div>
+    <div class="card" style="margin-bottom:18px">${health().length ? health().map(([c, t]) => `<div class="dsrow"><i class="${c}"></i>${esc(t)}</div>`).join("") : `<div class="dsrow"><i class="g"></i>Alle Daten vollständig – Kurse, Stammdaten, Termine und Nachrichten.</div>`}
+      ${(data.stats || {}).health ? `<div class="note">${fmt(data.stats.health.loaded, 0)} von ${fmt(data.stats.health.universe, 0)} Kursen · Stammdaten ${data.stats.health.info_fresh} frisch / ${data.stats.health.info_cached} aus Cache · Nachrichten für ${data.stats.health.news ?? "–"} Aktien</div>` : ""}</div>
+    <details class="pdet"><summary class="psum"><b>Scanner-Parameter</b><span class="ptag">für Fortgeschrittene · config.yaml</span></summary><div class="card cfg">
       <div>Alle Parameter stehen zentral in <b>config.yaml</b>. Zum Ändern die Datei auf GitHub bearbeiten und danach den Scan neu starten – die Website zeigt dann die Ergebnisse mit den neuen Parametern.</div>
       <div class="links">
         <a class="btn" href="${REPO}/edit/main/config.yaml" target="_blank" rel="noopener">config.yaml bearbeiten</a>
@@ -4181,7 +4190,7 @@ function settingsHtml() {
       </div>
       <div class="note">„Scan jetzt starten“ öffnet GitHub Actions → „Run workflow“. Ein kompletter Scan dauert ca. 20–30 Minuten.</div>
       <details class="cfgd"><summary>Alle Parameter anzeigen</summary>${groups}</details>
-    </div>`;
+    </div></details>`;
 }
 
 // ---------- Einstieg: Aktie suchen → Setup erkennen → Trade-Plan, Turbo & Hebel ----------
