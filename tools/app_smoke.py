@@ -43,6 +43,39 @@ def serve() -> int:
     return srv.server_address[1]
 
 
+
+GATE = "31151c44ed55cace96a0cb05c2ca90411e7f0263b40ab89f351fcb64dd2b5220"                                         # SHA-256 des Zugangscodes (wie in index.html)
+
+
+async def new_ctx(b, **kw):
+    """Browser-Kontext mit freigeschaltetem Zugangscode – die Tests prüfen die App, nicht die Sperre."""
+    ctx = await b.new_context(**kw)
+    await ctx.add_init_script(f"try{{localStorage.setItem('kairo-gate','{GATE}')}}catch(e){{}}")
+    return ctx
+
+
+async def gate_check(b, url, errs):
+    """Ohne Freigabe: Code-Seite sichtbar, falscher Code bleibt gesperrt, 7777 öffnet die App."""
+    ctx = await b.new_context(viewport={"width": 820, "height": 1180})
+    pg = await ctx.new_page()
+    await pg.goto(f"{url}?nosplash=1")
+    await pg.wait_for_timeout(1500)
+    if not await pg.query_selector("#gate"):
+        errs.append("Zugang: Code-Seite fehlt")
+    else:
+        for d in "1234":
+            await pg.click(f'#gate [data-pin="{d}"]')
+        await pg.wait_for_timeout(700)
+        if not await pg.query_selector("#gate"):
+            errs.append("Zugang: falscher Code öffnet die App")
+        for d in "7777":
+            await pg.click(f'#gate [data-pin="{d}"]')
+        await pg.wait_for_timeout(900)
+        if await pg.query_selector("#gate"):
+            errs.append("Zugang: Code 7777 öffnet die App nicht")
+    await ctx.close()
+
+
 async def run(port: int) -> list[str]:
     from playwright.async_api import async_playwright
     url = f"http://127.0.0.1:{port}/"
@@ -50,8 +83,9 @@ async def run(port: int) -> list[str]:
     async with async_playwright() as p:
         exe = os.environ.get("CHROME_PATH")
         b = await p.chromium.launch(**({"executable_path": exe} if exe else {}), args=["--no-proxy-server"])
+        await gate_check(b, url, errs)
         for name, vp in (("iPad", {"width": 820, "height": 1180}), ("Handy", {"width": 390, "height": 844})):
-            ctx = await b.new_context(viewport=vp)
+            ctx = await new_ctx(b, viewport=vp)
             pg = await ctx.new_page()
             pg.on("pageerror", lambda e, n=name: errs.append(f"{n}: JS-Fehler {e}"))
             pg.on("console", lambda m, n=name: m.type == "error" and "Uncaught" in m.text and errs.append(f"{n}: {m.text[:200]}"))
@@ -84,7 +118,7 @@ async def run(port: int) -> list[str]:
         # Postfach-Designs (iPad quer): linke Liste und rechter Bereich dürfen sich nie überlappen
         for des in ("postfach-classic", "postfach", "postfach-aktien"):
             for vw, vh in ((1180, 820), (1024, 768)):
-                ctx = await b.new_context(viewport={"width": vw, "height": vh})
+                ctx = await new_ctx(b, viewport={"width": vw, "height": vh})
                 pg = await ctx.new_page()
                 await pg.add_init_script(f"localStorage.setItem('reversal-finder-v1', JSON.stringify({{design: '{des}'}}))")
                 await pg.goto(f"{url}?nosplash=1&sec=today")
@@ -104,7 +138,7 @@ async def run(port: int) -> list[str]:
                         errs.append(f"{des} {vw}px ({step}): Bereiche überlappen oder Seite zu breit ({r})")
                 await ctx.close()
         # Übung (Broker): Spiel starten, alle drei Reiter, Order-Ticket öffnen und prüfen lassen – jeder JS-Fehler zählt
-        ctx = await b.new_context(viewport={"width": 820, "height": 1180})
+        ctx = await new_ctx(b, viewport={"width": 820, "height": 1180})
         pg = await ctx.new_page()
         pg.on("pageerror", lambda e: errs.append(f"Übung: JS-Fehler {e}"))
         await pg.goto(f"{url}?nosplash=1&sec=game")
@@ -121,7 +155,7 @@ async def run(port: int) -> list[str]:
                 await pg.wait_for_timeout(600)
         await ctx.close()
         # Einstieg: Aktie wählen, Turbo von Hand eintragen (Briefkurs, K.-o. + Währung, Bezugsverhältnis) → Stop-Loss am Turbo prüfen
-        ctx = await b.new_context(viewport={"width": 820, "height": 1180})
+        ctx = await new_ctx(b, viewport={"width": 820, "height": 1180})
         pg = await ctx.new_page()
         pg.on("pageerror", lambda e: errs.append(f"Einstieg: JS-Fehler {e}"))
         await pg.goto(f"{url}?nosplash=1&sec=entry")
@@ -156,7 +190,7 @@ async def run(port: int) -> list[str]:
             print("Einstieg: kein planbarer Treffer – Turbo-Eingabe-Test übersprungen")
         await ctx.close()
         # Spiel: starten, Treffer wählen, Turbo eintragen, Vorschlag übernehmen, kaufen
-        ctx = await b.new_context(viewport={"width": 820, "height": 1180})
+        ctx = await new_ctx(b, viewport={"width": 820, "height": 1180})
         pg = await ctx.new_page()
         pg.on("pageerror", lambda e: errs.append(f"Spiel: JS-Fehler {e}"))
         await pg.goto(f"{url}?nosplash=1&sec=game")
