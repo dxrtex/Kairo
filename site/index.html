@@ -199,7 +199,7 @@
   .glpop b { display: block; margin-bottom: 4px; }
   .empty-st { text-align: center; padding: 28px 22px; margin-bottom: 14px; } .empty-st .es-ic { font-size: 34px; margin-bottom: 6px; }
   .empty-st > b { font-size: 19px; } .empty-st > p { color: var(--muted); margin: 6px auto 18px; max-width: 460px; }
-  .empty-st .rule-steps { text-align: left; max-width: 520px; margin: 0 auto; }
+  .empty-st .rule-steps { text-align: left; max-width: 520px; margin: 0 auto; } .empty-st .rule-steps li > span { display: block; } .empty-st .rule-steps li b { display: block; margin-bottom: 2px; }
   .dsrow { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 14px; color: var(--muted); } .dsrow i { flex: 0 0 8px; height: 8px; border-radius: 50%; background: var(--gold); } .dsrow i.g { background: var(--up); } .dsrow i.r { background: var(--down); }
   .set-lbl { margin: 16px 0 8px; font-size: 13px; color: var(--muted); } .set-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .rule-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
@@ -3057,7 +3057,7 @@ function gUnit(p) {                                          // aktueller Wert j
 const gVal = p => p.qty * gUnit(p);
 function gTotals(g) {
   const ep = gEtfPx() || g.etf.px0 || 0, etf = g.etf.units * ep, inv = g.pos.reduce((a, p) => a + gVal(p), 0);
-  const trade = g.cash + inv, total = etf + trade, etfOnly = g.px0 && ep ? G_START * ep / g.px0 : null;
+  const trade = g.cash + gResv(g) + inv, total = etf + trade, etfOnly = g.px0 && ep ? G_START * ep / g.px0 : null;
   return { etf, inv, trade, total, etfOnly, real: g.closed.reduce((a, c) => a + c.pnl, 0), open: g.pos.reduce((a, p) => a + gVal(p) - p.cost, 0) };
 }
 function gSell(g, id, why, unitPx) {
@@ -4024,7 +4024,8 @@ function bilanzHtml() {
       <div class="note" style="margin:6px 0 0">Rund 93 Trades im Jahr ≈ 184 € Gebühren – bei kleinem Kapital frisst das den Vorteil. Mit PRIME+ (ab 250 € gebührenfrei) entfällt das weitgehend.</div></div></details>`;
   if (b === undefined) return back + `<div class="section-title"><span>Kairo-Bilanz</span><span></span></div><div class="hcard"><div class="skel"></div></div>` + research + rules;
   const L = b && b.live, hits = ((b && b.signals) || []).filter(s => s.k === "hit"), X = s => s.st60 || s.st || { res: "wait" };
-  const st = L && (L.strat60 || L.strat), e = 0.14, band = st ? 1.96 * 1.6 / Math.sqrt(st.n) : null;
+  const st = L && (L.strat60 || (() => { const d = hits.map(X).filter(x => ["stop", "ema", "zeit"].includes(x.res) && x.r != null); if (!d.length) return null;
+    return { n: d.length, avg_r: d.reduce((a, x) => a + x.r, 0) / d.length, win: d.filter(x => x.r > 0).length / d.length, stop: d.filter(x => x.res === "stop").length / d.length }; })()), e = 0.14, band = st ? 1.96 * 1.6 / Math.sqrt(st.n) : null;
   const verdict = !st ? "" : st.n < 30 ? `⏳ Noch zu früh für ein Urteil: ${st.n} von ~30 Trades abgeschlossen. Einzelne Wochen schwanken stark.` : st.avg_r < e - band ? "🔴 Schwächer als die Forschung – genauer prüfen." : st.avg_r > e + band ? "🟢 Besser als die Forschung." : "🟢 Im erwarteten Rahmen der Forschung.";
   const act = hits.filter(s => ["run", "stop", "ema", "zeit"].includes(X(s).res)).sort((a, b2) => (X(a).res === "run") - (X(b2).res === "run") || String(b2.d).localeCompare(a.d));
   const nWait = hits.filter(s => X(s).res === "wait").length, nNo = hits.filter(s => X(s).res === "nobase").length;
