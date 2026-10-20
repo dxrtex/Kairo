@@ -81,6 +81,7 @@
   .card, .pane { background: var(--glass) !important; border-color: var(--glass-line) !important; }
   body { margin: 0; background: var(--bg); color: var(--text);
          font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+         font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
          padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px); }
   .wrap { max-width: 1180px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 28px) 20px 0; }
   button { font: inherit; color: inherit; }
@@ -89,7 +90,7 @@
   .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
   .brand svg { width: 34px; height: 34px; border-radius: 9px; flex: none; box-shadow: 0 0 0 1px var(--line); }
   .brand b { font-size: 19px; font-weight: 800; letter-spacing: .14em; }
-  .hello h1 { margin: 0; font-size: 32px; letter-spacing: -.02em; line-height: 1.15; }
+  .hello h1 { margin: 0; font-size: clamp(25px, 6.6vw, 32px); letter-spacing: -.02em; line-height: 1.15; }
   .hello p { margin: 6px 0 0; color: var(--muted); font-size: 16px; }
   .hello p b { color: var(--accent); }
   /* Kompakter Kopf außerhalb von „Heute“: mehr Platz für den Inhalt (v. a. auf dem Handy) */
@@ -343,7 +344,8 @@
   nav.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: rgba(22, 22, 24, .82);
                -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border-top: 1px solid var(--line);
                padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
-  .tabs { max-width: 680px; margin: 0 auto; display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; }
+  .tabs { max-width: 680px; margin: 0 auto; display: flex; gap: 2px; }
+  .tabs > .tab { flex: 1 1 0; min-width: 0; } @media (max-width: 420px) { .tab { font-size: 10.5px; } .tab svg { width: 22px; height: 22px; } }
   .tab { border: 0; background: none; cursor: pointer; color: var(--muted); display: flex; flex-direction: column; align-items: center;
          gap: 3px; font-size: 12px; font-weight: 600; padding: 6px 0; border-radius: 16px; position: relative; }
   .tab svg { width: 24px; height: 24px; }
@@ -401,6 +403,12 @@
   .plan { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .plan .fig b { font-size: 18px; }
   .note { color: var(--muted); font-size: 13px; margin-top: 10px; line-height: 1.45; }
+  .note.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .form .row-actions { grid-column: 1 / -1; align-self: start; } .form .row-actions .btn { height: auto; border-radius: 999px; }
+  @media (max-width: 960px) { table.ptab.ts tr > :nth-child(6), table.ptab.ts tr > :nth-child(7) { display: none; } }
+  table.ptab.ts { width: 100%; } .ts-list { display: none; } .ts-q { text-align: right; font-weight: 650; white-space: nowrap; } .ts-q small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); }
+  @media (max-width: 560px) { .ts-list { display: block; margin-top: 6px; } .ts-tab { display: none; } }
+  .note-more { border: 0; background: none; color: var(--accent); font-size: 12.5px; font-weight: 600; padding: 2px 2px 0; cursor: pointer; }
   .cfg { font-size: 14px; }
   details.cfgd summary { cursor: pointer; color: var(--accent); font-weight: 650; margin-top: 12px; }
   .cfg h4 { margin: 18px 0 6px; color: var(--accent); font-size: 14px; text-transform: uppercase; letter-spacing: .06em; }
@@ -555,7 +563,12 @@
   .hgrid { display: grid; gap: 14px; margin-top: 22px; grid-template-columns: minmax(0, 1fr); }
   .backbtn { margin-top: 18px !important; } @media (min-width: 900px) { .hgrid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; } }
   .hcol { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
-  .hgrid > *, .hcol > * { min-width: 0; }   /* lange Namen dürfen die Seite nicht verbreitern */
+  .hgrid > *, .hcol > * { min-width: 0; }
+  .todo-today { margin-bottom: 14px; } .tdo { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 11px 0; cursor: pointer; color: var(--text); }
+  .tdo i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); } .tdo.g i { background: var(--up); } .tdo.red i { background: var(--red); }
+  .tdo.yellow i { background: var(--gold); } .tdo.green i { background: var(--up); } .tdo span { flex: 1; min-width: 0; } .tdo b { display: block; font-weight: 650; }
+  .tdo small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; } .tdo s { text-decoration: none; color: var(--muted); }
+  .tdo-none b { display: block; font-size: 17px; color: var(--up); } .tdo-none span { font-size: 13.5px; color: var(--muted); }   /* lange Namen dürfen die Seite nicht verbreitern */
   .hcard { display: block; width: 100%; text-align: left; color: var(--text); font: inherit; background: var(--glass); border: 1px solid var(--glass-line); border-radius: var(--radius); padding: 16px 16px 14px;
            -webkit-backdrop-filter: blur(24px) saturate(140%); backdrop-filter: blur(24px) saturate(140%); }
   button.hcard { cursor: pointer; } button.hcard:active { transform: scale(.99); }
@@ -903,7 +916,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
   @media (min-width: 1024px) {
     nav.tabbar { top: 0; bottom: 0; right: auto; width: 240px; padding: calc(env(safe-area-inset-top) + 18px) 12px 18px; border-top: 0; border-right: 1px solid var(--line);
                  background: var(--surface) !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
-    .tabs { display: flex !important; flex-direction: column; gap: 2px; max-width: none !important; }
+    .tabs { display: flex !important; flex-direction: column; gap: 2px; max-width: none !important; } .tabs > .tab { flex: none; }
     .sb-brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; font-size: 21px; font-weight: 700; letter-spacing: -.02em; }
     .sb-brand svg { width: 30px; height: 30px; border-radius: 7px; }
     .sb-only { display: flex; } .sb-sep { height: 18px; }
@@ -971,7 +984,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue"
   @media (min-width: 1024px) {
     nav.tabbar { top: 0; bottom: 0; right: auto; width: 240px; padding: calc(env(safe-area-inset-top) + 18px) 12px 18px; border-top: 0; border-right: 1px solid var(--line);
                  background: var(--surface) !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
-    .tabs { display: flex !important; flex-direction: column; gap: 2px; max-width: none !important; }
+    .tabs { display: flex !important; flex-direction: column; gap: 2px; max-width: none !important; } .tabs > .tab { flex: none; }
     .sb-brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; font-size: 21px; font-weight: 700; letter-spacing: -.02em; }
     .sb-brand svg { width: 30px; height: 30px; border-radius: 7px; }
     .sb-only { display: flex; } .sb-sep { height: 18px; }
@@ -1039,7 +1052,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
   @media (min-width: 1024px) {
     nav.tabbar { top: 0; bottom: 0; right: auto; width: 240px; padding: calc(env(safe-area-inset-top) + 18px) 12px 18px; border-top: 0; border-right: 1px solid var(--line);
                  background: var(--surface) !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
-    .tabs { display: flex !important; flex-direction: column; gap: 2px; max-width: none !important; }
+    .tabs { display: flex !important; flex-direction: column; gap: 2px; max-width: none !important; } .tabs > .tab { flex: none; }
     .sb-brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; font-size: 21px; font-weight: 700; letter-spacing: -.02em; }
     .sb-brand svg { width: 30px; height: 30px; border-radius: 7px; }
     .sb-only { display: flex; } .sb-sep { height: 18px; }
@@ -3647,7 +3660,7 @@ function todayHtml() {
   const tgHint = "";                       // Telegram-Abendbericht: ersetzt durch Push-Mitteilungen (10/2026)
   // Postfach: Aufgaben oben, darunter dieselben Karten wie sonst (ohne „Beste Treffer“ – die stehen schon im Postfach)
   if (isPostfach()) return postfachHtml(`${startHtml()}${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}`, `${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
-  return (isApple() ? todoHtml() : kpiHtml()) + `${startHtml()}<div class="hgrid"><div class="hcol">${topHitsHtml()}${myStocksHtml()}${depotSnapHtml()}${soonHtml()}</div>
+  return (isApple() ? todoHtml() : kpiHtml()) + `${todoTodayHtml()}${startHtml()}<div class="hgrid"><div class="hcol">${topHitsHtml()}${myStocksHtml()}${depotSnapHtml()}${soonHtml()}</div>
     <div class="hcol">${etfTeaserHtml()}${marketHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}</div></div>`;   // oben: was heute zu tun ist
 }
 
@@ -3704,6 +3717,24 @@ function etfAmpelHtml(e, compact) {
   return `<div class="regime" style="--c:${col}"><i></i><div><b>${esc(e.t)}</b><span>${compact ? `SPYI ${fmt(e.c)} € · ${e.dd < .005 ? "am Allzeithoch" : pct(e.dd, 1) + " unter dem Hoch"} · ${e.vs_e100 != null ? (e.vs_e100 >= 0 ? "über" : "unter") + " der EMA 100" : (e.vs_sma >= 0 ? "über" : "unter") + " der 200-Tage-Linie"}` : esc(e.s)}</span></div></div>`;
 }
 // Erste Schritte im 70/30-System – verschwindet, sobald alles erledigt ist (oder ausgeblendet wurde)
+// „Heute zu tun“: offene Trades mit Handlungsbedarf + Kaufkandidaten (Kairo-Treffer mit fertiger Seitwärtsphase) nach der Kairo-Regel
+function todoTodayHtml() {
+  if (!searchIdx) { loadSearch(); return ""; }
+  const sell = [], buy = [], watch = [];
+  plansLoad().filter(p => p.st === "open").forEach(p => { const st = tpStatus(p);
+    const row = `<button class="tdo ${st.tone}" data-ein="${esc(p.t)}"><i></i><span><b>${esc(p.n || p.t)}</b><small>${esc(st.t)}</small></span><s>›</s></button>`;
+    (["red", "yellow", "green"].includes(st.tone) ? sell : watch).push(row); });
+  const free = kmSlots(), ready = kmRank().hits.filter(x => { const it = h4Of(x.t);   // Seitwärtsphase im 10-Tage-Fenster fertig (Abend-/4H-Prüfung), sonst Basis aus dem Scan
+    return kmTested(x) && (it ? it.st === "4h" : ((rowOf(x.t) || {}).pl || {}).base) && !plansLoad().some(p => p.st === "open" && p.t === x.t); }).slice(0, Math.max(0, free));
+  ready.forEach(x => { const pl = (rowOf(x.t) || {}).pl || {};
+    buy.push(`<button class="tdo g" data-ein="${esc(x.t)}"><i></i><span><b>${esc(x.n)}</b><small>Seitwärtsphase fertig – Kauf zur nächsten Eröffnung${pl.base ? ` in der Spanne ${fmt(pl.base.lo)}–${fmt(pl.base.hi)} ${esc(x.cur || "")}` : ""} · Stop ${fmt(pl.stop)} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}</small></span><s>›</s></button>`); });
+  const n = sell.length + buy.length;
+  return `<div class="hcard todo-today">${hHead(`Heute zu tun${n ? ` · ${n}` : ""}`, SEC_LINK("entry"), "Einstieg")}
+    ${sell.length ? `<div class="hsub">Deine Trades</div>${sell.join("")}` : ""}
+    ${buy.length ? `<div class="hsub">Kaufkandidaten · ${free} ${free === 1 ? "Platz" : "Plätze"} frei</div>${buy.join("")}` : ""}
+    ${!n ? `<div class="tdo-none"><b>Nichts zu tun ✓</b><span>${watch.length ? `${watch.length} ${watch.length === 1 ? "Trade läuft" : "Trades laufen"} nach Plan. ` : ""}${free ? "Kein Kairo-Treffer mit fertiger Seitwärtsphase." : "Alle Plätze belegt."} Der Sparplan läuft.</span></div>` : ""}
+    ${watch.length && n ? `<div class="note" style="margin:8px 0 0">${watch.length} weitere ${watch.length === 1 ? "Trade läuft" : "Trades laufen"} nach Plan.</div>` : ""}</div>`;
+}
 function startHtml() {
   if (state.startHide) return "";
   const steps = [["ETF-Sparplan bei Scalable eingerichtet (SPYI, monatlich)", !!state.stSpar, "stSpar"],
@@ -5000,7 +5031,9 @@ function topSetupsHtml() {
   }).join("");
   return `<div class="hcard" style="margin-bottom:12px">${hHead("Top-Setups heute")}
     <div class="note">Kairo-Treffer aus USA und Europa, sortiert nach der Forschung: <b>schwächerer Kursverlauf der letzten Monate zuerst</b> (in allen drei Testzeiträumen bessere Trades; Vorbehalt: muss sich live bestätigen). Kauf erst, wenn sich eine Seitwärtsphase bildet – die Live-Probe läuft im Papier-Depot KAIRO-S. Stückzahl für ${pct(c.risk / 100, 1)} Risiko von ${eur2(c.depot)} (Einstellung im Einstieg), Gebühr nach Scalable PRIME+. Regelbasierte Auswahl, keine Anlageberatung.</div>
-    <div class="tscroll" style="margin-top:8px"><table class="ptab"><tr><th>#</th><th>Aktie</th><th>Vormomentum</th><th>Einstieg / Stop</th><th>Größe</th><th>Gebühr</th><th></th></tr>${rows}</table></div></div>`;
+    <div class="ts-list">${list.map((r, k) => { const p = r.plan || {}, e = toEur(p.entry, r.currency), st = toEur(p.stop, r.currency), per = e != null && st != null ? e - st : null, qty = per > 0 ? Math.floor(riskEur / per) : null;
+      return `<button class="hrow" data-open="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${qty ? `${qty} Stk.<small>${eur2(qty * e)}</small>` : "–"}</span></button>`; }).join("")}</div>
+    <div class="tscroll ts-tab" style="margin-top:8px"><table class="ptab ts"><tr><th>#</th><th>Aktie</th><th>Vormomentum</th><th>Einstieg / Stop</th><th>Größe</th><th>Gebühr</th><th></th></tr>${rows}</table></div></div>`;
 }
 function paperHtml() {
   paperLoad();
@@ -5021,7 +5054,19 @@ const SUBNAV = { depot: [["depot", "Bestand"], ["journal", "Journal"], ["game", 
 const groupOf = sec => Object.keys(SUBNAV).find(g => SUBNAV[g].some(x => x[0] === sec)) || sec;
 const subNavHtml = sec => { const g = groupOf(sec); return SUBNAV[g] ? `<div class="subnav">${SUBNAV[g].map(x => x === "|" ? `<i class="sn-sep" title="Ergebnisse der Strategien"></i>` : `<button class="${x[0] === sec ? "on" : ""}" data-gosub="${x[0]}">${x[1]}</button>`).join("")}</div>` : ""; };
 const KFOOT = `<div class="kfoot">Keine Anlageberatung – Kairo zeigt getestete Regeln, Entscheidungen triffst du selbst. Kairo führt keine Orders aus.<br>Deine Trades, Watchlist und Einstellungen bleiben auf diesem Gerät · Kurse: Yahoo Finance, onvista, Finnhub · Momentum Bias Index nach AlgoAlpha (MPL 2.0) · Charts: <a href="https://www.tradingview.com/" target="_blank" rel="noopener" style="color:inherit">TradingView Lightweight Charts™</a></div>`;
-function render() { renderMain(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); }
+function clampNotes() {                          // lange Hinweise auf 3 Zeilen kürzen, „mehr“ zeigt alles
+  const m = $("main"); if (!m) return;
+  m.querySelectorAll(".note").forEach(n => {
+    if (n.dataset.cl || n.closest(".jdet, .kfoot, .g-ticket, form, label") || n.querySelector("input, textarea, select, button")) return;
+    n.dataset.cl = 1;
+    if (n.textContent.trim().length < 240) return;
+    n.classList.add("clamp");
+    n.insertAdjacentHTML("afterend", `<button class="note-more" data-notemore>mehr</button>`);
+  });
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-notemore]"); if (!b) return;
+  const n = b.previousElementSibling; if (!n) return; const open = n.classList.toggle("clamp"); b.textContent = open ? "mehr" : "weniger"; });
+function render() { renderMain(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); }
 function renderMain() {
   if (!data) return;
   const hits = data.results.filter(r => r.passed).length, fast = data.results.filter(r => r.fast_hit).length;
@@ -5162,7 +5207,7 @@ function health() {
   return out;
 }
 const healthPill = () => { const hs = health(), bad = hs.some(x => x[0] === "r");
-  return `<button class="hpill ${hs.length ? (bad ? "r" : "y") : "g"}" data-gosec="settings" title="${esc(hs.map(x => x[1]).join(" · ") || "Alle Daten vollständig")}">${hs.length ? (bad ? "⚠ Daten unvollständig" : "● Daten teilweise") : "✓ Daten vollständig"}</button>`; };
+  return bad ? `<button class="hpill r" data-gosec="settings" title="${esc(hs.map(x => x[1]).join(" · "))}">⚠ Daten unvollständig</button>` : ""; };   // gelb/grün: nur in den Einstellungen
 function renderHead() {
   const h = new Date().getHours();
   const nm = String(state.name || "").trim();
