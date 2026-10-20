@@ -532,6 +532,9 @@
   .psum { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 14px 16px; border-radius: 16px; background: var(--glass); border: 1px solid var(--glass-line); list-style: none; }
   .psum::-webkit-details-marker { display: none; } .psum b { flex: 1; } .psum::after { content: "›"; color: var(--muted); transition: transform .2s; } .pdet[open] > .psum::after { transform: rotate(90deg); }
   .ptag { font-size: 12px; color: var(--muted); }
+  .prow { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .prow:last-of-type { border-bottom: 0; } .prow small { display: block; font-size: 12px; color: var(--muted); } .prow small.up { color: var(--up); }
+  .prow small.down { color: var(--red); } .prow small.gold { color: var(--gold); } .pr-r { text-align: right; white-space: nowrap; }
   .subnav .sn-sep { flex: 0 0 1px; margin: 6px 3px; background: var(--glass-line); }
   /* Kalender */
   /* Heute */
@@ -1511,7 +1514,6 @@ function card(r) {
     ${isApple() ? `<div class="aseg rng">${[["1M", 21], ["3M", 63], ["6M", 126], ["1J", 252]].map(([l, n]) => `<button data-rng="${n}" class="${(state.aRng || 63) === n ? "on" : ""}">${l}</button>`).join("")}</div>` : ""}
     <div class="chart" data-mini="${esc(r.ticker)}"><svg class="candles" viewBox="0 0 600 220" preserveAspectRatio="none"></svg></div>
     ${agrp(`Kriterien · ${r.met ?? "–"}/${r.total ?? 11}`, `<div class="chips">${chips(r)}</div>`, true)}
-    ${agrp(`Trend-Rücksetzer${r.tr ? ` · ${r.tr.met}/${r.tr.total}` : ""}`, trendBoxHtml(r))}
     ${tipHtml(r.hint)}
     ${agrp("Marktstimmung", sentiHtml(r))}
     ${agrp("Fundament & Wochentrend", fundHtml(r))}
@@ -4002,12 +4004,11 @@ document.addEventListener("click", async e => {
 const einTag = r => r.tr === 2 ? `<i class="st trend">Trend Top</i>` : r.tr === 1 ? `<i class="st trend">Trend</i>` : r.s === "hit" ? `<i class="st hit">Kairo</i>` : r.s === "fast" ? `<i class="st fast">Kairo fast</i>` : r.s === "near" ? `<i class="st">9/11</i>` : "";
 function einSetup(r) {
   if (r.ext) return { k: "none", tone: "gray", title: "Außerhalb des Kairo-Scans", sub: "Die 11 Kairo-Kriterien prüft nur der Abendscan. Der Trade-Plan unten rechnet Stop, Größe und Hebel aus den aktuellen Tageskerzen.", plan: null };
-  if (r.tr === 2) return { k: "top", tone: "green", title: "Trend-Rücksetzer · Top", sub: "Das stärkste Setup im 6-Jahres-Test – hier lohnt sich der Einstieg am meisten.", plan: r.tp };
-  if (r.tr === 1) return { k: "trend", tone: "green", title: "Trend-Rücksetzer", sub: "Aufwärtstrend mit kurzer Verschnaufpause an der EMA 50 – im Test deutlich besser als Kairo.", plan: r.tp };
+  // Trend-Rücksetzer: nicht belegt, aus der App entfernt (10/2026)
   if (r.s === "hit") return { k: "kairo", tone: "yellow", title: `Kairo-Treffer${r.sc ? " · Score " + r.sc : ""}`, sub: "Umkehr nach einer Korrektur – alle 11 Kriterien erfüllt.", plan: r.kp };
   if (r.s === "near") return { k: "near", tone: "gray", title: "9/11 – kein Kairo-Treffer", sub: `Es fehlen: ${(r.km || []).map(k => SHORT[k] || k).join(", ") || "–"}. Nur zur Beobachtung – im Test kein Vorteil, erst als voller Treffer (11/11) handeln.`, plan: null };
   if (r.s === "fast") return { k: "fast", tone: "yellow", title: "Kairo Fast-Treffer", sub: `Es fehlt noch: ${(r.km || []).map(k => SHORT[k] || k).join(", ") || "–"}. Laut Strategie auslassen – nur volle Treffer (11/11) werden gehandelt.`, plan: null };
-  return { k: "none", tone: "gray", title: "Kein Einstiegs-Setup", sub: "Weder Trend-Rücksetzer noch Kairo-Treffer. Der Trade-Plan unten rechnet nur Stop, Größe und Hebel – für diese Aktie gibt es keinen getesteten Vorteil.", plan: null };
+  return { k: "none", tone: "gray", title: "Kein Einstiegs-Setup", sub: "Kein Kairo-Treffer. Der Trade-Plan unten rechnet nur Stop, Größe und Hebel – für diese Aktie gibt es keinen getesteten Vorteil.", plan: null };
 }
 function einTrendCheck(r) {
   const g200 = r.e200 ? r.c / r.e200 - 1 : null, g50 = r.e50 ? r.c / r.e50 - 1 : null;
@@ -4209,7 +4210,6 @@ function einPlanHtml(r) {
       ${warn.length ? `<div class="note" style="margin:8px 0 0">${warn.map(esc).join("<br>")}</div>` : ""}</div>
     ${tvChartHtml(r.t)}
     ${plan}
-    <div class="hcard"><div class="plan-h">Trend-Rücksetzer · ${(r.tm || []).filter(Boolean).length}/3 erfüllt${r.tr === 2 ? " · Stufe Top" : ""}</div>${einTrendCheck(r)}</div>
     <div class="hcard"><div class="plan-h">Kairo-Setup · ${r.m ?? "–"}/11 erfüllt</div>
       <div class="note" style="margin:0">${r.s === "hit" ? "Alle Kriterien erfüllt." : (r.km || []).length ? "Fehlt: " + (r.km || []).map(k => esc(SHORT[k] || k)).join(", ") : "–"}${r.title ? ` · ${esc(r.title)}` : ""}</div></div>
     <div class="row-actions">${res ? `<button class="btn" data-open="${esc(r.t)}">Chart & Details</button>` : ""}<a class="btn ghost" href="${tvUrl(r.t)}" target="_blank" rel="noopener">TradingView</a></div>`;
@@ -4755,9 +4755,9 @@ const PAPER_NAME = { DM: "Dual Momentum (ETF)", KAIROS: "Kairo-S · 20 × 0,25 %
 const paperVal = st => { const eq = st && (st.equity || []).slice(-1)[0], v = eq ? eq.eur : st && st.start_cash; return { v, ret: st && v != null ? v / st.start_cash - 1 : null }; };
 function paperOverview(d, order) {
   const rows = order.map(sid => { const st = d[sid.toLowerCase()], { v, ret } = paperVal(st), [tag, tone] = PAPER_TAG[sid];
-    return `<tr><td><b>${PAPER_NAME[sid]}</b><br><span class="${tone}" style="font-size:12px">${tag}</span></td><td class="num">${v == null ? "–" : eur(v)}</td>
-      <td class="num ${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "–" : sgnPct(ret, 1)}</td><td class="num">${st ? (st.trades || []).length : "–"}</td><td class="num">${st ? (st.positions || []).length : "–"}</td></tr>`; }).join("");
-  return `<div class="hcard">${hHead("Alle Papier-Depots")}<div class="tscroll"><table class="ptab"><tr><th>Depot</th><th class="num">Wert</th><th class="num">seit Start</th><th class="num">Trades</th><th class="num">offen</th></tr>${rows}</table></div>
+    return `<div class="prow"><span><b>${PAPER_NAME[sid]}</b><small class="${tone}">${tag}</small></span>
+      <span class="pr-r"><b class="${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "–" : sgnPct(ret, 1)}</b><small>${v == null ? "–" : eur(v)} · ${st ? (st.positions || []).length : 0} offen</small></span></div>`; }).join("");
+  return `<div class="hcard">${hHead("Alle Papier-Depots")}${rows}
     <div class="note" style="margin-top:8px">Details je Depot unten antippen. Entscheidung über echtes Geld nach etwa 12 Monaten.</div></div>`;
 }
 function paperBox(sid, st, sm, bench) {
