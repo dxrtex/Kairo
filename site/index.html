@@ -7,8 +7,8 @@
 <style id="preboot">html, body { background: #000 !important; }</style>
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Kairo – Reversal-Setup-Finder</title>
-<meta name="description" content="Täglicher Scan aller Aktien ab 2 Mrd. USD (Nordamerika, Europa, Asien/Pazifik) auf das Long-Reversal-Setup. Alle getesteten Strategien und Backtests: research/">
+<title>Kairo – Der richtige Moment</title>
+<meta name="description" content="Kairo – der richtige Moment. Aktien-Scanner mit festen, getesteten Regeln: zeigt, wann eine Regel erfüllt ist – und wann Warten besser ist.">
 <link rel="alternate" type="text/html" href="research/" title="Kairo – Forschung &amp; Backtests (alle getesteten Strategien)">
 <link rel="manifest" href="manifest.webmanifest?v=5">
 <link rel="apple-touch-icon" href="icon-180.png?v=9">
@@ -1550,11 +1550,11 @@ const isTrend = r => false;                // Trend-Rücksetzer: nicht belegt, a
 const trendOn = () => false;
 // ⚡ 4H-Setup: Arbeitsliste – echte Einstiege mit fertiger Seitwärtsphase (4H bestätigt, wartet auf 4H, läuft, verkaufen)
 const isH4 = r => h4Prio(r) >= 3;
-const KIND_BTNS_ALL = [["fav", "★ Merkliste", r => favs().has(r.ticker)], ["h4", "⚡ 4H-Setup", isH4], ["hit", "Treffer", r => r.passed], ["fast", "Fast-Treffer", r => r.fast_hit], ["near", "9/11 · kein Treffer", r => !!r.near_hit], ["trend", "Trend-Rücksetzer", isTrend], ["watch", "Watchlist", r => r.in_watchlist]];
+const KIND_BTNS_ALL = [["fav", "★ Merkliste", r => favs().has(r.ticker)], ["h4", "4H-Setup", isH4], ["hit", "Treffer", r => r.passed], ["fast", "Fast-Treffer", r => r.fast_hit], ["near", "9/11 · kein Treffer", r => !!r.near_hit], ["trend", "Trend-Rücksetzer", isTrend], ["watch", "Watchlist", r => r.in_watchlist]];
 let KIND_BTNS = KIND_BTNS_ALL.filter(x => x[0] !== "trend");
 // Scanner: fünf klare Ansichten statt vieler Knöpfe (eine ist immer aktiv) – [Schlüssel, Name, zählt, Arten für selRows, Erklärung]
 const VIEWS = [
-  ["go", "⚡ Einstiege", r => isH4(r), ["h4"], "Treffer mit fertiger Seitwärtsphase – ✅ 4H bestätigt = jetzt einsteigen · ⏳ wartet auf 4H · ▶ läuft. Bei Bestätigung kommt eine Mitteilung."],
+  ["go", "Einstiege", r => isH4(r), ["h4"], "Treffer mit fertiger Seitwärtsphase – ✓ 4H bestätigt = jetzt einsteigen · … wartet auf 4H · ▶ läuft. Bei Bestätigung kommt eine Mitteilung."],
   ["hit", "Treffer", r => r.passed, ["hit"], "Alle 11 Kriterien erfüllt. Gekauft wird erst, wenn die Seitwärtsphase fertig ist – „kaufbereit“ steht oben."],
   ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Ein oder zwei Kriterien fehlen – nur beobachten, kein Kaufsignal."],
   ["trend", "Trend", r => isTrend(r), ["trend"], "Trend-Rücksetzer – eigene, getrennte Strategie (Rücksetzer im Aufwärtstrend)."],
@@ -2034,7 +2034,7 @@ function newsHtml() {
     return Object.entries(by).filter(([, o]) => o.who.size >= 2).sort((a, b) => b[1].who.size - a[1].who.size || b[1].v - a[1].v); })();
   const nUS = ij && ij.watch_n || 0, nDE = ij && ij.watch_de_n || 0;
   const wlHtml = !ij ? "" : !wl ? `<div class="note" style="margin:8px 2px">Insider-Geschäfte deiner Aktien kommen mit dem nächsten Scan.</div>`
-    : (clus.length ? `<div class="hcard" style="margin:8px 0 12px;border-left:3px solid var(--up)"><b>🔥 Mehrere Insider kaufen</b><div class="note" style="margin:4px 0 0">${clus.slice(0, 6).map(([t, o]) => `<b>${esc(nameOf(t))}</b>: ${o.who.size} Insider · ${eurAmt(o.v)}`).join("<br>")}<br><span class="muted">Mehrere Käufer in 90 Tagen gelten als stärkstes Insider-Signal – kein Kaufsignal allein, aber ein Grund genauer hinzusehen.</span></div></div>` : "")
+    : (clus.length ? `<div class="hcard" style="margin:8px 0 12px;border-left:3px solid var(--up)"><b>Mehrere Insider kaufen</b><div class="note" style="margin:4px 0 0">${clus.slice(0, 6).map(([t, o]) => `<b>${esc(nameOf(t))}</b>: ${o.who.size} Insider · ${eurAmt(o.v)}`).join("<br>")}<br><span class="muted">Mehrere Käufer in 90 Tagen gelten als stärkstes Insider-Signal – kein Kaufsignal allein, aber ein Grund genauer hinzusehen.</span></div></div>` : "")
       + block(`Deine Aktien · neueste Insider-Käufe · 90 Tage`, recent.slice(0, 20).map(irow), `Keine Insider-Käufe in den letzten 90 Tagen.`)
       + block(`Deine Aktien · größte Insider-Käufe · 12 Monate`, wlB.slice(0, 30).map(irow), `Keine Insider-Käufe bei deinen Aktien in den letzten 12 Monaten.`)
       + (wlSum.length > 1 ? `<div class="note" style="margin:-4px 2px 10px">Meiste Käufe (12 Monate): ${wlSum.slice(0, 6).map(([t, v]) => `<b>${esc(nameOf(t))}</b> ${eurAmt(v)}`).join(" · ")}</div>` : "")
@@ -3330,7 +3330,7 @@ function gListHtml() {
   const q = state.gQ || "";
   if (q.length < 2) return "";
   const m = einMatches(q);
-  const ext = `<button class="ein-opt ein-ext" data-extq="${esc(q)}"><b>🔍 „${esc(q)}“ an allen Börsen weltweit suchen</b><span>jede Aktie – auch außerhalb des Kairo-Scans</span></button>`;
+  const ext = `<button class="ein-opt ein-ext" data-extq="${esc(q)}"><b>„${esc(q)}“ an allen Börsen weltweit suchen</b><span>jede Aktie – auch außerhalb des Kairo-Scans</span></button>`;
   if (!m.length) return `<div class="note" style="margin:6px 2px">Nicht unter den ${fmt(searchIdx.length, 0)} gescannten Aktien.</div><div class="ein-list">${ext}</div>`;
   return `<div class="ein-list">${m.map(r => `<button class="ein-opt" data-g="pick" data-t="${esc(r.t)}"><b>${esc(r.n)}</b><span>${esc(r.ext ? r.x : r.t)} · ${fmt(r.c)} ${esc(r.cur || "")}</span>${einTag(r)}</button>`).join("")}${ext}</div>`;
 }
@@ -3566,17 +3566,17 @@ const h4Go = it => it && (it.st === "go" || (it.st === "run" && ((it.trade || {}
 function h4Text(it) {
   const cur = it.cur || "", b = it.base || {}, tr = it.trade || {}, P = v => `${fmt(v)} ${cur}`.trim();
   const R = v => v == null ? "" : `${v >= 0 ? "+" : ""}${fmt(v, 2)} R`;
-  if (h4Go(it)) return { tone: "green", ic: "✅", short: "4H bestätigt", t: "4H bestätigt – Einstieg jetzt",
+  if (h4Go(it)) return { tone: "green", ic: "✓", short: "4H bestätigt", t: "4H bestätigt – Einstieg jetzt",
     s: `${tr.e ? `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)}` : `Kauf zur Eröffnung der nächsten 4H-Kerze (zuletzt ${P((it.trig || {}).c)})`} · Stop ${P(b.sl)} · Verkauf ab Tag 10 bei Schluss unter der EMA 20, spätestens Tag 40.${b.pending && !tr.e ? ` Nur kaufen, wenn die Eröffnung zwischen ${P(b.lo)} und ${P(b.hi)} liegt – sonst verfällt das Setup (so getestet).` : ""}` };
-  if (it.st === "4h") return { tone: "yellow", ic: "⏳", short: "Basis fertig ✓", t: "Seitwärtsphase fertig – wartet auf die 4H-Bestätigung",
+  if (it.st === "4h") return { tone: "yellow", ic: "…", short: "Basis fertig ✓", t: "Seitwärtsphase fertig – wartet auf die 4H-Bestätigung",
     s: `Stop ${P(b.sl)} (Basis ${P(b.lo)}–${P(b.hi)})${b.pending ? " · Basis gilt, wenn die nächste Eröffnung darin liegt" : ""} · ${it.lim ? `Fenster bis ${dateDE(it.lim)}` : `noch ${it.lim_left} Handelstage Zeit`}. Erst kaufen, wenn alle vier Signale zugleich stehen – die Mitteilung kommt automatisch.` };
-  if (it.st === "basis") return { tone: "yellow", ic: "⏳", short: `Basis Tag ${it.day}/10`, t: `Wartet auf die Seitwärtsphase · Tag ${it.day} von 10`,
+  if (it.st === "basis") return { tone: "yellow", ic: "…", short: `Basis Tag ${it.day}/10`, t: `Wartet auf die Seitwärtsphase · Tag ${it.day} von 10`,
     s: `Treffer vom ${dateDE(it.d)}. Noch ${it.left} Handelstage Zeit für 5 enge Tage – danach beginnt die 4H-Prüfung.` };
-  if (it.st === "sell") return { tone: "yellow", ic: "📉", short: "verkaufen", t: `Schluss unter der EMA 20 – zur nächsten Eröffnung verkaufen`,
+  if (it.st === "sell") return { tone: "yellow", ic: "↘", short: "verkaufen", t: `Schluss unter der EMA 20 – zur nächsten Eröffnung verkaufen`,
     s: `Tag ${tr.day}: Schluss ${P(tr.xc)} unter der EMA 20 (${P(tr.ema)}). Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)} · Stand ${R(tr.r)}.` };
   if (it.st === "run") return { tone: "blue", ic: "▶", short: `läuft Tag ${tr.day}/40`, t: `4H-Trade läuft · Tag ${tr.day} von höchstens 40`,
     s: `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)} · Stop ${P(tr.sl)} · Stand ${R(tr.r)}${tr.ema ? ` · EMA 20 ${P(tr.ema)}${tr.day >= 10 ? " (gilt jetzt)" : ` (gilt ab Tag 10)`}` : ""}. Ein späterer Einstieg ist nicht getestet.` };
-  if (["stop", "zeit", "ema"].includes(it.st)) return { tone: "gray", ic: it.st === "stop" ? "🛑" : "🏁", short: { stop: "Stop", zeit: "Tag 40", ema: "EMA 20" }[it.st],
+  if (["stop", "zeit", "ema"].includes(it.st)) return { tone: "gray", ic: it.st === "stop" ? "■" : "✓", short: { stop: "Stop", zeit: "Tag 40", ema: "EMA 20" }[it.st],
     t: `Beendet: ${{ stop: "Stop", zeit: "Verkauf an Tag 40", ema: "Schluss unter der EMA 20" }[it.st]} · ${R(tr.r)}${tr.r20 != null ? ` (mit „Tag 20“: ${R(tr.r20)})` : ""}`, s: `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)}, Verkauf ${dateDE(tr.xd)} zu ${P(tr.x)}.` };
   return { tone: "gray", ic: "✕", short: "verfallen", t: "Verfallen – kein Trade", s: `${it.why || "Bedingungen nicht erfüllt"} (Treffer vom ${dateDE(it.d)}).` };
 }
@@ -3840,7 +3840,7 @@ function todoHtml() {
     ${row("✓", "g", "Kairo-Treffer", hits.length ? "alle Kriterien erfüllt – Kauf erst in der Seitwärtsphase" : "heute keine", hits.length, "hit")}
     ${trendOn() ? row("↗", "b", "Trend-Rücksetzer", top.length ? `davon ${top.length} Top – stärkstes Setup im Test` : "Rücksetzer im Aufwärtstrend", tr.length, "trend") : ""}
     ${row("…", "y", "Fast-Treffer", "ein Kriterium fehlt noch", fast.length, "fast")}
-    ${row("👀", "", "9/11 beobachten", "kein Treffer – zwei Kriterien fehlen", data.results.filter(r => r.near_hit && !isTrend(r)).length, "near")}</div>`;
+    ${row("○", "", "9/11 beobachten", "kein Treffer – zwei Kriterien fehlen", data.results.filter(r => r.near_hit && !isTrend(r)).length, "near")}</div>`;
 }
 function kpiHtml() {
   const hit = data.results.filter(r => r.passed).length, tr = data.results.filter(isTrend), top = tr.filter(r => r.tr.top).length;
@@ -4148,7 +4148,7 @@ function myTradesHtml() {
       <div class="mt"><span>Summe</span><b class="${sum >= 0 ? "up" : "down"}">${sgnEur(sum)}</b><em>geschätzt</em></div></div>
     <div class="note" style="margin:0 0 8px">${ic} ${txt}.${early ? ` ${early}× vor dem Verkaufstag verkauft, ohne dass der Stop griff – das weicht von den Regeln ab und kostet im Test Rendite.` : ""}</div>
     <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Aktie</th><th class="num">Kauf → Verkauf</th><th class="num">Tage</th><th>Ergebnis</th></tr></thead><tbody>
-      ${done.slice(0, 20).map(p => `<tr><td><b>${esc(p.n)}</b><small>${p.paper ? "Übung · " : ""}${p.h4 === "go" ? "⚡ 4H · " : ""}${p.L > 1 ? `Turbo ×${p.L}` : "Aktie"}</small></td><td class="num">${dateDE(p.d)}<small>${p.xd ? dateDE(p.xd) : ""}</small></td>
+      ${done.slice(0, 20).map(p => `<tr><td><b>${esc(p.n)}</b><small>${p.paper ? "Übung · " : ""}${p.h4 === "go" ? "4H · " : ""}${p.L > 1 ? `Turbo ×${p.L}` : "Aktie"}</small></td><td class="num">${dateDE(p.d)}<small>${p.xd ? dateDE(p.xd) : ""}</small></td>
         <td class="num">${p.xd ? bdBetween(new Date(p.d + "T12:00:00"), new Date(p.xd + "T12:00:00")) + 1 : "–"}</td>
         <td class="${p.R >= 0 ? "up" : "down"}"><b>${p.R >= 0 ? "+" : ""}${fmt(p.R, 2)} R</b>${eurOf(p) != null ? ` <small>${sgnEur(eurOf(p))}</small>` : ""}</td></tr>`).join("")}</tbody></table></div></div>`;
 }
@@ -4275,8 +4275,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.10.21";
-const APP_NEWS = [["2026.10.21", "Oktober-Update", [
+const APP_VER = "2026.10.22";
+const APP_NEWS = [["2026.10.22", "Der richtige Moment", [
+  ["Neues Intro", "Aus vielen Kerzen wird eine: der richtige Moment. Daraus entsteht das Kairo-Zeichen."],
+  ["Schneller", "Nach dem ersten Laden kommen die Daten des Tages sofort aus dem Speicher."],
+  ["Rechtliches", "Impressum, Datenschutz und Risikohinweis – in den Einstellungen und unten auf jeder Seite."]]],
+  ["2026.10.21", "Oktober-Update", [
   ["Kairo-Plan in jeder Aktie", "Oben steht jetzt die Antwort: kaufbereit oder nicht, Kaufzone, Stop, Ausstieg und Kursziel."],
   ["Stimmung / Angst am Markt", "Neben der Trend-Ampel: 0–100 aus VIX, Tech/KI, Marktbreite und Kreditmarkt."],
   ["Kairo-Ziel", "Deine Idee als Papier-Depot: Treffer mit attraktivem Kursziel, halten bis zum Ziel."],
@@ -4401,7 +4405,7 @@ function einMatches(q) {
 function einListHtml() {
   const q = state.einQ || "", m = einMatches(q);
   if (q.length < 2 || (state.einT && m.length && m[0].t === state.einT && q === m[0].n)) return "";
-  const ext = `<button class="ein-opt ein-ext" data-extq="${esc(q)}"><b>🔍 „${esc(q)}“ an allen Börsen weltweit suchen</b><span>auch Aktien außerhalb des Kairo-Scans – Trade-Plan aus den aktuellen Tageskerzen</span></button>`;
+  const ext = `<button class="ein-opt ein-ext" data-extq="${esc(q)}"><b>„${esc(q)}“ an allen Börsen weltweit suchen</b><span>auch Aktien außerhalb des Kairo-Scans – Trade-Plan aus den aktuellen Tageskerzen</span></button>`;
   if (!m.length) return `<div class="note" style="margin:6px 2px">Nicht unter den ${fmt(searchIdx.length, 0)} gescannten Aktien.</div><div class="ein-list">${ext}</div>`;
   return `<div class="ein-list">${m.map(r => `<button class="ein-opt" data-ein="${esc(r.t)}"><b>${esc(r.n)}</b><span>${esc(r.ext ? r.x : r.t)} · ${fmt(r.c)} ${esc(r.cur || "")}</span>${einTag(r)}</button>`).join("")}${ext}</div>`;
 }
@@ -5337,7 +5341,7 @@ function renderMain() {
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       <button class="kchip filt" data-sub="filter">Filter${nFilt ? ` <small>${nFilt}</small>` : ""}</button></div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
-  const head = searchHtml() + bar + (["hit", "go"].includes(state.view) ? topSetupsHtml() : "") + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "⚡ Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner, belegter Vorteil je Trade (+0,14 R statt +0,11 R bei Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
+  const head = searchHtml() + bar + (["hit", "go"].includes(state.view) ? topSetupsHtml() : "") + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner, belegter Vorteil je Trade (+0,14 R statt +0,11 R bei Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
   if (!list.length && $("search").value.trim().length >= 2) { $("main").innerHTML = searchHtml() + bar; return; }
   if (!list.length) {
     $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.has("h4") ? "Gerade kein Treffer mit fertiger Seitwärtsphase – die 4H-Prüfung beginnt, sobald eine da ist. Wo die Treffer stehen, siehst du unter „Treffer“ in der Status-Spalte." : k.has("fav") && !data.results.some(r => r.in_watchlist) ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
