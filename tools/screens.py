@@ -14,6 +14,28 @@ import app_smoke  # noqa: E402
 SECS = app_smoke.SECS
 
 
+def demo_tx() -> str:
+    """Erfundene Beispiel-Trades (keine echten Nutzerdaten) – damit das Journal in den Screenshots Inhalt hat."""
+    import json
+    import random
+    from datetime import date, timedelta
+    rnd = random.Random(7)
+    names = [("SAP SE", "DE0007164600"), ("Netflix Inc.", "US64110L1061"), ("Nvidia Long 120,50 $ Turbo Open End", "DE000DEMO0001"),
+             ("Alcoa Corp.", "US0138721065"), ("Tesla Short 480,00 $ Turbo Open End", "DE000DEMO0002"), ("Allianz SE", "DE0008404005"),
+             ("The Trade Desk Inc.", "US88339J1051"), ("Rheinmetall Long 1.400,00 € Turbo Open End", "DE000DEMO0003")]
+    tx, d0 = [], date(2026, 4, 1)
+    for k in range(36):
+        n, isin = names[k % len(names)]
+        d1 = d0 + timedelta(days=k * 5 + rnd.randint(0, 3)); d2 = d1 + timedelta(days=rnd.randint(2, 30))
+        px = rnd.uniform(5, 300); qty = max(1, int(rnd.uniform(400, 1500) / px)); r = rnd.choice([-0.06, -0.05, -0.04, 0.02, 0.09, 0.15, -0.03, 0.25])
+        for typ, dd, p in (("Buy", d1, px), ("Sell", d2, px * (1 + r))):
+            tx.append({"date": dd.isoformat(), "time": "15:30:00", "status": "Executed", "ref": f"DEMO{k}{typ}", "desc": n, "asset": "Security",
+                       "type": typ, "isin": isin, "qty": qty, "price": round(p, 2), "amount": round((-1 if typ == "Buy" else 1) * qty * p, 2),
+                       "fee": 0.0 if qty * p >= 250 else 0.99, "tax": 0.0, "cur": "EUR", "id": f"DEMO{k}{typ}"})
+    tx.sort(key=lambda t: t["date"])
+    return json.dumps(tx)
+
+
 async def main(out: Path) -> None:
     from playwright.async_api import async_playwright
     app_smoke.fetch()
@@ -24,6 +46,7 @@ async def main(out: Path) -> None:
         b = await p.chromium.launch(args=["--no-proxy-server"])
         for name, vp in (("ipad", {"width": 820, "height": 1180}), ("handy", {"width": 390, "height": 844})):
             ctx = await b.new_context(viewport=vp, device_scale_factor=1)
+            await ctx.add_init_script("try{localStorage.setItem('kairo-tx-v1', " + repr(demo_tx()) + ")}catch(e){}")
             await ctx.add_init_script("try{const k='reversal-finder-v1';const p=JSON.parse(localStorage.getItem(k)||'{}');p.briefOff=true;localStorage.setItem(k,JSON.stringify(p))}catch(e){}")
             pg = await ctx.new_page()
             for sec in SECS:
@@ -56,5 +79,3 @@ async def main(out: Path) -> None:
 
 if __name__ == "__main__":
     asyncio.run(main(Path(sys.argv[1] if len(sys.argv) > 1 else "screens")))
-# Vorschau Aufräumen
-# Vorschau 2
