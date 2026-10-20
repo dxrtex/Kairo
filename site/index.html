@@ -947,6 +947,39 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
 @media (max-width:640px){.kbar{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;margin-left:-20px;margin-right:-20px;padding:2px 20px 6px}.kbar::-webkit-scrollbar{display:none}.kbar .kchip{flex:0 0 auto}}
 
 </style>
+<style id="ds-light" media="not all">
+/* Hell (immer): wie „Automatisch“ im hellen Modus */
+
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-feature-settings:"tnum"}
+
+
+:root{--bg:#f2f2f7;--surface:#fff;--surface-2:#f2f2f7;--surface-3:#e5e5ea;--line:#e1e1e6;--glass:#fff;--glass-line:#e1e1e6;
+--text:#000;--muted:#6e6e73;--faint:#aeaeb2;--accent:#007aff;--accent-ink:#fff;--accent-bg:color-mix(in srgb,#007aff 16%,transparent);
+--up:#248a3d;--up-bg:color-mix(in srgb,#248a3d 15%,transparent);--red:#d70015;--red-bg:color-mix(in srgb,#d70015 14%,transparent);--gold:#b25000;--gold-bg:color-mix(in srgb,#b25000 14%,transparent);
+--zone:color-mix(in srgb,#007aff 14%,transparent);--candle-up:#248a3d;--candle-down:#d70015;--radius:24px;--radius-s:16px;color-scheme:light}
+body{background:#f2f2f7;color:#000}
+.score::before{background:#fff!important} nav.tabbar{background:color-mix(in srgb,#fff 88%,transparent)!important}
+.cm-box{background:#fff}
+body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}.chip.ok,.wl{color:var(--text)!important}.st-kein_setup{background:var(--surface-2)}.score::before{box-shadow:none}
+.cm-back{background:rgba(0,0,0,.25)!important}.hello h1{letter-spacing:-.028em}.section-title{letter-spacing:.06em}th{font-weight:600}
+.flag{color:var(--muted)!important;background:var(--surface-2)!important}.section-title{text-transform:uppercase;font-size:12.5px;font-weight:500;letter-spacing:.02em;margin:24px 16px 7px}
+.card,.hcard,.table-wrap{border:0!important;border-radius:12px!important}/* Korrekturen für helle Designs */
+.grd.g-A{color:#fff}.candles{background:var(--surface-2)}
+.cockpit .fig,.dep-sum .fig{background:var(--surface)}
+
+
+
+/* gemeinsame Korrekturen für alle wählbaren Designs */
+.chip.ok{color:var(--text)}.wl{color:var(--muted)}
+/* Nebenbuttons klar als Buttons erkennbar (grau wie in iOS), auch bei dunkler Schrift auf Akzent */
+.btn.ghost{background:color-mix(in srgb,var(--accent) 13%,transparent)!important;color:var(--accent)!important;border:0!important}
+/* Auswahlfelder in Formularen */
+.form select{appearance:none;-webkit-appearance:none;width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px 40px 12px 14px;margin-top:6px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 20px) 52%,calc(100% - 15px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+/* iPhone: Filter-Chips in einer Zeile zum Wischen statt drei Zeilen */
+@media (max-width:640px){.kbar{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;margin-left:-20px;margin-right:-20px;padding:2px 20px 6px}.kbar::-webkit-scrollbar{display:none}.kbar .kchip{flex:0 0 auto}}
+
+</style>
 <style id="ds-postfach" media="not all">
 
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-feature-settings:"tnum"}
@@ -1368,10 +1401,10 @@ if (state.tab === "settings" || state.tab === "filter") state.tab = "cards";
 state.sec = "today";   // App startet immer auf „Heute“
 // Design: "new" (Standard) oder "classic" (ursprüngliches Design) – Umschalten in den Einstellungen
 const isApple = () => state.design === "apple";
-const isLight = () => ["ioslight", "postfach"].includes(state.design) || (state.design === "auto" && matchMedia("(prefers-color-scheme: light)").matches);
+const isLight = () => ["ioslight", "postfach", "light"].includes(state.design) || (state.design === "auto" && matchMedia("(prefers-color-scheme: light)").matches);
 const LC = () => isLight() ? { t: "#6e6e73", g: "#ececf0", b: "#d1d1d6", k: "#3a3a3c" } : { t: "#9a9a9f", g: "#1d1d1f", b: "#2a2a2d", k: "#e5e5ea" };
 // Designs: Klassisch (Standard) oder eines der wählbaren Designs – jedes ist ein eigenes Stylesheet
-const DESIGNS = [["classic", "Klassisch (Standard)"], ["auto", "Automatisch (tagsüber hell, abends dunkel)"], ["postfach-classic", "Aufgaben-Postfach · Klassisch"], ["postfach-aktien", "Aufgaben-Postfach · Apple Aktien"], ["postfach", "Aufgaben-Postfach · Hell"]];
+const DESIGNS = [["classic", "Dunkel (Standard)"], ["light", "Hell"], ["auto", "Automatisch (wie das iPad)"], ["postfach-classic", "Aufgaben-Postfach · Klassisch"], ["postfach-aktien", "Aufgaben-Postfach · Apple Aktien"], ["postfach", "Aufgaben-Postfach · Hell"]];
 if (!DESIGNS.some(([k]) => k === state.design)) state.design = "classic";   // frühere Test-Designs (Apple-Look, Pro) → Klassisch
 const isPostfach = () => String(state.design).startsWith("postfach");
 const applyDesign = () => {
@@ -3858,7 +3891,7 @@ function bilanzTeaserHtml() {                    // Forschungsstand 10/2026 + Li
     return d.length ? { n: d.length, avg_r: d.reduce((a, x) => a + x.r, 0) / d.length } : null; })());
   return `<button class="hcard bil" ${SEC_LINK("bilanz")}>${hHead("Kairo-Bilanz", "", "")}
     <div class="bilrow"><div class="ring-s">${ringSvg(0.33, "var(--up)")}<b>+0,14 R</b></div>
-      <div><b>Ø je Trade nach Kosten (Forschung 2008–2026, Zufall +0,11 R)</b><span>${st ? `Live: ${st.n} Treffer abgeschlossen · Ø ${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R je Trade` : "Live-Bilanz läuft seit 30.09.2026 – aussagekräftig ab einigen hundert Trades"}</span></div></div>
+      <div><b>Ø je Trade nach Kosten (Forschung 2008–2026, Zufall +0,11 R)</b><span>${st ? `Live: ${st.n} Trades abgeschlossen · Ø ${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R${st.n < 30 ? " (noch früh – zuerst schließen die Stops)" : " je Trade"}` : "Live-Bilanz läuft seit 30.09.2026 – aussagekräftig ab einigen hundert Trades"}</span></div></div>
     <span class="hlink">Details ›</span></button>`;
 }
 function journalTeaserHtml() {
@@ -4229,7 +4262,7 @@ function bilanzHtml() {
   const L = b && b.live, hits = ((b && b.signals) || []).filter(s => s.k === "hit"), X = s => s.st60 || s.st || { res: "wait" };
   const st = L && (L.strat60 || (() => { const d = hits.map(X).filter(x => ["stop", "ema", "zeit"].includes(x.res) && x.r != null); if (!d.length) return null;
     return { n: d.length, avg_r: d.reduce((a, x) => a + x.r, 0) / d.length, win: d.filter(x => x.r > 0).length / d.length, stop: d.filter(x => x.res === "stop").length / d.length }; })()), e = 0.14, band = st ? 1.96 * 1.6 / Math.sqrt(st.n) : null;
-  const verdict = !st ? "" : st.n < 30 ? `<i class="vdot y"></i>Noch zu früh für ein Urteil: ${st.n} von ~30 Trades abgeschlossen. Einzelne Wochen schwanken stark.` : st.avg_r < e - band ? '<i class="vdot r"></i>Schwächer als die Forschung – genauer prüfen.' : st.avg_r > e + band ? '<i class="vdot g"></i>Besser als die Forschung.' : '<i class="vdot g"></i>Im erwarteten Rahmen der Forschung.';
+  const verdict = !st ? "" : st.n < 30 ? `<i class="vdot y"></i>Noch zu früh für ein Urteil: ${st.n} von ~30 Trades abgeschlossen. Am Anfang schließen fast nur Stops – Gewinner laufen bis zur EMA 20 oder Tag 60 und kommen erst später dazu. Das Bild ist deshalb anfangs zu schlecht.` : st.avg_r < e - band ? '<i class="vdot r"></i>Schwächer als die Forschung – genauer prüfen.' : st.avg_r > e + band ? '<i class="vdot g"></i>Besser als die Forschung.' : '<i class="vdot g"></i>Im erwarteten Rahmen der Forschung.';
   const act = hits.filter(s => ["run", "stop", "ema", "zeit"].includes(X(s).res)).sort((a, b2) => (X(a).res === "run") - (X(b2).res === "run") || String(b2.d).localeCompare(a.d));
   const nWait = hits.filter(s => X(s).res === "wait").length, nNo = hits.filter(s => X(s).res === "nobase").length;
   const row = s => { const x = X(s), [rt, rc] = ST_TXT[x.res] || ST_TXT.wait;
