@@ -21,6 +21,8 @@ nachweislich Geld bringt, wird über ein Produkt für andere aktive Trader nachg
 | System ETF + DM + Kairo-S (v2.8) | Hauptmischung 70/15/15 nicht besser als reiner ETF (Stress-Kosten); ETF + Dual Momentum 70/30 beschreibend in allen Abschnitten vorn |
 | S19/S20, Hybrid, Mean Reversion, Multi-Asset, Fib-0,79-Hypothese | nicht bestätigt; S19/S20 laufen im Papier-Test |
 
+Produkt-/Technikplan für ein späteres Abo: [PRODUKTPLAN.md](PRODUKTPLAN.md).
+
 Details: Branch `research/strategy-championship-phase-a`, Ordner `docs/strategy_championship/` (Berichte 05–25).
 
 ## Phase 1 – Eigengebrauch maximieren (jetzt bis ca. April 2027)
