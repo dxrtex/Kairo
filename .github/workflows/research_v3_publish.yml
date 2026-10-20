@@ -1,0 +1,68 @@
+name: Research – v3 Daten als Entwurfs-Releases sichern (+ Yahoo-Splits)
+
+# Nur manueller Start. Die SEC-/Dukascopy-Daten wurden über den PC des Nutzers geladen (SEC/Dukascopy blockieren
+# GitHub-Rechner) und liegen im Daten-Branch research-data/v3. Dieser Workflow sichert sie als Entwurfs-Releases
+# (wie research-data-v1) und lädt die Aktiensplits von Yahoo (für K2-Börsenwerte).
+on:
+  workflow_dispatch:
+    inputs:
+      teil:
+        description: "sec = SEC-Tabellen + Splits, duka = Dukascopy-Stundenkerzen"
+        default: "sec"
+        type: choice
+        options: [sec, duka]
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PRICES_ASSET: "653201144"
+
+jobs:
+  sec:
+    if: inputs.teil == 'sec'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { ref: "research-data/v3", path: dataref }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Splits von Yahoo
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1 dataref/splits
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          python -W ignore -m research.strategy_championship.v3.splits --sec dataref/sec_v3 --data v1 --out dataref/splits/splits_v3.csv
+      - name: Splits in den Daten-Branch
+        working-directory: dataref
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add splits && git commit -m "Yahoo-Splits für v3 (Run $GITHUB_RUN_ID)" && git push origin HEAD:research-data/v3 || echo "nichts zu committen"
+      - name: Entwurfs-Release research-sec-v3
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          cd dataref && sha256sum sec_v3/* splits/* > SHA256SUMS.txt
+          gh release create "research-sec-v3" sec_v3/* splits/* SHA256SUMS.txt README.md --repo "$GITHUB_REPOSITORY" --draft \
+            --target "$GITHUB_SHA" --title "Research SEC-Daten v3 (eingefroren 19.10.2026)" \
+            --notes "SEC EDGAR (XBRL companyfacts, submissions/8-K, Insider Form 4 2006Q1–2026Q1), über den PC des Nutzers geladen (User-Agent mit Kontakt), aufbereitet mit v3/sec_extract.py + fundamentals.py; Yahoo-Splits. Rohdatei-Prüfsummen: RAW_SHA256.txt. Nur Forschung." \
+            || gh release upload "research-sec-v3" sec_v3/* splits/* SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
+
+  duka:
+    if: inputs.teil == 'duka'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "research-data/v3" }
+      - name: Entwurfs-Release research-duka-v3
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          sha256sum duka_v3/* > SHA256SUMS_duka.txt
+          gh release create "research-duka-v3" duka_v3/* SHA256SUMS_duka.txt --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Research Dukascopy-Stundenkerzen v3 (US/DE-Aktien ab 2017)" \
+            --notes "Dukascopy BID-Stundenkerzen (Datafeed), über den eingebauten Browser auf dem PC des Nutzers geladen (Dukascopy blockiert Kommandozeilen-/Cloud-Abrufe). Nur Forschung."
