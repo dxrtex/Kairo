@@ -26,7 +26,7 @@ from .config import CONFIG, ROOT, as_dict
 from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
-from . import briefing, company, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
+from . import briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import MARKET, SECTOR_DE, SECTOR_ETF, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -722,6 +722,25 @@ def main(argv=None) -> int:
         json.dump(_clean({"generated": out["generated"], "market": market, "tickers": ana}), f, ensure_ascii=False, separators=(",", ":"))
     print(f"Analyse: {len(ana)} Aktien")
     cal = build_calendar(rows, dated)
+    try:                                           # Quartalszahlen: Ergebnis, Ausblick, Reaktion – zum Antippen im Kalender
+        est_mem = state.load("earn_est.json", {})
+        extra = {t: {"ticker": t, "name": n, "region": reg, "big": True} for t, (n, reg) in BIG_CAPS.items()}
+        extra.update({t: {"ticker": t, **{k: v for k, v in m.items() if k in ("name", "region", "watch", "big")}} for t, m in est_mem.items()})
+        earn, est_mem, past = earnings.run(cal["events"], data, est_mem, extra)
+        have = {(e.get("ticker"), e["date"]) for e in cal["events"]}
+        cal["events"] = sorted(cal["events"] + [e for e in past if (e["ticker"], e["date"]) not in have],
+                               key=lambda e: (e["date"], e["kind"], e.get("name", "")))
+        for e in cal["events"]:                    # Termine mit frischen Zahlen markieren
+            rec = earn["tickers"].get(e.get("ticker") or "")
+            if e["kind"] == "earnings" and rec and (rec.get("last") or {}).get("date") == e["date"]:
+                e["done"] = True
+                if (rec["last"].get("view") or {}).get("tone"):
+                    e["tone"] = rec["last"]["view"]["tone"]
+        with open(SITE / "earnings.json", "w", encoding="utf-8") as f:
+            json.dump(_clean(earn), f, ensure_ascii=False, separators=(",", ":"))
+        state.save("earn_est.json", est_mem)
+    except Exception as exc:
+        print(f"Quartalszahlen: Fehler {exc!r}")
     with open(SITE / "calendar.json", "w", encoding="utf-8") as f:
         json.dump(cal, f, ensure_ascii=False, separators=(",", ":"))
     print(f"Kalender: {len(cal['events'])} Termine, Wechselkurse: {fx}")
