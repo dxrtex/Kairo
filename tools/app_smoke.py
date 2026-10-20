@@ -85,6 +85,14 @@ async def gate_check(b, url, errs):
     if not await pg.query_selector("#gate"):
         errs.append("Zugang: Code-Seite fehlt")
     else:
+        if not await pg.query_selector('#gate a[href="rechtliches.html"]'):
+            errs.append("Zugang: Link zu Impressum/Datenschutz fehlt")
+        lp = await ctx.new_page()                    # Rechtliches ist ohne Code erreichbar
+        await lp.goto(url.rstrip("/") + "/rechtliches.html")
+        for sec in ("impressum", "datenschutz", "risiko"):
+            if not await lp.query_selector(f"#{sec}"):
+                errs.append(f"Rechtliches: Abschnitt {sec} fehlt")
+        await lp.close()
         for d in "1234":
             await pg.click(f'#gate [data-pin="{d}"]')
         await pg.wait_for_timeout(700)
