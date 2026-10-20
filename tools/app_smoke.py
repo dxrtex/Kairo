@@ -51,7 +51,29 @@ async def new_ctx(b, **kw):
     """Browser-Kontext mit freigeschaltetem Zugangscode – die Tests prüfen die App, nicht die Sperre."""
     ctx = await b.new_context(**kw)
     await ctx.add_init_script(f"try{{localStorage.setItem('kairo-gate','{GATE}')}}catch(e){{}}")
+    await ctx.add_init_script("try{const k='reversal-finder-v1';const p=JSON.parse(localStorage.getItem(k)||'{}');p.tourDone=1;localStorage.setItem(k,JSON.stringify(p))}catch(e){}")
     return ctx
+
+
+async def tour_check(b, url, errs):
+    """Erstes Öffnen: Rundgang erscheint, „Weiter“ blättert, „Los geht’s“ schließt ihn dauerhaft."""
+    ctx = await b.new_context(viewport={"width": 820, "height": 1180})
+    await ctx.add_init_script(f"try{{localStorage.setItem('kairo-gate','{GATE}')}}catch(e){{}}")
+    pg = await ctx.new_page()
+    await pg.goto(f"{url}?tour=1")
+    await pg.wait_for_timeout(3000)
+    await pg.evaluate("document.querySelectorAll('.splash').forEach(x => x.remove())")
+    if not await pg.query_selector(".tour-box"):
+        errs.append("Rundgang: erscheint nicht")
+    else:
+        for _ in range(3):
+            await pg.click(".tour-act .btn:not(.ghost)", timeout=5000)
+            await pg.wait_for_timeout(300)
+        if await pg.query_selector("#tour"):
+            errs.append("Rundgang: lässt sich nicht schließen")
+        elif not await pg.evaluate("JSON.parse(localStorage.getItem('reversal-finder-v1') || '{}').tourDone"):
+            errs.append("Rundgang: wird nicht als gesehen gespeichert")
+    await ctx.close()
 
 
 async def gate_check(b, url, errs):
@@ -84,6 +106,7 @@ async def run(port: int) -> list[str]:
         exe = os.environ.get("CHROME_PATH")
         b = await p.chromium.launch(**({"executable_path": exe} if exe else {}), args=["--no-proxy-server"])
         await gate_check(b, url, errs)
+        await tour_check(b, url, errs)
         for name, vp in (("iPad", {"width": 820, "height": 1180}), ("Handy", {"width": 390, "height": 844})):
             ctx = await new_ctx(b, viewport=vp)
             pg = await ctx.new_page()
