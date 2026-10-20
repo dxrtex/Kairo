@@ -60,7 +60,7 @@ async def main(out: Path) -> None:
             ctx = await b.new_context(viewport=vp, device_scale_factor=1)
             await ctx.add_init_script("try{localStorage.setItem('kairo-gate','31151c44ed55cace96a0cb05c2ca90411e7f0263b40ab89f351fcb64dd2b5220')}catch(e){}")
             await ctx.add_init_script("try{localStorage.setItem('kairo-tx-v1', " + repr(demo_tx()) + ")}catch(e){}")
-            await ctx.add_init_script("try{const k='reversal-finder-v1';const p=JSON.parse(localStorage.getItem(k)||'{}');p.briefOff=true;localStorage.setItem(k,JSON.stringify(p))}catch(e){}")
+            await ctx.add_init_script("try{const k='reversal-finder-v1';const p=JSON.parse(localStorage.getItem(k)||'{}');p.briefOff=true;p.tourDone=1;localStorage.setItem(k,JSON.stringify(p))}catch(e){}")
             pg = await ctx.new_page()
             for sec in SECS:
                 await pg.goto(f"{url}?nosplash=1&sec={sec}")
