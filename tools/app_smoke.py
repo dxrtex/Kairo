@@ -103,6 +103,23 @@ async def run(port: int) -> list[str]:
                     if r["ov"] or r["sw"] > vw + 2:
                         errs.append(f"{des} {vw}px ({step}): Bereiche überlappen oder Seite zu breit ({r})")
                 await ctx.close()
+        # Übung (Broker): Spiel starten, alle drei Reiter, Order-Ticket öffnen und prüfen lassen – jeder JS-Fehler zählt
+        ctx = await b.new_context(viewport={"width": 820, "height": 1180})
+        pg = await ctx.new_page()
+        pg.on("pageerror", lambda e: errs.append(f"Übung: JS-Fehler {e}"))
+        await pg.goto(f"{url}?nosplash=1&sec=game")
+        await pg.wait_for_timeout(2500)
+        await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.remove())')
+        if await pg.query_selector('[data-g="start"]'):
+            await pg.click('[data-g="start"]')
+            await pg.wait_for_timeout(1200)
+            for v in ("trade", "orders", "depot"):
+                if not await pg.query_selector(f'[data-g="tab"][data-v="{v}"]'):
+                    errs.append(f"Übung: Reiter {v} fehlt nach dem Start")
+                    break
+                await pg.click(f'[data-g="tab"][data-v="{v}"]')
+                await pg.wait_for_timeout(600)
+        await ctx.close()
         # Einstieg: Aktie wählen, Turbo von Hand eintragen (Briefkurs, K.-o. + Währung, Bezugsverhältnis) → Stop-Loss am Turbo prüfen
         ctx = await b.new_context(viewport={"width": 820, "height": 1180})
         pg = await ctx.new_page()
@@ -148,6 +165,9 @@ async def run(port: int) -> list[str]:
         if await pg.query_selector('[data-g="start"]'):
             await pg.click('[data-g="start"]')
             await pg.wait_for_timeout(800)
+            if await pg.query_selector('[data-g="tab"][data-v="trade"]'):    # Broker-Ansicht: Kairo-Treffer stehen unter „Handeln“
+                await pg.click('[data-g="tab"][data-v="trade"]')
+                await pg.wait_for_timeout(600)
             pick = await pg.query_selector('.g-idea[data-g="pick"]')
             if pick:
                 await pick.click()
@@ -163,6 +183,9 @@ async def run(port: int) -> list[str]:
                     await pg.dispatch_event("#gStop", "input")
                 await pg.fill("#gQty", "10")
                 await pg.dispatch_event("#gQty", "input")
+                if await pg.query_selector('[data-g="review"]'):                 # erst „Order prüfen“, dann kostenpflichtig kaufen
+                    await pg.click('[data-g="review"]')
+                    await pg.wait_for_timeout(600)
                 await pg.click('[data-g="buy"]')
                 await pg.wait_for_timeout(800)
                 n = await pg.evaluate('(JSON.parse(localStorage.getItem("kairo-game2")) || {pos: []}).pos.length')
