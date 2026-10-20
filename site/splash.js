@@ -1,10 +1,11 @@
-/* Kairo – Start-Animation (≈ 2,5 s). Ablauf auf reinem Schwarz:
-   0,00 s  eine feine blaue Kurslinie zieht sich aus der Mitte auf
-   0,35 s  aus ihr wächst der Docht der Kerze, 0,55 s der Körper federt auf (blaues Leuchten)
-   0,85 s  die zwei silbernen Klingen des K gleiten mit Bewegungsunschärfe heran
-   1,10 s  die Kachel materialisiert sich dahinter, 1,30 s Lichtreflex über das Zeichen
-   1,35 s  das Zeichen rückt nach links, KAIRO wird Buchstabe für Buchstabe scharf (Abstände ziehen sich zusammen)
-   1,80 s  Unterzeile
+/* Kairo – Start-Animation „Vom Lärm zum einen Moment“ (≈ 3 s beim ersten Öffnen, danach kurz). Ablauf auf reinem Schwarz:
+   0,00 s  graue Kerzen (der Markt) laufen über einer feinen blauen Kurslinie ein
+   0,56 s  eine Kerze wird blau und leuchtet auf, die übrigen treten zurück
+   0,95 s  an ihrer Stelle wächst die Kerze des Zeichens, 1,15 s der Körper federt auf
+   1,45 s  die zwei silbernen Klingen des K gleiten mit Bewegungsunschärfe heran
+   1,70 s  die Kachel materialisiert sich dahinter, 1,90 s Lichtreflex über das Zeichen
+   1,90 s  das Zeichen rückt nach links, KAIRO wird Buchstabe für Buchstabe scharf
+   2,30 s  Claim „Der richtige Moment“
    Übergang: Logo zoomt sanft weg, die App blendet ein. Wartet die App noch, läuft eine feine Ladelinie.
    Startet den Übergang erst, wenn die Animation durch ist UND die App KairoSplash.ready() gemeldet hat – spätestens nach 6 s. */
 (function () {
@@ -16,6 +17,7 @@
       <div class="sp-lock">
         <div class="sp-mark">
           <div class="sp-tile"></div>
+          <div class="sp-noise"><i style="--x:-6;--h:0.3;--y:0.1;--o:12;--d:6"></i><i style="--x:-5;--h:0.42;--y:0.04;--o:11;--d:5"></i><i style="--x:-4;--h:0.26;--y:0.12;--o:10;--d:4"></i><i style="--x:-3;--h:0.48;--y:-0.02;--o:9;--d:3"></i><i style="--x:-2;--h:0.34;--y:0.06;--o:8;--d:2"></i><i style="--x:-1;--h:0.52;--y:-0.06;--o:7;--d:1"></i><i class="on" style="--x:0;--h:0.376;--y:-0.016;--o:6;--d:0"></i><i style="--x:1;--h:0.4;--y:-0.04;--o:5;--d:1"></i><i style="--x:2;--h:0.28;--y:0.08;--o:4;--d:2"></i><i style="--x:3;--h:0.46;--y:-0.1;--o:3;--d:3"></i><i style="--x:4;--h:0.32;--y:-0.02;--o:2;--d:4"></i><i style="--x:5;--h:0.44;--y:-0.12;--o:1;--d:5"></i><i style="--x:6;--h:0.3;--y:-0.06;--o:0;--d:6"></i></div>
           <svg viewBox="0 0 1000 1000" aria-hidden="true">
             <defs>
               <linearGradient id="spW" x1="0" y1="159" x2="0" y2="833" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3D9BFF"/><stop offset="1" stop-color="#0A6FFF"/></linearGradient>
@@ -39,11 +41,11 @@
           </svg>
         </div>
       </div>
-      <div class="sp-tag">Scanner · Trade-Plan · Depot</div>
+      <div class="sp-tag">Der richtige Moment</div>
       <div class="sp-load"><i></i></div>
     </div>`;
-  const ANIM_MS = 2500, SHORT_MS = 850, EXIT_MS = 560, TIMEOUT_MS = 6000;
-  const INTRO_V = "3";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
+  const ANIM_MS = 3000, SHORT_MS = 850, EXIT_MS = 560, TIMEOUT_MS = 6000;
+  const INTRO_V = "4";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
   const seen = () => { try { return localStorage.getItem("kairo-intro") === INTRO_V; } catch (e) { return false; } };
   const mark = () => { try { localStorage.setItem("kairo-intro", INTRO_V); } catch (e) {} };
   let current = null;
