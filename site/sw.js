@@ -5,6 +5,15 @@ self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
 self.addEventListener("fetch", e => {
   const u = new URL(e.request.url);
   if (e.request.method !== "GET" || u.origin !== location.origin) return;
+  if (u.pathname.includes("/data/") && u.searchParams.has("v")) {   // Scan-Datei mit Stempel: ändert sich nie → zuerst aus dem Speicher
+    e.respondWith(caches.open(CACHE).then(c => c.match(e.request).then(hit => hit || fetch(e.request).then(r => {
+      if (r.ok) { const copy = r.clone();                            // ältere Stände derselben Datei entfernen
+        c.keys().then(ks => ks.filter(k => { const x = new URL(k.url); return x.pathname === u.pathname && x.search !== u.search; }).forEach(k => c.delete(k)))
+          .then(() => c.put(e.request, copy)).catch(() => {}); }
+      return r; })))
+      .catch(() => caches.match(e.request, { ignoreSearch: true })));
+    return;
+  }
   e.respondWith(fetch(e.request).then(r => {
     if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {}); }
     return r;

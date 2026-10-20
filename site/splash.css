@@ -1,4 +1,4 @@
-/* Kairo – Start-Animation (≈ 2,5 s) · Zeitplan siehe splash.js
+/* Kairo – Start-Animation (≈ 3 s, nur beim ersten Öffnen und nach Updates) · Zeitplan siehe splash.js
    Farben: Kairo Blau #0A84FF · Schwarz #000 · Kachel #1A1C20→#000 · Signal Weiß #F4F6FA · Nebel #8A93A3
    Bewegung: eine Kurve für alles Auftauchende (sanft auslaufend), eine Feder für die Kerze – nichts hüpft, nichts blinkt. */
 .splash { --T: min(108px, 17vw); --ease: cubic-bezier(.16, 1, .3, 1); --io: cubic-bezier(.65, 0, .35, 1);
@@ -11,13 +11,13 @@
 .sp-line { position: absolute; left: 50%; top: 50%; width: min(60vw, 520px); height: 1.5px; margin: -1px 0 0 calc(min(60vw, 520px) / -2);
   background: linear-gradient(90deg, transparent, rgba(10, 132, 255, .9) 35%, #8cc4ff 50%, rgba(10, 132, 255, .9) 65%, transparent);
   box-shadow: 0 0 12px rgba(10, 132, 255, .8); transform: scaleX(0); opacity: 0;
-  animation: sp-line .75s var(--io) 0s forwards; }
+  animation: sp-line 1.05s var(--io) 0s forwards; }
 
 .sp-stage { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: calc(var(--T) * .34);
   transform: translateY(-1.5vh); }
 .sp-lock { display: flex; align-items: center; gap: calc(var(--T) * .3);
   transform: translateX(calc(var(--T) * 1.575));
-  animation: sp-slide .75s var(--io) 1.32s forwards; }
+  animation: sp-slide .75s var(--io) 1.92s forwards; }
 .sp-mark { position: relative; width: var(--T); height: var(--T); flex: none; border-radius: 22.4%; }
 .sp-mark svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible; }
 
@@ -26,41 +26,51 @@
   background: radial-gradient(130% 110% at 50% 0%, #1d2026 0%, #0a0b0d 55%, #000 100%);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .09), inset 0 1px 0 rgba(255, 255, 255, .08),
               0 calc(var(--T) * .22) calc(var(--T) * .6) rgba(0, 0, 0, .7);
-  animation: sp-tile .8s var(--ease) 1.08s forwards; }
+  animation: sp-tile .8s var(--ease) 1.68s forwards; }
+
+/* 1b) Der Markt: graue Kerzen laufen ein – eine wird blau (der richtige Moment), die anderen treten zurück */
+.sp-noise { position: absolute; left: 31.6%; top: 50%; width: 0; height: 0; z-index: 2; }
+.sp-noise i { position: absolute; left: calc(var(--x) * var(--T) * .2 - var(--T) * .05); width: calc(var(--T) * .1);
+  height: calc(var(--h) * var(--T)); top: calc(var(--y) * var(--T) - var(--h) * var(--T) / 2); border-radius: calc(var(--T) * .022);
+  background: #3a3f48; opacity: 0; transform: translateX(calc(var(--T) * .25));
+  animation: sp-nin .42s var(--ease) calc(.035s * var(--o)) forwards, sp-nout .32s ease-in calc(.62s + .03s * var(--d)) forwards; }
+.sp-noise i::before { content: ""; position: absolute; left: 50%; width: max(1px, calc(var(--T) * .022)); transform: translateX(-50%);
+  top: -22%; bottom: -22%; border-radius: 2px; background: inherit; }
+.sp-noise i.on { z-index: 1; animation: sp-nin .42s var(--ease) calc(.035s * var(--o)) forwards, sp-pick .34s ease-out .56s forwards, sp-nout .26s ease-in 1.02s forwards; }
 
 /* 2) Kerze: Docht aus der Mitte, Körper federt auf, Leuchten blüht */
 .sp-wick { transform-box: view-box; transform-origin: 316.5px 496px; transform: scaleY(0);
-  animation: sp-grow .55s var(--ease) .38s forwards; }
+  animation: sp-grow .55s var(--ease) .98s forwards; }
 .sp-body { transform-box: view-box; transform-origin: 315px 672px; transform: scaleY(0);
-  animation: sp-spring .7s cubic-bezier(.3, .7, .3, 1) .56s forwards; }
-.sp-glow { opacity: 0; animation: sp-glow 1.1s ease-out .6s forwards; }
+  animation: sp-spring .7s cubic-bezier(.3, .7, .3, 1) 1.16s forwards; }
+.sp-glow { opacity: 0; animation: sp-glow 1.1s ease-out 1.2s forwards; }
 
 /* 3) Klingen des K mit Bewegungsunschärfe */
 .sp-arm { transform-box: view-box; opacity: 0; }
-.sp-up { transform: translate(120px, -120px); filter: blur(10px); animation: sp-arm .7s var(--ease) .86s forwards; }
-.sp-lo { transform: translate(120px, 120px); filter: blur(10px); animation: sp-arm .7s var(--ease) .96s forwards; }
+.sp-up { transform: translate(120px, -120px); filter: blur(10px); animation: sp-arm .7s var(--ease) 1.46s forwards; }
+.sp-lo { transform: translate(120px, 120px); filter: blur(10px); animation: sp-arm .7s var(--ease) 1.56s forwards; }
 
 /* 4b) Lichtreflex über das Zeichen */
 .sp-shine { position: absolute; inset: 0; border-radius: 22.4%; overflow: hidden; pointer-events: none; }
 .sp-shine::before { content: ""; position: absolute; inset: -30% -90%;
   background: linear-gradient(105deg, transparent 43%, rgba(255, 255, 255, .16) 50%, transparent 57%);
-  transform: translateX(-70%); animation: sp-shine .9s var(--io) 1.3s forwards; }
+  transform: translateX(-70%); animation: sp-shine .9s var(--io) 1.9s forwards; }
 
 /* 5) Wortmarke: Buchstaben werden scharf, Abstände ziehen sich zusammen */
 .sp-word { width: calc(var(--T) * 2.85); height: calc(var(--T) * .719); flex: none; }
 .sp-word svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .sp-l { fill: #f4f6fa; opacity: 0; transform-box: view-box; filter: blur(7px); }
-.sp-l1 { transform: translateX(-34px); animation: sp-letter .8s var(--ease) 1.42s forwards; }
-.sp-l2 { transform: translateX(-14px); animation: sp-letter .8s var(--ease) 1.48s forwards; }
-.sp-l3 { transform: translateX(14px);  animation: sp-letter .8s var(--ease) 1.60s forwards; }
-.sp-l4 { transform: translateX(34px);  animation: sp-letter .8s var(--ease) 1.66s forwards; }
+.sp-l1 { transform: translateX(-34px); animation: sp-letter .8s var(--ease) 2.02s forwards; }
+.sp-l2 { transform: translateX(-14px); animation: sp-letter .8s var(--ease) 2.08s forwards; }
+.sp-l3 { transform: translateX(14px);  animation: sp-letter .8s var(--ease) 2.20s forwards; }
+.sp-l4 { transform: translateX(34px);  animation: sp-letter .8s var(--ease) 2.26s forwards; }
 .sp-wc { fill: #0a84ff; transform-box: view-box; transform-origin: 464.7px 382px; transform: scaleY(0);
-  animation: sp-spring .6s cubic-bezier(.3, .7, .3, 1) 1.54s forwards; }
+  animation: sp-spring .6s cubic-bezier(.3, .7, .3, 1) 2.14s forwards; }
 
 /* 6) Unterzeile + Ladelinie */
 .sp-tag { font: 600 clamp(10px, 1.6vw, 12.5px)/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   letter-spacing: .42em; text-transform: uppercase; color: #8a93a3; padding-left: .42em; opacity: 0;
-  animation: sp-tag 1s var(--ease) 1.82s forwards; }
+  animation: sp-tag 1s var(--ease) 2.32s forwards; }
 .sp-load { width: calc(var(--T) * 1.4); height: 2px; border-radius: 2px; background: rgba(255, 255, 255, .08); overflow: hidden;
   opacity: 0; transition: opacity .4s ease .35s; }
 .sp-load i { display: block; width: 40%; height: 100%; border-radius: 2px; background: linear-gradient(90deg, transparent, #0a84ff, transparent);
@@ -77,7 +87,7 @@
 
 /* Kurzfassung ab dem zweiten Öffnen (≈ 0,9 s): fertiges Logo blendet ruhig ein */
 .splash.short *, .splash.short *::before, .splash.short *::after { animation: none !important; }
-.splash.short .sp-line, .splash.short .sp-tag { display: none; }
+.splash.short .sp-line, .splash.short .sp-tag, .splash.short .sp-noise { display: none; }
 .splash.short .sp-lock { transform: none; }
 .splash.short .sp-tile { opacity: 1; transform: none; }
 .splash.short .sp-wick, .splash.short .sp-body, .splash.short .sp-wc { transform: none; }
@@ -92,11 +102,14 @@
 .splash.reduce .sp-tile { opacity: 1; transform: none; }
 .splash.reduce .sp-wick, .splash.reduce .sp-body, .splash.reduce .sp-wc { transform: none; }
 .splash.reduce .sp-arm, .splash.reduce .sp-l { transform: none; opacity: 1; filter: none; }
-.splash.reduce .sp-glow { opacity: .5; } .splash.reduce .sp-line { display: none; }
+.splash.reduce .sp-glow { opacity: .5; } .splash.reduce .sp-line, .splash.reduce .sp-noise { display: none; }
 .splash.reduce .sp-tag { opacity: 1; }
 .splash.reduce.exit .sp-stage { transform: none; filter: none; }
 
 @keyframes sp-fade    { to { opacity: 1; } }
+@keyframes sp-nin     { to { opacity: 1; transform: translateX(0); } }
+@keyframes sp-nout    { to { opacity: 0; transform: scaleY(.6); } }
+@keyframes sp-pick    { to { background: #0a84ff; box-shadow: 0 0 calc(var(--T) * .28) rgba(10, 132, 255, .85); } }
 @keyframes sp-line    { 0% { transform: scaleX(0); opacity: 0; } 35% { opacity: 1; } 70% { transform: scaleX(1); opacity: 1; }
                         100% { transform: scaleX(.02); opacity: 0; } }
 @keyframes sp-grow    { to { transform: scaleY(1); } }
