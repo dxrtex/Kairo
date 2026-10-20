@@ -74,11 +74,24 @@ Signaltagen, gleiche 60-Tage-Haltedauer).
 
 ## 5. Nebenanalyse N1 – 4H-Einstieg für Kairo-Signale
 
-**Noch offen.** Dukascopy liefert Aktien-Stundenkerzen erst ab Januar 2017 (2015/16 gibt es dort nicht), für 527 der
-Universums-Titel. Dukascopy blockiert Kommandozeilen- und Cloud-Abrufe; der Abruf läuft daher langsam über den eingebauten
-Browser auf dem PC des Nutzers und wurde nach ≈ 1.700 von ≈ 41.600 Monatsdateien vorübergehend gedrosselt (HTTP 503).
-Code (`v3/h4_side.py`) und Regeln (Protokoll §8) stehen fest; das Ergebnis wird hier nachgetragen, sobald die Daten
-vollständig sind.
+Lauf `research_v3_h4.yml` Run 39359537666 · Daten: Release/Branch `research-duka-v3` (Dukascopy-BID-Stundenkerzen, 526 Titel,
+Monate rund um jeden Kairo-Treffer 2017–2026; 2017–2021 vollständig, 2022–2026 ≈ 70 % der Monate) · 8.178 Kairo-Treffer.
+Preisabgleich Dukascopy ↔ Yahoo: bei allen 526 Titeln plausibel (kein Ausschluss).
+
+| Ø R je Trade netto | A Tages-Einstieg (Basis) | B 4H-Einstieg (Live-Regel „HB\|RMBS“) | p (B > A) |
+|---|---|---|---|
+| **2017–2021, Stress** | +0,04 R (n 441, Treffer 35 %) | +0,28 R (n 42, Treffer 33 %) | 0,22 |
+| 2017–2021, Basis | +0,15 R | +0,41 R | 0,21 |
+| Summe R je Jahr 2017–21 (Stress) | +3,4 R | +2,3 R | – |
+| 2022–2026 (Hinweis), Stress | +0,14 R (n 1.165) | **−0,36 R** (n 91) | 0,98 |
+
+**Entscheidung (Protokoll §8): 4H nicht besser.** Pro Trade sieht 4H 2017–2021 besser aus, aber nur mit 42 Trades und
+nicht signifikant (p 0,22; nötig ≤ 0,05). Weil der 4H-Auslöser nur bei ≈ 8 % der fertigen Basen kommt, bringt er insgesamt
+**weniger** R pro Jahr. 2022–2026 kehrt sich das Bild um (4H deutlich schlechter) – genau der Zeitraum, in dem die 4H-Regel
+mit Yahoo-Stundenkerzen entwickelt wurde; der frühere Vorteil (+0,39/+0,54 R) bestätigt sich mit unabhängigen Daten nicht.
+Einzeljahre schwanken stark (2017: 2 Trades mit +4,8 R im Schnitt). Hinweis für die App: In `backend/h4live.py`
+(`_ema_daily`) trat mit aktueller pandas-Version ein Schreibschutz-Fehler auf; im Research-Code umgangen, in der App noch zu
+beheben.
 
 ## 6. Grenzen
 
