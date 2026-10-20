@@ -2095,7 +2095,7 @@ function earnHtml(t, d) {
         ${cell("Umsatz", bigNum(L.rev_a, cur), L.rev_s != null ? `erwartet ${bigNum(L.rev_e)} · <span class="${upDown(L.rev_s)}">${sgn(L.rev_s)}</span>` : L.rev_yoy != null ? `zum Vorjahr <span class="${upDown(L.rev_yoy)}">${sgn(L.rev_yoy)}</span>` : L.rev_a == null ? "Yahoo hat den Umsatz noch nicht" : "")}
         ${cell("Ausblick", gTxt, g && g.t ? (g.u ? `<a href="${esc(g.u)}" target="_blank" rel="noopener">${esc(g.t.replace(/ - [^-]+$/, ""))}</a>` : esc(g.t)) : "aus Schlagzeilen nach den Zahlen", g && g.d != null ? upDown(g.d) : "")}
         ${cell("Kursreaktion", rx ? sgn(rx.d1) : "noch offen", rx ? `erster Handelstag (${dateDE(rx.day)})${rx.since != null ? ` · bis ${dateDE(rx.to)} ${sgn(rx.since)}` : ""}` : "kommt mit dem nächsten Handelstag", rx ? upDown(rx.d1) : "")}
-      </div>${clash}${rec.beat ? `<p class="eq-line">Erwartung beim Gewinn übertroffen: <b>${rec.beat[0]} von ${rec.beat[1]}</b> Quartalen · typische Bewegung nach Zahlen: <b>±${pct(rec.move || 0, 1)}</b></p>` : ""}${foot}`;
+      </div>${clash}${rec.beat ? `<p class="eq-line">Erwartung beim Gewinn übertroffen: <b>${rec.beat[0]} von ${rec.beat[1]}</b> Quartalen · typische Bewegung nach Zahlen: <b style="white-space:nowrap">±${pct(rec.move || 0, 1)}</b></p>` : ""}${foot}`;
   }
   if (N) {
     const n = daysUntil(N.date);
@@ -2143,7 +2143,7 @@ function calendarHtml() {
       return `<div class="ev"><span class="k ${cls}"${e.imp === "high" ? ' style="outline:2px solid var(--down);outline-offset:1px"' : ""}>${icon}</span><div class="b"><b>${esc(e.title)}</b><span>${info ? esc(info) + "<br>" : ""}${e.kind === "macro" && reg !== "all" ? `${REG_DE[reg] || reg} – ${n2} deiner Aktien dort, bewegt aber oft alle Börsen` : "betrifft den ganzen Markt"}</span></div></div>`;
     }
     const inRes = data.results.some(r => r.ticker === e.ticker);
-    const sub = e.kind === "earnings" ? (e.done ? "Quartalszahlen gemeldet · antippen für Ergebnis und Einschätzung" : e.big && !e.watch && !dep.has(e.ticker) ? "Quartalszahlen · Schwergewicht – bewegt Index und Branche" : e.estimate ? "Quartalszahlen · Datum geschätzt" : "Quartalszahlen")
+    const sub = e.kind === "earnings" ? (e.done ? "Quartalszahlen gemeldet · antippen" : e.big && !e.watch && !dep.has(e.ticker) ? "Quartalszahlen · Schwergewicht – bewegt Index und Branche" : e.estimate ? "Quartalszahlen · Datum geschätzt" : "Quartalszahlen")
       : e.kind === "exdiv" ? `Ex-Dividende${e.rate ? " · " + fmt(e.rate) + " je Aktie p. a." : ""}` : `Dividendenzahlung${e.rate ? " · " + fmt(e.rate) + " je Aktie p. a." : ""}`;
     const earn = e.kind === "earnings", res = earn && e.done;
     return `<div class="ev${earn ? " ev-tap" : ""}"${earn ? ` data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0" aria-label="Quartalszahlen ${esc(e.name || e.ticker)} öffnen"` : ""}><span class="k ${cls}">${icon}</span><div class="b"><b>${esc(e.name || e.ticker)}${dep.has(e.ticker) ? '<span class="pill dep">Depot</span>' : favs().has(e.ticker) ? '<span class="pill fv">★</span>' : e.watch ? '<span class="pill">WL</span>' : ""}</b><span>${esc(e.ticker)} · ${sub}</span></div>
@@ -4352,8 +4352,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.10.22";
-const APP_NEWS = [["2026.10.22", "Der richtige Moment", [
+const APP_VER = "2026.10.23";
+const APP_NEWS = [["2026.10.23", "Quartalszahlen", [
+  ["Termin antippen", "Im Kalender auf einen Quartalstermin tippen: Gewinn und Umsatz gegen die Erwartung, Ausblick, Kursreaktion."],
+  ["Einschätzung", "Eher positiv oder negativ für den Kurs – nach fester Regel, mit Begründung. Vor dem Termin: Erwartungen und typische Bewegung."]]],
+  ["2026.10.22", "Der richtige Moment", [
   ["Neues Intro", "Aus vielen Kerzen wird eine: der richtige Moment. Daraus entsteht das Kairo-Zeichen."],
   ["Schneller", "Nach dem ersten Laden kommen die Daten des Tages sofort aus dem Speicher."],
   ["Rechtliches", "Impressum, Datenschutz und Risikohinweis – in den Einstellungen und unten auf jeder Seite."]]],

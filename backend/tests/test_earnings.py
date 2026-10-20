@@ -24,7 +24,8 @@ def test_guidance_raised_and_confirmed():
 
 def test_guidance_ignores_other_companies_and_previews():
     other = [("Applied Materials slides as Q3 results, guidance top/miss estimates - Seeking Alpha", "u", RSS_DATE),
-             ("Microsoft raises outlook - X", "u", RSS_DATE)]
+             ("Microsoft raises outlook - X", "u", RSS_DATE),
+             ("Martin Gamble on US markets: ASML slips, TSMC’s weak outlook - AJ Bell", "u", RSS_DATE)]
     assert E.guidance(other, ["ASML"]) is None
     preview = [("Netflix expected to raise guidance - X", "u", "Mon, 19 Oct 2026 10:00:00 GMT")]
     assert E.guidance(preview, ["Netflix"], REPORT) is None
@@ -70,3 +71,10 @@ def test_reaction_not_yet_traded():
 def test_typical_move_needs_three_reports():
     c = _closes()
     assert E.typical_move(c, [REPORT]) is None
+
+
+def test_guidance_company_after_phrase():
+    items = [("Upbeat outlook sends GM shares higher - Reuters", "u", RSS_DATE),
+             ("General Motors Profit Outlook Disappoints, Stock Sinks - Benzinga", "u2", RSS_DATE)]
+    assert E.guidance(items[:1], ["GM"])["d"] == 1
+    assert E.guidance(items[1:], ["General", "GM"])["d"] == -1

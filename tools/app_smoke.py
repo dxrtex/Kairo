@@ -22,7 +22,7 @@ from pathlib import Path
 SITE = Path(__file__).resolve().parents[1] / "site"
 LIVE = "https://dxrtex.github.io/Kairo/data/"
 FILES = ["results.json", "search.json", "analysis.json", "alerts.json", "bilanz.json", "changes.json", "calendar.json",
-         "etf.json", "briefing.json", "insider.json", "h4.json"]
+         "etf.json", "briefing.json", "insider.json", "h4.json", "earnings.json"]
 SECS = ["today", "etf", "scanner", "entry", "calendar", "news", "depot", "journal", "game", "paper", "bilanz", "settings"]
 
 
@@ -173,6 +173,17 @@ async def ui_check(b, url, errs):
     await pg.wait_for_timeout(1500)
     if await pg.query_selector("#main .nw-l"):
         errs.append("News: zeigt „Was ist neu“ statt der Nachrichten")
+    await pg.goto(f"{url}?nosplash=1&sec=calendar")                # Quartalstermin antippen → Ergebnis/Vorschau
+    await pg.wait_for_timeout(2000)
+    await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.hidden = true)')
+    ev = await pg.query_selector(".ev[data-earn]")
+    if not ev and await pg.query_selector('[data-cal="calView"][data-v="list"]'):
+        await pg.click('[data-cal="calView"][data-v="list"]'); await pg.wait_for_timeout(500)
+        ev = await pg.query_selector(".ev[data-earn]")
+    if ev:
+        await ev.click(); await pg.wait_for_timeout(1500)
+        if not await pg.query_selector("#earnBox .eq-h"):
+            errs.append("Kalender: Quartalszahlen öffnen sich nicht")
     await ctx.close()
 
 async def run(port: int) -> list[str]:

@@ -30,7 +30,7 @@ GUIDE_UP = re.compile(
 GUIDE_DOWN = re.compile(
     r"\b(cuts?|lowers?|lowered|slash(es|ed)?|reduces?|reduced|trims?|trimmed|withdraws?|withdrew|pulls?|pulled)\b[^|]{0,45}\b(guidance|outlook|forecast|view|targets?)\b"
     r"|\b(guidance|outlook|forecast)\b[^|]{0,25}\b(below|misses|missed|disappoints?|weak|falls short)\b"
-    r"|\b(weak|soft|disappointing|downbeat|gloomy|cautious|lowered)\b[^|]{0,20}\b(guidance|outlook|forecast)\b"
+    r"|\b(weak|soft|disappointing|downbeat|gloomy|lowered)\b[^|]{0,20}\b(guidance|outlook|forecast)\b"
     r"|\b(senkt|kappt|kassiert|streicht)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
 GUIDE_KEEP = re.compile(
     r"\b(reaffirms?|reaffirmed|reiterates?|reiterated|maintains?|maintained|confirms?|confirmed)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
@@ -43,6 +43,21 @@ def _num(v):
         return None if math.isnan(v) or math.isinf(v) else v
     except (TypeError, ValueError):
         return None
+
+
+def _about(title: str, m: re.Match, words: list[str]) -> bool:
+    """Gehört der Treffer zur Firma? Firmenname höchstens 90 Zeichen davor (oder 40 danach), ohne Komma/Semikolon
+    dazwischen – sonst geht es meist um eine andere Firma („JPMorgan slips, TSMC's cautious outlook“)."""
+    tl = title.lower()
+    for w in words:
+        for k in [i.start() for i in re.finditer(re.escape(w), tl)]:
+            if k <= m.start():
+                gap = tl[k + len(w):m.start()]
+                if m.start() - k <= 90 and not re.search(r"[,;]", gap):
+                    return True
+            elif k - m.end() <= 40 and not re.search(r"[,;]", tl[m.end():k]):
+                return True
+    return False
 
 
 def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Timestamp | None = None) -> dict | None:
@@ -59,10 +74,12 @@ def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Time
                     continue
             except Exception:
                 pass
-        tl = title.lower()
-        if words and not any(w in tl for w in words):
-            continue
-        d = 1 if GUIDE_UP.search(title) else -1 if GUIDE_DOWN.search(title) else 0 if GUIDE_KEEP.search(title) else None
+        d = None
+        for rx, val in ((GUIDE_UP, 1), (GUIDE_DOWN, -1), (GUIDE_KEEP, 0)):
+            m = rx.search(title)
+            if m and (not words or _about(title, m, words)):
+                d = val
+                break
         if d is not None:
             hits.append({"d": d, "t": title[:180], "u": link, "date": date})
     if not hits:
