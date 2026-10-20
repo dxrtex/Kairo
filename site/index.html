@@ -198,6 +198,14 @@
   .glpop { position: fixed; z-index: 90; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; box-shadow: 0 12px 40px rgba(0,0,0,.45); font-size: 14px; line-height: 1.45; text-transform: none; letter-spacing: 0; font-weight: 400; animation: secin .18s ease both; }
   abbr.term { font: inherit; color: inherit; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: 3px; cursor: help; }
   .glpop b { display: block; margin-bottom: 4px; }
+  .kplan { --kc: var(--muted); border-radius: 16px; padding: 14px; background: color-mix(in srgb, var(--kc) 9%, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--kc) 28%, transparent); }
+  .kplan.k-g { --kc: var(--up); } .kplan.k-y { --kc: var(--gold); } .kplan.k-r { --kc: var(--red); } .kplan.k-b { --kc: var(--accent); }
+  .kp-h { display: flex; gap: 12px; align-items: flex-start; } .kp-h > i { flex: none; width: 12px; height: 12px; margin-top: 5px; border-radius: 50%; background: var(--kc); box-shadow: 0 0 10px var(--kc); }
+  .kp-h b { display: block; font-size: 18px; letter-spacing: -.01em; color: var(--kc); } .kplan.k-n .kp-h b { color: var(--text); } .kp-h span { display: block; font-size: 14px; color: var(--muted); margin-top: 2px; }
+  .kp-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-top: 12px; }
+  .kp-cells > div { background: var(--surface); border-radius: 12px; padding: 10px 12px; min-width: 0; } .kp-cells span { display: block; font-size: 12px; color: var(--muted); }
+  .kp-cells b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; margin: 2px 0; } .kp-cells em { display: block; font-style: normal; font-size: 12px; color: var(--muted); }
+  .kp-act { margin-top: 12px; display: flex; gap: 8px; } .kp-act .btn { flex: 1; }
   .pgrp > summary { cursor: pointer; list-style: none; } .pgrp > summary::-webkit-details-marker { display: none; }
   .st-step .btn { flex: none; width: auto; } .ein-opt > .st { grid-column: 2; grid-row: 1 / span 2; justify-self: end; align-self: center; width: auto; }
   .st-step { display: flex; align-items: center; gap: 8px; } .st-step > span { flex: 1; } .st-step s { text-decoration-color: color-mix(in srgb, currentColor 50%, transparent); }
@@ -1321,10 +1329,9 @@ const SHORT = { drawdown: "Rückgang", no_crash: "kein Crash", structure: "unter
   mbi: "MBI-Signal", crv: "CRV ≥ 2", cap: "Börsenwert", liquidity: "Liquidität", price: "Kurs ≥ 1", history: "Historie" };
 const gradeBadge = (r, big) => r.grade ? `<span class="grd g-${r.grade.g}${big ? " big" : ""}" title="Qualitätsstufe ${r.grade.g} – aus dem Backtest, siehe Score antippen">${r.grade.g}</span>` : "";
 const trendBadge = r => isTrend(r) ? `<span class="status st-trend">Trend-Rücksetzer${r.tr.top ? " · Top" : ""}</span>` : "";
-const statusBadge = r => r.passed ? `<span class="status st-bereit">Treffer${r.score ? " · Score " + r.score : ""}</span>${gradeBadge(r, true)}${h4Badge(h4Of(r.ticker))}${trendBadge(r)}`
-  : isTrend(r) ? trendBadge(r) + (r.fast_hit ? `<span class="status st-abwarten">Kairo: Fast-Treffer · fehlt: ${esc(r.missing[0])}</span>` : "")
-  : r.fast_hit ? `<span class="status st-abwarten">Fast-Treffer · fehlt: ${esc(r.missing[0])}</span>${h4NowBadge(r.ticker)}`
-  : r.near_hit ? `<span class="status st-kein_setup">9/11 · kein Treffer · fehlt: ${esc(r.missing.join(", "))}</span>${h4NowBadge(r.ticker)}`
+const statusBadge = r => r.passed ? `<span class="status st-bereit">Treffer</span>${kPill(r)}`
+  : r.fast_hit ? `<span class="status st-abwarten">Fast-Treffer · fehlt: ${esc(shortCrit(r.missing[0]))}</span>`
+  : r.near_hit ? `<span class="status st-kein_setup">9/11 · fehlt: ${esc(r.missing.map(shortCrit).join(", "))}</span>`
   : `<span class="status st-kein_setup">Kein Setup · ${r.missing.length} Kriterien fehlen</span>`;
 const SETUP_KEYS = ["drawdown", "no_crash", "structure", "flattening", "zone", "rsi_div", "rsi_range", "macd_below0", "macd_turn", "mbi", "crv"];
 const tvUrl = t => {
@@ -1652,6 +1659,29 @@ function chkHtml(c) {
     ${c.pro.length || c.con.length ? `<ul class="checks">${li(c.pro, "up")}${li(c.con, "down")}</ul>` : ""}
     <div class="note" style="margin:6px 0 0">Wahrscheinlichkeit für ein neues Hoch, bevor der Kurs unter das 50-%-Fibonacci-Niveau (${fmt(c.fib50)}) des letzten Anstiegs fällt. ${c.korr != null ? `In vergleichbaren Fällen der Studie fiel der Kurs in ${pct(c.korr, 0)} der Fälle zuerst darunter. ` : ""}${tn === "r" ? "Rechne mit einem tieferen Rücksetzer – K.-o. mit Abstand wählen (unter das 61,8-%-Niveau). " : ""}Zur Einordnung, nicht zum Aussortieren: Im Test (7.310 Signale, 9 J.) hätte Weglassen der roten Signale Rendite gekostet – sie korrigieren oft erst und steigen danach trotzdem.</div></div>`;
 }
+// Kairo-Plan: die Antwort zuerst – Status, Kaufzone, Stop, Ausstieg, Kursziel (alle Designs)
+function kplanHtml(r) {
+  const x = kSt(r), pl = (rowOf(r.ticker) || {}).pl || {}, cur = esc(r.currency || ""), tz = tgtZ(r);
+  const head = { ready: ["g", "Kaufbereit", "Seitwärtsphase fertig – Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt."],
+    wait: ["y", "Treffer – noch nicht kaufen", `${x.s}. Gekauft wird erst nach 5 ruhigen Tagen.`],
+    late: ["y", "Einstieg vorbei", "Der Kauftag nach der Seitwärtsphase ist schon vorbei – nicht nachkaufen, auf den nächsten Treffer warten."],
+    gone: ["r", "Verfallen", "Innerhalb von 10 Tagen keine Seitwärtsphase – kein Trade."],
+    own: ["b", "Im Depot", "Der Trade läuft – Stop und Ausstieg siehst du im Depot."],
+    fast: ["y", "Fast-Treffer – beobachten", `Es fehlt ${esc((r.missing || []).slice(0, 2).map(shortCrit).join(", "))}. Erst als voller Treffer handeln.`],
+    near: ["n", "Kein Signal – 9/11", `Es fehlen ${esc((r.missing || []).map(shortCrit).join(", "))}.`],
+    none: ["n", "Kein Signal", `${r.met ?? "–"} von ${r.total ?? 11} Kriterien erfüllt.`] }[x.k] || ["n", "Kein Signal", ""];
+  const fm = filterMiss(r);
+  const cells = [];
+  if (r.passed && x.k !== "gone") {
+    cells.push(["Kaufzone", pl.base ? `${fmt(pl.base.lo)}–${fmt(pl.base.hi)}` : "nach Seitwärtsphase", pl.base ? cur : "5 ruhige Tage abwarten"]);
+    cells.push(["Stop", pl.base && pl.stop ? fmt(pl.stop) : "–", pl.base && pl.stop ? `${cur} · ${pct((pl.base.hi - pl.stop) / pl.base.hi, 1)} unter der Zone` : "Tief der Seitwärtsphase − 0,25 ATR"]);
+    cells.push(["Ausstieg", "EMA 20", "ab Tag 10 bei Schluss darunter, spätestens Tag 60"]);
+  }
+  if (tz && tz.u > 0) cells.push(["Kursziel Analysten", sgnPct(tz.u, 0), `${fmt(tz.z, 1)} × Jahresschwankung · ${tz.n} Analysten${tz.z >= 1 ? " · attraktiv" : ""}`]);
+  return `<div class="kplan k-${fm ? "n" : head[0]}"><div class="kp-h"><i></i><div><b>${fm ? "Kein Signal – Grundfilter" : head[1]}</b><span>${fm ? `Alle Setup-Kriterien erfüllt, aber: ${esc(fm)}` : head[2]}</span></div></div>
+    ${cells.length ? `<div class="kp-cells">${cells.map(([l, v, sub]) => `<div><span>${l}</span><b>${v}</b><em>${sub}</em></div>`).join("")}</div>` : ""}
+    ${r.passed && !["gone", "own"].includes(x.k) ? `<div class="kp-act"><button class="btn" data-ein="${esc(r.ticker)}">Trade planen</button></div>` : ""}</div>`;
+}
 // Urteil: die Antwort zuerst – Einstieg ja/nein, warum, und der nächste Schritt (nur im neuen Design sichtbar)
 function verdictHtml(r) {
   const ein = t => `<button class="btn" data-ein="${esc(r.ticker)}">${t}</button>`;
@@ -1684,7 +1714,7 @@ function card(r) {
       ${trendHtml(r)}</div>
     </div>
     ${isApple() ? `<div class="apx"><b>${fmt(r.close)} <small>${esc(r.currency || "")}</small></b><i class="chgp" data-chg="${esc(r.ticker)}"></i></div>` : ""}
-    ${verdictHtml(r)}
+    ${kplanHtml(r)}
     <div class="aboutbox" hidden>${aboutHtml(r)}</div>
     <div class="scorebox" hidden>${scoreBoxHtml(r)}</div>
     <div class="figures">
