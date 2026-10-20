@@ -1700,8 +1700,13 @@ function loadCalendar() {
 }
 const daysUntil = iso => Math.round((new Date(iso + "T12:00:00") - new Date(new Date().toDateString() + " 12:00")) / 864e5);
 const depotTickers = () => new Set(depotLoad().map(p => p.t));
-function calRelevant(e) {   // betrifft Watchlist oder Depot?
-  if (!e.ticker || e.big) return true;
+// Wirklich marktbewegende Termine für US/EU-Aktien: Zinsentscheide Fed/EZB, US-Inflation, US-Arbeitsmarktbericht, großer Verfall.
+// Alles andere (Stimmungsindizes, Reden, Feiertage, kleinere Länder) nur unter „Alle Termine“.
+const CAL_KEY = /^(USA|Eurozone): (Fed-Zinsentscheid|Fed-Pressekonferenz|EZB-Zinsentscheid|Inflation \(CPI\)|PCE-Inflation|Arbeitsmarktbericht)/;
+const calKey = e => e.kind === "expiry" || (e.kind === "macro" && CAL_KEY.test(e.title || ""));
+function calRelevant(e) {   // wichtig: Schlüsseltermine, Quartalszahlen der Schwergewichte, alles zu Watchlist/Depot/Merkliste
+  if (!e.ticker) return calKey(e);
+  if (e.big) return e.kind === "earnings" || e.watch || depotTickers().has(e.ticker) || favs().has(e.ticker);
   return e.watch || depotTickers().has(e.ticker) || favs().has(e.ticker);
 }
 function calBadge() {
@@ -1812,8 +1817,8 @@ function calendarHtml() {
   const all = calData.filter(e => (state.calScope === "all" || calRelevant(e)) && kinds[state.calKind || ""](e));
   const list = all.filter(e => daysUntil(e.date) >= 0);
   const seg = (key, opts) => `<div class="opts seg">${opts.map(([v, l]) => `<button class="opt${(state[key] || "") === v ? " on" : ""}" data-cal="${key}" data-v="${v}">${l}</button>`).join("")}</div>`;
-  const head = `<div class="section-title"><span>Kalender · Termine für deine Aktien</span><span>${list.length} Termine</span></div>
-    <div class="cal-top"><div class="vtog">${[["month", "Monat"], ["list", "Liste"]].map(([v, l]) => `<button class="${(month ? "month" : "list") === v ? "on" : ""}" data-cal="calView" data-v="${v}">${v === "month" ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M9.5 10v10M14.5 10v10"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>'}${l}</button>`).join("")}</div>${seg("calScope", [["mine", "Meine Aktien"], ["all", "inkl. Treffer"]])}</div>`
+  const head = `<div class="section-title"><span>Kalender · ${state.calScope === "all" ? "alle Termine" : "was den Markt wirklich bewegt"}</span><span>${list.length} Termine</span></div>
+    <div class="cal-top"><div class="vtog">${[["month", "Monat"], ["list", "Liste"]].map(([v, l]) => `<button class="${(month ? "month" : "list") === v ? "on" : ""}" data-cal="calView" data-v="${v}">${v === "month" ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M9.5 10v10M14.5 10v10"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>'}${l}</button>`).join("")}</div>${seg("calScope", [["mine", "Nur wichtige"], ["all", "Alle Termine"]])}</div>`
     + seg("calKind", [["", "Alle"], ["earnings", "Quartalszahlen"], ["div", "Dividenden"], ["macro", "Wirtschaft & Zinsen"]]);
   const evRow = e => {
     const [icon, cls] = CAL_KIND[e.kind] || ["•", "k-exp", ""];
@@ -3381,7 +3386,7 @@ function depotSnapHtml() {
 }
 function soonHtml() {
   if (!calData) { loadCalendar(); return ""; }
-  const mine = myTickers(), evs = calData.filter(e => { const d = daysUntil(e.date); return d >= 0 && d <= 4 && (!e.ticker || mine.has(e.ticker)); }).slice(0, 7);
+  const mine = myTickers(), evs = calData.filter(e => { const d = daysUntil(e.date); return d >= 0 && d <= 4 && (e.ticker ? mine.has(e.ticker) : calKey(e)); }).slice(0, 7);
   if (!evs.length) return "";
   return `<div class="hcard">${hHead("Nächste Termine", SEC_LINK("calendar"), "Kalender")}
     ${evs.map(e => { const [icon, cls] = CAL_KIND[e.kind] || ["•", "k-exp"], n = daysUntil(e.date);
@@ -3481,7 +3486,7 @@ function mountPostfach() {
 }
 function todayHtml() {
   const al = getJson("alerts.json");
-  const tgHint = al && !al.connected ? `<button class="hcard tg" ${SEC_LINK("settings")}><b>📲 Abendbericht aufs Handy</b><span>Neue Treffer, deine Aktien und Knock-out-Warnungen jeden Abend per Telegram – in 3 Minuten eingerichtet.</span><span class="hlink">Einrichten ›</span></button>` : "";
+  const tgHint = "";                       // Telegram-Abendbericht: ersetzt durch Push-Mitteilungen (10/2026)
   // Postfach: Aufgaben oben, darunter dieselben Karten wie sonst (ohne „Beste Treffer“ – die stehen schon im Postfach)
   if (isPostfach()) return postfachHtml(`${startHtml()}${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}`, `${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
   return (isApple() ? todoHtml() : kpiHtml()) + `${startHtml()}<div class="hgrid"><div class="hcol">${topHitsHtml()}${myStocksHtml()}${depotSnapHtml()}${soonHtml()}</div>
@@ -3596,7 +3601,8 @@ function etfHtml() {
       <div class="eh-main"><span class="eh-k">ETF-Ampel · ${esc(e.name)}</span><b class="eh-t">${esc(e.t)}</b><p class="eh-do">${todo}</p>
         <div class="eh-facts"><span>Kurs <b>${fmt(e.c)} €</b></span><span>${e.dd < .005 ? "<b>am Allzeithoch</b>" : `<b>−${pct(e.dd, 1)}</b> unter dem Hoch`}</span><span class="muted">Stand ${dateDE(e.date)}</span></div>
         <div class="eh-pills">${facts.map(([l, v, c]) => `<span class="eh-p"><i class="${c}">●</i>${l}: <b>${v}</b></span>`).join("")}</div></div></div>
-    <div class="hcard">${hHead("Kurs der letzten 3 Jahre")}${etfLine(e.hist, c.buy)}
+    ${tvEmbedHtml("XETR:SPYI", "SPYI live · TradingView (XETRA, ca. 15 Min. verzögert)")}
+    <div class="hcard">${hHead("Kurs der letzten 3 Jahre · mit 200-Tage-Linie")}${etfLine(e.hist, c.buy)}
       <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ⚠️ Kurs ist ${e.age} Tage alt` : ""}. Gelegentlich mit Scalable vergleichen.</div></div>`
     : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? `Die Kursdaten des ETF sehen gerade unplausibel aus${e0.ref_ok === false ? ` (weichen ${pct(e0.ref_dev, 1)} vom Vergleichs-ETF ab)` : ""} – Datenfehler beim Anbieter. Die Ampel ist ausgeblendet, bis sie wieder stimmen.` : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
   const why = e ? `<div class="hsub">Was die Ampel gerade sieht</div><ul class="checks">${[
@@ -4165,6 +4171,11 @@ const tvSym = t => { const xr = rowOf(t); if (xr && xr.ext && xr.ext.y) { try { 
   if (xr && xr.ext) return `${xr.ext.exchange.toUpperCase().replace(/\s+/g, "")}:${xr.ext.symbol}`;
   if (/\.DE$/.test(t) && state.tvVenue && state.tvVenue !== "XETR") return `${state.tvVenue}:${t.replace(/\.DE$/, "")}`;
   try { return new URL(tvUrl(t)).searchParams.get("symbol"); } catch (e) { return t; } };
+function tvEmbedHtml(sym, title) {             // fester TradingView-Chart (z. B. ETF), gleiche Einbettung wie im Einstieg
+  const src = "https://s.tradingview.com/widgetembed/?" + new URLSearchParams({ symbol: sym, interval: "D", theme: isLight() ? "light" : "dark", style: "1",
+    locale: "de_DE", timezone: "Europe/Berlin", hide_side_toolbar: "1", allow_symbol_change: "0", saveimage: "0", withdateranges: "1", studies: "[]" });
+  return `<div class="hcard tvbox">${hHead(esc(title))}<iframe src="${src}" loading="lazy" title="${esc(title)}" allowtransparency="true" frameborder="0" scrolling="no"></iframe></div>`;
+}
 function tvChartHtml(t) {
   const src = "https://s.tradingview.com/widgetembed/?" + new URLSearchParams({ symbol: tvSym(t), interval: "D", theme: isLight() ? "light" : "dark", style: "1",
     locale: "de_DE", timezone: "Europe/Berlin", hide_side_toolbar: "1", allow_symbol_change: "0", saveimage: "0", withdateranges: "1", studies: "[]" });
