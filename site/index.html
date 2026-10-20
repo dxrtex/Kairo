@@ -3162,7 +3162,8 @@ function gameHtml() {
       <div class="mt"><span>Ø mit Abweichung</span><b>${avg(bad) != null ? `${avg(bad) >= 0 ? "+" : ""}${fmt(avg(bad), 2)} R` : "–"}</b></div></div>
       <div class="note" style="margin:6px 0 0">Nur regelkonforme Trades sagen etwas über die Strategie. Abweichungen (ohne Seitwärtsphase, zu viel Risiko, zu früh verkauft …) testen dein Bauchgefühl.</div></div>` : "";
   const closed = done.slice(0, 20).map(c => `<tr><td><b>${esc(c.n)}</b><small class="muted" style="display:block">${c.kind === "turbo" ? `Turbo${c.wkn ? " " + esc(c.wkn) : ""}` : "Aktie"} · ${dateDE(c.d)} → ${dateDE(c.xd)} · ${esc(c.why)}${(c.rv || []).length ? ` · ⚠️ ${esc(c.rv.join(", "))}` : ""}</small></td><td class="num ${c.pnl >= 0 ? "up" : "down"}">${sEur2(c.pnl)}<small style="display:block">${c.R != null ? `${c.R >= 0 ? "+" : ""}${fmt(c.R, 2)} R` : sgnPct(c.ret, 1)}</small></td></tr>`).join("");
-  const id = data.results.filter(r => r.passed).sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 10), sel = state.gSel;
+  const tst = r => ["us", "europe"].includes(String(r.region || "").toLowerCase()), mo6 = r => (r.flags || {}).mom61;   // Rangfolge wie Top-Setups
+  const id = data.results.filter(r => r.passed).sort((a, b) => (tst(b) - tst(a)) || ((mo6(a) ?? 9) - (mo6(b) ?? 9))).slice(0, 10), sel = state.gSel;
   const idea = r => { const s = rowOf(r.ticker) || {}, own = g.pos.some(p => p.t === r.ticker);
     return `<button class="g-idea${sel === r.ticker ? " on" : ""}" data-g="pick" data-t="${esc(r.ticker)}"><b>${esc(r.name || r.ticker)}</b>
       <small>Kairo · Score ${r.score}${s.pl && s.pl.base ? " · Seitwärtsphase ✓" : " · wartet auf Seitwärtsphase"}${own ? " · im Depot" : ""}</small><span>${fmt(r.close)} ${esc(r.currency || "")}</span></button>`; };
