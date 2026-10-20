@@ -191,6 +191,22 @@ async def run(port: int) -> list[str]:
                 n = await pg.evaluate('(JSON.parse(localStorage.getItem("kairo-game2")) || {pos: []}).pos.length')
                 if n != 1:
                     errs.append(f"Spiel: Kauf hat nicht geklappt ({await pg.evaluate('state.gMsg')})")
+                else:                                                            # Limit-Order: reserviert Geld, Depotwert bleibt gleich
+                    tot0 = await pg.evaluate("gTotals(gLoad()).total")
+                    await pg.click('[data-g="tab"][data-v="trade"]'); await pg.wait_for_timeout(500)
+                    await pg.click('.g-idea[data-g="pick"]'); await pg.wait_for_timeout(600)
+                    await pg.click('[data-g="otype"][data-v="limit"]'); await pg.wait_for_timeout(500)
+                    for sel, v in (("#gP0", "1.50"), ("#gK0", f"{c * 0.8:.2f}"), ("#gQty", "10"), ("#gTrig", f"{c * 0.95:.2f}")):
+                        await pg.fill(sel, v); await pg.dispatch_event(sel, "input")
+                    await pg.click('[data-g="review"]'); await pg.wait_for_timeout(500)
+                    await pg.click('[data-g="buy"]'); await pg.wait_for_timeout(600)
+                    g2 = await pg.evaluate("(() => { const g = gLoad(); return { p: (g.pend || []).length, n: g.pos.length, t: gTotals(g).total }; })()")
+                    if g2["p"] != 1 or g2["n"] != 1 or abs(g2["t"] - tot0) > 0.01:
+                        errs.append(f"Spiel: Limit-Order falsch ({g2}, vorher {tot0:.2f}, {await pg.evaluate('state.gMsg')})")
+                    elif await pg.query_selector('[data-g="cancel"]'):
+                        await pg.click('[data-g="cancel"]'); await pg.wait_for_timeout(400)
+                        if await pg.evaluate("(gLoad().pend || []).length") != 0:
+                            errs.append("Spiel: Limit-Order lässt sich nicht streichen")
             else:
                 print("Spiel: heute keine Kairo-Treffer – Kauf-Test übersprungen")
         else:
