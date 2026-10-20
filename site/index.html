@@ -3368,7 +3368,7 @@ function gBuyForm(g, t) {
   const x = gPx(t), pl = (rowOf(t) || {}).pl || {}, su = gSetup(t), f = state.gF || {}, turbo = (f.kind || "turbo") === "turbo";
   const stop = +f.stop > 0 ? +f.stop : pl.stop || null;
   return `<div class="card g-buy"><div class="g-pos-h"><div><b>${esc(x.n)}</b><small class="muted" style="display:block">${esc(t)} · ${esc(su.k)}${su.score != null ? ` · Score ${su.score}` : ""} · Basiswert ${fmt(x.c)} ${esc(x.cur)}</small></div><button class="btn ghost sm" data-g="pick" data-t="" aria-label="Order-Ticket schließen">✕</button></div>
-    <div class="g-row muted"><span>Plan: Stop ${stop ? fmt(stop) + " " + esc(x.cur) : "–"} (${pl.src ? esc(pl.src) + " − 0,25 ATR" : "selbst eintragen"}) · Verkauf an Tag ${KMAX.hold} (${dateDE(isoD(addBd(new Date(), KMAX.hold)))})</span></div>
+    <div class="g-row muted"><span>Plan: Stop ${stop ? fmt(stop) + " " + esc(x.cur) : "–"} (${pl.src ? esc(pl.src) + " − 0,25 ATR" : "selbst eintragen"}) · Ausstieg ab Tag 10 unter der EMA 20, spätestens Tag ${KMAX.hold} (${dateDE(isoD(addBd(new Date(), KMAX.hold)))})</span></div>
     <div class="g-mode"><button class="opt${turbo ? " on" : ""}" data-g="kind" data-v="turbo">Turbo Long</button><button class="opt${turbo ? "" : " on"}" data-g="kind" data-v="stock">Aktie</button></div>
     <div class="tp2-cfg" style="margin-top:10px">
       ${turbo ? `<label>WKN / ISIN<input id="gWkn" value="${esc(f.wkn || "")}" placeholder="z. B. HT1ABC" autocapitalize="characters"></label>` : ""}
@@ -3420,7 +3420,7 @@ function gameHtml() {
   const id = data.results.filter(r => r.passed).sort((a, b) => (tst(b) - tst(a)) || ((mo6(a) ?? 9) - (mo6(b) ?? 9))).slice(0, 10), sel = state.gSel;
   const idea = r => { const s = rowOf(r.ticker) || {}, own = g.pos.some(p => p.t === r.ticker);
     return `<button class="g-idea${sel === r.ticker ? " on" : ""}" data-g="pick" data-t="${esc(r.ticker)}"><b>${esc(r.name || r.ticker)}</b>
-      <small>Kairo · Score ${r.score}${s.pl && s.pl.base ? " · Seitwärtsphase ✓" : " · wartet auf Seitwärtsphase"}${own ? " · im Depot" : ""}</small><span>${fmt(r.close)} ${esc(r.currency || "")}</span></button>`; };
+      <small>${kPill(r)} ${tgtChip(r)}${own ? " · im Depot" : ""}</small><span>${fmt(r.close)} ${esc(r.currency || "")}</span></button>`; };
   // Broker-Ansicht: Depot · Handeln · Aufträge
   const tab = state.gTab || "depot", dayChg = (() => { const h = g.hist; return h.length > 1 ? h[h.length - 1].v - h[h.length - 2].v : 0; })();
   const ev = []; let prev = G_START; g.hist.forEach(h => { ev.push({ date: h.d, pnl: h.v - prev }); prev = h.v; });
@@ -4279,7 +4279,7 @@ const APP_NEWS = [["2026.10.21", "Oktober-Update", [
   ["Scalable-Import ersetzt", "Ein neuer Export ersetzt den alten – Löschen jederzeit."],
   ["Design „Hell“", "Jetzt auch immer hell wählbar – unabhängig vom iPad."],
   ["Rundgang & Begriffe", "Kurzer Rundgang beim ersten Öffnen, Fachbegriffe antippbar."]]]];
-function newsHtml(all) {
+function appNewsHtml(all) {
   return APP_NEWS.slice(0, all ? APP_NEWS.length : 1).map(([v, t, items]) => `<div class="nw-v"><b>${esc(t)}</b><small>${esc(v.split(".").reverse().join("."))}</small></div>
     <ul class="nw-l">${items.map(([a, b]) => `<li><b>${esc(a)}</b><span>${esc(b)}</span></li>`).join("")}</ul>`).join("");
 }
@@ -4289,7 +4289,7 @@ function maybeNews() {
   state.newsSeen = APP_VER; save();
   let el = $("newsBox"); if (!el) { el = document.createElement("div"); el.id = "newsBox"; el.className = "bmodal"; document.body.appendChild(el); }
   el.hidden = false; el.innerHTML = `<div class="bm-back" data-newsclose></div><div class="bm-box nw-box" role="dialog" aria-modal="true" aria-label="Was ist neu"><button class="cm-x" data-newsclose aria-label="Schließen">✕</button>
-    <div class="bf-k">Was ist neu</div>${newsHtml(false)}<button class="btn" data-newsclose style="width:100%;margin-top:14px">Weiter</button></div>`;
+    <div class="bf-k">Was ist neu</div>${appNewsHtml(false)}<button class="btn" data-newsclose style="width:100%;margin-top:14px">Weiter</button></div>`;
   return true;
 }
 document.addEventListener("click", e => { if (e.target.closest("[data-newsclose]")) { const el = $("newsBox"); if (el) el.remove(); }
@@ -4306,7 +4306,7 @@ function feedbackHtml() {
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0"><label class="full">Was ist dir aufgefallen?<textarea id="fbText" rows="3" placeholder="z. B. „Im Depot stimmt der Wert von SAP nicht“ oder eine Idee"></textarea></label></div>
       <div class="row-actions" style="margin-top:10px"><button class="btn" data-fb="copy">Für Claude kopieren</button>${navigator.share ? `<button class="btn ghost" data-fb="share">Teilen …</button>` : ""}<button class="btn ghost" data-newsall>Was ist neu</button></div>
       <div class="note" id="fbMsg">Kopiert Beschreibung plus Bereich, Datenstand, Version und Gerät – keine Depot- oder Journal-Daten. Einfach im Chat mit Claude einfügen.</div>
-      <div class="nw-all" hidden>${newsHtml(true)}</div></div>`;
+      <div class="nw-all" hidden>${appNewsHtml(true)}</div></div>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-fb]"); if (!b) return;
   const t = reportText(($("fbText") || {}).value || ""), m = $("fbMsg");
