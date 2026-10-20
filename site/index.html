@@ -206,6 +206,9 @@
   .nw-box { width: min(480px, 100%); } .nw-v { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 10px; } .nw-v b { font-size: 22px; letter-spacing: -.02em; } .nw-v small { color: var(--muted); }
   .nw-l { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .nw-l li { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
   .nw-l span { font-size: 14px; color: var(--muted); } .nw-all { margin-top: 14px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
+  html.big { zoom: 1.12; } html.bigger { zoom: 1.25; }
   .kplan { --kc: var(--muted); border-radius: 16px; padding: 14px; background: color-mix(in srgb, var(--kc) 9%, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--kc) 28%, transparent); }
   .kplan.k-g { --kc: var(--up); } .kplan.k-y { --kc: var(--gold); } .kplan.k-r { --kc: var(--red); } .kplan.k-b { --kc: var(--accent); }
   .kp-h { display: flex; gap: 12px; align-items: flex-start; } .kp-h > i { flex: none; width: 12px; height: 12px; margin-top: 5px; border-radius: 50%; background: var(--kc); box-shadow: 0 0 10px var(--kc); }
@@ -1414,7 +1417,9 @@ const LC = () => isLight() ? { t: "#6e6e73", g: "#ececf0", b: "#d1d1d6", k: "#3a
 const DESIGNS = [["classic", "Dunkel (Standard)"], ["light", "Hell"], ["auto", "Automatisch (wie das iPad)"], ["postfach-classic", "Aufgaben-Postfach · Klassisch"], ["postfach-aktien", "Aufgaben-Postfach · Apple Aktien"], ["postfach", "Aufgaben-Postfach · Hell"]];
 if (!DESIGNS.some(([k]) => k === state.design)) state.design = "classic";   // frühere Test-Designs (Apple-Look, Pro) → Klassisch
 const isPostfach = () => String(state.design).startsWith("postfach");
+const applyTextSize = () => { document.documentElement.classList.toggle("big", state.textSize === "big"); document.documentElement.classList.toggle("bigger", state.textSize === "bigger"); };
 const applyDesign = () => {
+  applyTextSize();
   DESIGNS.forEach(([k]) => { const el = document.getElementById("ds-" + k); if (el) el.media = k === state.design ? "all" : "not all"; });
   const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = isLight() ? "#f2f2f7" : getComputedStyle(document.body).backgroundColor;
 };
@@ -2765,6 +2770,7 @@ document.addEventListener("click", e => {
   render();
 });
 document.addEventListener("click", e => {
+  const ts = e.target.closest("[data-tsize]"); if (ts) { state.textSize = ts.dataset.tsize; save(); applyTextSize(); render(); return; }
   const d = e.target.closest("[data-design]"); if (d) { state.design = d.dataset.design; save(); applyDesign(); renderHead(); render(); return; }
   const b = e.target.closest("[data-emoji]"); if (!b) return;
   state.emoji = b.dataset.emoji; save(); renderHead(); appleHead();
@@ -3398,7 +3404,7 @@ function gBuyForm(g, t) {
   if (state.gReview && state.gReview.t === t) return gReviewHtml(g, t, state.gReview);
   const x = gPx(t), pl = (rowOf(t) || {}).pl || {}, su = gSetup(t), f = state.gF || {}, turbo = (f.kind || "turbo") === "turbo";
   const stop = +f.stop > 0 ? +f.stop : pl.stop || null;
-  return `<div class="card g-buy"><div class="g-pos-h"><div><b>${esc(x.n)}</b><small class="muted" style="display:block">${esc(t)} · ${esc(su.k)}${su.score != null ? ` · Score ${su.score}` : ""} · Basiswert ${fmt(x.c)} ${esc(x.cur)}</small></div><button class="btn ghost sm" data-g="pick" data-t="">✕</button></div>
+  return `<div class="card g-buy"><div class="g-pos-h"><div><b>${esc(x.n)}</b><small class="muted" style="display:block">${esc(t)} · ${esc(su.k)}${su.score != null ? ` · Score ${su.score}` : ""} · Basiswert ${fmt(x.c)} ${esc(x.cur)}</small></div><button class="btn ghost sm" data-g="pick" data-t="" aria-label="Order-Ticket schließen">✕</button></div>
     <div class="g-row muted"><span>Plan: Stop ${stop ? fmt(stop) + " " + esc(x.cur) : "–"} (${pl.src ? esc(pl.src) + " − 0,25 ATR" : "selbst eintragen"}) · Verkauf an Tag ${KMAX.hold} (${dateDE(isoD(addBd(new Date(), KMAX.hold)))})</span></div>
     <div class="g-mode"><button class="opt${turbo ? " on" : ""}" data-g="kind" data-v="turbo">Turbo Long</button><button class="opt${turbo ? "" : " on"}" data-g="kind" data-v="stock">Aktie</button></div>
     <div class="tp2-cfg" style="margin-top:10px">
@@ -4440,6 +4446,7 @@ function settingsHtml() {
       <div class="form" style="margin:14px 0 0"><label class="full">Emoji in der Begrüßung<input id="cfgEmoji" value="${esc(state.emoji == null ? (isApple() ? "" : "👋") : state.emoji)}" placeholder="z. B. 🚀 – leer = kein Emoji" maxlength="8"></label></div>
       <div class="emo-pick">${EMOJIS.map(e => `<button type="button" class="opt${(state.emoji ?? "👋") === e ? " on" : ""}" data-emoji="${e}">${e}</button>`).join("")}<button type="button" class="opt${state.emoji === "" ? " on" : ""}" data-emoji="">keins</button></div>
       <div class="note">Antippen oder ein eigenes Emoji ins Feld tippen (Emoji-Tastatur 🌐).</div>
+      <div class="set-lbl">Textgröße</div><div class="set-chips">${[["", "Normal"], ["big", "Größer"], ["bigger", "Sehr groß"]].map(([k, l]) => `<button type="button" class="opt${(state.textSize || "") === k ? " on" : ""}" data-tsize="${k}">${l}</button>`).join("")}</div>
       <div class="set-lbl">Rundgang</div><button type="button" class="btn ghost sm" data-tour="0">Rundgang noch einmal ansehen</button>
       <div class="set-lbl">Design</div><div class="set-chips">${DESIGNS.map(([k, l]) => `<button type="button" class="opt${(state.design || "classic") === k ? " on" : ""}" data-design="${k}">${l}</button>`).join("")}</div>
       <div class="note">Wechselt sofort, alle Funktionen und Daten bleiben gleich.</div></div>
@@ -5884,7 +5891,11 @@ document.addEventListener("click", e => {
   const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); closeCard(); openDetail(o.dataset.open); return; }
   const th = e.target.closest("th[data-k]"); if (th) { if (th.dataset.k === state.tableSort) state.tableAsc = !state.tableAsc; else { state.tableSort = th.dataset.k; state.tableAsc = false; } render(); }
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape") { closeDetail(); closeCard(); closeBrief(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeDetail(); closeCard(); closeBrief(); const t = $("tour"); if (t) t.remove(); const n = $("newsBox"); if (n) n.remove(); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey || /input|textarea|select/i.test((e.target.tagName || "")) || e.target.isContentEditable || document.getElementById("gate")) return;
+  const k = { "1": "today", "2": "etf", "3": "scanner", "4": "entry", "5": "news", "6": "depot" }[e.key];
+  if (k) { e.preventDefault(); closeCard(); goSec(k); return; }
+  if (e.key === "/") { e.preventDefault(); if (state.sec !== "scanner") goSec("scanner"); setTimeout(() => { const s = $("search"); if (s) s.focus(); }, 50); } });
 
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").then(pushInit).catch(() => {});
 try { const q = new URLSearchParams(location.search).get("sec"); if (q && SEC_T[q]) { state.sec = q; history.replaceState(null, "", location.pathname + location.hash); } } catch (e) {}
