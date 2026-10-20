@@ -132,6 +132,14 @@ async def main(out: Path) -> None:
                         await pg.evaluate("(() => { const t = document.querySelector('b.term'); t.scrollIntoView({block:'center'}); t.click(); })()")
                         await pg.wait_for_timeout(500)
                         await pg.screenshot(path=str(out / f"ipad_term_{sec}_{n}.png"))
+            await pg.goto(f"{url}?nosplash=1&sec=scanner"); await pg.wait_for_timeout(2500)   # Detailansicht
+            await pg.evaluate("document.querySelectorAll('.bmodal').forEach(x => x.remove())")
+            for j, sel in enumerate(("r => r.passed && kSt(r).k === 'ready'", "r => r.passed && kSt(r).k === 'wait'", "r => r.fast_hit && !r.passed")):
+                t = await pg.evaluate(f"(() => {{ const r = data.results.find({sel}); return r ? r.ticker : null; }})()")
+                if t:
+                    await pg.evaluate(f"openCard({t!r})"); await pg.wait_for_timeout(1200)
+                    await pg.screenshot(path=str(out / f"{name}_card{j + 1}.png"))
+                    await pg.evaluate("closeCard()")
             for k in range(3):                             # Rundgang
                 await pg.goto(f"{url}?tour=1"); await pg.wait_for_timeout(2500)
                 await pg.evaluate("document.querySelectorAll('.splash').forEach(x => x.remove())")
