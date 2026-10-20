@@ -528,6 +528,10 @@
   /* Unterreiter in einer Zeile: eigenes Geld (Positionen, Journal, Übung) | Ergebnisse der Strategien (Bilanz, Papier) */
   .subnav { display: flex; align-items: stretch; }
   .subnav button { flex: 1 1 0; min-width: 0; padding: 10px 2px; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pdet { margin: 0 0 10px; } .pdet > .hcard { margin-top: 8px; } .pdet > .hcard > .hh:first-child { display: none; }
+  .psum { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 14px 16px; border-radius: 16px; background: var(--glass); border: 1px solid var(--glass-line); list-style: none; }
+  .psum::-webkit-details-marker { display: none; } .psum b { flex: 1; } .psum::after { content: "›"; color: var(--muted); transition: transform .2s; } .pdet[open] > .psum::after { transform: rotate(90deg); }
+  .ptag { font-size: 12px; color: var(--muted); }
   .subnav .sn-sep { flex: 0 0 1px; margin: 6px 3px; background: var(--glass-line); }
   /* Kalender */
   /* Heute */
@@ -4744,6 +4748,22 @@ function paperSpark(st, bench) {
     <polyline points="${line(b)}" style="fill:none;stroke:var(--gold);stroke-width:1.5;stroke-dasharray:4 3"/><polyline points="${line(e)}" class="${e[e.length - 1] >= S ? "up" : "down"}"/></svg>
     <div class="oleg"><span class="${e[e.length - 1] >= S ? "up" : "down"}">■ Papier-Depot</span><span class="gold">┄ ACWI kaufen &amp; halten (gleicher Start)</span></div>`;
 }
+// Papier-Test: Übersicht aller Depots in einer Tabelle, Details je Depot aufklappbar (Kandidaten zuerst und offen)
+const PAPER_TAG = { DM: ["Bester Kandidat", "up"], KAIROS: ["Kandidat · Kosten offen", "gold"], KAIRO: ["Referenz", ""], MOM10: ["Vergleich · durchgefallen", "down"],
+  MOM5: ["Vergleich · durchgefallen", "down"], S20: ["Idee · nicht bestätigt", "down"], S19: ["Idee · nicht bestätigt", "down"], S19B: ["Idee · nicht bestätigt", "down"], S19C: ["Idee · nicht bestätigt", "down"] };
+const PAPER_NAME = { DM: "Dual Momentum (ETF)", KAIROS: "Kairo-S · 20 × 0,25 %", KAIRO: "Kairo · 5 × 1 %", MOM10: "Momentum Top 10", MOM5: "Momentum Top 5", S20: "S20 Trendfolge", S19: "S19 Mean Reversion", S19B: "S19-B", S19C: "S19-C" };
+const paperVal = st => { const eq = st && (st.equity || []).slice(-1)[0], v = eq ? eq.eur : st && st.start_cash; return { v, ret: st && v != null ? v / st.start_cash - 1 : null }; };
+function paperOverview(d, order) {
+  const rows = order.map(sid => { const st = d[sid.toLowerCase()], { v, ret } = paperVal(st), [tag, tone] = PAPER_TAG[sid];
+    return `<tr><td><b>${PAPER_NAME[sid]}</b><br><span class="${tone}" style="font-size:12px">${tag}</span></td><td class="num">${v == null ? "–" : eur(v)}</td>
+      <td class="num ${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "–" : sgnPct(ret, 1)}</td><td class="num">${st ? (st.trades || []).length : "–"}</td><td class="num">${st ? (st.positions || []).length : "–"}</td></tr>`; }).join("");
+  return `<div class="hcard">${hHead("Alle Papier-Depots")}<div class="tscroll"><table class="ptab"><tr><th>Depot</th><th class="num">Wert</th><th class="num">seit Start</th><th class="num">Trades</th><th class="num">offen</th></tr>${rows}</table></div>
+    <div class="note" style="margin-top:8px">Details je Depot unten antippen. Entscheidung über echtes Geld nach etwa 12 Monaten.</div></div>`;
+}
+function paperBox(sid, st, sm, bench) {
+  const { ret } = paperVal(st), [tag, tone] = PAPER_TAG[sid];
+  return `<details class="pdet"${["DM", "KAIROS"].includes(sid) ? " open" : ""}><summary class="psum"><b>${PAPER_NAME[sid]}</b><span class="ptag ${tone}">${tag}</span><span class="${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "" : sgnPct(ret, 1)}</span></summary>${paperCard(sid, st, sm, bench)}</details>`;
+}
 function paperCard(sid, st, sm, bench) {
   const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3", MOM5: "MOM5 · Momentum Top 5 (monatlich)", MOM10: "MOM10 · Momentum Top 10 (monatlich)", DM: "DM · Dual Momentum (ETF)", KAIRO: "KAIRO · Scanner-Treffer", KAIROS: "KAIRO-S · Scanner-Treffer, schwache Aktien zuerst" }[sid] || "S20 · Trendfolge / VCP";
   const vr = { S19B: "Variante B: wie S19, aber das Volumen muss nur an 2 der letzten 3 Tage sinken. ", S19C: "Variante C: Überdehnung schon ab 2,0 Std und Volumen an 2 der letzten 3 Tage sinkend. " }[sid] || "";
@@ -4818,9 +4838,9 @@ function paperHtml() {
     <div class="note" style="margin:0 2px 10px">Vorwärtstest deiner Strategien (S19 dazu in zwei lockereren Varianten B und C) – je ${fmt(((d && (d.s19 || d.s20)) || {}).start_cash || 2000, 0)} € virtuelles Startkapital (Kairo-S: 20.000 €, damit 20 Positionen à 0,25 % Risiko gebührenfrei möglich sind), Kosten wie dein Scalable PRIME+: ab 250 € Orderwert gebührenfrei, darunter 0,99 €, plus Spread. Läuft automatisch jeden Werktag nach US-Börsenschluss. <b>Keine echten Orders</b>, keine Anlageberatung. Aussagekräftig erst nach vielen Trades (eher 6–12 Monate).</div>`;
   if (!d) return head + `<div class="hcard"><div class="note">${PAPER.err ? "Papier-Daten noch nicht verfügbar – der erste Lauf erscheint nach dem nächsten US-Börsenschluss." : "Lade Papier-Daten …"}</div></div>`;
   const sm = d.sum || {}, bench = sm.bench || [];
-  return head + paperCard("KAIRO", d.kairo, sm.KAIRO, bench) + paperCard("KAIROS", d.kairos, sm.KAIROS, bench) + paperCard("S19", d.s19, sm.S19, bench) + paperCard("S19B", d.s19b, sm.S19B, bench)
-    + paperCard("S19C", d.s19c, sm.S19C, bench) + paperCard("S20", d.s20, sm.S20, bench) + paperCard("DM", d.dm, sm.DM, bench) + paperCard("MOM10", d.mom10, sm.MOM10, bench) + paperCard("MOM5", d.mom5, sm.MOM5, bench)
-    + shadowHtml(sm.shadow)
+  const order = ["DM", "KAIROS", "KAIRO", "MOM10", "MOM5", "S20", "S19", "S19B", "S19C"];
+  return head + paperOverview(d, order) + order.map(sid => paperBox(sid, d[sid.toLowerCase()], sm[sid], bench)).join("")
+    + `<details class="pdet"><summary class="psum"><b>Schattenbuch S19/S20</b><span class="ptag">Forschung</span></summary>${shadowHtml(sm.shadow)}</details>`
     + `<div class="note" style="margin:6px 2px">Stand: ${esc(sm.ts ? new Date(sm.ts).toLocaleString("de-DE") : "–")}. Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser (so real nachhandelbar). 4H-Kerzen wie TradingView (US: 9:30–13:30 und 13:30–16:00). R nach Gebühren und Spread. Grenzen: Yahoo-Stundenkerzen teils verzögert, Fundamentaldaten wöchentlich von Yahoo.</div>`;
 }
 
