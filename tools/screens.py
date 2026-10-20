@@ -45,7 +45,20 @@ async def main(out: Path) -> None:
     async with async_playwright() as p:
         b = await p.chromium.launch(args=["--no-proxy-server"])
         for name, vp in (("ipad", {"width": 820, "height": 1180}), ("handy", {"width": 390, "height": 844})):
+            if name == "ipad":                             # Code-Seite: gesperrt, dann falscher Code
+                c0 = await b.new_context(viewport=vp, device_scale_factor=1); p0 = await c0.new_page()
+                await p0.goto(f"{url}?nosplash=1"); await p0.wait_for_timeout(1200)
+                await p0.screenshot(path=str(out / "ipad_gate.png"))
+                for d in "12":
+                    await p0.click(f'#gate [data-pin="{d}"]')
+                await p0.screenshot(path=str(out / "ipad_gate_2.png"))
+                await c0.close()
+            if name == "handy":
+                c0 = await b.new_context(viewport=vp, device_scale_factor=1); p0 = await c0.new_page()
+                await p0.goto(f"{url}?nosplash=1"); await p0.wait_for_timeout(1200)
+                await p0.screenshot(path=str(out / "handy_gate.png")); await c0.close()
             ctx = await b.new_context(viewport=vp, device_scale_factor=1)
+            await ctx.add_init_script("try{localStorage.setItem('kairo-gate','31151c44ed55cace96a0cb05c2ca90411e7f0263b40ab89f351fcb64dd2b5220')}catch(e){}")
             await ctx.add_init_script("try{localStorage.setItem('kairo-tx-v1', " + repr(demo_tx()) + ")}catch(e){}")
             await ctx.add_init_script("try{const k='reversal-finder-v1';const p=JSON.parse(localStorage.getItem(k)||'{}');p.briefOff=true;localStorage.setItem(k,JSON.stringify(p))}catch(e){}")
             pg = await ctx.new_page()
