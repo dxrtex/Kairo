@@ -45,13 +45,16 @@ async def main(out: Path) -> None:
         lines = []
         for fn in ("results.json", "search.json"):
             d = json.loads((app_smoke.SITE / "data" / fn).read_text())
-            rows = d["results"] if isinstance(d, dict) and "results" in d else (d.get("rows") or d.get("list") or d if isinstance(d, list) else list(d.values())[0])
+            rows = d.get("results") or d.get("rows") or []
             tot = {}
             for r in (rows if isinstance(rows, list) else []):
                 for k, v in (r.items() if isinstance(r, dict) else []):
                     tot[k] = tot.get(k, 0) + len(json.dumps(v, ensure_ascii=False, separators=(",", ":")))
             lines.append(f"{fn}: {(app_smoke.SITE / 'data' / fn).stat().st_size // 1024} KB, Typ {type(d).__name__}, Schlüssel {list(d)[:8] if isinstance(d, dict) else ''}")
             lines += [f"  {k}: {v // 1024} KB" for k, v in sorted(tot.items(), key=lambda x: -x[1])[:20]]
+        import gzip
+        for f in sorted((app_smoke.SITE / "data").glob("*.json"), key=lambda f: -f.stat().st_size)[:12]:
+            b = f.read_bytes(); lines.append(f"{f.name}: {len(b) // 1024} KB roh, {len(gzip.compress(b, 6)) // 1024} KB gzip")
         (out / "sizes.txt").write_text("\n".join(lines))
     except Exception as exc:
         (out / "sizes.txt").write_text(f"Fehler {exc!r}")
