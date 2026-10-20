@@ -48,15 +48,15 @@ def strat(df: pd.DataFrame, idx: int, extra: dict | None = None) -> dict:
     return {"res": "wait"}
 
 
-def strat_stats(sig: list[dict]) -> dict | None:
-    done = [s["st"] for s in sig if s.get("k") == "hit" and (s.get("st") or {}).get("res") in ("stop", "zeit")]
+def strat_stats(sig: list[dict], key: str = "st") -> dict | None:
+    done = [s[key] for s in sig if s.get("k") == "hit" and (s.get(key) or {}).get("res") in ("stop", "zeit", "ema")]
     if not done:
         return None
     r = [x["r"] for x in done]
     return {"n": len(done), "avg_r": round(sum(r) / len(r), 3), "win": round(sum(x > 0 for x in r) / len(r), 3),
             "stop": round(sum(x["res"] == "stop" for x in done) / len(done), 3),
-            "nobase": sum((s.get("st") or {}).get("res") == "nobase" for s in sig if s.get("k") == "hit"),
-            "run": sum((s.get("st") or {}).get("res") in ("run", "wait") for s in sig if s.get("k") == "hit")}
+            "nobase": sum((s.get(key) or {}).get("res") == "nobase" for s in sig if s.get("k") == "hit"),
+            "run": sum((s.get(key) or {}).get("res") in ("run", "wait") for s in sig if s.get("k") == "hit")}
 
 
 def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: bool = True) -> dict:
@@ -137,7 +137,7 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
         bt = None
     done = [s for s in sig if s.get("res") not in (None, "running")]
     out = {"generated": today, "live": {"since": min((s["d"] for s in sig), default=today), "n": len(sig),
-                                        "stats": stats(done) if done else None, "strat": strat_stats(sig),
+                                        "stats": stats(done) if done else None, "strat": strat_stats(sig), "strat60": strat_stats(sig, "st60"),
                                         "grade": {g: _agg([x for x in done if x["k"] == "hit" and x.get("grade") == g]) for g in "ABC"}},
            "signals": sorted(sig, key=lambda s: s["d"], reverse=True)[:80], "new": [s["t"] for s in new], "backtest": bt}
     return out
