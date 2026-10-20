@@ -32,7 +32,7 @@ GUIDE_DOWN = re.compile(
     r"|\b(guidance|outlook|forecast)\b[^|]{0,25}\b(below|misses|missed|disappoints?|weak|falls short)\b"
     r"|\b(weak|soft|disappointing|downbeat|gloomy|lowered)\b[^|]{0,20}\b(guidance|outlook|forecast)\b"
     r"|\b(senkt|kappt|kassiert|streicht)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
-ANALYST = re.compile(r"\b(price target|target price|kursziel|rating|upgrades?|downgrades?|upgraded|downgraded|analysts? (see|expect)|"
+ANALYST = re.compile(r"\b(price target|target price|kursziel|rating|stock forecast|price forecast|price prediction|prognose für die aktie|upgrades?|downgrades?|upgraded|downgraded|analysts? (see|expect)|"
                      r"(raises|lifts|cuts|lowers|trims|boosts)\b[^|]{0,30}\btarget\b)", re.I)
 GUIDE_KEEP = re.compile(
     r"\b(reaffirms?|reaffirmed|reiterates?|reiterated|maintains?|maintained|confirms?|confirmed)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
