@@ -71,6 +71,25 @@ async def main(out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     async with async_playwright() as p:
         b = await p.chromium.launch(args=["--no-proxy-server"])
+        for nm, vp in (("ipad", {"width": 820, "height": 1180}), ("handy", {"width": 390, "height": 844})):   # neuer Nutzer: Code → Intro → Rundgang → Heute
+            nc = await b.new_context(viewport=vp, device_scale_factor=1)
+            npg = await nc.new_page()
+            await npg.goto(url); await npg.wait_for_timeout(700)
+            await npg.screenshot(path=str(out / f"new_{nm}_1_gate.png"))
+            for d in "7777":
+                await npg.click(f'#gate [data-pin="{d}"]'); await npg.wait_for_timeout(120)
+            for k, w in ((2, 500), (3, 1200), (4, 2500)):
+                await npg.wait_for_timeout(w)
+                await npg.screenshot(path=str(out / f"new_{nm}_{k}_intro.png"))
+            await npg.wait_for_timeout(4000)
+            await npg.screenshot(path=str(out / f"new_{nm}_5_tour.png"))
+            for _ in range(3):
+                if await npg.query_selector(".tour-act .btn:not(.ghost)"):
+                    await npg.click(".tour-act .btn:not(.ghost)"); await npg.wait_for_timeout(400)
+            await npg.wait_for_timeout(800)
+            await npg.screenshot(path=str(out / f"new_{nm}_6_today.png"))
+            await npg.screenshot(path=str(out / f"new_{nm}_7_today_full.png"), full_page=True)
+            await nc.close()
         for name, vp in (("ipad", {"width": 820, "height": 1180}), ("handy", {"width": 390, "height": 844})):
             if name == "ipad":                             # Code-Seite: gesperrt, dann falscher Code
                 c0 = await b.new_context(viewport=vp, device_scale_factor=1); p0 = await c0.new_page()
