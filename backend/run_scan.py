@@ -46,6 +46,16 @@ SITE = ROOT / "site" / "data"
 CHART_BARS = 260
 
 
+SLIM = ("criteria", "zone", "div", "bonuses", "hint")
+
+
+def _slim(r: dict) -> dict:
+    """results.json schlank halten (Ladezeit der App): Trend-Rücksetzer-Daten nie (aus der App entfernt), volle Kriterien-
+    Details nur für Kandidaten (Treffer, Fast-Treffer, 9/11, ab 8/11, Watchlist). Die Zeilen selbst bleiben unverändert."""
+    full = r.get("passed") or r.get("fast_hit") or r.get("near_hit") or r.get("in_watchlist") or (r.get("met") or 0) >= 8
+    return {k: v for k, v in r.items() if k != "tr" and (full or k not in SLIM)}
+
+
 def _clean(x):
     """JSON-taugliche Werte (NaN → None, numpy → Python)."""
     if isinstance(x, dict):
@@ -53,7 +63,7 @@ def _clean(x):
     if isinstance(x, (list, tuple)):
         return [_clean(v) for v in x]
     if isinstance(x, (np.floating, float)):
-        return None if math.isnan(x) or math.isinf(x) else round(float(x), 6)
+        return None if math.isnan(x) or math.isinf(x) else float(f"{float(x):.7g}")   # 7 gültige Stellen reichen (kleinere Dateien)
     if isinstance(x, np.integer):
         return int(x)
     if isinstance(x, np.bool_):
@@ -658,7 +668,7 @@ def main(argv=None) -> int:
     stats["health"] = {"loaded": len(data), "universe": len(tickers), "info_fresh": info_fresh, "info_cached": info_cached,
                        "info_total": len(infos), "news": (len(brief["stocks"]) if brief else None), "errors": stats["errors"]}
     out = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "stats": stats,
-           "config": as_dict(CONFIG), "results": rows}
+           "config": as_dict(CONFIG), "results": [_slim(r) for r in rows]}
     SITE.mkdir(parents=True, exist_ok=True)
     with open(SITE / "results.json", "w", encoding="utf-8") as f:
         json.dump(_clean(out), f, ensure_ascii=False, separators=(",", ":"))

@@ -124,6 +124,45 @@ async def import_check(b, url, errs):
             errs.append(f"Import {name}: erwartet {want_isins} / {want_tx} Transaktionen, bekommen {got}")
     await ctx.close()
 
+
+async def ui_check(b, url, errs):
+    """Detailansicht mit Kairo-Plan, Textgröße, Design „Hell“, Einstellungen mit Feedback."""
+    ctx = await new_ctx(b, viewport={"width": 820, "height": 1180})
+    pg = await ctx.new_page()
+    pg.on("pageerror", lambda e: errs.append(f"UI: JS-Fehler {e}"))
+    await pg.goto(f"{url}?nosplash=1&sec=scanner")
+    await pg.wait_for_timeout(2500)
+    await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.hidden = true)')
+    t = await pg.evaluate("(() => { const r = data.results.find(r => r.passed); return r ? r.ticker : null; })()")
+    if t:
+        await pg.evaluate(f"openCard({t!r})")
+        await pg.wait_for_timeout(600)
+        if not await pg.query_selector("#cardModalBody .kplan"):
+            errs.append("Detailansicht: Kairo-Plan fehlt")
+        await pg.evaluate("closeCard()")
+    t2 = await pg.evaluate("(() => { const r = data.results.find(r => !r.criteria); return r ? r.ticker : null; })()")
+    if t2:                                                   # schlanke Zeile ohne Kriterien-Details darf nicht abstürzen
+        await pg.evaluate(f"openCard({t2!r})")
+        await pg.wait_for_timeout(400)
+        if not await pg.query_selector("#cardModalBody .kplan"):
+            errs.append("Detailansicht ohne Kriterien-Details: Fehler")
+        await pg.evaluate("closeCard()")
+    await pg.goto(f"{url}?nosplash=1&sec=settings")
+    await pg.wait_for_timeout(1500)
+    await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.hidden = true)')
+    await pg.click('[data-tsize="big"]')
+    await pg.wait_for_timeout(300)
+    if not await pg.evaluate("document.documentElement.classList.contains('big')"):
+        errs.append("Textgröße: wird nicht übernommen")
+    await pg.click('[data-tsize=""]')
+    await pg.click('[data-design="light"]')
+    await pg.wait_for_timeout(300)
+    if not await pg.evaluate("isLight() && document.getElementById('ds-light').media === 'all'"):
+        errs.append("Design Hell: wird nicht aktiv")
+    if not await pg.query_selector('[data-fb="copy"]'):
+        errs.append("Einstellungen: Feedback fehlt")
+    await ctx.close()
+
 async def run(port: int) -> list[str]:
     from playwright.async_api import async_playwright
     url = f"http://127.0.0.1:{port}/"
@@ -134,6 +173,7 @@ async def run(port: int) -> list[str]:
         await gate_check(b, url, errs)
         await tour_check(b, url, errs)
         await import_check(b, url, errs)
+        await ui_check(b, url, errs)
         for name, vp in (("iPad", {"width": 820, "height": 1180}), ("Handy", {"width": 390, "height": 844})):
             ctx = await new_ctx(b, viewport=vp)
             pg = await ctx.new_page()
