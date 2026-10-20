@@ -162,6 +162,22 @@ async def main(out: Path) -> None:
                         fh.write(f"\n{name} Rundgang {k}: {hit}")
                     await pg.click('.tour-act .btn:not(.ghost)', timeout=5000); await pg.wait_for_timeout(300)
                 await pg.screenshot(path=str(out / f"{name}_tour{k + 1}.png"))
+            if name == "ipad":                             # helles Design (Automatisch + System hell)
+                lc = await b.new_context(viewport=vp, device_scale_factor=1, color_scheme="light")
+                await lc.add_init_script("try{localStorage.setItem('kairo-gate','31151c44ed55cace96a0cb05c2ca90411e7f0263b40ab89f351fcb64dd2b5220');localStorage.setItem('kairo-tx-v1', " + repr(demo_tx()) + ");const k='reversal-finder-v1';const p=JSON.parse(localStorage.getItem(k)||'{}');p.briefOff=true;p.tourDone=1;p.design='auto';localStorage.setItem(k,JSON.stringify(p))}catch(e){}")
+                lp = await lc.new_page()
+                for sec in ("today", "scanner", "entry", "etf", "depot", "journal", "game", "bilanz", "paper", "settings", "news", "calendar"):
+                    await lp.goto(f"{url}?nosplash=1&sec={sec}"); await lp.wait_for_timeout(2200)
+                    await lp.screenshot(path=str(out / f"light_{sec}.png"))
+                    if sec == "today":
+                        await lp.evaluate("window.scrollTo(0, 1100)"); await lp.wait_for_timeout(400)
+                        await lp.screenshot(path=str(out / "light_today_1.png"))
+                    if sec == "scanner":
+                        t = await lp.evaluate("(() => { const r = data.results.find(r => r.passed); return r ? r.ticker : null; })()")
+                        if t:
+                            await lp.evaluate(f"openCard({t!r})"); await lp.wait_for_timeout(1200)
+                            await lp.screenshot(path=str(out / "light_card.png")); await lp.evaluate("closeCard()")
+                await lc.close()
             for page in ("track", "research"):
                 await pg.goto(f"https://dxrtex.github.io/Kairo/{page}/")
                 await pg.wait_for_timeout(2000)
