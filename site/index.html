@@ -1625,7 +1625,7 @@ function scoreBoxHtml(r) {
       <table class="check"><tbody>${(r.bonuses || []).map(b => `<tr><td class="${b.points >= 0 ? "ok" : "no"}">${b.points > 0 ? "+" : ""}${b.points}</td><td>${esc(b.label)}</td></tr>`).join("")}
       <tr><td><b>${sum}</b></td><td><b>Summe${sum > 100 ? " (gedeckelt auf 100)" : ""}</b></td></tr></tbody></table>${gradeBox}${trend}${past}`;
   }
-  const miss = r.criteria.filter(c => !c.ok && !["cap", "liquidity", "price", "history"].includes(c.key));
+  const miss = (r.criteria || []).filter(c => !c.ok && !["cap", "liquidity", "price", "history"].includes(c.key));
   return `<div class="sb-h">${r.met ?? "–"} von ${r.total ?? 11} Kriterien erfüllt – Score gibt es erst, wenn alle erfüllt sind</div>
     <table class="check"><tbody>${miss.map(c => `<tr><td class="no">✗</td><td><b>${esc(c.label)}</b><br>${esc(c.value)}</td></tr>`).join("")}</tbody></table>${trend}${past}`;
 }
@@ -1677,12 +1677,12 @@ function fundHtml(r) {
 // ---------- Karte ----------
 function ampel(r) {
   return `<div class="ampel" title="Pflichtkriterien">${SETUP_KEYS.map(k => {
-    const c = r.criteria.find(x => x.key === k); return c ? `<span class="dot ${c.ok ? "" : "no"}" title="${esc(SHORT[k])}: ${c.ok ? "erfüllt" : "fehlt"}"></span>` : "";
+    const c = (r.criteria || []).find(x => x.key === k); return c ? `<span class="dot ${c.ok ? "" : "no"}" title="${esc(SHORT[k])}: ${c.ok ? "erfüllt" : "fehlt"}"></span>` : "";
   }).join("")}</div>`;
 }
 function chips(r) {
   return SETUP_KEYS.map(k => {
-    const c = r.criteria.find(x => x.key === k); if (!c) return "";
+    const c = (r.criteria || []).find(x => x.key === k); if (!c) return "";
     return `<span class="chip ${c.ok ? "ok" : "miss"}"><i>${c.ok ? "✓" : "✗"}</i> ${esc(SHORT[k])}</span>`;
   }).join("");
 }
@@ -1775,7 +1775,7 @@ function card(r) {
     </div>
     ${isApple() ? `<div class="aseg rng">${[["1M", 21], ["3M", 63], ["6M", 126], ["1J", 252]].map(([l, n]) => `<button data-rng="${n}" class="${(state.aRng || 63) === n ? "on" : ""}">${l}</button>`).join("")}</div>` : ""}
     <div class="chart" data-mini="${esc(r.ticker)}"><svg class="candles" viewBox="0 0 600 220" preserveAspectRatio="none"></svg></div>
-    ${agrp(`Kriterien · ${r.met ?? "–"}/${r.total ?? 11}`, `<div class="chips">${chips(r)}</div>`, true)}
+    ${agrp(`Kriterien · ${r.met ?? "–"}/${r.total ?? 11}`, r.criteria ? `<div class="chips">${chips(r)}</div>` : `<div class="note" style="margin:0">${r.met ?? "–"} von ${r.total ?? 11} Kriterien erfüllt${(r.missing || []).length ? ` – es fehlen: ${esc(r.missing.map(shortCrit).join(", "))}` : ""}.</div>`, true)}
     ${tipHtml(r.hint)}
     ${agrp("Marktstimmung", sentiHtml(r))}
     ${agrp("Fundament & Wochentrend", fundHtml(r))}
@@ -1909,7 +1909,7 @@ const COLS = [
   { k: "met", l: "Erfüllt", n: 1, watch: 1, g: r => r.met ?? 0, h: r => !r.passed && !r.fast_hit && isTrend(r) ? `<b class="up">${r.tr.met} / ${r.tr.total}</b><small class="muted" style="display:block">Trend · Kairo ${r.met}/${r.total}</small>` : `<b class="${r.passed ? "up" : r.fast_hit ? "" : "muted"}">${r.met ?? "–"} / ${r.total ?? 11}</b>${filterMiss(r) ? `<small class="down" style="display:block">Filter ✗</small>` : ""}` },
   { k: "miss", l: "Fehlt", fast: 1, g: r => r.missing[0] || "", h: r => { if (r.passed) return `<span class="up">– (Treffer)</span>`;
     if (isTrend(r) && !r.fast_hit) return `<span class="up">– (Trend-Rücksetzer)</span>`;
-    const miss = r.criteria.filter(x => !x.ok && SETUP_KEYS.includes(x.key)).map(x => SHORT[x.key]);
+    const miss = (r.criteria || []).filter(x => !x.ok && SETUP_KEYS.includes(x.key)).map(x => SHORT[x.key]);
     const text = miss.length <= 2 ? miss.join(", ") : `${miss.slice(0, 2).join(", ")} +${miss.length - 2}`;
     return `<span class="down" title="${esc(r.missing.join(" · "))}">${esc(text || r.missing[0] || "–")}</span>`; } },
 ];
@@ -5660,7 +5660,7 @@ async function openDetail(t) {
     <div class="pane"><div class="pane-label">Momentum Bias Index [AlgoAlpha] · grün/rot · Referenzlinie · X-Signale</div><div class="lw" id="cMbi" style="height:150px"></div></div>
     <div class="two">
       <div class="pane"><div class="pane-label">Checkliste – alle Kriterien</div>
-        <table class="check"><tbody>${r.criteria.map(c => `<tr><td class="${c.ok ? "ok" : "no"}">${c.ok ? "✓" : "✗"}</td><td><b>${esc(c.label)}</b><br>${esc(c.value)}<div class="th">Schwelle: ${esc(c.threshold)}</div></td></tr>`).join("")}</tbody></table>
+        <table class="check"><tbody>${(r.criteria || []).map(c => `<tr><td class="${c.ok ? "ok" : "no"}">${c.ok ? "✓" : "✗"}</td><td><b>${esc(c.label)}</b><br>${esc(c.value)}<div class="th">Schwelle: ${esc(c.threshold)}</div></td></tr>`).join("")}</tbody></table>
         ${r.bonuses && r.bonuses.length ? `<div class="pane-label" style="margin-top:12px">Score-Bausteine</div><table class="check"><tbody>${r.bonuses.map(b => `<tr><td class="${b.points >= 0 ? "ok" : "no"}">${b.points > 0 ? "+" : ""}${b.points}</td><td>${esc(b.label)}</td></tr>`).join("")}</tbody></table>` : ""}
       </div>
       <div class="pane"><div class="pane-label">Einstieg · Trade-Plan, Turbo &amp; Hebel</div>
