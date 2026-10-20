@@ -164,6 +164,9 @@ async def run(port: int) -> list[str]:
         if await pg.query_selector('[data-g="start"]'):
             await pg.click('[data-g="start"]')
             await pg.wait_for_timeout(800)
+            if await pg.query_selector('[data-g="tab"][data-v="trade"]'):    # Broker-Ansicht: Kairo-Treffer stehen unter „Handeln“
+                await pg.click('[data-g="tab"][data-v="trade"]')
+                await pg.wait_for_timeout(600)
             pick = await pg.query_selector('.g-idea[data-g="pick"]')
             if pick:
                 await pick.click()
@@ -179,6 +182,9 @@ async def run(port: int) -> list[str]:
                     await pg.dispatch_event("#gStop", "input")
                 await pg.fill("#gQty", "10")
                 await pg.dispatch_event("#gQty", "input")
+                if await pg.query_selector('[data-g="review"]'):                 # erst „Order prüfen“, dann kostenpflichtig kaufen
+                    await pg.click('[data-g="review"]')
+                    await pg.wait_for_timeout(600)
                 await pg.click('[data-g="buy"]')
                 await pg.wait_for_timeout(800)
                 n = await pg.evaluate('(JSON.parse(localStorage.getItem("kairo-game2")) || {pos: []}).pos.length')
