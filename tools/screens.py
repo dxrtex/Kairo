@@ -85,9 +85,10 @@ async def main(out: Path) -> None:
                 if await pg.query_selector('.g-idea'):
                     await pg.click('.g-idea'); await pg.wait_for_timeout(1200)
                     await pg.screenshot(path=str(out / "ipad_g2_ticket.png"))
-                    for sel, v in (("#gWkn", "DEMO123"), ("#gP0", "2,50"), ("#gK0", "1"), ("#gQty", "200")):
+                    c = await pg.evaluate("(() => gPx(state.gSel).c)()")
+                    for sel, v in (("#gWkn", "DEMO123"), ("#gP0", "2.50"), ("#gK0", f"{c * 0.85:.2f}"), ("#gQty", "200")):
                         if await pg.query_selector(sel):
-                            await pg.fill(sel, v)
+                            await pg.fill(sel, v); await pg.dispatch_event(sel, "input")
                     await pg.click('[data-g="review"]'); await pg.wait_for_timeout(800)
                     await pg.screenshot(path=str(out / "ipad_g3_review.png"))
                     if await pg.query_selector('[data-g="buy"]'):
