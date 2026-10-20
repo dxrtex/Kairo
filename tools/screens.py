@@ -136,7 +136,12 @@ async def main(out: Path) -> None:
                 await pg.goto(f"{url}?tour=1"); await pg.wait_for_timeout(2500)
                 await pg.evaluate("document.querySelectorAll('.splash').forEach(x => x.remove())")
                 for _ in range(k):
-                    await pg.click('.tour-act .btn:not(.ghost)'); await pg.wait_for_timeout(300)
+                    hit = await pg.evaluate("""(() => { const b = document.querySelector('.tour-act .btn:not(.ghost)'); if (!b) return 'kein Knopf';
+                      const r = b.getBoundingClientRect(), el = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+                      return (el ? el.className + ' / ' + (el.parentElement && el.parentElement.id) : 'nichts') + ' · Fenster ' + document.querySelectorAll('#tour').length; })()""")
+                    with open(out / "errors.txt", "a") as fh:
+                        fh.write(f"\n{name} Rundgang {k}: {hit}")
+                    await pg.click('.tour-act .btn:not(.ghost)', timeout=5000); await pg.wait_for_timeout(300)
                 await pg.screenshot(path=str(out / f"{name}_tour{k + 1}.png"))
             for page in ("track", "research"):
                 await pg.goto(f"https://dxrtex.github.io/Kairo/{page}/")
