@@ -69,11 +69,18 @@ async def main(out: Path) -> None:
             if ein:
                 await pg.goto(f"{url}?nosplash=1&sec=entry")
                 await pg.wait_for_timeout(1500)
+            errs = []
+            pg.on("pageerror", lambda e: errs.append(str(e)))
             if name == "ipad":                             # Übung als Broker: Spiel starten, Order-Ticket, Order prüfen, Aufträge
                 await pg.goto(f"{url}?nosplash=1&sec=game"); await pg.wait_for_timeout(2500)
                 if await pg.query_selector('[data-g="start"]'):
                     await pg.click('[data-g="start"]'); await pg.wait_for_timeout(1200)
                 await pg.screenshot(path=str(out / "ipad_g1_depot.png"))
+                await pg.screenshot(path=str(out / "ipad_g1b.png"), full_page=False)
+                (out / "errors.txt").write_text("\n".join(errs) or "keine Fehler")
+                if not await pg.query_selector('[data-g="tab"]'):
+                    (out / "errors.txt").write_text("\n".join(errs) + "\nkein Tab – main: " + (await pg.inner_text("#main"))[:2000])
+                    raise SystemExit(0)
                 await pg.click('[data-g="tab"][data-v="trade"]'); await pg.wait_for_timeout(800)
                 if await pg.query_selector('.g-idea'):
                     await pg.click('.g-idea'); await pg.wait_for_timeout(1200)
