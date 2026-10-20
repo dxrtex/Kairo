@@ -1,0 +1,45 @@
+name: Quartalszahlen live
+
+# Prüft tagsüber laufend die Aktien mit Quartalstermin (gestern/heute/morgen). Sobald Yahoo die Zahlen hat, stehen
+# Ergebnis, Ausblick und Einschätzung in der App – ohne auf den Abendscan zu warten (Branch kairo-earnings).
+on:
+  schedule:
+    - cron: "*/10 4-7 * * 1-5"      # Europa vor Börsenstart (06–09 Uhr Berlin) und USA früh
+    - cron: "*/10 10-14 * * 1-5"    # USA vor Börsenstart (12–16 Uhr Berlin)
+    - cron: "*/10 19-23 * * 1-5"    # USA nach Börsenschluss (21–01 Uhr Berlin)
+    - cron: "*/30 8-9,15-18 * * 1-5"
+    - cron: "*/30 0-3 * * 2-6"      # Nachzügler und Asien
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: earnings-live
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Zustand laden (Branch kairo-earnings) und Umsatz-Erwartungen aus dem Scan
+        run: |
+          if git fetch -q origin kairo-earnings:kairo-earnings 2>/dev/null; then git worktree add -q state kairo-earnings;
+          else git worktree add -q --orphan -b kairo-earnings state; fi
+          git fetch -q origin kairo-data 2>/dev/null && git show origin/kairo-data:earn_est.json > "$RUNNER_TEMP/earn_est.json" 2>/dev/null || echo "{}" > "$RUNNER_TEMP/earn_est.json"
+      - name: Quartalszahlen prüfen
+        run: python -m backend.earnings state "$RUNNER_TEMP/earn_est.json"
+      - name: Sichern
+        run: |
+          cd state
+          git add -A
+          git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Quartalszahlen $(date +%F-%H%M)" || exit 0
+          git pull -q --rebase origin kairo-earnings || true
+          git push -q origin kairo-earnings

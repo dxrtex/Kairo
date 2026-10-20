@@ -78,3 +78,10 @@ def test_guidance_company_after_phrase():
              ("General Motors Profit Outlook Disappoints, Stock Sinks - Benzinga", "u2", RSS_DATE)]
     assert E.guidance(items[:1], ["GM"])["d"] == 1
     assert E.guidance(items[1:], ["General", "GM"])["d"] == -1
+
+
+def test_guidance_ignores_analyst_targets():
+    items = [("JPMorgan trims target for General Motors stock from USD 120 to USD 110 - ad-hoc-news.de", "u", RSS_DATE),
+             ("Goldman raises Netflix price target, sees stronger outlook - X", "u", RSS_DATE)]
+    assert E.guidance(items[:1], ["JPMorgan", "JPM"]) is None
+    assert E.guidance(items[1:], ["Netflix"]) is None

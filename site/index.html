@@ -2064,12 +2064,32 @@ function newsHtml() {
     + block("Größte Insider-Verkäufe", sells.slice(0, 12).map(irow), "–");
 }
 // ---------- Quartalszahlen: Antippen im Kalender → Ergebnis, Ausblick, Kursreaktion, Einschätzung (data/earnings.json) ----------
-let earnData = null, earnLoading = null;
+// Abendscan (earnings.json) + Prüfdienst tagsüber (earnings_live.json im Branch kairo-earnings, alle 10–30 Min.)
+const EARN_LIVE_URL = REPO.replace("https://github.com/", "https://raw.githubusercontent.com/") + "/kairo-earnings/earnings_live.json";
+let earnData = null, earnLoading = null, earnLiveAt = 0;
+function earnMerge(live) {
+  Object.entries(live || {}).forEach(([t, r]) => {
+    const old = earnData[t], ol = old && old.last;
+    if (!r.last || (ol && ol.date > r.last.date)) return;
+    earnData[t] = { ...(old || {}), ...r, beat: (old && old.beat) || r.beat, move: (old && old.move) || r.move, next: ol && ol.date === r.last.date ? old.next : undefined };
+  });
+}
+function loadEarnLive() {
+  earnLiveAt = Date.now();
+  return fetch(EARN_LIVE_URL + "?v=" + Math.floor(Date.now() / 3e5)).then(r => r.ok ? r.json() : null).then(d => {
+    if (!d || !earnData) return;
+    earnMerge(d.tickers); earnData.__live = d.generated;
+    if (state.sec === "calendar" || state.sec === "news") render();
+    const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d);
+  }).catch(() => {});
+}
 function loadEarnings() {
   if (!earnLoading) earnLoading = scanFetch("earnings.json").then(r => r.ok ? r.json() : { tickers: {} })
-    .then(d => { earnData = d.tickers || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnData = {}; });
+    .then(d => { earnData = d.tickers || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); return loadEarnLive(); }).catch(() => { earnData = earnData || {}; });
   return earnLoading;
 }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && earnData && Date.now() - earnLiveAt > 4 * 6e4) loadEarnLive(); });
+setInterval(() => { if (document.visibilityState === "visible" && earnData && state.sec === "calendar") loadEarnLive(); }, 5 * 6e4);
 const bigNum = (v, cur) => v == null ? "–" : `${Math.abs(v) >= 1e9 ? fmt(v / 1e9, 2) + " Mrd." : Math.abs(v) >= 1e6 ? fmt(v / 1e6, 0) + " Mio." : fmt(v, 0)}${cur ? " " + cur : ""}`;
 const sgn = (v, d = 1) => v == null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : "±"}${pct(Math.abs(v), d)}`;
 const upDown = v => v == null ? "" : v > 0 ? "up" : v < 0 ? "down" : "";
@@ -2082,7 +2102,7 @@ function earnHtml(t, d) {
   const L = rec && rec.last && (!d || Math.abs(daysUntil(rec.last.date) - daysUntil(d)) <= 3) ? rec.last : null;
   const N = rec && rec.next && !L ? rec.next : null;
   const cell = (l, v, sub, cls = "") => `<div><span>${l}</span><b class="${cls}">${v}</b>${sub ? `<em>${sub}</em>` : ""}</div>`;
-  const foot = `<p class="eq-note">Einschätzung nach fester Regel, keine Prognose: Gewinn je Aktie ±3 % und Umsatz ±1 % gegen die Erwartung, der Ausblick zählt doppelt – der Markt handelt die Zukunft. Quellen: Yahoo Finance, Schlagzeilen über Google News. Keine Anlageberatung.</p>`;
+  const foot = `<p class="eq-note">Einschätzung nach fester Regel, keine Prognose: Gewinn je Aktie ±3 % und Umsatz ±1 % gegen die Erwartung, der Ausblick zählt doppelt – der Markt handelt die Zukunft. Quellen: Yahoo Finance, Schlagzeilen über Google News. Tagsüber alle 10–30 Minuten geprüft${earnData && earnData.__live ? ` · zuletzt ${new Date(earnData.__live).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr` : ""}. Keine Anlageberatung.</p>`;
   if (L) {
     const v = L.view, g = L.guide, rx = L.rx;
     const gTxt = !g ? "keine Meldung gefunden" : g.d === 1 ? "angehoben" : g.d === -1 ? "gesenkt" : g.d === 0 ? "bestätigt" : "widersprüchlich";
@@ -2100,7 +2120,7 @@ function earnHtml(t, d) {
   if (N) {
     const n = daysUntil(N.date);
     return head + `<div class="eq-sub">${n === 0 ? "Heute" : n === 1 ? "Morgen" : `In ${n} Tagen`} · ${dateDE(N.date)}${N.when ? " · " + N.when : ""}</div>
-      <div class="eq-v t-gray"><i></i><div><b>Noch keine Zahlen</b><span>Die Ergebnisse und die Einschätzung erscheinen hier nach dem ersten Abendscan danach.</span></div></div>
+      <div class="eq-v t-gray"><i></i><div><b>Noch keine Zahlen</b><span>Kairo prüft am Termin laufend – die Ergebnisse stehen hier meist 15–40 Minuten nach der Veröffentlichung.</span></div></div>
       <div class="eq-cells">
         ${cell("Erwartung Gewinn je Aktie", N.eps_e == null ? "–" : `${fmt(N.eps_e)} ${cur}`.trim(), "")}
         ${cell("Erwartung Umsatz", bigNum(N.rev_e, cur), N.rev_g != null ? `zum Vorjahr ${sgn(N.rev_g)}${N.rev_n ? ` · ${N.rev_n} Analysten` : ""}` : "")}
@@ -2143,11 +2163,12 @@ function calendarHtml() {
       return `<div class="ev"><span class="k ${cls}"${e.imp === "high" ? ' style="outline:2px solid var(--down);outline-offset:1px"' : ""}>${icon}</span><div class="b"><b>${esc(e.title)}</b><span>${info ? esc(info) + "<br>" : ""}${e.kind === "macro" && reg !== "all" ? `${REG_DE[reg] || reg} – ${n2} deiner Aktien dort, bewegt aber oft alle Börsen` : "betrifft den ganzen Markt"}</span></div></div>`;
     }
     const inRes = data.results.some(r => r.ticker === e.ticker);
-    const sub = e.kind === "earnings" ? (e.done ? "Quartalszahlen gemeldet · antippen" : e.big && !e.watch && !dep.has(e.ticker) ? "Quartalszahlen · Schwergewicht – bewegt Index und Branche" : e.estimate ? "Quartalszahlen · Datum geschätzt" : "Quartalszahlen")
+    const sub = e.kind === "earnings" ? (e.done || (earnData && earnData[e.ticker] && earnData[e.ticker].last && earnData[e.ticker].last.date === e.date) ? "Quartalszahlen gemeldet · antippen" : e.big && !e.watch && !dep.has(e.ticker) ? "Quartalszahlen · Schwergewicht – bewegt Index und Branche" : e.estimate ? "Quartalszahlen · Datum geschätzt" : "Quartalszahlen")
       : e.kind === "exdiv" ? `Ex-Dividende${e.rate ? " · " + fmt(e.rate) + " je Aktie p. a." : ""}` : `Dividendenzahlung${e.rate ? " · " + fmt(e.rate) + " je Aktie p. a." : ""}`;
-    const earn = e.kind === "earnings", res = earn && e.done;
+    const earn = e.kind === "earnings", er = earn && earnData && earnData[e.ticker], erl = er && er.last && Math.abs(daysUntil(er.last.date) - daysUntil(e.date)) <= 3 ? er.last : null;
+    const res = earn && (e.done || !!erl), tone = (erl && erl.view && erl.view.tone) || e.tone || "gray";
     return `<div class="ev${earn ? " ev-tap" : ""}"${earn ? ` data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0" aria-label="Quartalszahlen ${esc(e.name || e.ticker)} öffnen"` : ""}><span class="k ${cls}">${icon}</span><div class="b"><b>${esc(e.name || e.ticker)}${dep.has(e.ticker) ? '<span class="pill dep">Depot</span>' : favs().has(e.ticker) ? '<span class="pill fv">★</span>' : e.watch ? '<span class="pill">WL</span>' : ""}</b><span>${esc(e.ticker)} · ${sub}</span></div>
-      ${res ? `<span class="ev-res t-${esc(e.tone || "gray")}"><i></i>Zahlen da</span>` : earn ? `<span class="ev-more" aria-hidden="true">›</span>` : inRes ? `<a class="btnlink" href="#" data-card="${esc(e.ticker)}">Übersicht</a>` : ""}</div>`;
+      ${res ? `<span class="ev-res t-${esc(tone)}"><i></i>Zahlen da</span>` : earn ? `<span class="ev-more" aria-hidden="true">›</span>` : inRes ? `<a class="btnlink" href="#" data-card="${esc(e.ticker)}">Übersicht</a>` : ""}</div>`;
   };
   const dayHead = d => {
     const n = daysUntil(d), when = n === 0 ? "heute" : n === 1 ? "morgen" : n === -1 ? "gestern" : n < 0 ? `vor ${-n} Tagen` : `in ${n} Tagen`;
