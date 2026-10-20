@@ -103,6 +103,22 @@ async def run(port: int) -> list[str]:
                     if r["ov"] or r["sw"] > vw + 2:
                         errs.append(f"{des} {vw}px ({step}): Bereiche überlappen oder Seite zu breit ({r})")
                 await ctx.close()
+        # Übung (Broker): Spiel starten, alle drei Reiter, Order-Ticket öffnen und prüfen lassen – jeder JS-Fehler zählt
+        ctx = await b.new_context(viewport={"width": 820, "height": 1180})
+        pg = await ctx.new_page()
+        pg.on("pageerror", lambda e: errs.append(f"Übung: JS-Fehler {e}"))
+        await pg.goto(f"{url}?nosplash=1&sec=game")
+        await pg.wait_for_timeout(2500)
+        if await pg.query_selector('[data-g="start"]'):
+            await pg.click('[data-g="start"]')
+            await pg.wait_for_timeout(1200)
+            for v in ("trade", "orders", "depot"):
+                if not await pg.query_selector(f'[data-g="tab"][data-v="{v}"]'):
+                    errs.append(f"Übung: Reiter {v} fehlt nach dem Start")
+                    break
+                await pg.click(f'[data-g="tab"][data-v="{v}"]')
+                await pg.wait_for_timeout(600)
+        await ctx.close()
         # Einstieg: Aktie wählen, Turbo von Hand eintragen (Briefkurs, K.-o. + Währung, Bezugsverhältnis) → Stop-Loss am Turbo prüfen
         ctx = await b.new_context(viewport={"width": 820, "height": 1180})
         pg = await ctx.new_page()
