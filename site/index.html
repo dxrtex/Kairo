@@ -2903,11 +2903,11 @@ function journalHtml() {
   const fchips = [["", "Alle"], ["win", "Gewinner"], ["loss", "Verlierer"], ...Object.keys(byKind).map(k => [k, { tl: "Turbo Long", ts: "Turbo Short", stock: "Aktien", etf: "ETFs" }[k]])];
   const tradesTbl = `<div class="section-title" style="margin-top:26px"><span>Abgeschlossene Trades</span><span>${list.length}</span></div>
     <div class="kbar">${fchips.map(([v, l]) => `<button class="kchip${jFilter === v ? " on" : ""}" data-jfilter="${v}">${l}</button>`).join("")}</div>
-    <div class="table-wrap"><table class="jtrades"><thead><tr>${th("close", "Geschlossen")}${th("under", "Wert")}<th>Art</th>${th("days", "Dauer", 1)}${th("cost", "Einsatz", 1)}${th("pnl", "Ergebnis", 1)}${th("ret", "in %", 1)}</tr></thead>
-    <tbody>${list.map(t => { const k = jKey(t), nt = jnLoad()[k], open = jOpen.has(k); return `<tr class="jrow${open ? " open" : ""}" data-jrow="${esc(k)}"><td>${dateDE(t.close)}<small>seit ${dateDE(t.open)}</small></td><td><b>${esc(t.under)}</b><small>${esc(t.isin)}${t.buys + t.sells > 2 ? ` · ${t.buys} Käufe, ${t.sells} Verkäufe` : ""}</small></td>
-      <td><span class="kp" style="--k:${KIND_COL[t.k]}">${t.label}</span></td><td class="num">${t.days} T.</td><td class="num">${eur2(t.cost)}</td>
-      <td class="num ${t.pnl >= 0 ? "up" : "down"}"><b>${sEur2(t.pnl)}</b></td><td class="num ${t.pnl >= 0 ? "up" : "down"}">${sgnPct(t.ret, 1)}${nt && ((nt.tags || []).length || nt.note) ? ' <span class="jhas">✎</span>' : ""}</td></tr>
-      ${open ? `<tr class="jdet"><td colspan="7">${jDetailHtml(t)}</td></tr>` : ""}`; }).join("")}</tbody></table></div>
+    <div class="table-wrap"><table class="jtrades"><thead><tr>${th("close", "Geschlossen")}${th("under", "Wert")}${th("days", "Dauer", 1)}${th("cost", "Einsatz", 1)}${th("pnl", "Ergebnis", 1)}</tr></thead>
+    <tbody>${list.map(t => { const k = jKey(t), nt = jnLoad()[k], open = jOpen.has(k); return `<tr class="jrow${open ? " open" : ""}" data-jrow="${esc(k)}"><td>${dateDE(t.close)}<small>seit ${dateDE(t.open)}</small></td><td><b>${esc(t.under)}</b><small><span class="kp" style="--k:${KIND_COL[t.k]}">${t.label}</span>${t.buys + t.sells > 2 ? ` · ${t.buys} Käufe, ${t.sells} Verkäufe` : ""}</small></td>
+      <td class="num">${t.days} T.</td><td class="num">${eur2(t.cost)}</td>
+      <td class="num ${t.pnl >= 0 ? "up" : "down"}"><b>${sEur2(t.pnl)}</b><small class="${t.pnl >= 0 ? "up" : "down"}">${sgnPct(t.ret, 1)}${nt && ((nt.tags || []).length || nt.note) ? ' <span class="jhas">✎</span>' : ""}</small></td></tr>
+      ${open ? `<tr class="jdet"><td colspan="5">${jDetailHtml(t)}</td></tr>` : ""}`; }).join("")}</tbody></table></div>
     <div class="note" style="margin:8px 2px 0">Trade antippen: Kairo-Bewertung des Einstiegs, Tags und Notiz.</div>
     <div class="card jcard" style="margin-top:14px"><div class="jc-h"><b>Nach Tags</b><span>dein Verhalten in Zahlen</span></div>${jTagStatsHtml(all)}</div>`;
   const openTbl = m.open.length ? `<div class="section-title" style="margin-top:26px"><span>Noch offen</span><span>${m.open.length}</span></div>
