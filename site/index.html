@@ -532,6 +532,9 @@
   .psum { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 14px 16px; border-radius: 16px; background: var(--glass); border: 1px solid var(--glass-line); list-style: none; }
   .psum::-webkit-details-marker { display: none; } .psum b { flex: 1; } .psum::after { content: "›"; color: var(--muted); transition: transform .2s; } .pdet[open] > .psum::after { transform: rotate(90deg); }
   .ptag { font-size: 12px; color: var(--muted); }
+  .prow { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .prow:last-of-type { border-bottom: 0; } .prow small { display: block; font-size: 12px; color: var(--muted); } .prow small.up { color: var(--up); }
+  .prow small.down { color: var(--red); } .prow small.gold { color: var(--gold); } .pr-r { text-align: right; white-space: nowrap; }
   .subnav .sn-sep { flex: 0 0 1px; margin: 6px 3px; background: var(--glass-line); }
   /* Kalender */
   /* Heute */
@@ -4752,9 +4755,9 @@ const PAPER_NAME = { DM: "Dual Momentum (ETF)", KAIROS: "Kairo-S · 20 × 0,25 %
 const paperVal = st => { const eq = st && (st.equity || []).slice(-1)[0], v = eq ? eq.eur : st && st.start_cash; return { v, ret: st && v != null ? v / st.start_cash - 1 : null }; };
 function paperOverview(d, order) {
   const rows = order.map(sid => { const st = d[sid.toLowerCase()], { v, ret } = paperVal(st), [tag, tone] = PAPER_TAG[sid];
-    return `<tr><td><b>${PAPER_NAME[sid]}</b><br><span class="${tone}" style="font-size:12px">${tag}</span></td><td class="num">${v == null ? "–" : eur(v)}</td>
-      <td class="num ${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "–" : sgnPct(ret, 1)}</td><td class="num">${st ? (st.trades || []).length : "–"}</td><td class="num">${st ? (st.positions || []).length : "–"}</td></tr>`; }).join("");
-  return `<div class="hcard">${hHead("Alle Papier-Depots")}<div class="tscroll"><table class="ptab"><tr><th>Depot</th><th class="num">Wert</th><th class="num">seit Start</th><th class="num">Trades</th><th class="num">offen</th></tr>${rows}</table></div>
+    return `<div class="prow"><span><b>${PAPER_NAME[sid]}</b><small class="${tone}">${tag}</small></span>
+      <span class="pr-r"><b class="${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "–" : sgnPct(ret, 1)}</b><small>${v == null ? "–" : eur(v)} · ${st ? (st.positions || []).length : 0} offen</small></span></div>`; }).join("");
+  return `<div class="hcard">${hHead("Alle Papier-Depots")}${rows}
     <div class="note" style="margin-top:8px">Details je Depot unten antippen. Entscheidung über echtes Geld nach etwa 12 Monaten.</div></div>`;
 }
 function paperBox(sid, st, sm, bench) {
