@@ -406,7 +406,8 @@
   .note.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .form .row-actions { grid-column: 1 / -1; align-self: start; } .form .row-actions .btn { height: auto; border-radius: 999px; }
   @media (max-width: 960px) { table.ptab.ts tr > :nth-child(6), table.ptab.ts tr > :nth-child(7) { display: none; } }
-  @media (max-width: 560px) { table.ptab.ts tr > :nth-child(1) { display: none; } } table.ptab.ts { width: 100%; }
+  table.ptab.ts { width: 100%; } .ts-list { display: none; } .ts-q { text-align: right; font-weight: 650; white-space: nowrap; } .ts-q small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); }
+  @media (max-width: 560px) { .ts-list { display: block; margin-top: 6px; } .ts-tab { display: none; } }
   .note-more { border: 0; background: none; color: var(--accent); font-size: 12.5px; font-weight: 600; padding: 2px 2px 0; cursor: pointer; }
   .cfg { font-size: 14px; }
   details.cfgd summary { cursor: pointer; color: var(--accent); font-weight: 650; margin-top: 12px; }
@@ -5007,7 +5008,9 @@ function topSetupsHtml() {
   }).join("");
   return `<div class="hcard" style="margin-bottom:12px">${hHead("Top-Setups heute")}
     <div class="note">Kairo-Treffer aus USA und Europa, sortiert nach der Forschung: <b>schwächerer Kursverlauf der letzten Monate zuerst</b> (in allen drei Testzeiträumen bessere Trades; Vorbehalt: muss sich live bestätigen). Kauf erst, wenn sich eine Seitwärtsphase bildet – die Live-Probe läuft im Papier-Depot KAIRO-S. Stückzahl für ${pct(c.risk / 100, 1)} Risiko von ${eur2(c.depot)} (Einstellung im Einstieg), Gebühr nach Scalable PRIME+. Regelbasierte Auswahl, keine Anlageberatung.</div>
-    <div class="tscroll" style="margin-top:8px"><table class="ptab ts"><tr><th>#</th><th>Aktie</th><th>Vormomentum</th><th>Einstieg / Stop</th><th>Größe</th><th>Gebühr</th><th></th></tr>${rows}</table></div></div>`;
+    <div class="ts-list">${list.map((r, k) => { const p = r.plan || {}, e = toEur(p.entry, r.currency), st = toEur(p.stop, r.currency), per = e != null && st != null ? e - st : null, qty = per > 0 ? Math.floor(riskEur / per) : null;
+      return `<button class="hrow" data-open="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${qty ? `${qty} Stk.<small>${eur2(qty * e)}</small>` : "–"}</span></button>`; }).join("")}</div>
+    <div class="tscroll ts-tab" style="margin-top:8px"><table class="ptab ts"><tr><th>#</th><th>Aktie</th><th>Vormomentum</th><th>Einstieg / Stop</th><th>Größe</th><th>Gebühr</th><th></th></tr>${rows}</table></div></div>`;
 }
 function paperHtml() {
   paperLoad();
