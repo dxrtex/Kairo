@@ -40,6 +40,21 @@ def demo_tx() -> str:
 async def main(out: Path) -> None:
     from playwright.async_api import async_playwright
     app_smoke.fetch()
+    try:                                               # Größe je Feld in results.json / search.json (für die Ladezeit)
+        out.mkdir(parents=True, exist_ok=True)
+        lines = []
+        for fn in ("results.json", "search.json"):
+            d = json.loads((app_smoke.SITE / "data" / fn).read_text())
+            rows = d["results"] if isinstance(d, dict) and "results" in d else (d.get("rows") or d.get("list") or d if isinstance(d, list) else list(d.values())[0])
+            tot = {}
+            for r in (rows if isinstance(rows, list) else []):
+                for k, v in (r.items() if isinstance(r, dict) else []):
+                    tot[k] = tot.get(k, 0) + len(json.dumps(v, ensure_ascii=False, separators=(",", ":")))
+            lines.append(f"{fn}: {(app_smoke.SITE / 'data' / fn).stat().st_size // 1024} KB, Typ {type(d).__name__}, Schlüssel {list(d)[:8] if isinstance(d, dict) else ''}")
+            lines += [f"  {k}: {v // 1024} KB" for k, v in sorted(tot.items(), key=lambda x: -x[1])[:20]]
+        (out / "sizes.txt").write_text("\n".join(lines))
+    except Exception as exc:
+        (out / "sizes.txt").write_text(f"Fehler {exc!r}")
     try:                                               # Charts der Treffer (für die Detailansicht)
         import json as _j, urllib.request as _u
         res = _j.loads((app_smoke.SITE / "data" / "results.json").read_text())["results"]
