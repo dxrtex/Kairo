@@ -38,29 +38,28 @@ def demo_tx() -> str:
 
 
 async def main(out: Path) -> None:
-    try:                                               # Datenprobe Quartalszahlen (yfinance)
-        import io, contextlib, yfinance as yf, pandas as pd
-        pd.set_option("display.width", 220); pd.set_option("display.max_columns", 20)
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            import urllib.request, urllib.parse, re as _re
-            for q in ("Netflix earnings guidance", "JPMorgan earnings outlook", "ASML quarterly results guidance", "SAP Prognose Quartal"):
-                for base in ("https://news.google.com/rss/search?hl=en-US&gl=US&ceid=US:en&q=", "https://feeds.finance.yahoo.com/rss/2.0/headline?region=US&lang=en-US&s="):
-                    url = base + urllib.parse.quote(q if "google" in base else q.split()[0])
-                    print("=====", url)
-                    try:
-                        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-                        x = urllib.request.urlopen(req, timeout=20).read().decode("utf-8", "replace")
-                        items = _re.findall(r"<item>.*?<title>(.*?)</title>.*?<pubDate>(.*?)</pubDate>", x, _re.S)
-                        print(len(x), len(items)); [print(" ", d, "|", t[:140]) for t, d in items[:12]]
-                    except Exception as exc:
-                        print("ERR", repr(exc)[:200])
-        out.mkdir(parents=True, exist_ok=True)
-        (out / "probe.txt").write_text(buf.getvalue()[:60000])
-    except Exception as exc:
-        out.mkdir(parents=True, exist_ok=True); (out / "probe.txt").write_text(repr(exc))
     from playwright.async_api import async_playwright
     app_smoke.fetch()
+    try:                                               # Quartalszahlen wie im Scan erzeugen (echte Daten) – für die Kalender-Ansicht
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from backend import earnings
+        cp = app_smoke.SITE / "data" / "calendar.json"
+        cal = json.loads(cp.read_text())
+        extra = {t: {"ticker": t, "name": n, "big": True} for t, n in (("NFLX", "Netflix"), ("JPM", "JPMorgan"), ("ASML", "ASML"), ("TSLA", "Tesla"), ("SAP", "SAP"), ("MSFT", "Microsoft"))}
+        earn, mem, past = earnings.run(cal["events"], {}, {}, extra)
+        have = {(e.get("ticker"), e["date"]) for e in cal["events"]}
+        cal["events"] = sorted(cal["events"] + [e for e in past if (e["ticker"], e["date"]) not in have], key=lambda e: (e["date"], e["kind"], e.get("name", "")))
+        for e in cal["events"]:
+            rec = earn["tickers"].get(e.get("ticker") or "")
+            if e["kind"] == "earnings" and rec and (rec.get("last") or {}).get("date") == e["date"]:
+                e["done"] = True; e["tone"] = ((rec["last"].get("view") or {}).get("tone")) or "gray"
+        cp.write_text(json.dumps(cal, ensure_ascii=False))
+        (app_smoke.SITE / "data" / "earnings.json").write_text(json.dumps(earn, ensure_ascii=False, default=str))
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "earnings.json").write_text(json.dumps(earn, ensure_ascii=False, indent=1, default=str)[:200000])
+    except Exception as exc:
+        import traceback
+        out.mkdir(parents=True, exist_ok=True); (out / "earnings_err.txt").write_text(traceback.format_exc())
     try:                                               # Größe je Feld in results.json / search.json (für die Ladezeit)
         out.mkdir(parents=True, exist_ok=True)
         lines = []
@@ -95,6 +94,26 @@ async def main(out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     async with async_playwright() as p:
         b = await p.chromium.launch(args=["--no-proxy-server"])
+        for nm, vp in (("handy", {"width": 390, "height": 844}), ("ipad", {"width": 820, "height": 1180})):   # Quartalszahlen im Kalender
+            ec = await b.new_context(viewport=vp, device_scale_factor=2 if nm == "handy" else 1)
+            await ec.add_init_script("try{localStorage.setItem('kairo-gate','31151c44ed55cace96a0cb05c2ca90411e7f0263b40ab89f351fcb64dd2b5220')}catch(e){}")
+            await ec.add_init_script("try{const k='reversal-finder-v1';const p=JSON.parse(localStorage.getItem(k)||'{}');p.briefOff=true;p.tourDone=1;p.calView='list';localStorage.setItem(k,JSON.stringify(p))}catch(e){}")
+            ep = await ec.new_page()
+            errs = []
+            ep.on("pageerror", lambda e: errs.append(str(e)))
+            await ep.goto(f"{url}?nosplash=1&sec=calendar"); await ep.wait_for_timeout(3500)
+            await ep.screenshot(path=str(out / f"earn_{nm}_list.png"))
+            for tag, sel in (("done", ".ev[data-earn]:has(.ev-res)"), ("next", ".ev[data-earn]:not(:has(.ev-res))")):
+                el = await ep.query_selector(sel)
+                if not el:
+                    errs.append(f"kein Termin für {tag}"); continue
+                await el.click(); await ep.wait_for_timeout(1800)
+                await ep.screenshot(path=str(out / f"earn_{nm}_{tag}.png"))
+                cl = await ep.query_selector("#earnBox .cm-x")
+                if cl:
+                    await cl.click(); await ep.wait_for_timeout(300)
+            (out / f"earn_{nm}_errors.txt").write_text("\n".join(errs) or "keine Fehler")
+            await ec.close()
         for nm, vp in (("ipad", {"width": 820, "height": 1180}), ("handy", {"width": 390, "height": 844})):   # neuer Nutzer: Code → Intro → Rundgang → Heute
             nc = await b.new_context(viewport=vp, device_scale_factor=1)
             npg = await nc.new_page()
