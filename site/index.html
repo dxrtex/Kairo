@@ -150,7 +150,7 @@
   .ein-search { position: relative; margin: 0 0 12px; } .ein-search input { width: 100%; font-size: 17px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2, #1c1c1e); color: var(--text); }
   .ein-list { display: grid; gap: 6px; margin-top: 8px; } .ein-opt { display: grid; grid-template-columns: 1fr auto; text-align: left; gap: 2px 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2, #1c1c1e); color: var(--text); cursor: pointer; }
   .ein-opt span { color: var(--muted); font-size: 13px; grid-column: 1; } .ein-opt i { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-style: normal; }
-  .ein-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+  .ein-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; } .ein-steps.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ein-steps .es { padding: 7px 8px; border-radius: 10px; background: var(--surface-2, rgba(255,255,255,.05)); border: 1px solid var(--line); min-width: 0; }
   .ein-steps .es span { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }
   .ein-steps .es b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1919,7 +1919,7 @@ function depotSave(list) { try { localStorage.setItem(DEPOT_KEY, JSON.stringify(
 let depotEdit = null, depotMsg = "";
 const rowOf = t => searchIdx && searchIdx.find(r => r.t === t);
 const toEur = (v, cur) => v == null ? null : v * (fxEur[cur] ?? (cur === "EUR" ? 1 : NaN));
-// ---------- Strategie im Depot: jede Position gegen ihren Trade-Plan (Stop · Tag 20 · kein Gewinnziel) ----------
+// ---------- Strategie im Depot: jede Position gegen ihren Trade-Plan (Stop · EMA 20 ab Tag 10 · spätestens Tag 60 · kein Gewinnziel) ----------
 const tkClean = t => String(t || "").replace(/^~/, "");
 // offener Trade-Plan zu einem Depot-Wert: gleicher Ticker (auch andere Notierung) oder gleicher Firmenname
 function planFor(ts, name) {
@@ -1945,7 +1945,7 @@ function stratOf(plan) {
   else [tone, t, s] = ["green", `Halten bis Stop oder ${dateDE(sell)}`, `Kein Gewinnziel: Gewinner laufen bis zum Verkaufstag${cut ? " (vor den Quartalszahlen)" : ` (Tag ${hold})`}. Nicht vorher verkaufen, Stop nicht verschieben.`];
   return { plan, day, hold, sell, left, c, R, slDist, slAtr, koAtr, cut, tone, t, s, fe };
 }
-const NOPLAN = { tone: "gray", t: "Kein Trade-Plan", s: "Ohne Plan kennt Kairo weder Stop noch Verkaufstag. Im Reiter Einstieg den Plan anlegen (Kaufdatum und Kaufkurs eintragen) – dann prüft Kairo Stop, Tag 20 und K.-o. und schickt Mitteilungen." };
+const NOPLAN = { tone: "gray", t: "Kein Trade-Plan", s: "Ohne Plan kennt Kairo weder Stop noch Verkaufstag. Im Reiter Einstieg den Plan anlegen (Kaufdatum und Kaufkurs eintragen) – dann prüft Kairo Stop, EMA 20, Verkaufstag und K.-o. und schickt Mitteilungen." };
 function stratTipHtml(st, t) {
   const x = st || NOPLAN;
   return `<div class="tip tone-${x.tone}"><b class="t">${esc(x.t)}</b>${esc(x.s)}${!st && t ? ` <button class="linkbtn" data-ein="${esc(tkClean(t))}">Plan anlegen ›</button>` : ""}</div>`;
@@ -2016,7 +2016,7 @@ function depotHtml() {
   return head + (groups.length ? cockpitHtml(groups, items) : sum) + actions + form + empty
     + (groups.length ? `<div class="plan-h" style="margin:4px 2px 8px">Deine Positionen · antippen zum Aufklappen</div>${groups.map(groupHtml).join("")}` : "")
     + (cards.length ? `${groups.length ? `<div class="plan-h" style="margin:18px 2px 8px">Ohne Analyse (nicht auf der Watchlist)</div>` : ""}<div class="grid">${cards}</div>` : "")
-    + `<div class="note" style="margin:16px 2px 0">Dein Depot wird nur auf diesem Gerät gespeichert (nicht im Internet). Kurse vom letzten Scan, Umrechnung in Euro zum Tageskurs${missingFx ? " – für einige Währungen fehlt der Wechselkurs" : ""}. Regeln der Strategie: halten bis Stop oder Verkaufstag (Tag 20, vor Quartalszahlen früher), kein Gewinnziel, höchstens ${KMAX.maxOpen} Trades. Keine Anlageberatung.</div>`;
+    + `<div class="note" style="margin:16px 2px 0">Dein Depot wird nur auf diesem Gerät gespeichert (nicht im Internet). Kurse vom letzten Scan, Umrechnung in Euro zum Tageskurs${missingFx ? " – für einige Währungen fehlt der Wechselkurs" : ""}. Regeln der Strategie: halten bis Stop, ab Tag 10 Schluss unter der EMA 20 oder spätestens Tag 60 (vor Quartalszahlen früher), kein Gewinnziel, höchstens ${KMAX.maxOpen} Trades. Keine Anlageberatung.</div>`;
 }
 // ---------- Positions-Analyse (Depot) ----------
 let anaData = null, anaLoading = null;
@@ -2089,7 +2089,7 @@ function posModel(p, r, a) {
   return { p, r, a, d, short, cur, ent, held, tm, valAt, nowPos, pl, plAt, dist, score, tone, label, underMove,
            levNow: lev(a.c), levBuy: ent ? lev(ent.u) : null, stopBelowKo: !!(d && !short && a.stop.p <= d.ko) };
 }
-// ---------- Depot: Übersicht je Basiswert (aufklappbar) – Stand, Hebel, Trade-Plan (Stop · Tag 20) ----------
+// ---------- Depot: Übersicht je Basiswert (aufklappbar) – Stand, Hebel, Trade-Plan (Stop · EMA 20 · Tag 60) ----------
 const depOpen = new Set();   // aufgeklappte Gruppen (bleiben beim Neuzeichnen offen)
 const sgnPct = (v, d = 0) => v == null ? "–" : (v >= 0 ? "+" : "") + pct(v, d);
 const eur = v => v == null ? "–" : `${fmt(v, 0)} €`;
@@ -2966,7 +2966,7 @@ function journalHtml() {
 // 70 % im SPDR MSCI ACWI IMI (SPYI, Kurs aus etf.json), 30 % frei für die Kairo-Strategie. Gehandelt werden – wie bei Scalable –
 // Hebelprodukte (Turbo Long) mit den echten Daten des Produkts: Kaufkurs je Stück, K.-o.-Schwelle, WKN. Wert zwischendurch:
 // Kaufkurs × (Basiswert − K.-o.) / (Basiswert beim Kauf − K.-o.), K.-o. steigt mit ~3,5 % p. a. Finanzierung; beim Verkauf trägst du
-// den echten Geldkurs ein. Regeln wie getestet: 1 % Risiko vom Trading-Kapital, Stop = Basis-Tief − 0,25 ATR, Verkauf an Tag 20.
+// den echten Geldkurs ein. Regeln wie getestet: 1 % Risiko vom Trading-Kapital, Stop = Basis-Tief − 0,25 ATR, Verkauf ab Tag 10 bei Schluss unter EMA 20, spätestens Tag 60.
 const GKEY = "kairo-game2", G_START = 100000, G_FEE = 0.99, G_FIN = 0.035;
 const gFee = v => v >= 250 ? 0 : G_FEE;                       // Scalable PRIME+: ab 250 € Orderwert gebührenfrei
 const gLog = (g, o) => { g.orders = g.orders || []; g.orders.unshift({ ts: new Date().toISOString(), ...o }); if (g.orders.length > 300) g.orders.length = 300; };
@@ -3012,7 +3012,7 @@ function gSell(g, id, why, unitPx) {
   g.closed.unshift({ ...p, xu: u, xd: isoD(new Date()), got, pnl, ret: got / p.cost - 1, R: p.risk > 0 ? pnl / p.risk : null, why });
   g.pos.splice(i, 1);
 }
-// Je Scan: K.-o. und Stop über die Tagestiefs, Verkaufstag (Tag 20) – mit „Regeln automatisch“ wird wie eine Stop-Order verkauft
+// Je Scan: K.-o. und Stop über die Tagestiefs, EMA 20 ab Tag 10, Verkaufstag (Tag 60) – mit „Regeln automatisch“ wird wie eine Stop-Order verkauft
 function gTick(g) {
   if (!data) return;
   const d = String(data.generated).slice(0, 10);
@@ -3026,7 +3026,9 @@ function gTick(g) {
       const fx = x.c ? (toEur(x.c, p.cur) ?? x.c) / x.c : 1;
       gSell(g, p.id, "Stop (Stop-Order)", Math.max(0, gModelAt(p, Math.min(p.stop, x.c ?? p.stop)) * fx / (p.fx0 || fx))); return;
     }
-    if (p.exit && d >= p.exit) gSell(g, p.id, "Tag 20 (Verkaufstag)");
+    if (p.exit && d >= p.exit) { gSell(g, p.id, "Verkaufstag (Tag 60)"); return; }
+    const rr = rowOf(p.t), held = bdBetween(new Date(p.d + "T12:00:00"), new Date(d + "T12:00:00")) + 1;     // Kairo-Regel: ab Tag 10 Schluss unter EMA 20
+    if (rr && rr.c != null && rr.e20 && rr.c < rr.e20 && held > H4X.from) gSell(g, p.id, "Schluss unter EMA 20");
   });
   const T = gTotals(g), last = g.hist[g.hist.length - 1];
   const pt = { d, v: Math.round(T.total), e: T.etfOnly ? Math.round(T.etfOnly) : null };
@@ -3207,7 +3209,7 @@ function gameHtml() {
     ${closed ? `<div class="section-title"><span>Abgeschlossene Trades</span><span>${done.length}</span></div><div class="table-wrap"><table><tbody>${closed}</tbody></table></div>` : ""}`;
   return `<div class="section-title"><span>Übung · Broker-Simulation</span><span>seit ${days} ${days === 1 ? "Tag" : "Tagen"}</span></div>` + head
     + (tab === "trade" ? trade : tab === "orders" ? ordList : depot) + `
-    <div class="card" style="margin-top:18px"><label class="g-opt"><input type="checkbox" data-g="auto"${g.auto ? " checked" : ""}> Regeln automatisch befolgen – Stop wie eine Stop-Order (auch untertags über die Tagestiefs), Verkauf an Tag ${KMAX.hold}</label>
+    <div class="card" style="margin-top:18px"><label class="g-opt"><input type="checkbox" data-g="auto"${g.auto ? " checked" : ""}> Regeln automatisch befolgen – Stop wie eine Stop-Order (auch untertags über die Tagestiefs), ab Tag 10 Verkauf bei Schluss unter der EMA 20, spätestens Tag ${KMAX.hold}</label>
       <div class="note">Turbo-Wert zwischendurch geschätzt: Kaufkurs × (Basiswert − K.-o.) ÷ (Basiswert beim Kauf − K.-o.), K.-o. steigt mit ~3,5 % p. a. Finanzierung. Mit „Kurs eintragen“ übernimmst du den echten Geldkurs aus Scalable; beim Verkauf trägst du den tatsächlichen Verkaufskurs ein. K.-o. wird über die Tagestiefs erkannt. 0,99 € je Order, keine Steuern. Spielgeld – keine Anlageberatung.</div>
       <div class="row-actions" style="margin-top:10px"><button class="btn ghost" data-g="reset">Spiel neu starten</button></div></div>`;
 }
@@ -3237,7 +3239,7 @@ document.addEventListener("click", e => {
     const early = p.exit && isoD(new Date()) < p.exit;
     const v = prompt(`Verkaufskurs je Stück (€) für ${fmt(p.qty, 0)} × ${p.n} – der Geldkurs aus Scalable:`, gUnit(p).toFixed(3).replace(".", ","));
     if (v === null) return; const x = gNum(v); if (x == null || x < 0) return;
-    if (early) p.rv = [...(p.rv || []), "vor Tag 20 verkauft"];
+    if (early) p.rv = [...(p.rv || []), "vor dem Ausstiegssignal verkauft"];
     gSell(g, p.id, "manuell", x); gTick(g); gSave(g); render(); return; }
   if (a === "reset") { if (confirm("Spiel wirklich neu starten? Alle Spiel-Positionen und der Verlauf werden gelöscht.")) { localStorage.removeItem(GKEY); state.gSel = ""; save(); render(); } return; }
 });
@@ -3914,7 +3916,7 @@ function bilanzHtml() {
       <div class="mt"><span>Gewinner</span><b>${pct(st.win, 0)}</b><em>Stop ${pct(st.stop, 0)}</em></div>
       <div class="mt"><span>Ohne Basis</span><b>${st.nobase}</b><em>kein Kauf – richtig so</em></div></div>
       <div class="note" style="margin:0 0 8px">${verdict}. Jeder Treffer zählt hier – auch die, für die bei 5 Plätzen kein Platz wäre.</div>`
-      : `<div class="note" style="margin:0 0 8px">Jeder neue Kairo-Treffer wird ab dem Signaltag nach den Regeln verfolgt: Bildet sich eine Seitwärtsphase, wird gekauft; dann Stop oder Verkauf an Tag 20. Die ersten Ergebnisse erscheinen nach etwa 4–6 Wochen.</div>`}
+      : `<div class="note" style="margin:0 0 8px">Jeder neue Kairo-Treffer wird ab dem Signaltag nach den Regeln verfolgt: Bildet sich eine Seitwärtsphase, wird gekauft; dann Stop oder Verkauf nach der Live-Regel. Die ersten Ergebnisse erscheinen nach etwa 4–6 Wochen.</div>`}
     ${sig.length ? `<div class="table-wrap"><table class="jtrades"><thead><tr><th>Signal</th><th>Aktie</th><th class="num">Kauf</th><th class="num">Stop</th><th>Ergebnis</th></tr></thead><tbody>
       ${sig.map(s => { const x = s.st || { res: "wait" }, [rt, rc] = ST_TXT[x.res] || ST_TXT.wait;
         return `<tr><td>${dateDE(s.d)}<small>Score ${s.score}</small></td><td><a href="#" data-card="${esc(s.t)}"><b>${esc(s.n || s.t)}</b></a><small>${esc(s.t)}</small></td>
@@ -3978,7 +3980,7 @@ function pushHtml() {
   let body;
   if (!pushOk() && !standalone()) body = `<div class="tgdesc">Mitteilungen funktionieren auf dem iPad nur, wenn Kairo als App auf dem Home-Bildschirm liegt: in Safari <b>Teilen ⬆︎ → „Zum Home-Bildschirm“</b>, dann Kairo von dort öffnen und hier aktivieren (ab iPadOS 16.4).</div>`;
   else if (!pushOk()) body = `<div class="tgdesc">Dieses Gerät unterstützt keine Web-Mitteilungen (iPadOS 16.4 oder neuer nötig).</div>`;
-  else if (!pushSub) body = `<div class="tgdesc">Nur wenn es wichtig ist – tagsüber alle 30 Minuten geprüft, auch wenn Kairo geschlossen ist:<br>🛑 <b>Stop erreicht</b> · 🎯 <b>Kursziel erreicht</b> (falls gesetzt) · 📆 <b>Verkaufstag</b> (Tag 20) · ⚠️ <b>K.-o. nah</b> / 💥 erreicht. Jede Meldung kommt nur einmal.</div>
+  else if (!pushSub) body = `<div class="tgdesc">Nur wenn es wichtig ist – tagsüber alle 30 Minuten geprüft, auch wenn Kairo geschlossen ist:<br>🛑 <b>Stop erreicht</b> · 🎯 <b>Kursziel erreicht</b> (falls gesetzt) · 📉 <b>Schluss unter EMA 20</b> · 📆 <b>Verkaufstag</b> (Tag 60) · ⚠️ <b>K.-o. nah</b> / 💥 erreicht. Jede Meldung kommt nur einmal.</div>
     <div class="row-actions" style="margin-top:12px"><button class="btn" data-push="on">Mitteilungen aktivieren</button></div>`;
   else body = `<div class="tgdesc">✓ Dieses iPad ist angemeldet. Damit der Scan die Mitteilungen senden kann, einmalig den Code als GitHub-Secret speichern:</div>
     <ol class="steps"><li><button class="btn ghost sm" data-push="copy">Code kopieren</button> <span class="muted">(Geräte-Abo + offene Trades mit Stop/K.-o./Verkaufstag + Depot-K.-o., keine Beträge)</span></li>
@@ -4341,27 +4343,28 @@ function tvChartHtml(t) {
     <div class="note" style="margin:6px 0 0">Der eingebettete Chart ist je nach Börse verzögert (XETRA ca. 15 Min.) – bei deutschen Aktien oben gettex oder Tradegate wählen. Maßgeblich für den Plan ist der Live-Kurs oben (Kursdienst/Finnhub); Kerzen, Seitwärtsphase und Stop stammen aus dem Abendscan.</div></details>`;
 }
 // Weg zum Einstieg: 1D-Signal → Seitwärtsphase → 4H-Bestätigung → Einstieg (aus Abendscan + 4H-Prüfung alle 30 Min.)
-function einSteps(r) {
-  const it = h4Of(r.t), now = h4Now(r.t), st = it && it.st !== "weg" ? it.st : null, done = ["go", "run", "sell", "stop", "zeit", "ema"].includes(st) || h4Go(it);
+function einSteps(r) {                           // Weg zum Einstieg nach der Kairo-Regel: Signal → Seitwärtsphase → Kauf zur nächsten Eröffnung
+  const it = h4Of(r.t), now = h4Now(r.t), st = it && it.st !== "weg" ? it.st : null, based = !!st && st !== "basis";
   const sig = it && h4Real(it) ? (it.soft ? "10/11 ✓" : "11/11 ✓") : r.s === "hit" ? "11/11 ✓" : r.m != null ? `${r.m}/11` : "–";
   const s1 = it && h4Real(it) || r.s === "hit" ? "ok" : r.s === "fast" || r.s === "near" ? "wait" : "no";
-  const s2 = st === "basis" ? ["wait", `Tag ${it.day}/10`] : st === "4h" || done ? ["ok", "✓"] : it && it.st === "weg" ? ["no", "verfallen"] : now ? [now.b ? "ok" : "no", now.b ? "✓" : "✗"] : ["no", "–"];
-  const nf = it && it.fl ? H4F.filter(([k]) => it.fl[k]).length : now && now.fl ? H4F.filter(([k]) => now.fl.includes(k[0])).length : null;
-  const s3 = done ? ["ok", "✓"] : st === "4h" ? ["wait", `${nf ?? 0}/4`] : nf != null ? ["no", `${nf}/4`] : ["no", "–"];
-  const s4 = h4Go(it) ? ["ok", "jetzt"] : st === "run" ? ["ok", `läuft T${(it.trade || {}).day || "–"}`] : st === "sell" ? ["wait", "verkaufen"] : ["stop", "zeit", "ema"].includes(st) ? ["no", "beendet"] : ["no", "–"];
-  const next = it && it.st !== "weg" ? h4Text(it).t : it ? `Verfallen: ${it.why || "Bedingungen nicht erfüllt"}`
-    : r.s === "hit" ? "Treffer – jetzt beginnt die Suche nach der Seitwärtsphase (Abendscan), danach die 4H-Prüfung."
+  const s2 = st === "basis" ? ["wait", `Tag ${it.day}/10`] : based ? ["ok", "✓"] : it && it.st === "weg" ? ["no", "verfallen"] : now ? [now.b ? "ok" : "no", now.b ? "✓" : "✗"] : ["no", "–"];
+  const s3 = based || (now && now.b && r.s === "hit") ? ["ok", "nächste Eröffnung"] : ["no", "–"];
+  const b = (it && it.base) || {}, P = v => v == null ? "–" : `${fmt(v)} ${it && it.cur || ""}`.trim();
+  const next = based ? `Seitwärtsphase fertig – laut Regel Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt${b.lo != null ? ` (${P(b.lo)}–${P(b.hi)})` : ""}. Stop ${P(b.sl)}.`
+    : st === "basis" ? `Wartet auf die Seitwärtsphase · Tag ${it.day} von 10 – noch ${it.left} Handelstage Zeit für 5 enge Tage.`
+    : it ? `Verfallen: ${it.why || "Bedingungen nicht erfüllt"}`
+    : r.s === "hit" ? "Treffer – jetzt beginnt die Suche nach der Seitwärtsphase (bis zu 10 Handelstage)."
     : r.s === "fast" || r.s === "near" ? `Noch kein Treffer – es fehlt: ${(r.km || []).map(k => SHORT[k] || k).join(", ") || "–"}. Erst ab 11/11 handeln.` : "";
   if (!it && !["hit", "fast", "near"].includes(r.s)) return "";
   const box = (l, [c, v]) => `<div class="es ${c}"><span>${l}</span><b>${esc(v)}</b></div>`;
-  return `<div class="ein-steps">${box("1 · Tages-Signal", [s1, sig])}${box("2 · Seitwärtsphase", s2)}${box("3 · 4H-Bestätigung", s3)}${box("4 · Einstieg", s4)}</div>
+  return `<div class="ein-steps three">${box("1 · Tages-Signal", [s1, sig])}${box("2 · Seitwärtsphase", s2)}${box("3 · Einstieg", s3)}</div>
     ${next ? `<div class="ein-next">${esc(next)}</div>` : ""}`;
 }
 // Datenstand: wann wurden Tageskerzen/Stop, 4H-Stand und Kurs zuletzt aktualisiert?
 function einDataHtml(r) {
   const T = v => new Date(v).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const d = h4Data(), h4t = d && (d.live || d.generated);
-  return `<div class="ein-data">Stand: Tageskerzen &amp; Stop ${data && data.generated ? T(data.generated) : "–"}${h4t ? ` · 4H-Prüfung ${T(h4t)}` : ""} · Kurs ${LIVE.map[r.t] ? `live ${liveTime(r.t)}` : "vom Abendscan"}</div>`;
+  return `<div class="ein-data">Stand: Tageskerzen &amp; Stop ${data && data.generated ? T(data.generated) : "–"} · Kurs ${LIVE.map[r.t] ? `live ${liveTime(r.t)}` : "vom Abendscan"}</div>`;
 }
 function einPlanHtml(r) {
   if (liveOn()) { const o = LIVE.map[r.t]; if (!o || Date.now() - o.at > LIVE.ttl) liveQuote(r.t).then(q => { if (q && state.sec === "entry" && state.einT === r.t) render(); }); }
@@ -4394,8 +4397,8 @@ const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52,
 // Kapital passt (1× = Aktie, sonst 2/3/5/10× mit K.-o. ≥ 1 ATR unter dem SL) – Finanzierung kostet bei 10× rund die Hälfte des Vorteils.
 // Ehrlich gerechnet (Turbo-Kosten, täglicher Depotwert): +11 bis +20 % p. a. je nach Aktien-Stichprobe, Prüfjahre 2024–26 +4 bis +18 %,
 // größter Rückgang 35–50 %. Risiko-Verdopplung im Ausverkauf und Tag-5-Ausstieg hielten auf beiden Stichproben nicht.
-const H4X = { hold: 40, from: 10 };   // 4H-Top-Setup: Ausstieg EMA 20 ab Tag 10, spätestens Tag 40 (Ausstiegs-Test Okt. 2026)
-const KMAX = { hold: 20, hold2: 20, tpDays: 7, weakMult: 1, maxOpen: 5, perSector: 2 };   // perSector: Klumpenschutz
+const H4X = { hold: 60, from: 10 };   // Kairo-Regel: Ausstieg EMA 20 ab Tag 10, spätestens Tag 60 (Forschung v2.5)
+const KMAX = { hold: 60, hold2: 60, tpDays: 7, weakMult: 1, maxOpen: 5, perSector: 2 };   // perSector: Klumpenschutz
 const TP_EXIT = { hold: KMAX.hold };
 // ---- TP-Bewertung je Aktie ----
 // Kandidaten: Hoch der Seitwärtsphase, 10-Tage-Hoch, frühere Hochs (Swing), EMA 20/50, Fibonacci – Verkauf 0,1 ATR davor.
@@ -4459,8 +4462,8 @@ function kmFit(r, mk) {
       ? { ok: true, k: "hit", tone: "green", mult: KMAX.weakMult, t: "A-Setup – Kairo-Treffer im Ausverkauf: traden",
           s: "Die stärkste Phase der Strategie. Risiko trotzdem nur 1 % – die Verdopplung hielt im Test auf neuen Jahren nicht." + rank }
       : { ok: true, k: "hit", tone: "green", mult: 1, t: "Kairo-Treffer: traden",
-          s: "Setup der Strategie. Kauf in der Seitwärtsphase, 20 Tage halten, 1 % Risiko." + rank };
-    if (!free) return { ...fit, tone: "yellow", t: "Kairo-Treffer – aber alle Plätze belegt", s: `Du hast schon ${tpCfg().maxOpen} offene Trades. Erst wenn einer endet (SL oder Tag 20), ist wieder Platz.` + rank };
+          s: "Setup der Strategie. Kauf in der Seitwärtsphase, Verkauf ab Tag 10 bei Schluss unter der EMA 20 (spätestens Tag 60), 1 % Risiko." + rank };
+    if (!free) return { ...fit, tone: "yellow", t: "Kairo-Treffer – aber alle Plätze belegt", s: `Du hast schon ${tpCfg().maxOpen} offene Trades. Erst wenn einer endet (Stop, EMA 20 oder Tag 60), ist wieder Platz.` + rank };
     if (rk && rk > free) return { ...fit, tone: "yellow", t: `Kairo-Treffer – Rang ${rk}, nur ${free} ${free > 1 ? "Plätze" : "Platz"} frei`,
       s: `Die Treffer davor hatten in der Forschung die besseren Chancen (schwächeres Vormomentum). Nimm diesen nur, wenn die davor nicht kaufbar sind.` + rank };
     return fit;
@@ -4496,7 +4499,7 @@ function tp2Calc(r, S, o = {}) {
   const cfg = tpCfg(), pl = r.pl || {}, atr = pl.atr || r.atr || (r.ap || 0) * r.c;
   const trend = S && (S.k === "top" || S.k === "trend");
   // 4H-Top-Setup: Stop = Basis aus dem Scan (Seitwärtsphase nach dem Treffer, genau wie im Test) statt der heutigen Struktur
-  const h4 = !trend ? h4Of(r.t) : null, h4b = h4 && h4.base && ["4h", "go", "run"].includes(h4.st) ? h4.base : null;
+  const h4 = null, h4b = null;                                // 4H-Bestätigung entfernt (10/2026): eine Regel für alle Kairo-Trades
   const stop = h4b ? h4b.sl : pl.stop;                       // für alle Setups gleich (so getestet): Basis-Tief − 0,25 ATR
   const src = pl.src ? `${pl.src} − 0,25 ATR` : "";
   const E = o.entry > 0 ? o.entry : r.c, fx = toEur(1, r.cur || "EUR") || 1;
@@ -4540,12 +4543,12 @@ function tp2Calc(r, S, o = {}) {
   out.expo = out.riskEur / out.dist;                          // Basiswert-Exposure in €
   const hold = o.hold || (h4 ? H4X.hold : KMAX.hold), cal = hold * 7 / 5;
   out.hold = hold;
-  out.ema = !!h4;                                              // 4H-Trades: ab Tag 10 raus bei Schluss unter der EMA 20, spätestens Tag 40
+  out.ema = true;                                              // Kairo-Regel (Forschung v2.5): ab Tag 10 raus bei Schluss unter der EMA 20, spätestens Tag 60
   // TP: erste echte Kursmarke der Aktie mit mindestens 1,5 × Risiko Abstand (lohnendes Chance-Risiko-Verhältnis), höchstens 4 ×;
   // keine passende Marke → 2 × Risiko
   // TP individuell: alle echten Kursmarken der Aktie bewerten (Chance, sie in der Haltedauer VOR dem SL zu erreichen × Gewinn)
   out.tp = null;                                               // kein TP: Gewinner laufen lassen (Kursziel-Vergleich: jedes feste Ziel brachte weniger)
-  out.tpWhy = "Kein TP: Im Test brachte jedes feste Kursziel (1–5 R, Widerstände, EMA 20/50) weniger als Laufenlassen – die wenigen großen Gewinner bezahlen die Verluste. Verkauft wird am SL oder an Tag 20.";
+  out.tpWhy = "Kein TP: Im Test brachte jedes feste Kursziel (1–5 R, Widerstände, EMA 20/50) weniger als Laufenlassen – die wenigen großen Gewinner bezahlen die Verluste. Verkauft wird am SL, ab Tag 10 bei einem Tagesschluss unter der EMA 20 (am nächsten Morgen) – spätestens an Tag 60.";
   if (h4) out.tpWhy = `Kein TP: Im Ausstiegs-Test brachte jedes feste Ziel (auch Fibonacci, altes Hoch, Extensions) weniger. Verkauft wird am SL, ab Tag ${H4X.from} bei einem Tagesschluss unter der EMA 20 (am nächsten Morgen) – spätestens an Tag ${H4X.hold}.`;
   out.d0 = tpEntryDay(o.date);
   out.exit = addBd(out.d0, hold - 1);
@@ -4553,7 +4556,7 @@ function tp2Calc(r, S, o = {}) {
   if (r.ed) { const ed = new Date(r.ed + "T12:00:00"); if (ed > out.d0 && ed <= out.exit) {
     out.exit = subBd(ed, 1); const left = bdBetween(out.d0, out.exit) + 1; out.edCut = true;
     out.problems.push([left >= 5 ? "yellow" : "red", `Quartalszahlen am ${dateDE(r.ed)} – Ausstieg vorgezogen auf den Handelstag davor (${left} statt ${hold} Tage).${left < 5 ? " Zu kurz für die Strategie – lieber nach den Zahlen einsteigen." : ""}`]); } }
-  // Hälfte 2 läuft bis Tag 20 – ebenfalls vor den Quartalszahlen raus
+  // Hälfte 2 (ältere Pläne mit TP) läuft bis zum Verkaufstag – ebenfalls vor den Quartalszahlen raus
   out.exit2 = addBd(out.d0, KMAX.hold2 - 1);
   if (r.ed) { const ed = new Date(r.ed + "T12:00:00"); if (ed > out.d0 && ed <= out.exit2) { out.exit2 = subBd(ed, 1); out.ed2Cut = true;
     if (!out.edCut) out.problems.push(["yellow", `Quartalszahlen am ${dateDE(r.ed)} – die zweite Hälfte wird am Handelstag davor verkauft (${bdBetween(out.d0, out.exit2) + 1} statt ${KMAX.hold2} Tage).`]); } }
