@@ -1213,6 +1213,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
   .gate-box { width: min(340px, 100%); text-align: center; }
   .gate-logo { width: 150px; height: auto; margin: 0 auto 26px; display: block; }
   .gate-t { font-size: 22px; font-weight: 700; letter-spacing: -.01em; } .gate-s { margin-top: 6px; font-size: 15px; color: #8a93a3; }
+  .gate-legal { position: absolute; left: 0; right: 0; bottom: max(18px, env(safe-area-inset-bottom)); text-align: center; font-size: 13px; } .gate-legal a { color: #8a93a3; text-decoration: none; padding: 10px; }
   .gate-dots { display: flex; justify-content: center; gap: 18px; margin: 30px 0 8px; }
   .gate-dots i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #8a93a3; transition: background .15s, border-color .15s, transform .15s; }
   .gate-dots i.on { background: #0a84ff; border-color: #0a84ff; transform: scale(1.1); }
@@ -1238,6 +1239,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
     <div class="gate-err" id="gateErr"></div>
     <div class="gate-pad"><button type="button" data-pin="1">1</button><button type="button" data-pin="2">2</button><button type="button" data-pin="3">3</button><button type="button" data-pin="4">4</button><button type="button" data-pin="5">5</button><button type="button" data-pin="6">6</button><button type="button" data-pin="7">7</button><button type="button" data-pin="8">8</button><button type="button" data-pin="9">9</button><span></span><button type="button" data-pin="0">0</button><button type="button" data-pin="del" aria-label="Löschen">⌫</button></div>
   </div>
+  <div class="gate-legal"><a href="rechtliches.html">Impressum · Datenschutz</a></div>
 </div>
 <script>
 (function () {
@@ -1890,8 +1892,10 @@ const COLS = [
 
 // ---------- Suche in allen Aktien mit Kurz-Hinweis ----------
 let searchIdx = null, searchLoading = null, fxEur = { EUR: 1 };
+// Dateien, die nur der Abendscan schreibt: mit Scan-Stempel laden → nach dem ersten Mal sofort aus dem Speicher (Service Worker)
+const scanFetch = f => data && data.generated ? fetch(`data/${f}?v=${encodeURIComponent(data.generated)}`) : fetch(`data/${f}`, { cache: "no-store" });
 function loadSearch() {
-  if (!searchLoading) searchLoading = fetch("data/search.json", { cache: "no-store" }).then(r => r.json())
+  if (!searchLoading) searchLoading = scanFetch("search.json").then(r => r.json())
     .then(d => { searchIdx = d.rows || []; fxEur = d.fx_eur || { EUR: 1 };
       try { (JSON.parse(localStorage.getItem("kairo-ext") || "[]")).forEach(x => { if (!searchIdx.some(r => r.t === x.t)) searchIdx.push(x); }); } catch (e) {}
       render(); }).catch(() => { searchIdx = []; render(); });
@@ -1928,7 +1932,7 @@ function searchHtml() {
 // ---------- Kalender ----------
 let calData = null, calLoading = null;
 function loadCalendar() {
-  if (!calLoading) calLoading = fetch("data/calendar.json", { cache: "no-store" }).then(r => r.json())
+  if (!calLoading) calLoading = scanFetch("calendar.json").then(r => r.json())
     .then(d => { const seen = new Set(); calData = (d.events || []).filter(e => { const k = [e.date, normName(e.name || e.ticker || e.title || ""), e.kind].join("|"); if (seen.has(k)) return false; seen.add(k); return true; }); calBadge(); if (["calendar", "today"].includes(state.sec)) render(); })
     .catch(() => { calData = []; if (state.sec === "calendar") render(); });
   return calLoading;
@@ -2224,7 +2228,7 @@ function depotHtml() {
 let anaData = null, anaLoading = null;
 const chartReady = {};
 function loadAnalysis() {
-  if (!anaLoading) anaLoading = fetch("data/analysis.json", { cache: "no-store" }).then(r => r.json())
+  if (!anaLoading) anaLoading = scanFetch("analysis.json").then(r => r.json())
     .then(d => { anaData = d; if (["depot", "today"].includes(state.sec)) render(); }).catch(() => { anaData = { tickers: {}, market: {} }; });
   return anaLoading;
 }
@@ -4304,7 +4308,7 @@ function reportText(msg) {
 function feedbackHtml() {
   return `<div class="section-title"><span>Hilfe &amp; Feedback</span><span>Version ${APP_VER.split(".").reverse().join(".")}</span></div>
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0"><label class="full">Was ist dir aufgefallen?<textarea id="fbText" rows="3" placeholder="z. B. „Im Depot stimmt der Wert von SAP nicht“ oder eine Idee"></textarea></label></div>
-      <div class="row-actions" style="margin-top:10px"><button class="btn" data-fb="copy">Für Claude kopieren</button>${navigator.share ? `<button class="btn ghost" data-fb="share">Teilen …</button>` : ""}<button class="btn ghost" data-newsall>Was ist neu</button></div>
+      <div class="row-actions" style="margin-top:10px"><button class="btn" data-fb="copy">Für Claude kopieren</button>${navigator.share ? `<button class="btn ghost" data-fb="share">Teilen …</button>` : ""}<button class="btn ghost" data-newsall>Was ist neu</button><a class="btn ghost" href="rechtliches.html">Rechtliches</a></div>
       <div class="note" id="fbMsg">Kopiert Beschreibung plus Bereich, Datenstand, Version und Gerät – keine Depot- oder Journal-Daten. Einfach im Chat mit Claude einfügen.</div>
       <div class="nw-all" hidden>${appNewsHtml(true)}</div></div>`;
 }
@@ -5287,7 +5291,7 @@ function paperHtml() {
 const SUBNAV = { depot: [["depot", "Bestand"], ["journal", "Journal"], ["game", "Übung"], "|", ["bilanz", "Bilanz"], ["paper", "Papier"]], news: [["news", "News"], ["calendar", "Kalender"]] };
 const groupOf = sec => Object.keys(SUBNAV).find(g => SUBNAV[g].some(x => x[0] === sec)) || sec;
 const subNavHtml = sec => { const g = groupOf(sec); return SUBNAV[g] ? `<div class="subnav">${SUBNAV[g].map(x => x === "|" ? `<i class="sn-sep" title="Ergebnisse der Strategien"></i>` : `<button class="${x[0] === sec ? "on" : ""}" data-gosub="${x[0]}">${x[1]}</button>`).join("")}</div>` : ""; };
-const KFOOT = `<div class="kfoot">Keine Anlageberatung – Kairo zeigt getestete Regeln, Entscheidungen triffst du selbst. Kairo führt keine Orders aus.<br>Deine Trades, Watchlist und Einstellungen bleiben auf diesem Gerät · Kurse: Yahoo Finance, onvista, Finnhub · Momentum Bias Index nach AlgoAlpha (MPL 2.0) · Charts: <a href="https://www.tradingview.com/" target="_blank" rel="noopener" style="color:inherit">TradingView Lightweight Charts™</a></div>`;
+const KFOOT = `<div class="kfoot">Keine Anlageberatung – Kairo zeigt getestete Regeln, Entscheidungen triffst du selbst. Kairo führt keine Orders aus. <a href="rechtliches.html" style="color:inherit">Impressum · Datenschutz · Risikohinweis</a><br>Deine Trades, Watchlist und Einstellungen bleiben auf diesem Gerät · Kurse: Yahoo Finance, onvista, Finnhub · Momentum Bias Index nach AlgoAlpha (MPL 2.0) · Charts: <a href="https://www.tradingview.com/" target="_blank" rel="noopener" style="color:inherit">TradingView Lightweight Charts™</a></div>`;
 function clampNotes() {                          // lange Hinweise auf 3 Zeilen kürzen, „mehr“ zeigt alles
   const m = $("main"); if (!m) return;
   m.querySelectorAll(".note").forEach(n => {
@@ -5730,8 +5734,10 @@ try { const q = new URLSearchParams(location.search).get("sec"); if (q && SEC_T[
 // Schneller Start: zuletzt geladene Daten sofort zeigen (Gerätespeicher), parallel frisch laden und nur bei neuem Scan neu zeichnen
 let booted = false;
 function boot(d) {
-  const first = !booted; data = d; booted = true; renderHead(); syncOpts(); render();
-  if (!first) return;
+  const first = !booted, gen0 = data && data.generated; data = d; booted = true; renderHead(); syncOpts(); render();
+  if (!first) {                                   // neuer Scan nach dem Schnellstart: Scan-Dateien im neuen Stand nachladen
+    if (gen0 !== d.generated) { searchLoading = anaLoading = calLoading = null; if (searchIdx) loadSearch(); if (anaData) loadAnalysis(); if (calData) loadCalendar(); }
+    return; }
   loadCalendar(); setTimeout(maybeBrief, 400);
   requestAnimationFrame(() => window.KairoSplash && KairoSplash.ready());   // App steht → Start-Animation darf übergeben
   if (state.sec === "depot") loadSearch();
@@ -5739,7 +5745,8 @@ function boot(d) {
 }
 (async () => { try { if (window.caches && !/nosplash/.test(location.search)) { const c = await caches.match("data/results.json", { ignoreSearch: true });
   if (c && !booted) boot(await c.json()); } } catch (e) {} })();
-fetch("data/results.json", { cache: "no-store" }).then(r => r.json()).then(d => {
+fetch("data/results.json", { cache: "no-cache" })   // immer beim Server nachfragen, unverändert = keine erneute Übertragung
+.then(r => r.json()).then(d => {
   if (!booted || !data || d.generated !== data.generated) boot(d);
 }).catch(() => { if (booted) { if (navigator.onLine === false) netToast(false); return; }   // gespeicherter Stand läuft weiter
   // Laden fehlgeschlagen: ehrlich sagen warum, mit „Erneut versuchen“
