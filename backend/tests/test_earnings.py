@@ -85,3 +85,8 @@ def test_guidance_ignores_analyst_targets():
              ("Goldman raises Netflix price target, sees stronger outlook - X", "u", RSS_DATE)]
     assert E.guidance(items[:1], ["JPMorgan", "JPM"]) is None
     assert E.guidance(items[1:], ["Netflix"]) is None
+
+
+def test_guidance_ignores_stock_forecast_articles():
+    items = [("General Motors Stock Forecast: GM Coils Below $85.23 as Q3 Earnings Test a Third Guidance - FXEmpire", "u", RSS_DATE)]
+    assert E.guidance(items, ["General", "GM"]) is None
