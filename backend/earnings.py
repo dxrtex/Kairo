@@ -213,8 +213,9 @@ def _quarter_revenue(tk, report: pd.Timestamp) -> tuple[float | None, float | No
     return _num(row.get(cur)), (_num(row.get(prev)) if prev is not None else None)
 
 
-def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Timestamp) -> tuple[dict | None, dict | None]:
-    """Ergebnis-Datensatz für eine Aktie und ggf. die gemerkte Erwartung (für den Vergleich nach dem Termin)."""
+def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Timestamp, live: bool = False) -> tuple[dict | None, dict | None]:
+    """Ergebnis-Datensatz für eine Aktie und ggf. die gemerkte Erwartung (für den Vergleich nach dem Termin).
+    live=True (Prüfdienst tagsüber): nur frisch gemeldete Zahlen (≤ 3 Tage), ohne Vorschau – spart Abfragen."""
     import yfinance as yf
 
     tk = yf.Ticker(t)
@@ -226,6 +227,11 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
     reported = ed[ed[rep_col].notna()] if rep_col in ed else ed.iloc[0:0]
     upcoming = ed[ed[rep_col].isna()] if rep_col in ed else ed
     upcoming = upcoming[upcoming.index.tz_convert("UTC").tz_localize(None).normalize() >= today - pd.Timedelta(days=1)] if len(upcoming) else upcoming
+    if live:
+        lt = reported.index[0] if len(reported) else None
+        if lt is None or today - lt.tz_convert("UTC").tz_localize(None).normalize() > pd.Timedelta(days=3):
+            return None, None                              # noch nichts gemeldet – erst die nächste Prüfung
+        upcoming = upcoming.iloc[0:0]
     if close is None or len(close) < 30:
         try:
             close = tk.history(period="2y", auto_adjust=False)["Close"]
@@ -288,6 +294,57 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
     return rec, new_mem
 
 
+PAGES = "https://dxrtex.github.io/Kairo/data/"
+
+
+def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
+    """Prüfdienst tagsüber (Workflow earnings.yml): Aktien mit Quartalstermin gestern/heute/morgen.
+    Sobald Yahoo die Zahlen hat, landen Ergebnis, Ausblick und Einschätzung in earnings_live.json (Branch kairo-earnings);
+    die App liest die Datei direkt – ohne auf den Abendscan zu warten."""
+    import json
+    from pathlib import Path
+
+    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
+    f = out / "earnings_live.json"
+    try:
+        prev = json.loads(f.read_text(encoding="utf-8")).get("tickers", {})
+    except Exception:
+        prev = {}
+    try:
+        est = json.loads(Path(est_file).read_text(encoding="utf-8")) if est_file else {}
+    except Exception:
+        est = {}
+    cal = json.loads(urllib.request.urlopen(PAGES + "calendar.json", timeout=60).read())
+    now = pd.Timestamp.now(tz="UTC")
+    today = now.tz_localize(None).normalize()
+    todo = {}
+    for e in cal.get("events", []):
+        if e.get("kind") != "earnings" or not e.get("ticker"):
+            continue
+        d = pd.Timestamp(e["date"])
+        if not (today - pd.Timedelta(days=2) <= d <= today + pd.Timedelta(days=1)):
+            continue
+        p = (prev.get(e["ticker"]) or {}).get("last") or {}
+        done = p.get("date") == e["date"] and p.get("rx") and p.get("guide") and now - pd.Timestamp(p["ts"]) > pd.Timedelta(hours=36)
+        if not done:                                       # fertig = Reaktion und Ausblick da, Termin > 36 h her
+            todo.setdefault(e["ticker"], e)
+
+    def job(item):
+        t, ev = item
+        try:
+            return t, one(t, ev, None, est, today, live=True)[0]
+        except Exception as exc:
+            print(f"Quartalszahlen live {t}: Fehler {exc!r}")
+            return t, None
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        fresh = {t: rec for t, rec in ex.map(job, list(todo.items())) if rec and rec.get("last")}
+    keep = {t: r for t, r in prev.items() if t not in fresh and pd.Timestamp((r.get("last") or {}).get("date", "1900-01-01")) >= today - pd.Timedelta(days=4)}
+    allr = {**keep, **fresh}
+    f.write_text(json.dumps({"generated": now.isoformat(timespec="seconds"), "tickers": allr}, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")
+    print(f"Quartalszahlen live: {len(todo)} Termine geprüft, {len(fresh)} mit Zahlen aktualisiert, {len(allr)} in der Datei")
+
+
 def run(events: list[dict], frames: dict, est_mem: dict, extra: dict[str, dict] | None = None, workers: int = 6) -> tuple[dict, dict, list[dict]]:
     """Alle Quartalstermine im Fenster (−14 bis +21 Tage) plus `extra` (gemerkte/Schwergewichte).
     Rückgabe: (earnings.json-Inhalt, neue Erwartungs-Merkliste, vergangene Termine für den Kalender)."""
@@ -327,3 +384,8 @@ def run(events: list[dict], frames: dict, est_mem: dict, extra: dict[str, dict] 
     n_last = sum("last" in r for r in out.values())
     print(f"Quartalszahlen: {len(todo)} Aktien geprüft, {n_last} mit frischen Ergebnissen, {len(out) - n_last} nur Vorschau")
     return {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "tickers": out}, mem, past
+
+
+if __name__ == "__main__":
+    import sys
+    live_main(*(sys.argv[1:3]))
