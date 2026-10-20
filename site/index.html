@@ -632,6 +632,32 @@
   .jins { display: grid; gap: 8px; margin-bottom: 12px; } .jins .tip { margin: 0; }
   @media (min-width: 760px) { .jins { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .jcard { margin-bottom: 12px; }
+  /* Journal Profi-Ansicht */
+  .jper { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--surface-2); margin: 0 0 12px; }
+  .jper button { border: 0; background: none; color: var(--muted); font: inherit; font-weight: 650; font-size: 13px; padding: 7px 14px; border-radius: 9px; cursor: pointer; }
+  .jper button.on { background: var(--surface-3, var(--surface)); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .jpro { margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+  .jpro-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px 24px; align-items: flex-end; }
+  .jlbl { display: block; font-size: 12px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .jbig { display: block; font-size: 38px; font-weight: 750; letter-spacing: -.02em; line-height: 1.1; margin: 4px 0 2px; }
+  .jsub { font-size: 12.5px; color: var(--muted); }
+  .jkpis { display: grid; grid-template-columns: repeat(4, auto); gap: 4px 22px; } @media (max-width: 560px) { .jkpis { grid-template-columns: repeat(2, auto); } }
+  .jk span { display: block; font-size: 11.5px; color: var(--muted); } .jk b { font-size: 17px; font-weight: 700; }
+  svg.jcurve { width: 100%; height: auto; margin-top: 14px; display: block; }
+  svg.jcurve line.g { stroke: var(--line); stroke-width: 1; } svg.jcurve line.z { stroke: var(--muted); stroke-dasharray: 3 4; opacity: .6; }
+  svg.jcurve text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .jstats { display: grid; grid-template-columns: 1fr; } @media (min-width: 700px) { .jstats { grid-template-columns: 1fr 1fr; column-gap: 28px; } }
+  .jrow2 { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .jrow2 span { color: var(--muted); } .jrow2 b { font-weight: 650; text-align: right; }
+  .jheat { display: grid; gap: 14px; } @media (min-width: 700px) { .jheat { grid-template-columns: repeat(3, 1fr); } }
+  .jhm-h { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; } .jhm-h span { font-weight: 650; }
+  .jhm-w { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+  .jhm-w s { text-decoration: none; font-size: 10.5px; color: var(--muted); text-align: center; }
+  .jhm-w i { font-style: normal; font-size: 10.5px; text-align: center; padding: 6px 0; border-radius: 6px; background: var(--surface-2); color: var(--faint, var(--muted)); }
+  .jhm-w i.e { background: none; } .jhm-w i.p { background: rgba(48, 209, 88, var(--a)); color: #fff; } .jhm-w i.n { background: rgba(255, 69, 58, var(--a)); color: #fff; }
+  .jbar { display: grid; grid-template-columns: minmax(90px, 1.2fr) 2fr auto; gap: 10px; align-items: center; padding: 7px 0; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  .jbar .l small { display: block; font-size: 11px; color: var(--muted); } .jbar .t { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .jbar .t i { display: block; height: 100%; border-radius: 4px; } .jbar .t i.p { background: var(--up); } .jbar .t i.n { background: var(--red); } .jbar b { font-weight: 650; }
   .jc-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
   .jc-h b { font-size: 15px; } .jc-h span { font-size: 12px; color: var(--muted); }
   svg.eq { width: 100%; height: 190px; display: block; overflow: visible; }
@@ -2453,6 +2479,7 @@ document.addEventListener("click", e => {
   const jr = e.target.closest("[data-jrow]");
   if (jr) { const k = jr.dataset.jrow; jOpen.has(k) ? jOpen.delete(k) : jOpen.add(k); render(); return; }
   const jf = e.target.closest("[data-jfilter]"); if (jf) { jFilter = jf.dataset.jfilter; render(); return; }
+  const jp = e.target.closest("[data-jper]"); if (jp) { state.jPer = jp.dataset.jper; save(); render(); return; }
   if (e.target.closest("[data-jclear]")) { if (confirm("Alle Transaktionen aus dem Journal auf diesem Gerät löschen? (Das Depot bleibt.)")) { txSave([]); depotMsg = ""; render(); } return; }
   const b = e.target.closest("[data-cal]");
   if (b) { state[b.dataset.cal] = b.dataset.v; save(); render(); return; }
@@ -2771,6 +2798,54 @@ function jCostHtml(tx) {
       <div class="fig"><span>Orders unter 250 €</span><b class="${small ? "down" : "up"}">${small}</b><em>je 0,99 € Gebühr (PRIME+)</em></div></div>
     <div class="note" style="margin:6px 0 0">${verdict} Gezählt werden Aktien-Käufe/-Verkäufe in Euro, deren Aktie im aktuellen Scan Chartdaten hat (Turbos und US-Kurse in Dollar lassen sich so nicht messen). Positiv = teurer gekauft bzw. billiger verkauft als der Tagesdurchschnitt.</div></div>`;
 }
+// ---------- Journal (Profi-Ansicht): Zeitraum, Ergebnis-Kurve mit Achsen, Kennzahlen, Gewinn-Kalender, Aufschlüsselung ----------
+const J_PER = [["30", "30 T."], ["90", "3 M."], ["ytd", "Jahr"], ["all", "Alles"]];
+function jCut(per) {
+  if (per === "all") return "";
+  const d = new Date(); if (per === "ytd") return `${d.getFullYear()}-01-01`;
+  d.setDate(d.getDate() - +per); return isoD(d);
+}
+const eur0 = v => `${v < 0 ? "−" : ""}${fmt(Math.abs(v), 0)} €`;
+function jCurveSvg(events) {                     // kumuliertes Ergebnis je Verkauf, mit Gitter und €-Achse
+  if (events.length < 2) return `<div class="note" style="margin:8px 0 0">Ab zwei Verkäufen im Zeitraum erscheint hier die Kurve.</div>`;
+  const W = 700, H = 220, L = 54, R = 10, T = 12, B = 26;
+  let cum = 0; const pts = [{ d: events[0].date, v: 0 }].concat(events.map(e => ({ d: e.date, v: (cum += e.pnl), p: e.pnl })));
+  const lo = Math.min(0, ...pts.map(p => p.v)), hi = Math.max(0, ...pts.map(p => p.v));
+  const step = (() => { const r = (hi - lo) || 1, raw = r / 4, m = Math.pow(10, Math.floor(Math.log10(raw))); return [1, 2, 2.5, 5, 10].map(k => k * m).find(k => k >= raw); })();
+  const y0 = Math.floor(lo / step) * step, y1 = Math.ceil(hi / step) * step || step;
+  const t0 = new Date(pts[0].d).getTime(), t1 = new Date(pts[pts.length - 1].d).getTime() || t0 + 1;
+  const X = d => L + (W - L - R) * ((new Date(d).getTime() - t0) / Math.max(1, t1 - t0)), Y = v => T + (H - T - B) * (y1 - v) / (y1 - y0);
+  const grid = []; for (let v = y0; v <= y1 + 1e-9; v += step) grid.push(`<line x1="${L}" x2="${W - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="${Math.abs(v) < 1e-9 ? "z" : "g"}"/><text x="${L - 8}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end">${eur0(v)}</text>`);
+  const line = pts.map(p => `${X(p.d).toFixed(1)},${Y(p.v).toFixed(1)}`).join(" "), last = pts[pts.length - 1], col = last.v >= 0 ? "var(--up)" : "var(--red)";
+  const xl = [pts[0], pts[Math.floor(pts.length / 2)], last].map((p, i) => `<text x="${X(p.d).toFixed(1)}" y="${H - 6}" text-anchor="${["start", "middle", "end"][i]}">${dateDE(p.d).slice(0, 6)}</text>`).join("");
+  return `<svg class="jcurve" viewBox="0 0 ${W} ${H}" aria-label="Ergebnis-Kurve">${grid.join("")}
+    <polygon points="${X(pts[0].d).toFixed(1)},${Y(0).toFixed(1)} ${line} ${X(last.d).toFixed(1)},${Y(0).toFixed(1)}" fill="${col}" opacity=".12"/>
+    <polyline points="${line}" fill="none" stroke="${col}" stroke-width="2.2" stroke-linejoin="round"/>${xl}</svg>`;
+}
+function jHeatHtml(events) {                     // Gewinn-Kalender: letzte 3 Monate, Mo–Fr, Farbe nach realisiertem Ergebnis
+  const by = {}; events.forEach(e => { by[e.date] = (by[e.date] || 0) + e.pnl; });
+  const mx = Math.max(1, ...Object.values(by).map(Math.abs)), now = new Date(), out = [];
+  for (let k = 2; k >= 0; k--) {
+    const f = new Date(now.getFullYear(), now.getMonth() - k, 1), l = new Date(f.getFullYear(), f.getMonth() + 1, 0), cells = [];
+    for (let i = 0; i < (f.getDay() + 6) % 7 && i < 5; i++) cells.push(`<i class="e"></i>`);
+    let sum = 0;
+    for (let d = new Date(f); d <= l; d.setDate(d.getDate() + 1)) {
+      if (d.getDay() === 0 || d.getDay() === 6) continue;
+      const iso = isoD(d), v = by[iso]; if (v) sum += v;
+      const a = v ? (0.25 + 0.75 * Math.abs(v) / mx).toFixed(2) : 0;
+      cells.push(`<i class="${v ? (v > 0 ? "p" : "n") : ""}" style="${v ? `--a:${a}` : ""}" title="${dateDE(iso)}${v ? ": " + sEur2(v) : ""}">${d.getDate()}</i>`);
+    }
+    out.push(`<div class="jhm"><div class="jhm-h"><b>${MON[f.getMonth()]} ${f.getFullYear()}</b><span class="${sum >= 0 ? "up" : "down"}">${sum ? sEur2(sum) : "–"}</span></div>
+      <div class="jhm-w">${["Mo", "Di", "Mi", "Do", "Fr"].map(x => `<s>${x}</s>`).join("")}${cells.join("")}</div></div>`);
+  }
+  return `<div class="jheat">${out.join("")}</div>`;
+}
+function jBarsHtml(rows) {                       // horizontale Balken: Ergebnis je Gruppe
+  const mx = Math.max(1, ...rows.map(r => Math.abs(r[1].pnl)));
+  return rows.map(([l, x]) => `<div class="jbar"><span class="l">${esc(l)}<small>${x.n} Trades · ${pct(x.rate, 0)}</small></span>
+    <span class="t"><i class="${x.pnl >= 0 ? "p" : "n"}" style="width:${(100 * Math.abs(x.pnl) / mx).toFixed(1)}%"></i></span><b class="${x.pnl >= 0 ? "up" : "down"}">${sEur2(x.pnl)}</b></div>`).join("");
+}
+function jStreaks(ts) { let w = 0, l = 0, cw = 0, cl = 0; ts.slice().sort((a, b) => a.close.localeCompare(b.close)).forEach(t => { if (t.pnl > 0) { cw++; cl = 0; } else { cl++; cw = 0; } w = Math.max(w, cw); l = Math.max(l, cl); }); return [w, l]; }
 function journalHtml() {
   const tx = txLoad();
   const imp = `<label class="btn${tx.length ? " ghost" : ""}" style="cursor:pointer">${tx.length ? "Neuen Export einlesen" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="jrCsv" hidden></label>`;
@@ -2779,7 +2854,8 @@ function journalHtml() {
       <p>Lies deinen Transaktions-Export aus Scalable Capital ein (Web-Version → Transaktionen → Export). Kairo ordnet alle Käufe und Verkäufe zu Trades, rechnet Gewinne und Verluste nach Gebühren und zeigt deine Statistik.</p>
       <div class="row-actions" style="justify-content:center">${imp}</div>${depotMsg ? `<div class="tip tone-gray" style="margin-top:14px;text-align:left">${depotMsg}</div>` : ""}
       <div class="note">Die Datei bleibt auf diesem Gerät – nichts wird hochgeladen. Positionen im Depot werden dabei ebenfalls aktualisiert.</div></div>`;
-  const m = journalModel(tx), all = m.trades, s = jStats(all);
+  const m = journalModel(tx), per = state.jPer || "all", cut = jCut(per);
+  const all = m.trades.filter(t => t.close >= cut), s = jStats(all), evs = m.events.filter(e => e.date >= cut), realized = evs.reduce((a, e) => a + e.pnl, 0);
   const byKind = {}; all.forEach(t => { const x = byKind[t.k] = byKind[t.k] || []; x.push(t); });
   Object.keys(byKind).forEach(k => byKind[k] = jStats(byKind[k]));
   const byUnder = {}; all.forEach(t => { const u = t.under.replace(/\s+(Co|Inc|Corp|AG|SE|Technologies|Technology|Group)\b.*$/i, "").trim(); (byUnder[u] = byUnder[u] || []).push(t); });
@@ -2827,11 +2903,11 @@ function journalHtml() {
   const fchips = [["", "Alle"], ["win", "Gewinner"], ["loss", "Verlierer"], ...Object.keys(byKind).map(k => [k, { tl: "Turbo Long", ts: "Turbo Short", stock: "Aktien", etf: "ETFs" }[k]])];
   const tradesTbl = `<div class="section-title" style="margin-top:26px"><span>Abgeschlossene Trades</span><span>${list.length}</span></div>
     <div class="kbar">${fchips.map(([v, l]) => `<button class="kchip${jFilter === v ? " on" : ""}" data-jfilter="${v}">${l}</button>`).join("")}</div>
-    <div class="table-wrap"><table class="jtrades"><thead><tr>${th("close", "Geschlossen")}${th("under", "Wert")}<th>Art</th>${th("days", "Dauer", 1)}${th("cost", "Einsatz", 1)}${th("pnl", "Ergebnis", 1)}${th("ret", "in %", 1)}</tr></thead>
-    <tbody>${list.map(t => { const k = jKey(t), nt = jnLoad()[k], open = jOpen.has(k); return `<tr class="jrow${open ? " open" : ""}" data-jrow="${esc(k)}"><td>${dateDE(t.close)}<small>seit ${dateDE(t.open)}</small></td><td><b>${esc(t.under)}</b><small>${esc(t.isin)}${t.buys + t.sells > 2 ? ` · ${t.buys} Käufe, ${t.sells} Verkäufe` : ""}</small></td>
-      <td><span class="kp" style="--k:${KIND_COL[t.k]}">${t.label}</span></td><td class="num">${t.days} T.</td><td class="num">${eur2(t.cost)}</td>
-      <td class="num ${t.pnl >= 0 ? "up" : "down"}"><b>${sEur2(t.pnl)}</b></td><td class="num ${t.pnl >= 0 ? "up" : "down"}">${sgnPct(t.ret, 1)}${nt && ((nt.tags || []).length || nt.note) ? ' <span class="jhas">✎</span>' : ""}</td></tr>
-      ${open ? `<tr class="jdet"><td colspan="7">${jDetailHtml(t)}</td></tr>` : ""}`; }).join("")}</tbody></table></div>
+    <div class="table-wrap"><table class="jtrades"><thead><tr>${th("close", "Geschlossen")}${th("under", "Wert")}${th("days", "Dauer", 1)}${th("cost", "Einsatz", 1)}${th("pnl", "Ergebnis", 1)}</tr></thead>
+    <tbody>${list.map(t => { const k = jKey(t), nt = jnLoad()[k], open = jOpen.has(k); return `<tr class="jrow${open ? " open" : ""}" data-jrow="${esc(k)}"><td>${dateDE(t.close)}<small>seit ${dateDE(t.open)}</small></td><td><b>${esc(t.under)}</b><small><span class="kp" style="--k:${KIND_COL[t.k]}">${t.label}</span>${t.buys + t.sells > 2 ? ` · ${t.buys} Käufe, ${t.sells} Verkäufe` : ""}</small></td>
+      <td class="num">${t.days} T.</td><td class="num">${eur2(t.cost)}</td>
+      <td class="num ${t.pnl >= 0 ? "up" : "down"}"><b>${sEur2(t.pnl)}</b><small class="${t.pnl >= 0 ? "up" : "down"}">${sgnPct(t.ret, 1)}${nt && ((nt.tags || []).length || nt.note) ? ' <span class="jhas">✎</span>' : ""}</small></td></tr>
+      ${open ? `<tr class="jdet"><td colspan="5">${jDetailHtml(t)}</td></tr>` : ""}`; }).join("")}</tbody></table></div>
     <div class="note" style="margin:8px 2px 0">Trade antippen: Kairo-Bewertung des Einstiegs, Tags und Notiz.</div>
     <div class="card jcard" style="margin-top:14px"><div class="jc-h"><b>Nach Tags</b><span>dein Verhalten in Zahlen</span></div>${jTagStatsHtml(all)}</div>`;
   const openTbl = m.open.length ? `<div class="section-title" style="margin-top:26px"><span>Noch offen</span><span>${m.open.length}</span></div>
@@ -2845,7 +2921,31 @@ function journalHtml() {
     ${tx.slice().reverse().map(t => `<tr class="${/executed/i.test(t.status) ? "" : "muted"}"><td>${dateDE(t.date)}<small>${esc(t.time)}</small></td><td>${esc(TYPE_DE[t.type.toLowerCase()] || t.type)}${/executed/i.test(t.status) ? "" : ` <small>${esc(t.status)}</small>`}</td>
       <td>${esc(t.desc || "–")}<small>${esc(t.isin)}</small></td><td class="num">${t.qty ? fmt(t.qty, t.qty % 1 ? 3 : 0) : ""}</td><td class="num">${t.price ? fmt(t.price, t.price < 10 ? 3 : 2) : ""}</td>
       <td class="num ${t.amount >= 0 ? "up" : ""}">${sEur2(t.amount)}</td><td class="num">${t.fee ? eur2(t.fee) : ""}</td><td class="num">${t.tax ? eur2(t.tax) : ""}</td></tr>`).join("")}</tbody></table></div></details>`;
-  return head + jStrategyHtml() + hero + tiles + (ins ? `<div class="jins">${ins}</div>` : "") + jCostHtml(tx) + curve + split + tradesTbl + openTbl
+  // Profi-Ansicht: Zeitraum → Ergebnis + Kurve → Kennzahlen → Gewinn-Kalender → Aufschlüsselung → Trades
+  let pk = 0, mdd = 0, c2 = 0; evs.forEach(e => { c2 += e.pnl; pk = Math.max(pk, c2); mdd = Math.max(mdd, pk - c2); });
+  const [sw, sl] = jStreaks(all), payoff = s.avgW != null && s.avgL ? s.avgW / Math.abs(s.avgL) : null;
+  const perBar = `<div class="jper">${J_PER.map(([v, l]) => `<button class="${per === v ? "on" : ""}" data-jper="${v}">${l}</button>`).join("")}</div>`;
+  const fig = (l, v, cls = "") => `<div class="jk"><span>${l}</span><b class="${cls}">${v}</b></div>`;
+  const over = `<div class="card jpro">
+      <div class="jpro-top"><div><span class="jlbl">Realisiertes Ergebnis</span><b class="jbig ${realized >= 0 ? "up" : "down"}">${sEur2(realized)}</b>
+        <span class="jsub">${s.n} abgeschlossene Trades · nach Gebühren, vor Steuern</span></div>
+        <div class="jkpis">${fig("Trefferquote", s.rate == null ? "–" : pct(s.rate, 0))}${fig("Profit-Faktor", s.pf == null ? "–" : s.pf === Infinity ? "∞" : fmt(s.pf, 2), s.pf >= 1 ? "up" : s.pf != null ? "down" : "")}
+          ${fig("Erwartung / Trade", s.exp == null ? "–" : sEur2(s.exp), (s.exp ?? 0) >= 0 ? "up" : "down")}${fig("Max. Rückgang", mdd ? "−" + eur2(mdd) : "–", mdd ? "down" : "")}</div></div>
+      ${jCurveSvg(evs)}</div>`;
+  const row = (l, v, cls = "") => `<div class="jrow2"><span>${l}</span><b class="${cls}">${v}</b></div>`;
+  const stats = `<div class="card jpro"><div class="jc-h"><b>Kennzahlen</b><span>${J_PER.find(x => x[0] === per)[1]}</span></div><div class="jstats">
+      ${row("Gewinner / Verlierer", `${s.w} / ${s.l}`)}${row("Ø Gewinner", s.avgW != null ? sEur2(s.avgW) : "–", "up")}${row("Ø Verlierer", s.avgL != null ? sEur2(s.avgL) : "–", "down")}
+      ${row("Chance-Risiko (Ø G ÷ Ø V)", payoff ? fmt(payoff, 2) + " : 1" : "–")}${row("Bester Trade", s.best && s.best.pnl > 0 ? `${esc(s.best.under.slice(0, 18))} ${sEur2(s.best.pnl)}` : "–", "up")}
+      ${row("Schlechtester Trade", s.worst && s.worst.pnl < 0 ? `${esc(s.worst.under.slice(0, 18))} ${sEur2(s.worst.pnl)}` : "–", "down")}${row("Haltedauer Ø G / V", `${s.holdW != null ? fmt(s.holdW, 0) : "–"} / ${s.holdL != null ? fmt(s.holdL, 0) : "–"} Tage`)}
+      ${row("Längste Serie G / V", `${sw} / ${sl}`)}${row("Gebühren (gesamt)", eur2(m.fees))}${row("Steuern (gesamt)", eur2(m.taxes))}${row("Dividenden & Zinsen", sEur2(m.divs + m.interest), "up")}</div></div>`;
+  const heat = `<div class="card jpro"><div class="jc-h"><b>Gewinn-Kalender</b><span>realisiert je Tag · letzte 3 Monate</span></div>${jHeatHtml(m.events)}</div>`;
+  const byK2 = {}; all.forEach(t => (byK2[t.k] = byK2[t.k] || []).push(t));
+  const byU2 = {}; all.forEach(t => { const u = t.under.replace(/\s+(Co|Inc|Corp|AG|SE|Technologies|Technology|Group)\b.*$/i, "").trim(); (byU2[u] = byU2[u] || []).push(t); });
+  const KN = { tl: "Turbo Long", ts: "Turbo Short", stock: "Aktien", etf: "ETFs" };
+  const brk = `<div class="jgrid"><div class="card jpro"><div class="jc-h"><b>Nach Art</b><span></span></div>${jBarsHtml(Object.entries(byK2).map(([k, v]) => [KN[k], jStats(v)]).sort((x, y) => y[1].pnl - x[1].pnl))}</div>
+      <div class="card jpro"><div class="jc-h"><b>Nach Basiswert</b><span>Top 8</span></div>${jBarsHtml(Object.entries(byU2).map(([k, v]) => [k, jStats(v)]).sort((x, y) => Math.abs(y[1].pnl) - Math.abs(x[1].pnl)).slice(0, 8))}</div></div>`;
+  const strat = plansLoad().some(p => p.st === "closed") ? jStrategyHtml() : "";
+  return head + perBar + over + stats + (ins ? `<div class="jins">${ins}</div>` : "") + heat + brk + strat + tradesTbl + openTbl + jCostHtml(tx)
     + `<div class="row-actions" style="margin:22px 0 12px">${imp}<button class="btn ghost" data-jclear>Journal löschen</button></div>${depotMsg ? `<div class="tip tone-gray" style="margin-bottom:14px">${depotMsg}</div>` : ""}`
     + txTbl + `<div class="note" style="margin:16px 2px 0">Berechnung: Käufe und Verkäufe je Wertpapier nach FIFO zugeordnet, ein Trade läuft von der Eröffnung bis der Bestand wieder 0 ist. Ergebnis = Verkaufserlös − Kaufpreis, jeweils inklusive Ordergebühren, vor Steuern. Alles bleibt nur auf diesem Gerät gespeichert.</div>`;
 }
