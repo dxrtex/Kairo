@@ -81,6 +81,7 @@
   .card, .pane { background: var(--glass) !important; border-color: var(--glass-line) !important; }
   body { margin: 0; background: var(--bg); color: var(--text);
          font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+         font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
          padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px); }
   .wrap { max-width: 1180px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 28px) 20px 0; }
   button { font: inherit; color: inherit; }
@@ -401,6 +402,8 @@
   .plan { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .plan .fig b { font-size: 18px; }
   .note { color: var(--muted); font-size: 13px; margin-top: 10px; line-height: 1.45; }
+  .note.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .note-more { border: 0; background: none; color: var(--accent); font-size: 12.5px; font-weight: 600; padding: 2px 2px 0; cursor: pointer; }
   .cfg { font-size: 14px; }
   details.cfgd summary { cursor: pointer; color: var(--accent); font-weight: 650; margin-top: 12px; }
   .cfg h4 { margin: 18px 0 6px; color: var(--accent); font-size: 14px; text-transform: uppercase; letter-spacing: .06em; }
@@ -5021,7 +5024,19 @@ const SUBNAV = { depot: [["depot", "Bestand"], ["journal", "Journal"], ["game", 
 const groupOf = sec => Object.keys(SUBNAV).find(g => SUBNAV[g].some(x => x[0] === sec)) || sec;
 const subNavHtml = sec => { const g = groupOf(sec); return SUBNAV[g] ? `<div class="subnav">${SUBNAV[g].map(x => x === "|" ? `<i class="sn-sep" title="Ergebnisse der Strategien"></i>` : `<button class="${x[0] === sec ? "on" : ""}" data-gosub="${x[0]}">${x[1]}</button>`).join("")}</div>` : ""; };
 const KFOOT = `<div class="kfoot">Keine Anlageberatung – Kairo zeigt getestete Regeln, Entscheidungen triffst du selbst. Kairo führt keine Orders aus.<br>Deine Trades, Watchlist und Einstellungen bleiben auf diesem Gerät · Kurse: Yahoo Finance, onvista, Finnhub · Momentum Bias Index nach AlgoAlpha (MPL 2.0) · Charts: <a href="https://www.tradingview.com/" target="_blank" rel="noopener" style="color:inherit">TradingView Lightweight Charts™</a></div>`;
-function render() { renderMain(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); }
+function clampNotes() {                          // lange Hinweise auf 3 Zeilen kürzen, „mehr“ zeigt alles
+  const m = $("main"); if (!m) return;
+  m.querySelectorAll(".note").forEach(n => {
+    if (n.dataset.cl || n.closest(".jdet, .kfoot, .g-ticket, form, label") || n.querySelector("input, textarea, select, button")) return;
+    n.dataset.cl = 1;
+    if (n.textContent.trim().length < 240) return;
+    n.classList.add("clamp");
+    n.insertAdjacentHTML("afterend", `<button class="note-more" data-notemore>mehr</button>`);
+  });
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-notemore]"); if (!b) return;
+  const n = b.previousElementSibling; if (!n) return; const open = n.classList.toggle("clamp"); b.textContent = open ? "mehr" : "weniger"; });
+function render() { renderMain(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); }
 function renderMain() {
   if (!data) return;
   const hits = data.results.filter(r => r.passed).length, fast = data.results.filter(r => r.fast_hit).length;
