@@ -127,6 +127,12 @@
     .card.hero .candles { flex: 1; min-height: 220px; }
   }
   .card-top { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+  .kpx { margin: 12px 0 2px; } .kpx-p { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+  .kpx-p b { font-size: 34px; font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; } .kpx-p small { font-size: 16px; font-weight: 600; color: var(--muted); }
+  .kpx .chgp { font-style: normal; font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; padding: 3px 9px; border-radius: 9px; }
+  .kpx .chgp.up { color: var(--up); background: color-mix(in srgb, var(--up) 14%, transparent); } .kpx .chgp.dn { color: var(--red); background: var(--red-bg); }
+  .kpx-s { display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 13px; color: var(--muted); } .kpx-s .live-btn { margin-left: auto; }
+  .card > .flag { margin: 12px 0 0; }
   .card-title { min-width: 0; }
   .card-title h2 { margin: 0; font-size: 21px; line-height: 1.25; letter-spacing: -.01em;
                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1745,7 +1751,6 @@ function card(r) {
         <h2 title="${esc(r.name)}">${favBtn(r.ticker)} ${esc(r.name || r.ticker)} ${wlTag(r)}<button class="ibtn" data-about aria-label="Was macht das Unternehmen?">i</button></h2>
         <div class="meta">${esc(r.ticker)} · ${esc(r.exchange || "")} · ${REGION[r.region] || ""}${r.sector ? " · " + esc(r.sector) : ""}</div>
         ${statusBadge(r)}
-        <span class="flag">${esc(r.zone_type)}${r.divergence ? " · " + esc(r.divergence) : ""}${r.volatility != null ? " · Vola " + pct(r.volatility, 0) : ""}</span>
         ${r.earnings_risk ? `<span class="warn">⚠ Earnings ${dateDE(r.earnings_date)}</span>` : ""}
       </div>
       <div class="score-col">
@@ -1755,18 +1760,19 @@ function card(r) {
         : `<button class="score fast" data-scoreinfo style="--p:${Math.round(100 * (r.met ?? 0) / (r.total || 11))}" title="${r.met ?? "–"} von ${r.total ?? 11} Kriterien erfüllt – antippen für Details"><span>${r.met ?? "–"}/${r.total ?? 11}</span></button>`}
       ${trendHtml(r)}</div>
     </div>
-    ${isApple() ? `<div class="apx"><b>${fmt(r.close)} <small>${esc(r.currency || "")}</small></b><i class="chgp" data-chg="${esc(r.ticker)}"></i></div>` : ""}
+    ${kpxHtml(r)}
     ${kplanHtml(r)}
     <div class="aboutbox" hidden>${aboutHtml(r)}</div>
     <div class="scorebox" hidden>${scoreBoxHtml(r)}</div>
-    <div class="figures">
-      <div class="fig"><span>Rückgang</span><b class="${(r.drawdown ?? 0) >= 0 ? "down" : "up"}">${ddFmt(r.drawdown, 0)}</b></div>
-      <div class="fig"><span>Kurs${r.live ? " · live" : ""}</span><b>${fmt(r.close)}</b></div>
-      <div class="fig"><span>CRV</span><b class="${(r.crv ?? 0) >= 2 ? "up" : "muted"}">${crvTxt(r.crv)}</b></div>
-      <div class="fig"><span>Börsenwert</span><b>${fmtCap(r.market_cap_usd)}</b></div>
-    </div>
     ${isApple() ? `<div class="aseg rng">${[["1M", 21], ["3M", 63], ["6M", 126], ["1J", 252]].map(([l, n]) => `<button data-rng="${n}" class="${(state.aRng || 63) === n ? "on" : ""}">${l}</button>`).join("")}</div>` : ""}
     <div class="chart" data-mini="${esc(r.ticker)}"><svg class="candles" viewBox="0 0 600 220" preserveAspectRatio="none"></svg></div>
+    <div class="figures">
+      <div class="fig"><span>Rückgang vom Hoch</span><b class="${(r.drawdown ?? 0) >= 0 ? "down" : "up"}">${ddFmt(r.drawdown, 0)}</b></div>
+      <div class="fig"><span>CRV</span><b class="${(r.crv ?? 0) >= 2 ? "up" : "muted"}">${crvTxt(r.crv)}</b></div>
+      <div class="fig"><span>Volatilität</span><b>${r.volatility != null ? pct(r.volatility, 0) : "–"}</b></div>
+      <div class="fig"><span>Börsenwert</span><b>${fmtCap(r.market_cap_usd)}</b></div>
+    </div>
+    <span class="flag">${esc(r.zone_type)}${r.divergence ? " · " + esc(r.divergence) : ""}</span>
     ${agrp(`Kriterien · ${r.met ?? "–"}/${r.total ?? 11}`, r.criteria ? `<div class="chips">${chips(r)}</div>` : `<div class="note" style="margin:0">${r.met ?? "–"} von ${r.total ?? 11} Kriterien erfüllt${(r.missing || []).length ? ` – es fehlen: ${esc(r.missing.map(shortCrit).join(", "))}` : ""}.</div>`, true)}
     ${tipHtml(r.hint)}
     ${agrp("Marktstimmung", sentiHtml(r))}
@@ -1774,9 +1780,15 @@ function card(r) {
     <div class="actions">
       <button class="btn" data-open="${esc(r.ticker)}">Details &amp; Chart</button>
       <a class="btn ghost" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">TradingView</a>
-      ${liveBtn(r.ticker)}${liveTag(r.ticker)}
     </div>
   </article>`;
+}
+// Kurs ganz oben im Fenster: das Erste, was man nach dem Antippen sieht
+function kpxHtml(r) {
+  const sr = rowOf(r.ticker) || {}, d1 = r.live ? null : sr.d1;
+  return `<div class="kpx"><div class="kpx-p"><b>${fmt(r.close)} <small>${esc(r.currency || "")}</small></b>
+      <i class="chgp${d1 == null ? "" : d1 >= 0 ? " up" : " dn"}" data-chg="${esc(r.ticker)}">${d1 == null ? "" : sgnPct(d1, 2)}</i></div>
+    <div class="kpx-s"><span>${r.live || LIVE.map[r.ticker] ? `${liveTag(r.ticker) || "live"}` : `Schlusskurs ${r.date ? dateDE(r.date) : ""}${d1 != null ? " · zum Vortag" : ""}`}</span>${liveBtn(r.ticker)}</div></div>`;
 }
 
 // Mini-Kerzenchart (letzte 60 Kerzen) mit Zone – wird beim Scrollen nachgeladen
@@ -1837,7 +1849,7 @@ function aLineSvg(c, r) {
 // Apple-Aktien-Geste: Finger/Maus über den Chart ziehen zeigt Kurs und Datum des Tages, oben ändert sich die große Zahl mit
 function bindScrub(el) {
   if (el._scrub) return; el._scrub = 1;
-  const card = el.closest(".card"), big = card && card.querySelector(".apx b"), chg = card && card.querySelector(".apx .chgp");
+  const card = el.closest(".card"), big = card && card.querySelector(".kpx b"), chg = card && card.querySelector(".kpx .chgp");
   let keep = null;
   const show = ev => {
     const m = el._map; if (!m) return;
@@ -1858,7 +1870,8 @@ function bindScrub(el) {
 }
 function paintChart(el, c, r) {
   el.querySelector("svg").innerHTML = isApple() ? aLineSvg(c, r) : miniSvg(c, r);
-  if (isApple()) { setChg(el.closest(".card") || document, r.ticker, dayChg(c)); el._map = aLineSvg.map; bindScrub(el); }
+  const sr = rowOf(r.ticker); if (!(sr && sr.d1 != null) && !r.live) setChg(el.closest(".card") || document, r.ticker, dayChg(c));
+  if (isApple()) { el._map = aLineSvg.map; bindScrub(el); }
   el.querySelectorAll(".clab").forEach(x => x.remove());
   if (miniSvg.labels) el.insertAdjacentHTML("beforeend", miniSvg.labels);
 }
