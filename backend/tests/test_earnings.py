@@ -110,3 +110,11 @@ def test_history_fallback_fills_missing_fresh_report():
     assert E._from_history(_TK(eh), {"date": "2026-10-20"}, rep2, pd.Timestamp("2026-10-21")) is None
     # Termin in der Zukunft → kein Ersatz
     assert E._from_history(_TK(eh), {"date": "2026-10-28"}, rep, pd.Timestamp("2026-10-21")) is None
+
+
+def test_history_fallback_ignores_old_quarter_before_report():
+    # Tesla meldet heute: Historie hat nur das alte Quartal (30.06.), das schon im Juli gemeldet wurde → kein Ersatz
+    idx = pd.DatetimeIndex([pd.Timestamp("2026-07-22 16:05", tz="America/New_York")])
+    rep = pd.DataFrame({"EPS Estimate": [0.40], "Reported EPS": [0.33]}, index=idx)
+    eh = pd.DataFrame({"epsActual": [0.33], "epsEstimate": [0.40]}, index=pd.to_datetime(["2026-06-30"]))
+    assert E._from_history(_TK(eh), {"date": "2026-10-21"}, rep, pd.Timestamp("2026-10-21")) is None
