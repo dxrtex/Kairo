@@ -226,10 +226,9 @@ def _from_history(tk, ev: dict, reported: pd.DataFrame, today: pd.Timestamp) -> 
         return None
     if pd.isna(d) or not (today - pd.Timedelta(days=PAST_DAYS) <= d <= today):
         return None
-    if len(reported):
-        last = reported.index[0].tz_convert("UTC").tz_localize(None).normalize()
-        if last >= d - pd.Timedelta(days=2):
-            return None                                   # Terminliste ist aktuell
+    last = reported.index[0].tz_convert("UTC").tz_localize(None).normalize() if len(reported) else None
+    if last is not None and last >= d - pd.Timedelta(days=2):
+        return None                                       # Terminliste ist aktuell
     try:
         eh = tk.get_earnings_history()
     except Exception:
@@ -240,13 +239,15 @@ def _from_history(tk, ev: dict, reported: pd.DataFrame, today: pd.Timestamp) -> 
     if not len(eh):
         return None
     q = pd.Timestamp(max(eh.index))
-    if not (pd.Timedelta(days=0) <= d - q <= pd.Timedelta(days=120)):
-        return None                                       # jüngstes Quartal gehört nicht zu diesem Termin
+    if not (pd.Timedelta(days=0) <= d - q <= pd.Timedelta(days=120)) or last is None or q <= last:
+        return None                                       # jüngstes Quartal ist schon das zuletzt gemeldete → noch keine neuen Zahlen
     row = eh.loc[eh.index == max(eh.index)].iloc[0]
     tz = reported.index.tz if len(reported) and reported.index.tz is not None else "America/New_York"
     hrs = [i.hour for i in reported.index[:4]] if len(reported) else []
     hour = max(set(hrs), key=hrs.count) if hrs else 16
     ts = pd.Timestamp(d.year, d.month, d.day, hour).tz_localize(tz)
+    if ts > pd.Timestamp.now(tz="UTC"):
+        return None                                       # Meldezeit noch nicht erreicht
     e, a = _num(row.get("epsEstimate")), _num(row.get("epsActual"))
     return pd.DataFrame({"EPS Estimate": [e], "Reported EPS": [a], "Surprise(%)": [None]}, index=pd.DatetimeIndex([ts], name="Earnings Date"))
 
@@ -381,7 +382,7 @@ def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
 
     with ThreadPoolExecutor(max_workers=4) as ex:
         fresh = {t: rec for t, rec in ex.map(job, list(todo.items())) if rec and rec.get("last")}
-    keep = {t: r for t, r in prev.items() if t not in fresh and pd.Timestamp((r.get("last") or {}).get("date", "1900-01-01")) >= today - pd.Timedelta(days=4)}
+    keep = {t: r for t, r in prev.items() if t not in todo and pd.Timestamp((r.get("last") or {}).get("date", "1900-01-01")) >= today - pd.Timedelta(days=4)}
     allr = {**keep, **fresh}
     f.write_text(json.dumps({"generated": now.isoformat(timespec="seconds"), "tickers": allr}, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")
     print(f"Quartalszahlen live: {len(todo)} Termine geprüft, {len(fresh)} mit Zahlen aktualisiert, {len(allr)} in der Datei")
