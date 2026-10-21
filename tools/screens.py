@@ -40,6 +40,30 @@ def demo_tx() -> str:
 async def main(out: Path) -> None:
     from playwright.async_api import async_playwright
     app_smoke.fetch()
+    try:                                               # Probe: schnellere Quellen für frisch gemeldete Zahlen (Netflix 20.10. nach Börsenschluss)
+        import urllib.request as _ur, yfinance as _yf
+        out.mkdir(parents=True, exist_ok=True)
+        lines = []
+        tk = _yf.Ticker("NFLX")
+        try: lines.append("earnings_dates:\n" + str(tk.get_earnings_dates(limit=3)))
+        except Exception as exc: lines.append(f"ed ERR {exc!r}")
+        try: lines.append("history:\n" + str(tk.get_earnings_history()))
+        except Exception as exc: lines.append(f"eh ERR {exc!r}")
+        for nm, u in (("nasdaq-surprise", "https://api.nasdaq.com/api/company/NFLX/earnings-surprise"),
+                      ("nasdaq-calendar", "https://api.nasdaq.com/api/calendar/earnings?date=2026-10-20"),
+                      ("yahoo-qs", "https://query2.finance.yahoo.com/v10/finance/quoteSummary/NFLX?modules=earnings,earningsHistory,calendarEvents"),
+                      ("yahoo-cal", "https://finance.yahoo.com/calendar/earnings?day=2026-10-20")):
+            try:
+                req = _ur.Request(u, headers={"User-Agent": "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/120 Safari/537.36", "Accept": "application/json, text/plain, */*"})
+                x = _ur.urlopen(req, timeout=20).read().decode("utf-8", "replace")
+                import re as _re2
+                i = x.find("NFLX"); lines.append(f"== {nm}: {len(x)} B\n{x[:1500]}\n...{x[max(0,i-300):i+900] if i >= 0 else ''}")
+            except Exception as exc:
+                lines.append(f"== {nm} ERR {exc!r}")
+        (out / "probe_fast.txt").write_text("\n\n".join(lines))
+    except Exception:
+        import traceback
+        (out / "probe_fast.txt").write_text(traceback.format_exc())
     try:                                               # Prüfdienst tagsüber testen (wie Workflow earnings.yml)
         import time as _t
         sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
