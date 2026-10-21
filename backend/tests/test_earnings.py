@@ -90,3 +90,23 @@ def test_guidance_ignores_analyst_targets():
 def test_guidance_ignores_stock_forecast_articles():
     items = [("General Motors Stock Forecast: GM Coils Below $85.23 as Q3 Earnings Test a Third Guidance - FXEmpire", "u", RSS_DATE)]
     assert E.guidance(items, ["General", "GM"]) is None
+
+
+class _TK:
+    def __init__(self, eh): self._eh = eh
+    def get_earnings_history(self): return self._eh
+
+
+def test_history_fallback_fills_missing_fresh_report():
+    # Netflix: Termin 20.10. fehlt in get_earnings_dates, Historie hat das Quartal 30.09. schon
+    idx = pd.DatetimeIndex([pd.Timestamp("2026-07-16 16:00", tz="America/New_York"), pd.Timestamp("2026-04-16 16:00", tz="America/New_York")])
+    rep = pd.DataFrame({"EPS Estimate": [0.79, 1.25], "Reported EPS": [0.80, 1.23]}, index=idx)
+    eh = pd.DataFrame({"epsActual": [0.80, 0.87], "epsEstimate": [0.78858, 0.82268]}, index=pd.to_datetime(["2026-06-30", "2026-09-30"]))
+    syn = E._from_history(_TK(eh), {"date": "2026-10-20"}, rep, pd.Timestamp("2026-10-21"))
+    assert syn is not None and syn.index[0].hour == 16 and str(syn.index[0].date()) == "2026-10-20"
+    assert syn.iloc[0]["Reported EPS"] == 0.87
+    # Terminliste schon aktuell → kein Ersatz
+    rep2 = pd.concat([pd.DataFrame({"EPS Estimate": [0.82], "Reported EPS": [0.87]}, index=pd.DatetimeIndex([pd.Timestamp("2026-10-20 16:00", tz="America/New_York")])), rep])
+    assert E._from_history(_TK(eh), {"date": "2026-10-20"}, rep2, pd.Timestamp("2026-10-21")) is None
+    # Termin in der Zukunft → kein Ersatz
+    assert E._from_history(_TK(eh), {"date": "2026-10-28"}, rep, pd.Timestamp("2026-10-21")) is None

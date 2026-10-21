@@ -217,6 +217,40 @@ def _quarter_revenue(tk, report: pd.Timestamp) -> tuple[float | None, float | No
     return _num(row.get(cur)), (_num(row.get(prev)) if prev is not None else None)
 
 
+def _from_history(tk, ev: dict, reported: pd.DataFrame, today: pd.Timestamp) -> pd.DataFrame | None:
+    """Ersatz, wenn Yahoo den gerade gemeldeten Termin aus get_earnings_dates nimmt (kommt vor, z. B. Netflix 20.10.2026):
+    get_earnings_history hat das Quartal schon. Termin = Kalenderdatum, Uhrzeit wie bei den bisherigen Meldungen."""
+    try:
+        d = pd.Timestamp(ev.get("date"))
+    except Exception:
+        return None
+    if pd.isna(d) or not (today - pd.Timedelta(days=PAST_DAYS) <= d <= today):
+        return None
+    if len(reported):
+        last = reported.index[0].tz_convert("UTC").tz_localize(None).normalize()
+        if last >= d - pd.Timedelta(days=2):
+            return None                                   # Terminliste ist aktuell
+    try:
+        eh = tk.get_earnings_history()
+    except Exception:
+        return None
+    if eh is None or not len(eh) or "epsActual" not in eh:
+        return None
+    eh = eh.dropna(subset=["epsActual"])
+    if not len(eh):
+        return None
+    q = pd.Timestamp(max(eh.index))
+    if not (pd.Timedelta(days=0) <= d - q <= pd.Timedelta(days=120)):
+        return None                                       # jüngstes Quartal gehört nicht zu diesem Termin
+    row = eh.loc[eh.index == max(eh.index)].iloc[0]
+    tz = reported.index.tz if len(reported) and reported.index.tz is not None else "America/New_York"
+    hrs = [i.hour for i in reported.index[:4]] if len(reported) else []
+    hour = max(set(hrs), key=hrs.count) if hrs else 16
+    ts = pd.Timestamp(d.year, d.month, d.day, hour).tz_localize(tz)
+    e, a = _num(row.get("epsEstimate")), _num(row.get("epsActual"))
+    return pd.DataFrame({"EPS Estimate": [e], "Reported EPS": [a], "Surprise(%)": [None]}, index=pd.DatetimeIndex([ts], name="Earnings Date"))
+
+
 def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Timestamp, live: bool = False) -> tuple[dict | None, dict | None]:
     """Ergebnis-Datensatz für eine Aktie und ggf. die gemerkte Erwartung (für den Vergleich nach dem Termin).
     live=True (Prüfdienst tagsüber): nur frisch gemeldete Zahlen (≤ 3 Tage), ohne Vorschau – spart Abfragen."""
@@ -231,6 +265,10 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
     reported = ed[ed[rep_col].notna()] if rep_col in ed else ed.iloc[0:0]
     upcoming = ed[ed[rep_col].isna()] if rep_col in ed else ed
     upcoming = upcoming[upcoming.index.tz_convert("UTC").tz_localize(None).normalize() >= today - pd.Timedelta(days=1)] if len(upcoming) else upcoming
+    syn = _from_history(tk, ev, reported, today)
+    if syn is not None:                                    # Termin fehlt (noch) in der Terminliste, Zahlen stehen aber in der Historie
+        reported = pd.concat([syn, reported]).sort_index(ascending=False)
+        upcoming = upcoming[upcoming.index.tz_convert("UTC").tz_localize(None).normalize() > syn.index[0].tz_convert("UTC").tz_localize(None).normalize()]
     if live:
         lt = reported.index[0] if len(reported) else None
         if lt is None or today - lt.tz_convert("UTC").tz_localize(None).normalize() > pd.Timedelta(days=3):
