@@ -1,13 +1,17 @@
 # Papier-Handel S19 / S19-B / S19-C / S20 (echte 4-Stunden-Kerzen, keine echten Orders)
 
-Stand: 2026-10-20 01:10 UTC · Startkapital je Strategie 2,000 € · Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5; S19-B/-C: v1.7). Kosten: Scalable PRIME+ (ab 250 € Orderwert gebührenfrei, sonst 0,99 €) + halber Spread je Seite.
+Stand: 2026-10-21 00:41 UTC · Startkapital je Strategie 2,000 € · Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5; S19-B/-C: v1.7). Kosten: Scalable PRIME+ (ab 250 € Orderwert gebührenfrei, sonst 0,99 €) + halber Spread je Seite.
 
 ## S19 Hybride Mean Reversion (Original)
 
-- Start: 2026-10-16 · Handelstage: 2
-- Depot: **2,000.00 €** (+0.00%) · größter Rückgang 0.0%
+- Start: 2026-10-16 · Handelstage: 3
+- Depot: **1,991.82 €** (-0.41%) · größter Rückgang -0.4%
 - Abgeschlossene Trades: 0
-- Offen: 0 · warten auf H4-Auslöser: 1
+- Offen: 1 · warten auf H4-Auslöser: 0
+
+| Titel | Kauf | Einstieg | Stop | Stück |
+|---|---|---|---|---|
+| SCHW | 2026-10-20 19:30 | 90.76 | 88.16 | 8 |
 
 Letzte Ereignisse:
 
@@ -16,13 +20,21 @@ Letzte Ereignisse:
 - 2026-10-16 Filter: Qualität 848 → Kursdaten 836 → liquide 835 → ≥ 2,5 Std unter EMA20 2 → 3 Tage fallend 2 → Volumen sinkt 0 → schwächer als Branche 0
 - 2026-10-19 Filter: Qualität 848 → Kursdaten 836 → liquide 835 → ≥ 2,5 Std unter EMA20 5 → 3 Tage fallend 1 → Volumen sinkt 1 → schwächer als Branche 1
 - 2026-10-19 neue Tagessignale: 1 (wartend gesamt 1)
+- 2026-10-20 16:30:00 SCHW: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 KAUF SCHW 8 Stk @ 90.76, Stop 88.16, Risiko 1.0%
+- 2026-10-20 Filter: Qualität 847 → Kursdaten 0 → liquide 0 → ≥ 2,5 Std unter EMA20 0 → 3 Tage fallend 0 → Volumen sinkt 0 → schwächer als Branche 0
+- 2026-10-20 neue Tagessignale: 0 (wartend gesamt 0)
 
 ## S19-B (Volumen 2 von 3 Tagen)
 
-- Start: 2026-10-16 · Handelstage: 2
-- Depot: **2,000.00 €** (+0.00%) · größter Rückgang 0.0%
+- Start: 2026-10-16 · Handelstage: 3
+- Depot: **1,991.82 €** (-0.41%) · größter Rückgang -0.4%
 - Abgeschlossene Trades: 0
-- Offen: 0 · warten auf H4-Auslöser: 2
+- Offen: 1 · warten auf H4-Auslöser: 1
+
+| Titel | Kauf | Einstieg | Stop | Stück |
+|---|---|---|---|---|
+| SCHW | 2026-10-20 19:30 | 90.76 | 88.16 | 8 |
 
 Letzte Ereignisse:
 
@@ -31,13 +43,21 @@ Letzte Ereignisse:
 - 2026-10-19 16:30:00 ANET: H4-Auslöser, CRV 1.47 < 2 – kein Trade
 - 2026-10-19 Filter: Qualität 847 → Kursdaten 835 → liquide 834 → ≥ 2,5 Std unter EMA20 5 → 3 Tage fallend 1 → Volumen sinkt 1 → schwächer als Branche 1
 - 2026-10-19 neue Tagessignale: 1 (wartend gesamt 2)
+- 2026-10-20 16:30:00 SCHW: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 KAUF SCHW 8 Stk @ 90.76, Stop 88.16, Risiko 1.0%
+- 2026-10-20 Filter: Qualität 846 → Kursdaten 0 → liquide 0 → ≥ 2,5 Std unter EMA20 0 → 3 Tage fallend 0 → Volumen sinkt 0 → schwächer als Branche 0
+- 2026-10-20 neue Tagessignale: 0 (wartend gesamt 1)
 
 ## S19-C (2,0 Std, Volumen 2 von 3)
 
-- Start: 2026-10-16 · Handelstage: 2
-- Depot: **2,000.00 €** (+0.00%) · größter Rückgang 0.0%
+- Start: 2026-10-16 · Handelstage: 3
+- Depot: **1,991.82 €** (-0.41%) · größter Rückgang -0.4%
 - Abgeschlossene Trades: 0
-- Offen: 0 · warten auf H4-Auslöser: 10
+- Offen: 1 · warten auf H4-Auslöser: 8
+
+| Titel | Kauf | Einstieg | Stop | Stück |
+|---|---|---|---|---|
+| SCHW | 2026-10-20 19:30 | 90.76 | 88.16 | 8 |
 
 Letzte Ereignisse:
 
@@ -46,13 +66,18 @@ Letzte Ereignisse:
 - 2026-10-19 16:30:00 ANET: H4-Auslöser, CRV 1.47 < 2 – kein Trade
 - 2026-10-19 Filter: Qualität 839 → Kursdaten 827 → liquide 826 → ≥ 2,0 Std unter EMA20 14 → 3 Tage fallend 2 → Volumen sinkt 1 → schwächer als Branche 1
 - 2026-10-19 neue Tagessignale: 1 (wartend gesamt 10)
+- 2026-10-20 16:30:00 HSAI: H4-Auslöser, CRV 0.46 < 2 – kein Trade
+- 2026-10-20 16:30:00 SCHW: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 KAUF SCHW 8 Stk @ 90.76, Stop 88.16, Risiko 1.0%
+- 2026-10-20 Filter: Qualität 839 → Kursdaten 0 → liquide 0 → ≥ 2,0 Std unter EMA20 0 → 3 Tage fallend 0 → Volumen sinkt 0 → schwächer als Branche 0
+- 2026-10-20 neue Tagessignale: 0 (wartend gesamt 8)
 
 ## S20 Trendfolge / VCP
 
-- Start: 2026-10-16 · Handelstage: 2
-- Depot: **2,003.36 €** (+0.17%) · größter Rückgang 0.0%
+- Start: 2026-10-16 · Handelstage: 3
+- Depot: **2,003.84 €** (+0.19%) · größter Rückgang 0.0%
 - Abgeschlossene Trades: 0
-- Offen: 3 · warten auf H4-Auslöser: 190
+- Offen: 3 · warten auf H4-Auslöser: 126
 
 | Titel | Kauf | Einstieg | Stop | Stück |
 |---|---|---|---|---|
@@ -62,23 +87,23 @@ Letzte Ereignisse:
 
 Letzte Ereignisse:
 
-- 2026-10-19 19:30:00 CCK: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-10-19 19:30:00 CENTA: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-10-19 19:30:00 ELAN: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-10-19 19:30:00 ESNT: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-10-19 19:30:00 PAYX: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-10-19 19:30:00 PSA: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-10-19 19:30:00 ROKU: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-10-19 19:30:00 SWX: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-10-19 19:30:00 TFX: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-10-19 19:30:00 USFD: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-10-19 19:30:00 WEX: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-10-19 neue Tagessignale: 46 (wartend gesamt 190)
+- 2026-10-20 19:30:00 NDAQ: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 NWL: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 NWN: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 NWSA: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 OMC: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 RPRX: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 SDRL: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 SEIC: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 SIGI: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 SXT: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 19:30:00 TOST: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-10-20 neue Tagessignale: 4 (wartend gesamt 126)
 
 ## MOM5 Momentum Top 5 (monatlich)
 
-- Start: 2026-10-16 · Handelstage: 2
-- Depot: **1,997.14 €** (-0.14%) · größter Rückgang -0.1%
+- Start: 2026-10-16 · Handelstage: 3
+- Depot: **1,997.43 €** (-0.13%) · größter Rückgang -0.1%
 - Abgeschlossene Trades: 0
 - Offen: 1 · warten auf H4-Auslöser: 0
 
@@ -97,8 +122,8 @@ Letzte Ereignisse:
 
 ## MOM10 Momentum Top 10 (monatlich; Holdout nicht bestanden)
 
-- Start: 2026-10-16 · Handelstage: 2
-- Depot: **1,996.95 €** (-0.15%) · größter Rückgang -0.2%
+- Start: 2026-10-16 · Handelstage: 3
+- Depot: **1,997.45 €** (-0.13%) · größter Rückgang -0.2%
 - Abgeschlossene Trades: 0
 - Offen: 4 · warten auf H4-Auslöser: 0
 
@@ -125,8 +150,8 @@ Letzte Ereignisse:
 
 ## DM Dual Momentum SPY/EFA/QQQ → SHY
 
-- Start: 2026-10-16 · Handelstage: 2
-- Depot: **1,993.57 €** (-0.32%) · größter Rückgang -0.3%
+- Start: 2026-10-16 · Handelstage: 3
+- Depot: **1,995.23 €** (-0.24%) · größter Rückgang -0.3%
 - Abgeschlossene Trades: 0
 - Offen: 1 · warten auf H4-Auslöser: 0
 
@@ -141,24 +166,48 @@ Letzte Ereignisse:
 
 ## KAIRO Scanner-Treffer (Basis-Einstieg)
 
-- Start: 2026-10-15 · Handelstage: 2
+- Start: 2026-10-15 · Handelstage: 3
 - Depot: **2,000.00 €** (+0.00%) · größter Rückgang 0.0%
 - Abgeschlossene Trades: 0
-- Offen: 0 · warten auf H4-Auslöser: 15
+- Offen: 0 · warten auf H4-Auslöser: 52
 
 Letzte Ereignisse:
 
+- 2026-10-19 JBHT: Treffer gescheitert (neues Tief)
+- 2026-10-19 MTB: Treffer gescheitert (neues Tief)
 
 ## KAIROS Scanner-Treffer, schwache Aktien zuerst
 
-- Start: 2026-10-15 · Handelstage: 2
+- Start: 2026-10-15 · Handelstage: 3
 - Depot: **20,000.00 €** (+0.00%) · größter Rückgang 0.0%
 - Abgeschlossene Trades: 0
-- Offen: 0 · warten auf H4-Auslöser: 15
+- Offen: 0 · warten auf H4-Auslöser: 52
 
 Letzte Ereignisse:
 
 - Startkapital auf 20,000 € gesetzt (vor dem ersten Trade)
+- 2026-10-19 JBHT: Treffer gescheitert (neues Tief)
+- 2026-10-19 MTB: Treffer gescheitert (neues Tief)
+
+## KAIROZ Kairo-Ziel (attraktives Kursziel, halten bis zum Ziel)
+
+- Start: 2026-10-19 · Handelstage: 1
+- Depot: **20,000.00 €** (+0.00%) · größter Rückgang 0.0%
+- Abgeschlossene Trades: 0
+- Offen: 0 · warten auf H4-Auslöser: 0
+
+Letzte Ereignisse:
+
+
+## KAIROL Kairo lang (Vergleich ohne Kursziel)
+
+- Start: 2026-10-19 · Handelstage: 1
+- Depot: **20,000.00 €** (+0.00%) · größter Rückgang 0.0%
+- Abgeschlossene Trades: 0
+- Offen: 0 · warten auf H4-Auslöser: 0
+
+Letzte Ereignisse:
+
 
 ---
 Grenzen: Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser, Yahoo-Stundenkerzen (teils verzögert),
