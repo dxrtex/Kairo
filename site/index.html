@@ -712,6 +712,11 @@
   .jh-wl i.up { color: var(--up); } .jh-wl i.down { color: var(--red); }
   .jtiles { margin-bottom: 12px; } .jtiles .fig b { font-size: 19px; }
   .jins { display: grid; gap: 8px; margin-bottom: 12px; } .jins .tip { margin: 0; }
+  .dck { margin-top: 16px; } .dck-g { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .dck-t { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 650; }
+  .dbar { display: grid; grid-template-columns: minmax(0, 1fr) 90px 44px; gap: 8px; align-items: center; font-size: 13.5px; padding: 3px 0; }
+  .dbar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .dbar em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .dbar i { height: 8px; border-radius: 4px; background: var(--glass); overflow: hidden; } .dbar i b { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
   @media (min-width: 760px) { .jins { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .jcard { margin-bottom: 12px; }
   /* Journal Profi-Ansicht */
@@ -2262,6 +2267,37 @@ function stratTipHtml(st, t) {
   const x = st || NOPLAN;
   return `<div class="tip tone-${x.tone}"><b class="t">${esc(x.t)}</b>${esc(x.s)}${!st && t ? ` <button class="linkbtn" data-ein="${esc(tkClean(t))}">Plan anlegen ›</button>` : ""}</div>`;
 }
+// Depot-Check: Verteilung nach Wert – Klumpen, Branchen, Regionen, Währungen, Hebelanteil. Einordnung, keine Empfehlung.
+function depotCheckHtml(items) {
+  const st = items.filter(x => !x.p.d && x.val != null && x.val > 0), tot = st.reduce((a, x) => a + x.val, 0);
+  const turbCost = items.filter(x => x.p.d).reduce((a, x) => a + x.cost, 0), allCost = items.reduce((a, x) => a + x.cost, 0);
+  if (items.length < 2 || (!tot && !turbCost)) return "";
+  const nm = x => x.p.n || (x.r && x.r.n) || x.p.t;
+  const share = key => { const m = {}; st.forEach(x => { const k = key(x, x.r || {}) || "ohne Angabe"; m[k] = (m[k] || 0) + x.val; });
+    return Object.entries(m).map(([k, v]) => [k, v / tot]).sort((a, b) => (a[0] === "ohne Angabe") - (b[0] === "ohne Angabe") || b[1] - a[1]); };
+  const SEC_EN = { Technology: "Technologie", "Financial Services": "Finanzen", Healthcare: "Gesundheit", "Consumer Cyclical": "Zyklischer Konsum", "Consumer Defensive": "Basiskonsum",
+    Energy: "Energie", Industrials: "Industrie", "Basic Materials": "Rohstoffe", Utilities: "Versorger", "Real Estate": "Immobilien", "Communication Services": "Kommunikation" };
+  const secOf = x => (x.r && x.r.sec) || SEC_EN[((data.results.find(y => y.ticker === x.p.t) || {}).sector) || ""] || null;
+  const pos = st.map(x => [nm(x), x.val / tot]).sort((a, b) => b[1] - a[1]);
+  const sec = share(x => secOf(x)), reg = share((x, r) => REGION[r.r]), cur = share((x, r) => x.cur || r.cur);
+  const notes = [];
+  if (tot && st.length >= 2) {
+    const [pn, ps] = pos[0];
+    if (ps >= .25) notes.push(["red", `Klumpen: ${pn} ist ${pct(ps, 0)} deines Aktien-Depots`, `Fällt diese eine Aktie um 30 %, verliert das ganze Aktien-Depot rund ${pct(ps * .3, 0)}.`]);
+    else if (ps >= .15) notes.push(["orange", `Größte Position: ${pn} mit ${pct(ps, 0)}`, "Noch vertretbar – viele Profis begrenzen eine einzelne Aktie auf 10–15 %."]);
+    const [sn, ss] = sec[0] || [];
+    if (st.length >= 3 && sn && sn !== "ohne Angabe" && ss >= .4) notes.push([ss >= .6 ? "red" : "orange", `Branche: ${pct(ss, 0)} in ${sn}`, "Aktien einer Branche fallen oft gemeinsam – das wirkt wie eine einzige große Position."]);
+    const fx = cur.filter(([k]) => k !== "EUR" && k !== "ohne Angabe").reduce((a, [, v]) => a + v, 0);
+    if (fx >= .5) notes.push(["gray", `Währung: ${pct(fx, 0)} in Fremdwährung`, `Vor allem ${cur.filter(([k]) => k !== "EUR")[0][0]} – der Wechselkurs zum Euro bewegt dein Depot mit, auch wenn die Aktien stillstehen.`]);
+  }
+  if (turbCost && allCost && turbCost / allCost >= .2) notes.push([turbCost / allCost >= .5 ? "red" : "orange", `Hebelprodukte: ${pct(turbCost / allCost, 0)} deines Einsatzes`, "Turbos können bis zum Knock-out und damit zum Totalverlust fallen. Mehr dazu in der Depot-Übersicht bei jeder Position."]);
+  if (!notes.length) notes.push(["green", "Gut verteilt", "Keine Aktie über 15 %, keine Branche über 40 %, Hebel unter 20 % des Einsatzes."]);
+  const bars = (title, rows) => rows.length ? `<div><b class="dck-t">${title}</b>${rows.slice(0, 5).map(([k, v]) => `<div class="dbar"><span>${esc(k)}</span><i><b style="width:${Math.max(2, v * 100).toFixed(1)}%"></b></i><em>${pct(v, 0)}</em></div>`).join("")}</div>` : "";
+  return `<div class="card jcard dck"><div class="jc-h"><b>Depot-Check</b><span>${tot ? `Aktien nach Wert · ${fmt(tot)} €` : "nach Einsatz"}</span></div>
+    <div class="jins">${notes.map(([tone, t, x]) => `<div class="tip tone-${tone}"><b class="t">${esc(t)}</b>${esc(x)}</div>`).join("")}</div>
+    ${tot ? `<div class="dck-g">${bars("Größte Positionen", pos)}${bars("Branchen", sec)}${bars("Regionen", reg)}</div>` : ""}
+    <div class="note" style="margin:10px 0 0">Einordnung deiner Verteilung, keine Anlageberatung. Turbos sind hier nicht nach Wert enthalten (ihr Kurs fehlt im Scan).</div></div>`;
+}
 function nextEvent(t) {
   if (!calData) return null;
   return calData.find(e => e.ticker === t && daysUntil(e.date) >= 0) || null;
@@ -2330,7 +2366,7 @@ function depotHtml() {
     <ol class="rule-steps"><li><i>1</i><span><b>Schnell: Scalable-Export</b>Scalable (Web) → Transaktionen → Export, dann oben „Scalable-Export importieren“.</span></li>
       <li><i>2</i><span><b>Oder von Hand</b>„+ Position“ – Aktie, Stückzahl und Kaufkurs reichen.</span></li>
       <li><i>3</i><span><b>Noch nichts gekauft?</b><a href="#" data-gosec="today">Heute zu tun</a> zeigt die Kaufkandidaten nach der Kairo-Regel, die <a href="#" data-gosec="game">Übung</a> das Gleiche mit Spielgeld.</span></li></ol></div>`;
-  return head + (groups.length ? cockpitHtml(groups, items) : sum) + actions + form + empty
+  return head + (groups.length ? cockpitHtml(groups, items) : sum) + actions + form + empty + depotCheckHtml(items)
     + (groups.length ? `<div class="plan-h" style="margin:4px 2px 8px">Deine Positionen · antippen zum Aufklappen</div>${groups.map(groupHtml).join("")}` : "")
     + (cards.length ? `${groups.length ? `<div class="plan-h" style="margin:18px 2px 8px">Ohne Analyse (nicht auf der Watchlist)</div>` : ""}<div class="grid">${cards}</div>` : "")
     + `<div class="note" style="margin:16px 2px 0">Dein Depot wird nur auf diesem Gerät gespeichert (nicht im Internet). Kurse vom letzten Scan, Umrechnung in Euro zum Tageskurs${missingFx ? " – für einige Währungen fehlt der Wechselkurs" : ""}. Regeln der Strategie: halten bis Stop, ab Tag 10 Schluss unter der EMA 20 oder spätestens Tag 60 (vor Quartalszahlen früher), kein Gewinnziel, höchstens ${KMAX.maxOpen} Trades. Keine Anlageberatung.</div>`;
@@ -3079,8 +3115,27 @@ function ringSvg(p, col) {
   return `<svg viewBox="0 0 76 76" class="ring"><circle cx="38" cy="38" r="${r}" fill="none" stroke="var(--surface-3)" stroke-width="8"/>
     <circle cx="38" cy="38" r="${r}" fill="none" stroke="${col}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(c * (p || 0)).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 38 38)"/></svg>`;
 }
-function journalInsights(m, s, byKind) {
-  const out = [];
+function journalInsights(m, s, byKind, all = []) {
+  const out = [], avgP = a => a.reduce((x, t) => x + t.pnl, 0) / a.length;
+  // Nach einem Verlust gleich wieder rein? (Kauf bis 3 Tage nach einem Verlust-Verkauf)
+  const losses = all.filter(t => t.pnl < 0).map(t => new Date(t.close + "T12:00:00"));
+  const afterL = all.filter(t => { const o = new Date(t.open + "T12:00:00"); return losses.some(d => o >= d && o - d <= 3 * 864e5); }), restL = all.filter(t => !afterL.includes(t));
+  if (afterL.length >= 4 && restL.length >= 4 && avgP(afterL) < 0 && avgP(afterL) < avgP(restL))
+    out.push(["orange", "Nach Verlusten schlechter", `${afterL.length} Trades hast du bis 3 Tage nach einem Verlust eröffnet – Ø ${sEur2(avgP(afterL))} je Trade, sonst Ø ${sEur2(avgP(restL))}. Nach einem Verlust einen Tag Pause kann helfen.`]);
+  // Große gegen kleine Positionen
+  if (all.length >= 8) {
+    const med = all.map(t => t.cost).sort((a, b) => a - b)[Math.floor(all.length / 2)], big = all.filter(t => t.cost > med), small = all.filter(t => t.cost <= med);
+    if (big.length >= 4 && small.length >= 4 && avgP(big) < 0 && avgP(small) > 0)
+      out.push(["orange", "Große Positionen laufen schlechter", `Über ${eur2(med)} Einsatz: Ø ${sEur2(avgP(big))} je Trade, darunter Ø ${sEur2(avgP(small))}. Größer setzen, wenn du dir sicher bist, hat sich bisher nicht ausgezahlt.`]);
+  }
+  // Ergebnis hängt an wenigen Trades
+  const pos = all.filter(t => t.pnl > 0).sort((a, b) => b.pnl - a.pnl), net = all.reduce((x, t) => x + t.pnl, 0);
+  if (all.length >= 8 && net > 0 && pos.length >= 3 && pos[0].pnl + pos[1].pnl > net)
+    out.push(["gray", "Das Ergebnis hängt an zwei Trades", `${pos[0].under} und ${pos[1].under} brachten zusammen ${sEur2(pos[0].pnl + pos[1].pnl)} – ohne sie stündest du bei ${sEur2(net - pos[0].pnl - pos[1].pnl)}. Gut zu wissen, bevor man von einer Erfolgsformel ausgeht.`]);
+  // Sehr kurze Trades
+  const quick = all.filter(t => t.days <= 2), slow = all.filter(t => t.days > 2);
+  if (quick.length >= 4 && slow.length >= 4 && avgP(quick) < 0 && avgP(slow) > 0)
+    out.push(["orange", "Kurze Trades kosten Geld", `Bis 2 Tage gehalten: Ø ${sEur2(avgP(quick))} je Trade (${quick.length}×), länger: Ø ${sEur2(avgP(slow))}.`]);
   if (s.n >= 4 && s.holdW != null && s.holdL != null && s.holdL > s.holdW * 1.4)
     out.push(["orange", "Verlierer länger gehalten als Gewinner", `Gewinner hältst du im Schnitt ${fmt(s.holdW, 0)} Tage, Verlierer ${fmt(s.holdL, 0)} Tage. Typisches Muster („Gewinne laufen lassen, Verluste begrenzen“ umgekehrt) – feste Ausstiegsregel hilft.`]);
   if (s.n >= 4 && s.holdW != null && s.holdL != null && s.holdW > s.holdL * 1.4)
@@ -3245,7 +3300,7 @@ function journalHtml() {
       <div class="card jcard"><div class="jc-h"><b>Nach Art</b><span></span></div><table class="jt"><thead><tr><th>Art</th><th class="num">Trades</th><th class="num">Quote</th><th class="num">Ergebnis</th></tr></thead><tbody>${kindRows}</tbody></table>
         <div class="jc-h" style="margin-top:14px"><b>Nach Basiswert</b><span></span></div><table class="jt"><thead><tr><th>Wert</th><th class="num">Trades</th><th class="num">Gew.</th><th class="num">Ergebnis</th></tr></thead><tbody>${underRows}</tbody></table></div>
     </div>`;
-  const ins = journalInsights(m, s, byKind);
+  const ins = journalInsights(m, s, byKind, all);
   // Trade-Liste
   const COLS_J = { close: t => t.close, under: t => t.under, days: t => t.days, cost: t => t.cost, pnl: t => t.pnl, ret: t => t.ret };
   let list = all.filter(t => !jFilter || (jFilter === "win" ? t.pnl > 0 : jFilter === "loss" ? t.pnl <= 0 : t.k === jFilter));
@@ -3919,11 +3974,15 @@ function depotSnapHtml() {
 }
 function soonHtml() {
   if (!calData) { loadCalendar(); return ""; }
+  if (!earnData) loadEarnings();
   const mine = myTickers(), evs = calData.filter(e => { const d = daysUntil(e.date); return d >= 0 && d <= 4 && (e.ticker ? mine.has(e.ticker) : calKey(e)); }).slice(0, 7);
-  if (!evs.length) return "";
-  return `<div class="hcard">${hHead("Nächste Termine", SEC_LINK("calendar"), "Kalender")}
+  const fresh = earnData ? Object.values(earnData).filter(r => r && r.last && mine.has(r.t) && daysUntil(r.last.date) >= -3 && daysUntil(r.last.date) <= 0) : [];
+  const freshHtml = fresh.length ? `<div class="hcard">${hHead("Neue Quartalszahlen", SEC_LINK("calendar"), "Kalender")}
+    ${fresh.map(r => { const v = r.last.view || {}, rx = r.last.rx; return `<div class="hev ev-tap" data-earn="${esc(r.t)}" data-edate="${esc(r.last.date)}" role="button" tabindex="0"><span class="k k-earn">Q</span><span class="hn">${esc(r.name || r.t)}<small style="display:block;color:var(--muted)">${esc(v.lbl ? "Für den Kurs: " + v.lbl : "Zahlen da")}${rx && rx.d1 != null ? ` · Reaktion ${sgnPct(rx.d1, 1)}` : ""}</small></span><span class="ev-res t-${esc(v.tone || "gray")}"><i></i></span></div>`; }).join("")}</div>` : "";
+  if (!evs.length) return freshHtml;
+  return freshHtml + `<div class="hcard">${hHead("Nächste Termine", SEC_LINK("calendar"), "Kalender")}
     ${evs.map(e => { const [icon, cls] = CAL_KIND[e.kind] || ["•", "k-exp"], n = daysUntil(e.date);
-      return `<div class="hev"><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.ticker ? (e.name || e.ticker) + " · " + (e.kind === "earnings" ? "Quartalszahlen" : "Dividende") : e.title)}</span><em>${n === 0 ? "heute" : n === 1 ? "morgen" : new Date(e.date + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short" })}</em></div>`; }).join("")}</div>`;
+      return `<div class="hev${e.kind === "earnings" ? " ev-tap" : ""}"${e.kind === "earnings" ? ` data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0"` : ""}><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.ticker ? (e.name || e.ticker) + " · " + (e.kind === "earnings" ? "Quartalszahlen" : "Dividende") : e.title)}</span><em>${n === 0 ? "heute" : n === 1 ? "morgen" : new Date(e.date + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short" })}</em></div>`; }).join("")}</div>`;
 }
 function bilanzTeaserHtml() {                    // Forschungsstand 10/2026 + Live-Zähler (die ältere „+15 %“-Studie ist überholt)
   const b = getJson("bilanz.json"), L = b && b.live, st = L && (L.strat60 || (() => { const d = ((b && b.signals) || []).filter(x => x.k === "hit").map(x => x.st60 || {}).filter(x => ["stop", "ema", "zeit"].includes(x.res) && x.r != null);
@@ -4386,8 +4445,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.10.23";
-const APP_NEWS = [["2026.10.23", "Quartalszahlen", [
+const APP_VER = "2026.10.26";
+const APP_NEWS = [["2026.10.26", "Depot-Check", [
+  ["Depot-Check", "Unter dem Depot: Klumpen, Branchen, Regionen, Währungen und Hebelanteil – auf einen Blick."],
+  ["Journal-Muster", "Neu erkannt: schlechter nach Verlusten, große Positionen, Ergebnis aus wenigen Trades, zu kurze Trades."],
+  ["Deine Quartalszahlen", "Auf Heute: frische Zahlen deiner Aktien mit Einschätzung – antippen für Details."]]],
+  ["2026.10.23", "Quartalszahlen", [
   ["Termin antippen", "Im Kalender auf einen Quartalstermin tippen: Gewinn und Umsatz gegen die Erwartung, Ausblick, Kursreaktion."],
   ["Einschätzung", "Eher positiv oder negativ für den Kurs – nach fester Regel, mit Begründung. Vor dem Termin: Erwartungen und typische Bewegung."]]],
   ["2026.10.22", "Der richtige Moment", [
