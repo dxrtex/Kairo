@@ -2960,8 +2960,11 @@ document.addEventListener("change", async e => {
   if (e.target.id === "restoreFile" && e.target.files[0]) {
     try { const j = JSON.parse(await e.target.files[0].text());
       if (j.app !== "kairo" || !j.data) throw new Error("keine Kairo-Sicherung");
-      if (confirm(`Backup vom ${new Date(j.date).toLocaleString("de-DE")} einlesen? Merkliste, Depot, Journal und Einstellungen auf diesem Gerät werden ersetzt.`)) {
-        Object.entries(j.data).forEach(([k, v]) => BACKUP_KEYS(k) && localStorage.setItem(k, v)); location.reload(); }
+      const hasKeys = Object.keys(j.data).some(k => k.startsWith("kx-"));
+      if (confirm(`Backup vom ${new Date(j.date).toLocaleString("de-DE")} einlesen? Merkliste, Depot, Journal und Einstellungen${hasKeys ? " sowie die Schlüssel für Live-Kurse" : ""} auf diesem Gerät werden ersetzt.`)) {
+        Object.entries(j.data).forEach(([k, v]) => (BACKUP_KEYS(k) || k.startsWith("kx-")) && localStorage.setItem(k, v));
+        if (hasKeys) alert("Fertig. Mitteilungen bitte einmal neu einschalten (Einstellungen → Mitteilungen) – das verlangt iOS für jedes App-Symbol. Die Backup-Datei danach löschen, sie enthält deine Schlüssel.");
+        location.reload(); }
     } catch (err) { alert("Datei konnte nicht gelesen werden: " + err.message); }
     e.target.value = ""; return;
   }
@@ -4493,8 +4496,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.10.29";
-const APP_NEWS = [["2026.10.29", "Aufgeräumt und abgesichert", [
+const APP_VER = "2026.10.30";
+const APP_NEWS = [["2026.10.30", "Umzug mit Schlüsseln", [
+  ["Backup mit Schlüsseln", "Einstellungen → Daten & Backup: „Schlüssel mitnehmen“ ankreuzen, dann kommen beim Einlesen auch die Live-Kurs-Schlüssel mit. Danach nur noch Mitteilungen einmal einschalten und die Datei löschen."],
+  ["Tipp", "Für Updates kein neues Symbol anlegen – das vorhandene Kairo-Symbol lädt neue Versionen von selbst. Jedes neue Symbol startet bei iOS mit leerem Speicher."]]],
+  ["2026.10.29", "Aufgeräumt und abgesichert", [
   ["Neues Papier-Depot", "S&P 500 mit 2-fachem Hebel, nur über der 200-Tage-Linie (sonst Bargeld) – der knappe Kandidat aus der neuen Forschung läuft jetzt 12 Monate auf Papier mit."],
   ["Live-Bilanz", "Dieselbe Firma an zwei Börsen (z. B. Novo Nordisk in den USA und in Kopenhagen) zählt nur noch einmal."],
   ["Unter der Haube", "Alte Turbo-Rechnung entfernt, alle Abläufe auf feste Server-Version umgestellt – damit der tägliche Scan nicht wieder ausfällt."]]],
@@ -4567,6 +4573,7 @@ function backupHtml() {
     <div class="row-actions" style="margin-top:12px"><button class="btn" data-backup>Backup speichern</button>
       <label class="btn ghost" style="cursor:pointer">Backup einlesen<input type="file" accept=".json,application/json" id="restoreFile" hidden></label>
       <button class="btn ghost danger" data-impclear>Scalable-Daten löschen</button></div>
+    <label class="note" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;cursor:pointer"><input type="checkbox" id="bkKeys" style="margin-top:3px"><span><b>Schlüssel mitnehmen</b> (Live-Kurse, Kursdienst, Mitteilungs-Verknüpfung) – zum Umzug auf ein neues App-Symbol oder Gerät. Die Schlüssel stehen dann lesbar in der Datei: nach dem Einlesen sofort löschen.</span></label>
     <div class="note">„Scalable-Daten löschen“ entfernt den importierten Export (Depot-Positionen aus der Datei und das Journal) – danach einfach den neuen Export hochladen. Von Hand angelegte Positionen, Übung und Einstellungen bleiben.</div>
     <div class="note">Die Datei enthält deine Depot- und Journal-Daten – nur an sichere Orte speichern (z. B. iCloud Drive).</div></div>`;
 }
@@ -4599,7 +4606,7 @@ function settingsHtml() {
       <label>Twelve-Data-Schlüssel <small>(Tageskerzen für Aktien außerhalb des Scans · kostenlos auf twelvedata.com, Gratis-Tarif nur US-Börsen)</small><input id="kxTd" type="password" autocomplete="off" value="${esc(liveKey("td"))}" placeholder="z. B. 9f2e…"></label>
       <label class="full">Kairo-Kursdienst <small>(Deutschland, Europa, Asien · deine kostenlose Cloudflare-Adresse, Anleitung unten)</small><input id="kxYq" type="url" autocomplete="off" value="${esc(liveKey("yq"))}" placeholder="https://kairo-kurse.DEINNAME.workers.dev"></label>
       <div class="row-actions"><button class="btn" data-kxsave="1">Speichern &amp; testen</button></div>
-      <div class="note">Die Schlüssel bleiben nur auf diesem Gerät – nicht im Backup, nicht auf GitHub. Der große Scan bleibt einmal täglich; live geladen werden nur die Aktien, die du öffnest, dein Depot und deine offenen Trades.</div>
+      <div class="note">Die Schlüssel bleiben auf diesem Gerät – nie auf GitHub; ins Backup nur, wenn du dort „Schlüssel mitnehmen“ ankreuzt. Der große Scan bleibt einmal täglich; live geladen werden nur die Aktien, die du öffnest, dein Depot und deine offenen Trades.</div>
       <div id="kxMsg"></div>
       <details class="kd-help"><summary>Kairo-Kursdienst einrichten (einmalig, ca. 10 Minuten, kostenlos)</summary>
         <ol class="steps">
@@ -5928,7 +5935,8 @@ document.addEventListener("click", e => {
     return;
   }
   if (e.target.closest("[data-backup]")) {
-    const d = {}; Object.keys(localStorage).filter(BACKUP_KEYS).forEach(k => d[k] = localStorage.getItem(k));
+    const keys = !!($("bkKeys") || {}).checked, d = {};
+    Object.keys(localStorage).filter(k => BACKUP_KEYS(k) || keys && k.startsWith("kx-")).forEach(k => d[k] = localStorage.getItem(k));
     download(new Blob([JSON.stringify({ app: "kairo", v: 1, date: new Date().toISOString(), data: d })], { type: "application/json" }), `kairo-backup-${new Date().toISOString().slice(0, 10)}.json`);
     return;
   }

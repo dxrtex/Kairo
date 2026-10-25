@@ -191,6 +191,37 @@ async def ui_check(b, url, errs):
             errs.append("Kalender: Quartalszahlen öffnen sich nicht")
     await ctx.close()
 
+async def backup_check(b, url, errs):
+    """Backup: ohne Haken keine Schlüssel in der Datei, mit Haken schon; Einlesen stellt Depot und Schlüssel wieder her."""
+    import json as _json
+    ctx = await new_ctx(b, viewport={"width": 820, "height": 1180}, accept_downloads=True)
+    pg = await ctx.new_page()
+    pg.on("dialog", lambda d: asyncio.ensure_future(d.accept()))
+    await pg.goto(f"{url}?nosplash=1&sec=settings")
+    await pg.evaluate("localStorage.setItem('kx-td','TESTKEY'); localStorage.setItem('kairo-depot-v1','[]')")
+    await pg.goto(f"{url}?nosplash=1&sec=settings")
+    await pg.wait_for_timeout(2000)
+    await pg.evaluate("document.querySelectorAll('#newsBox, .bmodal, .splash').forEach(x => x.remove())")
+    files = {}
+    for keys in (False, True):
+        if keys:
+            await pg.check("#bkKeys")
+        async with pg.expect_download() as dl:
+            await pg.click("[data-backup]")
+        path = await (await dl.value).path()
+        files[keys] = path
+        data = _json.loads(open(path, encoding="utf-8").read())["data"]
+        if ("kx-td" in data) != keys:
+            errs.append(f"Backup: Schlüssel {'fehlen trotz' if keys else 'drin ohne'} Haken")
+    await pg.evaluate("localStorage.removeItem('kx-td'); localStorage.removeItem('kairo-depot-v1')")
+    await pg.set_input_files("#restoreFile", files[True])
+    await pg.wait_for_timeout(2500)
+    got = await pg.evaluate("[localStorage.getItem('kx-td'), localStorage.getItem('kairo-depot-v1')]")
+    if got != ["TESTKEY", "[]"]:
+        errs.append(f"Backup: Einlesen stellt nicht alles wieder her ({got})")
+    await ctx.close()
+
+
 async def run(port: int) -> list[str]:
     from playwright.async_api import async_playwright
     url = f"http://127.0.0.1:{port}/"
@@ -201,6 +232,7 @@ async def run(port: int) -> list[str]:
         await gate_check(b, url, errs)
         await tour_check(b, url, errs)
         await import_check(b, url, errs)
+        await backup_check(b, url, errs)
         await ui_check(b, url, errs)
         for name, vp in (("iPad", {"width": 820, "height": 1180}), ("Handy", {"width": 390, "height": 844})):
             ctx = await new_ctx(b, viewport=vp)
