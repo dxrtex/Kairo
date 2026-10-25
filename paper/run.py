@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import core, dualmom, kairo, momentum
+from . import core, dualmom, kairo, momentum, sp2f
 
 HERE = Path(__file__).resolve().parent
 START_CASH = 2000.0                                # Nutzer-Startkapital (18.10.2026)
@@ -432,6 +432,7 @@ def report(d: Path, states: list[dict], bench: list[dict] | None = None, shadow:
                 "S19C": "S19-C (2,0 Std, Volumen 2 von 3)", "MOM5": "MOM5 Momentum Top 5 (monatlich)",
                 "MOM10": "MOM10 Momentum Top 10 (monatlich; Holdout nicht bestanden)",
                 "DM": "DM Dual Momentum SPY/EFA/QQQ → SHY",
+                "SP2F": "SP2F S&P 500 2× nur über der 200-Tage-Linie (DBPG.DE, sonst Bargeld)",
                 "KAIRO": "KAIRO Scanner-Treffer (Basis-Einstieg)", "KAIROS": "KAIROS Scanner-Treffer, schwache Aktien zuerst",
                 "KAIROZ": "KAIROZ Kairo-Ziel (attraktives Kursziel, halten bis zum Ziel)", "KAIROL": "KAIROL Kairo lang (Vergleich ohne Kursziel)"}.get(st["sid"], "S20 Trendfolge / VCP")
         lines += [f"## {name}", "", f"- Start: {s['start']} · Handelstage: {s['tage']}",
@@ -469,17 +470,19 @@ def main(argv=None) -> int:
     fund = refresh_fund(sd / "fund_cache.json", uni)
     s19_t = [t for t, v in fund.items() if (v.get("mcap") or 0) >= 10e9 and (v.get("opm") or 0) > 0]
     s20_t = list(uni["ticker"])
-    states = [load_state(sd, "S19"), load_state(sd, "S19B"), load_state(sd, "S19C"), load_state(sd, "S20"), load_state(sd, "MOM5"), load_state(sd, "MOM10"), load_state(sd, "DM")]
+    states = [load_state(sd, "S19"), load_state(sd, "S19B"), load_state(sd, "S19C"), load_state(sd, "S20"), load_state(sd, "MOM5"), load_state(sd, "MOM10"), load_state(sd, "DM"),
+              load_state(sd, "SP2F")]
     need = set(s19_t) | set(s20_t) | {p["t"] for s in states for p in s["positions"]}
     kstates = [load_state(sd, "KAIRO"), load_state(sd, "KAIROS"), load_state(sd, "KAIROZ"), load_state(sd, "KAIROL")]
     signals = load_signals()
     k_t = kairo.tickers(signals, kstates, pd.Timestamp.now().normalize() - pd.Timedelta(days=90))
-    daily = download(sorted(set(need) | set(dualmom.TICKERS) | set(k_t)) + ["^GSPC"] + ETFS)
+    daily = download(sorted(set(need) | set(dualmom.TICKERS) | set(sp2f.TICKERS) | set(k_t)) + ["^GSPC"] + ETFS)
     fxd = download(list(FX_T.values()), period="2y")
     fx = {c: fxd[t]["Close"] for c, t in FX_T.items() if t in fxd}
     fx_usd = fx.get("USD")
     mk = Market(uni, daily, fx)
     mk.cur["SPY"] = "USD"
+    mk.cur[sp2f.ETF] = "EUR"
     for t in k_t:
         mk.cur.setdefault(t, kairo.currency(t))
     g = daily["^GSPC"]["Close"]
@@ -495,7 +498,7 @@ def main(argv=None) -> int:
             st["start"] = str(last.date())
             st["equity"].append({"date": str(last.date()), "eur": st["start_cash"], "open": 0})
             st["last_day"] = str(last.date())
-            if st["sid"].startswith("MOM") or st["sid"] == "DM":   # kaufen am nächsten Handelstag zur Eröffnung
+            if st["sid"].startswith("MOM") or st["sid"] in ("DM", "SP2F"):   # kaufen am nächsten Handelstag zur Eröffnung
                 continue
             new_setups(st, mk, last, cal, s19_t if st["sid"].startswith("S19") else s20_t, bool(bull.loc[last]), fund, sec3)
             st["last_day"] = str(last.date())
@@ -508,6 +511,10 @@ def main(argv=None) -> int:
             prev = cal[cal < D][-1]
             if st["sid"] == "DM":
                 dualmom.day(st, mk, D, prev, equity, close_pos)
+                st["last_day"] = str(D.date())
+                continue
+            if st["sid"] == "SP2F":
+                sp2f.day(st, mk, D, prev, equity, close_pos)
                 st["last_day"] = str(D.date())
                 continue
             if st["sid"].startswith("MOM"):

@@ -49,12 +49,26 @@ def strat(df: pd.DataFrame, idx: int, extra: dict | None = None) -> dict:
 
 
 TESTED = ("us", "europe")         # die Kairo-Regel ist für USA und Europa getestet (wie die Papier-Depots)
+_PRIO = {"us": 0, "europe": 1, "asia": 2}
+
+
+def _one_listing(sig: list[dict]) -> list[dict]:
+    """Gleiche Firma an zwei Börsen (z. B. NVO und NOVO-B.CO) am selben Tag nur einmal – USA vor Europa vor Asien."""
+    from .universe import company_key
+    seen, out = set(), []
+    for s in sorted(sig, key=lambda s: _PRIO.get(s.get("region"), 3)):
+        key = company_key(s.get("n") or "")
+        k = (key if len(key) > 2 else s.get("t") or id(s), s.get("k"), s.get("d"))
+        if k not in seen:
+            seen.add(k)
+            out.append(s)
+    return out
 
 
 def strat_stats(sig: list[dict], key: str = "st", regions: tuple | None = TESTED) -> dict | None:
     """Live-Bilanz der Kairo-Regel. Abgeschlossene Trades allein sind anfangs zu schlecht (Stops schließen früh, Gewinner laufen
     bis zu 60 Tage) – deshalb zusätzlich die offenen Trades zum heutigen Stand („mtm“)."""
-    hits = [s for s in sig if s.get("k") == "hit" and (regions is None or s.get("region") in regions or not s.get("region"))]
+    hits = [s for s in _one_listing(sig) if s.get("k") == "hit" and (regions is None or s.get("region") in regions or not s.get("region"))]
     done = [s[key] for s in hits if (s.get(key) or {}).get("res") in ("stop", "zeit", "ema")]
     run = [s[key] for s in hits if (s.get(key) or {}).get("res") == "run" and s[key].get("r") is not None]
     if not done and not run:
@@ -76,7 +90,7 @@ def strat_stats(sig: list[dict], key: str = "st", regions: tuple | None = TESTED
 def _show(sig: list[dict]) -> list[dict]:
     """Für die App: die 80 neuesten Signale plus alle Kairo-Trades mit Einstieg (laufend oder beendet) – sonst fehlen ältere,
     noch laufende Gewinner in der Liste."""
-    new = sorted(sig, key=lambda s: s["d"], reverse=True)
+    new = sorted(_one_listing(sig), key=lambda s: s["d"], reverse=True)
     keep = new[:80] + [s for s in new[80:] if s.get("k") == "hit" and ((s.get("st60") or s.get("st") or {}).get("res") in ("run", "stop", "ema", "zeit"))]
     return keep
 
@@ -89,9 +103,13 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
     prev = {"hit": set(last.get("hit", [])), "fast": set(last.get("fast", [])), "trend": set(last.get("trend", [])),
             "soft": set(last.get("soft", []))}
     known = {(s["t"], s["k"], s["d"]) for s in sig}
-    recent = {}
-    for s in sig:                                  # letztes Signal je Aktie/Art
+    from .universe import company_key
+    recent, firm = {}, {}
+    for s in sig:                                  # letztes Signal je Aktie/Art und je Firma/Art (Doppel-Listings)
         recent[(s["t"], s["k"])] = max(recent.get((s["t"], s["k"]), ""), s["d"])
+        ck = company_key(s.get("n") or "")
+        if len(ck) > 2:
+            firm[(ck, s["k"])] = max(firm.get((ck, s["k"]), ""), s["d"])
     new = []
     cand = [(r, "hit" if r["passed"] else "fast" if r.get("fast_hit") else None, r.get("plan") or {}) for r in rows]
     cand += [(r, "trend", r["tr"].get("plan") or {}) for r in rows if (r.get("tr") or {}).get("ok")]   # zweites Setup
@@ -108,6 +126,10 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
         if r["ticker"] in prev[k] and lastd and (pd.Timestamp(d) - pd.Timestamp(lastd)).days <= 60:
             continue
         if lastd and (pd.Timestamp(d) - pd.Timestamp(lastd)).days <= GAP + 2:
+            continue
+        ck = company_key(r.get("name") or "")
+        fd = firm.get((ck, k)) if len(ck) > 2 else None
+        if fd and (pd.Timestamp(d) - pd.Timestamp(fd)).days <= GAP + 2:   # dieselbe Firma schon über eine andere Börse
             continue
         s = {"t": r["ticker"], "n": (r.get("name") or r["ticker"])[:40], "k": k, "d": d, "score": r.get("score", 0),
              "entry": p["entry"], "stop": p["stop"], "t1": p.get("target1"), "t2": p.get("target2"), "crv": p.get("crv"),
@@ -129,6 +151,8 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
             s["tp1"] = None
         sig.append(s)
         new.append(s)
+        if len(ck) > 2:
+            firm[(ck, k)] = d
     # Ergebnisse nachführen
     for s in sig:
         if s.get("final") and (s["k"] != "hit" or all((s.get(k) or {}).get("res") in DONE for k in ("st", "st60"))):

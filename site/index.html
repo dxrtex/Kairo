@@ -525,11 +525,6 @@
   .tp2-lev.no { opacity: .45; }
   .tp2-lev i { position: absolute; top: -8px; right: 8px; font-style: normal; font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; border-radius: 6px; padding: 1px 6px; }
   @media (max-width: 560px) { .tp2-levs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tp2-cfg { grid-template-columns: 1fr 1fr; } }
-  table.tpt { width: 100%; min-width: 0; font-size: 14px; border-collapse: collapse; }
-  table.tpt th { font-size: 12px; color: var(--muted); font-weight: 650; text-align: left; padding: 4px 6px; background: none; }
-  table.tpt td { padding: 8px 6px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
-  table.tpt .num { text-align: right; } table.tpt td small { display: block; font-size: 11.5px; color: var(--muted); }
-  .tp-sum { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); margin-top: 10px; } .tp-sum b { color: var(--text); }
   .fund { background: var(--surface-2); border-radius: var(--radius-s); padding: 12px 14px; }
   .fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px 14px; }
   .fc { position: relative; padding-left: 14px; min-width: 0; }
@@ -4073,7 +4068,6 @@ function kpiHtml() {
   const hit = data.results.filter(r => r.passed).length, tr = data.results.filter(isTrend), top = tr.filter(r => r.tr.top).length;
   const fast = data.results.filter(r => r.fast_hit && !r.passed).length;
   const t = (k, l, n, sub, hl) => `<button class="kpi${hl ? " hl" : ""}" data-gokinds="${k}"><span>${l}</span><b>${n}</b><em>${sub}</em></button>`;
-  const h4d = h4Data(), h4g = h4d ? (h4d.items || []).filter(x => h4Real(x) && h4Go(x)).length : 0, h4w = h4d ? (h4d.items || []).filter(x => h4Real(x) && (x.st === "4h" || x.st === "basis")).length : 0;
   return `<div class="kpis">${t("hit", "Kairo-Treffer", hit, hit ? "Kauf erst in der Seitwärtsphase" : "heute keine", false)}
     ${trendOn() ? t("trend", "Trend-Rücksetzer", tr.length, top ? `davon ${top} Top` : "keine Top-Stufe", top > 0) : ""}
     ${t("fast", "Fast-Treffer", fast, "1 Kriterium fehlt", false)}
@@ -4499,8 +4493,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.10.28";
-const APP_NEWS = [["2026.10.28", "Eine Regel überall", [
+const APP_VER = "2026.10.29";
+const APP_NEWS = [["2026.10.29", "Aufgeräumt und abgesichert", [
+  ["Neues Papier-Depot", "S&P 500 mit 2-fachem Hebel, nur über der 200-Tage-Linie (sonst Bargeld) – der knappe Kandidat aus der neuen Forschung läuft jetzt 12 Monate auf Papier mit."],
+  ["Live-Bilanz", "Dieselbe Firma an zwei Börsen (z. B. Novo Nordisk in den USA und in Kopenhagen) zählt nur noch einmal."],
+  ["Unter der Haube", "Alte Turbo-Rechnung entfernt, alle Abläufe auf feste Server-Version umgestellt – damit der tägliche Scan nicht wieder ausfällt."]]],
+  ["2026.10.28", "Eine Regel überall", [
   ["Ein Stop, ein Status", "Heute, Karte, Trade-Plan, Top-Setups und Chart nutzen dieselbe Seitwärtsphase nach dem Treffer – vorher zeigten sie teils verschiedene Stops."],
   ["Kauftag richtig", "War der Kauftag laut Regel schon (Eröffnung nach der Seitwärtsphase), steht „Einstieg vorbei“ statt „kaufbereit“ – wie in Live-Bilanz und Papier-Depots."],
   ["Klarere Hinweise", "Treffer-Text erklärt die getestete Regel; Rang zählt nur kaufbereite Treffer; keine festen Kursziele mehr im Chart."]]],
@@ -5422,8 +5420,8 @@ function paperLoad() {
   if (PAPER.busy || (PAPER.d && Date.now() - PAPER.at < 3e5)) return;
   PAPER.busy = true;
   const v = "?v=" + Math.floor(Date.now() / 3e5), get = f => fetch(PAPER_URL + f + v).then(r => r.ok ? r.json() : null);
-  Promise.all([get("summary.json"), get("s19.json"), get("s19b.json"), get("s19c.json"), get("s20.json"), get("mom5.json"), get("mom10.json"), get("dm.json"), get("kairo.json"), get("kairos.json"), get("kairoz.json"), get("kairol.json")])
-    .then(([sum, s19, s19b, s19c, s20, mom5, mom10, dm, kairo, kairos, kairoz, kairol]) => { PAPER.d = sum || s19 || s20 ? { sum, s19, s19b, s19c, s20, mom5, mom10, dm, kairo, kairos, kairoz, kairol } : null; PAPER.err = !PAPER.d; })
+  Promise.all([get("summary.json"), get("s19.json"), get("s19b.json"), get("s19c.json"), get("s20.json"), get("mom5.json"), get("mom10.json"), get("dm.json"), get("sp2f.json"), get("kairo.json"), get("kairos.json"), get("kairoz.json"), get("kairol.json")])
+    .then(([sum, s19, s19b, s19c, s20, mom5, mom10, dm, sp2f, kairo, kairos, kairoz, kairol]) => { PAPER.d = sum || s19 || s20 ? { sum, s19, s19b, s19c, s20, mom5, mom10, dm, sp2f, kairo, kairos, kairoz, kairol } : null; PAPER.err = !PAPER.d; })
     .catch(() => { PAPER.err = true; })
     .finally(() => { PAPER.busy = false; PAPER.at = Date.now(); if (state.sec === "paper") render(); });
 }
@@ -5440,27 +5438,28 @@ function paperSpark(st, bench) {
     <div class="oleg"><span class="${e[e.length - 1] >= S ? "up" : "down"}">■ Papier-Depot</span><span class="gold">┄ ACWI kaufen &amp; halten (gleicher Start)</span></div>`;
 }
 // Papier-Test: Übersicht aller Depots in einer Tabelle, Details je Depot aufklappbar (Kandidaten zuerst und offen)
-const PAPER_TAG = { KAIROZ: ["Deine Idee · neu", "gold"], KAIROL: ["Vergleich zu Kairo-Ziel", ""], DM: ["Bester Kandidat", "up"], KAIROS: ["Kandidat · Kosten offen", "gold"], KAIRO: ["Referenz", ""], MOM10: ["Vergleich · durchgefallen", "down"],
+const PAPER_TAG = { KAIROZ: ["Deine Idee · neu", "gold"], KAIROL: ["Vergleich zu Kairo-Ziel", ""], DM: ["Bester Kandidat", "up"], SP2F: ["Kandidat · neu", "gold"], KAIROS: ["Kandidat · Kosten offen", "gold"], KAIRO: ["Referenz", ""], MOM10: ["Vergleich · durchgefallen", "down"],
   MOM5: ["Vergleich · durchgefallen", "down"], S20: ["Idee · nicht bestätigt", "down"], S19: ["Idee · nicht bestätigt", "down"], S19B: ["Idee · nicht bestätigt", "down"], S19C: ["Idee · nicht bestätigt", "down"] };
-const PAPER_NAME = { KAIROZ: "Kairo-Ziel · Kursziel, lang halten", KAIROL: "Kairo lang · ohne Kursziel", DM: "Dual Momentum (ETF)", KAIROS: "Kairo-S · 20 × 0,25 %", KAIRO: "Kairo · 5 × 1 %", MOM10: "Momentum Top 10", MOM5: "Momentum Top 5", S20: "S20 Trendfolge", S19: "S19 Mean Reversion", S19B: "S19-B", S19C: "S19-C" };
+const PAPER_NAME = { KAIROZ: "Kairo-Ziel · Kursziel, lang halten", KAIROL: "Kairo lang · ohne Kursziel", DM: "Dual Momentum (ETF)", SP2F: "S&P 500 2× mit 200-Tage-Linie", KAIROS: "Kairo-S · 20 × 0,25 %", KAIRO: "Kairo · 5 × 1 %", MOM10: "Momentum Top 10", MOM5: "Momentum Top 5", S20: "S20 Trendfolge", S19: "S19 Mean Reversion", S19B: "S19-B", S19C: "S19-C" };
 const paperVal = st => { const eq = st && (st.equity || []).slice(-1)[0], v = eq ? eq.eur : st && st.start_cash; return { v, ret: st && v != null ? v / st.start_cash - 1 : null }; };
 function paperOverview(d, order) {
   const row = sid => { const st = d[sid.toLowerCase()], { v, ret } = paperVal(st), [tag, tone] = PAPER_TAG[sid];
     return `<div class="prow"><span><b>${PAPER_NAME[sid]}</b><small class="${tone}">${tag}</small></span>
       <span class="pr-r"><b class="${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "–" : sgnPct(ret, 1)}</b><small>${v == null ? "–" : eur(v)} · ${st ? (st.positions || []).length : 0} offen</small></span></div>`; };
   const grp = (t, ids) => `<div class="hsub">${t}</div>${ids.filter(x => order.includes(x)).map(row).join("")}`;
-  return `<div class="hcard">${hHead("Alle Papier-Depots")}${grp("Kandidaten für echtes Geld", ["DM", "KAIROS"])}${grp("Referenz", ["KAIRO"])}${d.kairoz ? grp("Deine Idee: Kursziel + lang halten", ["KAIROZ", "KAIROL"]) : ""}
-    <details class="pgrp"><summary class="hsub">Vergleich und Ideen · ${order.filter(x => !["DM", "KAIROS", "KAIRO", "KAIROZ", "KAIROL"].includes(x)).length} Depots ›</summary>${order.filter(x => !["DM", "KAIROS", "KAIRO", "KAIROZ", "KAIROL"].includes(x)).map(row).join("")}</details>
+  return `<div class="hcard">${hHead("Alle Papier-Depots")}${grp("Kandidaten für echtes Geld", ["DM", "SP2F", "KAIROS"])}${grp("Referenz", ["KAIRO"])}${d.kairoz ? grp("Deine Idee: Kursziel + lang halten", ["KAIROZ", "KAIROL"]) : ""}
+    <details class="pgrp"><summary class="hsub">Vergleich und Ideen · ${order.filter(x => !["DM", "SP2F", "KAIROS", "KAIRO", "KAIROZ", "KAIROL"].includes(x)).length} Depots ›</summary>${order.filter(x => !["DM", "SP2F", "KAIROS", "KAIRO", "KAIROZ", "KAIROL"].includes(x)).map(row).join("")}</details>
     <div class="note" style="margin-top:8px">Entscheidung über echtes Geld nach etwa 12 Monaten.</div></div>`;
 }
 function paperBox(sid, st, sm, bench) {
   const { ret } = paperVal(st), [tag, tone] = PAPER_TAG[sid];
-  return `<details class="pdet"${["DM", "KAIROS"].includes(sid) ? " open" : ""}><summary class="psum"><b>${PAPER_NAME[sid]}</b><span class="ptag ${tone}">${tag}</span><span class="${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "" : sgnPct(ret, 1)}</span></summary>${paperCard(sid, st, sm, bench)}</details>`;
+  return `<details class="pdet"${["DM", "SP2F", "KAIROS"].includes(sid) ? " open" : ""}><summary class="psum"><b>${PAPER_NAME[sid]}</b><span class="ptag ${tone}">${tag}</span><span class="${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "" : sgnPct(ret, 1)}</span></summary>${paperCard(sid, st, sm, bench)}</details>`;
 }
 function paperCard(sid, st, sm, bench) {
-  const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3", MOM5: "MOM5 · Momentum Top 5 (monatlich)", MOM10: "MOM10 · Momentum Top 10 (monatlich)", DM: "DM · Dual Momentum (ETF)", KAIROZ: "KAIROZ · Kairo-Ziel (attraktives Kursziel, halten bis zum Ziel)", KAIROL: "KAIROL · Kairo lang (Vergleich ohne Kursziel)", KAIRO: "KAIRO · Scanner-Treffer", KAIROS: "KAIRO-S · Scanner-Treffer, schwache Aktien zuerst" }[sid] || "S20 · Trendfolge / VCP";
+  const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3", MOM5: "MOM5 · Momentum Top 5 (monatlich)", MOM10: "MOM10 · Momentum Top 10 (monatlich)", DM: "DM · Dual Momentum (ETF)", SP2F: "SP2F · S&P 500 2× nur über der 200-Tage-Linie", KAIROZ: "KAIROZ · Kairo-Ziel (attraktives Kursziel, halten bis zum Ziel)", KAIROL: "KAIROL · Kairo lang (Vergleich ohne Kursziel)", KAIRO: "KAIRO · Scanner-Treffer", KAIROS: "KAIRO-S · Scanner-Treffer, schwache Aktien zuerst" }[sid] || "S20 · Trendfolge / VCP";
   const vr = { S19B: "Variante B: wie S19, aber das Volumen muss nur an 2 der letzten 3 Tage sinken. ", S19C: "Variante C: Überdehnung schon ab 2,0 Std und Volumen an 2 der letzten 3 Tage sinkend. " }[sid] || "";
   const rule = sid === "KAIRO" || sid === "KAIROS" ? "Handelt jeden echten Kairo-Treffer (USA und Europa) nach der getesteten Regel: bis zu 10 Tage auf eine Seitwärtsphase warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung innerhalb der Spanne, Stop unter dem Basis-Tief − 0,25 ATR, 1 % Risiko, max. 5 Positionen. Ausstieg: Stop, ab Tag 10 Schluss unter EMA20, spätestens Tag 60 (im Test in allen drei Zeiträumen besser als Tag 40). 2008–2026 mit PRIME+-Kosten besser als Zufall (+0,14 R je Trade gegenüber +0,11 R) – kleiner, aber belegter Vorteil." + (sid === "KAIROS" ? " Variante S: bei mehreren Einstiegen zuerst Aktien mit dem schwächsten Kursverlauf der letzten Monate (im Test in allen drei Zeiträumen besser; Vorbehalt: kann am Datensatz liegen). Depot-Aufbau wie der beste Test: 20 Positionen × 0,25 % Risiko, 20.000 € virtuell (2008–2026: +7 % p. a., größter Rückgang −25 %; mit strengen Kosten ≈ 0 % – Kosten entscheiden)." : " Bei mehreren Einstiegen zuerst die ruhigeren Aktien (wie im Test).") + " Läuft einen Handelstag hinter dem Scan."
+    : sid === "SP2F" ? "Jeden Handelstag: Liegt der S&P 500 zum Schluss über seinem 200-Tage-Durchschnitt, wird am nächsten Morgen der gehebelte ETF gehalten (Xtrackers S&P 500 2x Leveraged, DBPG), sonst Bargeld. Etwa 6 Wechsel im Jahr. Test 1989–2026: in allen drei Zeiträumen besser als der S&P 500 (+13,1 % statt +11,3 % p. a.) mit kleinerem Rückgang (−45 % statt −55 %) – nach den vorab festgelegten Regeln aber knapp nicht bestanden (mit der 100-Tage-Linie schlechter). Nicht im Test: Steuern bei jedem Wechsel und ein Crash an einem einzigen Tag (mit 2× doppelt so stark). Deshalb erst 12 Monate auf Papier."
     : sid === "DM" ? "Am ersten Handelstag jedes Monats: Von SPY (USA), EFA (Industrieländer) und QQQ (Nasdaq 100) wird der ETF mit der besten 12-Monats-Rendite gehalten – aber nur, wenn sie über dem Geldmarkt (BIL) liegt, sonst kurze US-Anleihen (SHY). Ein ETF, etwa 1–4 Wechsel im Jahr. Einzige Strategie, die 2008–2016, 2017–2021 und im finalen Test 2022–2026 nach Kosten besser als der Welt-ETF war (2022–26: +11,6 % statt +9,7 % p. a. unter Stress-Kosten) – aber knapp nicht signifikant besser als Zufall (p = 0,07). Bester Kandidat, kein Beweis."
     : sid === "KAIROZ" ? "Deine Idee (20.10.2026): Kairo-Treffer mit fertiger Seitwärtsphase (USA/Europa) und attraktivem Analysten-Kursziel am Signaltag – Abstand zum Ziel mindestens 1 × Jahresschwankung (Bank ab ≈ +25–40 %, Risikoaktie ab ≈ +70–100 %), mindestens 3 Analysten. Halten, bis 80 % des Wegs zum Kursziel geschafft sind; Sicherheitsnetz −30 %, spätestens 24 Monate. 20 Plätze à 5 %. Noch nicht getestet – historische Kursziele gibt es nicht kostenlos, deshalb nur dieser Vorwärtstest."
     : sid === "KAIROL" ? "Vergleich zu Kairo-Ziel: dieselben Treffer und Einstiege, aber ohne Kursziel-Filter. Ziel = Einstieg + 80 % einer Jahresschwankung, Sicherheitsnetz −30 %, spätestens 24 Monate. Liegt Kairo-Ziel nach 1–2 Jahren klar vorn, bringen die Analystenziele wirklich etwas."
@@ -5472,7 +5471,7 @@ function paperCard(sid, st, sm, bench) {
   if (!st) return `<div class="hcard">${hHead(name)}<div class="note">Noch keine Daten – der erste Lauf startet nach US-Börsenschluss.</div></div>`;
   const s = sm || {}, eq = (st.equity || []).slice(-1)[0], val = eq ? eq.eur : st.start_cash, ret = val / st.start_cash - 1;
   const tr = st.trades || [], wins = tr.filter(x => x.pnl_eur > 0).length, rs = tr.map(x => x.R_net ?? x.R).filter(x => x != null);
-  const avgR = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null, mom = sid.startsWith("MOM") || sid === "DM";
+  const avgR = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null, mom = sid.startsWith("MOM") || sid === "DM" || sid === "SP2F";
   const rets = tr.map(x => x.ret).filter(x => x != null), avgRet = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : null;
   const pos = (st.positions || []).map(p => `<tr><td><b>${esc(p.t)}</b></td><td>${dateDE(String(p.entry_ts).slice(0, 10))}</td><td>${fmt(p.entry)}</td><td class="down">${p.stop ? fmt(p.stop) : "–"}</td><td>${p.qty}</td><td>${p.be ? "Einstand ✓" : p.regime === "bear" ? "Bärenmarkt" : ""}</td></tr>`).join("");
   const pend = (st.pending || []).slice().sort((a, b) => String(a.expiry).localeCompare(String(b.expiry)));
@@ -5536,7 +5535,7 @@ function paperHtml() {
     <div class="note" style="margin:0 2px 10px">Virtuelle Depots handeln jede Strategie automatisch nach ihren Regeln – mit echten Kursen und Kosten wie bei Scalable PRIME+, ohne echtes Geld. Keine Anlageberatung.</div>`;
   if (!d) return head + `<div class="hcard"><div class="note">${PAPER.err ? "Papier-Daten noch nicht verfügbar – der erste Lauf erscheint nach dem nächsten US-Börsenschluss." : "Lade Papier-Daten …"}</div></div>`;
   const sm = d.sum || {}, bench = sm.bench || [];
-  const order = ["DM", "KAIROS", "KAIRO", "KAIROZ", "KAIROL", "MOM10", "MOM5", "S20", "S19", "S19B", "S19C"].filter(x => x !== "KAIROZ" && x !== "KAIROL" || d[x.toLowerCase()]);
+  const order = ["DM", "SP2F", "KAIROS", "KAIRO", "KAIROZ", "KAIROL", "MOM10", "MOM5", "S20", "S19", "S19B", "S19C"].filter(x => x !== "KAIROZ" && x !== "KAIROL" || d[x.toLowerCase()]);
   return head + paperOverview(d, order) + order.map(sid => paperBox(sid, d[sid.toLowerCase()], sm[sid], bench)).join("")
     + `<details class="pdet"><summary class="psum"><b>Schattenbuch S19/S20</b><span class="ptag">Forschung</span></summary>${shadowHtml(sm.shadow)}</details>`
     + `<div class="note" style="margin:6px 2px">Stand: ${esc(sm.ts ? new Date(sm.ts).toLocaleString("de-DE") : "–")}. Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser (so real nachhandelbar). 4H-Kerzen wie TradingView (US: 9:30–13:30 und 13:30–16:00). R nach Gebühren und Spread. Grenzen: Yahoo-Stundenkerzen teils verzögert, Fundamentaldaten wöchentlich von Yahoo.</div>`;
@@ -5781,29 +5780,6 @@ async function openDetail(t) {
   history.replaceState(null, "", "#" + encodeURIComponent(t));
   try { drawCharts(await loadChart(t), r); } catch (e) { $("cMain").innerHTML = `<div class="note">Chart konnte nicht geladen werden.</div>`; }
 }
-
-// Turbo-Plan: Setup-Marken (Entry, Stop = Setup ungültig, Ziele) übersetzt auf ein Knock-out-Zertifikat.
-// K.-o.-Vorschlag: eine Tagesspanne (ATR) unter dem Stop – wie im Trade-Plan (Einstieg); so fliegt der Turbo nicht raus, bevor das Setup kippt.
-function tpCalc(r) {
-  const p = r.plan || {}, E = p.entry, atr = (r.atr_pct || 0) * (E || 0);
-  const koIn = parseFloat(String(($("tpKo") || {}).value || "").replace(",", "."));
-  const ko = koIn > 0 && koIn < E ? koIn : +(p.stop - 1.0 * atr).toFixed(E < 10 ? 3 : 2);
-  const bud = Math.max(0, +state.budget || 0), lev = E / (E - ko), val = x => Math.max(0, (x - ko) / (E - ko));
-  const sc = [["Ziel 1", p.target1, "up"], ["Ziel 2 (Swing-High)", p.target2, "up"], ["Stop · Setup ungültig", p.stop, "down"], ["Knock-out", ko, "down"]];
-  return { ko, lev, rows: sc.filter(x => x[1] != null).map(([l, x, c]) => ({ l, x, c, und: x / E - 1, t: val(x) - 1, eur: bud * (val(x) - 1) })), bud, p };
-}
-function tpOutHtml(r) {
-  const m = tpCalc(r), z = m.rows.find(x => x.l.startsWith("Ziel 2")) || m.rows[0], st = m.rows.find(x => x.l.startsWith("Stop")), crv = z && st && st.eur < 0 ? z.eur / -st.eur : null;
-  return `<table class="tpt"><thead><tr><th>Szenario</th><th class="num">Aktie</th><th class="num">Turbo</th><th class="num">bei ${eur(m.bud)}</th></tr></thead><tbody>
-    ${m.rows.map(x => `<tr><td>${x.l}<small>${fmt(x.x)}</small></td><td class="num ${x.c}">${sgnPct(x.und, 1)}</td><td class="num ${x.c}">${sgnPct(x.t, 0)}</td><td class="num ${x.c}"><b>${sgnEur(x.eur)}</b></td></tr>`).join("")}</tbody></table>
-    <div class="tp-sum"><span>Hebel ca. <b>${fmt(m.lev, 1)}×</b></span><span>Abstand K.-o. <b>${pct(1 - m.ko / m.p.entry, 1)}</b></span>${crv ? `<span>Chance : Risiko <b class="${crv >= 2 ? "up" : ""}">${fmt(crv, 1)} : 1</b></span>` : ""}</div>`;
-}
-document.addEventListener("input", e => {
-  if (e.target.id !== "tpBudget" && e.target.id !== "tpKo") return;
-  if (e.target.id === "tpBudget") { state.budget = Math.max(0, parseFloat(e.target.value) || 0); save(); }
-  const t = $("tpKo") && $("tpKo").dataset.t, r = data.results.find(x => x.ticker === t);
-  if (r && $("tpOut")) $("tpOut").innerHTML = tpOutHtml(r);
-});
 
 function drawCharts(c, r) {
   if (!window.LightweightCharts) return;

@@ -93,21 +93,6 @@ def _signal_text(key: str, res: Result, cfg: SimpleNamespace) -> tuple[str, int 
     return "", None
 
 
-def _validity(res: Result, cfg: SimpleNamespace) -> tuple[int | None, str]:
-    """Treffer: verbleibende Handelstage bis das erste Zeitfenster abläuft."""
-    f, left = res.flags, []
-    if f.get("mbi_x_age") is not None:
-        left.append((cfg.mbi.x_max_age - f["mbi_x_age"], "ist das grüne MBI-X älter als 15 Kerzen"))
-    if f.get("macd_cross_done") and f.get("macd_cross_age") is not None:
-        left.append((cfg.macd.cross_max_age - f["macd_cross_age"], "ist das MACD-Kreuz älter als 7 Kerzen"))
-    if f.get("div_t2_age") is not None:
-        left.append((cfg.rsi.t2_max_age - f["div_t2_age"], "ist das RSI-Tief älter als 10 Kerzen"))
-    if not left:
-        return None, ""
-    days, why = min(left)
-    return max(0, days), why
-
-
 def hint(res: Result, cfg: SimpleNamespace = CONFIG) -> dict:
     f = res.flags
     crit = {c.key: c for c in res.criteria}

@@ -77,7 +77,12 @@ async def tour_check(b, url, errs):
 
 
 async def gate_check(b, url, errs):
-    """Ohne Freigabe: Code-Seite sichtbar, falscher Code bleibt gesperrt, 7777 öffnet die App."""
+    """Ohne Freigabe: Code-Seite sichtbar, falscher Code bleibt gesperrt, der richtige öffnet die App.
+    Der Code steht nicht im Klartext im Repo – der Test sucht ihn über den Hash (wie die App)."""
+    import hashlib
+    code = next(c for c in (f"{i:04d}" for i in range(10000))
+                if hashlib.sha256(f"kairo-gate:{c}".encode()).hexdigest() == GATE)
+    wrong = "1234" if code != "1234" else "4321"
     ctx = await b.new_context(viewport={"width": 820, "height": 1180})
     pg = await ctx.new_page()
     await pg.goto(f"{url}?nosplash=1")
@@ -93,16 +98,16 @@ async def gate_check(b, url, errs):
             if not await lp.query_selector(f"#{sec}"):
                 errs.append(f"Rechtliches: Abschnitt {sec} fehlt")
         await lp.close()
-        for d in "1234":
+        for d in wrong:
             await pg.click(f'#gate [data-pin="{d}"]')
         await pg.wait_for_timeout(700)
         if not await pg.query_selector("#gate"):
             errs.append("Zugang: falscher Code öffnet die App")
-        for d in "7777":
+        for d in code:
             await pg.click(f'#gate [data-pin="{d}"]')
         await pg.wait_for_timeout(900)
         if await pg.query_selector("#gate"):
-            errs.append("Zugang: Code 7777 öffnet die App nicht")
+            errs.append("Zugang: richtiger Code öffnet die App nicht")
     await ctx.close()
 
 
