@@ -55,16 +55,17 @@ def _pct(v, d=0) -> str:
 
 
 def _status(r: dict, h4: dict) -> str:
+    """Wie die App (kSt): Seitwärtsphase heute fertig → kaufbereit; Kauftag schon gelaufen → Einstieg vorbei."""
     it = h4.get(r.get("ticker")) or {}
-    st = it.get("st")
-    if st == "basis":
-        return f"wartet auf Seitwärtsphase (Tag {it.get('day', '?')} von 10)"
-    if st in ("4h", "go"):
-        return "kaufbereit (Seitwärtsphase fertig)"
+    st, b = it.get("st"), it.get("base") or {}
     if st == "weg":
         return "verfallen"
-    if st in ("run", "sell"):
-        return "Einstieg vorbei"
+    if st in ("run", "sell") or (b.get("ed") and not b.get("pending")):
+        return f"Einstieg vorbei (Kauf war am {b.get('ed')})" if b.get("ed") else "Einstieg vorbei"
+    if st == "4h" and b.get("pending"):
+        return "kaufbereit (Seitwärtsphase fertig)"
+    if st == "basis":
+        return f"wartet auf Seitwärtsphase (Tag {it.get('day', '?')} von 10)"
     return "wartet auf Seitwärtsphase"
 
 
@@ -72,6 +73,11 @@ def render(today: str | None = None, paper: list | None = None) -> str:
     res = _load("results.json") or {}
     rows = res.get("results") or []
     h4 = {x.get("t"): x for x in ((_load("h4.json") or {}).get("items") or [])}
+    spl = {x.get("t"): x.get("pl") or {} for x in ((_load("search.json") or {}).get("rows") or []) if x.get("pl")}
+
+    def stop_of(t):                                   # wie die App: Seitwärtsphase nach dem Treffer, sonst aktuelle Kursstruktur
+        b = (h4.get(t) or {}).get("base") or {}
+        return b.get("sl") if b.get("lo") is not None else (spl.get(t) or {}).get("stop")
     etf = _load("etf.json") or {}
     bil = (_load("bilanz.json") or {}).get("live") or {}
     cal = (_load("calendar.json") or {}).get("events") or []
@@ -116,9 +122,8 @@ Als Depot bisher nicht besser als ein Welt-ETF – deshalb läuft Kairo im Papie
 <p>{len(hits)} Treffer (11/11), davon {n_ready} kaufbereit in USA/Europa · {_e(st.get('loaded') or len(rows))} Aktien geprüft.</p>
 <table><tr><th>#</th><th>Aktie</th><th>Ticker</th><th>Region</th><th>Kurs</th><th>Status</th><th>Stop</th><th>Vormomentum</th><th>Score</th></tr>""")
         for k, r in enumerate(hits[:40], 1):
-            pl = r.get("plan") or {}
             out.append(f"<tr><td>{k}</td><td>{_e(r.get('name'))}</td><td>{_e(r.get('ticker'))}</td><td>{_e(REG.get(r.get('region'), r.get('region')))}</td>"
-                       f"<td>{_n(r.get('close'))} {_e(r.get('currency'))}</td><td>{_e(_status(r, h4))}</td><td>{_n(pl.get('stop'))}</td>"
+                       f"<td>{_n(r.get('close'))} {_e(r.get('currency'))}</td><td>{_e(_status(r, h4))}</td><td>{_n(stop_of(r.get('ticker')))}</td>"
                        f"<td>{_pct((r.get('flags') or {}).get('mom61'))}</td><td>{_e(r.get('score'))}</td></tr>")
         out.append("</table>")
     except Exception as exc:
