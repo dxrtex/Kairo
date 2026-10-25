@@ -52,7 +52,7 @@ def messages(dev: dict, prices: dict, today: str, sent: dict) -> list[dict]:
             continue
         x = p.get("x")
         if x and x <= today and today <= (p.get("x2") or "9999") and x >= _days_ago(today, 10):
-            add(f"exit:{p.get('i')}", f"📆 Verkaufstag: {n}", "Tag 20 erreicht – laut Kairo-Strategie heute verkaufen (Turbo im Depot verkaufen, Trade im Journal schließen).")
+            add(f"exit:{p.get('i')}", f"📆 Verkaufstag: {n}", "Letzter Haltetag erreicht (spätestens Tag 60) – laut Kairo-Strategie heute verkaufen (Turbo im Depot verkaufen, Trade im Journal schließen).")
         if df is None or not len(df):
             continue
         ex = ema_exit(df, p.get("d"), today) if p.get("e") else None
