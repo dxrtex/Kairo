@@ -10,3 +10,8 @@ def test_message_names():
 def test_without_secrets(monkeypatch):
     monkeypatch.delenv("PUSH_SUBS", raising=False)
     assert watchdog.main(["Täglicher Scan", "u"]) == 0
+
+
+def test_message_published_without_browser_test():
+    m = watchdog.message("Täglicher Scan (ohne Browser-Test veröffentlicht)", "u")
+    assert "ohne App-Test" in m["title"] and "fehlgeschlagen" not in m["title"]
