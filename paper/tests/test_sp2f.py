@@ -34,3 +34,12 @@ def test_too_little_history_does_nothing():
     st = run.load_state(Path("/nonexistent"), "SP2F")
     sp2f.day(st, m, days[50], days[49], run.equity, run.close_pos)
     assert not st["positions"] and st.get("on") is None
+
+
+def test_missing_etf_is_logged_once():
+    m, days = market()
+    del m.daily[sp2f.ETF]
+    st = run.load_state(Path("/nonexistent"), "SP2F")
+    for i in (250, 251):
+        sp2f.day(st, m, days[i], days[i - 1], run.equity, run.close_pos)
+    assert sum("Keine Kursdaten" in e for e in st["events"]) == 1 and not st["positions"]
