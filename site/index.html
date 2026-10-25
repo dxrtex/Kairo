@@ -1725,10 +1725,15 @@ function chips(r) {
 const chkTone = c => c.p >= .55 ? "g" : c.p >= .4 ? "y" : "r";
 const chkLabel = c => c.p >= .55 ? "wahrscheinlich nur Rücksetzer" : c.p >= .4 ? "offen" : "Korrektur-Risiko erhöht";
 // Kairo-Plan: die Antwort zuerst – Status, Kaufzone, Stop, Ausstieg, Kursziel (alle Designs)
+// Eine Quelle für Seitwärtsphase und Stop überall (Heute, Karte, Trade-Plan): zuerst die Seitwärtsphase im 10-Tage-Fenster
+// nach dem Treffer (Abend-Prüfung, genau wie getestet), sonst die aktuelle Kursstruktur aus dem Scan
+function kPlan(t) {
+  const it = h4Of(t), pl0 = (rowOf(t) || {}).pl || {}, ib = it && it.base && it.base.lo != null ? it.base : null;
+  return ib ? { base: { lo: ib.lo, hi: ib.hi }, stop: ib.sl, src: "Seitwärtsphase nach dem Treffer" } : { base: pl0.base || null, stop: pl0.stop, src: pl0.src };
+}
 function kplanHtml(r) {
-  const x = kSt(r), it = h4Of(r.ticker), pl0 = (rowOf(r.ticker) || {}).pl || {}, cur = esc(r.currency || ""), tz = tgtZ(r);
-  const ib = it && it.base && it.base.lo != null ? it.base : null;          // Seitwärtsphase aus der Abend-Prüfung, sonst aus dem Scan
-  const pl = { base: pl0.base || ib, stop: pl0.base ? pl0.stop : ib ? ib.sl : pl0.stop };
+  const x = kSt(r), cur = esc(r.currency || ""), tz = tgtZ(r);
+  const pl = kPlan(r.ticker);
   const head = { ready: ["g", "Kaufbereit", "Seitwärtsphase fertig – Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt."],
     wait: ["y", "Treffer – noch nicht kaufen", `${x.s}. Gekauft wird erst nach 5 ruhigen Tagen.`],
     late: ["y", "Einstieg vorbei", "Der Kauftag nach der Seitwärtsphase ist schon vorbei – nicht nachkaufen, auf den nächsten Treffer warten."],
@@ -1804,7 +1809,8 @@ async function loadChart(t) {
   if (!chartCache[t]) chartCache[t] = fetch(`data/charts/${encodeURIComponent(t)}.json`).then(r => r.json());
   return chartCache[t];
 }
-const chartPlan = r => r.passed ? r.plan : isTrend(r) ? r.tr.plan : null;
+// Linien im Chart wie die Regel: Kaufzone-Oberkante und Stop der Seitwärtsphase – kein festes Kursziel (Gewinner laufen lassen)
+const chartPlan = r => { if (!r.passed) return isTrend(r) ? r.tr.plan : null; const kp = kPlan(r.ticker); return kp.stop ? { entry: kp.base ? kp.base.hi : null, stop: kp.stop } : null; };
 function miniSvg(c, r) {
   const nu = state.design === "pro";
   const n = c.t.length, from = Math.max(0, n - 60), W = 600, H = 220, pad = nu ? 14 : 10;
@@ -2079,14 +2085,11 @@ function newsHtml() {
   const wlM = ((ij && ij.watch) || []).filter(x => x.kind === "meld").sort((a, b) => String(b.d).localeCompare(String(a.d)));
   const wl = ij && ij.watch, wlB = (wl || []).filter(x => x.kind === "buy").sort((a, b) => inEur(b) - inEur(a)), wlS = (wl || []).filter(x => x.kind === "sell").sort((a, b) => inEur(b) - inEur(a));
   const wlSum = (() => { const by = {}; wlB.forEach(x => { by[x.t] = (by[x.t] || 0) + inEur(x); }); return Object.entries(by).sort((a, b) => b[1] - a[1]); })();
-  // Cluster: mehrere verschiedene Insider kaufen dieselbe Aktie in 90 Tagen – laut Studien das stärkste Insider-Signal
   const ageD = d => (Date.now() - new Date(d + "T12:00:00")) / 864e5;
   const recent = wlB.filter(x => x.d && ageD(x.d) <= 90).sort((a, b) => String(b.d).localeCompare(String(a.d)));
-  const clus = (() => { const by = {}; recent.forEach(x => { (by[x.t] = by[x.t] || { who: new Set(), v: 0 }).who.add(x.who); by[x.t].v += inEur(x); });
-    return Object.entries(by).filter(([, o]) => o.who.size >= 2).sort((a, b) => b[1].who.size - a[1].who.size || b[1].v - a[1].v); })();
   const nUS = ij && ij.watch_n || 0, nDE = ij && ij.watch_de_n || 0;
   const wlHtml = !ij ? "" : !wl ? `<div class="note" style="margin:8px 2px">Insider-Geschäfte deiner Aktien kommen mit dem nächsten Scan.</div>`
-    : insSigHtml(ij) + (clus.length ? `<div class="hcard" style="margin:8px 0 12px;border-left:3px solid var(--up)"><b>Mehrere Insider kaufen</b><div class="note" style="margin:4px 0 0">${clus.slice(0, 6).map(([t, o]) => `<b>${esc(nameOf(t))}</b>: ${o.who.size} Insider · ${eurAmt(o.v)}`).join("<br>")}<br><span class="muted">Mehrere Käufer in 90 Tagen gelten als stärkstes Insider-Signal – kein Kaufsignal allein, aber ein Grund genauer hinzusehen.</span></div></div>` : "")
+    : insSigHtml(ij)
       + block(`Deine Aktien · neueste Insider-Käufe · 90 Tage`, recent.slice(0, 20).map(irow), `Keine Insider-Käufe in den letzten 90 Tagen.`)
       + (wlM.length ? block("Deine Aktien · Meldungen ohne Betrag (Niederlande, Australien)", wlM.slice(0, 12).map(irow), "") : "")
       + block(`Deine Aktien · größte Insider-Käufe · 12 Monate`, wlB.slice(0, 30).map(irow), `Keine Insider-Käufe bei deinen Aktien in den letzten 12 Monaten.`)
@@ -3940,7 +3943,8 @@ function kSt(r) {
   if (r.passed) {
     if (it && it.st === "weg") return { k: "gone", t: "verfallen", cls: "", lv: 1, s: "keine Seitwärtsphase innerhalb von 10 Tagen" };
     if (it && ["run", "sell"].includes(it.st)) return { k: "late", t: "Einstieg vorbei", cls: "", lv: 2, s: "Kauftag schon vorbei – nicht nachkaufen" };
-    if (it ? it.st === "4h" || h4Go(it) : pl.base) return { k: "ready", t: "kaufbereit", cls: "hit", lv: 5, s: "Seitwärtsphase fertig – Kauf zur nächsten Eröffnung" };
+    if (kmDone(t)) return { k: "late", t: "Einstieg vorbei", cls: "", lv: 2, s: `Laut Regel war der Kauf am ${dateDE(it.base.ed)} zur Eröffnung – ein späterer Einstieg ist nicht getestet` };
+    if (kmReady(t)) return { k: "ready", t: "kaufbereit", cls: "hit", lv: 5, s: "Seitwärtsphase fertig – Kauf zur nächsten Eröffnung" };
     if (it && it.st === "basis") return { k: "wait", t: `Seitwärtsphase ${it.day}/10`, cls: "wait", lv: 4, s: `wartet auf die Seitwärtsphase · Tag ${it.day} von 10` };
     return { k: "wait", t: "wartet", cls: "wait", lv: 4, s: "wartet auf die Seitwärtsphase" };
   }
@@ -4096,18 +4100,12 @@ function postfachItems() {
   const ent = data.results.filter(r => r.passed && !isTrend(r)).sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   out.trend = data.results.filter(r => isTrend(r) && r.tr.top).sort((a, b) => (b.tr.plan && b.tr.plan.crv || 0) - (a.tr.plan && a.tr.plan.crv || 0))
     .map(r => ({ t: r.ticker, c: "b", n: `${r.name || r.ticker}`, d: `Trend-Rücksetzer Top · CRV ${fmt(r.tr.plan && r.tr.plan.crv, 1)}` }));
-  const h4d = h4Data(), h4seen = new Set();
-  // Übersichtlich: „Jetzt handeln“ nur echte Einstiege (4H bestätigt), „Vorbereiten“ nur Treffer mit fertiger Seitwärtsphase –
-  // Treffer, die noch auf die Seitwärtsphase warten, stehen im Scanner und in der 4H-Karte (Anzahl), nicht hier
-  const nf = x => H4F.filter(([k]) => (x.fl || {})[k]).length;
-  const h4its = ((h4d && h4d.items) || []).filter(h4Real);
-  h4its.filter(h4Go).forEach(it => out.now.push({ t: it.t, c: "g", n: `${it.n || it.t} einsteigen – 4H bestätigt`, d: h4Text(it).s }));
-  h4its.filter(it => it.st === "sell").forEach(it => out.now.push({ t: it.t, c: "y", n: `${it.n || it.t}: 4H-Trade verkaufen – Schluss unter der EMA 20`, d: h4Text(it).s }));
-  h4its.filter(it => it.st === "4h").sort((a, b) => nf(b) - nf(a)).forEach(it => out.prep.push({ t: it.t, c: "y", n: `${it.n || it.t} – wartet auf 4H`,
-    d: `${nf(it)} von 4 Signalen · Stop ${fmt((it.base || {}).sl)} ${it.cur || ""}` }));
-  if (h4d) h4its.forEach(it => h4seen.add(it.t));
-  ent.filter(r => !h4seen.has(r.ticker) && !(h4d && r.passed && !isTrend(r))).forEach(r => out.now.push({ t: r.ticker, c: "g", n: `${r.name || r.ticker} einsteigen`, d: r.passed ? `Kairo-Treffer · Score ${r.score ?? "–"} · CRV ${fmt(r.crv, 1)}` : `Trend-Rücksetzer${r.tr.top ? " Top" : ""} · CRV ${fmt(r.tr.plan && r.tr.plan.crv, 1)}` }));
-  if (!h4d) data.results.filter(r => r.fast_hit && !r.passed && !isTrend(r)).slice(0, 8).forEach(r => out.prep.push({ t: r.ticker, c: "y", n: `${r.name || r.ticker} beobachten`, d: `Fast · fehlt: ${(r.missing || [])[0] || ""}` }));
+  // Eine Kairo-Regel: „Jetzt handeln“ = Seitwärtsphase heute fertig (Kauf zur nächsten Eröffnung), „Vorbereiten“ = Treffer wartet noch
+  const tested = ent.filter(r => ["us", "europe"].includes(String(r.region || "").toLowerCase()));
+  tested.filter(r => kmReady(r.ticker)).forEach(r => { const kp = kPlan(r.ticker);
+    out.now.push({ t: r.ticker, c: "g", n: `${r.name || r.ticker} – Kauf zur nächsten Eröffnung`, d: `Seitwärtsphase fertig · Stop ${fmt(kp.stop)} ${r.currency || ""}` }); });
+  tested.filter(r => { const x = kSt(r); return x.k === "wait"; }).slice(0, 8).forEach(r => out.prep.push({ t: r.ticker, c: "y", n: `${r.name || r.ticker} – ${kSt(r).t}`, d: `Kairo-Treffer · Score ${r.score ?? "–"}` }));
+  if (!out.prep.length) data.results.filter(r => r.fast_hit && !r.passed && !isTrend(r)).slice(0, 8).forEach(r => out.prep.push({ t: r.ticker, c: "y", n: `${r.name || r.ticker} beobachten`, d: `Fast · fehlt: ${(r.missing || [])[0] || ""}` }));
   return out;
 }
 function postfachHtml(cards = "", cards2 = "") {
@@ -4202,9 +4200,9 @@ function todoTodayHtml() {
   plansLoad().filter(p => p.st === "open").forEach(p => { const st = tpStatus(p);
     const row = `<button class="tdo ${st.tone}" data-ein="${esc(p.t)}"><i></i><span><b>${esc(p.n || p.t)}</b><small>${esc(st.t)}</small></span><s>›</s></button>`;
     (["red", "yellow", "green"].includes(st.tone) ? sell : watch).push(row); });
-  const free = kmSlots(), ready = kmRank().hits.filter(x => { const it = h4Of(x.t);   // Seitwärtsphase im 10-Tage-Fenster fertig (Abend-/4H-Prüfung), sonst Basis aus dem Scan
-    return kmTested(x) && (it ? it.st === "4h" : ((rowOf(x.t) || {}).pl || {}).base) && !plansLoad().some(p => p.st === "open" && p.t === x.t); }).slice(0, Math.max(0, free));
-  ready.forEach(x => { const pl = (rowOf(x.t) || {}).pl || {};
+  const free = kmSlots(), ready = kmRank().hits.filter(x =>   // Seitwärtsphase im 10-Tage-Fenster heute fertig → Kauf zur nächsten Eröffnung
+    kmTested(x) && kmReady(x.t) && !plansLoad().some(p => p.st === "open" && p.t === x.t)).slice(0, Math.max(0, free));
+  ready.forEach(x => { const pl = kPlan(x.t);
     buy.push(`<button class="tdo g" data-ein="${esc(x.t)}"><i></i><span><b>${esc(x.n)}</b><small>Seitwärtsphase fertig – Kauf zur nächsten Eröffnung${pl.base ? ` in der Spanne ${fmt(pl.base.lo)}–${fmt(pl.base.hi)} ${esc(x.cur || "")}` : ""} · Stop ${fmt(pl.stop)} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}</small></span><s>›</s></button>`); });
   const n = sell.length + buy.length;
   return `<div class="hcard todo-today">${hHead(`Heute zu tun${n ? ` · ${n}` : ""}`, SEC_LINK("entry"), "Einstieg")}
@@ -4501,8 +4499,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.10.27";
-const APP_NEWS = [["2026.10.27", "Ehrliche Live-Bilanz", [
+const APP_VER = "2026.10.28";
+const APP_NEWS = [["2026.10.28", "Eine Regel überall", [
+  ["Ein Stop, ein Status", "Heute, Karte, Trade-Plan, Top-Setups und Chart nutzen dieselbe Seitwärtsphase nach dem Treffer – vorher zeigten sie teils verschiedene Stops."],
+  ["Kauftag richtig", "War der Kauftag laut Regel schon (Eröffnung nach der Seitwärtsphase), steht „Einstieg vorbei“ statt „kaufbereit“ – wie in Live-Bilanz und Papier-Depots."],
+  ["Klarere Hinweise", "Treffer-Text erklärt die getestete Regel; Rang zählt nur kaufbereite Treffer; keine festen Kursziele mehr im Chart."]]],
+  ["2026.10.27", "Ehrliche Live-Bilanz", [
   ["Insider-Signal", "Gezielte Käufe statt Routine erkannt (3 Jahre Historie), Stärke je Aktie, Mitteilung bei neuen Käufen deiner Aktien, dazu Meldungen aus den Niederlanden (Airbus, ASML) und Australien."],
   ["Live-Bilanz", "Zählt jetzt auch die laufenden Trades (zum heutigen Stand) und nur USA/Europa wie getestet – vorher sah sie nur die frühen Stops."],
   ["Kurs oben", "Auch aus den Top-Setups öffnet sich die Karte mit dem aktuellen Kurs ganz oben."],
@@ -4967,13 +4969,17 @@ function kmRank() {
   const pos = {}; hits.forEach((x, i) => { pos[x.t] = i + 1; });
   return { hits, pos };
 }
+// Kaufbereit = Seitwärtsphase im 10-Tage-Fenster fertig (wie „Heute zu tun“); um die freien Plätze konkurrieren nur diese
+// Abend-Prüfung (h4.json): Seitwärtsphase fertig und Kauf erst morgen (pending) = kaufbereit; Kauftag schon gelaufen (ed, nicht pending) = vorbei
+const kmDone = t => { const it = h4Of(t), b = it && it.base; return !!(it && it.st !== "weg" && b && b.ed && !b.pending); };
+const kmReady = t => { const it = h4Of(t); return it ? !!(it.st === "4h" && it.base && it.base.pending) : !!((rowOf(t) || {}).pl || {}).base; };
 function kmSlots() { const cfg = tpCfg(); return Math.max(0, cfg.maxOpen - plansLoad().filter(p => p.st === "open").length); }
 function kmFit(r, mk) {
   const weak = mk && mk.k === "weak";
   if (r.s === "hit") {
-    const { hits, pos } = kmRank(), rk = pos[r.t], free = kmSlots();
+    const all = kmRank().hits, hits = all.filter(x => kmReady(x.t)), ri = hits.findIndex(x => x.t === r.t), rk = ri >= 0 ? ri + 1 : null, free = kmSlots();
     const mo = kmMom(r.t);
-    const rank = rk ? ` Rang ${rk} von ${hits.length} heutigen Treffern (Vormomentum ${mo != null ? sgnPct(mo, 0) : "–"}${kmTested(r) ? "" : ", Region nicht getestet"}) – bei mehr Treffern als freien Plätzen zuerst USA/Europa mit schwächerem Vormomentum (Forschung: in allen drei Testzeiträumen bessere Trades; muss sich live bestätigen).` : "";
+    const rank = rk ? ` Rang ${rk} von ${hits.length} kaufbereiten Treffern (Vormomentum ${mo != null ? sgnPct(mo, 0) : "–"}${kmTested(r) ? "" : ", Region nicht getestet"}) – bei mehr Treffern als freien Plätzen zuerst USA/Europa mit schwächerem Vormomentum (Forschung: in allen drei Testzeiträumen bessere Trades; muss sich live bestätigen).` : "";
     const fit = weak
       ? { ok: true, k: "hit", tone: "green", mult: KMAX.weakMult, t: "A-Setup – Kairo-Treffer im Ausverkauf: traden",
           s: "Die stärkste Phase der Strategie. Risiko trotzdem nur 1 % – die Verdopplung hielt im Test auf neuen Jahren nicht." + rank }
@@ -4981,7 +4987,7 @@ function kmFit(r, mk) {
           s: "Setup der Strategie. Kauf in der Seitwärtsphase, Verkauf ab Tag 10 bei Schluss unter der EMA 20 (spätestens Tag 60), 1 % Risiko." + rank };
     if (!free) return { ...fit, tone: "yellow", t: "Kairo-Treffer – aber alle Plätze belegt", s: `Du hast schon ${tpCfg().maxOpen} offene Trades. Erst wenn einer endet (Stop, EMA 20 oder Tag 60), ist wieder Platz.` + rank };
     if (rk && rk > free) return { ...fit, tone: "yellow", t: `Kairo-Treffer – Rang ${rk}, nur ${free} ${free > 1 ? "Plätze" : "Platz"} frei`,
-      s: `Die Treffer davor hatten in der Forschung die besseren Chancen (schwächeres Vormomentum). Nimm diesen nur, wenn die davor nicht kaufbar sind.` + rank };
+      s: `Vor diesem stehen ${rk - 1} kaufbereite Treffer mit besseren Chancen laut Forschung (schwächeres Vormomentum). Nimm diesen nur, wenn du die davor nicht kaufst.` + rank };
     return fit;
   }
   if (r.s === "near") return { ok: false, k: "near", tone: "red", mult: 1, t: "Auslassen – 9/11, kein Treffer",
@@ -5016,27 +5022,29 @@ function tp2Calc(r, S, o = {}) {
   const trend = S && (S.k === "top" || S.k === "trend");
   // 4H-Top-Setup: Stop = Basis aus dem Scan (Seitwärtsphase nach dem Treffer, genau wie im Test) statt der heutigen Struktur
   const h4 = null, h4b = null;                                // 4H-Bestätigung entfernt (10/2026): eine Regel für alle Kairo-Trades
-  const stop = h4b ? h4b.sl : pl.stop;                       // für alle Setups gleich (so getestet): Basis-Tief − 0,25 ATR
-  const src = pl.src ? `${pl.src} − 0,25 ATR` : "";
+  const kp = !trend && (r.t || r.ticker) ? kPlan(r.t || r.ticker) : null;
+  const stop = h4b ? h4b.sl : kp && kp.stop ? kp.stop : pl.stop;   // für alle Setups gleich (so getestet): Basis-Tief − 0,25 ATR
+  const plb = (kp && kp.base) || pl.base;
+  const src = (kp && kp.src) || pl.src ? `Tief der ${(kp && kp.src) || pl.src} − 0,25 ATR`.replace("Tief der Tief", "Tief") : "";
   const E = o.entry > 0 ? o.entry : r.c, fx0 = toEur(1, r.cur || "EUR"), fx = fx0 > 0 ? fx0 : 1;
   // Kursmarken: nahe Marken aus dem Scan (Basis-Hoch, EMA 20/50, Fibonacci), sonst die Swing-Widerstände
   const tg = (pl.tg && pl.tg.length ? pl.tg : (pl.res || []).map((x, i) => [`Widerstand ${i + 1}`, x])).filter(x => x[1] > E);
-  const out = { E, stop, atr, src: h4b ? `Basis-Tief ${fmt(h4b.lo * fx)} € − 0,25 ATR (Seitwärtsphase nach dem Treffer)` : src, trend, cfg, fx, cur: r.cur || "", h4, base: h4b ? { lo: h4b.lo, hi: h4b.hi } : pl.base, tg, res: tg.map(x => x[1]), problems: [] };
+  const out = { E, stop, atr, src: h4b ? `Basis-Tief ${fmt(h4b.lo * fx)} € − 0,25 ATR (Seitwärtsphase nach dem Treffer)` : src, trend, cfg, fx, cur: r.cur || "", h4, base: h4b ? { lo: h4b.lo, hi: h4b.hi } : plb, tg, res: tg.map(x => x[1]), problems: [] };
   if (!stop || !atr) { out.problems.push(["red", "Keine Kursstruktur für diese Aktie – kein Trade-Plan möglich."]); return out; }
   if (!(fx0 > 0)) { out.problems.push(["red", `Wechselkurs ${r.cur} → € fehlt im letzten Scan – Stückzahl und Euro-Beträge wären falsch. Kein Trade-Plan bis zum nächsten Scan.`]); return out; }
   const risk = E - stop;
   out.riskAtr = risk / atr;
   if (risk <= 0) { out.problems.push(["red", `Kurs liegt schon unter dem Stop ${fmt(stop * fx)} € – Setup gescheitert.`]); return out; }
-  if (out.riskAtr > TP.maxAtr) out.problems.push(["red", `Stop ${fmt(out.riskAtr, 1)} ATR entfernt (mehr als ${TP.maxAtr}) – zu weit für diese Strategie. ${pl.base ? "" : "Auf eine Basis warten."}`]);
+  if (out.riskAtr > TP.maxAtr) out.problems.push(["red", `Stop ${fmt(out.riskAtr, 1)} ATR entfernt (mehr als ${TP.maxAtr}) – zu weit für diese Strategie. ${plb ? "" : "Auf eine Basis warten."}`]);
   else if (out.riskAtr < TP.minAtr) out.problems.push(["yellow", `Stop nur ${fmt(out.riskAtr, 1)} ATR entfernt – normales Tagesrauschen kann ihn auslösen.`]);
-  if (!pl.base && !h4b) out.problems.push(["yellow", "Noch keine enge Seitwärtsphase (Basis) – laut Strategie erst kaufen, wenn sie da ist."]);
+  if (!plb && !h4b) out.problems.push(["yellow", "Noch keine enge Seitwärtsphase (Basis) – laut Strategie erst kaufen, wenn sie da ist."]);
   if (!trend && !h4) {                                              // getestete Regel: Seitwärtsphase innerhalb von 10 Handelstagen nach dem Signal
     const bj = getJson("bilanz.json"), sg = bj && (bj.signals || []).find(x => x.k === "hit" && x.t === r.t);
     if (sg) { const age = bdBetween(new Date(sg.d + "T12:00:00"), new Date()), res = (sg.st || {}).res; out.sig = { d: sg.d, age, res };
-      if (res === "nobase" || (!pl.base && age > 10)) out.problems.push(["red", `Kairo-Signal vom ${dateDE(sg.d)}: innerhalb von 10 Handelstagen keine Seitwärtsphase – laut getesteter Regel ist das Signal verfallen. Kein Trade.`]);
-      else if (!pl.base && res !== "run") out.problems.push(["yellow", `Kairo-Signal vom ${dateDE(sg.d)} – Tag ${age} von 10: Die Seitwärtsphase muss bis ${dateDE(isoD(addBd(new Date(sg.d + "T12:00:00"), 10)))} kommen, sonst verfällt es.`]);
+      if (res === "nobase" || (!plb && age > 10)) out.problems.push(["red", `Kairo-Signal vom ${dateDE(sg.d)}: innerhalb von 10 Handelstagen keine Seitwärtsphase – laut getesteter Regel ist das Signal verfallen. Kein Trade.`]);
+      else if (!plb && res !== "run") out.problems.push(["yellow", `Kairo-Signal vom ${dateDE(sg.d)} – Tag ${age} von 10: Die Seitwärtsphase muss bis ${dateDE(isoD(addBd(new Date(sg.d + "T12:00:00"), 10)))} kommen, sonst verfällt es.`]);
       else if (res === "run" && sg.st.days > 3) out.problems.push(["yellow", `Laut Strategie lief der Einstieg schon vor ${sg.st.days} Handelstagen – ein später Einstieg ist nicht getestet.`]); } }
-  if (pl.base && E > pl.base.hi + 0.5 * atr) out.problems.push(["yellow", `Kurs schon über der Basis (${fmt(pl.base.hi * fx)} €) – die Gegenbewegung läuft bereits, der Stop liegt entsprechend weiter weg.`]);
+  if (plb && E > plb.hi + 0.5 * atr) out.problems.push(["yellow", `Kurs schon über der Basis (${fmt(plb.hi * fx)} €) – die Gegenbewegung läuft bereits, der Stop liegt entsprechend weiter weg.`]);
   out.dist = risk / E;
   out.mk = tpMarket();
   out.fit = kmFit(r, out.mk);
@@ -5507,7 +5515,8 @@ function topSetupsHtml() {
   const m = r => (r.flags || {}).mom61;
   const list = hits.slice().sort(kOrder).slice(0, 8);
   const rows = list.map((r, k) => {
-    const p = r.plan || {}, e = toEur(p.entry, r.currency), st = toEur(p.stop, r.currency), per = e != null && st != null ? e - st : null;
+    const kp = kPlan(r.ticker), p = { entry: r.close, stop: kp.stop };   // Stop wie überall: Seitwärtsphase nach dem Treffer, sonst Kursstruktur
+    const e = toEur(p.entry, r.currency), st = p.stop ? toEur(p.stop, r.currency) : null, per = e != null && st != null ? e - st : null;
     const qty = per > 0 ? Math.floor(riskEur / per) : null, val = qty ? qty * e : null, fee = val == null ? null : val >= 250 ? 0 : 0.99;
     return `<tr><td>${k + 1}</td><td><b>${esc(r.ticker)}</b> ${kPill(r)} ${tgtChip(r)}<br><span class="note">${esc(String(r.name || "").slice(0, 24))}</span></td>
       <td>${m(r) == null ? "–" : sgnPct(m(r), 0)}</td><td>${fmt(p.entry)}<br><span class="down">${fmt(p.stop)}</span></td>
@@ -5516,7 +5525,7 @@ function topSetupsHtml() {
   }).join("");
   return `<div class="hcard" style="margin-bottom:12px">${hHead("Top-Setups heute")}
     <div class="note">USA und Europa · kaufbereit zuerst, dann schwächeres Vormomentum (laut Forschung bessere Trades). Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)}.</div>
-    <div class="ts-list">${list.map((r, k) => { const p = r.plan || {}, e = toEur(p.entry, r.currency), st = toEur(p.stop, r.currency), per = e != null && st != null ? e - st : null, qty = per > 0 ? Math.floor(riskEur / per) : null;
+    <div class="ts-list">${list.map((r, k) => { const p = { entry: r.close, stop: kPlan(r.ticker).stop }, e = toEur(p.entry, r.currency), st = p.stop ? toEur(p.stop, r.currency) : null, per = e != null && st != null ? e - st : null, qty = per > 0 ? Math.floor(riskEur / per) : null;
       return `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${kPill(r)} ${insChip(r.ticker)} ${tgtChip(r)} ${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${qty ? `${qty} Stk.<small>${eur2(qty * e)}</small>` : "–"}</span></button>`; }).join("")}</div>
     <div class="tscroll ts-tab" style="margin-top:8px"><table class="ptab ts"><tr><th>#</th><th>Aktie</th><th>Vormomentum</th><th>Einstieg / Stop</th><th>Größe</th><th>Gebühr</th><th></th></tr>${rows}</table></div></div>`;
 }
@@ -5813,10 +5822,10 @@ function drawCharts(c, r) {
   main.priceScale("vol").applyOptions({ scaleMargins: { top: .87, bottom: 0 } });
   vol.setData(T.map((t, i) => ({ time: t, value: c.v[i] || 0, color: c.c[i] >= c.o[i] ? "rgba(48,209,88,.22)" : "rgba(255,69,58,.22)" })));
   const line = (price, title, color, style = 2) => price != null && candles.createPriceLine({ price, title, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true });
-  const fib = r.zone && r.zone.fib, sup = r.zone && r.zone.support, p = r.plan || {};
+  const fib = r.zone && r.zone.fib, sup = r.zone && r.zone.support, p = chartPlan(r) || {};
   if (fib) [["0", "Fib 0"], ["0.618", "0,618"], ["0.706", "0,706"], ["0.79", "0,79"], ["1", "Fib 1"]].forEach(([k, l]) => line(fib.levels[k], l, "#f4b740"));
   if (sup) { line(sup.band[1], "Support oben", "#4aa3ff"); line(sup.center, "Support", "#4aa3ff", 0); line(sup.band[0], "Support unten", "#4aa3ff"); }
-  line(p.entry, "Entry", "#eceef2", 0); line(p.stop, "Stop", "#ff453a", 0); line(p.target1, "Ziel 1", "#30d158", 0); line(p.target2, "Ziel 2", "#30d158", 0);
+  line(p.entry, "Kaufzone oben", "#eceef2", 0); line(p.stop, "Stop", "#ff453a", 0);
   line(tpKoStock(r.ticker, r.currency || r.cur), "K.-o. Turbo", "#ff9f0a", 1);
 
   const rsiC = LW.createChart($("cRsi"), opts($("cRsi")));
