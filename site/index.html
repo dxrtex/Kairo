@@ -2273,18 +2273,21 @@ function depotCheckHtml(items) {
   const turbCost = items.filter(x => x.p.d).reduce((a, x) => a + x.cost, 0), allCost = items.reduce((a, x) => a + x.cost, 0);
   if (items.length < 2 || (!tot && !turbCost)) return "";
   const nm = x => x.p.n || (x.r && x.r.n) || x.p.t;
-  const share = key => { const m = {}; st.forEach(x => { const k = key(x, x.r || {}) || "unbekannt"; m[k] = (m[k] || 0) + x.val; });
-    return Object.entries(m).map(([k, v]) => [k, v / tot]).sort((a, b) => b[1] - a[1]); };
+  const share = key => { const m = {}; st.forEach(x => { const k = key(x, x.r || {}) || "ohne Angabe"; m[k] = (m[k] || 0) + x.val; });
+    return Object.entries(m).map(([k, v]) => [k, v / tot]).sort((a, b) => (a[0] === "ohne Angabe") - (b[0] === "ohne Angabe") || b[1] - a[1]); };
+  const SEC_EN = { Technology: "Technologie", "Financial Services": "Finanzen", Healthcare: "Gesundheit", "Consumer Cyclical": "Zyklischer Konsum", "Consumer Defensive": "Basiskonsum",
+    Energy: "Energie", Industrials: "Industrie", "Basic Materials": "Rohstoffe", Utilities: "Versorger", "Real Estate": "Immobilien", "Communication Services": "Kommunikation" };
+  const secOf = x => (x.r && x.r.sec) || SEC_EN[((data.results.find(y => y.ticker === x.p.t) || {}).sector) || ""] || null;
   const pos = st.map(x => [nm(x), x.val / tot]).sort((a, b) => b[1] - a[1]);
-  const sec = share((x, r) => r.sec), reg = share((x, r) => REGION[r.r]), cur = share((x, r) => x.cur || r.cur);
+  const sec = share(x => secOf(x)), reg = share((x, r) => REGION[r.r]), cur = share((x, r) => x.cur || r.cur);
   const notes = [];
   if (tot && st.length >= 2) {
     const [pn, ps] = pos[0];
     if (ps >= .25) notes.push(["red", `Klumpen: ${pn} ist ${pct(ps, 0)} deines Aktien-Depots`, `Fällt diese eine Aktie um 30 %, verliert das ganze Aktien-Depot rund ${pct(ps * .3, 0)}.`]);
     else if (ps >= .15) notes.push(["orange", `Größte Position: ${pn} mit ${pct(ps, 0)}`, "Noch vertretbar – viele Profis begrenzen eine einzelne Aktie auf 10–15 %."]);
     const [sn, ss] = sec[0] || [];
-    if (st.length >= 3 && sn && sn !== "unbekannt" && ss >= .4) notes.push([ss >= .6 ? "red" : "orange", `Branche: ${pct(ss, 0)} in ${sn}`, "Aktien einer Branche fallen oft gemeinsam – das wirkt wie eine einzige große Position."]);
-    const fx = cur.filter(([k]) => k !== "EUR" && k !== "unbekannt").reduce((a, [, v]) => a + v, 0);
+    if (st.length >= 3 && sn && sn !== "ohne Angabe" && ss >= .4) notes.push([ss >= .6 ? "red" : "orange", `Branche: ${pct(ss, 0)} in ${sn}`, "Aktien einer Branche fallen oft gemeinsam – das wirkt wie eine einzige große Position."]);
+    const fx = cur.filter(([k]) => k !== "EUR" && k !== "ohne Angabe").reduce((a, [, v]) => a + v, 0);
     if (fx >= .5) notes.push(["gray", `Währung: ${pct(fx, 0)} in Fremdwährung`, `Vor allem ${cur.filter(([k]) => k !== "EUR")[0][0]} – der Wechselkurs zum Euro bewegt dein Depot mit, auch wenn die Aktien stillstehen.`]);
   }
   if (turbCost && allCost && turbCost / allCost >= .2) notes.push([turbCost / allCost >= .5 ? "red" : "orange", `Hebelprodukte: ${pct(turbCost / allCost, 0)} deines Einsatzes`, "Turbos können bis zum Knock-out und damit zum Totalverlust fallen. Mehr dazu in der Depot-Übersicht bei jeder Position."]);
@@ -4442,8 +4445,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.10.23";
-const APP_NEWS = [["2026.10.23", "Quartalszahlen", [
+const APP_VER = "2026.10.26";
+const APP_NEWS = [["2026.10.26", "Depot-Check", [
+  ["Depot-Check", "Unter dem Depot: Klumpen, Branchen, Regionen, Währungen und Hebelanteil – auf einen Blick."],
+  ["Journal-Muster", "Neu erkannt: schlechter nach Verlusten, große Positionen, Ergebnis aus wenigen Trades, zu kurze Trades."],
+  ["Deine Quartalszahlen", "Auf Heute: frische Zahlen deiner Aktien mit Einschätzung – antippen für Details."]]],
+  ["2026.10.23", "Quartalszahlen", [
   ["Termin antippen", "Im Kalender auf einen Quartalstermin tippen: Gewinn und Umsatz gegen die Erwartung, Ausblick, Kursreaktion."],
   ["Einschätzung", "Eher positiv oder negativ für den Kurs – nach fester Regel, mit Begründung. Vor dem Termin: Erwartungen und typische Bewegung."]]],
   ["2026.10.22", "Der richtige Moment", [
