@@ -1399,7 +1399,8 @@ const nf = (d = 2) => new Intl.NumberFormat("de-DE", { minimumFractionDigits: d,
 const fmt = (v, d = 2) => v == null || isNaN(v) ? "–" : nf(d).format(v);
 const pct = (v, d = 1) => v == null ? "–" : fmt(100 * v, d) + " %";
 const fmtCap = v => v == null ? "unbekannt" : v >= 1e12 ? fmt(v / 1e12, 1) + " Bio. $" : fmt(v / 1e9, v >= 1e10 ? 0 : 1) + " Mrd. $";
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const safeHref = u => /^https?:\/\//i.test(String(u || "")) ? u : "#";     // Links aus Nachrichten-Feeds nur als http(s)
 const ddFmt = (v, d = 1) => v == null ? "–" : v >= 0 ? "−" + pct(v, d) : "+" + pct(-v, d);
 const dateDE = s => s ? new Date(s + "T12:00:00").toLocaleDateString("de-DE") : "–";
 const SHORT = { drawdown: "Rückgang", no_crash: "kein Crash", structure: "unter EMAs", flattening: "Abflachung",
@@ -1682,7 +1683,7 @@ function sentiHtml(r) {
   if (s.sec) cells.push(`<div><span>Branche</span><b class="${TONE_CLS[s.sec.tone] ?? ""}">${esc(s.sec.label)}</b><em>${esc(s.sec.n)}${s.sec.m1 != null ? ` · 1 Mon. ${sgnPct(s.sec.m1, 0)}` : ""}</em></div>`);
   if (s.mkt) cells.push(`<div><span>Gesamtmarkt</span><b class="${TONE_CLS[s.mkt.tone] ?? ""}">${esc(s.mkt.label.replace(/\s*\(.*\)/, ""))}</b><em>${esc((s.mkt.label.match(/\((.*)\)/) || [])[1] || "S&P 500 & VIX")}</em></div>`);
   const [vl, vc] = VV[s.v] || VV.mix;
-  const news = (s.news || []).map(n => `<a class="nw" href="${esc(n.u)}" target="_blank" rel="noopener"><i class="${n.s > 0 ? "pos" : n.s < 0 ? "neg" : ""}"></i><span>${esc(n.t)}<small>${esc(n.p)}${n.d ? " · " + dateDE(n.d) : ""}</small></span></a>`).join("");
+  const news = (s.news || []).map(n => `<a class="nw" href="${esc(safeHref(n.u))}" target="_blank" rel="noopener"><i class="${n.s > 0 ? "pos" : n.s < 0 ? "neg" : ""}"></i><span>${esc(n.t)}<small>${esc(n.p)}${n.d ? " · " + dateDE(n.d) : ""}</small></span></a>`).join("");
   return `<div class="senti"><div class="se-h"><b>Marktstimmung</b><span class="vv ${vc}">${vl}</span>${news ? `<button class="se-more" data-senti>Schlagzeilen ▾</button>` : ""}</div>
     ${cells.length ? `<div class="se-row">${cells.join("")}</div>` : ""}
     ${news ? `<div class="se-news" hidden>${news}<div class="note" style="margin:6px 0 0">Schlagzeilen englisch, grob eingeordnet (<span class="up">●</span>&nbsp;positiv, <span class="down">●</span>&nbsp;negativ). Quelle: Yahoo Finance${s.d ? `, Stand ${dateDE(s.d)}` : ""}.</div></div>` : ""}
@@ -2017,7 +2018,7 @@ function newsHtml() {
   const nameOf = t => { const s = rowOf(t), r = byTicker(t); return (r && r.name) || (s && s.n) || t; };
   const ago = ms => { if (!ms) return ""; const h = Math.max(0, Math.round((now - ms) / 36e5)); return h < 1 ? "gerade eben" : h < 24 ? `vor ${h} Std.` : h < 72 ? `vor ${Math.round(h / 24)} Tg.` : new Date(ms).toLocaleDateString("de-DE"); };
   const trU = n => n.o && /^https?:/.test(n.u || "") ? `https://translate.google.com/translate?sl=auto&tl=de&u=${encodeURIComponent(n.u)}` : n.u;
-  const row = n => `<a class="bf-r" href="${esc(trU(n) || "#")}" target="_blank" rel="noopener"${n.o ? ` title="${esc(n.o)}"` : ""}><i class="${n.s > 0 ? "g" : n.s < 0 ? "r" : "n"}"></i><span><b>${esc(n.t)}</b><em>${n.nm ? esc(n.nm) + " · " : ""}${esc(n.p || "")}${n.ms ? " · " + esc(ago(n.ms)) : ""}${n.o ? " · übersetzt" : ""}</em></span></a>`;
+  const row = n => `<a class="bf-r" href="${esc(safeHref(trU(n)))}" target="_blank" rel="noopener"${n.o ? ` title="${esc(n.o)}"` : ""}><i class="${n.s > 0 ? "g" : n.s < 0 ? "r" : "n"}"></i><span><b>${esc(n.t)}</b><em>${n.nm ? esc(n.nm) + " · " : ""}${esc(n.p || "")}${n.ms ? " · " + esc(ago(n.ms)) : ""}${n.o ? " · übersetzt" : ""}</em></span></a>`;
   const block = (title, rows, empty) => `<div class="bf-s"><b>${title}</b><div class="bf-l">${rows.length ? rows.join("") : `<div class="bf-empty" style="padding:12px 14px">${empty}</div>`}</div></div>`;
   const msOf = d => { const t = Date.parse(d); return isNaN(t) ? null : t; };
   const dedup = l => { const s = new Set(); return l.filter(n => { const k = String(n.t).toLowerCase().slice(0, 70); if (s.has(k)) return false; s.add(k); return true; }); };
@@ -3823,7 +3824,7 @@ function briefHtml() {
   const seenT = new Set(), per = {};
   // Übersetzte Meldung → Artikel ebenfalls über Google Übersetzer auf Deutsch öffnen
   const trU = n => n.o && /^https?:/.test(n.u || "") ? `https://translate.google.com/translate?sl=auto&tl=de&u=${encodeURIComponent(n.u)}` : n.u;
-  const nl = (n, tag) => `<a class="bf-r" href="${esc(trU(n))}" target="_blank" rel="noopener"${n.o ? ` title="${esc(n.o)}"` : ""}><i class="${n.s > 0 ? "g" : n.s < 0 ? "r" : "n"}"></i><span><b>${esc(n.t)}</b><em>${tag ? esc(tag) + " · " : ""}${esc(n.p || "")}${n.d ? " · " + esc(ago(n.d)) : ""}</em></span></a>`;
+  const nl = (n, tag) => `<a class="bf-r" href="${esc(safeHref(trU(n)))}" target="_blank" rel="noopener"${n.o ? ` title="${esc(n.o)}"` : ""}><i class="${n.s > 0 ? "g" : n.s < 0 ? "r" : "n"}"></i><span><b>${esc(n.t)}</b><em>${tag ? esc(tag) + " · " : ""}${esc(n.p || "")}${n.d ? " · " + esc(ago(n.d)) : ""}</em></span></a>`;
   const news = pool.filter(n => n.d && (fresh(n.d) || n.d.length <= 10)).sort((a, b) => String(b.d).localeCompare(String(a.d)))
     .filter(n => { const k = n.t.toLowerCase(); if (seenT.has(k) || (per[n.tk] = (per[n.tk] || 0) + 1) > 2) return false; seenT.add(k); return true; })
     .slice(0, 6).map(n => nl(n, n.nm)).join("");
@@ -4482,7 +4483,8 @@ const APP_VER = "2026.10.26";
 const APP_NEWS = [["2026.10.26", "Depot-Check", [
   ["Depot-Check", "Unter dem Depot: Klumpen, Branchen, Regionen, Währungen und Hebelanteil – auf einen Blick."],
   ["Journal-Muster", "Neu erkannt: schlechter nach Verlusten, große Positionen, Ergebnis aus wenigen Trades, zu kurze Trades."],
-  ["Deine Quartalszahlen", "Auf Heute: frische Zahlen deiner Aktien mit Einschätzung – antippen für Details."]]],
+  ["Deine Quartalszahlen", "Auf Heute: frische Zahlen deiner Aktien mit Einschätzung – antippen für Details."],
+  ["Sicherer rechnen", "ETFs werden keiner Aktie mehr zugeordnet und zählen nicht gegen dein Trading-Kapital; ohne freies Kapital warnt der Plan statt einen hohen Hebel vorzuschlagen; fehlt ein Wechselkurs, gibt es keinen falschen Plan."]]],
   ["2026.10.23", "Quartalszahlen", [
   ["Termin antippen", "Im Kalender auf einen Quartalstermin tippen: Gewinn und Umsatz gegen die Erwartung, Ausblick, Kursreaktion."],
   ["Einschätzung", "Eher positiv oder negativ für den Kurs – nach fester Regel, mit Begründung. Vor dem Termin: Erwartungen und typische Bewegung."]]],
@@ -4989,11 +4991,12 @@ function tp2Calc(r, S, o = {}) {
   const h4 = null, h4b = null;                                // 4H-Bestätigung entfernt (10/2026): eine Regel für alle Kairo-Trades
   const stop = h4b ? h4b.sl : pl.stop;                       // für alle Setups gleich (so getestet): Basis-Tief − 0,25 ATR
   const src = pl.src ? `${pl.src} − 0,25 ATR` : "";
-  const E = o.entry > 0 ? o.entry : r.c, fx = toEur(1, r.cur || "EUR") || 1;
+  const E = o.entry > 0 ? o.entry : r.c, fx0 = toEur(1, r.cur || "EUR"), fx = fx0 > 0 ? fx0 : 1;
   // Kursmarken: nahe Marken aus dem Scan (Basis-Hoch, EMA 20/50, Fibonacci), sonst die Swing-Widerstände
   const tg = (pl.tg && pl.tg.length ? pl.tg : (pl.res || []).map((x, i) => [`Widerstand ${i + 1}`, x])).filter(x => x[1] > E);
   const out = { E, stop, atr, src: h4b ? `Basis-Tief ${fmt(h4b.lo * fx)} € − 0,25 ATR (Seitwärtsphase nach dem Treffer)` : src, trend, cfg, fx, cur: r.cur || "", h4, base: h4b ? { lo: h4b.lo, hi: h4b.hi } : pl.base, tg, res: tg.map(x => x[1]), problems: [] };
   if (!stop || !atr) { out.problems.push(["red", "Keine Kursstruktur für diese Aktie – kein Trade-Plan möglich."]); return out; }
+  if (!(fx0 > 0)) { out.problems.push(["red", `Wechselkurs ${r.cur} → € fehlt im letzten Scan – Stückzahl und Euro-Beträge wären falsch. Kein Trade-Plan bis zum nächsten Scan.`]); return out; }
   const risk = E - stop;
   out.riskAtr = risk / atr;
   if (risk <= 0) { out.problems.push(["red", `Kurs liegt schon unter dem Stop ${fmt(stop * fx)} € – Setup gescheitert.`]); return out; }
@@ -5042,7 +5045,7 @@ function tp2Calc(r, S, o = {}) {
   // Quartalszahlen in der Haltedauer: spätestens am Handelstag davor raus (Kurslücke kann Stop und K.-o. überspringen)
   if (r.ed) { const ed = new Date(r.ed + "T12:00:00"); if (ed > out.d0 && ed <= out.exit) {
     out.exit = subBd(ed, 1); const left = bdBetween(out.d0, out.exit) + 1; out.edCut = true;
-    out.problems.push([left >= 5 ? "yellow" : "red", `Quartalszahlen am ${dateDE(r.ed)} – Ausstieg vorgezogen auf den Handelstag davor (${left} statt ${hold} Tage).${left < 5 ? " Zu kurz für die Strategie – lieber nach den Zahlen einsteigen." : ""}`]); } }
+    out.problems.push([left >= 5 ? "yellow" : "red", `Quartalszahlen am ${dateDE(r.ed)} – Ausstieg vorgezogen auf den Handelstag davor (${left} statt ${hold} Tage) – Vorsichtsregel, im Backtest nicht getestet.${left < 5 ? " Zu kurz für die Strategie – lieber nach den Zahlen einsteigen." : ""}`]); } }
   // Hälfte 2 (ältere Pläne mit TP) läuft bis zum Verkaufstag – ebenfalls vor den Quartalszahlen raus
   out.exit2 = addBd(out.d0, KMAX.hold2 - 1);
   if (r.ed) { const ed = new Date(r.ed + "T12:00:00"); if (ed > out.d0 && ed <= out.exit2) { out.exit2 = subBd(ed, 1); out.ed2Cut = true;
@@ -5053,7 +5056,7 @@ function tp2Calc(r, S, o = {}) {
     let expo = out.expo, capped = false;
     const stake0 = expo / L;
     if (stake0 > cfg.depot) { expo = cfg.depot * L; capped = true; }   // nicht genug Kapital → kleinere Position
-    const stake = expo / L, fees = 2 * cfg.fee;
+    const stake = expo / L, fees = stake >= 250 ? 0 : 2 * cfg.fee;    // Scalable PRIME+: ab 250 € Orderwert gebührenfrei
     const cost = fees + expo * (L > 1 ? TP.spreadTurbo : TP.spreadStock) + (L > 1 ? TP.fin * (1 - 1 / L) * expo * cal / 365 : 0);
     const qty = L === 1 ? Math.floor(expo / (E * fx)) : null;
     const rEff = expo * out.dist;                              // tatsächliches Risiko bis zum Stop
@@ -5064,10 +5067,13 @@ function tp2Calc(r, S, o = {}) {
   // Vorschlag: der KLEINSTE Hebel, dessen Einsatz noch ins freie Kapital passt (Depot minus Einsatz der offenen Trades).
   // Wahrheits-Test (2 × 10 Jahre): spart Finanzierungskosten – +11 bis +20 % statt +4 bis +15 % p. a., auch auf den Prüfjahren besser.
   // Frei = Kapital − Einsatz offener Pläne − Kaufwert der Depot-Positionen ohne Plan (sonst wäre Geld doppelt verplant)
-  const noPlanCost = depotLoad().filter(p => !planFor([p.t], p.d ? p.d.under : p.n)).reduce((a, p) => a + (+p.price || 0) * (+p.qty || 0), 0);
+  const noPlanCost = depotLoad().filter(p => !p.etf && !planFor([p.t], p.d ? p.d.under : p.n)).reduce((a, p) => a + (+p.price || 0) * (+p.qty || 0), 0);
   out.free = Math.max(0, cfg.depot - plansLoad().filter(p => p.st === "open").reduce((a, p) => a + (+p.stake || 0), 0) - noPlanCost);
   const okL = out.levs.filter(x => x.ok && !x.capped);
-  out.sug = (okL.find(x => x.stake <= out.free) || okL[okL.length - 1] || out.levs.filter(x => x.ok).pop() || out.levs[0]).L;
+  const fit = okL.find(x => x.stake <= out.free);
+  // Passt kein Einsatz ins freie Kapital: nicht auf den größten Hebel ausweichen, sondern warnen (kleinster Hebel bleibt Vorschlag)
+  if (!fit && okL.length) out.problems.push(["red", `Nicht genug freies Trading-Kapital: frei ${fmt(out.free, 0)} €, nötig mindestens ${fmt(okL[okL.length - 1].stake, 0)} € – erst eine Position schließen oder das Trading-Kapital in den Einstellungen anpassen.`]);
+  out.sug = (fit || okL[0] || out.levs.filter(x => x.ok).pop() || out.levs[0]).L;
   const mk = out.mk;
   const ex = trend ? [TP_EXP_TREND[hold], null, null] : TP_EXP[hold] || [];
   out.expR = mk && mk.k === "weak" && ex[1] != null ? ex[1] : mk && mk.k === "strong" && ex[2] != null ? ex[2] : ex[0];
@@ -5219,7 +5225,7 @@ function tpTurboHtml(r, m, lv) {
   const tv = S => cr > 0 ? Math.max(0, (g(S) - bpn) * cr / f) : P * (S - KOs) / (m.E - KOs);
   // Aktienkurs wie im Chart: in der Währung der Aktie (Pence als „GBp“), kleine Kurse mit 3 Nachkommastellen
   const cp = v => fmt(v, v < 10 ? 3 : 2), chart = v => `${cp(v)} ${sc === "EUR" ? "€" : esc(/^GB[Xp]$/.test(sc) ? "Pence" : sc)}`;
-  const fp = v => fmt(v, v < 1 ? 3 : 2), sl = tv(stop), lossU = P - sl, qty = Math.max(1, Math.floor(m.riskEur / Math.max(lossU, P * 0.05)));
+  const fp = v => fmt(v, v < 1 ? 3 : 2), sl = tv(stop), lossU = P - sl, qty0 = Math.floor(m.riskEur / Math.max(lossU, P * 0.05)), qty = Math.max(1, qty0);
   const lev = cr > 0 ? g(m.E) * cr / f / P : m.E / (m.E - KOs), near = KOs > stop - TP.kob * m.atr;
   const iv = cr > 0 ? tv(m.E) : 0, prem = cr > 0 ? P - iv : 0, odd = cr > 0 && (iv <= 0 || Math.abs(prem) > Math.max(0.35 * P, 0.05));
   // Welcher Aktienkurs steckt im Briefkurs? (Basispreis + Brief × Wechselkurs ÷ BV) – zeigt, wenn der Kairo-Kurs veraltet ist
@@ -5236,7 +5242,7 @@ function tpTurboHtml(r, m, lv) {
       <div class="tp2-row"><span>Stop-Loss am Turbo</span><b class="down">${fp(sl)} €</b><em>${sgnPct(sl / P - 1, 0)} vom Briefkurs · Stop-Order bei Scalable auf den Turbo</em></div>
       <div class="tp2-row"><span>Stop-Loss im Chart (Aktie)</span><b class="down">${chart(stop)}</b><em>${sc !== "EUR" ? `= ${cp(stop * m.fx)} € · ` : ""}${own ? "dein Stop · " : "Kairo-Vorschlag · "}diese Linie in TradingView einzeichnen · K.-o. liegt bei ${chart(KOs)}${sc !== "EUR" ? ` (${cp(KOs * m.fx)} €)` : ""}</em></div>
       ${m.tp ? `<div class="tp2-row"><span>Take-Profit am Turbo</span><b class="up">${fp(tv(m.tp))} €</b><em>${sgnPct(tv(m.tp) / P - 1, 0)} vom Briefkurs · entspricht Aktie ${X(m.tp)} ${cur}</em></div>` : ""}
-      <div class="tp2-row"><span>Stückzahl</span><b>${fmt(qty, 0)} Stück</b><em>Einsatz ${eur(qty * P)} · Verlust am Stop ≈ ${eur2(qty * lossU)} · Hebel ≈ ×${fmt(lev, 1)}</em></div></div>
+      <div class="tp2-row"><span>Stückzahl</span><b>${fmt(qty, 0)} Stück</b><em>Einsatz ${eur(qty * P)} · Verlust am Stop ≈ ${eur2(qty * lossU)} · Hebel ≈ ×${fmt(lev, 1)}${qty0 < 1 ? ` · <b class="down">schon 1 Stück ist mehr als ${eur(m.riskEur)} Risiko</b>` : ""}</em></div></div>
     ${calc ? `<div class="note" style="margin:6px 0 0">Rechnung: ${calc}${kc !== "EUR" && !(+t.fxr > 0) ? " (Wechselkurs aus Kairo)" : ""}</div>` : `<div class="tip tone-yellow" style="margin-top:8px">Ohne Bezugsverhältnis rechnet Kairo verhältnisgleich – das stimmt nur, wenn Briefkurs und Aktienkurs (${X(m.E)} ${cur}) zur selben Zeit gelten. Trag das Bezugsverhältnis ein, dann ist der Stop genau.</div>`}
     ${implShow ? `<div class="note" style="margin:6px 0 0">Dein Briefkurs ${fp(P)} € entspricht einem Aktienkurs von ≈ <b>${chart(impl)}</b>${sc !== "EUR" ? ` (${cp(impl * m.fx)} €)` : ""} – Kairo rechnet oben mit ${chart(m.E)}${sc !== "EUR" ? ` (${cp(m.E * m.fx)} €)` : ""}${implGap > 0 ? ` (Aktie ist seitdem ${sgnPct(impl / m.E - 1, 1)} gelaufen)` : ` (${sgnPct(impl / m.E - 1, 1)})`}. Der Stop bleibt gleich; vom aktuellen Kurs sind es ${sgnPct(stop / impl - 1, 1)} bis zum Stop, Stückzahl ist danach berechnet.</div>` : ""}
     ${fxOff ? `<div class="tip tone-yellow" style="margin-top:8px">Wechselkurs ${n4(+t.fxr)} weicht stark vom aktuellen Kurs ab (EUR/${esc(kc)} ≈ ${n4(appF)}) – verkehrt herum eingetippt? Gemeint ist: 1 € = … ${esc(kc)}.</div>` : ""}
