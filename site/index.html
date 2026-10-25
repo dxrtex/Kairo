@@ -5970,7 +5970,9 @@ function boot(d) {
   loadCalendar(); setTimeout(maybeBrief, 400);
   requestAnimationFrame(() => window.KairoSplash && KairoSplash.ready());   // App steht → Start-Animation darf übergeben
   // Kein Intro (übersprungen, splash.js nicht geladen): Start-Schwarz trotzdem entfernen, sonst bleibt das helle Design schwarz
-  setTimeout(() => { if (!document.querySelector(".splash")) { const pb = document.getElementById("preboot"); if (pb) pb.remove(); document.documentElement.style.background = ""; } }, 400);
+  const unboot = () => { const pb = document.getElementById("preboot"); if (pb) pb.remove(); document.documentElement.style.background = ""; };
+  const waitSplash = () => document.querySelector(".splash") ? setTimeout(waitSplash, 500) : unboot();
+  setTimeout(waitSplash, 400);
   if (state.sec === "depot") loadSearch();
   if (location.hash) openDetail(decodeURIComponent(location.hash.slice(1)));
 }

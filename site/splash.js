@@ -76,5 +76,5 @@
   }
 
   window.KairoSplash = { play, ready() { if (current) current.ready(); } };
-  if (document.currentScript && document.currentScript.dataset.autoplay !== undefined) play();
+  if (document.currentScript && document.currentScript.dataset.autoplay !== undefined && !/nosplash/.test(location.search)) play();
 })();
