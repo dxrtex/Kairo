@@ -48,6 +48,10 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, equity, close_pos) 
     if on is not None:
         st["on"] = on
         st["top"] = [ETF] if on else []
+    if mk.daily.get(ETF) is None:                  # Kursquelle liefert den ETF nicht: sichtbar machen statt still nichts tun
+        msg = f"{D.date()} Keine Kursdaten für {ETF} – kein Handel möglich"
+        if not st["events"] or not st["events"][-1].endswith("kein Handel möglich"):
+            st["events"].append(msg)
     op = _open(mk, ETF, D)                         # Börsenfeiertag in Deutschland: Wechsel am nächsten Handelstag
     if op is not None and on is False:
         for p in list(st["positions"]):
