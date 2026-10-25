@@ -46,7 +46,6 @@
     </div>`;
   const ANIM_MS = 3000, SHORT_MS = 850, EXIT_MS = 560, TIMEOUT_MS = 6000;
   const INTRO_V = "4";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
-  const seen = () => { try { return localStorage.getItem("kairo-intro") === INTRO_V; } catch (e) { return false; } };
   const mark = () => { try { localStorage.setItem("kairo-intro", INTRO_V); } catch (e) {} };
   let current = null;
   // Nach dem Intro: Start-Schwarz entfernen, damit helle Designs ihre eigene Hintergrundfarbe zeigen
@@ -58,7 +57,7 @@
     el.className = "splash"; el.setAttribute("aria-hidden", "true"); el.innerHTML = LOGO;
     const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) el.classList.add("reduce");
-    const short = !reduce && (opts.full === false || (opts.full !== true && seen()));   // volles Intro nur beim ersten Öffnen / nach Update
+    const short = !reduce && opts.full === false;                       // immer das volle Intro (Wunsch 25.10.2026)
     if (short) el.classList.add("short");
     mark();
     document.body.appendChild(el);
@@ -77,5 +76,5 @@
   }
 
   window.KairoSplash = { play, ready() { if (current) current.ready(); } };
-  if (document.currentScript && document.currentScript.dataset.autoplay !== undefined) play();
+  if (document.currentScript && document.currentScript.dataset.autoplay !== undefined && !/nosplash/.test(location.search)) play();
 })();

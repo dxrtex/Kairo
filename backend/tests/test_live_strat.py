@@ -31,3 +31,13 @@ def test_stop_and_waiting():
     sig = [{"k": "hit", "st": r}, {"k": "hit", "st": {"res": "zeit", "r": 1.5}}, {"k": "hit", "st": {"res": "wait"}}]
     s = strat_stats(sig)
     assert s["n"] == 2 and s["win"] == 0.5 and s["stop"] == 0.5 and s["run"] == 1
+
+
+def test_stats_include_open_trades_and_tested_regions():
+    sig = [{"k": "hit", "region": "us", "st": {"res": "stop", "r": -1.0}},
+           {"k": "hit", "region": "europe", "st": {"res": "run", "r": 2.0}},
+           {"k": "hit", "region": "asia", "st": {"res": "stop", "r": -1.0}}]
+    s = strat_stats(sig)
+    assert s["n"] == 1 and s["open"] == 1 and s["mtm_n"] == 2 and s["mtm_r"] == 0.5 and s["mtm_win"] == 0.5
+    assert strat_stats(sig, regions=None)["n"] == 2
+    assert strat_stats([{"k": "hit", "region": "us", "st": {"res": "run", "r": 0.3}}])["avg_r"] is None

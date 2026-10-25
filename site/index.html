@@ -4023,7 +4023,8 @@ function bilanzTeaserHtml() {                    // Forschungsstand 10/2026 + Li
     return d.length ? { n: d.length, avg_r: d.reduce((a, x) => a + x.r, 0) / d.length } : null; })());
   return `<button class="hcard bil" ${SEC_LINK("bilanz")}>${hHead("Kairo-Bilanz", "", "")}
     <div class="bilrow"><div class="ring-s">${ringSvg(0.33, "var(--up)")}<b>+0,14 R</b></div>
-      <div><b>Ø je Trade nach Kosten (Forschung 2008–2026, Zufall +0,11 R)</b><span>${st ? `Live: ${st.n} Trades abgeschlossen · Ø ${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R${st.n < 30 ? " (noch früh – zuerst schließen die Stops)" : " je Trade"}` : "Live-Bilanz läuft seit 30.09.2026 – aussagekräftig ab einigen hundert Trades"}</span></div></div>
+      <div><b>Ø je Trade nach Kosten (Forschung 2008–2026, Zufall +0,11 R)</b><span>${st ? (st.mtm_n != null ? `Live (USA/Europa): ${st.mtm_n} Trades · Ø ${st.mtm_r >= 0 ? "+" : ""}${fmt(st.mtm_r, 2)} R inkl. ${st.open} offener${st.mtm_n < 30 ? " (noch früh)" : ""}`
+      : `Live: ${st.n} Trades abgeschlossen · Ø ${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R${st.n < 30 ? " (noch früh – zuerst schließen die Stops)" : " je Trade"}`) : "Live-Bilanz läuft seit 30.09.2026 – aussagekräftig ab einigen hundert Trades"}</span></div></div>
     <span class="hlink">Details ›</span></button>`;
 }
 function journalTeaserHtml() {
@@ -4391,22 +4392,25 @@ function bilanzHtml() {
     <div class="hcard">${hHead("Kapital und Gebühren (0,99 € je Order)")}${[["900 €", "−12 % bis Totalverlust"], ["1.500 €", "−12 % bis +4 %"], ["3.000 €", "+12 % / +13 %"], ["10.000 €", "+15 % / +23 %"]].map(([k, v], i) => `<div class="jrow2"><span>${k}</span><b class="${i < 2 ? "down" : "up"}">${v}</b></div>`).join("")}
       <div class="note" style="margin:6px 0 0">Rund 93 Trades im Jahr ≈ 184 € Gebühren – bei kleinem Kapital frisst das den Vorteil. Mit PRIME+ (ab 250 € gebührenfrei) entfällt das weitgehend.</div></div></details>`;
   if (b === undefined) return back + `<div class="section-title"><span>Kairo-Bilanz</span><span></span></div><div class="hcard"><div class="skel"></div></div>` + research + rules;
-  const L = b && b.live, hits = ((b && b.signals) || []).filter(s => s.k === "hit"), X = s => s.st60 || s.st || { res: "wait" };
+  const L = b && b.live, hits = ((b && b.signals) || []).filter(s => s.k === "hit" && (!s.region || ["us", "europe"].includes(s.region))), X = s => s.st60 || s.st || { res: "wait" };
   const st = L && (L.strat60 || (() => { const d = hits.map(X).filter(x => ["stop", "ema", "zeit"].includes(x.res) && x.r != null); if (!d.length) return null;
-    return { n: d.length, avg_r: d.reduce((a, x) => a + x.r, 0) / d.length, win: d.filter(x => x.r > 0).length / d.length, stop: d.filter(x => x.res === "stop").length / d.length }; })()), e = 0.14, band = st ? 1.96 * 1.6 / Math.sqrt(st.n) : null;
-  const verdict = !st ? "" : st.n < 30 ? `<i class="vdot y"></i>Noch zu früh für ein Urteil: ${st.n} von ~30 Trades abgeschlossen. Am Anfang schließen fast nur Stops – Gewinner laufen bis zur EMA 20 oder Tag 60 und kommen erst später dazu. Das Bild ist deshalb anfangs zu schlecht.` : st.avg_r < e - band ? '<i class="vdot r"></i>Schwächer als die Forschung – genauer prüfen.' : st.avg_r > e + band ? '<i class="vdot g"></i>Besser als die Forschung.' : '<i class="vdot g"></i>Im erwarteten Rahmen der Forschung.';
-  const act = hits.filter(s => ["run", "stop", "ema", "zeit"].includes(X(s).res)).sort((a, b2) => (X(a).res === "run") - (X(b2).res === "run") || String(b2.d).localeCompare(a.d));
+    return { n: d.length, avg_r: d.reduce((a, x) => a + x.r, 0) / d.length, win: d.filter(x => x.r > 0).length / d.length, stop: d.filter(x => x.res === "stop").length / d.length }; })()), e = 0.14;
+  // Urteil über ALLE Trades mit Einstieg (offene zum heutigen Stand) – nur abgeschlossene wären anfangs fast nur Stops
+  const vn = st ? (st.mtm_n ?? st.n) : 0, vr = st ? (st.mtm_r ?? st.avg_r) : null, band = vn ? 1.96 * 1.6 / Math.sqrt(vn) : null;
+  const verdict = !st ? "" : vn < 30 ? `<i class="vdot y"></i>Noch zu früh für ein Urteil: ${vn} von ~30 Trades. Am Anfang schließen fast nur Stops – Gewinner laufen bis zur EMA 20 oder Tag 60 und kommen erst später dazu. Das Bild ist deshalb anfangs zu schlecht.` : `${vr < e - band ? '<i class="vdot r"></i>Schwächer als die Forschung – genauer prüfen.' : vr > e + band ? '<i class="vdot g"></i>Besser als die Forschung.' : '<i class="vdot g"></i>Im erwarteten Rahmen der Forschung.'} Gemessen an allen ${vn} Trades mit Einstieg (offene zum heutigen Stand), Ø ${R(vr)}.`;
+  const act = hits.filter(s => ["run", "stop", "ema", "zeit"].includes(X(s).res)).sort((a, b2) => (X(b2).res === "run") - (X(a).res === "run") || String(b2.d).localeCompare(a.d));
   const nWait = hits.filter(s => X(s).res === "wait").length, nNo = hits.filter(s => X(s).res === "nobase").length;
   const row = s => { const x = X(s), [rt, rc] = ST_TXT[x.res] || ST_TXT.wait;
     return `<div class="g-hold" data-card="${esc(s.t)}" role="button"><span class="g-h-n"><b>${esc(s.n || s.t)}</b><small>Treffer ${dateDE(s.d)} · ${esc(s.t)}${x.res === "run" && x.days ? ` · Tag ${x.days} von 60` : ""}</small></span>
       <span class="g-h-v"><b class="${x.r == null ? rc : x.r >= 0 ? "up" : "down"}">${x.r != null ? R(x.r) : "–"}</b><small class="${rc}">${rt}</small></span></div>`; };
   const live = `<div class="hcard">${hHead(`Live-Bilanz · Kairo-Regel <small>seit ${dateDE(L && L.since)}</small>`)}
-    ${st ? `<div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Abgeschlossen</span><b>${st.n}</b><em>${act.filter(s => X(s).res === "run").length} laufen</em></div>
-      <div class="mt"><span>Ø je Trade</span><b class="${st.avg_r >= 0 ? "up" : "down"}">${R(st.avg_r)}</b><em>Forschung +0,14 R</em></div>
-      <div class="mt"><span>Gewinner</span><b>${pct(st.win, 0)}</b><em>Forschung ≈ 30–35 %</em></div>
-      <div class="mt"><span>Am Stop</span><b>${pct(st.stop, 0)}</b><em>der abgeschlossenen</em></div></div>
+    ${st ? `<div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Beendet</span><b>${st.n}</b><em>${st.open ?? act.filter(s => X(s).res === "run").length} laufen</em></div>
+      <div class="mt"><span>Alle Trades</span><b class="${(vr ?? 0) >= 0 ? "up" : "down"}">${vr != null ? R(vr) : "–"}</b><em>${vn} Trades · Forschung +0,14 R</em></div>
+      <div class="mt"><span>Beendet Ø</span><b class="${(st.avg_r ?? 0) >= 0 ? "up" : "down"}">${st.avg_r != null ? R(st.avg_r) : "–"}</b><em>${st.stop != null ? pct(st.stop, 0) + " am Stop" : "noch keine"}</em></div>
+      <div class="mt"><span>Im Plus</span><b>${st.mtm_win != null ? pct(st.mtm_win, 0) : st.win != null ? pct(st.win, 0) : "–"}</b><em>aller Trades · Forschung ≈ 30–35 %</em></div></div>
       <div class="note" style="margin:0 0 10px">${verdict}</div>`
       : `<div class="note" style="margin:0 0 10px">Jeder neue Kairo-Treffer wird ab dem Signaltag nach der Kairo-Regel verfolgt: Seitwärtsphase → Kauf → Stop oder Ausstieg (EMA 20 ab Tag 10, spätestens Tag 60). Erste Ergebnisse nach etwa 4–6 Wochen.</div>`}
+    <div class="note" style="margin:0 0 8px">Nur USA und Europa – dort ist die Regel getestet (wie die Papier-Depots).</div>
     ${act.slice(0, 15).map(row).join("")}
     <div class="note" style="margin:10px 0 0">${nWait} Treffer warten auf die Seitwärtsphase · ${nNo} ohne Einstieg (keine Seitwärtsphase – richtig so). Jeder Treffer zählt, auch ohne freien Platz. Alles öffentlich und unveränderbar: <a href="track/" target="_blank" rel="noopener">Live-Bilanz aller Treffer</a>.</div></div>`;
   return back + `<div class="section-title"><span>Kairo-Bilanz</span><span>live · Forschung · Regeln</span></div>` + (b ? live : "") + research + rules + myTradesHtml() + unknown + old;
@@ -4479,8 +4483,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.10.26";
-const APP_NEWS = [["2026.10.26", "Depot-Check", [
+const APP_VER = "2026.10.27";
+const APP_NEWS = [["2026.10.27", "Ehrliche Live-Bilanz", [
+  ["Live-Bilanz", "Zählt jetzt auch die laufenden Trades (zum heutigen Stand) und nur USA/Europa wie getestet – vorher sah sie nur die frühen Stops."],
+  ["Kurs oben", "Auch aus den Top-Setups öffnet sich die Karte mit dem aktuellen Kurs ganz oben."],
+  ["Start", "Intro immer in voller Länge, ohne weißes Aufblitzen; helles Design zuverlässig."]]],
+  ["2026.10.26", "Depot-Check", [
   ["Depot-Check", "Unter dem Depot: Klumpen, Branchen, Regionen, Währungen und Hebelanteil – auf einen Blick."],
   ["Journal-Muster", "Neu erkannt: schlechter nach Verlusten, große Positionen, Ergebnis aus wenigen Trades, zu kurze Trades."],
   ["Deine Quartalszahlen", "Auf Heute: frische Zahlen deiner Aktien mit Einschätzung – antippen für Details."],
@@ -5490,7 +5498,7 @@ function topSetupsHtml() {
   return `<div class="hcard" style="margin-bottom:12px">${hHead("Top-Setups heute")}
     <div class="note">USA und Europa · kaufbereit zuerst, dann schwächeres Vormomentum (laut Forschung bessere Trades). Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)}.</div>
     <div class="ts-list">${list.map((r, k) => { const p = r.plan || {}, e = toEur(p.entry, r.currency), st = toEur(p.stop, r.currency), per = e != null && st != null ? e - st : null, qty = per > 0 ? Math.floor(riskEur / per) : null;
-      return `<button class="hrow" data-open="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${kPill(r)} ${tgtChip(r)} ${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${qty ? `${qty} Stk.<small>${eur2(qty * e)}</small>` : "–"}</span></button>`; }).join("")}</div>
+      return `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${kPill(r)} ${tgtChip(r)} ${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${qty ? `${qty} Stk.<small>${eur2(qty * e)}</small>` : "–"}</span></button>`; }).join("")}</div>
     <div class="tscroll ts-tab" style="margin-top:8px"><table class="ptab ts"><tr><th>#</th><th>Aktie</th><th>Vormomentum</th><th>Einstieg / Stop</th><th>Größe</th><th>Gebühr</th><th></th></tr>${rows}</table></div></div>`;
 }
 function paperHtml() {
@@ -5720,6 +5728,7 @@ async function openDetail(t) {
       ${r.earnings_risk ? `<span class="warn">⚠ Earnings-Risiko (${dateDE(r.earnings_date)})</span>` : ""}
       <span class="flag">MBI: ${esc(f.mbi_source || "")}</span></div>
       <button class="close" id="closeDetail" aria-label="Schließen">✕</button></div>
+    <div style="margin-top:12px">${kpxHtml(r)}</div>
     <div style="margin-top:14px">${tipHtml(r.hint)}</div>
     <div class="pane"><div class="pane-label"><span><i style="background:#f4b740"></i>EMA 20</span><span><i style="background:#4aa3ff"></i>EMA 50</span><span><i style="background:#b07cff"></i>EMA 100</span><span><i style="background:#ff8a65"></i>EMA 200</span><span>Fib-Level / Zone gestrichelt · Entry/Stop/Ziele durchgezogen</span></div><div class="lw" id="cMain" style="height:420px"></div></div>
     <div class="pane"><div class="pane-label">RSI 14 · SMA 14 · 30/50/70${r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}</div><div class="lw" id="cRsi" style="height:150px"></div></div>
@@ -5960,6 +5969,10 @@ function boot(d) {
     return; }
   loadCalendar(); setTimeout(maybeBrief, 400);
   requestAnimationFrame(() => window.KairoSplash && KairoSplash.ready());   // App steht → Start-Animation darf übergeben
+  // Kein Intro (übersprungen, splash.js nicht geladen): Start-Schwarz trotzdem entfernen, sonst bleibt das helle Design schwarz
+  const unboot = () => { const pb = document.getElementById("preboot"); if (pb) pb.remove(); document.documentElement.style.background = ""; };
+  const waitSplash = () => document.querySelector(".splash") ? setTimeout(waitSplash, 500) : unboot();
+  setTimeout(waitSplash, 400);
   if (state.sec === "depot") loadSearch();
   if (location.hash) openDetail(decodeURIComponent(location.hash.slice(1)));
 }

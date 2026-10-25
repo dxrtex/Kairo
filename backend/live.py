@@ -48,15 +48,37 @@ def strat(df: pd.DataFrame, idx: int, extra: dict | None = None) -> dict:
     return {"res": "wait"}
 
 
-def strat_stats(sig: list[dict], key: str = "st") -> dict | None:
-    done = [s[key] for s in sig if s.get("k") == "hit" and (s.get(key) or {}).get("res") in ("stop", "zeit", "ema")]
-    if not done:
+TESTED = ("us", "europe")         # die Kairo-Regel ist für USA und Europa getestet (wie die Papier-Depots)
+
+
+def strat_stats(sig: list[dict], key: str = "st", regions: tuple | None = TESTED) -> dict | None:
+    """Live-Bilanz der Kairo-Regel. Abgeschlossene Trades allein sind anfangs zu schlecht (Stops schließen früh, Gewinner laufen
+    bis zu 60 Tage) – deshalb zusätzlich die offenen Trades zum heutigen Stand („mtm“)."""
+    hits = [s for s in sig if s.get("k") == "hit" and (regions is None or s.get("region") in regions or not s.get("region"))]
+    done = [s[key] for s in hits if (s.get(key) or {}).get("res") in ("stop", "zeit", "ema")]
+    run = [s[key] for s in hits if (s.get(key) or {}).get("res") == "run" and s[key].get("r") is not None]
+    if not done and not run:
         return None
-    r = [x["r"] for x in done]
-    return {"n": len(done), "avg_r": round(sum(r) / len(r), 3), "win": round(sum(x > 0 for x in r) / len(r), 3),
-            "stop": round(sum(x["res"] == "stop" for x in done) / len(done), 3),
-            "nobase": sum((s.get(key) or {}).get("res") == "nobase" for s in sig if s.get("k") == "hit"),
-            "run": sum((s.get(key) or {}).get("res") in ("run", "wait") for s in sig if s.get("k") == "hit")}
+    r, ro = [x["r"] for x in done], [x["r"] for x in run]
+    allr = r + ro
+    out = {"n": len(done), "open": len(run), "open_r": round(sum(ro) / len(ro), 3) if ro else None,
+           "mtm_n": len(allr), "mtm_r": round(sum(allr) / len(allr), 3), "mtm_win": round(sum(x > 0 for x in allr) / len(allr), 3),
+           "nobase": sum((s.get(key) or {}).get("res") == "nobase" for s in hits),
+           "run": sum((s.get(key) or {}).get("res") in ("run", "wait") for s in hits)}
+    if done:
+        out.update(avg_r=round(sum(r) / len(r), 3), win=round(sum(x > 0 for x in r) / len(r), 3),
+                   stop=round(sum(x["res"] == "stop" for x in done) / len(done), 3))
+    else:
+        out.update(avg_r=None, win=None, stop=None)
+    return out
+
+
+def _show(sig: list[dict]) -> list[dict]:
+    """Für die App: die 80 neuesten Signale plus alle Kairo-Trades mit Einstieg (laufend oder beendet) – sonst fehlen ältere,
+    noch laufende Gewinner in der Liste."""
+    new = sorted(sig, key=lambda s: s["d"], reverse=True)
+    keep = new[:80] + [s for s in new[80:] if s.get("k") == "hit" and ((s.get("st60") or s.get("st") or {}).get("res") in ("run", "stop", "ema", "zeit"))]
+    return keep
 
 
 def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: bool = True) -> dict:
@@ -144,5 +166,5 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
     out = {"generated": today, "live": {"since": min((s["d"] for s in sig), default=today), "n": len(sig),
                                         "stats": stats(done) if done else None, "strat": strat_stats(sig), "strat60": strat_stats(sig, "st60"),
                                         "grade": {g: _agg([x for x in done if x["k"] == "hit" and x.get("grade") == g]) for g in "ABC"}},
-           "signals": sorted(sig, key=lambda s: s["d"], reverse=True)[:80], "new": [s["t"] for s in new], "backtest": bt}
+           "signals": _show(sig), "new": [s["t"] for s in new], "backtest": bt}
     return out

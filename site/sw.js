@@ -14,6 +14,13 @@ self.addEventListener("fetch", e => {
       .catch(() => caches.match(e.request, { ignoreSearch: true })));
     return;
   }
+  const root = new URL("./", location).pathname;
+  if (e.request.mode === "navigate" && (u.pathname === root || u.pathname === root + "index.html")) {     // App-Seite: sofort aus dem Speicher (kein weißer Bildschirm), im Hintergrund aktualisieren
+    const net = fetch(e.request).then(r => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put("index.html", copy)).catch(() => {}); } return r; });
+    e.waitUntil(net.catch(() => {}));
+    e.respondWith(caches.match("index.html").then(hit => hit || net).catch(() => net));
+    return;
+  }
   e.respondWith(fetch(e.request).then(r => {
     if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {}); }
     return r;
