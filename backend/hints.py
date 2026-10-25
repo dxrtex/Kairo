@@ -124,17 +124,12 @@ def hint(res: Result, cfg: SimpleNamespace = CONFIG) -> dict:
         return out("gray", "Außerhalb des Suchrasters", "Nicht geprüft: " + "; ".join(f"{c.label} ({c.value})" for c in uni) + ".")
 
     # 2. Treffer
-    if res.passed:
-        days, why = _validity(res, cfg)
-        txt = "Alle Pflichtkriterien erfüllt – die Aktie ist in einem sehr guten Setup für einen Einstieg. "
-        if days is not None:
-            txt += (f"Das Setup ist noch ca. {_tage(days)} gültig (danach {why})." if days else
-                    f"Heute ist der letzte Tag im Zeitfenster (danach {why}).") + " "
-        if e20:
-            txt += f"Ein Ausbruch über die EMA 20 ({de(e20)}, {pct(e20 / res.close - 1)} höher) beendet das Setup – dann ist der Einstiegsmoment vorbei. "
-        if res.plan.get("stop"):
-            txt += f"Ungültig bei Schluss unter dem Stop {de(res.plan['stop'])}."
-        return out("green", f"Einstiegs-Setup · Score {res.score}", txt + earn, days, "noch gültig")
+    if res.passed:                                     # Kairo-Regel (getestet): nicht sofort kaufen, sondern auf die Seitwärtsphase warten
+        txt = ("Alle 11 Kriterien erfüllt – ein Kairo-Treffer. Laut getesteter Regel nicht sofort kaufen: Innerhalb der nächsten "
+               "10 Handelstage auf 5 ruhige Tage warten (Seitwärtsphase, Spanne ≤ 1,5 ATR), dann Kauf zur nächsten Eröffnung, "
+               "Stop unter dem Tief der Seitwärtsphase. ")
+        txt += "Fällt der Kurs vorher unter das Tief der letzten 10 Tage, ist der Treffer gescheitert. Den Stand zeigt der Status oben."
+        return out("green", f"Kairo-Treffer · Score {res.score}", txt + earn)
 
     # 3. Crash statt Pullback
     if "no_crash" in miss:

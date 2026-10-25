@@ -130,8 +130,8 @@ async def main(out: Path) -> None:
             await flows(b, url, out, rep)
         except Exception as exc:
             rep["flows_crash"] = repr(exc)[:400]
-        for name, vp, dpr in (("handy", {"width": 390, "height": 844}, 2), ("ipad", {"width": 820, "height": 1180}, 1), ("ipadq", {"width": 1180, "height": 820}, 1)):
-            for design in (("classic", "light") if name != "ipadq" else ("classic",)):
+        for name, vp, dpr in (("handy", {"width": 390, "height": 844}, 2), ("ipadq", {"width": 1180, "height": 820}, 1)):
+            for design in (("classic", "postfach-classic") if name == "ipadq" else ("classic",)):
                 try:
                     await shoot(b, url, out, name, vp, dpr, design, rep)
                 except Exception as exc:
