@@ -336,13 +336,13 @@ def insider_messages(today: str, data: dict | None = None) -> list[dict]:
             continue
         n = (x.get("n") or x.get("t") or "")[:28]
         if x["kind"] == "buy":
-            extra = [("gezielt (keine Routine)" if x.get("opp", True) else "Routine-Käufer")]
+            extra = [("gezielt (keine Routine)" if x["opp"] else "Routine-Käufer")] if "opp" in x else []
             if (s.get("buyers") or 0) >= 2:
                 extra.append(f"{s['buyers']} Insider kaufen in 90 Tagen")
             if isinstance(x.get("own"), (int, float)) and x["own"] >= 10:
                 extra.append(f"+{x['own']} % mehr Aktien")
             out.append({"title": f"🟢 Insider kauft: {n}", "body": f"{x.get('who')}{' (' + x['role'] + ')' if x.get('role') else ''} · {_money(x)} · "
-                        f"{x.get('d')} · " + " · ".join(extra) + ". Kein Kaufsignal allein – Details unter Markt → Insider.",
+                        f"{x.get('d')}" + "".join(" · " + e for e in extra) + ". Kein Kaufsignal allein – Details unter Markt → Insider.",
                         "url": APP + "?sec=news", "tag": "kairo-insider"})
         else:
             out.append({"title": f"📄 Insider-Meldung: {n}", "body": f"{x.get('who')} · {x.get('d')} · gemeldet bei {x.get('src') or 'der Aufsicht'} "

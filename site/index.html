@@ -2004,7 +2004,7 @@ function insSigHtml(ij) {
   if (!l.length) return "";
   const amt = g => { const e = g.cur === "EUR" ? g.val : g.val * ((fxEur && fxEur.USD) || 0.9); return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
   return `<div class="hcard" style="margin:8px 0 12px"><b>Insider-Signal deiner Aktien · 90 Tage</b>
-    ${l.map(([t, g]) => `<div class="jrow2"><span><b>${esc(g.n || t)}</b> <small class="muted">${g.buyers} Käufer${g.top ? " · CEO/CFO/Vorsitz" : ""}${g.opp ? ` · ${g.opp}× gezielt` : " · nur Routine"}${g.own >= 10 ? ` · +${fmt(g.own, 0)} % Aktien` : ""} · zuletzt ${dateDE(g.last)}</small></span><b class="${g.score >= 2 ? "up" : ""}">${"●".repeat(g.score) + "○".repeat(3 - g.score)} ${amt(g)}</b></div>`).join("")}
+    ${l.map(([t, g]) => `<div class="jrow2"><span><b>${esc(g.n || t)}</b> <small class="muted">${g.buyers} Käufer${g.top ? " · CEO/CFO/Vorsitz" : ""}${g.opp ? ` · ${g.opp}× gezielt` : g.unk ? "" : " · nur Routine"}${g.own >= 100 ? " · Anteil mehr als verdoppelt" : g.own >= 10 ? ` · +${fmt(g.own, 0)} % Aktien` : ""} · zuletzt ${dateDE(g.last)}</small></span><b class="${g.score >= 2 ? "up" : ""}">${"●".repeat(g.score) + "○".repeat(3 - g.score)} ${amt(g)}</b></div>`).join("")}
     <div class="note" style="margin:6px 0 0">● je erfüllt: mehrere Käufer · Vorstandsspitze kauft · gezielter Kauf mit ≥ 10 % mehr Aktien oder ≥ 1 Mio. Hinweis zum Genauer-Hinsehen, kein Kaufsignal – die Kairo-Regel nutzt Insider-Daten nicht.</div></div>`;
 }
 // ---------- Nachrichten: deine Aktien, Markt, Insider-Käufe (SEC) – Scan-Daten + live über Finnhub (Schlüssel nur lokal) ----------
@@ -2066,7 +2066,7 @@ function newsHtml() {
   const known = t => rowOf(t) || byTicker(t);
   const irow = x => { const tag = mine.has(x.t) || (byTicker(x.t) && byTicker(x.t).in_watchlist) ? '<span class="pill dep">Deine</span>' : byTicker(x.t) && byTicker(x.t).passed ? '<span class="pill">Treffer</span>' : "";
     const meld = x.kind === "meld", q = x.kind === "buy" && x.opp != null ? (x.opp ? ' · <b class="up">gezielt</b>' : " · Routine") : "";
-    const own = x.kind === "buy" && x.own != null ? (x.own === "neu" ? " · neue Position" : x.own >= 1 ? ` · +${fmt(x.own, 0)} % Aktien` : "") : "";
+    const own = x.kind === "buy" && x.own != null ? (x.own === "neu" ? " · neue Position" : x.own >= 100 ? " · Anteil mehr als verdoppelt" : x.own >= 1 ? ` · +${fmt(x.own, 0)} % Aktien` : "") : "";
     return `<a class="bf-r" href="${esc(safeHref(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`))}" target="_blank" rel="noopener"><i class="${meld ? "y" : x.kind === "buy" ? "g" : "r"}"></i><span><b>${esc(x.n || x.t)} ${tag}</b><em>${meld
       ? `${esc(x.who)} · Meldung ${dateDE(x.d)} · ${esc(x.src || "")} (ohne Betrag – Details im Register)`
       : `${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"} ${x.sh ? fmt(x.sh, 0) + " Stk. " : ""}zu ${fmt(x.px)} ${x.cur === "EUR" ? "€" : "$"} · ${dateDE(x.d)}${q}${own}`}</em></span><span class="bf-p ${meld ? "" : x.kind === "buy" ? "up" : "down"}">${meld ? "Meldung" : x.cur === "EUR" ? eurAmt(x.val) : usd(x.val)}</span></a>`; };

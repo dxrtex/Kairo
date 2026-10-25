@@ -171,18 +171,19 @@ def signal(rows: list[dict], days: int = 90) -> dict:
     for x in rows:
         if x.get("kind") != "buy" or (x.get("d") or "") < since:
             continue
-        o = out.setdefault(x["t"], {"who": set(), "val": 0.0, "top": False, "opp": 0, "own": 0, "last": "", "cur": x.get("cur") or "USD", "n": x.get("n")})
+        o = out.setdefault(x["t"], {"who": set(), "val": 0.0, "top": False, "opp": 0, "unk": 0, "own": 0, "last": "", "cur": x.get("cur") or "USD", "n": x.get("n")})
         o["who"].add(x.get("who"))
         o["val"] += x.get("val") or 0
         o["top"] = o["top"] or bool(TOP.search(x.get("role") or ""))
-        o["opp"] += 1 if x.get("opp", True) else 0
+        o["opp"] += x.get("opp") is True
+        o["unk"] += "opp" not in x                                           # BaFin: ohne Historie keine Routine-Prüfung
         ow = x.get("own")
         o["own"] = max(o["own"], 100 if ow == "neu" else ow if isinstance(ow, (int, float)) else 0)
         o["last"] = max(o["last"], x.get("d") or "")
     res = {}
     for t, o in out.items():
-        big = o["opp"] and (o["own"] >= 10 or o["val"] >= 1_000_000)
-        res[t] = {"buyers": len(o["who"]), "val": round(o["val"]), "cur": o["cur"], "top": o["top"], "opp": o["opp"],
+        big = (o["opp"] or o["unk"]) and (o["own"] >= 10 or o["val"] >= 1_000_000)
+        res[t] = {"buyers": len(o["who"]), "val": round(o["val"]), "cur": o["cur"], "top": o["top"], "opp": o["opp"], "unk": o["unk"],
                   "own": o["own"], "last": o["last"], "n": o["n"], "score": int(len(o["who"]) >= 2) + int(o["top"]) + int(bool(big))}
     return res
 
@@ -193,7 +194,10 @@ def fetch_afm(watch: dict[str, str], days: int = 365) -> list[dict]:
     import csv
     import io
     r = requests.get(AFM, headers={"User-Agent": "Mozilla/5.0 (Kairo Scanner)"}, timeout=60)
-    text = r.content.decode("utf-8", "replace")
+    try:
+        text = r.content.decode("utf-8")
+    except UnicodeDecodeError:
+        text = r.content.decode("cp1252", "replace")                       # AFM liefert Windows-1252
     since, rows = _days_ago(days), []
     keys = {t: re.sub(r"[^a-z0-9]", "", (n or "").lower()) for t, n in watch.items()}
     for row in csv.reader(io.StringIO(text), delimiter=";"):
