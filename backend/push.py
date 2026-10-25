@@ -278,14 +278,13 @@ def watch_messages(today: str, rows: list[dict] | None = None) -> list[dict]:
         t = r["ticker"]
         if v == 2:
             out.append({"_n": n, "title": f"⭐ Treffer aus deiner Watchlist: {n}",
-                        "body": "Alle 11 Kriterien im Tageschart erfüllt. Noch nicht kaufen: erst die Seitwärtsphase (bis 10 Tage), dann die "
-                                "4H-Bestätigung – dafür kommt eine eigene Mitteilung.",
+                        "body": "Alle 11 Kriterien im Tageschart erfüllt. Noch nicht kaufen: erst die Seitwärtsphase abwarten (bis 10 Tage) – "
+                                "dann steht die Aktie in der App als „kaufbereit“ (Kauf zur nächsten Eröffnung).",
                         "url": APP + f"?sec=entry&t={t}", "tag": "kairo-watch"})
         else:
             miss = ", ".join(_short(m) for m in (r.get("missing") or [])[:2]) or "ein Kriterium"
             out.append({"_n": n, "title": f"👀 Bald Treffer? {n} – 10 von 11",
-                        "body": f"Fehlt nur noch: {miss}. " + ("Nur das MBI-Abklingen fehlt – darf ins 4H-Setup: Kairo meldet sich bei der 4H-Bestätigung."
-                                if r.get("mbi_soft") else "Noch kein Kaufsignal – Kairo meldet sich, wenn es ein Treffer wird."),
+                        "body": f"Fehlt nur noch: {miss}. Noch kein Kaufsignal – Kairo meldet sich, wenn es ein Treffer wird.",
                         "url": APP + f"?sec=entry&t={t}", "tag": "kairo-watch"})
     new = {n: [max(v, (old.get(n) or [0])[0]), today] for n, (v, r) in lvl.items() if v}
     state.save("watch_state.json", {**old, **new})
@@ -299,6 +298,65 @@ def watch_messages(today: str, rows: list[dict] | None = None) -> list[dict]:
 
 
 H4_PUSH = False
+
+
+def _money(x: dict) -> str:
+    v, sym = x.get("val") or 0, "€" if x.get("cur") == "EUR" else "$"
+    return f"{v / 1e6:.1f} Mio. {sym}".replace(".", ",") if v >= 1e6 else f"{v / 1e3:.0f} Tsd. {sym}"
+
+
+def insider_messages(today: str, data: dict | None = None) -> list[dict]:
+    """Neue Insider-Käufe (und Meldungen ohne Betrag aus NL/AU) bei Watchlist, Merkliste und Depot – je Geschäft einmal.
+    Gemeldet werden Käufe der letzten 14 Tage, die gezielt sind (keine Routine), zu einem Cluster gehören oder ≥ 100 Tsd. betragen."""
+    from . import state
+    if data is None:
+        try:
+            loc = __import__("pathlib").Path(__file__).resolve().parents[1] / "site" / "data" / "insider.json"
+            if loc.exists():
+                data = json.loads(loc.read_text(encoding="utf-8"))
+            else:
+                import requests
+                data = requests.get(APP + "data/insider.json", timeout=60).json()
+        except Exception as exc:
+            print(f"Insider-Mitteilung: Daten nicht geladen ({exc!r})")
+            return []
+    rows, sig = data.get("watch") or [], data.get("signal") or {}
+    seen = {k: v for k, v in state.load("insider_seen.json", {}).items() if v >= _days_ago(today, 400)}
+    first = not seen
+    out = []
+    for x in rows:
+        if x.get("kind") not in ("buy", "meld") or (x.get("d") or "") < _days_ago(today, 14):
+            continue
+        key = f"{x.get('t')}|{x.get('who')}|{x.get('d')}|{x.get('kind')}"
+        if key in seen:
+            continue
+        seen[key] = today
+        s = sig.get(x.get("t")) or {}
+        if x["kind"] == "buy" and not (x.get("opp", True) or (s.get("buyers") or 0) >= 2 or (x.get("val") or 0) >= 100_000):
+            continue
+        n = (x.get("n") or x.get("t") or "")[:28]
+        if x["kind"] == "buy":
+            extra = [("gezielt (keine Routine)" if x["opp"] else "Routine-Käufer")] if "opp" in x else []
+            if (s.get("buyers") or 0) >= 2:
+                extra.append(f"{s['buyers']} Insider kaufen in 90 Tagen")
+            if isinstance(x.get("own"), (int, float)) and x["own"] >= 10:
+                extra.append(f"+{x['own']} % mehr Aktien")
+            out.append({"title": f"🟢 Insider kauft: {n}", "body": f"{x.get('who')}{' (' + x['role'] + ')' if x.get('role') else ''} · {_money(x)} · "
+                        f"{x.get('d')}" + "".join(" · " + e for e in extra) + ". Kein Kaufsignal allein – Details unter Markt → Insider.",
+                        "url": APP + "?sec=news", "tag": "kairo-insider"})
+        else:
+            out.append({"title": f"📄 Insider-Meldung: {n}", "body": f"{x.get('who')} · {x.get('d')} · gemeldet bei {x.get('src') or 'der Aufsicht'} "
+                        "(ohne Betrag – Details im Register).", "url": APP + "?sec=news", "tag": "kairo-insider"})
+    state.save("insider_seen.json", seen)
+    if first:                                          # erste Prüfung: alles als bekannt merken, keine Flut
+        print(f"Insider-Mitteilung: erste Prüfung – {len(seen)} Geschäfte gemerkt, nichts gesendet")
+        return []
+    if len(out) > 4:
+        out = [{"title": f"🟢 Insider: {len(out)} neue Käufe/Meldungen bei deinen Aktien",
+                "body": ", ".join(m["title"].split(": ", 1)[1] for m in out[:8]) + ". Details unter Markt → Insider.",
+                "url": APP + "?sec=news", "tag": "kairo-insider"}]
+    print(f"Insider-Mitteilung: {len(out)}")
+    return out
 
 
 def run(today_iso: str | None = None) -> dict:
@@ -333,9 +391,14 @@ def run(today_iso: str | None = None) -> dict:
     except Exception as exc:
         print(f"Watchlist: Fehler {exc!r}")
         watch_msg = []
+    try:
+        ins_msg = insider_messages(today)
+    except Exception as exc:
+        print(f"Insider-Mitteilung: Fehler {exc!r}")
+        ins_msg = []
     for dev in devs:
         sub = dev.get("s") or dev
-        for msg in messages(dev, prices, today, sent) + etf_msg + h4_msg + watch_msg:
+        for msg in messages(dev, prices, today, sent) + etf_msg + h4_msg + watch_msg + ins_msg:
             try:
                 st = webpush.send(sub, msg, k)
                 n_sent += st in (200, 201, 202)

@@ -1757,7 +1757,7 @@ function card(r) {
       <div class="card-title">
         <h2 title="${esc(r.name)}">${favBtn(r.ticker)} ${esc(r.name || r.ticker)} ${wlTag(r)}<button class="ibtn" data-about aria-label="Was macht das Unternehmen?">i</button></h2>
         <div class="meta">${esc(r.ticker)} · ${esc(r.exchange || "")} · ${REGION[r.region] || ""}${r.sector ? " · " + esc(r.sector) : ""}</div>
-        ${statusBadge(r)}
+        ${statusBadge(r)} ${insChip(r.ticker)}
         ${r.earnings_risk ? `<span class="warn">⚠ Earnings ${dateDE(r.earnings_date)}</span>` : ""}
       </div>
       <div class="score-col">
@@ -1996,6 +1996,17 @@ const macWhen = e => [e.time ? e.time + " Uhr" : "", e.imp === "high" ? "sehr wi
   e.fc ? `Prognose ${e.fc}` : "", e.prev ? `vorher ${e.prev}` : ""].filter(Boolean).join(" · ");
 let calMonth = 0, calDay = null;   // Monatsansicht: Versatz zum aktuellen Monat, ausgewählter Tag
 const isoOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// ---------- Insider-Signal je Aktie (Scan: Käufe der letzten 90 Tage, Stärke 0–3) – Karte + kleines Abzeichen ----------
+const insSig = t => { const ij = getJson("insider.json"); return ij && ij.signal ? ij.signal[t] || null : null; };
+const insChip = t => { const g = insSig(t); return g && g.score >= 1 ? `<span class="st hit" title="Insider-Käufe in 90 Tagen: ${g.buyers} Käufer${g.top ? ", Vorstandsspitze" : ""}${g.opp ? ", gezielt" : ""}">Insider ${"●".repeat(g.score)}</span>` : ""; };
+function insSigHtml(ij) {
+  const l = Object.entries((ij && ij.signal) || {}).sort((a, b) => b[1].score - a[1].score || b[1].buyers - a[1].buyers || b[1].val - a[1].val).slice(0, 10);
+  if (!l.length) return "";
+  const amt = g => { const e = g.cur === "EUR" ? g.val : g.val * ((fxEur && fxEur.USD) || 0.9); return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
+  return `<div class="hcard" style="margin:8px 0 12px"><b>Insider-Signal deiner Aktien · 90 Tage</b>
+    ${l.map(([t, g]) => `<div class="jrow2"><span><b>${esc(g.n || t)}</b> <small class="muted">${g.buyers} Käufer${g.top ? " · CEO/CFO/Vorsitz" : ""}${g.opp ? ` · ${g.opp}× gezielt` : g.unk ? "" : " · nur Routine"}${g.own >= 100 ? " · Anteil mehr als verdoppelt" : g.own >= 10 ? ` · +${fmt(g.own, 0)} % Aktien` : ""} · zuletzt ${dateDE(g.last)}</small></span><b class="${g.score >= 2 ? "up" : ""}">${"●".repeat(g.score) + "○".repeat(3 - g.score)} ${amt(g)}</b></div>`).join("")}
+    <div class="note" style="margin:6px 0 0">● je erfüllt: mehrere Käufer · Vorstandsspitze kauft · gezielter Kauf mit ≥ 10 % mehr Aktien oder ≥ 1 Mio. Hinweis zum Genauer-Hinsehen, kein Kaufsignal – die Kairo-Regel nutzt Insider-Daten nicht.</div></div>`;
+}
 // ---------- Nachrichten: deine Aktien, Markt, Insider-Käufe (SEC) – Scan-Daten + live über Finnhub (Schlüssel nur lokal) ----------
 const NEWS = { gen: null, co: {}, ins: {}, at: 0, busy: false };
 function newsLoad(force) {
@@ -2054,13 +2065,18 @@ function newsHtml() {
   const usd = v => { const fx = (fxEur && fxEur.USD) || 0.9, e = v * fx; return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
   const known = t => rowOf(t) || byTicker(t);
   const irow = x => { const tag = mine.has(x.t) || (byTicker(x.t) && byTicker(x.t).in_watchlist) ? '<span class="pill dep">Deine</span>' : byTicker(x.t) && byTicker(x.t).passed ? '<span class="pill">Treffer</span>' : "";
-    return `<a class="bf-r" href="${esc(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`)}" target="_blank" rel="noopener"><i class="${x.kind === "buy" ? "g" : "r"}"></i><span><b>${esc(x.n || x.t)} ${tag}</b><em>${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"} ${x.sh ? fmt(x.sh, 0) + " Stk. " : ""}zu ${fmt(x.px)} ${x.cur === "EUR" ? "€" : "$"} · ${dateDE(x.d)}</em></span><span class="bf-p ${x.kind === "buy" ? "up" : "down"}">${x.cur === "EUR" ? eurAmt(x.val) : usd(x.val)}</span></a>`; };
+    const meld = x.kind === "meld", q = x.kind === "buy" && x.opp != null ? (x.opp ? ' · <b class="up">gezielt</b>' : " · Routine") : "";
+    const own = x.kind === "buy" && x.own != null ? (x.own === "neu" ? " · neue Position" : x.own >= 100 ? " · Anteil mehr als verdoppelt" : x.own >= 1 ? ` · +${fmt(x.own, 0)} % Aktien` : "") : "";
+    return `<a class="bf-r" href="${esc(safeHref(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`))}" target="_blank" rel="noopener"><i class="${meld ? "y" : x.kind === "buy" ? "g" : "r"}"></i><span><b>${esc(x.n || x.t)} ${tag}</b><em>${meld
+      ? `${esc(x.who)} · Meldung ${dateDE(x.d)} · ${esc(x.src || "")} (ohne Betrag – Details im Register)`
+      : `${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"} ${x.sh ? fmt(x.sh, 0) + " Stk. " : ""}zu ${fmt(x.px)} ${x.cur === "EUR" ? "€" : "$"} · ${dateDE(x.d)}${q}${own}`}</em></span><span class="bf-p ${meld ? "" : x.kind === "buy" ? "up" : "down"}">${meld ? "Meldung" : x.cur === "EUR" ? eurAmt(x.val) : usd(x.val)}</span></a>`; };
   const buys = ij && ij.buys || [], sells = ij && ij.sells || [];
   const mineBuys = buys.filter(x => mine.has(x.t) || known(x.t));
   const liveRows = Object.entries(NEWS.ins).flatMap(([t, l]) => l.map(x => ({ t, n: nameOf(t), who: String(x.name || "").replace(/\b\w+/g, w => w[0] + w.slice(1).toLowerCase()), role: "", kind: x.transactionCode === "P" ? "buy" : "sell",
     sh: Math.abs(x.change || 0), px: x.transactionPrice || 0, val: Math.abs(x.change || 0) * (x.transactionPrice || 0), d: x.transactionDate }))).filter(x => x.val > 0).sort((a, b) => String(b.d).localeCompare(String(a.d))).slice(0, 15);
   const when = ij && ij.generated ? new Date(ij.generated).toLocaleString("de-DE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
   const inEur = x => x.cur === "EUR" ? x.val : x.val * ((fxEur && fxEur.USD) || 0.9);
+  const wlM = ((ij && ij.watch) || []).filter(x => x.kind === "meld").sort((a, b) => String(b.d).localeCompare(String(a.d)));
   const wl = ij && ij.watch, wlB = (wl || []).filter(x => x.kind === "buy").sort((a, b) => inEur(b) - inEur(a)), wlS = (wl || []).filter(x => x.kind === "sell").sort((a, b) => inEur(b) - inEur(a));
   const wlSum = (() => { const by = {}; wlB.forEach(x => { by[x.t] = (by[x.t] || 0) + inEur(x); }); return Object.entries(by).sort((a, b) => b[1] - a[1]); })();
   // Cluster: mehrere verschiedene Insider kaufen dieselbe Aktie in 90 Tagen – laut Studien das stärkste Insider-Signal
@@ -2070,12 +2086,13 @@ function newsHtml() {
     return Object.entries(by).filter(([, o]) => o.who.size >= 2).sort((a, b) => b[1].who.size - a[1].who.size || b[1].v - a[1].v); })();
   const nUS = ij && ij.watch_n || 0, nDE = ij && ij.watch_de_n || 0;
   const wlHtml = !ij ? "" : !wl ? `<div class="note" style="margin:8px 2px">Insider-Geschäfte deiner Aktien kommen mit dem nächsten Scan.</div>`
-    : (clus.length ? `<div class="hcard" style="margin:8px 0 12px;border-left:3px solid var(--up)"><b>Mehrere Insider kaufen</b><div class="note" style="margin:4px 0 0">${clus.slice(0, 6).map(([t, o]) => `<b>${esc(nameOf(t))}</b>: ${o.who.size} Insider · ${eurAmt(o.v)}`).join("<br>")}<br><span class="muted">Mehrere Käufer in 90 Tagen gelten als stärkstes Insider-Signal – kein Kaufsignal allein, aber ein Grund genauer hinzusehen.</span></div></div>` : "")
+    : insSigHtml(ij) + (clus.length ? `<div class="hcard" style="margin:8px 0 12px;border-left:3px solid var(--up)"><b>Mehrere Insider kaufen</b><div class="note" style="margin:4px 0 0">${clus.slice(0, 6).map(([t, o]) => `<b>${esc(nameOf(t))}</b>: ${o.who.size} Insider · ${eurAmt(o.v)}`).join("<br>")}<br><span class="muted">Mehrere Käufer in 90 Tagen gelten als stärkstes Insider-Signal – kein Kaufsignal allein, aber ein Grund genauer hinzusehen.</span></div></div>` : "")
       + block(`Deine Aktien · neueste Insider-Käufe · 90 Tage`, recent.slice(0, 20).map(irow), `Keine Insider-Käufe in den letzten 90 Tagen.`)
+      + (wlM.length ? block("Deine Aktien · Meldungen ohne Betrag (Niederlande, Australien)", wlM.slice(0, 12).map(irow), "") : "")
       + block(`Deine Aktien · größte Insider-Käufe · 12 Monate`, wlB.slice(0, 30).map(irow), `Keine Insider-Käufe bei deinen Aktien in den letzten 12 Monaten.`)
       + (wlSum.length > 1 ? `<div class="note" style="margin:-4px 2px 10px">Meiste Käufe (12 Monate): ${wlSum.slice(0, 6).map(([t, v]) => `<b>${esc(nameOf(t))}</b> ${eurAmt(v)}`).join(" · ")}</div>` : "")
       + block("Deine Aktien · größte Insider-Verkäufe · 12 Monate", wlS.slice(0, 15).map(irow), "Keine großen Verkäufe.")
-      + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${nUS} US-Aktien (SEC/OpenInsider, Käufe ab 10.000 $, Verkäufe ab 250.000 $)${nDE ? ` und ${nDE} deutsche Aktien (BaFin, Käufe ab 5.000 €, Verkäufe ab 100.000 €)` : ""} aus Watchlist, Merkliste und Depot – 12 Monate. Airbus, Novo Nordisk, BYD, Xiaomi, DroneShield und Tamburi melden an andere Aufsichten (Niederlande, Dänemark, Hongkong, Australien, Italien) – dafür gibt es keine frei abrufbare Datenquelle.</div>`;
+      + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${nUS} US-Aktien (SEC/OpenInsider, Käufe ab 10.000 $, Verkäufe ab 250.000 $)${nDE ? ` und ${nDE} deutsche Aktien (BaFin, Käufe ab 5.000 €, Verkäufe ab 100.000 €)` : ""} aus Watchlist, Merkliste und Depot – 12 Monate. Dazu Meldungen ohne Betrag aus den Niederlanden (AFM: Airbus, ASML …) und Australien (ASX: DroneShield …). „Gezielt“ = kein Routine-Käufer (nicht in beiden Vorjahren im selben Monat gekauft) – laut Forschung (Cohen/Malloy/Pomorski 2012) das aussagekräftigere Signal. Novo Nordisk, BYD, Xiaomi und Tamburi (Dänemark, Hongkong, Italien): keine frei abrufbare Quelle.</div>`;
   return head + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) und für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften)${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
     + wlHtml
     + (live ? block("Deine US-Aktien · 90 Tage (live)", liveRows.map(irow), NEWS.at ? "Keine Insider-Käufe oder -Verkäufe über die Börse." : "lädt …") : "")
@@ -3726,7 +3743,7 @@ function getJson(name) {
   if (!(name in jsonData)) {
     jsonData[name] = undefined;
     fetch(`data/${name}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
-      .then(d => { jsonData[name] = d || null; if (["today", "bilanz", "settings", "depot", "etf", "game"].includes(state.sec)) render(); });
+      .then(d => { jsonData[name] = d || null; if (["today", "bilanz", "settings", "depot", "etf", "game", "scanner"].includes(state.sec)) render(); });
   }
   return jsonData[name];
 }
@@ -4486,6 +4503,7 @@ const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
 const APP_VER = "2026.10.27";
 const APP_NEWS = [["2026.10.27", "Ehrliche Live-Bilanz", [
+  ["Insider-Signal", "Gezielte Käufe statt Routine erkannt (3 Jahre Historie), Stärke je Aktie, Mitteilung bei neuen Käufen deiner Aktien, dazu Meldungen aus den Niederlanden (Airbus, ASML) und Australien."],
   ["Live-Bilanz", "Zählt jetzt auch die laufenden Trades (zum heutigen Stand) und nur USA/Europa wie getestet – vorher sah sie nur die frühen Stops."],
   ["Kurs oben", "Auch aus den Top-Setups öffnet sich die Karte mit dem aktuellen Kurs ganz oben."],
   ["Start", "Intro immer in voller Länge, ohne weißes Aufblitzen; helles Design zuverlässig."]]],
@@ -5499,7 +5517,7 @@ function topSetupsHtml() {
   return `<div class="hcard" style="margin-bottom:12px">${hHead("Top-Setups heute")}
     <div class="note">USA und Europa · kaufbereit zuerst, dann schwächeres Vormomentum (laut Forschung bessere Trades). Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)}.</div>
     <div class="ts-list">${list.map((r, k) => { const p = r.plan || {}, e = toEur(p.entry, r.currency), st = toEur(p.stop, r.currency), per = e != null && st != null ? e - st : null, qty = per > 0 ? Math.floor(riskEur / per) : null;
-      return `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${kPill(r)} ${tgtChip(r)} ${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${qty ? `${qty} Stk.<small>${eur2(qty * e)}</small>` : "–"}</span></button>`; }).join("")}</div>
+      return `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${kPill(r)} ${insChip(r.ticker)} ${tgtChip(r)} ${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${qty ? `${qty} Stk.<small>${eur2(qty * e)}</small>` : "–"}</span></button>`; }).join("")}</div>
     <div class="tscroll ts-tab" style="margin-top:8px"><table class="ptab ts"><tr><th>#</th><th>Aktie</th><th>Vormomentum</th><th>Einstieg / Stop</th><th>Größe</th><th>Gebühr</th><th></th></tr>${rows}</table></div></div>`;
 }
 function paperHtml() {
