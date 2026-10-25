@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-from backend.live import strat, strat_stats
+from backend.live import _show, strat, strat_stats
 
 
 def _df(after):
@@ -41,3 +41,12 @@ def test_stats_include_open_trades_and_tested_regions():
     assert s["n"] == 1 and s["open"] == 1 and s["mtm_n"] == 2 and s["mtm_r"] == 0.5 and s["mtm_win"] == 0.5
     assert strat_stats(sig, regions=None)["n"] == 2
     assert strat_stats([{"k": "hit", "region": "us", "st": {"res": "run", "r": 0.3}}])["avg_r"] is None
+
+
+def test_dual_listing_counts_once():
+    sig = [{"t": "NVO", "n": "Novo Nordisk A/S", "k": "hit", "d": "2026-10-14", "region": "us", "st": {"res": "stop", "r": -1.0}},
+           {"t": "NOVO-B.CO", "n": "Novo Nordisk", "k": "hit", "d": "2026-10-14", "region": "europe", "st": {"res": "stop", "r": -1.0}},
+           {"t": "AAPL", "n": "Apple Inc.", "k": "hit", "d": "2026-10-14", "region": "us", "st": {"res": "zeit", "r": 2.0}}]
+    s = strat_stats(sig)
+    assert s["n"] == 2 and s["avg_r"] == 0.5
+    assert [x["t"] for x in _show(sig)].count("NOVO-B.CO") == 0

@@ -46,7 +46,7 @@ _NOT_COMMON = re.compile(r"\b(?:trust|fund|etf|etn|warrants?|units?|rights?|acqu
                          r"acquisition company|capital acquisition|spac)\b", re.IGNORECASE)
 _PREF = re.compile(r"\b(?:vz|vzo|vorzug\w*|pref\w*|preference)\b\.?", re.IGNORECASE)
 _LEGAL = re.compile(r"\b(?:inc|incorporated|corp|corporation|co|company|plc|ltd|limited|ag|se|sa|nv|n\.v|"
-                    r"asa|ab|oyj|spa|s\.p\.a|holdings?|group|the|class [a-z]|kgaa|& co)\b\.?", re.IGNORECASE)
+                    r"asa|ab|oyj|spa|s\.p\.a|a/s|publ|holdings?|group|the|class [a-z]|kgaa|& co)\b\.?", re.IGNORECASE)
 
 
 def company_key(name: str) -> str:

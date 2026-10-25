@@ -21,13 +21,13 @@ env:
 
 jobs:
   main:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 340
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
         with: { ref: "research-data/v3", path: dataref }
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11", cache: pip }
       - run: pip install -r research/requirements.txt
       - name: Daten laden
@@ -53,7 +53,7 @@ jobs:
 
   zufall:
     if: inputs.teil == 'alles'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 340
     strategy:
       fail-fast: false
@@ -61,10 +61,10 @@ jobs:
         sid: [S19, S19B, S19C, S20]
         start: [0, 25, 50, 75]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
         with: { ref: "research-data/v3", path: dataref }
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11", cache: pip }
       - run: pip install -r research/requirements.txt
       - name: Daten laden
@@ -90,11 +90,11 @@ jobs:
   combine:
     needs: [main, zufall]
     if: always() && inputs.teil == 'alles'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11", cache: pip }
       - run: pip install -r research/requirements.txt
       - uses: actions/download-artifact@v4
