@@ -26,7 +26,12 @@ import requests
 # dieselben Formular-4-Meldungen, frei abrufbar und schon aufbereitet.
 UA = {"User-Agent": f"Kairo Scanner {os.environ.get('SEC_CONTACT', '')}".strip(), "Accept-Encoding": "gzip, deflate"}
 OI = {"buy": "http://openinsider.com/latest-insider-purchases-25k", "sell": "http://openinsider.com/latest-insider-sales-100k"}
-SCREEN = "http://openinsider.com/screener?s={t}&fd=365&xp=1&xs=1&cnt=200"  # je Aktie: Käufe + Verkäufe, 12 Monate
+SCREEN = "http://openinsider.com/screener?s={t}&fd=1095&xp=1&xs=1&cnt=500"  # je Aktie: Käufe + Verkäufe, 3 Jahre (Routine-Erkennung)
+AFM = "https://www.afm.nl/export.aspx?type=0ee836dc-5520-459d-bcf4-a4a689de6614&format=csv"   # Niederlande (MAR 19): Datum, Firma, Person
+AFM_PAGE = "https://www.afm.nl/en/sector/registers/meldingenregisters/transacties-leidinggevenden-mar19-"
+ASX = "https://asx.api.markitdigital.com/asx-research/1.0/companies/{t}/announcements?count=100"          # Australien: Appendix 3Y
+ASX_DOC = "https://cdn-api.markitdigital.com/apiman-gateway/ASX/asx-research/1.0/file/{k}"
+TOP = re.compile(r"\b(CEO|Chief Executive|CFO|Chief Financial|President|Chairman|Chair|COO|Vorstand|Vorsitz)", re.I)
 FEED = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&owner=include&count=100&start={start}&output=atom"
 MIN_BUY, MIN_SELL = 50_000, 1_000_000                 # USD: kleinere Käufe/Verkäufe sind Rauschen
 
@@ -104,7 +109,7 @@ def parse_openinsider(page: str) -> list[dict]:
     head = [h.replace("\xa0", " ").lower() for h in _cells(rows[0])]
     col = lambda *names: next((i for i, h in enumerate(head) if any(h.startswith(n) for n in names)), None)
     ix = {k: col(*v) for k, v in {"t": ("ticker",), "n": ("company",), "who": ("insider",), "role": ("title",), "type": ("trade type",),
-                                    "d": ("trade date",), "px": ("price",), "sh": ("qty",), "val": ("value",)}.items()}
+                                    "d": ("trade date",), "px": ("price",), "sh": ("qty",), "val": ("value",), "own": ("δown", "Δown")}.items()}
     if ix["t"] is None or ix["type"] is None:
         return []
     out = []
@@ -118,9 +123,11 @@ def parse_openinsider(page: str) -> list[dict]:
         tk = (re.findall(r"[A-Z][A-Z0-9.\-]{0,7}", g("t").upper()) or [""])[-1]
         if not kind or not tk or val <= 0 or px <= 0 or px > 1e5 or val >= 2e9:   # Meldefehler (Wert am Zahlen-Höchstwert 2^31) auslassen
             continue
+        own = g("own").strip()
         out.append({"t": tk, "n": g("n"), "who": g("who"), "role": g("role"), "kind": kind, "d": g("d")[:10],
                     "sh": round(abs(_num_us(g("sh")))), "px": round(px, 2), "val": round(val),
-                    "url": f"http://openinsider.com/{tk}"})
+                    "url": f"http://openinsider.com/{tk}",
+                    **({"own": "neu" if own.lower().startswith("new") else round(_num_us(own))} if own and own != "-" else {})})
     return out
 
 
@@ -137,6 +144,87 @@ def fetch_openinsider() -> list[dict]:
     return rows
 
 
+def _days_ago(n: int) -> str:
+    from datetime import date, timedelta
+    return (date.today() - timedelta(days=n)).isoformat()
+
+
+def routine(rows: list[dict]) -> None:
+    """Routine oder Gelegenheit (Cohen/Malloy/Pomorski 2012): Wer in den beiden Vorjahren im selben Kalendermonat ebenfalls
+    gekauft hat, kauft nach Plan (Routine) – solche Käufe sagen kaum etwas. Alle anderen Käufe gelten als „gezielt“
+    (opportunistisch); nur sie hatten in der Studie eine deutliche Überrendite. Setzt x["opp"] bei Käufen."""
+    months = {}
+    for x in rows:
+        if x["kind"] == "buy" and len(x.get("d") or "") >= 7:
+            months.setdefault(x["who"], set()).add(x["d"][:7])
+    for x in rows:
+        if x["kind"] != "buy" or len(x.get("d") or "") < 7:
+            continue
+        y, m = int(x["d"][:4]), x["d"][5:7]
+        x["opp"] = not all(f"{y - k}-{m}" in months.get(x["who"], ()) for k in (1, 2))
+
+
+def signal(rows: list[dict], days: int = 90) -> dict:
+    """Insider-Signal je Aktie aus den Käufen der letzten `days` Tage: Käufer, Summe, Vorstandsspitze, gezielt, Anteil.
+    Stärke 0–3: +1 mehrere Käufer (Cluster), +1 CEO/CFO/Vorsitz kauft, +1 gezielter Kauf mit ≥ 10 % mehr Aktien oder ≥ 1 Mio."""
+    since, out = _days_ago(days), {}
+    for x in rows:
+        if x.get("kind") != "buy" or (x.get("d") or "") < since:
+            continue
+        o = out.setdefault(x["t"], {"who": set(), "val": 0.0, "top": False, "opp": 0, "own": 0, "last": "", "cur": x.get("cur") or "USD", "n": x.get("n")})
+        o["who"].add(x.get("who"))
+        o["val"] += x.get("val") or 0
+        o["top"] = o["top"] or bool(TOP.search(x.get("role") or ""))
+        o["opp"] += 1 if x.get("opp", True) else 0
+        ow = x.get("own")
+        o["own"] = max(o["own"], 100 if ow == "neu" else ow if isinstance(ow, (int, float)) else 0)
+        o["last"] = max(o["last"], x.get("d") or "")
+    res = {}
+    for t, o in out.items():
+        big = o["opp"] and (o["own"] >= 10 or o["val"] >= 1_000_000)
+        res[t] = {"buyers": len(o["who"]), "val": round(o["val"]), "cur": o["cur"], "top": o["top"], "opp": o["opp"],
+                  "own": o["own"], "last": o["last"], "n": o["n"], "score": int(len(o["who"]) >= 2) + int(o["top"]) + int(bool(big))}
+    return res
+
+
+def fetch_afm(watch: dict[str, str], days: int = 365) -> list[dict]:
+    """Niederlande (AFM, MAR 19): Meldungen von Führungskräften – nur Datum und Person, ohne Betrag und Richtung.
+    Zuordnung über den Firmennamen (Airbus SE, ASML Holding N.V. …)."""
+    import csv
+    import io
+    r = requests.get(AFM, headers={"User-Agent": "Mozilla/5.0 (Kairo Scanner)"}, timeout=60)
+    text = r.content.decode("utf-8", "replace")
+    since, rows = _days_ago(days), []
+    keys = {t: re.sub(r"[^a-z0-9]", "", (n or "").lower()) for t, n in watch.items()}
+    for row in csv.reader(io.StringIO(text), delimiter=";"):
+        if len(row) < 3 or not row[0][:4].isdigit() or row[0][:10] < since:
+            continue
+        firm = re.sub(r"[^a-z0-9]", "", row[1].lower())
+        for t, k in keys.items():
+            if len(k) >= 4 and firm.startswith(k):
+                rows.append({"t": t, "n": watch[t], "who": row[2], "role": "Führungskraft", "kind": "meld", "d": row[0][:10],
+                             "src": "AFM", "url": AFM_PAGE})
+    return rows
+
+
+def fetch_asx(watch: dict[str, str], days: int = 365) -> list[dict]:
+    """Australien (ASX): „Change of Director's Interest Notice“ (Appendix 3Y) – Meldung mit Link, Betrag steht im PDF."""
+    since, rows = _days_ago(days), []
+    for t, name in watch.items():
+        if not str(t).endswith(".AX"):
+            continue
+        try:
+            d = requests.get(ASX.format(t=t[:-3]), headers={"User-Agent": "Mozilla/5.0 (Kairo Scanner)"}, timeout=20).json()
+            for it in (d.get("data") or {}).get("items") or []:
+                h = it.get("headline") or ""
+                if re.search(r"director'?s'? interest|appendix 3y|change of director", h, re.I) and (it.get("date") or "")[:10] >= since:
+                    rows.append({"t": t, "n": name, "who": h, "role": "Director", "kind": "meld", "d": it["date"][:10], "src": "ASX",
+                                 "url": ASX_DOC.format(k=it.get("documentKey"))})
+        except Exception as exc:
+            print(f"ASX {t}: {exc!r}"[:120])
+    return rows
+
+
 def fetch_watch(watch: dict[str, str], budget_s: float = 240) -> tuple[list[dict], int]:
     """Gezielt für Watchlist, Merkliste und Depot: Insider-Käufe und -Verkäufe je US-Aktie der letzten 12 Monate (OpenInsider-Screener).
     Nur US-Börsenkürzel (ohne Punkt) – europäische und asiatische Werte melden nicht an die SEC."""
@@ -146,9 +234,11 @@ def fetch_watch(watch: dict[str, str], budget_s: float = 240) -> tuple[list[dict
             continue
         try:
             r = requests.get(SCREEN.format(t=t), headers={"User-Agent": "Mozilla/5.0 (Kairo Scanner)"}, timeout=20)
-            got = [x for x in parse_openinsider(r.text) if x["t"] == t]
+            got = _merge([x for x in parse_openinsider(r.text) if x["t"] == t])
             done += 1
-            for x in _merge(got):
+            routine(got)
+            since = _days_ago(365)
+            for x in [x for x in got if x["d"] >= since]:
                 if x["val"] >= (10_000 if x["kind"] == "buy" else 250_000):     # Kleinstkäufe (Sparpläne) und Routine-Verkäufe auslassen
                     rows.append({**x, "n": x.get("n") or name, "url": f"http://openinsider.com/{t}"})
             time.sleep(0.4)
@@ -219,6 +309,15 @@ def fetch(pages: int = 3, budget_s: float = 150, watch: dict[str, str] | None = 
             out["watch_de_n"] = de["n"]
         except Exception as exc:
             print(f"BaFin: Fehler {exc!r}"[:160])
+        for nm, fn in (("AFM", fetch_afm), ("ASX", fetch_asx)):
+            try:
+                extra = fn(watch)
+                out["watch"] += extra
+                out[f"watch_{nm.lower()}_n"] = len(extra)
+                print(f"Insider {nm}: {len(extra)} Meldungen")
+            except Exception as exc:
+                print(f"Insider {nm}: Fehler {exc!r}"[:160])
+        out["signal"] = signal(out["watch"])
     return out
 
 

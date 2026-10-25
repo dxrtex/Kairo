@@ -93,3 +93,18 @@ def test_watchlist_many_become_one_message(monkeypatch):
     rows = [{"ticker": f"T{i}", "name": f"Firma {i}", "in_watchlist": True, "fast_hit": True, "missing": ["MBI: x"]} for i in range(7)]
     m = push.watch_messages("2026-10-14", rows)
     assert len(m) == 1 and "7 Aktien" in m[0]["title"] and "Firma 0" in m[0]["body"] and "_n" not in m[0]
+
+
+def test_insider_messages_first_run_silent_then_new(monkeypatch):
+    from backend import push, state
+    store = {}
+    monkeypatch.setattr(state, "load", lambda n, d=None: store.get(n, d))
+    monkeypatch.setattr(state, "save", lambda n, v: store.__setitem__(n, v))
+    today = "2026-10-25"
+    old = {"t": "PLTR", "n": "Palantir", "who": "A", "role": "CEO", "kind": "buy", "d": "2026-10-20", "val": 500_000, "opp": True}
+    assert push.insider_messages(today, {"watch": [old]}) == []                    # erste Prüfung: nur merken
+    new = [dict(old, who="B", d="2026-10-24"), dict(old, who="C", d="2026-10-24", val=20_000, opp=False),
+           {"t": "AIR.PA", "n": "Airbus", "who": "Kitcher J.", "kind": "meld", "d": "2026-10-23", "src": "AFM"}]
+    m = push.insider_messages(today, {"watch": [old] + new, "signal": {}})
+    titles = [x["title"] for x in m]
+    assert len(m) == 2 and any("Palantir" in t for t in titles) and any("Airbus" in t for t in titles)
