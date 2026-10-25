@@ -786,6 +786,11 @@ def main(argv=None) -> int:
         for name, obj in (("alerts.json", alerts), ("bilanz.json", bil), ("changes.json", changes), ("h4.json", h4)):
             with open(SITE / name, "w", encoding="utf-8") as f:
                 json.dump(_clean(obj), f, ensure_ascii=False, separators=(",", ":"))
+    try:                                              # KI-Ansicht (site/ai/): die App als reines HTML für ChatGPT, Claude & Co.
+        from . import aipage
+        aipage.write(ROOT, today_iso)
+    except Exception as exc:
+        print(f"KI-Ansicht: Fehler {exc!r}")
     print(f"Treffer: {stats['hits']}, Fast-Treffer: {stats['fast_hits']}, 9/11: {stats['near_hits']}, Trend-Rücksetzer: {stats.get('trend_hits')}, Fehler: {stats['errors']}, "
           f"Dauer {stats['duration_s']} s")
     ps = [r["tr"]["chk"]["p"] for r in rows if (r.get("tr") or {}).get("chk")]
