@@ -201,6 +201,7 @@ async def backup_check(b, url, errs):
     await pg.evaluate("localStorage.setItem('kx-td','TESTKEY'); localStorage.setItem('kairo-depot-v1','[]')")
     await pg.goto(f"{url}?nosplash=1&sec=settings")
     await pg.wait_for_timeout(2000)
+    await pg.evaluate("document.querySelectorAll('#newsBox, .bmodal, .splash').forEach(x => x.remove())")
     files = {}
     for keys in (False, True):
         if keys:
