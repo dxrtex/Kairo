@@ -4,6 +4,7 @@ on:
   schedule:
     - cron: "30 20 * * 1-5"      # 22:30 Uhr Berlin im Sommer (MESZ)
     - cron: "30 21 * * 1-5"      # 22:30 Uhr Berlin im Winter (MEZ)
+    - cron: "41 4 * * 2-6"       # Nachhol-Lauf am Morgen: nur wenn der Abend-Scan nicht online gekommen ist
   workflow_dispatch:              # „Scan jetzt starten“
 
 permissions:
@@ -31,6 +32,13 @@ jobs:
             tz=$(TZ=Europe/Berlin date +%Z)
             if [ "${{ github.event.schedule }}" = "30 20 * * 1-5" ] && [ "$tz" != "CEST" ]; then skip=true; fi
             if [ "${{ github.event.schedule }}" = "30 21 * * 1-5" ] && [ "$tz" = "CEST" ]; then skip=true; fi
+            if [ "${{ github.event.schedule }}" = "41 4 * * 2-6" ]; then
+              # Alter der Daten, die gerade online sind. Jünger als 16 Stunden → Abend-Scan hat geklappt, nichts tun.
+              gen=$(curl -fsS --max-time 30 "https://dxrtex.github.io/Kairo/data/results.json" | head -c 200 | grep -o '"generated":"[^"]*"' | cut -d'"' -f4 || true)
+              age=$(( ( $(date +%s) - $(date -d "${gen:-1970-01-01}" +%s) ) / 3600 ))
+              echo "Online-Daten: ${gen:-unbekannt} (vor $age Std.)"
+              if [ "$age" -lt 16 ]; then skip=true; else echo "::warning::Abend-Scan fehlt – Nachhol-Lauf startet"; fi
+            fi
           fi
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
@@ -87,12 +95,25 @@ jobs:
           git add -A
           git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Zustand $(date +%F)" || exit 0
           git push -q origin kairo-data
-      - name: App-Test im Browser (bei Fehlern wird nicht veröffentlicht – die alte Version bleibt online)
+      - name: Browser für den App-Test installieren (3 Versuche)
+        id: browser
         if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'
+        continue-on-error: true    # scheitert nur die Installation (GitHub-Rechner), werden die Daten trotzdem veröffentlicht
         run: |
           pip install -q playwright==1.55.0
-          python -m playwright install --with-deps chromium > /dev/null
-          python tools/app_smoke.py
+          for i in 1 2 3; do python -m playwright install --with-deps chromium > /dev/null && exit 0; sleep 30; done
+          exit 1
+      - name: App-Test im Browser (bei Fehlern in der App wird nicht veröffentlicht – die alte Version bleibt online)
+        if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main' && steps.browser.outcome == 'success'
+        run: python tools/app_smoke.py
+      - name: Hinweis, wenn der Browser-Test nicht laufen konnte
+        if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main' && steps.browser.outcome == 'failure'
+        run: |
+          echo "::warning::Browser konnte nicht installiert werden – Daten werden ohne App-Test veröffentlicht"
+          python -m backend.watchdog "Täglicher Scan (ohne Browser-Test veröffentlicht)" "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true
+        env:
+          PUSH_SUBS: ${{ secrets.PUSH_SUBS }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       - uses: actions/upload-pages-artifact@v3
         if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'
         with:

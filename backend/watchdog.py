@@ -15,6 +15,10 @@ SHORT = {"Täglicher Scan": "Täglicher Scan", "Wichtige Mitteilungen (tagsüber
 
 
 def message(name: str, url: str) -> dict:
+    if "ohne Browser-Test" in name:
+        return {"title": "Kairo: Scan ohne App-Test veröffentlicht",
+                "body": "Die neuen Daten sind online, der Browser-Test konnte auf GitHub nicht starten. Bitte die App kurz prüfen.",
+                "url": url, "tag": "kairo-ausfall"}
     n = SHORT.get(name, "Papier-Handel" if name.startswith("Papier-Handel") else name)
     return {"title": f"⚠️ Kairo: {n} fehlgeschlagen",
             "body": "Der Ablauf ist abgebrochen – die App zeigt evtl. alte Daten. Details im Lauf auf GitHub.",
