@@ -2231,7 +2231,22 @@ function calendarHtml() {
 
 // ---------- Depot (bleibt nur auf diesem Gerät gespeichert) ----------
 const DEPOT_KEY = "kairo-depot-v1";
-function depotLoad() { try { return JSON.parse(localStorage.getItem(DEPOT_KEY) || "[]"); } catch (e) { return []; } }
+function depotLoad() { try { return depotFix(JSON.parse(localStorage.getItem(DEPOT_KEY) || "[]")); } catch (e) { return []; } }
+// ETFs aus dem Scalable-Export: nie einer Aktie zuordnen. Seit 2025 heißen SPDR-ETFs „State Street SPDR …“ – der Namensabgleich
+// hatte sie der Aktie State Street Corp. zugeordnet (ebenso Amundi-, Invesco-, WisdomTree-ETFs den gleichnamigen Firmen).
+const ETF_RE = /\b(ETF|ETC|UCITS|iShares|SPDR|Xtrackers|Vanguard|Lyxor|MSCI|Stoxx|Index|Acc|Dist)\b/i;
+const ETF_ISSUER = /^(State Street|Amundi|Invesco|WisdomTree|DWS|Legal & General|VanEck|Global X|BlackRock)\b/i;
+const ETF_ISIN = { IE00B3YLTY66: ["SPYI", "SPDR MSCI ACWI IMI (ETF)"] };
+function etfLike(name, isin) { return /^(IE|LU)/.test(isin || "") && (ETF_RE.test(name || "") || ETF_ISSUER.test(name || "")); }
+function depotFix(list) {
+  list.forEach(p => {
+    if (p.d || p.etf || !etfLike(p.n, p.isin)) return;
+    p.etf = 1; p.t = "";
+    if (ETF_ISIN[p.isin]) p.n = ETF_ISIN[p.isin][1]; else if (!ETF_RE.test(p.n || "")) p.n = `ETF (ISIN ${p.isin})`;
+  });
+  return list;
+}
+function etfPx(p) { return ETF_ISIN[p.isin] && ETF_ISIN[p.isin][0] === "SPYI" ? gEtfPx() : null; }
 function depotSave(list) { try { localStorage.setItem(DEPOT_KEY, JSON.stringify(list)); } catch (e) {} calBadge(); kxSyncSoon(); }
 let depotEdit = null, depotMsg = "";
 const rowOf = t => searchIdx && searchIdx.find(r => r.t === t);
@@ -2268,8 +2283,22 @@ function stratTipHtml(st, t) {
   return `<div class="tip tone-${x.tone}"><b class="t">${esc(x.t)}</b>${esc(x.s)}${!st && t ? ` <button class="linkbtn" data-ein="${esc(tkClean(t))}">Plan anlegen ›</button>` : ""}</div>`;
 }
 // Depot-Check: Verteilung nach Wert – Klumpen, Branchen, Regionen, Währungen, Hebelanteil. Einordnung, keine Empfehlung.
+function etfCard(p, i, px, val, cost) {
+  const g = val != null ? val - cost : null, spyi = ETF_ISIN[p.isin] && ETF_ISIN[p.isin][0] === "SPYI";
+  return `<article class="card">
+      <div class="card-top"><div class="card-title"><h2>${esc(p.n)}</h2>
+        <div class="meta">ETF · ${esc(p.isin || "")} · ${fmt(p.qty, p.qty % 1 ? 4 : 0)} Anteile${p.date ? ` · seit ${dateDE(p.date)}` : ""}</div></div></div>
+      <div class="figures">
+        <div class="fig"><span>Einstand je Anteil</span><b>${fmt(p.price)} €</b></div>
+        <div class="fig"><span>Aktuell je Anteil</span><b>${px ? fmt(px) + " €" : "–"}</b></div>
+        <div class="fig"><span>Wert</span><b>${val != null ? fmt(val) + " €" : "–"}</b></div>
+        <div class="fig"><span>Gewinn / Verlust</span><b class="${(g ?? 0) >= 0 ? "up" : "down"}">${g != null ? (g >= 0 ? "+" : "") + pct(g / cost) : "–"}</b></div></div>
+      <div class="note" style="margin-top:0">Langfristige Anlage – Kairo prüft hier keinen Stop und keinen Verkaufstag.${spyi ? ` Ampel und Plan im <a href="#" data-gosec="etf">ETF-Bereich</a>.` : " Kurs für diesen ETF ist im Scan nicht enthalten."}</div>
+      <div class="row-actions">${spyi ? `<a class="mini-btn" style="text-decoration:none" href="${tvUrl("SPYI")}" target="_blank" rel="noopener">TradingView</a>` : ""}<button class="mini-btn del" data-dep="del" data-i="${i}">Löschen</button></div>
+    </article>`;
+}
 function depotCheckHtml(items) {
-  const st = items.filter(x => !x.p.d && x.val != null && x.val > 0), tot = st.reduce((a, x) => a + x.val, 0);
+  const st = items.filter(x => !x.p.d && !x.p.etf && x.val != null && x.val > 0), tot = st.reduce((a, x) => a + x.val, 0);
   const turbCost = items.filter(x => x.p.d).reduce((a, x) => a + x.cost, 0), allCost = items.reduce((a, x) => a + x.cost, 0);
   if (items.length < 2 || (!tot && !turbCost)) return "";
   const nm = x => x.p.n || (x.r && x.r.n) || x.p.t;
@@ -2311,6 +2340,8 @@ function depotHtml() {
     const r = p.t ? rowOf(p.t) : null, cur = r ? r.cur : null;
     invested += p.price * p.qty;
     if (p.d) return { p, i, r, cur, nowEur: null, val: null, cost: p.price * p.qty };
+    if (p.etf) { const px = etfPx(p), v = px ? px * p.qty : null; if (v != null) { wert += v; einstand += p.price * p.qty; valued++; }
+      return { p, i, r: null, cur: "EUR", nowEur: px, val: v, cost: p.price * p.qty }; }
     const nowEur = r ? toEur(r.c, cur) : null;
     if (nowEur == null || isNaN(nowEur)) missingFx = missingFx || !!r;
     const val = nowEur != null && !isNaN(nowEur) ? nowEur * p.qty : null, cost = p.price * p.qty;
@@ -2342,6 +2373,7 @@ function depotHtml() {
   const inGroup = new Set(groups.flatMap(g => g.ms.map(m => m.i)));
   const cards = items.filter(x => !inGroup.has(x.i)).map(({ p, i, r, cur, nowEur, val, cost }) => {
     if (p.d) return turboCard(p, i, r);
+    if (p.etf) return etfCard(p, i, nowEur, val, cost);
     const st = stratOf(planFor([p.t], p.n || (r && r.n))), held = p.date ? Math.max(0, -daysUntil(p.date)) : null, ev = nextEvent(p.t);
     const g = val != null ? val - cost : null;
     const inRes = data.results.some(x => x.ticker === p.t);
@@ -2789,10 +2821,11 @@ function importRows(rows) {
   const list = depotLoad(), noData = [];
   let added = 0, turbos = 0;
   Object.values(pos).filter(p => p.qty > 1e-9).forEach(p => {
-    const d = parseDerivative(p.name), r = d ? matchUnderlying(d.under, d.cur) : matchName(p.name);
-    const entry = { t: r ? r.t : "", n: d ? p.name : r ? r.n : p.name, isin: p.isin, qty: +p.qty.toFixed(6), price: +(p.cost / p.qty).toFixed(4), date: p.date, src: "csv" };
+    const d = parseDerivative(p.name), etf = !d && etfLike(p.name, p.isin), r = d ? matchUnderlying(d.under, d.cur) : etf ? null : matchName(p.name);
+    const entry = { t: r ? r.t : "", n: d ? p.name : r ? r.n : etf && ETF_ISIN[p.isin] ? ETF_ISIN[p.isin][1] : p.name, isin: p.isin, qty: +p.qty.toFixed(6), price: +(p.cost / p.qty).toFixed(4), date: p.date, src: "csv" };
     if (d) { entry.d = d; turbos++; }
-    if (!r) noData.push(d ? d.under : p.name);
+    if (etf) entry.etf = 1;
+    if (!r && !etf) noData.push(d ? d.under : p.name);
     const j = list.findIndex(x => (p.isin && x.isin === p.isin) || (!x.isin && !d && r && x.t === r.t));
     if (j >= 0) { ["mark", "markU", "markDate"].forEach(k => { if (list[j][k] != null && list[j].isin === entry.isin) entry[k] = list[j][k]; }); list[j] = entry; } else list.push(entry);
     added++;
