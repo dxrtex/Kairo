@@ -1,8 +1,8 @@
-// Kairo-Kursdienst (Version 3) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
+// Kairo-Kursdienst (Version 4) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
 //   ?s=SAP.DE,AAPL      Kurse (Yahoo Finance, je nach Börse leicht verzögert)
 //   ?q=Rheinmetall      Aktiensuche an allen Börsen
 //   ?c=RHM.DE           Tageskerzen (1 Jahr) – damit plant Kairo auch Aktien außerhalb des Scans
-//   /trades?key=…       offene Trades für die Mitteilungen (GET lesen, POST speichern) – braucht den KV-Speicher „KAIRO“
+//   /trades?key=…       offene Trades, Depot und Watchlist für Scan und Mitteilungen (GET lesen, POST speichern) – braucht den KV-Speicher „KAIRO“
 // Einrichtung: Cloudflare → Workers & Pages → Worker → Edit code → alles ersetzen → Deploy (Anleitung in Kairo → Einstellungen).
 
 const ALLOW = ["https://dxrtex.github.io"];          // nur die Kairo-App darf den Dienst im Browser nutzen
@@ -26,7 +26,7 @@ export default {
     if (c && /^[A-Z0-9.\-^=]{1,20}$/.test(c)) return json(await candles(c), cors);
     const syms = (url.searchParams.get("s") || "").split(",").map(x => x.trim().toUpperCase())
       .filter(x => /^[A-Z0-9.\-^=]{1,20}$/.test(x)).slice(0, MAX);
-    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 3). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
+    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 4). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
     const diag = url.searchParams.has("debug") ? [] : null;
     const out = await quotes(syms, ctx, diag);
     return json(diag ? { ...out, _diag: diag } : out, cors);
@@ -138,7 +138,9 @@ async function trades(request, env, url, cors) {
     if (body.length > 50000) return json({ error: "zu groß" }, cors, 413);
     let data; try { data = JSON.parse(body); } catch (e) { return json({ error: "kein JSON" }, cors, 400); }
     if (!owner) await env.KAIRO.put("owner", key);
-    await env.KAIRO.put("trades", JSON.stringify({ p: data.p || [], d: data.d || [], at: Date.now() }));
+    const prev = JSON.parse((await env.KAIRO.get("trades")) || "{}");
+    const w = Array.isArray(data.w) ? data.w.slice(0, 400) : prev.w;            // Watchlist (ab Version 4); fehlt sie, bleibt die alte
+    await env.KAIRO.put("trades", JSON.stringify({ p: data.p || [], d: data.d || [], ...(w ? { w, wat: Array.isArray(data.w) ? Date.now() : prev.wat } : {}), at: Date.now() }));
     return json({ ok: true }, cors);
   }
   return json(JSON.parse((await env.KAIRO.get("trades")) || '{"p":[],"d":[]}'), cors);

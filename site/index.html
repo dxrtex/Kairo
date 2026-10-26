@@ -1574,7 +1574,7 @@ const isTrend = r => false;                // Trend-Rücksetzer: nicht belegt, a
 const trendOn = () => false;
 // ⚡ 4H-Setup: Arbeitsliste – echte Einstiege mit fertiger Seitwärtsphase (4H bestätigt, wartet auf 4H, läuft, verkaufen)
 const isH4 = r => h4Prio(r) >= 3;
-const KIND_BTNS_ALL = [["fav", "★ Merkliste", r => favs().has(r.ticker)], ["h4", "4H-Setup", isH4], ["hit", "Treffer", r => r.passed], ["fast", "Fast-Treffer", r => r.fast_hit], ["near", "9/11 · kein Treffer", r => !!r.near_hit], ["trend", "Trend-Rücksetzer", isTrend], ["watch", "Watchlist", r => r.in_watchlist]];
+const KIND_BTNS_ALL = [["fav", "★ Watchlist", r => favs().has(r.ticker)], ["h4", "4H-Setup", isH4], ["hit", "Treffer", r => r.passed], ["fast", "Fast-Treffer", r => r.fast_hit], ["near", "9/11 · kein Treffer", r => !!r.near_hit], ["trend", "Trend-Rücksetzer", isTrend], ["watch", "Watchlist", r => r.in_watchlist]];
 let KIND_BTNS = KIND_BTNS_ALL.filter(x => x[0] !== "trend");
 // Scanner: fünf klare Ansichten statt vieler Knöpfe (eine ist immer aktiv) – [Schlüssel, Name, zählt, Arten für selRows, Erklärung]
 const VIEWS = [
@@ -1582,19 +1582,32 @@ const VIEWS = [
   ["hit", "Treffer", r => r.passed, ["hit"], "Alle 11 Kriterien erfüllt. Gekauft wird erst, wenn die Seitwärtsphase fertig ist – „kaufbereit“ steht oben."],
   ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Ein oder zwei Kriterien fehlen – nur beobachten, kein Kaufsignal."],
   ["trend", "Trend", r => isTrend(r), ["trend"], "Trend-Rücksetzer – eigene, getrennte Strategie (Rücksetzer im Aufwärtstrend)."],
-  ["mine", "Meine", r => r.in_watchlist || favs().has(r.ticker), ["watch", "fav"], "Deine Watchlist und Merkliste – mit Stufe auf dem Weg zum Einstieg."]];
+  ["mine", "Meine", r => r.in_watchlist || favs().has(r.ticker), ["watch", "fav"], "Deine Watchlist (★) – mit Stufe auf dem Weg zum Einstieg."]];
 const viewOfKinds = ks => { const k = new Set(ks); return VIEWS.find(v => v[3].length === k.size && v[3].every(x => k.has(x)))
   || VIEWS.find(v => v[3].some(x => k.has(x))) || null; };
-// ---------- Merkliste: eigene Favoriten (Stern), nur auf diesem Gerät ----------
+// ---------- Watchlist (Stern): auf dem Gerät und über den Kursdienst für den täglichen Scan ----------
 const FAV_KEY = "kairo-merkliste-v1";
 let favCache = null;
 function favs() { if (!favCache) { try { favCache = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || "[]")); } catch (e) { favCache = new Set(); } } return favCache; }
 function favToggle(t) {
   const f = favs(); f.has(t) ? f.delete(t) : f.add(t);
-  try { localStorage.setItem(FAV_KEY, JSON.stringify([...f])); } catch (e) {}
-  calBadge();
+  favSave(f);
 }
-const favBtn = t => `<button class="fav${favs().has(t) ? " on" : ""}" data-fav="${esc(t)}" aria-label="Merkliste" title="${favs().has(t) ? "Von der Merkliste nehmen" : "Auf die Merkliste"}">${favs().has(t) ? "★" : "☆"}</button>`;
+function favSave(f) {
+  favCache = f;
+  try { localStorage.setItem(FAV_KEY, JSON.stringify([...f])); } catch (e) {}
+  calBadge(); kxSyncSoon();                       // Watchlist an den Kursdienst – der tägliche Scan prüft genau diese Aktien
+}
+// Bisherige Scalable-Watchlist (data/watchlist.json, im Scan „in_watchlist“) einmalig in die Sterne übernehmen –
+// danach ist der Stern die eine Watchlist; erst dann geht sie an den Kursdienst (sonst würde eine halbe Liste die alte ersetzen)
+function wlSeed() {
+  if (state.wlSeeded || !data || !(data.results || []).length) return;
+  const f = favs(); data.results.forEach(r => { if (r.in_watchlist) f.add(r.ticker); });
+  state.wlSeeded = 1; save(); favSave(f);
+}
+const favName = t => { const r = (data && data.results || []).find(x => x.ticker === t); if (r) return r.name || t;
+  const q = (searchIdx || []).find(x => x.t === t); return q ? q.n : t; };
+const favBtn = t => `<button class="fav${favs().has(t) ? " on" : ""}" data-fav="${esc(t)}" aria-label="Watchlist" title="${favs().has(t) ? "Von der Watchlist nehmen" : "Auf die Watchlist"}">${favs().has(t) ? "★" : "☆"}</button>`;
 const wlTag = r => r.in_watchlist ? `<span class="wl" title="auf der Watchlist">WL</span>` : "";
 // Merkliste-Aktien ohne Setup-Daten (nicht in der Tabelle): kompakte Karten aus dem Suchindex
 function favExtraHtml() {
@@ -1603,7 +1616,7 @@ function favExtraHtml() {
   if (!searchIdx) { loadSearch(); return ""; }
   const rowsX = extra.map(t => searchIdx.find(r => r.t === t)).filter(Boolean);
   if (!rowsX.length) return "";
-  return `<div class="section-title"><span>Merkliste · ohne aktuelles Setup</span><span>${rowsX.length}</span></div><div class="sres">${rowsX.map(searchCard).join("")}</div>`;
+  return `<div class="section-title"><span>Watchlist · ohne aktuelles Setup</span><span>${rowsX.length}</span></div><div class="sres">${rowsX.map(searchCard).join("")}</div>`;
 }
 // Übersichtskarte als Fenster (Antippen von Name/Ticker in der Tabelle)
 function openCard(t) {
@@ -2957,6 +2970,15 @@ document.addEventListener("input", e => {
   if (e.target.id === "cfgEmoji") { state.emoji = e.target.value.trim(); save(); renderHead(); appleHead(); document.querySelectorAll("[data-emoji]").forEach(b => b.classList.toggle("on", b.dataset.emoji === state.emoji)); }
 });
 document.addEventListener("change", async e => {
+  if (e.target.id === "wlFile" && e.target.files[0]) {
+    const file = e.target.files[0], buf = await file.arrayBuffer(), u8 = new Uint8Array(buf);
+    try {
+      const lines = u8[0] === 0x50 && u8[1] === 0x4b ? (await xlsxRows(buf)).map(r => r.join(";"))
+        : new TextDecoder().decode(buf).split(/\r?\n/).map(l => l.replace(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/g, ";"));
+      await wlRun(lines);
+    } catch (err) { alert("Datei konnte nicht gelesen werden: " + err.message); }
+    e.target.value = ""; return;
+  }
   if (e.target.id === "restoreFile" && e.target.files[0]) {
     try { const j = JSON.parse(await e.target.files[0].text());
       if (j.app !== "kairo" || !j.data) throw new Error("keine Kairo-Sicherung");
@@ -4453,7 +4475,7 @@ const syncKey = () => { let k = liveKey("sk"); if (!k) { k = (crypto.randomUUID 
 function syncPayload() {
   const d = depotLoad().filter(p => p.t).map(p => p.d && p.d.ko ? { t: p.t, dir: p.d.dir, ko: p.d.ko } : { t: p.t });
   const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).includes(":")).map(x => ({ i: x.id, t: String(x.t).replace(/^~/, ""), n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit, ...(x.ema ? { e: 1 } : {}) }));
-  return { d, p };
+  return { d, p, ...(state.wlSeeded ? { w: [...favs()].map(t => ({ t, n: String(favName(t)).slice(0, 40) })) } : {}) };
 }
 async function kxSync() {
   const yq = liveKey("yq"); if (!yq) return null;
@@ -4496,8 +4518,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.10.30";
-const APP_NEWS = [["2026.10.30", "Umzug mit Schlüsseln", [
+const APP_VER = "2026.10.31";
+const APP_NEWS = [["2026.10.31", "Deine Watchlist = deine Sterne", [
+  ["★ ist jetzt die Watchlist", "Die bisherige Scalable-Watchlist ist in die Sterne übernommen. Stern an oder aus – der nächste Abend-Scan prüft genau diese Aktien (Stufen, „kurz vor Treffer“, Insider)."],
+  ["Ganze Liste abgleichen", "Einstellungen → Watchlist: Namen, Ticker oder ISINs einfügen oder eine CSV/Excel-Datei wählen – Kairo zeigt Neu und Entfällt, dann ersetzen oder ergänzen."],
+  ["Einmalig nötig", "Kursdienst-Code (Version 4) in Cloudflare einfügen und „Deploy“ – sonst nutzt der Scan weiter die Liste vom 03.10."]]],
+  ["2026.10.30", "Umzug mit Schlüsseln", [
   ["Backup mit Schlüsseln", "Einstellungen → Daten & Backup: „Schlüssel mitnehmen“ ankreuzen, dann kommen beim Einlesen auch die Live-Kurs-Schlüssel mit. Danach nur noch Mitteilungen einmal einschalten und die Datei löschen."],
   ["Tipp", "Für Updates kein neues Symbol anlegen – das vorhandene Kairo-Symbol lädt neue Versionen von selbst. Jedes neue Symbol startet bei iOS mit leerem Speicher."]]],
   ["2026.10.29", "Aufgeräumt und abgesichert", [
@@ -4566,6 +4592,53 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-fb]"
   if (b.dataset.fb === "share" && navigator.share) { navigator.share({ title: "Kairo – Feedback", text: t }).catch(() => {}); return; }
   (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { if (m) m.textContent = "Kopiert ✓ – jetzt im Chat mit Claude einfügen."; },
     () => { if (m) m.innerHTML = `<pre style="white-space:pre-wrap;user-select:all">${esc(t)}</pre>`; }); });
+// Watchlist pflegen: ★ einzeln, oder eine ganze Liste (Text/CSV/Excel aus Scalable) abgleichen
+let wlPending = null;
+function wlHtml() {
+  const yq = liveKey("yq"), n = favs().size;
+  const st = !yq ? "Ohne Kursdienst bleibt die Watchlist auf diesem Gerät – der tägliche Scan nutzt dann die Liste vom 03.10.2026."
+    : state.syncOk && state.syncAt ? `✓ Zuletzt an den Kursdienst übertragen: ${new Date(state.syncAt).toLocaleString("de-DE")} – der nächste Abend-Scan prüft genau diese ${n} Aktien.`
+    : `Noch nicht übertragen${state.syncErr ? ` (${esc(state.syncErr)})` : ""} – unter „Live-Kurse“ auf „Speichern & testen“ tippen.`;
+  return `<div class="section-title"><span>Watchlist</span><span>${n} Aktien</span></div>
+    <div class="card"><div class="tgdesc">Mit ★ nimmst du eine Aktie auf oder heraus. Der tägliche Scan prüft genau diese Aktien – Stufen, „kurz vor Treffer“ und Insider-Meldungen. Eine ganze Liste (z. B. aus Scalable kopiert) kannst du hier abgleichen: Namen, Ticker oder ISINs, eine Aktie pro Zeile – oder eine CSV-/Excel-Datei.</div>
+    <div class="note" style="margin-top:8px">${st}</div>
+    <textarea id="wlIn" class="tgtext" rows="4" placeholder="z. B.&#10;Apple&#10;RHM.DE&#10;US67066G1040" style="margin-top:10px"></textarea>
+    <div class="row-actions" style="margin-top:10px"><button class="btn" data-wlcheck>Abgleichen</button>
+      <label class="btn ghost" style="cursor:pointer">Datei wählen<input type="file" accept=".csv,.txt,.xlsx,text/csv,text/plain" id="wlFile" hidden></label></div>
+    <div id="wlOut"></div></div>`;
+}
+async function wlMatch(lines) {
+  if (!searchIdx) await loadSearch();
+  const ISIN = /^[A-Z]{2}[A-Z0-9]{9}\d$/, byT = new Map(searchIdx.map(r => [r.t.toUpperCase(), r])), out = [], miss = [];
+  let ext = 0;
+  for (const raw of lines) {
+    const cells = String(raw).split(/[;\t|]/).map(x => x.trim().replace(/^"|"$/g, "")).filter(Boolean);
+    if (!cells.length) continue;
+    const isin = cells.find(c => ISIN.test(c.toUpperCase())), tk = cells.find(c => byT.has(c.toUpperCase()));
+    const name = cells.filter(c => /[a-zäöü]{2}/i.test(c) && !ISIN.test(c.toUpperCase())).sort((a, b) => b.length - a.length)[0] || "";
+    if (/^(name|wertpapier|bezeichnung|isin|ticker|symbol)$/i.test(name) && !isin && !tk) continue;    // Kopfzeile
+    let r = tk ? byT.get(tk.toUpperCase()) : name ? matchName(name) : null, t = r ? r.t : "", n = r ? r.n : "";
+    if (!t && (isin || name) && ext < 80 && (liveKey("yq") || liveKey("td"))) {      // weltweit über den Kursdienst suchen (auch ISIN)
+      ext++;
+      try { const q = (await extSearch(isin || name)).find(x => x.symbol); if (q) { t = q.symbol; n = q.instrument_name || name || t; } } catch (e) {}
+    }
+    if (t) { if (!out.some(x => x.t === t)) out.push({ t, n }); } else miss.push(name || isin || cells[0]);
+  }
+  return { out, miss };
+}
+function wlDiffHtml(m) {
+  const f = favs(), nw = m.out.filter(x => !f.has(x.t)), keep = new Set(m.out.map(x => x.t)), gone = [...f].filter(t => !keep.has(t));
+  const li = (a, fn) => a.length ? a.slice(0, 60).map(fn).join(" · ") + (a.length > 60 ? ` … (+${a.length - 60})` : "") : "–";
+  return `<div class="note" style="margin-top:10px"><b>Erkannt: ${m.out.length}</b><br><b class="up">Neu (${nw.length}):</b> ${li(nw, x => `${esc(x.n)} <small>${esc(x.t)}</small>`)}
+    <br><b class="down">Nicht in der Liste (${gone.length}):</b> ${li(gone, t => `${esc(favName(t))} <small>${esc(t)}</small>`)}
+    ${m.miss.length ? `<br><b>Nicht erkannt (${m.miss.length}):</b> ${li(m.miss, x => esc(x))}${liveKey("yq") ? "" : " – mit Kursdienst wird auch weltweit und per ISIN gesucht"}` : ""}</div>
+    <div class="row-actions" style="margin-top:10px"><button class="btn" data-wlapply="replace">Watchlist ersetzen</button><button class="btn ghost" data-wlapply="add">Nur ${nw.length} neue hinzufügen</button></div>`;
+}
+async function wlRun(lines) {
+  const o = $("wlOut"); if (o) o.innerHTML = `<div class="note" style="margin-top:10px">Gleiche ab …</div>`;
+  wlPending = await wlMatch(lines);
+  if ($("wlOut")) $("wlOut").innerHTML = wlDiffHtml(wlPending);
+}
 function backupHtml() {
   const n = Object.keys(localStorage).filter(BACKUP_KEYS).length;
   return `<div class="section-title"><span>Daten &amp; Backup</span><span>${n} Bereiche gespeichert</span></div>
@@ -4622,6 +4695,7 @@ function settingsHtml() {
         <textarea id="kdCode" class="tgtext" readonly rows="6" placeholder="Code wird geladen …"></textarea>
         <div class="note">Kurse von Yahoo Finance, je nach Börse leicht verzögert (XETRA ca. 15 Min.). Der Dienst läuft in deinem Cloudflare-Konto; nur die Kairo-App darf ihn nutzen. Kostenlos bis 100.000 Abrufe am Tag.</div>
       </details></div></div>
+    ${wlHtml()}
     ${backupHtml()}
     <div class="section-title"><span>Begriffe A–Z</span><span>${Object.keys(GLOSS).length} Erklärungen</span></div>
     <div class="card gloss">${Object.values(GLOSS).sort((a, b) => a[0].localeCompare(b[0], "de")).map(([t, x]) => `<details><summary>${esc(t)}</summary><p>${esc(x)}</p></details>`).join("")}</div>
@@ -4863,9 +4937,10 @@ document.addEventListener("click", async e => {
       : j ? `✗ Kursdienst erreichbar, aber ohne Kurs${/Version 2/.test(JSON.stringify(j)) ? "" : " – bitte den neuen Code (Version 2) einfügen und „Deploy“"} · Diagnose: ${await fetch(yq + "/?s=SAP.DE&debug=1").then(r => r.json()).then(d => (d._diag || []).join(" · ") || "alter Code ohne Diagnose").catch(() => "–")}` : "✗ Kursdienst: keine Antwort – Adresse prüfen (https://….workers.dev) und ob der Code mit „Deploy“ gespeichert ist"); }
   if (yq && res.some(x => x.startsWith("✓ Kursdienst"))) {
     const info = await fetch(yq + "/").then(r => r.json()).catch(() => null);
-    if (!info || !/Version 3/.test(info.info || "")) res.push("ℹ Kursdienst: Version 3 noch nicht eingefügt – für Aktiensuche weltweit und automatische Mitteilungen den neuen Code kopieren und „Deploy“");
+    if (!info || !/Version [34]/.test(info.info || "")) res.push("ℹ Kursdienst: Version 4 noch nicht eingefügt – für Aktiensuche weltweit, automatische Mitteilungen und Watchlist-Abgleich den neuen Code kopieren und „Deploy“");
+    else if (!/Version 4/.test(info.info || "")) res.push("ℹ Kursdienst: Version 3 – für den Watchlist-Abgleich (★ → täglicher Scan) den neuen Code (Version 4) kopieren und „Deploy“");
     else if (!info.kv) res.push("ℹ Kursdienst: Speicher „KAIRO“ fehlt noch – für automatische Mitteilungen (Anleitung unten, Schritt 7)");
-    else { const j = await kxSync(); res.push(j && j.ok ? "✓ Trades-Abgleich aktiv – Mitteilungen kennen neue Trades automatisch" : `✗ Trades-Abgleich: ${(j && j.error) || "keine Antwort"}`); }
+    else { const j = await kxSync(); res.push(j && j.ok ? `✓ Abgleich aktiv – Mitteilungen kennen neue Trades${/Version 4/.test(info.info || "") ? `, der Scan deine Watchlist (${favs().size} Aktien)` : ""} automatisch` : `✗ Abgleich: ${(j && j.error) || "keine Antwort"}`); }
   }
   // Läuft der Kursdienst, ist fehlendes XETRA bei Twelve Data egal → nur noch als Hinweis
   if (res.some(x => x.startsWith("✓ Kursdienst"))) res.forEach((x, i) => { if (x.startsWith("✗ Twelve Data: XETRA")) res[i] = "ℹ Twelve Data: XETRA nicht im Gratis-Tarif – egal, deutsche/europäische Kurse kommen über deinen Kursdienst"; });
@@ -5566,7 +5641,7 @@ function clampNotes() {                          // lange Hinweise auf 3 Zeilen 
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-notemore]"); if (!b) return;
   const n = b.previousElementSibling; if (!n) return; const open = n.classList.toggle("clamp"); b.textContent = open ? "mehr" : "weniger"; });
-function render() { renderMain(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); linkTerms(); }
+function render() { wlSeed(); renderMain(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); linkTerms(); }
 function renderMain() {
   if (!data) return;
   const hits = data.results.filter(r => r.passed).length, fast = data.results.filter(r => r.fast_hit).length;
@@ -5933,6 +6008,14 @@ document.addEventListener("click", e => {
     (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).catch(() => { try { document.execCommand("copy"); } catch (x) {} });
     if (a && a.bot) window.open("https://t.me/" + a.bot, "_blank");
     return;
+  }
+  if (e.target.closest("[data-wlcheck]")) { const v = ($("wlIn") || {}).value || ""; if (v.trim()) wlRun(v.split(/\r?\n/)); return; }
+  const wa = e.target.closest("[data-wlapply]");
+  if (wa && wlPending) {
+    const f = wa.dataset.wlapply === "replace" ? new Set() : new Set(favs());
+    wlPending.out.forEach(x => f.add(x.t));
+    if (wa.dataset.wlapply === "replace" && !confirm(`Watchlist durch ${f.size} Aktien ersetzen?`)) return;
+    state.wlSeeded = 1; save(); favSave(f); wlPending = null; render(); return;
   }
   if (e.target.closest("[data-backup]")) {
     const keys = !!($("bkKeys") || {}).checked, d = {};

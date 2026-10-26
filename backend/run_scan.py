@@ -16,6 +16,7 @@ import argparse
 import json
 import math
 import os
+import re
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -94,8 +95,56 @@ def chart_payload(df: pd.DataFrame, cfg=CONFIG) -> dict:
     return out
 
 
+_WATCH: dict[str, str] | None = None
+
+
+def remote_watchlist() -> dict[str, str] | None:
+    """Watchlist aus der App (Sterne), die sie im eigenen Kursdienst ablegt – Adresse und Schlüssel stehen im Secret PUSH_SUBS
+    (wie für die Mitteilungen). None, wenn nicht eingerichtet oder noch keine Liste übertragen wurde."""
+    raw = os.environ.get("PUSH_SUBS")
+    if not raw:
+        return None
+    try:
+        devs = json.loads(raw)
+        devs = devs if isinstance(devs, list) else [devs]
+    except Exception:
+        return None
+    import requests
+    for dev in devs:
+        url, key = (dev or {}).get("sync"), (dev or {}).get("key")
+        if not url or not key:
+            continue
+        try:
+            j = requests.get(f"{url.rstrip('/')}/trades", params={"key": key}, timeout=15).json()
+        except Exception as exc:
+            print(f"Watchlist: Kursdienst nicht erreichbar ({exc!r})")
+            continue
+        w = j.get("w") if isinstance(j, dict) else None
+        if isinstance(w, list) and w:
+            out = {str(x["t"]).strip(): str(x.get("n") or x["t"])[:60] for x in w
+                   if isinstance(x, dict) and re.fullmatch(r"[A-Za-z0-9.\-^=]{1,20}", str(x.get("t") or "").strip())}
+            if out:
+                return out
+    return None
+
+
 def load_watchlist() -> dict[str, str]:
-    """Watchlist aus data/watchlist.json → {Ticker: Name}; je Aktie zählt der erste (Heimat-)Ticker."""
+    """Watchlist → {Ticker: Name}. Zuerst die Sterne aus der App (über den Kursdienst), sonst data/watchlist.json
+    (Stand 03.10.2026; je Aktie zählt der erste/Heimat-Ticker). Einmal je Lauf abgefragt."""
+    global _WATCH
+    if _WATCH is not None:
+        return _WATCH
+    rw = remote_watchlist()
+    if rw:
+        print(f"Watchlist: {len(rw)} Aktien aus der App (Kursdienst)")
+        _WATCH = rw
+        return rw
+    _WATCH = _file_watchlist()
+    print(f"Watchlist: {len(_WATCH)} Aktien aus data/watchlist.json")
+    return _WATCH
+
+
+def _file_watchlist() -> dict[str, str]:
     path = ROOT / "data" / "watchlist.json"
     if not path.exists():
         return {}

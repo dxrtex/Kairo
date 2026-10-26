@@ -202,6 +202,8 @@ async def backup_check(b, url, errs):
     await pg.goto(f"{url}?nosplash=1&sec=settings")
     await pg.wait_for_timeout(2000)
     await pg.evaluate("document.querySelectorAll('#newsBox, .bmodal, .splash').forEach(x => x.remove())")
+    if not await pg.query_selector("#wlIn"):
+        errs.append("Einstellungen: Watchlist-Abgleich fehlt")
     files = {}
     for keys in (False, True):
         if keys:
