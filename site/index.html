@@ -1400,7 +1400,10 @@ const ghKey = () => { try { return localStorage.getItem("kx-gh") || ""; } catch 
 const ghFetch = (path, opt = {}) => fetch(GH_API + path, { ...opt, headers: { Accept: "application/vnd.github+json", Authorization: "Bearer " + ghKey(), ...(opt.headers || {}) } });
 async function scanStatus() {                       // letzter Scan-Lauf: läuft er gerade?
   if (!ghKey()) return null;
-  try { const j = await (await ghFetch("/actions/workflows/scan.yml/runs?per_page=1")).json(); SCAN.run = (j.workflow_runs || [])[0] || null; SCAN.at = Date.now(); }
+  try { const j = await (await ghFetch("/actions/runs?per_page=15&event=workflow_dispatch")).json(), j2 = await (await ghFetch("/actions/workflows/scan.yml/runs?per_page=1")).json();
+    const runs = [...(j.workflow_runs || []), ...(j2.workflow_runs || [])].filter(r => /\/scan(_watch)?\.yml$/.test(r.path || ""))
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+    SCAN.run = runs.find(r => r.status !== "completed") || runs[0] || null; SCAN.at = Date.now(); }
   catch (e) { SCAN.run = null; }
   return SCAN.run;
 }
@@ -1415,14 +1418,16 @@ function scanPoll() {                               // alle 60 s nachsehen, sola
     if (state.sec === "scanner") render();
   }, 60000);
 }
-async function scanStart() {
-  if (!ghKey()) { window.open(REPO + "/actions/workflows/scan.yml", "_blank", "noopener"); return; }
+const SCAN_WF = { all: ["scan.yml", "alle Aktien", "ca. 45–60 Minuten"], watch: ["scan_watch.yml", "nur deine Watchlist", "ca. 5–10 Minuten"] };
+async function scanStart(kind = "all") {
+  const [wf, what, dur] = SCAN_WF[kind] || SCAN_WF.all;
+  if (!ghKey()) { window.open(REPO + "/actions/workflows/" + wf, "_blank", "noopener"); return; }
   await scanStatus();
   if (SCAN.run && SCAN.run.status !== "completed") { SCAN.msg = "Es läuft schon ein Scan."; scanPoll(); render(); return; }
-  if (!confirm("Scan für alle Aktien jetzt starten? Dauer ca. 45–60 Minuten. Tagsüber zählt die laufende Tageskerze mit – ein Treffer ist erst zum Börsenschluss bestätigt.")) return;
-  const r = await ghFetch("/actions/workflows/scan.yml/dispatches", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ref: "main" }) }).catch(() => null);
+  if (!confirm(`Scan für ${what} jetzt starten? Dauer ${dur}. Tagsüber zählt die laufende Tageskerze mit – ein Treffer ist erst zum Börsenschluss bestätigt.`)) return;
+  const r = await ghFetch(`/actions/workflows/${wf}/dispatches`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ref: "main" }) }).catch(() => null);
   SCAN.msg = r && r.status === 204 ? "Scan gestartet …" : `✗ Start abgelehnt (${r ? r.status : "keine Verbindung"}) – Schlüssel in den Einstellungen prüfen (Rechte: Actions lesen und schreiben).`;
-  if (r && r.status === 204) { SCAN.run = { status: "queued", created_at: new Date().toISOString() }; setTimeout(scanStatus, 8000); scanPoll(); }
+  if (r && r.status === 204) { SCAN.run = { status: "queued", created_at: new Date().toISOString(), path: wf }; setTimeout(scanStatus, 8000); scanPoll(); }
   render();
 }
 function scanBarHtml() {
@@ -1432,8 +1437,10 @@ function scanBarHtml() {
   }
   const g = data && data.generated ? new Date(data.generated) : null, run = SCAN.run, active = run && run.status !== "completed";
   const since = active && run.created_at ? new Date(run.created_at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
-  return `<div class="scanbar"><span class="muted">Stand ${g && !isNaN(g) ? g.toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "–"}${active ? ` · <b>Scan läuft seit ${since}</b> (ca. 45–60 Min.)` : ""}${SCAN.msg && !active ? ` · ${esc(SCAN.msg)}` : ""}</span>
-    <button class="btn ghost sm" data-scanstart${active ? " disabled" : ""}>${active ? "Scan läuft …" : "↻ Scan starten"}</button></div>`;
+  const w = active && /scan_watch/.test(run.path || ""), dt = x => x.toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const full = data && data.full_at ? new Date(data.full_at) : null;
+  return `<div class="scanbar"><span class="muted">${full && !isNaN(full) && g ? `Alle ${dt(full)} · Watchlist ${dt(g)}` : `Stand ${g && !isNaN(g) ? dt(g) : "–"}`}${active ? ` · <b>${w ? "Watchlist-Scan" : "Scan"} läuft seit ${since}</b> (${w ? "ca. 5–10" : "ca. 45–60"} Min.)` : ""}${SCAN.msg && !active ? ` · ${esc(SCAN.msg)}` : ""}</span>
+    <span class="row-actions" style="margin:0"><button class="btn ghost sm" data-scanstart="watch"${active ? " disabled" : ""}>↻ Watchlist</button><button class="btn ghost sm" data-scanstart="all"${active ? " disabled" : ""}>${active ? "Scan läuft …" : "↻ Alle"}</button></span></div>`;
 }
 const nf = (d = 2) => new Intl.NumberFormat("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmt = (v, d = 2) => v == null || isNaN(v) ? "–" : nf(d).format(v);
@@ -4564,7 +4571,7 @@ const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
 const APP_VER = "2026.11.01";
 const APP_NEWS = [["2026.11.01", "Scan per Knopf", [
-  ["↻ Scan starten", "Oben im Scanner: startet den großen Scan aller Aktien sofort, auch tagsüber – Dauer ca. 45–60 Minuten, danach lädt Kairo die neuen Ergebnisse von selbst."],
+  ["↻ Alle / ↻ Watchlist", "Oben im Scanner: „Alle“ startet den großen Scan aller Aktien (ca. 45–60 Min.), „Watchlist“ nur deine Watchlist (ca. 5–10 Min.) – auch tagsüber. Danach lädt Kairo die neuen Ergebnisse von selbst."],
   ["Einmal einrichten", "Für den Direktstart einen GitHub-Schlüssel eintragen (Einstellungen → Scanner-Parameter, Anleitung dort). Ohne Schlüssel öffnet der Knopf GitHub."]]],
   ["2026.10.31", "Deine Watchlist = deine Sterne", [
   ["★ ist jetzt die Watchlist", "Die bisherige Scalable-Watchlist ist in die Sterne übernommen. Stern an oder aus – der nächste Abend-Scan prüft genau diese Aktien (Stufen, „kurz vor Treffer“, Insider)."],
@@ -4752,9 +4759,9 @@ function settingsHtml() {
       <div>Alle Parameter stehen zentral in <b>config.yaml</b>. Zum Ändern die Datei auf GitHub bearbeiten und danach den Scan neu starten – die Website zeigt dann die Ergebnisse mit den neuen Parametern.</div>
       <div class="links">
         <a class="btn" href="${REPO}/edit/main/config.yaml" target="_blank" rel="noopener">config.yaml bearbeiten</a>
-        <button class="btn ghost" data-scanstart>Scan jetzt starten</button>
+        <button class="btn ghost" data-scanstart="all">Scan jetzt starten</button><button class="btn ghost" data-scanstart="watch">Nur Watchlist</button>
       </div>
-      <div class="note">Ein kompletter Scan dauert ca. 45–60 Minuten. Ohne Schlüssel öffnet der Knopf GitHub Actions → „Run workflow“.</div>
+      <div class="note">Alle Aktien: ca. 45–60 Minuten. Nur Watchlist: ca. 5–10 Minuten, trägt die Ergebnisse in den letzten großen Scan ein. Ohne Schlüssel öffnet der Knopf GitHub Actions → „Run workflow“.</div>
       <label style="display:block;margin-top:10px">GitHub-Schlüssel für den Scan-Knopf <small>(nur auf diesem Gerät)</small><input id="ghKey" type="password" autocomplete="off" value="${esc(ghKey())}" placeholder="github_pat_…"></label>
       <div class="row-actions" style="margin-top:8px"><button class="btn" data-ghsave>Speichern &amp; testen</button><span class="note" id="ghMsg" style="margin:0"></span></div>
       <div class="note">Einmalig: github.com → Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → „Generate new token“. Repository access: <b>Only select repositories → Kairo</b>. Permissions: <b>Actions: Read and write</b> (sonst nichts). Ablaufdatum z. B. 1 Jahr. Token kopieren und hier einfügen. Er kann nur Abläufe starten – keinen Code ändern.</div>
@@ -6056,7 +6063,7 @@ document.addEventListener("click", e => {
     if (a && a.bot) window.open("https://t.me/" + a.bot, "_blank");
     return;
   }
-  if (e.target.closest("[data-scanstart]")) { scanStart(); return; }
+  const ssb = e.target.closest("[data-scanstart]"); if (ssb) { scanStart(ssb.dataset.scanstart || "all"); return; }
   if (e.target.closest("[data-ghsave]")) {
     const v = (($("ghKey") || {}).value || "").trim();
     try { v ? localStorage.setItem("kx-gh", v) : localStorage.removeItem("kx-gh"); } catch (err) {}

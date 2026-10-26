@@ -13,6 +13,7 @@ from pathlib import Path
 from .config import ROOT
 
 DIR = ROOT / "state"
+READONLY = False                                   # Watchlist-Scan (run_scan --partial): nichts speichern
 
 
 def load(name: str, default):
@@ -23,7 +24,7 @@ def load(name: str, default):
 
 
 def save(name: str, obj) -> None:
-    if not DIR.exists():
+    if READONLY or not DIR.exists():
         return                                    # lokal/ohne Zustands-Branch: nichts speichern
     (DIR / name).write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":"), default=_py), encoding="utf-8")
 

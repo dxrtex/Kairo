@@ -19,6 +19,7 @@ import os
 import re
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -465,8 +466,16 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tickers", help="nur diese Ticker (kommagetrennt), sonst ganzes Universum")
     ap.add_argument("--end", help="Stichtag (exklusiv, ISO), sonst bis heute")
+    ap.add_argument("--partial", help="nur die Watchlist scannen und die Ergebnisse in diesen Ordner schreiben (ohne Zustand, "
+                                      "Mitteilungen, Live-Bilanz) – tools/merge_partial.py trägt sie in den letzten großen Scan ein")
     args = ap.parse_args(argv)
     started = time.time()
+    global SITE
+    if args.partial:
+        SITE = Path(args.partial)
+        state.READONLY = True
+        args.tickers = args.tickers or ",".join(load_watchlist())
+    quiet = bool(args.end or args.partial)             # keine Nebenwirkungen: Zustand, Mitteilungen, Nachrichten, ETF, KI-Seite
     uni = load_universe()
     if args.tickers:
         wanted = [t.strip() for t in args.tickers.split(",") if t.strip()]
@@ -503,7 +512,7 @@ def main(argv=None) -> int:
             print(f"Marktstimmung: Fehler {exc!r}")
     # Tagesbriefing der App: frische Schlagzeilen (letzte ~36 h) für Watchlist + synchronisierte Merkliste/Depot + Markt
     brief = None
-    if not args.end:
+    if not quiet:
         try:
             sync = state.load("telegram.json", {}).get("sync") or {}
             mine = list(watch) + list(sync.get("fav", [])) + [d.get("t") for d in sync.get("depot", []) if d.get("t")]
@@ -513,7 +522,7 @@ def main(argv=None) -> int:
             print(f"Briefing: Fehler {exc!r}")
     # Insider-Geschäfte (SEC Formular 4) für den Nachrichtenbereich – Fehler dürfen den Scan nicht stoppen
     ins = None
-    if not args.end:
+    if not quiet:
         try:
             sync = state.load("telegram.json", {}).get("sync") or {}           # auch Merkliste und Depot aus der App
             extra = [*sync.get("fav", []), *[d.get("t") for d in sync.get("depot", []) if d.get("t")]]
@@ -538,7 +547,7 @@ def main(argv=None) -> int:
                 aths[t] = {"p": float(hi.max()), "date": str(hi.idxmax().date()), "full": True}
         print(f"Allzeithochs: {len(aths)} von {len(watch)} Watchlist-Aktien")
     # ETF-Bereich: Ampel für den SPDR MSCI ACWI IMI (backend/etf.py) – unabhängig vom Aktien-Scan
-    if not args.end:
+    if not quiet:
         try:
             eh = yf.history([etf.TICKER], "max").get(etf.TICKER)
             ex = yf.history(["^VIX", "HYG", "IEF", etf.REF], "2y")
@@ -701,7 +710,7 @@ def main(argv=None) -> int:
         fu = (r.get("senti") or {}).get("fu")
         if fu and r.get("sector") in med:
             fu["pe_sec"] = round(med[r["sector"]], 1)
-    if not args.end:
+    if not quiet:
         about["_want"] = [r["ticker"] for r in rows if r["ticker"] not in about]
         company.save(about)
         senti["_want"] = [r["ticker"] for r in rows]
@@ -794,7 +803,7 @@ def main(argv=None) -> int:
         json.dump(cal, f, ensure_ascii=False, separators=(",", ":"))
     print(f"Kalender: {len(cal['events'])} Termine, Wechselkurse: {fx}")
     # Veränderungen seit dem letzten Scan, Telegram-Abendbericht, Live-Bilanz (Zustand im Branch kairo-data)
-    if not args.end:
+    if not quiet:
         last = state.load("last.json", {})
         ph, pf, pm = set(last.get("hit", [])), set(last.get("fast", [])), last.get("met", {})
         changes = {"since": last.get("date"),
@@ -836,8 +845,9 @@ def main(argv=None) -> int:
             with open(SITE / name, "w", encoding="utf-8") as f:
                 json.dump(_clean(obj), f, ensure_ascii=False, separators=(",", ":"))
     try:                                              # KI-Ansicht (site/ai/): die App als reines HTML für ChatGPT, Claude & Co.
-        from . import aipage
-        aipage.write(ROOT, today_iso)
+        if not args.partial:
+            from . import aipage
+            aipage.write(ROOT, today_iso)
     except Exception as exc:
         print(f"KI-Ansicht: Fehler {exc!r}")
     print(f"Treffer: {stats['hits']}, Fast-Treffer: {stats['fast_hits']}, 9/11: {stats['near_hits']}, Trend-Rücksetzer: {stats.get('trend_hits')}, Fehler: {stats['errors']}, "
