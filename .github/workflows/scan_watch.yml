@@ -1,0 +1,84 @@
+name: Watchlist-Scan
+
+# Nur die Aktien der Watchlist neu scannen (ca. 5–10 Min.) und in den letzten großen Scan eintragen – per Knopf aus der App.
+# Ändert keinen Zustand: keine Live-Bilanz, keine Mitteilungen, keine neuen Signale (backend/run_scan.py --partial).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read                  # letztes veröffentlichtes Website-Paket laden
+  pages: write
+  id-token: write
+
+concurrency:
+  group: scan-${{ github.ref }}  # gleiche Gruppe wie der große Scan: nie zwei Veröffentlichungen gleichzeitig
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  scan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Kurs-Cache laden (nur lesen)
+        uses: actions/cache/restore@v4
+        with: { path: data/cache.sqlite, key: kurse-none, restore-keys: kurse- }
+      - name: Unternehmens- und Stimmungs-Cache laden (nur lesen)
+        uses: actions/cache/restore@v4
+        with: { path: "data/company.json\ndata/sentiment.json", key: firmen-none, restore-keys: firmen- }
+      - name: Letzte veröffentlichte Website holen (großer Scan oder letzter Watchlist-Scan)
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          set -e
+          best=""; bt=""
+          for wf in scan.yml scan_watch.yml; do
+            for id in $(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/$wf/runs?status=success&per_page=5" --jq '.workflow_runs[].id'); do
+              t=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/$id/artifacts" --jq '[.artifacts[]|select(.name=="github-pages" and (.expired|not))][0].created_at // empty')
+              if [ -n "$t" ]; then if [ -z "$bt" ] || [[ "$t" > "$bt" ]]; then best=$id; bt=$t; fi; break; fi
+            done
+          done
+          if [ -z "$best" ]; then echo "::error::Kein veröffentlichtes Website-Paket gefunden – bitte einmal den großen Scan starten"; exit 1; fi
+          echo "Basis: Lauf $best ($bt)"
+          gh run download "$best" -n github-pages -D live
+          mkdir -p livesite && tar -xf live/artifact.tar -C livesite
+          for d in data ai track; do [ -d "livesite/$d" ] && rm -rf "site/$d" && cp -r "livesite/$d" "site/$d"; done
+          ls site/data | head -30
+      - name: Universum vom letzten großen Scan (Branch kairo-data)
+        run: |
+          git fetch -q origin kairo-data && for r in us eu asia; do git show "origin/kairo-data:universe_$r.csv" > "data/universe_$r.csv" 2>/dev/null || rm -f "data/universe_$r.csv"; done; ls -la data
+      - name: Watchlist scannen
+        run: python -m backend.run_scan --partial part
+        env:
+          PUSH_SUBS: ${{ secrets.PUSH_SUBS }}
+      - name: In den letzten Scan eintragen
+        run: python tools/merge_partial.py site/data part
+      - name: Browser für den App-Test
+        id: browser
+        continue-on-error: true
+        run: |
+          pip install -q playwright==1.55.0
+          for i in 1 2 3; do python -m playwright install --with-deps chromium > /dev/null && exit 0; sleep 30; done
+          exit 1
+      - name: App-Test (bei Fehlern bleibt die alte Version online)
+        if: steps.browser.outcome == 'success'
+        run: python tools/app_smoke.py
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site, retention-days: 7 }
+
+  deploy:
+    needs: scan
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
