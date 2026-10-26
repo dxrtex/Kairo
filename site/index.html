@@ -4522,7 +4522,7 @@ const APP_VER = "2026.10.31";
 const APP_NEWS = [["2026.10.31", "Deine Watchlist = deine Sterne", [
   ["★ ist jetzt die Watchlist", "Die bisherige Scalable-Watchlist ist in die Sterne übernommen. Stern an oder aus – der nächste Abend-Scan prüft genau diese Aktien (Stufen, „kurz vor Treffer“, Insider)."],
   ["Ganze Liste abgleichen", "Einstellungen → Watchlist: Namen, Ticker oder ISINs einfügen oder eine CSV/Excel-Datei wählen – Kairo zeigt Neu und Entfällt, dann ersetzen oder ergänzen."],
-  ["Einmalig nötig", "Kursdienst-Code (Version 4) in Cloudflare einfügen und „Deploy“ – sonst nutzt der Scan weiter die Liste vom 03.10."]]],
+  ["Neue Aktien", "Watchlist auf Stand 26.10.: Applied Digital, Axon, Enova, GE Aerospace und Traction Uranium sind dazugekommen."]]],
   ["2026.10.30", "Umzug mit Schlüsseln", [
   ["Backup mit Schlüsseln", "Einstellungen → Daten & Backup: „Schlüssel mitnehmen“ ankreuzen, dann kommen beim Einlesen auch die Live-Kurs-Schlüssel mit. Danach nur noch Mitteilungen einmal einschalten und die Datei löschen."],
   ["Tipp", "Für Updates kein neues Symbol anlegen – das vorhandene Kairo-Symbol lädt neue Versionen von selbst. Jedes neue Symbol startet bei iOS mit leerem Speicher."]]],
@@ -4595,10 +4595,8 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-fb]"
 // Watchlist pflegen: ★ einzeln, oder eine ganze Liste (Text/CSV/Excel aus Scalable) abgleichen
 let wlPending = null;
 function wlHtml() {
-  const yq = liveKey("yq"), n = favs().size;
-  const st = !yq ? "Ohne Kursdienst bleibt die Watchlist auf diesem Gerät – der tägliche Scan nutzt dann die Liste vom 03.10.2026."
-    : state.syncOk && state.syncAt ? `✓ Zuletzt an den Kursdienst übertragen: ${new Date(state.syncAt).toLocaleString("de-DE")} – der nächste Abend-Scan prüft genau diese ${n} Aktien.`
-    : `Noch nicht übertragen${state.syncErr ? ` (${esc(state.syncErr)})` : ""} – unter „Live-Kurse“ auf „Speichern & testen“ tippen.`;
+  const n = favs().size;
+  const st = "Der tägliche Scan prüft deine Watchlist (Stand 26.10.2026). Mit Kursdienst Version 4 übernimmt er stattdessen automatisch deine Sterne.";
   return `<div class="section-title"><span>Watchlist</span><span>${n} Aktien</span></div>
     <div class="card"><div class="tgdesc">Mit ★ nimmst du eine Aktie auf oder heraus. Der tägliche Scan prüft genau diese Aktien – Stufen, „kurz vor Treffer“ und Insider-Meldungen. Eine ganze Liste (z. B. aus Scalable kopiert) kannst du hier abgleichen: Namen, Ticker oder ISINs, eine Aktie pro Zeile – oder eine CSV-/Excel-Datei.</div>
     <div class="note" style="margin-top:8px">${st}</div>
@@ -4938,7 +4936,6 @@ document.addEventListener("click", async e => {
   if (yq && res.some(x => x.startsWith("✓ Kursdienst"))) {
     const info = await fetch(yq + "/").then(r => r.json()).catch(() => null);
     if (!info || !/Version [34]/.test(info.info || "")) res.push("ℹ Kursdienst: Version 4 noch nicht eingefügt – für Aktiensuche weltweit, automatische Mitteilungen und Watchlist-Abgleich den neuen Code kopieren und „Deploy“");
-    else if (!/Version 4/.test(info.info || "")) res.push("ℹ Kursdienst: Version 3 – für den Watchlist-Abgleich (★ → täglicher Scan) den neuen Code (Version 4) kopieren und „Deploy“");
     else if (!info.kv) res.push("ℹ Kursdienst: Speicher „KAIRO“ fehlt noch – für automatische Mitteilungen (Anleitung unten, Schritt 7)");
     else { const j = await kxSync(); res.push(j && j.ok ? `✓ Abgleich aktiv – Mitteilungen kennen neue Trades${/Version 4/.test(info.info || "") ? `, der Scan deine Watchlist (${favs().size} Aktien)` : ""} automatisch` : `✗ Abgleich: ${(j && j.error) || "keine Antwort"}`); }
   }
