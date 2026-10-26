@@ -202,6 +202,8 @@ async def backup_check(b, url, errs):
     await pg.goto(f"{url}?nosplash=1&sec=settings")
     await pg.wait_for_timeout(2000)
     await pg.evaluate("document.querySelectorAll('#newsBox, .bmodal, .splash').forEach(x => x.remove())")
+    if not await pg.query_selector("#ghKey"):
+        errs.append("Einstellungen: Feld für den Scan-Knopf-Schlüssel fehlt")
     if not await pg.query_selector("#wlIn"):
         errs.append("Einstellungen: Watchlist-Abgleich fehlt")
     files = {}
@@ -219,6 +221,10 @@ async def backup_check(b, url, errs):
     await pg.set_input_files("#restoreFile", files[True])
     await pg.wait_for_timeout(2500)
     got = await pg.evaluate("[localStorage.getItem('kx-td'), localStorage.getItem('kairo-depot-v1')]")
+    await pg.goto(f"{url}?nosplash=1&sec=scanner")
+    await pg.wait_for_timeout(2500)
+    if not await pg.query_selector("[data-scanstart]"):
+        errs.append("Scanner: Knopf „Scan starten“ fehlt")
     if got != ["TESTKEY", "[]"]:
         errs.append(f"Backup: Einlesen stellt nicht alles wieder her ({got})")
     await ctx.close()

@@ -525,6 +525,8 @@
   .tp2-lev.no { opacity: .45; }
   .tp2-lev i { position: absolute; top: -8px; right: 8px; font-style: normal; font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; border-radius: 6px; padding: 1px 6px; }
   @media (max-width: 560px) { .tp2-levs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tp2-cfg { grid-template-columns: 1fr 1fr; } }
+  .scanbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; margin: 2px 2px 10px; }
+  .scanbar .btn[disabled] { opacity: .6; }
   .fund { background: var(--surface-2); border-radius: var(--radius-s); padding: 12px 14px; }
   .fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px 14px; }
   .fc { position: relative; padding-left: 14px; min-width: 0; }
@@ -1391,6 +1393,48 @@ const $ = id => document.getElementById(id);
 const REPO = location.hostname.endsWith(".github.io")      // folgt automatisch dem Repo-Namen
   ? `https://github.com/${location.hostname.split(".")[0]}/${location.pathname.split("/")[1]}` : "https://github.com/dxrtex/Kairo";
 const REGION = { us: "Nordamerika", europe: "Europa", asia: "Asien/Pazifik" };
+// ---------- Scan per Knopf: GitHub-Actions-Lauf „scan.yml“ starten (Schlüssel nur auf diesem Gerät, kx-gh) ----------
+const GH_API = "https://api.github.com/repos/" + REPO.replace("https://github.com/", "");
+const SCAN = { run: null, at: 0, msg: "", timer: 0 };
+const ghKey = () => { try { return localStorage.getItem("kx-gh") || ""; } catch (e) { return ""; } };
+const ghFetch = (path, opt = {}) => fetch(GH_API + path, { ...opt, headers: { Accept: "application/vnd.github+json", Authorization: "Bearer " + ghKey(), ...(opt.headers || {}) } });
+async function scanStatus() {                       // letzter Scan-Lauf: läuft er gerade?
+  if (!ghKey()) return null;
+  try { const j = await (await ghFetch("/actions/workflows/scan.yml/runs?per_page=1")).json(); SCAN.run = (j.workflow_runs || [])[0] || null; SCAN.at = Date.now(); }
+  catch (e) { SCAN.run = null; }
+  return SCAN.run;
+}
+function scanPoll() {                               // alle 60 s nachsehen, solange ein Lauf aktiv ist; danach neue Daten laden
+  clearTimeout(SCAN.timer);
+  SCAN.timer = setTimeout(async () => {
+    const was = SCAN.run && SCAN.run.status !== "completed";
+    await scanStatus();
+    if (SCAN.run && SCAN.run.status !== "completed") scanPoll();
+    else if (was && SCAN.run && SCAN.run.conclusion === "success") { SCAN.msg = "✓ Scan fertig – neue Ergebnisse werden geladen …"; setTimeout(() => location.reload(), 90000); }
+    else if (was && SCAN.run) SCAN.msg = `✗ Scan ist nicht durchgelaufen (${SCAN.run.conclusion}) – der Abend-Scan läuft trotzdem wie geplant.`;
+    if (state.sec === "scanner") render();
+  }, 60000);
+}
+async function scanStart() {
+  if (!ghKey()) { window.open(REPO + "/actions/workflows/scan.yml", "_blank", "noopener"); return; }
+  await scanStatus();
+  if (SCAN.run && SCAN.run.status !== "completed") { SCAN.msg = "Es läuft schon ein Scan."; scanPoll(); render(); return; }
+  if (!confirm("Scan für alle Aktien jetzt starten? Dauer ca. 45–60 Minuten. Tagsüber zählt die laufende Tageskerze mit – ein Treffer ist erst zum Börsenschluss bestätigt.")) return;
+  const r = await ghFetch("/actions/workflows/scan.yml/dispatches", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ref: "main" }) }).catch(() => null);
+  SCAN.msg = r && r.status === 204 ? "Scan gestartet …" : `✗ Start abgelehnt (${r ? r.status : "keine Verbindung"}) – Schlüssel in den Einstellungen prüfen (Rechte: Actions lesen und schreiben).`;
+  if (r && r.status === 204) { SCAN.run = { status: "queued", created_at: new Date().toISOString() }; setTimeout(scanStatus, 8000); scanPoll(); }
+  render();
+}
+function scanBarHtml() {
+  if (ghKey() && Date.now() - SCAN.at > 300000) {   // Status höchstens alle 5 Min. abfragen
+    SCAN.at = Date.now();
+    scanStatus().then(r => { if (r && r.status !== "completed") { scanPoll(); if (state.sec === "scanner") render(); } });
+  }
+  const g = data && data.generated ? new Date(data.generated) : null, run = SCAN.run, active = run && run.status !== "completed";
+  const since = active && run.created_at ? new Date(run.created_at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
+  return `<div class="scanbar"><span class="muted">Stand ${g && !isNaN(g) ? g.toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "–"}${active ? ` · <b>Scan läuft seit ${since}</b> (ca. 45–60 Min.)` : ""}${SCAN.msg && !active ? ` · ${esc(SCAN.msg)}` : ""}</span>
+    <button class="btn ghost sm" data-scanstart${active ? " disabled" : ""}>${active ? "Scan läuft …" : "↻ Scan starten"}</button></div>`;
+}
 const nf = (d = 2) => new Intl.NumberFormat("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmt = (v, d = 2) => v == null || isNaN(v) ? "–" : nf(d).format(v);
 const pct = (v, d = 1) => v == null ? "–" : fmt(100 * v, d) + " %";
@@ -4518,8 +4562,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.10.31";
-const APP_NEWS = [["2026.10.31", "Deine Watchlist = deine Sterne", [
+const APP_VER = "2026.11.01";
+const APP_NEWS = [["2026.11.01", "Scan per Knopf", [
+  ["↻ Scan starten", "Oben im Scanner: startet den großen Scan aller Aktien sofort, auch tagsüber – Dauer ca. 45–60 Minuten, danach lädt Kairo die neuen Ergebnisse von selbst."],
+  ["Einmal einrichten", "Für den Direktstart einen GitHub-Schlüssel eintragen (Einstellungen → Scanner-Parameter, Anleitung dort). Ohne Schlüssel öffnet der Knopf GitHub."]]],
+  ["2026.10.31", "Deine Watchlist = deine Sterne", [
   ["★ ist jetzt die Watchlist", "Die bisherige Scalable-Watchlist ist in die Sterne übernommen. Stern an oder aus – der nächste Abend-Scan prüft genau diese Aktien (Stufen, „kurz vor Treffer“, Insider)."],
   ["Ganze Liste abgleichen", "Einstellungen → Watchlist: Namen, Ticker oder ISINs einfügen oder eine CSV/Excel-Datei wählen – Kairo zeigt Neu und Entfällt, dann ersetzen oder ergänzen."],
   ["Neue Aktien", "Watchlist auf Stand 26.10.: Applied Digital, Axon, Enova, GE Aerospace und Traction Uranium sind dazugekommen."]]],
@@ -4705,9 +4752,12 @@ function settingsHtml() {
       <div>Alle Parameter stehen zentral in <b>config.yaml</b>. Zum Ändern die Datei auf GitHub bearbeiten und danach den Scan neu starten – die Website zeigt dann die Ergebnisse mit den neuen Parametern.</div>
       <div class="links">
         <a class="btn" href="${REPO}/edit/main/config.yaml" target="_blank" rel="noopener">config.yaml bearbeiten</a>
-        <a class="btn ghost" href="${REPO}/actions/workflows/scan.yml" target="_blank" rel="noopener">Scan jetzt starten</a>
+        <button class="btn ghost" data-scanstart>Scan jetzt starten</button>
       </div>
-      <div class="note">„Scan jetzt starten“ öffnet GitHub Actions → „Run workflow“. Ein kompletter Scan dauert ca. 20–30 Minuten.</div>
+      <div class="note">Ein kompletter Scan dauert ca. 45–60 Minuten. Ohne Schlüssel öffnet der Knopf GitHub Actions → „Run workflow“.</div>
+      <label style="display:block;margin-top:10px">GitHub-Schlüssel für den Scan-Knopf <small>(nur auf diesem Gerät)</small><input id="ghKey" type="password" autocomplete="off" value="${esc(ghKey())}" placeholder="github_pat_…"></label>
+      <div class="row-actions" style="margin-top:8px"><button class="btn" data-ghsave>Speichern &amp; testen</button><span class="note" id="ghMsg" style="margin:0"></span></div>
+      <div class="note">Einmalig: github.com → Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → „Generate new token“. Repository access: <b>Only select repositories → Kairo</b>. Permissions: <b>Actions: Read and write</b> (sonst nichts). Ablaufdatum z. B. 1 Jahr. Token kopieren und hier einfügen. Er kann nur Abläufe starten – keinen Code ändern.</div>
       <details class="cfgd"><summary>Alle Parameter anzeigen</summary>${groups}</details>
     </div></details>`;
 }
@@ -5671,7 +5721,7 @@ function renderMain() {
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       <button class="kchip filt" data-sub="filter">Filter${nFilt ? ` <small>${nFilt}</small>` : ""}</button></div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
-  const head = searchHtml() + bar + (["hit", "go"].includes(state.view) ? topSetupsHtml() : "") + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner, belegter Vorteil je Trade (+0,14 R statt +0,11 R bei Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
+  const head = searchHtml() + scanBarHtml() + bar + (["hit", "go"].includes(state.view) ? topSetupsHtml() : "") + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner, belegter Vorteil je Trade (+0,14 R statt +0,11 R bei Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
   if (!list.length && $("search").value.trim().length >= 2) { $("main").innerHTML = searchHtml() + bar; return; }
   if (!list.length) {
     $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.has("h4") ? "Gerade kein Treffer mit fertiger Seitwärtsphase – die 4H-Prüfung beginnt, sobald eine da ist. Wo die Treffer stehen, siehst du unter „Treffer“ in der Status-Spalte." : k.has("fav") && !data.results.some(r => r.in_watchlist) ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
@@ -6004,6 +6054,14 @@ document.addEventListener("click", e => {
     ta.value = txt; ta.hidden = false; ta.select();
     (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).catch(() => { try { document.execCommand("copy"); } catch (x) {} });
     if (a && a.bot) window.open("https://t.me/" + a.bot, "_blank");
+    return;
+  }
+  if (e.target.closest("[data-scanstart]")) { scanStart(); return; }
+  if (e.target.closest("[data-ghsave]")) {
+    const v = (($("ghKey") || {}).value || "").trim();
+    try { v ? localStorage.setItem("kx-gh", v) : localStorage.removeItem("kx-gh"); } catch (err) {}
+    const o = $("ghMsg"); if (o) o.textContent = "Prüfe …";
+    (v ? ghFetch("/actions/workflows/scan.yml") : Promise.resolve(null)).then(r => { if (o) o.textContent = !v ? "Schlüssel gelöscht – der Knopf öffnet wieder GitHub." : r && r.ok ? "✓ Schlüssel gültig – „↻ Scan starten“ im Scanner startet den Scan direkt." : `✗ Schlüssel abgelehnt (${r ? r.status : "keine Verbindung"})`; }).catch(() => { if (o) o.textContent = "✗ keine Verbindung"; });
     return;
   }
   if (e.target.closest("[data-wlcheck]")) { const v = ($("wlIn") || {}).value || ""; if (v.trim()) wlRun(v.split(/\r?\n/)); return; }
