@@ -100,7 +100,7 @@ def hint(res: Result, cfg: SimpleNamespace = CONFIG) -> dict:
     out = lambda tone, title, text, days=None, label="": {
         "tone": tone, "title": title, "text": text.strip(), "days": days, "days_label": label}
     e20 = f.get("ema20")
-    earn = (f" ⚠ Earnings am {f['earnings_date'][8:10]}.{f['earnings_date'][5:7]}. – erhöhtes Risiko."
+    earn = (f" Quartalszahlen am {f['earnings_date'][8:10]}.{f['earnings_date'][5:7]}. – laut Test kein Grund zu warten, aber Kurslücke möglich."
             if f.get("earnings_risk") and f.get("earnings_date") else "")
 
     # 1. Außerhalb des Suchrasters
