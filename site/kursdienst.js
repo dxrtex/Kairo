@@ -1,39 +1,98 @@
-// Kairo-Kursdienst (Version 5) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
+// Kairo-Kursdienst (Version 6) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
 //   ?s=SAP.DE,AAPL      Kurse (Yahoo Finance, je nach Börse leicht verzögert)
 //   ?q=Rheinmetall      Aktiensuche an allen Börsen
 //   ?c=RHM.DE           Tageskerzen (1 Jahr) – damit plant Kairo auch Aktien außerhalb des Scans
 //   /trades?key=…       offene Trades, Depot und Watchlist für Scan und Mitteilungen (GET lesen, POST speichern) – braucht den KV-Speicher „KAIRO“
+//   /earn               Quartalszahlen, die gerade offiziell bei der SEC gemeldet wurden (ab Version 6)
 // Einrichtung: Cloudflare → Workers & Pages → Worker → Edit code → alles ersetzen → Deploy (Anleitung in Kairo → Einstellungen).
 
 const ALLOW = ["https://dxrtex.github.io"];          // nur die Kairo-App darf den Dienst im Browser nutzen
 const MAX = 25;                                       // höchstens so viele Aktien je Abruf
 
-// Version 5: pünktlicher Wecker (optional). GitHub startet geplante Läufe oft Stunden zu spät – Cloudflare nicht.
+// Wecker (ab Version 5, optional): GitHub startet geplante Läufe oft Stunden zu spät – Cloudflare nicht.
 // Einrichtung: Settings → Variables and Secrets → Secret „GH_TOKEN“ (GitHub-Schlüssel mit Actions: Read and write),
-// Settings → Triggers → Cron Triggers: „*/5 * * * *“ (alle 5 Minuten). Der Worker entscheidet selbst, was fällig ist.
+// Settings → Trigger events → Cron Triggers: „* * * * *“ (jede Minute; „*/5 * * * *“ geht auch, dann bis zu 5 Min. später).
+// Der Worker entscheidet selbst, was fällig ist; mit dem KV-Speicher „KAIRO“ startet er nichts doppelt.
 const REPO = "dxrtex/Kairo";
-async function dispatch(env, wf) {
+const RAW = `https://raw.githubusercontent.com/${REPO}/kairo-earnings/`;
+async function dispatch(env, wf, inputs) {
   const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${wf}/dispatches`, {
-    method: "POST", body: JSON.stringify({ ref: "main" }),
+    method: "POST", body: JSON.stringify(inputs ? { ref: "main", inputs } : { ref: "main" }),
     headers: { Authorization: "Bearer " + env.GH_TOKEN, Accept: "application/vnd.github+json", "User-Agent": "kairo-kursdienst", "Content-Type": "application/json" } });
   return r.status;
 }
 function berlin(now) {
-  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
     .formatToParts(now).map(x => [x.type, x.value]));
-  return { wd: p.weekday, hm: +p.hour * 100 + +p.minute };
+  return { wd: p.weekday, hm: +p.hour * 100 + +p.minute, day: `${p.year}-${p.month}-${p.day}` };
 }
 async function wake(env, now = new Date()) {
   if (!env || !env.GH_TOKEN) return "kein GH_TOKEN";
-  const { wd, hm } = berlin(now), work = !["Sat", "Sun"].includes(wd), done = [];
-  // Abend-Scan: Mo–Fr um 22:30 Uhr Berlin (der Lauf prüft selbst, ob er schon online ist)
-  if (work && hm >= 2230 && hm < 2235) done.push("scan " + await dispatch(env, "scan.yml"));
+  const { wd, hm, day } = berlin(now), work = !["Sat", "Sun"].includes(wd), done = [], t = now.getTime();
+  const kv = env.KAIRO, st = kv ? JSON.parse((await kv.get("wake")) || "{}") : null, st0 = JSON.stringify(st);
+  // ohne KV (Version-5-Verhalten): Minuten-Fenster; mit KV: Abstand zum letzten Start
+  const due = (k, min, slot) => st ? t - (st[k] || 0) >= min * 6e4 - 2e4 : slot;
+  const go = async (k, wf, inputs) => { const s = await dispatch(env, wf, inputs); if (st && s < 300) st[k] = t; done.push(`${k} ${s}`); };
+  // Abend-Scan: Mo–Fr ab 22:30 Uhr Berlin, einmal am Tag (der Lauf prüft selbst, ob er schon online ist)
+  if (work && hm >= 2230 && hm < 2245 && (st ? st.scan !== day : hm < 2235)) { await go("scanAt", "scan.yml"); if (st) st.scan = day; }
   // Quartalszahlen + Fed: alle 10 Min. in den Meldezeiten (06–09, 12–16, 19–01 Uhr Berlin)
   const win = (hm >= 600 && hm < 900) || (hm >= 1200 && hm < 1600) || hm >= 1900 || hm < 100;
-  if ((work || (wd === "Sat" && hm < 100)) && win && now.getUTCMinutes() % 10 < 5) done.push("zahlen " + await dispatch(env, "earnings.yml"));
+  if ((work || (wd === "Sat" && hm < 100)) && win && due("earn", 10, now.getUTCMinutes() % 10 < 5)) await go("earn", "earnings.yml");
   // Fed-Tag: 18:55–20:30 Uhr Berlin alle 5 Min. (earnings.yml prüft selbst, ob heute ein Zinsentscheid ist)
-  if (work && hm >= 1855 && hm < 2030 && now.getUTCMinutes() % 10 >= 5) done.push("fed " + await dispatch(env, "earnings.yml"));
+  else if (work && hm >= 1855 && hm < 2030 && due("earn", 5, now.getUTCMinutes() % 10 >= 5)) await go("earn", "earnings.yml");
+  // Version 6: Quartalszahlen sofort – SEC-Meldungen jede Minute prüfen (nur mit KV)
+  if (kv) { try { const r = await secCheck(env, now, st); if (r) done.push(r); } catch (e) { done.push("sec Fehler " + e); } }
+  if (st && JSON.stringify(st) !== st0) await kv.put("wake", JSON.stringify(st));
   return done.join(", ") || "nichts fällig";
+}
+
+// Termine gestern/heute/morgen mit SEC-Nummer und erwarteter Zeit (schreibt die Prüfung auf GitHub, alle 10 Min.)
+async function earnWatch() {
+  const c = caches.default, k = new Request("https://kairo-kurse.cache/earn_watch");
+  const hit = await c.match(k); if (hit) return hit.json();
+  const r = await fetch(RAW + "earn_watch.json?v=" + Math.floor(Date.now() / 6e5));
+  const j = r.ok ? await r.json() : { items: [] };
+  await c.put(k, new Response(JSON.stringify(j), { headers: { "Cache-Control": "max-age=600" } }));
+  return j;
+}
+// Die SEC verlangt eine Kennung; die Abfrage ist offiziell, kostenlos und ohne Anmeldung (höchstens 10 Abrufe je Sekunde).
+const SEC_UA = { "User-Agent": "Mozilla/5.0 (Kairo)", Accept: "application/json" };
+async function secCheck(env, now, st) {
+  const t = now.getTime(), w = await earnWatch(), kv = env.KAIRO;
+  const hits = JSON.parse((await kv.get("e8k")) || "{}"), news = [];
+  const open = (w.items || []).filter(x => {
+    if (!x.cik || hits[x.t + "|" + x.date]) return false;
+    if (x.ts) { const e = Date.parse(x.ts); return t >= e - 45 * 6e4 && t <= e + 6 * 36e5; }
+    const d0 = Date.parse(x.date + "T09:00:00Z"); return t >= d0 && t <= d0 + 17 * 36e5;   // ohne Uhrzeit: 10–03 Uhr Berlin
+  }).slice(0, 25);
+  for (const x of open) {
+    try {
+      const r = await fetch(`https://data.sec.gov/submissions/CIK${String(x.cik).padStart(10, "0")}.json`, { headers: SEC_UA });
+      if (!r.ok) continue;
+      const f = (await r.json()).filings.recent, since = x.ts ? Date.parse(x.ts) - 3 * 36e5 : Date.parse(x.date + "T00:00:00Z") - 12 * 36e5;
+      for (let i = 0; i < Math.min(15, f.form.length); i++) {
+        const at = Date.parse(f.acceptanceDateTime[i]);
+        if (at < since) break;
+        const is8k = f.form[i] === "8-K" && String(f.items[i] || "").includes("2.02"), is6k = f.form[i] === "6-K" && x.ts && at >= Date.parse(x.ts) - 2 * 36e5;
+        if (!is8k && !is6k) continue;
+        const acc = f.accessionNumber[i].replace(/-/g, "");
+        hits[x.t + "|" + x.date] = { t: x.t, n: x.n, date: x.date, at: new Date(at).toISOString(), seen: now.toISOString(), form: f.form[i],
+          url: `https://www.sec.gov/Archives/edgar/data/${x.cik}/${acc}/${f.primaryDocument[i] || ""}` };
+        news.push(x.t); break;
+      }
+    } catch (e) { /* nächste Aktie */ }
+  }
+  const recent = Object.values(hits).filter(h => t - Date.parse(h.seen) < 45 * 6e4);
+  let out = open.length ? `sec ${open.length} geprüft` : "";
+  if (news.length) {
+    for (const k of Object.keys(hits)) if (t - Date.parse(hits[k].seen) > 4 * 864e5) delete hits[k];
+    await kv.put("e8k", JSON.stringify(hits));
+    out += `, neu ${news.join(",")} → ${await dispatch(env, "earnings.yml", { sec: news.join(",") })}`;
+    if (st) st.earn = t;
+  } else if (recent.length && st && t - (st.earn || 0) >= 3 * 6e4 - 2e4) {    // bis Yahoo die Werte hat: alle 3 Min. nachsehen
+    out += `, nachladen → ${await dispatch(env, "earnings.yml")}`; st.earn = t;
+  }
+  return out;
 }
 
 export default {
@@ -49,13 +108,14 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
     const url = new URL(request.url);
     if (url.pathname.replace(/\/+$/, "") === "/trades") return trades(request, env, url, cors);
+    if (url.pathname.replace(/\/+$/, "") === "/earn") return json({ ok: true, hits: env && env.KAIRO ? Object.values(JSON.parse((await env.KAIRO.get("e8k")) || "{}")) : [] }, cors);
     const q = (url.searchParams.get("q") || "").trim();
     if (q) return json(await search(q), cors);
     const c = (url.searchParams.get("c") || "").trim().toUpperCase();
     if (c && /^[A-Z0-9.\-^=]{1,20}$/.test(c)) return json(await candles(c), cors);
     const syms = (url.searchParams.get("s") || "").split(",").map(x => x.trim().toUpperCase())
       .filter(x => /^[A-Z0-9.\-^=]{1,20}$/.test(x)).slice(0, MAX);
-    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 5). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
+    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 6). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
     const diag = url.searchParams.has("debug") ? [] : null;
     const out = await quotes(syms, ctx, diag);
     return json(diag ? { ...out, _diag: diag } : out, cors);

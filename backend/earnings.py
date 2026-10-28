@@ -11,6 +11,7 @@ Ausblicks (zählt doppelt – der Markt handelt die Zukunft). Die tatsächliche 
 from __future__ import annotations
 
 import math
+import os
 import re
 import time
 import urllib.parse
@@ -360,6 +361,19 @@ def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
     cal = json.loads(urllib.request.urlopen(PAGES + "calendar.json", timeout=60).read())
     now = pd.Timestamp.now(tz="UTC")
     today = now.tz_localize(None).normalize()
+    from . import earnfast
+    try:
+        earnfast.sec_pushes(os.environ.get("SEC_HIT", ""), cal.get("events", []), out)   # zuerst: „Zahlen sind raus“
+    except Exception as exc:
+        print(f"Quartalszahlen: SEC-Mitteilung fehlgeschlagen ({exc!r})")
+    try:
+        nexts = {t: r.get("next") or {} for t, r in json.loads(urllib.request.urlopen(PAGES + "earnings.json", timeout=60).read()).get("tickers", {}).items()}
+    except Exception:
+        nexts = {}
+    try:
+        print(f"Quartalszahlen: {earnfast.watch_file(cal.get('events', []), nexts, out, today)} Termine mit SEC-Nummer für den Kursdienst")
+    except Exception as exc:
+        print(f"Quartalszahlen: earn_watch.json fehlgeschlagen ({exc!r})")
     todo = {}
     for e in cal.get("events", []):
         if e.get("kind") != "earnings" or not e.get("ticker"):
@@ -384,6 +398,10 @@ def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
         fresh = {t: rec for t, rec in ex.map(job, list(todo.items())) if rec and rec.get("last")}
     keep = {t: r for t, r in prev.items() if t not in todo and pd.Timestamp((r.get("last") or {}).get("date", "1900-01-01")) >= today - pd.Timedelta(days=4)}
     allr = {**keep, **fresh}
+    try:
+        earnfast.result_pushes(fresh, prev, cal.get("events", []), out)
+    except Exception as exc:
+        print(f"Quartalszahlen: Ergebnis-Mitteilung fehlgeschlagen ({exc!r})")
     f.write_text(json.dumps({"generated": now.isoformat(timespec="seconds"), "tickers": allr}, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")
     print(f"Quartalszahlen live: {len(todo)} Termine geprüft, {len(fresh)} mit Zahlen aktualisiert, {len(allr)} in der Datei")
 
