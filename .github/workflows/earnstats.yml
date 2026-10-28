@@ -1,0 +1,23 @@
+name: Quartalszahlen-Statistik
+on:
+  push:
+    branches: ["claude/earnstats"]
+    paths: ["tools/research/earn_stats.py", ".github/workflows/earnstats.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  stats:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: git fetch -q origin kairo-data && git show origin/kairo-data:universe_us.csv > uni.csv
+      - run: python tools/research/earn_stats.py uni.csv earn_stats.json 600
+      - name: Sichern
+        if: always()
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: gh release create "earnstats-${GITHUB_RUN_ID}" earn_stats.json --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Quartalszahlen-Statistik" --notes "Forschung"
