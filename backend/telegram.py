@@ -139,7 +139,7 @@ def report(rows: list[dict], last: dict, market: dict, events: list[dict], searc
             g = (r.get("grade") or {}).get("g")
             mine_lines.append(f"{star} 🟢 <b>{e(r['name'] or t)}</b> ist jetzt <b>Treffer</b>{' · Stufe ' + g if g else ''} · Score {r['score']}, CRV {_num(r.get('crv'))}")
         elif now == "fast" and was is None:
-            mine_lines.append(f"{star} 🟡 <b>{e(r['name'] or t)}</b> ist Fast-Treffer – fehlt: {e(r['missing'][0])}{arrow}")
+            mine_lines.append(f"{star} 🟡 <b>{e(r['name'] or t)}</b> ist Fast-Treffer – fehlt: {e((r['missing'] or ['–'])[0])}{arrow}")
         elif was and not now:
             mine_lines.append(f"{star} ⚪ {e(r['name'] or t)} ist kein {'Treffer' if was == 'hit' else 'Fast-Treffer'} mehr")
         elif prev_met.get(t) is not None and r.get("met") is not None and r["met"] - prev_met[t] >= 2:

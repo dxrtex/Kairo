@@ -880,7 +880,7 @@ def main(argv=None) -> int:
     print(f"Rücksetzer-Check: {len(ps)} von {sum(1 for r in rows if (r.get('tr') or {}).get('ok'))} Trend-Setups · "
           f"↑ {sum(p >= .55 for p in ps)} · → {sum(.4 <= p < .55 for p in ps)} · ↓ {sum(p < .4 for p in ps)}")
     for r in rows[:30]:
-        print(f"  {r['ticker']:<10} Score {r['score']:>3}  {'TREFFER' if r['passed'] else 'fehlt: ' + r['missing'][0]}")
+        print(f"  {r['ticker']:<10} Score {r['score']:>3}  {'TREFFER' if r['passed'] else 'Konsolidierung noch unruhig' if r.get('calm_wait') else 'fehlt: ' + (r['missing'] or ['–'])[0]}")
     return 0
 
 

@@ -35,3 +35,9 @@ def test_fallback_to_file(monkeypatch):
     _reset(monkeypatch, None, {})
     assert "AAPL" in run_scan.load_watchlist()
     run_scan._WATCH = None
+
+
+def test_summary_line_handles_calm_wait():
+    r = {"ticker": "X", "score": 80, "passed": False, "calm_wait": True, "missing": []}
+    line = f"{'TREFFER' if r['passed'] else 'Konsolidierung noch unruhig' if r.get('calm_wait') else 'fehlt: ' + (r['missing'] or ['–'])[0]}"
+    assert line == "Konsolidierung noch unruhig"
