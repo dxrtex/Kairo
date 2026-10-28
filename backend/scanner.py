@@ -88,6 +88,9 @@ class Result:
         return len(m) == 2 and not any(c.key in ("cap", "liquidity", "price", "history") for c in m)
 
 
+CALM_TIGHT, CALM_CHOP = 1.5, 1.65    # Spanne 5 Tage ≤ 1,5 ATR und Hin und Her 10 Tage ≤ 1,65 (Mediane im Test)
+
+
 def find_rsi_divergence(low: pd.Series, r: np.ndarray, rc: SimpleNamespace):
     """Bullische RSI-Divergenz (2.4). Rückgabe: ((Art, T1, T2) oder None, jüngste Kurs-Tiefs ≤ 10 T.).
 
@@ -382,5 +385,17 @@ def evaluate(df: pd.DataFrame, info: dict | None = None, cfg: SimpleNamespace = 
     # Vormomentum (Rendite Monat −6 … −1) – nur zur Rangfolge der Top-Setups (Forschung v2.4), kein Kriterium
     res.flags["mom61"] = float(c[-22] / c[-127] - 1) if n >= 127 and c[-127] > 0 else None
 
+    # Ruhe der letzten Tage (Forschung 28.10.2026, tools/research/clean_setup_test.py): enge 5-Tage-Spanne und wenig
+    # Hin und Her über 10 Tage → im Test deutlich bessere Trades. Nur Kennzeichen „sauber“, kein Kriterium.
+    try:
+        tr = np.maximum(h[1:] - l[1:], np.maximum(np.abs(h[1:] - c[:-1]), np.abs(l[1:] - c[:-1])))
+        a14 = float(tr[-14:].mean())
+        r10 = float(h[-10:].max() - l[-10:].min())
+        tight5 = float((h[-5:].max() - l[-5:].min()) / a14) if a14 > 0 else None
+        chop10 = float(np.abs(np.diff(c[-11:])).sum() / r10) if r10 > 0 else None
+        res.flags["calm"] = {"tight5": tight5, "chop10": chop10,
+                             "clean": bool(tight5 is not None and chop10 is not None and tight5 <= CALM_TIGHT and chop10 <= CALM_CHOP)}
+    except Exception:
+        res.flags["calm"] = None
     res.score, res.bonuses = score_setup(res, cfg)
     return res
