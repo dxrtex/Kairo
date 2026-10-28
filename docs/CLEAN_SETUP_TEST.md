@@ -18,6 +18,11 @@ Nachträglich (nicht vorab festgelegt): Spanne ≤ 1,5 ATR **und** Hin und Her �
 | sauber | +0,12 R | +0,34 R | +0,26 R |
 | Rest | +0,11 R | +0,22 R | +0,03 R |
 
-Folge: In der App bekommt jeder Treffer das Kennzeichen „sauber“ oder „unruhig“; die Top-Setups zeigen standardmäßig nur
-saubere. Die 11 Kriterien bleiben unverändert. Weil die Schwellen nachträglich gewählt sind, läuft die Live-Bilanz mit.
+Gegenprobe: Am Tag des Treffers selbst bringt „ruhig“ nichts (+0,44 / −0,03 / +0,10 R gegenüber +0,07 / +0,28 / +0,09 R) –
+die Wirkung kommt erst mit der ruhigen Seitwärtsphase danach.
+
+Folge (auf Wunsch von Jonny): Eine Aktie gilt erst als Treffer, wenn die 11 Kriterien erfüllt sind UND die Konsolidierung
+am Scan-Tag ruhig ist (Spanne 5 Tage ≤ 1,5 ATR, Hin und Her 10 Tage ≤ 1,65). Unruhige erscheinen nicht als Treffer, auch
+nicht in Mitteilungen und Live-Bilanz (backend/run_scan.py, „calm_wait“). Weil die Schwellen nachträglich gewählt sind,
+zeigt die Live-Bilanz, ob der Vorteil hält.
 Überraschung: Ein besonders starker oder schneller Abverkauf davor macht Trades nicht besser, eher schlechter.
