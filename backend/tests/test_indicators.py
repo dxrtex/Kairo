@@ -49,3 +49,13 @@ def test_pivots_with_open_right_side():
     # jüngstes Tief ohne volle rechte Seite zählt (aktueller Kurs gilt)
     t = pd.Series([5, 4, 3, 4, 5, 6, 5, 4, 2.5], dtype=float)
     assert 8 in list(pivot_lows(t, 3))
+
+
+def test_stale_tickers_found_per_exchange():
+    import pandas as pd
+    from backend.data_provider import stale_tickers
+    def f(last):
+        idx = pd.bdate_range(end=last, periods=5)
+        return pd.DataFrame({"Close": range(5)}, index=idx)
+    fr = {f"T{i}.DE": f("2026-10-27") for i in range(6)} | {"OLD.DE": f("2026-10-26"), "AAA": f("2026-10-26")}
+    assert stale_tickers(fr) == {"OLD.DE"}          # US-Börse hat zu wenige Aktien im Test → keine Aussage

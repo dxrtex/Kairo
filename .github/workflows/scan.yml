@@ -2,9 +2,15 @@ name: Täglicher Scan
 
 on:
   schedule:
-    - cron: "30 20 * * 1-5"      # 22:30 Uhr Berlin im Sommer (MESZ)
-    - cron: "30 21 * * 1-5"      # 22:30 Uhr Berlin im Winter (MEZ)
-    - cron: "41 4 * * 2-6"       # Nachhol-Lauf am Morgen: nur wenn der Abend-Scan nicht online gekommen ist
+    # GitHub startet geplante Läufe oft verspätet oder gar nicht (Stoßzeiten zur vollen/halben Stunde). Deshalb mehrere
+    # Startzeiten abseits davon; jeder Lauf prüft selbst, ob der heutige Abend-Scan schon online ist, und endet sonst sofort.
+    - cron: "33 20 * * 1-5"       # 22:33 Berlin im Sommer (MESZ)
+    - cron: "33 21 * * 1-5"       # 22:33 Berlin im Winter (MEZ) / 23:33 im Sommer
+    - cron: "3 22 * * 1-5"
+    - cron: "43 22 * * 1-5"
+    - cron: "23 23 * * 1-5"
+    - cron: "13 0 * * 2-6"        # Nachzügler nach Mitternacht
+    - cron: "41 4 * * 2-6"        # Nachhol-Lauf am Morgen
   workflow_dispatch:              # „Scan jetzt starten“
 
 permissions:
@@ -24,20 +30,27 @@ jobs:
     runs-on: ubuntu-24.04   # Playwright 1.55 läuft nicht auf ubuntu-26.04 (ubuntu-latest seit 10/2026)
     timeout-minutes: 120
     steps:
-      - name: Nur der passende Cron (Sommer- oder Winterzeit) – robust gegen verspätete Starts
+      - name: Abend-Scan fällig? (ab 22:25 Berlin, einmal je Handelstag – robust gegen verspätete Starts)
         id: time
         run: |
           skip=false
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            tz=$(TZ=Europe/Berlin date +%Z)
-            if [ "${{ github.event.schedule }}" = "30 20 * * 1-5" ] && [ "$tz" != "CEST" ]; then skip=true; fi
-            if [ "${{ github.event.schedule }}" = "30 21 * * 1-5" ] && [ "$tz" = "CEST" ]; then skip=true; fi
-            if [ "${{ github.event.schedule }}" = "41 4 * * 2-6" ]; then
-              # Alter der Daten, die gerade online sind. Jünger als 16 Stunden → Abend-Scan hat geklappt, nichts tun.
-              gen=$(curl -fsS --max-time 30 "https://dxrtex.github.io/Kairo/data/results.json" | head -c 200 | grep -o '"generated":"[^"]*"' | cut -d'"' -f4 || true)
-              age=$(( ( $(date +%s) - $(date -d "${gen:-1970-01-01}" +%s) ) / 3600 ))
-              echo "Online-Daten: ${gen:-unbekannt} (vor $age Std.)"
-              if [ "$age" -lt 16 ]; then skip=true; else echo "::warning::Abend-Scan fehlt – Nachhol-Lauf startet"; fi
+            # Fälliger Abend-Scan = der vom letzten Handelstag ab 22:30 Uhr Berlin. Vor 22:25 Uhr (Berlin) nichts tun.
+            hm=$(TZ=Europe/Berlin date +%H%M); dow=$(TZ=Europe/Berlin date +%u)
+            if [ "$hm" -ge 2225 ] && [ "$dow" -le 5 ]; then due=$(TZ=Europe/Berlin date -d "today 22:25" +%s)
+            elif [ "$hm" -lt 1200 ]; then
+              prev=$(TZ=Europe/Berlin date -d "yesterday" +%u)
+              if [ "$prev" -ge 6 ]; then due=0; else due=$(TZ=Europe/Berlin date -d "yesterday 22:25" +%s); fi
+            else due=-1; fi
+            if [ "$due" -le 0 ]; then
+              skip=true; echo "Kein fälliger Abend-Scan (Berlin $hm, Wochentag $dow)"
+            else
+              gen=$(curl -fsS --max-time 30 "https://dxrtex.github.io/Kairo/data/results.json" | head -c 400 | grep -o '"generated":"[^"]*"' | cut -d'"' -f4 || true)
+              full=$(curl -fsS --max-time 30 "https://dxrtex.github.io/Kairo/data/results.json" | grep -o '"full_at":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+              ref=${full:-$gen}
+              ts=$(date -d "${ref:-1970-01-01}" +%s 2>/dev/null || echo 0)
+              echo "Online: großer Scan ${ref:-unbekannt}; fällig ab $(TZ=Europe/Berlin date -d @$due)"
+              if [ "$ts" -ge "$due" ]; then skip=true; echo "Heutiger Abend-Scan ist schon online"; else echo "::notice::Abend-Scan startet"; fi
             fi
           fi
           echo "skip=$skip" >> "$GITHUB_OUTPUT"

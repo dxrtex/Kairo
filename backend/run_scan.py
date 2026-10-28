@@ -723,7 +723,12 @@ def main(argv=None) -> int:
     stats.update(hits=sum(r["passed"] for r in rows), fast_hits=sum(r["fast_hit"] for r in rows), near_hits=sum(bool(r.get("near_hit")) for r in rows),
                  watchlist=sum(r["in_watchlist"] for r in rows),
                  duration_s=round(time.time() - started))
-    stats["health"] = {"loaded": len(data), "universe": len(tickers), "info_fresh": info_fresh, "info_cached": info_cached,
+    stale = getattr(prov, "stale", {}) or {}
+    for r in rows:                                    # Kurse nicht vom letzten Handelstag (Yahoo hat die Aktie ausgelassen)
+        if r["ticker"] in stale:
+            r["stale"] = stale[r["ticker"]]
+    stats["health"] = {"stale": len(stale), "stale_list": sorted(stale)[:50],
+                       "loaded": len(data), "universe": len(tickers), "info_fresh": info_fresh, "info_cached": info_cached,
                        "info_total": len(infos), "news": (len(brief["stocks"]) if brief else None), "errors": stats["errors"]}
     out = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "stats": stats,
            "config": as_dict(CONFIG), "results": [_slim(r) for r in rows]}
