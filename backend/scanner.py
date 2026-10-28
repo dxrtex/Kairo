@@ -98,6 +98,9 @@ def find_rsi_divergence(low: pd.Series, r: np.ndarray, rc: SimpleNamespace):
     """
     l = low.to_numpy(dtype=float)
     n = len(l)
+    w = int(getattr(rc, "rsi_window", 0) or 0)      # > 0: tiefster RSI ± w Tage um das Kurs-Tief (Test 28.10.2026)
+    if w:
+        r = pd.Series(r).rolling(2 * w + 1, center=True, min_periods=1).min().to_numpy()
     rp = [i for i in pivot_lows(low, rc.pivot_len, getattr(rc, "pivot_tolerance", 0.0)) if n - 1 - i <= rc.lookback]
     recent = [i for i in rp if n - 1 - i <= rc.t2_max_age]
     div = None
