@@ -1858,7 +1858,8 @@ function card(r) {
 function kpxHtml(r) {
   const sr = rowOf(r.ticker) || {}, d1 = r.live ? null : sr.d1;
   const cw = r.calm_wait && (r.flags || {}).calm ? `<div class="tip tone-yellow" style="margin:0 0 8px">Alle 11 Kriterien erfüllt – aber noch <b>kein Treffer</b>: Der Kurs schwankt noch zu stark (Spanne 5 Tage ${fmt(r.flags.calm.tight5, 1)} ATR, Grenze 1,5 · Hin und Her ${fmt(r.flags.calm.chop10, 2)}, Grenze 1,65). Treffer wird es erst, wenn er sich ruhig an die Zone legt.</div>` : "";
-  const st = cw + (r.stale ? `<div class="tip tone-yellow" style="margin:0 0 8px">⚠ Yahoo hat für diese Aktie beim letzten Scan keine neuen Kurse geliefert – Stand ${esc(dateDE(r.stale))}. Bewertung erst nach dem nächsten Scan verlässlich.</div>` : "");
+  const ah = r.asia_hit ? `<div class="tip tone-yellow" style="margin:0 0 8px">Alle 11 Kriterien erfüllt – aber <b>kein Treffer</b>: Für Börsen in Asien/Pazifik ist die Kairo-Regel nicht getestet. Getestet und gezählt werden nur USA und Europa.</div>` : "";
+  const st = cw + ah + (r.stale ? `<div class="tip tone-yellow" style="margin:0 0 8px">⚠ Yahoo hat für diese Aktie beim letzten Scan keine neuen Kurse geliefert – Stand ${esc(dateDE(r.stale))}. Bewertung erst nach dem nächsten Scan verlässlich.</div>` : "");
   return st + `<div class="kpx"><div class="kpx-p"><b>${fmt(r.close)} <small>${esc(r.currency || "")}</small></b>
       <i class="chgp${d1 == null ? "" : d1 >= 0 ? " up" : " dn"}" data-chg="${esc(r.ticker)}">${d1 == null ? "" : sgnPct(d1, 2)}</i></div>
     <div class="kpx-s"><span>${r.live || LIVE.map[r.ticker] ? `${liveTag(r.ticker) || "live"}` : `Schlusskurs ${r.date ? dateDE(r.date) : ""}${d1 != null ? " · zum Vortag" : ""}`}</span>${liveBtn(r.ticker)}</div></div>`;
@@ -2036,7 +2037,7 @@ function searchHtml() {
 let calData = null, calLoading = null;
 function loadCalendar() {
   if (!calLoading) calLoading = scanFetch("calendar.json").then(r => r.json())
-    .then(d => { const seen = new Set(); calData = (d.events || []).filter(e => { const k = [e.date, normName(e.name || e.ticker || e.title || ""), e.kind].join("|"); if (seen.has(k)) return false; seen.add(k); return true; }); calBadge(); loadMacroLive(); if (["calendar", "today"].includes(state.sec)) render(); })
+    .then(d => { const seen = new Set(); calData = (d.events || []).filter(e => { const k = [e.date, normName(e.name || e.ticker || e.title || ""), e.kind].join("|"); if (seen.has(k)) return false; seen.add(k); return true; }); calBadge(); if (calData.some(e => e.kind === "macro" && /Fed-Zinsentscheid/.test(e.title || "") && daysUntil(e.date) <= 0 && daysUntil(e.date) >= -1)) loadMacroLive(); if (["calendar", "today"].includes(state.sec)) render(); })
     .catch(() => { calData = []; if (state.sec === "calendar") render(); });
   return calLoading;
 }
@@ -2071,7 +2072,7 @@ function loadMacroLive() {
     if (d && d.fed && d.fed.ts !== had && ["today", "calendar"].includes(state.sec)) render();
   }).catch(() => {});
 }
-setInterval(() => { if (document.visibilityState === "visible" && isFedDay() && !(macroLive && macroLive.fed && daysUntil(macroLive.fed.date) === 0)) loadMacroLive(); }, 60000);
+setInterval(() => { if (document.visibilityState === "visible" && isFedDay() && new Date().getHours() >= 18 && !(macroLive && macroLive.fed && daysUntil(macroLive.fed.date) === 0)) loadMacroLive(); }, 60000);
 const fedRes = e => macroLive && macroLive.fed && /Fed-Zinsentscheid/.test(e.title || "") && macroLive.fed.date === e.date ? macroLive.fed : null;
 function fedBannerHtml() {
   const f = macroLive && macroLive.fed;
@@ -4050,7 +4051,10 @@ function kSt(r) {
 // 11 Kriterien auch die Konsolidierung ruhig ist (Spanne 5 Tage ≤ 1,5 ATR, Hin und Her 10 Tage ≤ 1,65). Sonst kein Treffer.
 const calmOf = r => ((r && r.flags) || {}).calm || null;
 function calmGate(d) {
-  (d && d.results || []).forEach(r => { const c = calmOf(r); if (r.passed && c && !c.clean) { r.passed = false; r.calm_wait = true; } });
+  (d && d.results || []).forEach(r => { const c = calmOf(r);
+    if (r.passed && c && !c.clean) { r.passed = false; r.calm_wait = true; }
+    // Asien/Pazifik: die Kairo-Regel ist nur für USA und Europa getestet (Live-Bilanz und Papier-Depots ebenso) → kein Treffer
+    if (r.passed && String(r.region || "").toLowerCase() === "asia") { r.passed = false; r.asia_hit = true; } });
 }
 const kPill = (r, full) => { const x = kSt(r); return `${full && r.passed ? `<span class="st hit">Treffer</span>` : ""}<span class="st ${x.cls}" title="${esc(x.s)}">${esc(x.t)}</span>`; };
 const statusPill = r => kPill(r);

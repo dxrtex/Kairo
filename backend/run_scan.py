@@ -550,6 +550,16 @@ def main(argv=None) -> int:
     if not quiet:
         try:
             eh = yf.history([etf.TICKER], "max").get(etf.TICKER)
+            ref = yf.history(["IWDA.AS", "EUNL.DE"], "5d")       # XETRA/Euronext-Referenz: hat SPYI den letzten Handelstag?
+            last_ref = max((d.index[-1] for d in ref.values() if d is not None and len(d)), default=None)
+            for k in range(3):                               # Yahoo liefert SPYI manchmal einen Tag zu spät → nachladen
+                if eh is None or last_ref is None or eh.index[-1].normalize() >= last_ref.normalize():
+                    break
+                print(f"ETF: SPYI-Kurs vom {eh.index[-1].date()} (Referenz {last_ref.date()}) – Runde {k + 1}: nachladen")
+                time.sleep(15 * (k + 1))
+                more = yf.history([etf.TICKER], "1mo").get(etf.TICKER)
+                if more is not None and len(more):
+                    eh = pd.concat([eh[eh.index < more.index[0]], more])
             ex = yf.history(["^VIX", "HYG", "IEF", etf.REF], "2y")
             col = lambda k: ex[k]["Close"] if ex.get(k) is not None and len(ex[k]) else None
             eo = etf.compute(eh, col("^VIX"), col("HYG"), col("IEF"), col(etf.REF), datetime.now().strftime("%Y-%m-%d")) if eh is not None else {}
