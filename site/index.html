@@ -525,6 +525,7 @@
   .tp2-lev.no { opacity: .45; }
   .tp2-lev i { position: absolute; top: -8px; right: 8px; font-style: normal; font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; border-radius: 6px; padding: 1px 6px; }
   @media (max-width: 560px) { .tp2-levs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tp2-cfg { grid-template-columns: 1fr 1fr; } }
+  .st-clean { color: var(--up); background: var(--up-bg); } .st-chop { color: var(--muted); background: var(--surface-2); }
   .scanbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; margin: 2px 2px 10px; }
   .scanbar .btn[disabled] { opacity: .6; }
   .fund { background: var(--surface-2); border-radius: var(--radius-s); padding: 12px 14px; }
@@ -4045,7 +4046,13 @@ function kSt(r) {
   if (r.near_hit) return { k: "near", t: "9/11", cls: "", lv: 2, s: miss ? `fehlt: ${miss}` : "zwei Kriterien fehlen" };
   return { k: "none", t: `${r.met ?? "–"}/${r.total ?? 11}`, cls: "", lv: 0, s: miss ? `fehlt: ${miss}` : "" };
 }
-const kPill = (r, full) => { const x = kSt(r); return `${full && r.passed ? `<span class="st hit">Treffer</span>` : ""}<span class="st ${x.cls}" title="${esc(x.s)}">${esc(x.t)}</span>`; };
+// Ruhe der letzten Tage (backend/scanner.py „calm“, Forschung 28.10.2026): sauber = enge 5-Tage-Spanne und wenig Hin und Her
+const calmOf = r => ((r && r.flags) || {}).calm || null;
+const isClean = r => !!(calmOf(r) && calmOf(r).clean);
+const calmChip = r => { const c = calmOf(r); if (!c || !r.passed) return "";
+  return c.clean ? `<span class="st st-clean" title="Ruhige Konsolidierung: Spanne 5 Tage ${fmt(c.tight5, 1)} ATR, Hin und Her 10 Tage ${fmt(c.chop10, 2)}">sauber</span>`
+    : `<span class="st st-chop" title="Noch unruhig: Spanne 5 Tage ${fmt(c.tight5, 1)} ATR (≤ 1,5), Hin und Her 10 Tage ${fmt(c.chop10, 2)} (≤ 1,65)">unruhig</span>`; };
+const kPill = (r, full) => { const x = kSt(r); return `${full && r.passed ? `<span class="st hit">Treffer</span>` : ""}<span class="st ${x.cls}" title="${esc(x.s)}">${esc(x.t)}</span>${calmChip(r)}`; };
 const statusPill = r => kPill(r);
 const kOrder = (a, b) => kSt(b).lv - kSt(a).lv || (["us", "europe"].includes(String(b.region || "").toLowerCase()) - ["us", "europe"].includes(String(a.region || "").toLowerCase())) || (((a.flags || {}).mom61 ?? 9) - ((b.flags || {}).mom61 ?? 9));
 const hHead = (t, link, lbl) => `<div class="hh"><b>${t}</b>${link ? `<button class="hlink" ${link}>${lbl || "Alle"} ›</button>` : ""}</div>`;
@@ -4102,8 +4109,10 @@ function myStocksHtml() {
 }
 function topHitsHtml() {
   const tested = r => ["us", "europe"].includes(String(r.region || "").toLowerCase()), mo = r => (r.flags || {}).mom61;
-  const list = data.results.filter(r => r.passed && tested(r)).sort(kOrder).slice(0, 5);   // wie Top-Setups: kaufbereit zuerst
-  if (!list.length) return "";
+  const all = data.results.filter(r => r.passed && tested(r));
+  const list = all.filter(r => state.allSetups || isClean(r)).sort((a, b) => isClean(b) - isClean(a) || kOrder(a, b)).slice(0, 5);   // nur saubere, kaufbereit zuerst
+  if (!all.length) return "";
+  if (!list.length) return `<div class="hcard">${hHead("Top-Setups heute", `data-gokinds="hit"`)}<div class="note">Kein sauberes Setup heute – ${all.length} Treffer sind noch zu unruhig. Abwarten.</div></div>`;
   return `<div class="hcard">${hHead("Top-Setups heute", `data-gokinds="hit"`)}
     ${list.map(r => `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${esc((r.name || r.ticker).slice(0, 28))}<small>${esc(r.ticker)} · Vormomentum ${mo(r) == null ? "–" : sgnPct(mo(r), 0)}${r.earnings_risk ? " · ⚠ Quartalszahlen bald" : ""} ${tgtChip(r)}</small></span>${statusPill(r)}${trendHtml(r)}</button>`).join("")}</div>`;
 }
@@ -4592,6 +4601,7 @@ const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
 const APP_VER = "2026.11.02";
 const APP_NEWS = [["2026.11.02", "Verlässlich und live", [
+  ["Saubere Setups", "Jeder Treffer zeigt „sauber“ oder „unruhig“ (enge Spanne, wenig Hin und Her). Die Top-Setups zeigen nur noch saubere – im Test 2022–26 +0,26 R statt +0,03 R je Trade."],
   ["Fed live", "Am Tag des Fed-Zinsentscheids prüft Kairo alle 5 Minuten das Statement der Fed – die Entscheidung steht dann oben auf „Heute“, im Kalender und kommt als Mitteilung."],
   ["Keine alten Kurse mehr", "Lässt Yahoo im großen Abruf einzelne Aktien aus, lädt der Scan sie bis zu dreimal einzeln nach. Bleibt eine trotzdem alt, steht das deutlich an der Aktie und im Datenstatus."],
   ["Abend-Scan", "Mehrere Startzeiten ab 22:30 Uhr – jeder Lauf prüft, ob der Scan schon online ist. Verspätete GitHub-Starts fallen so kaum noch ins Gewicht."]]],
@@ -5673,7 +5683,10 @@ function topSetupsHtml() {
   const hits = data.results.filter(r => r.passed && ["us", "europe"].includes(String(r.region || "").toLowerCase()));
   if (!hits.length) return "";
   const m = r => (r.flags || {}).mom61;
-  const list = hits.slice().sort(kOrder).slice(0, 8);
+  const clean = hits.filter(isClean), messy = hits.filter(r => !isClean(r));
+  const list = (state.allSetups ? hits : clean).slice().sort((a, b) => isClean(b) - isClean(a) || kOrder(a, b)).slice(0, 8);
+  const toggle = messy.length ? `<div class="note" style="margin-top:6px">${state.allSetups ? `Alle ${hits.length} Treffer.` : `${clean.length} saubere von ${hits.length} Treffern – ${messy.length} noch unruhig ausgeblendet.`} <button class="hlink" data-allsetups>${state.allSetups ? "Nur saubere zeigen" : "Alle zeigen"}</button></div>` : "";
+  if (!list.length) return `<div class="hcard" style="margin-bottom:12px">${hHead("Top-Setups heute")}<div class="note">Heute kein sauberes Setup – ${hits.length} Treffer, aber alle noch mit zu viel Hin und Her. Abwarten ist hier die bessere Entscheidung.</div>${toggle}</div>`;
   const rows = list.map((r, k) => {
     const kp = kPlan(r.ticker), p = { entry: r.close, stop: kp.stop };   // Stop wie überall: Seitwärtsphase nach dem Treffer, sonst Kursstruktur
     const e = toEur(p.entry, r.currency), st = p.stop ? toEur(p.stop, r.currency) : null, per = e != null && st != null ? e - st : null;
@@ -5684,7 +5697,7 @@ function topSetupsHtml() {
       <td><button class="mini-btn" data-open="${esc(r.ticker)}">Chart</button></td></tr>`;
   }).join("");
   return `<div class="hcard" style="margin-bottom:12px">${hHead("Top-Setups heute")}
-    <div class="note">USA und Europa · kaufbereit zuerst, dann schwächeres Vormomentum (laut Forschung bessere Trades). Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)}.</div>
+    <div class="note">USA und Europa · nur saubere Setups (ruhige Konsolidierung – im Test 2022–26 +0,26 R statt +0,03 R je Trade), kaufbereit zuerst. Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)}.</div>${toggle}
     <div class="ts-list">${list.map((r, k) => { const p = { entry: r.close, stop: kPlan(r.ticker).stop }, e = toEur(p.entry, r.currency), st = p.stop ? toEur(p.stop, r.currency) : null, per = e != null && st != null ? e - st : null, qty = per > 0 ? Math.floor(riskEur / per) : null;
       return `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${kPill(r)} ${insChip(r.ticker)} ${tgtChip(r)} ${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${qty ? `${qty} Stk.<small>${eur2(qty * e)}</small>` : "–"}</span></button>`; }).join("")}</div>
     <div class="tscroll ts-tab" style="margin-top:8px"><table class="ptab ts"><tr><th>#</th><th>Aktie</th><th>Vormomentum</th><th>Einstieg / Stop</th><th>Größe</th><th>Gebühr</th><th></th></tr>${rows}</table></div></div>`;
@@ -6089,6 +6102,7 @@ document.addEventListener("click", e => {
     if (a && a.bot) window.open("https://t.me/" + a.bot, "_blank");
     return;
   }
+  if (e.target.closest("[data-allsetups]")) { state.allSetups = !state.allSetups; save(); render(); return; }
   const ssb = e.target.closest("[data-scanstart]"); if (ssb) { scanStart(ssb.dataset.scanstart || "all"); return; }
   if (e.target.closest("[data-ghsave]")) {
     const v = (($("ghKey") || {}).value || "").trim();
