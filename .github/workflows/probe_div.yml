@@ -1,4 +1,4 @@
-name: SEC-Probe
+name: EQS-Probe
 on:
   push:
     branches: ["claude/probe-div"]
@@ -7,10 +7,19 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - run: |
-          for ua in "Kairo kairo-bot@users.noreply.github.com" "Mozilla/5.0 (Kairo)"; do
-            echo "== $ua"
-            curl -s -o s.json -w "submissions %{http_code} %{time_total}s\n" -A "$ua" https://data.sec.gov/submissions/CIK0000320193.json
-            python3 -c "import json;d=json.load(open('s.json'))['filings']['recent'];print([(d['form'][i],d['items'][i],d['acceptanceDateTime'][i]) for i in range(8)])" || head -c 300 s.json
-            curl -s -o t.json -w "tickers %{http_code}\n" -A "$ua" https://www.sec.gov/files/company_tickers.json
-            curl -s -o a.xml -w "atom %{http_code}\n" -A "$ua" "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&count=40&output=atom"; grep -o "<title>[^<]*" a.xml | head -5
-          done
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+          for u in \
+            "https://www.eqs-news.com/de/rss/" \
+            "https://www.eqs-news.com/rss/" \
+            "https://www.eqs-news.com/de/news/?rss=1" \
+            "https://www.eqs-news.com/de/news/adhoc/" \
+            "https://www.eqs-news.com/de/company/rheinmetall-ag/news/" \
+            "https://www.eqs-news.com/de/?s=Rheinmetall" \
+            "https://www.dgap.de/dgap/News/?newsType=ADHOC" \
+            "https://www.finanznachrichten.de/rss-nachrichten-adhoc-mitteilungen" \
+            "https://www.finanznachrichten.de/rss-aktien-nachrichten" \
+            "https://news.google.com/rss/search?q=Rheinmetall+Prognose+when:7d&hl=de&gl=DE&ceid=DE:de" \
+            "https://www.rheinmetall.com/de/media/news-watch/rss" \
+            "https://www.hkexnews.hk/listedco/listconews/advancedsearch/search_active_main.aspx" \
+            "https://www.asx.com.au/asx/1/company/DRO/announcements?count=5&market_sensitive=false" ; do
+            code=$(curl -s -L -o b.txt -w "%{http_code} %{content_type}" -A "$UA" "$u"); echo "== $code $u"; head -c 600 b.txt | tr '\n' ' '; echo; done
