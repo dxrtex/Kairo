@@ -1822,7 +1822,7 @@ function card(r) {
         <h2 title="${esc(r.name)}">${favBtn(r.ticker)} ${esc(r.name || r.ticker)} ${wlTag(r)}<button class="ibtn" data-about aria-label="Was macht das Unternehmen?">i</button></h2>
         <div class="meta">${esc(r.ticker)} · ${esc(r.exchange || "")} · ${REGION[r.region] || ""}${r.sector ? " · " + esc(r.sector) : ""}</div>
         ${statusBadge(r)} ${insChip(r.ticker)}
-        ${r.earnings_risk ? `<span class="warn">⚠ Earnings ${dateDE(r.earnings_date)}</span>` : ""}
+        ${r.earnings_risk ? `<span class="warn" title="Im Test waren Käufe kurz vor den Zahlen nicht schlechter – aber Kurslücke möglich">Zahlen ${dateDE(r.earnings_date)}</span>` : ""}
       </div>
       <div class="score-col">
       ${r.passed ? `<button class="score" data-scoreinfo style="--p:${r.score}" title="Score ${r.score} von 100 – antippen für die Zusammensetzung"><span>${r.score}</span></button>`
@@ -4116,7 +4116,7 @@ function topHitsHtml() {
   const list = data.results.filter(r => r.passed && tested(r)).sort(kOrder).slice(0, 5);   // wie Top-Setups: kaufbereit zuerst
   if (!list.length) return "";
   return `<div class="hcard">${hHead("Top-Setups heute", `data-gokinds="hit"`)}
-    ${list.map(r => `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${esc((r.name || r.ticker).slice(0, 28))}<small>${esc(r.ticker)} · Vormomentum ${mo(r) == null ? "–" : sgnPct(mo(r), 0)}${r.earnings_risk ? " · ⚠ Quartalszahlen bald" : ""} ${tgtChip(r)}</small></span>${statusPill(r)}${trendHtml(r)}</button>`).join("")}</div>`;
+    ${list.map(r => `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${esc((r.name || r.ticker).slice(0, 28))}<small>${esc(r.ticker)} · Vormomentum ${mo(r) == null ? "–" : sgnPct(mo(r), 0)}${r.earnings_risk ? " · Zahlen bald" : ""} ${tgtChip(r)}</small></span>${statusPill(r)}${trendHtml(r)}</button>`).join("")}</div>`;
 }
 function depotSnapHtml() {
   const list = depotLoad(); if (!list.length) return "";
@@ -5248,14 +5248,12 @@ function tp2Calc(r, S, o = {}) {
   if (h4) out.tpWhy = `Kein TP: Im Ausstiegs-Test brachte jedes feste Ziel (auch Fibonacci, altes Hoch, Extensions) weniger. Verkauft wird am SL, ab Tag ${H4X.from} bei einem Tagesschluss unter der EMA 20 (am nächsten Morgen) – spätestens an Tag ${H4X.hold}.`;
   out.d0 = tpEntryDay(o.date);
   out.exit = addBd(out.d0, hold - 1);
-  // Quartalszahlen in der Haltedauer: spätestens am Handelstag davor raus (Kurslücke kann Stop und K.-o. überspringen)
-  if (r.ed) { const ed = new Date(r.ed + "T12:00:00"); if (ed > out.d0 && ed <= out.exit) {
-    out.exit = subBd(ed, 1); const left = bdBetween(out.d0, out.exit) + 1; out.edCut = true;
-    out.problems.push([left >= 5 ? "yellow" : "red", `Quartalszahlen am ${dateDE(r.ed)} – Ausstieg vorgezogen auf den Handelstag davor (${left} statt ${hold} Tage) – Vorsichtsregel, im Backtest nicht getestet.${left < 5 ? " Zu kurz für die Strategie – lieber nach den Zahlen einsteigen." : ""}`]); } }
-  // Hälfte 2 (ältere Pläne mit TP) läuft bis zum Verkaufstag – ebenfalls vor den Quartalszahlen raus
+  // Quartalszahlen in der Haltedauer: halten (Test 28.10.2026, tools/research/earnings_entry_test.py: Käufe ≤ 10 Tage vor den
+  // Zahlen waren in allen drei Zeiträumen besser) – nur Hinweis auf das Kurslücken-Risiko bei Turbos
   out.exit2 = addBd(out.d0, KMAX.hold2 - 1);
-  if (r.ed) { const ed = new Date(r.ed + "T12:00:00"); if (ed > out.d0 && ed <= out.exit2) { out.exit2 = subBd(ed, 1); out.ed2Cut = true;
-    if (!out.edCut) out.problems.push(["yellow", `Quartalszahlen am ${dateDE(r.ed)} – die zweite Hälfte wird am Handelstag davor verkauft (${bdBetween(out.d0, out.exit2) + 1} statt ${KMAX.hold2} Tage).`]); } }
+  if (r.ed) { const ed = new Date(r.ed + "T12:00:00"); if (ed > out.d0 && ed <= out.exit2) {
+    out.edIn = true;
+    out.problems.push(["yellow", `Quartalszahlen am ${dateDE(r.ed)} während der Haltedauer – laut Test halten (Käufe kurz vor den Zahlen waren im Schnitt sogar besser). Aber: Eine Kurslücke kann den Stop und bei Turbos den K.-o. überspringen – mit Turbo lieber kleiner Hebel.`]); } }
   if (out.exit2 < out.exit) out.exit2 = out.exit;
   out.levs = TP.levs.map(L => {
     const ko = L > 1 ? E * (1 - 1 / L) : null, ok = L === 1 || ko <= stop - TP.kob * atr;
@@ -5312,8 +5310,8 @@ function tpInner(r, S) {
       ${row("Kauf", `${X(m.E)} ${cur}`, m.base ? `in der Seitwärtsphase ${X(m.base.lo)}–${X(m.base.hi)} €` : "keine Seitwärtsphase erkannt")}
       ${row("Stop-Loss (SL)", `${X(m.stop)} ${cur}`, `${sgnPct(m.stop / m.E - 1, 1)} · Verlust ${sgnEur(at(m.stop))}`, "down")}
       ${row("Take-Profit", "keiner", "Gewinner laufen lassen – das bringt laut Test am meisten")}
-      ${m.ema ? row("Verkaufen", `ab Tag ${H4X.from} unter EMA 20`, `Schließt ein Tag unter der EMA 20, am nächsten Morgen verkaufen – spätestens ${m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" })}${m.edCut ? " (vor den Quartalszahlen)" : ` (Tag ${m.hold})`}. Kairo meldet sich.`)
-        : row("Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), m.edCut ? "zum Schluss – vor den Quartalszahlen" : `zum Schluss – nach ${m.hold} Handelstagen, falls der SL nicht vorher greift`)}
+      ${m.ema ? row("Verkaufen", `ab Tag ${H4X.from} unter EMA 20`, `Schließt ein Tag unter der EMA 20, am nächsten Morgen verkaufen – spätestens ${m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" })} (Tag ${m.hold}). Kairo meldet sich.`)
+        : row("Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), `zum Schluss – nach ${m.hold} Handelstagen, falls der SL nicht vorher greift`)}
       ${row("Produkt", prod, lv.L > 1 ? `K.-o. höchstens ${X(lv.ko)} ${cur}` : (lv.qty != null ? `${lv.qty} Stück` : ""))}
       ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(m.riskPct, 1)} %${m.fit.mult > 1 ? " – Ausverkauf" : ""})`)}
       ${lv.L > 1 && !(((state.tpT || {})[r.t] || {}).p > 0) ? row("SL am Turbo (Schätzung)", sgnPct(-lv.tStop, 0), `für einen ×${lv.L}-Turbo bei Kauf zu ${X(m.E)} ${cur} – genau rechnet „Dein Turbo“ unten${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
@@ -5926,7 +5924,7 @@ async function openDetail(t) {
     <div class="d-head"><div><h2>${esc(r.name)}</h2>
       <div class="meta muted">${esc(r.ticker)} · ${esc(r.exchange)} · ${REGION[r.region] || ""} · ${esc(r.sector || "")} · Stand ${dateDE(r.date)}</div>
       ${statusBadge(r)}
-      ${r.earnings_risk ? `<span class="warn">⚠ Earnings-Risiko (${dateDE(r.earnings_date)})</span>` : ""}
+      ${r.earnings_risk ? `<span class="warn">Quartalszahlen ${dateDE(r.earnings_date)}</span>` : ""}
       <span class="flag">MBI: ${esc(f.mbi_source || "")}</span></div>
       <button class="close" id="closeDetail" aria-label="Schließen">✕</button></div>
     <div style="margin-top:12px">${kpxHtml(r)}</div>

@@ -26,3 +26,9 @@ am Scan-Tag ruhig ist (Spanne 5 Tage ≤ 1,5 ATR, Hin und Her 10 Tage ≤ 1,65).
 nicht in Mitteilungen und Live-Bilanz (backend/run_scan.py, „calm_wait“). Weil die Schwellen nachträglich gewählt sind,
 zeigt die Live-Bilanz, ob der Vorteil hält.
 Überraschung: Ein besonders starker oder schneller Abverkauf davor macht Trades nicht besser, eher schlechter.
+
+# Kauf kurz vor Quartalszahlen (28.10.2026)
+Skript `tools/research/earnings_entry_test.py`, 8.498 US-Trades, Zahlen = SEC-8-K Punkt 2.02. Kauf ≤ 10 Tage vor den Zahlen:
++0,22 / +0,32 / +0,53 R gegenüber +0,18 / +0,27 / +0,04 R (Train / Validierung / Holdout). Vorab-Regel („schlechter in allen
+drei“) nicht erfüllt – im Gegenteil. Folge: Der Trade-Plan zieht den Ausstieg nicht mehr vor die Zahlen vor, kein Score-Abzug
+mehr (config earnings_penalty 0); nur noch Hinweis auf das Kurslücken-Risiko (v. a. bei Turbos).
