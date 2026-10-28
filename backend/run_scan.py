@@ -663,6 +663,13 @@ def main(argv=None) -> int:
         m = {**m, "name": m.get("name") or i.get("name"), "sector": m.get("sector") or i.get("sector") or "",
              "region": m.get("region") or region_of(t), "exchange": m.get("exchange") or i.get("exchange") or ""}
         rows.append(result_row(res, m))
+        calm = res.flags.get("calm") or {}
+        if rows[-1]["passed"] and calm and not calm.get("clean"):   # Treffer erst bei ruhiger Konsolidierung (Forschung 28.10.2026)
+            rows[-1].update(passed=False, calm_wait=True, hint={
+                "tone": "yellow", "title": "Kriterien erfüllt – Konsolidierung noch unruhig",
+                "text": (f"Alle 11 Kriterien sind erfüllt, aber der Kurs schwankt noch zu stark (Spanne 5 Tage {calm.get('tight5', 0):.1f} ATR, "
+                         f"Grenze 1,5 · Hin und Her 10 Tage {calm.get('chop10', 0):.2f}, Grenze 1,65). Ein Treffer wird es erst, "
+                         "wenn sich der Kurs ruhig an die Zone legt."), "days": None, "days_label": ""})
         rows[-1]["trend"] = score_trend(df, info, t, res)
         if TREND_ON:                                  # zweites Setup: Rücksetzer im Aufwärtstrend
             try:
@@ -696,6 +703,8 @@ def main(argv=None) -> int:
         except Exception:
             pass
         search[t] = {**search[t], **search_row(res, m, rows[-1]["hint"]), "detail": 1} if t in search else {**search_row(res, m, rows[-1]["hint"]), "detail": 1}
+        if rows[-1].get("calm_wait"):
+            search[t].update(s="", sc=None)
         with open(SITE / "charts" / f"{t}.json", "w", encoding="utf-8") as f:
             json.dump(_clean(chart_payload(df)), f, separators=(",", ":"))
     rows.sort(key=lambda r: (r["passed"], r["score"], r["crv"] or 0), reverse=True)
