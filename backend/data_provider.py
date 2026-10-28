@@ -92,6 +92,27 @@ class YFinanceProvider(DataProvider):
             return dict(zip(tickers, pool.map(self.info, tickers)))
 
 
+def _suffix(t: str) -> str:
+    return t.rsplit(".", 1)[1] if "." in t else ""
+
+
+def stale_tickers(frames: dict[str, pd.DataFrame], tolerance: int = 0) -> set[str]:
+    """Aktien, deren letzte Kerze älter ist als die jüngste Kerze ihrer Börse (gleiches Ticker-Kürzel, z. B. .DE).
+    Nur Börsen mit ≥ 5 Aktien; die meisten müssen den neuen Tag schon haben (sonst ist schlicht noch kein neuer Tag)."""
+    last = {t: df.index[-1].normalize() for t, df in frames.items() if df is not None and len(df)}
+    by: dict[str, list] = {}
+    for t, d in last.items():
+        by.setdefault(_suffix(t), []).append(d)
+    ref = {}
+    for sx, ds in by.items():
+        if len(ds) < 5:
+            continue
+        top = max(ds)
+        if sum(d == top for d in ds) >= 0.5 * len(ds):  # die Mehrheit hat den neuen Tag → der Rest hängt hinterher
+            ref[sx] = top
+    return {t for t, d in last.items() if _suffix(t) in ref and (ref[_suffix(t)] - d).days > tolerance}
+
+
 def _period_start(end: str, period: str) -> str:
     years = {"1y": 1, "2y": 2, "3y": 3, "5y": 5}.get(period, 2)
     return str((pd.Timestamp(end) - pd.DateOffset(years=years)).date())
@@ -145,6 +166,29 @@ class CachedProvider(DataProvider):
         if missing and period != "1mo":
             full = self.inner.history(missing, period)
             out.update(full)
+        # Nie still alte Kurse: Aktien, deren letzte Kerze hinter ihrer Börse zurückliegt (Yahoo hat sie im großen Abruf
+        # ausgelassen), in kleinen Paketen mit Pause erneut laden – bis zu 3 Runden.
+        self.stale = {}
+        for rnd in range(3):
+            lag = stale_tickers(out)
+            if not lag:
+                break
+            print(f"Kurse: {len(lag)} Aktien nicht aktuell – Runde {rnd + 1}: einzeln nachladen")
+            time.sleep(10 * (rnd + 1))
+            again = YFinanceProvider(batch_size=25, threads=4).history(sorted(lag), "1mo") if isinstance(self.inner, YFinanceProvider) \
+                else self.inner.history(sorted(lag), "1mo")
+            with sqlite3.connect(self.path) as con:
+                for t, df in again.items():
+                    con.executemany("INSERT OR REPLACE INTO bars VALUES (?,?,?,?,?,?,?)",
+                                    [(t, str(d.date()), *map(float, r)) for d, r in
+                                     df[["Open", "High", "Low", "Close", "Volume"]].iterrows()])
+                    rows = con.execute("SELECT date, open, high, low, close, volume FROM bars WHERE ticker=? ORDER BY date",
+                                       (t,)).fetchall()
+                    d2 = pd.DataFrame(rows, columns=["Date", "Open", "High", "Low", "Close", "Volume"])
+                    out[t] = d2.set_index(pd.to_datetime(d2.pop("Date")))
+        self.stale = {t: str(out[t].index[-1].date()) for t in stale_tickers(out)}
+        if self.stale:
+            print(f"Kurse: {len(self.stale)} Aktien bleiben auf altem Stand: {', '.join(sorted(self.stale)[:30])}")
         return out
 
     def _cached_any(self, tickers) -> bool:

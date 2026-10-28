@@ -39,6 +39,14 @@ def _get(url: str) -> str:
         return resp.read().decode("utf-8", "replace")
 
 
+def _ny_to_berlin(d: date, hour: int) -> str:
+    """Uhrzeit New York → Berlin am Tag d (Sommer-/Winterzeit wechseln in USA und Europa an verschiedenen Tagen)."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    t = datetime(d.year, d.month, d.day, hour, tzinfo=ZoneInfo("America/New_York")).astimezone(ZoneInfo("Europe/Berlin"))
+    return t.strftime("%H:%M")
+
+
 def _month(name: str) -> int:
     return MONTHS[name.strip().lower()[:3]]
 
@@ -59,7 +67,9 @@ def fed_meetings(html: str) -> list[dict]:
                 continue
             months = [m for m in re.split(r"[/-]", mon) if m.strip()]
             m = _month(months[-1]) if len(nums) > 1 and nums[-1] < nums[0] and len(months) > 1 else _month(months[0])
-            out.append({"date": date(year, m, nums[-1]).isoformat(), "title": "USA: Fed-Zinsentscheid", "region": "us", "imp": "high", "time": "20:00", "why": "Leitzins USA – bewegt alle Aktien weltweit"})
+            d = date(year, m, nums[-1])
+            out.append({"date": d.isoformat(), "title": "USA: Fed-Zinsentscheid", "region": "us", "imp": "high", "time": _ny_to_berlin(d, 14),
+                        "why": "Leitzins USA – bewegt alle Aktien weltweit"})
     return out
 
 

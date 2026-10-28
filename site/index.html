@@ -1857,7 +1857,8 @@ function card(r) {
 // Kurs ganz oben im Fenster: das Erste, was man nach dem Antippen sieht
 function kpxHtml(r) {
   const sr = rowOf(r.ticker) || {}, d1 = r.live ? null : sr.d1;
-  return `<div class="kpx"><div class="kpx-p"><b>${fmt(r.close)} <small>${esc(r.currency || "")}</small></b>
+  const st = r.stale ? `<div class="tip tone-yellow" style="margin:0 0 8px">⚠ Yahoo hat für diese Aktie beim letzten Scan keine neuen Kurse geliefert – Stand ${esc(dateDE(r.stale))}. Bewertung erst nach dem nächsten Scan verlässlich.</div>` : "";
+  return st + `<div class="kpx"><div class="kpx-p"><b>${fmt(r.close)} <small>${esc(r.currency || "")}</small></b>
       <i class="chgp${d1 == null ? "" : d1 >= 0 ? " up" : " dn"}" data-chg="${esc(r.ticker)}">${d1 == null ? "" : sgnPct(d1, 2)}</i></div>
     <div class="kpx-s"><span>${r.live || LIVE.map[r.ticker] ? `${liveTag(r.ticker) || "live"}` : `Schlusskurs ${r.date ? dateDE(r.date) : ""}${d1 != null ? " · zum Vortag" : ""}`}</span>${liveBtn(r.ticker)}</div></div>`;
 }
@@ -2034,7 +2035,7 @@ function searchHtml() {
 let calData = null, calLoading = null;
 function loadCalendar() {
   if (!calLoading) calLoading = scanFetch("calendar.json").then(r => r.json())
-    .then(d => { const seen = new Set(); calData = (d.events || []).filter(e => { const k = [e.date, normName(e.name || e.ticker || e.title || ""), e.kind].join("|"); if (seen.has(k)) return false; seen.add(k); return true; }); calBadge(); if (["calendar", "today"].includes(state.sec)) render(); })
+    .then(d => { const seen = new Set(); calData = (d.events || []).filter(e => { const k = [e.date, normName(e.name || e.ticker || e.title || ""), e.kind].join("|"); if (seen.has(k)) return false; seen.add(k); return true; }); calBadge(); loadMacroLive(); if (["calendar", "today"].includes(state.sec)) render(); })
     .catch(() => { calData = []; if (state.sec === "calendar") render(); });
   return calLoading;
 }
@@ -2057,7 +2058,27 @@ function calBadge() {
 const CAL_KIND = { earnings: ["Q", "k-earn", "Quartalszahlen"], exdiv: ["Div", "k-div", "Ex-Dividende"], dividend: ["Div", "k-div", "Dividendenzahlung"],
                    macro: ["%", "k-macro", "Wirtschaft & Zinsen"], expiry: ["V", "k-exp", "Großer Verfall"] };
 const REG_DE = { us: "USA", europe: "Europa", asia: "Asien", all: "weltweit" };
-const macWhen = e => [e.time ? e.time + " Uhr" : "", e.imp === "high" ? "sehr wichtig" : e.imp === "mid" ? "wichtig" : "", e.why || "",
+// Fed-Zinsentscheid live (backend/fedlive.py → macro_live.json im Branch kairo-earnings, an Fed-Tagen alle 5 Min. geprüft)
+const MACRO_LIVE_URL = REPO.replace("https://github.com/", "https://raw.githubusercontent.com/") + "/kairo-earnings/macro_live.json";
+let macroLive = null, macroAt = 0;
+const isFedDay = () => (calData || []).some(e => e.kind === "macro" && /Fed-Zinsentscheid/.test(e.title || "") && daysUntil(e.date) === 0);
+function loadMacroLive() {
+  macroAt = Date.now();
+  return fetch(MACRO_LIVE_URL + "?v=" + Math.floor(Date.now() / 6e4)).then(r => r.ok ? r.json() : null).then(d => {
+    const had = macroLive && macroLive.fed && macroLive.fed.ts;
+    macroLive = d;
+    if (d && d.fed && d.fed.ts !== had && ["today", "calendar"].includes(state.sec)) render();
+  }).catch(() => {});
+}
+setInterval(() => { if (document.visibilityState === "visible" && isFedDay() && !(macroLive && macroLive.fed && daysUntil(macroLive.fed.date) === 0)) loadMacroLive(); }, 60000);
+const fedRes = e => macroLive && macroLive.fed && /Fed-Zinsentscheid/.test(e.title || "") && macroLive.fed.date === e.date ? macroLive.fed : null;
+function fedBannerHtml() {
+  const f = macroLive && macroLive.fed;
+  if (!f || daysUntil(f.date) < -1) return "";
+  const t = new Date(f.ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  return `<div class="tip tone-${f.decision === "hold" ? "yellow" : "green"}" style="margin:0 0 12px">🏦 <b>${esc(f.head)}</b> · ${daysUntil(f.date) === 0 ? "heute" : "gestern"} ${t} Uhr${f.dissent ? ` · Gegenstimmen: ${esc(f.dissent)}` : ""} · <a href="${esc(safeHref(f.url))}" target="_blank" rel="noopener">Statement</a></div>`;
+}
+const macWhen = e => [fedRes(e) ? "✓ " + fedRes(e).head : "", e.time ? e.time + " Uhr" : "", e.imp === "high" ? "sehr wichtig" : e.imp === "mid" ? "wichtig" : "", e.why || "",
   e.fc ? `Prognose ${e.fc}` : "", e.prev ? `vorher ${e.prev}` : ""].filter(Boolean).join(" · ");
 let calMonth = 0, calDay = null;   // Monatsansicht: Versatz zum aktuellen Monat, ausgewählter Tag
 const isoOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -4202,9 +4223,9 @@ function todayHtml() {
   const al = getJson("alerts.json");
   const tgHint = "";                       // Telegram-Abendbericht: ersetzt durch Push-Mitteilungen (10/2026)
   // Postfach: Aufgaben oben, darunter dieselben Karten wie sonst (ohne „Beste Treffer“ – die stehen schon im Postfach)
-  if (isPostfach()) return postfachHtml(`${startHtml()}${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}`, `${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
+  if (isPostfach()) return postfachHtml(`${fedBannerHtml()}${startHtml()}${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}`, `${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
   const more = `${changesHtml()}${journalTeaserHtml()}`;
-  return (isApple() ? todoHtml() : kpiHtml()) + `${todoTodayHtml()}${startHtml()}<div class="hgrid"><div class="hcol">${topHitsHtml()}${myStocksHtml()}${depotSnapHtml()}</div>
+  return fedBannerHtml() + (isApple() ? todoHtml() : kpiHtml()) + `${todoTodayHtml()}${startHtml()}<div class="hgrid"><div class="hcol">${topHitsHtml()}${myStocksHtml()}${depotSnapHtml()}</div>
     <div class="hcol">${etfTeaserHtml()}${marketHtml()}${soonHtml()}${bilanzTeaserHtml()}</div></div>
     ${more.trim() ? `<details class="pdet hmore"${state.hMore ? " open" : ""}><summary class="psum"><b>Mehr für heute</b><span class="ptag">Seit dem letzten Scan · Journal</span></summary><div class="hgrid hgrid-more">${more}</div></details>` : ""}`;   // oben: was heute zu tun ist
 }
@@ -4569,8 +4590,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.01";
-const APP_NEWS = [["2026.11.01", "Scan per Knopf", [
+const APP_VER = "2026.11.02";
+const APP_NEWS = [["2026.11.02", "Verlässlich und live", [
+  ["Fed live", "Am Tag des Fed-Zinsentscheids prüft Kairo alle 5 Minuten das Statement der Fed – die Entscheidung steht dann oben auf „Heute“, im Kalender und kommt als Mitteilung."],
+  ["Keine alten Kurse mehr", "Lässt Yahoo im großen Abruf einzelne Aktien aus, lädt der Scan sie bis zu dreimal einzeln nach. Bleibt eine trotzdem alt, steht das deutlich an der Aktie und im Datenstatus."],
+  ["Abend-Scan", "Mehrere Startzeiten ab 22:30 Uhr – jeder Lauf prüft, ob der Scan schon online ist. Verspätete GitHub-Starts fallen so kaum noch ins Gewicht."]]],
+  ["2026.11.01", "Scan per Knopf", [
   ["↻ Alle / ↻ Watchlist", "Oben im Scanner: „Alle“ startet den großen Scan aller Aktien (ca. 45–60 Min.), „Watchlist“ nur deine Watchlist (ca. 5–10 Min.) – auch tagsüber. Danach lädt Kairo die neuen Ergebnisse von selbst."],
   ["Einmal einrichten", "Für den Direktstart einen GitHub-Schlüssel eintragen (Einstellungen → Scanner-Parameter, Anleitung dort). Ohne Schlüssel öffnet der Knopf GitHub."]]],
   ["2026.10.31", "Deine Watchlist = deine Sterne", [
@@ -5834,6 +5859,7 @@ function health() {
       ? `Stammdaten/Quartalstermine: ${h.info_fresh} frisch, ${h.info_cached} vom letzten erfolgreichen Abruf, Rest aus der Aktienliste (Yahoo hat Einzelabfragen begrenzt)`
       : `Yahoo hat heute die Einzelabfragen blockiert – Namen, Sektoren und Quartalstermine kommen aus der Aktienliste (meist aktuell, einzelne Termine können fehlen)`]);
     if (h.news === 0) out.push(["y", "Keine Nachrichten für das Briefing abrufbar"]);
+    if (h.stale) out.push([h.stale > 30 ? "r" : "y", `${h.stale} Aktien ohne Kurs vom letzten Handelstag (Yahoo hat sie auch nach 3 Versuchen ausgelassen): ${(h.stale_list || []).slice(0, 12).join(", ")}${h.stale > 12 ? " …" : ""}`]);
   }
   return out;
 }

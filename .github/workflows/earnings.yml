@@ -9,6 +9,7 @@ on:
     - cron: "*/10 19-23 * * 1-5"    # USA nach Börsenschluss (21–01 Uhr Berlin)
     - cron: "*/30 8-9,15-18 * * 1-5"
     - cron: "*/30 0-3 * * 2-6"      # Nachzügler und Asien
+    - cron: "1-59/5 17-19 * * 1-5"  # Fed-Zinsentscheid (14:00 New York): alle 5 Min. – macht nur an Fed-Tagen etwas
   workflow_dispatch:
 
 permissions:
@@ -34,6 +35,11 @@ jobs:
           if git fetch -q origin kairo-earnings:kairo-earnings 2>/dev/null; then git worktree add -q state kairo-earnings;
           else git worktree add -q --orphan -b kairo-earnings state; fi
           git fetch -q origin kairo-data 2>/dev/null && git show origin/kairo-data:earn_est.json > "$RUNNER_TEMP/earn_est.json" 2>/dev/null || echo "{}" > "$RUNNER_TEMP/earn_est.json"
+      - name: Fed-Zinsentscheid live (nur an Fed-Tagen)
+        run: python -m backend.fedlive state || true
+        env:
+          PUSH_SUBS: ${{ secrets.PUSH_SUBS }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       - name: Quartalszahlen prüfen
         run: python -m backend.earnings state "$RUNNER_TEMP/earn_est.json"
       - name: Sichern
