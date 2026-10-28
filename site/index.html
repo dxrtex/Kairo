@@ -2205,7 +2205,21 @@ function loadEarnLive() {
     const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d);
   }).catch(() => {});
 }
+// Ehrliche Statistik statt Bauchgefühl (tools/research/earn_stats.py): 14.936 Quartalsberichte von 580 US-Aktien seit 2019 –
+// wie oft stieg die Aktie am Handelstag nach den Zahlen, je nach Überraschung beim Gewinn
+let earnStats = null;
+const loadEarnStats = () => earnStats || fetch("earn_stats.json").then(r => r.ok ? r.json() : null).then(d => { earnStats = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnStats = {}; });
+function earnStatHtml(t, sur) {
+  if (!earnStats) { loadEarnStats(); return ""; }
+  const B = earnStats.buckets || [], s = sur == null ? null : sur * 100, b = s == null ? null : B.find(x => s >= x.lo && s < x.hi), P = (earnStats.per || {})[t];
+  const parts = [];
+  if (b) parts.push(`Gewinn ${esc(b.name)}: In der Vergangenheit stieg die Aktie danach in <b>${pct(b.up1, 0)}</b> der Fälle am ersten Handelstag (Median ${sgnPct(b.med1, 1)}, ${fmt(b.n, 0)} Berichte) – nach 5 Tagen in ${pct(b.up5, 0)}.`);
+  else if (s == null && B.length) { const hi = B[B.length - 1], lo = B[0]; parts.push(`Zur Einordnung: Selbst bei Gewinnen deutlich über Erwartung stiegen nur <b>${pct(hi.up1, 0)}</b> der Aktien am Folgetag, deutlich darunter ${pct(lo.up1, 0)}. Bei ${pct(earnStats.beat_down, 0)} aller Berichte über Erwartung fiel der Kurs trotzdem.`); }
+  if (P && P.n >= 4) parts.push(`${esc(t)} selbst: nach den letzten ${P.n} Berichten ${P.up}× gestiegen, typische Bewegung ±${pct(P.move, 1)}${P.beat_up != null ? ` · nach Zahlen über Erwartung ${pct(P.beat_up, 0)} gestiegen` : ""}.`);
+  return parts.length ? `<p class="eq-line">📊 ${parts.join(" ")} <span class="muted">Statistik, keine Vorhersage – sicherer als etwa 60 % ist keine Richtung.</span></p>` : "";
+}
 function loadEarnings() {
+  loadEarnStats();
   if (!earnLoading) earnLoading = scanFetch("earnings.json").then(r => r.ok ? r.json() : { tickers: {} })
     .then(d => { earnData = d.tickers || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); return loadEarnLive(); }).catch(() => { earnData = earnData || {}; });
   return earnLoading;
@@ -2237,7 +2251,7 @@ function earnHtml(t, d) {
         ${cell("Umsatz", bigNum(L.rev_a, cur), L.rev_s != null ? `erwartet ${bigNum(L.rev_e)} · <span class="${upDown(L.rev_s)}">${sgn(L.rev_s)}</span>` : L.rev_yoy != null ? `zum Vorjahr <span class="${upDown(L.rev_yoy)}">${sgn(L.rev_yoy)}</span>` : L.rev_a == null ? "Yahoo hat den Umsatz noch nicht" : "")}
         ${cell("Ausblick", gTxt, g && g.t ? (g.u ? `<a href="${esc(g.u)}" target="_blank" rel="noopener">${esc(g.t.replace(/ - [^-]+$/, ""))}</a>` : esc(g.t)) : "aus Schlagzeilen nach den Zahlen", g && g.d != null ? upDown(g.d) : "")}
         ${cell("Kursreaktion", rx ? sgn(rx.d1) : "noch offen", rx ? `erster Handelstag (${dateDE(rx.day)})${rx.since != null ? ` · bis ${dateDE(rx.to)} ${sgn(rx.since)}` : ""}` : "kommt mit dem nächsten Handelstag", rx ? upDown(rx.d1) : "")}
-      </div>${clash}${rec.beat ? `<p class="eq-line">Erwartung beim Gewinn übertroffen: <b>${rec.beat[0]} von ${rec.beat[1]}</b> Quartalen · typische Bewegung nach Zahlen: <b style="white-space:nowrap">±${pct(rec.move || 0, 1)}</b></p>` : ""}${foot}`;
+      </div>${clash}${earnStatHtml(t, L.eps_s)}${rec.beat ? `<p class="eq-line">Erwartung beim Gewinn übertroffen: <b>${rec.beat[0]} von ${rec.beat[1]}</b> Quartalen · typische Bewegung nach Zahlen: <b style="white-space:nowrap">±${pct(rec.move || 0, 1)}</b></p>` : ""}${foot}`;
   }
   if (N) {
     const n = daysUntil(N.date);
@@ -2248,7 +2262,7 @@ function earnHtml(t, d) {
         ${cell("Erwartung Umsatz", bigNum(N.rev_e, cur), N.rev_g != null ? `zum Vorjahr ${sgn(N.rev_g)}${N.rev_n ? ` · ${N.rev_n} Analysten` : ""}` : "")}
         ${cell("Bisher", rec.beat ? `${rec.beat[0]} von ${rec.beat[1]}` : "–", "Quartale über der Gewinn-Erwartung")}
         ${cell("Typische Bewegung", rec.move ? `±${pct(rec.move, 1)}` : "–", "am Tag nach den Zahlen (Ø der letzten Quartale)")}
-      </div>${foot}`;
+      </div>${earnStatHtml(t, null)}${foot}`;
   }
   return head + `<p class="muted" style="margin:14px 0">${daysUntil(d || "2100-01-01") > 0 ? "Für diesen Termin liefert Yahoo noch keine Erwartungen – sie erscheinen meist in den Wochen davor." : "Für diese Aktie liefert Yahoo keine Quartalsdaten."}</p>${foot}`;
 }
@@ -4601,8 +4615,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.02";
-const APP_NEWS = [["2026.11.02", "Verlässlich und live", [
+const APP_VER = "2026.11.03";
+const APP_NEWS = [["2026.11.03", "Ehrlicher bei Quartalszahlen", [
+  ["Statistik statt Bauchgefühl", "Bei jeden Quartalszahlen zeigt Kairo, wie oft Aktien nach so einer Überraschung gestiegen sind – aus 14.936 Berichten seit 2019. Selbst bei sehr guten Zahlen nur rund 61 % – sicherer ist keine Richtung."],
+  ["Über die Zahlen halten", "Der Trade-Plan beendet Trades nicht mehr vor den Quartalszahlen: Im Test waren Käufe kurz davor sogar besser. Bei Turbos bleibt der Hinweis auf Kurslücken."],
+  ["Nur getestete Treffer", "Treffer gibt es nur noch in USA und Europa (dort ist die Regel getestet) und nur bei ruhiger Konsolidierung."],
+  ["Pünktlicher Wecker", "Optional: Mit Kursdienst Version 5 startet der Abend-Scan auf die Minute um 22:30 Uhr (Anleitung in den Einstellungen)."]]],
+  ["2026.11.02", "Verlässlich und live", [
   ["Nur saubere Treffer", "Ein Treffer erscheint erst, wenn nach den 11 Kriterien auch die Konsolidierung ruhig ist (enge Spanne, wenig Hin und Her). Im Test 2022–26: +0,26 R statt +0,03 R je Trade."],
   ["Fed live", "Am Tag des Fed-Zinsentscheids prüft Kairo alle 5 Minuten das Statement der Fed – die Entscheidung steht dann oben auf „Heute“, im Kalender und kommt als Mitteilung."],
   ["Keine alten Kurse mehr", "Lässt Yahoo im großen Abruf einzelne Aktien aus, lädt der Scan sie bis zu dreimal einzeln nach. Bleibt eine trotzdem alt, steht das deutlich an der Aktie und im Datenstatus."],
