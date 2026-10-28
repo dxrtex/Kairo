@@ -2208,9 +2208,9 @@ function earnMerge(live) {
     earnData[t] = { ...(old || {}), ...r, beat: (old && old.beat) || r.beat, move: (old && old.move) || r.move, next: ol && ol.date === r.last.date ? old.next : undefined };
   });
 }
-function loadEarnLive() {
+function loadEarnLive(fast) {
   earnLiveAt = Date.now();
-  return fetch(EARN_LIVE_URL + "?v=" + Math.floor(Date.now() / 3e5)).then(r => r.ok ? r.json() : null).then(d => {
+  return fetch(EARN_LIVE_URL + "?v=" + Math.floor(Date.now() / (fast ? 6e4 : 3e5))).then(r => r.ok ? r.json() : null).then(d => {
     if (!d || !earnData) return;
     earnMerge(d.tickers); earnData.__live = d.generated;
     if (state.sec === "calendar" || state.sec === "news") render();
@@ -2259,16 +2259,37 @@ function earnTopHtml(t, sur, rx) {
     <div class="eq-entry"><b>${esc(entry[0])}</b><span>${esc(entry[1])}</span></div></div>`;
 }
 function loadEarnings() {
-  loadEarnStats();
+  loadEarnStats(); loadSecHits(true);
   if (!earnLoading) earnLoading = scanFetch("earnings.json").then(r => r.ok ? r.json() : { tickers: {} })
     .then(d => { earnData = d.tickers || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); return loadEarnLive(); }).catch(() => { earnData = earnData || {}; });
   return earnLoading;
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && earnData && Date.now() - earnLiveAt > 4 * 6e4) loadEarnLive(); });
 setInterval(() => { if (document.visibilityState === "visible" && earnData && state.sec === "calendar") loadEarnLive(); }, 5 * 6e4);
+setInterval(() => { const b = $("earnBox"); if (document.visibilityState === "visible" && (state.sec === "calendar" || (b && !b.hidden))) loadSecHits(); }, 6e4);
 const bigNum = (v, cur) => v == null ? "–" : `${Math.abs(v) >= 1e9 ? fmt(v / 1e9, 2) + " Mrd." : Math.abs(v) >= 1e6 ? fmt(v / 1e6, 0) + " Mio." : fmt(v, 0)}${cur ? " " + cur : ""}`;
 const sgn = (v, d = 1) => v == null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : "±"}${pct(Math.abs(v), d)}`;
 const upDown = v => v == null ? "" : v > 0 ? "up" : v < 0 ? "down" : "";
+// Erwartete Uhrzeit (Yahoo, deutsche Zeit) – Firmen melden meist „vor Börsenstart“ / „nach Börsenschluss“, daher „ca.“
+const earnTime = N => { if (!N || !N.ts) return ""; const x = new Date(N.ts); if (isNaN(x)) return "";
+  const hm = x.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }); return hm === "00:00" ? "" : `ca. ${hm} Uhr`; };
+// Kursdienst ab Version 6: meldet, sobald eine Firma ihre Zahlen offiziell bei der SEC einreicht (1–5 Min. nach Veröffentlichung)
+let secHits = {}, secAt = 0;
+function loadSecHits(force) {
+  const yq = liveKey("yq"); if (!yq || (!force && Date.now() - secAt < 55e3)) return;
+  secAt = Date.now();
+  fetch(yq + "/earn", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(j => {
+    if (!j || !Array.isArray(j.hits)) return;
+    const prev = Object.keys(secHits).length; secHits = {};
+    j.hits.forEach(h => { secHits[h.t] = h; });
+    const fresh = j.hits.some(h => Date.now() - Date.parse(h.at) < 45 * 6e4);
+    if (fresh) loadEarnLive(true);                    // Werte von Yahoo so schnell wie möglich nachholen
+    if (Object.keys(secHits).length !== prev || fresh) { if (state.sec === "calendar") render(); const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }
+  }).catch(() => {});
+}
+const secBanner = (t, d) => { const h = secHits[t]; if (!h || (d && h.date !== d)) return "";
+  const at = new Date(h.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
+  return `<div class="eq-v t-yellow" style="margin-bottom:12px"><i></i><div><b>Zahlen sind raus – ${esc(at)} Uhr</b><span>Offizielle Meldung bei der SEC (${esc(h.form)}). Ergebnis, Erwartung und Einschätzung erscheinen hier in wenigen Minuten. <a href="${esc(safeHref(h.url))}" target="_blank" rel="noopener">Originalmeldung</a></span></div></div>`; };
 function earnHtml(t, d) {
   const ev = (calData || []).find(e => e.ticker === t && e.kind === "earnings" && (!d || e.date === d)) || {};
   const rec = earnData && earnData[t], name = ev.name || (rec && rec.name) || t;
@@ -2295,8 +2316,9 @@ function earnHtml(t, d) {
   }
   if (N) {
     const n = daysUntil(N.date);
-    return head + `<div class="eq-sub">${n === 0 ? "Heute" : n === 1 ? "Morgen" : `In ${n} Tagen`} · ${dateDE(N.date)}${N.when ? " · " + N.when : ""}</div>
-      ${earnTopHtml(t, null, null)}<div class="eq-v t-gray"><i></i><div><b>Noch keine Zahlen</b><span>Kairo prüft am Termin laufend – die Ergebnisse stehen hier meist 15–40 Minuten nach der Veröffentlichung.</span></div></div>
+    const tm = earnTime(N), sb = secBanner(t, N.date);
+    return head + `<div class="eq-sub">${n === 0 ? "Heute" : n === 1 ? "Morgen" : `In ${n} Tagen`} · ${dateDE(N.date)}${tm ? " · " + tm : ""}${N.when ? " · " + N.when : ""}</div>
+      ${sb}${earnTopHtml(t, null, null)}${sb ? "" : `<div class="eq-v t-gray"><i></i><div><b>Noch keine Zahlen</b><span>${liveKey("yq") ? "Kairo prüft am Termin jede Minute bei der SEC (US-Aktien) und meldet sich, sobald die Zahlen raus sind – die Werte folgen wenige Minuten später." : "Kairo prüft am Termin laufend – die Ergebnisse stehen hier meist 15–40 Minuten nach der Veröffentlichung."}</span></div></div>`}
       <div class="eq-cells">
         ${cell("Erwartung Gewinn je Aktie", N.eps_e == null ? "–" : `${fmt(N.eps_e)} ${cur}`.trim(), "")}
         ${cell("Erwartung Umsatz", bigNum(N.rev_e, cur), N.rev_g != null ? `zum Vorjahr ${sgn(N.rev_g)}${N.rev_n ? ` · ${N.rev_n} Analysten` : ""}` : "")}
@@ -2339,10 +2361,11 @@ function calendarHtml() {
       return `<div class="ev"><span class="k ${cls}"${e.imp === "high" ? ' style="outline:2px solid var(--down);outline-offset:1px"' : ""}>${icon}</span><div class="b"><b>${esc(e.title)}</b><span>${info ? esc(info) + "<br>" : ""}${e.kind === "macro" && reg !== "all" ? `${REG_DE[reg] || reg} – ${n2} deiner Aktien dort, bewegt aber oft alle Börsen` : "betrifft den ganzen Markt"}</span></div></div>`;
     }
     const inRes = data.results.some(r => r.ticker === e.ticker);
-    const sub = e.kind === "earnings" ? (e.done || (earnData && earnData[e.ticker] && earnData[e.ticker].last && earnData[e.ticker].last.date === e.date) ? "Quartalszahlen gemeldet · antippen" : e.big && !e.watch && !dep.has(e.ticker) ? "Quartalszahlen · Schwergewicht – bewegt Index und Branche" : e.estimate ? "Quartalszahlen · Datum geschätzt" : "Quartalszahlen")
+    const enx = e.kind === "earnings" && earnData && earnData[e.ticker] && earnData[e.ticker].next, etm = enx && enx.date === e.date ? earnTime(enx) : "";
+    const sub = e.kind === "earnings" ? (e.done || (earnData && earnData[e.ticker] && earnData[e.ticker].last && earnData[e.ticker].last.date === e.date) ? "Quartalszahlen gemeldet · antippen" : secHits[e.ticker] && secHits[e.ticker].date === e.date ? "Zahlen sind raus (SEC) · Werte folgen · antippen" : e.big && !e.watch && !dep.has(e.ticker) ? "Quartalszahlen · Schwergewicht – bewegt Index und Branche" + (etm ? " · " + etm : "") : e.estimate ? "Quartalszahlen · Datum geschätzt" : "Quartalszahlen" + (etm ? " · " + etm : ""))
       : e.kind === "exdiv" ? `Ex-Dividende${e.rate ? " · " + fmt(e.rate) + " je Aktie p. a." : ""}` : `Dividendenzahlung${e.rate ? " · " + fmt(e.rate) + " je Aktie p. a." : ""}`;
     const earn = e.kind === "earnings", er = earn && earnData && earnData[e.ticker], erl = er && er.last && Math.abs(daysUntil(er.last.date) - daysUntil(e.date)) <= 3 ? er.last : null;
-    const res = earn && (e.done || !!erl), tone = (erl && erl.view && erl.view.tone) || e.tone || "gray";
+    const res = earn && (e.done || !!erl || !!(secHits[e.ticker] && secHits[e.ticker].date === e.date)), tone = (erl && erl.view && erl.view.tone) || e.tone || "gray";
     return `<div class="ev${earn ? " ev-tap" : ""}"${earn ? ` data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0" aria-label="Quartalszahlen ${esc(e.name || e.ticker)} öffnen"` : ""}><span class="k ${cls}">${icon}</span><div class="b"><b>${esc(e.name || e.ticker)}${dep.has(e.ticker) ? '<span class="pill dep">Depot</span>' : favs().has(e.ticker) ? '<span class="pill fv">★</span>' : e.watch ? '<span class="pill">WL</span>' : ""}</b><span>${esc(e.ticker)} · ${sub}</span></div>
       ${res ? `<span class="ev-res t-${esc(tone)}"><i></i>Zahlen da</span>` : earn ? `<span class="ev-more" aria-hidden="true">›</span>` : inRes ? `<a class="btnlink" href="#" data-card="${esc(e.ticker)}">Übersicht</a>` : ""}</div>`;
   };
@@ -4655,8 +4678,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.04";
-const APP_NEWS = [["2026.11.04", "Quartalszahlen auf einen Blick", [
+const APP_VER = "2026.11.05";
+const APP_NEWS = [["2026.11.05", "Quartalszahlen so schnell wie möglich", [
+  ["Sofort bei der SEC", "Mit Kursdienst Version 6 prüft Kairo am Termin jede Minute die offizielle US-Börsenaufsicht (SEC). Sobald eine Firma ihre Zahlen einreicht – meist 1–5 Minuten nach der Veröffentlichung –, kommt eine Mitteilung und der Kalender zeigt „Zahlen sind raus“. Ergebnis und Einschätzung folgen wenige Minuten später, ebenfalls mit Mitteilung."],
+  ["Uhrzeit", "Kalender und Quartalsfenster zeigen die erwartete Uhrzeit in deutscher Zeit (ca.)."]]],
+  ["2026.11.04", "Quartalszahlen auf einen Blick", [
   ["Chance ganz oben", "Im Quartalszahlen-Fenster steht jetzt oben groß, wie oft Aktien nach Zahlen dieser Art gestiegen sind (14.936 Berichte), mit Balken und einer klaren Einschätzung zum Einstieg – vor den Zahlen geschätzt aus den bisherigen Überraschungen der Aktie."]]],
   ["2026.11.03", "Ehrlicher bei Quartalszahlen", [
   ["Statistik statt Bauchgefühl", "Bei jeden Quartalszahlen zeigt Kairo, wie oft Aktien nach so einer Überraschung gestiegen sind – aus 14.936 Berichten seit 2019. Selbst bei sehr guten Zahlen nur rund 61 % – sicherer ist keine Richtung."],
@@ -4841,7 +4867,7 @@ function settingsHtml() {
           <li>Die Adresse oben im Editor kopieren (endet auf <b>.workers.dev</b>), hier ins Feld „Kairo-Kursdienst“ einfügen → <b>„Speichern &amp; testen“</b>.</li>
           <li><b>Für automatische Mitteilungen (einmalig):</b> In Cloudflare links <b>„Storage &amp; Databases“ → „KV“</b> → <b>„Create“</b>, Name <b>kairo</b> → anlegen. Dann deinen Worker öffnen → <b>„Settings“</b> → <b>„Bindings“</b> → <b>„Add“</b> → <b>„KV namespace“</b>, Variablenname <b>KAIRO</b> (groß), Namespace <b>kairo</b> wählen → <b>„Deploy“</b>/„Save“. Hier noch einmal „Speichern &amp; testen“.</li>
           <li>Danach einmalig unter „Mitteilungen“ den Code neu kopieren und das GitHub-Secret <code>PUSH_SUBS</code> aktualisieren – ab dann kennt die Prüfung jeden neuen Trade von selbst.</li>
-          <li><b>Pünktlicher Wecker (optional, empfohlen):</b> GitHub startet den Abend-Scan und die Quartalszahlen-Prüfung oft Stunden zu spät – Cloudflare nicht. Dafür: auf github.com einen <b>Fine-grained token</b> anlegen (nur Repository Kairo, Permissions: <b>Actions: Read and write</b>). In Cloudflare beim Worker unter <b>Settings → Variables and Secrets</b> ein Secret <code>GH_TOKEN</code> mit diesem Schlüssel anlegen, unter <b>Settings → Triggers → Cron Triggers</b> „<code>*/5 * * * *</code>“ hinzufügen und den neuen Code (Version 5) einfügen → „Deploy“. Dann startet der Scan jeden Werktag um 22:30 Uhr, die Quartalszahlen alle 10 Min. und die Fed alle 5 Min. auf die Minute genau.</li>
+          <li><b>Pünktlicher Wecker (optional, empfohlen):</b> GitHub startet den Abend-Scan und die Quartalszahlen-Prüfung oft Stunden zu spät – Cloudflare nicht. Dafür: auf github.com einen <b>Fine-grained token</b> anlegen (nur Repository Kairo, Permissions: <b>Actions: Read and write</b>). In Cloudflare beim Worker unter <b>Settings → Variables and Secrets</b> ein Secret <code>GH_TOKEN</code> mit diesem Schlüssel anlegen, unter <b>Settings → Trigger events → Cron Triggers</b> „<code>* * * * *</code>“ (jede Minute) hinzufügen und den neuen Code (Version 6) einfügen → „Deploy“. Dann startet der Scan jeden Werktag um 22:30 Uhr, die Quartalszahlen-Prüfung alle 10 Min., die Fed alle 5 Min. – und am Termin einer US-Aktie prüft Kairo jede Minute bei der SEC, ob die Zahlen raus sind (Mitteilung sofort).</li>
         </ol>
         <textarea id="kdCode" class="tgtext" readonly rows="6" placeholder="Code wird geladen …"></textarea>
         <div class="note">Kurse von Yahoo Finance, je nach Börse leicht verzögert (XETRA ca. 15 Min.). Der Dienst läuft in deinem Cloudflare-Konto; nur die Kairo-App darf ihn nutzen. Kostenlos bis 100.000 Abrufe am Tag.</div>
@@ -5091,10 +5117,10 @@ document.addEventListener("click", async e => {
       : j ? `✗ Kursdienst erreichbar, aber ohne Kurs${/Version 2/.test(JSON.stringify(j)) ? "" : " – bitte den neuen Code (Version 2) einfügen und „Deploy“"} · Diagnose: ${await fetch(yq + "/?s=SAP.DE&debug=1").then(r => r.json()).then(d => (d._diag || []).join(" · ") || "alter Code ohne Diagnose").catch(() => "–")}` : "✗ Kursdienst: keine Antwort – Adresse prüfen (https://….workers.dev) und ob der Code mit „Deploy“ gespeichert ist"); }
   if (yq && res.some(x => x.startsWith("✓ Kursdienst"))) {
     const info = await fetch(yq + "/").then(r => r.json()).catch(() => null);
-    if (info && /Version [34]/.test(info.info || "")) res.push("ℹ Kursdienst: Version 5 bringt einen pünktlichen Wecker für den Abend-Scan und die Quartalszahlen (Anleitung unten, Schritt „Pünktlicher Wecker“) – optional");
-    if (!info || !/Version [345]/.test(info.info || "")) res.push("ℹ Kursdienst: Version 4 noch nicht eingefügt – für Aktiensuche weltweit, automatische Mitteilungen und Watchlist-Abgleich den neuen Code kopieren und „Deploy“");
+    if (info && /Version [345]/.test(info.info || "")) res.push("ℹ Kursdienst: Version 6 meldet Quartalszahlen sofort (SEC, jede Minute) – neuen Code kopieren, „Deploy“ und beim Cron Trigger „* * * * *“ eintragen (Anleitung unten, Schritt „Pünktlicher Wecker“)");
+    if (!info || !/Version [3456]/.test(info.info || "")) res.push("ℹ Kursdienst: Version 4 noch nicht eingefügt – für Aktiensuche weltweit, automatische Mitteilungen und Watchlist-Abgleich den neuen Code kopieren und „Deploy“");
     else if (!info.kv) res.push("ℹ Kursdienst: Speicher „KAIRO“ fehlt noch – für automatische Mitteilungen (Anleitung unten, Schritt 7)");
-    else { const j = await kxSync(); res.push(j && j.ok ? `✓ Abgleich aktiv – Mitteilungen kennen neue Trades${/Version [45]/.test(info.info || "") ? `, der Scan deine Watchlist (${favs().size} Aktien)` : ""} automatisch` : `✗ Abgleich: ${(j && j.error) || "keine Antwort"}`); }
+    else { const j = await kxSync(); res.push(j && j.ok ? `✓ Abgleich aktiv – Mitteilungen kennen neue Trades${/Version [456]/.test(info.info || "") ? `, der Scan deine Watchlist (${favs().size} Aktien)` : ""} automatisch` : `✗ Abgleich: ${(j && j.error) || "keine Antwort"}`); }
   }
   // Läuft der Kursdienst, ist fehlendes XETRA bei Twelve Data egal → nur noch als Hinweis
   if (res.some(x => x.startsWith("✓ Kursdienst"))) res.forEach((x, i) => { if (x.startsWith("✗ Twelve Data: XETRA")) res[i] = "ℹ Twelve Data: XETRA nicht im Gratis-Tarif – egal, deutsche/europäische Kurse kommen über deinen Kursdienst"; });

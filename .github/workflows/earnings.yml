@@ -2,6 +2,7 @@ name: Quartalszahlen live
 
 # Prüft tagsüber laufend die Aktien mit Quartalstermin (gestern/heute/morgen). Sobald Yahoo die Zahlen hat, stehen
 # Ergebnis, Ausblick und Einschätzung in der App – ohne auf den Abendscan zu warten (Branch kairo-earnings).
+# Mit Kursdienst Version 6 startet Cloudflare den Lauf sofort, wenn die Firma ihre Zahlen bei der SEC meldet (Eingabe „sec“).
 on:
   schedule:
     - cron: "*/10 4-7 * * 1-5"      # Europa vor Börsenstart (06–09 Uhr Berlin) und USA früh
@@ -11,6 +12,11 @@ on:
     - cron: "*/30 0-3 * * 2-6"      # Nachzügler und Asien
     - cron: "1-59/5 17-19 * * 1-5"  # Fed-Zinsentscheid (14:00 New York): alle 5 Min. – macht nur an Fed-Tagen etwas
   workflow_dispatch:
+    inputs:
+      sec:
+        description: "Vom Kursdienst: Ticker mit frischer SEC-Meldung (z. B. AAPL,MSFT) – sofort Mitteilung"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -42,6 +48,10 @@ jobs:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       - name: Quartalszahlen prüfen
         run: python -m backend.earnings state "$RUNNER_TEMP/earn_est.json"
+        env:
+          SEC_HIT: ${{ inputs.sec }}
+          PUSH_SUBS: ${{ secrets.PUSH_SUBS }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       - name: Sichern
         run: |
           cd state
