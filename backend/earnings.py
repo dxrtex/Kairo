@@ -35,6 +35,11 @@ GUIDE_DOWN = re.compile(
     r"|\b(senkt|kappt|kassiert|streicht)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
 ANALYST = re.compile(r"\b(price target|target price|kursziel|rating|stock forecast|price forecast|price prediction|prognose für die aktie|upgrades?|downgrades?|upgraded|downgraded|analysts? (see|expect)|"
                      r"(raises|lifts|cuts|lowers|trims|boosts)\b[^|]{0,30}\btarget\b)", re.I)
+# Ausgaben-/Investitionspläne sind kein Umsatz- oder Gewinnausblick (Meta 21.10.2026: „Boosts … Spending Outlook“ → Kurs −7 %)
+SPEND = re.compile(r"\b(spend\w*|capex|capital (expenditures?|spending)|expenses?|costs?|investments?|invest\w*|ausgaben|investitionen|kosten)\b", re.I)
+# Sondereffekte: Gewinn durch Einmalposten verzerrt (Steuer, Abschreibung, Rückstellung)
+ONEOFF = re.compile(r"\b(one[- ]time|one[- ]off|non[- ]recurring|charges?|impairments?|write[- ]?downs?|tax (charge|benefit|expense|hit)|"
+                    r"legal (charge|settlement)|restructuring|sonderbelastung\w*|sondereffekt\w*|einmal\w*|abschreibung\w*)\b", re.I)
 GUIDE_KEEP = re.compile(
     r"\b(reaffirms?|reaffirmed|reiterates?|reiterated|maintains?|maintained|confirms?|confirmed)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
     r"|\bbestätigt\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
@@ -84,6 +89,8 @@ def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Time
             m = rx.search(title)
             if m and (not words or _about(title, m, words)):
                 d = val
+                if SPEND.search(m.group(0)):          # Ausgabenplan („Spending Outlook“, „capex forecast“), kein Ausblick
+                    d = None
                 break
         if d is not None:
             hits.append({"d": d, "t": title[:180], "u": link, "date": date})
@@ -97,11 +104,33 @@ def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Time
     return {"d": d, "t": best["t"], "u": best["u"], "date": best["date"], "n": len(hits)}
 
 
+def oneoff(items: list[tuple[str, str, str]], words: list[str], since: pd.Timestamp | None = None) -> dict | None:
+    """Schlagzeile nach den Zahlen, die auf einen Sondereffekt beim Gewinn hindeutet (Firma im Titel)."""
+    from email.utils import parsedate_to_datetime
+    words = [w.lower() for w in words if w and len(w) >= 3]
+    for title, link, date in items:
+        if since is not None and date:
+            try:
+                if pd.Timestamp(parsedate_to_datetime(date)) < since - pd.Timedelta(hours=2):
+                    continue
+            except Exception:
+                pass
+        m = ONEOFF.search(title)
+        if m and not ANALYST.search(title) and (not words or _about(title, m, words)):
+            return {"t": title[:180], "u": link}
+    return None
+
+
 def assess(eps_s: float | None, rev_s: float | None, guide_d: int | None) -> dict | None:
-    """Regel: Gewinn-Überraschung ±3 % → ±1, Umsatz ±1 % → ±1, Ausblick angehoben/gesenkt → ±2."""
+    """Regel: Gewinn-Überraschung ±3 % → ±1 (über ±10 % → ±2, wie in der Statistik: 61 % bzw. 39 % gestiegen),
+    Umsatz ±1 % → ±1, Ausblick angehoben/gesenkt → ±2."""
     pts, why = 0.0, []
     if eps_s is not None:
-        if eps_s >= .03:
+        if eps_s > .10:
+            pts += 2; why.append("Gewinn deutlich über der Erwartung")
+        elif eps_s < -.10:
+            pts -= 2; why.append("Gewinn deutlich unter der Erwartung")
+        elif eps_s >= .03:
             pts += 1; why.append("Gewinn über der Erwartung")
         elif eps_s <= -.03:
             pts -= 1; why.append("Gewinn unter der Erwartung")
@@ -312,6 +341,10 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
         g = guidance(_rss(f"{_words(ev.get('name') or t, t)[0]} guidance OR outlook OR forecast when:{PAST_DAYS + 1}d"), _words(ev.get("name") or t, t), last)
         if g:
             res["guide"] = g
+        if res.get("eps_s") is not None and abs(res["eps_s"]) >= .10:
+            oo = oneoff(_rss(f"{_words(ev.get('name') or t, t)[0]} earnings charge OR one-time OR tax when:{PAST_DAYS + 1}d"), _words(ev.get("name") or t, t), last)
+            if oo:
+                res["oneoff"] = oo
         if close is not None and len(close):
             rx = reaction(close, last)
             if rx:
