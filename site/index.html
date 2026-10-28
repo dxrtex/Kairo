@@ -4048,7 +4048,8 @@ function kSt(r) {
 }
 // Ruhe der letzten Tage (backend/scanner.py „calm“, Forschung 28.10.2026): sauber = enge 5-Tage-Spanne und wenig Hin und Her
 const calmOf = r => ((r && r.flags) || {}).calm || null;
-const isClean = r => !!(calmOf(r) && calmOf(r).clean);
+const calmKnown = () => data && (data.results || []).some(r => r.passed && calmOf(r));   // erst ab dem ersten Scan mit Ruhe-Werten filtern
+const isClean = r => !calmKnown() || !!(calmOf(r) && calmOf(r).clean);
 const calmChip = r => { const c = calmOf(r); if (!c || !r.passed) return "";
   return c.clean ? `<span class="st st-clean" title="Ruhige Konsolidierung: Spanne 5 Tage ${fmt(c.tight5, 1)} ATR, Hin und Her 10 Tage ${fmt(c.chop10, 2)}">sauber</span>`
     : `<span class="st st-chop" title="Noch unruhig: Spanne 5 Tage ${fmt(c.tight5, 1)} ATR (≤ 1,5), Hin und Her 10 Tage ${fmt(c.chop10, 2)} (≤ 1,65)">unruhig</span>`; };
