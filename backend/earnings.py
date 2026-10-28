@@ -217,6 +217,28 @@ def _rss(q: str, de: bool = False) -> list[tuple[str, str, str]]:
     return out
 
 
+def _sec_guidance(tk, t: str, last: pd.Timestamp) -> dict | None:
+    """Ausblick aus der Pressemitteilung bei der SEC (nur mit Secret SEC_CONTACT), gegen die Analysten-Erwartung."""
+    if not os.environ.get("SEC_CONTACT"):
+        return None
+    from . import earnfast, secguide
+    cik = earnfast.ciks().get(t)
+    if not cik:
+        return None
+    since = (pd.Timestamp(last).tz_localize(None) - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    g = secguide.fetch(cik, since)
+    if not g:
+        return None
+    est_q = est_y = None
+    try:
+        re_ = tk.get_revenue_estimate()
+        est_q = _num(re_.loc["+1q"].get("avg")) if "+1q" in re_.index else None
+        est_y = _num(re_.loc["0y"].get("avg")) if "0y" in re_.index else None
+    except Exception:
+        pass
+    return secguide.judge(g, est_q, est_y)
+
+
 def _words(name: str, ticker: str) -> list[str]:
     stop = {"inc", "inc.", "corp", "corp.", "corporation", "the", "group", "holding", "holdings", "plc", "ag", "se", "sa", "nv", "co", "ltd", "company", "n.v."}
     w = [x.strip(",.") for x in (name or "").split() if x.strip(",.").lower() not in stop]
@@ -342,11 +364,13 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
             if mem.get("rev") and abs((pd.Timestamp(mem.get("date", "1900-01-01")) - last_day).days) <= 7:
                 res["rev_e"] = mem["rev"]
                 res["rev_s"] = round(rev_a / mem["rev"] - 1, 4)
-        items = _rss(f"{_words(ev.get('name') or t, t)[0]} guidance OR outlook OR forecast when:{PAST_DAYS + 1}d")
-        if "." in t and not t.endswith((".HK", ".T", ".KS", ".KQ", ".TW", ".SS", ".SZ", ".AX", ".NS", ".BO")):
-            # Europa: Prognose-Änderungen sind Pflicht-Ad-hoc-Meldungen (EU-MAR) – auf Deutsch über EQS/dpa-AFX zuerst
-            items = _rss(f"{_words(ev.get('name') or t, t)[0]} Prognose OR Ausblick OR Jahresziele OR Gewinnwarnung when:{PAST_DAYS + 1}d", de=True) + items
-        g = guidance(items, _words(ev.get("name") or t, t), last)
+        g = _sec_guidance(tk, t, last)                     # 1. Pressemitteilung bei der SEC (mit SEC_CONTACT)
+        if not g:                                          # 2. Schlagzeilen
+            items = _rss(f"{_words(ev.get('name') or t, t)[0]} guidance OR outlook OR forecast when:{PAST_DAYS + 1}d")
+            if "." in t and not t.endswith((".HK", ".T", ".KS", ".KQ", ".TW", ".SS", ".SZ", ".AX", ".NS", ".BO")):
+                # Europa: Prognose-Änderungen sind Pflicht-Ad-hoc-Meldungen (EU-MAR) – auf Deutsch über EQS/dpa-AFX zuerst
+                items = _rss(f"{_words(ev.get('name') or t, t)[0]} Prognose OR Ausblick OR Jahresziele OR Gewinnwarnung when:{PAST_DAYS + 1}d", de=True) + items
+            g = guidance(items, _words(ev.get("name") or t, t), last)
         if g:
             res["guide"] = g
         if res.get("eps_s") is not None and abs(res["eps_s"]) >= .10:
