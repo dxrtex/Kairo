@@ -1,4 +1,4 @@
-name: Divergenz-Probe
+name: SEC-Probe
 on:
   push:
     branches: ["claude/probe-div"]
@@ -6,8 +6,11 @@ jobs:
   probe:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        with: { python-version: "3.11", cache: pip }
-      - run: pip install -r requirements.txt
-      - run: PYTHONPATH=. python tools/div_probe.py QBTS
+      - run: |
+          for ua in "Kairo kairo-bot@users.noreply.github.com" "Mozilla/5.0 (Kairo)"; do
+            echo "== $ua"
+            curl -s -o s.json -w "submissions %{http_code} %{time_total}s\n" -A "$ua" https://data.sec.gov/submissions/CIK0000320193.json
+            python3 -c "import json;d=json.load(open('s.json'))['filings']['recent'];print([(d['form'][i],d['items'][i],d['acceptanceDateTime'][i]) for i in range(8)])" || head -c 300 s.json
+            curl -s -o t.json -w "tickers %{http_code}\n" -A "$ua" https://www.sec.gov/files/company_tickers.json
+            curl -s -o a.xml -w "atom %{http_code}\n" -A "$ua" "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&count=40&output=atom"; grep -o "<title>[^<]*" a.xml | head -5
+          done
