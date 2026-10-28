@@ -137,3 +137,13 @@ def test_sondereffekt():
     o = E.oneoff([("Meta profit hit by one-time tax charge", "u", ""), ("Meta stock falls", "v", "")], ["meta"])
     assert o and o["u"] == "u"
     assert E.oneoff([("Meta stock falls after earnings", "v", "")], ["meta"]) is None
+
+
+def test_deutsche_adhoc_prognose():
+    up = [("EQS-Adhoc: Rheinmetall AG: Rheinmetall hebt Prognose für 2026 an - finanzen.net", "u", "")]
+    assert E.guidance(up, ["Rheinmetall"])["d"] == 1
+    assert E.guidance([("Nordex: Jahresziele angehoben", "u", "")], ["Nordex"])["d"] == 1
+    assert E.guidance([("Gewinnwarnung bei Bayer: Aktie bricht ein", "u", "")], ["Bayer"])["d"] == -1
+    assert E.guidance([("Siemens Energy: Prognose gesenkt", "u", "")], ["Siemens"])["d"] == -1
+    assert E.guidance([("Allianz bestätigt Ausblick für das Gesamtjahr", "u", "")], ["Allianz"])["d"] == 0
+    assert E.guidance([("Volkswagen erhöht Investitionen und Ausgaben", "u", "")], ["Volkswagen"]) is None

@@ -27,12 +27,14 @@ GUIDE_UP = re.compile(
     r"\b(rais(es|ed|ing)?|lifts?|lifted|boosts?|boosted|hikes?|hiked|ups|increases?|increased)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
     r"|\b(guidance|outlook|forecast)\b[^|]{0,25}\b(above|tops|beats|ahead of)\b"
     r"|\b(strong|upbeat|bullish|upgraded|rosy|robust)\b[^|]{0,20}\b(guidance|outlook|forecast)\b"
-    r"|\b(hebt|erhöht|erhoeht)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
+    r"|\b(hebt|erhöht|erhoeht|hob)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele|umsatzziel|gewinnziel)\w*"
+    r"|\b(prognose|ausblick|jahresziele?|ziele)\w*\s+(angehoben|erhöht)\b|\bprognose(erhöhung|anhebung)\b", re.I)
 GUIDE_DOWN = re.compile(
     r"\b(cuts?|lowers?|lowered|slash(es|ed)?|reduces?|reduced|trims?|trimmed|withdraws?|withdrew|pulls?|pulled)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
     r"|\b(guidance|outlook|forecast)\b[^|]{0,25}\b(below|misses|missed|disappoints?|weak|falls short)\b"
     r"|\b(weak|soft|disappointing|downbeat|gloomy|lowered)\b[^|]{0,20}\b(guidance|outlook|forecast)\b"
-    r"|\b(senkt|kappt|kassiert|streicht)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
+    r"|\b(senkt|kappt|kassiert|streicht|senkte)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele|umsatzziel|gewinnziel)\w*"
+    r"|\b(prognose|ausblick|jahresziele?|ziele)\w*\s+(gesenkt|gekappt|kassiert|zurückgenommen)\b|\b(gewinnwarnung|prognosesenkung|umsatzwarnung)\b", re.I)
 ANALYST = re.compile(r"\b(price target|target price|kursziel|rating|stock forecast|price forecast|price prediction|prognose für die aktie|upgrades?|downgrades?|upgraded|downgraded|analysts? (see|expect)|"
                      r"(raises|lifts|cuts|lowers|trims|boosts)\b[^|]{0,30}\btarget\b)", re.I)
 # Ausgaben-/Investitionspläne sind kein Umsatz- oder Gewinnausblick (Meta 21.10.2026: „Boosts … Spending Outlook“ → Kurs −7 %)
@@ -42,7 +44,8 @@ ONEOFF = re.compile(r"\b(one[- ]time|one[- ]off|non[- ]recurring|charges?|impair
                     r"legal (charge|settlement)|restructuring|sonderbelastung\w*|sondereffekt\w*|einmal\w*|abschreibung\w*)\b", re.I)
 GUIDE_KEEP = re.compile(
     r"\b(reaffirms?|reaffirmed|reiterates?|reiterated|maintains?|maintained|confirms?|confirmed)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
-    r"|\bbestätigt\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
+    r"|\b(bestätigt|bekräftigt|konkretisiert)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\w*"
+    r"|\b(prognose|ausblick|jahresziele?|ziele)\w*\s+(bestätigt|bekräftigt)\b", re.I)
 
 
 def _num(v):
@@ -195,8 +198,9 @@ def typical_move(close: pd.Series, past: list[pd.Timestamp]) -> float | None:
     return round(sum(mv) / len(mv), 4) if len(mv) >= 3 else None
 
 
-def _rss(q: str) -> list[tuple[str, str, str]]:
-    url = "https://news.google.com/rss/search?hl=en-US&gl=US&ceid=US:en&q=" + urllib.parse.quote(q)
+def _rss(q: str, de: bool = False) -> list[tuple[str, str, str]]:
+    loc = "hl=de&gl=DE&ceid=DE:de" if de else "hl=en-US&gl=US&ceid=US:en"
+    url = f"https://news.google.com/rss/search?{loc}&q=" + urllib.parse.quote(q)
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Kairo)"})
         x = urllib.request.urlopen(req, timeout=15).read().decode("utf-8", "replace")
@@ -338,7 +342,11 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
             if mem.get("rev") and abs((pd.Timestamp(mem.get("date", "1900-01-01")) - last_day).days) <= 7:
                 res["rev_e"] = mem["rev"]
                 res["rev_s"] = round(rev_a / mem["rev"] - 1, 4)
-        g = guidance(_rss(f"{_words(ev.get('name') or t, t)[0]} guidance OR outlook OR forecast when:{PAST_DAYS + 1}d"), _words(ev.get("name") or t, t), last)
+        items = _rss(f"{_words(ev.get('name') or t, t)[0]} guidance OR outlook OR forecast when:{PAST_DAYS + 1}d")
+        if "." in t and not t.endswith((".HK", ".T", ".KS", ".KQ", ".TW", ".SS", ".SZ", ".AX", ".NS", ".BO")):
+            # Europa: Prognose-Änderungen sind Pflicht-Ad-hoc-Meldungen (EU-MAR) – auf Deutsch über EQS/dpa-AFX zuerst
+            items = _rss(f"{_words(ev.get('name') or t, t)[0]} Prognose OR Ausblick OR Jahresziele OR Gewinnwarnung when:{PAST_DAYS + 1}d", de=True) + items
+        g = guidance(items, _words(ev.get("name") or t, t), last)
         if g:
             res["guide"] = g
         if res.get("eps_s") is not None and abs(res["eps_s"]) >= .10:
