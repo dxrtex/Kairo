@@ -1,0 +1,88 @@
+name: Research – Kombi-Test bestandener Werte (29.10.2026)
+
+# Nur Forschung, ändert nichts am Live-Scanner. Alle bestandenen Werte gemeinsam gegen heute (combo.py, Regel vorab festgelegt).
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: ["claude/combo"]
+    paths: [".github/workflows/research_combo.yml", "research/strategy_championship/combo.json"]
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+
+jobs:
+  signals:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 12        # Platz lassen für Abend-Scan, Quartalszahlen live und Tests
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Datensatz v1 laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - run: python -W ignore -m research.strategy_championship.combo signals --data v1 --shard ${{ matrix.shard }} --shards 60 --out out
+      - uses: actions/upload-artifact@v4
+        with: { name: "cbsig-${{ matrix.shard }}", path: out/, retention-days: 14 }
+  trades:
+    needs: signals
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        set: [base, var]
+        part: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "cbsig-*", merge-multiple: true, path: parts }
+      - name: Datensatz v1 laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+      - run: |
+          python -c "import pandas as pd,glob,zlib;d=pd.concat([pd.read_parquet(f) for f in sorted(glob.glob('parts/${{ matrix.set }}_signals_*.parquet'))]);m=d['ticker'].map(lambda t:zlib.crc32(t.encode())%4)==${{ matrix.part }};d[m].to_parquet('sig.parquet',index=False);print(int(m.sum()),'Signale')"
+          python -W ignore -m research.strategy_championship.kairo_null --data v1 --signals sig.parquet --out out --part kairo
+          mv out/kairo_trades.csv ${{ matrix.set }}_${{ matrix.part }}.csv
+      - uses: actions/upload-artifact@v4
+        with: { name: "cbtr-${{ matrix.set }}-${{ matrix.part }}", path: "${{ matrix.set }}_${{ matrix.part }}.csv", retention-days: 14 }
+  compare:
+    needs: trades
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "cbtr-*", merge-multiple: true, path: parts }
+      - run: |
+          python -c "import pandas as pd,glob;[pd.concat([pd.read_csv(f) for f in sorted(glob.glob(f'parts/{x}_*.csv'))]).to_csv(f'{x}.csv',index=False) for x in ('base','var')]"
+          python -m research.strategy_championship.combo compare --base base.csv --var var.csv | tee combo_report.txt
