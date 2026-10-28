@@ -1,4 +1,4 @@
-// Kairo-Kursdienst (Version 4) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
+// Kairo-Kursdienst (Version 5) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
 //   ?s=SAP.DE,AAPL      Kurse (Yahoo Finance, je nach Börse leicht verzögert)
 //   ?q=Rheinmetall      Aktiensuche an allen Börsen
 //   ?c=RHM.DE           Tageskerzen (1 Jahr) – damit plant Kairo auch Aktien außerhalb des Scans
@@ -8,7 +8,36 @@
 const ALLOW = ["https://dxrtex.github.io"];          // nur die Kairo-App darf den Dienst im Browser nutzen
 const MAX = 25;                                       // höchstens so viele Aktien je Abruf
 
+// Version 5: pünktlicher Wecker (optional). GitHub startet geplante Läufe oft Stunden zu spät – Cloudflare nicht.
+// Einrichtung: Settings → Variables and Secrets → Secret „GH_TOKEN“ (GitHub-Schlüssel mit Actions: Read and write),
+// Settings → Triggers → Cron Triggers: „*/5 * * * *“ (alle 5 Minuten). Der Worker entscheidet selbst, was fällig ist.
+const REPO = "dxrtex/Kairo";
+async function dispatch(env, wf) {
+  const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${wf}/dispatches`, {
+    method: "POST", body: JSON.stringify({ ref: "main" }),
+    headers: { Authorization: "Bearer " + env.GH_TOKEN, Accept: "application/vnd.github+json", "User-Agent": "kairo-kursdienst", "Content-Type": "application/json" } });
+  return r.status;
+}
+function berlin(now) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .formatToParts(now).map(x => [x.type, x.value]));
+  return { wd: p.weekday, hm: +p.hour * 100 + +p.minute };
+}
+async function wake(env, now = new Date()) {
+  if (!env || !env.GH_TOKEN) return "kein GH_TOKEN";
+  const { wd, hm } = berlin(now), work = !["Sat", "Sun"].includes(wd), done = [];
+  // Abend-Scan: Mo–Fr um 22:30 Uhr Berlin (der Lauf prüft selbst, ob er schon online ist)
+  if (work && hm >= 2230 && hm < 2235) done.push("scan " + await dispatch(env, "scan.yml"));
+  // Quartalszahlen + Fed: alle 10 Min. in den Meldezeiten (06–09, 12–16, 19–01 Uhr Berlin)
+  const win = (hm >= 600 && hm < 900) || (hm >= 1200 && hm < 1600) || hm >= 1900 || hm < 100;
+  if ((work || (wd === "Sat" && hm < 100)) && win && now.getUTCMinutes() % 10 < 5) done.push("zahlen " + await dispatch(env, "earnings.yml"));
+  // Fed-Tag: 18:55–20:30 Uhr Berlin alle 5 Min. (earnings.yml prüft selbst, ob heute ein Zinsentscheid ist)
+  if (work && hm >= 1855 && hm < 2030 && now.getUTCMinutes() % 10 >= 5) done.push("fed " + await dispatch(env, "earnings.yml"));
+  return done.join(", ") || "nichts fällig";
+}
+
 export default {
+  async scheduled(event, env, ctx) { ctx.waitUntil(wake(env, new Date(event.scheduledTime))); },
   async fetch(request, env, ctx) {
     const origin = request.headers.get("Origin") || "";
     const cors = {
@@ -26,7 +55,7 @@ export default {
     if (c && /^[A-Z0-9.\-^=]{1,20}$/.test(c)) return json(await candles(c), cors);
     const syms = (url.searchParams.get("s") || "").split(",").map(x => x.trim().toUpperCase())
       .filter(x => /^[A-Z0-9.\-^=]{1,20}$/.test(x)).slice(0, MAX);
-    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 4). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
+    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 5). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
     const diag = url.searchParams.has("debug") ? [] : null;
     const out = await quotes(syms, ctx, diag);
     return json(diag ? { ...out, _diag: diag } : out, cors);
