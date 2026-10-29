@@ -1,0 +1,85 @@
+name: Research – Scanner v2 (Ruhe am Kauftag, Rangfolge, Asien) (29.10.2026)
+
+# Nur Forschung, ändert nichts am Live-Scanner. Regeln vorab festgelegt in research/strategy_championship/v2_test.py.
+permissions:
+  contents: read
+  actions: read
+
+on:
+  push:
+    branches: ["claude/v2-research"]
+    paths: [".github/workflows/research_v2.yml", "research/strategy_championship/v2_test.py"]
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+  SWEEP_RUN: "40778404648"
+
+jobs:
+  usem:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 4          # zusammen mit Asien höchstens 12 Rechner – Platz für Abend-Scan und Quartalszahlen
+      matrix:
+        job: ["trades 0 mom", "trades 1 mom", "depot 0 mom", "depot 1 mom", "depot 0 vol", "depot 1 vol", "depot 0 chop", "depot 1 chop", "depot 0 score", "depot 1 score", "depot 0 rnd", "depot 1 rnd"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "swsig-*", merge-multiple: true, path: parts, run-id: "${{ env.SWEEP_RUN }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Datensatz v1 laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - name: Heutige Treffer (Variante 0 der Schwellen-Prüfung)
+        run: python -c "import pandas as pd,glob;d=pd.concat([pd.read_parquet(f) for f in sorted(glob.glob('parts/sweep_signals_*.parquet'))]);d=d[d['v'].str.split(',').apply(lambda l:'0' in l)];d.to_parquet('sig.parquet',index=False);print(len(d),'Treffer')"
+      - run: |
+          set -- ${{ matrix.job }}
+          python -W ignore -m research.strategy_championship.v2_test $1 --data v1 --signals sig.parquet --gate $2 --prio $3 --out out
+      - uses: actions/upload-artifact@v4
+        with: { name: "v2-${{ strategy.job-index }}", path: out/, retention-days: 14 }
+  asia:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Asien-Universum (Stand Live-Scanner)
+        run: git fetch -q origin kairo-data && git show origin/kairo-data:universe_asia.csv > universe_asia.csv && wc -l universe_asia.csv
+      - run: python -W ignore -m research.strategy_championship.v2_test asia --universe universe_asia.csv --shard ${{ matrix.shard }} --shards 40 --out out
+      - uses: actions/upload-artifact@v4
+        with: { name: "v2asia-${{ matrix.shard }}", path: out/, retention-days: 14 }
+  report:
+    needs: [usem, asia]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "v2*", merge-multiple: true, path: res }
+      - run: python -m research.strategy_championship.v2_test report --dir res | tee report.txt
+      - uses: actions/upload-artifact@v4
+        with: { name: "v2-report", path: "res/v2_report.md", retention-days: 30 }
