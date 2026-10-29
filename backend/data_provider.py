@@ -150,6 +150,11 @@ class CachedProvider(DataProvider):
             return self.inner.history(tickers, period, end)
         fresh = self.inner.history(tickers, period if not self._cached_any(tickers) else "1mo")
         with sqlite3.connect(self.path) as con:
+            redo = self._rebased(con, fresh)
+            for t in redo:                                # Split/Dividende: alte Kurse im Speicher passen nicht mehr → komplett neu
+                con.execute("DELETE FROM bars WHERE ticker=?", (t,))
+            if redo:
+                print(f"Kurse: {len(redo)} Aktien rückwirkend angepasst (Split/Dividende) – komplett neu geladen: {', '.join(sorted(redo)[:20])}")
             for t, df in fresh.items():
                 con.executemany("INSERT OR REPLACE INTO bars VALUES (?,?,?,?,?,?,?)",
                                 [(t, str(d.date()), *map(float, r)) for d, r in
@@ -166,6 +171,12 @@ class CachedProvider(DataProvider):
         if missing and period != "1mo":
             full = self.inner.history(missing, period)
             out.update(full)
+            with sqlite3.connect(self.path) as con:     # speichern – sonst würden sie jeden Tag erneut komplett geladen
+                for t, df in full.items():
+                    con.execute("DELETE FROM bars WHERE ticker=?", (t,))
+                    con.executemany("INSERT OR REPLACE INTO bars VALUES (?,?,?,?,?,?,?)",
+                                    [(t, str(d.date()), *map(float, r)) for d, r in
+                                     df[["Open", "High", "Low", "Close", "Volume"]].iterrows()])
         # Nie still alte Kurse: Aktien, deren letzte Kerze hinter ihrer Börse zurückliegt (Yahoo hat sie im großen Abruf
         # ausgelassen), in kleinen Paketen mit Pause erneut laden – bis zu 3 Runden.
         self.stale = {}
@@ -189,6 +200,28 @@ class CachedProvider(DataProvider):
         self.stale = {t: str(out[t].index[-1].date()) for t in stale_tickers(out)}
         if self.stale:
             print(f"Kurse: {len(self.stale)} Aktien bleiben auf altem Stand: {', '.join(sorted(self.stale)[:30])}")
+        return out
+
+    @staticmethod
+    def _rebased(con, fresh: dict[str, pd.DataFrame], tol: float = 0.002) -> set[str]:
+        """Aktien, deren frisch geladene Kurse an schon gespeicherten Tagen abweichen: Yahoo hat die Historie rückwirkend
+        angepasst (Split, Dividende). Dann passen ältere gespeicherte Kurse nicht mehr zu den neuen – sonst entstünde z. B.
+        nach einem 2:1-Split ein künstlicher Absturz von 50 % (Review 29.10.2026). Der jüngste gespeicherte Tag zählt nicht
+        (kann eine laufende Tageskerze gewesen sein)."""
+        out = set()
+        for t, df in fresh.items():
+            rows = con.execute("SELECT date, close FROM bars WHERE ticker=? ORDER BY date", (t,)).fetchall()
+            if len(rows) < 2:
+                continue
+            old = pd.Series({pd.Timestamp(d): c for d, c in rows[:-1]})
+            new = df["Close"]
+            both = old.index.intersection(new.index)
+            if not len(both):
+                continue
+            o, n = old.loc[both].astype(float), new.loc[both].astype(float)
+            ok = (o > 0) & (n > 0)
+            if ok.any() and float((n[ok] / o[ok] - 1).abs().median()) > tol:
+                out.add(t)
         return out
 
     def _cached_any(self, tickers) -> bool:
