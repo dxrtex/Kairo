@@ -3,11 +3,12 @@ const store = new Map();
 globalThis.caches = { default: { match: async k => store.has(k.url) ? new Response(store.get(k.url)) : undefined, put: async (k, r) => store.set(k.url, await r.text()) } };
 const kvm = new Map(), kv = { get: async k => kvm.get(k) ?? null, put: async (k, v) => { kvm.set(k, v); } };
 const calls = [];
-let secFiled = false;
+let secFiled = false, exact = false, secCalls = 0;
 globalThis.fetch = async (u, o = {}) => {
   u = String(u);
   if (u.includes("/dispatches")) { calls.push(JSON.parse(o.body)); return new Response(null, { status: 204 }); }
-  if (u.includes("earn_watch.json")) return new Response(JSON.stringify({ items: [{ t: "AAPL", n: "Apple", cik: 320193, date: "2026-10-29", ts: "2026-10-29T20:30:00+00:00" }] }));
+  if (u.includes("earn_watch.json")) return new Response(JSON.stringify({ items: [{ t: "AAPL", n: "Apple", cik: 320193, date: "2026-10-29", ts: "2026-10-29T20:30:00+00:00", exact }] }));
+  if (u.includes("data.sec.gov")) secCalls++;
   if (u.includes("data.sec.gov")) return new Response(JSON.stringify({ filings: { recent: secFiled
     ? { form: ["8-K", "4"], items: ["2.02,9.01", ""], acceptanceDateTime: ["2026-10-29T20:31:05.000Z", "2026-10-20T10:00:00.000Z"], accessionNumber: ["0000320193-26-000101", "x"], primaryDocument: ["a8-k.htm", ""] }
     : { form: ["4"], items: [""], acceptanceDateTime: ["2026-10-20T10:00:00.000Z"], accessionNumber: ["x"], primaryDocument: [""] } } }));
@@ -38,6 +39,14 @@ await run("2026-10-29T20:33:00Z");
 check("gleiche Meldung nicht doppelt", !calls.some(c => c.inputs), calls);
 let follow = 0; for (let m = 33; m < 45; m++) { await run(`2026-10-29T20:${m}:00Z`); follow += calls.length; }
 check("danach alle 3 Min. nachladen (20:33–20:44 → 4)", follow === 4, { follow });
+// gelernte Meldezeit: enges Fenster (ab 20 Min. vorher statt 3 h)
+kvm.clear(); store.clear(); secFiled = false; exact = true; secCalls = 0;
+await run("2026-10-29T20:00:00Z");
+check("gelernte Zeit 20:30: um 20:00 noch keine SEC-Abfrage", secCalls === 0, { secCalls });
+await run("2026-10-29T20:12:00Z");
+check("ab 20:10 wird geprüft", secCalls === 1, { secCalls });
+exact = false; secFiled = true; kvm.clear(); store.clear();
+await run("2026-10-29T20:32:00Z");
 const r = await (await w.fetch(new Request("https://x.workers.dev/earn", { headers: { Origin: "https://dxrtex.github.io" } }), env, { waitUntil: () => {} })).json();
 check("/earn liefert die Meldung", r.hits.length === 1 && r.hits[0].t === "AAPL" && r.hits[0].url.includes("000032019326000101"), r);
 process.exit(fails.length ? 1 : 0);

@@ -2259,7 +2259,7 @@ function earnTopHtml(t, sur, rx) {
     <div class="eq-entry"><b>${esc(entry[0])}</b><span>${esc(entry[1])}</span></div></div>`;
 }
 function loadEarnings() {
-  loadEarnStats(); loadSecHits(true);
+  loadEarnStats(); loadSecHits(true); loadEarnWatch();
   if (!earnLoading) earnLoading = scanFetch("earnings.json").then(r => r.ok ? r.json() : { tickers: {} })
     .then(d => { earnData = d.tickers || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); return loadEarnLive(); }).catch(() => { earnData = earnData || {}; });
   return earnLoading;
@@ -2271,8 +2271,12 @@ const bigNum = (v, cur) => v == null ? "–" : `${Math.abs(v) >= 1e9 ? fmt(v / 1
 const sgn = (v, d = 1) => v == null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : "±"}${pct(Math.abs(v), d)}`;
 const upDown = v => v == null ? "" : v > 0 ? "up" : v < 0 ? "down" : "";
 // Erwartete Uhrzeit (Yahoo, deutsche Zeit) – Firmen melden meist „vor Börsenstart“ / „nach Börsenschluss“, daher „ca.“
-const earnTime = N => { if (!N || !N.ts) return ""; const x = new Date(N.ts); if (isNaN(x)) return "";
-  const hm = x.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }); return hm === "00:00" ? "" : `ca. ${hm} Uhr`; };
+// Gelernte Meldezeit (Uhrzeit der letzten SEC-Meldungen der Firma, earn_watch.json) schlägt die Yahoo-Platzhalter (14:00 / 22:00)
+let earnWatch = {};
+const loadEarnWatch = () => fetch(EARN_LIVE_URL.replace("earnings_live.json", "earn_watch.json") + "?v=" + Math.floor(Date.now() / 6e5)).then(r => r.ok ? r.json() : null)
+  .then(d => { if (!d) return; earnWatch = {}; (d.items || []).forEach(x => { if (x.exact) earnWatch[x.t + "|" + x.date] = x.ts; }); if (state.sec === "calendar") render(); }).catch(() => {});
+const earnTime = (N, t) => { if (!N || !N.ts) return ""; const ex = t && earnWatch[t + "|" + N.date], x = new Date(ex || N.ts); if (isNaN(x)) return "";
+  const hm = x.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }); return hm === "00:00" ? "" : `ca. ${hm} Uhr${ex ? " (wie bisher)" : ""}`; };
 // Kursdienst ab Version 6: meldet, sobald eine Firma ihre Zahlen offiziell bei der SEC einreicht (1–5 Min. nach Veröffentlichung)
 let secHits = {}, secAt = 0;
 function loadSecHits(force) {
@@ -2306,7 +2310,7 @@ function earnHtml(t, d) {
     const verdict = v ? `<div class="eq-v t-${v.tone}"><i></i><div><b>Für den Kurs: ${esc(v.lbl)}</b><span>${esc(v.why.join(" · "))}</span></div></div>` : "";
     const clash = v && rx && rx.d1 != null && Math.abs(rx.d1) >= .02 && ((v.pts >= 1 && rx.d1 < 0) || (v.pts <= -1 && rx.d1 > 0))
       ? `<p class="eq-hint">Der Markt hat anders reagiert als die Zahlen vermuten lassen – oft zählen Details im Ausblick oder in der Telefonkonferenz mehr als das Quartal selbst.</p>` : "";
-    return head + `<div class="eq-sub">Gemeldet am ${dateDE(L.date)}</div>${earnTopHtml(t, L.eps_s, rx)}${verdict}
+    return head + `<div class="eq-sub">Gemeldet am ${dateDE(L.date)}${L.src === "pr" ? " · vorläufig aus der Pressemitteilung (SEC), wird bestätigt" : ""}</div>${earnTopHtml(t, L.eps_s, rx)}${verdict}
       <div class="eq-cells">
         ${cell("Gewinn je Aktie", L.eps_a == null ? "–" : `${fmt(L.eps_a)} ${cur}`.trim(), L.eps_e == null ? "" : `erwartet ${fmt(L.eps_e)} · <span class="${upDown(L.eps_s)}">${sgn(L.eps_s)}</span>`)}
         ${cell("Umsatz", bigNum(L.rev_a, cur), L.rev_s != null ? `erwartet ${bigNum(L.rev_e)} · <span class="${upDown(L.rev_s)}">${sgn(L.rev_s)}</span>` : L.rev_yoy != null ? `zum Vorjahr <span class="${upDown(L.rev_yoy)}">${sgn(L.rev_yoy)}</span>` : L.rev_a == null ? "Yahoo hat den Umsatz noch nicht" : "")}
@@ -2316,7 +2320,7 @@ function earnHtml(t, d) {
   }
   if (N) {
     const n = daysUntil(N.date);
-    const tm = earnTime(N), sb = secBanner(t, N.date);
+    const tm = earnTime(N, t), sb = secBanner(t, N.date);
     return head + `<div class="eq-sub">${n === 0 ? "Heute" : n === 1 ? "Morgen" : `In ${n} Tagen`} · ${dateDE(N.date)}${tm ? " · " + tm : ""}${N.when ? " · " + N.when : ""}</div>
       ${sb}${earnTopHtml(t, null, null)}${sb ? "" : `<div class="eq-v t-gray"><i></i><div><b>Noch keine Zahlen</b><span>${liveKey("yq") ? "Kairo prüft am Termin jede Minute bei der SEC (US-Aktien) und meldet sich, sobald die Zahlen raus sind – die Werte folgen wenige Minuten später." : "Kairo prüft am Termin laufend – die Ergebnisse stehen hier meist 15–40 Minuten nach der Veröffentlichung."}</span></div></div>`}
       <div class="eq-cells">
@@ -2361,7 +2365,7 @@ function calendarHtml() {
       return `<div class="ev"><span class="k ${cls}"${e.imp === "high" ? ' style="outline:2px solid var(--down);outline-offset:1px"' : ""}>${icon}</span><div class="b"><b>${esc(e.title)}</b><span>${info ? esc(info) + "<br>" : ""}${e.kind === "macro" && reg !== "all" ? `${REG_DE[reg] || reg} – ${n2} deiner Aktien dort, bewegt aber oft alle Börsen` : "betrifft den ganzen Markt"}</span></div></div>`;
     }
     const inRes = data.results.some(r => r.ticker === e.ticker);
-    const enx = e.kind === "earnings" && earnData && earnData[e.ticker] && earnData[e.ticker].next, etm = enx && enx.date === e.date ? earnTime(enx) : "";
+    const enx = e.kind === "earnings" && earnData && earnData[e.ticker] && earnData[e.ticker].next, etm = enx && enx.date === e.date ? earnTime(enx, e.ticker) : "";
     const sub = e.kind === "earnings" ? (e.done || (earnData && earnData[e.ticker] && earnData[e.ticker].last && earnData[e.ticker].last.date === e.date) ? "Quartalszahlen gemeldet · antippen" : secHits[e.ticker] && secHits[e.ticker].date === e.date ? "Zahlen sind raus (SEC) · Werte folgen · antippen" : e.big && !e.watch && !dep.has(e.ticker) ? "Quartalszahlen · Schwergewicht – bewegt Index und Branche" + (etm ? " · " + etm : "") : e.estimate ? "Quartalszahlen · Datum geschätzt" : "Quartalszahlen" + (etm ? " · " + etm : ""))
       : e.kind === "exdiv" ? `Ex-Dividende${e.rate ? " · " + fmt(e.rate) + " je Aktie p. a." : ""}` : `Dividendenzahlung${e.rate ? " · " + fmt(e.rate) + " je Aktie p. a." : ""}`;
     const earn = e.kind === "earnings", er = earn && earnData && earnData[e.ticker], erl = er && er.last && Math.abs(daysUntil(er.last.date) - daysUntil(e.date)) <= 3 ? er.last : null;

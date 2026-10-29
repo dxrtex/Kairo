@@ -73,8 +73,33 @@ def judge(g: dict | None, est_q: float | None, est_y: float | None) -> dict | No
     return None
 
 
-def fetch(cik: int, since_iso: str) -> dict | None:
-    """Neueste 8-K mit Punkt 2.02 seit since_iso → Ausblick aus Anhang 99.1. Braucht SEC_CONTACT."""
+EPS_ADJ = re.compile(r"\b(non-?gaap|adjusted|core)\b[^.$]{0,80}?\b(eps|earnings per (diluted )?share|net income per (diluted )?share)\b[^.$]{0,40}?\$\s?(\d{1,3}\.\d{2})", re.I)
+EPS_GAAP = re.compile(r"\b(diluted )?(eps|earnings per (diluted )?share|net income per (diluted )?share)\b[^.$]{0,40}?\$\s?(\(?\d{1,3}\.\d{2}\)?)", re.I)
+REV_ACT = re.compile(r"\b(total )?(revenues?|net sales|sales)\b[^.$]{0,40}?\b(was|were|of|totaled|reached|increased[^.$]{0,30}to|grew[^.$]{0,30}to|rose[^.$]{0,30}to)\s+" + _NUM, re.I)
+
+
+def results(text: str) -> dict:
+    """Gemeldeter Gewinn je Aktie (bereinigt bevorzugt – damit rechnen die Analysten-Erwartungen) und Umsatz."""
+    out = {}
+    head = text[:6000]                                     # Kernzahlen stehen oben in der Mitteilung
+    m = EPS_ADJ.search(head)
+    if m:
+        out.update(eps=float(m.group(5)), eps_kind="bereinigt")
+    else:
+        m = EPS_GAAP.search(head)
+        if m:
+            v = m.group(5)
+            out.update(eps=-float(v.strip("()")) if v.startswith("(") else float(v), eps_kind="GAAP")
+    m = REV_ACT.search(head)
+    if m and not FWD.search(head[max(0, m.start() - 80):m.start()]):
+        v = _val(m.group(4), m.group(5))
+        if v > 1e6:
+            out["rev"] = v
+    return out
+
+
+def fetch_text(cik: int, since_iso: str) -> str | None:
+    """Text der Pressemitteilung (Anhang 99.1) zum neuesten 8-K Punkt 2.02 bzw. 6-K seit since_iso. Braucht SEC_CONTACT."""
     contact = os.environ.get("SEC_CONTACT", "").strip()
     if not contact:
         return None
@@ -90,12 +115,15 @@ def fetch(cik: int, since_iso: str) -> dict | None:
             acc = f["accessionNumber"][i].replace("-", "")
             idx = requests.get(f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc}/index.json", headers=ua, timeout=20).json()
             docs = [x["name"] for x in idx["directory"]["item"] if re.search(r"(ex-?99|ex99|exhibit99|press)", x["name"], re.I) and x["name"].lower().endswith((".htm", ".html", ".txt"))]
-            for name in docs[:2]:
-                html = requests.get(f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc}/{name}", headers=ua, timeout=30).text
-                g = parse(text_of(html))
-                if g:
-                    return g
+            for name in docs[:1]:
+                return text_of(requests.get(f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc}/{name}", headers=ua, timeout=30).text)
             return None
     except Exception as exc:
-        print(f"SEC-Ausblick: Fehler {exc!r}")
+        print(f"SEC-Pressemitteilung: Fehler {exc!r}")
     return None
+
+
+def fetch(cik: int, since_iso: str) -> dict | None:
+    """Ausblick aus der neuesten Pressemitteilung (siehe fetch_text)."""
+    t = fetch_text(cik, since_iso)
+    return parse(t) if t else None

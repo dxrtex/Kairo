@@ -23,3 +23,13 @@ def test_verb_ohne_zahlen():
 def test_ohne_secret_aus(monkeypatch):
     monkeypatch.delenv("SEC_CONTACT", raising=False)
     assert S.fetch(320193, "2026-01-01") is None
+
+
+def test_ergebnis_aus_pressemitteilung():
+    t = S.text_of("<p>Apple reported quarterly revenue of $102.5 billion, up 8 percent year over year, and quarterly diluted earnings per share of $1.85.</p>")
+    r = S.results(t)
+    assert r["rev"] == 102.5e9 and r["eps"] == 1.85 and r["eps_kind"] == "GAAP"
+    t2 = "GAAP diluted EPS was $0.25. Non-GAAP diluted EPS was $0.62. Revenue was $13.7 billion. Fourth-quarter revenue is expected to be between $13.0 billion and $14.0 billion."
+    r2 = S.results(t2)
+    assert r2["eps"] == 0.62 and r2["eps_kind"] == "bereinigt" and r2["rev"] == 13.7e9
+    assert S.parse(t2)["mid"] == 13.5e9

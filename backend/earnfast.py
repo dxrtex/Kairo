@@ -26,8 +26,50 @@ def ciks() -> dict:
         return {}
 
 
-def watch_file(events: list[dict], nexts: dict, out: Path, today: pd.Timestamp) -> int:
-    """Termine gestern/heute/morgen mit CIK und erwarteter Zeit (UTC) für den Kursdienst."""
+def _sec_ua() -> dict:
+    c = os.environ.get("SEC_CONTACT", "").strip()
+    return {"User-Agent": f"Kairo {c}" if c else "Mozilla/5.0 (Kairo)", "Accept-Encoding": "gzip, deflate"}
+
+
+def typical_time(cik: int) -> str | None:
+    """Uhrzeit (New York, „HH:MM“), zu der die Firma ihre letzten Quartalszahlen bei der SEC eingereicht hat
+    (8-K Punkt 2.02, Median der letzten 4). Firmen melden fast immer zur selben Zeit."""
+    import requests
+    try:
+        f = requests.get(f"https://data.sec.gov/submissions/CIK{int(cik):010d}.json", headers=_sec_ua(), timeout=20).json()["filings"]["recent"]
+    except Exception:
+        return None
+    mins = []
+    for i in range(min(200, len(f["form"]))):
+        if f["form"][i] == "8-K" and "2.02" in str(f["items"][i]):
+            x = pd.Timestamp(f["acceptanceDateTime"][i]).tz_convert("America/New_York")
+            mins.append(x.hour * 60 + x.minute)
+            if len(mins) == 4:
+                break
+    if len(mins) < 2:
+        return None
+    m = int(sorted(mins)[len(mins) // 2])
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+
+def _times(tickers: dict, out: Path, today: pd.Timestamp) -> dict:
+    """Gelernte Meldezeiten, einmal am Tag je Aktie neu (earn_times.json im Zustand)."""
+    f = out / "earn_times.json"
+    try:
+        mem = json.loads(f.read_text(encoding="utf-8"))
+    except Exception:
+        mem = {}
+    day = str(today.date())
+    for t, cik in tickers.items():
+        if (mem.get(t) or {}).get("on") != day:
+            mem[t] = {"hm": typical_time(cik), "on": day}
+    f.write_text(json.dumps(mem, separators=(",", ":")), encoding="utf-8")
+    return {t: (mem.get(t) or {}).get("hm") for t in tickers}
+
+
+def watch_file(events: list[dict], nexts: dict, out: Path, today: pd.Timestamp, learn: bool = True) -> int:
+    """Termine gestern/heute/morgen mit CIK und erwarteter Zeit (UTC) für den Kursdienst.
+    „exact“ = Uhrzeit aus den bisherigen SEC-Meldungen der Firma gelernt (enges Prüffenster im Kursdienst)."""
     cm, items = ciks(), []
     for e in events:
         t = e.get("ticker")
@@ -45,6 +87,25 @@ def watch_file(events: list[dict], nexts: dict, out: Path, today: pd.Timestamp) 
             except Exception:
                 ts = None
         items.append({"t": t, "n": e.get("name") or t, "cik": cm[t], "date": e["date"], "ts": ts, "w": bool(e.get("watch"))})
+    if learn:
+        hm = _times({x["t"]: x["cik"] for x in items if x["t"] in cm and "." not in x["t"]}, out, today)
+        for x in items:
+            h = hm.get(x["t"])
+            if not h:
+                continue
+            ny = pd.Timestamp(f"{x['date']} {h}").tz_localize("America/New_York")
+            if x["ts"]:                                    # Yahoo sagt vor/nach Börse – passt die gelernte Zeit nicht dazu, lieber breit prüfen
+                hint = pd.Timestamp(x["ts"]).tz_convert("America/New_York").hour
+                if (hint < 12) != (ny.hour < 12):
+                    continue
+            x.update(ts=ny.tz_convert("UTC").isoformat(), exact=True)
+    for x in items:                                       # Prüffenster für den Kursdienst (ab Version 6 maßgeblich)
+        if x["ts"]:
+            e = pd.Timestamp(x["ts"])
+            a, b = (e - pd.Timedelta(minutes=20), e + pd.Timedelta(hours=3)) if x.get("exact") else (e - pd.Timedelta(hours=3), e + pd.Timedelta(hours=6))
+        else:
+            a = pd.Timestamp(x["date"] + " 09:00").tz_localize("UTC"); b = a + pd.Timedelta(hours=17)
+        x.update({"from": a.isoformat(), "to": b.isoformat()})
     (out / "earn_watch.json").write_text(json.dumps({"generated": pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds"), "items": items},
                                                     ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     return len(items)
