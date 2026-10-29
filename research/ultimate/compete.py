@@ -324,11 +324,59 @@ def main_pre(a) -> None:
     print(json.dumps(res, indent=1, default=str))
 
 
+def summary(d: Path) -> str:
+    """Lesbare Tabellen aus compete.json (+ compete_pre.json) für den Bericht."""
+    j = json.loads((d / "compete.json").read_text())
+    res, cmp_, st = j["res"], j["cmp"], j["stages"]
+    L = []
+    p = lambda x="": (print(x), L.append(x))
+    f = lambda m, k="cagr": "–" if not m or m.get(k) is None else (f"{m[k]:+.1%}" if k != "sharpe" else f"{m[k]:.2f}")
+    names = sorted({k.split("|")[0] for k in res})
+    p("## Wettbewerb B – 10.000 €, Stress-Kosten\n")
+    p("| Strategie | Train | Validierung | Holdout | gesamt | max. Rückgang | Sharpe | nach Steuern | p vs. ACWI | p vs. Zufall |")
+    p("|---|---|---|---|---|---|---|---|---|---|")
+    for n in names:
+        r = res.get(f"{n}|10000|stress")
+        if not r:
+            continue
+        c = cmp_.get(n, {})
+        p(f"| {n} | {f(r.get('Train'))} | {f(r.get('Validierung'))} | {f(r.get('Holdout'))} | {f(r.get('gesamt'))} | "
+          f"{f(r.get('gesamt'), 'max_dd')} | {f(r.get('gesamt'), 'sharpe')} | {f(r.get('nach_steuern'))} | "
+          f"{c.get('p_vs_acwi', float('nan')):.3f} | {c.get('p_vs_zufall', float('nan')):.3f} |")
+    p("\n## Kapitalgrößen – CAGR gesamt Basis / Stress (max. Rückgang Stress)\n")
+    p("| Strategie | " + " | ".join(f"{c} €" for c in CASH) + " |\n|---|" + "---|" * len(CASH))
+    for n in names:
+        cells = []
+        for c in CASH:
+            b, s = res.get(f"{n}|{c}|base"), res.get(f"{n}|{c}|stress")
+            cells.append("–" if not (b and s) else f"{f(b.get('gesamt'))} / {f(s.get('gesamt'))} ({f(s.get('gesamt'), 'max_dd')})")
+        p(f"| {n} | " + " | ".join(cells) + " |")
+    p("\n## Risikostufen (Anteil investiert im Train festgelegt, Rest Geldmarkt) – gesamt 2008–2026, 10.000 €, Stress\n")
+    p("| Strategie | Ziel 10 %: Anteil · CAGR · Rückgang | Ziel 20 % | Ziel 30 % |\n|---|---|---|---|")
+    for n in names:
+        if n not in st:
+            continue
+        cell = lambda x: f"{x['w']:.0%} · {f(x.get('gesamt'))} · {f(x.get('gesamt'), 'max_dd')}" if x.get("gesamt") else f"{x['w']:.0%} · –"
+        p(f"| {n} | " + " | ".join(cell(st[n][k]) for k in ("10%", "20%", "30%")) + " |")
+    pre = d / "compete_pre.json"
+    if pre.exists():
+        q = json.loads(pre.read_text())
+        p("\n## Vorzeit 2003–2007 (nie benutzt, Basis-Kosten, 10.000 €, in USD)\n")
+        p("| Strategie | CAGR | max. Rückgang | Sharpe |\n|---|---|---|---|")
+        for n, m in q.items():
+            p(f"| {n} | {f(m)} | {f(m, 'max_dd')} | {f(m, 'sharpe')} |")
+    p(f"\nMeta: {json.dumps(j['meta'], ensure_ascii=False)}")
+    (d / "compete_summary.md").write_text("\n".join(L), encoding="utf-8")
+    return "\n".join(L)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["run", "pre"])
+    ap.add_argument("cmd", choices=["run", "pre", "summary"])
     ap.add_argument("--data"); ap.add_argument("--out", default="cp_out"); ap.add_argument("--r1"); ap.add_argument("--best", default="E0")
     a = ap.parse_args(argv)
+    if a.cmd == "summary":
+        summary(Path(a.out)); return 0
     (main_run if a.cmd == "run" else main_pre)(a)
     return 0
 
