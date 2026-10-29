@@ -7,6 +7,9 @@ Unabhängig vom bisherigen shortswing-Simulator geschrieben. Grundsätze:
   dem Verhältnis AdjClose/Close abgeleitet und am Ex-Tag als Cash gebucht.
 - Stop: Eröffnung ≤ Stop → Verkauf zur Eröffnung (Kurslücke), sonst Tief ≤ Stop → Verkauf zum Stop. Stop und Ziel am
   selben Tag → Stop (vorsichtig). Zeit-Ausstieg zum Schluss des N-ten Handelstags (Einstiegstag = Tag 1).
+- Buy-Stop (`entry_stop`, optional `entry_cap`): Kauf im Tagesverlauf, sobald das Hoch den Stop-Kurs erreicht – zum
+  Stop-Kurs oder zur höheren Eröffnung; Eröffnung über `entry_cap` → Signal verfällt. Ein Tief unter dem Stop am Kauftag
+  zählt als ausgestoppt (Reihenfolge im Tag unbekannt → vorsichtig).
 - Bedingte Einstiege: `entry_band` (nur kaufen, wenn die Eröffnung in (lo, hi] liegt), `risk_atr` (Abstand Kauf–Stop
   muss in [min, max] × ATR liegen) – sonst verfällt die Order. Mehrere Orders derselben `group`: höchstens ein Kauf.
 - Ausstiegsregel „ema“: ab Tag `from` Schluss unter der EMA (Spalte EMA im Kursrahmen) → Verkauf zur nächsten Eröffnung.
@@ -61,6 +64,8 @@ class Order:
     stop_from_fill: float | None = None  # Stop = Kaufkurs (Eröffnung) − dieser Abstand (überschreibt stop)
     max_open_cap: int | None = None # Kauf nur, wenn weniger als so viele Positionen offen (z. B. Bärenmarkt-Regime)
     trail: tuple | None = None      # ("be_prevlow", Abstand): ab Kurs ≥ Einstieg + Abstand Stop auf Einstand, danach unter Vortagestief
+    entry_stop: float | None = None # Buy-Stop: Kauf, sobald das Tageshoch diesen Kurs erreicht (zum Stop-Kurs bzw. höherer Eröffnung)
+    entry_cap: float | None = None  # Buy-Stop: Eröffnung darüber → Signal verfällt (Kurslücke zu groß)
 
 
 @dataclass
@@ -165,7 +170,8 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
     filled_groups: set[str] = set()
     cash, pos = float(start_cash), {}
     led, trades, eq, inv = [], [], {}, {}
-    skipped = {"no_data": 0, "open_below_stop": 0, "band": 0, "risk_atr": 0, "full": 0, "held": 0, "no_cash": 0, "group": 0, "small": 0}
+    skipped = {"no_data": 0, "open_below_stop": 0, "band": 0, "risk_atr": 0, "full": 0, "held": 0, "no_cash": 0, "group": 0, "small": 0,
+               "not_triggered": 0, "gap_cap": 0}
 
     def close_of(t, d):
         p = px[t]
@@ -230,6 +236,18 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
                 skipped["full"] += 1
                 continue
             op = p_.o[i]
+            if o.entry_stop is not None:                # Buy-Stop: nur wenn das Hoch den Stop-Kurs erreicht
+                if not (np.isfinite(op) and p_.h[i] >= o.entry_stop):
+                    skipped["not_triggered"] += 1
+                    if retry:
+                        queue.append([o, left - 1])
+                    continue
+                if o.entry_cap is not None and op > o.entry_cap:
+                    skipped["gap_cap"] += 1
+                    if o.group is not None:
+                        filled_groups.add(o.group)
+                    continue
+                op = max(op, o.entry_stop)
             if o.stop_from_fill is not None and np.isfinite(op):
                 o.stop = op - o.stop_from_fill
             if not np.isfinite(op) or op <= 0 or (o.stop is not None and op <= o.stop):

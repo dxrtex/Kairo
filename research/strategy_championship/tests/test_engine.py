@@ -220,3 +220,29 @@ def test_prime_plus_fee_free_from_250():
         r = one({"A": flat()}, [Order(D[0], "A", weight=w, max_days=3)], start_cash=1000.0, costs=c)
         assert r.trades["fees_eur"].iloc[0] == pytest.approx(2 * fee)
         assert r.equity.iloc[-1] == pytest.approx(1000.0 - 2 * fee)
+
+
+def test_buy_stop_fills_at_trigger_or_higher_open():
+    # D[1]: Hoch 10,4 < 10,5 → nicht ausgelöst; D[2]: Eröffnung 10,2, Hoch 10,8 → Kauf zum Stop-Kurs 10,5
+    px = bars([10, 10, 10.2, 10.6, 10.6], [10, 10.4, 10.8, 10.7, 10.7], [10, 9.9, 10.1, 10.5, 10.5], [10, 10, 10.6, 10.6, 10.6])
+    o = Order(D[0], "A", stop=9.5, risk_frac=0.01, max_days=2, entry_stop=10.5, entry_cap=11.0, valid_days=3)
+    r = one({"A": px}, [o], start_cash=1000, costs=NOCOST)
+    t = r.trades.iloc[0]
+    assert t["entry_date"] == D[2] and t["entry_px"] == pytest.approx(10.5)
+    # Eröffnung 10,7 über dem Stop-Kurs (unter der Grenze) → Kauf zur Eröffnung
+    px2 = bars([10, 10.7, 10.7, 10.7], [10, 10.9, 10.8, 10.8], [10, 10.6, 10.6, 10.6], [10, 10.7, 10.7, 10.7])
+    r2 = one({"A": px2}, [Order(D[0], "A", stop=9.5, risk_frac=0.01, max_days=2, entry_stop=10.5, entry_cap=11.0)],
+             start_cash=1000, costs=NOCOST)
+    assert r2.trades.iloc[0]["entry_px"] == pytest.approx(10.7)
+
+
+def test_buy_stop_gap_over_cap_cancels_and_same_day_low_stops():
+    px = bars([10, 11.5, 11.5], [10, 11.6, 11.6], [10, 11.4, 11.4], [10, 11.5, 11.5])
+    r = one({"A": px}, [Order(D[0], "A", stop=9.5, risk_frac=0.01, max_days=2, entry_stop=10.5, entry_cap=11.0, valid_days=2)],
+            start_cash=1000, costs=NOCOST)
+    assert not len(r.trades) and r.skipped["gap_cap"] == 1
+    # Auslösung und Tief unter dem Stop am selben Tag → vorsichtig ausgestoppt
+    px2 = bars([10, 10.0, 10.0], [10, 10.6, 10.0], [10, 9.4, 10.0], [10, 9.6, 10.0])
+    r2 = one({"A": px2}, [Order(D[0], "A", stop=9.5, risk_frac=0.01, max_days=5, entry_stop=10.5)], start_cash=1000, costs=NOCOST)
+    t = r2.trades.iloc[0]
+    assert t["entry_date"] == D[1] and t["why"] == "stop" and t["exit_px"] == pytest.approx(9.5)

@@ -1,0 +1,83 @@
+name: Research – Kairo Ultimate Runde 1 (Wettbewerb A, USA/Europa)
+
+# Nur Forschung (docs/KAIRO_ULTIMATE_RESEARCH_PLAN.md, eingefroren). Ändert nichts an App, Scanner oder B60.
+permissions:
+  contents: write
+  actions: read
+
+on:
+  push:
+    branches: ["claude/ultimate-research"]
+    paths: [".github/workflows/research_ultimate_r1.yml", "research/ultimate/round1.py"]
+  workflow_dispatch:
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+  SWEEP_RUN: "40778404648"
+  SEC_FILINGS: "657029194"
+  SEC_CIK: "657029198"
+
+jobs:
+  work:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 8          # Platz lassen für Abend-Scan und Quartalszahlen
+      matrix:
+        job: ["trades E0", "trades E1", "trades E2", "trades V1", "trades N1", "trades C1",
+              "depot E0 20x025", "depot E1 20x025", "depot E2 20x025", "depot V1 20x025", "depot N1 20x025", "depot C1 20x025",
+              "depot E0 10x05", "depot E1 10x05", "depot E2 10x05", "depot V1 10x05", "depot N1 10x05", "depot C1 10x05",
+              "depot E0 5x1", "depot E1 5x1", "depot E2 5x1", "depot V1 5x1", "depot N1 5x1", "depot C1 5x1",
+              "null E1 0", "null E1 5", "null E1 10", "null E1 15", "null E2 0", "null E2 5", "null E2 10", "null E2 15",
+              "null V1 0", "null V1 5", "null V1 10", "null V1 15", "null N1 0", "null N1 5", "null N1 10", "null N1 15",
+              "null C1 0", "null C1 5", "null C1 10", "null C1 15"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "swsig-*", merge-multiple: true, path: parts, run-id: "${{ env.SWEEP_RUN }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Datensatz v1 + SEC laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1 sec
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_FILINGS > sec/filings.csv.gz
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_CIK > sec/cik_map.csv
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+          sha256sum sec/*
+      - name: Heutige Treffer (Variante 0 der Schwellen-Prüfung)
+        run: python -c "import pandas as pd,glob;d=pd.concat([pd.read_parquet(f) for f in sorted(glob.glob('parts/sweep_signals_*.parquet'))]);d=d[d['v'].str.split(',').apply(lambda l:'0' in l)];d.to_parquet('sig.parquet',index=False);print(len(d),'Treffer')"
+      - run: |
+          set -- ${{ matrix.job }}
+          case $1 in
+            trades) python -W ignore -m research.ultimate.round1 trades --data v1 --signals sig.parquet --sec sec --variant $2 --out out ;;
+            depot)  python -W ignore -m research.ultimate.round1 depot  --data v1 --signals sig.parquet --sec sec --variant $2 --layout $3 --out out ;;
+            null)   python -W ignore -m research.ultimate.round1 null   --data v1 --signals sig.parquet --sec sec --variant $2 --seed-start $3 --seed-n 5 --out out ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        with: { name: "ur1-${{ strategy.job-index }}", path: out/, retention-days: 30 }
+  report:
+    needs: [work]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "ur1-*", merge-multiple: true, path: res }
+      - run: python -m research.ultimate.round1 report --dir res
+      - uses: actions/upload-artifact@v4
+        with: { name: "ur1-report", path: res/round1_report.md, retention-days: 30 }
