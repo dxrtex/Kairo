@@ -83,7 +83,7 @@ REV_ACT = re.compile(r"\b(total )?(revenues?|net sales|sales)\b[^.$]{0,40}?\b(wa
 
 EPS_TAB = re.compile(r"\b(earnings per (diluted )?share|eps)\s*[–—-]?\s*\(?(non-?gaap|adjusted)\)?\s*(\(\d\)\s*)?\$?\s?(\(?\d{1,3}\.\d{2}\)?)(?!\d)", re.I)
 NOT_EPS = re.compile(r"(?i)includ|charges?\b|IPR|impact|offset|guidance|outlook|expect|dividend|distribution|buyback|repurchase")
-PER_SHARE = re.compile(r"\$\s?(\(?\d{1,3}\.\d{2}\)?)\s*(per (basic |diluted |fully[- ]diluted )?share|a share)", re.I)
+PER_SHARE = re.compile(r"\$\s?(\(?\d{1,3}\.\d{2}\)?)\s*(per (basic |diluted |fully[- ]diluted )?share|a share|(basic |diluted )?(earnings|loss|income) per share)", re.I)
 ADJ_WORDS = re.compile(r"\b(adjusted|non-?gaap|excluding|core|underlying)\b", re.I)
 
 
@@ -94,7 +94,7 @@ def _eps_val(v: str) -> float:
 def results(text: str) -> dict:
     """Gemeldeter Gewinn je Aktie (bereinigt bevorzugt – damit rechnen die Analysten-Erwartungen) und Umsatz."""
     out = {}
-    head = text[:8000]                                     # Kernzahlen stehen oben in der Mitteilung
+    head = text[:12000]                                    # Kernzahlen stehen oben in der Mitteilung
     # Tabellenzeile „Earnings per share – Non-GAAP 7.48“ zuerst; Sätze über Sonderbelastungen („EPS included $4.57 of
     # IPR&D charges“, Lilly) oder den Ausblick sind kein Ergebnis
     m = EPS_TAB.search(head) or next((x for x in EPS_ADJ.finditer(head)
@@ -109,10 +109,14 @@ def results(text: str) -> dict:
             pm = PER_SHARE.search(sent)
             if not pm or not re.search(r"(?i)income|earnings|loss|profit|eps", sent):
                 continue
+            v = _eps_val(pm.group(1))
+            pre = sent[:pm.start()].lower()                # „net loss of $100.3 million, or $0.46 per share“ → −0,46 (Insmed)
+            if v > 0 and pre.rfind("loss") > max(pre.rfind("income"), pre.rfind("earnings"), pre.rfind("profit")):
+                v = -v
             if ADJ_WORDS.search(sent):
-                adj = adj if adj is not None else _eps_val(pm.group(1))
+                adj = adj if adj is not None else v
             elif gaap is None:
-                gaap = _eps_val(pm.group(1))
+                gaap = v
         if adj is not None:
             out.update(eps=adj, eps_kind="bereinigt")
         elif gaap is not None:
