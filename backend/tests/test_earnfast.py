@@ -65,3 +65,20 @@ def test_nasdaq_widerspruch(monkeypatch, tmp_path):
     earnfast.watch_file(ev, {}, tmp_path, pd.Timestamp("2026-10-29"))
     a = json.loads((tmp_path / "earn_watch.json").read_text())["items"][0]
     assert "exact" not in a and "abweichend" in a["check"]
+
+
+def test_korrektur_mitteilung(tmp_path, monkeypatch):
+    sent = []
+    monkeypatch.setattr(earnfast, "_devices", lambda: ([{}], "k"))
+    monkeypatch.setattr(earnfast, "mine", lambda d, e: {"LLY"})
+    monkeypatch.setattr(earnfast, "send", lambda msgs, d, k: sent.extend(msgs) or len(msgs))
+    falsch = {"LLY": {"name": "Lilly", "last": {"date": "2026-10-29", "eps_a": 4.57, "eps_s": -0.31, "view": {"lbl": "gemischt"}}}}
+    earnfast.result_pushes(falsch, {}, [], tmp_path)
+    assert sent[-1]["title"] == "📊 Lilly: gemischt"
+    earnfast.result_pushes(falsch, falsch, [], tmp_path)                       # unverändert → nichts
+    assert len(sent) == 1
+    richtig = {"LLY": {"name": "Lilly", "last": {"date": "2026-10-29", "eps_a": 7.48, "eps_s": 0.13, "view": {"lbl": "eher positiv"}}}}
+    earnfast.result_pushes(richtig, falsch, [], tmp_path)
+    assert len(sent) == 2 and sent[-1]["title"] == "Korrektur – 📊 Lilly: eher positiv"
+    earnfast.result_pushes(richtig, richtig, [], tmp_path)                     # nur einmal korrigieren
+    assert len(sent) == 2
