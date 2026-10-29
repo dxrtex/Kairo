@@ -5605,7 +5605,7 @@ function tpTurboHtml(r, m, lv) {
   // Aktienkurs wie im Chart: in der Währung der Aktie (Pence als „GBp“), kleine Kurse mit 3 Nachkommastellen
   const cp = v => fmt(v, v < 10 ? 3 : 2), chart = v => `${cp(v)} ${sc === "EUR" ? "€" : esc(/^GB[Xp]$/.test(sc) ? "Pence" : sc)}`;
   const fp = v => fmt(v, v < 1 ? 3 : 2), sl = tv(stop), lossU = P - sl, qty0 = Math.floor(m.riskEur / Math.max(lossU, P * 0.05)),
-    qCash = Math.floor(Math.max(0, m.free - (qty0 * P < 250 ? tpCfg().fee : 0)) / P), qty = Math.max(0, Math.min(qty0, qCash));   // nie mehr als frei, 0 erlaubt (Review 2, K6)
+    qCash = m.free == null ? qty0 : Math.floor(Math.max(0, m.free - (qty0 * P < 250 ? tpCfg().fee : 0)) / P), qty = Math.max(0, Math.min(qty0, qCash));   // nie mehr als frei, 0 erlaubt (Review 2, K6)
   const lev = cr > 0 ? g(m.E) * cr / f / P : m.E / (m.E - KOs), near = KOs > stop - TP.kob * m.atr;
   const iv = cr > 0 ? tv(m.E) : 0, prem = cr > 0 ? P - iv : 0, odd = cr > 0 && (iv <= 0 || Math.abs(prem) > Math.max(0.35 * P, 0.05));
   // Welcher Aktienkurs steckt im Briefkurs? (Basispreis + Brief × Wechselkurs ÷ BV) – zeigt, wenn der Kairo-Kurs veraltet ist
