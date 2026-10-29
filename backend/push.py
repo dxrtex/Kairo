@@ -15,6 +15,7 @@ import json
 import os
 
 from . import webpush
+from .rule import KAIRO
 
 _OWNER, _, _NAME = os.environ.get("GITHUB_REPOSITORY", "dxrtex/Kairo").partition("/")
 APP = f"https://{_OWNER.lower()}.github.io/{_NAME}/"
@@ -52,7 +53,7 @@ def messages(dev: dict, prices: dict, today: str, sent: dict) -> list[dict]:
             continue
         x = p.get("x")
         if x and x <= today and today <= (p.get("x2") or "9999") and x >= _days_ago(today, 10):
-            add(f"exit:{p.get('i')}", f"📆 Verkaufstag: {n}", "Letzter Haltetag erreicht (spätestens Tag 60) – laut Kairo-Strategie heute verkaufen (Turbo im Depot verkaufen, Trade im Journal schließen).")
+            add(f"exit:{p.get('i')}", f"📆 Verkaufstag: {n}", f"Letzter Haltetag erreicht (spätestens Tag {KAIRO['hold']}) – laut Kairo-Strategie heute verkaufen (Turbo im Depot verkaufen, Trade im Journal schließen).")
         if df is None or not len(df):
             continue
         ex = ema_exit(df, p.get("d"), today) if p.get("e") else None

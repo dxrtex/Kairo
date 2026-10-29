@@ -4012,23 +4012,6 @@ const h4Of = t => { const d = h4Data(); return d && t ? (d.items || []).find(x =
 const h4Now = t => { const d = h4Data(); return d && d.now ? d.now[t] || null : null; };
 const H4F = [["R40", "RSI"], ["M", "MACD"], ["B", "MBI"], ["S", "Bruch"]];
 const h4Go = it => it && (it.st === "go" || (it.st === "run" && ((it.trade || {}).day || 99) <= 1));
-function h4Text(it) {
-  const cur = it.cur || "", b = it.base || {}, tr = it.trade || {}, P = v => `${fmt(v)} ${cur}`.trim();
-  const R = v => v == null ? "" : `${v >= 0 ? "+" : ""}${fmt(v, 2)} R`;
-  if (h4Go(it)) return { tone: "green", ic: "✓", short: "4H bestätigt", t: "4H bestätigt – Einstieg jetzt",
-    s: `${tr.e ? `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)}` : `Kauf zur Eröffnung der nächsten 4H-Kerze (zuletzt ${P((it.trig || {}).c)})`} · Stop ${P(b.sl)} · Verkauf ab Tag 10 bei Schluss unter der EMA 20, spätestens Tag 40.${b.pending && !tr.e ? ` Nur kaufen, wenn die Eröffnung zwischen ${P(b.lo)} und ${P(b.hi)} liegt – sonst verfällt das Setup (so getestet).` : ""}` };
-  if (it.st === "4h") return { tone: "yellow", ic: "…", short: "Basis fertig ✓", t: "Seitwärtsphase fertig – wartet auf die 4H-Bestätigung",
-    s: `Stop ${P(b.sl)} (Basis ${P(b.lo)}–${P(b.hi)})${b.pending ? " · Basis gilt, wenn die nächste Eröffnung darin liegt" : ""} · ${it.lim ? `Fenster bis ${dateDE(it.lim)}` : `noch ${it.lim_left} Handelstage Zeit`}. Erst kaufen, wenn alle vier Signale zugleich stehen – die Mitteilung kommt automatisch.` };
-  if (it.st === "basis") return { tone: "yellow", ic: "…", short: `Basis Tag ${it.day}/10`, t: `Wartet auf die Seitwärtsphase · Tag ${it.day} von 10`,
-    s: `Treffer vom ${dateDE(it.d)}. Noch ${it.left} Handelstage Zeit für 5 enge Tage – danach beginnt die 4H-Prüfung.` };
-  if (it.st === "sell") return { tone: "yellow", ic: "↘", short: "verkaufen", t: `Schluss unter der EMA 20 – zur nächsten Eröffnung verkaufen`,
-    s: `Tag ${tr.day}: Schluss ${P(tr.xc)} unter der EMA 20 (${P(tr.ema)}). Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)} · Stand ${R(tr.r)}.` };
-  if (it.st === "run") return { tone: "blue", ic: "▶", short: `läuft Tag ${tr.day}/40`, t: `4H-Trade läuft · Tag ${tr.day} von höchstens 40`,
-    s: `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)} · Stop ${P(tr.sl)} · Stand ${R(tr.r)}${tr.ema ? ` · EMA 20 ${P(tr.ema)}${tr.day >= 10 ? " (gilt jetzt)" : ` (gilt ab Tag 10)`}` : ""}. Ein späterer Einstieg ist nicht getestet.` };
-  if (["stop", "zeit", "ema"].includes(it.st)) return { tone: "gray", ic: it.st === "stop" ? "■" : "✓", short: { stop: "Stop", zeit: "Tag 40", ema: "EMA 20" }[it.st],
-    t: `Beendet: ${{ stop: "Stop", zeit: "Verkauf an Tag 40", ema: "Schluss unter der EMA 20" }[it.st]} · ${R(tr.r)}${tr.r20 != null ? ` (mit „Tag 20“: ${R(tr.r20)})` : ""}`, s: `Einstieg ${dateDE(tr.ed)} zu ${P(tr.e)}, Verkauf ${dateDE(tr.xd)} zu ${P(tr.x)}.` };
-  return { tone: "gray", ic: "✕", short: "verfallen", t: "Verfallen – kein Trade", s: `${it.why || "Bedingungen nicht erfüllt"} (Treffer vom ${dateDE(it.d)}).` };
-}
 // ---------- Tagesbriefing: das Wichtigste seit dem letzten Scan, als Fenster beim Öffnen ----------
 function briefHtml() {
   const mine = myTickers(), ch = jsonData["changes.json"], m = anaData && anaData.market, reg = m && m.regime;
@@ -4733,8 +4716,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.08";
-const APP_NEWS = [["2026.11.08", "Neuer Scanner", [
+const APP_VER = "2026.11.09";
+const APP_NEWS = [["2026.11.09", "Geprüft und korrigiert", [
+  ["Eine Regel überall", "Halten bis Stop, ab Tag 10 Schluss unter der EMA 20 – spätestens Tag 60. Die Kaufkarten im Scanner zeigten fälschlich Tag 40; jetzt gilt überall dieselbe Regel, ein automatischer Test passt darauf auf."],
+  ["Stückzahl passt ins Kapital", "Kaufkarten und Top-Setups rechnen die Stückzahl wie der Trade-Plan: 1 % Risiko, aber nie mehr Aktien, als ins freie Kapital passen."],
+  ["Splits sauber", "Passt Yahoo alte Kurse nach einem Aktiensplit oder einer Dividende an, lädt Kairo die ganze Kursreihe neu – vorher konnte ein Split wie ein Absturz aussehen."]]],
+  ["2026.11.08", "Neuer Scanner", [
   ["Was heute zu tun ist", "Die Treffer-Ansicht zeigt jetzt oben nur, was kaufbereit ist – mit Kaufspanne, Stop, Stückzahl und Ausstieg. Darunter die Treffer, die noch auf ihre Seitwärtsphase warten. Die Status-Spalte ist weg, die Kriterien bleiben bei jeder Aktie sichtbar."],
   ["Ruhe-Filter wieder raus", "Seit dem 28.10. musste die Konsolidierung am Treffer-Tag ruhig sein – dadurch fielen fast alle Treffer weg. Der saubere Depot-Test (5.000 €, 5 Plätze, 2008–2026) zeigt: Mit Ruhe-Filter wäre das Depot im jüngsten Zeitraum 2022–26 schlechter gewesen (+6,7 % statt +15,3 % pro Jahr). Darum gilt wieder die getestete Regel ohne Ruhe-Filter."],
   ["Rangfolge bestätigt", "Sind mehr Aktien kaufbereit als Plätze frei, zuerst die mit schwächerem Vormomentum – im Depot-Test klar besser als „ruhigere zuerst“ oder „wenigstes Hin und Her zuerst“."]]],
@@ -5323,6 +5310,22 @@ function kmFit(r, mk) {
     s: "Die Strategie handelt nur volle Kairo-Treffer (11/11). Der Plan unten ist nur zur Information." };
 }
 const TP_EXP_TREND = { 5: 0.07, 7: 0.07, 10: 0.07, 20: 0.07 };      // Trend-Rücksetzer, sofort gekauft (beste Haltedauer 5 Tage)
+// Eine Stückzahl-Rechnung für alle Ansichten (Review 29.10.2026): 1 % Risiko je Trade – aber nie mehr Aktien, als ins freie
+// Kapital passen (Kapital − Einsatz offener Pläne − Kaufwert der Depot-Positionen ohne Plan; sonst wäre Geld doppelt verplant)
+function freeCap() {
+  const cfg = tpCfg(), dep = typeof depotLoad === "function" ? depotLoad() : [];
+  const noPlanCost = dep.filter(p => !p.etf && !planFor([p.t], p.d ? p.d.under : p.n)).reduce((a, p) => a + (+p.price || 0) * (+p.qty || 0), 0);
+  return Math.max(0, cfg.depot - plansLoad().filter(p => p.st === "open").reduce((a, p) => a + (+p.stake || 0), 0) - noPlanCost);
+}
+function posSize(entry, stop, cur) {
+  const cfg = tpCfg(), e = toEur(entry, cur), s = toEur(stop, cur), per = e != null && s != null ? e - s : null;
+  if (!(per > 0) || !(e > 0)) return null;
+  const free = freeCap(), qRisk = Math.floor(cfg.depot * cfg.risk / 100 / per), qCash = Math.floor(free / e);
+  const qty = Math.max(0, Math.min(qRisk, qCash)), val = qty * e;
+  return { qty, val, fee: val >= 250 ? 0 : cfg.fee, risk: qty * per, riskPct: cfg.depot ? 100 * qty * per / cfg.depot : 0, capped: qCash < qRisk, free };
+}
+const sizeTxt = ps => !ps ? ["–", ""] : !ps.qty ? ["0 Stk.", `kein freies Kapital (${eur(ps.free)} frei)`]
+  : [`${ps.qty} Stk.`, `${eur2(ps.val)} · Risiko ${fmt(ps.riskPct, 1)} %${ps.capped ? ` · begrenzt: nur ${eur(ps.free)} frei` : ""}`];
 const tpCfg = () => ({ depot: +state.tpDepot > 0 ? +state.tpDepot : 3000, risk: +state.tpRisk > 0 ? +state.tpRisk : 1,
   hold: TP_EXIT.hold, fee: state.tpFee != null ? +state.tpFee : 0.99, maxOpen: +state.tpMaxOpen || KMAX.maxOpen });
 // Marktampel für Reversals: im breiten Ausverkauf funktioniert das „Gummiband“ am besten
@@ -5373,12 +5376,6 @@ function tp2Calc(r, S, o = {}) {
   out.dist = risk / E;
   out.mk = tpMarket();
   out.fit = kmFit(r, out.mk);
-  if (h4) {                                                  // 4H-Top-Setup entscheidet über den Einstieg
-    const x = h4Text(h4);
-    if (!h4Real(h4)) out.problems.push(["yellow", `Nur ${GRPL[h4.grp]}: Seitwärtsphase und 4H-Prüfung laufen zur Auswahl mit, im Test schwächer als volle Treffer (${GRPT[h4.grp]} je Trade statt +0,41 / +0,61 R). Kein Kairo-Einstieg – deine Entscheidung.`]);
-    out.fit = { ...out.fit, ok: h4Go(h4) && h4Real(h4), k: "h4", tone: x.tone === "green" ? "green" : x.tone === "gray" ? "red" : "yellow",
-      mult: out.fit.mult || 1, t: `${x.ic} 4H-Top-Setup${h4.soft ? " (10/11, MBI gelockert)" : ""}: ${x.t}`, s: x.s + (h4.soft ? " Fast-Treffer, dem nur das Abklingen beim MBI fehlt – im Test so gut wie volle Treffer, wird getrennt gezählt." : "") };
-  }
   out.riskPct = cfg.risk * out.fit.mult;
   // Klumpenschutz: offene Trades und Depot-Positionen im selben Sektor – höchstens 2 je Sektor
   if (r.sec) {
@@ -5425,8 +5422,7 @@ function tp2Calc(r, S, o = {}) {
   // Vorschlag: der KLEINSTE Hebel, dessen Einsatz noch ins freie Kapital passt (Depot minus Einsatz der offenen Trades).
   // Wahrheits-Test (2 × 10 Jahre): spart Finanzierungskosten – +11 bis +20 % statt +4 bis +15 % p. a., auch auf den Prüfjahren besser.
   // Frei = Kapital − Einsatz offener Pläne − Kaufwert der Depot-Positionen ohne Plan (sonst wäre Geld doppelt verplant)
-  const noPlanCost = depotLoad().filter(p => !p.etf && !planFor([p.t], p.d ? p.d.under : p.n)).reduce((a, p) => a + (+p.price || 0) * (+p.qty || 0), 0);
-  out.free = Math.max(0, cfg.depot - plansLoad().filter(p => p.st === "open").reduce((a, p) => a + (+p.stake || 0), 0) - noPlanCost);
+  out.free = freeCap();
   const okL = out.levs.filter(x => x.ok && !x.capped);
   const fit = okL.find(x => x.stake <= out.free);
   // Passt kein Einsatz ins freie Kapital: nicht auf den größten Hebel ausweichen, sondern warnen (kleinster Hebel bleibt Vorschlag)
@@ -5856,9 +5852,7 @@ function critLine(t) {                      // Kriterien zum groben Einschätzen
 }
 function boardCard(it, rank) {
   const r = byTicker(it.t), sr = rowOf(it.t) || {}, cur = it.cur || sr.cur || (r || {}).currency || "", b = it.base || {};
-  const c = tpCfg(), riskEur = c.depot * c.risk / 100, last = sr.c ?? (r || {}).close;
-  const e = toEur(last, cur), st = toEur(b.sl, cur), per = e != null && st != null ? e - st : null;
-  const qty = per > 0 ? Math.floor(riskEur / per) : null, val = qty ? qty * e : null;
+  const last = sr.c ?? (r || {}).close, [qTxt, qSub] = sizeTxt(posSize(last, b.sl, cur));
   const name = esc(String(it.n || (r || {}).name || it.t).slice(0, 34)), open = r ? `data-card="${esc(it.t)}"` : `data-ein="${esc(it.t)}"`;
   const mo = it.mom ?? kmMom(it.t);
   return `<div class="bd-card ready">
@@ -5866,8 +5860,8 @@ function boardCard(it, rank) {
     <div class="bd-plan">
       <div><span>Kauf</span><b>nächste Eröffnung</b><em>nur zwischen ${fmt(b.lo)} und ${fmt(b.hi)} ${esc(cur)}</em></div>
       <div><span>Stop</span><b class="down">${fmt(b.sl)} ${esc(cur)}</b><em>${last && b.sl ? `${pct((last - b.sl) / last, 1)} unter dem Kurs` : ""}</em></div>
-      <div><span>Größe</span><b>${qty ? `${qty} Stk.` : "–"}</b><em>${val ? `${eur2(val)} · ${fmt(c.risk, 1)} % Risiko` : ""}</em></div>
-      <div><span>Ausstieg</span><b>Stop oder EMA 20</b><em>ab Tag 10 Schluss darunter, spätestens Tag 40</em></div>
+      <div><span>Größe</span><b>${qTxt}</b><em>${qSub}</em></div>
+      <div><span>Ausstieg</span><b>Stop oder EMA 20</b><em>ab Tag ${H4X.from} Schluss darunter, spätestens Tag ${KMAX.hold}</em></div>
     </div>
     ${critLine(it.t)}
   </div>`;
@@ -5899,24 +5893,23 @@ function boardHtml() {
 }
 function topSetupsHtml() {
   if (!searchIdx) loadSearch();
-  const c = tpCfg(), riskEur = c.depot * c.risk / 100;
+  const c = tpCfg();
   const hits = data.results.filter(r => r.passed && ["us", "europe"].includes(String(r.region || "").toLowerCase()));
   if (!hits.length) return "";
   const m = r => (r.flags || {}).mom61;
   const list = hits.slice().sort(kOrder).slice(0, 8);
   const rows = list.map((r, k) => {
     const kp = kPlan(r.ticker), p = { entry: r.close, stop: kp.stop };   // Stop wie überall: Seitwärtsphase nach dem Treffer, sonst Kursstruktur
-    const e = toEur(p.entry, r.currency), st = p.stop ? toEur(p.stop, r.currency) : null, per = e != null && st != null ? e - st : null;
-    const qty = per > 0 ? Math.floor(riskEur / per) : null, val = qty ? qty * e : null, fee = val == null ? null : val >= 250 ? 0 : 0.99;
+    const ps = p.stop ? posSize(p.entry, p.stop, r.currency) : null, qty = ps && ps.qty, val = qty ? ps.val : null, fee = ps ? ps.fee : null;
     return `<tr><td>${k + 1}</td><td><b>${esc(r.ticker)}</b> ${kPill(r)} ${tgtChip(r)}<br><span class="note">${esc(String(r.name || "").slice(0, 24))}</span></td>
       <td>${m(r) == null ? "–" : sgnPct(m(r), 0)}</td><td>${fmt(p.entry)}<br><span class="down">${fmt(p.stop)}</span></td>
       <td>${qty ? `${qty} Stk.<br><span class="note">${eur2(val)}</span>` : "–"}</td><td>${fee == null ? "–" : fee ? "0,99 €" : "0 €"}</td>
       <td><button class="mini-btn" data-open="${esc(r.ticker)}">Chart</button></td></tr>`;
   }).join("");
   return `<div class="hcard" style="margin-bottom:12px">${hHead("Top-Setups heute")}
-    <div class="note">USA und Europa · kaufbereit zuerst, dann schwächeres Vormomentum. Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)}.</div>
-    <div class="ts-list">${list.map((r, k) => { const p = { entry: r.close, stop: kPlan(r.ticker).stop }, e = toEur(p.entry, r.currency), st = p.stop ? toEur(p.stop, r.currency) : null, per = e != null && st != null ? e - st : null, qty = per > 0 ? Math.floor(riskEur / per) : null;
-      return `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${kPill(r)} ${insChip(r.ticker)} ${tgtChip(r)} ${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${qty ? `${qty} Stk.<small>${eur2(qty * e)}</small>` : "–"}</span></button>`; }).join("")}</div>
+    <div class="note">USA und Europa · kaufbereit zuerst, dann schwächeres Vormomentum. Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)}, höchstens so viel, wie frei ist.</div>
+    <div class="ts-list">${list.map((r, k) => { const p = { entry: r.close, stop: kPlan(r.ticker).stop }, ps = p.stop ? posSize(p.entry, p.stop, r.currency) : null;
+      return `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${kPill(r)} ${insChip(r.ticker)} ${tgtChip(r)} ${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${ps && ps.qty ? `${ps.qty} Stk.<small>${eur2(ps.val)}</small>` : "–"}</span></button>`; }).join("")}</div>
     <div class="tscroll ts-tab" style="margin-top:8px"><table class="ptab ts"><tr><th>#</th><th>Aktie</th><th>Vormomentum</th><th>Einstieg / Stop</th><th>Größe</th><th>Gebühr</th><th></th></tr>${rows}</table></div></div>`;
 }
 function paperHtml() {

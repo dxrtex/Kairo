@@ -10,12 +10,14 @@ from . import state
 from .bilanz import GAP, _agg, outcome, stats
 from .config import ROOT
 from .indicators import atr as _atr
+from .rule import KAIRO
 from .scanner import calm_days
 from .shortswing import QRULE, simulate
 
-HOLD = 20                                          # Strategie: 20 Handelstage halten, kein Gewinnziel
-# Aktuelle Kairo-Regel (Forschung v2.5, S01-B): Ausstieg ab Tag 10 bei Schluss unter EMA20 zur nächsten Eröffnung, spätestens Tag 60
-RULE60 = {"hold": 60, "ema_x": 20, "ema_from": 10}
+HOLD = 20                                          # alte Regel (bis 10/2026): Verkauf an Tag 20 – nur noch als Vergleich („st“)
+# Gültige Kairo-Regel B60 (backend/rule.py): Ausstieg ab Tag 10 bei Schluss unter EMA20 zur nächsten Eröffnung, spätestens Tag 60.
+# Die App zeigt „st60“ (strat60) als Live-Bilanz; „st“ läuft nur zum Vergleich weiter.
+RULE60 = {"hold": KAIRO["hold"], "ema_x": KAIRO["ema"], "ema_from": KAIRO["ema_from"]}
 DONE = ("stop", "zeit", "ema", "nobase")
 
 

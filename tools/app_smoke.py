@@ -191,6 +191,25 @@ async def ui_check(b, url, errs):
             errs.append("Kalender: Quartalszahlen öffnen sich nicht")
     await ctx.close()
 
+async def size_check(b, url, errs):
+    """Stückzahl (Review 29.10.2026): 1 % Risiko, aber nie mehr Aktien als ins freie Kapital passen – Kaufkarten wie Trade-Plan."""
+    ctx = await new_ctx(b, viewport={"width": 820, "height": 1180})
+    pg = await ctx.new_page()
+    await pg.goto(f"{url}?nosplash=1")
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("""() => { state.tpDepot = 3000; state.tpRisk = 1;
+      const tight = posSize(40, 39.9, "EUR"), wide = posSize(40, 36, "EUR"), bad = posSize(40, 41, "EUR");
+      return { tight, wide, bad, free: freeCap() }; }""")
+    t, w = r["tight"], r["wide"]
+    if not t or t["qty"] * 40 > r["free"] + 1e-6 or not t["capped"]:
+        errs.append(f"Stückzahl: enger Stop sprengt das Kapital ({t})")
+    if not w or w["qty"] != 7 or w["capped"]:                       # 30 € Risiko / 4 € je Aktie = 7 Stück
+        errs.append(f"Stückzahl: 1 %-Regel falsch ({w})")
+    if r["bad"] is not None:
+        errs.append("Stückzahl: Stop über dem Kurs muss „keine Stückzahl“ ergeben")
+    await ctx.close()
+
+
 async def backup_check(b, url, errs):
     """Backup: ohne Haken keine Schlüssel in der Datei, mit Haken schon; Einlesen stellt Depot und Schlüssel wieder her."""
     import json as _json
@@ -241,6 +260,7 @@ async def run(port: int) -> list[str]:
         await tour_check(b, url, errs)
         await import_check(b, url, errs)
         await backup_check(b, url, errs)
+        await size_check(b, url, errs)
         await ui_check(b, url, errs)
         for name, vp in (("iPad", {"width": 820, "height": 1180}), ("Handy", {"width": 390, "height": 844})):
             ctx = await new_ctx(b, viewport=vp)
