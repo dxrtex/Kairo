@@ -2499,12 +2499,12 @@ function planFor(ts, name) {
 function stratOf(plan) {
   if (!plan) return null;
   const today = new Date(isoD(new Date()) + "T12:00:00"), d0 = new Date(plan.d + "T12:00:00"), sell = plan.exit2 || plan.exit;
-  const hold = plan.hold || KMAX.hold, day = bdBetween(d0, today) + 1, left = Math.max(0, bdBetween(today, new Date(sell + "T12:00:00")));
+  const hold = plan.hold || KMAX.hold, day = bdBetween(d0, today, plan.t) + 1, left = Math.max(0, bdBetween(today, new Date(sell + "T12:00:00"), plan.t));
   const r = rowOf(plan.t) || rowOf(tkClean(plan.t)), c = r ? r.c : null, fx = toEur(1, plan.cur || "EUR") || 1, fe = v => v == null ? "–" : fmt(v * fx);
   const risk1 = plan.E - plan.stop, R = c != null && risk1 > 0 ? (c - plan.E) / risk1 : null;
   const slDist = c != null ? (c - plan.stop) / c : null, slAtr = c != null && plan.atr ? (c - plan.stop) / plan.atr : null;
   const koAtr = plan.ko && plan.atr ? (plan.stop - plan.ko) / plan.atr : null;
-  const cut = sell !== plan.exit && plan.exit2 && sell < isoD(addBd(d0, hold - 1));
+  const cut = sell !== plan.exit && plan.exit2 && sell < isoD(addBd(d0, hold - 1, plan.t));
   let tone, t, s;
   if (c == null) [tone, t, s] = ["gray", "Kein aktueller Kurs", "Stop und Verkaufstag gelten trotzdem – in Scalable prüfen."];
   else if (c <= plan.stop) [tone, t, s] = ["red", "Stop unterschritten – verkaufen", `Kurs ${fe(c)} € liegt unter dem Stop ${fe(plan.stop)} €. Regel: raus, nicht auf Erholung hoffen.`];
@@ -5339,11 +5339,18 @@ function tpMarket() {
   return { k: "strong", tone: "gray", t: "grau · gesunder Markt – normales Risiko",
     s: `S&P 500 über EMA 50/200${v != null ? `, VIX ${fmt(v, 0)}` : ""}.` };
 }
-const addBd = (d, n) => { const x = new Date(d); let k = 0; while (k < n) { x.setDate(x.getDate() + 1); if (x.getDay() % 6) k++; } return x; };
+// Handelstage mit Börsenfeiertagen (Review W2): USA (NYSE) für Ticker ohne Börsenkürzel, sonst Xetra/Europa. Ohne Ticker: NYSE.
+const HOLI = { us: new Set(["2025-12-25", "2026-01-01", "2026-01-19", "2026-02-16", "2026-04-03", "2026-05-25", "2026-06-19", "2026-07-03", "2026-09-07",
+    "2026-11-26", "2026-12-25", "2027-01-01", "2027-01-18", "2027-02-15", "2027-03-26", "2027-05-31", "2027-06-18", "2027-07-05", "2027-09-06", "2027-11-25", "2027-12-24"]),
+  eu: new Set(["2025-12-24", "2025-12-25", "2025-12-26", "2025-12-31", "2026-01-01", "2026-04-03", "2026-04-06", "2026-05-01", "2026-12-24", "2026-12-25",
+    "2026-12-31", "2027-01-01", "2027-03-26", "2027-03-29", "2027-12-24", "2027-12-31"]) };
+const holOf = t => HOLI[t && /\.[A-Z]+$/.test(t) && !/\.TO$/.test(t) ? "eu" : "us"];
+const isTd = (x, t) => (x.getDay() % 6) && !holOf(t).has(isoD(x));
+const addBd = (d, n, t) => { const x = new Date(d); let k = 0; while (k < n) { x.setDate(x.getDate() + 1); if (isTd(x, t)) k++; } return x; };
 const isoD = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 function tpEntryDay(iso) { const d = iso ? new Date(iso + "T12:00:00") : new Date(); while (!(d.getDay() % 6)) d.setDate(d.getDate() + 1); return d; }
-const subBd = (d, n) => { const x = new Date(d); let k = 0; while (k < n) { x.setDate(x.getDate() - 1); if (x.getDay() % 6) k++; } return x; };
-const bdBetween = (a, b) => { let k = 0; const x = new Date(a); while (x < b) { x.setDate(x.getDate() + 1); if (x.getDay() % 6) k++; } return k; };
+const subBd = (d, n, t) => { const x = new Date(d); let k = 0; while (k < n) { x.setDate(x.getDate() - 1); if (isTd(x, t)) k++; } return x; };
+const bdBetween = (a, b, t) => { let k = 0; const x = new Date(a); while (x < b) { x.setDate(x.getDate() + 1); if (isTd(x, t)) k++; } return k; };
 // Kern: aus Struktur + Einstellungen → Stop, Größe, Hebel, Kosten, Szenarien. Reine Rechnung (keine Anzeige).
 function tp2Calc(r, S, o = {}) {
   const cfg = tpCfg(), pl = r.pl || {}, atr = pl.atr || r.atr || (r.ap || 0) * r.c;
@@ -5368,7 +5375,7 @@ function tp2Calc(r, S, o = {}) {
   if (!plb && !h4b) out.problems.push(["yellow", "Noch keine enge Seitwärtsphase (Basis) – laut Strategie erst kaufen, wenn sie da ist."]);
   if (!trend && !h4) {                                              // getestete Regel: Seitwärtsphase innerhalb von 10 Handelstagen nach dem Signal
     const bj = getJson("bilanz.json"), sg = bj && (bj.signals || []).find(x => x.k === "hit" && x.t === r.t);
-    if (sg) { const age = bdBetween(new Date(sg.d + "T12:00:00"), new Date()), res = (sg.st || {}).res; out.sig = { d: sg.d, age, res };
+    if (sg) { const age = bdBetween(new Date(sg.d + "T12:00:00"), new Date(), r.t), res = (sg.st || {}).res; out.sig = { d: sg.d, age, res };
       if (res === "nobase" || (!plb && age > 10)) out.problems.push(["red", `Kairo-Signal vom ${dateDE(sg.d)}: innerhalb von 10 Handelstagen keine Seitwärtsphase – laut getesteter Regel ist das Signal verfallen. Kein Trade.`]);
       else if (!plb && res !== "run") out.problems.push(["yellow", `Kairo-Signal vom ${dateDE(sg.d)} – Tag ${age} von 10: Die Seitwärtsphase muss bis ${dateDE(isoD(addBd(new Date(sg.d + "T12:00:00"), 10)))} kommen, sonst verfällt es.`]);
       else if (res === "run" && sg.st.days > 3) out.problems.push(["yellow", `Laut Strategie lief der Einstieg schon vor ${sg.st.days} Handelstagen – ein später Einstieg ist nicht getestet.`]); } }
@@ -5398,10 +5405,10 @@ function tp2Calc(r, S, o = {}) {
   out.tpWhy = "Kein TP: Im Test brachte jedes feste Kursziel (1–5 R, Widerstände, EMA 20/50) weniger als Laufenlassen – die wenigen großen Gewinner bezahlen die Verluste. Verkauft wird am SL, ab Tag 10 bei einem Tagesschluss unter der EMA 20 (am nächsten Morgen) – spätestens an Tag 60.";
   if (h4) out.tpWhy = `Kein TP: Im Ausstiegs-Test brachte jedes feste Ziel (auch Fibonacci, altes Hoch, Extensions) weniger. Verkauft wird am SL, ab Tag ${H4X.from} bei einem Tagesschluss unter der EMA 20 (am nächsten Morgen) – spätestens an Tag ${H4X.hold}.`;
   out.d0 = tpEntryDay(o.date);
-  out.exit = addBd(out.d0, hold - 1);
+  out.exit = addBd(out.d0, hold - 1, r.t || r.ticker);
   // Quartalszahlen in der Haltedauer: halten (Test 28.10.2026, tools/research/earnings_entry_test.py: Käufe ≤ 10 Tage vor den
   // Zahlen waren in allen drei Zeiträumen besser) – nur Hinweis auf das Kurslücken-Risiko bei Turbos
-  out.exit2 = addBd(out.d0, KMAX.hold2 - 1);
+  out.exit2 = addBd(out.d0, KMAX.hold2 - 1, r.t || r.ticker);
   if (r.ed) { const ed = new Date(r.ed + "T12:00:00"); if (ed > out.d0 && ed <= out.exit2) {
     out.edIn = true;
     out.problems.push(["yellow", `Quartalszahlen am ${dateDE(r.ed)} während der Haltedauer – laut Test halten (Käufe kurz vor den Zahlen waren im Schnitt sogar besser). Aber: Eine Kurslücke kann den Stop und bei Turbos den K.-o. überspringen – mit Turbo lieber kleiner Hebel.`]); } }
@@ -5626,7 +5633,7 @@ function tpOpen(t) {
   plansSave(l); render(); window.scrollTo({ top: 0, behavior: "smooth" });
 }
 // 4H-Trades: ab Tag 10 Verkauf, sobald ein Tag unter der EMA 20 schließt (Kurs und EMA vom letzten Scan = Tagesschluss)
-const emaExit = (p, r) => !!(p && p.ema && r && r.c != null && r.e20 && r.c < r.e20 && bdBetween(new Date(p.d + "T12:00:00"), new Date(isoD(new Date()) + "T12:00:00")) + 1 > H4X.from);
+const emaExit = (p, r) => !!(p && p.ema && r && r.c != null && r.e20 && r.c < r.e20 && bdBetween(new Date(p.d + "T12:00:00"), new Date(isoD(new Date()) + "T12:00:00"), p.t) + 1 > H4X.from);
 function tpStatus(p) {
   const r = rowOf(p.t), c = r ? r.c : null, today = isoD(new Date());
   if (c == null) return { tone: "gray", t: "Kein aktueller Kurs" };

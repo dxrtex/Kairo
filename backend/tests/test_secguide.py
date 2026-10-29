@@ -79,3 +79,11 @@ def test_ausblick_segment_wird_nicht_verglichen():
 def test_jahresausblick_ist_kein_quartal():
     g = S.parse("Increased the midpoint of our 2026 full-year revenue guidance by $5.5 billion to be in the range of $91.0 to $92.0 billion in the third quarter update.")
     assert g["q"] is False and g["mid"] == 91.5e9
+
+
+def test_6k_nur_mit_ergebniszahlen():
+    """Review W8: Ein 6-K ist nicht immer eine Ergebnis-Meldung."""
+    agm = "Notice of Annual General Meeting. The board of directors resolved to convene the meeting on June 5. Voting instructions follow."
+    res = ("Third Quarter 2026 Results. Revenues of US$ 24.1 billion, net income of US$ 9.8 billion, "
+           "earnings per share of US$ 1.85 for the quarter.")
+    assert not S.is_results(agm) and S.is_results(res)

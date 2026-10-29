@@ -161,3 +161,12 @@ def test_pressemitteilung_nur_plausibel(monkeypatch):
     assert E._sec_results("AAPL", ev, up, "EPS Estimate", today) is None
     monkeypatch.setattr(E, "_sec_text", lambda t, since: "GAAP diluted EPS was $1.70. Adjusted EPS figures in the tables.")
     assert E._sec_results("AAPL", ev, up, "EPS Estimate", today) is None    # nur GAAP, aber bereinigte Zahl existiert
+
+
+def test_grosse_ueberraschung_nur_mit_bestaetigung():
+    """Review K8: nahe 0 absoluter Abstand; > 50 % nur, wenn der Wert zweimal in der Mitteilung steht."""
+    from backend.earnings import eps_plausible
+    assert eps_plausible(0.12, 0.05, "")                                   # nahe 0: 0,07 Abstand ist normal
+    assert not eps_plausible(1.10, 6.61, "EPS included $1.10 of charges")  # > 50 % daneben, nur einmal erwähnt → warten
+    assert eps_plausible(2.10, 1.00, "EPS of $2.10 ... Earnings per share 2.10 1.02")
+    assert not eps_plausible(-0.40, 0.30, "loss of $0.40 per share")       # Vorzeichenwechsel ohne Bestätigung

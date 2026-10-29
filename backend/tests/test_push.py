@@ -108,3 +108,13 @@ def test_insider_messages_first_run_silent_then_new(monkeypatch):
     m = push.insider_messages(today, {"watch": [old] + new, "signal": {}})
     titles = [x["title"] for x in m]
     assert len(m) == 2 and any("Palantir" in t for t in titles) and any("Airbus" in t for t in titles)
+
+
+def test_ko_untertags_beruehrt():
+    """Review K7: Tagestief unter der K.-o.-Schwelle, Schluss wieder darüber → Turbo vermutlich ausgeknockt."""
+    dev = {"d": [{"t": "NVDA", "ko": 172.0}], "p": []}
+    prices = {"NVDA": _df([175, 170], [182, 181], [180, 179])}
+    m = messages(dev, prices, "2026-10-06", {})
+    assert len(m) == 1 and "K.-o. vermutlich erreicht" in m[0]["title"] and "Tagestief" in m[0]["body"]
+    short = {"d": [{"t": "NVDA", "ko": 180.5, "dir": "short"}], "p": []}         # Tageshoch 181 ≥ 180,5
+    assert "vermutlich" in messages(short, prices, "2026-10-06", {})[0]["title"]

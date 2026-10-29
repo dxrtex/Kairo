@@ -228,6 +228,16 @@ def _sec_text(t: str, since: str) -> str | None:
     return _SEC_TEXT[t]
 
 
+def eps_plausible(eps: float, est: float, txt: str) -> bool:
+    """Große Überraschungen nicht blind verwerfen (Review K8): Nahe 0 zählt der absolute Abstand (0,10), sonst ±50 %.
+    Größere Abweichung nur, wenn der Wert mindestens zweimal in der Mitteilung steht (Text + Tabelle) – dann ist ein
+    Lesefehler unwahrscheinlich. Vorzeichenwechsel (Verlust ↔ Gewinn) ebenfalls nur mit dieser Bestätigung."""
+    if abs(eps - est) <= max(0.5 * abs(est), 0.10) and (eps >= 0) == (est >= 0):
+        return True
+    v = f"{abs(eps):.2f}"
+    return len(re.findall(r"(?<![\d.])" + re.escape(v) + r"(?!\d)", (txt or "")[:20000])) >= 2
+
+
 def _sec_results(t: str, ev: dict, upcoming: pd.DataFrame, est_col: str, today: pd.Timestamp) -> pd.DataFrame | None:
     """Gewinn je Aktie direkt aus der Pressemitteilung, solange Yahoo ihn noch nicht hat (meist 10–40 Min. schneller).
     Erwartung = Yahoo-Schätzung für diesen Termin. Nur mit SEC_CONTACT und nur am Termin (± 1 Tag)."""
@@ -247,9 +257,12 @@ def _sec_results(t: str, ev: dict, upcoming: pd.DataFrame, est_col: str, today: 
     if len(upcoming) and est_col in upcoming:
         u = upcoming[[abs((i.tz_convert("UTC").tz_localize(None).normalize() - d).days) <= 3 for i in upcoming.index]]
         est = _num(u.iloc[-1][est_col]) if len(u) else None
-    if est is None or (est and abs(r["eps"] / est - 1) > 0.5):
-        print(f"Quartalszahlen {t}: Pressemitteilung {r['eps']} vs. Erwartung {est} – unplausibel oder ohne Erwartung, warte auf Yahoo")
-        return None                                        # Lesefehler wahrscheinlicher als eine Überraschung über 50 %
+    if est is None:
+        print(f"Quartalszahlen {t}: Pressemitteilung {r['eps']} ohne Erwartung – warte auf Yahoo")
+        return None
+    if not eps_plausible(r["eps"], est, txt):
+        print(f"Quartalszahlen {t}: Pressemitteilung {r['eps']} vs. Erwartung {est} – große Abweichung ohne Bestätigung im Text, warte auf Yahoo")
+        return None
     print(f"Quartalszahlen {t}: aus der Pressemitteilung – Gewinn je Aktie {r['eps']} ({r['eps_kind']}), Erwartung {est}")
     ts = pd.Timestamp.now(tz="UTC").tz_convert("America/New_York")
     return pd.DataFrame({"EPS Estimate": [est], "Reported EPS": [r["eps"]], "Surprise(%)": [None]}, index=pd.DatetimeIndex([ts], name="Earnings Date"))
@@ -519,7 +532,8 @@ def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
 
     with ThreadPoolExecutor(max_workers=4) as ex:
         fresh = {t: rec for t, rec in ex.map(job, list(todo.items())) if rec and rec.get("last")}
-    keep = {t: r for t, r in prev.items() if t not in todo and pd.Timestamp((r.get("last") or {}).get("date", "1900-01-01")) >= today - pd.Timedelta(days=4)}
+    # bisherige Ergebnisse behalten – auch für geprüfte Aktien, deren neuer Abruf gerade nichts lieferte (Review W10)
+    keep = {t: r for t, r in prev.items() if t not in fresh and pd.Timestamp((r.get("last") or {}).get("date", "1900-01-01")) >= today - pd.Timedelta(days=4)}
     allr = {**keep, **fresh}
     try:
         print(f"Quartalszahlen: {earnfast.archive(fresh, out)} Meldungen im Archiv")
