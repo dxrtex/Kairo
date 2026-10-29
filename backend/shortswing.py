@@ -1,4 +1,9 @@
-"""Studie Kurzfrist-Reversal (Phase 1b): Lohnt sich die erste Gegenbewegung nach einer Korrektur – und mit welchen Regeln?
+"""ÜBERHOLT als Entscheidungsgrundlage (Review 29.10.2026, K2/K3/W4/W5): Die Depot-Rechnungen hier (_depot, _depot_real)
+rechnen Haltedauer über 7/5 Kalendertage, ohne volle Kapitalbindung und mit uneinheitlichen Kosten. Maßgeblich sind die
+Tests in research/strategy_championship (engine.py: Kassenbuch, Kurslücken, PRIME+-Kosten, eingefrorener Datensatz).
+Live genutzt wird hier nur simulate() mit QRULE (Seitwärtsphase/Einstieg/Stop – Kurslücken korrekt).
+
+Studie Kurzfrist-Reversal (Phase 1b): Lohnt sich die erste Gegenbewegung nach einer Korrektur – und mit welchen Regeln?
 
 Eingabe: die Signal-Dateien des Bilanz-Backtests (`python -m backend.bilanz --px-base …`). Jedes Ereignis bringt den
 Kursverlauf ab dem Tag nach dem Signal mit (relativ zum Schlusskurs am Signaltag = 1,0), die Tiefs der 10 Tage davor,
