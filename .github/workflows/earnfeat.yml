@@ -1,0 +1,22 @@
+name: Quartalszahlen-Merkmale (Forschung)
+on:
+  push:
+    branches: ["claude/earn-features"]
+    paths: ["tools/research/earn_features.py", ".github/workflows/earnfeat.yml"]
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt scikit-learn
+      - run: git fetch -q origin kairo-data && git show origin/kairo-data:universe_us.csv > uni.csv
+      - run: python tools/research/earn_features.py uni.csv data/sec_cik.json earn_features.json 600 | tee earn_features.txt
+      - name: Sichern
+        if: always()
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: gh release create "earnfeat-${GITHUB_RUN_ID}" earn_features.json earn_features.csv earn_features.txt --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Quartalszahlen-Merkmale" --notes "Forschung" || true
