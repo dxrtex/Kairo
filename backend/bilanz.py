@@ -28,11 +28,17 @@ GAP = 5             # neue Signal-Phase erst nach ≥ 5 Tagen ohne Signal
 RET_DAYS = (5, 10, 20, 40, 63)
 
 
-def _race(h, l, i: int, n: int, stop: float, target: float | None):
-    """Was kommt zuerst innerhalb von HOLD Tagen: Ziel (Hoch ≥ Ziel) oder Stop (Tief ≤ Stop)? Gleicher Tag = Stop."""
+def _race(h, l, i: int, n: int, stop: float, target: float | None, o=None):
+    """Was kommt zuerst innerhalb von HOLD Tagen: Ziel (Hoch ≥ Ziel) oder Stop (Tief ≤ Stop)? Gleicher Tag = Stop.
+    Kurslücke: Eröffnet der Tag schon unter dem Stop, wird zur Eröffnung verkauft (wie eine Stop-Order) – nicht zum Stop
+    (Review K4); eröffnet er über dem Ziel, zur Eröffnung."""
     for j in range(i + 1, min(n, i + 1 + HOLD)):
+        if o is not None and o[j] == o[j] and o[j] <= stop:
+            return "stop", j - i, float(o[j])
         if l[j] <= stop:
             return "stop", j - i, stop
+        if target and o is not None and o[j] == o[j] and o[j] >= target:
+            return "t", j - i, float(o[j])
         if target and h[j] >= target:
             return "t", j - i, target
     return None, None, None
@@ -52,7 +58,7 @@ def outcome(o, h, l, c, i: int, entry: float, stop: float, t1: float | None, t2:
     last = min(n - 1, i + HOLD)
 
     def plan(target):
-        res, day, px = _race(h, l, i, n, stop, target)
+        res, day, px = _race(h, l, i, n, stop, target, o)
         if res is None:
             res, px = ("open" if complete else "running"), c[last]
         return ("t1" if res == "t" else res), day, round(float((px - entry) / risk), 3)
@@ -66,14 +72,14 @@ def outcome(o, h, l, c, i: int, entry: float, stop: float, t1: float | None, t2:
     rd, resd = None, None
     if t1 and t2 and t2 > t1:
         if res == "stop":
-            rd, resd = -1.0, "stop"
+            rd, resd = r, "stop"                         # bei Kurslücke schlechter als −1 R
         elif res == "t1":
             j0 = i + day
             r_half = (t1 - entry) / risk
             rest, rest_res = None, None
             for j in range(j0 + 1, min(n, i + 1 + HOLD)):
                 if l[j] <= entry:
-                    rest, rest_res = 0.0, "be"
+                    rest, rest_res = (min(float(o[j]), entry) - entry) / risk, "be"   # Lücke unter Einstand → zur Eröffnung
                     break
                 if h[j] >= t2:
                     rest, rest_res = (t2 - entry) / risk, "t2"

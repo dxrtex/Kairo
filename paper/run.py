@@ -131,7 +131,9 @@ class Market:
         if s is None or not len(s):
             return float("nan")
         v = s[s.index <= d]
-        return float((v.iloc[-1] if len(v) else s.iloc[0]) * mult)
+        if not len(v):                                 # nie einen späteren Kurs nehmen (Blick in die Zukunft, Review W1)
+            return float("nan")
+        return float(v.iloc[-1] * mult)
 
     def spread(self, t, d) -> float:
         x = self.f(t)
