@@ -217,6 +217,39 @@ def _rss(q: str, de: bool = False) -> list[tuple[str, str, str]]:
     return out
 
 
+_SEC_TEXT: dict = {}
+
+
+def _sec_text(t: str, since: str) -> str | None:
+    from . import earnfast, secguide
+    if t not in _SEC_TEXT:
+        cik = earnfast.ciks().get(t)
+        _SEC_TEXT[t] = secguide.fetch_text(cik, since) if cik and os.environ.get("SEC_CONTACT") else None
+    return _SEC_TEXT[t]
+
+
+def _sec_results(t: str, ev: dict, upcoming: pd.DataFrame, est_col: str, today: pd.Timestamp) -> pd.DataFrame | None:
+    """Gewinn je Aktie direkt aus der Pressemitteilung, solange Yahoo ihn noch nicht hat (meist 10–40 Min. schneller).
+    Erwartung = Yahoo-Schätzung für diesen Termin. Nur mit SEC_CONTACT und nur am Termin (± 1 Tag)."""
+    if not os.environ.get("SEC_CONTACT") or not ev.get("date"):
+        return None
+    d = pd.Timestamp(ev["date"])
+    if abs((today - d).days) > 1:
+        return None
+    from . import secguide
+    txt = _sec_text(t, (d - pd.Timedelta(days=1)).strftime("%Y-%m-%d"))
+    r = secguide.results(txt) if txt else {}
+    if r.get("eps") is None:
+        return None
+    est = None
+    if len(upcoming) and est_col in upcoming:
+        u = upcoming[[abs((i.tz_convert("UTC").tz_localize(None).normalize() - d).days) <= 3 for i in upcoming.index]]
+        est = _num(u.iloc[-1][est_col]) if len(u) else None
+    print(f"Quartalszahlen {t}: aus der Pressemitteilung – Gewinn je Aktie {r['eps']} ({r['eps_kind']}), Erwartung {est}")
+    ts = pd.Timestamp.now(tz="UTC").tz_convert("America/New_York")
+    return pd.DataFrame({"EPS Estimate": [est], "Reported EPS": [r["eps"]], "Surprise(%)": [None]}, index=pd.DatetimeIndex([ts], name="Earnings Date"))
+
+
 def _sec_guidance(tk, t: str, last: pd.Timestamp) -> dict | None:
     """Ausblick aus der Pressemitteilung bei der SEC (nur mit Secret SEC_CONTACT), gegen die Analysten-Erwartung."""
     if not os.environ.get("SEC_CONTACT"):
@@ -225,8 +258,10 @@ def _sec_guidance(tk, t: str, last: pd.Timestamp) -> dict | None:
     cik = earnfast.ciks().get(t)
     if not cik:
         return None
-    since = (pd.Timestamp(last).tz_localize(None) - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
-    g = secguide.fetch(cik, since)
+    lt = pd.Timestamp(last)
+    since = ((lt.tz_convert("UTC").tz_localize(None) if lt.tzinfo else lt) - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    txt = _sec_text(t, since)
+    g = secguide.parse(txt) if txt else None
     if not g:
         return None
     est_q = est_y = None
@@ -329,7 +364,10 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
     if live:
         lt = reported.index[0] if len(reported) else None
         if lt is None or today - lt.tz_convert("UTC").tz_localize(None).normalize() > pd.Timedelta(days=3):
-            return None, None                              # noch nichts gemeldet – erst die nächste Prüfung
+            pr = _sec_results(t, ev, upcoming, est_col, today)   # Yahoo noch leer → Zahlen aus der Pressemitteilung (SEC)
+            if pr is None:
+                return None, None                          # noch nichts gemeldet – erst die nächste Prüfung
+            reported = pd.concat([pr, reported]).sort_index(ascending=False)
         upcoming = upcoming.iloc[0:0]
     if close is None or len(close) < 30:
         try:
@@ -356,6 +394,9 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
         if eps_e not in (None, 0) and eps_a is not None:
             res["eps_s"] = round((eps_a - eps_e) / abs(eps_e), 4)
         rev_a, rev_py = _quarter_revenue(tk, last)
+        if rev_a is None and _SEC_TEXT.get(t):             # Umsatz aus der Pressemitteilung, solange Yahoo ihn noch nicht hat
+            from . import secguide
+            rev_a = secguide.results(_SEC_TEXT[t]).get("rev")
         mem = est_mem.get(t) or {}
         if rev_a is not None:
             res["rev_a"] = rev_a
