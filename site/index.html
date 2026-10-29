@@ -2298,11 +2298,12 @@ const sgn = (v, d = 1) => v == null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : "
 const upDown = v => v == null ? "" : v > 0 ? "up" : v < 0 ? "down" : "";
 // Erwartete Uhrzeit (Yahoo, deutsche Zeit) – Firmen melden meist „vor Börsenstart“ / „nach Börsenschluss“, daher „ca.“
 // Gelernte Meldezeit (Uhrzeit der letzten SEC-Meldungen der Firma, earn_watch.json) schlägt die Yahoo-Platzhalter (14:00 / 22:00)
-let earnWatch = {};
+let earnWatch = {}, earnWatchInfo = {};
 const loadEarnWatch = () => fetch(EARN_LIVE_URL.replace("earnings_live.json", "earn_watch.json") + "?v=" + Math.floor(Date.now() / 6e5)).then(r => r.ok ? r.json() : null)
-  .then(d => { if (!d) return; earnWatch = {}; (d.items || []).forEach(x => { if (x.exact) earnWatch[x.t + "|" + x.date] = x.ts; }); if (state.sec === "calendar") render(); }).catch(() => {});
+  .then(d => { if (!d) return; earnWatch = {}; earnWatchInfo = {}; (d.items || []).forEach(x => { if (x.exact) earnWatch[x.t + "|" + x.date] = x.ts; earnWatchInfo[x.t + "|" + x.date] = x; }); if (state.sec === "calendar") render(); }).catch(() => {});
 const earnTime = (N, t) => { if (!N || !N.ts) return ""; const ex = t && earnWatch[t + "|" + N.date], x = new Date(ex || N.ts); if (isNaN(x)) return "";
-  const hm = x.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }); return hm === "00:00" ? "" : `ca. ${hm} Uhr${ex ? " (wie bisher)" : ""}`; };
+  const hm = x.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }); const wi = t && earnWatchInfo[t + "|" + N.date];
+  return hm === "00:00" ? "" : `ca. ${hm} Uhr${ex ? (wi && wi.ok2 ? " (wie bisher · Nasdaq bestätigt)" : " (wie bisher)") : wi && wi.check ? ` (${wi.check})` : ""}`; };
 // Kursdienst ab Version 6: meldet, sobald eine Firma ihre Zahlen offiziell bei der SEC einreicht (1–5 Min. nach Veröffentlichung)
 let secHits = {}, secAt = 0;
 function loadSecHits(force) {
