@@ -82,7 +82,7 @@ def stooq(t: str) -> pd.Series | None:
     if not s:
         return None
     try:
-        r = requests.get(f"https://stooq.com/q/d/l/?s={s}&i=d", timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+        r = requests.get(f"https://stooq.com/q/d/l/?s={s}&i=d", timeout=10, headers={"User-Agent": "Mozilla/5.0"})
         if r.status_code != 200 or not r.text.startswith("Date"):
             return None
         x = pd.read_csv(io.StringIO(r.text), parse_dates=["Date"]).set_index("Date")["Close"]
@@ -171,9 +171,14 @@ def main(argv=None) -> int:
     tick = sorted(df.index)
     adj = {t: g.set_index(pd.to_datetime(g["date"]))["AdjClose"] for t, g in px.groupby("ticker")}
 
-    xs = {}
+    xs, t0, miss = {}, time.time(), 0
     for t in rng.choice(tick, size=min(a.stooq, len(tick)), replace=False):
+        if time.time() - t0 > 900 or miss >= 25:          # höchstens 15 Minuten; Stooq gesperrt → abbrechen, vermerken
+            break
+        if stooq_symbol(t) is None:
+            continue
         s = stooq(t)
+        miss = 0 if s is not None else miss + 1
         if s is not None:
             c = compare(adj[t], s)
             if c:
