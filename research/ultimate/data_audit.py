@@ -91,6 +91,25 @@ def stooq(t: str) -> pd.Series | None:
         return None
 
 
+def nasdaq(t: str) -> pd.Series | None:
+    """Zweite Quelle für US-Titel: Nasdaq-Kurshistorie (Schlusskurse wie gehandelt, ca. 10 Jahre)."""
+    import requests
+    if "." in t:
+        return None
+    try:
+        r = requests.get(f"https://api.nasdaq.com/api/quote/{t.replace('-', '.')}/historical",
+                         params={"assetclass": "stocks", "fromdate": "2016-01-01", "todate": "2026-10-16", "limit": 9999},
+                         timeout=10, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        rows = ((r.json().get("data") or {}).get("tradesTable") or {}).get("rows") or []
+        if not rows:
+            return None
+        x = pd.Series({pd.Timestamp(pd.to_datetime(v["date"], format="%m/%d/%Y")): float(str(v["close"]).replace("$", "").replace(",", ""))
+                       for v in rows}).sort_index()
+        return x[x > 0]
+    except Exception:
+        return None
+
+
 def compare(ours: pd.Series, other: pd.Series) -> dict | None:
     j = pd.concat([ours, other], axis=1, join="inner").dropna()
     j = j[(j.index >= "2008-01-01")]
@@ -184,6 +203,19 @@ def main(argv=None) -> int:
             if c:
                 xs[t] = c
         time.sleep(0.5)
+    if not xs:                                           # Stooq gesperrt → Nasdaq (US) gegen unbereinigte Schlusskurse
+        raw = {t: g.set_index(pd.to_datetime(g["date"]))["Close"] for t, g in px.groupby("ticker")}
+        t0, miss = time.time(), 0
+        for t in rng.choice([x for x in tick if "." not in x], size=min(a.stooq, len(tick)), replace=False):
+            if time.time() - t0 > 900 or miss >= 25:
+                break
+            s = nasdaq(t)
+            miss = 0 if s is not None else miss + 1
+            if s is not None:
+                c = compare(raw[t], s)
+                if c:
+                    xs[t] = c | {"quelle": "nasdaq"}
+            time.sleep(0.3)
     df["xsrc"] = pd.Series({t: v["match"] for t, v in xs.items()})
 
     fr = {}
@@ -206,7 +238,7 @@ def main(argv=None) -> int:
         "ausreisser_titel": int((df["spikes"].str.len() > 0).sum()),
         "split_rest_titel": int((df["split_rest"].str.len() > 0).sum()),
         "stillstand_titel": int((df["stale_runs"] > 0).sum()),
-        "stooq": {"geprueft": len(xs), "median_match": float(np.median([v["match"] for v in xs.values()])) if xs else None,
+        "zweite_quelle": {"geprueft": len(xs), "quelle": "nasdaq" if any(v.get("quelle") for v in xs.values()) else "stooq", "median_match": float(np.median([v["match"] for v in xs.values()])) if xs else None,
                   "unter_95": sorted(t for t, v in xs.items() if v["match"] < GRENZEN["xsrc_min"])},
         "yahoo_frisch": {"geprueft": len(fr), "median_match": float(np.median([v["match"] for v in fr.values()])) if fr else None,
                          "unter_99": sorted(t for t, v in fr.items() if v["match"] < 0.99)},

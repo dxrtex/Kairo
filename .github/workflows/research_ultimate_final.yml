@@ -1,0 +1,37 @@
+name: Research – Kairo Ultimate Gesamtbericht Wettbewerb A
+
+# Auslöser: research/ultimate/final_trigger.txt mit „<Lauf Runde 1> <Lauf Bestätigung> <Lauf Datenprüfung>“.
+permissions:
+  contents: read
+  actions: read
+
+on:
+  push:
+    branches: ["claude/ultimate-research"]
+    paths: ["research/ultimate/final_trigger.txt"]
+
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - id: trg
+        run: read R1 CF AU _ < research/ultimate/final_trigger.txt && echo "r1=$R1" >> $GITHUB_OUTPUT && echo "cf=$CF" >> $GITHUB_OUTPUT && echo "au=$AU" >> $GITHUB_OUTPUT
+      - uses: actions/download-artifact@v4
+        with: { pattern: "ur1-*", merge-multiple: true, path: res, run-id: "${{ steps.trg.outputs.r1 }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: { name: "ucf-result", path: cf, run-id: "${{ steps.trg.outputs.cf }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: { name: "ultimate-audit", path: au, run-id: "${{ steps.trg.outputs.au }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - run: |
+          cp cf/confirm_*.json res/ 2>/dev/null || true
+          cat cf/confirm.txt 2>/dev/null || echo "keine Bestätigung"
+          for s in pre asia; do [ -f cf/audit_$s/data_audit.json ] && echo "== Datenprüfung $s" && python -c "import json;d=json.load(open('cf/audit_$s/data_audit.json'));d.pop('unsicher');print(json.dumps(d,indent=1,ensure_ascii=False))"; done
+          python -m research.ultimate.round1 report --dir res --audit au/data_audit.json
+      - uses: actions/upload-artifact@v4
+        with: { name: "ufinal", path: res/round1_report.md, retention-days: 30 }
