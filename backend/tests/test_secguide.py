@@ -59,6 +59,17 @@ def test_sonderbelastung_ist_kein_gewinn():
     assert S.results(spec)["eps"] == 12.54
 
 
+def test_verlust_und_klammerformat():
+    insm = ("For the third quarter of 2026, Insmed reported a net loss of $100.3 million, or $0.46 per share, compared to a net loss "
+            "of $370.0 million, or $1.75 per share, for the third quarter of 2025.")
+    assert S.results(insm)["eps"] == -0.46
+    indv = ("GAAP net income for the 2026 quarter was $137 million ($1.12 diluted earnings per share), compared to GAAP net income for the 2025 "
+            "quarter of $42 million ($0.33 diluted earnings per share). Non-GAAP net income for the 2026 quarter was $161 million "
+            "($1.32 diluted earnings per share), compared to non-GAAP net income for the 2025 quarter of $93 million ($0.72 diluted earnings per share).")
+    r = S.results(indv)
+    assert r["eps"] == 1.32 and r["eps_kind"] == "bereinigt"
+
+
 def test_ausblick_segment_wird_nicht_verglichen():
     g = S.parse("Company Raises 2026 BRINSUPRI Revenue Guidance to $1.35 Billion to $1.4 Billion.")
     j = S.judge(g, None, 2.2e9)                            # Firmenumsatz-Erwartung 2,2 Mrd. – Spanne ist ein Produkt
