@@ -1,6 +1,7 @@
 # Kairo Ultimate – Forschungsprotokoll (Entwurf, 29.10.2026)
 
-**Status: ENTWURF – noch kein Experiment gerechnet. Wird vor dem ersten Lauf von Jonny freigegeben und dann eingefroren.**
+**Status: FREIGEGEBEN von Jonny am 29.10.2026 („Einverständnis für alles, was kostenlos ist“) und ab diesem Commit eingefroren.
+Kostenpflichtige Daten (Norgate) sind nicht freigegeben.** Abweichungen nur als neue, datierte Version unten.
 Fixierter Code-Stand für die gesamte Forschung: `main` @ `f11bb37` (nach Review 2, alle Korrekturen gemergt).
 Datensatz: `prices_v1` (SHA-256 `e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c`, 2005-01 … 2026-10-16,
 USA/Europa, 2.954 Titel), Asien-Kurse aus `v2_test asia`, neue Datensätze bekommen eigene Prüfsummen.
@@ -223,6 +224,25 @@ Kein Ergebnis darf durch schlechte oder ungenaue Daten entstehen. Deshalb gilt:
 Survivorship-Bias (nicht behebbar ohne Bezahldaten), mehrfach benutzte Zeiträume, Gratisdaten (Yahoo-Fehler, Splits),
 vereinfachte Steuern, Ausführung im Modell (Tageskerzen, keine Teilausführung, keine Handelsunterbrechungen).
 Kein Ergebnis dieser Runde wird als „bewiesen“ bezeichnet.
+
+## 9b. Präzisierungen beim Einfrieren (vor jedem Lauf, 29.10.2026)
+
+- **E1:** Kauf nur, wenn die Eröffnung in (Stop, Schluss des Auslösetags + 0,5 ATR] liegt; sonst verfällt die Order (je
+  Auslösetag eine Order, höchstens ein Kauf je Treffer). Fenster wie B60: Kerze 3 … 10 nach dem Treffer, Invalidierung gleich.
+- **E2:** Je Abend nach fertiger Basis eine Buy-Stop-Order für den nächsten Tag (Basishoch/-tief der ersten fertigen Basis,
+  danach unverändert), höchstens 10 Abende; Tief unter dem Basistief vor dem Ausbruch → keine weiteren Orders. Ausführung,
+  wenn das Tageshoch den Stop-Kurs erreicht: zum Stop-Kurs bzw. zur Eröffnung, wenn diese darüber liegt (höchstens
+  Basishoch + 0,5 ATR, sonst verfällt das Signal). Am Kauftag zählt ein Tief unter dem Stop als ausgestoppt (vorsichtig,
+  Reihenfolge im Tag unbekannt). Risiko 0,5–3 ATR wie B60, gemessen ab dem Ausführungskurs.
+- **V1:** MACD 12/26/9 und RSI14 (Wilder) auf bereinigten Schlusskursen der ganzen Reihe bis zum jeweiligen Tag.
+- **N1:** Rückgangsfenster = 60 Handelstage bis einschließlich Treffertag. Reaktionstag = erster Handelstag am/nach dem
+  Annahmedatum der 8-K (Punkt 2.02); Reaktion = Schluss Reaktionstag / Schluss Vortag − 1 (bereinigt). Titel ohne
+  SEC-Zuordnung bleiben drin (wie B60).
+- **C1:** Kostenquote = 2 × (Stress-Spanne/2 + Slippage + FX) des Titels; Stop-Abstand = (Schluss des Entscheidungstags −
+  Stop) / Schluss. Order nur, wenn Kostenquote / Stop-Abstand ≤ 0,10.
+- **Je Trade (Ø R):** unbegrenztes Kapital, Stress-Kosten ohne feste Gebühr (die zählt im Depot-Test).
+- **Zufall:** je Treffer ein zufälliger zulässiger Titel desselben Tags und derselben Region mit derselben Einstiegsvariante,
+  20 Durchgänge.
 
 ## 10. Ablauf und Ergebnisse
 
