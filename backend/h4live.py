@@ -30,6 +30,7 @@ import pandas as pd
 
 from .h4study import COST, to4h
 from .indicators import atr as _atr
+from .scanner import calm_days
 from .shortswing import QRULE
 
 NEED = ("R40", "M", "B", "S")
@@ -97,7 +98,8 @@ def _px(df: pd.DataFrame, idx: int) -> dict:
     a = float(_atr(df).iloc[idx]) / c0 if c0 else 0
     nx = lambda k: [float(v) / c0 for v in df[k].iloc[idx + 1:]]
     return {"o": nx("Open"), "h": nx("High"), "l": nx("Low"), "c": nx("Close"), "atr": a, "c0": c0,
-            "pl": [float(v) / c0 for v in df["Low"].iloc[max(0, idx - 9):idx + 1]]}
+            "pl": [float(v) / c0 for v in df["Low"].iloc[max(0, idx - 9):idx + 1]],
+            "calm": [bool(x) for x in calm_days(df)[idx + 1:]]}
 
 
 def base_state(px: dict, r: dict = QRULE, today_open: float | None = None) -> dict:
@@ -121,6 +123,7 @@ def base_state(px: dict, r: dict = QRULE, today_open: float | None = None) -> di
             return "Stop zu eng"
         return None
 
+    unruhig = False
     for j in range(min(wait, n)):
         if l[j] < inv:
             return {"st": "weg", "why": "Signal gescheitert (unter das Tief gefallen)"}
@@ -128,7 +131,12 @@ def base_state(px: dict, r: dict = QRULE, today_open: float | None = None) -> di
             continue
         hi, lo = max(h[j - k + 1:j + 1]), min(l[j - k + 1:j + 1])
         if hi - lo > m * atr:
+            unruhig = False
             continue
+        if r.get("calm") and px.get("calm") is not None and not (j < len(px["calm"]) and px["calm"][j]):
+            unruhig = True                         # Seitwärtsphase da, aber noch zu unruhig → weiter warten
+            continue
+        unruhig = False
         if j + 1 < n:
             oj = o[j + 1]
         elif today_open is not None:
@@ -142,8 +150,8 @@ def base_state(px: dict, r: dict = QRULE, today_open: float | None = None) -> di
             return {"st": "weg", "why": why}
         return {"st": "base", "s": j + 1, "hi": hi, "lo": lo, "sl": lo - buf * atr, "e": oj}
     if n - 1 >= wait or (today_open is not None and n >= wait):
-        return {"st": "weg", "why": "keine Seitwärtsphase in 10 Tagen"}
-    return {"st": "basis", "day": n}
+        return {"st": "weg", "why": "keine ruhige Seitwärtsphase in 10 Tagen"}
+    return {"st": "basis", "day": n, **({"unruhig": True} if unruhig else {})}
 
 
 # ---------------------------------------------------------------- 4H
@@ -179,7 +187,7 @@ def evaluate(df: pd.DataFrame, d: str, hx: pd.DataFrame | None, now: datetime | 
     if bs["st"] == "weg":
         return {**out, "st": "weg", "why": bs["why"]}
     if bs["st"] == "basis":
-        return {**out, "st": "basis", "day": bs["day"], "left": QRULE["wait"] - bs["day"],
+        return {**out, "st": "basis", "day": bs["day"], "left": QRULE["wait"] - bs["day"], **({"unruhig": True} if bs.get("unruhig") else {}),
                 **({"fl": _flags_at(b, len(b) - 1), "bar": str(b.index[-1])} if b is not None and len(b) else {})}
     s, sl = bs["s"], bs["sl"] * c0
     dates = [str(x.date()) for x in df.index[idx + 1:]]

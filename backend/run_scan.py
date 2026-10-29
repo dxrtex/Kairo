@@ -448,6 +448,16 @@ def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bo
              or (it["st"] in ("stop", "zeit", "ema") and ((it.get("trade") or {}).get("xd") or "") >= cut)]
     rank = {"sell": 0, "go": 0, "4h": 1, "basis": 2, "run": 3, "stop": 4, "zeit": 4, "ema": 4, "weg": 5}
     items.sort(key=lambda x: (rank.get(x["st"], 9), x["d"]))
+    for it in items:                                  # Rangfolge bei wenig Plätzen (Vormomentum am Treffer-Tag) und Region für die App
+        it["r"] = region_of(it["t"])
+        df = data.get(it["t"])
+        try:
+            c = df["Close"].dropna()
+            i = int(c.index.searchsorted(pd.Timestamp(it["d"]), side="right") - 1)
+            if i >= 126:
+                it["mom"] = round(float(c.iloc[i - 21] / c.iloc[i - 126] - 1), 4)
+        except Exception:
+            pass
     rec = h4live.track(state.load("h4trades.json", []), items)
     state.save("h4trades.json", rec)
     nowset = {}
@@ -673,13 +683,6 @@ def main(argv=None) -> int:
         m = {**m, "name": m.get("name") or i.get("name"), "sector": m.get("sector") or i.get("sector") or "",
              "region": m.get("region") or region_of(t), "exchange": m.get("exchange") or i.get("exchange") or ""}
         rows.append(result_row(res, m))
-        calm = res.flags.get("calm") or {}
-        if rows[-1]["passed"] and calm and not calm.get("clean"):   # Treffer erst bei ruhiger Konsolidierung (Forschung 28.10.2026)
-            rows[-1].update(passed=False, calm_wait=True, hint={
-                "tone": "yellow", "title": "Kriterien erfüllt – Konsolidierung noch unruhig",
-                "text": (f"Alle 11 Kriterien sind erfüllt, aber der Kurs schwankt noch zu stark (Spanne 5 Tage {calm.get('tight5', 0):.1f} ATR, "
-                         f"Grenze 1,5 · Hin und Her 10 Tage {calm.get('chop10', 0):.2f}, Grenze 1,65). Ein Treffer wird es erst, "
-                         "wenn sich der Kurs ruhig an die Zone legt."), "days": None, "days_label": ""})
         rows[-1]["trend"] = score_trend(df, info, t, res)
         if TREND_ON:                                  # zweites Setup: Rücksetzer im Aufwärtstrend
             try:
@@ -713,8 +716,6 @@ def main(argv=None) -> int:
         except Exception:
             pass
         search[t] = {**search[t], **search_row(res, m, rows[-1]["hint"]), "detail": 1} if t in search else {**search_row(res, m, rows[-1]["hint"]), "detail": 1}
-        if rows[-1].get("calm_wait"):
-            search[t].update(s="", sc=None)
         with open(SITE / "charts" / f"{t}.json", "w", encoding="utf-8") as f:
             json.dump(_clean(chart_payload(df)), f, separators=(",", ":"))
     rows.sort(key=lambda r: (r["passed"], r["score"], r["crv"] or 0), reverse=True)
@@ -880,7 +881,7 @@ def main(argv=None) -> int:
     print(f"Rücksetzer-Check: {len(ps)} von {sum(1 for r in rows if (r.get('tr') or {}).get('ok'))} Trend-Setups · "
           f"↑ {sum(p >= .55 for p in ps)} · → {sum(.4 <= p < .55 for p in ps)} · ↓ {sum(p < .4 for p in ps)}")
     for r in rows[:30]:
-        print(f"  {r['ticker']:<10} Score {r['score']:>3}  {'TREFFER' if r['passed'] else 'Konsolidierung noch unruhig' if r.get('calm_wait') else 'fehlt: ' + (r['missing'] or ['–'])[0]}")
+        print(f"  {r['ticker']:<10} Score {r['score']:>3}  {'TREFFER' if r['passed'] else 'fehlt: ' + (r['missing'] or ['–'])[0]}")
     return 0
 
 

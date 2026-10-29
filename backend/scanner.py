@@ -91,6 +91,20 @@ class Result:
 CALM_TIGHT, CALM_CHOP = 1.5, 1.65    # Spanne 5 Tage ≤ 1,5 ATR und Hin und Her 10 Tage ≤ 1,65 (Mediane im Test)
 
 
+def calm_days(df: pd.DataFrame) -> np.ndarray:
+    """Ruhig je Tag (nur Kurse bis zu diesem Tag): Spanne 5 Tage ≤ 1,5 × ATR14 und Hin und Her 10 Tage ≤ 1,65.
+    Gilt am Basis-Tag – also am Tag vor dem Kauf (Forschung 28./29.10.2026: dort wirkt die Ruhe, am Treffer-Tag nicht)."""
+    h, l, c = (df[k].to_numpy(float) for k in ("High", "Low", "Close"))
+    tr = np.full(len(c), np.nan)
+    tr[1:] = np.maximum(h[1:] - l[1:], np.maximum(np.abs(h[1:] - c[:-1]), np.abs(l[1:] - c[:-1])))
+    a14 = pd.Series(tr).rolling(14).mean().to_numpy()
+    rng5 = pd.Series(h).rolling(5).max().to_numpy() - pd.Series(l).rolling(5).min().to_numpy()
+    rng10 = pd.Series(h).rolling(10).max().to_numpy() - pd.Series(l).rolling(10).min().to_numpy()
+    mv = pd.Series(np.abs(np.diff(c, prepend=np.nan))).rolling(10).sum().to_numpy()
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return (rng5 / a14 <= CALM_TIGHT) & (mv / rng10 <= CALM_CHOP)
+
+
 def find_rsi_divergence(low: pd.Series, r: np.ndarray, rc: SimpleNamespace):
     """Bullische RSI-Divergenz (2.4). Rückgabe: ((Art, T1, T2) oder None, jüngste Kurs-Tiefs ≤ 10 T.).
 

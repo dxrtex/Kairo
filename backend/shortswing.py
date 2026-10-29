@@ -117,6 +117,8 @@ def simulate(px: dict, r: dict) -> dict | None:
             if j < k - 1:
                 continue
             hi, lo = max(h[j - k + 1:j + 1]), min(l[j - k + 1:j + 1])
+            if r.get("calm") and px.get("calm") is not None and not (j < len(px["calm"]) and px["calm"][j]):
+                continue                           # Basis noch unruhig → weiter warten
             if hi - lo <= m * atr:
                 oj = o[j + 1]
                 if oj > hi or oj <= lo:            # schon ausgebrochen bzw. durch die Basis gefallen
@@ -414,7 +416,8 @@ def _market_once() -> dict:
         return {}
 
 
-QRULE = dict(entry="base", ck=5, cm=1.5, lowhalf=False, wait=10, inv=10, buf=0.25, maxd=3.0, tgt=None, wkend=False, levs=[1])
+# calm: ein Basis-Tag zählt nur, wenn er ruhig ist (px["calm"], scanner.calm_days) – Forschung 28./29.10.2026
+QRULE = dict(entry="base", ck=5, cm=1.5, lowhalf=False, wait=10, inv=10, buf=0.25, maxd=3.0, tgt=None, wkend=False, levs=[1], calm=True)
 
 
 def _quality(sets: dict) -> dict:

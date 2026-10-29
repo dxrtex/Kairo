@@ -10,6 +10,7 @@ from . import state
 from .bilanz import GAP, _agg, outcome, stats
 from .config import ROOT
 from .indicators import atr as _atr
+from .scanner import calm_days
 from .shortswing import QRULE, simulate
 
 HOLD = 20                                          # Strategie: 20 Handelstage halten, kein Gewinnziel
@@ -29,7 +30,8 @@ def strat(df: pd.DataFrame, idx: int, extra: dict | None = None) -> dict:
     nx = lambda k: [float(x) / c0 for x in df[k].iloc[idx + 1:]]
     px = {"o": nx("Open"), "h": nx("High"), "l": nx("Low"), "c": nx("Close"), "atr": a,
           "pl": [float(x) / c0 for x in df["Low"].iloc[max(0, idx - 9):idx + 1]], "s": None,
-          "e20": float(df["Close"].iloc[:idx + 1].ewm(span=20, adjust=False).mean().iloc[-1]) / c0}
+          "e20": float(df["Close"].iloc[:idx + 1].ewm(span=20, adjust=False).mean().iloc[-1]) / c0,
+          "calm": [bool(x) for x in calm_days(df)[idx + 1:]]}
     n = len(px["c"])
     if n < 2:
         return {"res": "wait"}

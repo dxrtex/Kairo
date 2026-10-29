@@ -27,7 +27,8 @@ def _series(seed: int, drift: float = 0.0):
     return hx, daily
 
 
-def test_same_trades_as_study():
+def test_same_trades_as_study(monkeypatch):
+    monkeypatch.setitem(hl.QRULE, "calm", False)     # Gleichheit mit der Studie ohne Ruhe-Filter (der hat eigene Tests)
     trades = 0
     for seed in (3, 5, 8):
         hx, daily = _series(seed)
@@ -48,7 +49,8 @@ def test_same_trades_as_study():
     assert trades > 0
 
 
-def test_ema_exit_same_as_exit_study():
+def test_ema_exit_same_as_exit_study(monkeypatch):
+    monkeypatch.setitem(hl.QRULE, "calm", False)
     """Neuer Ausstieg (EMA 20 ab Tag 10, max. Tag 40) = Regel „EMA20 ab T10·T40“ aus dem Ausstiegs-Test."""
     trades, ema_exits = 0, 0
     for seed, drift in ((3, 0), (5, 0), (7, .002)):
@@ -90,3 +92,14 @@ def test_base_waiting_and_failed():
     assert hl.base_state(px)["st"] == "basis"
     px2 = {**px, "l": [.95, .99]}
     assert hl.base_state(px2)["st"] == "weg"
+
+
+def test_ruhe_filter_am_basis_tag():
+    """Basis-Tag zählt nur, wenn er ruhig ist – sonst weiter warten (Hinweis „unruhig“), nach 10 Tagen verfallen."""
+    px = {"o": [1.0] * 12, "h": [1.01] * 12, "l": [0.99] * 12, "c": [1.0] * 12, "atr": 0.02, "pl": [0.98] * 10}
+    assert hl.base_state({**px, "calm": [True] * 12})["st"] == "base"
+    unr = hl.base_state({**px, "o": px["o"][:6], "h": px["h"][:6], "l": px["l"][:6], "c": px["c"][:6], "calm": [False] * 6})
+    assert unr["st"] == "basis" and unr.get("unruhig")
+    assert hl.base_state({**px, "calm": [False] * 12})["st"] == "weg"
+    later = hl.base_state({**px, "calm": [False] * 6 + [True] * 6})
+    assert later["st"] == "base" and later["s"] == 7          # erst der ruhige Basis-Tag (Tag 7) löst den Kauf aus
