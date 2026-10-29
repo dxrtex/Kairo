@@ -9,7 +9,7 @@ Varianten des Einstiegs (Treffer unverändert, 11/11):
   G0  S01-B-Basis wie bisher getestet (ohne Ruhe-Filter)
   G1  wie G0, aber ein Basis-Tag zählt nur, wenn er ruhig ist: Spanne 5 Tage ≤ 1,5 × ATR14 (des Basis-Tags) UND
       Hin und Her 10 Tage ≤ 1,65 (Summe |Δ Schluss| / (Hoch − Tief) der 10 Tage). Sonst weiter warten (max. 10 Tage).
-Depot wie live: 5.000 €, 1 % Risiko, max. 5 Positionen, EMA20-Ausstieg ab Tag 10, max. 40 Tage, Kosten PRIME+ (Basis + Stress).
+Depot wie live: 5.000 €, 1 % Risiko, max. 5 Positionen, EMA20-Ausstieg ab Tag 10, max. 60 Tage (Regel B60), Kosten PRIME+ (Basis + Stress).
 Rangfolge, wenn mehr kaufbereite Aktien als freie Plätze (Tie-Break innerhalb desselben Tags):
   mom   schwächeres Vormomentum zuerst (heute live)   · vol   ruhigere Titel zuerst (ATR/Kurs klein)
   chop  wenigstes Hin und Her am Basis-Tag zuerst      · score höherer Kairo-Score zuerst   · rnd  Zufall (Kontrolle)
@@ -42,6 +42,7 @@ from .data import PERIODS, adjusted, load
 from .engine import Costs, Order, run
 
 CALM_TIGHT, CALM_CHOP = 1.5, 1.65
+HOLD = 60          # Kairo-Regel B60 (spätestens Tag 60). Erster Lauf 29.10. versehentlich mit 40 – Wiederholung mit 60.
 AB = ("Train", "Validierung", "Holdout")
 _G: dict = {}
 
@@ -63,7 +64,7 @@ def calm_arrays(adj: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
 
 
 def base_orders(t: str, sig_i: int, atr_adj: float, gid: str, gate: int, prio_kind: str, sig_meta: dict,
-                risk_frac: float = 0.01, hold: int = 40) -> list[Order]:
+                risk_frac: float = 0.01, hold: int = HOLD) -> list[Order]:
     """s01.base_orders (Variante B) + optional Ruhe-Filter am Basis-Tag + Rangfolge."""
     adj = _G["adj"][t]
     tight, chop = _G["calm"][t]
