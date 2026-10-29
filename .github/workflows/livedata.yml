@@ -1,0 +1,15 @@
+name: livedata (temporär)
+on: push
+permissions: { contents: write }
+jobs:
+  get:
+    if: github.ref == 'refs/heads/claude/livedata'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          mkdir -p snap
+          for f in results.json search.json analysis.json alerts.json bilanz.json changes.json calendar.json etf.json briefing.json insider.json h4.json earnings.json; do curl -sfL "https://dxrtex.github.io/Kairo/data/$f" -o snap/$f || echo "fehlt $f"; done
+          ls -la snap
+          git config user.name kairo-bot; git config user.email kairo-bot@users.noreply.github.com
+          git checkout --orphan claude/livedata-snap && git rm -rfq --cached . && git add snap && git commit -qm "Snapshot App-Daten" && git push -qf origin claude/livedata-snap
