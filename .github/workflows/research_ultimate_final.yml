@@ -24,7 +24,12 @@ jobs:
         with: { pattern: "ur1-*", merge-multiple: true, path: res, run-id: "${{ steps.trg.outputs.r1 }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
       - uses: actions/download-artifact@v4
         continue-on-error: true
-        with: { name: "ucf-result", path: cf, run-id: "${{ steps.trg.outputs.cf }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+        with: { pattern: "ucf-*-*", merge-multiple: true, path: cfparts, run-id: "${{ steps.trg.outputs.cf }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Bestätigung zusammenführen + Datenprüfung Vorzeit/Asien
+        continue-on-error: true
+        run: |
+          python -m research.ultimate.confirm combine --dir cfparts --out cf
+          for s in pre asia; do [ -f cf/$s/prices_v1.parquet ] && python -W ignore -m research.ultimate.data_audit --data cf/$s --out cf/audit_$s --stooq 150 --fresh 0 || true; done
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with: { name: "ultimate-audit", path: au, run-id: "${{ steps.trg.outputs.au }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }

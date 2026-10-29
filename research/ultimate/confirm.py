@@ -105,8 +105,9 @@ def combine(d: Path, out: Path) -> None:
         T = {}
         for v in vs:
             fs = sorted(d.glob(f"ctr_{s}_{v}_*.csv"))
-            if fs:
-                T[v] = pd.concat([pd.read_csv(f) for f in fs])
+            parts = [pd.read_csv(f) for f in fs if f.stat().st_size > 0]
+            if parts:
+                T[v] = pd.concat(parts)
         if "E0" not in T:
             continue
         e0 = T["E0"]
