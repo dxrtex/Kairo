@@ -169,6 +169,22 @@ def search_row(res, meta: dict, h: dict) -> dict:
                    "sec": SECTOR_DE.get(meta.get("sector") or "", meta.get("sector") or "") or None})   # Sektor (Klumpenschutz)
 
 
+def closed_bar(df, now: datetime | None = None) -> dict:
+    """Letzter FERTIGER Tagesschluss mit EMA 20 und Datum (cc/ce/cd) – die App prüft den EMA-Ausstieg nur damit, nie mit
+    einer laufenden Tageskerze oder einem Live-Kurs (Review 2, K3). Tagsüber zählt die heutige Kerze nicht."""
+    try:
+        now = now or datetime.now(timezone.utc)
+        c = df["Close"].dropna()
+        if now.hour < 21:                              # vor 21 Uhr UTC: heutige Kerze kann noch laufen
+            c = c[c.index.normalize() < pd.Timestamp(now.date())]
+        if len(c) < 20:
+            return {}
+        e = c.ewm(span=20, adjust=False).mean()
+        return {"cc": round(float(c.iloc[-1]), 4), "ce": round(float(e.iloc[-1]), 4), "cd": str(c.index[-1].date())}
+    except Exception:
+        return {}
+
+
 def day_moves(df) -> dict:
     """Kursveränderung zum Vortag und über 5 Handelstage (für das Tagesbriefing in der App)."""
     try:
@@ -628,7 +644,7 @@ def main(argv=None) -> int:
                 print(f"{t}: Trend-Fehler {exc!r}")
         tr_hit = bool(tres and tres.passed)
         try:
-            search[t] = {**search_row(res, m, hint(res)), **entry_fields(res, tres, m), **day_moves(df)}
+            search[t] = {**search_row(res, m, hint(res)), **entry_fields(res, tres, m), **day_moves(df), **closed_bar(df)}
             try:                                     # Trade-Plan-Struktur (Basis, Stop, Widerstände) für den Reiter „Einstieg“
                 pl = tradeplan.structure(df, res.flags.get("atr"), ((res.zone or {}).get("fib") or {}).get("levels"),
                                          "trend" if tr_hit and not (res.passed or res.fast_hit) else "kairo")

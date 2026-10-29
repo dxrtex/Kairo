@@ -32,3 +32,16 @@ def test_app_gleiche_regel():
     assert h4x and (int(h4x.group(1)), int(h4x.group(2))) == (KAIRO["hold"], KAIRO["ema_from"])
     # keine abweichende Haltedauer in Handlungsanweisungen der Kairo-Regel
     assert "spätestens Tag 40" not in html and "spätestens Tag 20" not in html
+
+
+def test_fertiger_tagesschluss():
+    """Review 2, K3: tagsüber zählt die laufende Kerze nicht für den EMA-Ausstieg."""
+    from datetime import datetime, timezone
+    import pandas as pd
+    from backend.run_scan import closed_bar
+    idx = pd.bdate_range("2026-09-01", "2026-10-29")
+    df = pd.DataFrame({"Close": [100.0] * (len(idx) - 1) + [90.0]}, index=idx)
+    day = closed_bar(df, datetime(2026, 10, 29, 13, tzinfo=timezone.utc))
+    eve = closed_bar(df, datetime(2026, 10, 29, 22, tzinfo=timezone.utc))
+    assert day["cd"] == "2026-10-28" and day["cc"] == 100.0
+    assert eve["cd"] == "2026-10-29" and eve["cc"] == 90.0 and eve["ce"] > 90

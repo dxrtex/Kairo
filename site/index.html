@@ -3705,8 +3705,10 @@ function gTick(g) {
       gSell(g, p.id, "Stop (Stop-Order)", Math.max(0, gModelAt(p, Math.min(p.stop, x.c ?? p.stop)) * fx / (p.fx0 || fx))); return;
     }
     if (p.exit && d >= p.exit) { gSell(g, p.id, "Verkaufstag (Tag 60)"); return; }
-    const rr = rowOf(p.t), held = bdBetween(new Date(p.d + "T12:00:00"), new Date(d + "T12:00:00")) + 1;     // Kairo-Regel: ab Tag 10 Schluss unter EMA 20
-    if (rr && rr.c != null && rr.e20 && rr.c < rr.e20 && held > H4X.from) gSell(g, p.id, "Schluss unter EMA 20");
+    // Kairo-Regel: ab Tag 10 fertiger Tagesschluss unter der EMA 20 → Verkauf am NÄCHSTEN Handelstag (Review 2, K4/W14)
+    if (p.emaSig && d > p.emaSig) { gSell(g, p.id, "Schluss unter EMA 20 – Verkauf am nächsten Handelstag"); return; }
+    const x2 = closeOf(rowOf(p.t));
+    if (!p.emaSig && x2 && x2.c != null && x2.e && x2.d && x2.c < x2.e && emaDay(p, x2.d) >= H4X.from) p.emaSig = x2.d;
   });
   const T = gTotals(g), last = g.hist[g.hist.length - 1];
   const pt = { d, v: Math.round(T.total), e: T.etfOnly ? Math.round(T.etfOnly) : null };
@@ -4152,10 +4154,10 @@ function kSt(r) {
   const t = r.ticker || r.t, it = h4Of(t), pl = (rowOf(t) || {}).pl || {};
   if (plansLoad().some(p => p.st === "open" && p.t === t)) return { k: "own", t: "im Depot", cls: "own", lv: 6, s: "Trade läuft – siehe Depot" };
   if (r.passed) {
-    if (it && it.st === "weg") return { k: "gone", t: "verfallen", cls: "", lv: 1, s: "keine Seitwärtsphase innerhalb von 10 Tagen" };
-    if (it && ["run", "sell"].includes(it.st)) return { k: "late", t: "Einstieg vorbei", cls: "", lv: 2, s: "Kauftag schon vorbei – nicht nachkaufen" };
-    if (kmDone(t)) return { k: "late", t: "Einstieg vorbei", cls: "", lv: 2, s: `Laut Regel war der Kauf am ${dateDE(it.base.ed)} zur Eröffnung – ein späterer Einstieg ist nicht getestet` };
     if (kmReady(t)) return { k: "ready", t: "kaufbereit", cls: "hit", lv: 5, s: "Seitwärtsphase fertig – Kauf zur nächsten Eröffnung" };
+    if (it && it.st === "weg" && !it.base) return { k: "gone", t: "verfallen", cls: "", lv: 1, s: "keine Seitwärtsphase innerhalb von 10 Tagen" };
+    if (kmDone(t)) return { k: "late", t: "Einstieg vorbei", cls: "", lv: 2, s: `Laut Regel war der Kauf am ${dateDE(it.base.ed)} zur Eröffnung – ein späterer Einstieg ist nicht getestet` };
+    if (!it) return { k: "wait", t: "neu", cls: "wait", lv: 4, s: "Treffer von heute – die Seitwärtsphase wird ab morgen geprüft" };
     if (it && it.st === "basis") return { k: "wait", t: `Seitwärtsphase ${it.day}/10`, cls: "wait", lv: 4, s: `wartet auf die Seitwärtsphase · Tag ${it.day} von 10` };
     return { k: "wait", t: "wartet", cls: "wait", lv: 4, s: "wartet auf die Seitwärtsphase" };
   }
@@ -4716,8 +4718,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.09";
-const APP_NEWS = [["2026.11.09", "Geprüft und korrigiert", [
+const APP_VER = "2026.11.10";
+const APP_NEWS = [["2026.11.10", "Zweite Prüfung umgesetzt", [
+  ["Kaufbereit stimmt", "Kaufbereit ist eine Aktie jetzt genau dann, wenn ihre Seitwärtsphase nach dem Treffer fertig ist – alte 4H-Zustände spielen keine Rolle mehr, und ein Treffer von heute ist nie sofort kaufbereit. Neu: eine Mitteilung, sobald Aktien kaufbereit sind."],
+  ["Verkaufssignal nur mit Tagesschluss", "„Schluss unter der EMA 20“ prüft Kairo nur noch mit dem fertigen Tagesschluss – nie mit dem Live-Kurs am Mittag – und ab Tag 10 einschließlich."],
+  ["Nie mehr als frei", "Trade-Plan und Turbo-Rechner schlagen nie mehr vor, als ins freie Kapital passt (inkl. Kaufgebühr); Übungs-Trades blockieren kein echtes Geld."],
+  ["Mitteilungen auf jedem Gerät", "Stop- und Verkaufsalarme kommen auf jedem Gerät an und werden wiederholt, wenn der Versand scheitert."]]],
+  ["2026.11.09", "Geprüft und korrigiert", [
   ["Eine Regel überall", "Halten bis Stop, ab Tag 10 Schluss unter der EMA 20 – spätestens Tag 60. Die Kaufkarten im Scanner zeigten fälschlich Tag 40; jetzt gilt überall dieselbe Regel, ein automatischer Test passt darauf auf."],
   ["Stückzahl passt ins Kapital", "Kaufkarten und Top-Setups rechnen die Stückzahl wie der Trade-Plan: 1 % Risiko, aber nie mehr Aktien, als ins freie Kapital passen."],
   ["Splits sauber", "Passt Yahoo alte Kurse nach einem Aktiensplit oder einer Dividende an, lädt Kairo die ganze Kursreihe neu – vorher konnte ein Split wie ein Absturz aussehen."]]],
@@ -5283,9 +5290,12 @@ function kmRank() {
 }
 // Kaufbereit = Seitwärtsphase im 10-Tage-Fenster fertig (wie „Heute zu tun“); um die freien Plätze konkurrieren nur diese
 // Abend-Prüfung (h4.json): Seitwärtsphase fertig und Kauf erst morgen (pending) = kaufbereit; Kauftag schon gelaufen (ed, nicht pending) = vorbei
-const kmDone = t => { const it = h4Of(t), b = it && it.base; return !!(it && it.st !== "weg" && b && b.ed && !b.pending); };
-const kmReady = t => { const it = h4Of(t); return it ? !!(it.st === "4h" && it.base && it.base.pending) : !!((rowOf(t) || {}).pl || {}).base; };
-function kmSlots() { const cfg = tpCfg(); return Math.max(0, cfg.maxOpen - plansLoad().filter(p => p.st === "open").length); }
+// Regel B60 (Review 2, K1/W13): kaufbereit = Seitwärtsphase im Tageschart nach dem Treffer fertig, Kauf zur nächsten Eröffnung.
+// Nur aus der Basis-Prüfung (h4.json „base“) – nie aus alten 4H-Zuständen (go/run/weg) und nie aus der heutigen Kursstruktur.
+const kmDone = t => { const it = h4Of(t), b = it && it.base; return !!(b && b.ed && !b.pending); };
+const kmReady = t => { const it = h4Of(t), b = it && it.base; return !!(b && b.pending && b.lo != null); };
+const openPlans = () => { const pm = paperMode(); return plansLoad().filter(p => p.st === "open" && !!p.paper === pm); };   // nur der aktive Modus
+function kmSlots() { const cfg = tpCfg(); return Math.max(0, cfg.maxOpen - openPlans().length); }
 function kmFit(r, mk) {
   const weak = mk && mk.k === "weak";
   if (r.s === "hit") {
@@ -5313,14 +5323,16 @@ const TP_EXP_TREND = { 5: 0.07, 7: 0.07, 10: 0.07, 20: 0.07 };      // Trend-Rü
 // Eine Stückzahl-Rechnung für alle Ansichten (Review 29.10.2026): 1 % Risiko je Trade – aber nie mehr Aktien, als ins freie
 // Kapital passen (Kapital − Einsatz offener Pläne − Kaufwert der Depot-Positionen ohne Plan; sonst wäre Geld doppelt verplant)
 function freeCap() {
-  const cfg = tpCfg(), dep = typeof depotLoad === "function" ? depotLoad() : [];
+  const cfg = tpCfg(), pm = paperMode(), dep = !pm && typeof depotLoad === "function" ? depotLoad() : [];   // Übung: kein echtes Depot (Review 2, W3)
   const noPlanCost = dep.filter(p => !p.etf && !planFor([p.t], p.d ? p.d.under : p.n)).reduce((a, p) => a + (+p.price || 0) * (+p.qty || 0), 0);
-  return Math.max(0, cfg.depot - plansLoad().filter(p => p.st === "open").reduce((a, p) => a + (+p.stake || 0), 0) - noPlanCost);
+  return Math.max(0, cfg.depot - openPlans().reduce((a, p) => a + (+p.stake || 0), 0) - noPlanCost);
 }
 function posSize(entry, stop, cur) {
   const cfg = tpCfg(), e = toEur(entry, cur), s = toEur(stop, cur), per = e != null && s != null ? e - s : null;
   if (!(per > 0) || !(e > 0)) return null;
-  const free = freeCap(), qRisk = Math.floor(cfg.depot * cfg.risk / 100 / per), qCash = Math.floor(free / e);
+  const free = freeCap(), qRisk = Math.floor(cfg.depot * cfg.risk / 100 / per);
+  let qCash = Math.floor(free / e);
+  if (qCash * e < 250) qCash = Math.floor(Math.max(0, free - cfg.fee) / e);     // unter 250 € kostet der Kauf 0,99 € (Review 2, W2)
   const qty = Math.max(0, Math.min(qRisk, qCash)), val = qty * e;
   return { qty, val, fee: val >= 250 ? 0 : cfg.fee, risk: qty * per, riskPct: cfg.depot ? 100 * qty * per / cfg.depot : 0, capped: qCash < qRisk, free };
 }
@@ -5413,11 +5425,13 @@ function tp2Calc(r, S, o = {}) {
     out.edIn = true;
     out.problems.push(["yellow", `Quartalszahlen am ${dateDE(r.ed)} während der Haltedauer – laut Test halten (Käufe kurz vor den Zahlen waren im Schnitt sogar besser). Aber: Eine Kurslücke kann den Stop und bei Turbos den K.-o. überspringen – mit Turbo lieber kleiner Hebel.`]); } }
   if (out.exit2 < out.exit) out.exit2 = out.exit;
+  out.free = freeCap();                                        // vor den Varianten: Aktie direkt passt sich dem freien Kapital an (Review 2, K2)
   out.levs = TP.levs.map(L => {
     const ko = L > 1 ? E * (1 - 1 / L) : null, ok = L === 1 || ko <= stop - TP.kob * atr;
     let expo = out.expo, capped = false;
     const stake0 = expo / L;
     if (stake0 > cfg.depot) { expo = cfg.depot * L; capped = true; }   // nicht genug Kapital → kleinere Position
+    if (L === 1 && expo > out.free) { expo = Math.max(0, out.free - (out.free < 250 ? cfg.fee : 0)); capped = true; }
     const stake = expo / L, fees = stake >= 250 ? 0 : 2 * cfg.fee;    // Scalable PRIME+: ab 250 € Orderwert gebührenfrei
     const cost = fees + expo * (L > 1 ? TP.spreadTurbo : TP.spreadStock) + (L > 1 ? TP.fin * (1 - 1 / L) * expo * cal / 365 : 0);
     const qty = L === 1 ? Math.floor(expo / (E * fx)) : null;
@@ -5429,12 +5443,14 @@ function tp2Calc(r, S, o = {}) {
   // Vorschlag: der KLEINSTE Hebel, dessen Einsatz noch ins freie Kapital passt (Depot minus Einsatz der offenen Trades).
   // Wahrheits-Test (2 × 10 Jahre): spart Finanzierungskosten – +11 bis +20 % statt +4 bis +15 % p. a., auch auf den Prüfjahren besser.
   // Frei = Kapital − Einsatz offener Pläne − Kaufwert der Depot-Positionen ohne Plan (sonst wäre Geld doppelt verplant)
-  out.free = freeCap();
   const okL = out.levs.filter(x => x.ok && !x.capped);
   const fit = okL.find(x => x.stake <= out.free);
   // Passt kein Einsatz ins freie Kapital: nicht auf den größten Hebel ausweichen, sondern warnen (kleinster Hebel bleibt Vorschlag)
   if (!fit && okL.length) out.problems.push(["red", `Nicht genug freies Trading-Kapital: frei ${fmt(out.free, 0)} €, nötig mindestens ${fmt(okL[okL.length - 1].stake, 0)} € – erst eine Position schließen oder das Trading-Kapital in den Einstellungen anpassen.`]);
-  out.sug = (fit || okL[0] || out.levs.filter(x => x.ok).pop() || out.levs[0]).L;
+  // ohne passende Variante: Aktie mit dem, was frei ist (kleineres Risiko) – oder gar kein Vorschlag (nie mehr als frei)
+  const small = out.levs.find(x => x.L === 1 && x.ok && x.qty > 0 && x.stake <= out.free + 1e-6);
+  out.sug = fit ? fit.L : small ? 1 : null;
+  if (!fit && small) out.problems.push(["yellow", `Aktie direkt mit dem freien Kapital: ${small.qty} Stück, Risiko nur ${eur2(small.rEff)} statt ${eur2(out.riskEur)}.`]);
   const mk = out.mk;
   const ex = trend ? [TP_EXP_TREND[hold], null, null] : TP_EXP[hold] || [];
   out.expR = mk && mk.k === "weak" && ex[1] != null ? ex[1] : mk && mk.k === "strong" && ex[2] != null ? ex[2] : ex[0];
@@ -5456,6 +5472,8 @@ function tpInner(r, S) {
       <label class="chk" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="tpPaper" ${paperMode() ? "checked" : ""}> Übungsmodus – neue Trades ohne echtes Geld (zählen getrennt in der Bilanz)</label></details>`;
   if (!m.stop || (m.problems.length && m.problems[0][0] === "red" && !m.dist)) return head + m.problems.map(([t, x]) => `<div class="tip tone-${t === "red" ? "red" : "yellow"}" style="margin-top:10px">${esc(x)}</div>`).join("") + acct;
   const lv = m.levs.find(x => x.L === m.sug);
+  if (!lv) return head + m.problems.map(([t, x]) => `<div class="tip tone-${t === "red" ? "red" : "yellow"}" style="margin-top:10px">${esc(x)}</div>`).join("")
+    + `<div class="tip tone-red" style="margin-top:10px"><b class="t">Kein Kauf möglich</b>Keine Variante passt ins freie Kapital (frei ${eur(m.free)}). Erst eine Position schließen oder das Trading-Kapital anpassen.</div>` + acct;
   const at = px => (px - m.E) / m.E * lv.expo - lv.cost;
   const prod = lv.L === 1 ? `Aktie direkt` : `Turbo Long ×${lv.L}`;
   const row = (k, v, sub, cls = "") => `<div class="tp2-row"><span>${k}</span><b class="${cls}">${v}</b>${sub ? `<em>${sub}</em>` : ""}</div>`;
@@ -5586,7 +5604,8 @@ function tpTurboHtml(r, m, lv) {
   const tv = S => cr > 0 ? Math.max(0, (g(S) - bpn) * cr / f) : P * (S - KOs) / (m.E - KOs);
   // Aktienkurs wie im Chart: in der Währung der Aktie (Pence als „GBp“), kleine Kurse mit 3 Nachkommastellen
   const cp = v => fmt(v, v < 10 ? 3 : 2), chart = v => `${cp(v)} ${sc === "EUR" ? "€" : esc(/^GB[Xp]$/.test(sc) ? "Pence" : sc)}`;
-  const fp = v => fmt(v, v < 1 ? 3 : 2), sl = tv(stop), lossU = P - sl, qty0 = Math.floor(m.riskEur / Math.max(lossU, P * 0.05)), qty = Math.max(1, qty0);
+  const fp = v => fmt(v, v < 1 ? 3 : 2), sl = tv(stop), lossU = P - sl, qty0 = Math.floor(m.riskEur / Math.max(lossU, P * 0.05)),
+    qCash = m.free == null ? qty0 : Math.floor(Math.max(0, m.free - (qty0 * P < 250 ? tpCfg().fee : 0)) / P), qty = Math.max(0, Math.min(qty0, qCash));   // nie mehr als frei, 0 erlaubt (Review 2, K6)
   const lev = cr > 0 ? g(m.E) * cr / f / P : m.E / (m.E - KOs), near = KOs > stop - TP.kob * m.atr;
   const iv = cr > 0 ? tv(m.E) : 0, prem = cr > 0 ? P - iv : 0, odd = cr > 0 && (iv <= 0 || Math.abs(prem) > Math.max(0.35 * P, 0.05));
   // Welcher Aktienkurs steckt im Briefkurs? (Basispreis + Brief × Wechselkurs ÷ BV) – zeigt, wenn der Kairo-Kurs veraltet ist
@@ -5603,7 +5622,7 @@ function tpTurboHtml(r, m, lv) {
       <div class="tp2-row"><span>Stop-Loss am Turbo</span><b class="down">${fp(sl)} €</b><em>${sgnPct(sl / P - 1, 0)} vom Briefkurs · Stop-Order bei Scalable auf den Turbo</em></div>
       <div class="tp2-row"><span>Stop-Loss im Chart (Aktie)</span><b class="down">${chart(stop)}</b><em>${sc !== "EUR" ? `= ${cp(stop * m.fx)} € · ` : ""}${own ? "dein Stop · " : "Kairo-Vorschlag · "}diese Linie in TradingView einzeichnen · K.-o. liegt bei ${chart(KOs)}${sc !== "EUR" ? ` (${cp(KOs * m.fx)} €)` : ""}</em></div>
       ${m.tp ? `<div class="tp2-row"><span>Take-Profit am Turbo</span><b class="up">${fp(tv(m.tp))} €</b><em>${sgnPct(tv(m.tp) / P - 1, 0)} vom Briefkurs · entspricht Aktie ${X(m.tp)} ${cur}</em></div>` : ""}
-      <div class="tp2-row"><span>Stückzahl</span><b>${fmt(qty, 0)} Stück</b><em>Einsatz ${eur(qty * P)} · Verlust am Stop ≈ ${eur2(qty * lossU)} · Hebel ≈ ×${fmt(lev, 1)}${qty0 < 1 ? ` · <b class="down">schon 1 Stück ist mehr als ${eur(m.riskEur)} Risiko</b>` : ""}</em></div></div>
+      <div class="tp2-row"><span>Stückzahl</span><b>${fmt(qty, 0)} Stück</b><em>Einsatz ${eur(qty * P)} · Verlust am Stop ≈ ${eur2(qty * lossU)}${qty < qty0 && qty0 >= 1 ? ` · <b class="down">begrenzt: nur ${eur(m.free)} frei</b>` : ""} · Hebel ≈ ×${fmt(lev, 1)}${qty0 < 1 ? ` · <b class="down">schon 1 Stück ist mehr als ${eur(m.riskEur)} Risiko</b>` : ""}</em></div></div>
     ${calc ? `<div class="note" style="margin:6px 0 0">Rechnung: ${calc}${kc !== "EUR" && !(+t.fxr > 0) ? " (Wechselkurs aus Kairo)" : ""}</div>` : `<div class="tip tone-yellow" style="margin-top:8px">Ohne Bezugsverhältnis rechnet Kairo verhältnisgleich – das stimmt nur, wenn Briefkurs und Aktienkurs (${X(m.E)} ${cur}) zur selben Zeit gelten. Trag das Bezugsverhältnis ein, dann ist der Stop genau.</div>`}
     ${implShow ? `<div class="note" style="margin:6px 0 0">Dein Briefkurs ${fp(P)} € entspricht einem Aktienkurs von ≈ <b>${chart(impl)}</b>${sc !== "EUR" ? ` (${cp(impl * m.fx)} €)` : ""} – Kairo rechnet oben mit ${chart(m.E)}${sc !== "EUR" ? ` (${cp(m.E * m.fx)} €)` : ""}${implGap > 0 ? ` (Aktie ist seitdem ${sgnPct(impl / m.E - 1, 1)} gelaufen)` : ` (${sgnPct(impl / m.E - 1, 1)})`}. Der Stop bleibt gleich; vom aktuellen Kurs sind es ${sgnPct(stop / impl - 1, 1)} bis zum Stop, Stückzahl ist danach berechnet.</div>` : ""}
     ${fxOff ? `<div class="tip tone-yellow" style="margin-top:8px">Wechselkurs ${n4(+t.fxr)} weicht stark vom aktuellen Kurs ab (EUR/${esc(kc)} ≈ ${n4(appF)}) – verkehrt herum eingetippt? Gemeint ist: 1 € = … ${esc(kc)}.</div>` : ""}
@@ -5625,6 +5644,7 @@ function tpOpen(t) {
   const m = tp2Calc(r, S, { entry: ee > 0 ? ee / fx0 : null, date: (state.tpD || {})[t] });
   if (!m.stop || !m.dist) return;
   const lv = m.levs.find(x => x.L === m.sug);
+  if (!lv || lv.stake > m.free + 1e-6 || (lv.L === 1 && !(lv.qty > 0))) { alert(`Nicht genug freies Kapital für diesen Trade (frei ${eur(m.free)}).`); return; }
   const l = plansLoad();
   if (l.filter(p => p.st === "open").length >= m.cfg.maxOpen && !confirm(`Schon ${m.cfg.maxOpen} offene Trades – Gesamtrisiko steigt. Trotzdem eröffnen?`)) return;
   l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, h4: m.h4 ? (h4Go(m.h4) ? "go" : m.h4.st) : null, d: isoD(m.d0), scan: String(data.generated).slice(0, 10),
@@ -5633,7 +5653,11 @@ function tpOpen(t) {
   plansSave(l); render(); window.scrollTo({ top: 0, behavior: "smooth" });
 }
 // 4H-Trades: ab Tag 10 Verkauf, sobald ein Tag unter der EMA 20 schließt (Kurs und EMA vom letzten Scan = Tagesschluss)
-const emaExit = (p, r) => !!(p && p.ema && r && r.c != null && r.e20 && r.c < r.e20 && bdBetween(new Date(p.d + "T12:00:00"), new Date(isoD(new Date()) + "T12:00:00"), p.t) + 1 > H4X.from);
+// Review 2 (K3/K4): nie der Live-Kurs – nur der letzte FERTIGE Tagesschluss (cc/ce/cd aus dem Scan, sonst Scan-Schluss vor Live-Update);
+// Kauftag = Tag 1, Signal ab Tag 10 einschließlich, gezählt bis zum Tag dieses Schlusses
+const closeOf = r => r && (r.cc != null ? { c: r.cc, e: r.ce, d: r.cd } : { c: r.c0 ?? r.c, e: r.e20, d: data && String(data.generated).slice(0, 10) });
+const emaDay = (p, d) => bdBetween(new Date(p.d + "T12:00:00"), new Date(d + "T12:00:00"), p.t) + 1;
+const emaExit = (p, r) => { const x = closeOf(r); return !!(p && p.ema && x && x.c != null && x.e && x.d && x.c < x.e && emaDay(p, x.d) >= H4X.from); };
 function tpStatus(p) {
   const r = rowOf(p.t), c = r ? r.c : null, today = isoD(new Date());
   if (c == null) return { tone: "gray", t: "Kein aktueller Kurs" };
@@ -5838,12 +5862,11 @@ function shadowHtml(sh) {
 // Quelle: alle Kairo-Treffer der letzten Tage (h4.json, Abend-Prüfung). Gekauft wird wie getestet, wenn die Seitwärtsphase
 // nach dem Treffer fertig UND ruhig ist (Spanne 5 Tage ≤ 1,5 ATR, Hin und Her 10 Tage ≤ 1,65) – zur nächsten Eröffnung.
 function boardItems() {
-  const d = h4Data(), its = ((d && d.items) || []).filter(it => h4Real(it) && it.st !== "weg" || (h4Real(it) && it.st === "weg" && it.d >= isoDaysAgo(10)));
+  const d = h4Data(), its = ((d && d.items) || []).filter(it => h4Real(it) && (it.st !== "weg" || it.base || it.d >= isoDaysAgo(10)));
   const reg = it => String(it.r || (rowOf(it.t) || {}).r || (byTicker(it.t) || {}).region || "").toLowerCase();
   const tested = it => ["us", "europe"].includes(reg(it));
   const own = new Set(plansLoad().filter(p => p.st === "open").map(p => p.t));
-  const kind = it => own.has(it.t) ? "own" : it.st === "4h" && it.base && it.base.pending ? "ready" : it.st === "basis" ? "wait"
-    : it.st === "weg" ? "gone" : "late";
+  const kind = it => own.has(it.t) ? "own" : kmReady(it.t) ? "ready" : kmDone(it.t) ? "late" : it.st === "basis" ? "wait" : "gone";
   const mom = it => it.mom ?? kmMom(it.t);
   const out = { ready: [], wait: [], late: [], gone: [], own: [], asia: [] };
   its.forEach(it => { const k = kind(it); (tested(it) || k === "own" ? out[k] : out.asia).push(it); });

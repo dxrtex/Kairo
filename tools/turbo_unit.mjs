@@ -173,5 +173,12 @@ async function load(wkn, snapshot, row, { entityType = "DERIVATIVE", found = tru
   const r = parse(sb.tpTurboHtml({ t: "X", cur: "EUR" }, { fx: 1, E: 1335, stop: 1320, atr: 10, riskEur: 30 }, {}));
   ok(near(r.sl, 0.2), "Index-Turbo → SL (1320 − 1300) × 0,01", r.sl);
 }
+// ---------- 5. Nie mehr als frei (Review 2, K6) ----------
+{
+  const t = { p: 2.35, kon: 210.5, kc: "EUR", cr: 0.1 }, m = { E: 233.9, stop: 225.2 };
+  const free = card("EUR", t, m), cap = card("EUR", t, { ...m, free: 50 }), none = card("EUR", t, { ...m, free: 0 });
+  ok(free.qty > 0 && cap.qty === Math.floor((50 - 1) / 2.35) && cap.qty < free.qty, "Stückzahl auf freies Kapital begrenzt", `${free.qty} → ${cap.qty}`);
+  ok(none.qty === 0, "kein freies Kapital → 0 Stück", none.qty);
+}
 console.log(`${n - fails}/${n} Prüfungen bestanden`);
 process.exit(fails ? 1 : 0);

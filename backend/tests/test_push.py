@@ -118,3 +118,41 @@ def test_ko_untertags_beruehrt():
     assert len(m) == 1 and "K.-o. vermutlich erreicht" in m[0]["title"] and "Tagestief" in m[0]["body"]
     short = {"d": [{"t": "NVDA", "ko": 180.5, "dir": "short"}], "p": []}         # Tageshoch 181 ≥ 180,5
     assert "vermutlich" in messages(short, prices, "2026-10-06", {})[0]["title"]
+
+
+def test_zwei_geraete_und_gescheiterter_versand():
+    """Review 2, K5: jedes Gerät bekommt den Stop-Alarm; ein gescheiterter Versand wird beim nächsten Lauf wiederholt."""
+    from backend.push import deliver
+    dev = lambda ep: {"s": {"endpoint": ep}, "p": [{"i": "a1", "t": "AXON", "n": "Axon", "cur": "USD", "d": "2026-10-06", "sl": 395.0, "x": "2026-12-01"}]}
+    prices = {"AXON": _df([380, 400, 396, 394, 398], [410, 412, 405, 404, 402], [405, 404, 400, 399, 400])}
+    got, sent = [], {}
+    ok_after_first = {"n": 0}
+
+    def send(sub, msg, k):
+        got.append((sub["endpoint"], msg["title"]))
+        if sub["endpoint"] == "B" and ok_after_first["n"] == 0:      # Gerät B scheitert beim ersten Mal
+            ok_after_first["n"] = 1
+            return 500
+        return 201
+    deliver([dev("A"), dev("B")], prices, "2026-10-09", sent, [], "k", {}, send)
+    assert [e for e, t in got if "Stop" in t] == ["A", "B"]                  # beide Geräte versucht
+    got.clear()
+    deliver([dev("A"), dev("B")], prices, "2026-10-09", sent, [], "k", {}, send)
+    assert [e for e, t in got if "Stop" in t] == ["B"]                       # nur B erneut, A nicht doppelt
+    got.clear()
+    deliver([dev("A"), dev("B")], prices, "2026-10-09", sent, [], "k", {}, send)
+    assert not [e for e, t in got if "Stop" in t]
+
+
+def test_kaufbereit_nur_aus_der_basis():
+    """Review 2, K1: kaufbereit = Basis fertig (pending) – egal ob der alte 4H-Zustand „go“, „4h“ oder „weg“ ist."""
+    from backend.push import ready_messages
+    base = {"generated": "2026-10-29T21:50", "items": [
+        {"t": "AAA", "n": "Alpha", "st": "go", "r": "us", "mom": -0.2, "base": {"pending": True, "lo": 10, "hi": 11}},
+        {"t": "BBB", "n": "Beta", "st": "weg", "r": "europe", "mom": -0.5, "base": {"pending": True, "lo": 5, "hi": 6}},
+        {"t": "CCC", "n": "Gamma", "st": "basis", "r": "us", "day": 3},
+        {"t": "DDD.HK", "n": "Delta", "st": "4h", "r": "asia", "base": {"pending": True, "lo": 1, "hi": 2}},
+        {"t": "EEE", "n": "Eps", "st": "4h", "grp": "10", "r": "us", "base": {"pending": True, "lo": 1, "hi": 2}}]}
+    sent = {}
+    m = ready_messages("2026-10-29", sent, base)
+    assert len(m) == 1 and "2 Kairo-Treffer" in m[0]["title"] and m[0]["body"].index("Beta") < m[0]["body"].index("Alpha")
