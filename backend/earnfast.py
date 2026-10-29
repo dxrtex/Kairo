@@ -209,16 +209,17 @@ def send(msgs: list[dict], devs: list[dict], k) -> int:
     return n
 
 
-def form_of(cik) -> str | None:
-    """Formular der jüngsten Meldung (8-K/6-K/…) – für die Prüfung, ob ein 6-K wirklich Zahlen enthält."""
+def foreign_filer(cik) -> bool:
+    """Ausländische Firma (meldet per 6-K statt 8-K)? Aus den letzten Meldungen, nicht nur der neuesten (Review 2, K7)."""
     if not cik:
-        return None
+        return False
     try:
         import requests
         f = requests.get(f"https://data.sec.gov/submissions/CIK{int(cik):010d}.json", headers=_sec_ua(), timeout=20).json()["filings"]["recent"]
-        return f["form"][0] if f["form"] else None
+        forms = f["form"][:60]
+        return "6-K" in forms and "8-K" not in forms[:20]
     except Exception:
-        return None
+        return False
 
 
 def sec_pushes(hits: str, events: list[dict], out: Path) -> list[str]:
@@ -238,7 +239,7 @@ def sec_pushes(hits: str, events: list[dict], out: Path) -> list[str]:
         key = f"sec|{t}|{today}"
         if key in sent or (rel and t not in rel):
             continue
-        if form_of(cm.get(t)) == "6-K" and not secguide.is_results(secguide.fetch_text(cm[t], today)):
+        if foreign_filer(cm.get(t)) and not secguide.is_results(secguide.fetch_text(cm[t], today)):
             print(f"Quartalszahlen: {t} – 6-K ohne Ergebniszahlen, keine Mitteilung (Review W8)")
             continue                                 # ausländische Firma: 6-K ist nicht immer eine Ergebnis-Meldung
         sent[key] = today

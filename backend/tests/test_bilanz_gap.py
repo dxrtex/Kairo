@@ -20,3 +20,13 @@ def test_ohne_luecke_wie_bisher():
     c = np.array([100, 100, 90.5])
     r = outcome(o, h, l, c, 0, 100.0, 90.0, 120.0, None)
     assert r["res"] == "stop" and abs(r["r"] + 1.0) < 1e-9
+
+
+def test_eroeffnung_ueber_ziel_vor_spaeterem_tief():
+    """Review 2, W5: Eröffnung 130 über dem Ziel 120 → Ziel zur Eröffnung, auch wenn das Tagestief später den Stop berührt."""
+    o = np.array([100, 100, 130.0, 130])
+    h = np.array([101, 101, 131.0, 131])
+    l = np.array([99, 99, 85.0, 85])
+    c = np.array([100, 100, 95.0, 95])
+    r = outcome(o, h, l, c, 0, 100.0, 90.0, 120.0, None)
+    assert r["res"] == "t1" and abs(r["r"] - 3.0) < 1e-9

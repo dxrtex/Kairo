@@ -1,9 +1,9 @@
-// Kairo-Kursdienst (Version 6) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
+// Kairo-Kursdienst (Version 7) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
 //   ?s=SAP.DE,AAPL      Kurse (Yahoo Finance, je nach Börse leicht verzögert)
 //   ?q=Rheinmetall      Aktiensuche an allen Börsen
 //   ?c=RHM.DE           Tageskerzen (1 Jahr) – damit plant Kairo auch Aktien außerhalb des Scans
 //   /trades?key=…       offene Trades, Depot und Watchlist für Scan und Mitteilungen (GET lesen, POST speichern) – braucht den KV-Speicher „KAIRO“
-//   /earn               Quartalszahlen, die gerade offiziell bei der SEC gemeldet wurden (ab Version 6)
+//   /earn               Quartalszahlen, die gerade offiziell bei der SEC gemeldet wurden (ab Version 6; v7: eine 6-K beendet die Suche nicht)
 // Einrichtung: Cloudflare → Workers & Pages → Worker → Edit code → alles ersetzen → Deploy (Anleitung in Kairo → Einstellungen).
 
 const ALLOW = ["https://dxrtex.github.io"];          // nur die Kairo-App darf den Dienst im Browser nutzen
@@ -61,7 +61,8 @@ async function secCheck(env, now, st) {
   const t = now.getTime(), w = await earnWatch(), kv = env.KAIRO;
   const hits = JSON.parse((await kv.get("e8k")) || "{}"), news = [];
   const open = (w.items || []).filter(x => {
-    if (!x.cik || hits[x.t + "|" + x.date]) return false;
+    const h0 = hits[x.t + "|" + x.date];
+    if (!x.cik || (h0 && h0.form !== "6-K")) return false;   // 8-K Punkt 2.02 = sicher; 6-K kann etwas anderes sein → weiter prüfen (v7)
     if (x.from && x.to) return t >= Date.parse(x.from) && t <= Date.parse(x.to);   // Prüffenster von der GitHub-Prüfung (ohne neuen Code anpassbar)
     if (x.ts && x.exact) { const e = Date.parse(x.ts); return t >= e - 20 * 6e4 && t <= e + 3 * 36e5; }   // aus früheren SEC-Meldungen gelernt
     if (x.ts) { const e = Date.parse(x.ts); return t >= e - 3 * 36e5 && t <= e + 6 * 36e5; }   // Yahoo-Zeiten sind oft Platzhalter (8:00 / 16:00 New York)
@@ -77,8 +78,10 @@ async function secCheck(env, now, st) {
         if (at < since) break;
         const is8k = f.form[i] === "8-K" && String(f.items[i] || "").includes("2.02"), is6k = f.form[i] === "6-K" && x.ts && at >= Date.parse(x.ts) - (x.exact ? 36e5 : 2 * 36e5);
         if (!is8k && !is6k) continue;
-        const acc = f.accessionNumber[i].replace(/-/g, "");
-        hits[x.t + "|" + x.date] = { t: x.t, n: x.n, date: x.date, at: new Date(at).toISOString(), seen: now.toISOString(), form: f.form[i],
+        const acc = f.accessionNumber[i].replace(/-/g, ""), prev = hits[x.t + "|" + x.date];
+        if (prev && (prev.acc === acc || (prev.seenAcc || []).includes(acc))) break;   // diese 6-K schon gemeldet – GitHub prüft den Inhalt
+        hits[x.t + "|" + x.date] = { t: x.t, n: x.n, date: x.date, at: new Date(at).toISOString(), seen: now.toISOString(), form: f.form[i], acc,
+          seenAcc: [...((prev && prev.seenAcc) || []), ...(prev ? [prev.acc] : [])].slice(-5),
           url: `https://www.sec.gov/Archives/edgar/data/${x.cik}/${acc}/${f.primaryDocument[i] || ""}` };
         news.push(x.t); break;
       }

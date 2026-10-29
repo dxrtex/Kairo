@@ -6,8 +6,8 @@ Treffer fällt. Ab dem 5. Tag: bilden die letzten 5 Kerzen eine Seitwärtsphase 
 Eröffnung, wenn sie in der Spanne liegt (Tief < Eröffnung ≤ Hoch) und der Abstand zum Stop 0,5–3 ATR beträgt.
 Stop = Basis-Tief − 0,25 ATR, Risiko 1 % des Depots, max. 5 Positionen. Ausstieg: Stop; ab Tag 10 Schluss unter EMA20 →
 Verkauf zur nächsten Eröffnung; spätestens Schluss von Tag 60 (v2.5).
-KAIRO: Vorrang ruhigere Titel (kleineres ATR ÷ Kurs, wie im Backtest). KAIROS: Vorrang schwächeres Vormomentum
-(Rendite Monat −6…−1, Merkmal v2.4 bestätigt). Die Depots laufen einen Handelstag hinter dem Scan (Scan muss fertig sein).
+KAIRO und KAIROS: Vorrang schwächeres Vormomentum (Rendite Monat −6…−1) – KAIRO bis 28.10.2026 „ruhigere Titel zuerst“,
+umgestellt nach dem Depot-Test der Regel B60 (research/strategy_championship/v2_test.py). Die Depots laufen einen Handelstag hinter dem Scan (Scan muss fertig sein).
 
 Langfrist-Idee des Nutzers (20.10.2026, ungetestet – nur Vorwärtstest): gleicher Basis-Einstieg, dann halten bis zum Ziel.
 KAIROZ (Kairo-Ziel): nur Treffer mit attraktivem Analysten-Kursziel am Signaltag – Abstand zum Ziel ≥ 1 × Jahresschwankung,
@@ -78,7 +78,9 @@ def day(st: dict, mk, D: pd.Timestamp, D_prev: pd.Timestamp, signals: list, equi
         x = mk.f(p["t"])
         if x is not None and D in x.index:
             close_pos(st, mk, p, float(x.loc[D, "Open"]), "ema20", str(D.date()))
-    key = {"KAIROS": lambda a: a["mom"], "KAIROL": lambda a: a["mom"], "KAIROZ": lambda a: -(a.get("z") or 0)}.get(sid, lambda a: a["vol"])
+    # Vorrang: schwächeres Vormomentum – seit 29.10.2026 auch KAIRO, wie die App (Depot-Test B60: 2022–26 +11,9 % statt −6,2 % p. a.
+    # mit „ruhigere zuerst“; Review 2, W7). KAIROZ: attraktivstes Kursziel zuerst.
+    key = {"KAIROZ": lambda a: -(a.get("z") or 0)}.get(sid, lambda a: a["mom"])
     for a in sorted([a for a in st["armed"] if pd.Timestamp(a["after"]) < D], key=lambda a: np.nan_to_num(key(a), nan=9.0)):
         x = mk.f(a["t"])
         if x is None or D not in x.index or any(p["t"] == a["t"] for p in st["positions"]):

@@ -168,5 +168,6 @@ def test_grosse_ueberraschung_nur_mit_bestaetigung():
     from backend.earnings import eps_plausible
     assert eps_plausible(0.12, 0.05, "")                                   # nahe 0: 0,07 Abstand ist normal
     assert not eps_plausible(1.10, 6.61, "EPS included $1.10 of charges")  # > 50 % daneben, nur einmal erwähnt → warten
-    assert eps_plausible(2.10, 1.00, "EPS of $2.10 ... Earnings per share 2.10 1.02")
+    assert eps_plausible(2.10, 1.00, "Diluted EPS of $2.10 for the quarter. Earnings per share – Non-GAAP 2.10 1.02")
+    assert not eps_plausible(2.10, 1.00, "EPS $1.05 compared to $2.10 in the prior year. Full-year EPS guidance $2.10")   # Vorjahr/Ausblick zählen nicht
     assert not eps_plausible(-0.40, 0.30, "loss of $0.40 per share")       # Vorzeichenwechsel ohne Bestätigung

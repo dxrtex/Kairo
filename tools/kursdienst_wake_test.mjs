@@ -1,14 +1,17 @@
-// Prüft den Wecker und die SEC-Erkennung von site/kursdienst.js (Version 6) ohne Netz: GitHub, SEC und KV nachgebildet.
+// Prüft den Wecker und die SEC-Erkennung von site/kursdienst.js (Version 7) ohne Netz: GitHub, SEC und KV nachgebildet.
 const store = new Map();
 globalThis.caches = { default: { match: async k => store.has(k.url) ? new Response(store.get(k.url)) : undefined, put: async (k, r) => store.set(k.url, await r.text()) } };
 const kvm = new Map(), kv = { get: async k => kvm.get(k) ?? null, put: async (k, v) => { kvm.set(k, v); } };
 const calls = [];
-let secFiled = false, exact = false, secCalls = 0;
+let secFiled = false, exact = false, secCalls = 0, sixK = 0;
 globalThis.fetch = async (u, o = {}) => {
   u = String(u);
   if (u.includes("/dispatches")) { calls.push(JSON.parse(o.body)); return new Response(null, { status: 204 }); }
   if (u.includes("earn_watch.json")) return new Response(JSON.stringify({ items: [{ t: "AAPL", n: "Apple", cik: 320193, date: "2026-10-29", ts: "2026-10-29T20:30:00+00:00", exact }] }));
   if (u.includes("data.sec.gov")) secCalls++;
+  if (u.includes("data.sec.gov") && sixK) return new Response(JSON.stringify({ filings: { recent: sixK === 1
+    ? { form: ["6-K"], items: [""], acceptanceDateTime: ["2026-10-29T20:31:00.000Z"], accessionNumber: ["0001-26-000001"], primaryDocument: ["agm.htm"] }
+    : { form: ["6-K", "6-K"], items: ["", ""], acceptanceDateTime: ["2026-10-29T20:40:00.000Z", "2026-10-29T20:31:00.000Z"], accessionNumber: ["0001-26-000002", "0001-26-000001"], primaryDocument: ["q3.htm", "agm.htm"] } } }));
   if (u.includes("data.sec.gov")) return new Response(JSON.stringify({ filings: { recent: secFiled
     ? { form: ["8-K", "4"], items: ["2.02,9.01", ""], acceptanceDateTime: ["2026-10-29T20:31:05.000Z", "2026-10-20T10:00:00.000Z"], accessionNumber: ["0000320193-26-000101", "x"], primaryDocument: ["a8-k.htm", ""] }
     : { form: ["4"], items: [""], acceptanceDateTime: ["2026-10-20T10:00:00.000Z"], accessionNumber: ["x"], primaryDocument: [""] } } }));
@@ -49,4 +52,13 @@ exact = false; secFiled = true; kvm.clear(); store.clear();
 await run("2026-10-29T20:32:00Z");
 const r = await (await w.fetch(new Request("https://x.workers.dev/earn", { headers: { Origin: "https://dxrtex.github.io" } }), env, { waitUntil: () => {} })).json();
 check("/earn liefert die Meldung", r.hits.length === 1 && r.hits[0].t === "AAPL" && r.hits[0].url.includes("000032019326000101"), r);
+// v7: eine 6-K (z. B. Einladung zur Hauptversammlung) beendet die Suche nicht – die spätere Ergebnis-6-K wird auch gemeldet
+kvm.clear(); store.clear(); sixK = 1;
+await run("2026-10-29T20:32:00Z");
+check("erste 6-K → earnings.yml (GitHub prüft den Inhalt)", calls.some(c => c.inputs && c.inputs.sec === "AAPL"), calls);
+await run("2026-10-29T20:35:00Z");
+check("dieselbe 6-K nicht erneut", !calls.some(c => c.inputs && c.inputs.sec), calls);
+sixK = 2;
+await run("2026-10-29T20:41:00Z");
+check("spätere zweite 6-K wird gemeldet", calls.some(c => c.inputs && c.inputs.sec === "AAPL"), calls);
 process.exit(fails.length ? 1 : 0);

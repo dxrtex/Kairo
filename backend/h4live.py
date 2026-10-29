@@ -1,4 +1,8 @@
-"""4H-Top-Setup live: Kairo-Treffer (11/11) → Seitwärtsphase → 4H-Bestätigung → Kauf → Verkauf unter der EMA 20.
+"""HINWEIS (Review 2, 29.10.2026): Für die gültige Kairo-Regel B60 zählt aus dieser Datei nur die Seitwärtsphase (base_state,
+„base“ in h4.json: pending = kaufbereit, ed = Kauftag). Die 4H-Bestätigung und die 4H-Trades mit Tag 40 sind historische
+Forschung (seit 10/2026 nicht mehr Teil der Regel) und werden nur noch zum Vergleich mitgerechnet.
+
+4H-Top-Setup live: Kairo-Treffer (11/11) → Seitwärtsphase → 4H-Bestätigung → Kauf → Verkauf unter der EMA 20.
 
 Genau die Regeln aus dem 4H-Test (h4study.py, Variante „HB|RMBS|zeit“, Okt. 2026: +0,39 / +0,54 R je Trade gegenüber
 +0,10 / +0,11 R ohne 4H, Depot +14 % / +20 % p. a.):

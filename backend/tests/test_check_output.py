@@ -22,3 +22,10 @@ def test_unvollstaendig_oder_kaputt_faellt_durch(tmp_path):
     _write(tmp_path, {"generated": "x", "stats": {"universe": 100, "loaded": 40}, "results": []}, "{kaputt", {"items": []})
     e = check_output.check(tmp_path)
     assert any("40 von 100" in x for x in e) and any("search.json" in x for x in e)
+
+
+def test_veraltet_oder_h4_fehler(tmp_path):
+    _write(tmp_path, {"generated": "x", "stats": {"universe": 100, "loaded": 95, "health": {"stale": 40}}, "results": []},
+           {"rows": [{}] * 1200}, {"items": [], "error": True})
+    e = check_output.check(tmp_path)
+    assert any("veraltet" not in x and "40 von 95" in x for x in e) and any("h4.json" in x for x in e)
