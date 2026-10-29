@@ -241,10 +241,15 @@ def _sec_results(t: str, ev: dict, upcoming: pd.DataFrame, est_col: str, today: 
     r = secguide.results(txt) if txt else {}
     if r.get("eps") is None:
         return None
+    if r["eps_kind"] == "GAAP" and re.search(r"\b(non-?gaap|adjusted)\b", txt, re.I):
+        return None                                        # nur GAAP gefunden, obwohl es eine bereinigte Zahl gibt → lieber auf Yahoo warten
     est = None
     if len(upcoming) and est_col in upcoming:
         u = upcoming[[abs((i.tz_convert("UTC").tz_localize(None).normalize() - d).days) <= 3 for i in upcoming.index]]
         est = _num(u.iloc[-1][est_col]) if len(u) else None
+    if est is None or (est and abs(r["eps"] / est - 1) > 0.5):
+        print(f"Quartalszahlen {t}: Pressemitteilung {r['eps']} vs. Erwartung {est} – unplausibel oder ohne Erwartung, warte auf Yahoo")
+        return None                                        # Lesefehler wahrscheinlicher als eine Überraschung über 50 %
     print(f"Quartalszahlen {t}: aus der Pressemitteilung – Gewinn je Aktie {r['eps']} ({r['eps_kind']}), Erwartung {est}")
     ts = pd.Timestamp.now(tz="UTC").tz_convert("America/New_York")
     return pd.DataFrame({"EPS Estimate": [est], "Reported EPS": [r["eps"]], "Surprise(%)": [None]}, index=pd.DatetimeIndex([ts], name="Earnings Date"))
@@ -361,6 +366,7 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
     if syn is not None:                                    # Termin fehlt (noch) in der Terminliste, Zahlen stehen aber in der Historie
         reported = pd.concat([syn, reported]).sort_index(ascending=False)
         upcoming = upcoming[upcoming.index.tz_convert("UTC").tz_localize(None).normalize() > syn.index[0].tz_convert("UTC").tz_localize(None).normalize()]
+    from_pr = False
     if live:
         lt = reported.index[0] if len(reported) else None
         if lt is None or today - lt.tz_convert("UTC").tz_localize(None).normalize() > pd.Timedelta(days=3):
@@ -368,6 +374,7 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
             if pr is None:
                 return None, None                          # noch nichts gemeldet – erst die nächste Prüfung
             reported = pd.concat([pr, reported]).sort_index(ascending=False)
+            from_pr = True
         upcoming = upcoming.iloc[0:0]
     if close is None or len(close) < 30:
         try:
@@ -422,6 +429,8 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
             rx = reaction(close, last)
             if rx:
                 res["rx"] = rx
+        if from_pr:
+            res["src"] = "pr"                              # vorläufig aus der Pressemitteilung – Yahoo ersetzt es bei der nächsten Prüfung
         res["view"] = assess(res.get("eps_s"), res.get("rev_s"), (g or {}).get("d"))
         rec["last"] = res
     if len(upcoming):

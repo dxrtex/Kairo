@@ -147,3 +147,17 @@ def test_deutsche_adhoc_prognose():
     assert E.guidance([("Siemens Energy: Prognose gesenkt", "u", "")], ["Siemens"])["d"] == -1
     assert E.guidance([("Allianz bestätigt Ausblick für das Gesamtjahr", "u", "")], ["Allianz"])["d"] == 0
     assert E.guidance([("Volkswagen erhöht Investitionen und Ausgaben", "u", "")], ["Volkswagen"]) is None
+
+
+def test_pressemitteilung_nur_plausibel(monkeypatch):
+    monkeypatch.setenv("SEC_CONTACT", "x@y.z")
+    ev = {"date": "2026-10-29"}
+    up = pd.DataFrame({"EPS Estimate": [1.80]}, index=pd.DatetimeIndex([pd.Timestamp("2026-10-29 16:30", tz="America/New_York")]))
+    today = pd.Timestamp("2026-10-29")
+    monkeypatch.setattr(E, "_sec_text", lambda t, since: "Quarterly diluted earnings per share of $1.95. Revenue was $100.0 billion.")
+    r = E._sec_results("AAPL", ev, up, "EPS Estimate", today)
+    assert r is not None and r["Reported EPS"].iloc[0] == 1.95
+    monkeypatch.setattr(E, "_sec_text", lambda t, since: "Quarterly diluted earnings per share of $0.40.")      # −78 % → eher Lesefehler
+    assert E._sec_results("AAPL", ev, up, "EPS Estimate", today) is None
+    monkeypatch.setattr(E, "_sec_text", lambda t, since: "GAAP diluted EPS was $1.70. Adjusted EPS figures in the tables.")
+    assert E._sec_results("AAPL", ev, up, "EPS Estimate", today) is None    # nur GAAP, aber bereinigte Zahl existiert
