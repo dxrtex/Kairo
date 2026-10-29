@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from . import secguide
 from .config import ROOT
 
 APP = "https://dxrtex.github.io/Kairo/?sec=calendar"
@@ -208,6 +209,18 @@ def send(msgs: list[dict], devs: list[dict], k) -> int:
     return n
 
 
+def form_of(cik) -> str | None:
+    """Formular der jüngsten Meldung (8-K/6-K/…) – für die Prüfung, ob ein 6-K wirklich Zahlen enthält."""
+    if not cik:
+        return None
+    try:
+        import requests
+        f = requests.get(f"https://data.sec.gov/submissions/CIK{int(cik):010d}.json", headers=_sec_ua(), timeout=20).json()["filings"]["recent"]
+        return f["form"][0] if f["form"] else None
+    except Exception:
+        return None
+
+
 def sec_pushes(hits: str, events: list[dict], out: Path) -> list[str]:
     """Sofort-Mitteilung nach der SEC-Meldung (vom Kursdienst übergeben: „AAPL,MSFT“)."""
     tick = [x.strip().upper() for x in (hits or "").split(",") if x.strip()]
@@ -220,10 +233,14 @@ def sec_pushes(hits: str, events: list[dict], out: Path) -> list[str]:
     names = {e["ticker"]: e.get("name") or e["ticker"] for e in events if e.get("ticker")}
     today = pd.Timestamp.now(tz="Europe/Berlin").strftime("%Y-%m-%d")
     msgs = []
+    cm = ciks()
     for t in tick:
         key = f"sec|{t}|{today}"
         if key in sent or (rel and t not in rel):
             continue
+        if form_of(cm.get(t)) == "6-K" and not secguide.is_results(secguide.fetch_text(cm[t], today)):
+            print(f"Quartalszahlen: {t} – 6-K ohne Ergebniszahlen, keine Mitteilung (Review W8)")
+            continue                                 # ausländische Firma: 6-K ist nicht immer eine Ergebnis-Meldung
         sent[key] = today
         msgs.append({"title": f"📊 {names.get(t, t)}: Quartalszahlen sind raus", "body": "Offizielle Meldung bei der SEC – Ergebnis und Einschätzung folgen in Kairo in wenigen Minuten.",
                      "url": APP, "tag": f"kairo-earn-{t}"})

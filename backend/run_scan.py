@@ -679,7 +679,11 @@ def main(argv=None) -> int:
         m = meta.get(t, {})
         info = {"currency": m.get("currency") or i.get("currency"), "market_cap_usd": m.get("market_cap_usd"),
                 "market_cap": i.get("market_cap"), "earnings_date": i.get("earnings_date") or m.get("earnings_date")}
-        res = evaluate(df, info, ticker=t)            # mit Earnings-Termin neu bewerten
+        try:
+            res = evaluate(df, info, ticker=t)        # mit Earnings-Termin neu bewerten
+        except Exception as exc:                      # eine kaputte Aktie darf nie den ganzen Scan abbrechen (Review W12)
+            stats["errors"] += 1
+            print(f"{t}: Fehler bei der zweiten Bewertung {exc!r} – erste Bewertung bleibt")
         m = {**m, "name": m.get("name") or i.get("name"), "sector": m.get("sector") or i.get("sector") or "",
              "region": m.get("region") or region_of(t), "exchange": m.get("exchange") or i.get("exchange") or ""}
         rows.append(result_row(res, m))

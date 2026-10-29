@@ -133,8 +133,24 @@ def results(text: str) -> dict:
     return out
 
 
+RESULTS_WORDS = re.compile(r"(?i)\b(quarter|quarterly|half[- ]year|first half|nine months|fiscal year|results|revenues?|net sales|"
+                           r"net income|operating income|earnings per share|EPS|EBITDA)\b")
+
+
+def is_results(text: str | None) -> bool:
+    """Ist das wirklich eine Ergebnis-Meldung? Ein 6-K kann alles Mögliche sein (Hauptversammlung, Aktienrückkauf …).
+    Verlangt mehrere Ergebnis-Begriffe und mindestens einen Geldbetrag (Review W8)."""
+    if not text:
+        return False
+    head = text[:15000]
+    words = {m.group(1).lower() for m in RESULTS_WORDS.finditer(head)}
+    money = re.search(r"(\$|€|£|¥|US\$|USD|EUR|RMB|NT\$|JPY|KRW)\s?\d", head)
+    return len(words) >= 3 and bool(money)
+
+
 def fetch_text(cik: int, since_iso: str) -> str | None:
-    """Text der Pressemitteilung (Anhang 99.1) zum neuesten 8-K Punkt 2.02 bzw. 6-K seit since_iso. Braucht SEC_CONTACT."""
+    """Text der Pressemitteilung (Anhang 99.1) zum neuesten 8-K Punkt 2.02 bzw. 6-K seit since_iso. Braucht SEC_CONTACT.
+    Ein 6-K zählt nur, wenn sein Text eine Ergebnis-Meldung ist (is_results) – sonst wird das nächstältere geprüft."""
     contact = os.environ.get("SEC_CONTACT", "").strip()
     if not contact:
         return None
@@ -152,6 +168,13 @@ def fetch_text(cik: int, since_iso: str) -> str | None:
             names = [x["name"] for x in idx["directory"]["item"] if x["name"].lower().endswith((".htm", ".html"))
                      and x["name"] != f["primaryDocument"][i] and not re.match(r"(?i)(R\d+\.htm|.*index|.*-index-headers)", x["name"])]
             docs = sorted(names, key=lambda n: (not re.search(r"(?i)(ex-?99|exhibit99|press|earn|result|release)", n), n))
+            if f["form"][i] == "6-K":                    # Anhang oder (oft) das Hauptdokument selbst
+                docs = docs[:2] + [f["primaryDocument"][i]]
+                for name in docs:
+                    t = text_of(requests.get(f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc}/{name}", headers=ua, timeout=30).text)
+                    if is_results(t):
+                        return t
+                continue                                 # kein Ergebnis-6-K → älteres im Fenster prüfen
             for name in docs[:1]:
                 return text_of(requests.get(f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc}/{name}", headers=ua, timeout=30).text)
             return None

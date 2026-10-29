@@ -68,18 +68,19 @@ def messages(dev: dict, prices: dict, today: str, sent: dict) -> list[dict]:
             add(f"tp:{p.get('i')}", f"🎯 Kursziel erreicht: {n}", f"Hoch {_num(hi)} {cur} über dem Ziel {_num(p['tp'])} {cur} – Gewinn mitnehmen oder Teilverkauf.")
         c = float(df["Close"].dropna().iloc[-1])
         if p.get("ko") and c > 0:
-            _ko(add, n, c, float(p["ko"]), "long", today, cur, "entry")
+            _ko(add, n, c, float(p["ko"]), "long", today, cur, "entry", lo)
     for d in dev.get("d") or []:                       # Depot: K.-o.-Schwelle
         df = prices.get(d.get("t"))
         if not d.get("ko") or df is None or not len(df):
             continue
-        _ko(add, (d.get("n") or d["t"])[:28], float(df["Close"].dropna().iloc[-1]), float(d["ko"]), d.get("dir", "long"), today, "", "depot")
+        dr = d.get("dir", "long")
+        ext = _hit(df, None, "Low", min) if dr == "long" else _hit(df, None, "High", max)   # Tagestief/-hoch (Review K7)
+        _ko(add, (d.get("n") or d["t"])[:28], float(df["Close"].dropna().iloc[-1]), float(d["ko"]), dr, today, "", "depot", ext)
     return out
 
 
 def ema_exit(df, since: str | None, today: str, span: int = 20, start: int = 10) -> dict | None:
     """Letzter fertiger Tagesschluss (vor heute) unter der EMA 20 und mindestens Tag 10 des Trades (Kauftag = Tag 1)?"""
-    import numpy as np
     if not since:
         return None
     c = df["Close"].dropna()
@@ -88,15 +89,22 @@ def ema_exit(df, since: str | None, today: str, span: int = 20, start: int = 10)
         return None
     ema = c.ewm(span=span, adjust=False).mean()
     d = str(c.index[-1])
-    day = int(np.busday_count(since, d)) + 1
+    day = sum(str(i)[:10] >= since for i in c.index)   # echte Handelstage aus den Kursdaten (Feiertage zählen nicht, Review W2)
     if day < start or d < since or not float(c.iloc[-1]) < float(ema.iloc[-1]):
         return None
     return {"day": day, "c": float(c.iloc[-1]), "ema": float(ema.iloc[-1]), "d": d}
 
 
-def _ko(add, n, c, ko, direction, today, cur, sec):
+def _ko(add, n, c, ko, direction, today, cur, sec, ext=None):
+    """K.-o.-Schwelle des Turbos. ext = Tagestief (long) bzw. Tageshoch (short): Ein Turbo ist schon ausgeknockt, wenn die
+    Schwelle untertags berührt wurde – auch wenn der Schlusskurs wieder darüber liegt (Review K7). Verbindlich ist der Emittent."""
+    hit = ext is not None and ((direction == "long" and ext <= ko) or (direction != "long" and ext >= ko))
     dist = (c - ko) / c if direction == "long" else (ko - c) / c
-    if dist <= 0:
+    if hit and dist > 0:
+        add(f"kohit:{n}:{ko}", f"💥 K.-o. vermutlich erreicht: {n}",
+            f"{'Tagestief' if direction == 'long' else 'Tageshoch'} {_num(ext)} {cur} hat die K.-o.-Schwelle {_num(ko)} {cur} berührt "
+            f"(Kurs jetzt {_num(c)}). Der Turbo ist dann meist wertlos verfallen – beim Emittenten bzw. im Depot prüfen.", sec)
+    elif dist <= 0:
         add(f"kohit:{n}:{ko}", f"💥 K.-o. erreicht: {n}", f"Kurs {_num(c)} {cur} hat die K.-o.-Schwelle {_num(ko)} {cur} erreicht.", sec)
     elif dist < 0.05:
         add(f"ko:{n}:{ko}:{today}", f"⚠️ K.-o. nah: {n}", f"Nur noch {_pct(dist)} bis zur K.-o.-Schwelle {_num(ko)} {cur} (Kurs {_num(c)}).", sec)
