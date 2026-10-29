@@ -9,7 +9,8 @@ Prüft den eingefrorenen Datensatz prices_v1 (und Wechselkurse/Benchmarks) auf:
   5. Split-Reste: Schluss springt um Faktor ≈ 2/3/4/5/10 (oder Kehrwert), ohne dass AdjClose den Sprung ausgleicht
   6. Unabhängige Gegenprobe (Stichprobe): Stooq-Tageskurse vs. Yahoo – Anteil Tage mit gleicher Rendite (±1 %)
   7. Nachträgliche Änderung: frischer Yahoo-Download vs. eingefrorener Stand (Stichprobe)
-  8. Wirkung auf die Strategie: Anteil der Kairo-Treffer, deren Treffer-/Haltefenster einen markierten Tag enthält
+  8. Survivorship: gleichgewichtetes US-Universum vs. RSP (gleichgewichteter S&P 500, inkl. später entfernter Firmen)
+  9. Wirkung auf die Strategie: Anteil der Kairo-Treffer, deren Treffer-/Haltefenster einen markierten Tag enthält
 
 Ergebnis: JSON + Markdown. Bewertung vorab festgelegt (siehe GRENZEN): Ein Titel gilt als „unsicher“, wenn er einen
 Ausreißer, einen Split-Rest, eine Plausibilitätsverletzung an mehr als 0,5 % der Tage oder eine Gegenprobe < 95 % hat.
@@ -116,6 +117,28 @@ def fresh(tickers: list[str]) -> dict[str, pd.Series]:
     return out
 
 
+def survivorship(px: pd.DataFrame, uni: pd.DataFrame) -> dict:
+    """Gleichgewichtet (monatlich neu gewichtet) alle US-Titel des Universums vs. RSP (gleichgewichteter S&P 500 mit allen
+    damaligen Mitgliedern). Der jährliche Abstand ist eine grobe Größe der Verzerrung durch fehlende Pleite-Firmen."""
+    import yfinance as yf
+    us = set(uni.loc[uni["region"] == "us", "ticker"])
+    a = px[px["ticker"].isin(us)].pivot(index="date", columns="ticker", values="AdjClose").sort_index()
+    a.index = pd.to_datetime(a.index)
+    m = a.resample("ME").last()
+    r = m.pct_change(fill_method=None).iloc[1:]
+    ew = r.mean(axis=1, skipna=True)                      # nur Titel mit Kurs in dem Monat
+    rsp = yf.download("RSP", start="2005-01-01", end="2026-10-17", auto_adjust=False, progress=False)["Adj Close"]
+    rsp = (rsp.iloc[:, 0] if isinstance(rsp, pd.DataFrame) else rsp).resample("ME").last().pct_change().iloc[1:]
+    j = pd.concat([ew.rename("uni"), rsp.rename("rsp")], axis=1).dropna()
+    out = {}
+    for name, (s0, s1) in {"2008-16": ("2008-01-01", "2016-12-31"), "2017-21": ("2017-01-01", "2021-12-31"),
+                           "2022-26": ("2022-01-01", "2026-10-31"), "gesamt": ("2008-01-01", "2026-10-31")}.items():
+        x = j[(j.index >= s0) & (j.index <= s1)]
+        cg = lambda s: float((1 + s).prod() ** (12 / len(s)) - 1)
+        out[name] = {"universum": cg(x["uni"]), "rsp": cg(x["rsp"]), "abstand": cg(x["uni"]) - cg(x["rsp"]), "monate": len(x)}
+    return out
+
+
 def signal_impact(sig: pd.DataFrame, flagged: dict[str, list[str]]) -> dict:
     """Treffer, deren Fenster (60 Tage vor bis 90 Tage nach dem Treffer) einen markierten Tag enthält."""
     hit = 0
@@ -184,6 +207,11 @@ def main(argv=None) -> int:
                          "unter_99": sorted(t for t, v in fr.items() if v["match"] < 0.99)},
         "unsicher": sorted(unsure.index),
     }
+    try:
+        here = Path(__file__).resolve().parents[1] / "strategy_championship" / "data" / "universe_frozen_2026-10-16.csv"
+        res["survivorship"] = survivorship(px, pd.read_csv(here))
+    except Exception as exc:                                # Gegenprobe darf die Prüfung nicht abbrechen
+        res["survivorship"] = {"fehler": repr(exc)[:200]}
     if a.signals:
         res["wirkung_auf_treffer"] = signal_impact(pd.read_parquet(a.signals), flagged)
     (out / "data_audit.json").write_text(json.dumps(res, indent=1, ensure_ascii=False))

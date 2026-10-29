@@ -196,6 +196,28 @@ bester Kandidat geht in den Papier-Test.
   12 Monate bzw. 346,50 USD für 6 Monate laut Norgate-Preisseite (vor Kauf prüfen; Daten nach Ablauf zu löschen). Würde den
   Survivorship-Bias für die USA klären und wäre der einzige echte neue Prüfstein.
 
+## 8b. Datenqualität – Pflicht vor jedem Strategietest (Wunsch Jonny, 29.10.2026)
+
+Kein Ergebnis darf durch schlechte oder ungenaue Daten entstehen. Deshalb gilt:
+
+1. **Prüfung jedes Datensatzes** (`research/ultimate/data_audit.py`, Workflow `research_ultimate_audit.yml`) –
+   USA/Europa, Asien und die neue Vorzeit 1999–2007 einzeln:
+   Lücken, unmögliche Kerzen (Hoch unter Schluss usw.), Fehlkurse (Sprung > 40 % mit Rücklauf am Folgetag),
+   Stillstand, nicht bereinigte Splits, **Gegenprobe mit einer zweiten, unabhängigen Quelle (Stooq)** an einer
+   Zufallsstichprobe, Vergleich mit einem frischen Yahoo-Download (nachträgliche Änderungen) und Anteil der Kairo-Treffer,
+   die von markierten Tagen betroffen sind.
+2. **Gate (vorab festgelegt):** Ein Datensatz wird nur benutzt, wenn unmögliche Kerzen < 0,1 % aller Kerzen, Median-
+   Übereinstimmung mit Stooq ≥ 98 % der Tage (±1 %) und höchstens 5 % der Treffer von markierten Tagen betroffen sind.
+   Sonst: erst reparieren (neu laden / Titel ausschließen), Prüfung wiederholen.
+3. **Unsichere Titel** (Fehlkurs, Split-Rest, viele kaputte Kerzen oder Gegenprobe < 95 %): jedes Ergebnis wird einmal
+   mit und einmal ohne sie gerechnet. Kippt das Urteil, gilt es als **nicht belastbar**.
+4. **Survivorship-Bias messen statt nur nennen:** Gleichgewichtetes Halten unseres US-Universums gegen den
+   gleichgewichteten S&P 500 (RSP, alle damaligen Mitglieder) – der Abstand pro Jahr ist eine Untergrenze für die
+   Verzerrung. Jede absolute Rendite einer Einzelaktien-Strategie wird mit diesem Abstand ausgewiesen.
+5. **Wechselkurse und Benchmarks** werden mit derselben Prüfung kontrolliert (Lücken, Sprünge).
+6. **Was Prüfungen nicht reparieren können:** fehlende Pleite-Firmen. Mit Gratisdaten bleibt dieser Vorbehalt bei jedem
+   Rücksetzer-Ergebnis stehen; nur Daten mit Delistings (z. B. Norgate) lösen ihn – Entscheidung bei Jonny.
+
 ## 9. Grenzen der Aussagekraft
 
 Survivorship-Bias (nicht behebbar ohne Bezahldaten), mehrfach benutzte Zeiträume, Gratisdaten (Yahoo-Fehler, Splits),
