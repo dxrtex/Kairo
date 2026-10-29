@@ -233,25 +233,49 @@ def sec_pushes(hits: str, events: list[dict], out: Path) -> list[str]:
     return tick
 
 
+def _fp(last: dict) -> str:
+    return f"{last['date']}|{last.get('eps_a')}|{(last.get('view') or {}).get('lbl') or ''}"
+
+
+def _changed(fp: str, last: dict) -> bool:
+    """Wesentlich anders als bei der ersten Mitteilung: Gewinn je Aktie > 5 % abweichend oder andere Einschätzung."""
+    _, e, lbl = fp.split("|", 2)
+    try:
+        e0 = float(e)
+    except ValueError:
+        return False
+    e1 = last.get("eps_a")
+    return (e1 is not None and abs(e1 - e0) > 0.05 * max(abs(e0), 0.01)) or lbl != ((last.get("view") or {}).get("lbl") or "")
+
+
 def result_pushes(fresh: dict, prev: dict, events: list[dict], out: Path) -> None:
-    """Mitteilung, sobald Yahoo die Werte eines Termins zum ersten Mal hat."""
+    """Mitteilung, sobald die Werte eines Termins zum ersten Mal da sind – und eine Korrektur, falls sie sich danach
+    wesentlich ändern (Pressemitteilung falsch gelesen, Yahoo korrigiert)."""
+    f = out / "earn_push_sent.json"
+    sent = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
     new = {t: r for t, r in fresh.items() if (r.get("last") or {}).get("eps_a") is not None
-           and ((prev.get(t) or {}).get("last") or {}).get("date") != r["last"]["date"]}
+           and (((prev.get(t) or {}).get("last") or {}).get("date") != r["last"]["date"]
+                or (f"fp|{t}|{r['last']['date']}" in sent and _changed(sent[f"fp|{t}|{r['last']['date']}"], r["last"])))}
     if not new:
         return
     devs, k = _devices()
     if not devs or not k:
         return
-    f = out / "earn_push_sent.json"
-    sent = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
     rel = mine(devs, events)
     msgs = []
     for t, r in new.items():
-        key = f"res|{t}|{r['last']['date']}"
-        if key in sent or t not in rel:
+        key, fk = f"res|{t}|{r['last']['date']}", f"fp|{t}|{r['last']['date']}"
+        if t not in rel:
             continue
-        sent[key] = r["last"]["date"]
-        msgs.append(result_text(t, r.get("name") or t, r["last"]))
+        if key not in sent:
+            m = result_text(t, r.get("name") or t, r["last"])
+        elif fk in sent and _changed(sent[fk], r["last"]):
+            m = result_text(t, r.get("name") or t, r["last"])
+            m["title"] = "Korrektur – " + m["title"]
+        else:
+            continue
+        sent[key], sent[fk] = r["last"]["date"], _fp(r["last"])
+        msgs.append(m)
     if msgs:
         print(f"Quartalszahlen: Ergebnis-Mitteilung für {len(msgs)} Aktie(n) – {send(msgs, devs, k)} gesendet")
     f.write_text(json.dumps(sent), encoding="utf-8")
