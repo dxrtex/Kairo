@@ -99,6 +99,13 @@ def watch_file(events: list[dict], nexts: dict, out: Path, today: pd.Timestamp, 
                 if (hint < 12) != (ny.hour < 12):
                     continue
             x.update(ts=ny.tz_convert("UTC").isoformat(), exact=True)
+    for x in items:                                       # Prüffenster für den Kursdienst (ab Version 6 maßgeblich)
+        if x["ts"]:
+            e = pd.Timestamp(x["ts"])
+            a, b = (e - pd.Timedelta(minutes=20), e + pd.Timedelta(hours=3)) if x.get("exact") else (e - pd.Timedelta(hours=3), e + pd.Timedelta(hours=6))
+        else:
+            a = pd.Timestamp(x["date"] + " 09:00").tz_localize("UTC"); b = a + pd.Timedelta(hours=17)
+        x.update({"from": a.isoformat(), "to": b.isoformat()})
     (out / "earn_watch.json").write_text(json.dumps({"generated": pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds"), "items": items},
                                                     ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     return len(items)

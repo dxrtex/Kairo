@@ -62,6 +62,7 @@ async function secCheck(env, now, st) {
   const hits = JSON.parse((await kv.get("e8k")) || "{}"), news = [];
   const open = (w.items || []).filter(x => {
     if (!x.cik || hits[x.t + "|" + x.date]) return false;
+    if (x.from && x.to) return t >= Date.parse(x.from) && t <= Date.parse(x.to);   // Prüffenster von der GitHub-Prüfung (ohne neuen Code anpassbar)
     if (x.ts && x.exact) { const e = Date.parse(x.ts); return t >= e - 20 * 6e4 && t <= e + 3 * 36e5; }   // aus früheren SEC-Meldungen gelernt
     if (x.ts) { const e = Date.parse(x.ts); return t >= e - 3 * 36e5 && t <= e + 6 * 36e5; }   // Yahoo-Zeiten sind oft Platzhalter (8:00 / 16:00 New York)
     const d0 = Date.parse(x.date + "T09:00:00Z"); return t >= d0 && t <= d0 + 17 * 36e5;   // ohne Uhrzeit: 10–03 Uhr Berlin

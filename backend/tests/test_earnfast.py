@@ -47,3 +47,4 @@ def test_gelernte_meldezeit(monkeypatch, tmp_path):
     earnfast.watch_file(ev, nexts, tmp_path, pd.Timestamp("2026-10-29"))
     a = json.loads((tmp_path / "earn_watch.json").read_text())["items"][0]
     assert a["exact"] is True and a["ts"].startswith("2026-10-29T20:32:00")
+    assert a["from"].startswith("2026-10-29T20:12:00") and a["to"].startswith("2026-10-29T23:32:00")
