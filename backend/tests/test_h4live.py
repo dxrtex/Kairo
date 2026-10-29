@@ -95,11 +95,13 @@ def test_base_waiting_and_failed():
 
 
 def test_ruhe_filter_am_basis_tag():
-    """Basis-Tag zählt nur, wenn er ruhig ist – sonst weiter warten (Hinweis „unruhig“), nach 10 Tagen verfallen."""
+    """Mit calm=True zählt ein Basis-Tag nur, wenn er ruhig ist (live aus seit dem Depot-Test 29.10.2026, Mechanik bleibt geprüft)."""
+    R = {**hl.QRULE, "calm": True}
+    assert hl.QRULE["calm"] is False
     px = {"o": [1.0] * 12, "h": [1.01] * 12, "l": [0.99] * 12, "c": [1.0] * 12, "atr": 0.02, "pl": [0.98] * 10}
-    assert hl.base_state({**px, "calm": [True] * 12})["st"] == "base"
-    unr = hl.base_state({**px, "o": px["o"][:6], "h": px["h"][:6], "l": px["l"][:6], "c": px["c"][:6], "calm": [False] * 6})
+    assert hl.base_state({**px, "calm": [True] * 12}, R)["st"] == "base"
+    unr = hl.base_state({**px, "o": px["o"][:6], "h": px["h"][:6], "l": px["l"][:6], "c": px["c"][:6], "calm": [False] * 6}, R)
     assert unr["st"] == "basis" and unr.get("unruhig")
-    assert hl.base_state({**px, "calm": [False] * 12})["st"] == "weg"
-    later = hl.base_state({**px, "calm": [False] * 6 + [True] * 6})
+    assert hl.base_state({**px, "calm": [False] * 12}, R)["st"] == "weg"
+    later = hl.base_state({**px, "calm": [False] * 6 + [True] * 6}, R)
     assert later["st"] == "base" and later["s"] == 7          # erst der ruhige Basis-Tag (Tag 7) löst den Kauf aus

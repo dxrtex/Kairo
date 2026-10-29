@@ -38,3 +38,32 @@ Skript `tools/research/earnings_entry_test.py`, 8.498 US-Trades, Zahlen = SEC-8-
 +0,22 / +0,32 / +0,53 R gegenüber +0,18 / +0,27 / +0,04 R (Train / Validierung / Holdout). Vorab-Regel („schlechter in allen
 drei“) nicht erfüllt – im Gegenteil. Folge: Der Trade-Plan zieht den Ausstieg nicht mehr vor die Zahlen vor, kein Score-Abzug
 mehr (config earnings_penalty 0); nur noch Hinweis auf das Kurslücken-Risiko (v. a. bei Turbos).
+
+# Depot-Test der Ruhe-Regel und der Rangfolge (29.10.2026)
+Skript `research/strategy_championship/v2_test.py`, Regeln vorab festgelegt (siehe Kopf des Skripts). Treffer = heutiger
+Scanner (Variante 0 der Schwellen-Prüfung, 2008–2026, USA/Europa), S01-B-Basis, EMA20-Ausstieg ab Tag 10, max. 40 Tage.
+
+Je Trade (R netto, 5.000 € PRIME+):
+
+| | Train | Validierung | Holdout | Trades |
+|---|---|---|---|---|
+| G0 ohne Ruhe-Filter | +0,137 | +0,057 | +0,105 | 4.845 |
+| G1 Ruhe am Basis-Tag | +0,162 | +0,232 | −0,029 | 2.280 |
+
+Depot 5.000 €, 1 % Risiko, max. 5 Positionen, CAGR (Basis-Kosten):
+
+| Variante | Train | Validierung | Holdout |
+|---|---|---|---|
+| G0 · Vormomentum schwächer zuerst (live) | +15,4 % | −1,2 % | +15,3 % |
+| G1 · Vormomentum | +3,8 % | +6,7 % | +6,7 % |
+| G0 · ruhigere zuerst (ATR/Kurs) | +10,1 % | +0,9 % | −5,3 % |
+| G0 · wenigstes Hin und Her zuerst | +8,7 % | −1,8 % | −0,9 % |
+| G0 · höherer Score zuerst | +18,3 % | +2,3 % | −9,8 % |
+| G0 · Zufall | +6,9 % | +3,4 % | ±0,0 % |
+
+**E1 nicht bestanden:** G1 ist in der Validierung besser, im Holdout aber deutlich schlechter → kein Ruhe-Filter
+(`QRULE["calm"] = False`). Die Treffer-Ansicht und alles andere bleiben wie zuvor ohne Ruhe-Filter.
+**E2:** Keine Rangfolge schlägt „schwächeres Vormomentum zuerst“ in allen drei Abschnitten → bleibt. Vorbehalt: Die Rangfolge
+verändert das Depot-Ergebnis stark und uneinheitlich (Validierung bei allen schwach) – ein Hinweis, wie viel Zufall in einem
+5-Plätze-Depot steckt.
+Asien (E3) läuft noch; Ergebnis folgt hier.

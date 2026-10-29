@@ -416,8 +416,9 @@ def _market_once() -> dict:
         return {}
 
 
-# calm: ein Basis-Tag zählt nur, wenn er ruhig ist (px["calm"], scanner.calm_days) – Forschung 28./29.10.2026
-QRULE = dict(entry="base", ck=5, cm=1.5, lowhalf=False, wait=10, inv=10, buf=0.25, maxd=3.0, tgt=None, wkend=False, levs=[1], calm=True)
+# calm=True hieße: ein Basis-Tag zählt nur, wenn er ruhig ist (px["calm"], scanner.calm_days). Aus seit 29.10.2026 – im Depot-Test
+# (research/strategy_championship/v2_test.py, 5.000 €, 5 Plätze) im Holdout deutlich schlechter (+6,7 % statt +15,3 % p. a.).
+QRULE = dict(entry="base", ck=5, cm=1.5, lowhalf=False, wait=10, inv=10, buf=0.25, maxd=3.0, tgt=None, wkend=False, levs=[1], calm=False)
 
 
 def _quality(sets: dict) -> dict:

@@ -1666,7 +1666,7 @@ let KIND_BTNS = KIND_BTNS_ALL.filter(x => x[0] !== "trend");
 // Scanner: fünf klare Ansichten statt vieler Knöpfe (eine ist immer aktiv) – [Schlüssel, Name, zählt, Arten für selRows, Erklärung]
 const VIEWS = [
   ["go", "Einstiege", r => isH4(r), ["h4"], "Treffer mit fertiger Seitwärtsphase – ✓ 4H bestätigt = jetzt einsteigen · … wartet auf 4H · ▶ läuft. Bei Bestätigung kommt eine Mitteilung."],
-  ["hit", "Treffer", r => r.passed, ["hit"], "Alle 11 Kriterien erfüllt. Gekauft wird erst, wenn danach die Seitwärtsphase fertig und ruhig ist – dann steht die Aktie oben unter „Kaufbereit“."],
+  ["hit", "Treffer", r => r.passed, ["hit"], "Alle 11 Kriterien erfüllt. Gekauft wird erst, wenn danach die Seitwärtsphase fertig ist – dann steht die Aktie oben unter „Kaufbereit“."],
   ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Ein oder zwei Kriterien fehlen – nur beobachten, kein Kaufsignal."],
   ["trend", "Trend", r => isTrend(r), ["trend"], "Trend-Rücksetzer – eigene, getrennte Strategie (Rücksetzer im Aufwärtstrend)."],
   ["mine", "Meine", r => r.in_watchlist || favs().has(r.ticker), ["watch", "fav"], "Deine Watchlist (★) – mit Stufe auf dem Weg zum Einstieg."]];
@@ -4736,7 +4736,8 @@ const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 const APP_VER = "2026.11.08";
 const APP_NEWS = [["2026.11.08", "Neuer Scanner", [
   ["Was heute zu tun ist", "Die Treffer-Ansicht zeigt jetzt oben nur, was kaufbereit ist – mit Kaufspanne, Stop, Stückzahl und Ausstieg. Darunter die Treffer, die noch auf ihre Seitwärtsphase warten. Die Status-Spalte ist weg, die Kriterien bleiben bei jeder Aktie sichtbar."],
-  ["Ruhe-Filter am richtigen Tag", "Seit dem 28.10. musste die Konsolidierung schon am Treffer-Tag ruhig sein – dadurch fielen fast alle Treffer weg, obwohl der Test genau dort keinen Vorteil zeigte. Jetzt gilt die Ruhe wie getestet am Tag vor dem Kauf: Ein Treffer wird erst kaufbereit, wenn seine Seitwärtsphase eng UND ruhig ist."]]],
+  ["Ruhe-Filter wieder raus", "Seit dem 28.10. musste die Konsolidierung am Treffer-Tag ruhig sein – dadurch fielen fast alle Treffer weg. Der saubere Depot-Test (5.000 €, 5 Plätze, 2008–2026) zeigt: Mit Ruhe-Filter wäre das Depot im jüngsten Zeitraum 2022–26 schlechter gewesen (+6,7 % statt +15,3 % pro Jahr). Darum gilt wieder die getestete Regel ohne Ruhe-Filter."],
+  ["Rangfolge bestätigt", "Sind mehr Aktien kaufbereit als Plätze frei, zuerst die mit schwächerem Vormomentum – im Depot-Test klar besser als „ruhigere zuerst“ oder „wenigstes Hin und Her zuerst“."]]],
   ["2026.11.07", "Quartalszahlen genauer", [
   ["Umsatzwachstum zählt mit", "Verlangsamt sich das Umsatzwachstum deutlich (wie bei Bloom Energy), stiegen Aktien nach guten Zahlen nur in 54 statt 64 % der Fälle – in beiden Testzeiträumen. Die Wahrscheinlichkeit oben berücksichtigt das jetzt."],
   ["Ab jetzt wird gesammelt", "Jede Meldung mit Umsatz- und Ausblick-Vergleich wird archiviert, um die Prognose später weiter zu prüfen."]]],
@@ -5874,7 +5875,7 @@ function boardCard(it, rank) {
 function boardRow(it) {
   const r = byTicker(it.t), sr = rowOf(it.t) || {}, open = r ? `data-card="${esc(it.t)}"` : `data-ein="${esc(it.t)}"`;
   const why = it.st === "basis" ? (it.unruhig ? `Seitwärtsphase da, aber noch zu unruhig · Tag ${it.day} von 10` : `wartet auf enge Seitwärtsphase · Tag ${it.day} von 10`)
-    : it.st === "weg" ? `verfallen: ${it.why || "keine ruhige Seitwärtsphase"}`
+    : it.st === "weg" ? `verfallen: ${it.why || "keine Seitwärtsphase"}`
     : it.base && it.base.ed ? `Kauftag war ${dateDE(it.base.ed)} – nicht nachkaufen` : "Kauftag vorbei";
   const dot = it.st === "basis" ? (it.unruhig ? "y" : "b") : "n";
   return `<button class="bd-row" ${open}><i class="sd ${dot}"></i><span class="bd-n"><b>${esc(String(it.n || (r || {}).name || it.t).slice(0, 34))}</b><small>${esc(it.t)} · ${esc(why)}</small>${critLine(it.t)}</span><span class="bd-p">${fmt(sr.c ?? (r || {}).close)}<small>${esc(it.cur || sr.cur || "")}</small></span></button>`;
@@ -5887,14 +5888,14 @@ function boardHtml() {
   const sec = (title, sub, body, cls = "") => `<section class="bd-sec ${cls}"><div class="bd-t"><b>${title}</b><span>${sub}</span></div>${body}</section>`;
   const ready = B.ready.length
     ? B.ready.map((it, i) => boardCard(it, i + 1)).join("") + (B.ready.length > free ? `<div class="note" style="margin:6px 2px 0">${free ? `Nur ${free} Platz${free === 1 ? "" : "e"} frei (höchstens ${c.maxOpen} Trades) – die ersten ${free} zuerst` : `Alle ${c.maxOpen} Plätze belegt – heute kein neuer Kauf`}. Rangfolge: schwächeres Vormomentum zuerst (im Test besser).</div>` : "")
-    : `<div class="bd-empty">Heute ist kein Treffer kaufbereit. Sobald die Seitwärtsphase eines Treffers fertig und ruhig ist, steht er hier – und du bekommst eine Mitteilung.</div>`;
+    : `<div class="bd-empty">Heute ist kein Treffer kaufbereit. Sobald die Seitwärtsphase eines Treffers fertig ist, steht er hier – und du bekommst eine Mitteilung.</div>`;
   let html = sec("🟢 Kaufbereit", `${B.ready.length} · Kauf zur nächsten Eröffnung`, ready, "ok");
   if (B.own.length) html += sec("Im Depot", `${B.own.length}`, B.own.map(boardRow).join(""));
-  html += sec("🟡 Wartet auf ruhige Seitwärtsphase", `${B.wait.length} Treffer · bis zu 10 Tage`, B.wait.length ? B.wait.slice(0, 12).map(boardRow).join("") + (B.wait.length > 12 ? `<details class="bd-in"><summary>Alle ${B.wait.length} zeigen</summary>${B.wait.slice(12).map(boardRow).join("")}</details>` : "") : `<div class="bd-empty">Gerade keine.</div>`);
+  html += sec("🟡 Wartet auf Seitwärtsphase", `${B.wait.length} Treffer · bis zu 10 Tage`, B.wait.length ? B.wait.slice(0, 12).map(boardRow).join("") + (B.wait.length > 12 ? `<details class="bd-in"><summary>Alle ${B.wait.length} zeigen</summary>${B.wait.slice(12).map(boardRow).join("")}</details>` : "") : `<div class="bd-empty">Gerade keine.</div>`);
   const rest = [...B.late, ...B.gone];
   if (rest.length) html += `<details class="bd-more"><summary>Kauftag vorbei oder verfallen · ${rest.length}</summary>${rest.map(boardRow).join("")}</details>`;
   if (B.asia.length) html += `<details class="bd-more"><summary>Asien/Pazifik · ${B.asia.length} · nicht getestet, kein Kaufsignal</summary>${B.asia.map(boardRow).join("")}</details>`;
-  return `<div class="board">${html}<div class="note" style="margin:8px 2px 0">So arbeitet Kairo (getestet 2008–2026): Treffer = alle 11 Kriterien. Danach bis zu 10 Tage warten, bis der Kurs 5 Tage eng und ruhig seitwärts läuft – dann Kauf zur nächsten Eröffnung, Stop unter der Seitwärtsphase. Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)} (ändern unter Einstellungen). Keine Anlageberatung.</div></div>`;
+  return `<div class="board">${html}<div class="note" style="margin:8px 2px 0">So arbeitet Kairo (getestet 2008–2026): Treffer = alle 11 Kriterien. Danach bis zu 10 Tage warten, bis der Kurs 5 Tage eng seitwärts läuft (Spanne ≤ 1,5 ATR) – dann Kauf zur nächsten Eröffnung, Stop unter der Seitwärtsphase. Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)} (ändern unter Einstellungen). Keine Anlageberatung.</div></div>`;
 }
 function topSetupsHtml() {
   if (!searchIdx) loadSearch();
