@@ -217,7 +217,7 @@ async def rule_check(b, url, errs):
     pg = await ctx.new_page()
     await pg.goto(f"{url}?nosplash=1")
     await pg.wait_for_timeout(2500)
-    r = await pg.evaluate("""() => { const d = h4Data(); if (!d) return { skip: 1 };
+    r = await pg.evaluate("""() => { h4LiveData = null; const d = h4Data(); if (!d) return { skip: 1 };   // nur h4.json: Live-Daten bauen sonst je Aufruf neue Listen
       d.items.push({ t: "ZZT1", n: "T1", d: "2026-10-20", st: "go", grp: "11", r: "us", base: { pending: true, lo: 10, hi: 11, sl: 9.5 } });
       d.items.push({ t: "ZZT2", n: "T2", d: "2026-10-20", st: "basis", grp: "11", r: "us", day: 3 });
       const plan = { d: "2026-10-01", ema: 1, t: "XX" };
