@@ -105,7 +105,12 @@ def combine(d: Path, out: Path) -> None:
         T = {}
         for v in vs:
             fs = sorted(d.glob(f"ctr_{s}_{v}_*.csv"))
-            parts = [pd.read_csv(f) for f in fs if f.stat().st_size > 0]
+            parts = []
+            for f in fs:
+                try:
+                    parts.append(pd.read_csv(f))
+                except pd.errors.EmptyDataError:            # Shard ohne Trades
+                    pass
             if parts:
                 T[v] = pd.concat(parts)
         if "E0" not in T:
