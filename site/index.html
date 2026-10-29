@@ -818,6 +818,8 @@
   .cal-day b { font-size: 16px; } .cal-day span { color: var(--muted); font-size: 13px; }
   .cal-list { display: flex; flex-direction: column; border-radius: var(--radius-s); overflow: hidden; border: 1px solid var(--glass-line); background: var(--glass); }
   .ev { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .ev-t { flex: none; width: 52px; font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); text-align: right; line-height: 1.15; }
+  .ev-t.nx { color: var(--accent); } .ev-t em { display: block; font-style: normal; font-size: 10px; font-weight: 600; letter-spacing: .02em; }
   .ev:last-child { border-bottom: 0; }
   .ev .k { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-size: 12px; font-weight: 800; }
   .ev .b { flex: 1; min-width: 0; } .ev .b b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2092,8 +2094,23 @@ function fedBannerHtml() {
   const t = new Date(f.ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
   return `<div class="tip tone-${f.decision === "hold" ? "yellow" : "green"}" style="margin:0 0 12px">🏦 <b>${esc(f.head)}</b> · ${daysUntil(f.date) === 0 ? "heute" : "gestern"} ${t} Uhr${f.dissent ? ` · Gegenstimmen: ${esc(f.dissent)}` : ""} · <a href="${esc(safeHref(f.url))}" target="_blank" rel="noopener">Statement</a></div>`;
 }
-const macWhen = e => [fedRes(e) ? "✓ " + fedRes(e).head : "", e.time ? e.time + " Uhr" : "", e.imp === "high" ? "sehr wichtig" : e.imp === "mid" ? "wichtig" : "", e.why || "",
+const macWhen = (e, noTime) => [fedRes(e) ? "✓ " + fedRes(e).head : "", e.time && !noTime ? e.time + " Uhr" : "", e.imp === "high" ? "sehr wichtig" : e.imp === "mid" ? "wichtig" : "", e.why || "",
   e.fc ? `Prognose ${e.fc}` : "", e.prev ? `vorher ${e.prev}` : ""].filter(Boolean).join(" · ");
+// Uhrzeit je Termin (deutsche Zeit) für Anzeige und Sortierung: Wirtschaftstermine aus dem Kalender, Quartalszahlen aus der
+// gelernten SEC-Meldezeit bzw. Yahoo („ca.“), Dividenden ganztägig. Ohne Uhrzeit ans Ende des Tages.
+function evTime(e) {
+  if (e.kind === "macro" || e.kind === "expiry") return e.time ? { m: +e.time.slice(0, 2) * 60 + +e.time.slice(3, 5), lbl: e.time, ca: false } : { m: -1, lbl: "ganzt.", ca: false };
+  if (e.kind !== "earnings") return { m: -1, lbl: "ganzt.", ca: false };
+  const er = earnData && earnData[e.ticker], N = er && er.next && er.next.date === e.date ? er.next : null, L = er && er.last && er.last.date === e.date ? er.last : null;
+  const sec = secHits[e.ticker] && secHits[e.ticker].date === e.date ? secHits[e.ticker].at : null;
+  const ex = earnWatch[e.ticker + "|" + e.date], ts = sec || ex || (N && N.ts) || (L && L.ts);
+  if (!ts) return { m: 1500, lbl: "–", ca: false };
+  const x = new Date(ts); if (isNaN(x)) return { m: 1500, lbl: "–", ca: false };
+  const hm = x.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
+  if (hm === "00:00") return { m: 1500, lbl: "–", ca: false };
+  return { m: +hm.slice(0, 2) * 60 + +hm.slice(3, 5), lbl: hm, ca: !sec };
+}
+const evSort = l => l.slice().sort((a, b) => evTime(a).m - evTime(b).m);
 let calMonth = 0, calDay = null;   // Monatsansicht: Versatz zum aktuellen Monat, ausgewählter Tag
 const isoOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 // ---------- Insider-Signal je Aktie (Scan: Käufe der letzten 90 Tage, Stärke 0–3) – Karte + kleines Abzeichen ----------
@@ -2357,20 +2374,25 @@ function calendarHtml() {
   const head = `<div class="section-title"><span>Kalender · ${state.calScope === "all" ? "alle Termine" : "nur wichtige"}</span><span>${list.length} Termine</span></div>
     <div class="cal-top"><div class="vtog">${[["month", "Monat"], ["list", "Liste"]].map(([v, l]) => `<button class="${(month ? "month" : "list") === v ? "on" : ""}" data-cal="calView" data-v="${v}">${v === "month" ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M9.5 10v10M14.5 10v10"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>'}${l}</button>`).join("")}</div>${seg("calScope", [["mine", "Nur wichtige"], ["all", "Alle Termine"]])}</div>`
     + seg("calKind", [["", "Alle"], ["earnings", "Quartalszahlen"], ["div", "Dividenden"], ["macro", "Wirtschaft & Zinsen"]]);
+  const nowM = (() => { const p = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }); return +p.slice(0, 2) * 60 + +p.slice(3, 5); })();
+  const todayIsoB = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
+  const nextKey = (() => { const l = evSort(all.filter(e => e.date === todayIsoB)).find(e => { const t = evTime(e); return t.m >= nowM && t.m < 1500; }); return l ? (l.ticker || l.title) + "|" + l.date : ""; })();
+  const tcell = e => { const t = evTime(e), nx = (e.ticker || e.title) + "|" + e.date === nextKey;
+    return `<span class="ev-t${nx ? " nx" : ""}" title="${t.ca ? "erwartete Uhrzeit (bisherige Meldungen)" : ""}">${t.ca ? "~" : ""}${esc(t.lbl)}${nx ? "<em>als Nächstes</em>" : ""}</span>`; };
   const evRow = e => {
     const [icon, cls] = CAL_KIND[e.kind] || ["•", "k-exp", ""];
     if (!e.ticker) {
       const reg = e.region || "all", n2 = watchByRegion(reg);
-      const info = e.kind === "macro" ? macWhen(e) : "";
-      return `<div class="ev"><span class="k ${cls}"${e.imp === "high" ? ' style="outline:2px solid var(--down);outline-offset:1px"' : ""}>${icon}</span><div class="b"><b>${esc(e.title)}</b><span>${info ? esc(info) + "<br>" : ""}${e.kind === "macro" && reg !== "all" ? `${REG_DE[reg] || reg} – ${n2} deiner Aktien dort, bewegt aber oft alle Börsen` : "betrifft den ganzen Markt"}</span></div></div>`;
+      const info = e.kind === "macro" ? macWhen(e, true) : "";
+      return `<div class="ev">${tcell(e)}<span class="k ${cls}"${e.imp === "high" ? ' style="outline:2px solid var(--down);outline-offset:1px"' : ""}>${icon}</span><div class="b"><b>${esc(e.title)}</b><span>${info ? esc(info) + "<br>" : ""}${e.kind === "macro" && reg !== "all" ? `${REG_DE[reg] || reg} – ${n2} deiner Aktien dort, bewegt aber oft alle Börsen` : "betrifft den ganzen Markt"}</span></div></div>`;
     }
     const inRes = data.results.some(r => r.ticker === e.ticker);
     const enx = e.kind === "earnings" && earnData && earnData[e.ticker] && earnData[e.ticker].next, etm = enx && enx.date === e.date ? earnTime(enx, e.ticker) : "";
-    const sub = e.kind === "earnings" ? (e.done || (earnData && earnData[e.ticker] && earnData[e.ticker].last && earnData[e.ticker].last.date === e.date) ? "Quartalszahlen gemeldet · antippen" : secHits[e.ticker] && secHits[e.ticker].date === e.date ? "Zahlen sind raus (SEC) · Werte folgen · antippen" : e.big && !e.watch && !dep.has(e.ticker) ? "Quartalszahlen · Schwergewicht – bewegt Index und Branche" + (etm ? " · " + etm : "") : e.estimate ? "Quartalszahlen · Datum geschätzt" : "Quartalszahlen" + (etm ? " · " + etm : ""))
+    const sub = e.kind === "earnings" ? (e.done || (earnData && earnData[e.ticker] && earnData[e.ticker].last && earnData[e.ticker].last.date === e.date) ? "Quartalszahlen gemeldet · antippen" : secHits[e.ticker] && secHits[e.ticker].date === e.date ? "Zahlen sind raus (SEC) · Werte folgen · antippen" : e.big && !e.watch && !dep.has(e.ticker) ? "Quartalszahlen · Schwergewicht – bewegt Index und Branche" : e.estimate ? "Quartalszahlen · Datum geschätzt" : "Quartalszahlen" + (etm && etm.includes("wie bisher") ? " · Uhrzeit aus bisherigen Meldungen" : ""))
       : e.kind === "exdiv" ? `Ex-Dividende${e.rate ? " · " + fmt(e.rate) + " je Aktie p. a." : ""}` : `Dividendenzahlung${e.rate ? " · " + fmt(e.rate) + " je Aktie p. a." : ""}`;
     const earn = e.kind === "earnings", er = earn && earnData && earnData[e.ticker], erl = er && er.last && Math.abs(daysUntil(er.last.date) - daysUntil(e.date)) <= 3 ? er.last : null;
     const res = earn && (e.done || !!erl || !!(secHits[e.ticker] && secHits[e.ticker].date === e.date)), tone = (erl && erl.view && erl.view.tone) || e.tone || "gray";
-    return `<div class="ev${earn ? " ev-tap" : ""}"${earn ? ` data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0" aria-label="Quartalszahlen ${esc(e.name || e.ticker)} öffnen"` : ""}><span class="k ${cls}">${icon}</span><div class="b"><b>${esc(e.name || e.ticker)}${dep.has(e.ticker) ? '<span class="pill dep">Depot</span>' : favs().has(e.ticker) ? '<span class="pill fv">★</span>' : e.watch ? '<span class="pill">WL</span>' : ""}</b><span>${esc(e.ticker)} · ${sub}</span></div>
+    return `<div class="ev${earn ? " ev-tap" : ""}"${earn ? ` data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0" aria-label="Quartalszahlen ${esc(e.name || e.ticker)} öffnen"` : ""}>${tcell(e)}<span class="k ${cls}">${icon}</span><div class="b"><b>${esc(e.name || e.ticker)}${dep.has(e.ticker) ? '<span class="pill dep">Depot</span>' : favs().has(e.ticker) ? '<span class="pill fv">★</span>' : e.watch ? '<span class="pill">WL</span>' : ""}</b><span>${esc(e.ticker)} · ${sub}</span></div>
       ${res ? `<span class="ev-res t-${esc(tone)}"><i></i>Zahlen da</span>` : earn ? `<span class="ev-more" aria-hidden="true">›</span>` : inRes ? `<a class="btnlink" href="#" data-card="${esc(e.ticker)}">Übersicht</a>` : ""}</div>`;
   };
   const dayHead = d => {
@@ -2382,7 +2404,7 @@ function calendarHtml() {
   if (!month) {
     if (!list.length) return head + `<div class="empty">Keine Termine in den nächsten Wochen.</div>`;
     list.forEach(e => (byDay[e.date] = byDay[e.date] || []).push(e));
-    return head + Object.entries(byDay).map(([d, evs]) => dayHead(d) + `<div class="cal-list">${evs.map(evRow).join("")}</div>`).join("") + foot;
+    return head + Object.entries(byDay).map(([d, evs]) => dayHead(d) + `<div class="cal-list">${evSort(evs).map(evRow).join("")}</div>`).join("") + foot;
   }
   // Monatsansicht Mo–Fr; Wochenend-Termine landen am folgenden Montag
   const today = new Date(), first = new Date(today.getFullYear(), today.getMonth() + calMonth, 1);
@@ -2402,10 +2424,10 @@ function calendarHtml() {
     const tag = e => { const [icon, cls] = CAL_KIND[e.kind] || ["•", "k-exp"]; const lbl = e.ticker ? (e.name || e.ticker).replace(/,? (Inc|AG|SE|Corp|N\.V|plc)\.?$/i, "") : (e.title || "").replace(/\s*\(.*$/, "").replace(/^[^:]{2,20}:\s*/, "").trim();
       return `<span class="ct ${cls}${e.ticker && dep.has(e.ticker) ? " dep" : ""}"><i>${icon}</i>${esc(lbl)}</span>`; };
     cells += `<button class="mc${inM ? "" : " out"}${iso === todayIso ? " today" : ""}${iso === calDay ? " sel" : ""}${iso < todayIso ? " past" : ""}" data-calday="${iso}">
-      <span class="dn">${d.getDate()}</span>${evs.slice(0, 3).map(tag).join("")}${evs.length > 3 ? `<span class="more">+${evs.length - 3}</span>` : ""}${evs.length ? `<span class="dots">${evs.slice(0, 4).map(e => `<i class="${(CAL_KIND[e.kind] || [])[1] || ""}"></i>`).join("")}</span>` : ""}</button>`;
+      <span class="dn">${d.getDate()}</span>${evSort(evs).slice(0, 3).map(tag).join("")}${evs.length > 3 ? `<span class="more">+${evs.length - 3}</span>` : ""}${evs.length ? `<span class="dots">${evs.slice(0, 4).map(e => `<i class="${(CAL_KIND[e.kind] || [])[1] || ""}"></i>`).join("")}</span>` : ""}</button>`;
   }
   const mname = first.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
-  const sel = calDay && byDay[calDay] ? dayHead(calDay) + `<div class="cal-list">${byDay[calDay].map(evRow).join("")}</div>`
+  const sel = calDay && byDay[calDay] ? dayHead(calDay) + `<div class="cal-list">${evSort(byDay[calDay]).map(evRow).join("")}</div>`
     : calDay ? dayHead(calDay) + `<div class="empty" style="padding:22px">Keine Termine an diesem Tag.</div>` : "";
   return head + `<div class="mcal">
       <div class="mh"><button class="mnav" data-calmonth="-1" aria-label="Vormonat">‹</button><b>${mname}</b>${calMonth ? `<button class="mtoday" data-calmonth="0">Heute</button>` : ""}<button class="mnav" data-calmonth="1" aria-label="Nächster Monat">›</button></div>
@@ -4682,8 +4704,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.05";
-const APP_NEWS = [["2026.11.05", "Quartalszahlen so schnell wie möglich", [
+const APP_VER = "2026.11.06";
+const APP_NEWS = [["2026.11.06", "Kalender mit Uhrzeit", [
+  ["Uhrzeit bei jedem Termin", "Jeder Termin zeigt links die Uhrzeit (deutsche Zeit), sortiert von früh bis spät; der nächste anstehende Termin ist markiert. Quartalszahlen mit „~“ = erwartete Zeit aus den bisherigen Meldungen der Firma."],
+  ["Genauere Meldezeiten", "Kairo lernt aus den letzten SEC-Meldungen, wann eine Firma ihre Zahlen veröffentlicht, und prüft genau dann jede Minute."]]],
+  ["2026.11.05", "Quartalszahlen so schnell wie möglich", [
   ["Sofort bei der SEC", "Mit Kursdienst Version 6 prüft Kairo am Termin jede Minute die offizielle US-Börsenaufsicht (SEC). Sobald eine Firma ihre Zahlen einreicht – meist 1–5 Minuten nach der Veröffentlichung –, kommt eine Mitteilung und der Kalender zeigt „Zahlen sind raus“. Ergebnis und Einschätzung folgen wenige Minuten später, ebenfalls mit Mitteilung."],
   ["Uhrzeit", "Kalender und Quartalsfenster zeigen die erwartete Uhrzeit in deutscher Zeit (ca.)."]]],
   ["2026.11.04", "Quartalszahlen auf einen Blick", [
