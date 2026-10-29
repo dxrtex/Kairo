@@ -81,6 +81,8 @@ EPS_GAAP = re.compile(r"\b(diluted )?(eps|earnings per (diluted )?share|net inco
 REV_ACT = re.compile(r"\b(total )?(revenues?|net sales|sales)\b[^.$]{0,40}?\b(was|were|of|totaled|reached|increased[^.$]{0,30}to|grew[^.$]{0,30}to|rose[^.$]{0,30}to)\s+" + _NUM, re.I)
 
 
+EPS_TAB = re.compile(r"\b(earnings per (diluted )?share|eps)\s*[–—-]?\s*\(?(non-?gaap|adjusted)\)?\s*(\(\d\)\s*)?\$?\s?(\(?\d{1,3}\.\d{2}\)?)(?!\d)", re.I)
+NOT_EPS = re.compile(r"(?i)includ|charges?\b|IPR|impact|offset|guidance|outlook|expect|dividend|distribution|buyback|repurchase")
 PER_SHARE = re.compile(r"\$\s?(\(?\d{1,3}\.\d{2}\)?)\s*(per (basic |diluted |fully[- ]diluted )?share|a share)", re.I)
 ADJ_WORDS = re.compile(r"\b(adjusted|non-?gaap|excluding|core|underlying)\b", re.I)
 
@@ -93,13 +95,16 @@ def results(text: str) -> dict:
     """Gemeldeter Gewinn je Aktie (bereinigt bevorzugt – damit rechnen die Analysten-Erwartungen) und Umsatz."""
     out = {}
     head = text[:8000]                                     # Kernzahlen stehen oben in der Mitteilung
-    m = EPS_ADJ.search(head)
+    # Tabellenzeile „Earnings per share – Non-GAAP 7.48“ zuerst; Sätze über Sonderbelastungen („EPS included $4.57 of
+    # IPR&D charges“, Lilly) oder den Ausblick sind kein Ergebnis
+    m = EPS_TAB.search(head) or next((x for x in EPS_ADJ.finditer(head)
+                                      if not NOT_EPS.search(x.group(0) + head[x.end():x.end() + 40])), None)
     if m:
-        out.update(eps=float(m.group(5)), eps_kind="bereinigt")
+        out.update(eps=_eps_val(m.group(m.lastindex)), eps_kind="bereinigt")
     else:
         adj = gaap = None                                  # Satzweise: „… or $12.78 per share“ (PBF), Dividenden ausgenommen
         for sent in re.split(r"(?<=[.;•])\s+|\u2022|&#8226;", head):
-            if re.search(r"(?i)dividend|distribution|buyback|repurchase", sent):
+            if NOT_EPS.search(sent):
                 continue
             pm = PER_SHARE.search(sent)
             if not pm or not re.search(r"(?i)income|earnings|loss|profit|eps", sent):
