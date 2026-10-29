@@ -35,10 +35,10 @@ def _race(h, l, i: int, n: int, stop: float, target: float | None, o=None):
     for j in range(i + 1, min(n, i + 1 + HOLD)):
         if o is not None and o[j] == o[j] and o[j] <= stop:
             return "stop", j - i, float(o[j])
+        if target and o is not None and o[j] == o[j] and o[j] >= target:   # Eröffnung über dem Ziel: Zielorder greift zur
+            return "t", j - i, float(o[j])                               # Eröffnung – vor einem späteren Tagestief (Review 2, W5)
         if l[j] <= stop:
             return "stop", j - i, stop
-        if target and o is not None and o[j] == o[j] and o[j] >= target:
-            return "t", j - i, float(o[j])
         if target and h[j] >= target:
             return "t", j - i, target
     return None, None, None
@@ -75,7 +75,7 @@ def outcome(o, h, l, c, i: int, entry: float, stop: float, t1: float | None, t2:
             rd, resd = r, "stop"                         # bei Kurslücke schlechter als −1 R
         elif res == "t1":
             j0 = i + day
-            r_half = (t1 - entry) / risk
+            r_half = r                                   # echter Verkaufspreis der ersten Hälfte (auch bei Kurslücke über Ziel 1)
             rest, rest_res = None, None
             for j in range(j0 + 1, min(n, i + 1 + HOLD)):
                 if l[j] <= entry:

@@ -146,15 +146,26 @@ class CachedProvider(DataProvider):
                            low REAL, close REAL, volume REAL, PRIMARY KEY (ticker, date))""")
 
     def history(self, tickers, period, end=None):
+        self.rebased_failed = []
         if end is not None:                       # feste Stichtage (Regression) immer frisch laden
             return self.inner.history(tickers, period, end)
         fresh = self.inner.history(tickers, period if not self._cached_any(tickers) else "1mo")
         with sqlite3.connect(self.path) as con:
             redo = self._rebased(con, fresh)
-            for t in redo:                                # Split/Dividende: alte Kurse im Speicher passen nicht mehr → komplett neu
-                con.execute("DELETE FROM bars WHERE ticker=?", (t,))
-            if redo:
-                print(f"Kurse: {len(redo)} Aktien rückwirkend angepasst (Split/Dividende) – komplett neu geladen: {', '.join(sorted(redo)[:20])}")
+        if redo:                                          # Split/Dividende: ERST neu laden, dann tauschen (Review 2, W1) –
+            full = self.inner.history(sorted(redo), period) if period != "1mo" else {}   # scheitert das, bleibt die alte Reihe
+            ok = {t for t, df in full.items() if len(df) >= 250}
+            self.rebased_failed = sorted(redo - ok)
+            print(f"Kurse: {len(redo)} Aktien rückwirkend angepasst (Split/Dividende) – {len(ok)} komplett neu geladen"
+                  + (f", {len(redo - ok)} nicht (alte Reihe bleibt, unsicher): {', '.join(self.rebased_failed[:20])}" if redo - ok else ""))
+            with sqlite3.connect(self.path) as con:
+                for t in ok:
+                    con.execute("DELETE FROM bars WHERE ticker=?", (t,))
+                    con.executemany("INSERT OR REPLACE INTO bars VALUES (?,?,?,?,?,?,?)",
+                                    [(t, str(d.date()), *map(float, r)) for d, r in
+                                     full[t][["Open", "High", "Low", "Close", "Volume"]].iterrows()])
+            fresh = {t: df for t, df in fresh.items() if t not in redo}   # angepasste Monatswerte nicht über die alte Reihe legen
+        with sqlite3.connect(self.path) as con:
             for t, df in fresh.items():
                 con.executemany("INSERT OR REPLACE INTO bars VALUES (?,?,?,?,?,?,?)",
                                 [(t, str(d.date()), *map(float, r)) for d, r in
@@ -181,7 +192,7 @@ class CachedProvider(DataProvider):
         # ausgelassen), in kleinen Paketen mit Pause erneut laden – bis zu 3 Runden.
         self.stale = {}
         for rnd in range(3):
-            lag = stale_tickers(out)
+            lag = stale_tickers(out) - set(self.rebased_failed)   # nie angepasste Monatswerte über eine alte Reihe legen
             if not lag:
                 break
             print(f"Kurse: {len(lag)} Aktien nicht aktuell – Runde {rnd + 1}: einzeln nachladen")
@@ -197,7 +208,7 @@ class CachedProvider(DataProvider):
                                        (t,)).fetchall()
                     d2 = pd.DataFrame(rows, columns=["Date", "Open", "High", "Low", "Close", "Volume"])
                     out[t] = d2.set_index(pd.to_datetime(d2.pop("Date")))
-        self.stale = {t: str(out[t].index[-1].date()) for t in stale_tickers(out)}
+        self.stale = {t: str(out[t].index[-1].date()) for t in stale_tickers(out) | set(self.rebased_failed) if t in out}
         if self.stale:
             print(f"Kurse: {len(self.stale)} Aktien bleiben auf altem Stand: {', '.join(sorted(self.stale)[:30])}")
         return out

@@ -32,12 +32,15 @@ def check(data: Path = DATA) -> list[str]:
         u, n = st.get("universe") or 0, st.get("loaded") or 0
         if not u or n / u < 0.85:
             errs.append(f"results.json: nur {n} von {u} Aktien mit Kursen (< 85 %)")
+        stale = ((st.get("health") or {}).get("stale")) or 0
+        if n and stale / n > 0.25:                       # Review 2, W9: Kurse da, aber zu viele veraltet
+            errs.append(f"results.json: {stale} von {n} Aktien ohne Kurs vom letzten Handelstag (> 25 %)")
     if search is not None:
         rows = search.get("rows") if isinstance(search, dict) else None
         if not rows or len(rows) < 1000:
             errs.append(f"search.json: Suchindex zu klein ({len(rows or [])})")
-    if h4 is not None and not isinstance(h4.get("items"), list):
-        errs.append("h4.json: Liste „items“ fehlt")
+    if h4 is not None and (not isinstance(h4.get("items"), list) or h4.get("error")):
+        errs.append("h4.json: Liste „items“ fehlt oder Fehler bei der Seitwärtsphasen-Prüfung (Kaufbereit wäre falsch)")
     return errs
 
 

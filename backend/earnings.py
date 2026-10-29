@@ -234,8 +234,14 @@ def eps_plausible(eps: float, est: float, txt: str) -> bool:
     Lesefehler unwahrscheinlich. Vorzeichenwechsel (Verlust ↔ Gewinn) ebenfalls nur mit dieser Bestätigung."""
     if abs(eps - est) <= max(0.5 * abs(est), 0.10) and (eps >= 0) == (est >= 0):
         return True
-    v = f"{abs(eps):.2f}"
-    return len(re.findall(r"(?<![\d.])" + re.escape(v) + r"(?!\d)", (txt or "")[:20000])) >= 2
+    v, txt = f"{abs(eps):.2f}", (txt or "")[:20000]
+    good = 0                                        # nur Fundstellen, die wirklich das Ergebnis je Aktie dieses Quartals sind
+    for m in re.finditer(r"(?<![\d.])" + re.escape(v) + r"(?!\d)", txt):  # (Review 2, W8): Zeile mit „per share/EPS“, ohne
+        ctx = txt[max(0, m.start() - 160):m.start()]                     # Vorjahr, Vergleich oder Ausblick davor
+        if re.search(r"(?i)per (diluted )?share|\bEPS\b|earnings per", ctx) and not re.search(
+                r"(?i)prior|previous|last year|year[- ]ago|compared|guidance|outlook|expect|forecast|range|full[- ]year|fiscal 20\d\d", ctx[-90:]):
+            good += 1
+    return good >= 2
 
 
 def _sec_results(t: str, ev: dict, upcoming: pd.DataFrame, est_col: str, today: pd.Timestamp) -> pd.DataFrame | None:

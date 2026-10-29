@@ -48,3 +48,22 @@ def test_unveraendert_kein_neuladen(tmp_path):
     fake.frames = {"CCC": _frame(np.r_[base, 60.2])}
     cp.history(["CCC"], "2y")
     assert [c[1] for c in fake.calls] == ["2y", "1mo"]
+
+
+def test_neuladen_scheitert_alte_reihe_bleibt(tmp_path):
+    """Review 2, W1: Scheitert das komplette Neuladen nach einem Split, bleibt die alte vollständige Reihe erhalten."""
+    base = np.linspace(100, 120, 400)
+    fake = Fake({"AAA": _frame(base)})
+    cp = CachedProvider(fake, tmp_path / "c.sqlite")
+    cp.history(["AAA"], "2y")
+    split = _frame(np.r_[base, 121.0] / 2)
+
+    class Broken(Fake):
+        def history(self, tickers, period, end=None):
+            self.calls.append((tuple(tickers), period))
+            return {"AAA": split.tail(22).copy()} if period == "1mo" else {}
+    cp.inner = Broken({})
+    out = cp.history(["AAA"], "2y")
+    a = out["AAA"]["Close"]
+    assert len(a) == 400 and abs(a.iloc[-1] - 120) < 1e-6        # alte Reihe vollständig, keine Mischung mit halbierten Kursen
+    assert cp.rebased_failed == ["AAA"] and "AAA" in cp.stale

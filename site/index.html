@@ -4718,8 +4718,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.10";
-const APP_NEWS = [["2026.11.10", "Zweite Prüfung umgesetzt", [
+const APP_VER = "2026.11.11";
+const APP_NEWS = [["2026.11.11", "Feinschliff nach der Prüfung", [
+  ["Papier-Depot wie die Regel", "Das KAIRO-Papier-Depot wählt bei zu vielen Kandidaten jetzt wie die getestete Regel: die mit dem schwächeren Momentum zuerst. Ein automatischer Test zeigt, dass Scanner, Mitteilungen, Papier-Depot und Backtest denselben Kauf, Stop und Verkauf ergeben."],
+  ["Quartalszahlen vorsichtiger", "Weicht ein Gewinn je Aktie stark von der Erwartung ab, zählt Kairo ihn nur, wenn er im Text klar als Ergebnis des Quartals steht – nicht als Vorjahr, Ausblick oder Sonderposten. Ausländische Firmen (6-K) werden zuverlässiger erkannt."],
+  ["Börsenfeiertage London", "Der Kalender kennt jetzt auch die Feiertage der Londoner Börse; der Kauftag im Trade-Plan richtet sich nach der Börse der Aktie."],
+  ["Robuster bei Splits", "Scheitert das Neuladen nach einem Split, behält Kairo die alte Kursreihe und markiert sie als veraltet, statt Lücken zu speichern."]]],
+  ["2026.11.10", "Zweite Prüfung umgesetzt", [
   ["Kaufbereit stimmt", "Kaufbereit ist eine Aktie jetzt genau dann, wenn ihre Seitwärtsphase nach dem Treffer fertig ist – alte 4H-Zustände spielen keine Rolle mehr, und ein Treffer von heute ist nie sofort kaufbereit. Neu: eine Mitteilung, sobald Aktien kaufbereit sind."],
   ["Verkaufssignal nur mit Tagesschluss", "„Schluss unter der EMA 20“ prüft Kairo nur noch mit dem fertigen Tagesschluss – nie mit dem Live-Kurs am Mittag – und ab Tag 10 einschließlich."],
   ["Nie mehr als frei", "Trade-Plan und Turbo-Rechner schlagen nie mehr vor, als ins freie Kapital passt (inkl. Kaufgebühr); Übungs-Trades blockieren kein echtes Geld."],
@@ -5355,12 +5360,14 @@ function tpMarket() {
 const HOLI = { us: new Set(["2025-12-25", "2026-01-01", "2026-01-19", "2026-02-16", "2026-04-03", "2026-05-25", "2026-06-19", "2026-07-03", "2026-09-07",
     "2026-11-26", "2026-12-25", "2027-01-01", "2027-01-18", "2027-02-15", "2027-03-26", "2027-05-31", "2027-06-18", "2027-07-05", "2027-09-06", "2027-11-25", "2027-12-24"]),
   eu: new Set(["2025-12-24", "2025-12-25", "2025-12-26", "2025-12-31", "2026-01-01", "2026-04-03", "2026-04-06", "2026-05-01", "2026-12-24", "2026-12-25",
-    "2026-12-31", "2027-01-01", "2027-03-26", "2027-03-29", "2027-12-24", "2027-12-31"]) };
-const holOf = t => HOLI[t && /\.[A-Z]+$/.test(t) && !/\.TO$/.test(t) ? "eu" : "us"];
+    "2026-12-31", "2027-01-01", "2027-03-26", "2027-03-29", "2027-12-24", "2027-12-31"]),
+  uk: new Set(["2025-12-25", "2025-12-26", "2026-01-01", "2026-04-03", "2026-04-06", "2026-05-04", "2026-05-25", "2026-08-31", "2026-12-25",
+    "2026-12-28", "2027-01-01", "2027-03-26", "2027-03-29", "2027-05-03", "2027-05-31", "2027-08-30", "2027-12-27", "2027-12-28"]) };
+const holOf = t => HOLI[!t || !/\.[A-Z]+$/.test(t) || /\.TO$/.test(t) ? "us" : /\.L$/.test(t) ? "uk" : "eu"];   // London eigener Kalender (Review 2, W4)
 const isTd = (x, t) => (x.getDay() % 6) && !holOf(t).has(isoD(x));
 const addBd = (d, n, t) => { const x = new Date(d); let k = 0; while (k < n) { x.setDate(x.getDate() + 1); if (isTd(x, t)) k++; } return x; };
 const isoD = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-function tpEntryDay(iso) { const d = iso ? new Date(iso + "T12:00:00") : new Date(); while (!(d.getDay() % 6)) d.setDate(d.getDate() + 1); return d; }
+function tpEntryDay(iso, t) { const d = iso ? new Date(iso + "T12:00:00") : new Date(); while (!isTd(d, t)) d.setDate(d.getDate() + 1); return d; }
 const subBd = (d, n, t) => { const x = new Date(d); let k = 0; while (k < n) { x.setDate(x.getDate() - 1); if (isTd(x, t)) k++; } return x; };
 const bdBetween = (a, b, t) => { let k = 0; const x = new Date(a); while (x < b) { x.setDate(x.getDate() + 1); if (isTd(x, t)) k++; } return k; };
 // Kern: aus Struktur + Einstellungen → Stop, Größe, Hebel, Kosten, Szenarien. Reine Rechnung (keine Anzeige).
@@ -5416,7 +5423,7 @@ function tp2Calc(r, S, o = {}) {
   out.tp = null;                                               // kein TP: Gewinner laufen lassen (Kursziel-Vergleich: jedes feste Ziel brachte weniger)
   out.tpWhy = "Kein TP: Im Test brachte jedes feste Kursziel (1–5 R, Widerstände, EMA 20/50) weniger als Laufenlassen – die wenigen großen Gewinner bezahlen die Verluste. Verkauft wird am SL, ab Tag 10 bei einem Tagesschluss unter der EMA 20 (am nächsten Morgen) – spätestens an Tag 60.";
   if (h4) out.tpWhy = `Kein TP: Im Ausstiegs-Test brachte jedes feste Ziel (auch Fibonacci, altes Hoch, Extensions) weniger. Verkauft wird am SL, ab Tag ${H4X.from} bei einem Tagesschluss unter der EMA 20 (am nächsten Morgen) – spätestens an Tag ${H4X.hold}.`;
-  out.d0 = tpEntryDay(o.date);
+  out.d0 = tpEntryDay(o.date, r.t || r.ticker);
   out.exit = addBd(out.d0, hold - 1, r.t || r.ticker);
   // Quartalszahlen in der Haltedauer: halten (Test 28.10.2026, tools/research/earnings_entry_test.py: Käufe ≤ 10 Tage vor den
   // Zahlen waren in allen drei Zeiträumen besser) – nur Hinweis auf das Kurslücken-Risiko bei Turbos
@@ -5810,7 +5817,7 @@ function paperBox(sid, st, sm, bench) {
 function paperCard(sid, st, sm, bench) {
   const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3", MOM5: "MOM5 · Momentum Top 5 (monatlich)", MOM10: "MOM10 · Momentum Top 10 (monatlich)", DM: "DM · Dual Momentum (ETF)", SP2F: "SP2F · S&P 500 2× nur über der 200-Tage-Linie", KAIROZ: "KAIROZ · Kairo-Ziel (attraktives Kursziel, halten bis zum Ziel)", KAIROL: "KAIROL · Kairo lang (Vergleich ohne Kursziel)", KAIRO: "KAIRO · Scanner-Treffer", KAIROS: "KAIRO-S · Scanner-Treffer, schwache Aktien zuerst" }[sid] || "S20 · Trendfolge / VCP";
   const vr = { S19B: "Variante B: wie S19, aber das Volumen muss nur an 2 der letzten 3 Tage sinken. ", S19C: "Variante C: Überdehnung schon ab 2,0 Std und Volumen an 2 der letzten 3 Tage sinkend. " }[sid] || "";
-  const rule = sid === "KAIRO" || sid === "KAIROS" ? "Handelt jeden echten Kairo-Treffer (USA und Europa) nach der getesteten Regel: bis zu 10 Tage auf eine Seitwärtsphase warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung innerhalb der Spanne, Stop unter dem Basis-Tief − 0,25 ATR, 1 % Risiko, max. 5 Positionen. Ausstieg: Stop, ab Tag 10 Schluss unter EMA20, spätestens Tag 60 (im Test in allen drei Zeiträumen besser als Tag 40). 2008–2026 mit PRIME+-Kosten besser als Zufall (+0,14 R je Trade gegenüber +0,11 R) – kleiner, aber belegter Vorteil." + (sid === "KAIROS" ? " Variante S: bei mehreren Einstiegen zuerst Aktien mit dem schwächsten Kursverlauf der letzten Monate (im Test in allen drei Zeiträumen besser; Vorbehalt: kann am Datensatz liegen). Depot-Aufbau wie der beste Test: 20 Positionen × 0,25 % Risiko, 20.000 € virtuell (2008–2026: +7 % p. a., größter Rückgang −25 %; mit strengen Kosten ≈ 0 % – Kosten entscheiden)." : " Bei mehreren Einstiegen zuerst die ruhigeren Aktien (wie im Test).") + " Läuft einen Handelstag hinter dem Scan."
+  const rule = sid === "KAIRO" || sid === "KAIROS" ? "Handelt jeden echten Kairo-Treffer (USA und Europa) nach der getesteten Regel: bis zu 10 Tage auf eine Seitwärtsphase warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung innerhalb der Spanne, Stop unter dem Basis-Tief − 0,25 ATR, 1 % Risiko, max. 5 Positionen. Ausstieg: Stop, ab Tag 10 Schluss unter EMA20, spätestens Tag 60 (im Test in allen drei Zeiträumen besser als Tag 40). 2008–2026 mit PRIME+-Kosten besser als Zufall (+0,14 R je Trade gegenüber +0,11 R) – kleiner, aber belegter Vorteil." + (sid === "KAIROS" ? " Variante S: bei mehreren Einstiegen zuerst Aktien mit dem schwächsten Kursverlauf der letzten Monate (im Test in allen drei Zeiträumen besser; Vorbehalt: kann am Datensatz liegen). Depot-Aufbau wie der beste Test: 20 Positionen × 0,25 % Risiko, 20.000 € virtuell (2008–2026: +7 % p. a., größter Rückgang −25 %; mit strengen Kosten ≈ 0 % – Kosten entscheiden)." : " Bei mehreren Einstiegen zuerst schwächeres Vormomentum (seit 29.10.2026, wie in der App – im Depot-Test besser als „ruhigere zuerst“).") + " Läuft einen Handelstag hinter dem Scan."
     : sid === "SP2F" ? "Jeden Handelstag: Liegt der S&P 500 zum Schluss über seinem 200-Tage-Durchschnitt, wird am nächsten Morgen der gehebelte ETF gehalten (Xtrackers S&P 500 2x Leveraged, DBPG), sonst Bargeld. Etwa 6 Wechsel im Jahr. Test 1989–2026: in allen drei Zeiträumen besser als der S&P 500 (+13,1 % statt +11,3 % p. a.) mit kleinerem Rückgang (−45 % statt −55 %) – nach den vorab festgelegten Regeln aber knapp nicht bestanden (mit der 100-Tage-Linie schlechter). Nicht im Test: Steuern bei jedem Wechsel und ein Crash an einem einzigen Tag (mit 2× doppelt so stark). Deshalb erst 12 Monate auf Papier."
     : sid === "DM" ? "Am ersten Handelstag jedes Monats: Von SPY (USA), EFA (Industrieländer) und QQQ (Nasdaq 100) wird der ETF mit der besten 12-Monats-Rendite gehalten – aber nur, wenn sie über dem Geldmarkt (BIL) liegt, sonst kurze US-Anleihen (SHY). Ein ETF, etwa 1–4 Wechsel im Jahr. Einzige Strategie, die 2008–2016, 2017–2021 und im finalen Test 2022–2026 nach Kosten besser als der Welt-ETF war (2022–26: +11,6 % statt +9,7 % p. a. unter Stress-Kosten) – aber knapp nicht signifikant besser als Zufall (p = 0,07). Bester Kandidat, kein Beweis."
     : sid === "KAIROZ" ? "Deine Idee (20.10.2026): Kairo-Treffer mit fertiger Seitwärtsphase (USA/Europa) und attraktivem Analysten-Kursziel am Signaltag – Abstand zum Ziel mindestens 1 × Jahresschwankung (Bank ab ≈ +25–40 %, Risikoaktie ab ≈ +70–100 %), mindestens 3 Analysten. Halten, bis 80 % des Wegs zum Kursziel geschafft sind; Sicherheitsnetz −30 %, spätestens 24 Monate. 20 Plätze à 5 %. Noch nicht getestet – historische Kursziele gibt es nicht kostenlos, deshalb nur dieser Vorwärtstest."
