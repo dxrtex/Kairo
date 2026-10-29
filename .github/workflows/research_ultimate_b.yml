@@ -5,11 +5,11 @@ permissions:
   contents: write
   actions: read
 
+# Auslöser: research/ultimate/b_trigger.txt mit „<Lauf-ID Runde 1> <beste Variante>“ (workflow_dispatch geht nur auf main).
 on:
-  workflow_dispatch:
-    inputs:
-      r1_run: { description: "Lauf-ID Runde 1", required: true }
-      best: { description: "beste Variante aus Wettbewerb A (E0, wenn keine besteht)", required: true, default: "E0" }
+  push:
+    branches: ["claude/ultimate-research"]
+    paths: ["research/ultimate/b_trigger.txt"]
 
 env:
   PYTHONUNBUFFERED: "1"
@@ -37,9 +37,11 @@ jobs:
           gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
           gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
           echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - id: trg
+        run: read RUN BEST < research/ultimate/b_trigger.txt && echo "run=$RUN" >> $GITHUB_OUTPUT && echo "best=$BEST" >> $GITHUB_OUTPUT
       - uses: actions/download-artifact@v4
-        with: { pattern: "ur1-*", merge-multiple: true, path: r1, run-id: "${{ inputs.r1_run }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
-      - run: python -W ignore -m research.ultimate.compete run --data v1 --r1 r1 --best ${{ inputs.best }} --out out
+        with: { pattern: "ur1-*", merge-multiple: true, path: r1, run-id: "${{ steps.trg.outputs.run }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - run: python -W ignore -m research.ultimate.compete run --data v1 --r1 r1 --best ${{ steps.trg.outputs.best }} --out out
       - run: python -W ignore -m research.ultimate.compete pre --out out
       - uses: actions/upload-artifact@v4
         with: { name: "ub-result", path: out/, retention-days: 30 }
