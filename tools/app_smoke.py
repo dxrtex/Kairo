@@ -210,6 +210,45 @@ async def size_check(b, url, errs):
     await ctx.close()
 
 
+async def rule_check(b, url, errs):
+    """Review 2: kaufbereit nur aus der Basis (K1/W13), EMA-Ausstieg nur mit fertigem Schluss ab Tag 10 (K3/K4),
+    Kapital je Modus (W3) und Kaufgebühr im Kapital (W2)."""
+    ctx = await new_ctx(b, viewport={"width": 820, "height": 1180})
+    pg = await ctx.new_page()
+    await pg.goto(f"{url}?nosplash=1")
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("""() => { const d = h4Data(); if (!d) return { skip: 1 };
+      d.items.push({ t: "ZZT1", n: "T1", d: "2026-10-20", st: "go", grp: "11", r: "us", base: { pending: true, lo: 10, hi: 11, sl: 9.5 } });
+      d.items.push({ t: "ZZT2", n: "T2", d: "2026-10-20", st: "basis", grp: "11", r: "us", day: 3 });
+      const plan = { d: "2026-10-01", ema: 1, t: "XX" };
+      const out = { r1: kmReady("ZZT1"), r2: kmReady("ZZT2"), r3: kmReady("NICHT_DA"),
+        live: emaExit(plan, { c: 95, c0: 105, e20: 100 }),
+        d10: emaExit(plan, { cc: 99, ce: 100, cd: "2026-10-14", c: 120 }), d9: emaExit(plan, { cc: 99, ce: 100, cd: "2026-10-13" }) };
+      const keep = localStorage.getItem(PLAN_KEY);
+      state.tpPaper = false; state.tpDepot = 3000; state.tpRisk = 1;
+      const f0 = freeCap();
+      plansSave([{ id: "x", t: "ZZ", st: "open", stake: 2000, paper: true }]);
+      out.paperNoBlock = freeCap() === f0;
+      state.tpDepot = 100;
+      out.fee = posSize(99.8, 98, "EUR");
+      if (keep == null) localStorage.removeItem(PLAN_KEY); else localStorage.setItem(PLAN_KEY, keep);
+      return out; }""")
+    if r.get("skip"):
+        errs.append("Regel-Test: h4.json fehlt")
+    else:
+        if not r["r1"] or r["r2"] or r["r3"]:
+            errs.append(f"kaufbereit falsch (Basis fertig + 4H „go“: {r['r1']}, wartet: {r['r2']}, ohne Eintrag: {r['r3']})")
+        if r["live"]:
+            errs.append("EMA-Ausstieg aus dem Live-Kurs statt aus dem Tagesschluss")
+        if not r["d10"] or r["d9"]:
+            errs.append(f"EMA-Ausstieg nicht ab Tag 10 (Tag 10: {r['d10']}, Tag 9: {r['d9']})")
+        if not r["paperNoBlock"]:
+            errs.append("Übungs-Trade blockiert echtes Kapital")
+        if not r["fee"] or r["fee"]["qty"] != 0:
+            errs.append(f"Kaufgebühr nicht im Kapital ({r['fee']})")
+    await ctx.close()
+
+
 async def backup_check(b, url, errs):
     """Backup: ohne Haken keine Schlüssel in der Datei, mit Haken schon; Einlesen stellt Depot und Schlüssel wieder her."""
     import json as _json
@@ -261,6 +300,7 @@ async def run(port: int) -> list[str]:
         await import_check(b, url, errs)
         await backup_check(b, url, errs)
         await size_check(b, url, errs)
+        await rule_check(b, url, errs)
         await ui_check(b, url, errs)
         for name, vp in (("iPad", {"width": 820, "height": 1180}), ("Handy", {"width": 390, "height": 844})):
             ctx = await new_ctx(b, viewport=vp)

@@ -44,7 +44,7 @@ def messages(dev: dict, prices: dict, today: str, sent: dict) -> list[dict]:
         if key in sent:
             return
         sent[key] = today
-        out.append({"title": title, "body": body, "url": APP + f"?sec={sec}", "tag": "kairo-" + key.split(":")[0]})
+        out.append({"_key": key, "title": title, "body": body, "url": APP + f"?sec={sec}", "tag": "kairo-" + key.split(":")[0]})
 
     for p in dev.get("p") or []:                       # offene Trade-Pläne (Einstieg)
         t, df = p.get("t"), prices.get(p.get("t"))
@@ -219,6 +219,45 @@ def h4_update(today: str) -> list[dict]:
     return items
 
 
+def device_id(sub) -> str:
+    """Kurze, stabile Kennung eines Geräts (aus der Push-Adresse) – für „schon gesendet“ je Gerät."""
+    import hashlib
+    ep = (sub or {}).get("endpoint") if isinstance(sub, dict) else str(sub)
+    return hashlib.sha256(str(ep or sub).encode()).hexdigest()[:10]
+
+
+def _h4_base() -> dict:
+    try:
+        loc = __import__("pathlib").Path(__file__).resolve().parents[1] / "site" / "data" / "h4.json"
+        if loc.exists():
+            return json.loads(loc.read_text(encoding="utf-8"))
+        import requests
+        return requests.get(APP + "data/h4.json", timeout=30).json()
+    except Exception as exc:
+        print(f"Kaufbereit: h4.json nicht geladen ({exc!r})")
+        return {}
+
+
+def ready_messages(today: str, sent: dict, base: dict | None = None) -> list[dict]:
+    """Regel B60: Kairo-Treffer (USA/Europa), deren Seitwärtsphase fertig ist → Kauf zur nächsten Eröffnung. Eine Sammel-
+    Mitteilung je Abendscan, geordnet wie in der App (schwächeres Vormomentum zuerst). Review 2: kaufbereit nur aus der Basis."""
+    base = base if base is not None else _h4_base()
+    tested = lambda it: (it.get("r") or ("us" if "." not in it["t"] or it["t"].endswith(".TO") else "")) in ("us", "europe")
+    ready = [it for it in base.get("items") or [] if (it.get("grp") or "11") in ("11", "10s") and tested(it)
+             and (it.get("base") or {}).get("pending") and (it.get("base") or {}).get("lo") is not None]
+    if not ready:
+        return []
+    gen = str(base.get("generated") or today)[:10]
+    key = f"ready:{gen}"
+    if key in sent:
+        return []
+    ready.sort(key=lambda it: it.get("mom") if it.get("mom") is not None else 9)
+    names = ", ".join(f"{k + 1}. {(it.get('n') or it['t'])[:22]}" for k, it in enumerate(ready[:6])) + (" …" if len(ready) > 6 else "")
+    return [{"_key": key, "title": f"🟢 Kaufbereit: {len(ready)} Kairo-Treffer",
+             "body": f"Seitwärtsphase fertig – Kauf zur nächsten Eröffnung, nur innerhalb der Spanne. {names}. Stop und Stückzahl im Scanner.",
+             "url": APP + "?sec=scanner", "tag": "kairo-ready"}]
+
+
 def h4_messages(items: list[dict], today: str, sent: dict, rk: float | None) -> list[dict]:
     """Nur eine Mitteilung je Treffer: wenn die 4H-Bestätigung da ist (Kauf zur Eröffnung der nächsten 4H-Kerze)."""
     out = []
@@ -368,6 +407,35 @@ def insider_messages(today: str, data: dict | None = None) -> list[dict]:
     return out
 
 
+def deliver(devs: list, prices: dict, today: str, sent: dict, shared: list, k, h4base: dict, send_fn=None) -> tuple[int, int]:
+    """Mitteilungen an alle Geräte. „Schon gesendet“ je Gerät und erst nach erfolgreichem Versand (Review 2, K5)."""
+    send_fn = send_fn or webpush.send
+    n_sent = failed = 0
+    for dev in devs:
+        sub = dev.get("s") or dev
+        # Je Gerät merken und erst NACH erfolgreichem Versand (Review 2, K5): sonst bekäme bei iPad + iPhone nur das erste
+        # Gerät den Stop-Alarm, und ein gescheiterter Versand käme nie. Alte Einträge ohne Gerät gelten weiter als gesendet.
+        did = device_id(sub)
+        view = {a: b for a, b in sent.items() if "|" not in a}
+        view.update({a.split("|", 1)[1]: b for a, b in sent.items() if a.startswith(did + "|")})
+        own = messages(dev, prices, today, view) + ready_messages(today, view, h4base)
+        for msg in own + shared:
+            body = {a: b for a, b in msg.items() if not a.startswith("_")}
+            try:
+                st = send_fn(sub, body, k)
+                ok = st in (200, 201, 202)
+                n_sent += ok
+                failed += not ok
+                if ok and msg.get("_key"):
+                    sent[f"{did}|{msg['_key']}"] = today
+                if not ok:
+                    print(f"Push: Status {st}" + (" – Abo abgelaufen, in der App neu aktivieren" if st in (404, 410) else ""))
+            except Exception as exc:
+                failed += 1
+                print(f"Push: Fehler {exc!r}")
+    return n_sent, failed
+
+
 def run(today_iso: str | None = None) -> dict:
     from datetime import datetime
     from . import state
@@ -405,18 +473,7 @@ def run(today_iso: str | None = None) -> dict:
     except Exception as exc:
         print(f"Insider-Mitteilung: Fehler {exc!r}")
         ins_msg = []
-    for dev in devs:
-        sub = dev.get("s") or dev
-        for msg in messages(dev, prices, today, sent) + etf_msg + h4_msg + watch_msg + ins_msg:
-            try:
-                st = webpush.send(sub, msg, k)
-                n_sent += st in (200, 201, 202)
-                failed += st not in (200, 201, 202)
-                if st not in (200, 201, 202):
-                    print(f"Push: Status {st}" + (" – Abo abgelaufen, in der App neu aktivieren" if st in (404, 410) else ""))
-            except Exception as exc:
-                failed += 1
-                print(f"Push: Fehler {exc!r}")
+    n_sent, failed = deliver(devs, prices, today, sent, etf_msg + h4_msg + watch_msg + ins_msg, k, _h4_base())
     state.save("push_sent.json", sent)
     print(f"Push: {n_sent} Mitteilungen gesendet, {failed} fehlgeschlagen, {len(devs)} Gerät(e), {len(prices)} Kurse")
     return {"enabled": True, "ok": failed == 0, "sent": n_sent, "date": today}

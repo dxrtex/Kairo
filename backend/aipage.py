@@ -55,18 +55,18 @@ def _pct(v, d=0) -> str:
 
 
 def _status(r: dict, h4: dict) -> str:
-    """Wie die App (kSt): Seitwärtsphase heute fertig → kaufbereit; Kauftag schon gelaufen → Einstieg vorbei."""
+    """Wie die App (kSt, Regel B60): kaufbereit nur aus der Seitwärtsphase (base.pending) – nicht aus alten 4H-Zuständen."""
     it = h4.get(r.get("ticker")) or {}
     st, b = it.get("st"), it.get("base") or {}
+    if b.get("pending") and b.get("lo") is not None:
+        return "kaufbereit (Seitwärtsphase fertig)"
+    if b.get("ed"):
+        return f"Einstieg vorbei (Kauf war am {b.get('ed')})"
     if st == "weg":
         return "verfallen"
-    if st in ("run", "sell") or (b.get("ed") and not b.get("pending")):
-        return f"Einstieg vorbei (Kauf war am {b.get('ed')})" if b.get("ed") else "Einstieg vorbei"
-    if st == "4h" and b.get("pending"):
-        return "kaufbereit (Seitwärtsphase fertig)"
     if st == "basis":
         return f"wartet auf Seitwärtsphase (Tag {it.get('day', '?')} von 10)"
-    return "wartet auf Seitwärtsphase"
+    return "wartet auf Seitwärtsphase" if it else "neu – Seitwärtsphase wird ab morgen geprüft"
 
 
 def render(today: str | None = None, paper: list | None = None) -> str:
