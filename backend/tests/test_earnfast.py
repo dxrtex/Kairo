@@ -41,13 +41,14 @@ def test_gelernte_meldezeit(monkeypatch, tmp_path):
                                        "2026-05-01T20:30:40.000Z", "2026-01-29T21:32:00.000Z", "2025-10-30T20:33:00.000Z"]}}}
     import requests
     monkeypatch.setattr(requests, "get", lambda *a, **k: R())
+    monkeypatch.setattr(earnfast, "nasdaq_day", lambda d: {"AAPL": "after"})
     assert earnfast.typical_time(320193) == "16:32"            # New York, Median der letzten 4 Meldungen
     ev = [{"kind": "earnings", "ticker": "AAPL", "name": "Apple", "date": "2026-10-29"}]
     nexts = {"AAPL": {"date": "2026-10-29", "ts": "2026-10-29T16:00:00-04:00"}}
     earnfast.watch_file(ev, nexts, tmp_path, pd.Timestamp("2026-10-29"))
     a = json.loads((tmp_path / "earn_watch.json").read_text())["items"][0]
     assert a["exact"] is True and a["ts"].startswith("2026-10-29T20:32:00")
-    assert a["from"].startswith("2026-10-29T20:12:00") and a["to"].startswith("2026-10-29T23:32:00")
+    assert a["ok2"] is True and a["from"].startswith("2026-10-29T19:32:00") and a["to"].startswith("2026-10-29T23:32:00")
 
 
 def test_archiv(tmp_path):
@@ -55,3 +56,12 @@ def test_archiv(tmp_path):
     assert earnfast.archive(rec, tmp_path) == 1
     a = json.loads((tmp_path / "earn_archive.json").read_text())["BE|2026-10-22"]
     assert a == {"s": 0.38, "ra": -0.245, "g": 1, "r1": -0.112}
+
+
+def test_nasdaq_widerspruch(monkeypatch, tmp_path):
+    monkeypatch.setattr(earnfast, "_times", lambda tk, out, today: {"AAPL": "16:32"})
+    monkeypatch.setattr(earnfast, "nasdaq_day", lambda d: {"AAPL": "pre"})
+    ev = [{"kind": "earnings", "ticker": "AAPL", "name": "Apple", "date": "2026-10-29"}]
+    earnfast.watch_file(ev, {}, tmp_path, pd.Timestamp("2026-10-29"))
+    a = json.loads((tmp_path / "earn_watch.json").read_text())["items"][0]
+    assert "exact" not in a and "abweichend" in a["check"]

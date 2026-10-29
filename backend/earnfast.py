@@ -67,6 +67,22 @@ def _times(tickers: dict, out: Path, today: pd.Timestamp) -> dict:
     return {t: (mem.get(t) or {}).get("hm") for t in tickers}
 
 
+def nasdaq_day(day: str) -> dict:
+    """Zweite Quelle für Termin und Tageszeit: Nasdaq-Ergebniskalender ({Kürzel: "pre" | "after" | "?"}).
+    Leer bei Fehlern – dann zählt nur die gelernte Zeit."""
+    import requests
+    try:
+        j = requests.get(f"https://api.nasdaq.com/api/calendar/earnings?date={day}", timeout=20,
+                         headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+                                  "Accept": "application/json"}).json()
+        rows = ((j.get("data") or {}).get("rows")) or []
+    except Exception as exc:
+        print(f"Nasdaq-Kalender {day}: nicht erreichbar ({exc!r})")
+        return {}
+    m = {"time-pre-market": "pre", "time-after-hours": "after"}
+    return {str(r.get("symbol", "")).upper(): m.get(r.get("time"), "?") for r in rows if r.get("symbol")}
+
+
 def watch_file(events: list[dict], nexts: dict, out: Path, today: pd.Timestamp, learn: bool = True) -> int:
     """Termine gestern/heute/morgen mit CIK und erwarteter Zeit (UTC) für den Kursdienst.
     „exact“ = Uhrzeit aus den bisherigen SEC-Meldungen der Firma gelernt (enges Prüffenster im Kursdienst)."""
@@ -87,6 +103,7 @@ def watch_file(events: list[dict], nexts: dict, out: Path, today: pd.Timestamp, 
             except Exception:
                 ts = None
         items.append({"t": t, "n": e.get("name") or t, "cik": cm[t], "date": e["date"], "ts": ts, "w": bool(e.get("watch"))})
+    nasdaq: dict = {}
     if learn:
         hm = _times({x["t"]: x["cik"] for x in items if x["t"] in cm and "." not in x["t"]}, out, today)
         for x in items:
@@ -98,11 +115,19 @@ def watch_file(events: list[dict], nexts: dict, out: Path, today: pd.Timestamp, 
                 hint = pd.Timestamp(x["ts"]).tz_convert("America/New_York").hour
                 if (hint < 12) != (ny.hour < 12):
                     continue
-            x.update(ts=ny.tz_convert("UTC").isoformat(), exact=True)
+            nq = nasdaq.setdefault(x["date"], nasdaq_day(x["date"])) if learn else {}
+            ses = nq.get(x["t"])
+            if nq and ses is None:
+                x["check"] = "Termin bei Nasdaq nicht gelistet"   # Datum unbestätigt → breit prüfen
+                continue
+            if ses in ("pre", "after") and (ses == "pre") != (ny.hour < 12):
+                x["check"] = "Nasdaq: " + ("vor Börsenstart" if ses == "pre" else "nach Börsenschluss") + " – abweichend von bisher"
+                continue
+            x.update(ts=ny.tz_convert("UTC").isoformat(), exact=True, **({"ok2": True} if ses in ("pre", "after") else {}))
     for x in items:                                       # Prüffenster für den Kursdienst (ab Version 6 maßgeblich)
         if x["ts"]:
             e = pd.Timestamp(x["ts"])
-            a, b = (e - pd.Timedelta(minutes=20), e + pd.Timedelta(hours=3)) if x.get("exact") else (e - pd.Timedelta(hours=3), e + pd.Timedelta(hours=6))
+            a, b = (e - pd.Timedelta(minutes=60), e + pd.Timedelta(hours=3)) if x.get("exact") else (e - pd.Timedelta(hours=3), e + pd.Timedelta(hours=6))
         else:
             a = pd.Timestamp(x["date"] + " 09:00").tz_localize("UTC"); b = a + pd.Timedelta(hours=17)
         x.update({"from": a.isoformat(), "to": b.isoformat()})
