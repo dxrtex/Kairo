@@ -150,7 +150,7 @@ def base_state(px: dict, r: dict = QRULE, today_open: float | None = None) -> di
             return {"st": "weg", "why": why}
         return {"st": "base", "s": j + 1, "hi": hi, "lo": lo, "sl": lo - buf * atr, "e": oj}
     if n - 1 >= wait or (today_open is not None and n >= wait):
-        return {"st": "weg", "why": "keine ruhige Seitwärtsphase in 10 Tagen"}
+        return {"st": "weg", "why": "keine Seitwärtsphase in 10 Tagen"}
     return {"st": "basis", "day": n, **({"unruhig": True} if unruhig else {})}
 
 
