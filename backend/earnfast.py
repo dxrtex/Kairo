@@ -230,3 +230,23 @@ def result_pushes(fresh: dict, prev: dict, events: list[dict], out: Path) -> Non
     if msgs:
         print(f"Quartalszahlen: Ergebnis-Mitteilung für {len(msgs)} Aktie(n) – {send(msgs, devs, k)} gesendet")
     f.write_text(json.dumps(sent), encoding="utf-8")
+
+
+def archive(recs: dict, out: Path) -> int:
+    """Sammelt jede Meldung dauerhaft (earn_archive.json): Gewinn- und Umsatz-Überraschung, Umsatz-Beschleunigung,
+    Ausblick, Kursreaktion – damit sich in einigen Monaten testen lässt, ob Umsatz und Ausblick die Prognose verbessern."""
+    f = out / "earn_archive.json"
+    try:
+        arc = json.loads(f.read_text(encoding="utf-8"))
+    except Exception:
+        arc = {}
+    for t, r in recs.items():
+        L = r.get("last") or {}
+        if not L.get("date"):
+            continue
+        k = f"{t}|{L['date']}"
+        row = {"s": L.get("eps_s"), "rs": L.get("rev_s"), "rg": L.get("revg"), "ra": L.get("reva"),
+               "g": (L.get("guide") or {}).get("d"), "gs": (L.get("guide") or {}).get("src"), "r1": (L.get("rx") or {}).get("d1")}
+        arc[k] = {**arc.get(k, {}), **{a: b for a, b in row.items() if b is not None}}
+    f.write_text(json.dumps(arc, separators=(",", ":")), encoding="utf-8")
+    return len(arc)
