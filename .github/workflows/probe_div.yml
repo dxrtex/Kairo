@@ -13,13 +13,20 @@ jobs:
       - env: { SEC_CONTACT: "${{ secrets.SEC_CONTACT }}" }
         run: |
           python - <<'PY'
-          import re
+          import os, re, requests
           from backend import secguide as S, earnfast
-          for t in ("LLY", "PBF", "INSM", "INDV", "AAMI", "BDC"):
-              txt = S.fetch_text(earnfast.ciks()[t], "2026-10-28")
-              print("=====", t, "Text:", len(txt or ""), "Zeichen")
-              if not txt: continue
-              print("results:", S.results(txt), "| guide:", {k: v for k, v in (S.parse(txt) or {}).items() if k != "s"})
-              for m in list(re.finditer(r"(?i)(earnings per share|\bEPS\b|non-gaap|revenue)", txt[:8000]))[:8]:
-                  print("  …", txt[max(0, m.start()-80):m.start()+160].replace("\n", " "))
+          ua = {"User-Agent": "Kairo " + os.environ["SEC_CONTACT"], "Accept-Encoding": "gzip, deflate"}
+          for t in ("LLY", "AAMI", "BDC", "PBF", "DRS"):
+              cik = earnfast.ciks()[t]
+              f = requests.get(f"https://data.sec.gov/submissions/CIK{int(cik):010d}.json", headers=ua, timeout=20).json()["filings"]["recent"]
+              print("=====", t, [(f["form"][i], f["items"][i], f["acceptanceDateTime"][i], f["primaryDocument"][i]) for i in range(4)])
+              for i in range(4):
+                  if f["form"][i] in ("8-K", "6-K") and f["acceptanceDateTime"][i] >= "2026-10-28":
+                      acc = f["accessionNumber"][i].replace("-", "")
+                      idx = requests.get(f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc}/index.json", headers=ua, timeout=20)
+                      print("  index", idx.status_code, [x["name"] for x in idx.json()["directory"]["item"]] if idx.ok else idx.text[:200])
+                      break
+              txt = S.fetch_text(cik, "2026-10-28") or ""
+              for m in list(re.finditer(r"(?i)(per (diluted )?share|\bEPS\b)", txt[:12000]))[:6]:
+                  print("  EPS…", txt[max(0, m.start()-160):m.start()+60])
           PY
