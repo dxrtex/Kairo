@@ -26,7 +26,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from backend.indicators import macd, rsi
+from backend.indicators import atr as _atr, macd, rsi
 from research.strategy_championship import s01
 from research.strategy_championship import v2_test as V
 from research.strategy_championship.data import PERIODS, UNIVERSE
@@ -316,7 +316,7 @@ def null_rows(sig, seed: int):
         for t, A in _G["adj"].items():
             ok = s01.eligible(A, _G["cur"].get(t, "USD"))
             pos[t] = {d: k for k, d in enumerate(A.index)}
-            atr[t] = s01.atr14(A).to_numpy(float)
+            atr[t] = _atr(A, 14).to_numpy(float)              # bereinigte Kurse wie der Scanner (Wilder)
             reg = _G["region"].get(t, "?")
             for d in A.index[ok]:
                 pool.setdefault((d, reg), []).append(t)
@@ -353,7 +353,7 @@ def block_boot_p(x: pd.DataFrame, y: pd.DataFrame, col="R_stress", n=5000, seed=
     rng = np.random.default_rng(seed)
     mx = x.groupby(x["signal_date"].dt.to_period("M"))[col].agg(["sum", "count"])
     my = y.groupby(y["signal_date"].dt.to_period("M"))[col].agg(["sum", "count"])
-    j = mx.join(my, lsuffix="_x", rsuffix="_y", how="outer").fillna(0.0)
+    j = mx.add_suffix("_x").join(my.add_suffix("_y"), how="outer").fillna(0.0)
     a = j.to_numpy(float)
     c = 0
     for _ in range(n):
@@ -417,6 +417,10 @@ def report(d: Path, audit: str | None) -> str:
                     c = lambda ab: f"{s[ab]['cagr']:+.1%} / {s[ab]['max_dd']:.0%}" if s.get(ab) else "–"
                     p(f"| {v} | {cash} € | {c('Train')} | {c('Validierung')} | {c('Holdout')} | {c('gesamt')} | "
                       f"{(s['gesamt'] or {}).get('sharpe') or 0:.2f} | {(s['gesamt'] or {}).get('trades', 0)} |")
+    if ("E0", "5x1") in dep:
+        s = dep[("E0", "5x1")]["5000_base"]
+        p("\n**Reproduktion B60** (5.000 €, 5 × 1 %, Basis-Kosten; Soll aus Lauf 40925193877: +15,1 % / −6,9 % / +11,9 %): " +
+          " / ".join(f"{s[ab]['cagr']:+.1%}" for ab in AB if s.get(ab)))
     nul = {}
     for f in sorted(d.glob("null_*_*.json")):
         v = f.stem.split("_")[1]

@@ -82,3 +82,18 @@ def test_holm_und_kennzahlen():
     e = pd.Series(np.linspace(100, 121, 253), index=pd.bdate_range("2020-01-01", periods=253))
     m = R.metrics(e)
     assert m["max_dd"] == 0 and 0.2 < m["cagr"] < 0.23
+
+
+def test_null_rows_bereinigte_atr():
+    h, l, c = base_path(400)
+    idx = setup_px(h, l, c)
+    R._G.update(region={"AAA": "us"}, cur={"AAA": "USD"})
+    sig = pd.DataFrame({"ticker": ["AAA"], "date": [idx[350]]})
+    import research.strategy_championship.s01 as s01
+    orig = s01.eligible
+    s01.eligible = lambda A, cur: np.ones(len(A), bool)
+    try:
+        rows = R.null_rows(sig, 1)
+    finally:
+        s01.eligible = orig
+    assert rows and rows[0][0] == "AAA" and rows[0][1] == 350 and rows[0][2] > 0
