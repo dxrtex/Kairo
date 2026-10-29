@@ -1,0 +1,45 @@
+name: Research – Kairo Ultimate Wettbewerb B
+
+# Nur Forschung (Plan eingefroren). Braucht die Depotkurven aus Runde 1 (Lauf-ID) und den Namen der besten Rücksetzer-Variante.
+permissions:
+  contents: write
+  actions: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      r1_run: { description: "Lauf-ID Runde 1", required: true }
+      best: { description: "beste Variante aus Wettbewerb A (E0, wenn keine besteht)", required: true, default: "E0" }
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Datensatz v1 laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - uses: actions/download-artifact@v4
+        with: { pattern: "ur1-*", merge-multiple: true, path: r1, run-id: "${{ inputs.r1_run }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - run: python -W ignore -m research.ultimate.compete run --data v1 --r1 r1 --best ${{ inputs.best }} --out out
+      - run: python -W ignore -m research.ultimate.compete pre --out out
+      - uses: actions/upload-artifact@v4
+        with: { name: "ub-result", path: out/, retention-days: 30 }
