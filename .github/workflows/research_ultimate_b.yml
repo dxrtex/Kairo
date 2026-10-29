@@ -38,10 +38,12 @@ jobs:
           gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
           echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
       - id: trg
-        run: read RUN BEST < research/ultimate/b_trigger.txt && echo "run=$RUN" >> $GITHUB_OUTPUT && echo "best=$BEST" >> $GITHUB_OUTPUT
+        run: read RUN BEST _ < research/ultimate/b_trigger.txt && echo "run=$RUN" >> $GITHUB_OUTPUT && echo "best=$BEST" >> $GITHUB_OUTPUT
       - uses: actions/download-artifact@v4
         with: { pattern: "ur1-*", merge-multiple: true, path: r1, run-id: "${{ steps.trg.outputs.run }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
       - run: python -W ignore -m research.ultimate.compete run --data v1 --r1 r1 --best ${{ steps.trg.outputs.best }} --out out
       - run: python -W ignore -m research.ultimate.compete pre --out out
+        continue-on-error: true
       - uses: actions/upload-artifact@v4
+        if: always()
         with: { name: "ub-result", path: out/, retention-days: 30 }

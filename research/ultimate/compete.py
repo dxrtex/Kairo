@@ -218,7 +218,7 @@ def main_run(a) -> None:
             for cn, co in COSTS.items():
                 r = run(frames, etf_cur, fx, o, cap, co, mx, calendar=cal, exit_when=ex, min_fill=0.5)
                 record(sid, cap, cn, r, tax=taxable_from_run(r, stocks=False))
-        print(sid, {c: round(res[f"{sid}|10000|stress"][ab]["cagr"], 4) for ab in AB + ("gesamt",) if res[f"{sid}|10000|stress"].get(ab)}, flush=True)
+        print(sid, {ab: round(res[f"{sid}|10000|stress"][ab]["cagr"], 4) for ab in AB + ("gesamt",) if res[f"{sid}|10000|stress"].get(ab)}, flush=True)
     uni = pd.read_csv(UNIVERSE)
     region = dict(zip(uni["ticker"], uni["region"]))
     P = Panel(prices, cur, region, bench, start, end)
@@ -237,10 +237,10 @@ def main_run(a) -> None:
 
     # Zufall
     null = {"S16-B": [], "S07-B": []}
-    for seed in range(100):
+    for seed in range(int(os.environ.get("UB_NULL_ETF", 100))):
         o_, ex_, _ = wave2.etf_rotation(bench, "S16-B", start, end, rng=np.random.default_rng(seed))
         null["S16-B"].append(segments(run(frames, etf_cur, fx, o_, 10000, COSTS["stress"], 3, calendar=cal, exit_when=ex_, min_fill=0.5).equity))
-    for seed in range(40):
+    for seed in range(int(os.environ.get("UB_NULL_STK", 40))):
         o_, ex_ = wave2.monthly_stock(P, "S07-B", bench, rng=np.random.default_rng(seed))
         null["S07-B"].append(segments(run(P.raw, cur, fx, o_, 10000, scost["stress"], 10, calendar=scal, exit_when=ex_, min_fill=0.5).equity))
     print("Zufall fertig", flush=True)
