@@ -11,6 +11,7 @@ Ausblicks (zählt doppelt – der Markt handelt die Zukunft). Die tatsächliche 
 from __future__ import annotations
 
 import math
+import os
 import re
 import time
 import urllib.parse
@@ -26,17 +27,25 @@ GUIDE_UP = re.compile(
     r"\b(rais(es|ed|ing)?|lifts?|lifted|boosts?|boosted|hikes?|hiked|ups|increases?|increased)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
     r"|\b(guidance|outlook|forecast)\b[^|]{0,25}\b(above|tops|beats|ahead of)\b"
     r"|\b(strong|upbeat|bullish|upgraded|rosy|robust)\b[^|]{0,20}\b(guidance|outlook|forecast)\b"
-    r"|\b(hebt|erhöht|erhoeht)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
+    r"|\b(hebt|erhöht|erhoeht|hob)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele|umsatzziel|gewinnziel)\w*"
+    r"|\b(prognose|ausblick|jahresziele?|ziele)\w*\s+(angehoben|erhöht)\b|\bprognose(erhöhung|anhebung)\b", re.I)
 GUIDE_DOWN = re.compile(
     r"\b(cuts?|lowers?|lowered|slash(es|ed)?|reduces?|reduced|trims?|trimmed|withdraws?|withdrew|pulls?|pulled)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
     r"|\b(guidance|outlook|forecast)\b[^|]{0,25}\b(below|misses|missed|disappoints?|weak|falls short)\b"
     r"|\b(weak|soft|disappointing|downbeat|gloomy|lowered)\b[^|]{0,20}\b(guidance|outlook|forecast)\b"
-    r"|\b(senkt|kappt|kassiert|streicht)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
+    r"|\b(senkt|kappt|kassiert|streicht|senkte)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele|umsatzziel|gewinnziel)\w*"
+    r"|\b(prognose|ausblick|jahresziele?|ziele)\w*\s+(gesenkt|gekappt|kassiert|zurückgenommen)\b|\b(gewinnwarnung|prognosesenkung|umsatzwarnung)\b", re.I)
 ANALYST = re.compile(r"\b(price target|target price|kursziel|rating|stock forecast|price forecast|price prediction|prognose für die aktie|upgrades?|downgrades?|upgraded|downgraded|analysts? (see|expect)|"
                      r"(raises|lifts|cuts|lowers|trims|boosts)\b[^|]{0,30}\btarget\b)", re.I)
+# Ausgaben-/Investitionspläne sind kein Umsatz- oder Gewinnausblick (Meta 21.10.2026: „Boosts … Spending Outlook“ → Kurs −7 %)
+SPEND = re.compile(r"\b(spend\w*|capex|capital (expenditures?|spending)|expenses?|costs?|investments?|invest\w*|ausgaben|investitionen|kosten)\b", re.I)
+# Sondereffekte: Gewinn durch Einmalposten verzerrt (Steuer, Abschreibung, Rückstellung)
+ONEOFF = re.compile(r"\b(one[- ]time|one[- ]off|non[- ]recurring|charges?|impairments?|write[- ]?downs?|tax (charge|benefit|expense|hit)|"
+                    r"legal (charge|settlement)|restructuring|sonderbelastung\w*|sondereffekt\w*|einmal\w*|abschreibung\w*)\b", re.I)
 GUIDE_KEEP = re.compile(
     r"\b(reaffirms?|reaffirmed|reiterates?|reiterated|maintains?|maintained|confirms?|confirmed)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
-    r"|\bbestätigt\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\b", re.I)
+    r"|\b(bestätigt|bekräftigt|konkretisiert)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele)\w*"
+    r"|\b(prognose|ausblick|jahresziele?|ziele)\w*\s+(bestätigt|bekräftigt)\b", re.I)
 
 
 def _num(v):
@@ -83,6 +92,8 @@ def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Time
             m = rx.search(title)
             if m and (not words or _about(title, m, words)):
                 d = val
+                if SPEND.search(m.group(0)):          # Ausgabenplan („Spending Outlook“, „capex forecast“), kein Ausblick
+                    d = None
                 break
         if d is not None:
             hits.append({"d": d, "t": title[:180], "u": link, "date": date})
@@ -96,11 +107,33 @@ def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Time
     return {"d": d, "t": best["t"], "u": best["u"], "date": best["date"], "n": len(hits)}
 
 
+def oneoff(items: list[tuple[str, str, str]], words: list[str], since: pd.Timestamp | None = None) -> dict | None:
+    """Schlagzeile nach den Zahlen, die auf einen Sondereffekt beim Gewinn hindeutet (Firma im Titel)."""
+    from email.utils import parsedate_to_datetime
+    words = [w.lower() for w in words if w and len(w) >= 3]
+    for title, link, date in items:
+        if since is not None and date:
+            try:
+                if pd.Timestamp(parsedate_to_datetime(date)) < since - pd.Timedelta(hours=2):
+                    continue
+            except Exception:
+                pass
+        m = ONEOFF.search(title)
+        if m and not ANALYST.search(title) and (not words or _about(title, m, words)):
+            return {"t": title[:180], "u": link}
+    return None
+
+
 def assess(eps_s: float | None, rev_s: float | None, guide_d: int | None) -> dict | None:
-    """Regel: Gewinn-Überraschung ±3 % → ±1, Umsatz ±1 % → ±1, Ausblick angehoben/gesenkt → ±2."""
+    """Regel: Gewinn-Überraschung ±3 % → ±1 (über ±10 % → ±2, wie in der Statistik: 61 % bzw. 39 % gestiegen),
+    Umsatz ±1 % → ±1, Ausblick angehoben/gesenkt → ±2."""
     pts, why = 0.0, []
     if eps_s is not None:
-        if eps_s >= .03:
+        if eps_s > .10:
+            pts += 2; why.append("Gewinn deutlich über der Erwartung")
+        elif eps_s < -.10:
+            pts -= 2; why.append("Gewinn deutlich unter der Erwartung")
+        elif eps_s >= .03:
             pts += 1; why.append("Gewinn über der Erwartung")
         elif eps_s <= -.03:
             pts -= 1; why.append("Gewinn unter der Erwartung")
@@ -165,8 +198,9 @@ def typical_move(close: pd.Series, past: list[pd.Timestamp]) -> float | None:
     return round(sum(mv) / len(mv), 4) if len(mv) >= 3 else None
 
 
-def _rss(q: str) -> list[tuple[str, str, str]]:
-    url = "https://news.google.com/rss/search?hl=en-US&gl=US&ceid=US:en&q=" + urllib.parse.quote(q)
+def _rss(q: str, de: bool = False) -> list[tuple[str, str, str]]:
+    loc = "hl=de&gl=DE&ceid=DE:de" if de else "hl=en-US&gl=US&ceid=US:en"
+    url = f"https://news.google.com/rss/search?{loc}&q=" + urllib.parse.quote(q)
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Kairo)"})
         x = urllib.request.urlopen(req, timeout=15).read().decode("utf-8", "replace")
@@ -181,6 +215,68 @@ def _rss(q: str) -> list[tuple[str, str, str]]:
             title = re.sub(r"<!\[CDATA\[|\]\]>", "", t.group(1)).replace("&amp;", "&").replace("&#39;", "'").replace("&quot;", '"').strip()
             out.append((title, (l.group(1).strip() if l else ""), (d.group(1).strip() if d else "")))
     return out
+
+
+_SEC_TEXT: dict = {}
+
+
+def _sec_text(t: str, since: str) -> str | None:
+    from . import earnfast, secguide
+    if t not in _SEC_TEXT:
+        cik = earnfast.ciks().get(t)
+        _SEC_TEXT[t] = secguide.fetch_text(cik, since) if cik and os.environ.get("SEC_CONTACT") else None
+    return _SEC_TEXT[t]
+
+
+def _sec_results(t: str, ev: dict, upcoming: pd.DataFrame, est_col: str, today: pd.Timestamp) -> pd.DataFrame | None:
+    """Gewinn je Aktie direkt aus der Pressemitteilung, solange Yahoo ihn noch nicht hat (meist 10–40 Min. schneller).
+    Erwartung = Yahoo-Schätzung für diesen Termin. Nur mit SEC_CONTACT und nur am Termin (± 1 Tag)."""
+    if not os.environ.get("SEC_CONTACT") or not ev.get("date"):
+        return None
+    d = pd.Timestamp(ev["date"])
+    if abs((today - d).days) > 1:
+        return None
+    from . import secguide
+    txt = _sec_text(t, (d - pd.Timedelta(days=1)).strftime("%Y-%m-%d"))
+    r = secguide.results(txt) if txt else {}
+    if r.get("eps") is None:
+        return None
+    if r["eps_kind"] == "GAAP" and re.search(r"\b(non-?gaap|adjusted)\b", txt, re.I):
+        return None                                        # nur GAAP gefunden, obwohl es eine bereinigte Zahl gibt → lieber auf Yahoo warten
+    est = None
+    if len(upcoming) and est_col in upcoming:
+        u = upcoming[[abs((i.tz_convert("UTC").tz_localize(None).normalize() - d).days) <= 3 for i in upcoming.index]]
+        est = _num(u.iloc[-1][est_col]) if len(u) else None
+    if est is None or (est and abs(r["eps"] / est - 1) > 0.5):
+        print(f"Quartalszahlen {t}: Pressemitteilung {r['eps']} vs. Erwartung {est} – unplausibel oder ohne Erwartung, warte auf Yahoo")
+        return None                                        # Lesefehler wahrscheinlicher als eine Überraschung über 50 %
+    print(f"Quartalszahlen {t}: aus der Pressemitteilung – Gewinn je Aktie {r['eps']} ({r['eps_kind']}), Erwartung {est}")
+    ts = pd.Timestamp.now(tz="UTC").tz_convert("America/New_York")
+    return pd.DataFrame({"EPS Estimate": [est], "Reported EPS": [r["eps"]], "Surprise(%)": [None]}, index=pd.DatetimeIndex([ts], name="Earnings Date"))
+
+
+def _sec_guidance(tk, t: str, last: pd.Timestamp) -> dict | None:
+    """Ausblick aus der Pressemitteilung bei der SEC (nur mit Secret SEC_CONTACT), gegen die Analysten-Erwartung."""
+    if not os.environ.get("SEC_CONTACT"):
+        return None
+    from . import earnfast, secguide
+    cik = earnfast.ciks().get(t)
+    if not cik:
+        return None
+    lt = pd.Timestamp(last)
+    since = ((lt.tz_convert("UTC").tz_localize(None) if lt.tzinfo else lt) - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    txt = _sec_text(t, since)
+    g = secguide.parse(txt) if txt else None
+    if not g:
+        return None
+    est_q = est_y = None
+    try:
+        re_ = tk.get_revenue_estimate()
+        est_q = _num(re_.loc["+1q"].get("avg")) if "+1q" in re_.index else None
+        est_y = _num(re_.loc["0y"].get("avg")) if "0y" in re_.index else None
+    except Exception:
+        pass
+    return secguide.judge(g, est_q, est_y)
 
 
 def _words(name: str, ticker: str) -> list[str]:
@@ -270,10 +366,15 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
     if syn is not None:                                    # Termin fehlt (noch) in der Terminliste, Zahlen stehen aber in der Historie
         reported = pd.concat([syn, reported]).sort_index(ascending=False)
         upcoming = upcoming[upcoming.index.tz_convert("UTC").tz_localize(None).normalize() > syn.index[0].tz_convert("UTC").tz_localize(None).normalize()]
+    from_pr = False
     if live:
         lt = reported.index[0] if len(reported) else None
         if lt is None or today - lt.tz_convert("UTC").tz_localize(None).normalize() > pd.Timedelta(days=3):
-            return None, None                              # noch nichts gemeldet – erst die nächste Prüfung
+            pr = _sec_results(t, ev, upcoming, est_col, today)   # Yahoo noch leer → Zahlen aus der Pressemitteilung (SEC)
+            if pr is None:
+                return None, None                          # noch nichts gemeldet – erst die nächste Prüfung
+            reported = pd.concat([pr, reported]).sort_index(ascending=False)
+            from_pr = True
         upcoming = upcoming.iloc[0:0]
     if close is None or len(close) < 30:
         try:
@@ -300,7 +401,18 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
         if eps_e not in (None, 0) and eps_a is not None:
             res["eps_s"] = round((eps_a - eps_e) / abs(eps_e), 4)
         rev_a, rev_py = _quarter_revenue(tk, last)
+        if rev_a is None and _SEC_TEXT.get(t):             # Umsatz aus der Pressemitteilung, solange Yahoo ihn noch nicht hat
+            from . import secguide
+            rev_a = secguide.results(_SEC_TEXT[t]).get("rev")
         mem = est_mem.get(t) or {}
+        try:                                               # Umsatz-Beschleunigung (SEC-Finanzdaten) – bremst die Steig-Quote nach guten Zahlen
+            from . import earnfast, revhist
+            cik = earnfast.ciks().get(t)
+            ac = revhist.accel(revhist.quarters(cik), rev_a, last) if cik and "." not in t else None
+            if ac:
+                res.update(ac)
+        except Exception as exc:
+            print(f"Umsatz-Beschleunigung {t}: {exc!r}")
         if rev_a is not None:
             res["rev_a"] = rev_a
             if rev_py:
@@ -308,13 +420,25 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
             if mem.get("rev") and abs((pd.Timestamp(mem.get("date", "1900-01-01")) - last_day).days) <= 7:
                 res["rev_e"] = mem["rev"]
                 res["rev_s"] = round(rev_a / mem["rev"] - 1, 4)
-        g = guidance(_rss(f"{_words(ev.get('name') or t, t)[0]} guidance OR outlook OR forecast when:{PAST_DAYS + 1}d"), _words(ev.get("name") or t, t), last)
+        g = _sec_guidance(tk, t, last)                     # 1. Pressemitteilung bei der SEC (mit SEC_CONTACT)
+        if not g:                                          # 2. Schlagzeilen
+            items = _rss(f"{_words(ev.get('name') or t, t)[0]} guidance OR outlook OR forecast when:{PAST_DAYS + 1}d")
+            if "." in t and not t.endswith((".HK", ".T", ".KS", ".KQ", ".TW", ".SS", ".SZ", ".AX", ".NS", ".BO")):
+                # Europa: Prognose-Änderungen sind Pflicht-Ad-hoc-Meldungen (EU-MAR) – auf Deutsch über EQS/dpa-AFX zuerst
+                items = _rss(f"{_words(ev.get('name') or t, t)[0]} Prognose OR Ausblick OR Jahresziele OR Gewinnwarnung when:{PAST_DAYS + 1}d", de=True) + items
+            g = guidance(items, _words(ev.get("name") or t, t), last)
         if g:
             res["guide"] = g
+        if res.get("eps_s") is not None and abs(res["eps_s"]) >= .10:
+            oo = oneoff(_rss(f"{_words(ev.get('name') or t, t)[0]} earnings charge OR one-time OR tax when:{PAST_DAYS + 1}d"), _words(ev.get("name") or t, t), last)
+            if oo:
+                res["oneoff"] = oo
         if close is not None and len(close):
             rx = reaction(close, last)
             if rx:
                 res["rx"] = rx
+        if from_pr:
+            res["src"] = "pr"                              # vorläufig aus der Pressemitteilung – Yahoo ersetzt es bei der nächsten Prüfung
         res["view"] = assess(res.get("eps_s"), res.get("rev_s"), (g or {}).get("d"))
         rec["last"] = res
     if len(upcoming):
@@ -360,6 +484,19 @@ def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
     cal = json.loads(urllib.request.urlopen(PAGES + "calendar.json", timeout=60).read())
     now = pd.Timestamp.now(tz="UTC")
     today = now.tz_localize(None).normalize()
+    from . import earnfast
+    try:
+        earnfast.sec_pushes(os.environ.get("SEC_HIT", ""), cal.get("events", []), out)   # zuerst: „Zahlen sind raus“
+    except Exception as exc:
+        print(f"Quartalszahlen: SEC-Mitteilung fehlgeschlagen ({exc!r})")
+    try:
+        nexts = {t: r.get("next") or {} for t, r in json.loads(urllib.request.urlopen(PAGES + "earnings.json", timeout=60).read()).get("tickers", {}).items()}
+    except Exception:
+        nexts = {}
+    try:
+        print(f"Quartalszahlen: {earnfast.watch_file(cal.get('events', []), nexts, out, today)} Termine mit SEC-Nummer für den Kursdienst")
+    except Exception as exc:
+        print(f"Quartalszahlen: earn_watch.json fehlgeschlagen ({exc!r})")
     todo = {}
     for e in cal.get("events", []):
         if e.get("kind") != "earnings" or not e.get("ticker"):
@@ -384,6 +521,14 @@ def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
         fresh = {t: rec for t, rec in ex.map(job, list(todo.items())) if rec and rec.get("last")}
     keep = {t: r for t, r in prev.items() if t not in todo and pd.Timestamp((r.get("last") or {}).get("date", "1900-01-01")) >= today - pd.Timedelta(days=4)}
     allr = {**keep, **fresh}
+    try:
+        print(f"Quartalszahlen: {earnfast.archive(fresh, out)} Meldungen im Archiv")
+    except Exception as exc:
+        print(f"Quartalszahlen: Archiv fehlgeschlagen ({exc!r})")
+    try:
+        earnfast.result_pushes(fresh, prev, cal.get("events", []), out)
+    except Exception as exc:
+        print(f"Quartalszahlen: Ergebnis-Mitteilung fehlgeschlagen ({exc!r})")
     f.write_text(json.dumps({"generated": now.isoformat(timespec="seconds"), "tickers": allr}, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")
     print(f"Quartalszahlen live: {len(todo)} Termine geprüft, {len(fresh)} mit Zahlen aktualisiert, {len(allr)} in der Datei")
 

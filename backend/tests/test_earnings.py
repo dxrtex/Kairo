@@ -118,3 +118,46 @@ def test_history_fallback_ignores_old_quarter_before_report():
     rep = pd.DataFrame({"EPS Estimate": [0.40], "Reported EPS": [0.33]}, index=idx)
     eh = pd.DataFrame({"epsActual": [0.33], "epsEstimate": [0.40]}, index=pd.to_datetime(["2026-06-30"]))
     assert E._from_history(_TK(eh), {"date": "2026-10-21"}, rep, pd.Timestamp("2026-10-21")) is None
+
+
+def test_ausgabenplan_ist_kein_ausblick_meta():
+    # Meta 21.10.2026: höhere KI-Ausgaben, Gewinn −30 % unter Erwartung, Kurs −7 % – war fälschlich „leicht positiv“
+    items = [("Meta Boosts Bet on AI With Spending Outlook, New Stock Class - Yahoo Finance", "u", "")]
+    assert E.guidance(items, ["meta"]) is None
+    v = E.assess(-0.2985, None, None)
+    assert v["tone"] == "red" and v["lbl"] == "eher negativ"
+
+
+def test_echter_ausblick_bleibt_erkannt():
+    assert E.guidance([("Meta raises full-year revenue outlook", "u", "")], ["meta"])["d"] == 1
+    assert E.guidance([("Intel lowers forecast as costs climb", "u", "")], ["intel"])["d"] == -1
+
+
+def test_sondereffekt():
+    o = E.oneoff([("Meta profit hit by one-time tax charge", "u", ""), ("Meta stock falls", "v", "")], ["meta"])
+    assert o and o["u"] == "u"
+    assert E.oneoff([("Meta stock falls after earnings", "v", "")], ["meta"]) is None
+
+
+def test_deutsche_adhoc_prognose():
+    up = [("EQS-Adhoc: Rheinmetall AG: Rheinmetall hebt Prognose für 2026 an - finanzen.net", "u", "")]
+    assert E.guidance(up, ["Rheinmetall"])["d"] == 1
+    assert E.guidance([("Nordex: Jahresziele angehoben", "u", "")], ["Nordex"])["d"] == 1
+    assert E.guidance([("Gewinnwarnung bei Bayer: Aktie bricht ein", "u", "")], ["Bayer"])["d"] == -1
+    assert E.guidance([("Siemens Energy: Prognose gesenkt", "u", "")], ["Siemens"])["d"] == -1
+    assert E.guidance([("Allianz bestätigt Ausblick für das Gesamtjahr", "u", "")], ["Allianz"])["d"] == 0
+    assert E.guidance([("Volkswagen erhöht Investitionen und Ausgaben", "u", "")], ["Volkswagen"]) is None
+
+
+def test_pressemitteilung_nur_plausibel(monkeypatch):
+    monkeypatch.setenv("SEC_CONTACT", "x@y.z")
+    ev = {"date": "2026-10-29"}
+    up = pd.DataFrame({"EPS Estimate": [1.80]}, index=pd.DatetimeIndex([pd.Timestamp("2026-10-29 16:30", tz="America/New_York")]))
+    today = pd.Timestamp("2026-10-29")
+    monkeypatch.setattr(E, "_sec_text", lambda t, since: "Quarterly diluted earnings per share of $1.95. Revenue was $100.0 billion.")
+    r = E._sec_results("AAPL", ev, up, "EPS Estimate", today)
+    assert r is not None and r["Reported EPS"].iloc[0] == 1.95
+    monkeypatch.setattr(E, "_sec_text", lambda t, since: "Quarterly diluted earnings per share of $0.40.")      # −78 % → eher Lesefehler
+    assert E._sec_results("AAPL", ev, up, "EPS Estimate", today) is None
+    monkeypatch.setattr(E, "_sec_text", lambda t, since: "GAAP diluted EPS was $1.70. Adjusted EPS figures in the tables.")
+    assert E._sec_results("AAPL", ev, up, "EPS Estimate", today) is None    # nur GAAP, aber bereinigte Zahl existiert

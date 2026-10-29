@@ -1,4 +1,4 @@
-name: EQS-Probe
+name: SEC-Text-Probe
 on:
   push:
     branches: ["claude/probe-div"]
@@ -6,20 +6,20 @@ jobs:
   probe:
     runs-on: ubuntu-24.04
     steps:
-      - run: |
-          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
-          for u in \
-            "https://www.eqs-news.com/de/rss/" \
-            "https://www.eqs-news.com/rss/" \
-            "https://www.eqs-news.com/de/news/?rss=1" \
-            "https://www.eqs-news.com/de/news/adhoc/" \
-            "https://www.eqs-news.com/de/company/rheinmetall-ag/news/" \
-            "https://www.eqs-news.com/de/?s=Rheinmetall" \
-            "https://www.dgap.de/dgap/News/?newsType=ADHOC" \
-            "https://www.finanznachrichten.de/rss-nachrichten-adhoc-mitteilungen" \
-            "https://www.finanznachrichten.de/rss-aktien-nachrichten" \
-            "https://news.google.com/rss/search?q=Rheinmetall+Prognose+when:7d&hl=de&gl=DE&ceid=DE:de" \
-            "https://www.rheinmetall.com/de/media/news-watch/rss" \
-            "https://www.hkexnews.hk/listedco/listconews/advancedsearch/search_active_main.aspx" \
-            "https://www.asx.com.au/asx/1/company/DRO/announcements?count=5&market_sensitive=false" ; do
-            code=$(curl -s -L -o b.txt -w "%{http_code} %{content_type}" -A "$UA" "$u"); echo "== $code $u"; head -c 600 b.txt | tr '\n' ' '; echo; done
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - env: { SEC_CONTACT: "${{ secrets.SEC_CONTACT }}" }
+        run: |
+          python - <<'PY'
+          import re
+          from backend import secguide as S, earnfast
+          for t in ("LLY", "PBF", "INSM", "INDV", "AAMI", "BDC"):
+              txt = S.fetch_text(earnfast.ciks()[t], "2026-10-28")
+              print("=====", t, "Text:", len(txt or ""), "Zeichen")
+              if not txt: continue
+              print("results:", S.results(txt), "| guide:", {k: v for k, v in (S.parse(txt) or {}).items() if k != "s"})
+              for m in list(re.finditer(r"(?i)(earnings per share|\bEPS\b|non-gaap|revenue)", txt[:8000]))[:8]:
+                  print("  …", txt[max(0, m.start()-80):m.start()+160].replace("\n", " "))
+          PY
