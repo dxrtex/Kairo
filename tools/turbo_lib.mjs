@@ -21,7 +21,7 @@ const CODE = [
 export function sandbox({ fx = { EUR: 1 }, rows = {}, fetchImpl = globalThis.fetch } = {}) {
   const ctx = {
     state: { tpT: {} }, save() {}, tpRefresh() {}, fetch: fetchImpl, console, Intl, Math, JSON, Date, Number, String, Set, Object, isNaN,
-    TP: { kob: 1.0 }, rowOf: t => rows[t] || null, document: { addEventListener() {} }, $: () => null,
+    TP: { kob: 1.0 }, tpCfg: () => ({ fee: 1 }), rowOf: t => rows[t] || null, document: { addEventListener() {} }, $: () => null,
   };
   ctx.fxEur = fx;
   ctx.toEur = (v, cur) => v == null ? null : v * (ctx.fxEur[cur] ?? (cur === "EUR" ? 1 : NaN));
