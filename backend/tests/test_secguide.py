@@ -45,6 +45,31 @@ def test_echte_formulierungen_29_10():
     assert S.results(drs)["eps"] == 0.46
 
 
+def test_sonderbelastung_ist_kein_gewinn():
+    # Lilly 29.10.: „non-GAAP EPS included $4.57 of acquired IPR&D charges“ stand vor dem echten Wert 7.48
+    lly = ("Q3 2026 EPS increased by 16% to $7.22 on a reported basis and increased by 7% to $7.48 on a non-GAAP basis. "
+           "Q3 2026 reported and non-GAAP EPS included $4.57 of acquired IPR&#38;D charges compared to $0.71 in Q3 2025. "
+           "Financial Results $ in millions, except per share data Third-Quarter 2026 2025 % Change Revenue $ 24,397 $ 17,601 39% "
+           "Net income – Reported 6,451 5,583 16% Earnings per share – Reported (1) 7.22 6.21 16% Net income – Non-GAAP 6,679 6,312 6% "
+           "Earnings per share – Non-GAAP (1) 7.48 7.02 7%")
+    r = S.results(lly)
+    assert r["eps"] == 7.48 and r["eps_kind"] == "bereinigt"
+    spec = ("Non-cash special items decreased net income by a net, after-tax charge of $28.9 million, or $0.24 per share. "
+            "Net income attributable to the company was $1,529.3 million or $12.54 per share.")
+    assert S.results(spec)["eps"] == 12.54
+
+
+def test_verlust_und_klammerformat():
+    insm = ("For the third quarter of 2026, Insmed reported a net loss of $100.3 million, or $0.46 per share, compared to a net loss "
+            "of $370.0 million, or $1.75 per share, for the third quarter of 2025.")
+    assert S.results(insm)["eps"] == -0.46
+    indv = ("GAAP net income for the 2026 quarter was $137 million ($1.12 diluted earnings per share), compared to GAAP net income for the 2025 "
+            "quarter of $42 million ($0.33 diluted earnings per share). Non-GAAP net income for the 2026 quarter was $161 million "
+            "($1.32 diluted earnings per share), compared to non-GAAP net income for the 2025 quarter of $93 million ($0.72 diluted earnings per share).")
+    r = S.results(indv)
+    assert r["eps"] == 1.32 and r["eps_kind"] == "bereinigt"
+
+
 def test_ausblick_segment_wird_nicht_verglichen():
     g = S.parse("Company Raises 2026 BRINSUPRI Revenue Guidance to $1.35 Billion to $1.4 Billion.")
     j = S.judge(g, None, 2.2e9)                            # Firmenumsatz-Erwartung 2,2 Mrd. – Spanne ist ein Produkt
