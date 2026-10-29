@@ -33,3 +33,24 @@ def test_ergebnis_aus_pressemitteilung():
     r2 = S.results(t2)
     assert r2["eps"] == 0.62 and r2["eps_kind"] == "bereinigt" and r2["rev"] == 13.7e9
     assert S.parse(t2)["mid"] == 13.5e9
+
+
+def test_echte_formulierungen_29_10():
+    pbf = ("PBF Energy Announces Third Quarter 2026 Results, Declares Dividend of $0.325 per Share. The company reported third quarter 2026 "
+           "net income of $1,543.3 million and net income attributable to PBF Energy Inc. of $1,529.3 million or $12.54 per share. "
+           "Adjusted fully-converted net income for the third quarter 2026, excluding special items, was $1,568.6 million, or $12.78 per share on a fully-exchanged, fully-diluted basis.")
+    r = S.results(pbf)
+    assert r["eps"] == 12.78 and r["eps_kind"] == "bereinigt"
+    drs = "Net Earnings: $115 million, up 60% year-over-year • Diluted EPS: $0.43, up 65% • Adjusted Diluted EPS: $0.46, up 59% year-over-year"
+    assert S.results(drs)["eps"] == 0.46
+
+
+def test_ausblick_segment_wird_nicht_verglichen():
+    g = S.parse("Company Raises 2026 BRINSUPRI Revenue Guidance to $1.35 Billion to $1.4 Billion.")
+    j = S.judge(g, None, 2.2e9)                            # Firmenumsatz-Erwartung 2,2 Mrd. – Spanne ist ein Produkt
+    assert j["d"] == 1 and "vs" not in j                   # nur „angehoben“ aus dem Verb, kein Zahlenvergleich
+
+
+def test_jahresausblick_ist_kein_quartal():
+    g = S.parse("Increased the midpoint of our 2026 full-year revenue guidance by $5.5 billion to be in the range of $91.0 to $92.0 billion in the third quarter update.")
+    assert g["q"] is False and g["mid"] == 91.5e9

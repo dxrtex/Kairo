@@ -15,6 +15,7 @@ RANGE = re.compile(_NUM + r"\s?(?:to|and|-|–|—)\s?" + _NUM, re.I)
 SINGLE = re.compile(r"\b(?:approximately|about|around|of)\s+" + _NUM, re.I)
 REV = re.compile(r"\b(revenues?|net sales|total sales|sales)\b", re.I)
 FWD = re.compile(r"\b(expects?|expected|anticipates?|outlook|guidance|forecasts?|projects?|sees|estimates?)\b", re.I)
+FULLY = re.compile(r"\b(full[- ]year|fiscal year|annual|FY ?\d{2,4})\b", re.I)
 QTR = re.compile(r"\b(quarter|q[1-4])\b", re.I)
 SPENDW = re.compile(r"\b(capital expenditures?|capex|expenses?|costs?|spending|investments?)\b", re.I)
 VERB = {1: re.compile(r"\b(rais(es|ed|ing)|increas(es|ed|ing)|lift(s|ed)?)\b[^.]{0,40}\b(outlook|guidance|forecast)\b", re.I),
@@ -45,13 +46,13 @@ def parse(text: str) -> dict | None:
             u2 = m.group(4) or m.group(2)
             lo, hi = _val(m.group(1), m.group(2) or u2), _val(m.group(3), u2)
             if lo > 1e6 and hi >= lo:
-                out = {"lo": lo, "hi": hi, "mid": (lo + hi) / 2, "q": bool(QTR.search(sent)), "s": sent.strip()[:300]}
+                out = {"lo": lo, "hi": hi, "mid": (lo + hi) / 2, "q": bool(QTR.search(sent)) and not FULLY.search(sent), "s": sent.strip()[:300]}
                 break
         m = SINGLE.search(sent)
         if m and not out and not SPENDW.search(sent):
             v = _val(m.group(1), m.group(2))
             if v > 1e6:
-                out = {"lo": v, "hi": v, "mid": v, "q": bool(QTR.search(sent)), "s": sent.strip()[:300]}
+                out = {"lo": v, "hi": v, "mid": v, "q": bool(QTR.search(sent)) and not FULLY.search(sent), "s": sent.strip()[:300]}
     verb = next((d for d, rx in VERB.items() if rx.search(text) and not SPENDW.search(rx.search(text).group(0))), None)
     if out:
         out["verb"] = verb
@@ -64,6 +65,8 @@ def judge(g: dict | None, est_q: float | None, est_y: float | None) -> dict | No
     if not g:
         return None
     est = est_q if g.get("q") else est_y
+    if g.get("mid") and est and abs(g["mid"] / est - 1) > 0.2:
+        g = {"verb": g.get("verb")}                        # Spanne passt nicht zur Firma (Produkt/Segment, z. B. Insmed) → nur das Verb zählt
     if g.get("mid") and est:
         r = g["mid"] / est - 1
         d = 1 if r >= .01 else -1 if r <= -.01 else 0
@@ -78,18 +81,41 @@ EPS_GAAP = re.compile(r"\b(diluted )?(eps|earnings per (diluted )?share|net inco
 REV_ACT = re.compile(r"\b(total )?(revenues?|net sales|sales)\b[^.$]{0,40}?\b(was|were|of|totaled|reached|increased[^.$]{0,30}to|grew[^.$]{0,30}to|rose[^.$]{0,30}to)\s+" + _NUM, re.I)
 
 
+PER_SHARE = re.compile(r"\$\s?(\(?\d{1,3}\.\d{2}\)?)\s*(per (basic |diluted |fully[- ]diluted )?share|a share)", re.I)
+ADJ_WORDS = re.compile(r"\b(adjusted|non-?gaap|excluding|core|underlying)\b", re.I)
+
+
+def _eps_val(v: str) -> float:
+    return -float(v.strip("()")) if v.startswith("(") else float(v)
+
+
 def results(text: str) -> dict:
     """Gemeldeter Gewinn je Aktie (bereinigt bevorzugt – damit rechnen die Analysten-Erwartungen) und Umsatz."""
     out = {}
-    head = text[:6000]                                     # Kernzahlen stehen oben in der Mitteilung
+    head = text[:8000]                                     # Kernzahlen stehen oben in der Mitteilung
     m = EPS_ADJ.search(head)
     if m:
         out.update(eps=float(m.group(5)), eps_kind="bereinigt")
     else:
-        m = EPS_GAAP.search(head)
-        if m:
-            v = m.group(5)
-            out.update(eps=-float(v.strip("()")) if v.startswith("(") else float(v), eps_kind="GAAP")
+        adj = gaap = None                                  # Satzweise: „… or $12.78 per share“ (PBF), Dividenden ausgenommen
+        for sent in re.split(r"(?<=[.;•])\s+|\u2022|&#8226;", head):
+            if re.search(r"(?i)dividend|distribution|buyback|repurchase", sent):
+                continue
+            pm = PER_SHARE.search(sent)
+            if not pm or not re.search(r"(?i)income|earnings|loss|profit|eps", sent):
+                continue
+            if ADJ_WORDS.search(sent):
+                adj = adj if adj is not None else _eps_val(pm.group(1))
+            elif gaap is None:
+                gaap = _eps_val(pm.group(1))
+        if adj is not None:
+            out.update(eps=adj, eps_kind="bereinigt")
+        elif gaap is not None:
+            out.update(eps=gaap, eps_kind="GAAP")
+        else:
+            m = EPS_GAAP.search(head)
+            if m:
+                out.update(eps=_eps_val(m.group(5)), eps_kind="GAAP")
     m = REV_ACT.search(head)
     if m and not FWD.search(head[max(0, m.start() - 80):m.start()]):
         v = _val(m.group(4), m.group(5))
@@ -114,7 +140,9 @@ def fetch_text(cik: int, since_iso: str) -> str | None:
                 continue
             acc = f["accessionNumber"][i].replace("-", "")
             idx = requests.get(f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc}/index.json", headers=ua, timeout=20).json()
-            docs = [x["name"] for x in idx["directory"]["item"] if re.search(r"(ex-?99|ex99|exhibit99|press)", x["name"], re.I) and x["name"].lower().endswith((".htm", ".html", ".txt"))]
+            names = [x["name"] for x in idx["directory"]["item"] if x["name"].lower().endswith((".htm", ".html"))
+                     and x["name"] != f["primaryDocument"][i] and not re.match(r"(?i)(R\d+\.htm|.*index|.*-index-headers)", x["name"])]
+            docs = sorted(names, key=lambda n: (not re.search(r"(?i)(ex-?99|exhibit99|press|earn|result|release)", n), n))
             for name in docs[:1]:
                 return text_of(requests.get(f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc}/{name}", headers=ua, timeout=30).text)
             return None
