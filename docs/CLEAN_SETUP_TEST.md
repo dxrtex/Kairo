@@ -67,3 +67,13 @@ Depot 5.000 €, 1 % Risiko, max. 5 Positionen, CAGR (Basis-Kosten):
 verändert das Depot-Ergebnis stark und uneinheitlich (Validierung bei allen schwach) – ein Hinweis, wie viel Zufall in einem
 5-Plätze-Depot steckt.
 Asien (E3) läuft noch; Ergebnis folgt hier.
+
+## Nachtrag: Wiederholung mit Haltedauer 60 (Regel B60, 29.10.2026)
+
+Lauf 40925193877, Datensatz `prices_v1` (SHA e405016e…). USA/Europa, CAGR 5.000-€-Depot (Train / Validierung / Holdout):
+G0 mom +15,1 % / −6,9 % / +11,9 %; G1 mom (Ruhe) +5,5 % / +6,6 % / +6,4 %.
+
+- **E1 (Ruhe-Filter):** nicht bestanden → bleibt aus.
+- **E2 (Rangfolge):** keine Alternative schlägt Momentum in allen Abschnitten → Momentum bleibt.
+- **E3 (Asien):** G0 Ø +0,080 R (n 3901) / +0,131 R (n 4218) / +0,174 R (n 5485) → in allen drei Abschnitten positiv.
+  Ruhe in Asien nicht bestätigt (p 0,071). Asien wird erst nach Kassenbuch-Test mit Block-Bootstrap und Jonnys Freigabe aktiv.
