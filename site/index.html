@@ -2249,18 +2249,27 @@ function earnStatHtml(t, sur) {
 }
 // Oben im Fenster: Wie wahrscheinlich steigt die Aktie nach Zahlen dieser Art – und was heißt das für einen Einstieg?
 // Vor den Zahlen: Mischung der Eimer nach den bisherigen Überraschungen dieser Aktie (große Stichprobe je Eimer, eigene Historie als Gewicht).
-function earnOdds(t, sur) {
+function earnOdds(t, sur, L) {
   const B = (earnStats && earnStats.buckets) || []; if (!B.length) return null;
   const P = (earnStats.per || {})[t], find = s => B.find(x => s >= x.lo && s < x.hi);
-  if (sur != null) { const b = find(sur * 100); return b ? { p: b.up1, p5: b.up5, med: b.med1, n: b.n, how: `bei Gewinn ${b.name}`, after: true } : null; }
+  if (sur != null) {
+    const b = find(sur * 100); if (!b) return null;
+    const ra = L && L.reva != null ? L.reva : null;
+    if (ra != null && b.up1_dec != null) {                 // Umsatz-Beschleunigung (getestet 29.10.2026, Bloom-Energy-Fall)
+      const dec = ra <= -0.05;
+      return { p: dec ? b.up1_dec : b.up1_acc, p5: null, n: dec ? b.n_dec : b.n_acc, after: true,
+        how: `bei Gewinn ${b.name} und Umsatzwachstum ${dec ? `verlangsamt (−${Math.abs(Math.round(ra * 100))} Prozentpunkte)` : ra >= .05 ? "beschleunigt" : "stabil"}`, dec };
+    }
+    return { p: b.up1, p5: b.up5, med: b.med1, n: b.n, how: `bei Gewinn ${b.name}`, after: true };
+  }
   const hist = P && P.last ? P.last.map(x => find(x.s)).filter(Boolean) : [];
   if (hist.length >= 4) return { p: hist.reduce((a, b) => a + b.up1, 0) / hist.length, n: hist.length, how: `geschätzt aus den letzten ${hist.length} Überraschungen von ${t}`, after: false };
   const N = B.reduce((a, b) => a + b.n, 0);
   return { p: B.reduce((a, b) => a + b.up1 * b.n, 0) / N, n: N, how: "Durchschnitt aller US-Aktien", after: false };
 }
-function earnTopHtml(t, sur, rx) {
+function earnTopHtml(t, sur, rx, L) {
   if (!earnStats) { loadEarnStats(); return ""; }
-  const o = earnOdds(t, sur); if (!o) return "";
+  const o = earnOdds(t, sur, L); if (!o) return "";
   const tone = o.p >= .58 ? "green" : o.p < .45 ? "red" : "yellow", r = data && data.results ? byTicker(t) : null;
   const hit = r && r.passed, wait = r && r.calm_wait;
   const P = (earnStats.per || {})[t], own = o.after && sur != null && sur > 0 && P && P.beat_up != null && P.n >= 6 && Math.abs(P.beat_up - o.p) >= .2
@@ -2327,10 +2336,10 @@ function earnHtml(t, d) {
     const verdict = v ? `<div class="eq-v t-${v.tone}"><i></i><div><b>Für den Kurs: ${esc(v.lbl)}</b><span>${esc(v.why.join(" · "))}</span></div></div>` : "";
     const clash = v && rx && rx.d1 != null && Math.abs(rx.d1) >= .02 && ((v.pts >= 1 && rx.d1 < 0) || (v.pts <= -1 && rx.d1 > 0))
       ? `<p class="eq-hint">Der Markt hat anders reagiert als die Zahlen vermuten lassen – oft zählen Details im Ausblick oder in der Telefonkonferenz mehr als das Quartal selbst.</p>` : "";
-    return head + `<div class="eq-sub">Gemeldet am ${dateDE(L.date)}${L.src === "pr" ? " · vorläufig aus der Pressemitteilung (SEC), wird bestätigt" : ""}</div>${earnTopHtml(t, L.eps_s, rx)}${verdict}
+    return head + `<div class="eq-sub">Gemeldet am ${dateDE(L.date)}${L.src === "pr" ? " · vorläufig aus der Pressemitteilung (SEC), wird bestätigt" : ""}</div>${earnTopHtml(t, L.eps_s, rx, L)}${verdict}
       <div class="eq-cells">
         ${cell("Gewinn je Aktie", L.eps_a == null ? "–" : `${fmt(L.eps_a)} ${cur}`.trim(), L.eps_e == null ? "" : `erwartet ${fmt(L.eps_e)} · <span class="${upDown(L.eps_s)}">${sgn(L.eps_s)}</span>`)}
-        ${cell("Umsatz", bigNum(L.rev_a, cur), L.rev_s != null ? `erwartet ${bigNum(L.rev_e)} · <span class="${upDown(L.rev_s)}">${sgn(L.rev_s)}</span>` : L.rev_yoy != null ? `zum Vorjahr <span class="${upDown(L.rev_yoy)}">${sgn(L.rev_yoy)}</span>` : L.rev_a == null ? "Yahoo hat den Umsatz noch nicht" : "")}
+        ${cell("Umsatz", bigNum(L.rev_a, cur), (L.rev_s != null ? `erwartet ${bigNum(L.rev_e)} · <span class="${upDown(L.rev_s)}">${sgn(L.rev_s)}</span>` : L.rev_yoy != null ? `zum Vorjahr <span class="${upDown(L.rev_yoy)}">${sgn(L.rev_yoy)}</span>` : L.rev_a == null ? "Yahoo hat den Umsatz noch nicht" : "") + (L.reva != null ? `<br>Wachstum ${sgn(L.revg, 0)} · <span class="${L.reva <= -0.05 ? "down" : L.reva >= 0.05 ? "up" : ""}">${L.reva <= -0.05 ? "verlangsamt" : L.reva >= 0.05 ? "beschleunigt" : "stabil"} (${L.reva >= 0 ? "+" : "−"}${Math.abs(Math.round(L.reva * 100))} Pkt.)</span>` : ""))}
         ${cell("Ausblick", gTxt, g && g.t ? (g.u ? `<a href="${esc(g.u)}" target="_blank" rel="noopener">${esc(g.t.replace(/ - [^-]+$/, ""))}</a>` : esc(g.t)) : "aus Schlagzeilen nach den Zahlen", g && g.d != null ? upDown(g.d) : "")}
         ${cell("Kursreaktion", rx ? sgn(rx.d1) : "noch offen", rx ? `erster Handelstag (${dateDE(rx.day)})${rx.since != null ? ` · bis ${dateDE(rx.to)} ${sgn(rx.since)}` : ""}` : "kommt mit dem nächsten Handelstag", rx ? upDown(rx.d1) : "")}
       </div>${clash}${L.oneoff ? `<p class="eq-hint">Möglicher Sondereffekt beim Gewinn: <a href="${esc(safeHref(L.oneoff.u))}" target="_blank" rel="noopener">${esc(L.oneoff.t.replace(/ - [^-]+$/, ""))}</a> – bereinigt kann der Gewinn deutlich anders aussehen; Umsatz und Ausblick zählen dann mehr.</p>` : ""}${earnStatHtml(t, L.eps_s)}${rec.beat ? `<p class="eq-line">Erwartung beim Gewinn übertroffen: <b>${rec.beat[0]} von ${rec.beat[1]}</b> Quartalen · typische Bewegung nach Zahlen: <b style="white-space:nowrap">±${pct(rec.move || 0, 1)}</b></p>` : ""}${foot}`;
@@ -4704,8 +4713,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.06";
-const APP_NEWS = [["2026.11.06", "Kalender mit Uhrzeit", [
+const APP_VER = "2026.11.07";
+const APP_NEWS = [["2026.11.07", "Quartalszahlen genauer", [
+  ["Umsatzwachstum zählt mit", "Verlangsamt sich das Umsatzwachstum deutlich (wie bei Bloom Energy), stiegen Aktien nach guten Zahlen nur in 54 statt 64 % der Fälle – in beiden Testzeiträumen. Die Wahrscheinlichkeit oben berücksichtigt das jetzt."],
+  ["Ab jetzt wird gesammelt", "Jede Meldung mit Umsatz- und Ausblick-Vergleich wird archiviert, um die Prognose später weiter zu prüfen."]]],
+  ["2026.11.06", "Kalender mit Uhrzeit", [
   ["Uhrzeit bei jedem Termin", "Jeder Termin zeigt links die Uhrzeit (deutsche Zeit), sortiert von früh bis spät; der nächste anstehende Termin ist markiert. Quartalszahlen mit „~“ = erwartete Zeit aus den bisherigen Meldungen der Firma."],
   ["Genauere Meldezeiten", "Kairo lernt aus den letzten SEC-Meldungen, wann eine Firma ihre Zahlen veröffentlicht, und prüft genau dann jede Minute."]]],
   ["2026.11.05", "Quartalszahlen so schnell wie möglich", [

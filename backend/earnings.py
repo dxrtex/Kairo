@@ -405,6 +405,14 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
             from . import secguide
             rev_a = secguide.results(_SEC_TEXT[t]).get("rev")
         mem = est_mem.get(t) or {}
+        try:                                               # Umsatz-Beschleunigung (SEC-Finanzdaten) – bremst die Steig-Quote nach guten Zahlen
+            from . import earnfast, revhist
+            cik = earnfast.ciks().get(t)
+            ac = revhist.accel(revhist.quarters(cik), rev_a, last) if cik and "." not in t else None
+            if ac:
+                res.update(ac)
+        except Exception as exc:
+            print(f"Umsatz-Beschleunigung {t}: {exc!r}")
         if rev_a is not None:
             res["rev_a"] = rev_a
             if rev_py:
@@ -513,6 +521,10 @@ def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
         fresh = {t: rec for t, rec in ex.map(job, list(todo.items())) if rec and rec.get("last")}
     keep = {t: r for t, r in prev.items() if t not in todo and pd.Timestamp((r.get("last") or {}).get("date", "1900-01-01")) >= today - pd.Timedelta(days=4)}
     allr = {**keep, **fresh}
+    try:
+        print(f"Quartalszahlen: {earnfast.archive(fresh, out)} Meldungen im Archiv")
+    except Exception as exc:
+        print(f"Quartalszahlen: Archiv fehlgeschlagen ({exc!r})")
     try:
         earnfast.result_pushes(fresh, prev, cal.get("events", []), out)
     except Exception as exc:

@@ -48,3 +48,10 @@ def test_gelernte_meldezeit(monkeypatch, tmp_path):
     a = json.loads((tmp_path / "earn_watch.json").read_text())["items"][0]
     assert a["exact"] is True and a["ts"].startswith("2026-10-29T20:32:00")
     assert a["from"].startswith("2026-10-29T20:12:00") and a["to"].startswith("2026-10-29T23:32:00")
+
+
+def test_archiv(tmp_path):
+    rec = {"BE": {"last": {"date": "2026-10-22", "eps_s": 0.38, "reva": -0.245, "guide": {"d": 1}, "rx": {"d1": -0.112}}}}
+    assert earnfast.archive(rec, tmp_path) == 1
+    a = json.loads((tmp_path / "earn_archive.json").read_text())["BE|2026-10-22"]
+    assert a == {"s": 0.38, "ra": -0.245, "g": 1, "r1": -0.112}
