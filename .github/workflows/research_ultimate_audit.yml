@@ -1,0 +1,51 @@
+name: Research – Kairo Ultimate Datenprüfung (Phase 0b)
+
+# Nur Forschung: prüft den eingefrorenen Datensatz v1, ändert nichts an App oder Scanner.
+permissions:
+  contents: write          # Release-Assets (Datensatz v1) sind Entwurfs-Releases
+  actions: read
+
+on:
+  push:
+    branches: ["claude/ultimate-research"]
+    paths: [".github/workflows/research_ultimate_audit.yml", "research/ultimate/data_audit.py"]
+  workflow_dispatch:
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+  SWEEP_RUN: "40778404648"
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - run: python -m pytest -q research/ultimate/tests
+      - name: Datensatz v1 laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$PRICES_ASSET > v1/prices_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$BENCH_ASSET > v1/bench_v1.parquet
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FX_ASSET > v1/fx_v1.parquet
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: { pattern: "swsig-*", merge-multiple: true, path: parts, run-id: "${{ env.SWEEP_RUN }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Heutige Treffer (Variante 0)
+        run: |
+          python -c "import pandas as pd,glob;f=sorted(glob.glob('parts/sweep_signals_*.parquet'));d=pd.concat([pd.read_parquet(x) for x in f]) if f else None;d is None or d[d['v'].str.split(',').apply(lambda l:'0' in l)].to_parquet('sig.parquet',index=False);print(0 if d is None else len(d),'Zeilen')"
+      - name: Prüfung
+        run: |
+          S=""; [ -f sig.parquet ] && S="--signals sig.parquet"
+          python -W ignore -m research.ultimate.data_audit --data v1 $S --out out --stooq 300 --fresh 150
+      - uses: actions/upload-artifact@v4
+        with: { name: "ultimate-audit", path: out/, retention-days: 30 }
