@@ -224,6 +224,22 @@ def metrics(e: pd.Series, trades: pd.DataFrame | None = None, invested: pd.Serie
     return out
 
 
+def taxable_by_year(r) -> dict:
+    """Realisierte Gewinne je Kalenderjahr für die Steuer: Aktien-Topf (Kursgewinne Einzelaktien) und allgemeiner Topf
+    (Dividenden). ETF-Strategien rechnen ihre Töpfe selbst (compete.py)."""
+    out = {}
+    t = r.trades
+    if len(t):
+        for y, v in t.groupby(pd.to_datetime(t["exit_date"]).dt.year)["pnl_eur"].sum().items():
+            out.setdefault(int(y), {"aktien": 0.0, "allgemein": 0.0})["aktien"] += float(v)
+    led = r.ledger
+    if len(led):
+        dv = led[led["kind"] == "DIV"]
+        for y, v in dv.groupby(pd.to_datetime(dv["date"]).dt.year)["cash_flow_eur"].sum().items():
+            out.setdefault(int(y), {"aktien": 0.0, "allgemein": 0.0})["allgemein"] += float(v)
+    return out
+
+
 def segments(e, trades=None, invested=None) -> dict:
     out = {"gesamt": metrics(e, trades, invested)}
     for ab, key in zip(AB, ("train", "validation", "holdout")):
@@ -288,6 +304,7 @@ def depot(orders_by_rf, layout: str) -> dict:
             key = f"{cash}_{kind}"
             out[key] = segments(r.equity, r.trades, r.invested)
             out[key]["checks"] = r.checks
+            out[key]["steuer"] = taxable_by_year(r)
             curves[key] = r.equity
     return out, pd.DataFrame(curves)
 
