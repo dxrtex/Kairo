@@ -189,6 +189,16 @@ geht unverändert in den Papier-Test.**
 - Einzelaktien-Ergebnisse (B60, S07-B) sind durch den gemessenen Survivorship-Bias deutlich zu gut.
 - Steuern vereinfacht; US-ETFs statt UCITS-ETFs; Ausführung auf Tageskerzen.
 
+## 5b. Praktische Umsetzung von S16-B (nur Papier, kein Kaufrat)
+
+- US-ETFs (SPY, EFA, QQQ, SHY) sind für Privatanleger in der EU wegen fehlender Basisinformationsblätter meist nicht kaufbar.
+  Umsetzung wäre mit UCITS-Gegenstücken auf dieselben Indizes (S&P 500, MSCI EAFE bzw. Industrieländer ohne USA,
+  Nasdaq-100, kurze US-Staatsanleihen 1–3 Jahre) – deren Kurse weichen leicht ab (Währung, Kosten, Steuern). Vor einem
+  echten Einsatz muss die Regel mit genau diesen UCITS-ETFs nachgerechnet werden.
+- Ablauf: am letzten Handelstag des Monats abends 12-Monats-Renditen vergleichen (macht die App), Order für die nächste
+  Eröffnung vorbereiten; meist ändert sich nichts (≈ 1–2 Wechsel pro Jahr).
+- Das Papier-Depot `paper/dualmom.py` läuft bereits mit genau dieser Regel; es bleibt unverändert.
+
 ## 6. Antworten (Plan Phase 5)
 
 1. **Beste Rücksetzer-Strategie:** B60 bleibt; der bestätigte Ausbruch (E2) war der beste Herausforderer, aber nicht belegt.
