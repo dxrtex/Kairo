@@ -455,6 +455,28 @@
   @media (max-width: 960px) { table.ptab.ts tr > :nth-child(6), table.ptab.ts tr > :nth-child(7) { display: none; } }
   table.ptab.ts { width: 100%; } .ts-list { display: none; } .ts-q { text-align: right; font-weight: 650; white-space: nowrap; } .ts-q small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); }
   @media (max-width: 560px) { .ts-list { display: block; margin-top: 6px; } .ts-tab { display: none; } }
+  /* Scanner v2: Treffer-Board */
+  .board { display: grid; gap: 14px; }
+  .bd-sec { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .bd-sec.ok { border-color: color-mix(in srgb, var(--up) 45%, var(--line)); }
+  .bd-t { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; } .bd-t b { font-size: 16px; } .bd-t span { color: var(--muted); font-size: 13px; text-align: right; }
+  .bd-card { border-top: 1px solid var(--line); padding: 10px 0 4px; } .bd-card:first-of-type { border-top: 0; }
+  .bd-h, .bd-row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; color: var(--text); font: inherit; text-align: left; padding: 0; cursor: pointer; }
+  .bd-row { padding: 10px 0; border-top: 1px solid var(--line); align-items: flex-start; } .bd-sec .bd-row:first-of-type { border-top: 0; }
+  .bd-rk { flex: 0 0 26px; height: 26px; border-radius: 50%; background: var(--up); color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 14px; }
+  .bd-n { flex: 1; min-width: 0; } .bd-n b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .bd-n small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 1px; }
+  .bd-h s, .bd-row s { text-decoration: none; color: var(--muted); }
+  .bd-p { text-align: right; font-weight: 600; white-space: nowrap; } .bd-p small { display: block; font-weight: 500; color: var(--muted); font-size: 11.5px; }
+  .bd-plan { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 10px 0 6px; }
+  .bd-plan div { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+  .bd-plan span { display: block; font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; } .bd-plan b { display: block; font-size: 14.5px; margin-top: 2px; } .bd-plan em { display: block; font-style: normal; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .bd-crit { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; } .bd-crit span { font-size: 11.5px; padding: 2px 7px; border-radius: 99px; background: rgba(127,127,127,.1); color: var(--muted); }
+  .bd-crit span.ok { color: var(--up); background: color-mix(in srgb, var(--up) 12%, transparent); } .bd-crit span.miss { color: var(--red); background: color-mix(in srgb, var(--red) 12%, transparent); }
+  .bd-in summary { cursor: pointer; color: var(--accent, #0a84ff); font-size: 14px; padding: 8px 0 2px; }
+  .bd-empty { color: var(--muted); font-size: 14px; padding: 6px 0; }
+  .bd-more { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; } .bd-more summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+  .bd-row .sd { flex: 0 0 9px; height: 9px; border-radius: 50%; margin-top: 6px; background: var(--muted); } .bd-row .sd.y { background: var(--gold); } .bd-row .sd.b { background: #4aa3ff; }
+  @media (max-width: 700px) { .bd-plan { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .note-more { border: 0; background: none; color: var(--accent); font-size: 12.5px; font-weight: 600; padding: 2px 2px 0; cursor: pointer; }
   .cfg { font-size: 14px; }
   details.cfgd summary { cursor: pointer; color: var(--accent); font-weight: 650; margin-top: 12px; }
@@ -1644,7 +1666,7 @@ let KIND_BTNS = KIND_BTNS_ALL.filter(x => x[0] !== "trend");
 // Scanner: fünf klare Ansichten statt vieler Knöpfe (eine ist immer aktiv) – [Schlüssel, Name, zählt, Arten für selRows, Erklärung]
 const VIEWS = [
   ["go", "Einstiege", r => isH4(r), ["h4"], "Treffer mit fertiger Seitwärtsphase – ✓ 4H bestätigt = jetzt einsteigen · … wartet auf 4H · ▶ läuft. Bei Bestätigung kommt eine Mitteilung."],
-  ["hit", "Treffer", r => r.passed, ["hit"], "Alle 11 Kriterien erfüllt und die Konsolidierung ist ruhig. Gekauft wird, wenn die Seitwärtsphase fertig ist – „kaufbereit“ steht oben."],
+  ["hit", "Treffer", r => r.passed, ["hit"], "Alle 11 Kriterien erfüllt. Gekauft wird erst, wenn danach die Seitwärtsphase fertig und ruhig ist – dann steht die Aktie oben unter „Kaufbereit“."],
   ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Ein oder zwei Kriterien fehlen – nur beobachten, kein Kaufsignal."],
   ["trend", "Trend", r => isTrend(r), ["trend"], "Trend-Rücksetzer – eigene, getrennte Strategie (Rücksetzer im Aufwärtstrend)."],
   ["mine", "Meine", r => r.in_watchlist || favs().has(r.ticker), ["watch", "fav"], "Deine Watchlist (★) – mit Stufe auf dem Weg zum Einstieg."]];
@@ -1871,9 +1893,8 @@ function card(r) {
 // Kurs ganz oben im Fenster: das Erste, was man nach dem Antippen sieht
 function kpxHtml(r) {
   const sr = rowOf(r.ticker) || {}, d1 = r.live ? null : sr.d1;
-  const cw = r.calm_wait && (r.flags || {}).calm ? `<div class="tip tone-yellow" style="margin:0 0 8px">Alle 11 Kriterien erfüllt – aber noch <b>kein Treffer</b>: Der Kurs schwankt noch zu stark (Spanne 5 Tage ${fmt(r.flags.calm.tight5, 1)} ATR, Grenze 1,5 · Hin und Her ${fmt(r.flags.calm.chop10, 2)}, Grenze 1,65). Treffer wird es erst, wenn er sich ruhig an die Zone legt.</div>` : "";
   const ah = r.asia_hit ? `<div class="tip tone-yellow" style="margin:0 0 8px">Alle 11 Kriterien erfüllt – aber <b>kein Treffer</b>: Für Börsen in Asien/Pazifik ist die Kairo-Regel nicht getestet. Getestet und gezählt werden nur USA und Europa.</div>` : "";
-  const st = cw + ah + (r.stale ? `<div class="tip tone-yellow" style="margin:0 0 8px">⚠ Yahoo hat für diese Aktie beim letzten Scan keine neuen Kurse geliefert – Stand ${esc(dateDE(r.stale))}. Bewertung erst nach dem nächsten Scan verlässlich.</div>` : "");
+  const st = ah + (r.stale ? `<div class="tip tone-yellow" style="margin:0 0 8px">⚠ Yahoo hat für diese Aktie beim letzten Scan keine neuen Kurse geliefert – Stand ${esc(dateDE(r.stale))}. Bewertung erst nach dem nächsten Scan verlässlich.</div>` : "");
   return st + `<div class="kpx"><div class="kpx-p"><b>${fmt(r.close)} <small>${esc(r.currency || "")}</small></b>
       <i class="chgp${d1 == null ? "" : d1 >= 0 ? " up" : " dn"}" data-chg="${esc(r.ticker)}">${d1 == null ? "" : sgnPct(d1, 2)}</i></div>
     <div class="kpx-s"><span>${r.live || LIVE.map[r.ticker] ? `${liveTag(r.ticker) || "live"}` : `Schlusskurs ${r.date ? dateDE(r.date) : ""}${d1 != null ? " · zum Vortag" : ""}`}</span>${liveBtn(r.ticker)}</div></div>`;
@@ -2271,7 +2292,7 @@ function earnTopHtml(t, sur, rx, L) {
   if (!earnStats) { loadEarnStats(); return ""; }
   const o = earnOdds(t, sur, L); if (!o) return "";
   const tone = o.p >= .58 ? "green" : o.p < .45 ? "red" : "yellow", r = data && data.results ? byTicker(t) : null;
-  const hit = r && r.passed, wait = r && r.calm_wait;
+  const hit = r && r.passed;
   const P = (earnStats.per || {})[t], own = o.after && sur != null && sur > 0 && P && P.beat_up != null && P.n >= 6 && Math.abs(P.beat_up - o.p) >= .2
     ? ` · Achtung: ${t} selbst stieg nach Zahlen über Erwartung nur in ${pct(P.beat_up, 0)} der Fälle (wenige Berichte)` : "";
   const lead = o.after ? (rx && rx.d1 != null ? "stiegen am Tag danach" : "steigt am Tag danach") : "steigt nach den Zahlen (geschätzt)";
@@ -2279,7 +2300,7 @@ function earnTopHtml(t, sur, rx, L) {
     ? [hit ? "Einstieg vertretbar – Kairo-Treffer mit Rückenwind" : "Rückenwind – aber kein Kairo-Treffer", hit ? "Die Zahlen sprechen eher für steigende Kurse. Trade-Plan (Stop, Ziel) in der Detailansicht beachten." : "Die Zahlen sprechen eher für steigende Kurse. Ein Kaufgrund allein sind sie nicht – Kairo-Setup abwarten."]
     : tone === "red"
       ? ["Eher abwarten", "Nach Zahlen dieser Art fiel der Kurs öfter, als er stieg. " + (hit ? "Der Kairo-Treffer bleibt gültig, aber mit Gegenwind – kleinere Position oder Kurs erst stabilisieren lassen." : "Kein Einstieg nur wegen der Zahlen.")]
-      : [hit ? "Münzwurf – der Kairo-Treffer entscheidet" : "Münzwurf – kein Einstiegsgrund", (o.after ? "Zahlen dieser Art bewegen den Kurs kaum vorhersagbar. " : "Vor den Zahlen ist die Richtung offen. ") + (hit ? "Im Kairo-Test waren Käufe kurz vor den Zahlen nicht schlechter – Stop setzen, mit Kurslücke rechnen." : wait ? "Kriterien erfüllt, Konsolidierung noch unruhig – abwarten." : "Ohne Kairo-Setup kein Einstieg.")];
+      : [hit ? "Münzwurf – der Kairo-Treffer entscheidet" : "Münzwurf – kein Einstiegsgrund", (o.after ? "Zahlen dieser Art bewegen den Kurs kaum vorhersagbar. " : "Vor den Zahlen ist die Richtung offen. ") + (hit ? "Im Kairo-Test waren Käufe kurz vor den Zahlen nicht schlechter – Stop setzen, mit Kurslücke rechnen." : "Ohne Kairo-Setup kein Einstieg.")];
   return `<div class="eq-odds t-${tone}"><div class="eq-odds-top"><span class="eq-odds-p">${pct(o.p, 0)}</span><span class="eq-odds-l">${lead}<em>${esc(o.how)}${o.after ? ` · ${fmt(o.n, 0)} Berichte seit 2019` : ""}${o.p5 != null ? ` · nach 5 Tagen ${pct(o.p5, 0)} im Plus` : ""}${esc(own)}</em></span></div>
     <div class="eq-bar"><i style="width:${(o.p * 100).toFixed(1)}%"></i></div><div class="eq-scale"><span>fällt</span><span>50 %</span><span>steigt</span></div>
     <div class="eq-entry"><b>${esc(entry[0])}</b><span>${esc(entry[1])}</span></div></div>`;
@@ -4160,12 +4181,10 @@ function kSt(r) {
   if (r.near_hit) return { k: "near", t: "9/11", cls: "", lv: 2, s: miss ? `fehlt: ${miss}` : "zwei Kriterien fehlen" };
   return { k: "none", t: `${r.met ?? "–"}/${r.total ?? 11}`, cls: "", lv: 0, s: miss ? `fehlt: ${miss}` : "" };
 }
-// Ruhe der letzten Tage (backend/scanner.py „calm“, Forschung 28.10.2026): Treffer ist eine Aktie erst, wenn nach den
-// 11 Kriterien auch die Konsolidierung ruhig ist (Spanne 5 Tage ≤ 1,5 ATR, Hin und Her 10 Tage ≤ 1,65). Sonst kein Treffer.
+// Ruhe (backend/scanner.py calm_days): gilt seit 29.10.2026 am Kauftag (Seitwärtsphase, h4live), nicht mehr am Treffer-Tag.
 const calmOf = r => ((r && r.flags) || {}).calm || null;
 function calmGate(d) {
-  (d && d.results || []).forEach(r => { const c = calmOf(r);
-    if (r.passed && c && !c.clean) { r.passed = false; r.calm_wait = true; }
+  (d && d.results || []).forEach(r => {
     // Asien/Pazifik: die Kairo-Regel ist nur für USA und Europa getestet (Live-Bilanz und Papier-Depots ebenso) → kein Treffer
     if (r.passed && String(r.region || "").toLowerCase() === "asia") { r.passed = false; r.asia_hit = true; } });
 }
@@ -4714,8 +4733,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.07";
-const APP_NEWS = [["2026.11.07", "Quartalszahlen genauer", [
+const APP_VER = "2026.11.08";
+const APP_NEWS = [["2026.11.08", "Neuer Scanner", [
+  ["Was heute zu tun ist", "Die Treffer-Ansicht zeigt jetzt oben nur, was kaufbereit ist – mit Kaufspanne, Stop, Stückzahl und Ausstieg. Darunter die Treffer, die noch auf ihre Seitwärtsphase warten. Die Status-Spalte ist weg, die Kriterien bleiben bei jeder Aktie sichtbar."],
+  ["Ruhe-Filter am richtigen Tag", "Seit dem 28.10. musste die Konsolidierung schon am Treffer-Tag ruhig sein – dadurch fielen fast alle Treffer weg, obwohl der Test genau dort keinen Vorteil zeigte. Jetzt gilt die Ruhe wie getestet am Tag vor dem Kauf: Ein Treffer wird erst kaufbereit, wenn seine Seitwärtsphase eng UND ruhig ist."]]],
+  ["2026.11.07", "Quartalszahlen genauer", [
   ["Umsatzwachstum zählt mit", "Verlangsamt sich das Umsatzwachstum deutlich (wie bei Bloom Energy), stiegen Aktien nach guten Zahlen nur in 54 statt 64 % der Fälle – in beiden Testzeiträumen. Die Wahrscheinlichkeit oben berücksichtigt das jetzt."],
   ["Ab jetzt wird gesammelt", "Jede Meldung mit Umsatz- und Ausblick-Vergleich wird archiviert, um die Prognose später weiter zu prüfen."]]],
   ["2026.11.06", "Kalender mit Uhrzeit", [
@@ -5808,6 +5830,72 @@ function shadowHtml(sh) {
     <tr>${["trail", "t5", "t10"].map(e => cell(get("S20", "4h", "S20", null, e))).join("")}</tr></table></div></div>`;
 }
 // ---------- Top-Setups: heutige Kairo-Treffer (USA/Europa), Rangfolge nach Forschung v2.4 (schwaches Vormomentum zuerst) ----------
+// ---------- Scanner v2 (29.10.2026): Treffer nach dem, was heute zu tun ist – kaufbereit · wartet · vorbei ----------
+// Quelle: alle Kairo-Treffer der letzten Tage (h4.json, Abend-Prüfung). Gekauft wird wie getestet, wenn die Seitwärtsphase
+// nach dem Treffer fertig UND ruhig ist (Spanne 5 Tage ≤ 1,5 ATR, Hin und Her 10 Tage ≤ 1,65) – zur nächsten Eröffnung.
+function boardItems() {
+  const d = h4Data(), its = ((d && d.items) || []).filter(it => h4Real(it) && it.st !== "weg" || (h4Real(it) && it.st === "weg" && it.d >= isoDaysAgo(10)));
+  const reg = it => String(it.r || (rowOf(it.t) || {}).r || (byTicker(it.t) || {}).region || "").toLowerCase();
+  const tested = it => ["us", "europe"].includes(reg(it));
+  const own = new Set(plansLoad().filter(p => p.st === "open").map(p => p.t));
+  const kind = it => own.has(it.t) ? "own" : it.st === "4h" && it.base && it.base.pending ? "ready" : it.st === "basis" ? "wait"
+    : it.st === "weg" ? "gone" : "late";
+  const mom = it => it.mom ?? kmMom(it.t);
+  const out = { ready: [], wait: [], late: [], gone: [], own: [], asia: [] };
+  its.forEach(it => { const k = kind(it); (tested(it) || k === "own" ? out[k] : out.asia).push(it); });
+  out.ready.sort((a, b) => (mom(a) ?? 9) - (mom(b) ?? 9));                 // Rangfolge wie getestet: schwächeres Vormomentum zuerst
+  out.wait.sort((a, b) => (b.day || 0) - (a.day || 0) || (mom(a) ?? 9) - (mom(b) ?? 9));
+  return out;
+}
+const isoDaysAgo = n => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+function critLine(t) {                      // Kriterien zum groben Einschätzen: heute erfüllt (✓/✗), sonst Anzahl
+  const r = byTicker(t), sr = rowOf(t) || {};
+  if (r && r.criteria) return `<div class="bd-crit">${SETUP_KEYS.map(k => { const c = r.criteria.find(x => x.key === k); return c ? `<span class="${c.ok ? "ok" : "miss"}" title="${esc(c.label || SHORT[k])}">${c.ok ? "✓" : "✗"} ${esc(SHORT[k])}</span>` : ""; }).join("")}</div>`;
+  return sr.m != null ? `<div class="bd-crit"><span class="muted">heute ${sr.m}/11 Kriterien erfüllt – am Treffer-Tag 11/11</span></div>` : "";
+}
+function boardCard(it, rank) {
+  const r = byTicker(it.t), sr = rowOf(it.t) || {}, cur = it.cur || sr.cur || (r || {}).currency || "", b = it.base || {};
+  const c = tpCfg(), riskEur = c.depot * c.risk / 100, last = sr.c ?? (r || {}).close;
+  const e = toEur(last, cur), st = toEur(b.sl, cur), per = e != null && st != null ? e - st : null;
+  const qty = per > 0 ? Math.floor(riskEur / per) : null, val = qty ? qty * e : null;
+  const name = esc(String(it.n || (r || {}).name || it.t).slice(0, 34)), open = r ? `data-card="${esc(it.t)}"` : `data-ein="${esc(it.t)}"`;
+  const mo = it.mom ?? kmMom(it.t);
+  return `<div class="bd-card ready">
+    <button class="bd-h" ${open}><span class="bd-rk">${rank}</span><span class="bd-n"><b>${name}</b><small>${esc(it.t)}${sr.sec ? " · " + esc(sr.sec) : ""} · Treffer ${dateDE(it.d)}${mo != null ? ` · Vormomentum ${sgnPct(mo, 0)}` : ""}</small></span><s>›</s></button>
+    <div class="bd-plan">
+      <div><span>Kauf</span><b>nächste Eröffnung</b><em>nur zwischen ${fmt(b.lo)} und ${fmt(b.hi)} ${esc(cur)}</em></div>
+      <div><span>Stop</span><b class="down">${fmt(b.sl)} ${esc(cur)}</b><em>${last && b.sl ? `${pct((last - b.sl) / last, 1)} unter dem Kurs` : ""}</em></div>
+      <div><span>Größe</span><b>${qty ? `${qty} Stk.` : "–"}</b><em>${val ? `${eur2(val)} · ${fmt(c.risk, 1)} % Risiko` : ""}</em></div>
+      <div><span>Ausstieg</span><b>Stop oder EMA 20</b><em>ab Tag 10 Schluss darunter, spätestens Tag 40</em></div>
+    </div>
+    ${critLine(it.t)}
+  </div>`;
+}
+function boardRow(it) {
+  const r = byTicker(it.t), sr = rowOf(it.t) || {}, open = r ? `data-card="${esc(it.t)}"` : `data-ein="${esc(it.t)}"`;
+  const why = it.st === "basis" ? (it.unruhig ? `Seitwärtsphase da, aber noch zu unruhig · Tag ${it.day} von 10` : `wartet auf enge Seitwärtsphase · Tag ${it.day} von 10`)
+    : it.st === "weg" ? `verfallen: ${it.why || "keine ruhige Seitwärtsphase"}`
+    : it.base && it.base.ed ? `Kauftag war ${dateDE(it.base.ed)} – nicht nachkaufen` : "Kauftag vorbei";
+  const dot = it.st === "basis" ? (it.unruhig ? "y" : "b") : "n";
+  return `<button class="bd-row" ${open}><i class="sd ${dot}"></i><span class="bd-n"><b>${esc(String(it.n || (r || {}).name || it.t).slice(0, 34))}</b><small>${esc(it.t)} · ${esc(why)}</small>${critLine(it.t)}</span><span class="bd-p">${fmt(sr.c ?? (r || {}).close)}<small>${esc(it.cur || sr.cur || "")}</small></span></button>`;
+}
+function boardHtml() {
+  const d = h4Data();
+  if (!d) return `<div class="hcard"><div class="note">Lade Treffer …</div></div>`;
+  if (!searchIdx) loadSearch();
+  const B = boardItems(), free = kmSlots(), c = tpCfg();
+  const sec = (title, sub, body, cls = "") => `<section class="bd-sec ${cls}"><div class="bd-t"><b>${title}</b><span>${sub}</span></div>${body}</section>`;
+  const ready = B.ready.length
+    ? B.ready.map((it, i) => boardCard(it, i + 1)).join("") + (B.ready.length > free ? `<div class="note" style="margin:6px 2px 0">${free ? `Nur ${free} Platz${free === 1 ? "" : "e"} frei (höchstens ${c.maxOpen} Trades) – die ersten ${free} zuerst` : `Alle ${c.maxOpen} Plätze belegt – heute kein neuer Kauf`}. Rangfolge: schwächeres Vormomentum zuerst (im Test besser).</div>` : "")
+    : `<div class="bd-empty">Heute ist kein Treffer kaufbereit. Sobald die Seitwärtsphase eines Treffers fertig und ruhig ist, steht er hier – und du bekommst eine Mitteilung.</div>`;
+  let html = sec("🟢 Kaufbereit", `${B.ready.length} · Kauf zur nächsten Eröffnung`, ready, "ok");
+  if (B.own.length) html += sec("Im Depot", `${B.own.length}`, B.own.map(boardRow).join(""));
+  html += sec("🟡 Wartet auf ruhige Seitwärtsphase", `${B.wait.length} Treffer · bis zu 10 Tage`, B.wait.length ? B.wait.slice(0, 12).map(boardRow).join("") + (B.wait.length > 12 ? `<details class="bd-in"><summary>Alle ${B.wait.length} zeigen</summary>${B.wait.slice(12).map(boardRow).join("")}</details>` : "") : `<div class="bd-empty">Gerade keine.</div>`);
+  const rest = [...B.late, ...B.gone];
+  if (rest.length) html += `<details class="bd-more"><summary>Kauftag vorbei oder verfallen · ${rest.length}</summary>${rest.map(boardRow).join("")}</details>`;
+  if (B.asia.length) html += `<details class="bd-more"><summary>Asien/Pazifik · ${B.asia.length} · nicht getestet, kein Kaufsignal</summary>${B.asia.map(boardRow).join("")}</details>`;
+  return `<div class="board">${html}<div class="note" style="margin:8px 2px 0">So arbeitet Kairo (getestet 2008–2026): Treffer = alle 11 Kriterien. Danach bis zu 10 Tage warten, bis der Kurs 5 Tage eng und ruhig seitwärts läuft – dann Kauf zur nächsten Eröffnung, Stop unter der Seitwärtsphase. Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)} (ändern unter Einstellungen). Keine Anlageberatung.</div></div>`;
+}
 function topSetupsHtml() {
   if (!searchIdx) loadSearch();
   const c = tpCfg(), riskEur = c.depot * c.risk / 100;
@@ -5889,12 +5977,13 @@ function renderMain() {
   if (cur && String(state.kinds) !== String(cur[3])) { state.kinds = cur[3]; save(); }   // gespeicherte alte Auswahl (z. B. „MBI gelockert“) angleichen
   const list = selRows(), k = new Set(state.kinds || []);
   const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
-  const bar = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${data.results.filter(f).length}</small></button>`).join("")}</div>
+  const bar = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${v === "hit" && h4Data() ? (b => b.ready.length + b.wait.length)(boardItems()) : data.results.filter(f).length}</small></button>`).join("")}</div>
     ${cur ? `<div class="vdesc">${esc(cur[4])}</div>` : ""}
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       <button class="kchip filt" data-sub="filter">Filter${nFilt ? ` <small>${nFilt}</small>` : ""}</button></div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
   const head = searchHtml() + scanBarHtml() + bar + (["hit", "go"].includes(state.view) ? topSetupsHtml() : "") + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner, belegter Vorteil je Trade (+0,14 R statt +0,11 R bei Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
+  if (state.view === "hit" && $("search").value.trim().length < 2) { $("main").innerHTML = searchHtml() + scanBarHtml() + bar + boardHtml(); return; }
   if (!list.length && $("search").value.trim().length >= 2) { $("main").innerHTML = searchHtml() + bar; return; }
   if (!list.length) {
     $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.has("h4") ? "Gerade kein Treffer mit fertiger Seitwärtsphase – die 4H-Prüfung beginnt, sobald eine da ist. Wo die Treffer stehen, siehst du unter „Treffer“ in der Status-Spalte." : k.has("fav") && !data.results.some(r => r.in_watchlist) ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
@@ -5906,7 +5995,7 @@ function renderMain() {
   const full = list.length, rows = scanAll || full <= SCAN_LIM ? list : list.slice(0, SCAN_LIM);   // lange Listen: erst die besten 60
   const more = rows.length < full ? `<div class="row-actions" style="justify-content:center;margin:12px 0"><button class="btn ghost" data-scanall>Alle ${full} anzeigen</button></div>` : "";
   const onlyHits = k.size === 1 && k.has("hit");
-  const lead = ["ticker", "name", "grade", "status", "met", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)));   // Status bleibt: zeigt den 4H-Stand
+  const lead = ["ticker", "name", "grade", "met", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)));   // Status-Spalte entfällt (Scanner v2: Treffer-Ansicht zeigt, was zu tun ist)
   const hid = new Set(state.hiddenCols || []);
   if (!(data.stats && data.stats.grade)) hid.add("grade");    // Stufen nur, wenn ein geprüftes Modell aktiv ist
   const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss", "chk"].includes(c.k))].filter(c => c.k === "ticker" || !hid.has(c.k));
@@ -6013,7 +6102,8 @@ function renderHead() {
   $("greet").innerHTML = state.sec === "today" ? greetText() : esc(SEC_T[state.sec] || "Kairo");
   const s = data.stats || {}, when = new Date(data.generated).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const nH = data.results.filter(r => r.passed).length, nW = data.results.filter(r => !r.passed && (r.fast_hit || r.near_hit)).length;
-  $("sub").innerHTML = `<b>${nH} Treffer</b> · ${nW} zum Beobachten · ${fmt(s.universe, 0)} Aktien geprüft · Scan ${esc(when)} Uhr ${healthPill()}`;
+  const bd = h4Data() ? boardItems() : null;
+  $("sub").innerHTML = (bd ? `<b>${bd.ready.length} kaufbereit</b> · ${bd.wait.length} Treffer warten · ` : `<b>${nH} Treffer</b> · `) + `${nW} zum Beobachten · `+ `${fmt(s.universe, 0)} Aktien geprüft · Scan ${esc(when)} Uhr ${healthPill()}`;
   const sectors = [...new Set(data.results.map(r => r.sector).filter(Boolean))].sort();
   $("sectorOpts").innerHTML = `<button class="opt" data-v="">alle</button>` + sectors.map(x => `<button class="opt" data-v="${esc(x)}">${esc(x)}</button>`).join("");
 }

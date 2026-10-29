@@ -25,6 +25,12 @@ Folge (auf Wunsch von Jonny): Eine Aktie gilt erst als Treffer, wenn die 11 Krit
 am Scan-Tag ruhig ist (Spanne 5 Tage ≤ 1,5 ATR, Hin und Her 10 Tage ≤ 1,65). Unruhige erscheinen nicht als Treffer, auch
 nicht in Mitteilungen und Live-Bilanz (backend/run_scan.py, „calm_wait“). Weil die Schwellen nachträglich gewählt sind,
 zeigt die Live-Bilanz, ob der Vorteil hält.
+**Korrektur 29.10.2026:** Diese Umsetzung prüfte die Ruhe am Treffer-Tag – getestet war sie am Tag vor dem Kauf (S01-B-Basis,
+im Schnitt ~10 Kalendertage später), und die Gegenprobe oben zeigt: am Treffer-Tag bringt sie nichts. Live fielen dadurch ~95 %
+der Treffer weg (USA/Europa 70 → 4). Jetzt: Treffer wie getestet (11/11); ein Basis-Tag zählt nur, wenn er ruhig ist
+(backend/scanner.py `calm_days`, shortswing/h4live/live mit `QRULE["calm"]`), sonst wird bis zu 10 Tage weiter gewartet.
+Prüfung dieser genauen Regel im Depot (5.000 €, 5 Plätze) und unabhängig in Asien: research/strategy_championship/v2_test.py.
+
 Überraschung: Ein besonders starker oder schneller Abverkauf davor macht Trades nicht besser, eher schlechter.
 
 # Kauf kurz vor Quartalszahlen (28.10.2026)
