@@ -49,3 +49,8 @@ def test_ausblick_segment_wird_nicht_verglichen():
     g = S.parse("Company Raises 2026 BRINSUPRI Revenue Guidance to $1.35 Billion to $1.4 Billion.")
     j = S.judge(g, None, 2.2e9)                            # Firmenumsatz-Erwartung 2,2 Mrd. – Spanne ist ein Produkt
     assert j["d"] == 1 and "vs" not in j                   # nur „angehoben“ aus dem Verb, kein Zahlenvergleich
+
+
+def test_jahresausblick_ist_kein_quartal():
+    g = S.parse("Increased the midpoint of our 2026 full-year revenue guidance by $5.5 billion to be in the range of $91.0 to $92.0 billion in the third quarter update.")
+    assert g["q"] is False and g["mid"] == 91.5e9

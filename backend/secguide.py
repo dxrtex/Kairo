@@ -15,6 +15,7 @@ RANGE = re.compile(_NUM + r"\s?(?:to|and|-|–|—)\s?" + _NUM, re.I)
 SINGLE = re.compile(r"\b(?:approximately|about|around|of)\s+" + _NUM, re.I)
 REV = re.compile(r"\b(revenues?|net sales|total sales|sales)\b", re.I)
 FWD = re.compile(r"\b(expects?|expected|anticipates?|outlook|guidance|forecasts?|projects?|sees|estimates?)\b", re.I)
+FULLY = re.compile(r"\b(full[- ]year|fiscal year|annual|FY ?\d{2,4})\b", re.I)
 QTR = re.compile(r"\b(quarter|q[1-4])\b", re.I)
 SPENDW = re.compile(r"\b(capital expenditures?|capex|expenses?|costs?|spending|investments?)\b", re.I)
 VERB = {1: re.compile(r"\b(rais(es|ed|ing)|increas(es|ed|ing)|lift(s|ed)?)\b[^.]{0,40}\b(outlook|guidance|forecast)\b", re.I),
@@ -45,13 +46,13 @@ def parse(text: str) -> dict | None:
             u2 = m.group(4) or m.group(2)
             lo, hi = _val(m.group(1), m.group(2) or u2), _val(m.group(3), u2)
             if lo > 1e6 and hi >= lo:
-                out = {"lo": lo, "hi": hi, "mid": (lo + hi) / 2, "q": bool(QTR.search(sent)), "s": sent.strip()[:300]}
+                out = {"lo": lo, "hi": hi, "mid": (lo + hi) / 2, "q": bool(QTR.search(sent)) and not FULLY.search(sent), "s": sent.strip()[:300]}
                 break
         m = SINGLE.search(sent)
         if m and not out and not SPENDW.search(sent):
             v = _val(m.group(1), m.group(2))
             if v > 1e6:
-                out = {"lo": v, "hi": v, "mid": v, "q": bool(QTR.search(sent)), "s": sent.strip()[:300]}
+                out = {"lo": v, "hi": v, "mid": v, "q": bool(QTR.search(sent)) and not FULLY.search(sent), "s": sent.strip()[:300]}
     verb = next((d for d, rx in VERB.items() if rx.search(text) and not SPENDW.search(rx.search(text).group(0))), None)
     if out:
         out["verb"] = verb
