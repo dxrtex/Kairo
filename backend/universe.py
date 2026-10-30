@@ -131,13 +131,23 @@ def build() -> dict[str, pd.DataFrame]:
     ca = _region({"ca": ((".TO",), "CAD", 0.73)}, min_cap)
     eu = _region(EUROPE, min_cap)
     asia = _region(ASIA, min_cap)
+    return pick_home({"us": us, "ca": ca, "eu": eu, "asia": asia})
+
+
+def pick_home(lists: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    """Doppel-Listings über Regionen: USA zuerst (NYSE/NASDAQ), sonst die Notierung mit dem meisten Handel (Heimatbörse).
+    Vorher galt „Europa vor Asien“ – dadurch verdrängten Wiener Zweitlistings mit fast keinem Umsatz (BYD BY6.VI,
+    Tencent NNND.VI, CATL, SoftBank, Nintendo …) die Heimatbörse, und die Aktien fielen am Liquiditätsfilter ganz heraus."""
+    us = lists["us"]
     seen = set(us["name"].map(company_key)) - {""}
-    out = {"us": us}
-    for name, df in (("ca", ca), ("eu", eu), ("asia", asia)):
-        keys = df["name"].map(company_key)
-        out[name] = df[~keys.isin(seen)]
-        seen |= set(keys) - {""}
-    out["us"] = pd.concat([out["us"], out.pop("ca")], ignore_index=True)   # Nordamerika in einer Liste
+    rest = pd.concat([df.assign(_reg=reg) for reg, df in lists.items() if reg != "us"], ignore_index=True)
+    rest = rest.assign(_key=rest["name"].map(company_key), _adv=pd.to_numeric(rest["adv_usd"], errors="coerce").fillna(0))
+    rest = rest[~rest["_key"].isin(seen) | (rest["_key"].str.len() <= 2)]
+    rest = rest.sort_values(["_adv", "market_cap_usd"], ascending=[False, False])
+    rest = rest[~rest["_key"].duplicated() | (rest["_key"].str.len() <= 2)]
+    out = {reg: rest[rest["_reg"] == reg].drop(columns=["_reg", "_key", "_adv"]).sort_values("market_cap_usd", ascending=False)
+           for reg in ("ca", "eu", "asia")}
+    out["us"] = pd.concat([us, out.pop("ca")], ignore_index=True)   # Nordamerika in einer Liste
     return out
 
 
