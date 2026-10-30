@@ -1,0 +1,58 @@
+name: Research – Kairo Reversal Ultimate Endbericht (korrigierte Engine)
+
+# Nur Forschung. Je-Trade-Ergebnisse, Zufallskontrollen und Bestätigungsdaten aus dem Testlauf (unabhängig von der
+# Engine-Korrektur), Depot-Läufe aus dem Wiederholungslauf mit korrigierter Engine.
+# Auslöser: research/reversal/final_trigger.txt mit „<Testlauf-ID> <Wiederholungslauf-ID>“.
+permissions:
+  contents: write
+  actions: read
+
+on:
+  push:
+    branches: ["claude/ultimate-research"]
+    paths: ["research/reversal/final_trigger.txt"]
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+  AUDIT_RUN: "40971029106"
+
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - id: trg
+        run: read T N _ < research/reversal/final_trigger.txt && echo "t=$T" >> $GITHUB_OUTPUT && echo "n=$N" >> $GITHUB_OUTPUT
+      - uses: actions/download-artifact@v4
+        with: { pattern: "rvw-*", merge-multiple: true, path: res, run-id: "${{ steps.trg.outputs.t }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: actions/download-artifact@v4
+        with: { pattern: "rvc-*", merge-multiple: true, path: cfparts, run-id: "${{ steps.trg.outputs.t }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: actions/download-artifact@v4
+        with: { pattern: "efx-[0-9]*", merge-multiple: true, path: new, run-id: "${{ steps.trg.outputs.n }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: { name: "ultimate-audit", path: au, run-id: "${{ env.AUDIT_RUN }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - run: |
+          rm -f res/depot_*.json res/curve_*.parquet
+          cp new/reversal/* res/
+          python -m research.reversal.run combine --dir cfparts --out cf
+          cp cf/confirm_*.json res/
+          python -m research.reversal.run report --dir res --audit au/data_audit.json
+          mkdir -p pub && cp res/reversal_report.md pub/reversal_report_final.md && cp cf/confirm.txt pub/
+      - uses: actions/upload-artifact@v4
+        with: { name: "rv-final", path: pub/, retention-days: 30 }
+      - name: Ergebnis auf Branch claude/reversal-out
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          W=$GITHUB_WORKSPACE; mkdir -p /tmp/pr && cd /tmp/pr && git init -q
+          git config user.name "kairo-research"; git config user.email "research@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch -q origin claude/reversal-out; then git checkout -q -b pub FETCH_HEAD; else git checkout -q --orphan pub; fi
+          mkdir -p "final-$GITHUB_RUN_ID" && cp $W/pub/* "final-$GITHUB_RUN_ID"/
+          git add . && git commit -qm "Endbericht $GITHUB_RUN_ID" && git push -q origin pub:claude/reversal-out
