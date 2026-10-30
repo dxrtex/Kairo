@@ -1,0 +1,143 @@
+name: Research – Wiederholung nach Engine-Korrektur (Code-Review)
+
+# Nur Forschung. Wiederholt alle Depot-Läufe, die von den Engine-Korrekturen (Kapital zum Eröffnungskurs, Wechselkurs des
+# Vortags, Mindestorder nach Kapitalgrenze) betroffen sind, und stellt alt und neu gegenüber.
+# Je-Trade-Ergebnisse (R) und Bestätigungsdaten sind nicht betroffen (keine Depotgröße, kein Wechselkurs in R).
+# Auslöser: research/reversal/rerun_trigger.txt.
+permissions:
+  contents: write
+  actions: read
+
+on:
+  push:
+    branches: ["claude/ultimate-research"]
+    paths: ["research/reversal/rerun_trigger.txt"]
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+  SWEEP_RUN: "40778404648"
+  SEC_FILINGS: "657029194"
+  SEC_CIK: "657029198"
+  OLD_RV: "41014032183"     # Reversal-Tests mit alter Engine
+  OLD_R1: "40960732599"     # Ultimate Runde 1 mit alter Engine
+  AUDIT_RUN: "40971029106"
+  OLD_B: "40971115447"      # Wettbewerb B mit alter Engine
+
+jobs:
+  work:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        job: ["reversal trades E0",
+              "reversal depot E0 5x1", "reversal depot E2 5x1", "reversal depot R1 5x1", "reversal depot R2 5x1", "reversal depot R3 5x1", "reversal depot R4 5x1",
+              "reversal depot E0 10x05", "reversal depot E2 10x05", "reversal depot R1 10x05", "reversal depot R2 10x05", "reversal depot R3 10x05", "reversal depot R4 10x05",
+              "reversal depot E0 20x025", "reversal depot E2 20x025", "reversal depot R1 20x025", "reversal depot R2 20x025", "reversal depot R3 20x025", "reversal depot R4 20x025",
+              "reversal depot X1 20x025", "reversal depot X2 20x025", "reversal depot X3 20x025",
+              "round1 depot E0 20x025", "round1 depot E1 20x025", "round1 depot E2 20x025", "round1 depot V1 20x025", "round1 depot N1 20x025", "round1 depot C1 20x025",
+              "round1 depot E0 10x05", "round1 depot E1 10x05", "round1 depot E2 10x05", "round1 depot V1 10x05", "round1 depot N1 10x05", "round1 depot C1 10x05",
+              "round1 depot E0 5x1", "round1 depot E1 5x1", "round1 depot E2 5x1", "round1 depot V1 5x1", "round1 depot N1 5x1", "round1 depot C1 5x1"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "swsig-*", merge-multiple: true, path: parts, run-id: "${{ env.SWEEP_RUN }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1 sec
+          for x in PRICES:prices BENCH:bench FX:fx; do v=${x%%:*}_ASSET; gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/${!v} > v1/${x##*:}_v1.parquet; done
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_FILINGS > sec/filings.csv.gz
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_CIK > sec/cik_map.csv
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+          python -c "import pandas as pd,glob;d=pd.concat([pd.read_parquet(f) for f in sorted(glob.glob('parts/sweep_signals_*.parquet'))]);d=d[d['v'].str.split(',').apply(lambda l:'0' in l)];d.to_parquet('sig.parquet',index=False);print(len(d),'Treffer')"
+      - run: python -m pytest -q research/strategy_championship/tests
+      - run: |
+          set -- ${{ matrix.job }}
+          M=$1; shift
+          case $1 in
+            trades) python -W ignore -m research.$M.run trades --data v1 --signals sig.parquet --sec sec --variant $2 --out out/$M ;;
+            depot)  if [ $M = round1 ]; then mod=research.ultimate.round1; else mod=research.reversal.run; fi
+                    python -W ignore -m $mod depot --data v1 --signals sig.parquet --sec sec --variant $2 --layout $3 --out out/$M ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        with: { name: "efx-${{ strategy.job-index }}", path: out/, retention-days: 30 }
+  compare:
+    needs: [work]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1
+          for x in PRICES:prices BENCH:bench FX:fx; do v=${x%%:*}_ASSET; gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/${!v} > v1/${x##*:}_v1.parquet; done
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+      - uses: actions/download-artifact@v4
+        with: { pattern: "efx-*", merge-multiple: true, path: new }
+      - uses: actions/download-artifact@v4
+        with: { pattern: "rvw-*", merge-multiple: true, path: old_rv, run-id: "${{ env.OLD_RV }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: actions/download-artifact@v4
+        with: { pattern: "ur1-*", merge-multiple: true, path: old_r1, run-id: "${{ env.OLD_R1 }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: { name: "ultimate-audit", path: au, run-id: "${{ env.AUDIT_RUN }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: { name: "ub-result", path: old_b, run-id: "${{ env.OLD_B }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Alt gegen neu
+        run: |
+          mkdir -p pub
+          python -m research.reversal.compare --old old_rv --new new/reversal --title "Reversal R1–R4: alte gegen korrigierte Engine" --out pub/vergleich_reversal.md
+          python -m research.reversal.compare --old old_r1 --new new/round1 --title "Ultimate Runde 1: alte gegen korrigierte Engine" --out pub/vergleich_runde1.md
+          python - <<'PY'
+          import pandas as pd
+          a, b = pd.read_csv("old_rv/trades_E0.csv"), pd.read_csv("new/reversal/trades_E0.csv")
+          print("Je-Trade E0 identisch:", len(a) == len(b) and bool((a["R_stress"].round(9) == b["R_stress"].round(9)).all()), len(a), len(b))
+          PY
+      - name: Runde 1 neu (Trades/Zufall alt, Depots neu) + Wettbewerb B neu
+        run: |
+          mkdir -p r1 && cp old_r1/* r1/ && cp new/round1/* r1/
+          python -m research.ultimate.round1 report --dir r1 --audit au/data_audit.json || python -m research.ultimate.round1 report --dir r1
+          cp r1/round1_report.md pub/round1_report_neu.md
+          python -W ignore -m research.ultimate.compete run --data v1 --r1 r1 --best E0 --out ub
+          python -W ignore -m research.ultimate.compete pre --out ub || true
+          python -m research.ultimate.compete summary --out ub || true
+          cp ub/compete_summary.md pub/wettbewerb_b_neu.md 2>/dev/null || true
+          cp old_b/compete_summary.md pub/wettbewerb_b_alt.md 2>/dev/null || true
+          cp ub/compete.json pub/compete_neu.json 2>/dev/null || true; cp old_b/compete.json pub/compete_alt.json 2>/dev/null || true
+      - name: Reversal-Bericht neu (Trades/Zufall alt = unverändert, Depots neu; Bestätigung folgt)
+        if: always()
+        run: |
+          mkdir -p rv && cp old_rv/* rv/ && cp new/reversal/* rv/
+          python -m research.reversal.run report --dir rv --audit au/data_audit.json || true
+          cp rv/reversal_report.md pub/reversal_report_vorlaeufig.md || true
+          tar czf pub/depots_neu.tgz -C new .
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: "efx-report", path: pub/, retention-days: 30 }
+      - name: Ergebnis auf Branch claude/reversal-out
+        if: always()
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          W=$GITHUB_WORKSPACE; mkdir -p /tmp/pr && cd /tmp/pr && git init -q
+          git config user.name "kairo-research"; git config user.email "research@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch -q origin claude/reversal-out; then git checkout -q -b pub FETCH_HEAD; else git checkout -q --orphan pub; fi
+          mkdir -p "$GITHUB_RUN_ID" && cp -r $W/pub/* "$GITHUB_RUN_ID"/
+          git add . && git commit -qm "Engine-Korrektur $GITHUB_RUN_ID" && git push -q origin pub:claude/reversal-out

@@ -26,7 +26,8 @@ from research.strategy_championship.engine import run
 from research.ultimate import confirm as CF
 from research.ultimate import round1 as R
 
-VARIANTS = ("E0", "E2", "R1", "R2", "R3", "R4")
+VARIANTS = ("E0", "E2", "R1", "R2", "R3", "R4", "X1", "X2", "X3")
+ABLATION = {"X1": "E2 + R1 (ohne Rangfolge, ohne Mindestorder)", "X2": "E2 + R1 + R2", "X3": "E2 + R1 + R3"}   # explorativ
 TESTS = ("R1", "R2", "R3", "R4")
 MIN_ORDER = 250.0
 
@@ -50,19 +51,20 @@ def orders_R4core(t, i, atr, gid, m, rf):
     return _widen(R.orders_E2(t, i, atr, gid, m, rf), t, lambda o, k, c: o.entry_stop * R.arrays(t)[3][k])
 
 
-R.GEN.update({"R1": orders_R1, "R2": R.orders_E0, "R3": R.orders_E0, "R4": orders_R4core})
+R.GEN.update({"R1": orders_R1, "R2": R.orders_E0, "R3": R.orders_E0, "R4": orders_R4core,
+              "X1": orders_R4core, "X2": orders_R4core, "X3": orders_R4core})
 
 
 def finish(variant: str, orders):
     """Depot-Bausteine: R2/R4 Rangfolge nach Stop-Abstand, R3/R4 Mindestorder."""
-    if variant in ("R2", "R4"):
+    if variant in ("R2", "R4", "X2"):
         for o in orders:
             t = o.ticker
             _h, _l, c, f, idx = R.arrays(t)
             k = idx.get_loc(o.decision_date)
             ref = o.entry_stop * f[k] if o.entry_stop is not None else c[k]
             o.prio = (ref - o.stop * f[k]) / ref
-    if variant in ("R3", "R4"):
+    if variant in ("R3", "R4", "X3"):
         for o in orders:
             o.min_value_eur, o.max_risk_mult = MIN_ORDER, 2.0
     return orders
@@ -76,7 +78,14 @@ def depot(sig, meta, variant, layout):
         for kind in ("base", "stress"):
             r = run(R._G["raw"], R._G["cur"], R._G["fx"], orders, cash, R.costs(kind), mx, calendar=R._G["cal"], min_fill=0.5)
             key = f"{cash}_{kind}"
-            out[key] = R.segments(r.equity, r.trades, r.invested) | {"checks": r.checks, "skipped": r.skipped, "steuer": R.taxable_by_year(r)}
+            t = r.trades
+            rk = {"risk_pct": float(t["risk_pct"].mean()) if len(t) else None,
+                  "open_risk": float(r.open_risk.mean()) if r.open_risk is not None else None,
+                  "exposure": float(r.invested.mean()) if r.invested is not None else None,
+                  "fees_per_trade": float(t["fees_eur"].mean()) if len(t) else None,
+                  "stake": float(t["cost_eur"].mean()) if len(t) else None}
+            out[key] = R.segments(r.equity, r.trades, r.invested) | {"checks": r.checks, "skipped": r.skipped,
+                                                                     "steuer": R.taxable_by_year(r), "risiko": rk}
             curves[key] = r.equity
     return out, pd.DataFrame(curves)
 
@@ -185,6 +194,33 @@ def report(d: Path, audit: str | None, ub: str | None) -> str:
         mine = R.summary(tr[v])["Train+Val"]["R_stress"] if v in tr else np.nan
         pz = (sum(1 for s in z if (s["Train+Val"]["R_stress"] or -9) >= mine) + 1) / (len(z) + 1)
         p(f"\nZufall {v}: {len(z)} Seeds, p {pz:.2f} (Ø R Train+Val {mine:+.3f} vs. Zufall-Median {np.median([s['Train+Val']['R_stress'] for s in z]):+.3f})")
+    if "E0" in tr and "cost_R" in tr["E0"]:
+        e = tr["E0"].dropna(subset=["stop_pct", "cost_R"])
+        rho = e[["stop_pct", "cost_R"]].corr(method="spearman").iloc[0, 1]
+        top = e.nlargest(len(e) // 5, "stop_pct").index.intersection(e.nsmallest(len(e) // 5, "cost_R").index)
+        p(f"\n## R2 – Stop-Abstand vs. tatsächliche Kosten je R (ergänzend)\n\nSpearman-ρ(Stop-Abstand, Kosten/R) = {rho:+.3f}; "
+          f"vom Fünftel mit dem größten Stop-Abstand liegen {len(top) / max(1, len(e) // 5):.0%} auch im Fünftel mit den kleinsten Kosten je R. "
+          "R2 ist wie vorregistriert umgesetzt (Rangfolge nach Stop-Abstand in %); eine Rangfolge nach echten Kosten/R wäre eine neue Hypothese.")
+    p("\n## R3 – kommt die Verbesserung aus Gebühren oder aus mehr Risiko? (5 × 1 %, Stress)\n")
+    p("| Kapital | Variante | CAGR gesamt | max. Rückgang | Ø Risiko je Trade (Anteil Depot) | Ø offenes Risiko | Ø investiert | Ø Gebühr je Trade | Ø Einsatz |\n|---|---|---|---|---|---|---|---|---|")
+    for c in (1000, 3000, 5000, 10000):
+        for v in ("E0", "R3"):
+            r = dep.get((v, "5x1"))
+            if not r:
+                continue
+            s_, k = r[f"{c}_stress"], r[f"{c}_stress"].get("risiko") or {}
+            f = lambda x, fmt: (fmt.format(x) if x is not None else "–")
+            p(f"| {c} € | {v} | {f((s_.get('gesamt') or {}).get('cagr'), '{:+.1%}')} | {f((s_.get('gesamt') or {}).get('max_dd'), '{:.0%}')} | "
+              f"{f(k.get('risk_pct'), '{:.2%}')} | {f(k.get('open_risk'), '{:.1%}')} | {f(k.get('exposure'), '{:.0%}')} | "
+              f"{f(k.get('fees_per_trade'), '{:.2f} €')} | {f(k.get('stake'), '{:.0f} €')} |")
+    p("\n## Ablation R4 (EXPLORATIV, nicht Teil der vorregistrierten Entscheidung) – 10.000 €, 20 × 0,25 %, Stress\n")
+    p("| Variante | Inhalt | Validierung | Holdout | gesamt | max. Rückgang |\n|---|---|---|---|---|---|")
+    for v, txt in [("E2", "Ausbruch allein"), ("X1", ABLATION["X1"]), ("X2", ABLATION["X2"]), ("X3", ABLATION["X3"]), ("R4", "E2 + R1 + R2 + R3")]:
+        r = dep.get((v, "20x025"))
+        if r:
+            s_ = r["10000_stress"]
+            g = lambda ab, k="cagr": f"{s_[ab][k]:+.1%}" if s_.get(ab) else "–"
+            p(f"| {v} | {txt} | {g('Validierung')} | {g('Holdout')} | {g('gesamt')} | {g('gesamt', 'max_dd')} |")
     p(f"\nReproduktion: Commit {os.environ.get('GITHUB_SHA', '?')}, prices_v1 SHA-256 {os.environ.get('PRICES_SHA', '?')}")
     (d / "reversal_report.md").write_text("\n".join(L), encoding="utf-8")
     return "\n".join(L)
@@ -210,6 +246,9 @@ def main(argv=None) -> int:
     sig, meta = R.setup(a.data, a.signals, a.sec)
     if a.cmd == "trades":
         t = R.per_trade(R.build(sig, meta, a.variant, 1e-5))
+        sp = (t["entry_px"] - t["stop"]) / t["entry_px"]
+        t["stop_pct"] = sp
+        t["cost_R"] = [2 * R.stress_side(x) / s_ if s_ > 0 else np.nan for x, s_ in zip(t["ticker"], sp)]
         t.to_csv(out / f"trades_{a.variant}.csv", index=False)
         print(a.variant, json.dumps(R.summary(t)), flush=True)
     elif a.cmd == "depot":

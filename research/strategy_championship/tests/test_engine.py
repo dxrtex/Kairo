@@ -260,3 +260,46 @@ def test_min_order_value_raises_or_skips():
     # Risiko nur 0,2 % = 2 € bei Stop 0,5 € → 4 Stück; 25 Stück wären 12,50 € > 2 × 2 € → auslassen
     r3 = one({"A": px}, [Order(D[0], "A", stop=9.5, risk_frac=0.002, max_days=2, min_value_eur=250.0)], start_cash=1000, costs=NOCOST)
     assert not len(r3.trades) and r3.skipped["fee_small"] == 1
+
+
+def test_sizing_ignores_same_day_close_of_held_positions():
+    """Review 30.10.2026 (P0): Der Schlusskurs von Tag d ist morgens unbekannt → Stückzahl darf nicht davon abhängen."""
+    a_ok = bars([10, 10, 10, 10, 10], [10, 10, 10, 10, 10], [10, 10, 10, 10, 10], [10, 10, 10, 10, 10])
+    a_up = bars([10, 10, 10, 10, 10], [10, 10, 30, 10, 10], [10, 10, 10, 10, 10], [10, 10, 30, 10, 10])   # A schließt an D[2] bei 30
+    b = bars([20] * 5, [20] * 5, [20] * 5, [20] * 5)
+    q = [one({"A": a, "B": b}, [Order(D[0], "A", weight=0.5, max_days=4), Order(D[1], "B", stop=19.0, risk_frac=0.01, max_days=2)],
+             start_cash=1000, costs=NOCOST).trades.set_index("ticker").loc["B", "qty"] for a in (a_ok, a_up)]
+    assert q[0] == q[1] == 10                                                    # 1 % von 1.000 € / 1 € Risiko
+
+
+def test_fx_at_open_uses_previous_known_rate():
+    """Review 30.10.2026 (P0): Kauf zur Eröffnung mit dem Vortageskurs, nicht dem (späteren) Tageskurs."""
+    px = bars([10.0] * 4, [10.0] * 4, [10.0] * 4, [10.0] * 4)
+    fx = {"USD": pd.Series([1.0, 1.0, 2.0, 2.0], index=D[:4])}                  # am Kauftag D[1] noch 1,0; Sprung erst D[2]
+    r = run({"A": px}, {"A": "USD"}, fx, [Order(D[0], "A", weight=0.5, max_days=1)], start_cash=1000, costs=NOCOST)
+    buy = r.ledger[r.ledger.kind == "BUY"].iloc[0]
+    assert buy["fx"] == 1.0 and buy["date"] == D[1]
+    fx2 = {"USD": pd.Series([1.0, 3.0, 3.0, 3.0], index=D[:4])}                 # Sprung genau am Kauftag → noch nicht bekannt
+    r2 = run({"A": px}, {"A": "USD"}, fx2, [Order(D[0], "A", weight=0.5, max_days=1)], start_cash=1000, costs=NOCOST)
+    assert r2.ledger[r2.ledger.kind == "BUY"].iloc[0]["fx"] == 1.0
+    fx3 = {"GBP": pd.Series([0.8, 0.5, 0.5, 0.5], index=D[:4])}                 # Pence: Vortageskurs × 100
+    r3 = run({"A": px}, {"A": "GBp"}, fx3, [Order(D[0], "A", weight=0.5, max_days=1)], start_cash=1000, costs=NOCOST)
+    assert r3.ledger[r3.ledger.kind == "BUY"].iloc[0]["fx"] == pytest.approx(80.0)
+
+
+@pytest.mark.parametrize("price,cash,risk,expect", [
+    (24.9, 1000, 0.01, 11),     # 10 Stück = 249 € < 250 → auf 11 Stück (273,90 €), Risiko 11 € ≤ 20 €
+    (25.0, 1000, 0.01, 10),     # 10 Stück = 250 € → unverändert
+    (25.1, 1000, 0.01, 10),     # 10 Stück = 251 € → unverändert
+    (25.0, 200, 0.05, None),    # nur 200 € Kasse → kann 250 € nicht erreichen → auslassen (nicht 8 Stück kaufen)
+    (25.0, 1000, 0.002, None),  # Risiko 2 €: 10 Stück = 10 € Risiko > 2 × 2 € → auslassen
+])
+def test_min_order_value_cases(price, cash, risk, expect):
+    px = bars([price] * 4, [price] * 4, [price] * 4, [price] * 4)
+    stop = price - (1.0 if risk != 0.05 else 1.25)
+    o = Order(D[0], "A", stop=stop, risk_frac=risk, max_days=2, min_value_eur=250.0)
+    r = one({"A": px}, [o], start_cash=cash, costs=NOCOST)
+    if expect is None:
+        assert not len(r.trades) and r.skipped["fee_small"] == 1
+    else:
+        assert r.trades.iloc[0]["qty"] == expect and r.trades.iloc[0]["qty"] * price >= 250

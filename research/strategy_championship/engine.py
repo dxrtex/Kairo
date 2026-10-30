@@ -14,7 +14,10 @@ Unabhängig vom bisherigen shortswing-Simulator geschrieben. Grundsätze:
   muss in [min, max] × ATR liegen) – sonst verfällt die Order. Mehrere Orders derselben `group`: höchstens ein Kauf.
 - Ausstiegsregel „ema“: ab Tag `from` Schluss unter der EMA (Spalte EMA im Kursrahmen) → Verkauf zur nächsten Eröffnung.
 - Kosten: feste Gebühr je Order in EUR + halber Spread je Seite (auf den Ausführungskurs) + optional Slippage.
-- Währung: alle Buchungen in EUR mit dem Tageskurs (EURxxx = xxx je 1 EUR); GBp = Pence.
+- Währung: Buchungen in EUR mit dem zuletzt VOR dem Handelstag bekannten Kurs (EURxxx = xxx je 1 EUR; kein Intraday-FX,
+  Näherung); die Tageskurve bewertet mit dem Kurs des Tages. GBp = Pence.
+- Positionsgröße zur Eröffnung aus dem Depotwert, der morgens bekannt ist (offene Positionen zum letzten Schluss VOR dem Tag)
+  – nie aus Schlusskursen desselben Tages (Korrektur nach Review 30.10.2026).
 - Equity = Cash + Σ Stück × letzter Schluss × FX (täglich); Datenende eines Titels (Delisting/Lücke) → Zwangsverkauf zum
   letzten Schluss („data_end“); Simulationsende → Verkauf zum letzten Schluss („end“).
 """
@@ -78,6 +81,7 @@ class Result:
     skipped: dict
     checks: dict = field(default_factory=dict)
     invested: pd.Series | None = None
+    open_risk: pd.Series | None = None    # Σ (Kurs − Stop) offener Positionen / Depotwert, je Tag
 
 
 class _Px:
@@ -125,6 +129,22 @@ class FX:
             raise KeyError(f"FX {base} vor {d} unbekannt")
         return float(vs[i]) * scale
 
+    def known(self, cur: str, d: np.datetime64) -> float:
+        """Kurs, der bei einer Order zur Eröffnung von d schon bekannt ist: letzter Kurs VOR d (Näherung ohne Intraday-FX;
+        Review 30.10.2026 – der Tages-Schlusskurs von d ist morgens noch unbekannt). Fällt auf rate() zurück, wenn es keinen
+        früheren Kurs gibt (erster Tag)."""
+        if cur in ("EUR", None, ""):
+            return 1.0
+        scale = 100.0 if cur in ("GBp", "GBX") else 1.0
+        base = "GBP" if cur in ("GBp", "GBX") else cur
+        if base not in self.s:
+            raise KeyError(f"FX fehlt: {base}")
+        ds, vs = self.s[base]
+        i = int(np.searchsorted(ds, d, side="left")) - 1
+        if i < 0 or not np.isfinite(vs[i]):
+            return self.rate(cur, d)
+        return float(vs[i]) * scale
+
 
 @dataclass
 class _Pos:
@@ -145,6 +165,7 @@ class _Pos:
     entry_raw: float = 0.0
     be_on: bool = False
     fee_in: float = 0.0
+    eq_entry: float = 0.0
 
 
 def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str, pd.Series], orders: list[Order],
@@ -171,7 +192,7 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
     sell_next: set[str] = set()
     filled_groups: set[str] = set()
     cash, pos = float(start_cash), {}
-    led, trades, eq, inv = [], [], {}, {}
+    led, trades, eq, inv, rsk = [], [], {}, {}, {}
     skipped = {"no_data": 0, "open_below_stop": 0, "band": 0, "risk_atr": 0, "full": 0, "held": 0, "no_cash": 0, "group": 0, "small": 0,
                "not_triggered": 0, "gap_cap": 0, "fee_small": 0}
 
@@ -183,7 +204,7 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
     def book(d, kind, t, qty, price, fee, note=""):
         nonlocal cash
         cur = currency.get(t, "EUR")
-        rate = fxo.rate(cur, d)
+        rate = fxo.known(cur, d)                    # Buchung zum vorher bekannten Kurs (keine Zukunftsinformation)
         amt = (-qty * price / rate if kind == "BUY" else qty * price / rate) - fee
         cash += amt
         led.append({"date": pd.Timestamp(d), "kind": kind, "ticker": t, "qty": qty, "px": price, "cur": cur, "fx": rate,
@@ -193,17 +214,39 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
     def sell(d, p: _Pos, raw_px, why):
         cur = currency.get(p.ticker, "EUR")
         price = raw_px * (1 - costs.side(p.ticker, cur))
-        fee_out = costs.fee(p.qty * price / fxo.rate(cur, d))
+        fee_out = costs.fee(p.qty * price / fxo.known(cur, d))
         flow = book(d, "SELL", p.ticker, p.qty, price, fee_out, why)
-        spread_out = p.qty * (raw_px - price) / fxo.rate(cur, d)
+        spread_out = p.qty * (raw_px - price) / fxo.known(cur, d)
         trades.append({"ticker": p.ticker, "tag": p.tag, "entry_date": pd.Timestamp(p.entry_date), "exit_date": pd.Timestamp(d),
                        "entry_px": p.entry_px, "exit_px": price, "qty": p.qty, "days": p.days, "why": why,
                        "pnl_eur": flow - p.cost_eur, "stop": p.stop, "cost_eur": p.cost_eur, "risk_eur": p.risk_eur,
-                       "fees_eur": p.fee_in + fee_out, "spread_eur": p.spread_eur + spread_out})
+                       "fees_eur": p.fee_in + fee_out, "spread_eur": p.spread_eur + spread_out,
+                       "eq_entry": p.eq_entry, "risk_pct": p.risk_eur / p.eq_entry if p.eq_entry > 0 else float("nan")})
         del pos[p.ticker]
 
     def equity(d):
+        """Depotwert am Tagesende (Schlusskurse von d) – nur für die Tageskurve, nie für Entscheidungen am Morgen."""
         return cash + sum(q.qty * close_of(q.ticker, d) / fxo.rate(currency.get(q.ticker, "EUR"), d) for q in pos.values())
+
+    def equity_open(d):
+        """Depotwert zur Eröffnung von d nur aus bekannten Daten: heute gekaufte Positionen zum Kaufkurs, sonst letzter
+        Schluss VOR d, Wechselkurs vom Vortag (Review 30.10.2026, P0)."""
+        v = cash
+        for q in pos.values():
+            P = px[q.ticker]
+            if q.entry_date == d:
+                c = q.entry_raw
+            else:
+                j = int(np.searchsorted(P.dates, d, side="left")) - 1
+                c = P.c[j] if j >= 0 else q.entry_raw
+            v += q.qty * c / fxo.known(currency.get(q.ticker, "EUR"), d)
+        return v
+
+    def open_risk(d):
+        e = equity(d)
+        r = sum(max(0.0, q.qty * (close_of(q.ticker, d) - q.stop)) / fxo.rate(currency.get(q.ticker, "EUR"), d)
+                for q in pos.values() if q.stop is not None)
+        return r / e if e > 0 else 0.0
 
     for d in cal:
         # 1) Eröffnung: Signal-Verkäufe, dann Käufe
@@ -268,9 +311,9 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
                         filled_groups.add(o.group)
                     continue
             cur = currency.get(o.ticker, "EUR")
-            rate = fxo.rate(cur, d)
+            rate = fxo.known(cur, d)
             price = op * (1 + costs.side(o.ticker, cur))
-            eq_now = equity(d)
+            eq_now = equity_open(d)
             if o.risk_frac is not None and o.stop is not None:
                 per = (price - o.stop) / rate
                 qty = int(math.floor(eq_now * o.risk_frac / per)) if per > 0 else 0
@@ -293,11 +336,14 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
             if qty <= 0:
                 skipped["no_cash"] += 1
                 continue
+            if o.min_value_eur is not None and qty * price / rate < o.min_value_eur:
+                skipped["fee_small"] += 1                   # nach Kassen-Begrenzung unter der Mindestorder → auslassen (R3)
+                continue
             fee_in = costs.fee(qty * price / rate)
             flow = book(d, "BUY", o.ticker, qty, price, fee_in, o.tag)
             pos[o.ticker] = _Pos(o.ticker, qty, d, price, o.stop, o.target, o.max_days, o.exit_rule, o.tag, -flow,
                                  risk_eur=qty * (price - o.stop) / rate if o.stop is not None else 0.0,
-                                 spread_eur=qty * (price - op) / rate, trail=o.trail, entry_raw=op, fee_in=fee_in)
+                                 spread_eur=qty * (price - op) / rate, trail=o.trail, entry_raw=op, fee_in=fee_in, eq_entry=eq_now)
             if o.group is not None:
                 filled_groups.add(o.group)
         # 2) Tagesverlauf: Dividende, Stop, Ziel, Zeit; Ausstiegsregel EMA → nächste Eröffnung
@@ -347,12 +393,13 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
         e_ = equity(d)
         eq[pd.Timestamp(d)] = e_
         inv[pd.Timestamp(d)] = (e_ - cash) / e_ if e_ > 0 else 0.0
+        rsk[pd.Timestamp(d)] = open_risk(d)
     for t in list(pos):
         sell(cal[-1], pos[t], close_of(t, cal[-1]), "end")
     if len(cal):
         eq[pd.Timestamp(cal[-1])] = cash
     res = Result(pd.Series(eq, name="equity"), pd.DataFrame(led), pd.DataFrame(trades), skipped,
-                 invested=pd.Series(inv, name="invested"))
+                 invested=pd.Series(inv, name="invested"), open_risk=pd.Series(rsk, name="open_risk"))
     res.checks = audit(res, start_cash)
     return res
 
