@@ -328,12 +328,25 @@ def result_pushes(fresh: dict, prev: dict, events: list[dict], out: Path) -> Non
 MODEL = "2026-10-30 Gewinn+Ausblick"      # Stand der Prognose-Regel; bei jeder Änderung neu setzen (Auswertung je Stand)
 
 
-def app_odds(last: dict, gst: dict | None = None) -> float | None:
+GKEY = {-1: "gesenkt", 0: "bestätigt", 1: "angehoben"}
+
+
+def app_odds(last: dict, gst: dict | None = None, calib: dict | None = None) -> float | None:
     """Dieselbe Wahrscheinlichkeit „steigt am Tag danach“, die die App oben im Quartalszahlen-Fenster zeigt (earnOdds):
-    Gewinn-Stufe (mit Umsatz-Beschleunigung), bei gesenktem Ausblick die eigene Quote nach gesenktem Ausblick."""
+    nachgeeichte Quote Gewinn-Stufe × Ausblick, sobald die Bilanz sie übernommen hat (earn_calib.json, adopt); sonst
+    Gewinn-Stufe (mit Umsatz-Beschleunigung) und bei gesenktem Ausblick die eigene Quote nach gesenktem Ausblick."""
     sur = last.get("eps_s")
     if sur is None:
         return None
+    if calib and calib.get("adopt"):
+        try:
+            st = json.loads((ROOT / "site" / "earn_stats.json").read_text(encoding="utf-8"))
+            bi = next(i for i, b in enumerate(st["buckets"]) if b["lo"] <= sur * 100 < b["hi"])
+            v = calib["p"].get(f"{bi}|{GKEY.get((last.get('guide') or {}).get('d'), 'keine Meldung')}")
+            if v is not None:
+                return v
+        except Exception:
+            pass
     if (last.get("guide") or {}).get("d") == -1:
         dn = (gst or {}).get("down") or {}
         return dn.get("up1") if dn.get("n", 0) >= GUIDE_MIN_N else None
@@ -358,6 +371,11 @@ def archive(recs: dict, out: Path) -> int:
     except Exception:
         arc = {}
     gst = guide_stats(out)
+    try:
+        calib = json.loads((out / "earn_calib.json").read_text(encoding="utf-8"))
+    except Exception:
+        calib = None
+    model = MODEL + (" · nachgeeicht" if calib and calib.get("adopt") else "")
     for t, r in recs.items():
         L = r.get("last") or {}
         if not L.get("date"):
@@ -368,7 +386,7 @@ def archive(recs: dict, out: Path) -> int:
                "g": G.get("d"), "gs": G.get("src"), "gt": (G.get("t") or "")[:160] or None, "r1": (L.get("rx") or {}).get("d1")}
         old = arc.get(k, {})
         if old.get("r1") is None:                  # Prognose nur bis zur Kursreaktion fortschreiben – danach eingefroren
-            row.update(p=app_odds(L, gst), v=MODEL)
+            row.update(p=app_odds(L, gst, calib), v=model)
         arc[k] = {**old, **{a: b for a, b in row.items() if b is not None}}
     f.write_text(json.dumps(arc, separators=(",", ":")), encoding="utf-8")
     return len(arc)

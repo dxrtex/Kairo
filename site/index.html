@@ -2257,10 +2257,13 @@ function loadEarnLive(fast) {
 }
 // Ehrliche Statistik statt Bauchgefühl (tools/research/earn_stats.py): 14.936 Quartalsberichte von 580 US-Aktien seit 2019 –
 // wie oft stieg die Aktie am Handelstag nach den Zahlen, je nach Überraschung beim Gewinn
-let earnStats = null, earnReview = null;
+let earnStats = null, earnReview = null, earnCalib = null;
 // Prognose-Bilanz (tools/earn_review.py, nach jedem Prüflauf): wie oft lag die gezeigte Richtung bisher richtig?
 const loadEarnReview = () => earnReview || fetch(EARN_LIVE_URL.replace("earnings_live.json", "earn_review.json") + "?v=" + Math.floor(Date.now() / 36e5))
   .then(r => r.ok ? r.json() : null).then(d => { earnReview = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnReview = {}; });
+// Nacheichung Gewinn × Ausblick aus den eigenen Meldungen – nur wenn die Bilanz sie als genauer übernommen hat (adopt)
+const loadEarnCalib = () => earnCalib || fetch(EARN_LIVE_URL.replace("earnings_live.json", "earn_calib.json") + "?v=" + Math.floor(Date.now() / 36e5))
+  .then(r => r.ok ? r.json() : null).then(d => { earnCalib = d || {}; }).catch(() => { earnCalib = {}; });
 const loadEarnStats = () => earnStats || fetch("earn_stats.json").then(r => r.ok ? r.json() : null).then(d => { earnStats = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnStats = {}; });
 function earnStatHtml(t, sur) {
   if (!earnStats) { loadEarnStats(); return ""; }
@@ -2276,6 +2279,14 @@ function earnStatHtml(t, sur) {
 function earnOdds(t, sur, L) {
   const B = (earnStats && earnStats.buckets) || []; if (!B.length) return null;
   const P = (earnStats.per || {})[t], find = s => B.find(x => s >= x.lo && s < x.hi);
+  if (!earnCalib) loadEarnCalib();
+  if (sur != null && earnCalib && earnCalib.adopt && earnCalib.p) {
+    const bi = B.findIndex(x => sur * 100 >= x.lo && sur * 100 < x.hi), gd = L && L.guide ? L.guide.d : null;
+    const gk = gd === -1 ? "gesenkt" : gd === 0 ? "bestätigt" : gd === 1 ? "angehoben" : "keine Meldung", key = `${bi}|${gk}`;
+    if (bi >= 0 && earnCalib.p[key] != null)
+      return { p: earnCalib.p[key], n: (earnCalib.n || {})[key] || 0, after: true, guideDown: gd === -1, calib: true,
+        how: `bei Gewinn ${B[bi].name}, Ausblick ${gk} – aus Kairos eigener Bilanz nachgeeicht (${(earnCalib.n || {})[key] || 0} eigene Meldungen)` };
+  }
   // Gesenkter Ausblick überstimmt den Gewinn (Intel 29.10.2026: Gewinn +30 %, Ausblick gesenkt, −28 %; eigenes Archiv:
   // nach gesenktem Ausblick stieg die Aktie nur in rund einem Viertel der Fälle) – dann nicht die Gewinn-Statistik zeigen
   if (sur != null && L && L.guide && L.guide.d === -1) {
@@ -2311,7 +2322,7 @@ function earnTopHtml(t, sur, rx, L) {
     : tone === "red"
       ? ["Eher abwarten", (o.guideDown ? "Das Unternehmen erwartet schwächere Geschäfte – der Markt handelt die Zukunft, nicht das vergangene Quartal. " : "Nach Zahlen dieser Art fiel der Kurs öfter, als er stieg. ") + (hit ? "Der Kairo-Treffer bleibt gültig, aber mit Gegenwind – kleinere Position oder Kurs erst stabilisieren lassen." : "Kein Einstieg nur wegen der Zahlen.")]
       : [hit ? "Münzwurf – der Kairo-Treffer entscheidet" : "Münzwurf – kein Einstiegsgrund", (o.after ? "Zahlen dieser Art bewegen den Kurs kaum vorhersagbar. " : "Vor den Zahlen ist die Richtung offen. ") + (hit ? "Im Kairo-Test waren Käufe kurz vor den Zahlen nicht schlechter – Stop setzen, mit Kurslücke rechnen." : "Ohne Kairo-Setup kein Einstieg.")];
-  return `<div class="eq-odds t-${tone}"><div class="eq-odds-top"><span class="eq-odds-p">${o.p == null ? "↓" : pct(o.p, 0)}</span><span class="eq-odds-l">${o.p == null ? "Ausblick gesenkt" : lead}<em>${esc(o.how)}${o.after && !o.guideDown ? ` · ${fmt(o.n, 0)} Berichte seit 2019` : ""}${o.p5 != null ? ` · nach 5 Tagen ${pct(o.p5, 0)} im Plus` : ""}${esc(own)}</em></span></div>
+  return `<div class="eq-odds t-${tone}"><div class="eq-odds-top"><span class="eq-odds-p">${o.p == null ? "↓" : pct(o.p, 0)}</span><span class="eq-odds-l">${o.p == null ? "Ausblick gesenkt" : lead}<em>${esc(o.how)}${o.after && !o.guideDown && !o.calib ? ` · ${fmt(o.n, 0)} Berichte seit 2019` : ""}${o.p5 != null ? ` · nach 5 Tagen ${pct(o.p5, 0)} im Plus` : ""}${esc(own)}</em></span></div>
     <div class="eq-bar"><i style="width:${((o.p == null ? .25 : o.p) * 100).toFixed(1)}%"></i></div><div class="eq-scale"><span>fällt</span><span>50 %</span><span>steigt</span></div>
     <div class="eq-entry"><b>${esc(entry[0])}</b><span>${esc(entry[1])}</span></div></div>`;
 }

@@ -571,6 +571,12 @@ def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
         print(f"Quartalszahlen: {earnfast.archive(fresh, out)} Meldungen im Archiv")
     except Exception as exc:
         print(f"Quartalszahlen: Archiv fehlgeschlagen ({exc!r})")
+    try:                                               # Lernschleife: warum lag die Prognose daneben?
+        from . import earnwhy
+        names = {t: r.get("name") or t for t, r in allr.items()} | {e["ticker"]: e.get("name") or e["ticker"] for e in cal.get("events", []) if e.get("ticker")}
+        print(f"Quartalszahlen: {earnwhy.run(out, names)} Fälle auf Ursachen untersucht")
+    except Exception as exc:
+        print(f"Quartalszahlen: Ursachensuche fehlgeschlagen ({exc!r})")
     try:
         earnfast.result_pushes(fresh, prev, cal.get("events", []), out)
     except Exception as exc:
