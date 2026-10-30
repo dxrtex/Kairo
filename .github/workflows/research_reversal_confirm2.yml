@@ -1,0 +1,52 @@
+name: Research – Reversal Bestätigung Nachlauf (Asien-Teile)
+
+# Nur Forschung (docs/KAIRO_REVERSAL_ULTIMATE_PLAN.md, eingefroren). Auslöser: research/reversal/confirm_trigger.txt. Wiederholt die Bestätigungs-Teile, die im Testlauf am API-Limit scheiterten (Asien 10–29); Code identisch.
+permissions:
+  contents: write
+  actions: read
+
+on:
+  push:
+    branches: ["claude/ultimate-research"]
+    paths: ["research/reversal/confirm_trigger.txt"]
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+  SWEEP_RUN: "40778404648"
+  SEC_FILINGS: "657029194"
+  SEC_CIK: "657029198"
+  AUDIT_RUN: "40971029106"
+
+jobs:
+  confirm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        set: [asia]
+        shard: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Universum + SEC
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p sec
+          for k in 1 2 3 4 5 6 7 8; do gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_FILINGS > sec/filings.csv.gz && gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_CIK > sec/cik_map.csv && break; echo "API-Limit? warte"; sleep 300; done
+          test -s sec/cik_map.csv
+          if [ "${{ matrix.set }}" = asia ]; then git fetch -q origin kairo-data && git show origin/kairo-data:universe_asia.csv > uni.csv
+          else cp research/strategy_championship/data/universe_frozen_2026-10-16.csv uni.csv; fi
+      - run: python -W ignore -m research.reversal.run confirm --set ${{ matrix.set }} --shard ${{ matrix.shard }} --shards 30 --universe uni.csv --sec sec --out out
+      - run: rm -f out/px_*.parquet
+      - uses: actions/upload-artifact@v4
+        with: { name: "rvc-${{ matrix.set }}-${{ matrix.shard }}", path: out/, retention-days: 30 }

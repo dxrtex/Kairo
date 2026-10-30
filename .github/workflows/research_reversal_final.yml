@@ -2,7 +2,7 @@ name: Research – Kairo Reversal Ultimate Endbericht (korrigierte Engine)
 
 # Nur Forschung. Je-Trade-Ergebnisse, Zufallskontrollen und Bestätigungsdaten aus dem Testlauf (unabhängig von der
 # Engine-Korrektur), Depot-Läufe aus dem Wiederholungslauf mit korrigierter Engine.
-# Auslöser: research/reversal/final_trigger.txt mit „<Testlauf-ID> <Wiederholungslauf-ID>“.
+# Auslöser: research/reversal/final_trigger.txt mit „<Testlauf-ID> <Wiederholungslauf-ID> <Nachlauf-Bestätigung-ID>“.
 permissions:
   contents: write
   actions: read
@@ -28,11 +28,13 @@ jobs:
         with: { python-version: "3.11", cache: pip }
       - run: pip install -r research/requirements.txt
       - id: trg
-        run: read T N _ < research/reversal/final_trigger.txt && echo "t=$T" >> $GITHUB_OUTPUT && echo "n=$N" >> $GITHUB_OUTPUT
+        run: read T N C _ < research/reversal/final_trigger.txt && echo "t=$T" >> $GITHUB_OUTPUT && echo "n=$N" >> $GITHUB_OUTPUT && echo "c=$C" >> $GITHUB_OUTPUT
       - uses: actions/download-artifact@v4
         with: { pattern: "rvw-*", merge-multiple: true, path: res, run-id: "${{ steps.trg.outputs.t }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
       - uses: actions/download-artifact@v4
         with: { pattern: "rvc-*", merge-multiple: true, path: cfparts, run-id: "${{ steps.trg.outputs.t }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: actions/download-artifact@v4
+        with: { pattern: "rvc-*", merge-multiple: true, path: cfparts, run-id: "${{ steps.trg.outputs.c }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
       - uses: actions/download-artifact@v4
         with: { pattern: "efx-[0-9]*", merge-multiple: true, path: new, run-id: "${{ steps.trg.outputs.n }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
       - uses: actions/download-artifact@v4
