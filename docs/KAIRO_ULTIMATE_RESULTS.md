@@ -9,7 +9,7 @@ ersten Lauf). Code-Stand der Läufe: Branch `claude/ultimate-research`. Datensat
 | Datenprüfung (Gate) | 40971029106 | (Branch-Stand 29.10. 23:05 UTC) |
 | Wettbewerb A, Runde 1 (je Trade, Depot, Zufall) | 40969195427 | `6352458` |
 | Wettbewerb B | 40971115447 | `f87c59c` |
-| Bestätigung Vorzeit 1999–2007 / Asien | 40960444918 | siehe Abschnitt 3 |
+| Bestätigung Vorzeit 1999–2007 / Asien | 40960444918 (Zusammenführung: 41004077167) | `9307113` |
 
 **Kurzfassung**
 
@@ -89,14 +89,36 @@ verlieren dann fast alles. **Rücksetzer-Trading mit vielen kleinen Positionen i
 
 | Variante | 1 ΔR ≥ +0,05 Train & Val | 2 Depot besser | 3 Holm p ≤ 0,05 | 4 Bestätigung | 5 > Zufall | Urteil |
 |---|---|---|---|---|---|---|
-| E1 | ✗ +0,052 / +0,017 | ✗ | ✗ 0,753 | *ausstehend* | ✓ (20/20 Seeds) | nicht bestanden |
-| **E2** | ✗ +0,067 / **+0,035** | ✓ | ✗ **0,072** | *ausstehend* | ✓ (20/20) | **nicht bestanden (knapp)** |
-| V1 | ✗ −0,019 / −0,031 | ✗ | ✗ 0,981 | *ausstehend* | ✗ | nicht bestanden |
-| N1 | ✗ −0,027 / +0,051 | ✗ | ✗ 0,966 | *ausstehend* | ✓ | nicht bestanden |
-| C1 | ✗ −0,039 / +0,131 | ✗ | ✗ 0,966 | *ausstehend* | ✗ | nicht bestanden |
+| E1 | ✗ +0,052 / +0,017 | ✗ | ✗ 0,753 | ✓ +0,100 / +0,014 | ✓ (20/20 Seeds) | nicht bestanden |
+| **E2** | ✗ +0,067 / **+0,035** | ✓ | ✗ **0,072** | ✓ **+0,067 / +0,072** | ✓ (20/20) | **nicht bestanden (knapp)** |
+| V1 | ✗ −0,019 / −0,031 | ✗ | ✗ 0,981 | ✗ −0,027 / +0,021 | ✗ | nicht bestanden |
+| N1 | ✗ −0,027 / +0,051 | ✗ | ✗ 0,966 | ✓ +0,020 (nur USA-Vorzeit) | ✓ | nicht bestanden |
+| C1 | ✗ −0,039 / +0,131 | ✗ | ✗ 0,966 | ✓ +0,042 / +0,156 | ✗ | nicht bestanden |
 
-Die Bestätigung (Punkt 4) kann das Urteil nicht mehr ändern, weil bei jeder Variante schon Punkt 1 und 3 fehlen; sie wird
-nachgetragen.
+Spalte 4 = Δ Ø R (Stress) gegenüber B60 in der Vorzeit 1999–2007 / in Asien 2008–2026.
+
+### 3.4 Bestätigung und Sensitivität
+
+| | Vorzeit 1999–2007 (USA/Europa) | Asien 2008–2026 |
+|---|---|---|
+| B60 (E0) Ø R Stress | −0,066 (n 2.755) | +0,006 (n 14.192) |
+| E1 Früheinstieg | +0,034 (Δ +0,100) | +0,020 (Δ +0,014) |
+| **E2 Ausbruch** | **+0,001 (Δ +0,067)** | **+0,077 (Δ +0,072)** |
+| V1 Gültigkeit | −0,092 (Δ −0,027) | +0,027 (Δ +0,021) |
+| N1 ohne Zahlen-Rückgang | −0,013 vs. −0,033 (nur USA, Δ +0,020) | – |
+| C1 Kosten ≤ 0,10 R | −0,024 (Δ +0,042, n 404) | +0,162 (Δ +0,156, n 1.568) |
+
+Datenqualität der Bestätigungsdaten: Asien unmögliche Kerzen 0,045 % ✓ (viele Lücken > 5 Tage = Feiertage wie Neujahrsfest,
+kein Fehler); **Vorzeit 0,21 % > Gate 0,1 % → formal nicht bestanden**, die Vorzeit zählt deshalb nur als Hinweis. Für beide
+Sätze gibt es keine kostenlose zweite Quelle (Nasdaq liefert nur 10 Jahre, nur USA).
+
+Sensitivität ohne die 223 unsicheren Titel (Fehlkurse, Split-Reste): Die Rangfolge bleibt gleich, E2 wird schwächer
+(Holm-p 0,148 statt 0,072; Holdout −0,104 statt −0,079 R). Kein Urteil kippt.
+
+**Einordnung E2:** Der Ausbruch über das Basishoch ist je Trade besser als B60 in Train, Validierung, Vorzeit und Asien –
+vier von fünf Datensätzen – aber im jüngsten Zeitraum (Holdout 2022–26) schlechter, und der Abstand ist kleiner als die vorab
+verlangten 0,05 R. Das ist das Muster eines kleinen, echten, aber nicht sicher handelbaren Effekts. Es reicht nicht für einen
+Wechsel, wohl aber für einen Papier-Vergleich.
 
 **Ergebnis Wettbewerb A: Keine Verbesserung nachgewiesen. B60 bleibt die Rücksetzer-Regel; E2 ist der einzige ernsthafte
 Kandidat für einen späteren Papier-Vergleich.**
