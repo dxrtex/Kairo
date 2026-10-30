@@ -206,7 +206,8 @@ def main(argv=None) -> int:
     if not xs:                                           # Stooq gesperrt → Nasdaq (US) gegen unbereinigte Schlusskurse
         raw = {t: g.set_index(pd.to_datetime(g["date"]))["Close"] for t, g in px.groupby("ticker")}
         t0, miss = time.time(), 0
-        for t in rng.choice([x for x in tick if "." not in x], size=min(a.stooq, len(tick)), replace=False):
+        us = [x for x in tick if "." not in x]
+        for t in (rng.choice(us, size=min(a.stooq, len(us)), replace=False) if us else []):
             if time.time() - t0 > 900 or miss >= 25:
                 break
             s = nasdaq(t)
