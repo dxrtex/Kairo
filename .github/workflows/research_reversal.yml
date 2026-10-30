@@ -1,0 +1,60 @@
+name: Research – Kairo Reversal Ultimate
+
+# Nur Forschung. Auslöser: research/reversal/trigger.txt („<Befehl> …“). Ergebnisse landen zusätzlich auf dem Branch
+# claude/reversal-out (Ordner = Lauf-ID), damit sie ohne Artefakt-Download lesbar sind.
+permissions:
+  contents: write
+  actions: read
+
+on:
+  push:
+    branches: ["claude/ultimate-research"]
+    paths: ["research/reversal/trigger.txt"]
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+  SWEEP_RUN: "40778404648"
+  SEC_FILINGS: "657029194"
+  SEC_CIK: "657029198"
+  SECTORS: "653834377"
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "swsig-*", merge-multiple: true, path: parts, run-id: "${{ env.SWEEP_RUN }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1 sec
+          for x in PRICES:prices BENCH:bench FX:fx; do v=${x%%:*}_ASSET; gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/${!v} > v1/${x##*:}_v1.parquet; done
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_FILINGS > sec/filings.csv.gz
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_CIK > sec/cik_map.csv
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SECTORS > sectors_v1.csv
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+          python -c "import pandas as pd,glob;d=pd.concat([pd.read_parquet(f) for f in sorted(glob.glob('parts/sweep_signals_*.parquet'))]);d=d[d['v'].str.split(',').apply(lambda l:'0' in l)];d.to_parquet('sig.parquet',index=False);print(len(d),'Treffer')"
+      - run: python -W ignore -m research.reversal.diag --data v1 --signals sig.parquet --sec sec --sectors sectors_v1.csv --out out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: "rev-diag", path: out/, retention-days: 30 }
+      - name: Ergebnis auf Branch claude/reversal-out
+        if: always()
+        run: |
+          git config user.name "kairo-research"; git config user.email "research@users.noreply.github.com"
+          git fetch -q origin claude/reversal-out || true
+          mkdir -p /tmp/pub && cp out/*.md /tmp/pub/ 2>/dev/null || true
+          if git rev-parse -q --verify origin/claude/reversal-out >/dev/null; then git checkout -q -B pub origin/claude/reversal-out; else git checkout -q --orphan pub && git rm -rq . ; fi
+          mkdir -p "$GITHUB_RUN_ID" && cp /tmp/pub/* "$GITHUB_RUN_ID"/ 2>/dev/null || true
+          git add "$GITHUB_RUN_ID" && git commit -qm "Ergebnis $GITHUB_RUN_ID" && git push -q origin pub:claude/reversal-out
