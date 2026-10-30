@@ -1,0 +1,115 @@
+name: Research – Ruhe-Test (unruhige Setups schlechter?)
+
+# Nur Forschung. B60 mit Ruhe-Prüfung am Basis-Tag (Q1, wie backend.scanner.calm_days) gegen B60, korrigierte Engine.
+# Regel vorab festgelegt in research/reversal/run.py (calm_report). Auslöser: research/reversal/calm_trigger.txt.
+permissions:
+  contents: write
+  actions: read
+
+on:
+  push:
+    branches: ["claude/ultimate-research"]
+    paths: ["research/reversal/calm_trigger.txt"]
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  CALM_TEST: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+  SWEEP_RUN: "40778404648"
+  SEC_FILINGS: "657029194"
+  SEC_CIK: "657029198"
+  AUDIT_RUN: "40971029106"
+
+jobs:
+  work:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        job: ["trades E0", "trades Q1", "depot E0 5x1", "depot Q1 5x1", "depot E0 20x025", "depot Q1 20x025", "depot E0 10x05", "depot Q1 10x05"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "swsig-*", merge-multiple: true, path: parts, run-id: "${{ env.SWEEP_RUN }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1 sec
+          for x in PRICES:prices BENCH:bench FX:fx; do v=${x%%:*}_ASSET; for k in 1 2 3 4 5 6; do gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/${!v} > v1/${x##*:}_v1.parquet && break; sleep 300; done; done
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_FILINGS > sec/filings.csv.gz
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_CIK > sec/cik_map.csv
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+          python -c "import pandas as pd,glob;d=pd.concat([pd.read_parquet(f) for f in sorted(glob.glob('parts/sweep_signals_*.parquet'))]);d=d[d['v'].str.split(',').apply(lambda l:'0' in l)];d.to_parquet('sig.parquet',index=False);print(len(d),'Treffer')"
+      - run: |
+          set -- ${{ matrix.job }}
+          case $1 in
+            trades) python -W ignore -m research.reversal.run trades --data v1 --signals sig.parquet --sec sec --variant $2 --out out ;;
+            depot)  python -W ignore -m research.reversal.run depot  --data v1 --signals sig.parquet --sec sec --variant $2 --layout $3 --out out ;;
+            null)   python -W ignore -m research.reversal.run null   --data v1 --signals sig.parquet --sec sec --variant $2 --seed-start $3 --seed-n 5 --out out ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        with: { name: "cq-${{ strategy.job-index }}", path: out/, retention-days: 30 }
+  confirm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        set: [asia]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Universum + SEC
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p sec
+          for k in 1 2 3 4 5 6 7 8; do gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_FILINGS > sec/filings.csv.gz && gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_CIK > sec/cik_map.csv && break; sleep 300; done
+          if [ "${{ matrix.set }}" = asia ]; then git fetch -q origin kairo-data && git show origin/kairo-data:universe_asia.csv > uni.csv
+          else cp research/strategy_championship/data/universe_frozen_2026-10-16.csv uni.csv; fi
+      - run: python -W ignore -m research.reversal.run confirm --set ${{ matrix.set }} --shard ${{ matrix.shard }} --shards 30 --universe uni.csv --sec sec --out out
+      - run: rm -f out/px_*.parquet
+      - uses: actions/upload-artifact@v4
+        with: { name: "cqc-${{ matrix.shard }}", path: out/, retention-days: 30 }
+  report:
+    needs: [work, confirm]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "cq-*", merge-multiple: true, path: res }
+      - uses: actions/download-artifact@v4
+        with: { pattern: "cqc-*", merge-multiple: true, path: cfparts }
+      - run: |
+          python -m research.reversal.run combine --dir cfparts --out cf || true
+          cp cf/confirm.txt res/ 2>/dev/null || true
+          python -m research.reversal.run calmreport --dir res
+          mkdir -p pub && cp res/calm_report.md pub/
+      - uses: actions/upload-artifact@v4
+        with: { name: "calm-report", path: pub/, retention-days: 30 }
+      - name: Ergebnis auf Branch claude/reversal-out
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          W=$GITHUB_WORKSPACE; mkdir -p /tmp/pr && cd /tmp/pr && git init -q
+          git config user.name "kairo-research"; git config user.email "research@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch -q origin claude/reversal-out; then git checkout -q -b pub FETCH_HEAD; else git checkout -q --orphan pub; fi
+          mkdir -p "calm-$GITHUB_RUN_ID" && cp $W/pub/* "calm-$GITHUB_RUN_ID"/
+          git add . && git commit -qm "Ruhe-Test $GITHUB_RUN_ID" && git push -q origin pub:claude/reversal-out

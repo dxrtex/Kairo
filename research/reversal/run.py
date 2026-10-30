@@ -26,7 +26,7 @@ from research.strategy_championship.engine import run
 from research.ultimate import confirm as CF
 from research.ultimate import round1 as R
 
-VARIANTS = ("E0", "E2", "R1", "R2", "R3", "R4", "X1", "X2", "X3")
+VARIANTS = ("E0", "E2", "R1", "R2", "R3", "R4", "X1", "X2", "X3", "Q1")
 ABLATION = {"X1": "E2 + R1 (ohne Rangfolge, ohne Mindestorder)", "X2": "E2 + R1 + R2", "X3": "E2 + R1 + R3"}   # explorativ
 TESTS = ("R1", "R2", "R3", "R4")
 MIN_ORDER = 250.0
@@ -51,8 +51,20 @@ def orders_R4core(t, i, atr, gid, m, rf):
     return _widen(R.orders_E2(t, i, atr, gid, m, rf), t, lambda o, k, c: o.entry_stop * R.arrays(t)[3][k])
 
 
+def orders_Q1(t, i, atr, gid, m, rf):
+    """Ruhe-Prüfung am Basis-Tag (Tag vor dem Kauf) wie im Scanner (backend.scanner.calm_days): Spanne 5 Tage ≤ 1,5 ATR
+    und Hin und Her 10 Tage ≤ 1,65. Nur B60-Trades, deren Basis-Tag ruhig ist (Frage Jonny 30.10.2026: unruhige Setups
+    schlechter?)."""
+    from backend.scanner import calm_days
+    cache = R._G.setdefault("calm_q1", {})
+    if t not in cache:
+        cache[t] = calm_days(R._G["adj"][t])
+    cd, idx = cache[t], R.arrays(t)[4]
+    return [o for o in R.orders_E0(t, i, atr, gid, m, rf) if bool(cd[idx.get_loc(o.decision_date)])]
+
+
 R.GEN.update({"R1": orders_R1, "R2": R.orders_E0, "R3": R.orders_E0, "R4": orders_R4core,
-              "X1": orders_R4core, "X2": orders_R4core, "X3": orders_R4core})
+              "X1": orders_R4core, "X2": orders_R4core, "X3": orders_R4core, "Q1": orders_Q1})
 
 
 def finish(variant: str, orders):
@@ -226,9 +238,49 @@ def report(d: Path, audit: str | None, ub: str | None) -> str:
     return "\n".join(L)
 
 
+def calm_report(d: Path) -> str:
+    """Ruhe-Test (vorab festgelegt 30.10.2026): Q1 besteht, wenn Ø R Stress je Trade in Validierung UND Holdout über B60
+    liegt, in Asien nicht darunter, UND die Depot-CAGR (Stress) bei 5.000 € (5 × 1 %) und 10.000 € (20 × 0,25 %) in
+    Validierung UND Holdout über B60 liegt. Sonst: Ruhe-Prüfung bleibt aus (wie heute)."""
+    L = ["# Ruhe-Test: B60 nur mit ruhigem Basis-Tag (Q1) gegen B60 (E0)\n", calm_report.__doc__.split("\n", 1)[1].strip(), ""]
+    T = {v: pd.read_csv(d / f"trades_{v}.csv") for v in ("E0", "Q1") if (d / f"trades_{v}.csv").exists()}
+    ok = True
+    if len(T) == 2:
+        L.append("| Abschnitt | B60 Ø R (n) | nur ruhig Ø R (n) | Anteil behalten |\n|---|---|---|---|")
+        for ab in ("Train", "Validierung", "Holdout"):
+            a_, b_ = T["E0"][T["E0"]["abschnitt"] == ab], T["Q1"][T["Q1"]["abschnitt"] == ab]
+            L.append(f"| {ab} | {a_['R_stress'].mean():+.3f} ({len(a_)}) | {b_['R_stress'].mean():+.3f} ({len(b_)}) | {len(b_) / max(1, len(a_)):.0%} |")
+            if ab != "Train":
+                ok &= b_["R_stress"].mean() > a_["R_stress"].mean()
+        u = T["E0"][~T["E0"].set_index(["ticker", "entry_date"]).index.isin(T["Q1"].set_index(["ticker", "entry_date"]).index)]
+        vh = u[u["abschnitt"].isin(("Validierung", "Holdout"))]
+        L.append(f"\nDie aussortierten unruhigen Trades (Val + Holdout): Ø R {vh['R_stress'].mean():+.3f} (n {len(vh)}).")
+    cf = d / "confirm.txt"
+    if cf.exists():
+        txt = cf.read_text()
+        L.append("\nAsien 2008–26 (je Trade):\n```\n" + txt.strip() + "\n```")
+        m = [ln for ln in txt.splitlines() if ln.startswith("asia Q1")]
+        if m:
+            ok &= float(m[0].split("Δ")[1]) >= 0
+    L.append("\n| Depot (Stress) | Abschnitt | B60 | nur ruhig |\n|---|---|---|---|")
+    for lay, cap in (("5x1", 5000), ("20x025", 10000), ("10x05", 10000)):
+        dd = {v: json.loads((d / f"depot_{v}_{lay}.json").read_text()) for v in ("E0", "Q1") if (d / f"depot_{v}_{lay}.json").exists()}
+        if len(dd) < 2:
+            continue
+        for ab in ("Validierung", "Holdout", "gesamt"):
+            e, q = dd["E0"][f"{cap}_stress"][ab], dd["Q1"][f"{cap}_stress"][ab]
+            L.append(f"| {cap} € {lay} | {ab} | {e['cagr']:+.1%} (Rückgang {e['max_dd']:.0%}) | {q['cagr']:+.1%} (Rückgang {q['max_dd']:.0%}) |")
+            if lay != "10x05" and ab != "gesamt":
+                ok &= q["cagr"] > e["cagr"]
+    L.append(f"\n**Urteil nach Regel: {'Ruhe-Prüfung verbessert B60 – einbauen (nur mit Freigabe)' if ok else 'nicht besser – Ruhe-Prüfung bleibt aus, unruhige Setups bleiben drin'}.**")
+    out = "\n".join(L)
+    (d / "calm_report.md").write_text(out, encoding="utf-8")
+    return out
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["trades", "depot", "null", "confirm", "combine", "report"])
+    ap.add_argument("cmd", choices=["trades", "depot", "null", "confirm", "combine", "report", "calmreport"])
     ap.add_argument("--data"); ap.add_argument("--signals"); ap.add_argument("--out", default="rv_out")
     ap.add_argument("--variant", default="E0", choices=VARIANTS); ap.add_argument("--layout", default="20x025", choices=list(R.LAYOUTS))
     ap.add_argument("--sec"); ap.add_argument("--seed-start", type=int, default=0); ap.add_argument("--seed-n", type=int, default=5)
@@ -236,10 +288,12 @@ def main(argv=None) -> int:
     ap.add_argument("--universe"); ap.add_argument("--dir"); ap.add_argument("--audit"); ap.add_argument("--ub")
     a = ap.parse_args(argv)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+    if a.cmd == "calmreport":
+        print(calm_report(Path(a.dir))); return 0
     if a.cmd == "report":
         report(Path(a.dir), a.audit, a.ub); return 0
     if a.cmd in ("confirm", "combine"):
-        CF.VARS = {"pre": ("E0", "R1", "R4"), "asia": ("E0", "R1", "R4")}
+        CF.VARS = {"pre": ("E0", "R1", "R4"), "asia": ("E0", "R1", "R4")} if not os.environ.get("CALM_TEST") else {"asia": ("E0", "Q1")}
         if a.cmd == "combine":
             CF.combine(Path(a.dir), out); return 0
         CF.run_shard(a); return 0
