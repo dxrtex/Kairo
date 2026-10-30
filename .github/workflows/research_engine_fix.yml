@@ -61,7 +61,7 @@ jobs:
           gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_CIK > sec/cik_map.csv
           echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
           python -c "import pandas as pd,glob;d=pd.concat([pd.read_parquet(f) for f in sorted(glob.glob('parts/sweep_signals_*.parquet'))]);d=d[d['v'].str.split(',').apply(lambda l:'0' in l)];d.to_parquet('sig.parquet',index=False);print(len(d),'Treffer')"
-      - run: python -m pytest -q research/strategy_championship/tests
+      - run: pip install pytest && python -m pytest -q research/strategy_championship/tests
       - run: |
           set -- ${{ matrix.job }}
           M=$1; shift
