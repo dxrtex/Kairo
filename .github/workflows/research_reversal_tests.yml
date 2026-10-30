@@ -1,0 +1,122 @@
+name: Research – Kairo Reversal Ultimate Tests (R1–R4)
+
+# Nur Forschung (docs/KAIRO_REVERSAL_ULTIMATE_PLAN.md, eingefroren). Auslöser: research/reversal/test_trigger.txt.
+permissions:
+  contents: write
+  actions: read
+
+on:
+  push:
+    branches: ["claude/ultimate-research"]
+    paths: ["research/reversal/test_trigger.txt"]
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+  SWEEP_RUN: "40778404648"
+  SEC_FILINGS: "657029194"
+  SEC_CIK: "657029198"
+  AUDIT_RUN: "40971029106"
+
+jobs:
+  work:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        job: ["trades E0", "trades E2", "trades R1", "trades R4",
+              "depot E0 5x1", "depot E2 5x1", "depot R1 5x1", "depot R2 5x1", "depot R3 5x1", "depot R4 5x1",
+              "depot E0 10x05", "depot E2 10x05", "depot R1 10x05", "depot R2 10x05", "depot R3 10x05", "depot R4 10x05",
+              "depot E0 20x025", "depot E2 20x025", "depot R1 20x025", "depot R2 20x025", "depot R3 20x025", "depot R4 20x025",
+              "null R1 0", "null R1 5", "null R1 10", "null R1 15", "null R4 0", "null R4 5", "null R4 10", "null R4 15"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "swsig-*", merge-multiple: true, path: parts, run-id: "${{ env.SWEEP_RUN }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1 sec
+          for x in PRICES:prices BENCH:bench FX:fx; do v=${x%%:*}_ASSET; gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/${!v} > v1/${x##*:}_v1.parquet; done
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_FILINGS > sec/filings.csv.gz
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_CIK > sec/cik_map.csv
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+          python -c "import pandas as pd,glob;d=pd.concat([pd.read_parquet(f) for f in sorted(glob.glob('parts/sweep_signals_*.parquet'))]);d=d[d['v'].str.split(',').apply(lambda l:'0' in l)];d.to_parquet('sig.parquet',index=False);print(len(d),'Treffer')"
+      - run: |
+          set -- ${{ matrix.job }}
+          case $1 in
+            trades) python -W ignore -m research.reversal.run trades --data v1 --signals sig.parquet --sec sec --variant $2 --out out ;;
+            depot)  python -W ignore -m research.reversal.run depot  --data v1 --signals sig.parquet --sec sec --variant $2 --layout $3 --out out ;;
+            null)   python -W ignore -m research.reversal.run null   --data v1 --signals sig.parquet --sec sec --variant $2 --seed-start $3 --seed-n 5 --out out ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        with: { name: "rvw-${{ strategy.job-index }}", path: out/, retention-days: 30 }
+  confirm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        set: [pre, asia]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - name: Universum + SEC
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p sec
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_FILINGS > sec/filings.csv.gz
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_CIK > sec/cik_map.csv
+          if [ "${{ matrix.set }}" = asia ]; then git fetch -q origin kairo-data && git show origin/kairo-data:universe_asia.csv > uni.csv
+          else cp research/strategy_championship/data/universe_frozen_2026-10-16.csv uni.csv; fi
+      - run: python -W ignore -m research.reversal.run confirm --set ${{ matrix.set }} --shard ${{ matrix.shard }} --shards 30 --universe uni.csv --sec sec --out out
+      - run: rm -f out/px_*.parquet
+      - uses: actions/upload-artifact@v4
+        with: { name: "rvc-${{ matrix.set }}-${{ matrix.shard }}", path: out/, retention-days: 30 }
+  report:
+    needs: [work, confirm]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "rvw-*", merge-multiple: true, path: res }
+      - uses: actions/download-artifact@v4
+        with: { pattern: "rvc-*", merge-multiple: true, path: cfparts }
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: { name: "ultimate-audit", path: au, run-id: "${{ env.AUDIT_RUN }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - run: |
+          python -m research.reversal.run combine --dir cfparts --out cf || true
+          cp cf/confirm_*.json res/ 2>/dev/null || true
+          cat cf/confirm.txt 2>/dev/null || true
+          python -m research.reversal.run report --dir res --audit au/data_audit.json
+          mkdir -p pub && cp res/reversal_report.md pub/ && cp cf/confirm.txt pub/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        with: { name: "rv-report", path: pub/, retention-days: 30 }
+      - name: Ergebnis auf Branch claude/reversal-out
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          W=$GITHUB_WORKSPACE; mkdir -p /tmp/pr && cd /tmp/pr && git init -q
+          git config user.name "kairo-research"; git config user.email "research@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch -q origin claude/reversal-out; then git checkout -q -b pub FETCH_HEAD; else git checkout -q --orphan pub; fi
+          mkdir -p "$GITHUB_RUN_ID" && cp $W/pub/* "$GITHUB_RUN_ID"/
+          git add . && git commit -qm "Ergebnis $GITHUB_RUN_ID" && git push -q origin pub:claude/reversal-out

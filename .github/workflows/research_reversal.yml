@@ -51,10 +51,11 @@ jobs:
         with: { name: "rev-diag", path: out/, retention-days: 30 }
       - name: Ergebnis auf Branch claude/reversal-out
         if: always()
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
+          W=$GITHUB_WORKSPACE; mkdir -p /tmp/pr && cd /tmp/pr && git init -q
           git config user.name "kairo-research"; git config user.email "research@users.noreply.github.com"
-          git fetch -q origin claude/reversal-out || true
-          mkdir -p /tmp/pub && cp out/*.md /tmp/pub/ 2>/dev/null || true
-          if git rev-parse -q --verify origin/claude/reversal-out >/dev/null; then git checkout -q -B pub origin/claude/reversal-out; else git checkout -q --orphan pub && git rm -rq . ; fi
-          mkdir -p "$GITHUB_RUN_ID" && cp /tmp/pub/* "$GITHUB_RUN_ID"/ 2>/dev/null || true
-          git add "$GITHUB_RUN_ID" && git commit -qm "Ergebnis $GITHUB_RUN_ID" && git push -q origin pub:claude/reversal-out
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch -q origin claude/reversal-out; then git checkout -q -b pub FETCH_HEAD; else git checkout -q --orphan pub; fi
+          mkdir -p "$GITHUB_RUN_ID" && cp $W/out/*.md "$GITHUB_RUN_ID"/
+          git add . && git commit -qm "Ergebnis $GITHUB_RUN_ID" && git push -q origin pub:claude/reversal-out

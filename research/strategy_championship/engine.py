@@ -66,6 +66,8 @@ class Order:
     trail: tuple | None = None      # ("be_prevlow", Abstand): ab Kurs ≥ Einstieg + Abstand Stop auf Einstand, danach unter Vortagestief
     entry_stop: float | None = None # Buy-Stop: Kauf, sobald das Tageshoch diesen Kurs erreicht (zum Stop-Kurs bzw. höherer Eröffnung)
     entry_cap: float | None = None  # Buy-Stop: Eröffnung darüber → Signal verfällt (Kurslücke zu groß)
+    min_value_eur: float | None = None  # Mindest-Orderwert (z. B. 250 € PRIME+): kleiner → aufstocken, wenn Risiko ≤ max_risk_mult × geplant
+    max_risk_mult: float = 2.0
 
 
 @dataclass
@@ -171,7 +173,7 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
     cash, pos = float(start_cash), {}
     led, trades, eq, inv = [], [], {}, {}
     skipped = {"no_data": 0, "open_below_stop": 0, "band": 0, "risk_atr": 0, "full": 0, "held": 0, "no_cash": 0, "group": 0, "small": 0,
-               "not_triggered": 0, "gap_cap": 0}
+               "not_triggered": 0, "gap_cap": 0, "fee_small": 0}
 
     def close_of(t, d):
         p = px[t]
@@ -276,6 +278,13 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
                 qty = int(math.floor(eq_now * o.weight / (price / rate)))
             else:
                 qty = 0
+            if o.min_value_eur is not None and o.risk_frac is not None and o.stop is not None and qty * price / rate < o.min_value_eur:
+                q2 = int(math.ceil(o.min_value_eur * rate / price))       # gebührenfreie Mindestorder
+                if q2 * (price - o.stop) / rate <= o.max_risk_mult * eq_now * o.risk_frac:
+                    qty = q2
+                else:
+                    skipped["fee_small"] += 1
+                    continue
             plan = qty
             qty = min(qty, int(math.floor(max(0.0, cash - costs.fee_eur) / (price / rate))))
             if qty > 0 and qty < min_fill * plan:

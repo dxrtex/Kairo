@@ -246,3 +246,17 @@ def test_buy_stop_gap_over_cap_cancels_and_same_day_low_stops():
     r2 = one({"A": px2}, [Order(D[0], "A", stop=9.5, risk_frac=0.01, max_days=5, entry_stop=10.5)], start_cash=1000, costs=NOCOST)
     t = r2.trades.iloc[0]
     assert t["entry_date"] == D[1] and t["why"] == "stop" and t["exit_px"] == pytest.approx(9.5)
+
+
+def test_min_order_value_raises_or_skips():
+    px = bars([10.0] * 5, [10.2] * 5, [9.9] * 5, [10.0] * 5)
+    # Risiko 1 % von 1.000 € = 10 €, Stop 0,5 € unter Kauf → 20 Stück = 200 € < 250 € → 25 Stück (Risiko 12,50 € ≤ 2 × 10 €)
+    o = Order(D[0], "A", stop=9.5, risk_frac=0.01, max_days=2, min_value_eur=250.0)
+    r = one({"A": px}, [o], start_cash=1000, costs=NOCOST)
+    assert r.trades.iloc[0]["qty"] == 25
+    # Stop 0,2 € → 50 Stück = 500 € ≥ 250 € → unverändert
+    r2 = one({"A": px}, [Order(D[0], "A", stop=9.8, risk_frac=0.01, max_days=2, min_value_eur=250.0)], start_cash=1000, costs=NOCOST)
+    assert r2.trades.iloc[0]["qty"] == 50
+    # Risiko nur 0,2 % = 2 € bei Stop 0,5 € → 4 Stück; 25 Stück wären 12,50 € > 2 × 2 € → auslassen
+    r3 = one({"A": px}, [Order(D[0], "A", stop=9.5, risk_frac=0.002, max_days=2, min_value_eur=250.0)], start_cash=1000, costs=NOCOST)
+    assert not len(r3.trades) and r3.skipped["fee_small"] == 1
