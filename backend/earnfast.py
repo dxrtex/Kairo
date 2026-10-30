@@ -210,14 +210,14 @@ def result_text(t: str, name: str, last: dict, gst: dict | None = None) -> dict:
     g = (last.get("guide") or {}).get("d")
     if g is not None:
         parts.append({1: "Ausblick angehoben", -1: "Ausblick gesenkt", 0: "Ausblick bestätigt"}.get(g, "Ausblick unklar"))
-    p = _odds(last["eps_s"]) if last.get("eps_s") is not None else None
     v = (last.get("view") or {}).get("lbl")
-    dn = (gst or {}).get("down") or {}
-    if g == -1:                                  # gesenkter Ausblick überstimmt die Gewinn-Statistik
-        tail = (f". Nach gesenktem Ausblick stieg die Aktie bisher nur in {round(dn['up1'] * 100)} % der Fälle ({dn['n']} Berichte)."
-                if dn.get("n", 0) >= GUIDE_MIN_N else ". Ausblick gesenkt – der zählt meist mehr als das Quartal.")
+    p = app_odds(last, gst)                      # dieselbe Zahl wie oben im Quartalszahlen-Fenster der App
+    if p is not None:
+        tail = f". Nach solchen Zahlen{' mit diesem Ausblick' if g in (-1, 0, 1) else ''} stieg die Aktie in {round(p * 100)} % der Fälle."
+    elif g == -1:
+        tail = ". Ausblick gesenkt – der zählt meist mehr als das Quartal."
     else:
-        tail = f". Nach solchen Zahlen stieg die Aktie in {round(p * 100)} % der Fälle." if p else ""
+        tail = ""
     body = " · ".join(parts) + tail
     return {"title": f"📊 {name}: {v or 'Zahlen da'}", "body": body or "Zahlen gemeldet – Details in Kairo.", "url": APP, "tag": f"kairo-earn-{t}"}
 
@@ -347,7 +347,18 @@ def app_odds(last: dict, gst: dict | None = None, calib: dict | None = None) -> 
                 return v
         except Exception:
             pass
-    if (last.get("guide") or {}).get("d") == -1:
+    gd = (last.get("guide") or {}).get("d")
+    if gd in (-1, 0, 1):                                 # Gewinn × Ausblick aus 8.518 Berichten (site/earn_guide.json)
+        try:
+            st = json.loads((ROOT / "site" / "earn_stats.json").read_text(encoding="utf-8"))
+            eg = json.loads((ROOT / "site" / "earn_guide.json").read_text(encoding="utf-8"))
+            bi = next(i for i, b in enumerate(st["buckets"]) if b["lo"] <= sur * 100 < b["hi"])
+            v = eg["p"].get(f"{bi}|{GKEY[gd]}")
+            if v is not None:
+                return v
+        except Exception:
+            pass
+    if gd == -1:
         dn = (gst or {}).get("down") or {}
         return dn.get("up1") if dn.get("n", 0) >= GUIDE_MIN_N else None
     try:

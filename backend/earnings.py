@@ -43,6 +43,7 @@ ANALYST = re.compile(r"\b(price target|target price|kursziel|rating|stock foreca
                      r"fitch|moody'?s|s&p global ratings|dbrs|affirms\b[^|]{0,40}\brating|\bat '?[ab]{1,3}[+-]?'?)", re.I)
 # Markt-/Konjunktur-Ausblick ist kein Ausblick der Firma (HSBC 27.10.2026: „cuts UK growth forecast“, UBS: „raises Brent outlook“)
 MACRO = re.compile(r"\b(gdp|economic|economy|brent|inflation|interest[- ]rates?|rates?|markets?|equities|budget|industry|sector|"
+                   r"currency|zloty|dollar|euro|yen|yuan|rupee|franc|sterling|"
                    r"(uk|u\.s\.|us|global|world|china|chinese|euro(zone|pe)?|german|japan|india)\s+growth)\s+(forecast|outlook|view)\b", re.I)
 # Wörter, die als Firmenname allein zu viele fremde Treffer bringen (United Spirits ↔ United Airlines, Tata Consumer ↔ Tata Capital)
 GENERIC = {"united", "international", "american", "general", "first", "national", "global", "bank", "royal", "great", "new", "china",
@@ -77,7 +78,9 @@ def _about(title: str, m: re.Match, words: list[str]) -> bool:
     for w in words:
         if w.lower() in GENERIC:
             continue
-        for k in [i.start() for i in re.finditer(r"(?<![\w-])" + re.escape(w.lower()) + r"(?!\w)", tl)]:
+        # Kürzel (z. B. „UPS“, „NOW“, „ALL“) nur in Großbuchstaben – „Bayer Ups Guidance“ ist nicht UPS
+        hay, pat = (title, re.escape(w)) if w.isupper() and len(w) <= 5 else (tl, re.escape(w.lower()))
+        for k in [i.start() for i in re.finditer(r"(?<![\w-])" + pat + r"(?!\w)", hay)]:
             if k <= m.start():
                 gap = tl[k + len(w):m.start()]
                 if (m.start() - k <= 90 and not re.search(r"[,;]", gap)) or (k == 0 and "," not in gap):   # Titel beginnt mit der Firma
@@ -92,7 +95,7 @@ def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Time
     Meldung nach den Zahlen erschien (Vorschauen zählen nicht). +1 angehoben, −1 gesenkt, 0 bestätigt;
     widersprüchliche Treffer → die häufigere Richtung, bei Gleichstand keine Angabe."""
     from email.utils import parsedate_to_datetime
-    words = [w.lower() for w in words if w and len(w) >= 3]
+    words = [w for w in words if w and len(w) >= 3]
     hits = []
     for title, link, date in items:
         if since is not None and date:
@@ -127,7 +130,7 @@ def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Time
 def oneoff(items: list[tuple[str, str, str]], words: list[str], since: pd.Timestamp | None = None) -> dict | None:
     """Schlagzeile nach den Zahlen, die auf einen Sondereffekt beim Gewinn hindeutet (Firma im Titel)."""
     from email.utils import parsedate_to_datetime
-    words = [w.lower() for w in words if w and len(w) >= 3]
+    words = [w for w in words if w and len(w) >= 3]
     for title, link, date in items:
         if since is not None and date:
             try:

@@ -22,7 +22,7 @@ def test_watch_file_cik_und_uhrzeit(tmp_path):
 def test_ergebnis_text():
     m = earnfast.result_text("AAPL", "Apple", {"eps_s": 0.12, "rev_s": 0.02, "guide": {"d": 1}, "view": {"lbl": "eher positiv"}})
     assert m["title"] == "📊 Apple: eher positiv"
-    assert "Gewinn +12,0 % vs. Erwartung" in m["body"] and "Ausblick angehoben" in m["body"] and "61 % der Fälle" in m["body"]
+    assert "Gewinn +12,0 % vs. Erwartung" in m["body"] and "Ausblick angehoben" in m["body"] and "mit diesem Ausblick stieg die Aktie in 71 % der Fälle" in m["body"]
 
 
 def test_sec_push_ohne_secrets_merkt_nichts_falsches(tmp_path, monkeypatch):
@@ -55,7 +55,7 @@ def test_archiv(tmp_path):
     rec = {"BE": {"last": {"date": "2026-10-22", "eps_s": 0.38, "reva": -0.245, "guide": {"d": 1}, "rx": {"d1": -0.112}}}}
     assert earnfast.archive(rec, tmp_path) == 1
     a = json.loads((tmp_path / "earn_archive.json").read_text())["BE|2026-10-22"]
-    assert a == {"s": 0.38, "ra": -0.245, "g": 1, "r1": -0.112, "p": 0.542, "v": earnfast.MODEL}
+    assert a == {"s": 0.38, "ra": -0.245, "g": 1, "r1": -0.112, "p": 0.713, "v": earnfast.MODEL}
 
 
 def test_nasdaq_widerspruch(monkeypatch, tmp_path):
@@ -94,7 +94,5 @@ def test_ausblick_gesenkt_ueberstimmt_gewinn(tmp_path):
     assert gst["down"] == {"n": 12, "up1": 0.25, "med1": -0.05} and gst["up"]["n"] == 1
     last = {"eps_s": 0.30, "guide": {"d": -1}, "view": {"lbl": "gemischt"}}
     m = earnfast.result_text("INTC", "Intel", last, gst)
-    assert "Ausblick gesenkt" in m["body"] and "nur in 25 % der Fälle (12 Berichte)" in m["body"] and "61 %" not in m["body"]
-    m = earnfast.result_text("INTC", "Intel", last, {"down": {"n": 3, "up1": 0.0}})      # zu wenige Berichte: keine Quote
-    assert "zählt meist mehr als das Quartal" in m["body"] and "%" not in m["body"].split("Ausblick gesenkt")[1]
+    assert "Ausblick gesenkt" in m["body"] and "mit diesem Ausblick stieg die Aktie in 37 % der Fälle" in m["body"] and "61 %" not in m["body"]
     assert earnfast.guide_stats(tmp_path / "fehlt") == {}

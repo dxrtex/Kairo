@@ -2259,7 +2259,9 @@ function loadEarnLive(fast) {
 }
 // Ehrliche Statistik statt Bauchgefühl (tools/research/earn_stats.py): 14.936 Quartalsberichte von 580 US-Aktien seit 2019 –
 // wie oft stieg die Aktie am Handelstag nach den Zahlen, je nach Überraschung beim Gewinn
-let earnStats = null, earnReview = null, earnCalib = null;
+let earnStats = null, earnReview = null, earnCalib = null, earnGuide = null;
+// Gewinn × Ausblick aus 8.518 Quartalsberichten 2023–26 (tools/research/earn_guide.py) – in der Prüfzeit genauer als Gewinn allein
+const loadEarnGuide = () => earnGuide || fetch("earn_guide.json").then(r => r.ok ? r.json() : null).then(d => { earnGuide = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnGuide = {}; });
 // Prognose-Bilanz (tools/earn_review.py, nach jedem Prüflauf): wie oft lag die gezeigte Richtung bisher richtig?
 const loadEarnReview = () => earnReview || fetch(EARN_LIVE_URL.replace("earnings_live.json", "earn_review.json") + "?v=" + Math.floor(Date.now() / 36e5))
   .then(r => r.ok ? r.json() : null).then(d => { earnReview = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnReview = {}; });
@@ -2288,6 +2290,14 @@ function earnOdds(t, sur, L) {
     if (bi >= 0 && earnCalib.p[key] != null)
       return { p: earnCalib.p[key], n: (earnCalib.n || {})[key] || 0, after: true, guideDown: gd === -1, calib: true,
         how: `bei Gewinn ${B[bi].name}, Ausblick ${gk} – aus Kairos eigener Bilanz nachgeeicht (${(earnCalib.n || {})[key] || 0} eigene Meldungen)` };
+  }
+  if (!earnGuide) loadEarnGuide();
+  const gd0 = L && L.guide ? L.guide.d : null;
+  if (sur != null && (gd0 === -1 || gd0 === 0 || gd0 === 1) && earnGuide && earnGuide.p) {
+    const bi = B.findIndex(x => sur * 100 >= x.lo && sur * 100 < x.hi), gk = gd0 === -1 ? "gesenkt" : gd0 === 0 ? "bestätigt" : "angehoben", key = `${bi}|${gk}`;
+    if (bi >= 0 && earnGuide.p[key] != null)
+      return { p: earnGuide.p[key], n: (earnGuide.n || {})[key] || 0, after: true, guideDown: gd0 === -1, calib: true,
+        how: `bei Gewinn ${B[bi].name} und Ausblick ${gk} – ${(earnGuide.n || {})[key] || 0} solche Berichte 2023–26 (aus 8.518)` };
   }
   // Gesenkter Ausblick überstimmt den Gewinn (Intel 29.10.2026: Gewinn +30 %, Ausblick gesenkt, −28 %; eigenes Archiv:
   // nach gesenktem Ausblick stieg die Aktie nur in rund einem Viertel der Fälle) – dann nicht die Gewinn-Statistik zeigen

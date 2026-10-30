@@ -209,3 +209,9 @@ def test_guidance_echte_fehltreffer_oktober_2026():
     for title, words, d in right:
         g = E.guidance([(title, "u", RSS_DATE)], words)
         assert g and g["d"] == d, title
+
+
+def test_guidance_kuerzel_nur_gross_und_waehrung():
+    assert E.guidance([("Bayer Ups Guidance After Pharmaceuticals Unit Outperforms - X", "u", RSS_DATE)], E._words("United Parcel Service, Inc.", "UPS")) is None
+    assert E.guidance([("UPS raises outlook as parcel volumes recover - X", "u", RSS_DATE)], E._words("United Parcel Service, Inc.", "UPS"))["d"] == 1
+    assert E.guidance([("UBS raises zloty forecast as currency faces mounting pressure - X", "u", RSS_DATE)], E._words("UBS Group AG", "UBS")) is None

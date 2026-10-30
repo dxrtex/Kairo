@@ -23,10 +23,10 @@ def test_archiv_friert_prognose_mit_kursreaktion_ein(tmp_path):
     rec = {"INTC": {"last": {"date": "2026-10-29", "eps_s": 0.30, "reva": -0.04, "guide": {"d": 1, "t": "Intel lifts outlook"}}}}
     earnfast.archive(rec, tmp_path)
     a = json.loads((tmp_path / "earn_archive.json").read_text())["INTC|2026-10-29"]
-    assert a["p"] == 0.636 and a["v"] == earnfast.MODEL and a["gt"] == "Intel lifts outlook"
+    assert a["p"] == 0.713 and a["v"] == earnfast.MODEL and a["gt"] == "Intel lifts outlook"
     rec["INTC"]["last"]["rx"] = {"d1": -0.28}
     earnfast.archive(rec, tmp_path)                                    # Reaktion da: p wird letztmals geschrieben
     rec["INTC"]["last"]["guide"] = {"d": -1, "t": "Intel cuts outlook"}
     earnfast.archive(rec, tmp_path)                                    # danach eingefroren
     a = json.loads((tmp_path / "earn_archive.json").read_text())["INTC|2026-10-29"]
-    assert a["p"] == 0.636 and a["r1"] == -0.28 and a["g"] == -1
+    assert a["p"] == 0.713 and a["r1"] == -0.28 and a["g"] == -1
