@@ -1,0 +1,4 @@
+# Reversal R1–R4: alte gegen korrigierte Engine
+
+Stress-Kosten. Δ = neu − alt in Prozentpunkten CAGR.
+
