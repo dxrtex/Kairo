@@ -5,6 +5,9 @@ nur die Gewinn-Überraschung kannte. Hier wird für jeden Quartalsbericht der gr
 Ausblicks aus den Schlagzeilen der Tage danach rekonstruiert (gleiche Erkennung wie die App: backend.earnings.guidance) und
 geprüft, ob Gewinn + Ausblick die Richtung am Tag danach besser treffen als der Gewinn allein.
 
+Ausblick-Erkennung: Stand nach der Korrektur vom 30.10.2026 (Ratingagenturen, Analysten, Konjunktur, fremde Firmen und
+Quellen-Namen zählen nicht mehr).
+
 Vorab festgelegt (vor dem ersten Lauf):
 - Lernzeitraum: Berichte bis 31.03.2025; Prüfzeitraum: ab 01.04.2025 (zeitlich getrennt, nichts aus der Prüfzeit fließt ein).
 - M0 = heutige App (Quote je Gewinn-Stufe). M1 = Quote je Gewinn-Stufe × Ausblick (gesenkt / bestätigt / angehoben / keine

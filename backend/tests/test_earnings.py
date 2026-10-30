@@ -77,7 +77,8 @@ def test_guidance_company_after_phrase():
     items = [("Upbeat outlook sends GM shares higher - Reuters", "u", RSS_DATE),
              ("General Motors Profit Outlook Disappoints, Stock Sinks - Benzinga", "u2", RSS_DATE)]
     assert E.guidance(items[:1], ["GM"])["d"] == 1
-    assert E.guidance(items[1:], ["General", "GM"])["d"] == -1
+    assert E._words("General Motors Company", "GM") == ["General Motors", "GM"]
+    assert E.guidance(items[1:], E._words("General Motors Company", "GM"))["d"] == -1
 
 
 def test_guidance_ignores_analyst_targets():
@@ -179,3 +180,32 @@ def test_gesenkter_ausblick_ueberstimmt_gutes_quartal():
     assert v["lbl"] == "eher negativ" and v["tone"] == "red"
     assert assess(0.30, 0.05, -1)["lbl"] == "eher negativ"
     assert assess(0.30, 0.05, 0)["lbl"] == "eher positiv"   # bestätigter Ausblick: unverändert
+
+
+def test_guidance_echte_fehltreffer_oktober_2026():
+    """Schlagzeilen, die 26.–30.10.2026 fälschlich als Ausblick der Firma galten (Ratingagentur, fremde Firma, Konjunktur,
+    Analysten, Quelle im Titel) – und echte, die erkannt bleiben müssen."""
+    W = E._words
+    wrong = [("Fitch affirms Flagstar Bank at ’BB+’ but lowers outlook on delayed recovery - Yahoo! Finance Canada", W("Bank of Hawaii Corporation", "BOH")),
+             ("Fitch cuts Invesco outlook to negative on $1.5B preferred redemption - Investing.com", W("Invesco Ltd.", "IVZ")),
+             ("HSBC cuts UK growth forecast on eve of Budget - AOL.com", W("HSBC Holdings plc", "HSBC")),
+             ("United Airlines Forecast Earnings Below Estimates as Fuel Costs Surge - Travel Radar", W("United Spirits Limited", "UNITDSPR.NS")),
+             ("Tata Capital's strong Q2 bolsters outlook - Moneycontrol.com", W("Tata Consumer Products Limited", "TATACONSUM.NS")),
+             ("Instone lowers sales and earnings forecast - Green Street News", W("Green Brick Partners, Inc.", "GRBK")),
+             ("Digi International (DGII) Lifts Q4 and Full-Year Outlook Following Record Quarterly Results - Yahoo Finance", W("International Paper Company", "IP")),
+             ("Citi raises Samsung profit estimates on memory outlook By Investing.com - Investing.com Australia", W("Samsung SDS Co., Ltd.", "018260.KS")),
+             ("UBS raises Brent outlook, sees oil at $110/bbl by end-2026 - Reuters", W("UBS Group AG", "UBS")),
+             ("ANA Holdings Consider Regional Airline Deals to Boost Domestic Flights - Asia Business Outlook", W("ANA Holdings Inc.", "9202.T")),
+             ("Meritage Homes Earnings Call: Liquidity Strong, Outlook Cautious - TipRanks", W("Meritage Homes Corporation", "MTH")),
+             ("Boeing Shares Sink to 18-Month Low as Wall Street Slashes Targets on Cash Flow Outlook - finance.biggo.com", W("The Boeing Company", "BA"))]
+    for title, words in wrong:
+        assert E.guidance([(title, "u", RSS_DATE)], words) is None, title
+    right = [("Intel stock plunges 21% as chipmaker blames PC slowdown for weak guidance - CNBC", W("Intel Corporation", "INTC"), -1),
+             ("Mercedes-Benz-Aktie nach Gewinnwarnung: Was Anleger aus den Analystenreaktionen mitnehmen können - Finanzen.net", W("Mercedes-Benz Group AG", "MBG.DE"), -1),
+             ("Eldorado drops as Skouries setbacks cut gold outlook 18% - Mining.com", W("Eldorado Gold Corporation", "EGO"), -1),
+             ("LKQ: Europe’s operational disruption drove a weak quarter; FY2026 guidance was withdrawn - TradingView", W("LKQ Corporation", "LKQ"), -1),
+             ("COHU: HPC demand lifts growth outlook as Eclipse capacity and recurring revenue scale - TradingView", W("Cohu, Inc.", "COHU"), 1),
+             ("Sprouts Slashes Outlook After Cyclospora Outbreak Hit Sales - Bloomberg.com", W("Sprouts Farmers Market, Inc.", "SFM"), -1)]
+    for title, words, d in right:
+        g = E.guidance([(title, "u", RSS_DATE)], words)
+        assert g and g["d"] == d, title

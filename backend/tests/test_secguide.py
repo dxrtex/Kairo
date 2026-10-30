@@ -87,3 +87,11 @@ def test_6k_nur_mit_ergebniszahlen():
     res = ("Third Quarter 2026 Results. Revenues of US$ 24.1 billion, net income of US$ 9.8 billion, "
            "earnings per share of US$ 1.85 for the quarter.")
     assert not S.is_results(agm) and S.is_results(res)
+
+
+def test_verb_im_satz_schlaegt_segment_spanne():
+    """TechnipFMC 29.10.2026: „Increased Subsea revenue guidance to a range of $9.6 - $9.8 billion“ – die Spanne gilt nur für
+    ein Segment und liegt unter der Erwartung für die ganze Firma; die Firma hat den Ausblick aber angehoben."""
+    g = S.parse("Increased Subsea revenue guidance to a range of $9.6 - $9.8 billion for 2026.")
+    j = S.judge(g, None, 10.2e9)
+    assert j["d"] == 1
