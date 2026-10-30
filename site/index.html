@@ -2208,32 +2208,34 @@ function newsHtml() {
     return `<a class="bf-r" href="${esc(safeHref(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`))}" target="_blank" rel="noopener"><i class="${meld ? "y" : x.kind === "buy" ? "g" : "r"}"></i><span><b>${esc(x.n || x.t)} ${tag}</b><em>${meld
       ? `${esc(x.who)} · Meldung ${dateDE(x.d)} · ${esc(x.src || "")} (ohne Betrag – Details im Register)`
       : `${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"} ${x.sh ? fmt(x.sh, 0) + " Stk. " : ""}zu ${fmt(x.px)} ${x.cur === "EUR" ? "€" : "$"} · ${dateDE(x.d)}${q}${own}`}</em></span><span class="bf-p ${meld ? "" : x.kind === "buy" ? "up" : "down"}">${meld ? "Meldung" : x.cur === "EUR" ? eurAmt(x.val) : usd(x.val)}</span></a>`; };
-  const buys = ij && ij.buys || [], sells = ij && ij.sells || [];
-  const mineBuys = buys.filter(x => mine.has(x.t) || known(x.t));
+  // Alle Listen: neueste zuerst (Datum des Geschäfts), bei gleichem Tag der größere Betrag oben
+  const inEur = x => x.cur === "EUR" ? x.val : x.val * ((fxEur && fxEur.USD) || 0.9);
+  const newest = l => l.slice().sort((a, b) => String(b.d || "").localeCompare(String(a.d || "")) || (inEur(b) || 0) - (inEur(a) || 0));
+  const buys = newest(ij && ij.buys || []), sells = newest(ij && ij.sells || []);
+  const mineBuys = buys.filter(x => mine.has(x.t) || known(x.t));   // schon neueste zuerst
   const liveRows = Object.entries(NEWS.ins).flatMap(([t, l]) => l.map(x => ({ t, n: nameOf(t), who: String(x.name || "").replace(/\b\w+/g, w => w[0] + w.slice(1).toLowerCase()), role: "", kind: x.transactionCode === "P" ? "buy" : "sell",
     sh: Math.abs(x.change || 0), px: x.transactionPrice || 0, val: Math.abs(x.change || 0) * (x.transactionPrice || 0), d: x.transactionDate }))).filter(x => x.val > 0).sort((a, b) => String(b.d).localeCompare(String(a.d))).slice(0, 15);
   const when = ij && ij.generated ? new Date(ij.generated).toLocaleString("de-DE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
-  const inEur = x => x.cur === "EUR" ? x.val : x.val * ((fxEur && fxEur.USD) || 0.9);
   const wlM = ((ij && ij.watch) || []).filter(x => x.kind === "meld").sort((a, b) => String(b.d).localeCompare(String(a.d)));
-  const wl = ij && ij.watch, wlB = (wl || []).filter(x => x.kind === "buy").sort((a, b) => inEur(b) - inEur(a)), wlS = (wl || []).filter(x => x.kind === "sell").sort((a, b) => inEur(b) - inEur(a));
+  const wl = ij && ij.watch, wlB = newest((wl || []).filter(x => x.kind === "buy")), wlS = newest((wl || []).filter(x => x.kind === "sell"));
   const wlSum = (() => { const by = {}; wlB.forEach(x => { by[x.t] = (by[x.t] || 0) + inEur(x); }); return Object.entries(by).sort((a, b) => b[1] - a[1]); })();
   const ageD = d => (Date.now() - new Date(d + "T12:00:00")) / 864e5;
-  const recent = wlB.filter(x => x.d && ageD(x.d) <= 90).sort((a, b) => String(b.d).localeCompare(String(a.d)));
+  const recent = wlB.filter(x => x.d && ageD(x.d) <= 90), older = wlB.filter(x => !x.d || ageD(x.d) > 90);
   const nUS = ij && ij.watch_n || 0, nDE = ij && ij.watch_de_n || 0;
   const wlHtml = !ij ? "" : !wl ? `<div class="note" style="margin:8px 2px">Insider-Geschäfte deiner Aktien kommen mit dem nächsten Scan.</div>`
     : insSigHtml(ij)
       + block(`Deine Aktien · neueste Insider-Käufe · 90 Tage`, recent.slice(0, 20).map(irow), `Keine Insider-Käufe in den letzten 90 Tagen.`)
       + (wlM.length ? block("Deine Aktien · Meldungen ohne Betrag (Niederlande, Australien)", wlM.slice(0, 12).map(irow), "") : "")
-      + block(`Deine Aktien · größte Insider-Käufe · 12 Monate`, wlB.slice(0, 30).map(irow), `Keine Insider-Käufe bei deinen Aktien in den letzten 12 Monaten.`)
+      + block(`Deine Aktien · frühere Insider-Käufe · 3 bis 12 Monate · neueste zuerst`, older.slice(0, 30).map(irow), `Keine weiteren Insider-Käufe bei deinen Aktien in den letzten 12 Monaten.`)
       + (wlSum.length > 1 ? `<div class="note" style="margin:-4px 2px 10px">Meiste Käufe (12 Monate): ${wlSum.slice(0, 6).map(([t, v]) => `<b>${esc(nameOf(t))}</b> ${eurAmt(v)}`).join(" · ")}</div>` : "")
-      + block("Deine Aktien · größte Insider-Verkäufe · 12 Monate", wlS.slice(0, 15).map(irow), "Keine großen Verkäufe.")
+      + block("Deine Aktien · Insider-Verkäufe · 12 Monate · neueste zuerst", wlS.slice(0, 15).map(irow), "Keine großen Verkäufe.")
       + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${nUS} US-Aktien (SEC/OpenInsider, Käufe ab 10.000 $, Verkäufe ab 250.000 $)${nDE ? ` und ${nDE} deutsche Aktien (BaFin, Käufe ab 5.000 €, Verkäufe ab 100.000 €)` : ""} aus Watchlist, Merkliste und Depot – 12 Monate. Dazu Meldungen ohne Betrag aus den Niederlanden (AFM: Airbus, ASML …) und Australien (ASX: DroneShield …). „Gezielt“ = kein Routine-Käufer (nicht in beiden Vorjahren im selben Monat gekauft) – laut Forschung (Cohen/Malloy/Pomorski 2012) das aussagekräftigere Signal. Novo Nordisk, BYD, Xiaomi und Tamburi (Dänemark, Hongkong, Italien): keine frei abrufbare Quelle.</div>`;
   return head + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) und für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften)${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
     + wlHtml
     + (live ? block("Deine US-Aktien · 90 Tage (live)", liveRows.map(irow), NEWS.at ? "Keine Insider-Käufe oder -Verkäufe über die Börse." : "lädt …") : "")
     + (mineBuys.length ? block("Insider-Käufe bei Aktien aus dem Kairo-Scan", mineBuys.slice(0, 15).map(irow), "") : "")
-    + block("Größte Insider-Käufe (USA, letzte Meldungen)", buys.slice(0, 25).map(irow), ij === null ? "Noch keine Insider-Daten – kommen mit dem nächsten Scan." : "lädt …")
-    + block("Größte Insider-Verkäufe", sells.slice(0, 12).map(irow), "–");
+    + block("Insider-Käufe (USA) · neueste zuerst", buys.slice(0, 25).map(irow), ij === null ? "Noch keine Insider-Daten – kommen mit dem nächsten Scan." : "lädt …")
+    + block("Insider-Verkäufe · neueste zuerst", sells.slice(0, 12).map(irow), "–");
 }
 // ---------- Quartalszahlen: Antippen im Kalender → Ergebnis, Ausblick, Kursreaktion, Einschätzung (data/earnings.json) ----------
 // Abendscan (earnings.json) + Prüfdienst tagsüber (earnings_live.json im Branch kairo-earnings, alle 10–30 Min.)
@@ -2250,14 +2252,22 @@ function loadEarnLive(fast) {
   earnLiveAt = Date.now();
   return fetch(EARN_LIVE_URL + "?v=" + Math.floor(Date.now() / (fast ? 6e4 : 3e5))).then(r => r.ok ? r.json() : null).then(d => {
     if (!d || !earnData) return;
-    earnMerge(d.tickers); earnData.__live = d.generated;
+    earnMerge(d.tickers); earnData.__live = d.generated; if (d.gstats) earnData.__gstats = d.gstats;
     if (state.sec === "calendar" || state.sec === "news") render();
     const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d);
   }).catch(() => {});
 }
 // Ehrliche Statistik statt Bauchgefühl (tools/research/earn_stats.py): 14.936 Quartalsberichte von 580 US-Aktien seit 2019 –
 // wie oft stieg die Aktie am Handelstag nach den Zahlen, je nach Überraschung beim Gewinn
-let earnStats = null;
+let earnStats = null, earnReview = null, earnCalib = null, earnGuide = null;
+// Gewinn × Ausblick aus 8.518 Quartalsberichten 2023–26 (tools/research/earn_guide.py) – in der Prüfzeit genauer als Gewinn allein
+const loadEarnGuide = () => earnGuide || fetch("earn_guide.json").then(r => r.ok ? r.json() : null).then(d => { earnGuide = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnGuide = {}; });
+// Prognose-Bilanz (tools/earn_review.py, nach jedem Prüflauf): wie oft lag die gezeigte Richtung bisher richtig?
+const loadEarnReview = () => earnReview || fetch(EARN_LIVE_URL.replace("earnings_live.json", "earn_review.json") + "?v=" + Math.floor(Date.now() / 36e5))
+  .then(r => r.ok ? r.json() : null).then(d => { earnReview = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnReview = {}; });
+// Nacheichung Gewinn × Ausblick aus den eigenen Meldungen – nur wenn die Bilanz sie als genauer übernommen hat (adopt)
+const loadEarnCalib = () => earnCalib || fetch(EARN_LIVE_URL.replace("earnings_live.json", "earn_calib.json") + "?v=" + Math.floor(Date.now() / 36e5))
+  .then(r => r.ok ? r.json() : null).then(d => { earnCalib = d || {}; }).catch(() => { earnCalib = {}; });
 const loadEarnStats = () => earnStats || fetch("earn_stats.json").then(r => r.ok ? r.json() : null).then(d => { earnStats = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnStats = {}; });
 function earnStatHtml(t, sur) {
   if (!earnStats) { loadEarnStats(); return ""; }
@@ -2273,6 +2283,29 @@ function earnStatHtml(t, sur) {
 function earnOdds(t, sur, L) {
   const B = (earnStats && earnStats.buckets) || []; if (!B.length) return null;
   const P = (earnStats.per || {})[t], find = s => B.find(x => s >= x.lo && s < x.hi);
+  if (!earnCalib) loadEarnCalib();
+  if (sur != null && earnCalib && earnCalib.adopt && earnCalib.p) {
+    const bi = B.findIndex(x => sur * 100 >= x.lo && sur * 100 < x.hi), gd = L && L.guide ? L.guide.d : null;
+    const gk = gd === -1 ? "gesenkt" : gd === 0 ? "bestätigt" : gd === 1 ? "angehoben" : "keine Meldung", key = `${bi}|${gk}`;
+    if (bi >= 0 && earnCalib.p[key] != null)
+      return { p: earnCalib.p[key], n: (earnCalib.n || {})[key] || 0, after: true, guideDown: gd === -1, calib: true,
+        how: `bei Gewinn ${B[bi].name}, Ausblick ${gk} – aus Kairos eigener Bilanz nachgeeicht (${(earnCalib.n || {})[key] || 0} eigene Meldungen)` };
+  }
+  if (!earnGuide) loadEarnGuide();
+  const gd0 = L && L.guide ? L.guide.d : null;
+  if (sur != null && (gd0 === -1 || gd0 === 0 || gd0 === 1) && earnGuide && earnGuide.p) {
+    const bi = B.findIndex(x => sur * 100 >= x.lo && sur * 100 < x.hi), gk = gd0 === -1 ? "gesenkt" : gd0 === 0 ? "bestätigt" : "angehoben", key = `${bi}|${gk}`;
+    if (bi >= 0 && earnGuide.p[key] != null)
+      return { p: earnGuide.p[key], n: (earnGuide.n || {})[key] || 0, after: true, guideDown: gd0 === -1, calib: true,
+        how: `bei Gewinn ${B[bi].name} und Ausblick ${gk} – ${(earnGuide.n || {})[key] || 0} solche Berichte 2023–26 (aus 8.518)` };
+  }
+  // Gesenkter Ausblick überstimmt den Gewinn (Intel 29.10.2026: Gewinn +30 %, Ausblick gesenkt, −28 %; eigenes Archiv:
+  // nach gesenktem Ausblick stieg die Aktie nur in rund einem Viertel der Fälle) – dann nicht die Gewinn-Statistik zeigen
+  if (sur != null && L && L.guide && L.guide.d === -1) {
+    const G = earnData && earnData.__gstats && earnData.__gstats.down;
+    return G && G.n >= 10 ? { p: G.up1, med: G.med1, n: G.n, after: true, guideDown: true, how: `bei gesenktem Ausblick – gilt mehr als der Gewinn (${G.n} gesammelte Berichte, kleine Stichprobe)` }
+      : { p: null, n: 0, after: true, guideDown: true, how: "Ausblick gesenkt – der zählt meist mehr als das Quartal" };
+  }
   if (sur != null) {
     const b = find(sur * 100); if (!b) return null;
     const ra = L && L.reva != null ? L.reva : null;
@@ -2291,7 +2324,7 @@ function earnOdds(t, sur, L) {
 function earnTopHtml(t, sur, rx, L) {
   if (!earnStats) { loadEarnStats(); return ""; }
   const o = earnOdds(t, sur, L); if (!o) return "";
-  const tone = o.p >= .58 ? "green" : o.p < .45 ? "red" : "yellow", r = data && data.results ? byTicker(t) : null;
+  const tone = o.guideDown ? "red" : o.p >= .58 ? "green" : o.p < .45 ? "red" : "yellow", r = data && data.results ? byTicker(t) : null;
   const hit = r && r.passed;
   const P = (earnStats.per || {})[t], own = o.after && sur != null && sur > 0 && P && P.beat_up != null && P.n >= 6 && Math.abs(P.beat_up - o.p) >= .2
     ? ` · Achtung: ${t} selbst stieg nach Zahlen über Erwartung nur in ${pct(P.beat_up, 0)} der Fälle (wenige Berichte)` : "";
@@ -2299,10 +2332,10 @@ function earnTopHtml(t, sur, rx, L) {
   const entry = tone === "green"
     ? [hit ? "Einstieg vertretbar – Kairo-Treffer mit Rückenwind" : "Rückenwind – aber kein Kairo-Treffer", hit ? "Die Zahlen sprechen eher für steigende Kurse. Trade-Plan (Stop, Ziel) in der Detailansicht beachten." : "Die Zahlen sprechen eher für steigende Kurse. Ein Kaufgrund allein sind sie nicht – Kairo-Setup abwarten."]
     : tone === "red"
-      ? ["Eher abwarten", "Nach Zahlen dieser Art fiel der Kurs öfter, als er stieg. " + (hit ? "Der Kairo-Treffer bleibt gültig, aber mit Gegenwind – kleinere Position oder Kurs erst stabilisieren lassen." : "Kein Einstieg nur wegen der Zahlen.")]
+      ? ["Eher abwarten", (o.guideDown ? "Das Unternehmen erwartet schwächere Geschäfte – der Markt handelt die Zukunft, nicht das vergangene Quartal. " : "Nach Zahlen dieser Art fiel der Kurs öfter, als er stieg. ") + (hit ? "Der Kairo-Treffer bleibt gültig, aber mit Gegenwind – kleinere Position oder Kurs erst stabilisieren lassen." : "Kein Einstieg nur wegen der Zahlen.")]
       : [hit ? "Münzwurf – der Kairo-Treffer entscheidet" : "Münzwurf – kein Einstiegsgrund", (o.after ? "Zahlen dieser Art bewegen den Kurs kaum vorhersagbar. " : "Vor den Zahlen ist die Richtung offen. ") + (hit ? "Im Kairo-Test waren Käufe kurz vor den Zahlen nicht schlechter – Stop setzen, mit Kurslücke rechnen." : "Ohne Kairo-Setup kein Einstieg.")];
-  return `<div class="eq-odds t-${tone}"><div class="eq-odds-top"><span class="eq-odds-p">${pct(o.p, 0)}</span><span class="eq-odds-l">${lead}<em>${esc(o.how)}${o.after ? ` · ${fmt(o.n, 0)} Berichte seit 2019` : ""}${o.p5 != null ? ` · nach 5 Tagen ${pct(o.p5, 0)} im Plus` : ""}${esc(own)}</em></span></div>
-    <div class="eq-bar"><i style="width:${(o.p * 100).toFixed(1)}%"></i></div><div class="eq-scale"><span>fällt</span><span>50 %</span><span>steigt</span></div>
+  return `<div class="eq-odds t-${tone}"><div class="eq-odds-top"><span class="eq-odds-p">${o.p == null ? "↓" : pct(o.p, 0)}</span><span class="eq-odds-l">${o.p == null ? "Ausblick gesenkt" : lead}<em>${esc(o.how)}${o.after && !o.guideDown && !o.calib ? ` · ${fmt(o.n, 0)} Berichte seit 2019` : ""}${o.p5 != null ? ` · nach 5 Tagen ${pct(o.p5, 0)} im Plus` : ""}${esc(own)}</em></span></div>
+    <div class="eq-bar"><i style="width:${((o.p == null ? .25 : o.p) * 100).toFixed(1)}%"></i></div><div class="eq-scale"><span>fällt</span><span>50 %</span><span>steigt</span></div>
     <div class="eq-entry"><b>${esc(entry[0])}</b><span>${esc(entry[1])}</span></div></div>`;
 }
 function loadEarnings() {
@@ -2351,7 +2384,9 @@ function earnHtml(t, d) {
   const L = rec && rec.last && (!d || Math.abs(daysUntil(rec.last.date) - daysUntil(d)) <= 3) ? rec.last : null;
   const N = rec && rec.next && !L ? rec.next : null;
   const cell = (l, v, sub, cls = "") => `<div><span>${l}</span><b class="${cls}">${v}</b>${sub ? `<em>${sub}</em>` : ""}</div>`;
-  const foot = `<p class="eq-note">Einschätzung nach fester Regel, keine Prognose: Gewinn je Aktie ±3 % und Umsatz ±1 % gegen die Erwartung, der Ausblick zählt doppelt – der Markt handelt die Zukunft. Quellen: Yahoo Finance, Schlagzeilen über Google News. Tagsüber alle 10–30 Minuten geprüft${earnData && earnData.__live ? ` · zuletzt ${new Date(earnData.__live).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr` : ""}. Keine Anlageberatung.</p>`;
+  if (!earnReview) loadEarnReview();
+  const track = earnReview && earnReview.n >= 30 ? ` Bilanz bisher: Richtung in ${pct(earnReview.hit, 0)} von ${fmt(earnReview.n, 0)} Meldungen getroffen (seit ${dateDE(earnReview.since)}).` : "";
+  const foot = `<p class="eq-note">${track ? `<b>${esc(track.trim())}</b> ` : ""}Einschätzung nach fester Regel, keine Prognose: Gewinn je Aktie ±3 % und Umsatz ±1 % gegen die Erwartung, der Ausblick zählt doppelt – ein gesenkter Ausblick ergibt immer „eher negativ“, der Markt handelt die Zukunft. Quellen: Yahoo Finance, Schlagzeilen über Google News. Tagsüber alle 10–30 Minuten geprüft${earnData && earnData.__live ? ` · zuletzt ${new Date(earnData.__live).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr` : ""}. Keine Anlageberatung.</p>`;
   if (L) {
     const v = L.view, g = L.guide, rx = L.rx;
     const gTxt = !g ? "keine Meldung gefunden" : g.d === 1 ? "angehoben" : g.d === -1 ? "gesenkt" : g.d === 0 ? "bestätigt" : "widersprüchlich";
@@ -2364,7 +2399,7 @@ function earnHtml(t, d) {
         ${cell("Umsatz", bigNum(L.rev_a, cur), (L.rev_s != null ? `erwartet ${bigNum(L.rev_e)} · <span class="${upDown(L.rev_s)}">${sgn(L.rev_s)}</span>` : L.rev_yoy != null ? `zum Vorjahr <span class="${upDown(L.rev_yoy)}">${sgn(L.rev_yoy)}</span>` : L.rev_a == null ? "Yahoo hat den Umsatz noch nicht" : "") + (L.reva != null ? `<br>Wachstum ${sgn(L.revg, 0)} · <span class="${L.reva <= -0.05 ? "down" : L.reva >= 0.05 ? "up" : ""}">${L.reva <= -0.05 ? "verlangsamt" : L.reva >= 0.05 ? "beschleunigt" : "stabil"} (${L.reva >= 0 ? "+" : "−"}${Math.abs(Math.round(L.reva * 100))} Pkt.)</span>` : ""))}
         ${cell("Ausblick", gTxt, g && g.t ? (g.u ? `<a href="${esc(g.u)}" target="_blank" rel="noopener">${esc(g.t.replace(/ - [^-]+$/, ""))}</a>` : esc(g.t)) : "aus Schlagzeilen nach den Zahlen", g && g.d != null ? upDown(g.d) : "")}
         ${cell("Kursreaktion", rx ? sgn(rx.d1) : "noch offen", rx ? `erster Handelstag (${dateDE(rx.day)})${rx.since != null ? ` · bis ${dateDE(rx.to)} ${sgn(rx.since)}` : ""}` : "kommt mit dem nächsten Handelstag", rx ? upDown(rx.d1) : "")}
-      </div>${clash}${L.oneoff ? `<p class="eq-hint">Möglicher Sondereffekt beim Gewinn: <a href="${esc(safeHref(L.oneoff.u))}" target="_blank" rel="noopener">${esc(L.oneoff.t.replace(/ - [^-]+$/, ""))}</a> – bereinigt kann der Gewinn deutlich anders aussehen; Umsatz und Ausblick zählen dann mehr.</p>` : ""}${earnStatHtml(t, L.eps_s)}${rec.beat ? `<p class="eq-line">Erwartung beim Gewinn übertroffen: <b>${rec.beat[0]} von ${rec.beat[1]}</b> Quartalen · typische Bewegung nach Zahlen: <b style="white-space:nowrap">±${pct(rec.move || 0, 1)}</b></p>` : ""}${foot}`;
+      </div>${clash}${L.oneoff ? `<p class="eq-hint">Möglicher Sondereffekt beim Gewinn: <a href="${esc(safeHref(L.oneoff.u))}" target="_blank" rel="noopener">${esc(L.oneoff.t.replace(/ - [^-]+$/, ""))}</a> – bereinigt kann der Gewinn deutlich anders aussehen; Umsatz und Ausblick zählen dann mehr.</p>` : ""}${earnStatHtml(t, L.guide && L.guide.d === -1 ? null : L.eps_s)}${rec.beat ? `<p class="eq-line">Erwartung beim Gewinn übertroffen: <b>${rec.beat[0]} von ${rec.beat[1]}</b> Quartalen · typische Bewegung nach Zahlen: <b style="white-space:nowrap">±${pct(rec.move || 0, 1)}</b></p>` : ""}${foot}`;
   }
   if (N) {
     const n = daysUntil(N.date);
@@ -4718,8 +4753,14 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.11";
-const APP_NEWS = [["2026.11.11", "Feinschliff nach der Prüfung", [
+const APP_VER = "2026.11.12";
+const APP_NEWS = [["2026.11.12", "Quartalszahlen lernen selbst", [
+  ["Ausblick zählt mit", "Die Wahrscheinlichkeit nach Quartalszahlen rechnet jetzt Gewinn und Ausblick zusammen (8.518 Berichte 2023–26). Bei Intel (Gewinn +30 %, Ausblick gesenkt, Aktie −28 %) stünde jetzt 37 % statt 64 % – in der Prüfzeit nachweisbar genauer. Ein gesenkter Ausblick ergibt immer „eher negativ“."],
+  ["Ausblick sauberer erkannt", "Meldungen von Ratingagenturen, Analysten, Konjunkturprognosen und Firmen mit ähnlichem Namen zählen nicht mehr als Ausblick – in den letzten Tagen waren 23 von 102 Angaben davon betroffen."],
+  ["Kairo lernt aus Fehlern", "Jede Prognose wird gespeichert und mit der Kursreaktion verglichen. Lag Kairo daneben, sucht es automatisch nach dem Grund (Markt, Vorlauf, Schlagzeilen) und eicht die Zahlen selbst nach, sobald das nachweisbar genauer ist. Die Bilanz steht im Quartalszahlen-Fenster."],
+  ["BYD und Tencent wieder dabei", "Rund 48 große Asien-Werte (BYD, Tencent, CATL, SoftBank, Nintendo …) fehlten im Scan, weil eine Wiener Zweitnotierung ohne Umsatz die Heimatbörse verdrängte. Jetzt zählt die Börse mit dem meisten Handel."],
+  ["Insider: neueste zuerst", "Alle Insider-Listen sind nach Datum sortiert – die frischesten Käufe stehen oben."]]],
+  ["2026.11.11", "Feinschliff nach der Prüfung", [
   ["Papier-Depot wie die Regel", "Das KAIRO-Papier-Depot wählt bei zu vielen Kandidaten jetzt wie die getestete Regel: die mit dem schwächeren Momentum zuerst. Ein automatischer Test zeigt, dass Scanner, Mitteilungen, Papier-Depot und Backtest denselben Kauf, Stop und Verkauf ergeben."],
   ["Quartalszahlen vorsichtiger", "Weicht ein Gewinn je Aktie stark von der Erwartung ab, zählt Kairo ihn nur, wenn er im Text klar als Ergebnis des Quartals steht – nicht als Vorjahr, Ausblick oder Sonderposten. Ausländische Firmen (6-K) werden zuverlässiger erkannt."],
   ["Börsenfeiertage London", "Der Kalender kennt jetzt auch die Feiertage der Londoner Börse; der Kauftag im Trade-Plan richtet sich nach der Börse der Aktie."],
