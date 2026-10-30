@@ -2257,7 +2257,10 @@ function loadEarnLive(fast) {
 }
 // Ehrliche Statistik statt Bauchgefühl (tools/research/earn_stats.py): 14.936 Quartalsberichte von 580 US-Aktien seit 2019 –
 // wie oft stieg die Aktie am Handelstag nach den Zahlen, je nach Überraschung beim Gewinn
-let earnStats = null;
+let earnStats = null, earnReview = null;
+// Prognose-Bilanz (tools/earn_review.py, nach jedem Prüflauf): wie oft lag die gezeigte Richtung bisher richtig?
+const loadEarnReview = () => earnReview || fetch(EARN_LIVE_URL.replace("earnings_live.json", "earn_review.json") + "?v=" + Math.floor(Date.now() / 36e5))
+  .then(r => r.ok ? r.json() : null).then(d => { earnReview = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnReview = {}; });
 const loadEarnStats = () => earnStats || fetch("earn_stats.json").then(r => r.ok ? r.json() : null).then(d => { earnStats = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnStats = {}; });
 function earnStatHtml(t, sur) {
   if (!earnStats) { loadEarnStats(); return ""; }
@@ -2358,7 +2361,9 @@ function earnHtml(t, d) {
   const L = rec && rec.last && (!d || Math.abs(daysUntil(rec.last.date) - daysUntil(d)) <= 3) ? rec.last : null;
   const N = rec && rec.next && !L ? rec.next : null;
   const cell = (l, v, sub, cls = "") => `<div><span>${l}</span><b class="${cls}">${v}</b>${sub ? `<em>${sub}</em>` : ""}</div>`;
-  const foot = `<p class="eq-note">Einschätzung nach fester Regel, keine Prognose: Gewinn je Aktie ±3 % und Umsatz ±1 % gegen die Erwartung, der Ausblick zählt doppelt – ein gesenkter Ausblick ergibt immer „eher negativ“, der Markt handelt die Zukunft. Quellen: Yahoo Finance, Schlagzeilen über Google News. Tagsüber alle 10–30 Minuten geprüft${earnData && earnData.__live ? ` · zuletzt ${new Date(earnData.__live).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr` : ""}. Keine Anlageberatung.</p>`;
+  if (!earnReview) loadEarnReview();
+  const track = earnReview && earnReview.n >= 30 ? ` Bilanz bisher: Richtung in ${pct(earnReview.hit, 0)} von ${fmt(earnReview.n, 0)} Meldungen getroffen (seit ${dateDE(earnReview.since)}).` : "";
+  const foot = `<p class="eq-note">${track ? `<b>${esc(track.trim())}</b> ` : ""}Einschätzung nach fester Regel, keine Prognose: Gewinn je Aktie ±3 % und Umsatz ±1 % gegen die Erwartung, der Ausblick zählt doppelt – ein gesenkter Ausblick ergibt immer „eher negativ“, der Markt handelt die Zukunft. Quellen: Yahoo Finance, Schlagzeilen über Google News. Tagsüber alle 10–30 Minuten geprüft${earnData && earnData.__live ? ` · zuletzt ${new Date(earnData.__live).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr` : ""}. Keine Anlageberatung.</p>`;
   if (L) {
     const v = L.view, g = L.guide, rx = L.rx;
     const gTxt = !g ? "keine Meldung gefunden" : g.d === 1 ? "angehoben" : g.d === -1 ? "gesenkt" : g.d === 0 ? "bestätigt" : "widersprüchlich";

@@ -325,21 +325,50 @@ def result_pushes(fresh: dict, prev: dict, events: list[dict], out: Path) -> Non
     f.write_text(json.dumps(sent), encoding="utf-8")
 
 
+MODEL = "2026-10-30 Gewinn+Ausblick"      # Stand der Prognose-Regel; bei jeder Änderung neu setzen (Auswertung je Stand)
+
+
+def app_odds(last: dict, gst: dict | None = None) -> float | None:
+    """Dieselbe Wahrscheinlichkeit „steigt am Tag danach“, die die App oben im Quartalszahlen-Fenster zeigt (earnOdds):
+    Gewinn-Stufe (mit Umsatz-Beschleunigung), bei gesenktem Ausblick die eigene Quote nach gesenktem Ausblick."""
+    sur = last.get("eps_s")
+    if sur is None:
+        return None
+    if (last.get("guide") or {}).get("d") == -1:
+        dn = (gst or {}).get("down") or {}
+        return dn.get("up1") if dn.get("n", 0) >= GUIDE_MIN_N else None
+    try:
+        st = json.loads((ROOT / "site" / "earn_stats.json").read_text(encoding="utf-8"))
+        b = next(b for b in st["buckets"] if b["lo"] <= sur * 100 < b["hi"])
+    except Exception:
+        return None
+    ra = last.get("reva")
+    if ra is not None and b.get("up1_dec") is not None:
+        return b["up1_dec"] if ra <= -0.05 else b["up1_acc"]
+    return b["up1"]
+
+
 def archive(recs: dict, out: Path) -> int:
     """Sammelt jede Meldung dauerhaft (earn_archive.json): Gewinn- und Umsatz-Überraschung, Umsatz-Beschleunigung,
-    Ausblick, Kursreaktion – damit sich in einigen Monaten testen lässt, ob Umsatz und Ausblick die Prognose verbessern."""
+    Ausblick (mit Schlagzeile, damit die Erkennung später nachgeprüft werden kann), Kursreaktion – und die Prognose,
+    die Kairo vor der Kursreaktion gezeigt hat (p, Stand v). Grundlage der wöchentlichen Prognose-Bilanz (tools/earn_review.py)."""
     f = out / "earn_archive.json"
     try:
         arc = json.loads(f.read_text(encoding="utf-8"))
     except Exception:
         arc = {}
+    gst = guide_stats(out)
     for t, r in recs.items():
         L = r.get("last") or {}
         if not L.get("date"):
             continue
         k = f"{t}|{L['date']}"
+        G = L.get("guide") or {}
         row = {"s": L.get("eps_s"), "rs": L.get("rev_s"), "rg": L.get("revg"), "ra": L.get("reva"),
-               "g": (L.get("guide") or {}).get("d"), "gs": (L.get("guide") or {}).get("src"), "r1": (L.get("rx") or {}).get("d1")}
-        arc[k] = {**arc.get(k, {}), **{a: b for a, b in row.items() if b is not None}}
+               "g": G.get("d"), "gs": G.get("src"), "gt": (G.get("t") or "")[:160] or None, "r1": (L.get("rx") or {}).get("d1")}
+        old = arc.get(k, {})
+        if old.get("r1") is None:                  # Prognose nur bis zur Kursreaktion fortschreiben – danach eingefroren
+            row.update(p=app_odds(L, gst), v=MODEL)
+        arc[k] = {**old, **{a: b for a, b in row.items() if b is not None}}
     f.write_text(json.dumps(arc, separators=(",", ":")), encoding="utf-8")
     return len(arc)
