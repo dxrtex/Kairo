@@ -62,13 +62,18 @@ Vollständige Tabellen: Branch `claude/reversal-out`, Ordner `41031835455/` (`ve
 
 | Variante | Train (nur Info) | Validierung | Holdout | Vorzeit 1999–2007 (Hinweis) | Asien 2008–26 |
 |---|---|---|---|---|---|
-| E0 B60 | −0,071 | +0,069 (+0,229) | −0,068 (+0,073) | −0,065 | +0,064 * |
-| R1 | −0,030 | +0,073 (+0,213) | −0,043 (+0,085) | −0,057 | +0,046 * |
-| R4 | +0,014 | +0,101 (+0,202) | −0,079 (+0,005) | +0,002 | +0,075 * |
+| E0 B60 | −0,071 | +0,069 (+0,229) | −0,068 (+0,073) | −0,065 (n 2.744) | +0,010 (n 14.204) |
+| R1 | −0,030 | +0,073 (+0,213) | −0,043 (+0,085) | −0,057 (n 3.160) | +0,008 (n 16.843) |
+| R4 | +0,014 | +0,101 (+0,202) | −0,079 (+0,005) | +0,002 (n 1.666) | +0,076 (n 8.622) |
 | E2 | +0,015 | +0,101 (+0,202) | −0,079 (+0,005) | – | – |
 
-\* Asien vorläufig aus 10 von 30 Teilen; die übrigen 20 laufen nach (beim ersten Versuch am API-Limit gescheitert). Ändert die
-Entscheidung nicht, weil R1 und R4 schon am Depot-Kriterium scheitern.
+Asien vollständig (30 von 30 Teilen; 20 Teile im Nachlauf 41031968365 wiederholt, weil sie im ersten Versuch am API-Limit
+scheiterten, Code identisch).
+
+**Auffällig:** Der Ausbruchs-Einstieg (R4 ≈ E2) ist je Trade in **beiden** unabhängigeren Datensätzen besser als B60: in der
+Vorzeit um +0,068 R, in Asien um +0,067 R. In der Validierung beträgt der Vorsprung +0,032 R, im Holdout −0,011 R. Das ist
+kein Beleg nach den Regeln (Holm 1,0; Depot-Kriterium verfehlt), aber der beständigste Hinweis der ganzen Untersuchung.
+Er stützt die Empfehlung, E2 als Schattentest laufen zu lassen. R1 ist überall praktisch gleich wie B60.
 
 Block-Bootstrap (Monatsblöcke) über Validierung + Holdout gegen B60: R1 p = 0,17, R4 p = 0,39. Nach Holm ist beides nicht
 signifikant. Gegen Zufallstitel mit derselben Mechanik (20 Seeds) liegen R1 und R4 im Train+Val bei p = 0,05: Die Auswahl hat
@@ -97,10 +102,10 @@ rund 7 Prozentpunkte pro Jahr.** Ob die Strategie Geld verdient, hängt also fas
 
 | Variante | Bedingung | Ergebnis | Urteil |
 |---|---|---|---|
-| R1 | je Trade besser in Val, Vorzeit, Asien; Holm; Depot 10k besser in Val & Hold | ΔR Val +0,003, Vorzeit +0,009, Asien −0,018 *; Holm 1,0; Depot Val −3,5 % vs. −1,9 % | **nicht bestanden** |
+| R1 | je Trade besser in Val, Vorzeit, Asien; Holm; Depot 10k besser in Val & Hold | ΔR Val +0,003, Vorzeit +0,009, Asien −0,002; Holm 1,0; Depot Val −3,5 % vs. −1,9 % | **nicht bestanden** |
 | R2 | Depot 10k (20 × 0,25 %) besser in Val & Hold; Holm | Val −3,2 % vs. −1,9 %, Hold −8,2 % vs. −5,7 % | **nicht bestanden** |
 | R3 | Depot 5 × 1 % bei 1k, 3k, 5k besser in Val & Hold; Holm | 3k Val −10,5 % vs. −10,2 %; Holm p 0,39–1,0 | **nicht bestanden** |
-| R4 | wie R1 + Depot 10k besser als B60 **und** E2 in Val & Hold | Val +1,5 % (B60 −1,9 %, E2 +1,8 %), Hold −6,7 % (B60 −5,7 %) | **nicht bestanden** |
+| R4 | wie R1 + Depot 10k besser als B60 **und** E2 in Val & Hold | je Trade ΔR Val +0,032, Vorzeit +0,068, Asien +0,067, Holm 1,0; Depot Val +1,5 % (B60 −1,9 %, E2 +1,8 %), Hold −6,7 % (B60 −5,7 %) | **nicht bestanden** |
 
 ### 4. R3 – Gebühren oder Risiko? (5 × 1 %, Stress, gesamt)
 
@@ -162,7 +167,7 @@ Konten laufen im Test leer. R3 mildert das nur, indem es mehr Risiko nimmt. Für
   erwischt, ist weitgehend Zufall. Darum weichen Depot-R (z. B. B60 5 × 1 % Val −0,21 R) und Je-Trade-R (+0,07 R) stark
   voneinander ab.
 - Der Holdout ist nicht unabhängig. Die Vorzeit (1999–2007) ist nur ein Hinweis (Datenqualitäts-Gate gescheitert). Asien ist
-  bisher erst zu einem Drittel ausgewertet.
+  vollständig ausgewertet, enthält aber ebenfalls nur heute existierende Firmen.
 
 **7. Neuer unabhängiger Paper-Test?**
 **B60 unverändert weiterlaufen lassen** als Referenz. Daneben als reiner Schattentest ohne Geld **E2 (Ausbruchs-Einstieg),
@@ -187,5 +192,6 @@ Die Umstellung erfolgt erst nach ausdrücklicher Freigabe.
 | Depot-Läufe korrigierte Engine | Workflow-Run 41023535500 |
 | Alt-Neu-Vergleich, Wettbewerb B neu | Workflow-Run 41031835455 (Commit `00ced6a`) |
 | Asien-Nachlauf | Workflow-Run 41031968365 |
+| Endbericht (alle Bestätigungsdaten) | Workflow-Run 41062843542, Branch `claude/reversal-out`, Ordner `final-41062843542/` |
 | Code | `research/reversal/run.py`, `research/reversal/compare.py`, `research/strategy_championship/engine.py` |
 | Kosten | Basis: 0,99 €/Order unter 250 €, Titel-Spread; Stress: 1,99 €/Order unter 250 €, doppelter Spread, Schlupf, FX-Gebühr |
