@@ -2250,7 +2250,7 @@ function loadEarnLive(fast) {
   earnLiveAt = Date.now();
   return fetch(EARN_LIVE_URL + "?v=" + Math.floor(Date.now() / (fast ? 6e4 : 3e5))).then(r => r.ok ? r.json() : null).then(d => {
     if (!d || !earnData) return;
-    earnMerge(d.tickers); earnData.__live = d.generated;
+    earnMerge(d.tickers); earnData.__live = d.generated; if (d.gstats) earnData.__gstats = d.gstats;
     if (state.sec === "calendar" || state.sec === "news") render();
     const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d);
   }).catch(() => {});
@@ -2273,6 +2273,13 @@ function earnStatHtml(t, sur) {
 function earnOdds(t, sur, L) {
   const B = (earnStats && earnStats.buckets) || []; if (!B.length) return null;
   const P = (earnStats.per || {})[t], find = s => B.find(x => s >= x.lo && s < x.hi);
+  // Gesenkter Ausblick überstimmt den Gewinn (Intel 29.10.2026: Gewinn +30 %, Ausblick gesenkt, −28 %; eigenes Archiv:
+  // nach gesenktem Ausblick stieg die Aktie nur in rund einem Viertel der Fälle) – dann nicht die Gewinn-Statistik zeigen
+  if (sur != null && L && L.guide && L.guide.d === -1) {
+    const G = earnData && earnData.__gstats && earnData.__gstats.down;
+    return G && G.n >= 10 ? { p: G.up1, med: G.med1, n: G.n, after: true, guideDown: true, how: `bei gesenktem Ausblick – gilt mehr als der Gewinn (${G.n} gesammelte Berichte, kleine Stichprobe)` }
+      : { p: null, n: 0, after: true, guideDown: true, how: "Ausblick gesenkt – der zählt meist mehr als das Quartal" };
+  }
   if (sur != null) {
     const b = find(sur * 100); if (!b) return null;
     const ra = L && L.reva != null ? L.reva : null;
@@ -2291,7 +2298,7 @@ function earnOdds(t, sur, L) {
 function earnTopHtml(t, sur, rx, L) {
   if (!earnStats) { loadEarnStats(); return ""; }
   const o = earnOdds(t, sur, L); if (!o) return "";
-  const tone = o.p >= .58 ? "green" : o.p < .45 ? "red" : "yellow", r = data && data.results ? byTicker(t) : null;
+  const tone = o.guideDown ? "red" : o.p >= .58 ? "green" : o.p < .45 ? "red" : "yellow", r = data && data.results ? byTicker(t) : null;
   const hit = r && r.passed;
   const P = (earnStats.per || {})[t], own = o.after && sur != null && sur > 0 && P && P.beat_up != null && P.n >= 6 && Math.abs(P.beat_up - o.p) >= .2
     ? ` · Achtung: ${t} selbst stieg nach Zahlen über Erwartung nur in ${pct(P.beat_up, 0)} der Fälle (wenige Berichte)` : "";
@@ -2299,10 +2306,10 @@ function earnTopHtml(t, sur, rx, L) {
   const entry = tone === "green"
     ? [hit ? "Einstieg vertretbar – Kairo-Treffer mit Rückenwind" : "Rückenwind – aber kein Kairo-Treffer", hit ? "Die Zahlen sprechen eher für steigende Kurse. Trade-Plan (Stop, Ziel) in der Detailansicht beachten." : "Die Zahlen sprechen eher für steigende Kurse. Ein Kaufgrund allein sind sie nicht – Kairo-Setup abwarten."]
     : tone === "red"
-      ? ["Eher abwarten", "Nach Zahlen dieser Art fiel der Kurs öfter, als er stieg. " + (hit ? "Der Kairo-Treffer bleibt gültig, aber mit Gegenwind – kleinere Position oder Kurs erst stabilisieren lassen." : "Kein Einstieg nur wegen der Zahlen.")]
+      ? ["Eher abwarten", (o.guideDown ? "Das Unternehmen erwartet schwächere Geschäfte – der Markt handelt die Zukunft, nicht das vergangene Quartal. " : "Nach Zahlen dieser Art fiel der Kurs öfter, als er stieg. ") + (hit ? "Der Kairo-Treffer bleibt gültig, aber mit Gegenwind – kleinere Position oder Kurs erst stabilisieren lassen." : "Kein Einstieg nur wegen der Zahlen.")]
       : [hit ? "Münzwurf – der Kairo-Treffer entscheidet" : "Münzwurf – kein Einstiegsgrund", (o.after ? "Zahlen dieser Art bewegen den Kurs kaum vorhersagbar. " : "Vor den Zahlen ist die Richtung offen. ") + (hit ? "Im Kairo-Test waren Käufe kurz vor den Zahlen nicht schlechter – Stop setzen, mit Kurslücke rechnen." : "Ohne Kairo-Setup kein Einstieg.")];
-  return `<div class="eq-odds t-${tone}"><div class="eq-odds-top"><span class="eq-odds-p">${pct(o.p, 0)}</span><span class="eq-odds-l">${lead}<em>${esc(o.how)}${o.after ? ` · ${fmt(o.n, 0)} Berichte seit 2019` : ""}${o.p5 != null ? ` · nach 5 Tagen ${pct(o.p5, 0)} im Plus` : ""}${esc(own)}</em></span></div>
-    <div class="eq-bar"><i style="width:${(o.p * 100).toFixed(1)}%"></i></div><div class="eq-scale"><span>fällt</span><span>50 %</span><span>steigt</span></div>
+  return `<div class="eq-odds t-${tone}"><div class="eq-odds-top"><span class="eq-odds-p">${o.p == null ? "↓" : pct(o.p, 0)}</span><span class="eq-odds-l">${o.p == null ? "Ausblick gesenkt" : lead}<em>${esc(o.how)}${o.after && !o.guideDown ? ` · ${fmt(o.n, 0)} Berichte seit 2019` : ""}${o.p5 != null ? ` · nach 5 Tagen ${pct(o.p5, 0)} im Plus` : ""}${esc(own)}</em></span></div>
+    <div class="eq-bar"><i style="width:${((o.p == null ? .25 : o.p) * 100).toFixed(1)}%"></i></div><div class="eq-scale"><span>fällt</span><span>50 %</span><span>steigt</span></div>
     <div class="eq-entry"><b>${esc(entry[0])}</b><span>${esc(entry[1])}</span></div></div>`;
 }
 function loadEarnings() {
@@ -2351,7 +2358,7 @@ function earnHtml(t, d) {
   const L = rec && rec.last && (!d || Math.abs(daysUntil(rec.last.date) - daysUntil(d)) <= 3) ? rec.last : null;
   const N = rec && rec.next && !L ? rec.next : null;
   const cell = (l, v, sub, cls = "") => `<div><span>${l}</span><b class="${cls}">${v}</b>${sub ? `<em>${sub}</em>` : ""}</div>`;
-  const foot = `<p class="eq-note">Einschätzung nach fester Regel, keine Prognose: Gewinn je Aktie ±3 % und Umsatz ±1 % gegen die Erwartung, der Ausblick zählt doppelt – der Markt handelt die Zukunft. Quellen: Yahoo Finance, Schlagzeilen über Google News. Tagsüber alle 10–30 Minuten geprüft${earnData && earnData.__live ? ` · zuletzt ${new Date(earnData.__live).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr` : ""}. Keine Anlageberatung.</p>`;
+  const foot = `<p class="eq-note">Einschätzung nach fester Regel, keine Prognose: Gewinn je Aktie ±3 % und Umsatz ±1 % gegen die Erwartung, der Ausblick zählt doppelt – ein gesenkter Ausblick ergibt immer „eher negativ“, der Markt handelt die Zukunft. Quellen: Yahoo Finance, Schlagzeilen über Google News. Tagsüber alle 10–30 Minuten geprüft${earnData && earnData.__live ? ` · zuletzt ${new Date(earnData.__live).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr` : ""}. Keine Anlageberatung.</p>`;
   if (L) {
     const v = L.view, g = L.guide, rx = L.rx;
     const gTxt = !g ? "keine Meldung gefunden" : g.d === 1 ? "angehoben" : g.d === -1 ? "gesenkt" : g.d === 0 ? "bestätigt" : "widersprüchlich";
@@ -2364,7 +2371,7 @@ function earnHtml(t, d) {
         ${cell("Umsatz", bigNum(L.rev_a, cur), (L.rev_s != null ? `erwartet ${bigNum(L.rev_e)} · <span class="${upDown(L.rev_s)}">${sgn(L.rev_s)}</span>` : L.rev_yoy != null ? `zum Vorjahr <span class="${upDown(L.rev_yoy)}">${sgn(L.rev_yoy)}</span>` : L.rev_a == null ? "Yahoo hat den Umsatz noch nicht" : "") + (L.reva != null ? `<br>Wachstum ${sgn(L.revg, 0)} · <span class="${L.reva <= -0.05 ? "down" : L.reva >= 0.05 ? "up" : ""}">${L.reva <= -0.05 ? "verlangsamt" : L.reva >= 0.05 ? "beschleunigt" : "stabil"} (${L.reva >= 0 ? "+" : "−"}${Math.abs(Math.round(L.reva * 100))} Pkt.)</span>` : ""))}
         ${cell("Ausblick", gTxt, g && g.t ? (g.u ? `<a href="${esc(g.u)}" target="_blank" rel="noopener">${esc(g.t.replace(/ - [^-]+$/, ""))}</a>` : esc(g.t)) : "aus Schlagzeilen nach den Zahlen", g && g.d != null ? upDown(g.d) : "")}
         ${cell("Kursreaktion", rx ? sgn(rx.d1) : "noch offen", rx ? `erster Handelstag (${dateDE(rx.day)})${rx.since != null ? ` · bis ${dateDE(rx.to)} ${sgn(rx.since)}` : ""}` : "kommt mit dem nächsten Handelstag", rx ? upDown(rx.d1) : "")}
-      </div>${clash}${L.oneoff ? `<p class="eq-hint">Möglicher Sondereffekt beim Gewinn: <a href="${esc(safeHref(L.oneoff.u))}" target="_blank" rel="noopener">${esc(L.oneoff.t.replace(/ - [^-]+$/, ""))}</a> – bereinigt kann der Gewinn deutlich anders aussehen; Umsatz und Ausblick zählen dann mehr.</p>` : ""}${earnStatHtml(t, L.eps_s)}${rec.beat ? `<p class="eq-line">Erwartung beim Gewinn übertroffen: <b>${rec.beat[0]} von ${rec.beat[1]}</b> Quartalen · typische Bewegung nach Zahlen: <b style="white-space:nowrap">±${pct(rec.move || 0, 1)}</b></p>` : ""}${foot}`;
+      </div>${clash}${L.oneoff ? `<p class="eq-hint">Möglicher Sondereffekt beim Gewinn: <a href="${esc(safeHref(L.oneoff.u))}" target="_blank" rel="noopener">${esc(L.oneoff.t.replace(/ - [^-]+$/, ""))}</a> – bereinigt kann der Gewinn deutlich anders aussehen; Umsatz und Ausblick zählen dann mehr.</p>` : ""}${earnStatHtml(t, L.guide && L.guide.d === -1 ? null : L.eps_s)}${rec.beat ? `<p class="eq-line">Erwartung beim Gewinn übertroffen: <b>${rec.beat[0]} von ${rec.beat[1]}</b> Quartalen · typische Bewegung nach Zahlen: <b style="white-space:nowrap">±${pct(rec.move || 0, 1)}</b></p>` : ""}${foot}`;
   }
   if (N) {
     const n = daysUntil(N.date);

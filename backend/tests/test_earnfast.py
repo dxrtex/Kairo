@@ -82,3 +82,19 @@ def test_korrektur_mitteilung(tmp_path, monkeypatch):
     assert len(sent) == 2 and sent[-1]["title"] == "Korrektur – 📊 Lilly: eher positiv"
     earnfast.result_pushes(richtig, richtig, [], tmp_path)                     # nur einmal korrigieren
     assert len(sent) == 2
+
+
+def test_ausblick_gesenkt_ueberstimmt_gewinn(tmp_path):
+    """Intel 29.10.2026: Gewinn +30 % über Erwartung, Ausblick gesenkt, Aktie −28 %. Die Mitteilung darf dann nicht
+    die Gewinn-Statistik („61 % gestiegen“) zeigen, sondern die Quote nach gesenktem Ausblick."""
+    arc = {f"X{i}|2026-10-2{i % 9}": {"s": 0.2, "g": -1, "r1": (0.02 if i < 3 else -0.05)} for i in range(12)}
+    arc["Y|2026-10-20"] = {"s": 0.1, "g": 1, "r1": 0.03}
+    (tmp_path / "earn_archive.json").write_text(json.dumps(arc))
+    gst = earnfast.guide_stats(tmp_path)
+    assert gst["down"] == {"n": 12, "up1": 0.25, "med1": -0.05} and gst["up"]["n"] == 1
+    last = {"eps_s": 0.30, "guide": {"d": -1}, "view": {"lbl": "gemischt"}}
+    m = earnfast.result_text("INTC", "Intel", last, gst)
+    assert "Ausblick gesenkt" in m["body"] and "nur in 25 % der Fälle (12 Berichte)" in m["body"] and "61 %" not in m["body"]
+    m = earnfast.result_text("INTC", "Intel", last, {"down": {"n": 3, "up1": 0.0}})      # zu wenige Berichte: keine Quote
+    assert "zählt meist mehr als das Quartal" in m["body"] and "%" not in m["body"].split("Ausblick gesenkt")[1]
+    assert earnfast.guide_stats(tmp_path / "fehlt") == {}

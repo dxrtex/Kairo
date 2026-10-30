@@ -171,3 +171,11 @@ def test_grosse_ueberraschung_nur_mit_bestaetigung():
     assert eps_plausible(2.10, 1.00, "Diluted EPS of $2.10 for the quarter. Earnings per share – Non-GAAP 2.10 1.02")
     assert not eps_plausible(2.10, 1.00, "EPS $1.05 compared to $2.10 in the prior year. Full-year EPS guidance $2.10")   # Vorjahr/Ausblick zählen nicht
     assert not eps_plausible(-0.40, 0.30, "loss of $0.40 per share")       # Vorzeichenwechsel ohne Bestätigung
+
+
+def test_gesenkter_ausblick_ueberstimmt_gutes_quartal():
+    from backend.earnings import assess
+    v = assess(0.30, None, -1)                       # Intel 29.10.2026: Gewinn +30 %, Ausblick gesenkt → −28 %
+    assert v["lbl"] == "eher negativ" and v["tone"] == "red"
+    assert assess(0.30, 0.05, -1)["lbl"] == "eher negativ"
+    assert assess(0.30, 0.05, 0)["lbl"] == "eher positiv"   # bestätigter Ausblick: unverändert

@@ -5,7 +5,8 @@ gemeldeter Umsatz), Google-News-Schlagzeilen für den Ausblick (Guidance). Die U
 Zahlen her – deshalb merkt sich der Scan sie im Zustand (state/earn_est.json) und vergleicht nach dem Termin.
 
 Einschätzung = Regel, keine Prognose: Überraschung beim Gewinn (± 3 %), beim Umsatz (± 1 %) und die Richtung des
-Ausblicks (zählt doppelt – der Markt handelt die Zukunft). Die tatsächliche Kursreaktion steht immer daneben.
+Ausblicks (zählt doppelt – der Markt handelt die Zukunft; ein gesenkter Ausblick ergibt immer „eher negativ“). Die tatsächliche
+Kursreaktion steht immer daneben.
 """
 
 from __future__ import annotations
@@ -126,7 +127,7 @@ def oneoff(items: list[tuple[str, str, str]], words: list[str], since: pd.Timest
 
 def assess(eps_s: float | None, rev_s: float | None, guide_d: int | None) -> dict | None:
     """Regel: Gewinn-Überraschung ±3 % → ±1 (über ±10 % → ±2, wie in der Statistik: 61 % bzw. 39 % gestiegen),
-    Umsatz ±1 % → ±1, Ausblick angehoben/gesenkt → ±2."""
+    Umsatz ±1 % → ±1, Ausblick angehoben/gesenkt → ±2; gesenkter Ausblick → höchstens −2 („eher negativ“)."""
     pts, why = 0.0, []
     if eps_s is not None:
         if eps_s > .10:
@@ -149,6 +150,8 @@ def assess(eps_s: float | None, rev_s: float | None, guide_d: int | None) -> dic
     if guide_d is not None:
         pts += 2 * guide_d
         why.append({1: "Ausblick angehoben", -1: "Ausblick gesenkt", 0: "Ausblick bestätigt"}[guide_d])
+    if guide_d == -1:          # gesenkter Ausblick überstimmt ein gutes Quartal (Intel 29.10.2026: Gewinn +30 %, Aktie −28 %;
+        pts = min(pts, -2.0)   # eigenes Archiv: nach gesenktem Ausblick stieg die Aktie nur in rund einem Viertel der Fälle)
     if eps_s is None and rev_s is None and guide_d is None:
         return None
     lbl, tone = (("eher positiv", "green") if pts >= 2 else ("eher negativ", "red") if pts <= -2
@@ -549,7 +552,12 @@ def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
         earnfast.result_pushes(fresh, prev, cal.get("events", []), out)
     except Exception as exc:
         print(f"Quartalszahlen: Ergebnis-Mitteilung fehlgeschlagen ({exc!r})")
-    f.write_text(json.dumps({"generated": now.isoformat(timespec="seconds"), "tickers": allr}, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")
+    try:
+        gst = earnfast.guide_stats(out)
+    except Exception as exc:
+        print(f"Quartalszahlen: Ausblick-Statistik fehlgeschlagen ({exc!r})")
+        gst = {}
+    f.write_text(json.dumps({"generated": now.isoformat(timespec="seconds"), "gstats": gst, "tickers": allr}, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")
     print(f"Quartalszahlen live: {len(todo)} Termine geprüft, {len(fresh)} mit Zahlen aktualisiert, {len(allr)} in der Datei")
 
 
