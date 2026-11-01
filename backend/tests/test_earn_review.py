@@ -30,3 +30,21 @@ def test_archiv_friert_prognose_mit_kursreaktion_ein(tmp_path):
     earnfast.archive(rec, tmp_path)                                    # danach eingefroren
     a = json.loads((tmp_path / "earn_archive.json").read_text())["INTC|2026-10-29"]
     assert a["p"] == 0.713 and a["r1"] == -0.28 and a["g"] == -1
+
+
+def test_latenz_und_status(tmp_path):
+    import pandas as pd
+    from backend import earnings as E
+    now = pd.Timestamp("2026-10-29T20:20:00Z")
+    fresh = {"INTC": {"last": {"date": "2026-10-29", "ts": "2026-10-29T16:00:00-04:00", "eps_a": 0.52, "src": "pr"}}}
+    E.stamp_status(fresh, {}, now)
+    L = fresh["INTC"]["last"]
+    assert L["seen"] == "2026-10-29T20:20:00+00:00" and L["stage"] == "vorläufig"
+    later = {"INTC": {"last": {"date": "2026-10-29", "ts": "2026-10-29T16:00:00-04:00", "eps_a": 0.50}}}
+    E.stamp_status(later, fresh, now + pd.Timedelta(minutes=30))
+    L2 = later["INTC"]["last"]
+    assert L2["seen"] == L["seen"] and L2["eps0"] == 0.52 and L2["stage"] == "korrigiert"     # erste Angabe 0,52 → 0,50
+    arc = {"INTC|2026-10-29": {"ts": L["ts"], "seen": L["seen"], "push": "2026-10-29T20:22:00+00:00"},
+           "X|2026-10-29": {"ts": "2026-10-29T16:00:00-04:00", "seen": "2026-10-28T10:00:00+00:00"}}   # unplausibel → ignoriert
+    lat = earn_review.latency(arc)
+    assert lat["n_seen"] == 1 and lat["seen_med"] == 20.0 and lat["push_med"] == 2.0

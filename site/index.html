@@ -2142,7 +2142,7 @@ function insSigHtml(ij) {
   if (!l.length) return "";
   const amt = g => { const e = g.cur === "EUR" ? g.val : g.val * ((fxEur && fxEur.USD) || 0.9); return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
   return `<div class="hcard" style="margin:8px 0 12px"><b>Insider-Signal deiner Aktien · 90 Tage</b>
-    ${l.map(([t, g]) => `<div class="jrow2"><span><b>${esc(g.n || t)}</b> <small class="muted">${g.buyers} Käufer${g.top ? " · CEO/CFO/Vorsitz" : ""}${g.opp ? ` · ${g.opp}× gezielt` : g.unk ? "" : " · nur Routine"}${g.own >= 100 ? " · Anteil mehr als verdoppelt" : g.own >= 10 ? ` · +${fmt(g.own, 0)} % Aktien` : ""} · zuletzt ${dateDE(g.last)}</small></span><b class="${g.score >= 2 ? "up" : ""}">${"●".repeat(g.score) + "○".repeat(3 - g.score)} ${amt(g)}</b></div>`).join("")}
+    ${l.map(([t, g]) => `<div class="jrow2"><span><b>${esc(g.n || t)}</b> <small class="muted">${g.buyers} Käufer${g.top ? " · CEO/CFO/Vorsitz" : ""}${g.opp ? ` · ${g.opp}× gezielt` : g.unk ? " · Routine unbekannt" : " · nur Routine"}${g.own >= 100 ? " · Anteil mehr als verdoppelt" : g.own >= 10 ? ` · +${fmt(g.own, 0)} % Aktien` : ""} · zuletzt ${dateDE(g.last)}</small></span><b class="${g.score >= 2 ? "up" : ""}">${"●".repeat(g.score) + "○".repeat(3 - g.score)} ${amt(g)}</b></div>`).join("")}
     <div class="note" style="margin:6px 0 0">● je erfüllt: mehrere Käufer · Vorstandsspitze kauft · gezielter Kauf mit ≥ 10 % mehr Aktien oder ≥ 1 Mio. Hinweis zum Genauer-Hinsehen, kein Kaufsignal. Getestet mit 9.373 Kairo-Trades (USA 2008–2026): Insider-Käufe verbesserten Kairo-Treffer nicht verlässlich, mehrere Käufer seit 2017 sogar eher schlechter – darum nutzt die Kairo-Regel sie nicht.</div></div>`;
 }
 // ---------- Nachrichten: deine Aktien, Markt, Insider-Käufe (SEC) – Scan-Daten + live über Finnhub (Schlüssel nur lokal) ----------
@@ -2203,11 +2203,12 @@ function newsHtml() {
   const usd = v => { const fx = (fxEur && fxEur.USD) || 0.9, e = v * fx; return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
   const known = t => rowOf(t) || byTicker(t);
   const irow = x => { const tag = mine.has(x.t) || (byTicker(x.t) && byTicker(x.t).in_watchlist) ? '<span class="pill dep">Deine</span>' : byTicker(x.t) && byTicker(x.t).passed ? '<span class="pill">Treffer</span>' : "";
-    const meld = x.kind === "meld", q = x.kind === "buy" && x.opp != null ? (x.opp ? ' · <b class="up">gezielt</b>' : " · Routine") : "";
+    const meld = x.kind === "meld", q = x.kind === "buy" ? (x.opp == null ? " · Routine unbekannt" : x.opp ? ' · <b class="up">gezielt</b>' : " · Routine") : "";
+    const fd = x.fd && x.fd !== x.d ? ` · gemeldet ${dateDE(x.fd)}` : "";
     const own = x.kind === "buy" && x.own != null ? (x.own === "neu" ? " · neue Position" : x.own >= 100 ? " · Anteil mehr als verdoppelt" : x.own >= 1 ? ` · +${fmt(x.own, 0)} % Aktien` : "") : "";
     return `<a class="bf-r" href="${esc(safeHref(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`))}" target="_blank" rel="noopener"><i class="${meld ? "y" : x.kind === "buy" ? "g" : "r"}"></i><span><b>${esc(x.n || x.t)} ${tag}</b><em>${meld
       ? `${esc(x.who)} · Meldung ${dateDE(x.d)} · ${esc(x.src || "")} (ohne Betrag – Details im Register)`
-      : `${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"} ${x.sh ? fmt(x.sh, 0) + " Stk. " : ""}zu ${fmt(x.px)} ${x.cur === "EUR" ? "€" : "$"} · ${dateDE(x.d)}${q}${own}`}</em></span><span class="bf-p ${meld ? "" : x.kind === "buy" ? "up" : "down"}">${meld ? "Meldung" : x.cur === "EUR" ? eurAmt(x.val) : usd(x.val)}</span></a>`; };
+      : `${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"} ${x.sh ? fmt(x.sh, 0) + " Stk. " : ""}zu ${fmt(x.px)} ${x.cur === "EUR" ? "€" : "$"} · ${dateDE(x.d)}${fd}${q}${own}`}</em></span><span class="bf-p ${meld ? "" : x.kind === "buy" ? "up" : "down"}">${meld ? "Meldung" : x.cur === "EUR" ? eurAmt(x.val) : usd(x.val)}</span></a>`; };
   // Alle Listen: neueste zuerst (Datum des Geschäfts), bei gleichem Tag der größere Betrag oben
   const inEur = x => x.cur === "EUR" ? x.val : x.val * ((fxEur && fxEur.USD) || 0.9);
   const newest = l => l.slice().sort((a, b) => String(b.d || "").localeCompare(String(a.d || "")) || (inEur(b) || 0) - (inEur(a) || 0));
@@ -2222,6 +2223,16 @@ function newsHtml() {
   const ageD = d => (Date.now() - new Date(d + "T12:00:00")) / 864e5;
   const recent = wlB.filter(x => x.d && ageD(x.d) <= 90), older = wlB.filter(x => !x.d || ageD(x.d) > 90);
   const nUS = ij && ij.watch_n || 0, nDE = ij && ij.watch_de_n || 0;
+  // Abdeckung je Aktie: welche deiner Aktien wurden wirklich geprüft – und welche nicht (keine Quelle, Zeitlimit, Fehler)
+  const cov = (ij && ij.cover) || null;
+  const covHtml = (() => { if (!cov) return "";
+    const g = { ok: [], zeitlimit: [], fehler: [], "keine Quelle": [], "nicht geprüft": [] };
+    Object.entries(cov).forEach(([t, c]) => (g[c.st] || g["nicht geprüft"]).push(c.hit ? `<b>${esc(nameOf(t))}</b>` : esc(nameOf(t))));
+    const line = (k, txt) => g[k].length ? `<div style="margin-top:4px"><b>${txt} (${g[k].length}):</b> ${g[k].join(", ")}</div>` : "";
+    return `<details class="note" style="margin:-4px 2px 12px"><summary>Abdeckung: ${g.ok.length} von ${Object.keys(cov).length} deiner Aktien geprüft${g.zeitlimit.length + g.fehler.length ? ` · ${g.zeitlimit.length + g.fehler.length} nicht geschafft` : ""}</summary>`
+      + line("ok", "Geprüft – fett = mit Insider-Geschäften") + line("zeitlimit", "Nicht geprüft – Zeitlimit des Scans") + line("fehler", "Nicht geprüft – Quelle nicht erreichbar")
+      + line("keine Quelle", "Keine freie Datenquelle für das Land") + line("nicht geprüft", "Nicht geprüft (Indizes, Sonstiges)")
+      + `<div style="margin-top:4px">Geprüft ohne Treffer heißt: keine Käufe ab 10.000 $ / 5.000 € und keine Verkäufe ab 250.000 $ / 100.000 € in 12 Monaten – bei großen Konzernen kaufen Vorstände selten selbst.</div></details>`; })();
   const wlHtml = !ij ? "" : !wl ? `<div class="note" style="margin:8px 2px">Insider-Geschäfte deiner Aktien kommen mit dem nächsten Scan.</div>`
     : insSigHtml(ij)
       + block(`Deine Aktien · neueste Insider-Käufe · 90 Tage`, recent.slice(0, 20).map(irow), `Keine Insider-Käufe in den letzten 90 Tagen.`)
@@ -2229,7 +2240,8 @@ function newsHtml() {
       + block(`Deine Aktien · frühere Insider-Käufe · 3 bis 12 Monate · neueste zuerst`, older.slice(0, 30).map(irow), `Keine weiteren Insider-Käufe bei deinen Aktien in den letzten 12 Monaten.`)
       + (wlSum.length > 1 ? `<div class="note" style="margin:-4px 2px 10px">Meiste Käufe (12 Monate): ${wlSum.slice(0, 6).map(([t, v]) => `<b>${esc(nameOf(t))}</b> ${eurAmt(v)}`).join(" · ")}</div>` : "")
       + block("Deine Aktien · Insider-Verkäufe · 12 Monate · neueste zuerst", wlS.slice(0, 15).map(irow), "Keine großen Verkäufe.")
-      + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${nUS} US-Aktien (SEC/OpenInsider, Käufe ab 10.000 $, Verkäufe ab 250.000 $)${nDE ? ` und ${nDE} deutsche Aktien (BaFin, Käufe ab 5.000 €, Verkäufe ab 100.000 €)` : ""} aus Watchlist, Merkliste und Depot – 12 Monate. Dazu Meldungen ohne Betrag aus den Niederlanden (AFM: Airbus, ASML …) und Australien (ASX: DroneShield …). „Gezielt“ = kein Routine-Käufer (nicht in beiden Vorjahren im selben Monat gekauft) – laut Forschung (Cohen/Malloy/Pomorski 2012) das aussagekräftigere Signal. Novo Nordisk, BYD, Xiaomi und Tamburi (Dänemark, Hongkong, Italien): keine frei abrufbare Quelle.</div>`;
+      + covHtml
+      + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${nUS} US-Aktien (SEC/OpenInsider, Käufe ab 10.000 $, Verkäufe ab 250.000 $)${nDE ? ` und ${nDE} deutsche Aktien (BaFin, Käufe ab 5.000 €, Verkäufe ab 100.000 €)` : ""} aus Watchlist, Merkliste und Depot – 12 Monate. Dazu Meldungen ohne Betrag aus den Niederlanden (AFM: Airbus, ASML …) und Australien (ASX: DroneShield …). „Gezielt“ = kein Routine-Käufer (nicht in beiden Vorjahren im selben Monat gekauft) – laut Forschung (Cohen/Malloy/Pomorski 2012) das aussagekräftigere Signal. „Routine unbekannt“ = ohne Kaufhistorie (BaFin) – zählt im Signal nicht als gezielt. Novo Nordisk, BYD, Xiaomi und Tamburi (Dänemark, Hongkong, Italien): keine frei abrufbare Quelle.</div>`;
   return head + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) und für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften)${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
     + wlHtml
     + (live ? block("Deine US-Aktien · 90 Tage (live)", liveRows.map(irow), NEWS.at ? "Keine Insider-Käufe oder -Verkäufe über die Börse." : "lädt …") : "")
@@ -2375,6 +2387,15 @@ function loadSecHits(force) {
 const secBanner = (t, d) => { const h = secHits[t]; if (!h || (d && h.date !== d)) return "";
   const at = new Date(h.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
   return `<div class="eq-v t-yellow" style="margin-bottom:12px"><i></i><div><b>Zahlen sind raus – ${esc(at)} Uhr</b><span>Offizielle Meldung bei der SEC (${esc(h.form)}). Ergebnis, Erwartung und Einschätzung erscheinen hier in wenigen Minuten. <a href="${esc(safeHref(h.url))}" target="_blank" rel="noopener">Originalmeldung</a></span></div></div>`; };
+// Status einer Meldung (backend/earnings.py stamp_status): vorläufig aus der Pressemitteilung → bestätigt (Yahoo) → ggf. korrigiert;
+// dazu, seit wann Kairo die Zahlen hat (deutsche Zeit)
+function earnStage(L) {
+  const hm = v => { const x = new Date(v); return isNaN(x) ? "" : x.toLocaleString("de-DE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }) + " Uhr"; };
+  const st = L.stage || (L.src === "pr" ? "vorläufig" : "bestätigt");
+  const lbl = st === "vorläufig" ? "vorläufig aus der Pressemitteilung (SEC), wird bestätigt" : st === "korrigiert"
+    ? `korrigiert${L.eps0 != null ? ` (erste Angabe Gewinn je Aktie ${fmt(L.eps0)})` : ""}` : "bestätigt";
+  return `<b class="${st === "korrigiert" ? "down" : st === "vorläufig" ? "" : "up"}">${lbl}</b>${L.seen ? ` · in Kairo seit ${hm(L.seen)}` : ""}`;
+}
 function earnHtml(t, d) {
   const ev = (calData || []).find(e => e.ticker === t && e.kind === "earnings" && (!d || e.date === d)) || {};
   const rec = earnData && earnData[t], name = ev.name || (rec && rec.name) || t;
@@ -2385,7 +2406,8 @@ function earnHtml(t, d) {
   const N = rec && rec.next && !L ? rec.next : null;
   const cell = (l, v, sub, cls = "") => `<div><span>${l}</span><b class="${cls}">${v}</b>${sub ? `<em>${sub}</em>` : ""}</div>`;
   if (!earnReview) loadEarnReview();
-  const track = earnReview && earnReview.n >= 30 ? ` Bilanz bisher: Richtung in ${pct(earnReview.hit, 0)} von ${fmt(earnReview.n, 0)} Meldungen getroffen (seit ${dateDE(earnReview.since)}).` : "";
+  const lat = earnReview && earnReview.lat && earnReview.lat.n_seen >= 10 ? ` Schnelligkeit: Zahlen im Mittel ${fmt(earnReview.lat.seen_med, 0)} Min. nach der Meldung in Kairo (${fmt(earnReview.lat.n_seen, 0)} Meldungen).` : "";
+  const track = (earnReview && earnReview.n >= 30 ? ` Bilanz bisher: Richtung in ${pct(earnReview.hit, 0)} von ${fmt(earnReview.n, 0)} Meldungen getroffen (seit ${dateDE(earnReview.since)}).` : "") + lat;
   const foot = `<p class="eq-note">${track ? `<b>${esc(track.trim())}</b> ` : ""}Einschätzung nach fester Regel, keine Prognose: Gewinn je Aktie ±3 % und Umsatz ±1 % gegen die Erwartung, der Ausblick zählt doppelt – ein gesenkter Ausblick ergibt immer „eher negativ“, der Markt handelt die Zukunft. Quellen: Yahoo Finance, Schlagzeilen über Google News. Tagsüber alle 10–30 Minuten geprüft${earnData && earnData.__live ? ` · zuletzt ${new Date(earnData.__live).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr` : ""}. Keine Anlageberatung.</p>`;
   if (L) {
     const v = L.view, g = L.guide, rx = L.rx;
@@ -2393,7 +2415,7 @@ function earnHtml(t, d) {
     const verdict = v ? `<div class="eq-v t-${v.tone}"><i></i><div><b>Für den Kurs: ${esc(v.lbl)}</b><span>${esc(v.why.join(" · "))}</span></div></div>` : "";
     const clash = v && rx && rx.d1 != null && Math.abs(rx.d1) >= .02 && ((v.pts >= 1 && rx.d1 < 0) || (v.pts <= -1 && rx.d1 > 0))
       ? `<p class="eq-hint">Der Markt hat anders reagiert als die Zahlen vermuten lassen – oft zählen Details im Ausblick oder in der Telefonkonferenz mehr als das Quartal selbst.</p>` : "";
-    return head + `<div class="eq-sub">Gemeldet am ${dateDE(L.date)}${L.src === "pr" ? " · vorläufig aus der Pressemitteilung (SEC), wird bestätigt" : ""}</div>${earnTopHtml(t, L.eps_s, rx, L)}${verdict}
+    return head + `<div class="eq-sub">Gemeldet am ${dateDE(L.date)} · ${earnStage(L)}</div>${earnTopHtml(t, L.eps_s, rx, L)}${verdict}
       <div class="eq-cells">
         ${cell("Gewinn je Aktie", L.eps_a == null ? "–" : `${fmt(L.eps_a)} ${cur}`.trim(), L.eps_e == null ? "" : `erwartet ${fmt(L.eps_e)} · <span class="${upDown(L.eps_s)}">${sgn(L.eps_s)}</span>`)}
         ${cell("Umsatz", bigNum(L.rev_a, cur), (L.rev_s != null ? `erwartet ${bigNum(L.rev_e)} · <span class="${upDown(L.rev_s)}">${sgn(L.rev_s)}</span>` : L.rev_yoy != null ? `zum Vorjahr <span class="${upDown(L.rev_yoy)}">${sgn(L.rev_yoy)}</span>` : L.rev_a == null ? "Yahoo hat den Umsatz noch nicht" : "") + (L.reva != null ? `<br>Wachstum ${sgn(L.revg, 0)} · <span class="${L.reva <= -0.05 ? "down" : L.reva >= 0.05 ? "up" : ""}">${L.reva <= -0.05 ? "verlangsamt" : L.reva >= 0.05 ? "beschleunigt" : "stabil"} (${L.reva >= 0 ? "+" : "−"}${Math.abs(Math.round(L.reva * 100))} Pkt.)</span>` : ""))}
@@ -4299,8 +4321,8 @@ function bilanzTeaserHtml() {                    // Forschungsstand 10/2026 + Li
   const b = getJson("bilanz.json"), L = b && b.live, st = L && (L.strat60 || (() => { const d = ((b && b.signals) || []).filter(x => x.k === "hit").map(x => x.st60 || {}).filter(x => ["stop", "ema", "zeit"].includes(x.res) && x.r != null);
     return d.length ? { n: d.length, avg_r: d.reduce((a, x) => a + x.r, 0) / d.length } : null; })());
   return `<button class="hcard bil" ${SEC_LINK("bilanz")}>${hHead("Kairo-Bilanz", "", "")}
-    <div class="bilrow"><div class="ring-s">${ringSvg(0.33, "var(--up)")}<b>+0,14 R</b></div>
-      <div><b>Ø je Trade nach Kosten (Forschung 2008–2026, Zufall +0,11 R)</b><span>${st ? (st.mtm_n != null ? `Live (USA/Europa): ${st.mtm_n} Trades · Ø ${st.mtm_r >= 0 ? "+" : ""}${fmt(st.mtm_r, 2)} R inkl. ${st.open} offener${st.mtm_n < 30 ? " (noch früh)" : ""}`
+    <div class="bilrow"><div class="ring-s">${ringSvg(RESEARCH.win, "var(--gold)")}<b>${resR(RESEARCH.rNorm)}</b></div>
+      <div><b>Ø je Trade 2008–2026 mit normalen Kosten · mit Stress-Kosten ${resR(RESEARCH.rStress)}</b><span>${st ? (st.mtm_n != null ? `Live (USA/Europa): ${st.mtm_n} Trades · Ø ${st.mtm_r >= 0 ? "+" : ""}${fmt(st.mtm_r, 2)} R inkl. ${st.open} offener${st.mtm_n < 30 ? " (noch früh)" : ""}`
       : `Live: ${st.n} Trades abgeschlossen · Ø ${st.avg_r >= 0 ? "+" : ""}${fmt(st.avg_r, 2)} R${st.n < 30 ? " (noch früh – zuerst schließen die Stops)" : " je Trade"}`) : "Live-Bilanz läuft seit 30.09.2026 – aussagekräftig ab einigen hundert Trades"}</span></div></div>
     <span class="hlink">Details ›</span></button>`;
 }
@@ -4419,14 +4441,15 @@ const autoShare = total => total < 10000 ? 100 : total < 20000 ? 80 : 70;
 const etfCfg = () => { const e = state.etf || {}, total = +e.total > 0 ? +e.total : 3000, man = !!e.shareManual && +e.share > 0;
   return { total, auto: !man, share: man ? Math.min(100, +e.share) : autoShare(total), rate: +e.rate > 0 ? +e.rate : 0, units: +e.units > 0 ? +e.units : 0,
   buy: +e.buy > 0 ? +e.buy : 0, since: /^\d{4}-\d\d-\d\d$/.test(e.since || "") ? e.since : "" }; };
-// Gebühren-Bremse (backend/capstudy.py, Okt. 2026): ~93 Trades/Jahr bei 5 Plätzen → 2 Orders je Trade. Ergebnis 10 Jahre, 1 % Risiko,
-// 0,99 € je Order: 900 € → −12 bis −25 % p. a. (bzw. Totalverlust), 1.500 € → ≈ 0 %, 3.000 € → +12/+13 %, 10.000 € → +15/+23 %; ohne Gebühren +17/+24 %.
+// Gebühren-Bremse: ~93 Trades/Jahr bei 5 Plätzen → 2 Orders je Trade (Anteil am Kapital = Rechnung, kein Backtest).
+// Einordnung nach Forschung 31.10.2026 (korrigierte Engine, 2008–26, 5 × 1 %): 1.000 € Totalverlust durch feste Gebühren, 3.000 € −2 % p. a.,
+// 10.000 € +6 % normal / +1 % Stress. Die ältere capstudy (+12 bis +23 % p. a.) war zu optimistisch.
 function feeDrag(cap) {
   const fee = tpCfg().fee, d = cap > 0 ? 93 * 2 * fee / cap : 1;
   return { d, tone: d >= .08 ? "red" : d >= .04 ? "yellow" : "green",
-    t: d >= .08 ? `Gebühren fressen den Vorteil: ≈ ${pct(d, 0)} des Trading-Kapitals pro Jahr. Im 10-Jahres-Test verlor die Strategie mit 900 € Geld und kam mit 1.500 € auf ≈ 0 %. Unter ~3.000 € lieber nur im Spiel/Journal üben und das Geld in den ETF.`
-      : d >= .04 ? `Gebühren kosten ≈ ${pct(d, 0)} pro Jahr – im Test brachte 3.000 € netto +12/+13 % (ohne Gebühren +17/+24 %). Machbar, aber knapp.`
-      : `Gebühren ≈ ${pct(d, 1)} pro Jahr – kein großes Hindernis mehr (Test 10.000 €: +15/+23 % pro Jahr).` };
+    t: d >= .08 ? `Gebühren fressen den Vorteil: ≈ ${pct(d, 0)} des Trading-Kapitals pro Jahr. Im Test 2008–26 liefen Konten um 1.000 € durch die festen Gebühren leer. Unter ~5.000 € lieber nur im Spiel/Journal üben und das Geld in den ETF.`
+      : d >= .04 ? `Gebühren kosten ≈ ${pct(d, 0)} pro Jahr – im Test 2008–26 kam ein 3.000-€-Konto (5 × 1 %) damit auf etwa −2 % pro Jahr. Eher üben als echt handeln.`
+      : `Gebühren ≈ ${pct(d, 1)} pro Jahr – kein großes Hindernis mehr. Der Vorteil der Strategie ist aber auch hier klein (Test 10.000 €: ${sgnPct(RESEARCH.d5.norm, 0)} pro Jahr mit normalen, ${sgnPct(RESEARCH.d5.stress, 0)} mit Stress-Kosten; Welt-ETF ${sgnPct(RESEARCH.acwi, 0)}).` };
 }
 function etfLine(h, buy) {
   if (!h || h.length < 20) return "";
@@ -4583,6 +4606,12 @@ document.addEventListener("click", e => {
 // Wahrheits-Test (backend/shortswing.py only=truth): zwei unabhängige Stichproben à ~3.200 Aktien, 2017–Okt. 2026, Depot 3.000 €,
 // netto mit Gebühr 0,99 € je Order, Turbo-Finanzierung/Spread, K.-o. bei Kurslücken, täglicher Depotwert. Regeln auf 2017–2023
 // gewählt, 2024–2026 unverändert geprüft. Aktien von heute (Survivorship-Bias nicht abgezogen) → echte Ergebnisse eher niedriger.
+// Forschungsstand der Kairo-Regel B60 an EINER Stelle (docs/KAIRO_REVERSAL_ULTIMATE_RESULTS.md, korrigierte Engine 31.10.2026):
+// 13.241 Trades 2008–2026 (USA/Europa), je Trade in R; Depot 2008–26. „Normal“ = Scalable PRIME+ (0,99 € unter 250 €, Spread),
+// „Stress“ = doppelter Spread, Schlupf, Wechselkursgebühr. Ältere Angaben (+0,14 R, ≈ +7 % p. a., −25 %) stammen aus Studien vor der Engine-Korrektur.
+const RESEARCH = { ver: "Forschung 31.10.2026", n: 13241, rNorm: 0.12, rStress: -0.03, vsRandom: 0.03, win: 0.32,
+  d20: { norm: 0.06, ddNorm: -0.30, stress: -0.012, ddStress: -0.52 }, d5: { norm: 0.06, ddNorm: -0.60, stress: 0.008, ddStress: -0.71 }, acwi: 0.09 };
+const resR = v => `${v >= 0 ? "+" : "−"}${fmt(Math.abs(v), 2)} R`;
 const STRAT_BT = {
   main: { cagr: [.148, .15], test: [.039, .18], mdd: [.352, .50],
     years: [{ 2017: -.023, 2018: -.153, 2019: .228, 2020: .404, 2021: .32, 2022: .194, 2023: -.05, 2024: .226, 2025: .543, 2026: -.158 },
@@ -4633,10 +4662,12 @@ function bilanzHtml() {
   const back = `<button class="backbtn" data-gosec="today">‹ Heute</button>`, M = STRAT_BT.main;
   const rng = (a, d = 0, p = "") => a[0] === a[1] ? p + pct(a[0], d) : `${p}${pct(Math.min(...a), d)} bis ${p}${pct(Math.max(...a), d)}`;
   const sg = v => (v >= 0 ? "+" : "−") + pct(Math.abs(v), 0), R = v => `${v >= 0 ? "+" : "−"}${fmt(Math.abs(v), 2)} R`;
-  const research = `<div class="hcard bhero"><div class="bh-l"><span>Forschung 10/2026 · 49.134 Kairo-Treffer · 2008 – 2026 · Kosten Scalable PRIME+</span>
-      <b>+0,14 R</b><em>Ø je Trade nach Kosten – Zufalls-Einstiege mit denselben Regeln: +0,11 R. In allen drei Testzeiträumen positiv: ein kleiner, echter Vorteil.
-      Als Depot (Kairo-S, 20 Trades × 0,25 % Risiko): <b>≈ +7 % pro Jahr</b>, mit hohen Kosten ≈ 0 % – Welt-ETF im selben Zeitraum ≈ +9 %.</em></div>
-      <div class="bh-r"><div class="mt"><span>Größter Rückgang</span><b class="down">−25 %</b><em>Kairo-S · mit 5 × 1 % Risiko −53 %</em></div>
+  const D = RESEARCH.d20;
+  const research = `<div class="hcard bhero"><div class="bh-l"><span>${RESEARCH.ver} · ${fmt(RESEARCH.n, 0)} Trades · 2008 – 2026 · USA/Europa</span>
+      <b>${resR(RESEARCH.rNorm)}</b><em>Ø je Trade mit normalen Kosten (Scalable PRIME+), mit Stress-Kosten (doppelter Spread, Schlupf) <b>${resR(RESEARCH.rStress)}</b>.
+      Nur etwa ${resR(RESEARCH.vsRandom)} besser als Zufalls-Einstiege mit denselben Regeln – ein kleiner Vorteil, den die Kosten fast ganz aufzehren.
+      Als Depot (20 Trades × 0,25 % Risiko): <b>${sgnPct(D.norm, 0)} pro Jahr</b> mit normalen, <b>${sgnPct(D.stress, 1)}</b> mit Stress-Kosten – Welt-ETF im selben Zeitraum ${sgnPct(RESEARCH.acwi, 0)}.</em></div>
+      <div class="bh-r"><div class="mt"><span>Größter Rückgang</span><b class="down">${pct(D.ddNorm, 0)} bis ${pct(D.ddStress, 0)}</b><em>20 × 0,25 % · mit 5 × 1 % Risiko ${pct(RESEARCH.d5.ddNorm, 0)} bis ${pct(RESEARCH.d5.ddStress, 0)}</em></div>
         <div class="mt"><span>Entscheidend</span><b>Kosten</b><em>Spread und Ausführung → Kosten-Check im Journal</em></div>
         <div class="mt"><span>Realistisch</span><b>eher weniger</b><em>Pleite-Aktien fehlen im Test</em></div></div></div>`;
   const rules = `<div class="hcard">${hHead("Die Kairo-Regel")}<ol class="rule-steps">${[
@@ -4647,7 +4678,7 @@ function bilanzHtml() {
       ["Ausstieg", "ab Tag 10 bei Schluss unter der EMA 20 zur nächsten Eröffnung, spätestens an Tag 60 – kein festes Kursziel"],
       ["Kosten klein halten", "Orders ab 250 € (PRIME+ gebührenfrei), Aktie statt Turbo, wenn das Kapital reicht"]].map(([l, t], k) => `<li><i>${k + 1}</i><span><b>${l}</b>${t}</span></li>`).join("")}</ol></div>`;
   const unknown = `<div class="hcard">${hHead("Was wir (noch) nicht wissen")}<ul class="checks">
-      <li><i class="gold">!</i><b>Hält der Vorteil live?</b> +0,14 R gegen +0,11 R bei Zufalls-Einstiegen ist klein. Erst ~30–50 abgeschlossene Live-Trades zeigen, ob er im echten Markt bleibt.</li>
+      <li><i class="gold">!</i><b>Hält der Vorteil live?</b> Rund ${resR(RESEARCH.vsRandom)} besser als Zufall ist klein, und nach Stress-Kosten bleibt im Schnitt nichts übrig. Erst einige hundert abgeschlossene Live-Trades zeigen, wo der echte Wert liegt.</li>
       <li><i class="gold">!</i><b>Pleite-Aktien fehlen:</b> Getestet wurden Aktien, die es heute noch gibt. Das macht Rückrechnungen zu schön.</li>
       <li><i class="gold">!</i><b>Kosten im echten Handel:</b> Spread und Ausführung bei kleinen Werten können den Vorteil auffressen – deshalb der Kosten-Check im Journal.</li></ul>
     <div class="note" style="margin:8px 0 0">Alle Strategien und Berichte – auch die gescheiterten: <a href="research/" target="_blank" rel="noopener">Forschung &amp; Backtests</a>.</div></div>`;
@@ -4675,7 +4706,7 @@ function bilanzHtml() {
       <span class="g-h-v"><b class="${x.r == null ? rc : x.r >= 0 ? "up" : "down"}">${x.r != null ? R(x.r) : "–"}</b><small class="${rc}">${rt}</small></span></div>`; };
   const live = `<div class="hcard">${hHead(`Live-Bilanz · Kairo-Regel <small>seit ${dateDE(L && L.since)}</small>`)}
     ${st ? `<div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Beendet</span><b>${st.n}</b><em>${st.open ?? act.filter(s => X(s).res === "run").length} laufen</em></div>
-      <div class="mt"><span>Alle Trades</span><b class="${(vr ?? 0) >= 0 ? "up" : "down"}">${vr != null ? R(vr) : "–"}</b><em>${vn} Trades · Forschung +0,14 R</em></div>
+      <div class="mt"><span>Alle Trades</span><b class="${(vr ?? 0) >= 0 ? "up" : "down"}">${vr != null ? R(vr) : "–"}</b><em>${vn} Trades · Forschung ${resR(RESEARCH.rNorm)} / ${resR(RESEARCH.rStress)} (Stress)</em></div>
       <div class="mt"><span>Beendet Ø</span><b class="${(st.avg_r ?? 0) >= 0 ? "up" : "down"}">${st.avg_r != null ? R(st.avg_r) : "–"}</b><em>${st.stop != null ? pct(st.stop, 0) + " am Stop" : "noch keine"}</em></div>
       <div class="mt"><span>Im Plus</span><b>${st.mtm_win != null ? pct(st.mtm_win, 0) : st.win != null ? pct(st.win, 0) : "–"}</b><em>aller Trades · Forschung ≈ 30–35 %</em></div></div>
       <div class="note" style="margin:0 0 10px">${verdict}</div>`
@@ -5727,7 +5758,7 @@ function tpPlansHtml() {
       <div class="g-act">${p.tp && p.x1 == null ? `<button class="btn ghost sm" data-tph1="${p.id}">Hälfte 1 verkauft …</button>` : ""}<button class="btn ghost sm" data-tph2="${p.id}">${p.tp && p.x1 != null ? "Hälfte 2 verkauft …" : "Verkauft …"}</button><button class="btn ghost sm" data-tpdel="${p.id}">Löschen</button></div></div>`; };
   const rs = done.map(p => p.R).filter(x => x != null), avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
   const h = done.filter(p => p.R1 != null && p.R2 != null && p.R1 !== p.R2), a1 = avg(h.map(p => p.R1)), a2 = avg(h.map(p => p.R2));
-  const stat = rs.length ? `${rs.length} abgeschlossen · Ø ${fmt(avg(rs), 2)} R · Treffer ${pct(rs.filter(x => x > 0).length / rs.length, 0)} (Test-Erwartung: Ø ≈ +0,25 R, Gewinner ≈ 30 % – wenige große Gewinner tragen das Ergebnis)` : "";
+  const stat = rs.length ? `${rs.length} abgeschlossen · Ø ${fmt(avg(rs), 2)} R · Treffer ${pct(rs.filter(x => x > 0).length / rs.length, 0)} (Kairo-Forschung: Ø ${resR(RESEARCH.rNorm)} mit normalen Kosten, Gewinner ≈ 30 % – wenige große Gewinner tragen das Ergebnis)` : "";
   const cmp = h.length ? `<div class="tp2-cmp"><div><span>Hälfte 1 · deine Strategie (TP)</span><b class="${a1 >= 0 ? "up" : "down"}">${fmt(a1, 2).replace(/^(?!-)/, "+")} R</b><em>Treffer ${pct(h.filter(p => p.R1 > 0).length / h.length, 0)}</em></div>
       <div><span>Hälfte 2 · laufen lassen (Tag 20)</span><b class="${a2 >= 0 ? "up" : "down"}">${fmt(a2, 2).replace(/^(?!-)/, "+")} R</b><em>Treffer ${pct(h.filter(p => p.R2 > 0).length / h.length, 0)}</em></div></div>
     <div class="note" style="margin:4px 2px 12px">${h.length} Trades verglichen${h.length < 20 ? ` – aussagekräftig ab etwa 20–30` : a1 > a2 + 0.1 ? " – deine TP-Strategie liegt vorn" : a2 > a1 + 0.1 ? " – Laufenlassen liegt vorn" : " – beide etwa gleich"}.</div>` : "";
@@ -5858,7 +5889,7 @@ function paperBox(sid, st, sm, bench) {
 function paperCard(sid, st, sm, bench) {
   const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3", MOM5: "MOM5 · Momentum Top 5 (monatlich)", MOM10: "MOM10 · Momentum Top 10 (monatlich)", DM: "DM · Dual Momentum (ETF)", SP2F: "SP2F · S&P 500 2× nur über der 200-Tage-Linie", KAIROZ: "KAIROZ · Kairo-Ziel (attraktives Kursziel, halten bis zum Ziel)", KAIROL: "KAIROL · Kairo lang (Vergleich ohne Kursziel)", KAIRO: "KAIRO · Scanner-Treffer", KAIROS: "KAIRO-S · Scanner-Treffer, schwache Aktien zuerst" }[sid] || "S20 · Trendfolge / VCP";
   const vr = { S19B: "Variante B: wie S19, aber das Volumen muss nur an 2 der letzten 3 Tage sinken. ", S19C: "Variante C: Überdehnung schon ab 2,0 Std und Volumen an 2 der letzten 3 Tage sinkend. " }[sid] || "";
-  const rule = sid === "KAIRO" || sid === "KAIROS" ? "Handelt jeden echten Kairo-Treffer (USA und Europa) nach der getesteten Regel: bis zu 10 Tage auf eine Seitwärtsphase warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung innerhalb der Spanne, Stop unter dem Basis-Tief − 0,25 ATR, 1 % Risiko, max. 5 Positionen. Ausstieg: Stop, ab Tag 10 Schluss unter EMA20, spätestens Tag 60 (im Test in allen drei Zeiträumen besser als Tag 40). 2008–2026 mit PRIME+-Kosten besser als Zufall (+0,14 R je Trade gegenüber +0,11 R) – kleiner, aber belegter Vorteil." + (sid === "KAIROS" ? " Variante S: bei mehreren Einstiegen zuerst Aktien mit dem schwächsten Kursverlauf der letzten Monate (im Test in allen drei Zeiträumen besser; Vorbehalt: kann am Datensatz liegen). Depot-Aufbau wie der beste Test: 20 Positionen × 0,25 % Risiko, 20.000 € virtuell (2008–2026: +7 % p. a., größter Rückgang −25 %; mit strengen Kosten ≈ 0 % – Kosten entscheiden)." : " Bei mehreren Einstiegen zuerst schwächeres Vormomentum (seit 29.10.2026, wie in der App – im Depot-Test besser als „ruhigere zuerst“).") + " Läuft einen Handelstag hinter dem Scan."
+  const rule = sid === "KAIRO" || sid === "KAIROS" ? `Handelt jeden echten Kairo-Treffer (USA und Europa) nach der getesteten Regel: bis zu 10 Tage auf eine Seitwärtsphase warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung innerhalb der Spanne, Stop unter dem Basis-Tief − 0,25 ATR, 1 % Risiko, max. 5 Positionen. Ausstieg: Stop, ab Tag 10 Schluss unter EMA20, spätestens Tag 60 (im Test in allen drei Zeiträumen besser als Tag 40). 2008–2026 je Trade ${resR(RESEARCH.rNorm)} mit PRIME+-Kosten, ${resR(RESEARCH.rStress)} mit Stress-Kosten – nur etwa ${resR(RESEARCH.vsRandom)} besser als Zufall.` + (sid === "KAIROS" ? " Variante S: bei mehreren Einstiegen zuerst Aktien mit dem schwächsten Kursverlauf der letzten Monate (im Test in allen drei Zeiträumen besser; Vorbehalt: kann am Datensatz liegen). Depot-Aufbau wie der beste Test: 20 Positionen × 0,25 % Risiko, 20.000 € virtuell (2008–2026: +6 % p. a. mit normalen Kosten, größter Rückgang −30 %; mit Stress-Kosten −1,2 % p. a. und −52 % – Kosten entscheiden)." : " Bei mehreren Einstiegen zuerst schwächeres Vormomentum (seit 29.10.2026, wie in der App – im Depot-Test besser als „ruhigere zuerst“).") + " Läuft einen Handelstag hinter dem Scan."
     : sid === "SP2F" ? "Jeden Handelstag: Liegt der S&P 500 zum Schluss über seinem 200-Tage-Durchschnitt, wird am nächsten Morgen der gehebelte ETF gehalten (Xtrackers S&P 500 2x Leveraged, DBPG), sonst Bargeld. Etwa 6 Wechsel im Jahr. Test 1989–2026: in allen drei Zeiträumen besser als der S&P 500 (+13,1 % statt +11,3 % p. a.) mit kleinerem Rückgang (−45 % statt −55 %) – nach den vorab festgelegten Regeln aber knapp nicht bestanden (mit der 100-Tage-Linie schlechter). Nicht im Test: Steuern bei jedem Wechsel und ein Crash an einem einzigen Tag (mit 2× doppelt so stark). Deshalb erst 12 Monate auf Papier."
     : sid === "DM" ? "Am ersten Handelstag jedes Monats: Von SPY (USA), EFA (Industrieländer) und QQQ (Nasdaq 100) wird der ETF mit der besten 12-Monats-Rendite gehalten – aber nur, wenn sie über dem Geldmarkt (BIL) liegt, sonst kurze US-Anleihen (SHY). Ein ETF, etwa 1–4 Wechsel im Jahr. Einzige Strategie, die 2008–2016, 2017–2021 und im finalen Test 2022–2026 nach Kosten besser als der Welt-ETF war (2022–26: +11,6 % statt +9,7 % p. a. unter Stress-Kosten) – aber knapp nicht signifikant besser als Zufall (p = 0,07). Bester Kandidat, kein Beweis."
     : sid === "KAIROZ" ? "Deine Idee (20.10.2026): Kairo-Treffer mit fertiger Seitwärtsphase (USA/Europa) und attraktivem Analysten-Kursziel am Signaltag – Abstand zum Ziel mindestens 1 × Jahresschwankung (Bank ab ≈ +25–40 %, Risikoaktie ab ≈ +70–100 %), mindestens 3 Analysten. Halten, bis 80 % des Wegs zum Kursziel geschafft sind; Sicherheitsnetz −30 %, spätestens 24 Monate. 20 Plätze à 5 %. Noch nicht getestet – historische Kursziele gibt es nicht kostenlos, deshalb nur dieser Vorwärtstest."
@@ -6054,7 +6085,7 @@ function renderMain() {
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       <button class="kchip filt" data-sub="filter">Filter${nFilt ? ` <small>${nFilt}</small>` : ""}</button></div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
-  const head = searchHtml() + scanBarHtml() + bar + (["hit", "go"].includes(state.view) ? topSetupsHtml() : "") + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner, belegter Vorteil je Trade (+0,14 R statt +0,11 R bei Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
+  const head = searchHtml() + scanBarHtml() + bar + (["hit", "go"].includes(state.view) ? topSetupsHtml() : "") + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner Vorteil je Trade (${resR(RESEARCH.rNorm)} mit normalen, ${resR(RESEARCH.rStress)} mit Stress-Kosten, kaum besser als Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
   if (state.view === "hit" && $("search").value.trim().length < 2) { $("main").innerHTML = searchHtml() + scanBarHtml() + bar + boardHtml(); return; }
   if (!list.length && $("search").value.trim().length >= 2) { $("main").innerHTML = searchHtml() + bar; return; }
   if (!list.length) {
