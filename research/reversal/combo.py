@@ -22,7 +22,21 @@ weglassen), wenn der Unterschied in Train, Validierung UND Holdout dasselbe Vorz
 UND der Benjamini-Hochberg-q-Wert über alle 12 Tests ≤ 0,10 ist. Kein Kandidat ändert die Regel – nächster Schritt wäre ein
 Depot-Test (Rangfolge/Filter vs. B60, alle Raster), danach Schattentest und Freigabe.
 
-    python -m research.reversal.combo --data v1 --signals sig.parquet --sec sec --insider sec/insider_buys.csv.gz --out out
+Teil 2 (vorab festgelegt 01.11.2026 nach Teil 1, vor dem eigenen Lauf; nur USA, SEC-Daten zeitgenau):
+Grund des Rückgangs (8-K-Meldungen mit Annahmedatum in den 20 Handelstagen bis zum Signal; Chan 2003: Rückgänge OHNE
+Nachricht erholen sich eher, Rückgänge MIT Nachricht setzen sich eher fort):
+  N1 no_news      keine 8-K-Meldung
+  N2 news_earn    Quartalszahlen-Meldung (8-K Punkt 2.02)
+  N3 news_other   andere wesentliche Meldung (8-K ohne 2.02, nicht nur Anhänge 9.01)
+Qualität (XBRL, nur bis zum Signaltag veröffentlichte Berichte, höchstens 200 Tage alt):
+  Q1 profitable   Jahresüberschuss der letzten 12 Monate > 0
+  Q2 gp_quality   Bruttogewinn / Bilanzsumme ≥ 0,20
+  Q3 em_pos       letzter Quartalsgewinn über dem Vorjahresquartal
+  Q4 low_lev      Eigenkapital / Bilanzsumme ≥ 0,40
+Paare: no_news+profitable · news_earn+em_neg · profitable+deep_dd
+Gleiche Entscheidungsregel, Benjamini-Hochberg innerhalb von Teil 2; zusätzlich der q-Wert über Teil 1 + 2 zusammen.
+
+    python -m research.reversal.combo --data v1 --signals sig.parquet --sec sec --insider sec/insider_buys.csv.gz --out out [--part 2 --fund sec/fund_timeline.csv.gz]
 """
 from __future__ import annotations
 
@@ -42,6 +56,10 @@ HYP = {"ins_buy": "Insider-Kauf (90 T.)", "ins_cluster": "≥ 2 Insider kauften"
        "ins_big": "Insider-Käufe ≥ 100.000 $", "sma200_up": "über der 200-Tage-Linie", "deep_dd": "≥ 40 % unter 52-Wochen-Hoch",
        "vol_spike": "Volumen ≥ 2 × Ø (Kapitulation)", "drop5": "Wochenverlust ≤ −10 %", "earn_recent": "Quartalszahlen ≤ 10 Tage davor"}
 PAIRS = (("ins_buy", "deep_dd"), ("vol_spike", "index_u200"), ("sma200_up", "index_u200"))
+HYP2 = {"no_news": "kein 8-K im Rückgang (keine Nachricht)", "news_earn": "Quartalszahlen im Rückgang (8-K 2.02)",
+        "news_other": "andere Meldung im Rückgang", "profitable": "profitabel (12 Monate)", "gp_quality": "Bruttogewinn/Bilanzsumme ≥ 0,20",
+        "em_pos": "Gewinn über Vorjahresquartal", "low_lev": "Eigenkapitalquote ≥ 40 %", "em_neg": "Gewinn unter Vorjahresquartal"}
+PAIRS2 = (("no_news", "profitable"), ("news_earn", "em_neg"), ("profitable", "deep_dd"))
 MIN_D, Q = 0.05, 0.10
 OFFICER = ("officer", "ceo", "cfo", "president", "chief", "coo", "chair")
 
@@ -97,14 +115,64 @@ def features(df: pd.DataFrame, ins: dict, us: set) -> pd.DataFrame:
     return df.reset_index(drop=True).join(pd.DataFrame(rows))
 
 
+def features2(df: pd.DataFrame, filings: pd.DataFrame | None, tl: pd.DataFrame | None, t2c: dict) -> pd.DataFrame:
+    """Teil 2: Nachrichten-Grund des Rückgangs (8-K) und Qualität (XBRL, zeitgenau) – nur US-Titel mit CIK."""
+    adj = R._G["adj"]
+    ev = {}
+    if filings is not None:
+        f = filings[filings["form"].astype(str).str.startswith("8-K")].copy()
+        f["at"] = pd.to_datetime(f["accepted"], utc=True, errors="coerce").dt.tz_localize(None).dt.normalize()
+        it = f["items"].fillna("").astype(str)
+        f["earn"] = it.str.contains("2.02")
+        f["other"] = ~f["earn"] & it.apply(lambda s: bool([x for x in s.replace(";", ",").split(",") if x.strip() and x.strip() not in ("9.01", "7.01")]))
+        ev = {int(c): g[["at", "earn", "other"]].dropna(subset=["at"]).sort_values("at") for c, g in f.groupby("cik")}
+    if tl is not None:
+        tl = tl.copy()
+        for c in ("avail", "filed"):
+            tl[c] = pd.to_datetime(tl[c])
+        tlg = {int(c): g.sort_values("avail") for c, g in tl.groupby("cik")}
+    else:
+        tlg = {}
+    out = []
+    for x in df.itertuples(index=False):
+        o = dict.fromkeys(HYP2)
+        c = t2c.get(x.ticker)
+        if c is not None:
+            a = adj[x.ticker]
+            sd = pd.Timestamp(x.signal_date)
+            i = int(a.index.searchsorted(sd, side="right") - 1)
+            lo = a.index[max(0, i - 20)]
+            if filings is not None:
+                g = ev.get(int(c))
+                w = g[(g["at"] > lo) & (g["at"] <= sd)] if g is not None else None
+                o["no_news"] = w is None or len(w) == 0
+                o["news_earn"] = bool(w is not None and w["earn"].any())
+                o["news_other"] = bool(w is not None and w["other"].any())
+            g = tlg.get(int(c))
+            if g is not None:
+                g = g[g["avail"] <= sd]
+                if len(g) and (sd - g["filed"].iloc[-1]).days <= 200:
+                    r = g.iloc[-1]
+                    nz = lambda v: v is not None and pd.notna(v)
+                    o["profitable"] = bool(r["ni_ttm"] > 0) if nz(r.get("ni_ttm")) else None
+                    o["gp_quality"] = bool(r["gpa"] >= 0.20) if nz(r.get("gpa")) else None
+                    o["em_pos"] = bool(r["em"] > 0) if nz(r.get("em")) else None
+                    o["em_neg"] = bool(r["em"] < 0) if nz(r.get("em")) else None
+                    o["low_lev"] = bool(r["equity"] / r["assets"] >= 0.40) if nz(r.get("equity")) and nz(r.get("assets")) and r["assets"] > 0 else None
+        out.append(o)
+    return df.reset_index(drop=True).join(pd.DataFrame(out))
+
+
 def _p(a: np.ndarray, b: np.ndarray) -> float:
     va, vb = a.var(ddof=1) / len(a), b.var(ddof=1) / len(b)
     z = abs(a.mean() - b.mean()) / sqrt(va + vb) if va + vb > 0 else 0.0
     return float(2 * (1 - 0.5 * (1 + erf(z / sqrt(2)))))
 
 
-def evaluate(df: pd.DataFrame) -> dict:
-    tests = list(HYP.items()) + [(f"{a}+{b}", f"{HYP.get(a, a)} UND {LR.FEATS.get(b, HYP.get(b, b))}") for a, b in PAIRS]
+def evaluate(df: pd.DataFrame, hyp: dict | None = None, pairs: tuple | None = None) -> dict:
+    hyp, pairs = hyp or HYP, pairs if pairs is not None else PAIRS
+    lab = lambda k: hyp.get(k) or HYP.get(k) or HYP2.get(k) or LR.FEATS.get(k, k)
+    tests = [(k, v) for k, v in hyp.items() if k != "em_neg"] + [(f"{a}+{b}", f"{lab(a)} UND {lab(b)}") for a, b in pairs]
     res = {}
     for k, lbl in tests:
         parts = k.split("+")
@@ -141,9 +209,9 @@ def evaluate(df: pd.DataFrame) -> dict:
     return res
 
 
-def report(df: pd.DataFrame, res: dict) -> str:
+def report(df: pd.DataFrame, res: dict, part: int = 1) -> str:
     f = lambda v: "–" if v is None else f"{v:+.3f}"
-    L = ["# Kombinations-Test: 11 Kriterien + X (2008–2026)\n", __doc__.split("\n", 1)[1].split("    python")[0].strip(), "",
+    L = [f"# Kombinations-Test{' Teil 2 (Nachrichten-Grund, Qualität)' if part == 2 else ''}: 11 Kriterien + X (2008–2026)\n", __doc__.split("\n", 1)[1].split("    python")[0].strip(), "",
          f"**{len(df):,} B60-Trades**, davon USA {int(df['ticker'].map(lambda t: '.' not in t).sum()):,} · Ø R Stress {df['R_stress'].mean():+.3f}\n".replace(",", "."),
          "| Merkmal | mit X (Anteil) | Ø R Stress mit | ohne | Δ Train | Δ Validierung | Δ Holdout | q (BH) | Ergebnis |", "|---|---|---|---|---|---|---|---|---|"]
     for k, r in res.items():
@@ -164,7 +232,8 @@ def report(df: pd.DataFrame, res: dict) -> str:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data"); ap.add_argument("--signals"); ap.add_argument("--sec"); ap.add_argument("--insider")
-    ap.add_argument("--out", default="combo_out")
+    ap.add_argument("--out", default="combo_out"); ap.add_argument("--part", type=int, default=1); ap.add_argument("--fund")
+    ap.add_argument("--prev", help="combo_result.json aus Teil 1 für den gemeinsamen q-Wert")
     ap.add_argument("--universe", default="research/strategy_championship/data/universe_frozen_2026-10-16.csv")
     a = ap.parse_args(argv)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
@@ -177,11 +246,38 @@ def main(argv=None) -> int:
     ins = insider_index(a.insider, str(cm) if cm else None)
     print(f"Insider-Index: {len(ins)} Aktien mit Käufen · US-Titel mit CIK: {len(us)}", flush=True)
     df = features(base, ins, us)
-    df.to_csv(out / "combo_trades.csv.gz", index=False)
-    res = evaluate(df)
-    (out / "combo_result.json").write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
-    txt = report(df, res)
-    (out / "combo_report.md").write_text(txt, encoding="utf-8")
+    sfx = "" if a.part == 1 else "2"
+    if a.part == 2:
+        t2c = {t: int(c) for t, c in zip(pd.read_csv(cm)["ticker"], pd.read_csv(cm)["cik"])} if cm and cm.exists() else {}
+        fil = pd.read_csv(Path(a.sec) / "filings.csv.gz", dtype={"items": str}, usecols=["cik", "form", "items", "accepted"]) if a.sec else None
+        tl = None
+        if a.fund and Path(a.fund).exists():
+            tl = pd.read_csv(a.fund)
+            if "gpa" not in tl.columns:                      # Rohdaten → Zeitleiste bauen
+                from research.strategy_championship.v3 import fundamentals as FU
+                f = pd.read_csv(a.fund, dtype={"val": str, "start": str, "end": str, "filed": str})
+                f["start"] = f["start"].fillna("")
+                tl = FU.build(f)
+        print(f"Teil 2: 8-K {0 if fil is None else len(fil)} Zeilen · Zeitleiste {0 if tl is None else len(tl)} Zeilen", flush=True)
+        df = features2(df, fil, tl, t2c)
+        res = evaluate(df, HYP2, PAIRS2)
+        if a.prev and Path(a.prev).exists():             # gemeinsamer BH-q-Wert über Teil 1 + 2
+            prev = json.loads(Path(a.prev).read_text())
+            allp = sorted([(v["p"], ("1", k)) for k, v in prev.items() if v.get("p") is not None] + [(v["p"], ("2", k)) for k, v in res.items() if v.get("p") is not None])
+            m, q = len(allp), 1.0
+            for rank in range(m, 0, -1):
+                p, (part, k) = allp[rank - 1]
+                q = min(q, p * m / rank)
+                if part == "2":
+                    res[k]["q_all"] = q
+    else:
+        res = evaluate(df)
+    df.to_csv(out / f"combo{sfx}_trades.csv.gz", index=False)
+    (out / f"combo{sfx}_result.json").write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
+    txt = report(df, res, a.part)
+    if a.part == 2:
+        txt += "\nGemeinsamer q-Wert über Teil 1 + 2: " + ", ".join(f"{v['l']} {v['q_all']:.3f}" for v in res.values() if v.get("q_all") is not None) + "\n"
+    (out / f"combo{sfx}_report.md").write_text(txt, encoding="utf-8")
     print(txt)
     return 0
 
