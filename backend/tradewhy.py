@@ -34,9 +34,13 @@ POST = {"markt_fiel": "Gesamtmarkt fiel in der Haltezeit", "sektor_fiel": "Sekto
         "eigenschwach": "Aktie deutlich schwächer als der Markt", "luecke": "Kurslücke über den Stop",
         "schnell": "Stop schon in den ersten 3 Tagen", "zahlen": "Quartalszahlen in der Haltezeit"}
 # Schon geprüft (Forschung 2026) – nicht erneut vorschlagen, sondern mit dem Ergebnis anzeigen
-TESTED = {"unruhig": "Ruhe-Filter (Q1, 31.10.2026): je Trade besser, im Depot nicht – bleibt aus",
+# Historischer Lern-Test 01.11.2026 (research/reversal/learn.py, 13.241 B60-Trades 2008–2026, Stress-Kosten):
+TESTED = {"unruhig": "2008–26: unruhige Aktien (ATR > 5 %) sogar besser (+0,19 R gegen −0,07 R) – kein Filter",
+          "index_u200": "2008–26: Markt unter 200-Tage-Linie sogar besser (+0,18 R gegen −0,15 R) – kein Filter",
+          "eng": "2008–26: Stop < 1 ATR nicht beständig schlechter (Holdout besser) – kein Filter",
           "zahlen_bald": "Quartalszahlen-Filter (N1, Ultimate 10/2026): nicht bestanden",
-          "momentum": "Vormomentum ist schon die Rangfolge der Regel (schwächeres zuerst)"}
+          "momentum": "2008–26: in allen Zeiträumen schwächer (−0,14 R gegen −0,01 R); die Regel nimmt bei vollem Depot "
+                      "schon das schwächere Vormomentum zuerst – als eigener Filter knapp nicht bestanden"}
 INDEX = {"us": "^GSPC", "europe": "^STOXX", "asia": "^GSPC"}
 SECTOR_ETF = {"Technology": "XLK", "Financial Services": "XLF", "Healthcare": "XLV", "Consumer Cyclical": "XLY",
               "Consumer Defensive": "XLP", "Energy": "XLE", "Industrials": "XLI", "Basic Materials": "XLB",

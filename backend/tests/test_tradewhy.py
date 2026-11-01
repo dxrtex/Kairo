@@ -51,20 +51,20 @@ def _book(n_eng_bad=12, n_ok=30, consistent=True):
         eng = i % 3 == 0 and i < 3 * n_eng_bad
         late_half = i >= (n_eng_bad + n_ok) // 2
         r = (-0.8 if (consistent or not late_half) else 1.2) if eng else 0.4 * (1 if i % 2 else -0.5)
-        snaps[f"T{i}|hit|{d}"] = _sn(f"T{i}", d, r, stop_atr=0.8 if eng else 1.6)
+        snaps[f"T{i}|hit|{d}"] = _sn(f"T{i}", d, r, stop_atr=3.0 if eng else 1.6)
     W.analyze(snaps, {}, {})
     return snaps
 
 
 def test_report_candidate_needs_size_effect_and_both_halves():
     rep = W.report(_book())
-    eng = next(p for p in rep["pre"] if p["k"] == "eng")
-    assert eng["status"] == "Kandidat – Backtest" and "eng" in rep["candidates"] and eng["diff"] <= -0.25
+    eng = next(p for p in rep["pre"] if p["k"] == "weit")
+    assert eng["status"] == "Kandidat – Backtest" and "weit" in rep["candidates"] and eng["diff"] <= -0.25
     assert all(h < 0 for h in eng["halves"])
     rep2 = W.report(_book(consistent=False))                    # in der späteren Hälfte umgekehrt → kein Kandidat
-    assert "eng" not in rep2["candidates"]
+    assert "weit" not in rep2["candidates"]
     rep3 = W.report(_book(n_eng_bad=4))                         # zu wenig Fälle
-    assert next(p for p in rep3["pre"] if p["k"] == "eng")["status"] == "zu wenig Fälle"
+    assert next(p for p in rep3["pre"] if p["k"] == "weit")["status"] == "zu wenig Fälle"
 
 
 def test_already_tested_features_are_not_proposed_again():
@@ -79,4 +79,4 @@ def test_already_tested_features_are_not_proposed_again():
 def test_report_recent_losses_have_readable_reasons():
     rep = W.report(_book())
     assert rep["n"] == 42 and rep["recent"] and all(x["r"] <= 0 for x in rep["recent"])
-    assert any("Stop enger" in t for x in rep["recent"] for t in x["pre"])
+    assert any("Stop weiter" in t for x in rep["recent"] for t in x["pre"])

@@ -102,6 +102,20 @@ Für jeden abgeschlossenen Treffer – Verlierer **und** Gewinner – einmalig d
   `claude/ultimate-research`, Workflow „Research – Lern-Test“).
 - Tests `backend/tests/test_tradewhy.py` (6).
 
+**Ergebnis des historischen Lern-Tests (Lauf 41315215701, 13.241 B60-Trades, Stress-Kosten, Regel vorab festgelegt):**
+
+| Merkmal | Ø R mit / ohne | Δ Train / Val / Holdout | Ergebnis |
+|---|---|---|---|
+| Stop < 1 ATR | −0,042 / −0,022 | −0,013 / −0,184 / +0,096 | nicht beständig – kein Filter |
+| Vormomentum > +25 % | −0,139 / −0,014 | −0,047 / −0,093 / −0,207 | überall schwächer, Train knapp unter der Schwelle (−0,05) → nach Regel nicht bestanden; die Depot-Rangfolge nimmt solche Titel ohnehin zuletzt |
+| ATR > 5 % („unruhig“) | +0,189 / −0,068 | −0,072 / +0,134 / +0,552 | eher **besser** – bestätigt: unruhige Setups bleiben drin |
+| Markt unter 200-Tage-Linie | +0,178 / −0,146 | −0,110 / +0,666 / +0,591 | eher **besser** (Mean Reversion nach Abverkäufen) – kein Marktfilter |
+| Sektor unter 50-Tage-Linie | – | – | keine Sektordaten im Forschungs-Universum (live vorhanden) |
+| Markt fiel in der Haltezeit (hinterher) | 7 % der Verluste, 7 % der Gewinne | – | der Markt ist nicht die Hauptursache der Verluste |
+
+Fazit: Kein vorher erkennbares Merkmal schadet beständig → B60 bleibt unverändert. Die Ergebnisse stehen in
+`tradewhy.TESTED`, damit der Live-Bericht diese Merkmale nicht erneut als neue Idee vorschlägt.
+
 ## D. E2-Schattentest – Grundlage (nicht aktiv)
 
 `paper/e2shadow.py` (neu). Gleiche Signale wie B60 (Treffer 11/11, USA/Europa), eigene Einstiegsregel (Buy-Stop
