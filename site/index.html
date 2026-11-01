@@ -2203,7 +2203,7 @@ function newsHtml() {
   const usd = v => { const fx = (fxEur && fxEur.USD) || 0.9, e = v * fx; return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
   const known = t => rowOf(t) || byTicker(t);
   const irow = x => { const tag = mine.has(x.t) || (byTicker(x.t) && byTicker(x.t).in_watchlist) ? '<span class="pill dep">Deine</span>' : byTicker(x.t) && byTicker(x.t).passed ? '<span class="pill">Treffer</span>' : "";
-    const meld = x.kind === "meld", q = x.kind === "buy" ? (x.opp == null ? " · Routine unbekannt" : x.opp ? ' · <b class="up">gezielt</b>' : " · Routine") : "";
+    const meld = x.kind === "meld", q = x.kind === "buy" ? (x.opp == null ? (x.cur === "EUR" ? " · Routine unbekannt" : "") : x.opp ? ' · <b class="up">gezielt</b>' : " · Routine") : "";
     const fd = x.fd && x.fd !== x.d ? ` · gemeldet ${dateDE(x.fd)}` : "";
     const own = x.kind === "buy" && x.own != null ? (x.own === "neu" ? " · neue Position" : x.own >= 100 ? " · Anteil mehr als verdoppelt" : x.own >= 1 ? ` · +${fmt(x.own, 0)} % Aktien` : "") : "";
     return `<a class="bf-r" href="${esc(safeHref(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`))}" target="_blank" rel="noopener"><i class="${meld ? "y" : x.kind === "buy" ? "g" : "r"}"></i><span><b>${esc(x.n || x.t)} ${tag}</b><em>${meld
@@ -2229,7 +2229,7 @@ function newsHtml() {
     const g = { ok: [], zeitlimit: [], fehler: [], "keine Quelle": [], "nicht geprüft": [] };
     Object.entries(cov).forEach(([t, c]) => (g[c.st] || g["nicht geprüft"]).push(c.hit ? `<b>${esc(nameOf(t))}</b>` : esc(nameOf(t))));
     const line = (k, txt) => g[k].length ? `<div style="margin-top:4px"><b>${txt} (${g[k].length}):</b> ${g[k].join(", ")}</div>` : "";
-    return `<details class="note" style="margin:-4px 2px 12px"><summary>Abdeckung: ${g.ok.length} von ${Object.keys(cov).length} deiner Aktien geprüft${g.zeitlimit.length + g.fehler.length ? ` · ${g.zeitlimit.length + g.fehler.length} nicht geschafft` : ""}</summary>`
+    return `<details class="note" data-cl="1" style="margin:-4px 2px 12px"><summary>Abdeckung: ${g.ok.length} von ${Object.keys(cov).length} deiner Aktien geprüft${g.zeitlimit.length + g.fehler.length ? ` · ${g.zeitlimit.length + g.fehler.length} nicht geschafft` : ""}</summary>`
       + line("ok", "Geprüft – fett = mit Insider-Geschäften") + line("zeitlimit", "Nicht geprüft – Zeitlimit des Scans") + line("fehler", "Nicht geprüft – Quelle nicht erreichbar")
       + line("keine Quelle", "Keine freie Datenquelle für das Land") + line("nicht geprüft", "Nicht geprüft (Indizes, Sonstiges)")
       + `<div style="margin-top:4px">Geprüft ohne Treffer heißt: keine Käufe ab 10.000 $ / 5.000 € und keine Verkäufe ab 250.000 $ / 100.000 € in 12 Monaten – bei großen Konzernen kaufen Vorstände selten selbst.</div></details>`; })();
@@ -4788,8 +4788,14 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.12";
-const APP_NEWS = [["2026.11.12", "Quartalszahlen lernen selbst", [
+const APP_VER = "2026.11.13";
+const APP_NEWS = [["2026.11.13", "Ehrlichere Zahlen, mehr Überblick", [
+  ["Forschung auf aktuellem Stand", "Alle Angaben zum Vorteil der Kairo-Regel stammen jetzt aus der korrigierten Forschung (13.241 Trades): +0,12 R je Trade mit normalen Kosten, −0,03 R mit Stress-Kosten. Die älteren, zu optimistischen Zahlen sind überall ersetzt."],
+  ["Insider: was wurde geprüft?", "Unter den Insider-Listen steht jetzt je Aktie, ob sie geprüft wurde – oder warum nicht (Zeitlimit, Quelle nicht erreichbar, keine freie Quelle im Land). Dazu das Meldedatum. Käufe ohne Kaufhistorie zählen nicht mehr als „gezielt“."],
+  ["Quartalszahlen: vorläufig oder bestätigt", "Jede Zahl zeigt, ob sie vorläufig, bestätigt oder nachträglich korrigiert ist und seit wann Kairo sie kennt. Die Bilanz misst, wie schnell Kairo nach der Veröffentlichung Bescheid gibt."],
+  ["Datenstatus je Quelle", "Einstellungen → Datenstatus: Stand von Scan, Live-Kursen, 4H, Quartalszahlen, Insider und ETF auf einen Blick – gelb, wenn etwas älter ist als üblich."],
+  ["Kosten-Check ehrlich beschriftet", "Im Journal heißt die Messung jetzt „Abweichung zum Tagesschnitt“ – sie ist kein Spread. Ordergebühren aus dem Export stehen getrennt daneben."]]],
+  ["2026.11.12", "Quartalszahlen lernen selbst", [
   ["Ausblick zählt mit", "Die Wahrscheinlichkeit nach Quartalszahlen rechnet jetzt Gewinn und Ausblick zusammen (8.518 Berichte 2023–26). Bei Intel (Gewinn +30 %, Ausblick gesenkt, Aktie −28 %) stünde jetzt 37 % statt 64 % – in der Prüfzeit nachweisbar genauer. Ein gesenkter Ausblick ergibt immer „eher negativ“."],
   ["Ausblick sauberer erkannt", "Meldungen von Ratingagenturen, Analysten, Konjunkturprognosen und Firmen mit ähnlichem Namen zählen nicht mehr als Ausblick – in den letzten Tagen waren 23 von 102 Angaben davon betroffen."],
   ["Kairo lernt aus Fehlern", "Jede Prognose wird gespeichert und mit der Kursreaktion verglichen. Lag Kairo daneben, sucht es automatisch nach dem Grund (Markt, Vorlauf, Schlagzeilen) und eicht die Zahlen selbst nach, sobald das nachweisbar genauer ist. Die Bilanz steht im Quartalszahlen-Fenster."],
