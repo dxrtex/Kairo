@@ -248,8 +248,9 @@ def fetch_watch(watch: dict[str, str], budget_s: float = 240) -> tuple[list[dict
             time.sleep(0.4)
         except Exception as exc:
             print(f"Insider Watchlist {t}: {exc!r}"[:140])
-    buys = sorted([x for x in rows if x["kind"] == "buy"], key=lambda x: -x["val"])
-    sells = sorted([x for x in rows if x["kind"] == "sell"], key=lambda x: -x["val"])[:80]
+    newest = lambda x: (x["d"], x["val"])                 # neueste zuerst – so fällt beim Kürzen nie ein frischer Kauf weg
+    buys = sorted([x for x in rows if x["kind"] == "buy"], key=newest, reverse=True)
+    sells = sorted([x for x in rows if x["kind"] == "sell"], key=newest, reverse=True)[:80]
     rows = buys[:250] + sells
     print(f"Insider Watchlist: {done} Aktien geprüft, {sum(x['kind'] == 'buy' for x in rows)} Käufe, {sum(x['kind'] == 'sell' for x in rows)} Verkäufe")
     return rows, done

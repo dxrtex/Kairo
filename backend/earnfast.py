@@ -182,7 +182,26 @@ def _odds(sur):
         return None
 
 
-def result_text(t: str, name: str, last: dict) -> dict:
+GUIDE_MIN_N = 10        # ab so vielen gesammelten Berichten mit gesenktem Ausblick wird die eigene Quote gezeigt
+
+
+def guide_stats(out: Path) -> dict:
+    """Wie oft stieg die Aktie am Tag nach den Zahlen – getrennt nach Ausblick (gesenkt / bestätigt / angehoben)?
+    Aus dem eigenen Archiv (earn_archive.json). Grund (Intel 29.10.2026): Gewinn +30 % über Erwartung, Ausblick gesenkt,
+    Aktie −28 % – die Gewinn-Statistik allein zeigte 64 % „steigt“."""
+    try:
+        arc = json.loads((out / "earn_archive.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    res = {}
+    for g, k in ((-1, "down"), (0, "keep"), (1, "up")):
+        r1 = [r["r1"] for r in arc.values() if r.get("g") == g and r.get("r1") is not None]
+        if r1:
+            res[k] = {"n": len(r1), "up1": round(sum(x > 0 for x in r1) / len(r1), 3), "med1": round(sorted(r1)[len(r1) // 2], 4)}
+    return res
+
+
+def result_text(t: str, name: str, last: dict, gst: dict | None = None) -> dict:
     parts = []
     if last.get("eps_s") is not None:
         parts.append(f"Gewinn {_pct(last['eps_s'])} vs. Erwartung")
@@ -191,9 +210,15 @@ def result_text(t: str, name: str, last: dict) -> dict:
     g = (last.get("guide") or {}).get("d")
     if g is not None:
         parts.append({1: "Ausblick angehoben", -1: "Ausblick gesenkt", 0: "Ausblick bestätigt"}.get(g, "Ausblick unklar"))
-    p = _odds(last["eps_s"]) if last.get("eps_s") is not None else None
     v = (last.get("view") or {}).get("lbl")
-    body = " · ".join(parts) + (f". Nach solchen Zahlen stieg die Aktie in {round(p * 100)} % der Fälle." if p else "")
+    p = app_odds(last, gst)                      # dieselbe Zahl wie oben im Quartalszahlen-Fenster der App
+    if p is not None:
+        tail = f". Nach solchen Zahlen{' mit diesem Ausblick' if g in (-1, 0, 1) else ''} stieg die Aktie in {round(p * 100)} % der Fälle."
+    elif g == -1:
+        tail = ". Ausblick gesenkt – der zählt meist mehr als das Quartal."
+    else:
+        tail = ""
+    body = " · ".join(parts) + tail
     return {"title": f"📊 {name}: {v or 'Zahlen da'}", "body": body or "Zahlen gemeldet – Details in Kairo.", "url": APP, "tag": f"kairo-earn-{t}"}
 
 
@@ -280,16 +305,17 @@ def result_pushes(fresh: dict, prev: dict, events: list[dict], out: Path) -> Non
     if not devs or not k:
         return
     rel = mine(devs, events)
+    gst = guide_stats(out)
     msgs = []
     for t, r in new.items():
         key, fk = f"res|{t}|{r['last']['date']}", f"fp|{t}|{r['last']['date']}"
         if t not in rel:
             continue
         if key not in sent:
-            m = result_text(t, r.get("name") or t, r["last"])
+            m = result_text(t, r.get("name") or t, r["last"], gst)
         elif fk in sent and _changed(sent[fk], r["last"]):
-            m = result_text(t, r.get("name") or t, r["last"])
-            m["title"] = "Korrektur – " + m["title"]
+            m = result_text(t, r.get("name") or t, r["last"], gst)
+            m["title"] = ("Update – " if (r["last"].get("guide") or {}).get("d") is not None else "Korrektur – ") + m["title"]
         else:
             continue
         sent[key], sent[fk] = r["last"]["date"], _fp(r["last"])
@@ -299,21 +325,79 @@ def result_pushes(fresh: dict, prev: dict, events: list[dict], out: Path) -> Non
     f.write_text(json.dumps(sent), encoding="utf-8")
 
 
+MODEL = "2026-10-30 Gewinn+Ausblick"      # Stand der Prognose-Regel; bei jeder Änderung neu setzen (Auswertung je Stand)
+
+
+GKEY = {-1: "gesenkt", 0: "bestätigt", 1: "angehoben"}
+
+
+def app_odds(last: dict, gst: dict | None = None, calib: dict | None = None) -> float | None:
+    """Dieselbe Wahrscheinlichkeit „steigt am Tag danach“, die die App oben im Quartalszahlen-Fenster zeigt (earnOdds):
+    nachgeeichte Quote Gewinn-Stufe × Ausblick, sobald die Bilanz sie übernommen hat (earn_calib.json, adopt); sonst
+    Gewinn-Stufe (mit Umsatz-Beschleunigung) und bei gesenktem Ausblick die eigene Quote nach gesenktem Ausblick."""
+    sur = last.get("eps_s")
+    if sur is None:
+        return None
+    if calib and calib.get("adopt"):
+        try:
+            st = json.loads((ROOT / "site" / "earn_stats.json").read_text(encoding="utf-8"))
+            bi = next(i for i, b in enumerate(st["buckets"]) if b["lo"] <= sur * 100 < b["hi"])
+            v = calib["p"].get(f"{bi}|{GKEY.get((last.get('guide') or {}).get('d'), 'keine Meldung')}")
+            if v is not None:
+                return v
+        except Exception:
+            pass
+    gd = (last.get("guide") or {}).get("d")
+    if gd in (-1, 0, 1):                                 # Gewinn × Ausblick aus 8.518 Berichten (site/earn_guide.json)
+        try:
+            st = json.loads((ROOT / "site" / "earn_stats.json").read_text(encoding="utf-8"))
+            eg = json.loads((ROOT / "site" / "earn_guide.json").read_text(encoding="utf-8"))
+            bi = next(i for i, b in enumerate(st["buckets"]) if b["lo"] <= sur * 100 < b["hi"])
+            v = eg["p"].get(f"{bi}|{GKEY[gd]}")
+            if v is not None:
+                return v
+        except Exception:
+            pass
+    if gd == -1:
+        dn = (gst or {}).get("down") or {}
+        return dn.get("up1") if dn.get("n", 0) >= GUIDE_MIN_N else None
+    try:
+        st = json.loads((ROOT / "site" / "earn_stats.json").read_text(encoding="utf-8"))
+        b = next(b for b in st["buckets"] if b["lo"] <= sur * 100 < b["hi"])
+    except Exception:
+        return None
+    ra = last.get("reva")
+    if ra is not None and b.get("up1_dec") is not None:
+        return b["up1_dec"] if ra <= -0.05 else b["up1_acc"]
+    return b["up1"]
+
+
 def archive(recs: dict, out: Path) -> int:
     """Sammelt jede Meldung dauerhaft (earn_archive.json): Gewinn- und Umsatz-Überraschung, Umsatz-Beschleunigung,
-    Ausblick, Kursreaktion – damit sich in einigen Monaten testen lässt, ob Umsatz und Ausblick die Prognose verbessern."""
+    Ausblick (mit Schlagzeile, damit die Erkennung später nachgeprüft werden kann), Kursreaktion – und die Prognose,
+    die Kairo vor der Kursreaktion gezeigt hat (p, Stand v). Grundlage der wöchentlichen Prognose-Bilanz (tools/earn_review.py)."""
     f = out / "earn_archive.json"
     try:
         arc = json.loads(f.read_text(encoding="utf-8"))
     except Exception:
         arc = {}
+    gst = guide_stats(out)
+    try:
+        calib = json.loads((out / "earn_calib.json").read_text(encoding="utf-8"))
+    except Exception:
+        calib = None
+    model = MODEL + (" · nachgeeicht" if calib and calib.get("adopt") else "")
     for t, r in recs.items():
         L = r.get("last") or {}
         if not L.get("date"):
             continue
         k = f"{t}|{L['date']}"
+        G = L.get("guide") or {}
         row = {"s": L.get("eps_s"), "rs": L.get("rev_s"), "rg": L.get("revg"), "ra": L.get("reva"),
-               "g": (L.get("guide") or {}).get("d"), "gs": (L.get("guide") or {}).get("src"), "r1": (L.get("rx") or {}).get("d1")}
-        arc[k] = {**arc.get(k, {}), **{a: b for a, b in row.items() if b is not None}}
+               "g": G.get("d"), "gs": G.get("src"), "gt": (G.get("t") or "")[:160] or None, "r1": (L.get("rx") or {}).get("d1")}
+        old = arc.get(k, {})
+        if old.get("r1") is None:                  # Prognose nur bis zur Kursreaktion fortschreiben – danach eingefroren
+            row.update(p=app_odds(L, gst, calib), v=model)
+        arc[k] = {**old, **{a: b for a, b in row.items() if b is not None}}
     f.write_text(json.dumps(arc, separators=(",", ":")), encoding="utf-8")
     return len(arc)
