@@ -211,6 +211,23 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
     except Exception as exc:
         print("Momentaufnahmen:", repr(exc)[:120])
         learn = None
+    shadow = {}
+    try:                                           # Schattentests (Forschung, Freigabe 01.11.2026): A5, ETF-RSI(2), E2 – ohne Geld
+        from . import mrshadow
+        mb = state.load(mrshadow.FILE, {})
+        mrshadow.step(mb, rows, data, ctx, today, record)
+        state.save(mrshadow.FILE, mb)
+        shadow.update(mrshadow.summary(mb))
+    except Exception as exc:
+        print("Schattentest A5/ETF:", repr(exc)[:120])
+    try:
+        from paper import e2shadow
+        eb = state.load(e2shadow.FILE, {"rule": e2shadow.RULE, "start": None, "items": {}})
+        e2shadow.step(eb, sig, data, today)
+        state.save(e2shadow.FILE, eb)
+        shadow["E2"] = e2shadow.summary(eb)
+    except Exception as exc:
+        print("Schattentest E2:", repr(exc)[:120])
     if record:                                     # Läufe tagsüber nicht merken – sonst gälten deren Treffer abends als „schon bekannt“
         state.save("last.json", {"date": today, "hit": [r["ticker"] for r in rows if r["passed"]],
                                  "fast": [r["ticker"] for r in rows if r.get("fast_hit")],
@@ -225,5 +242,5 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
     out = {"generated": today, "live": {"since": min((s["d"] for s in sig), default=today), "n": len(sig),
                                         "stats": stats(done) if done else None, "strat": strat_stats(sig), "strat60": strat_stats(sig, "st60"),
                                         "grade": {g: _agg([x for x in done if x["k"] == "hit" and x.get("grade") == g]) for g in "ABC"}},
-           "signals": _show(sig), "new": [s["t"] for s in new], "backtest": bt, "learn": learn}
+           "signals": _show(sig), "new": [s["t"] for s in new], "backtest": bt, "learn": learn, "shadow": shadow}
     return out

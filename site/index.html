@@ -4826,7 +4826,20 @@ function bilanzHtml() {
     <div class="note" style="margin:0 0 8px">Nur USA und Europa – dort ist die Regel getestet (wie die Papier-Depots).</div>
     ${act.slice(0, 15).map(row).join("")}
     <div class="note" style="margin:10px 0 0">${nWait} Treffer warten auf die Seitwärtsphase · ${nNo} ohne Einstieg (keine Seitwärtsphase – richtig so). Jeder Treffer zählt, auch ohne freien Platz. Alles öffentlich und unveränderbar: <a href="track/" target="_blank" rel="noopener">Live-Bilanz aller Treffer</a>.</div></div>`;
-  return back + `<div class="section-title"><span>Kairo-Bilanz</span><span>live · Forschung · Regeln</span></div>` + (b ? live + learnHtml(b.learn) : "") + research + evidTableHtml() + rules + myTradesHtml() + unknown + old;
+  return back + `<div class="section-title"><span>Kairo-Bilanz</span><span>live · Forschung · Regeln</span></div>` + (b ? live + mrShadowHtml(b.shadow) + learnHtml(b.learn) : "") + research + evidTableHtml() + rules + myTradesHtml() + unknown + old;
+}
+// Schattentests (Freigabe 01.11.2026): Herausforderer laufen live ohne Geld mit – nur künftige Signale (backend/mrshadow.py,
+// paper/e2shadow.py). Entscheidung über Echtgeld frühestens nach ~3 Monaten und mit gemessenen echten Kosten.
+function mrShadowHtml(S) {
+  if (!S || !(S.A5 || S.E2)) return "";
+  const P = v => v == null ? "–" : sgnPct(v, 2), R = v => v == null ? "–" : `${v >= 0 ? "+" : "−"}${fmt(Math.abs(v), 2)} R`;
+  const row = (l, x, sub) => !x ? "" : `<div class="jrow2"><span><b>${l}</b><small class="muted"> · ${sub}</small></span><b>${x.closed ? `${x.closed} beendet` : "noch keine beendet"} <small class="muted">${x.open || 0} offen · ${x.signals ?? x.n ?? 0} Signale</small></b></div>
+    ${x.closed ? `<div class="note" style="margin:0 0 6px">Ø je Trade brutto ${x.gross != null ? P(x.gross) : R(x.r)} · mit normalen Kosten ${x.net_normal != null ? P(x.net_normal) : R(x.r_net)} · mit Stress-Kosten ${x.net_stress != null ? P(x.net_stress) : R(x.r_stress)}${x.win != null ? ` · ${pct(x.win, 0)} im Plus` : ""}${x.days ? ` · Ø ${fmt(x.days, 1)} Tage` : ""}</div>` : ""}`;
+  return `<div class="hcard">${hHead(`Schattentests <small>ohne Geld · seit ${dateDE((S.A5 && S.start) || (S.E2 && S.E2.start) || "")}</small>`)}
+    ${row("A5 – 3 Verlusttage + Aufwärtstrend", S.A5, "Depot 5 Plätze, Verkauf über der 5-Tage-Linie")}
+    ${row("ETF-RSI(2) – Sektor-ETFs", S.ETF, "RSI(2) < 10 über der 200-Tage-Linie")}
+    ${row("E2 – B60-Treffer mit Ausbruchs-Einstieg", S.E2 && { ...S.E2, signals: S.E2.n, open: (S.E2.status || {}).open || 0 }, "gleiche Signale wie B60")}
+    <div class="note" style="margin:6px 0 0">Diese Regeln waren im Backtest mit normalen Kosten stark, mit hohen Kosten schwach. Hier zeigt sich, ob das live hält. Entscheidend sind deine echten Kosten bei Scalable: unter ~0,08 % je Order lohnt A5 – das zeigt der Kosten-Check im Journal. Kein Echtgeld vor deiner Entscheidung.</div></div>`;
 }
 // Aus Fehlschlägen lernen (backend/tradewhy.py): Gründe je gescheitertem Trade, vorher erkennbare Merkmale mit/ohne,
 // Kandidaten für den Backtest. Ändert die Regel nie selbst – das entscheidet erst ein Backtest + Schattentest + Freigabe.
