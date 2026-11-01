@@ -237,7 +237,7 @@
   .vdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 7px 1px 0; vertical-align: middle; background: var(--gold); } .vdot.g { background: var(--up); } .vdot.r { background: var(--red); } .vdot.y { background: var(--gold); }
   .empty-st > b { font-size: 19px; } .empty-st > p { color: var(--muted); margin: 6px auto 18px; max-width: 460px; }
   .empty-st .rule-steps { text-align: left; max-width: 520px; margin: 0 auto; } .empty-st .rule-steps li > span { display: block; } .empty-st .rule-steps li b { display: block; margin-bottom: 2px; }
-  .dsrow { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 14px; color: var(--muted); } .dsrow i { flex: 0 0 8px; height: 8px; border-radius: 50%; background: var(--gold); } .dsrow i.g { background: var(--up); } .dsrow i.r { background: var(--down); }
+  .dsrow { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 14px; color: var(--muted); } .dsrow i { flex: 0 0 8px; height: 8px; border-radius: 50%; background: var(--gold); } .dsrow i.g { background: var(--up); } .dsrow i.r { background: var(--down); } .dsrow i.n { background: var(--line, #8884); } .dsrc { margin: 6px 0 4px; border-top: 1px solid var(--line, #8883); padding-top: 6px; }
   .set-lbl { margin: 16px 0 8px; font-size: 13px; color: var(--muted); } .set-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .rule-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
   .rule-steps li { display: flex; gap: 12px; align-items: flex-start; } .rule-steps li > span { display: grid; gap: 2px; font-size: 14px; color: var(--muted); }
@@ -3515,11 +3515,15 @@ function jStrategyHtml() {
       <div class="fig"><span>Stops</span><b>${stops}</b><em>${pct(stops / n, 0)} der Trades</em></div></div>
     <div class="note" style="margin:6px 0 0">${n < 20 ? `Noch ${20 - n} Trades bis zu einer ersten belastbaren Aussage.` : ok ? "Du liegst im Rahmen der Test-Erwartung – weiter so." : "Unter der Test-Erwartung: Prüfe Regeltreue (zu frühe Verkäufe?) und ob du wirklich nur volle Treffer in der Seitwärtsphase nimmst."}${early ? " Zu frühe Verkäufe schneiden die großen Gewinner ab, von denen die Strategie lebt." : ""}</div></div>`;
 }
-// Kosten-Check: echte Ausführungskurse (Aktien in €) gegen den Tages-Durchschnittskurs (Hoch+Tief+Schluss)/3 – zeigt Spread
-// und Ausführung, die der Backtest nur schätzt (Basis ≈ 0,05–0,1 % je Order, Stress ≈ 0,2 %). Kursschwankung im Tag mittelt sich bei vielen Orders heraus.
+// Kosten-Check: echte Ausführungskurse (Aktien in €) gegen den Tages-Durchschnittskurs (Hoch+Tief+Schluss)/3. Das ist KEIN Spread:
+// die Abweichung enthält Spread, Zeitpunkt im Tag und Glück/Pech mit der Kursbewegung; sie mittelt sich erst über viele Orders zu einem
+// Schätzwert der Ausführungsqualität. Ordergebühren kommen getrennt aus dem Export (Spalte Gebühr). Der echte Spread steht nicht im Export.
 function jCostHtml(tx) {
   const ok = tx.filter(t => (/executed|ausgeführt/i.test(t.status) || !t.status) && t.qty && t.price);
-  const small = ok.filter(t => /buy|kauf|sell|verkauf/i.test(t.type) && t.qty * t.price < 250).length;
+  const trades = ok.filter(t => /buy|kauf|sell|verkauf/i.test(t.type));
+  const small = trades.filter(t => t.qty * t.price < 250).length;
+  const feeSum = trades.reduce((a, t) => a + (t.fee || 0), 0), feeN = trades.filter(t => t.fee > 0).length;
+  const turnover = trades.reduce((a, t) => a + t.qty * t.price, 0);
   const dev = []; let wait = 0;
   if (searchIdx) ok.forEach(t => {
     const sell = /sell|verkauf/i.test(t.type), buy = !sell && /buy|kauf/i.test(t.type) && !/spar|savings/i.test(t.type);
@@ -3539,10 +3543,10 @@ function jCostHtml(tx) {
     : "Über den Stress-Kosten – Kairo lohnt sich bei dieser Ausführung nicht; Limit-Orders und liquide Börsenzeiten helfen.";
   return `<div class="card jcard"><div class="jc-h"><b>Kosten-Check</b><span>deine Ausführung gegen den Tages-Durchschnittskurs</span></div>
     <div class="cockpit jtiles">
-      <div class="fig"><span>Ø Kosten je Order</span><b class="${mean == null ? "" : mean <= 0.001 ? "up" : mean <= 0.002 ? "" : "down"}">${mean == null ? "–" : sgnPct(mean, 2)}</b><em>${n ? `${n} Aktien-Orders in €${se ? ` · ± ${pct(1.96 * se, 2)}` : ""}` : wait ? "Chartdaten laden …" : "keine passenden Orders"}</em></div>
-      <div class="fig"><span>Test-Annahme</span><b>0,05–0,1 %</b><em>Basis · Stress ≈ 0,2 %</em></div>
-      <div class="fig"><span>Orders unter 250 €</span><b class="${small ? "down" : "up"}">${small}</b><em>je 0,99 € Gebühr (PRIME+)</em></div></div>
-    <div class="note" style="margin:6px 0 0">${verdict} Gezählt werden Aktien-Käufe/-Verkäufe in Euro, deren Aktie im aktuellen Scan Chartdaten hat (Turbos und US-Kurse in Dollar lassen sich so nicht messen). Positiv = teurer gekauft bzw. billiger verkauft als der Tagesdurchschnitt.</div></div>`;
+      <div class="fig"><span>Ø Abweichung zum Tagesschnitt</span><b class="${mean == null ? "" : mean <= 0.001 ? "up" : mean <= 0.002 ? "" : "down"}">${mean == null ? "–" : sgnPct(mean, 2)}</b><em>${n ? `${n} Aktien-Orders in €${se ? ` · ± ${pct(1.96 * se, 2)}` : ""}` : wait ? "Chartdaten laden …" : "keine passenden Orders"}</em></div>
+      <div class="fig"><span>Ordergebühren (Export)</span><b>${eur2(feeSum)}</b><em>${feeN} von ${trades.length} Orders mit Gebühr${turnover > 0 ? ` · ${pct(feeSum / turnover, 2)} vom Umsatz` : ""}${small ? ` · ${small} unter 250 €` : ""}</em></div>
+      <div class="fig"><span>Annahme im Backtest</span><b>0,05–0,1 %</b><em>Spread + Ausführung je Order · Stress ≈ 0,2 % – geschätzt, nicht gemessen</em></div></div>
+    <div class="note" style="margin:6px 0 0">${verdict} Gezählt werden Aktien-Käufe/-Verkäufe in Euro, deren Aktie im aktuellen Scan Chartdaten hat (Turbos und US-Kurse in Dollar lassen sich so nicht messen). Positiv = teurer gekauft bzw. billiger verkauft als der Tagesdurchschnitt. Wichtig: Die Abweichung ist <b>kein Spread</b> – sie enthält auch, wann am Tag du gehandelt hast, und ist erst über viele Orders aussagekräftig. Den echten Spread meldet der Export nicht; Ordergebühren stehen getrennt daneben.</div></div>`;
 }
 // ---------- Journal (Profi-Ansicht): Zeitraum, Ergebnis-Kurve mit Achsen, Kennzahlen, Gewinn-Kalender, Aufschlüsselung ----------
 const J_PER = [["30", "30 T."], ["90", "3 M."], ["ytd", "Jahr"], ["all", "Alles"]];
@@ -5015,6 +5019,7 @@ function settingsHtml() {
     <div class="section-title"><span>Forschung &amp; Live-Bilanz</span><span>öffentlich</span></div><div class="card" style="margin-bottom:18px"><div class="note" style="margin:0">Alle getesteten Strategien mit Regeln und Ergebnissen – auch zum Teilen mit ChatGPT oder Claude: <a href="research/" target="_blank" rel="noopener">dxrtex.github.io/Kairo/research/</a> · öffentliche Live-Bilanz aller Treffer: <a href="track/" target="_blank" rel="noopener">dxrtex.github.io/Kairo/track/</a></div></div>
     <div class="section-title"><span>Datenstatus</span><span>letzter Scan</span></div>
     <div class="card" style="margin-bottom:18px">${health().length ? health().map(([c, t]) => `<div class="dsrow"><i class="${c}"></i>${esc(t)}</div>`).join("") : `<div class="dsrow"><i class="g"></i>Alle Daten vollständig – Kurse, Stammdaten, Termine und Nachrichten.</div>`}
+      <div class="dsrc">${sourcesStatus().map(x => `<div class="dsrow"><i class="${x.c}"></i><span>${esc(x.n)}</span><b style="margin-left:auto;font-weight:600">${x.c === "n" ? "nicht geladen" : esc(x.txt)}${x.c === "y" ? " · älter als üblich" : ""}</b></div>`).join("")}</div>
       ${(data.stats || {}).health ? `<div class="note">${fmt(data.stats.health.loaded, 0)} von ${fmt(data.stats.health.universe, 0)} Kursen · Stammdaten ${data.stats.health.info_fresh} frisch / ${data.stats.health.info_cached} aus Cache · Nachrichten für ${data.stats.health.news ?? "–"} Aktien</div>` : ""}</div>
     <details class="pdet"><summary class="psum"><b>Scanner-Parameter</b><span class="ptag">für Fortgeschrittene · config.yaml</span></summary><div class="card cfg">
       <div>Alle Parameter stehen zentral in <b>config.yaml</b>. Zum Ändern die Datei auf GitHub bearbeiten und danach den Scan neu starten – die Website zeigt dann die Ergebnisse mit den neuen Parametern.</div>
@@ -6195,6 +6200,24 @@ function health() {
     if (h.stale) out.push([h.stale > 30 ? "r" : "y", `${h.stale} Aktien ohne Kurs vom letzten Handelstag (Yahoo hat sie auch nach 3 Versuchen ausgelassen): ${(h.stale_list || []).slice(0, 12).join(", ")}${h.stale > 12 ? " …" : ""}`]);
   }
   return out;
+}
+// Datenquellen: Stand je Quelle (Scan, Kurse live, 4H, Quartalszahlen, Insider, ETF) mit Ampel nach erwartetem Takt.
+// Grün = im Takt, Gelb = älter als erwartet, Grau = noch nicht geladen / nicht verfügbar. Nur Anzeige – keine Daten werden verändert.
+function sourcesStatus(now = Date.now()) {
+  const T = v => v ? new Date(v).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "–";
+  const wd = new Date(now).getDay(), wkend = wd === 0 || wd === 6 || wd === 1;    // Montag: Wochenende davor
+  const age = v => v ? (now - new Date(v)) / 36e5 : null;
+  const ij = getJson("insider.json"), ej = getJson("etf.json"), h4 = typeof h4Data === "function" ? h4Data() : null;
+  const liveAt = Object.values(LIVE.map).reduce((m, q) => Math.max(m, q.at || 0), 0) || null;   // letzter Live-Abruf in dieser Sitzung
+  const rows = [
+    ["Scan (Tageskerzen, Kriterien, Stop)", data && data.generated, wkend ? 74 : 30],
+    ["Kurse live", liveAt, 1],
+    ["4H-Stand", h4 && (h4.live || h4.generated), wkend ? 74 : 30],
+    ["Quartalszahlen (Prüfdienst)", earnData && earnData.__live, wkend ? 74 : 2],
+    ["Insider (SEC, BaFin, AFM, ASX)", ij && ij.generated, wkend ? 80 : 32],
+    ["ETF-Ampel", ej && (ej.generated || (ej.date && ej.date + "T22:00:00")), wkend ? 80 : 32],
+  ];
+  return rows.map(([n, v, max]) => { const a = age(v); return { n, at: v || null, txt: T(v), c: a == null ? "n" : a <= max ? "g" : "y" }; });
 }
 const healthPill = () => { const hs = health(), bad = hs.some(x => x[0] === "r");
   const stale = hs.some(x => x[0] === "r" && /Letzter Scan/.test(x[1]));

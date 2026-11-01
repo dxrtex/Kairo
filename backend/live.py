@@ -99,7 +99,7 @@ def _show(sig: list[dict]) -> list[dict]:
     return keep
 
 
-def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: bool = True) -> dict:
+def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: bool = True, market: dict | None = None) -> dict:
     """record=False: keine neuen Signale speichern (Scan während der Börsenzeit – US-Tageskerzen noch nicht fertig);
     Ergebnisse bestehender Signale werden trotzdem nachgeführt."""
     sig = state.load("signals.json", [])
@@ -180,6 +180,14 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
                 except Exception as exc:           # Bilanz darf den Scan nie stoppen
                     print("Strategie-Bilanz:", s["t"], repr(exc)[:100])
     state.save("signals.json", sig)
+    try:                                           # Lern-Grundlage: Momentaufnahme neuer Signale (unveränderlich), Kauf/Ergebnis nachtragen
+        from . import snapshots
+        snaps = state.load(snapshots.FILE, {})
+        snapshots.add(snaps, new, {r["ticker"]: r for r in rows}, data, market, today)
+        snapshots.track(snaps, sig, today)
+        state.save(snapshots.FILE, snaps)
+    except Exception as exc:
+        print("Momentaufnahmen:", repr(exc)[:120])
     if record:                                     # Läufe tagsüber nicht merken – sonst gälten deren Treffer abends als „schon bekannt“
         state.save("last.json", {"date": today, "hit": [r["ticker"] for r in rows if r["passed"]],
                                  "fast": [r["ticker"] for r in rows if r.get("fast_hit")],
