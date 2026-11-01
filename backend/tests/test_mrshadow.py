@@ -40,7 +40,7 @@ def test_step_only_new_signals_and_freeze():
     today = str(df.index[-1].date())
     rows = [{"ticker": "AAA", "region": "us"}, {"ticker": "BBB", "region": "asia"}]
     book = M.step({}, rows, {"AAA": df, "BBB": df}, {"XLK": df}, today)
-    assert book["start"] == today and set(book["items"]) == {f"A5|AAA|{today}", f"ETF|XLK|{today}"}   # Asien nicht
+    assert book["start"] == today and set(book["items"]) == {f"A5|AAA|{today}", f"W2|AAA|{today}", f"ETF|XLK|{today}"}   # Asien nicht
     later = _df([119, 118, 117, 116.5, 121, 122])
     M.step(book, rows, {"AAA": later}, {}, "2099-01-01", record=False)
     it = book["items"][f"A5|AAA|{today}"]
@@ -60,3 +60,16 @@ def test_old_signals_before_start_ignored_and_depot_slots():
     xs = [{"t": f"T{i}", "d": "2026-01-02", "rsi2": float(i), "res": "closed", "exit": "2026-01-09"} for i in range(8)]
     sel = M.depot(xs, 5)
     assert [x["t"] for x in sel] == ["T0", "T1", "T2", "T3", "T4"]
+
+
+def test_w2_limit_fill_or_no_buy():
+    df = _df([119, 118, 117, 116.5, 121, 122])
+    d = str(df.index[-6 + 2].date())
+    lim = 116.0                                                                      # Tief am Folgetag 116,5 × 0,99 = 115,3 ≤ 116
+    r = M.replay(df, d, lim)
+    assert r["res"] == "closed" and r["e"] == 116.0 and r["x"] == 122
+    assert M.replay(df, d, 110.0)["res"] == "kein_kauf"                              # Limit nicht erreicht → kein Kauf
+    s = M.signal_today(_df([119, 118, 117]), "A5")
+    assert s["lim"] < s["close"]
+    book = M.step({}, [{"ticker": "X", "region": "us"}], {"X": _df([119, 118, 117])}, None, s["d"])
+    assert any(k.startswith("W2|X|") for k in book["items"]) and "W2" in M.summary(book)

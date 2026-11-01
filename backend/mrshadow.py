@@ -4,6 +4,9 @@ Regeln exakt wie in der Mean-Reversion-Meisterschaft (research/reversal/mrc.py, 
   A5   Aktien USA/Europa: drei Verlust-Schlusskurse in Folge UND Schluss über der 200-Tage-Linie, Grundfilter (Kurs ≥ 1,
        Ø Tagesumsatz 20 Tage ≥ 5 Mio.) → Kauf zur nächsten Eröffnung, Verkauf zur Eröffnung nach dem ersten Schluss über der
        5-Tage-Linie, spätestens Schluss von Tag 10. Bei mehr Signalen als Plätzen: niedrigster RSI(2) zuerst.
+  W2   wie A5, aber Kauf-Limit 0,5 ATR(14) unter dem Signal-Schluss, gilt nur am nächsten Handelstag (Welle 3, 01.11.2026:
+       stärkste Variante, aber nach dreifacher Auswertung derselben Daten nur ein Hinweis). Gefüllt, wenn das Tagestief das
+       Limit erreicht – zum Limit oder zur tieferen Eröffnung. Achtung: Berührung = Ausführung ist eher optimistisch.
   ETF  Sektor-ETFs (SPDR, aus dem Scan): RSI(2) < 10 UND über der 200-Tage-Linie, Ausstieg wie A5.
 Jeder Lauf rechnet offene Signale aus den Tageskerzen neu (robust gegen Ausfälle), abgeschlossene werden eingefroren.
 Gezählt werden nur Signale ab dem Starttag – keine Rückrechnung. Brutto-Rendite je Trade plus Netto mit angenommenen
@@ -15,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 FILE = "mr_shadow.json"
-RULES = ("A5", "ETF")
+RULES = ("A5", "W2", "ETF")
 SLOTS = 5
 COST = {"normal": 0.0005, "stress": 0.0025}
 ETFS = ("XLK", "XLF", "XLV", "XLY", "XLP", "XLE", "XLI", "XLB", "XLU", "XLRE", "XLC")
@@ -46,10 +49,13 @@ def signal_today(df: pd.DataFrame, rule: str) -> dict | None:
     elif rule == "ETF":
         if not r2 < 10:
             return None
-    return {"d": str(df.index[i].date()), "rsi2": round(r2, 2), "close": round(float(c.iloc[i]), 4)}
+    from .indicators import atr
+    a = float(atr(df, 14).iloc[i])
+    return {"d": str(df.index[i].date()), "rsi2": round(r2, 2), "close": round(float(c.iloc[i]), 4),
+            "lim": round(float(c.iloc[i] - 0.5 * a), 4) if np.isfinite(a) else None}
 
 
-def replay(df: pd.DataFrame, d: str) -> dict:
+def replay(df: pd.DataFrame, d: str, lim: float | None = None) -> dict:
     """Trade ab Signaltag d nach Regel: Kauf nächste Eröffnung, Verkauf nach Schluss > 5-Tage-Linie (nächste Eröffnung), max. Tag 10."""
     df = df.dropna(subset=["Open", "High", "Low", "Close"])
     idx = df.index
@@ -59,6 +65,10 @@ def replay(df: pd.DataFrame, d: str) -> dict:
     if i + 1 >= len(c):
         return {"res": "signal"}
     e, k0 = o[i + 1], i + 1
+    if lim is not None:                                # W2: Kauf-Limit nur am Tag nach dem Signal
+        if not df["Low"].iloc[i + 1] <= lim:
+            return {"res": "kein_kauf", "buy": str(idx[k0].date())}
+        e = min(e, lim)
     for day, k in enumerate(range(k0, len(c)), start=1):
         if day >= 10:                                  # wie die Engine: Zeitausstieg zum Schluss von Tag 10 vor dem Signal-Ausstieg
             return _done(e, c[k], idx[k0], idx[k], day, "zeit")
@@ -89,6 +99,8 @@ def step(book: dict, rows: list[dict], data: dict, ctx: dict | None, today: str,
             s = signal_today(df, "A5")
             if s and s["d"] >= book["start"]:
                 items.setdefault(f"A5|{t}|{s['d']}", {"rule": "A5", "t": t, **s})
+                if s.get("lim"):
+                    items.setdefault(f"W2|{t}|{s['d']}", {"rule": "W2", "t": t, **s})
         for t in ETFS:
             df = (ctx or {}).get(t)
             if df is None:
@@ -99,11 +111,13 @@ def step(book: dict, rows: list[dict], data: dict, ctx: dict | None, today: str,
     for key, it in items.items():
         if it.get("res") == "closed":
             continue
-        df = data.get(it["t"]) if it["rule"] == "A5" else (ctx or {}).get(it["t"])
+        if it.get("res") == "kein_kauf":
+            continue
+        df = (ctx or {}).get(it["t"]) if it["rule"] == "ETF" else data.get(it["t"])
         if df is None:
             continue
         try:
-            it.update(replay(df, it["d"]))
+            it.update(replay(df, it["d"], it.get("lim") if it["rule"] == "W2" else None))
         except Exception as exc:
             print("Schattentest:", key, repr(exc)[:80])
     book["updated"] = today
@@ -132,12 +146,13 @@ def summary(book: dict) -> dict:
     items = list((book.get("items") or {}).values())
     for rule in RULES:
         xs = [x for x in items if x["rule"] == rule]
-        sel = depot(xs) if rule == "A5" else xs
+        sel = depot(xs) if rule in ("A5", "W2") else xs
         done = [x for x in sel if x.get("res") == "closed"]
         m = lambda k: round(float(np.mean([x[k] for x in done])), 5) if done else None
         out[rule] = {"signals": len(xs), "taken": len(sel), "open": sum(x.get("res") == "open" for x in sel), "closed": len(done),
                      "gross": m("gross"), "net_normal": m("net_normal"), "net_stress": m("net_stress"),
                      "win": round(float(np.mean([x["gross"] > 0 for x in done])), 3) if done else None,
                      "days": round(float(np.mean([x["days"] for x in done])), 1) if done else None,
-                     "sum_normal": round(float(np.sum([x["net_normal"] for x in done]) / SLOTS), 4) if done and rule == "A5" else None}
+                     "sum_normal": round(float(np.sum([x["net_normal"] for x in done]) / SLOTS), 4) if done and rule != "ETF" else None,
+                     "no_fill": sum(x.get("res") == "kein_kauf" for x in xs)}
     return out
