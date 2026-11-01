@@ -87,6 +87,7 @@ def take(s: dict, r: dict, df: pd.DataFrame | None, market: dict | None, today: 
         "mom": momentum(df, s["d"]),
         "market": {"regime": reg.get("label"), "tone": reg.get("tone"), "fear": _num(fear.get("score"))},
         "region": r.get("region"), "sector": r.get("sector"), "grade": s.get("grade"),
+        "earn": (r.get("earnings_date") or fl.get("earnings_date") or None),   # nächster Quartalszahlen-Termin am Signaltag
     }
     return {"t": s["t"], "k": s["k"], "d": s["d"], "scan": today, "at": now.isoformat(timespec="seconds"),
             "late": _bdays(s["d"], today), "ver": versions(), "sig": sig}

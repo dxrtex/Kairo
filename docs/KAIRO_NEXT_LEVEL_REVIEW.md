@@ -85,6 +85,23 @@ backend/shortswing.py` ist leer.
 - Tests `backend/tests/test_snapshots.py`: Felder/Versionen; wiederholter Scan überschreibt nicht; Lauf tagsüber
   schreibt nichts; Ausfall → `late = 3`, keine Rückfüllung; Kauf und Ergebnis getrennt, zweiter Lauf ändert nichts.
 
+## C2. Aus Fehlschlägen lernen (`backend/tradewhy.py`)
+
+Für jeden abgeschlossenen Treffer – Verlierer **und** Gewinner – einmalig die Ursachensuche (Feld `why` in der Momentaufnahme):
+- **Vorher erkennbar** (mögliche Filter): Stop < 1 ATR, Stop > 2,5 ATR, Vormomentum > +25 %, ATR > 5 %, Marktlage rot,
+  Index unter 200-Tage-Linie, Sektor-ETF unter 50-Tage-Linie, Quartalszahlen ≤ 20 Handelstage nach Signal, spät erkannt.
+- **Erst hinterher sichtbar** (Erklärung): Index −3 % in der Haltezeit, Sektor −4 %, Aktie ≥ 5 Pp. schwächer als Index,
+  Kurslücke über den Stop, Stop in den ersten 3 Tagen, Quartalszahlen in der Haltezeit.
+- Fehlende Markt-/Sektordaten = „unbekannt“, nicht „nein“.
+- **Lern-Bericht** (`report`): Häufigkeit der Gründe bei Verlusten vs. Gewinnen; je vorher erkennbarem Merkmal Ø R mit/ohne.
+  Kandidat nur bei ≥ 10 Fällen mit und ohne, ≥ 0,25 R schlechter **und** gleiche Richtung in der früheren und späteren
+  Hälfte. Schon geprüfte Merkmale (Ruhe-Filter, Quartalszahlen-Filter, Vormomentum) werden nicht erneut vorgeschlagen.
+- **Keine automatische Regeländerung.** Weg eines Kandidaten: Backtest 2008–2026 → Schattentest → Freigabe.
+- App: Bilanz → „Aus Fehlschlägen lernen“. Index-/Sektordaten kommen aus dem Scan (`ctx_hist`, ohne Zusatzabrufe).
+- Historischer Gegencheck derselben Merkmale an allen B60-Trades 2008–2026: `research/reversal/learn.py` (Branch
+  `claude/ultimate-research`, Workflow „Research – Lern-Test“).
+- Tests `backend/tests/test_tradewhy.py` (6).
+
 ## D. E2-Schattentest – Grundlage (nicht aktiv)
 
 `paper/e2shadow.py` (neu). Gleiche Signale wie B60 (Treffer 11/11, USA/Europa), eigene Einstiegsregel (Buy-Stop

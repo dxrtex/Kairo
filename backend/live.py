@@ -99,7 +99,8 @@ def _show(sig: list[dict]) -> list[dict]:
     return keep
 
 
-def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: bool = True, market: dict | None = None) -> dict:
+def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: bool = True, market: dict | None = None,
+           ctx: dict | None = None) -> dict:
     """record=False: keine neuen Signale speichern (Scan während der Börsenzeit – US-Tageskerzen noch nicht fertig);
     Ergebnisse bestehender Signale werden trotzdem nachgeführt."""
     sig = state.load("signals.json", [])
@@ -185,9 +186,13 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
         snaps = state.load(snapshots.FILE, {})
         snapshots.add(snaps, new, {r["ticker"]: r for r in rows}, data, market, today)
         snapshots.track(snaps, sig, today)
+        from . import tradewhy                     # Fehlschläge verstehen: Ursachen je abgeschlossenem Treffer + Lern-Bericht
+        tradewhy.analyze(snaps, data, ctx)
         state.save(snapshots.FILE, snaps)
+        learn = tradewhy.report(snaps)
     except Exception as exc:
         print("Momentaufnahmen:", repr(exc)[:120])
+        learn = None
     if record:                                     # Läufe tagsüber nicht merken – sonst gälten deren Treffer abends als „schon bekannt“
         state.save("last.json", {"date": today, "hit": [r["ticker"] for r in rows if r["passed"]],
                                  "fast": [r["ticker"] for r in rows if r.get("fast_hit")],
@@ -202,5 +207,5 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
     out = {"generated": today, "live": {"since": min((s["d"] for s in sig), default=today), "n": len(sig),
                                         "stats": stats(done) if done else None, "strat": strat_stats(sig), "strat60": strat_stats(sig, "st60"),
                                         "grade": {g: _agg([x for x in done if x["k"] == "hit" and x.get("grade") == g]) for g in "ABC"}},
-           "signals": _show(sig), "new": [s["t"] for s in new], "backtest": bt}
+           "signals": _show(sig), "new": [s["t"] for s in new], "backtest": bt, "learn": learn}
     return out

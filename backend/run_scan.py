@@ -868,7 +868,7 @@ def main(argv=None) -> int:
         try:
             # Neue Signale nur aus dem Abendscan (nach US-Börsenschluss) – manuelle Läufe tagsüber hätten halbfertige Tageskerzen
             evening = os.environ.get("GITHUB_EVENT_NAME", "schedule") == "schedule" or datetime.now(timezone.utc).hour >= 21
-            bil = live.update(rows, data, today_iso, record=evening, market=market)
+            bil = live.update(rows, data, today_iso, record=evening, market=market, ctx=ctx_hist)
             if not evening:
                 print("Live-Bilanz: Lauf während der Börsenzeit – keine neuen Signale gespeichert")
             print(f"Live-Bilanz: {bil['live']['n']} Signale seit {bil['live']['since']}, neu: {len(bil['new'])}")
