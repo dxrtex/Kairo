@@ -140,3 +140,14 @@ def test_booster_pair_and_fdr():
     rows = [{"p": 0.04, "status": "x"}, {"p": 0.5}, {"p": 0.6}, {"p": 0.7}, {"p": 0.9}]
     W._bh(rows)
     assert rows[0]["q"] == 0.2
+
+
+def test_sma200_and_volume_spike_from_signal_day_only():
+    c = np.linspace(50, 150, 400)
+    stock = pd.DataFrame({"Close": c, "Volume": np.full(400, 1e6)}, index=IDX)
+    stock.iloc[300, stock.columns.get_loc("Volume")] = 3e6
+    w = W.explain(_sn("A", str(IDX[300].date()), -1.0), stock, {})
+    assert "sma200_up" in w["pre"] and "vol_spike" in w["pre"]
+    w2 = W.explain(_sn("A", str(IDX[310].date()), -1.0), stock, {})
+    assert "vol_spike" not in w2["pre"]                       # die Spitze lag vor dem Signaltag → zählt nicht
+    assert "sma200_up" in W.explain(_sn("A", str(IDX[100].date()), 0.5, res="ema"), stock, {})["unk"]

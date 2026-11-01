@@ -34,9 +34,12 @@ PRE = {"eng": "Stop enger als 1 ATR", "weit": "Stop weiter als 2,5 ATR", "moment
        "ins_kauf": "Insider-Kauf in den 90 Tagen davor", "ins_cluster": "Mehrere Insider kauften (≥ 2)",
        "ins_gezielt": "Gezielter Insider-Kauf (kein Routine-Käufer)", "analyst_kauf": "Analysten im Schnitt „Kaufen“ (≤ 2,0)",
        "analyst_ziel": "Kursziel ≥ 25 % über dem Kurs", "news_neg": "Schlagzeilen überwiegend negativ",
-       "sektor_rot": "Sektor in roter Lage", "guenstig": "KGV unter 15"}
+       "sektor_rot": "Sektor in roter Lage", "guenstig": "KGV unter 15",
+       # Knapp gescheitert im historischen Kombinations-Test (01.11.2026, q 0,165) – live unabhängig beobachtet
+       "sma200_up": "Aktie über ihrer 200-Tage-Linie", "vol_spike": "Volumen ≥ 2 × Ø am Signaltag"}
 # Vorab festgelegte Paare (nur diese – je mehr Paare, desto mehr Zufallsfunde)
-PAIRS = (("ins_kauf", "index_u200"), ("analyst_ziel", "momentum"), ("ins_kauf", "analyst_kauf"), ("guenstig", "markt_rot"))
+PAIRS = (("ins_kauf", "index_u200"), ("analyst_ziel", "momentum"), ("ins_kauf", "analyst_kauf"), ("guenstig", "markt_rot"),
+         ("sma200_up", "index_u200"))
 FDR_Q = 0.10                        # Benjamini-Hochberg: höchstens ~10 % Zufallsfunde unter den Kandidaten
 POST = {"markt_fiel": "Gesamtmarkt fiel in der Haltezeit", "sektor_fiel": "Sektor fiel in der Haltezeit",
         "eigenschwach": "Aktie deutlich schwächer als der Markt", "luecke": "Kurslücke über den Stop",
@@ -111,6 +114,18 @@ def explain(sn: dict, stock=None, ctx: dict | None = None) -> dict:
         "zahlen_bald": bool(g.get("earn")) and 0 <= _bdays(d, g["earn"]) <= 20,
         "spaet": (sn.get("late") or 0) >= 2,
     }
+    if st is not None and len(st) >= 200:          # Kurs-Merkmale aus dem historischen Test, nur Daten bis zum Signaltag
+        j = _at(st, d)
+        pre["sma200_up"] = bool(st.iloc[j] > st.iloc[max(0, j - 199):j + 1].mean()) if j >= 199 else None
+    else:
+        pre["sma200_up"] = None
+    vol = stock["Volume"].dropna() if stock is not None and not getattr(stock, "empty", True) and "Volume" in stock else None
+    if vol is not None and len(vol) > 50:
+        j = int(vol.index.searchsorted(pd.Timestamp(d), side="right") - 1)
+        base = vol.iloc[max(0, j - 50):j].mean()
+        pre["vol_spike"] = bool(vol.iloc[j] >= 2 * base) if j >= 50 and base > 0 else None
+    else:
+        pre["vol_spike"] = None
     c = g.get("ctx") or {}
     ins = c.get("ins")
     nz = lambda v, f: None if v is None else bool(f(v))
