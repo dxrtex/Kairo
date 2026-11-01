@@ -1,0 +1,70 @@
+name: Research – Meta-Labeling (Modell-Rangfolge für B60)
+
+# Nur Forschung. Modell-Rangfolge (Ridge, walk-forward) aus allen Signal-Merkmalen gegen B60 und Zufall im Depot.
+# Entscheidungsregel vorab festgelegt in research/reversal/meta.py. Auslöser: research/reversal/meta_trigger.txt.
+permissions:
+  contents: write
+  actions: read
+
+on:
+  push:
+    branches: ["claude/ultimate-research"]
+    paths: ["research/reversal/meta_trigger.txt"]
+
+env:
+  PYTHONUNBUFFERED: "1"
+  KAIRO_VALIDATION_UNSEALED: "1"
+  KAIRO_HOLDOUT_UNSEALED: "1"
+  PRICES_ASSET: "653201144"
+  BENCH_ASSET: "653201146"
+  FX_ASSET: "653201143"
+  PRICES_SHA: "e405016e2348755bb9eef3fe5e70e7f6ff405755b15487fd15fd310a5e823c3c"
+  SWEEP_RUN: "40778404648"
+  SEC_FILINGS: "657029194"
+  SEC_CIK: "657029198"
+
+jobs:
+  meta:
+    strategy:
+      fail-fast: false
+      matrix:
+        layout: ["5x1", "20x025"]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "swsig-*", merge-multiple: true, path: parts, run-id: "${{ env.SWEEP_RUN }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Daten laden
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          mkdir -p v1 sec
+          for x in PRICES:prices BENCH:bench FX:fx; do v=${x%%:*}_ASSET; for k in 1 2 3 4 5 6; do gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/${!v} > v1/${x##*:}_v1.parquet && break; sleep 300; done; done
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_FILINGS > sec/filings.csv.gz
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$SEC_CIK > sec/cik_map.csv
+          ID=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name=="research-sec-v3") | .assets[] | select(.name=="insider_buys.csv.gz") | .id' | head -1)
+          echo "insider_buys Asset: $ID"
+          gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$ID > sec/insider_buys.csv.gz
+          python -c "import pandas as pd;d=pd.read_csv('sec/insider_buys.csv.gz');print(len(d),'Insider-Käufe',d['filed'].min(),d['filed'].max())"
+          for N in fund_timeline.csv.gz fund.csv.gz; do
+            FID=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq ".[] | select(.tag_name==\"research-sec-v3\") | .assets[] | select(.name==\"$N\") | .id" | head -1)
+            if [ -n "$FID" ]; then gh api -H "Accept: application/octet-stream" repos/$GITHUB_REPOSITORY/releases/assets/$FID > sec/fund_src.csv.gz; echo "Bilanzdaten: $N ($FID)"; break; fi
+          done
+          echo "$PRICES_SHA  v1/prices_v1.parquet" | sha256sum -c
+          python -c "import pandas as pd,glob;d=pd.concat([pd.read_parquet(f) for f in sorted(glob.glob('parts/sweep_signals_*.parquet'))]);d=d[d['v'].str.split(',').apply(lambda l:'0' in l)];d.to_parquet('sig.parquet',index=False);print(len(d),'Treffer')"
+      - run: python -W ignore -m research.reversal.meta --layout ${{ matrix.layout }} --data v1 --signals sig.parquet --sec sec --insider sec/insider_buys.csv.gz --fund sec/fund_src.csv.gz --out out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: "meta-${{ matrix.layout }}", path: out/, retention-days: 30 }
+      - name: Ergebnis auf Branch claude/reversal-out
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          W=$GITHUB_WORKSPACE; mkdir -p /tmp/pr && cd /tmp/pr && git init -q
+          git config user.name "kairo-research"; git config user.email "research@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch -q origin claude/reversal-out; then git checkout -q -b pub FETCH_HEAD; else git checkout -q --orphan pub; fi
+          mkdir -p "meta-$GITHUB_RUN_ID" && cp $W/out/meta_report_*.md $W/out/meta_result_*.json "meta-$GITHUB_RUN_ID"/
+          git add . && git commit -qm "Meta-Labeling $GITHUB_RUN_ID ${{ matrix.layout }}" && for k in 1 2 3; do git push -q origin pub:claude/reversal-out && break; git fetch -q origin claude/reversal-out && git rebase -q FETCH_HEAD; done
