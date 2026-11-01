@@ -84,7 +84,8 @@ def test_buy_and_exit_are_separate_from_signal_day():
     assert "buy" not in snaps["AAA|hit|2026-05-01"]                    # Basis noch offen: kein Kauf
     sig[0]["st60"] = {"res": "run", "r": 0.2, "days": 3, "e": 101.0, "sl": 97.0}
     snapshots.track(snaps, sig, "2026-05-12")
-    assert snaps["AAA|hit|2026-05-01"]["buy"] == {"e": 101.0, "sl": 97.0, "seen": "2026-05-12"}
+    assert snaps["AAA|hit|2026-05-01"]["buy"] == {"e": 101.0, "sl": 97.0, "seen": "2026-05-12", "after": 7, "tone": None}
+    assert snaps["AAA|hit|2026-05-01"]["stage"] == "gekauft"
     sig[0]["st60"] = {"res": "ema", "r": 1.4, "days": 15, "e": 101.0, "sl": 97.0}
     snapshots.track(snaps, sig, "2026-05-30")
     snapshots.track(snaps, sig, "2026-06-02")                           # zweiter Lauf ändert nichts mehr
@@ -94,3 +95,41 @@ def test_buy_and_exit_are_separate_from_signal_day():
     t = snapshots.table(snaps)
     assert len(t) == 1 and bool(t.iloc[0]["win"]) and t.iloc[0]["f_atr"] == 2
     assert snapshots.compare(snaps) == {"n": 1, "need": 30}
+
+
+def test_lifecycle_mfe_mae_and_no_entry():
+    idx = pd.bdate_range("2026-05-01", periods=30)
+    c = np.r_[np.full(5, 100.0), np.linspace(100, 110, 25)]
+    df = pd.DataFrame({"Open": c, "High": c + 1, "Low": c - 1, "Close": c}, index=idx)
+    df.iloc[6, df.columns.get_loc("Low")] = 97.5                         # zwischenzeitlicher Tiefpunkt nach dem Kauf
+    base = {"t": "A", "k": "hit", "d": "2026-05-01", "ver": {"rule": "B60"}, "sig": {"x": 1}}
+    snaps = {"A|hit|2026-05-01": dict(base), "B|hit|2026-05-01": {**base, "t": "B"}}
+    sig = [{"t": "A", "k": "hit", "d": "2026-05-01", "st60": {"res": "wait"}}, {"t": "B", "k": "hit", "d": "2026-05-01", "st60": {"res": "nobase"}}]
+    snapshots.track(snaps, sig, "2026-05-04", {"A": df})
+    assert snaps["A|hit|2026-05-01"]["stage"] == "signal" and snaps["B|hit|2026-05-01"]["stage"] == "kein_einstieg"
+    sig[0]["st60"] = {"res": "ema", "r": 2.0, "days": 20, "e": 100.0, "sl": 98.0}
+    snapshots.track(snaps, sig, "2026-06-05", {"A": df}, {"regime": {"tone": "green"}})
+    a = snaps["A|hit|2026-05-01"]
+    assert a["stage"] == "beendet" and a["buy"]["tone"] == "green" and a["exit"]["buy_day"] == "2026-05-04"
+    assert a["exit"]["mae"] == -1.25 and a["exit"]["mfe"] > 4 and a["sig"] == {"x": 1}
+
+
+def test_controls_and_forward_returns(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    df = _df()
+    d = str(df.index[-61].date())
+    rows = [_row("H", d=d)] + [{**_row(f"N{i}", d=d, passed=False), "near_hit": True} for i in range(3)] \
+        + [{**_row(f"R{i}", d=d, passed=False)} for i in range(12)]
+    data = {r["ticker"]: df for r in rows}
+    snaps = {}
+    n = snapshots.add_controls(snaps, rows, data, MARKET, d)
+    ks = [k.split("|")[1] for k in snaps]
+    assert ks.count("near") == 3 and ks.count("rand") == snapshots.N_RAND and n == 3 + snapshots.N_RAND
+    again = dict(snaps)
+    snapshots.add_controls(snaps, rows, data, MARKET, d)                     # gleicher Tag: gleiche Zufallsauswahl, keine Doppel
+    assert snaps.keys() == again.keys()
+    assert snapshots.track_forward(snaps, data) == len(snaps)
+    sn = next(iter(snaps.values()))
+    assert set(sn["fwd"]) == {"r20", "dd20", "r60", "dd60"} and sn["fwd"]["r60"] > 0
+    rep = snapshots.controls_report(snaps)
+    assert rep["near"]["n"] == 3 and rep["rand"]["n60"] == snapshots.N_RAND and rep["hit"]["n"] == 0

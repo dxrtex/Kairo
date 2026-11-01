@@ -185,11 +185,15 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
         from . import snapshots
         snaps = state.load(snapshots.FILE, {})
         snapshots.add(snaps, new, {r["ticker"]: r for r in rows}, data, market, today)
-        snapshots.track(snaps, sig, today)
+        if record:                                 # Kontrollgruppen (9/11, Zufall) nur aus dem Abendscan
+            snapshots.add_controls(snaps, rows, data, market, today)
+        snapshots.track(snaps, sig, today, data, market)
+        snapshots.track_forward(snaps, data)
         from . import tradewhy                     # Fehlschläge verstehen: Ursachen je abgeschlossenem Treffer + Lern-Bericht
         tradewhy.analyze(snaps, data, ctx, names={s["t"]: s.get("n") for s in sig})
         state.save(snapshots.FILE, snaps)
         learn = tradewhy.report(snaps)
+        learn["controls"] = snapshots.controls_report(snaps)
     except Exception as exc:
         print("Momentaufnahmen:", repr(exc)[:120])
         learn = None

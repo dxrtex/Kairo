@@ -65,3 +65,16 @@ def test_rule_matches_b60_parameters():
     from backend.rule import KAIRO
     assert (E.RULE["wait"], E.RULE["ck"], E.RULE["cm"], E.RULE["buf"], E.RULE["hold"], E.RULE["ema"], E.RULE["ema_from"]) == \
         (KAIRO["wait"], KAIRO["ck"], KAIRO["cm"], KAIRO["buf"], KAIRO["hold"], KAIRO["ema"], KAIRO["ema_from"])
+
+
+def test_same_day_trigger_and_base_break_is_conservative():
+    """Tageskerze löst aus UND bricht die Basis: Reihenfolge unbekannt → Kauf zählt, Stop am Kauftag (−1 R brutto)."""
+    df, d = _df(BASE + [(100.4, 101.2, 98.0, 99.0)])
+    r = E.simulate(df, d)
+    assert r["res"] == "stop" and r["days"] == 1 and r["r"] == -1.0 and r["r_stress"] < r["r_net"] < r["r"]
+
+
+def test_open_gap_into_trigger_fills_at_open():
+    df, d = _df(BASE + [(101.0, 101.5, 100.9, 101.2)] + [(101, 101.5, 100.8, 101.2)] * 70)
+    r = E.simulate(df, d)
+    assert r["e"] == 101.0 and r["e"] > r["trig"]                   # Eröffnung über dem Buy-Stop, unter der Lücken-Grenze

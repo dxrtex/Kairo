@@ -15,7 +15,14 @@ Regel E2 (eingefroren wie in research/ultimate/round1.py, Variante E2):
   spätestens Schluss Tag 60.
 - Auch NICHT ausgelöste Orders werden mit Grund festgehalten (nobase, basis_gebrochen, nicht_ausgelöst, kurslücke,
   risiko_atr) – sonst wäre der Vergleich mit B60 geschönt.
-- R brutto und mit geschätzten Basiskosten (0,1 % je Seite) – Schätzwert, kein gemessener Spread.
+- R brutto, mit Basis-Kosten (halber Spread 0,1 % je Seite = 0,05 %) und Stress-Kosten (doppelter Spread + 0,05 % Schlupf
+  = 0,15 % je Seite) wie in der Forschungs-Engine; Fremdwährungsgebühr und 0,99 € unter 250 € hängen von der Ordergröße ab
+  und sind nicht enthalten. Geschätzte Kosten, kein gemessener Spread.
+- Parität (geprüft 01.11.2026) mit research/ultimate/round1.py orders_E2 + strategy_championship/engine.py: Basis-Suche,
+  Invalidierung über das 10-Tage-Tief, Buy-Stop-Kurs, Verfall bei Kurslücke über Basishoch + 0,5 ATR, Abbruch bei Bruch der
+  Basis, 0,5–3-ATR-Risiko, Stop am Kauftag (Tief unter Stop = ausgestoppt, vorsichtig), EMA-20-Ausstieg ab Tag 10 zur
+  nächsten Eröffnung, Zeitausstieg zum Schluss von Tag 60. Bei unklarer Reihenfolge von Hoch und Tief am Kauftag gilt
+  immer die ungünstige Annahme (erst Kauf, dann Stop).
 
 Jeder Lauf rechnet offene Signale aus den Tageskerzen neu (robust gegen ausgefallene oder doppelte Läufe);
 abgeschlossene Einträge werden eingefroren und nie mehr verändert.
@@ -34,7 +41,7 @@ from backend.rule import KAIRO
 RULE = {"version": "E2-schatten-1", "wait": KAIRO["wait"], "ck": KAIRO["ck"], "cm": KAIRO["cm"], "inv": KAIRO["inv"],
         "buf": KAIRO["buf"], "risk_atr": KAIRO["risk_atr"], "trig": 0.05, "cap": 0.5, "valid": 10,
         "hold": KAIRO["hold"], "ema": KAIRO["ema"], "ema_from": KAIRO["ema_from"]}
-COST_SIDE = 0.001
+COST_SIDE, COST_STRESS = 0.0005, 0.0015
 REGIONS = ("us", "europe")
 FILE = "e2_shadow.json"
 FINAL = ("stop", "ema", "zeit", "nobase", "basis_gebrochen", "nicht_ausgelöst", "kurslücke", "risiko_atr")
@@ -100,7 +107,8 @@ def simulate(df: pd.DataFrame, d: str, rule: dict = RULE) -> dict:
     ema = pd.Series(c).ewm(span=rule["ema"], adjust=False).mean().to_numpy()
     buy = {"buy_day": str(idx[ek].date()), "e": round(e, 4)}
     R = lambda x, day, k: {"x": round(x, 4), "exit_day": str(idx[k].date()), "days": day,
-                           "r": round((x - e) / risk, 3), "r_net": round((x * (1 - COST_SIDE) - e * (1 + COST_SIDE)) / risk, 3)}
+                           "r": round((x - e) / risk, 3), "r_net": round((x * (1 - COST_SIDE) - e * (1 + COST_SIDE)) / risk, 3),
+                           "r_stress": round((x * (1 - COST_STRESS) - e * (1 + COST_STRESS)) / risk, 3)}
     for day, k in enumerate(range(ek, n), start=1):
         if day > 1 and o[k] <= stop:
             return {"res": "stop", **base, **buy, **R(o[k], day, k)}
@@ -149,5 +157,12 @@ def summary(book: dict) -> dict:
     out = {"start": book.get("start"), "n": len(it), "status": cnt, "closed": len(done)}
     if done:
         out.update(r=round(float(np.mean([x["r"] for x in done])), 3), r_net=round(float(np.mean([x["r_net"] for x in done])), 3),
-                   win=round(float(np.mean([x["r"] > 0 for x in done])), 3))
+                   r_stress=round(float(np.mean([x.get("r_stress", x["r_net"]) for x in done])), 3),
+                   win=round(float(np.mean([x["r"] > 0 for x in done])), 3),
+                   days=round(float(np.mean([x["days"] for x in done])), 1))
+    filled = [x for x in it if x.get("res") in ("open", "stop", "ema", "zeit")]
+    decided = [x for x in it if x.get("res") not in ("wait", "armed")]
+    out["fill_rate"] = round(len(filled) / len(decided), 3) if decided else None       # Kaufquote: gekauft / entschieden
+    b60 = [x for x in it if x.get("b60") in ("stop", "ema", "zeit", "run")]
+    out["b60_filled"] = len(b60)                                                       # dieselben Signale: B60 hatte Einstieg
     return out
