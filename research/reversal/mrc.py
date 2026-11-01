@@ -36,7 +36,15 @@ Train-Rendite) eine höhere Jahresrendite hat, der größte Rückgang nicht mehr
 einseitige Block-Bootstrap der Monatsrenditen (Validierung + Holdout, Holm über alle Herausforderer) p < 0,10 ergibt.
 Zusätzlich wird jede Variante gegen den Welt-ETF (ACWI) gezeigt. Gewinner = Schattentest, keine Regeländerung.
 
+WELLE 2 (vorab festgelegt 02.11.2026 nach Welle 1, vor dem eigenen Lauf – klar getrennt berichtet):
+Welle 1 zeigte: Schnelle Mean Reversion hat mit normalen Kosten einen großen Vorteil, mit Stress-Kosten Totalverlust.
+Darum je Variante ein Kostenraster (Spread × 1 / 1,5 / 2, Schlupf 0 / 0,05 %, FX-Aufschlag 0 / 0,05 / 0,1 % je Seite;
+Gebühr 0,99 € unter 250 €), die Kostenschwelle (höchste geprüfte Kosten, bei denen Validierung UND Holdout den Welt-ETF
+schlagen) und der Brutto-Ertrag je Trade (ohne Kosten). Neue liquide Varianten (≥ 100 Mio. $ Tagesumsatz):
+  A5L 3 Verlusttage + Trend, liquide · A7L Wochen-Verlierer, liquide · A1L RSI(2) < 10 + Trend, liquide · A6L Z-Score, liquide
+
     python -m research.reversal.mrc --data v1 --signals sig.parquet --sec sec --variant A1 --out out
+    python -m research.reversal.mrc costs --data v1 --signals sig.parquet --sec sec --variant A5 --out out
     python -m research.reversal.mrc report --dir DIR
 """
 from __future__ import annotations
@@ -55,13 +63,16 @@ from research.strategy_championship.engine import Order, run
 from research.ultimate import round1 as R
 
 VARIANTS = ("A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "B0", "B1", "B2", "B3", "B4", "B5",
-            "B6", "B7", "B8", "B9", "B10", "B11", "C1")
+            "B6", "B7", "B8", "B9", "B10", "B11", "C1", "A5L", "A7L", "A1L", "A6L")
 NAMES = {"A1": "RSI(2) < 10 + Trend", "A2": "RSI(2) < 5 + Trend", "A3": "RSI(2) < 10 ohne Trend", "A4": "IBS < 0,15 + Trend",
          "A5": "3 Verlusttage + Trend", "A6": "Z-Score < −2 + Trend", "A7": "Wochen-Verlierer (Reversal)", "A8": "RSI(2) nur liquide",
          "A9": "RSI(2) mit Stop", "B0": "B60 (Referenz)", "B1": "B60, Ausstieg 5-Tage-Linie", "B2": "B60, Ausstieg Vortageshoch",
          "B3": "B60, Ausstieg Tag 10", "B4": "B60 nur liquide", "B5": "B60, doppeltes Risiko im Ausverkauf",
          "B6": "B60 Basis 3 Kerzen", "B7": "B60 Basis 7 Kerzen", "B8": "B60 Spanne 1,0 ATR", "B9": "B60 Spanne 2,0 ATR",
-         "B10": "B60 Wartezeit 5", "B11": "B60 Wartezeit 15", "C1": "RSI(2) auf Index-ETFs"}
+         "B10": "B60 Wartezeit 5", "B11": "B60 Wartezeit 15", "C1": "RSI(2) auf Index-ETFs",
+         "A5L": "3 Verlusttage + Trend, liquide", "A7L": "Wochen-Verlierer, liquide", "A1L": "RSI(2) + Trend, liquide", "A6L": "Z-Score, liquide"}
+WAVE2 = ("A5L", "A7L", "A1L", "A6L")
+LIQ2 = 1e8
 CASH = (10000, 20000)
 AB = ("Train", "Validierung", "Holdout")
 REGIONS = ("us", "eu", "europe")
@@ -109,22 +120,25 @@ def family_a(v: str, slots: int, tickers=None) -> tuple[list[Order], dict]:
         x = ind(t)
         C, ok = x["C"], x["ok"]
         trend = C > x["sma200"]
-        if v in ("A1", "A8", "A9", "C1"):
+        base = v[:-1] if v in WAVE2 else v
+        if base in ("A1", "A8", "A9", "C1"):
             sig, prio, ex, md = (x["rsi2"] < 10) & trend, -x["rsi2"], "sma5", 10
-        elif v == "A2":
+        elif base == "A2":
             sig, prio, ex, md = (x["rsi2"] < 5) & trend, -x["rsi2"], "sma5", 10
-        elif v == "A3":
+        elif base == "A3":
             sig, prio, ex, md = (x["rsi2"] < 10), -x["rsi2"], "sma5", 10
-        elif v == "A4":
+        elif base == "A4":
             sig, prio, ex, md = (x["ibs"] < 0.15) & trend, -x["ibs"], "vorhoch", 10
-        elif v == "A5":
+        elif base == "A5":
             sig, prio, ex, md = x["down3"] & trend, -x["rsi2"], "sma5", 10
-        elif v == "A6":
+        elif base == "A6":
             sig, prio, ex, md = (x["z"] < -2) & trend, -x["z"], "sma20", 15
         else:
             raise ValueError(v)
         if v == "A8":
             sig = sig & (x["adv"] >= 5e7)
+        if v in WAVE2:
+            sig = sig & (x["adv"] >= LIQ2)
         sig = np.nan_to_num(sig.astype(float)) > 0
         if v != "C1":
             sig &= ok
@@ -148,7 +162,7 @@ def family_a(v: str, slots: int, tickers=None) -> tuple[list[Order], dict]:
     return orders, exits
 
 
-def family_week(slots: int) -> tuple[list[Order], dict]:
+def family_week(slots: int, min_adv: float = 0.0) -> tuple[list[Order], dict]:
     """A7: an jedem letzten Handelstag der Woche die schwächsten 10 der Woche (≤ −5 %), 5 Tage halten."""
     start = pd.Timestamp(PERIODS["train"][0])
     rows = []
@@ -156,7 +170,7 @@ def family_week(slots: int) -> tuple[list[Order], dict]:
         x = ind(t)
         idx = x["idx"]
         last_of_week = np.r_[idx[1:].isocalendar().week.to_numpy() != idx[:-1].isocalendar().week.to_numpy(), False]
-        m = last_of_week & x["ok"] & (np.nan_to_num(x["ret5"], nan=0) <= -0.05) & (idx >= start)
+        m = last_of_week & x["ok"] & (np.nan_to_num(x["ret5"], nan=0) <= -0.05) & (idx >= start) & (x["adv"] >= min_adv)
         for k in np.where(m)[0]:
             if k < len(idx) - 1:
                 rows.append((idx[k], t, float(x["ret5"][k])))
@@ -234,6 +248,42 @@ def add_etfs(data: str) -> list[str]:
 
 
 # ------------------------------------------------------------------ Depot
+def build_orders(v: str, lay: str, sig, meta, etfs=None):
+    if v.startswith("B"):
+        o, e = family_b(v, sig, meta, lay)
+        return o, e, R.LAYOUTS[lay][0]
+    if v in ("A7", "A7L"):
+        o, e = family_week(int(lay), LIQ2 if v == "A7L" else 0.0)
+        return o, e, int(lay)
+    o, e = family_a(v, int(lay), etfs)
+    return o, e, int(lay)
+
+
+def run_costs(v: str, sig, meta, data: str) -> dict:
+    """Welle 2: Kostenraster je Variante (bestes Raster nach Train mit normalen Kosten wird aus beiden ermittelt)."""
+    from research.strategy_championship.engine import Costs
+    sp = R._G["spread"]
+    etfs = add_etfs(data) if v == "C1" else None
+    out = {}
+    for lay in layouts_for(v):
+        orders, exits, mx = build_orders(v, lay, sig, meta, etfs)
+        orders = top_per_day(orders, 4 * mx)
+        zero = run(R._G["raw"], R._G["cur"], R._G["fx"], orders, 10000, Costs(fee_eur=0.0, spread=0.0), mx, calendar=R._G["cal"], exit_when=exits, min_fill=0.5)
+        t = zero.trades
+        gross = float((t["pnl_eur"] / t["cost_eur"]).mean()) if len(t) else None
+        out[f"{lay}|gross"] = {"ret_trade": gross, "trades": int(len(t)), "days": float(t["days"].mean()) if len(t) else None}
+        for m in (1.0, 1.5, 2.0):
+            for sl in (0.0, 0.0005):
+                for fx in (0.0, 0.0005, 0.001):
+                    c = Costs(fee_eur=0.99, spread=0.001 * m, slippage=sl, fx_fee=fx, fee_free_from=250.0, spread_by_ticker={k: m * v_ for k, v_ in sp.items()})
+                    r = run(R._G["raw"], R._G["cur"], R._G["fx"], orders, 10000, c, mx, calendar=R._G["cal"], exit_when=exits, min_fill=0.5)
+                    seg = R.segments(r.equity, r.trades, r.invested)
+                    side = float(np.mean([c.side(tk, R._G["cur"].get(tk, "USD")) for tk in r.trades["ticker"]])) if len(r.trades) else None
+                    out[f"{lay}|{m}|{sl}|{fx}"] = {"side": side, **{ab: {k: (seg.get(ab) or {}).get(k) for k in ("cagr", "max_dd")} for ab in AB + ("gesamt",)}}
+        print("Kosten", v, lay, flush=True)
+    return out
+
+
 def layouts_for(v: str) -> tuple:
     return ("5x1", "20x025") if v.startswith("B") else ("5", "10")
 
@@ -242,13 +292,7 @@ def run_variant(v: str, sig, meta, data: str) -> dict:
     out, curves = {}, {}
     etfs = add_etfs(data) if v == "C1" else None
     for lay in layouts_for(v):
-        if v.startswith("B"):
-            orders, exits = family_b(v, sig, meta, lay)
-            mx = R.LAYOUTS[lay][0]
-        elif v == "A7":
-            orders, exits = family_week(int(lay)); mx = int(lay)
-        else:
-            orders, exits = family_a(v, int(lay), etfs); mx = int(lay)
+        orders, exits, mx = build_orders(v, lay, sig, meta, etfs)
         orders = top_per_day(orders, 4 * mx)
         print(f"{v} {lay}: {len(orders)} Orders", flush=True)
         for cash in CASH:
@@ -366,14 +410,54 @@ def report(d: Path) -> str:
     else:
         L.append("**Kein Herausforderer schlägt B60 durchgängig und statistisch abgesichert.** Die Tabelle zeigt trotzdem, welche Variante "
                  "in welchem Zeitraum vorn lag.")
+    L += costs_section(d, acwi)
     txt = "\n".join(L) + "\n"
     (d / "mrc_report.md").write_text(txt, encoding="utf-8")
     return txt
 
 
+def costs_section(d: Path, acwi) -> list[str]:
+    """Welle 2: Brutto-Ertrag je Trade und Kostenschwelle gegen den Welt-ETF."""
+    files = sorted(d.glob("mrc_costs_*.json"))
+    if not files:
+        return []
+    P = lambda x: "–" if x is None else f"{x:+.1%}"
+    bench = {}
+    if acwi is not None:
+        for ab, k in zip(AB, ("train", "validation", "holdout")):
+            a, b = PERIODS[k][:2]
+            s = acwi[(acwi.index >= a) & (acwi.index <= b)]
+            y = (s.index[-1] - s.index[0]).days / 365.25
+            bench[ab] = (s.iloc[-1] / s.iloc[0]) ** (1 / y) - 1
+    L = ["\n## Welle 2 – Kosten entscheiden: Brutto-Ertrag und Kostenschwelle (10.000 €)\n",
+         "Kostenschwelle = höchste geprüfte Kosten je Seite (Spread-Hälfte + Schlupf + FX), bei denen die Variante in Validierung UND "
+         "Holdout den Welt-ETF schlägt. Je höher, desto robuster gegen echte Handelskosten.\n",
+         "| Variante | Raster | Brutto je Trade | Trades | Ø Tage | normal Val / Hold | Kostenschwelle je Seite | dort Val / Hold | ×2 Spread+0,05 % Schlupf+0,1 % FX: Val / Hold |",
+         "|---|---|---|---|---|---|---|---|---|"]
+    for f in files:
+        v = f.stem.replace("mrc_costs_", "")
+        r = json.loads(f.read_text())
+        lays = sorted({k.split("|")[0] for k in r})
+        lay = max(lays, key=lambda l: ((r.get(f"{l}|1.0|0.0|0.0") or {}).get("Train") or {}).get("cagr") or -9)
+        g = r.get(f"{lay}|gross") or {}
+        grid = [(k, x) for k, x in r.items() if k.startswith(lay + "|") and not k.endswith("gross")]
+        ok = [(x["side"], k, x) for k, x in grid if x.get("side") is not None and bench and all(
+            (x.get(ab) or {}).get("cagr") is not None and x[ab]["cagr"] > bench[ab] for ab in ("Validierung", "Holdout"))]
+        best = max(ok) if ok else None
+        n = r.get(f"{lay}|1.0|0.0|0.0") or {}
+        w = r.get(f"{lay}|2.0|0.0005|0.001") or {}
+        L.append(f"| {v} {NAMES.get(v, v)} | {lay} | {P(g.get('ret_trade'))} | {g.get('trades')} | {g.get('days') or 0:.1f} | "
+                 f"{P((n.get('Validierung') or {}).get('cagr'))} / {P((n.get('Holdout') or {}).get('cagr'))} | "
+                 + (f"{best[0]:.2%} | {P(best[2]['Validierung']['cagr'])} / {P(best[2]['Holdout']['cagr'])}" if best else "schlägt ETF bei keinen geprüften Kosten | –")
+                 + f" | {P((w.get('Validierung') or {}).get('cagr'))} / {P((w.get('Holdout') or {}).get('cagr'))} |")
+    if bench:
+        L.append(f"\n*Welt-ETF zum Vergleich: Validierung {P(bench['Validierung'])}, Holdout {P(bench['Holdout'])}.*")
+    return L
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", nargs="?", default="run", choices=["run", "report"])
+    ap.add_argument("cmd", nargs="?", default="run", choices=["run", "report", "costs"])
     ap.add_argument("--data"); ap.add_argument("--signals"); ap.add_argument("--sec"); ap.add_argument("--variant", choices=VARIANTS)
     ap.add_argument("--out", default="mrc_out"); ap.add_argument("--dir")
     a = ap.parse_args(argv)
@@ -381,6 +465,11 @@ def main(argv=None) -> int:
         print(report(Path(a.dir))); return 0
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     sig, meta = R.setup(a.data, a.signals, a.sec)
+    if a.cmd == "costs":
+        res = run_costs(a.variant, sig, meta, a.data)
+        (out / f"mrc_costs_{a.variant}.json").write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
+        print(json.dumps({k: v for k, v in res.items() if k.endswith("gross")}, indent=1, default=str))
+        return 0
     res, curves = run_variant(a.variant, sig, meta, a.data)
     (out / f"mrc_{a.variant}.json").write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
     curves.to_parquet(out / f"mrc_curve_{a.variant}.parquet")
