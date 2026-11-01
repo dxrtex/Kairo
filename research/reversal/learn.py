@@ -65,6 +65,8 @@ def _ret(s: pd.Series | None, a, b):
 
 def features(t: pd.DataFrame, adj: dict, region: dict, sector: dict) -> pd.DataFrame:
     px_r, px_s = proxies(adj, region), proxies(adj, sector)
+    print(f"Markt-Indizes: {sorted(px_r)} · Sektor-Indizes: {len(px_s)} · Trades mit Region {t['ticker'].map(region).notna().mean():.0%}, "
+          f"mit Sektor {t['ticker'].map(sector).notna().mean():.0%}", flush=True)
     atr_c = {}
     rows = []
     for x in t.itertuples(index=False):
@@ -102,6 +104,11 @@ def evaluate(df: pd.DataFrame) -> dict:
     res = {}
     for k, lbl in FEATS.items():
         known = df[df[k].notna()] if df[k].dtype == object else df
+        if not len(known):
+            res[k] = {"l": lbl, "n": 0, "share": None, "ab": {ab: {"n": 0, "diff": None} for ab in AB},
+                      "R_base": {"mit": None, "ohne": None}, "R_stress": {"mit": None, "ohne": None}, "ci": None,
+                      "status": "keine Daten"}
+            continue
         m = known[k].astype(bool)
         row = {"l": lbl, "n": int(m.sum()), "share": float(m.mean()) if len(m) else None, "ab": {}}
         for col in ("R_base", "R_stress"):
@@ -131,7 +138,8 @@ def report(df: pd.DataFrame, res: dict) -> str:
          "|---|---|---|---|---|---|---|---|---|"]
     for k, r in res.items():
         ci = "–" if not r["ci"] else f"{r['ci'][0]:+.3f} … {r['ci'][1]:+.3f}"
-        L.append(f"| {r['l']} | {r['share']:.0%} ({r['n']}) | {f(r['R_stress']['mit'])} | {f(r['R_stress']['ohne'])} | "
+        sh = "–" if r["share"] is None else f"{r['share']:.0%}"
+        L.append(f"| {r['l']} | {sh} ({r['n']}) | {f(r['R_stress']['mit'])} | {f(r['R_stress']['ohne'])} | "
                  + " | ".join(f"{f(r['ab'][ab]['diff'])} ({r['ab'][ab]['n']})" for ab in AB) + f" | {ci} | **{r['status']}** |")
     L.append("\n## Erklärung hinterher: Markt der Region fiel in der Haltezeit (≥ 3 %)\n")
     mf = df["markt_fiel"].astype(bool)
@@ -162,7 +170,9 @@ def main(argv=None) -> int:
     t = R.per_trade(R.build(sig, meta, "E0", 1e-5))
     uni = pd.read_csv(a.universe)
     df = features(t, R._G["adj"], dict(zip(uni["ticker"], uni["region"])), dict(zip(uni["ticker"], uni["sector"])))
+    df.to_csv(out / "learn_trades.csv.gz", index=False)
     res = evaluate(df)
+    (out / "learn_result.json").write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
     (out / "learn_report.md").write_text(report(df, res), encoding="utf-8")
     (out / "learn_result.json").write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
     df.to_csv(out / "learn_trades.csv.gz", index=False)
