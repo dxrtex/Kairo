@@ -96,6 +96,12 @@ Für jeden abgeschlossenen Treffer – Verlierer **und** Gewinner – einmalig d
 - **Lern-Bericht** (`report`): Häufigkeit der Gründe bei Verlusten vs. Gewinnen; je vorher erkennbarem Merkmal Ø R mit/ohne.
   Kandidat nur bei ≥ 10 Fällen mit und ohne, ≥ 0,25 R schlechter **und** gleiche Richtung in der früheren und späteren
   Hälfte. Schon geprüfte Merkmale (Ruhe-Filter, Quartalszahlen-Filter, Vormomentum) werden nicht erneut vorgeschlagen.
+- **Schlagzeilen je Verlust:** Google-News-Suche in der Haltezeit (höchstens 10 Verlierer je Lauf), Gründe nach den
+  Stichwort-Gruppen der Quartalszahlen-Ursachensuche (Ausblick, Analysten, Marge, Zölle …).
+- **Lehre je Verlust:** vorher sichtbares Merkmal → mit seiner Bilanz bewertet (Filter-Kandidat / historisch kein Nachteil /
+  wird beobachtet); sonst „vorher nicht erkennbar – normales Risiko“.
+- **Historisch geprüfte Merkmale bleiben unter Beobachtung:** zeigt ein Merkmal live beständig Schaden, obwohl die Forschung
+  keinen fand, wird es als „live auffällig – erneut prüfen“ markiert.
 - **Keine automatische Regeländerung.** Weg eines Kandidaten: Backtest 2008–2026 → Schattentest → Freigabe.
 - App: Bilanz → „Aus Fehlschlägen lernen“. Index-/Sektordaten kommen aus dem Scan (`ctx_hist`, ohne Zusatzabrufe).
 - Historischer Gegencheck derselben Merkmale an allen B60-Trades 2008–2026: `research/reversal/learn.py` (Branch

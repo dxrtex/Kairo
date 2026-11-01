@@ -5,6 +5,7 @@ import pandas as pd
 from backend import tradewhy as W
 
 IDX = pd.bdate_range("2025-01-01", periods=400)
+NORSS = lambda q: []
 
 
 def _px(path):
@@ -39,9 +40,9 @@ def test_explain_missing_market_data_is_unknown_not_false():
 def test_analyze_only_closed_hits_and_once():
     snaps = {"A|hit|x": _sn("A", str(IDX[250].date()), -1.0), "B|trend|x": {**_sn("B", str(IDX[250].date()), -1.0), "k": "trend"},
              "C|hit|x": {k: v for k, v in _sn("C", str(IDX[250].date()), 0).items() if k != "exit"}}
-    assert W.analyze(snaps, {}, {}) == 1 and "why" in snaps["A|hit|x"]
+    assert W.analyze(snaps, {}, {}, rss=NORSS) == 1 and "why" in snaps["A|hit|x"]
     snaps["A|hit|x"]["why"]["pre"] = ["sentinel"]
-    assert W.analyze(snaps, {}, {}) == 0 and snaps["A|hit|x"]["why"]["pre"] == ["sentinel"]
+    assert W.analyze(snaps, {}, {}, rss=NORSS) == 0 and snaps["A|hit|x"]["why"]["pre"] == ["sentinel"]
 
 
 def _book(n_eng_bad=12, n_ok=30, consistent=True):
@@ -52,7 +53,7 @@ def _book(n_eng_bad=12, n_ok=30, consistent=True):
         late_half = i >= (n_eng_bad + n_ok) // 2
         r = (-0.8 if (consistent or not late_half) else 1.2) if eng else 0.4 * (1 if i % 2 else -0.5)
         snaps[f"T{i}|hit|{d}"] = _sn(f"T{i}", d, r, stop_atr=3.0 if eng else 1.6)
-    W.analyze(snaps, {}, {})
+    W.analyze(snaps, {}, {}, rss=NORSS)
     return snaps
 
 
@@ -69,8 +70,8 @@ def test_report_candidate_needs_size_effect_and_both_halves():
 
 def test_already_tested_features_are_not_proposed_again():
     snaps = _book()
-    for s in snaps.values():
-        s["why"]["pre"] = ["zahlen_bald"] if s["exit"]["r"] < 0 else []
+    for i, s in enumerate(snaps.values()):          # Merkmal ohne Zusammenhang mit dem Ergebnis → bleibt „schon getestet“
+        s["why"]["pre"] = ["zahlen_bald"] if i % 2 else []
     rep = W.report(snaps)
     z = next(p for p in rep["pre"] if p["k"] == "zahlen_bald")
     assert z["status"] == "schon getestet" and "zahlen_bald" not in rep["candidates"] and z["note"]
@@ -80,3 +81,31 @@ def test_report_recent_losses_have_readable_reasons():
     rep = W.report(_book())
     assert rep["n"] == 42 and rep["recent"] and all(x["r"] <= 0 for x in rep["recent"])
     assert any("Stop weiter" in t for x in rep["recent"] for t in x["pre"])
+
+
+def test_losers_get_headlines_and_a_lesson():
+    seen = []
+    def rss(q):
+        seen.append(q)
+        return [("Acme stock plunges after guidance cut - Reuters", "", ""), ("Acme shares fall as analysts downgrade", "", ""),
+                ("Weather is nice today", "", "")]
+    snaps = {"A|hit|x": _sn("A", str(IDX[250].date()), -1.0), "B|hit|x": _sn("B", str(IDX[250].date()), 1.5, res="ema")}
+    W.analyze(snaps, {}, {}, names={"A": "Acme Corp", "B": "Beta"}, rss=rss)
+    a, b = snaps["A|hit|x"]["why"], snaps["B|hit|x"]["why"]
+    assert len(seen) == 1 and "Acme" in seen[0] and "after:" in seen[0]          # nur Verlierer werden gesucht
+    assert "Ausblick" in a["news"] and "Analysten" in a["news"] and len(a["head"]) == 2 and "news" not in b
+    W.analyze(snaps, {}, {}, rss=rss)
+    assert len(seen) == 1                                                        # kein zweites Mal
+    rep = W.report(snaps)
+    x = rep["recent"][0]
+    assert x["head"].startswith("Acme stock plunges") and "Vorher nicht erkennbar" in x["lesson"] and rep["news"][0][1] == 1
+
+
+def test_tested_feature_is_flagged_again_if_live_contradicts_research():
+    snaps = _book()
+    for s in snaps.values():                       # „eng“ ist historisch geprüft – live aber beständig schlecht
+        s["why"]["pre"] = ["eng"] if s["exit"]["r"] == -0.8 else []
+    rep = W.report(snaps)
+    e = next(p for p in rep["pre"] if p["k"] == "eng")
+    assert e["status"] == "live auffällig – erneut prüfen" and "eng" in rep["candidates"]
+    assert "wird als Filter geprüft" in rep["recent"][0]["lesson"] or any("Filter geprüft" in r["lesson"] for r in rep["recent"])

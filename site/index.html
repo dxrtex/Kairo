@@ -4729,14 +4729,16 @@ function learnHtml(L) {
   const head = hHead(`Aus Fehlschlägen lernen <small>${L.n} abgeschlossene Treffer analysiert</small>`);
   if (!L.n) return `<div class="hcard">${head}<div class="note" style="margin:0">Sobald die ersten Kairo-Trades abgeschlossen sind, sucht Kairo bei jedem den Grund: Fiel der Markt oder der Sektor? Kamen Quartalszahlen dazwischen? War der Stop zu eng, gab es eine Kurslücke? Gewinner werden genauso geprüft – nur der Vergleich zeigt, was wirklich schadet.</div></div>`;
   const post = (L.post || []).slice(0, 5).map(p => `<div class="jrow2"><span>${esc(p.l)}</span><b>${p.loss_pct != null ? pct(p.loss_pct, 0) : "–"} <small class="muted">der Verluste · ${p.win_pct != null ? pct(p.win_pct, 0) : "–"} der Gewinner</small></b></div>`).join("");
-  const tone = st => st === "Kandidat – Backtest" ? "down" : st === "schon getestet" ? "muted" : "";
+  const tone = st => st === "Kandidat – Backtest" || st === "live auffällig – erneut prüfen" ? "down" : st === "schon getestet" ? "muted" : "";
   const pre = (L.pre || []).map(p => `<div class="jrow2"><span>${esc(p.l)}<small class="muted"> · ${p.n} Trades${p.note ? " · " + esc(p.note) : ""}</small></span><b class="${tone(p.status)}"><span style="white-space:nowrap">${R(p.r)}</span> <small class="muted">ohne ${R(p.r_ohne)} · ${esc(p.status)}</small></b></div>`).join("");
-  const rec = (L.recent || []).slice(0, 5).map(x => `<div class="jrow2"><span><b>${esc((byTicker(x.t) || {}).name || x.t)}</b> <small class="muted">Treffer ${dateDE(x.d)} · ${esc([...x.post, ...x.pre].join(" · ") || "kein klarer Grund – normales Risiko")}</small></span><b class="down" style="white-space:nowrap">${R(x.r)}</b></div>`).join("");
+  const rec = (L.recent || []).slice(0, 5).map(x => `<div class="jrow2"><span><b>${esc((byTicker(x.t) || {}).name || x.t)}</b> <small class="muted">Treffer ${dateDE(x.d)} · ${esc([...x.post, ...(x.news || []).map(n => "Medien: " + n), ...x.pre].join(" · ") || "kein klarer Grund")}</small>${x.head ? `<small style="display:block;margin-top:2px">„${esc(x.head)}“</small>` : ""}${x.lesson ? `<small style="display:block;margin-top:2px"><b>Lehre:</b> ${esc(x.lesson)}</small>` : ""}</span><b class="down" style="white-space:nowrap">${R(x.r)}</b></div>`).join("");
+  const news = (L.news || []).length ? `<div class="psub">Was die Medien bei Verlusten nannten <small>(${L.news_n} Verluste mit Schlagzeilen)</small></div><div class="note" style="margin:0">${L.news.map(([k, v]) => `<b>${esc(k)}</b> ${v}×`).join(" · ")}</div>` : "";
   const cand = (L.candidates || []).length;
   return `<div class="hcard">${head}
     <div class="note" style="margin:0 0 8px">${L.n < L.min_n * 2 ? `Noch wenige Fälle – Muster sind ab etwa ${L.min_n * 2} Trades aussagekräftig. ` : ""}Auch eine gute Regel verliert rund 2 von 3 Trades. Darum zählt nicht der einzelne Verlust, sondern ob ein Merkmal Verluste <b>häufiger</b> macht als Gewinne.</div>
     ${rec ? `<div class="psub">Letzte Verluste und ihre Gründe</div>${rec}` : ""}
     ${post ? `<div class="psub">Häufigste Gründe bei Verlusten (hinterher sichtbar)</div>${post}` : ""}
+    ${news}
     ${pre ? `<div class="psub">Vorher erkennbar – Ø Ergebnis mit dem Merkmal</div>${pre}` : ""}
     <div class="note" style="margin:8px 0 0">${cand ? `<b>${cand} Kandidat${cand > 1 ? "en" : ""}</b> für einen Filter: in beiden Hälften der Trades deutlich schlechter. Nächster Schritt ist der Backtest über 18 Jahre, dann ein Schattentest – die Regel ändert sich erst nach Nachweis und deiner Freigabe.` : "Noch kein Merkmal schadet nachweisbar und beständig. Kandidat wird ein Merkmal erst ab 10 Fällen mit und ohne, mindestens 0,25 R schlechter und in der früheren wie späteren Hälfte gleich."}</div></div>`;
 }

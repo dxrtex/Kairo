@@ -187,7 +187,7 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
         snapshots.add(snaps, new, {r["ticker"]: r for r in rows}, data, market, today)
         snapshots.track(snaps, sig, today)
         from . import tradewhy                     # Fehlschläge verstehen: Ursachen je abgeschlossenem Treffer + Lern-Bericht
-        tradewhy.analyze(snaps, data, ctx)
+        tradewhy.analyze(snaps, data, ctx, names={s["t"]: s.get("n") for s in sig})
         state.save(snapshots.FILE, snaps)
         learn = tradewhy.report(snaps)
     except Exception as exc:

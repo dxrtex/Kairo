@@ -119,16 +119,36 @@ def explain(sn: dict, stock=None, ctx: dict | None = None) -> dict:
             "stock": None if rk is None else round(rk, 4)}
 
 
-def analyze(snaps: dict, data: dict | None = None, ctx: dict | None = None) -> int:
-    """Ergänzt „why“ für abgeschlossene Treffer, die noch keine Ursachensuche haben. Rückgabe: Anzahl neu."""
-    n = 0
+MAX_NEWS = 10                       # Schlagzeilen-Suche für höchstens so viele Verlierer je Lauf (Laufzeit)
+
+
+def headlines(sn: dict, name: str, rss=None) -> dict:
+    """Was nannten die Medien in der Haltezeit als Grund für die Kursbewegung? (Google News, wie bei den Quartalszahlen)"""
+    from . import earnings as E
+    from . import earnwhy as EW
+    rss = rss or E._rss
+    d, end = pd.Timestamp(sn["d"]), pd.Timestamp((sn.get("exit") or {}).get("seen") or sn["d"])
+    words = E._words(name or sn["t"], sn["t"])
+    q = f"{words[0]} stock OR shares after:{(d - pd.Timedelta(days=1)).date()} before:{(end + pd.Timedelta(days=2)).date()}"
+    heads = EW._move_titles(rss(q), words)
+    return {"news": EW.tags(heads), "head": heads[:3]}
+
+
+def analyze(snaps: dict, data: dict | None = None, ctx: dict | None = None, names: dict | None = None, rss=None) -> int:
+    """Ergänzt „why“ für abgeschlossene Treffer, die noch keine Ursachensuche haben; bei Verlierern zusätzlich die
+    Schlagzeilen der Haltezeit (höchstens MAX_NEWS je Lauf, der Rest im nächsten). Rückgabe: Anzahl neu untersucht."""
+    n = news = 0
     for sn in snaps.values():
         x = sn.get("exit") or {}
-        if sn.get("k") != "hit" or x.get("r") is None or "why" in sn:
+        if sn.get("k") != "hit" or x.get("r") is None:
             continue
         try:
-            sn["why"] = explain(sn, (data or {}).get(sn["t"]), ctx)
-            n += 1
+            if "why" not in sn:
+                sn["why"] = explain(sn, (data or {}).get(sn["t"]), ctx)
+                n += 1
+            if x["r"] <= 0 and "news" not in sn["why"] and news < MAX_NEWS:
+                news += 1
+                sn["why"].update(headlines(sn, (names or {}).get(sn["t"]) or sn["t"], rss))
         except Exception as exc:                     # darf den Scan nie stoppen
             print("Ursachensuche Trade:", sn.get("t"), repr(exc)[:100])
     return n
@@ -167,20 +187,49 @@ def report(snaps: dict) -> dict:
             a = [s["exit"]["r"] for s in part if k in s["why"]["pre"]]
             b = [s["exit"]["r"] for s in part if k not in s["why"]["pre"] and k not in s["why"].get("unk", [])]
             halves.append(round(float(np.mean(a) - np.mean(b)), 3) if a and b else None)
-        if k in TESTED:
-            status = "schon getestet"
+        live_bad = len(w) >= MIN_N and len(wo) >= MIN_N and diff is not None and diff <= -MIN_DIFF and all(h is not None and h < 0 for h in halves)
+        if k in TESTED:                              # historisch geprüft – live trotzdem beobachtet: widerspricht live der Forschung?
+            status = "live auffällig – erneut prüfen" if live_bad else "schon getestet"
         elif len(w) < MIN_N or len(wo) < MIN_N:
             status = "zu wenig Fälle"
-        elif diff is not None and diff <= -MIN_DIFF and all(h is not None and h < 0 for h in halves):
+        elif live_bad:
             status = "Kandidat – Backtest"
         else:
             status = "kein Hinweis"
         out["pre"].append({"k": k, "l": lbl, "n": len(w), "r": _mean(w), "r_ohne": _mean(wo),
                            "diff": None if diff is None else round(float(diff), 3), "halves": halves, "status": status,
                            "note": TESTED.get(k)})
-    out["pre"].sort(key=lambda p: (p["status"] != "Kandidat – Backtest", p["diff"] if p["diff"] is not None else 9))
-    out["candidates"] = [p["k"] for p in out["pre"] if p["status"] == "Kandidat – Backtest"]
+    flagged = ("Kandidat – Backtest", "live auffällig – erneut prüfen")
+    out["pre"].sort(key=lambda p: (p["status"] not in flagged, p["diff"] if p["diff"] is not None else 9))
+    out["candidates"] = [p["k"] for p in out["pre"] if p["status"] in flagged]
+    nt: dict = {}                                    # Schlagzeilen-Gründe bei Verlusten (Ausblick, Analysten, Marge …)
+    for s in loss:
+        for t in s["why"].get("news", []):
+            nt[t] = nt.get(t, 0) + 1
+    out["news"] = sorted(([k, v] for k, v in nt.items()), key=lambda kv: -kv[1])[:6]
+    out["news_n"] = sum("news" in s["why"] for s in loss)
+    pre_stat = {p["k"]: p for p in out["pre"]}
     for s in sorted(loss, key=lambda s: s["exit"].get("seen") or s["d"], reverse=True)[:8]:
         out["recent"].append({"t": s["t"], "d": s["d"], "r": s["exit"]["r"], "res": s["exit"]["res"],
-                              "pre": [PRE[k] for k in s["why"]["pre"]], "post": [POST[k] for k in s["why"]["post"]]})
+                              "pre": [PRE[k] for k in s["why"]["pre"]], "post": [POST[k] for k in s["why"]["post"]],
+                              "news": s["why"].get("news", []), "head": (s["why"].get("head") or [None])[0],
+                              "lesson": lesson(s["why"], pre_stat)})
     return out
+
+
+def lesson(why: dict, pre_stat: dict) -> str:
+    """Was lehrt dieser Verlust? Vorher sichtbare Merkmale werden mit ihrer Bilanz bewertet, sonst: nicht vermeidbar."""
+    if why.get("pre"):
+        parts = []
+        for k in why["pre"]:
+            p = pre_stat.get(k) or {}
+            if p.get("status") in ("Kandidat – Backtest", "live auffällig – erneut prüfen"):
+                parts.append(f"{PRE[k]}: schadet bisher beständig – wird als Filter geprüft")
+            elif k in TESTED:
+                parts.append(f"{PRE[k]}: über 18 Jahre kein beständiger Nachteil – kein Filter")
+            else:
+                parts.append(f"{PRE[k]}: wird beobachtet ({p.get('n', 0)} Fälle)")
+        return " · ".join(parts)
+    if why.get("post") or why.get("news"):
+        return "Vorher nicht erkennbar – normales Risiko, der Stop hat den Verlust begrenzt"
+    return "Kein klarer Grund – normaler Verlust, wie er bei rund 2 von 3 Trades vorkommt"
