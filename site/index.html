@@ -239,6 +239,7 @@
   .empty-st .rule-steps { text-align: left; max-width: 520px; margin: 0 auto; } .empty-st .rule-steps li > span { display: block; } .empty-st .rule-steps li b { display: block; margin-bottom: 2px; }
   .evd { border-top: 1px solid var(--line, #8883); padding: 8px 0; } .evd summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
   .evd summary span { flex-basis: 100%; font-size: 13px; color: var(--muted); } .evc { margin: 8px 0 0; font-size: 14px; } .evc summary { cursor: pointer; font-weight: 600; color: var(--muted); }
+  .verbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 90; background: var(--card, #1c1c1e); border: 1px solid var(--line, #8884); border-radius: 14px; padding: 8px 10px 8px 14px; display: flex; gap: 10px; align-items: center; font-size: 14px; box-shadow: 0 6px 24px #0006; max-width: calc(100% - 32px); }
   .psub { margin: 12px 0 4px; font-size: 12px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); }
   .dsrow { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 14px; color: var(--muted); } .dsrow i { flex: 0 0 8px; height: 8px; border-radius: 50%; background: var(--gold); } .dsrow i.g { background: var(--up); } .dsrow i.r { background: var(--down); } .dsrow i.n { background: var(--line, #8884); } .dsrc { margin: 6px 0 4px; border-top: 1px solid var(--line, #8883); padding-top: 6px; }
   .set-lbl { margin: 16px 0 8px; font-size: 13px; color: var(--muted); } .set-chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -2215,7 +2216,10 @@ function newsHtml() {
       : `${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"} ${x.sh ? fmt(x.sh, 0) + " Stk. " : ""}zu ${fmt(x.px)} ${x.cur === "EUR" ? "€" : "$"} · ${dateDE(x.d)}${fd}${q}${own}`}</em></span><span class="bf-p ${meld ? "" : x.kind === "buy" ? "up" : "down"}">${meld ? "Meldung" : x.cur === "EUR" ? eurAmt(x.val) : usd(x.val)}</span></a>`; };
   // Alle Listen: neueste zuerst (Datum des Geschäfts), bei gleichem Tag der größere Betrag oben
   const inEur = x => x.cur === "EUR" ? x.val : x.val * ((fxEur && fxEur.USD) || 0.9);
-  const newest = l => l.slice().sort((a, b) => String(b.d || "").localeCompare(String(a.d || "")) || (inEur(b) || 0) - (inEur(a) || 0));
+  // Sortierung: neueste zuerst (Standard) oder nach Betrag in € – Umschalter oben in der Insider-Ansicht
+  const byAmt = state.insSort === "amt";
+  const newest = l => l.slice().sort((a, b) => byAmt ? (inEur(b) || 0) - (inEur(a) || 0) || String(b.d || "").localeCompare(String(a.d || ""))
+    : String(b.d || "").localeCompare(String(a.d || "")) || (inEur(b) || 0) - (inEur(a) || 0));
   const buys = newest(ij && ij.buys || []), sells = newest(ij && ij.sells || []);
   const mineBuys = buys.filter(x => mine.has(x.t) || known(x.t));   // schon neueste zuerst
   const liveRows = Object.entries(NEWS.ins).flatMap(([t, l]) => l.map(x => ({ t, n: nameOf(t), who: String(x.name || "").replace(/\b\w+/g, w => w[0] + w.slice(1).toLowerCase()), role: "", kind: x.transactionCode === "P" ? "buy" : "sell",
@@ -2238,12 +2242,13 @@ function newsHtml() {
       + line("keine Quelle", "Keine freie Datenquelle für das Land") + line("nicht geprüft", "Nicht geprüft (Indizes, Sonstiges)")
       + `<div style="margin-top:4px">Geprüft ohne Treffer heißt: keine Käufe ab 10.000 $ / 5.000 € und keine Verkäufe ab 250.000 $ / 100.000 € in 12 Monaten – bei großen Konzernen kaufen Vorstände selten selbst.</div></details>`; })();
   const wlHtml = !ij ? "" : !wl ? `<div class="note" style="margin:8px 2px">Insider-Geschäfte deiner Aktien kommen mit dem nächsten Scan.</div>`
-    : insSigHtml(ij)
-      + block(`Deine Aktien · neueste Insider-Käufe · 90 Tage`, recent.slice(0, 20).map(irow), `Keine Insider-Käufe in den letzten 90 Tagen.`)
+    : `<div class="opts seg" style="margin:4px 2px 10px">${[["new", "Neueste zuerst"], ["amt", "Nach Betrag"]].map(([v, l]) => `<button class="opt${(state.insSort || "new") === v ? " on" : ""}" data-inssort="${v}">${l}</button>`).join("")}</div>`
+      + insSigHtml(ij)
+      + block(`Deine Aktien · ${byAmt ? "größte" : "neueste"} Insider-Käufe · 90 Tage`, recent.slice(0, 20).map(irow), `Keine Insider-Käufe in den letzten 90 Tagen.`)
       + (wlM.length ? block("Deine Aktien · Meldungen ohne Betrag (Niederlande, Australien)", wlM.slice(0, 12).map(irow), "") : "")
-      + block(`Deine Aktien · frühere Insider-Käufe · 3 bis 12 Monate · neueste zuerst`, older.slice(0, 30).map(irow), `Keine weiteren Insider-Käufe bei deinen Aktien in den letzten 12 Monaten.`)
+      + block(`Deine Aktien · frühere Insider-Käufe · 3 bis 12 Monate · ${byAmt ? "nach Betrag" : "neueste zuerst"}`, older.slice(0, 30).map(irow), `Keine weiteren Insider-Käufe bei deinen Aktien in den letzten 12 Monaten.`)
       + (wlSum.length > 1 ? `<div class="note" style="margin:-4px 2px 10px">Meiste Käufe (12 Monate): ${wlSum.slice(0, 6).map(([t, v]) => `<b>${esc(nameOf(t))}</b> ${eurAmt(v)}`).join(" · ")}</div>` : "")
-      + block("Deine Aktien · Insider-Verkäufe · 12 Monate · neueste zuerst", wlS.slice(0, 15).map(irow), "Keine großen Verkäufe.")
+      + block(`Deine Aktien · Insider-Verkäufe · 12 Monate · ${byAmt ? "nach Betrag" : "neueste zuerst"}`, wlS.slice(0, 15).map(irow), "Keine großen Verkäufe.")
       + covHtml
       + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${nUS} US-Aktien (SEC/OpenInsider, Käufe ab 10.000 $, Verkäufe ab 250.000 $)${nDE ? ` und ${nDE} deutsche Aktien (BaFin, Käufe ab 5.000 €, Verkäufe ab 100.000 €)` : ""} aus Watchlist, Merkliste und Depot – 12 Monate. Dazu Meldungen ohne Betrag aus den Niederlanden (AFM: Airbus, ASML …) und Australien (ASX: DroneShield …). „Gezielt“ = kein Routine-Käufer (nicht in beiden Vorjahren im selben Monat gekauft) – laut Forschung (Cohen/Malloy/Pomorski 2012) das aussagekräftigere Signal. „Routine unbekannt“ = ohne Kaufhistorie (BaFin) – zählt im Signal nicht als gezielt. Novo Nordisk, BYD, Xiaomi und Tamburi (Dänemark, Hongkong, Italien): keine frei abrufbare Quelle.</div>`;
   return head + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) und für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften)${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
@@ -6547,6 +6552,7 @@ function goSec(sec) {
 document.addEventListener("click", e => {
   if (e.target.closest("[data-brief]")) { openBrief(); return; }
   const nt = e.target.closest("[data-newstab]"); if (nt) { state.newsTab = nt.dataset.newstab; save(); render(); return; }
+  const isb = e.target.closest("[data-inssort]"); if (isb) { state.insSort = isb.dataset.inssort; save(); render(); return; }
   if (e.target.closest("[data-newsfresh]")) { newsLoad(true); render(); return; }
   const bc = e.target.closest("[data-briefcard]"); if (bc) { closeBrief(); openCard(bc.dataset.briefcard); return; }
   const bd = e.target.closest("[data-briefdep]"); if (bd) { closeBrief(); depOpen.add(bd.dataset.briefdep); goSec("depot"); return; }
@@ -6641,6 +6647,17 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") { closeDetai
   if (e.key === "/") { e.preventDefault(); if (state.sec !== "scanner") goSec("scanner"); setTimeout(() => { const s = $("search"); if (s) s.focus(); }, 50); } });
 
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").then(pushInit).catch(() => {});
+// Neue App-Version erkennen: Die Seite kommt (offline-fähig) zuerst aus dem Speicher – ohne Hinweis sähe man ein Update erst
+// beim übernächsten Öffnen. Prüft beim Start und alle 30 Min. (sichtbar) die veröffentlichte Version und bietet „Neu laden“ an.
+function verCheck() {
+  if (document.hidden || !/^https?:/.test(location.protocol)) return;
+  fetch("index.html?vc=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "").then(t => {
+    const m = /const APP_VER = "([\d.]+)"/.exec(t || ""); if (!m || m[1] === APP_VER || document.getElementById("verBar")) return;
+    document.body.insertAdjacentHTML("beforeend", `<div id="verBar" class="verbar" role="status">Neue Kairo-Version verfügbar <button class="btn sm" data-verreload>Neu laden</button></div>`);
+  }).catch(() => {});
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-verreload]")) location.reload(); });
+setTimeout(verCheck, 8000); setInterval(verCheck, 30 * 60e3);
 try { const q = new URLSearchParams(location.search).get("sec"); if (q && SEC_T[q]) { state.sec = q; history.replaceState(null, "", location.pathname + location.hash); } } catch (e) {}
 // Schneller Start: zuletzt geladene Daten sofort zeigen (Gerätespeicher), parallel frisch laden und nur bei neuem Scan neu zeichnen
 let booted = false;
