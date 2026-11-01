@@ -1,8 +1,8 @@
-# Kairo – Strategie-Forschung 01./02.11.2026: Kombinationen, Meta-Modell, Mean-Reversion-Meisterschaft
+# Kairo – Strategie-Forschung 01.11.2026: Kombinationen, Meta-Modell, Mean-Reversion-Meisterschaft
 
 Alle Tests: korrigierte Engine, 13.241 B60-Trades bzw. das gleiche Universum (USA + Europa, eingefroren 16.10.2026),
 Train 2008–2016 · Validierung 2017–2021 · Holdout 2022–2026, Regeln je Test **vor** dem Lauf festgelegt, Korrektur für
-Mehrfachtests. Ergebnisse auf Branch `claude/reversal-out` (Ordner `learn-*`, `combo-*`, `meta-*`, `mrc-*`, `mrc2-*`).
+Mehrfachtests. Ergebnisse auf Branch `claude/reversal-out` (Ordner `learn-*`, `combo-*`, `meta-*`, `mrc-*`, `mrc2-*`, `mrc3-*`).
 Keine Regel wurde geändert. B60 bleibt Champion bis zu einer Freigabe.
 
 ## 1. Kombinationen „11 Kriterien + X“ (combo-41349959025, combo-41350455413)
@@ -65,3 +65,42 @@ Jahresrendite (CAGR), 10.000 €, bestes Raster nach Train. „normal“ = Scala
   Kosten je Seite. Liegen sie über 3 Monate dauerhaft unter ~0,08 %, ist A5 ein ernsthafter Kandidat – sonst nicht.
 - **Der verlässlichste Weg zu mehr Vermögen bleibt der Welt-ETF** (90/10-Profil); der Trading-Teil ist Forschung mit begrenztem
   Einsatz.
+
+## 4. Welle 3 – Kosten senken, A5 robuster (mrc3-41354218063)
+
+Achtung: dieselben Daten wurden zum dritten Mal ausgewertet. Die Ergebnisse sind Hinweise, kein Beweis – den liefert nur der
+Schattentest auf neuen Daten.
+
+| Variante | normal Val / Holdout | Stress Val / Holdout | Brutto je Trade | Kostenschwelle |
+|---|---|---|---|---|
+| A5 (Referenz) | +35,0 % / +11,9 % | −1,6 % / −76 % | +0,5 % | 0,09 % |
+| W1 A5 mit Kauf-Limit 1 % unter Schluss | +33,8 % / +14,2 % | +4,0 % / −10,4 % | +0,6 % | 0,09 % |
+| **W2 A5 mit Kauf-Limit 0,5 ATR unter Schluss** | **+47,5 % / +12,3 %** | **+15,1 % / −11,3 %** | +0,7 % | 0,09 % |
+| W3 4 Verlusttage | +25,4 % / +6,2 % | −75 % / Totalverlust | +0,4 % | – |
+| W4 A5 nur RSI(2) < 15 | +30,2 % / +15,1 % | −4,0 % / −74,5 % | +0,5 % | 0,09 % |
+
+**Depot-Mischung (monatlich ausgeglichen, 10.000 €, gesamt 2008–2026):**
+
+| Mischung | normal | Stress | größter Rückgang (normal) |
+|---|---|---|---|
+| 100 % Welt-ETF | +8,5 % p. a. | +8,5 % | −52 % |
+| 90 % ETF + 10 % W2 | +10,5 % | +7,9 % | −48 % |
+| 70 % ETF + 30 % W2 | +14,4 % | +6,7 % | −39 % |
+| 90 % ETF + 10 % C1 (ETF-RSI2) | +8,7 % | +8,1 % | −48 % |
+| 90 % ETF + 10 % B60 | +8,4 % | +7,7 % | −49 % |
+
+### Was das bedeutet
+
+1. Das **Kauf-Limit** ist der stärkste Hebel: Es kauft im Schnitt billiger, der Brutto-Ertrag je Trade steigt von 0,5 % auf 0,7 %
+   und der Stress-Schaden halbiert sich ungefähr. Einschränkung: Im Backtest gilt „Tief berührt das Limit“ als Ausführung – live
+   wird nicht jedes berührte Limit gefüllt. Das prüft der Schattentest.
+2. **Als 10-%-Beimischung zum Welt-ETF** hebt W2 die Rendite mit normalen Kosten um ~2 Prozentpunkte im Jahr und senkt den
+   größten Rückgang; mit Stress-Kosten kostet es ~0,6 Prozentpunkte. Das Risiko ist begrenzt, die Chance klar größer.
+3. Weniger Trades (W3, W4) helfen nicht.
+4. Nach der vorab festgelegten Regel besteht weiterhin **kein** Herausforderer gegen B60 statistisch abgesichert (W2: p 0,10, Holm 1,0).
+
+### Entscheidung
+
+- W2 läuft ab 01.11.2026 zusätzlich im Schattentest (backend/mrshadow.py), neben A5, ETF-RSI(2) und E2.
+- Echtgeld frühestens nach ~3 Monaten Schattentest, und nur wenn die Limit-Füllung live funktioniert und die echten Kosten
+  unter ~0,08 % je Seite liegen. Dann höchstens als 10-%-Satellit.
