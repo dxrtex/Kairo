@@ -303,3 +303,15 @@ def test_min_order_value_cases(price, cash, risk, expect):
         assert not len(r.trades) and r.skipped["fee_small"] == 1
     else:
         assert r.trades.iloc[0]["qty"] == expect and r.trades.iloc[0]["qty"] * price >= 250
+
+
+def test_buy_limit_fills_only_when_low_reaches_limit():
+    D = pd.bdate_range("2024-01-01", periods=6)
+    px = pd.DataFrame({"Open": [10, 10, 9.9, 9.5, 9.6, 9.8], "High": [10.1] * 6, "Low": [9.95, 9.95, 9.7, 9.3, 9.5, 9.7],
+                       "Close": [10, 10, 9.8, 9.6, 9.7, 9.8]}, index=D)
+    r = one({"A": px}, [Order(D[0], "A", weight=0.5, entry_limit=9.75, max_days=2, valid_days=1)], costs=NOCOST)
+    assert len(r.trades) == 0                                   # Tag 2: Tief 9,95 > Limit → kein Kauf, Order verfällt
+    r = one({"A": px}, [Order(D[1], "A", weight=0.5, entry_limit=9.75, max_days=2)], costs=NOCOST)
+    assert len(r.trades) == 1 and abs(r.trades["entry_px"].iloc[0] - 9.75) < 1e-9
+    r = one({"A": px}, [Order(D[2], "A", weight=0.5, entry_limit=9.75, max_days=2)], costs=NOCOST)
+    assert abs(r.trades["entry_px"].iloc[0] - 9.5) < 1e-9      # Eröffnung unter dem Limit → Kauf zur Eröffnung

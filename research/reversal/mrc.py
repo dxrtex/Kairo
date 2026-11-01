@@ -43,6 +43,12 @@ Gebühr 0,99 € unter 250 €), die Kostenschwelle (höchste geprüfte Kosten, 
 schlagen) und der Brutto-Ertrag je Trade (ohne Kosten). Neue liquide Varianten (≥ 100 Mio. $ Tagesumsatz):
   A5L 3 Verlusttage + Trend, liquide · A7L Wochen-Verlierer, liquide · A1L RSI(2) < 10 + Trend, liquide · A6L Z-Score, liquide
 
+WELLE 3 (vorab festgelegt 02.11.2026 nach Welle 2 – ACHTUNG: dieselben Daten wurden schon zweimal ausgewertet, die Ergebnisse
+sind deshalb nur Hinweise; der eigentliche Beweis ist der Schattentest auf neuen Daten). Ziel: Kosten senken, A5 robuster machen.
+  W1 A5 mit Kauf-Limit 1 % unter dem Signal-Schluss (gilt einen Tag) · W2 A5 mit Kauf-Limit 0,5 ATR unter dem Schluss
+  W3 4 Verlusttage + Trend (seltener, stärker) · W4 A5 nur bei RSI(2) < 15 (weniger Trades)
+  Depot-Kombination im Bericht: 90 % Welt-ETF + 10 % Strategie und 70/30, monatlich ausgeglichen (A5, W-Varianten, C1, B60).
+
     python -m research.reversal.mrc --data v1 --signals sig.parquet --sec sec --variant A1 --out out
     python -m research.reversal.mrc costs --data v1 --signals sig.parquet --sec sec --variant A5 --out out
     python -m research.reversal.mrc report --dir DIR
@@ -63,7 +69,7 @@ from research.strategy_championship.engine import Order, run
 from research.ultimate import round1 as R
 
 VARIANTS = ("A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "B0", "B1", "B2", "B3", "B4", "B5",
-            "B6", "B7", "B8", "B9", "B10", "B11", "C1", "A5L", "A7L", "A1L", "A6L")
+            "B6", "B7", "B8", "B9", "B10", "B11", "C1", "A5L", "A7L", "A1L", "A6L", "W1", "W2", "W3", "W4")
 NAMES = {"A1": "RSI(2) < 10 + Trend", "A2": "RSI(2) < 5 + Trend", "A3": "RSI(2) < 10 ohne Trend", "A4": "IBS < 0,15 + Trend",
          "A5": "3 Verlusttage + Trend", "A6": "Z-Score < −2 + Trend", "A7": "Wochen-Verlierer (Reversal)", "A8": "RSI(2) nur liquide",
          "A9": "RSI(2) mit Stop", "B0": "B60 (Referenz)", "B1": "B60, Ausstieg 5-Tage-Linie", "B2": "B60, Ausstieg Vortageshoch",
@@ -72,6 +78,8 @@ NAMES = {"A1": "RSI(2) < 10 + Trend", "A2": "RSI(2) < 5 + Trend", "A3": "RSI(2) 
          "B10": "B60 Wartezeit 5", "B11": "B60 Wartezeit 15", "C1": "RSI(2) auf Index-ETFs",
          "A5L": "3 Verlusttage + Trend, liquide", "A7L": "Wochen-Verlierer, liquide", "A1L": "RSI(2) + Trend, liquide", "A6L": "Z-Score, liquide"}
 WAVE2 = ("A5L", "A7L", "A1L", "A6L")
+NAMES.update({"W1": "A5 mit Limit 1 % unter Schluss", "W2": "A5 mit Limit 0,5 ATR unter Schluss", "W3": "4 Verlusttage + Trend",
+              "W4": "A5 nur RSI(2) < 15"})
 LIQ2 = 1e8
 CASH = (10000, 20000)
 AB = ("Train", "Validierung", "Holdout")
@@ -120,7 +128,7 @@ def family_a(v: str, slots: int, tickers=None) -> tuple[list[Order], dict]:
         x = ind(t)
         C, ok = x["C"], x["ok"]
         trend = C > x["sma200"]
-        base = v[:-1] if v in WAVE2 else v
+        base = v[:-1] if v in WAVE2 else "A5" if v in ("W1", "W2", "W3", "W4") else v
         if base in ("A1", "A8", "A9", "C1"):
             sig, prio, ex, md = (x["rsi2"] < 10) & trend, -x["rsi2"], "sma5", 10
         elif base == "A2":
@@ -139,6 +147,12 @@ def family_a(v: str, slots: int, tickers=None) -> tuple[list[Order], dict]:
             sig = sig & (x["adv"] >= 5e7)
         if v in WAVE2:
             sig = sig & (x["adv"] >= LIQ2)
+        if v == "W3":
+            C_ = pd.Series(C)
+            d4 = ((C_ < C_.shift(1)) & (C_.shift(1) < C_.shift(2)) & (C_.shift(2) < C_.shift(3)) & (C_.shift(3) < C_.shift(4))).to_numpy()
+            sig, prio, ex, md = d4 & trend, -x["rsi2"], "sma5", 10
+        if v == "W4":
+            sig = sig & (x["rsi2"] < 15)
         sig = np.nan_to_num(sig.astype(float)) > 0
         if v != "C1":
             sig &= ok
@@ -157,6 +171,13 @@ def family_a(v: str, slots: int, tickers=None) -> tuple[list[Order], dict]:
                     continue
                 orders.append(Order(idx[k], t, stop_from_fill=2.5 * a, stop=cr - 2.5 * a, risk_frac=0.01 if slots == 5 else 0.005,
                                     prio=p, tag=f"{v}|{t}|{idx[k].date()}", max_days=md, group=f"{t}|{idx[k].date()}"))
+            elif v in ("W1", "W2"):
+                cr = x["C"][k] / x["f"][k]
+                lim = cr * 0.99 if v == "W1" else cr - 0.5 * x["atr"][k] / x["f"][k]
+                if not (lim > 0):
+                    continue
+                orders.append(Order(idx[k], t, weight=w, prio=p, tag=f"{v}|{t}|{idx[k].date()}", max_days=md, group=f"{t}|{idx[k].date()}",
+                                    entry_limit=lim))
             else:
                 orders.append(Order(idx[k], t, weight=w, prio=p, tag=f"{v}|{t}|{idx[k].date()}", max_days=md, group=f"{t}|{idx[k].date()}"))
     return orders, exits
@@ -411,9 +432,46 @@ def report(d: Path) -> str:
         L.append("**Kein Herausforderer schlägt B60 durchgängig und statistisch abgesichert.** Die Tabelle zeigt trotzdem, welche Variante "
                  "in welchem Zeitraum vorn lag.")
     L += costs_section(d, acwi)
+    L += blend_section(res, cur, acwi, best_lay)
     txt = "\n".join(L) + "\n"
     (d / "mrc_report.md").write_text(txt, encoding="utf-8")
     return txt
+
+
+def blend_section(res: dict, cur: dict, acwi, best_lay) -> list[str]:
+    """Welt-ETF + Strategie, monatlich ausgeglichen (90/10 und 70/30) – normal und Stress."""
+    if acwi is None:
+        return []
+    P = lambda x: "–" if x is None else f"{x:+.1%}"
+    am = acwi.resample("ME").last().pct_change()
+    L = ["\n## Depot-Kombination: Welt-ETF + Strategie (monatlich ausgeglichen, 10.000 €)\n",
+         "| Mischung | Kosten | Train | Validierung | Holdout | gesamt | größter Rückgang |", "|---|---|---|---|---|---|---|"]
+    def stats(r):
+        out = {}
+        for ab, k in zip(AB + ("gesamt",), ("train", "validation", "holdout", None)):
+            s = r if k is None else r[(r.index >= PERIODS[k][0]) & (r.index <= PERIODS[k][1])]
+            s = s.dropna()
+            if len(s) < 6:
+                out[ab] = (None, None); continue
+            e = (1 + s).cumprod()
+            out[ab] = (float(e.iloc[-1] ** (12 / len(s)) - 1), float((e / e.cummax() - 1).min()))
+        return out
+    base = stats(am)
+    L.append(f"| 100 % Welt-ETF | – | {P(base['Train'][0])} | {P(base['Validierung'][0])} | {P(base['Holdout'][0])} | {P(base['gesamt'][0])} | {P(base['gesamt'][1])} |")
+    for v in ("A5", "W1", "W2", "W3", "W4", "C1", "B0"):
+        if v not in cur:
+            continue
+        for kind in ("base", "stress"):
+            col = f"{best_lay(v)}|10000|{kind}"
+            if col not in cur[v]:
+                continue
+            sm = cur[v][col].resample("ME").last().pct_change()
+            for w in (0.10, 0.30):
+                mix = ((1 - w) * am + w * sm).dropna()
+                st = stats(mix)
+                L.append(f"| {int(100 - 100 * w)} % ETF + {int(100 * w)} % {v} {NAMES[v]} | {'normal' if kind == 'base' else 'Stress'} | "
+                         f"{P(st['Train'][0])} | {P(st['Validierung'][0])} | {P(st['Holdout'][0])} | {P(st['gesamt'][0])} | {P(st['gesamt'][1])} |")
+    return L
 
 
 def costs_section(d: Path, acwi) -> list[str]:

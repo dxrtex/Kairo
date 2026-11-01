@@ -69,6 +69,7 @@ class Order:
     trail: tuple | None = None      # ("be_prevlow", Abstand): ab Kurs ≥ Einstieg + Abstand Stop auf Einstand, danach unter Vortagestief
     entry_stop: float | None = None # Buy-Stop: Kauf, sobald das Tageshoch diesen Kurs erreicht (zum Stop-Kurs bzw. höherer Eröffnung)
     entry_cap: float | None = None  # Buy-Stop: Eröffnung darüber → Signal verfällt (Kurslücke zu groß)
+    entry_limit: float | None = None  # Buy-Limit: Kauf nur, wenn das Tagestief den Limitkurs erreicht – zum Limit bzw. tieferer Eröffnung
     min_value_eur: float | None = None  # Mindest-Orderwert (z. B. 250 € PRIME+): kleiner → aufstocken, wenn Risiko ≤ max_risk_mult × geplant
     max_risk_mult: float = 2.0
 
@@ -293,6 +294,13 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
                         filled_groups.add(o.group)
                     continue
                 op = max(op, o.entry_stop)
+            if o.entry_limit is not None:               # Buy-Limit (Forschung 11/2026): nur wenn das Tief das Limit erreicht
+                if not (np.isfinite(op) and p_.l[i] <= o.entry_limit):
+                    skipped["not_triggered"] += 1
+                    if retry:
+                        queue.append([o, left - 1])
+                    continue
+                op = min(op, o.entry_limit)
             if o.stop_from_fill is not None and np.isfinite(op):
                 o.stop = op - o.stop_from_fill
             if not np.isfinite(op) or op <= 0 or (o.stop is not None and op <= o.stop):
