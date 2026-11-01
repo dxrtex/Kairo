@@ -25,7 +25,7 @@ import pandas as pd
 from .config import ROOT
 from .rule import KAIRO
 
-SCHEMA = 2                 # 2: Rückgang vom Hoch, Kauf-Kontext, MFE/MAE, Lebenslauf (stage), Kontrollgruppen, Folgerenditen
+SCHEMA = 3                 # 3: Kontext (Analysten, Kursziel, Nachrichten, Sektor, Insider) · 2: Rückgang vom Hoch, Kauf-Kontext, MFE/MAE, Lebenslauf (stage), Kontrollgruppen, Folgerenditen
 FILE = "snapshots.json"
 FLAG_KEYS = ("atr", "atr_pct", "volatility", "rsi", "macd_hist", "macd_cross_age", "macd_cross_done", "mbi_green",
              "raw_mbi_age", "raw_mbi_ref", "raw_mbi_fade", "market_cap_usd", "earnings_risk")
@@ -67,7 +67,27 @@ def _bdays(a: str, b: str) -> int:
         return 0
 
 
-def take(s: dict, r: dict, df: pd.DataFrame | None, market: dict | None, today: str, now: datetime | None = None) -> dict:
+def insider_ctx(t: str, rows: list[dict] | None, d: str, days: int = 90) -> dict | None:
+    """Insider-Käufe der letzten `days` Tage bis zum Signaltag (nur gemeldete, also am Signaltag bekannte). None = nicht geprüft."""
+    if rows is None or not any(x.get("t") == t for x in rows):   # Aktie nicht geprüft → unbekannt (nicht „kein Kauf“)
+        return None
+    since = (pd.Timestamp(d) - pd.Timedelta(days=days)).strftime("%Y-%m-%d")
+    b = [x for x in rows if x.get("t") == t and x.get("kind") == "buy" and since <= (x.get("fd") or x.get("d") or "") <= d]
+    return {"n": len(b), "buyers": len({x.get("who") for x in b}), "opp": sum(x.get("opp") is True for x in b),
+            "top": any(any(k in (x.get("role") or "") for k in ("CEO", "CFO", "Chair", "Pres", "Vorstand")) for x in b),
+            "val": round(sum(x.get("val") or 0 for x in b))}
+
+
+def context(r: dict, ins: dict | None) -> dict:
+    """Zusatz-Informationen am Signaltag für Kombinations-Tests (Kriterien + X). Fehlende Werte bleiben None = unbekannt."""
+    sn = r.get("senti") or {}
+    an, tg = sn.get("an") or {}, sn.get("tgt") or {}
+    return {"an_m": _num(an.get("m")), "an_n": an.get("n"), "tgt_up": _num(tg.get("up")), "news": sn.get("ns"),
+            "sec_tone": (sn.get("sec") or {}).get("tone"), "pe": _num((sn.get("fu") or {}).get("pe")), "ins": ins}
+
+
+def take(s: dict, r: dict, df: pd.DataFrame | None, market: dict | None, today: str, now: datetime | None = None,
+         ins_rows: list[dict] | None = None) -> dict:
     """Momentaufnahme eines neuen Signals s (aus live.update) mit der Scan-Zeile r. Reine Funktion – schreibt nichts."""
     now = now or datetime.now(timezone.utc)
     fl = r.get("flags") or {}
@@ -89,11 +109,13 @@ def take(s: dict, r: dict, df: pd.DataFrame | None, market: dict | None, today: 
         "region": r.get("region"), "sector": r.get("sector"), "grade": s.get("grade"),
         "earn": (r.get("earnings_date") or fl.get("earnings_date") or None),   # nächster Quartalszahlen-Termin am Signaltag
     }
+    sig["ctx"] = context(r, insider_ctx(s["t"], ins_rows, s["d"]) if ins_rows is not None and "." not in s["t"] else None)
     return {"t": s["t"], "k": s["k"], "d": s["d"], "scan": today, "at": now.isoformat(timespec="seconds"),
             "late": _bdays(s["d"], today), "ver": versions(), "sig": sig}
 
 
-def add(snaps: dict, new: list[dict], rows_by_t: dict, data: dict, market: dict | None, today: str, now=None) -> int:
+def add(snaps: dict, new: list[dict], rows_by_t: dict, data: dict, market: dict | None, today: str, now=None,
+        ins_rows: list[dict] | None = None) -> int:
     """Neue Signale aufnehmen – vorhandene Einträge bleiben unangetastet (wiederholte Scans, Doppel-Läufe)."""
     n = 0
     for s in new:
@@ -102,7 +124,7 @@ def add(snaps: dict, new: list[dict], rows_by_t: dict, data: dict, market: dict 
         if key in snaps or r is None:
             continue
         try:
-            snaps[key] = take(s, r, data.get(s["t"]), market, today, now)
+            snaps[key] = take(s, r, data.get(s["t"]), market, today, now, ins_rows)
             n += 1
         except Exception as exc:                     # die Momentaufnahme darf den Scan nie stoppen
             print("Momentaufnahme:", key, repr(exc)[:120])

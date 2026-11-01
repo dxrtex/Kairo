@@ -29,7 +29,15 @@ import pandas as pd
 PRE = {"eng": "Stop enger als 1 ATR", "weit": "Stop weiter als 2,5 ATR", "momentum": "Vormomentum über +25 %",
        "unruhig": "Schwankung (ATR) über 5 % des Kurses", "markt_rot": "Marktlage am Signaltag rot",
        "index_u200": "Index unter der 200-Tage-Linie", "sektor_u50": "Sektor unter der 50-Tage-Linie",
-       "zahlen_bald": "Quartalszahlen ≤ 20 Handelstage nach dem Signal", "spaet": "Signal verspätet erkannt (Scan-Ausfall)"}
+       "zahlen_bald": "Quartalszahlen ≤ 20 Handelstage nach dem Signal", "spaet": "Signal verspätet erkannt (Scan-Ausfall)",
+       # Kombinationen „11 Kriterien + X“ (Kontext am Signaltag, snapshots.context) – unbekannt bleibt unbekannt
+       "ins_kauf": "Insider-Kauf in den 90 Tagen davor", "ins_cluster": "Mehrere Insider kauften (≥ 2)",
+       "ins_gezielt": "Gezielter Insider-Kauf (kein Routine-Käufer)", "analyst_kauf": "Analysten im Schnitt „Kaufen“ (≤ 2,0)",
+       "analyst_ziel": "Kursziel ≥ 25 % über dem Kurs", "news_neg": "Schlagzeilen überwiegend negativ",
+       "sektor_rot": "Sektor in roter Lage", "guenstig": "KGV unter 15"}
+# Vorab festgelegte Paare (nur diese – je mehr Paare, desto mehr Zufallsfunde)
+PAIRS = (("ins_kauf", "index_u200"), ("analyst_ziel", "momentum"), ("ins_kauf", "analyst_kauf"), ("guenstig", "markt_rot"))
+FDR_Q = 0.10                        # Benjamini-Hochberg: höchstens ~10 % Zufallsfunde unter den Kandidaten
 POST = {"markt_fiel": "Gesamtmarkt fiel in der Haltezeit", "sektor_fiel": "Sektor fiel in der Haltezeit",
         "eigenschwach": "Aktie deutlich schwächer als der Markt", "luecke": "Kurslücke über den Stop",
         "schnell": "Stop schon in den ersten 3 Tagen", "zahlen": "Quartalszahlen in der Haltezeit"}
@@ -103,6 +111,19 @@ def explain(sn: dict, stock=None, ctx: dict | None = None) -> dict:
         "zahlen_bald": bool(g.get("earn")) and 0 <= _bdays(d, g["earn"]) <= 20,
         "spaet": (sn.get("late") or 0) >= 2,
     }
+    c = g.get("ctx") or {}
+    ins = c.get("ins")
+    nz = lambda v, f: None if v is None else bool(f(v))
+    pre.update({
+        "ins_kauf": None if ins is None else ins.get("n", 0) > 0,
+        "ins_cluster": None if ins is None else ins.get("buyers", 0) >= 2,
+        "ins_gezielt": None if ins is None else ins.get("opp", 0) > 0,
+        "analyst_kauf": nz(c.get("an_m"), lambda v: v <= 2.0),
+        "analyst_ziel": nz(c.get("tgt_up"), lambda v: v >= 0.25),
+        "news_neg": nz(c.get("news"), lambda v: v == -1),
+        "sektor_rot": nz(c.get("sec_tone"), lambda v: v == "red"),
+        "guenstig": nz(c.get("pe"), lambda v: 0 < v < 15),
+    })
     ri, rs, rk = _ret(idx, d, end), _ret(sec, d, end), _ret(st, d, end)
     r = x.get("r")
     post = {
@@ -175,31 +196,43 @@ def report(snaps: dict) -> dict:
                                 "win": fw, "win_pct": round(fw / len(win), 3) if win else None})
     out["post"].sort(key=lambda p: -(p["loss_pct"] or 0))
     half = n // 2
-    for k, lbl in PRE.items():
-        known = [s for s in rows if k not in s["why"].get("unk", [])]
-        w = [s["exit"]["r"] for s in known if k in s["why"]["pre"]]
-        wo = [s["exit"]["r"] for s in known if k not in s["why"]["pre"]]
+    feats = list(PRE.items()) + [(f"{a}+{b}", f"{PRE[a]} UND {PRE[b]}") for a, b in PAIRS]
+    has = lambda s, k: all(x in s["why"]["pre"] for x in k.split("+"))
+    unk = lambda s, k: any(x in s["why"].get("unk", []) for x in k.split("+"))
+    for k, lbl in feats:
+        known = [s for s in rows if not unk(s, k)]
+        w = [s["exit"]["r"] for s in known if has(s, k)]
+        wo = [s["exit"]["r"] for s in known if not has(s, k)]
         if not w:
             continue
         diff = (np.mean(w) - np.mean(wo)) if wo else None
         halves = []
         for part in (rows[:half], rows[half:]):
-            a = [s["exit"]["r"] for s in part if k in s["why"]["pre"]]
-            b = [s["exit"]["r"] for s in part if k not in s["why"]["pre"] and k not in s["why"].get("unk", [])]
+            a = [s["exit"]["r"] for s in part if has(s, k)]
+            b = [s["exit"]["r"] for s in part if not has(s, k) and not unk(s, k)]
             halves.append(round(float(np.mean(a) - np.mean(b)), 3) if a and b else None)
-        live_bad = len(w) >= MIN_N and len(wo) >= MIN_N and diff is not None and diff <= -MIN_DIFF and all(h is not None and h < 0 for h in halves)
+        enough = len(w) >= MIN_N and len(wo) >= MIN_N
+        live_bad = enough and diff is not None and diff <= -MIN_DIFF and all(h is not None and h < 0 for h in halves)
+        live_good = enough and diff is not None and diff >= MIN_DIFF and all(h is not None and h > 0 for h in halves)
+        pval = _pvalue(w, wo) if enough else None
         if k in TESTED:                              # historisch geprüft – live trotzdem beobachtet: widerspricht live der Forschung?
             status = "live auffällig – erneut prüfen" if live_bad else "schon getestet"
         elif len(w) < MIN_N or len(wo) < MIN_N:
             status = "zu wenig Fälle"
         elif live_bad:
             status = "Kandidat – Backtest"
+        elif live_good:
+            status = "Verstärker – Backtest"
         else:
             status = "kein Hinweis"
         out["pre"].append({"k": k, "l": lbl, "n": len(w), "r": _mean(w), "r_ohne": _mean(wo),
-                           "diff": None if diff is None else round(float(diff), 3), "halves": halves, "status": status,
+                           "diff": None if diff is None else round(float(diff), 3), "halves": halves, "status": status, "p": pval,
                            "note": TESTED.get(k)})
-    flagged = ("Kandidat – Backtest", "live auffällig – erneut prüfen")
+    _bh(out["pre"])                                  # Mehrfachtest-Korrektur: Kandidat nur, wenn auch nach BH nicht zufällig
+    for p in out["pre"]:
+        if p["status"] in ("Kandidat – Backtest", "Verstärker – Backtest", "live auffällig – erneut prüfen") and not (p.get("q") is not None and p["q"] <= FDR_Q):
+            p["status"] = "Hinweis – noch zufallsverdächtig"
+    flagged = ("Kandidat – Backtest", "Verstärker – Backtest", "live auffällig – erneut prüfen")
     out["pre"].sort(key=lambda p: (p["status"] not in flagged, p["diff"] if p["diff"] is not None else 9))
     out["candidates"] = [p["k"] for p in out["pre"] if p["status"] in flagged]
     nt: dict = {}                                    # Schlagzeilen-Gründe bei Verlusten (Ausblick, Analysten, Marge …)
@@ -217,13 +250,37 @@ def report(snaps: dict) -> dict:
     return out
 
 
+def _pvalue(a: list, b: list) -> float | None:
+    """Zweiseitiger p-Wert für den Unterschied der Mittelwerte (Welch, Normalnäherung – genug für ≥ 10 Fälle je Seite)."""
+    from math import erf, sqrt
+    if len(a) < 2 or len(b) < 2:
+        return None
+    va, vb = np.var(a, ddof=1) / len(a), np.var(b, ddof=1) / len(b)
+    if va + vb <= 0:
+        return 0.0 if np.mean(a) != np.mean(b) else 1.0
+    z = abs(np.mean(a) - np.mean(b)) / sqrt(va + vb)
+    return round(float(2 * (1 - 0.5 * (1 + erf(z / sqrt(2))))), 5)
+
+
+def _bh(rows: list[dict]) -> None:
+    """Benjamini-Hochberg q-Werte über alle getesteten Merkmale (setzt row["q"])."""
+    ps = sorted([(r["p"], i) for i, r in enumerate(rows) if r.get("p") is not None])
+    m, prev = len(ps), 1.0
+    for rank in range(m, 0, -1):
+        p, i = ps[rank - 1]
+        prev = min(prev, p * m / rank)
+        rows[i]["q"] = round(prev, 5)
+
+
 def lesson(why: dict, pre_stat: dict) -> str:
     """Was lehrt dieser Verlust? Vorher sichtbare Merkmale werden mit ihrer Bilanz bewertet, sonst: nicht vermeidbar."""
     if why.get("pre"):
         parts = []
         for k in why["pre"]:
             p = pre_stat.get(k) or {}
-            if p.get("status") in ("Kandidat – Backtest", "live auffällig – erneut prüfen"):
+            if p.get("status") == "Verstärker – Backtest":
+                parts.append(f"{PRE[k]}: mit diesem Merkmal liefen Trades bisher besser – wird geprüft")
+            elif p.get("status") in ("Kandidat – Backtest", "live auffällig – erneut prüfen"):
                 parts.append(f"{PRE[k]}: schadet bisher beständig – wird als Filter geprüft")
             elif k in TESTED:
                 parts.append(f"{PRE[k]}: über 18 Jahre kein beständiger Nachteil – kein Filter")

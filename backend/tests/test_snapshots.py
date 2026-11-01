@@ -133,3 +133,18 @@ def test_controls_and_forward_returns(tmp_path, monkeypatch):
     assert set(sn["fwd"]) == {"r20", "dd20", "r60", "dd60"} and sn["fwd"]["r60"] > 0
     rep = snapshots.controls_report(snaps)
     assert rep["near"]["n"] == 3 and rep["rand"]["n60"] == snapshots.N_RAND and rep["hit"]["n"] == 0
+
+
+def test_context_analysts_and_insider_point_in_time():
+    r = {**_row(d="2026-06-10"), "senti": {"an": {"m": 1.8, "n": 12}, "tgt": {"up": 0.31}, "ns": -1, "sec": {"tone": "red"}, "fu": {"pe": 11.2}}}
+    s = {"t": "AAA", "k": "hit", "d": "2026-06-10", "entry": 100, "stop": 96}
+    rows = [{"t": "AAA", "kind": "buy", "who": "CEO X", "role": "CEO", "d": "2026-05-20", "fd": "2026-05-22", "opp": True, "val": 50000},
+            {"t": "AAA", "kind": "buy", "who": "Dir Y", "role": "Dir", "d": "2026-06-09", "fd": "2026-06-12", "val": 10000},   # erst nach Signal gemeldet
+            {"t": "AAA", "kind": "buy", "who": "Old", "role": "Dir", "d": "2025-12-01", "fd": "2025-12-02", "val": 9000}]          # zu alt
+    sn = snapshots.take(s, r, None, MARKET, "2026-06-10", ins_rows=rows)
+    c = sn["sig"]["ctx"]
+    assert c["an_m"] == 1.8 and c["tgt_up"] == 0.31 and c["news"] == -1 and c["sec_tone"] == "red" and c["pe"] == 11.2
+    assert c["ins"] == {"n": 1, "buyers": 1, "opp": 1, "top": True, "val": 50000}
+    assert snapshots.take(s, r, None, MARKET, "2026-06-10", ins_rows=[{"t": "BBB", "kind": "checked"}])["sig"]["ctx"]["ins"] is None
+    assert snapshots.take(s, r, None, MARKET, "2026-06-10", ins_rows=[{"t": "AAA", "kind": "checked"}])["sig"]["ctx"]["ins"]["n"] == 0
+    assert snapshots.take({**s, "t": "SAP.DE"}, {**r, "ticker": "SAP.DE"}, None, MARKET, "2026-06-10", ins_rows=rows)["sig"]["ctx"]["ins"] is None

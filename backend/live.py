@@ -100,7 +100,7 @@ def _show(sig: list[dict]) -> list[dict]:
 
 
 def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: bool = True, market: dict | None = None,
-           ctx: dict | None = None) -> dict:
+           ctx: dict | None = None, ins: dict | None = None) -> dict:
     """record=False: keine neuen Signale speichern (Scan während der Börsenzeit – US-Tageskerzen noch nicht fertig);
     Ergebnisse bestehender Signale werden trotzdem nachgeführt."""
     sig = state.load("signals.json", [])
@@ -184,7 +184,21 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
     try:                                           # Lern-Grundlage: Momentaufnahme neuer Signale (unveränderlich), Kauf/Ergebnis nachtragen
         from . import snapshots
         snaps = state.load(snapshots.FILE, {})
-        snapshots.add(snaps, new, {r["ticker"]: r for r in rows}, data, market, today)
+        ins_rows = None                            # Insider-Käufe am Signaltag: aus dem Scan + gezielt für neue US-Treffer
+        if record and new:
+            try:
+                from . import insider as I
+                have = list((ins or {}).get("watch") or []) + list((ins or {}).get("buys") or [])
+                known = {x.get("t") for x in have}
+                todo = {s["t"]: s.get("n") or s["t"] for s in new if "." not in s["t"] and s["t"] not in known and s["k"] in ("hit", "fast")}
+                extra = I.fetch_watch(todo, budget_s=90)[0] if todo else []
+                ins_rows = have + extra
+                ok = set(known) | {t for t, st in I.COVER.items() if st == "ok"}
+                ins_rows = [x for x in ins_rows if x.get("t") in ok] + [{"t": t, "kind": "checked"} for t in ok]
+            except Exception as exc:
+                print("Insider für neue Treffer:", repr(exc)[:100])
+                ins_rows = None
+        snapshots.add(snaps, new, {r["ticker"]: r for r in rows}, data, market, today, ins_rows=ins_rows)
         if record:                                 # Kontrollgruppen (9/11, Zufall) nur aus dem Abendscan
             snapshots.add_controls(snaps, rows, data, market, today)
         snapshots.track(snaps, sig, today, data, market)

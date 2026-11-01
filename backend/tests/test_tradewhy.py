@@ -109,3 +109,34 @@ def test_tested_feature_is_flagged_again_if_live_contradicts_research():
     e = next(p for p in rep["pre"] if p["k"] == "eng")
     assert e["status"] == "live auffällig – erneut prüfen" and "eng" in rep["candidates"]
     assert "wird als Filter geprüft" in rep["recent"][0]["lesson"] or any("Filter geprüft" in r["lesson"] for r in rep["recent"])
+
+
+def test_combination_features_and_unknown():
+    sn = _sn("A", str(IDX[250].date()), -1.0)
+    sn["sig"]["ctx"] = {"an_m": 1.5, "tgt_up": 0.4, "news": 0, "sec_tone": "green", "pe": 30, "ins": {"n": 2, "buyers": 2, "opp": 1}}
+    w = W.explain(sn, None, {})
+    assert {"ins_kauf", "ins_cluster", "ins_gezielt", "analyst_kauf", "analyst_ziel"} <= set(w["pre"]) and "guenstig" not in w["pre"]
+    sn["sig"]["ctx"] = {"ins": None}
+    assert {"ins_kauf", "analyst_kauf", "guenstig"} <= set(W.explain(sn, None, {})["unk"])
+
+
+def test_booster_pair_and_fdr():
+    snaps = {}
+    rng = np.random.default_rng(3)
+    for i in range(80):
+        d = str(IDX[200 + i * 2].date())
+        ins = i % 2 == 0
+        r = (1.0 if ins else -0.3) + rng.normal(0, 0.2)
+        sn = _sn(f"T{i}", d, round(float(r), 3))
+        sn["sig"]["ctx"] = {"ins": {"n": int(ins), "buyers": int(ins), "opp": int(ins)}, "an_m": 1.5 if i % 4 == 0 else 3.0}
+        snaps[f"T{i}|hit|{d}"] = sn
+    W.analyze(snaps, {}, {}, rss=NORSS)
+    rep = W.report(snaps)
+    ins = next(p for p in rep["pre"] if p["k"] == "ins_kauf")
+    assert ins["status"] == "Verstärker – Backtest" and ins["q"] <= W.FDR_Q and "ins_kauf" in rep["candidates"]
+    pair = next(p for p in rep["pre"] if p["k"] == "ins_kauf+analyst_kauf")
+    assert pair["n"] == 20 and "UND" in pair["l"]
+    # kleiner, verrauschter Effekt: Richtung beständig, aber nach BH zufallsverdächtig → kein Kandidat
+    rows = [{"p": 0.04, "status": "x"}, {"p": 0.5}, {"p": 0.6}, {"p": 0.7}, {"p": 0.9}]
+    W._bh(rows)
+    assert rows[0]["q"] == 0.2
