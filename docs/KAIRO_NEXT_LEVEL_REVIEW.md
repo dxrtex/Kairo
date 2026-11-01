@@ -111,7 +111,7 @@ Wartezustände; Stop am Kauftag; nur künftige Signale + Einfrieren; Parameter g
 | `node tools/kursdienst_wake_test.mjs` | bestanden |
 | `python tools/dupe_check.py` | keine doppelten Funktionen |
 | B60-Gleichheit | `test_rule.py` (App, Papier-Depots, Regel identisch) bestanden; Diff an Regel/Scanner/Config/Depots leer |
-| Browser `tools/app_smoke.py` (Chromium, iPad 820×1180, Handy 390×844, alle Reiter, Import, Backup, Größe) | lokal mit Daten vom 07.10.: alles grün bis auf „Regel-Test: h4.json fehlt“ – die Datei gab es in diesen alten Daten noch nicht (kein Fehler des Codes); mit aktuellen Daten im Workflow „Tests & Regression“ |
+| Browser `tools/app_smoke.py` (Chromium, iPad 820×1180, Handy 390×844, alle Reiter, Import, Backup, Größe) | lokal mit Daten vom 07.10.: alles grün bis auf „Regel-Test: h4.json fehlt“ – die Datei gab es in diesen alten Daten noch nicht (kein Fehler des Codes); mit aktuellen veröffentlichten Daten im Workflow „Tests & Regression“ (Lauf 41309736857): **bestanden** |
 | Gezielte Browserprüfung (iPad + Handy): Insider-Abdeckung, Meldedatum, „Routine unbekannt“, Datenstatus je Quelle, Kosten-Check-Beschriftung, keine horizontale Verbreiterung | bestanden |
 | API-Ausfälle: insider/earnings/h4/etf/bilanz/alerts/changes/calendar/briefing/analysis liefern 500 bzw. brechen ab | keine JS-Fehler, alle Reiter gefüllt, Datenstatus zeigt „nicht geladen“ |
 
