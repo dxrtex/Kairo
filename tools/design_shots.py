@@ -59,6 +59,7 @@ METRICS_JS = r"""
     const own = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim().length > 1);
     if (own) {
       const s = getComputedStyle(el); const fs = parseFloat(s.fontSize);
+      if (fs < 1) continue;                     // unsichtbarer Text (z. B. Segmentbalken mit Tooltip) – nicht lesbar, nicht gemessen
       if (fs < 11) small++;
       if (checked < 1500) { checked++;
         const a = lum(s.color), b = lum(bgOf(el)); if (a != null && b != null) { const cr = (Math.max(a,b) + .05) / (Math.min(a,b) + .05);
