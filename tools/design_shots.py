@@ -44,10 +44,13 @@ METRICS_JS = r"""
   const vw = innerWidth, vh = innerHeight;
   const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
     return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && +s.opacity > 0.05; };
-  const lum = c => { const m = c.match(/[\d.]+/g); if (!m) return null; const [r,g,b] = m.slice(0,3).map(v => { v = +v / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+  const lum = c => { const m = c.match(/[\d.]+/g); if (!m) return null; const unit = c.startsWith('color(') ? 1 : 255;   // color(srgb 0–1 …) aus color-mix()
+    const [r,g,b] = m.slice(0,3).map(v => { v = +v / unit; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
     return 0.2126*r + 0.7152*g + 0.0722*b; };
-  const alpha = c => { const m = c.match(/[\d.]+/g); return m && m.length > 3 ? +m[3] : 1; };
-  const bgOf = el => { for (let e = el; e; e = e.parentElement) { const c = getComputedStyle(e).backgroundColor; if (alpha(c) > 0.5) return c; }
+  const alpha = c => { const m = c.match(/[\d.]+/g); if (c.startsWith('color(')) { const k = c.indexOf('/'); return k > 0 ? parseFloat(c.slice(k + 1)) : 1; } return m && m.length > 3 ? +m[3] : 1; };
+  const bgOf = el => { if (el.closest('nav .tab.on')) { const ind = document.querySelector('.tab-ind');   // aktiver Reiter: Hintergrund ist das Geschwister .tab-ind
+      if (ind && vis(ind)) return getComputedStyle(ind).backgroundColor; }
+    for (let e = el; e; e = e.parentElement) { const c = getComputedStyle(e).backgroundColor; if (alpha(c) > 0.5) return c; }
     return getComputedStyle(document.body).backgroundColor; };
   let small = 0, lowc = 0, checked = 0, tap = 0, nodes = 0;
   const lows = [];
