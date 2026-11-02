@@ -1,6 +1,6 @@
 """Design-Prüfstand (KAIRO DESIGN V4): reproduzierbare Screenshots + Messwerte je Ansicht, Bildschirmgröße und Design.
 
-Deterministisch: Daten aus site/data (fester Stand), feste Uhrzeit (29.10.2026 21:30), alle externen Anfragen blockiert
+Deterministisch: synthetische App-Daten aus tools/design_fixtures/site_data (erzeugt mit make_site_data.py, echter Scan-Code), feste Uhrzeit (Fr 30.10.2026 22:30), alle externen Anfragen blockiert
 (Live-Kurse, Nachrichten), Test-Depot mit Stop-Warnung, langen Namen und mehreren Währungen.
 
 Messwerte je Ansicht:
@@ -26,6 +26,7 @@ import threading
 from pathlib import Path
 
 SITE = Path(__file__).resolve().parents[1] / "site"
+FIX = Path(__file__).resolve().parent / "design_fixtures" / "site_data"   # python tools/design_fixtures/make_site_data.py
 GATE = "31151c44ed55cace96a0cb05c2ca90411e7f0263b40ab89f351fcb64dd2b5220"
 VPS = {"iphone": (390, 844), "iphone-max": (430, 932), "ipad-p": (834, 1194), "ipad-l": (1194, 834), "ipad-split": (694, 1024),
        "desk": (1440, 900), "desk-xl": (1920, 1080)}
@@ -70,7 +71,18 @@ METRICS_JS = r"""
   const H = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
   const modal = document.querySelector('#cardModalBody');
   const mh = document.body.classList.contains('card-open') && modal ? modal.scrollHeight : 0;
-  return { scroll: +(Math.max(H, mh) / vh).toFixed(2), overflow: Math.max(0, document.documentElement.scrollWidth - vw),
+  // Scanner/Master-Detail: erste Aktienzeile, Zeilenhöhe, ganz sichtbare Zeilen, Liste und Detail gleichzeitig sichtbar
+  const rows = [...document.querySelectorAll('#main .bd-card, #main .bd-row')].filter(vis);
+  const r0 = rows[0] && rows[0].getBoundingClientRect();
+  const navH = (() => { const n = document.querySelector('nav.tabbar'); if (!n || !vis(n)) return 0; const b = n.getBoundingClientRect(); return b.top > vh / 2 ? vh - b.top : 0; })();
+  const ready = rows.filter(e => e.matches('.bd-card'));
+  const rowH = ready.length ? Math.round(ready.slice(0, 3).reduce((a, e) => a + e.getBoundingClientRect().height, 0) / Math.min(3, ready.length)) : null;
+  const full = rows.filter(e => { const b = e.getBoundingClientRect(); return b.top >= 0 && b.bottom <= vh - navH; }).length;
+  const det = document.querySelector('#cardModalBody'), mainEl = document.querySelector('#main');
+  let md = false;
+  if (det && vis(det) && mainEl && rows.length) { const a = rows[0].getBoundingClientRect(), b = det.getBoundingClientRect(); md = a.right <= b.left + 1 && a.width > 200; }
+  return { first_row: r0 ? Math.round(r0.top) : null, first_row_bottom: r0 ? Math.round(r0.bottom) : null, row_h: rowH, rows_full: full, nav_h: Math.round(navH), master_detail: md,
+           scroll: +(Math.max(H, mh) / vh).toFixed(2), overflow: Math.max(0, document.documentElement.scrollWidth - vw),
            small_txt: small, small_tap: tap, contrast: lowc, contrast_ex: lows, nodes, first_cards: heads };
 }
 """
@@ -99,11 +111,14 @@ async def shoot(b, url, design, vp, views, out, metrics):
 
     async def route(r):
         u = r.request.url
-        if "/data/charts/" in u:
+        if u.startswith(url + "data/"):                  # App-Daten immer aus dem festen Fixture (make_site_data.py)
             from urllib.parse import unquote
-            t = unquote(u.rsplit("/", 1)[1].split("?")[0])[:-5]
-            if t in charts:
-                await r.fulfill(status=200, content_type="application/json", body=json.dumps(charts[t]))
+            rel = unquote(u[len(url) + 5:].split("?")[0])
+            f = FIX / rel
+            if "charts/" in rel and rel[7:-5] in charts:
+                await r.fulfill(status=200, content_type="application/json", body=json.dumps(charts[rel[7:-5]]))
+            elif f.is_file():
+                await r.fulfill(status=200, content_type="application/json", body=f.read_bytes())
             else:
                 await r.fulfill(status=404, body="")
             return
@@ -116,7 +131,7 @@ async def shoot(b, url, design, vp, views, out, metrics):
     errs = []
     pg.on("pageerror", lambda e: errs.append(str(e)[:160]))
     try:
-        await pg.clock.set_fixed_time("2026-10-29T21:30:00+01:00")
+        await pg.clock.set_fixed_time("2026-10-30T22:30:00+01:00")
     except Exception:
         pass
     for v in views:
@@ -143,6 +158,9 @@ async def shoot(b, url, design, vp, views, out, metrics):
 
 async def main_async(a):
     from playwright.async_api import async_playwright
+    if not (FIX / "results.json").exists():
+        import subprocess, sys
+        subprocess.run([sys.executable, str(FIX.parent / "make_site_data.py")], check=True, stdout=subprocess.DEVNULL)
     port = serve()
     url = f"http://127.0.0.1:{port}/"
     out = Path(a.out)
@@ -150,7 +168,8 @@ async def main_async(a):
     metrics = {}
     async with async_playwright() as p:
         import os
-        exe = os.environ.get("CHROME_PATH") or ("/opt/pw-browsers/chromium-1194/chrome-linux/chrome" if Path("/opt/pw-browsers/chromium-1194/chrome-linux/chrome").exists() else None)
+        import glob
+        exe = os.environ.get("CHROME_PATH") or next(iter(sorted(glob.glob("/opt/pw-browsers/chromium-*/chrome-linux*/chrome"), reverse=True)), None)
         b = await p.chromium.launch(args=["--no-proxy-server"], **({"executable_path": exe} if exe else {}))
         for design in a.designs.split(","):
             for vp in a.vps.split(","):
