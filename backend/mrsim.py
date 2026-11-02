@@ -58,6 +58,7 @@ COSTS = {
     "basis": Cost("basis"),
     "stress": Cost("stress", spread_liq=0.003, spread_ill=0.006, slip=0.0005, fx=0.001),
     "free": Cost("free", fee_free_from=None),          # 0,99 € auf jede Order (ohne PRIME+)
+    "g199": Cost("g199", fee=1.99, fee_free_from=None),  # 1,99 € auf jede Order (gettex ab 01.09.2026 laut Presse – UNBESTÄTIGT)
 }
 
 

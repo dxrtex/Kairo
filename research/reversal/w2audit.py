@@ -279,7 +279,7 @@ def run(a) -> None:
     cal = pd.DatetimeIndex(sorted({d for P in px.values() for d in P.idx if s0 <= d <= s1 + pd.Timedelta(days=30)}))
     curves = {}
     for model in S.FILLS:
-        for cn in ("null", "basis", "free", "stress"):
+        for cn in ("null", "basis", "free", "g199", "stress"):
             r = S.simulate(sig_top, px, "W2", model, S.COSTS[cn], 10_000.0, calendar=cal)
             curves[f"W2|{model}|{cn}"] = r["equity"]
             res["depot"][f"W2|{model}|{cn}"] = {"counts": r["counts"], "alle": S.stats(r["equity"]),
@@ -303,7 +303,7 @@ def run(a) -> None:
         for cap in CAPS:
             for rule250 in (False, True):
                 for model in ("opt", "kons"):
-                    for cn in ("basis", "free"):
+                    for cn in ("basis", "g199"):
                         r = S.simulate(sig_top, px, "W2", model, S.COSTS[cn], float(cap), min_order=250.0 if rule250 else None, calendar=cal)
                         res["caps"][f"{cap}|{'min250' if rule250 else '5plaetze'}|{model}|{cn}"] = {
                             "alle": S.stats(r["equity"]), "fees": round(r["counts"]["gebuehren"], 2), "trades": len(r["trades"]),
