@@ -156,6 +156,8 @@ async def shoot(b, url, design, vp, views, out, metrics):
         d.mkdir(parents=True, exist_ok=True)
         await pg.screenshot(path=str(d / f"{v}.png"))
         if v in ("today", "scanner", "detail", "depot", "entry"):
+            # Seitenblätter liegen außerhalb des Bildschirms (verschoben) – in Ganzseiten-Aufnahmen würden sie sonst sichtbar
+            await pg.evaluate("if (!document.body.classList.contains('filters-open')) document.querySelectorAll('.sheet').forEach(x => x.style.visibility = 'hidden')")
             await pg.screenshot(path=str(d / f"{v}_full.png"), full_page=True)
     await ctx.close()
 

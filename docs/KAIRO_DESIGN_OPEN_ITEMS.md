@@ -1,7 +1,24 @@
-# KAIRO Design – Offene Punkte (V4 02.11.2026, aktualisiert V5 03.11.2026)
+# KAIRO Design – Offene Punkte (V4 02.11.2026, V5/V6 03.11.2026)
 
 Stand nach V5 zuerst; darunter die V4-Liste mit Status.
 
+
+
+## V6 – Status (03.11.2026)
+
+| # | Punkt | Status |
+|---|---|---|
+| V1 | Detail-Chart ohne Tooltip/Zoom | **Implementiert, getestet** – Fadenkreuz mit Datum, Eröffnung/Hoch/Tief/Schluss und Tagesveränderung (Maus, Finger waagerecht, Tastatur ← →, Esc), Zeitraum 3 M / 6 M / 1 J |
+| V2 | Master-Detail nur im Scanner | **Bewusst so** – der Scanner ist der Arbeitsbereich mit Liste; Depot (breite Positionskarten mit 4 Spalten) und Einstieg (Plan-Assistent) würden in einer 40-%-Spalte schlechter. Neu: ↑/↓ blättert, Leerzustand zeigt die Übersicht (kaufbereit/wartend/verfallen) und öffnet die erste kaufbereite Aktie |
+| V3 | Warte-Zeilen: Balken eigene Zeile | **Bewusst so** – gleiche Segment-Gestaltung wie Kaufbereit; rechts steht dort der Kurs, der Vorrang hat |
+| V4 | Tippfehler „Platze“ | **Behoben** („Plätze“, gemeinsamer Text – einzige sichtbare Änderung außerhalb von Premium) |
+| V5 | Bilanz im Prüfstand ohne Daten | **Noch offen** (nur Prüfstand) |
+| V6 | Synthetische Messgrundlage | **Noch offen** – github.io aus der Umgebung gesperrt |
+| V7 | Safari/WebKit, echtes Gerät | **Nicht möglich** – Download von `cdn.playwright.dev` durch die Netzwerk-Freigabe der Umgebung gesperrt; kann unter Network access → Allowed domains freigegeben werden |
+| V8 | Filter-Blatt in Ganzseiten-Aufnahmen | **Behoben** (Prüfstand blendet geschlossene Blätter aus) |
+| neu | Heute: Top-Setups wiederholten die Kaufkandidaten | **Behoben** – Premium zeigt „Weitere Setups“ ohne die Kandidaten aus „Heute zu tun“ |
+| neu | Kennzahlen-Unterzeilen abgeschnitten | **Behoben** (umbrechen statt Auslassung) |
+| neu | iPhone: 5 Kaufkandidaten verdrängten die Kennzahlen | **Behoben** – ab dem 4. einklappbar („2 weitere Kaufkandidaten“) |
 
 ## V5 – Status der V4-Punkte
 
