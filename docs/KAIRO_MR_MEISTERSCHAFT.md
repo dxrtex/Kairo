@@ -131,3 +131,36 @@ Ausstieg – für W2 zusätzlich mit demselben Kauf-Limit. Gegenprobe auf Zufall
 **Folgerung:** Der Effekt „3 Verlusttage im Aufwärtstrend, mit Limit kaufen“ ist kein Zufallsfund aus einem Datensatz – er
 besteht in drei unabhängigen Märkten/Zeiträumen. Die offene Frage ist allein die Umsetzung: echte Limit-Ausführung und echte
 Kosten bei Scalable. Genau das misst der Schattentest.
+
+## 6. Ideen Jonny: RSI-Signallinie und Kerzenformationen (rsis-41410663706, cdl-41410663549, 02.11.2026)
+
+Vorab festgelegt in `research/reversal/rsisig.py` und `research/reversal/candle.py`. Vergleich jeweils mit einem
+**zufälligen Kauf nach einem Abverkauf** (RSI(14) < 30 in den letzten 20 Tagen), Ertrag 10 Handelstage, fünf Prüfungen
+(Train, Validierung, Holdout, Vorzeit, Asien), Benjamini-Hochberg. Erster RSI-Lauf (41410055775) war fehlerhaft
+(Grundfilter enthielt den Aufwärtstrend) und zählt nicht.
+
+**RSI-Signallinie** (Impuls über die Signallinie, Rücksetzer darauf, Divergenz) – keine Variante besteht:
+
+| | Train | Validierung | Holdout | Vorzeit | Asien |
+|---|---|---|---|---|---|
+| R1 Rücksetzer auf die Signallinie (Ø 10 Tage) | +0,52 % | +1,07 % | +1,36 % | +1,18 % | +0,87 % |
+| zufälliger Kauf nach Abverkauf | +0,54 % | +0,72 % | +0,96 % | +0,82 % | +0,94 % |
+| Vorsprung R1 | −0,02 | +0,35 | +0,40 | +0,36 | −0,07 |
+| Vorsprung R1 unter der 200-Tage-Linie | −0,03 | +0,49 | +0,44 | +0,64 | −0,14 |
+| Vorsprung R3 Divergenz | +0,26 | +0,07 | +0,19 | +0,30 | −0,10 |
+
+Das Muster funktioniert – aber fast genauso gut wie ein beliebiger Kauf nach einem Abverkauf. Der Ertrag kommt vom
+Abverkauf selbst (Mean Reversion), kaum vom Zusammenspiel RSI/Signallinie. Unter der 200-Tage-Linie in drei Prüfungen
+deutlich besser, in Train und Asien nicht → Hinweis, nicht bestanden.
+
+**Kerzen- und Chartformationen:**
+- A (während der Bodenbildung eines B60-Setups): keine Formation verbessert B60 beständig. Engulfing, Harami, Kerzen
+  allgemein wechseln das Vorzeichen zwischen den Zeiträumen; Cup with Handle (3 % der Setups) gut in Train/Validierung,
+  schlecht im Holdout.
+- B (Formation allein nach Abverkauf): Bullish Harami in 5/5 Prüfungen leicht besser (+0,08 … +0,58 Punkte), nirgends
+  signifikant → Hinweis. Doppelboden in 0/5 besser (Ausbruch über die Nackenlinie schlechter als Zufall), Cup with Handle
+  nicht besser als ein zufälliger Kauf im Aufwärtstrend, übrige Kerzen uneinheitlich.
+
+**Folgerung:** Keine Änderung an B60 oder W2. Zum Vergleich: W2 lag in den unabhängigen Daten +0,38 / +0,45 Punkte vor
+seiner Kontrolle mit p < 0,001 – das bleibt der klar stärkste Befund. RSI-Rücksetzer unter der 200-Tage-Linie und Harami
+werden als Hypothesen notiert (keine Live-Beobachtung nötig, da nicht bestanden).
