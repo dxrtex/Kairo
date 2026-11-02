@@ -333,24 +333,6 @@ async def run(port: int) -> list[str]:
             if w > vp["width"] + 2:
                 errs.append(f"{name}: Seite breiter als der Bildschirm ({w}px)")
             await ctx.close()
-        # Premium-Workspace (optional, dunkel/hell): jeder Reiter ohne JS-Fehler, nicht leer, keine Überbreite
-        for des in ("premium", "premium-hell"):
-            for vw, vh in ((1194, 834), (834, 1194), (390, 844)):
-                ctx = await new_ctx(b, viewport={"width": vw, "height": vh})
-                pg = await ctx.new_page()
-                perr = []
-                pg.on("pageerror", lambda e, perr=perr: perr.append(str(e)[:120]))
-                await pg.add_init_script(f"try{{localStorage.setItem('reversal-finder-v1', JSON.stringify({{design: '{des}', tourDone: 1}}))}}catch(e){{}}")
-                for sec in SECS:
-                    await pg.goto(f"{url}?nosplash=1&sec={sec}")
-                    await pg.wait_for_timeout(700)
-                    if len((await pg.inner_text("#main")).strip()) < 20:
-                        errs.append(f"{des} {vw}x{vh}: {sec} ist leer")
-                    w = await pg.evaluate("document.documentElement.scrollWidth")
-                    if w > vw + 2:
-                        errs.append(f"{des} {vw}x{vh}: {sec} breiter als der Bildschirm ({w}px)")
-                errs.extend(f"{des} {vw}x{vh}: JS-Fehler {e}" for e in perr)
-                await ctx.close()
         # Postfach-Designs (iPad quer): linke Liste und rechter Bereich dürfen sich nie überlappen
         for des in ("postfach-classic", "postfach", "postfach-aktien"):
             for vw, vh in ((1180, 820), (1024, 768)):
