@@ -36,12 +36,12 @@ Schnelligkeit: erste Zahlen im Mittel 961 Min. nach der Meldezeit (90 % innerhal
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
 - ACX.MC 2026-10-29: Kairo 37% steigt, Kurs -5.5% · Gewinn -3% · Ausblick keine Meldung
-- NTPC.NS 2026-10-31: Kairo 54% steigt, Kurs +2.6% · Gewinn +6% · Ausblick keine Meldung
 - TPEIR.AT 2026-10-30: Kairo 52% steigt, Kurs -2.1% · Gewinn -16% · Ausblick angehoben – „Earnings Call: Piraeus Bank verzeichnet starkes Wachstum in Q3 2026 und hebt Ausblick an“
+- NTPC.NS 2026-10-31: Kairo 54% steigt, Kurs +2.3% · Gewinn +6% · Ausblick keine Meldung
 - ADRO.JK 2026-10-29: Kairo 42% steigt, Kurs +1.3% · Gewinn +0% · Ausblick keine Meldung
 - HTO.AT 2026-10-30: Kairo 54% steigt, Kurs +1.5% · Gewinn +5% · Ausblick keine Meldung
-- POWERGRID.NS 2026-11-01: Kairo 37% steigt, Kurs +0.8% · Gewinn -3% · Ausblick keine Meldung
 - ALPHA.AT 2026-10-30: Kairo 53% steigt, Kurs -0.4% · Gewinn +0% · Ausblick angehoben – „ALPHA: Higher NII and loan growth lifted guidance, while macro risks may raise Q4 provisions“
+- POWERGRID.NS 2026-11-01: Kairo 37% steigt, Kurs +0.4% · Gewinn -3% · Ausblick keine Meldung
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
