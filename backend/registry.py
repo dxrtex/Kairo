@@ -46,12 +46,15 @@ REGISTRY = [
     {"id": "A5", "kind": "regel", "stage": "schatten", "since": "2026-11-01",
      "what": "3 Verlust-Schlusskurse in Folge über der 200-Tage-Linie → Kauf zur Eröffnung, Verkauf bei Schluss über der 5-Tage-Linie (max. 10 Tage), 5 Plätze",
      "evidence": "normal: +16 % / +35 % / +12 % p. a. (Train/Val/Holdout), Stress: Totalverlust; Kostenschwelle 0,09 % je Seite; liquide Variante schlägt ETF nicht",
-     "next": "Schattentest läuft seit 01.11.2026 (backend/mrshadow.py); entscheidend: echte Kosten < ~0,08 % je Seite über 3 Monate"},
+     "next": "Schattentest läuft seit 01.11.2026 (backend/mrshadow.py); entscheidend: echte Kosten < ~0,08 % je Seite über 3 Monate",
+     "confirm": "02.11.2026 unabhängig bestätigt: Vorzeit und Asien je Trade +0,35 / +0,30 Prozentpunkte besser als Zufallskauf (p < 0,001)"},
     {"id": "W2", "kind": "regel", "stage": "schatten", "since": "2026-11-01",
      "what": "wie A5, aber Kauf-Limit 0,5 ATR unter dem Signal-Schluss (gilt einen Tag)",
      "evidence": "Welle 3: normal Val +47,5 % / Holdout +12,3 % p. a., Stress Val +15,1 % / Holdout −11,3 %; "
                  "90/10 mit ETF: normal +10,5 % statt +8,5 % p. a., Stress +7,9 %; dieselben Daten dreimal ausgewertet → nur Hinweis",
-     "next": "Schattentest läuft seit 01.11.2026 (backend/mrshadow.py); Limit-Füllung live prüfen"},
+     "next": "Schattentest läuft seit 01.11.2026 (backend/mrshadow.py); Limit-Füllung live prüfen",
+     "confirm": "02.11.2026 unabhängig bestätigt: Vorzeit 1999–2007 und Asien 2008–2026 je Trade +0,38 / +0,45 Prozentpunkte "
+                "besser als Zufallskauf mit gleichem Limit (p < 0,001); Varianten 250-€-Regel, Vortageshoch, Marktbreite nicht besser"},
     {"id": "C1-ETF", "kind": "regel", "stage": "schatten", "since": "2026-11-01",
      "what": "RSI(2) < 10 über der 200-Tage-Linie auf Index-ETFs, Verkauf über der 5-Tage-Linie",
      "evidence": "+8–9 % p. a. in allen Zeiträumen, Rückgang −20 %, auch mit Stress-Kosten positiv – aber unter dem Welt-ETF",
