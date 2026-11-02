@@ -1414,6 +1414,16 @@ nav.tabbar .tabs{background:transparent!important;box-shadow:none!important;bord
 nav.tabbar .tab.on,nav.tabbar .tab.on svg{color:#fff!important}
 /* Zonen-Kennzeichnung im Detail: Basis-CSS hat festes #c8c8cc (nur für dunkle Flächen) → Token, in Hell 6,6 : 1 */
 .flag{color:var(--muted)!important;background:var(--surface-2)!important}
+/* Detail-Chart: Raster, Stop/Ziel als gestrichelte Linie mit Wert, aktueller Kurs als Marke rechts, Datum unten */
+.chart[data-mini]{position:relative}
+.chart[data-mini] svg .cgrid{display:inline!important;stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.chart[data-mini] svg [class^="cl-"]{display:inline!important;stroke-width:1.2;stroke-dasharray:5 4}
+.chart[data-mini] svg .cl-stop{stroke:var(--red)}.chart[data-mini] svg .cl-tgt{stroke:var(--up)}.chart[data-mini] svg .cl-last{stroke:var(--muted);stroke-dasharray:2 3}
+.chart[data-mini] .clab{display:block!important;position:absolute;right:6px;transform:translateY(-50%);font-size:11.5px;font-weight:650;line-height:1.3;padding:1px 6px;border-radius:6px;background:var(--surface);border:1px solid var(--line);font-variant-numeric:tabular-nums;pointer-events:none;white-space:nowrap}
+.chart[data-mini] .clab.cl-stop{color:var(--red)}.chart[data-mini] .clab.cl-tgt{color:var(--up)}.chart[data-mini] .clab.cl-last{color:var(--text);border-color:var(--muted)}
+.chart[data-mini]{margin-bottom:18px}
+.chart[data-mini] .cdate{position:absolute;top:calc(100% + 3px);transform:translateX(-50%);font-size:11px;color:var(--muted);pointer-events:none;font-variant-numeric:tabular-nums}
+@media (max-width:640px){#cardModalBody .kp-cells>*:last-child:nth-child(odd){grid-column:1/-1}}  /* keine leere Zelle im Plan */
 /* Cockpit: „Heute zu tun“ als wichtigste Karte */
 .hcard.todo-today{border-color:color-mix(in srgb,var(--accent) 38%,var(--line))!important}
 .hcard.todo-today .hh,.hcard.todo-today>.hhead b{font-size:19px}
@@ -1455,12 +1465,15 @@ header.hello{margin-bottom:var(--s4)}
 .bd-card.ready .bd-h{width:100%;display:flex;align-items:flex-start;gap:10px}
 .bd-card.ready>.bd-h>s{display:none}
 .bd-card.ready{cursor:pointer}.bd-card.ready:hover{background:var(--surface-2)}
-.bd-card.ready .bd-plan{flex-wrap:nowrap!important;overflow:hidden}
+.bd-card.ready .bd-plan{flex-wrap:wrap!important}
 .bd-card.ready .bd-plan>div{display:flex;align-items:baseline;gap:6px;padding:0!important;background:none!important;border:0!important;min-height:0!important;flex:none}
 .bd-card.ready .bd-plan>div>b,.bd-card.ready .bd-plan>div>em{display:none!important}
 .bd-card.ready .bd-plan>div:nth-child(2)>b{display:inline!important;font-size:13px;font-weight:650}
 .bd-card.ready .bd-plan>div:nth-child(4),.bd-card.ready .bd-plan>div.pq0{display:none!important}
-.bd-card.ready .bd-plan>div:nth-child(3):not(.pq0)>b{display:inline!important;font-size:13.5px}
+.bd-card.ready .bd-plan>div:nth-child(3):not(.pq0)>b{display:inline!important;font-size:13px;font-weight:650}
+.bd-card.ready .bd-plan>div:nth-child(3):not(.pq0)>span{display:none}
+.bd-card.ready .bd-plan>div:nth-child(3):not(.pq0){position:absolute;top:31px;right:6px}
+.bd-card.ready:has(.bd-plan>div:nth-child(3):not(.pq0)) .bd-n small{padding-right:64px}
 .bd-card.ready .bd-plan span{font-size:11.5px!important;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)!important;font-weight:600}
 .bd-card.ready .bd-plan{gap:2px 12px!important}
 .bd-card.ready .bd-plan .pz{font-style:normal;font-size:13px;font-weight:650;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -2197,11 +2210,12 @@ async function loadChart(t) {
 // Linien im Chart wie die Regel: Kaufzone-Oberkante und Stop der Seitwärtsphase – kein festes Kursziel (Gewinner laufen lassen)
 const chartPlan = r => { if (!r.passed) return isTrend(r) ? r.tr.plan : null; const kp = kPlan(r.ticker); return kp.stop ? { entry: kp.base ? kp.base.hi : null, stop: kp.stop } : null; };
 function miniSvg(c, r) {
-  const nu = state.design === "pro";
+  const nu = state.design === "pro" || isPrem();   // Premium: Raster, Stop/Ziel-Linien, Kursmarke, Datumsachse
   const n = c.t.length, from = Math.max(0, n - 60), W = 600, H = 220, pad = nu ? 14 : 10;
   const idx = [...Array(n - from).keys()].map(i => i + from);
   let lo = Math.min(...idx.map(i => c.l[i])), hi = Math.max(...idx.map(i => c.h[i]));
-  const band = zoneBand(r), pl = nu ? chartPlan(r) : null;
+  // Premium: Stop/Ziel nur einzeichnen, wenn der Trade-Plan darunter sie auch nennt (Kaufzone steht) – kein Widerspruch Chart ↔ Plan
+  const band = zoneBand(r), pl = nu && !(isPrem() && r.passed && !(kPlan(r.ticker) || {}).base) ? chartPlan(r) : null;
   if (band) { lo = Math.min(lo, band[0]); hi = Math.max(hi, band[1]); }
   const lines = [];
   if (pl) {   // Stop und Ziel 1 nur einzeichnen, wenn sie den Chart nicht zu stark stauchen
@@ -2216,7 +2230,13 @@ function miniSvg(c, r) {
     const last = c.c[n - 1];
     lines.push(["last", last, fmt(last)]);
     lines.forEach(([k, v]) => { s += `<line class="cl-${k}" x1="0" x2="${W}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" vector-effect="non-scaling-stroke"/>`; });
-    miniSvg.labels = lines.map(([k, v, l]) => `<span class="clab cl-${k}" style="top:${(100 * y(v) / H).toFixed(1)}%">${k === "last" ? "" : l + " "}${fmt(v)}</span>`).join("");
+    const tops = lines.map(([, v]) => 100 * y(v) / H);
+    if (isPrem()) { const o = tops.map((t, i) => i).sort((a, b) => tops[a] - tops[b]);      // Marken nicht überlappen (≥ 9 % Abstand)
+      for (let j = 1; j < o.length; j++) if (tops[o[j]] - tops[o[j - 1]] < 9) tops[o[j]] = tops[o[j - 1]] + 9;
+      for (let j = o.length - 1; j >= 0; j--) { const mx = 95 - 9 * (o.length - 1 - j); if (tops[o[j]] > mx) tops[o[j]] = mx; } }
+    miniSvg.labels = lines.map(([k, v, l], i) => `<span class="clab cl-${k}" style="top:${tops[i].toFixed(1)}%">${k === "last" ? "" : l + " "}${fmt(v)}</span>`).join("")
+      + (isPrem() ? [0, Math.floor((idx.length - 1) / 2), idx.length - 1].map(k => { const d = String(c.t[idx[k]] || "");
+          return `<span class="cdate" style="left:${(100 * (8 + k * step + step / 2) / W).toFixed(1)}%">${d.slice(8, 10)}.${d.slice(5, 7)}.</span>`; }).join("") : "");
   } else miniSvg.labels = "";
   idx.forEach((i, k) => {
     const x = 8 + k * step + step / 2, col = c.c[i] >= c.o[i] ? "var(--candle-up)" : "var(--candle-down)";
