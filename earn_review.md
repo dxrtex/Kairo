@@ -40,7 +40,7 @@ Schnelligkeit: erste Zahlen im Mittel 961 Min. nach der Meldezeit (90 % innerhal
 - NTPC.NS 2026-10-31: Kairo 54% steigt, Kurs +2.2% · Gewinn +6% · Ausblick keine Meldung
 - ADRO.JK 2026-10-29: Kairo 42% steigt, Kurs +1.3% · Gewinn +0% · Ausblick keine Meldung
 - HTO.AT 2026-10-30: Kairo 54% steigt, Kurs +1.5% · Gewinn +5% · Ausblick keine Meldung
-- POWERGRID.NS 2026-11-01: Kairo 37% steigt, Kurs +1.0% · Gewinn -3% · Ausblick keine Meldung
+- POWERGRID.NS 2026-11-01: Kairo 37% steigt, Kurs +0.9% · Gewinn -3% · Ausblick keine Meldung
 - ALPHA.AT 2026-10-30: Kairo 53% steigt, Kurs -0.4% · Gewinn +0% · Ausblick angehoben – „ALPHA: Higher NII and loan growth lifted guidance, while macro risks may raise Q4 provisions“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
