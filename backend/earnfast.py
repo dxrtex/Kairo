@@ -319,6 +319,7 @@ def result_pushes(fresh: dict, prev: dict, events: list[dict], out: Path) -> Non
         else:
             continue
         sent[key], sent[fk] = r["last"]["date"], _fp(r["last"])
+        r["last"].setdefault("push_at", pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds"))   # Latenz-Messung
         msgs.append(m)
     if msgs:
         print(f"Quartalszahlen: Ergebnis-Mitteilung für {len(msgs)} Aktie(n) – {send(msgs, devs, k)} gesendet")
@@ -394,7 +395,8 @@ def archive(recs: dict, out: Path) -> int:
         k = f"{t}|{L['date']}"
         G = L.get("guide") or {}
         row = {"s": L.get("eps_s"), "rs": L.get("rev_s"), "rg": L.get("revg"), "ra": L.get("reva"),
-               "g": G.get("d"), "gs": G.get("src"), "gt": (G.get("t") or "")[:160] or None, "r1": (L.get("rx") or {}).get("d1")}
+               "g": G.get("d"), "gs": G.get("src"), "gt": (G.get("t") or "")[:160] or None, "r1": (L.get("rx") or {}).get("d1"),
+               "ts": L.get("ts"), "seen": L.get("seen"), "push": L.get("push_at"), "stage": L.get("stage")}
         old = arc.get(k, {})
         if old.get("r1") is None:                  # Prognose nur bis zur Kursreaktion fortschreiben – danach eingefroren
             row.update(p=app_odds(L, gst, calib), v=model)

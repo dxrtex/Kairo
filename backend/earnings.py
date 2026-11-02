@@ -512,6 +512,26 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
 PAGES = "https://dxrtex.github.io/Kairo/data/"
 
 
+def stamp_status(fresh: dict, prev: dict, now: pd.Timestamp) -> None:
+    """Zeitstempel und Status je Meldung (Latenz-Messung und Anzeige in der App):
+    seen = erste Prüfung, in der Kairo Zahlen hatte (bleibt danach fest); stage = vorläufig (Pressemitteilung) / bestätigt
+    (Yahoo) / korrigiert (Gewinn je Aktie weicht später um > 2 % von der ersten Angabe ab; eps0 = erste Angabe)."""
+    iso = now.isoformat(timespec="seconds")
+    for t, r in fresh.items():
+        L = r["last"]
+        p = ((prev.get(t) or {}).get("last") or {})
+        same = p.get("date") == L.get("date")
+        L["seen"] = p.get("seen") if same and p.get("seen") else iso
+        if same and p.get("push_at"):
+            L["push_at"] = p["push_at"]
+        e0 = p.get("eps0", p.get("eps_a")) if same else None
+        if e0 is not None:
+            L["eps0"] = e0
+        corr = (same and p.get("stage") == "korrigiert") or (e0 is not None and L.get("eps_a") is not None
+                                                            and abs(L["eps_a"] - e0) > 0.02 * max(abs(e0), 0.01))
+        L["stage"] = "korrigiert" if corr else "vorläufig" if L.get("src") == "pr" else "bestätigt"
+
+
 def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
     """Prüfdienst tagsüber (Workflow earnings.yml): Aktien mit Quartalstermin gestern/heute/morgen.
     Sobald Yahoo die Zahlen hat, landen Ergebnis, Ausblick und Einschätzung in earnings_live.json (Branch kairo-earnings);
@@ -567,6 +587,7 @@ def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
 
     with ThreadPoolExecutor(max_workers=4) as ex:
         fresh = {t: rec for t, rec in ex.map(job, list(todo.items())) if rec and rec.get("last")}
+    stamp_status(fresh, prev, now)
     # bisherige Ergebnisse behalten – auch für geprüfte Aktien, deren neuer Abruf gerade nichts lieferte (Review W10)
     keep = {t: r for t, r in prev.items() if t not in fresh and pd.Timestamp((r.get("last") or {}).get("date", "1900-01-01")) >= today - pd.Timedelta(days=4)}
     allr = {**keep, **fresh}

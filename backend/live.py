@@ -99,7 +99,8 @@ def _show(sig: list[dict]) -> list[dict]:
     return keep
 
 
-def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: bool = True) -> dict:
+def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: bool = True, market: dict | None = None,
+           ctx: dict | None = None, ins: dict | None = None) -> dict:
     """record=False: keine neuen Signale speichern (Scan während der Börsenzeit – US-Tageskerzen noch nicht fertig);
     Ergebnisse bestehender Signale werden trotzdem nachgeführt."""
     sig = state.load("signals.json", [])
@@ -180,6 +181,53 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
                 except Exception as exc:           # Bilanz darf den Scan nie stoppen
                     print("Strategie-Bilanz:", s["t"], repr(exc)[:100])
     state.save("signals.json", sig)
+    try:                                           # Lern-Grundlage: Momentaufnahme neuer Signale (unveränderlich), Kauf/Ergebnis nachtragen
+        from . import snapshots
+        snaps = state.load(snapshots.FILE, {})
+        ins_rows = None                            # Insider-Käufe am Signaltag: aus dem Scan + gezielt für neue US-Treffer
+        if record and new:
+            try:
+                from . import insider as I
+                have = list((ins or {}).get("watch") or []) + list((ins or {}).get("buys") or [])
+                known = {x.get("t") for x in have}
+                todo = {s["t"]: s.get("n") or s["t"] for s in new if "." not in s["t"] and s["t"] not in known and s["k"] in ("hit", "fast")}
+                extra = I.fetch_watch(todo, budget_s=90)[0] if todo else []
+                ins_rows = have + extra
+                ok = set(known) | {t for t, st in I.COVER.items() if st == "ok"}
+                ins_rows = [x for x in ins_rows if x.get("t") in ok] + [{"t": t, "kind": "checked"} for t in ok]
+            except Exception as exc:
+                print("Insider für neue Treffer:", repr(exc)[:100])
+                ins_rows = None
+        snapshots.add(snaps, new, {r["ticker"]: r for r in rows}, data, market, today, ins_rows=ins_rows)
+        if record:                                 # Kontrollgruppen (9/11, Zufall) nur aus dem Abendscan
+            snapshots.add_controls(snaps, rows, data, market, today)
+        snapshots.track(snaps, sig, today, data, market)
+        snapshots.track_forward(snaps, data)
+        from . import tradewhy                     # Fehlschläge verstehen: Ursachen je abgeschlossenem Treffer + Lern-Bericht
+        tradewhy.analyze(snaps, data, ctx, names={s["t"]: s.get("n") for s in sig})
+        state.save(snapshots.FILE, snaps)
+        learn = tradewhy.report(snaps)
+        learn["controls"] = snapshots.controls_report(snaps)
+    except Exception as exc:
+        print("Momentaufnahmen:", repr(exc)[:120])
+        learn = None
+    shadow = {}
+    try:                                           # Schattentests (Forschung, Freigabe 01.11.2026): A5, ETF-RSI(2), E2 – ohne Geld
+        from . import mrshadow
+        mb = state.load(mrshadow.FILE, {})
+        mrshadow.step(mb, rows, data, ctx, today, record)
+        state.save(mrshadow.FILE, mb)
+        shadow.update(mrshadow.summary(mb))
+    except Exception as exc:
+        print("Schattentest A5/ETF:", repr(exc)[:120])
+    try:
+        from paper import e2shadow
+        eb = state.load(e2shadow.FILE, {"rule": e2shadow.RULE, "start": None, "items": {}})
+        e2shadow.step(eb, sig, data, today)
+        state.save(e2shadow.FILE, eb)
+        shadow["E2"] = e2shadow.summary(eb)
+    except Exception as exc:
+        print("Schattentest E2:", repr(exc)[:120])
     if record:                                     # Läufe tagsüber nicht merken – sonst gälten deren Treffer abends als „schon bekannt“
         state.save("last.json", {"date": today, "hit": [r["ticker"] for r in rows if r["passed"]],
                                  "fast": [r["ticker"] for r in rows if r.get("fast_hit")],
@@ -194,5 +242,5 @@ def update(rows: list[dict], data: dict[str, pd.DataFrame], today: str, record: 
     out = {"generated": today, "live": {"since": min((s["d"] for s in sig), default=today), "n": len(sig),
                                         "stats": stats(done) if done else None, "strat": strat_stats(sig), "strat60": strat_stats(sig, "st60"),
                                         "grade": {g: _agg([x for x in done if x["k"] == "hit" and x.get("grade") == g]) for g in "ABC"}},
-           "signals": _show(sig), "new": [s["t"] for s in new], "backtest": bt}
+           "signals": _show(sig), "new": [s["t"] for s in new], "backtest": bt, "learn": learn, "shadow": shadow}
     return out

@@ -126,6 +126,21 @@ def calibrate(D: pd.DataFrame, stats: dict) -> dict:
     return {"adopt": bool(adopt), "p": full, "n": n, "brier_new": b_new, "brier_shown": b_shown, "text": txt}
 
 
+def latency(arc: dict) -> dict:
+    """Wie schnell ist Kairo? Minuten von der Meldezeit (Yahoo-Termin; bei US-Firmen meist die Minute der Pressemitteilung)
+    bis zur ersten Prüfung mit Zahlen (seen) und bis zur Mitteilung (push). Nur Fälle mit plausiblen Werten (0–24 h)."""
+    def mins(a, b):
+        try:
+            m = (pd.Timestamp(b) - pd.Timestamp(a)).total_seconds() / 60
+            return m if 0 <= m <= 24 * 60 else None
+        except Exception:
+            return None
+    seen = [m for r in arc.values() if (m := mins(r.get("ts"), r.get("seen"))) is not None]
+    push = [m for r in arc.values() if (m := mins(r.get("seen"), r.get("push"))) is not None]
+    q = lambda x, f: round(float(np.percentile(x, f)), 1) if x else None
+    return {"n_seen": len(seen), "seen_med": q(seen, 50), "seen_p90": q(seen, 90), "n_push": len(push), "push_med": q(push, 50), "push_p90": q(push, 90)}
+
+
 def review(arc_file: str, stats_file: str, out_dir: str) -> dict:
     arc = json.loads(Path(arc_file).read_text(encoding="utf-8"))
     stats = json.loads(Path(stats_file).read_text(encoding="utf-8"))
@@ -133,10 +148,15 @@ def review(arc_file: str, stats_file: str, out_dir: str) -> dict:
     D = frame(arc, stats)
     L = ["# Prognose-Bilanz Quartalszahlen\n"]
     p = L.append
+    lat = latency(arc)
+    if lat["n_seen"]:
+        p(f"Schnelligkeit: erste Zahlen im Mittel {lat['seen_med']:.0f} Min. nach der Meldezeit (90 % innerhalb {lat['seen_p90']:.0f} Min., "
+          f"{lat['n_seen']} Meldungen)" + (f"; Mitteilung im Mittel {lat['push_med']:.0f} Min. danach" if lat["n_push"] else "") + ".\n")
     if not len(D):
         p("Noch keine Meldungen mit Kursreaktion.")
         (out / "earn_review.md").write_text("\n".join(L), encoding="utf-8")
-        return {"n": 0}
+        (out / "earn_review.json").write_text(json.dumps({"n": 0, "lat": lat}, ensure_ascii=False), encoding="utf-8")
+        return {"n": 0, "lat": lat}
     S = score(D)
     p(f"{len(D)} Meldungen mit Kursreaktion ({D['d'].min()} bis {D['d'].max()}), davon {S['n']} mit aufgezeichneter Prognose.\n")
     p("| Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |\n|---|---|---|---|---|")
@@ -181,7 +201,7 @@ def review(arc_file: str, stats_file: str, out_dir: str) -> dict:
     (out / "earn_calib.json").write_text(json.dumps({k: v for k, v in calib.items() if k != "text"}, ensure_ascii=False), encoding="utf-8")
     (out / "earn_review.md").write_text("\n".join(L), encoding="utf-8")
     res = {"n": S["n"], "hit": S.get("hit"), "brier": S.get("brier"), "since": str(D["d"].min()), "suggest": sugg, "candidates": cand,
-           "calib": calib.get("adopt", False)}
+           "calib": calib.get("adopt", False), "lat": lat}
     (out / "earn_review.json").write_text(json.dumps(res, ensure_ascii=False), encoding="utf-8")
     return res
 

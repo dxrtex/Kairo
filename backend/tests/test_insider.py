@@ -78,3 +78,22 @@ def test_openinsider_delta_own():
             '<td>$100.00</td><td>+1,000</td><td>11,000</td><td>+10%</td><td>+$100,000</td></tr></table>')
     r = parse_openinsider(page)[0]
     assert r["own"] == 10 and r["kind"] == "buy" and r["val"] == 100000
+
+
+def test_filing_date_unknown_routine_and_cover():
+    """Meldedatum wird gelesen; Käufe ohne Kaufhistorie (BaFin) zählen nicht als gezielt; Abdeckung je Aktie."""
+    from backend import insider as I
+    page = ('<table class="tinytable"><tr><th>X</th><th>Filing Date</th><th>Trade Date</th><th>Ticker</th><th>Insider Name</th><th>Title</th>'
+            '<th>Trade Type</th><th>Price</th><th>Qty</th><th>Owned</th><th>&Delta;Own</th><th>Value</th></tr>'
+            '<tr><td></td><td>2026-10-20 18:01:02</td><td>2026-10-18</td><td>PLTR</td><td>Karp</td><td>CEO</td><td>P - Purchase</td>'
+            '<td>$100.00</td><td>+1,000</td><td>11,000</td><td>+10%</td><td>+$100,000</td></tr></table>')
+    assert I.parse_openinsider(page)[0]["fd"] == "2026-10-20"
+    d0 = I._days_ago(3)
+    de = [{"t": "SAP.DE", "who": "A", "kind": "buy", "d": d0, "val": 2_000_000, "role": "Dir", "cur": "EUR", "own": 50}]
+    assert I.signal(de)["SAP.DE"]["score"] == 0 and I.signal(de)["SAP.DE"]["unk"] == 1
+    I.COVER.clear(); I.COVER.update({"AAPL": "ok", "MSFT": "zeitlimit"})
+    c = I.cover({"AAPL": "Apple", "MSFT": "Microsoft", "NVDA": "Nvidia", "SAP.DE": "SAP", "NOVO-B.CO": "Novo", "ASML.AS": "ASML"},
+                {"watch": de}, {"AS"})
+    assert c["AAPL"]["st"] == "ok" and c["MSFT"]["st"] == "zeitlimit" and c["NVDA"]["st"] == "nicht geprüft"
+    assert c["SAP.DE"] == {"st": "ok", "src": "BaFin", "hit": True}
+    assert c["NOVO-B.CO"]["st"] == "keine Quelle" and c["ASML.AS"]["st"] == "fehler"

@@ -3,6 +3,7 @@
 - signals.json   Live-Bilanz: jedes Signal mit Trade-Plan und laufend nachgeführtem Ergebnis
 - last.json      Stand des letzten Scans (Treffer, Fast-Treffer, erfüllte Kriterien) – für „neu seit gestern“
 - telegram.json  Telegram: Update-Offset, Chat, synchronisierte Merkliste/Depot, zuletzt gesendet
+- snapshots.json Lern-Grundlage: unveränderliche Momentaufnahme neuer Signale am Signaltag (backend/snapshots.py)
 """
 
 from __future__ import annotations
