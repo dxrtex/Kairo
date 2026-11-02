@@ -165,7 +165,7 @@ def search_row(res, meta: dict, h: dict) -> dict:
                    # technische Eckdaten für die Depot-Einschätzung
                    "e20": f.get("ema20"), "e50": f.get("ema50"), "e200": f.get("ema200"), "atr": f.get("atr"),
                    "rsi": f.get("rsi"), "mh": f.get("macd_hist"), "e20f": f.get("ema20_falling"), "H": res.zone.get("H"),
-                   "vola": f.get("volatility"),
+                   "vola": f.get("volatility"), "mc": meta.get("market_cap_usd") or f.get("market_cap_usd"),   # Börsenwert (Beobachten ab 7/11)
                    "sec": SECTOR_DE.get(meta.get("sector") or "", meta.get("sector") or "") or None})   # Sektor (Klumpenschutz)
 
 
