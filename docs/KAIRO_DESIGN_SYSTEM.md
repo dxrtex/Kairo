@@ -1,4 +1,4 @@
-# KAIRO Design System – Premium Workspace (V4)
+# KAIRO Design System – Premium Workspace (V4 + V5)
 
 Gilt für die optionalen Designs `premium` (dunkel) und `premium-hell`. Quelle: `<style id="ds-premium">` und
 `<style id="ds-premium-hell">` in `site/index.html`. Klassisch und die übrigen Designs bleiben unverändert.
@@ -65,3 +65,43 @@ einzeilig mit Auslassung; Erklärtexte 12 px, höchstens zwei Zeilen (iPad/Deskt
 Bestehende Kennzeichnungen bleiben sichtbar und werden nicht weggestaltet: Kursstand mit Datum („Schlusskurs …“,
 „Kurse vom Abendscan“), Währung an jedem Kurs, „(geschätzt)“ beim Depotwert, Hinweis „Keine Anlageberatung“. Neue Daten
 wurden nicht erfunden.
+
+## V5-Ergänzungen (03.11.2026)
+
+### Master-Detail (Scanner, ab 1024 px, nur Premium)
+- `mdSync()` setzt `body.md`, wenn `state.design` mit „premium“ beginnt, `state.sec === "scanner"` und die Breite ≥ 1024 px ist.
+  Sonst bleibt `openCard()` ein Fenster wie bisher (alle anderen Designs, iPad hochkant, Split View, Telefon).
+- Gleiches `#cardModalBody`, keine zweite Detail-Komponente, keine doppelten IDs. CSS macht aus `.cmodal` einen festen rechten
+  Bereich (`--md-w = clamp(520px, 58 % der Inhaltsbreite, 900px)`), `.cm-back` entfällt, `.wrap` rückt um `--md-w` nach links.
+- Ohne Auswahl: Leerzustand „Aktie wählen“ (`role="status"`). Auswahl: Zeile `.md-sel` (Akzent-Leiste links), Button
+  `aria-current="true"`. ✕ oder Escape → zurück zum Leerzustand. Verlassen des Scanners oder Designwechsel → alles zurückgesetzt.
+- Listen-Scrollposition, Segment und Filter bleiben beim Wechsel der Aktie erhalten (kein Neu-Rendern der Liste).
+
+### Scanner-Zeile (alle Größen)
+- Zeile 1: Rang · Name (Auslassung) · rechts **Kriterien-Zähler „11/11“ + 11 Segmente** (✓ grün, ✗ rot, Kriteriumsname als Tooltip
+  und für Screenreader im Segment-Text). Zähler per CSS-Zähler – keine neue Logik.
+- Zeile 2: Symbol · Treffer-Datum · Vormomentum (auf dem Telefon zweizeilig erlaubt, nie abgeschnitten).
+- Zeile 3: **KAUF** Kaufzone · **STOP** Wert + Abstand in %. Stückzahl erscheint nur, wenn > 0.
+- Für alle Zeilen gleiche Angaben stehen **einmal** über der Liste (`.bd-rule`): Ausstieg (Stop oder EMA 20, ab Tag 10, spätestens
+  Tag 60) und – falls zutreffend – „Kein freies Kapital (x € frei) → Stückzahl 0 · Einstellen ›“.
+- Ziel­höhen: iPad/Desktop ≤ 90 px, Telefon ≤ 140 px.
+
+### Werkzeugzeile Scanner
+- Eine Zeile: **ⓘ** (Erklärung der Ansicht, aufklappbar – Text vollständig erhalten) · **↻ Watchlist** · **↻ Alle** · **Filter**.
+- „Stand …“ wird nur ausgeblendet, wenn es dieselbe Zeit wie „Scan …“ im Kopf zeigt (kein Teil-Scan, kein laufender Scan, keine
+  Meldung) – Klasse `sb-plain`.
+- Master-Detail: Seitentitel „Scanner“ nur für Screenreader (Seitenleiste zeigt den Bereich), Einstellungen-Zahnrad ab 1024 px
+  ausgeblendet (gleicher Eintrag in der Seitenleiste).
+
+### Heute-Cockpit
+- Ebene 1: „Heute zu tun“ (Akzent-Rahmen, größerer Titel); Regeltext einmal über den Kaufkandidaten, Zeilen nur noch Kaufzone ·
+  Stop · Vormomentum.
+- Ebene 2: `pKpiHtml()` – vier Kacheln **Kaufbereit · Positionen · Nächster Stop · ETF-Ampel**, jeweils antippbar
+  (Scanner/Depot/ETF). Nur vorhandene Werte; fehlt einer, steht „–“ mit Grund (z. B. „kein offener Trade-Plan mit Stop“).
+  Ist „Kaufbereit“ größer als die freien Plätze, sagt die Kachel das ausdrücklich.
+- Ebene 3: bisherige Karten; „Erste Schritte“ unten, aber vor dem Fußbereich.
+
+### Prüfstand
+- `tools/design_fixtures/make_site_data.py`: synthetische, feste App-Daten aus dem **echten** Scan-Code (`run_scan.main`,
+  `h4_block`) – 6 kaufbereit, 7 wartend, 4 verfallen; keine echten Kurse, nicht im Repo.
+- `tools/design_shots.py` misst zusätzlich `first_row`, `row_h`, `rows_full` (über der Tab-Leiste), `master_detail`.
