@@ -171,7 +171,8 @@ class _Pos:
 
 def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str, pd.Series], orders: list[Order],
         start_cash: float = 5000.0, costs: Costs = Costs(), max_open: int = 5, exit_signals: set | None = None,
-        calendar: pd.DatetimeIndex | None = None, exit_when: dict | None = None, min_fill: float = 0.0) -> Result:
+        calendar: pd.DatetimeIndex | None = None, exit_when: dict | None = None, min_fill: float = 0.0,
+        reserve_limits: bool = True) -> Result:
     """prices[t]: DataFrame (Index Datum; Open/High/Low/Close, optional AdjClose, EMA). exit_signals: {(Datum, Ticker)} →
     Verkauf zur nächsten Eröffnung (Entscheidung nach Schluss dieses Tages). exit_when: {Ticker: Datumsliste} – dasselbe,
     platzsparend je Titel. min_fill: Kauf entfällt, wenn das Cash weniger als diesen Anteil der geplanten Stückzahl zulässt
@@ -258,6 +259,8 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
                 sell(d, p, px[t].o[i], "signal")
                 sell_next.discard(t)
         todo, queue = sorted(queue, key=lambda x: -x[0].prio), []
+        reserved, reserved_cash = 0, 0.0              # W2-Audit 02.11.2026: nicht gefüllte Buy-Limits belegen Platz und Kapital
+        #                                               des Tages – sonst rückt nachträglich ein anderes Signal nach (Vorgriff)
         for item in todo:
             o, left = item
             p_ = px.get(o.ticker)
@@ -278,7 +281,7 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
             if o.ticker in pos:
                 skipped["held"] += 1
                 continue
-            if len(pos) >= max_open or (o.max_open_cap is not None and len(pos) >= o.max_open_cap):
+            if len(pos) + reserved >= max_open or (o.max_open_cap is not None and len(pos) >= o.max_open_cap):
                 skipped["full"] += 1
                 continue
             op = p_.o[i]
@@ -297,6 +300,10 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
             if o.entry_limit is not None:               # Buy-Limit (Forschung 11/2026): nur wenn das Tief das Limit erreicht
                 if not (np.isfinite(op) and p_.l[i] <= o.entry_limit):
                     skipped["not_triggered"] += 1
+                    if reserve_limits:
+                        reserved += 1
+                        if o.weight is not None:
+                            reserved_cash += equity_open(d) * o.weight
                     if retry:
                         queue.append([o, left - 1])
                     continue
@@ -337,7 +344,7 @@ def run(prices: dict[str, pd.DataFrame], currency: dict[str, str], fx: dict[str,
                     skipped["fee_small"] += 1
                     continue
             plan = qty
-            qty = min(qty, int(math.floor(max(0.0, cash - costs.fee_eur) / (price / rate))))
+            qty = min(qty, int(math.floor(max(0.0, cash - reserved_cash - costs.fee_eur) / (price / rate))))
             if qty > 0 and qty < min_fill * plan:
                 skipped["small"] += 1
                 continue

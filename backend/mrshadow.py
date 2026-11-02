@@ -8,11 +8,19 @@ Regeln exakt wie in der Mean-Reversion-Meisterschaft (research/reversal/mrc.py, 
        stärkste Variante, aber nach dreifacher Auswertung derselben Daten nur ein Hinweis). Gefüllt, wenn das Tagestief das
        Limit erreicht – zum Limit oder zur tieferen Eröffnung. Achtung: Berührung = Ausführung ist eher optimistisch.
   ETF  Sektor-ETFs (SPDR, aus dem Scan): RSI(2) < 10 UND über der 200-Tage-Linie, Ausstieg wie A5.
+W2-Audit 02.11.2026: Das Depot (welche Signale belegen die 5 Plätze) rechnet jetzt backend/mrsim.py – dieselbe
+ereignisorientierte Simulation wie die Forschung: Auswahl abends nach RSI(2), Kapital je Order reserviert, ein nicht gefülltes
+Limit belegt seinen Platz (kein Nachrücken), drei Ausführungsmodelle (opt/kons/streng), Kosten, ganze Stücke. Vorher wählte
+depot() nur unter bereits gefüllten Signalen (Vorgriff). Liquiditätsfilter jetzt in US-Dollar umgerechnet (vorher
+Landeswährung – z. B. GBp-Kurse in Pence zu großzügig). Ereignisse werden nur angehängt (book["log"]), abgeschlossene
+Depot-Trades eingefroren (book["closed"]). KEINE echte Orderausführung: alle Füllungen sind Modellannahmen.
 Jeder Lauf rechnet offene Signale aus den Tageskerzen neu (robust gegen Ausfälle), abgeschlossene werden eingefroren.
 Gezählt werden nur Signale ab dem Starttag – keine Rückrechnung. Brutto-Rendite je Trade plus Netto mit angenommenen
 Kosten (normal 0,05 % je Seite, Stress 0,25 % je Seite); die echten Kosten bei Scalable misst der Journal-Kosten-Check.
 """
 from __future__ import annotations
+
+from .mrsim import RULE_VERSION
 
 import numpy as np
 import pandas as pd
@@ -35,7 +43,7 @@ def rsi2(c: pd.Series) -> pd.Series:
     return rsi(c, 2)
 
 
-def signal_today(df: pd.DataFrame, rule: str) -> dict | None:
+def signal_today(df: pd.DataFrame, rule: str, cur: str = "USD") -> dict | None:
     """Signal am letzten Schluss der Kursreihe? Rückgabe mit Signaltag und Vorrang, sonst None."""
     df = df.dropna(subset=["Open", "High", "Low", "Close"])
     if len(df) < 210:
@@ -49,7 +57,8 @@ def signal_today(df: pd.DataFrame, rule: str) -> dict | None:
         if not (c.iloc[i] < c.iloc[i - 1] < c.iloc[i - 2] < c.iloc[i - 3]):
             return None
         vol = df["Volume"] if "Volume" in df else None
-        adv = float((vol * c).iloc[i - 19:i + 1].mean()) if vol is not None else 0.0
+        from .mrsim import FX_USD
+        adv = float((vol * c).iloc[i - 19:i + 1].mean()) * FX_USD.get(cur or "USD", 1.0) if vol is not None else 0.0
         if c.iloc[i] < 1 or adv < 5e6:
             return None
     elif rule == "ETF":
@@ -104,6 +113,7 @@ def step(book: dict, rows: list[dict], data: dict, ctx: dict | None, today: str,
     items = book.setdefault("items", {})
     if record:
         region = {r["ticker"]: str(r.get("region") or "").lower() for r in rows}
+        currency = {r["ticker"]: r.get("currency") or "USD" for r in rows}
         red = {}
         for reg, sym in INDEX.items():
             ix = (ctx or {}).get(sym)
@@ -116,8 +126,9 @@ def step(book: dict, rows: list[dict], data: dict, ctx: dict | None, today: str,
         for t, df in data.items():
             if region.get(t) not in ("us", "europe", "eu") or df is None:
                 continue
-            s = signal_today(df, "A5")
+            s = signal_today(df, "A5", currency.get(t, "USD"))
             if s and s["d"] >= book["start"]:
+                s.update(cur=currency.get(t, "USD"), seen=today, v=RULE_VERSION)
                 if red.get(region.get(t)) is not None:
                     s["f"]["markt_rot"] = red[region.get(t)]
                 new.append((t, s))
@@ -145,11 +156,46 @@ def step(book: dict, rows: list[dict], data: dict, ctx: dict | None, today: str,
             it.update(replay(df, it["d"], it.get("lim") if it["rule"] == "W2" else None))
         except Exception as exc:
             print("Schattentest:", key, repr(exc)[:80])
+    try:
+        depot_sim(book, data)
+    except Exception as exc:
+        print("Schattentest-Depot:", repr(exc)[:120])
     book["updated"] = today
     return book
 
 
-def depot(items: list[dict], slots: int = SLOTS) -> list[dict]:
+def depot_sim(book: dict, data: dict) -> None:
+    """Depot je Regel und Ausführungsmodell mit backend/mrsim (identisch zur Forschung); Ereignisse nur anhängen."""
+    from . import mrsim as S
+    items = list((book.get("items") or {}).values())
+    log, closed, dep = book.setdefault("log", []), book.setdefault("closed", {}), {}
+    seen = {(e.get("rule"), e.get("m"), e.get("d"), e.get("ev"), e.get("t")) for e in log}
+    for rule, models in (("A5", ("opt",)), ("W2", S.FILLS)):
+        xs = [x for x in items if x["rule"] == rule and x["t"] in data and data[x["t"]] is not None]
+        if not xs:
+            continue
+        px = {}
+        for t in {x["t"] for x in xs}:
+            cur = next((x.get("cur") for x in xs if x["t"] == t and x.get("cur")), "USD")
+            px[t] = S.make_px(S.indicators(data[t], cur))
+        sig = [{"t": x["t"], "d": pd.Timestamp(x["d"]), "rsi2": x["rsi2"], "lim": x.get("lim"), "adv": x.get("adv", 1e9)} for x in xs]
+        cal = pd.DatetimeIndex(sorted({d for P in px.values() for d in P.idx if d >= pd.Timestamp(book["start"])}))
+        for m in models:
+            r = S.simulate(sig, px, rule, m, S.COSTS["basis"], cash0=10_000.0, calendar=cal)
+            dep[f"{rule}|{m}"] = {"counts": r["counts"], **S.stats(r["equity"]), "open": r["open"],
+                                  "trades": [[t["t"], t["sig"], t["exit"], t["ret"], t["gross"]] for t in r["trades"]]}
+            for t in r["trades"]:
+                closed.setdefault(f"{rule}|{m}|{t['t']}|{t['buy']}", t)                 # einmal geschrieben, nie geändert
+            if m in ("opt", "kons"):
+                for e in r["events"]:
+                    k = (rule, m, e["d"], e["ev"], e["t"])
+                    if k not in seen:
+                        log.append({"rule": rule, "m": m, "logged": book.get("updated") or e["d"], **e})
+                        seen.add(k)
+    book["depot"] = dep
+
+
+def depot(items: list[dict], slots: int = SLOTS) -> list[dict]:   # VERALTET (Vorgriff: wählt nur unter gefüllten Signalen) – nur für alte Tests
     """Welche Signale ein Depot mit `slots` Plätzen gekauft hätte (je Tag niedrigster RSI(2) zuerst, belegte Plätze zählen)."""
     taken, busy = [], []
     for d in sorted({x["d"] for x in items}):
@@ -199,7 +245,13 @@ def summary(book: dict) -> dict:
     items = list((book.get("items") or {}).values())
     for rule in RULES:
         xs = [x for x in items if x["rule"] == rule]
-        sel = depot(xs) if rule in ("A5", "W2") else xs
+        if rule in ("A5", "W2"):                       # Depot-Auswahl aus der Ereignis-Simulation (kons. für W2)
+            key = f"{rule}|{'kons' if rule == 'W2' else 'opt'}"
+            took = {(t[0], t[1]) for t in ((book.get("depot") or {}).get(key) or {}).get("trades", [])}
+            took |= {(t, (v.get("sig") or "")) for t, v in (((book.get("depot") or {}).get(key) or {}).get("open") or {}).items()}
+            sel = [x for x in xs if (x["t"], x["d"]) in took]
+        else:
+            sel = xs
         done = [x for x in sel if x.get("res") == "closed"]
         m = lambda k: round(float(np.mean([x[k] for x in done])), 5) if done else None
         out[rule] = {"signals": len(xs), "taken": len(sel), "open": sum(x.get("res") == "open" for x in sel), "closed": len(done),
@@ -210,4 +262,7 @@ def summary(book: dict) -> dict:
                      "no_fill": sum(x.get("res") == "kein_kauf" for x in xs)}
         if rule != "ETF":
             out[rule]["learn"] = learn(sel)
+            for k, v in (book.get("depot") or {}).items():
+                if k.startswith(rule + "|"):
+                    out[rule].setdefault("depot", {})[k.split("|")[1]] = {kk: v.get(kk) for kk in ("counts", "cagr", "dd", "end")}
     return out

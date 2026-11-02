@@ -4834,6 +4834,8 @@ function mrShadowHtml(S) {
   if (!S || !(S.A5 || S.E2)) return "";
   const P = v => v == null ? "–" : sgnPct(v, 2), R = v => v == null ? "–" : `${v >= 0 ? "+" : "−"}${fmt(Math.abs(v), 2)} R`;
   const row = (l, x, sub) => !x ? "" : `<div class="jrow2"><span><b>${l}</b><small class="muted"> · ${sub}</small></span><b>${x.closed ? `${x.closed} beendet` : "noch keine beendet"} <small class="muted">${x.open || 0} offen · ${x.signals ?? x.n ?? 0} Signale</small></b></div>
+    ${x.depot && (x.depot.kons || x.depot.opt) ? (() => { const k = x.depot.kons || x.depot.opt, c = k.counts || {}, o = x.depot.opt && x.depot.opt.counts;
+      return `<div class="note" style="margin:0 0 4px">Depot ${x.depot.kons ? "(vorsichtige Ausführung)" : ""}: ${c.orders || 0} Orders · ${c.gefuellt || 0} ausgeführt · ${c.nicht_gefuellt || 0} nicht ausgeführt · ${c.kein_platz || 0} ohne freien Platz${o && x.depot.kons ? ` · bei „Berührung reicht“: ${o.gefuellt || 0} ausgeführt` : ""} – simuliert, keine echte Order</div>`; })() : ""}
     ${x.closed ? `<div class="note" style="margin:0 0 6px">Ø je Trade brutto ${x.gross != null ? P(x.gross) : R(x.r)} · mit normalen Kosten ${x.net_normal != null ? P(x.net_normal) : R(x.r_net)} · mit Stress-Kosten ${x.net_stress != null ? P(x.net_stress) : R(x.r_stress)}${x.win != null ? ` · ${pct(x.win, 0)} im Plus` : ""}${x.days ? ` · Ø ${fmt(x.days, 1)} Tage` : ""}</div>` : ""}`;
   return `<div class="hcard">${hHead(`Schattentests <small>ohne Geld · seit ${dateDE((S.A5 && S.start) || (S.E2 && S.E2.start) || "")}</small>`)}
     ${row("A5 – 3 Verlusttage + Aufwärtstrend", S.A5, "Depot 5 Plätze, Verkauf über der 5-Tage-Linie")}

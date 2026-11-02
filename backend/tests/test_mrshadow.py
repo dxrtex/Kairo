@@ -99,3 +99,31 @@ def test_only_strongest_signals_per_day_are_stored():
     assert len(a5) == M.MAX_DAY and book["signals_today"] == 15
     kept = {x["t"] for x in a5}
     assert "X14" in kept and "X0" not in kept                                          # tiefster Fall = niedrigster RSI(2)
+
+
+def test_event_depot_no_backfill_log_append_only_and_frozen():
+    """W2-Audit: Depot über backend/mrsim – bestes Signal (nicht gefüllt) belegt seinen Platz; Log wächst nur, Abschlüsse bleiben."""
+    a = _df([119, 118, 117, 117.5, 118, 118.5, 119, 125, 126, 127, 128])
+    b = _df([119, 118, 116.5, 110, 112, 118, 125, 126, 127, 128, 129])
+    a.iloc[-8, a.columns.get_loc("Low")] = 117.4                           # A: Limit am Folgetag nie erreicht
+    d = str(a.index[-9].date())
+    items = {}
+    for t, df in (("A", a), ("B", b)):
+        s = M.signal_today(df.iloc[:-8], "A5")
+        assert s and s["d"] == d
+        for rule in ("A5", "W2"):
+            items[f"{rule}|{t}|{d}"] = {"rule": rule, "t": t, **s, "rsi2": 1.0 if t == "A" else 2.0, "adv": 1e9}
+    book = {"start": d, "items": items}
+    import backend.mrsim as S
+    old = S.SLOTS
+    try:
+        M.step(book, [], {"A": a, "B": b}, None, str(a.index[-1].date()), record=False)
+    finally:
+        S.SLOTS = old
+    dep = book["depot"]["W2|opt"]["counts"]
+    assert dep["orders"] == 2 and dep["nicht_gefuellt"] == 1                 # 5 Plätze: beide Orders, A nicht gefüllt
+    n_log, closed = len(book["log"]), dict(book["closed"])
+    M.step(book, [], {"A": a, "B": b}, None, str(a.index[-1].date()), record=False)
+    assert len(book["log"]) == n_log and book["closed"] == closed           # wiederholter Lauf: nichts doppelt, nichts geändert
+    assert all(e["ev"] in ("order_geplant", "order_ausgefuehrt", "order_nicht_ausgefuehrt", "position_geschlossen", "kein_platz",
+                           "order_zu_klein", "order_abgelaufen") for e in book["log"])

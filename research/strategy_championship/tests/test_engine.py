@@ -315,3 +315,17 @@ def test_buy_limit_fills_only_when_low_reaches_limit():
     assert len(r.trades) == 1 and abs(r.trades["entry_px"].iloc[0] - 9.75) < 1e-9
     r = one({"A": px}, [Order(D[2], "A", weight=0.5, entry_limit=9.75, max_days=2)], costs=NOCOST)
     assert abs(r.trades["entry_px"].iloc[0] - 9.5) < 1e-9      # Eröffnung unter dem Limit → Kauf zur Eröffnung
+
+
+def test_unfilled_buy_limit_reserves_slot_no_backfill():
+    """W2-Audit: ein nicht gefülltes Limit belegt seinen Platz – das schlechter gereihte Signal rückt nicht nach."""
+    D = pd.bdate_range("2024-01-01", periods=5)
+    a = pd.DataFrame({"Open": [10] * 5, "High": [10.1] * 5, "Low": [9.9] * 5, "Close": [10] * 5}, index=D)   # Limit 9 nie erreicht
+    b = pd.DataFrame({"Open": [10] * 5, "High": [10.1] * 5, "Low": [8.5] * 5, "Close": [10] * 5}, index=D)   # Limit 9 erreicht
+    orders = [Order(D[0], "A", weight=1.0, prio=2, entry_limit=9.0, max_days=2), Order(D[0], "B", weight=1.0, prio=1, entry_limit=9.0, max_days=2)]
+    r = one({"A": a, "B": b}, orders, max_open=1, start_cash=1000, costs=NOCOST)
+    assert len(r.trades) == 0                                      # korrekt: Platz war für A reserviert
+    r = one({"A": a, "B": b}, [Order(D[0], "A", weight=1.0, prio=2, entry_limit=9.0, max_days=2),
+                               Order(D[0], "B", weight=1.0, prio=1, entry_limit=9.0, max_days=2)],
+            max_open=1, start_cash=1000, costs=NOCOST, reserve_limits=False)
+    assert len(r.trades) == 1 and r.trades["ticker"].iloc[0] == "B"   # alte Annahme: B rückt nach (Vorgriff)
