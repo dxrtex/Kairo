@@ -1,0 +1,43 @@
+name: Forschung – Quartalszahlen mit Ausblick
+
+# Nur Forschung (tools/research/earn_guide.py): rekonstruiert den Ausblick vergangener Quartalsberichte aus Schlagzeilen
+# und prüft, ob Gewinn + Ausblick die Kursrichtung am Tag danach besser treffen als der Gewinn allein. Ändert die App nicht.
+on:
+  push:
+    branches: ["claude/earn-guidance"]
+    paths: ["tools/research/earn_guide.py", ".github/workflows/earn_guide.yml"]
+permissions:
+  contents: read
+jobs:
+  collect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: git fetch -q origin kairo-data && git show origin/kairo-data:universe_us.csv > uni.csv
+      - run: mkdir -p out && python tools/research/earn_guide.py collect uni.csv out/eg_${{ matrix.shard }}.csv --shard ${{ matrix.shard }} --shards 12 --max 600
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: "eg-${{ matrix.shard }}", path: out/, retention-days: 30 }
+  analyze:
+    needs: [collect]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "eg-*", merge-multiple: true, path: parts }
+      - run: python tools/research/earn_guide.py analyze parts res && cat res/earn_guide_report.md
+      - uses: actions/upload-artifact@v4
+        with: { name: "earn-guide-result", path: res/, retention-days: 30 }

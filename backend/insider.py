@@ -109,7 +109,7 @@ def parse_openinsider(page: str) -> list[dict]:
     head = [h.replace("\xa0", " ").lower() for h in _cells(rows[0])]
     col = lambda *names: next((i for i, h in enumerate(head) if any(h.startswith(n) for n in names)), None)
     ix = {k: col(*v) for k, v in {"t": ("ticker",), "n": ("company",), "who": ("insider",), "role": ("title",), "type": ("trade type",),
-                                    "d": ("trade date",), "px": ("price",), "sh": ("qty",), "val": ("value",), "own": ("δown", "Δown")}.items()}
+                                    "d": ("trade date",), "fd": ("filing date",), "px": ("price",), "sh": ("qty",), "val": ("value",), "own": ("δown", "Δown")}.items()}
     if ix["t"] is None or ix["type"] is None:
         return []
     out = []
@@ -125,6 +125,7 @@ def parse_openinsider(page: str) -> list[dict]:
             continue
         own = g("own").strip()
         out.append({"t": tk, "n": g("n"), "who": g("who"), "role": g("role"), "kind": kind, "d": g("d")[:10],
+                    **({"fd": g("fd")[:10]} if g("fd")[:4].isdigit() else {}),
                     "sh": round(abs(_num_us(g("sh")))), "px": round(px, 2), "val": round(val),
                     "url": f"http://openinsider.com/{tk}",
                     **({"own": "neu" if own.lower().startswith("new") else round(_num_us(own))} if own and own != "-" else {})})
@@ -182,9 +183,24 @@ def signal(rows: list[dict], days: int = 90) -> dict:
         o["last"] = max(o["last"], x.get("d") or "")
     res = {}
     for t, o in out.items():
-        big = (o["opp"] or o["unk"]) and (o["own"] >= 10 or o["val"] >= 1_000_000)
+        big = o["opp"] and (o["own"] >= 10 or o["val"] >= 1_000_000)   # nur belegt gezielte Käufe (ohne Historie keine Aussage)
         res[t] = {"buyers": len(o["who"]), "val": round(o["val"]), "cur": o["cur"], "top": o["top"], "opp": o["opp"], "unk": o["unk"],
                   "own": o["own"], "last": o["last"], "n": o["n"], "score": int(len(o["who"]) >= 2) + int(o["top"]) + int(bool(big))}
+    return res
+
+
+SOURCE_BY_SUFFIX = {"DE": "BaFin", "AS": "AFM (ohne Betrag)", "AX": "ASX (ohne Betrag)"}
+
+
+def cover(watch: dict[str, str], out: dict, bad: set | frozenset = frozenset()) -> dict:
+    """Abdeckung je Aktie: geprüft (mit/ohne Geschäfte), Zeitlimit, Fehler oder keine freie Quelle für das Land."""
+    hits = {x["t"] for x in out.get("watch", [])}
+    res = {}
+    for t in watch:
+        suf = t.rsplit(".", 1)[1] if "." in t else ""
+        st = COVER.get(t) if not suf else ("fehler" if suf in bad else "ok" if suf in SOURCE_BY_SUFFIX else "keine Quelle")
+        src = "SEC" if not suf else SOURCE_BY_SUFFIX.get(suf, "")
+        res[t] = {"st": st or "nicht geprüft", "src": src, "hit": t in hits}
     return res
 
 
@@ -229,17 +245,24 @@ def fetch_asx(watch: dict[str, str], days: int = 365) -> list[dict]:
     return rows
 
 
-def fetch_watch(watch: dict[str, str], budget_s: float = 240) -> tuple[list[dict], int]:
+COVER: dict[str, str] = {}      # je Aktie aus Watchlist/Merkliste/Depot: ok · zeitlimit · fehler · (Quelle) – für die Anzeige der Abdeckung
+
+
+def fetch_watch(watch: dict[str, str], budget_s: float = 420) -> tuple[list[dict], int]:
     """Gezielt für Watchlist, Merkliste und Depot: Insider-Käufe und -Verkäufe je US-Aktie der letzten 12 Monate (OpenInsider-Screener).
-    Nur US-Börsenkürzel (ohne Punkt) – europäische und asiatische Werte melden nicht an die SEC."""
+    Nur US-Börsenkürzel (ohne Punkt) – europäische und asiatische Werte melden nicht an die SEC. Abdeckung je Aktie in COVER."""
     t0, rows, done = time.time(), [], 0
     for t, name in watch.items():
-        if "." in t or "^" in t or time.time() - t0 > budget_s:
+        if "." in t or "^" in t:
+            continue
+        if time.time() - t0 > budget_s:
+            COVER[t] = "zeitlimit"
             continue
         try:
             r = requests.get(SCREEN.format(t=t), headers={"User-Agent": "Mozilla/5.0 (Kairo Scanner)"}, timeout=20)
             got = _merge([x for x in parse_openinsider(r.text) if x["t"] == t])
             done += 1
+            COVER[t] = "ok"
             routine(got)
             since = _days_ago(365)
             for x in [x for x in got if x["d"] >= since]:
@@ -247,9 +270,11 @@ def fetch_watch(watch: dict[str, str], budget_s: float = 240) -> tuple[list[dict
                     rows.append({**x, "n": x.get("n") or name, "url": f"http://openinsider.com/{t}"})
             time.sleep(0.4)
         except Exception as exc:
+            COVER[t] = "fehler"
             print(f"Insider Watchlist {t}: {exc!r}"[:140])
-    buys = sorted([x for x in rows if x["kind"] == "buy"], key=lambda x: -x["val"])
-    sells = sorted([x for x in rows if x["kind"] == "sell"], key=lambda x: -x["val"])[:80]
+    newest = lambda x: (x["d"], x["val"])                 # neueste zuerst – so fällt beim Kürzen nie ein frischer Kauf weg
+    buys = sorted([x for x in rows if x["kind"] == "buy"], key=newest, reverse=True)
+    sells = sorted([x for x in rows if x["kind"] == "sell"], key=newest, reverse=True)[:80]
     rows = buys[:250] + sells
     print(f"Insider Watchlist: {done} Aktien geprüft, {sum(x['kind'] == 'buy' for x in rows)} Käufe, {sum(x['kind'] == 'sell' for x in rows)} Verkäufe")
     return rows, done
@@ -306,22 +331,26 @@ def fetch(pages: int = 3, budget_s: float = 150, watch: dict[str, str] | None = 
            "buys": buys[:60], "sells": sells[:40], "source": src}
     if watch:
         out["watch"], out["watch_n"] = fetch_watch(watch)
+        bad = set()                                 # Länder-Endungen, deren Quelle in diesem Lauf ausgefallen ist
         try:                                        # deutsche Werte: Directors' Dealings der BaFin
             from . import bafin
             de = bafin.fetch(watch)
             out["watch"] += [{**x, "url": f"{bafin.BASE}?emittentIsin={x['isin']}&zeitraum=0&emittentButton=Suche+Emittent"} for x in de["rows"]]
             out["watch_de_n"] = de["n"]
         except Exception as exc:
+            bad.add("DE")
             print(f"BaFin: Fehler {exc!r}"[:160])
-        for nm, fn in (("AFM", fetch_afm), ("ASX", fetch_asx)):
+        for nm, fn, suf in (("AFM", fetch_afm, "AS"), ("ASX", fetch_asx, "AX")):
             try:
                 extra = fn(watch)
                 out["watch"] += extra
                 out[f"watch_{nm.lower()}_n"] = len(extra)
                 print(f"Insider {nm}: {len(extra)} Meldungen")
             except Exception as exc:
+                bad.add(suf)
                 print(f"Insider {nm}: Fehler {exc!r}"[:160])
         out["signal"] = signal(out["watch"])
+        out["cover"] = cover(watch, out, bad)
     return out
 
 

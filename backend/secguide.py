@@ -70,6 +70,9 @@ def judge(g: dict | None, est_q: float | None, est_y: float | None) -> dict | No
     if g.get("mid") and est:
         r = g["mid"] / est - 1
         d = 1 if r >= .01 else -1 if r <= -.01 else 0
+        sv = next((v for v, rx in VERB.items() if rx.search(g.get("s") or "")), None)
+        if sv is not None and d != sv:               # Firma schreibt im selben Satz „increased/raised … guidance“ (FTI, Eli Lilly
+            d = sv                                   # 29.10.2026): Spanne gehört oft nur zu einem Segment → das Verb zählt
         return {"d": d, "t": g["s"], "vs": round(r, 4), "src": "Pressemitteilung (SEC)"}
     if g.get("verb") is not None:
         return {"d": g["verb"], "t": "Pressemitteilung: Ausblick " + ("angehoben" if g["verb"] == 1 else "gesenkt"), "src": "Pressemitteilung (SEC)"}

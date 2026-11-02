@@ -68,8 +68,9 @@ th{{color:var(--mut);font-weight:600}}
 nach dem Treffer bis zu 10 Handelstage auf eine Seitwärtsphase warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung in der Spanne,
 Stop = Tief der Seitwärtsphase − 0,25 ATR; Ausstieg ab Tag 10 bei Schluss unter der EMA 20 (zur nächsten Eröffnung), spätestens Tag 60.
 Ergebnis in R (Vielfache des Risikos je Trade), nach Modellkosten. Fällt der Kurs vor dem Einstieg unter das 10-Tage-Tief oder bildet sich keine Seitwärtsphase, zählt der Treffer als „kein Einstieg“.</p>
-<p><b>Erwartung aus dem Backtest 2008–2026</b> (49.134 Treffer, Kosten Scalable PRIME+): Ø +0,14 R je Trade, Zufalls-Einstiege +0,11 R –
-also ein kleiner Vorteil mit vielen Verlierern; aussagekräftig erst ab einigen hundert abgeschlossenen Trades.</p>
+<p><b>Erwartung aus dem Backtest 2008–2026</b> (13.241 Trades, Forschung 31.10.2026): Ø +0,12 R je Trade mit Kosten Scalable PRIME+,
+−0,03 R mit Stress-Kosten (doppelter Spread, Schlupf) – nur etwa +0,03 R besser als Zufall, also ein kleiner Vorteil mit vielen Verlierern;
+aussagekräftig erst ab einigen hundert abgeschlossenen Trades.</p>
 <p><b>Nachprüfbar:</b> Die Treffer stehen in <a href="{REPO}/commits/kairo-data">Git-Commits mit Zeitstempel</a> (Datei signals.json).
 Eine nachträgliche Änderung wäre in der Historie sichtbar.</p>
 

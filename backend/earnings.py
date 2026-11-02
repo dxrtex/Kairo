@@ -5,7 +5,8 @@ gemeldeter Umsatz), Google-News-Schlagzeilen für den Ausblick (Guidance). Die U
 Zahlen her – deshalb merkt sich der Scan sie im Zustand (state/earn_est.json) und vergleicht nach dem Termin.
 
 Einschätzung = Regel, keine Prognose: Überraschung beim Gewinn (± 3 %), beim Umsatz (± 1 %) und die Richtung des
-Ausblicks (zählt doppelt – der Markt handelt die Zukunft). Die tatsächliche Kursreaktion steht immer daneben.
+Ausblicks (zählt doppelt – der Markt handelt die Zukunft; ein gesenkter Ausblick ergibt immer „eher negativ“). Die tatsächliche
+Kursreaktion steht immer daneben.
 """
 
 from __future__ import annotations
@@ -26,17 +27,30 @@ PAST_DAYS, NEXT_DAYS = 14, 21
 GUIDE_UP = re.compile(
     r"\b(rais(es|ed|ing)?|lifts?|lifted|boosts?|boosted|hikes?|hiked|ups|increases?|increased)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
     r"|\b(guidance|outlook|forecast)\b[^|]{0,25}\b(above|tops|beats|ahead of)\b"
-    r"|\b(strong|upbeat|bullish|upgraded|rosy|robust)\b[^|]{0,20}\b(guidance|outlook|forecast)\b"
+    r"|\b(strong|upbeat|bullish|upgraded|rosy|robust)\b[^|,;:]{0,20}\b(guidance|outlook|forecast)\b"
     r"|\b(hebt|erhöht|erhoeht|hob)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele|umsatzziel|gewinnziel)\w*"
     r"|\b(prognose|ausblick|jahresziele?|ziele)\w*\s+(angehoben|erhöht)\b|\bprognose(erhöhung|anhebung)\b", re.I)
 GUIDE_DOWN = re.compile(
     r"\b(cuts?|lowers?|lowered|slash(es|ed)?|reduces?|reduced|trims?|trimmed|withdraws?|withdrew|pulls?|pulled)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
     r"|\b(guidance|outlook|forecast)\b[^|]{0,25}\b(below|misses|missed|disappoints?|weak|falls short)\b"
-    r"|\b(weak|soft|disappointing|downbeat|gloomy|lowered)\b[^|]{0,20}\b(guidance|outlook|forecast)\b"
+    r"|\b(guidance|outlook|forecast)\b[^|]{0,15}\b(withdrawn|suspended|lowered|slashed|reduced)\b"
+    r"|\b(weak|soft|disappointing|downbeat|gloomy|lowered)\b[^|,;:]{0,20}\b(guidance|outlook|forecast)\b"
     r"|\b(senkt|kappt|kassiert|streicht|senkte)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele|umsatzziel|gewinnziel)\w*"
     r"|\b(prognose|ausblick|jahresziele?|ziele)\w*\s+(gesenkt|gekappt|kassiert|zurückgenommen)\b|\b(gewinnwarnung|prognosesenkung|umsatzwarnung)\b", re.I)
 ANALYST = re.compile(r"\b(price target|target price|kursziel|rating|stock forecast|price forecast|price prediction|prognose für die aktie|upgrades?|downgrades?|upgraded|downgraded|analysts? (see|expect)|"
-                     r"(raises|lifts|cuts|lowers|trims|boosts)\b[^|]{0,30}\btarget\b)", re.I)
+                     r"(raises|lifts|cuts|lowers|trims|boosts|slash(es|ed)?)\b[^|]{0,30}\btargets?\b|"
+                     r"(raises|lifts|cuts|lowers|trims)\b[^|]{0,30}\b(profit |earnings |eps )?estimates?\b|wall street|"
+                     r"fitch|moody'?s|s&p global ratings|dbrs|affirms\b[^|]{0,40}\brating|\bat '?[ab]{1,3}[+-]?'?)", re.I)
+# Markt-/Konjunktur-Ausblick ist kein Ausblick der Firma (HSBC 27.10.2026: „cuts UK growth forecast“, UBS: „raises Brent outlook“)
+MACRO = re.compile(r"\b(gdp|economic|economy|brent|inflation|interest[- ]rates?|rates?|markets?|equities|budget|industry|sector|"
+                   r"currency|zloty|dollar|euro|yen|yuan|rupee|franc|sterling|"
+                   r"(uk|u\.s\.|us|global|world|china|chinese|euro(zone|pe)?|german|japan|india)\s+growth)\s+(forecast|outlook|view)\b", re.I)
+# Wörter, die als Firmenname allein zu viele fremde Treffer bringen (United Spirits ↔ United Airlines, Tata Consumer ↔ Tata Capital)
+GENERIC = {"united", "international", "american", "general", "first", "national", "global", "bank", "royal", "great", "new", "china",
+           "tata", "bajaj", "hero", "star", "green", "nomura", "indian", "india", "japan", "advanced", "applied", "digital", "capital",
+           "federal", "western", "eastern", "southern", "northern", "pacific", "atlantic", "energy", "delivery", "public", "community",
+           "citizens", "regional", "stock", "home", "union", "mitsubishi", "sumitomo", "hitachi", "toyota", "samsung", "hyundai", "lg",
+           "adani", "reliance", "mahindra", "state"}
 # Ausgaben-/Investitionspläne sind kein Umsatz- oder Gewinnausblick (Meta 21.10.2026: „Boosts … Spending Outlook“ → Kurs −7 %)
 SPEND = re.compile(r"\b(spend\w*|capex|capital (expenditures?|spending)|expenses?|costs?|investments?|invest\w*|ausgaben|investitionen|kosten)\b", re.I)
 # Sondereffekte: Gewinn durch Einmalposten verzerrt (Steuer, Abschreibung, Rückstellung)
@@ -58,13 +72,18 @@ def _num(v):
 
 def _about(title: str, m: re.Match, words: list[str]) -> bool:
     """Gehört der Treffer zur Firma? Firmenname höchstens 90 Zeichen davor (oder 40 danach), ohne Komma/Semikolon
-    dazwischen – sonst geht es meist um eine andere Firma („JPMorgan slips, TSMC's cautious outlook“)."""
+    dazwischen – sonst geht es meist um eine andere Firma („JPMorgan slips, TSMC's cautious outlook“). Nur ganze Wörter;
+    ein allgemeines Wort („United“) zählt allein nicht – dann muss der Name aus zwei Wörtern dastehen („United Spirits“)."""
     tl = title.lower()
     for w in words:
-        for k in [i.start() for i in re.finditer(re.escape(w), tl)]:
+        if w.lower() in GENERIC:
+            continue
+        # Kürzel (z. B. „UPS“, „NOW“, „ALL“) nur in Großbuchstaben – „Bayer Ups Guidance“ ist nicht UPS
+        hay, pat = (title, re.escape(w)) if w.isupper() and len(w) <= 5 else (tl, re.escape(w.lower()))
+        for k in [i.start() for i in re.finditer(r"(?<![\w-])" + pat + r"(?!\w)", hay)]:
             if k <= m.start():
                 gap = tl[k + len(w):m.start()]
-                if m.start() - k <= 90 and not re.search(r"[,;]", gap):
+                if (m.start() - k <= 90 and not re.search(r"[,;]", gap)) or (k == 0 and "," not in gap):   # Titel beginnt mit der Firma
                     return True
             elif k - m.end() <= 40 and not re.search(r"[,;]", tl[m.end():k]):
                 return True
@@ -76,7 +95,7 @@ def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Time
     Meldung nach den Zahlen erschien (Vorschauen zählen nicht). +1 angehoben, −1 gesenkt, 0 bestätigt;
     widersprüchliche Treffer → die häufigere Richtung, bei Gleichstand keine Angabe."""
     from email.utils import parsedate_to_datetime
-    words = [w.lower() for w in words if w and len(w) >= 3]
+    words = [w for w in words if w and len(w) >= 3]
     hits = []
     for title, link, date in items:
         if since is not None and date:
@@ -85,7 +104,8 @@ def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Time
                     continue
             except Exception:
                 pass
-        if ANALYST.search(title):                        # Kursziele/Einstufungen von Analysten sind kein Ausblick der Firma
+        title = re.sub(r"\s+-\s+[^-]{2,60}$", "", title)  # Quelle am Ende („ - Asia Business Outlook“) gehört nicht zum Text
+        if ANALYST.search(title) or MACRO.search(title):  # Analysten, Ratingagenturen, Konjunktur: kein Ausblick der Firma
             continue
         d = None
         for rx, val in ((GUIDE_UP, 1), (GUIDE_DOWN, -1), (GUIDE_KEEP, 0)):
@@ -110,7 +130,7 @@ def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Time
 def oneoff(items: list[tuple[str, str, str]], words: list[str], since: pd.Timestamp | None = None) -> dict | None:
     """Schlagzeile nach den Zahlen, die auf einen Sondereffekt beim Gewinn hindeutet (Firma im Titel)."""
     from email.utils import parsedate_to_datetime
-    words = [w.lower() for w in words if w and len(w) >= 3]
+    words = [w for w in words if w and len(w) >= 3]
     for title, link, date in items:
         if since is not None and date:
             try:
@@ -126,7 +146,7 @@ def oneoff(items: list[tuple[str, str, str]], words: list[str], since: pd.Timest
 
 def assess(eps_s: float | None, rev_s: float | None, guide_d: int | None) -> dict | None:
     """Regel: Gewinn-Überraschung ±3 % → ±1 (über ±10 % → ±2, wie in der Statistik: 61 % bzw. 39 % gestiegen),
-    Umsatz ±1 % → ±1, Ausblick angehoben/gesenkt → ±2."""
+    Umsatz ±1 % → ±1, Ausblick angehoben/gesenkt → ±2; gesenkter Ausblick → höchstens −2 („eher negativ“)."""
     pts, why = 0.0, []
     if eps_s is not None:
         if eps_s > .10:
@@ -149,6 +169,8 @@ def assess(eps_s: float | None, rev_s: float | None, guide_d: int | None) -> dic
     if guide_d is not None:
         pts += 2 * guide_d
         why.append({1: "Ausblick angehoben", -1: "Ausblick gesenkt", 0: "Ausblick bestätigt"}[guide_d])
+    if guide_d == -1:          # gesenkter Ausblick überstimmt ein gutes Quartal (Intel 29.10.2026: Gewinn +30 %, Aktie −28 %;
+        pts = min(pts, -2.0)   # eigenes Archiv: nach gesenktem Ausblick stieg die Aktie nur in rund einem Viertel der Fälle)
     if eps_s is None and rev_s is None and guide_d is None:
         return None
     lbl, tone = (("eher positiv", "green") if pts >= 2 else ("eher negativ", "red") if pts <= -2
@@ -299,9 +321,16 @@ def _sec_guidance(tk, t: str, last: pd.Timestamp) -> dict | None:
 
 
 def _words(name: str, ticker: str) -> list[str]:
-    stop = {"inc", "inc.", "corp", "corp.", "corporation", "the", "group", "holding", "holdings", "plc", "ag", "se", "sa", "nv", "co", "ltd", "company", "n.v."}
+    """Suchwörter für eine Firma: erstes Namenswort und Kürzel; ist das erste Wort allgemein („United“, „Tata“, „Bank“),
+    stattdessen die ersten zwei Wörter („United Spirits“, „Bank of Hawaii“)."""
+    stop = {"inc", "inc.", "corp", "corp.", "corporation", "the", "group", "holding", "holdings", "plc", "ag", "se", "sa", "nv", "co", "ltd", "company", "n.v.", "limited"}
     w = [x.strip(",.") for x in (name or "").split() if x.strip(",.").lower() not in stop]
-    return ([w[0]] if w else []) + [ticker.split(".")[0]]
+    if len(w) >= 2 and w[0].lower() in GENERIC:
+        k = 3 if len(w) >= 3 and w[1].lower() in ("of", "&", "and") else 2
+        first = " ".join(w[:k])
+    else:
+        first = w[0] if w else ""
+    return ([first] if first else []) + [ticker.split(".")[0]]
 
 
 def _eps_table(tk) -> pd.DataFrame | None:
@@ -483,6 +512,26 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
 PAGES = "https://dxrtex.github.io/Kairo/data/"
 
 
+def stamp_status(fresh: dict, prev: dict, now: pd.Timestamp) -> None:
+    """Zeitstempel und Status je Meldung (Latenz-Messung und Anzeige in der App):
+    seen = erste Prüfung, in der Kairo Zahlen hatte (bleibt danach fest); stage = vorläufig (Pressemitteilung) / bestätigt
+    (Yahoo) / korrigiert (Gewinn je Aktie weicht später um > 2 % von der ersten Angabe ab; eps0 = erste Angabe)."""
+    iso = now.isoformat(timespec="seconds")
+    for t, r in fresh.items():
+        L = r["last"]
+        p = ((prev.get(t) or {}).get("last") or {})
+        same = p.get("date") == L.get("date")
+        L["seen"] = p.get("seen") if same and p.get("seen") else iso
+        if same and p.get("push_at"):
+            L["push_at"] = p["push_at"]
+        e0 = p.get("eps0", p.get("eps_a")) if same else None
+        if e0 is not None:
+            L["eps0"] = e0
+        corr = (same and p.get("stage") == "korrigiert") or (e0 is not None and L.get("eps_a") is not None
+                                                            and abs(L["eps_a"] - e0) > 0.02 * max(abs(e0), 0.01))
+        L["stage"] = "korrigiert" if corr else "vorläufig" if L.get("src") == "pr" else "bestätigt"
+
+
 def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
     """Prüfdienst tagsüber (Workflow earnings.yml): Aktien mit Quartalstermin gestern/heute/morgen.
     Sobald Yahoo die Zahlen hat, landen Ergebnis, Ausblick und Einschätzung in earnings_live.json (Branch kairo-earnings);
@@ -538,6 +587,7 @@ def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
 
     with ThreadPoolExecutor(max_workers=4) as ex:
         fresh = {t: rec for t, rec in ex.map(job, list(todo.items())) if rec and rec.get("last")}
+    stamp_status(fresh, prev, now)
     # bisherige Ergebnisse behalten – auch für geprüfte Aktien, deren neuer Abruf gerade nichts lieferte (Review W10)
     keep = {t: r for t, r in prev.items() if t not in fresh and pd.Timestamp((r.get("last") or {}).get("date", "1900-01-01")) >= today - pd.Timedelta(days=4)}
     allr = {**keep, **fresh}
@@ -545,11 +595,22 @@ def live_main(out_dir: str = "state", est_file: str | None = None) -> None:
         print(f"Quartalszahlen: {earnfast.archive(fresh, out)} Meldungen im Archiv")
     except Exception as exc:
         print(f"Quartalszahlen: Archiv fehlgeschlagen ({exc!r})")
+    try:                                               # Lernschleife: warum lag die Prognose daneben?
+        from . import earnwhy
+        names = {t: r.get("name") or t for t, r in allr.items()} | {e["ticker"]: e.get("name") or e["ticker"] for e in cal.get("events", []) if e.get("ticker")}
+        print(f"Quartalszahlen: {earnwhy.run(out, names)} Fälle auf Ursachen untersucht")
+    except Exception as exc:
+        print(f"Quartalszahlen: Ursachensuche fehlgeschlagen ({exc!r})")
     try:
         earnfast.result_pushes(fresh, prev, cal.get("events", []), out)
     except Exception as exc:
         print(f"Quartalszahlen: Ergebnis-Mitteilung fehlgeschlagen ({exc!r})")
-    f.write_text(json.dumps({"generated": now.isoformat(timespec="seconds"), "tickers": allr}, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")
+    try:
+        gst = earnfast.guide_stats(out)
+    except Exception as exc:
+        print(f"Quartalszahlen: Ausblick-Statistik fehlgeschlagen ({exc!r})")
+        gst = {}
+    f.write_text(json.dumps({"generated": now.isoformat(timespec="seconds"), "gstats": gst, "tickers": allr}, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")
     print(f"Quartalszahlen live: {len(todo)} Termine geprüft, {len(fresh)} mit Zahlen aktualisiert, {len(allr)} in der Datei")
 
 

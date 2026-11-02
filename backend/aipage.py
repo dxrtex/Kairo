@@ -112,8 +112,9 @@ fällt der Kurs vorher unter das Tief der 10 Tage, ist der Treffer gescheitert.<
 <li>Stop: Tief der Seitwärtsphase − 0,25 ATR; Risiko 0,5–3 ATR; 1 % Risiko je Trade.</li>
 <li>Ausstieg: Stop, ab Tag 10 Tagesschluss unter der EMA 20 (Verkauf am nächsten Morgen), spätestens Tag 60. Kein festes Kursziel.</li>
 <li>Rangfolge: schwächeres Vormomentum (Rendite Monat −6 … −1) zuerst; getestet nur USA und Europa.</li></ol>
-<p class="m">Forschung 2008–2026 (49.134 Kairo-Treffer, Kosten PRIME+): Ø +0,14 R je Trade nach Kosten, zufällige Einstiege mit derselben Mechanik +0,11 R.
-Als Depot bisher nicht besser als ein Welt-ETF – deshalb läuft Kairo im Papier-Test, Details auf der Forschungsseite.</p>
+<p class="m">Forschung 31.10.2026 (13.241 Trades 2008–2026, korrigierte Engine): Ø +0,12 R je Trade mit normalen Kosten (PRIME+), −0,03 R mit
+Stress-Kosten; nur etwa +0,03 R besser als zufällige Einstiege mit derselben Mechanik. Als Depot (20 × 0,25 %) +6 % p. a. normal, −1,2 % mit
+Stress-Kosten – schwächer als ein Welt-ETF (+9 %). Deshalb läuft Kairo im Papier-Test; Details auf der Forschungsseite.</p>
 """]
     try:
         n_ready = sum("kaufbereit" in _status(r, h4) for r in hits if r.get("region") in ("us", "europe"))
