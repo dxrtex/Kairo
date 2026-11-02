@@ -21,6 +21,11 @@ FILE = "mr_shadow.json"
 RULES = ("A5", "W2", "ETF")
 SLOTS = 5
 COST = {"normal": 0.0005, "stress": 0.0025}
+# Learning Engine für die Schattentests: vorher erkennbare Merkmale je Signal (Stand Signaltag bzw. Kauf-Eröffnung)
+FEAT = {"tief": "Fall der 3 Tage größer als 2 ATR", "extrem": "RSI(2) unter 5", "unruhig": "Tagesschwankung (ATR) über 4 %",
+        "markt_rot": "Markt der Region unter der 200-Tage-Linie", "luecke": "Eröffnung am Kauftag mehr als 1 % unter dem Signal-Schluss"}
+INDEX = {"us": "^GSPC", "europe": "^STOXX", "eu": "^STOXX"}
+MIN_N, FDR_Q = 10, 0.10
 ETFS = ("XLK", "XLF", "XLV", "XLY", "XLP", "XLE", "XLI", "XLB", "XLU", "XLRE", "XLC")
 
 
@@ -51,7 +56,11 @@ def signal_today(df: pd.DataFrame, rule: str) -> dict | None:
             return None
     from .indicators import atr
     a = float(atr(df, 14).iloc[i])
-    return {"d": str(df.index[i].date()), "rsi2": round(r2, 2), "close": round(float(c.iloc[i]), 4),
+    f = {"extrem": bool(r2 < 5)}
+    if np.isfinite(a) and a > 0:
+        f["tief"] = bool((c.iloc[i - 3] - c.iloc[i]) > 2 * a)
+        f["unruhig"] = bool(a / c.iloc[i] > 0.04)
+    return {"f": f, "d": str(df.index[i].date()), "rsi2": round(r2, 2), "close": round(float(c.iloc[i]), 4),
             "lim": round(float(c.iloc[i] - 0.5 * a), 4) if np.isfinite(a) else None}
 
 
@@ -65,16 +74,17 @@ def replay(df: pd.DataFrame, d: str, lim: float | None = None) -> dict:
     if i + 1 >= len(c):
         return {"res": "signal"}
     e, k0 = o[i + 1], i + 1
+    gap = {"luecke": bool(o[k0] < c[i] * 0.99)}
     if lim is not None:                                # W2: Kauf-Limit nur am Tag nach dem Signal
         if not df["Low"].iloc[i + 1] <= lim:
-            return {"res": "kein_kauf", "buy": str(idx[k0].date())}
+            return {"res": "kein_kauf", "buy": str(idx[k0].date()), "f2": gap}
         e = min(e, lim)
     for day, k in enumerate(range(k0, len(c)), start=1):
         if day >= 10:                                  # wie die Engine: Zeitausstieg zum Schluss von Tag 10 vor dem Signal-Ausstieg
-            return _done(e, c[k], idx[k0], idx[k], day, "zeit")
+            return {**_done(e, c[k], idx[k0], idx[k], day, "zeit"), "f2": gap}
         if c[k] > sma5[k]:
             if k + 1 < len(c):
-                return _done(e, o[k + 1], idx[k0], idx[k + 1], day + 1, "sma5")
+                return {**_done(e, o[k + 1], idx[k0], idx[k + 1], day + 1, "sma5"), "f2": gap}
             return {"res": "open", "e": round(e, 4), "buy": str(idx[k0].date()), "days": day, "exit_next": True}
     k = len(c) - 1
     return {"res": "open", "e": round(e, 4), "buy": str(idx[k0].date()), "days": k - k0 + 1, "now": round(float(c[k] / e - 1), 4)}
@@ -93,11 +103,21 @@ def step(book: dict, rows: list[dict], data: dict, ctx: dict | None, today: str,
     items = book.setdefault("items", {})
     if record:
         region = {r["ticker"]: str(r.get("region") or "").lower() for r in rows}
+        red = {}
+        for reg, sym in INDEX.items():
+            ix = (ctx or {}).get(sym)
+            try:
+                ci = ix["Close"].dropna()
+                red[reg] = bool(ci.iloc[-1] < ci.iloc[-200:].mean()) if len(ci) >= 200 else None
+            except Exception:
+                red[reg] = None
         for t, df in data.items():
             if region.get(t) not in ("us", "europe", "eu") or df is None:
                 continue
             s = signal_today(df, "A5")
             if s and s["d"] >= book["start"]:
+                if red.get(region.get(t)) is not None:
+                    s["f"]["markt_rot"] = red[region.get(t)]
                 items.setdefault(f"A5|{t}|{s['d']}", {"rule": "A5", "t": t, **s})
                 if s.get("lim"):
                     items.setdefault(f"W2|{t}|{s['d']}", {"rule": "W2", "t": t, **s})
@@ -141,6 +161,34 @@ def depot(items: list[dict], slots: int = SLOTS) -> list[dict]:
     return taken
 
 
+def learn(items: list[dict]) -> dict:
+    """Was haben die Verlierer gemeinsam? Je Merkmal Ø Brutto mit/ohne, Welch-p, Benjamini-Hochberg. Nie automatische Regeländerung."""
+    from .tradewhy import _bh, _pvalue
+    done = [x for x in items if x.get("res") == "closed"]
+    rows = []
+    for k, label in FEAT.items():
+        w = [x["gross"] for x in done if {**(x.get("f") or {}), **(x.get("f2") or {})}.get(k) is True]
+        wo = [x["gross"] for x in done if {**(x.get("f") or {}), **(x.get("f2") or {})}.get(k) is False]
+        r = {"k": k, "label": label, "n_with": len(w), "n_without": len(wo),
+             "with": round(float(np.mean(w)), 5) if w else None, "without": round(float(np.mean(wo)), 5) if wo else None,
+             "p": _pvalue(w, wo) if len(w) >= MIN_N and len(wo) >= MIN_N else None}
+        rows.append(r)
+    _bh(rows)
+    for r in rows:
+        if r["p"] is None:
+            r["status"] = "zu wenig Fälle"
+        elif r.get("q", 1) <= FDR_Q:
+            r["status"] = "Filter-Kandidat" if r["with"] < r["without"] else "Verstärker-Kandidat"
+        else:
+            r["status"] = "kein klarer Unterschied"
+    losers = sorted([x for x in done if x["gross"] < 0], key=lambda x: x.get("exit") or "", reverse=True)[:8]
+    why = [{"t": x["t"], "exit": x.get("exit"), "gross": x["gross"],
+            "f": [FEAT[k] for k, v in {**(x.get("f") or {}), **(x.get("f2") or {})}.items() if v is True and k in FEAT]}
+           for x in losers]
+    return {"features": rows, "losers": why, "n": len(done),
+            "note": "Kandidaten sind Hinweise: Änderung der Regel nur nach eigenem Test und Freigabe"}
+
+
 def summary(book: dict) -> dict:
     out = {"start": book.get("start"), "updated": book.get("updated")}
     items = list((book.get("items") or {}).values())
@@ -155,4 +203,6 @@ def summary(book: dict) -> dict:
                      "days": round(float(np.mean([x["days"] for x in done])), 1) if done else None,
                      "sum_normal": round(float(np.sum([x["net_normal"] for x in done]) / SLOTS), 4) if done and rule != "ETF" else None,
                      "no_fill": sum(x.get("res") == "kein_kauf" for x in xs)}
+        if rule != "ETF":
+            out[rule]["learn"] = learn(sel)
     return out

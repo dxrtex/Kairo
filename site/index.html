@@ -4840,7 +4840,21 @@ function mrShadowHtml(S) {
     ${row("W2 – wie A5 mit Kauf-Limit", S.W2, `Limit 0,5 ATR unter dem Schluss, nur am Folgetag${S.W2 && S.W2.no_fill ? ` · ${S.W2.no_fill}× nicht gefüllt` : ""}`)}
     ${row("ETF-RSI(2) – Sektor-ETFs", S.ETF, "RSI(2) < 10 über der 200-Tage-Linie")}
     ${row("E2 – B60-Treffer mit Ausbruchs-Einstieg", S.E2 && { ...S.E2, signals: S.E2.n, open: (S.E2.status || {}).open || 0 }, "gleiche Signale wie B60")}
+    ${["W2", "A5"].map(k => shadowLearnHtml(k, S[k] && S[k].learn)).join("")}
     <div class="note" style="margin:6px 0 0">Diese Regeln waren im Backtest mit normalen Kosten stark, mit hohen Kosten schwach. Hier zeigt sich, ob das live hält. Entscheidend sind deine echten Kosten bei Scalable: unter ~0,08 % je Order lohnt A5 – das zeigt der Kosten-Check im Journal. Kein Echtgeld vor deiner Entscheidung.</div></div>`;
+}
+// Lernen aus den Schatten-Verlierern (backend/mrshadow.learn): Merkmale mit/ohne, Mehrfachtest-Korrektur, nie automatisch
+function shadowLearnHtml(rule, L) {
+  if (!L || !L.n) return "";
+  const P = v => v == null ? "–" : sgnPct(v, 2);
+  const cand = (L.features || []).filter(r => /Kandidat/.test(r.status));
+  const feats = (L.features || []).filter(r => r.n_with && r.n_without).map(r =>
+    `<div class="jrow2"><span>${esc(r.label)}<small class="muted"> · ${r.n_with} mit / ${r.n_without} ohne</small></span><b>${P(r.with)} <small class="muted">statt ${P(r.without)} · ${esc(r.status)}</small></b></div>`).join("");
+  const los = (L.losers || []).slice(0, 5).map(x => `<div class="jrow2"><span><b>${esc(x.t)}</b><small class="muted"> · ${dateDE(x.exit || "")}</small></span><b>${P(x.gross)} <small class="muted">${x.f && x.f.length ? esc(x.f.join(" · ")) : "kein auffälliges Merkmal"}</small></b></div>`).join("");
+  return `<details class="pdet" style="margin:6px 0"><summary class="psum"><b>${rule}: aus Verlierern lernen</b><span class="ptag">${cand.length ? `${cand.length} Kandidat${cand.length > 1 ? "en" : ""}` : `${L.n} Trades`}</span></summary>
+    ${feats || `<div class="note">Noch zu wenige beendete Trades für einen Vergleich (mindestens 10 mit und 10 ohne Merkmal).</div>`}
+    ${los ? `<div class="note" style="margin:6px 0 2px">Letzte Verlierer und was vorher erkennbar war:</div>${los}` : ""}
+    <div class="note" style="margin:4px 0 0">${esc(L.note || "")}</div></details>`;
 }
 // Aus Fehlschlägen lernen (backend/tradewhy.py): Gründe je gescheitertem Trade, vorher erkennbare Merkmale mit/ohne,
 // Kandidaten für den Backtest. Ändert die Regel nie selbst – das entscheidet erst ein Backtest + Schattentest + Freigabe.

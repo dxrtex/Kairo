@@ -73,3 +73,18 @@ def test_w2_limit_fill_or_no_buy():
     assert s["lim"] < s["close"]
     book = M.step({}, [{"ticker": "X", "region": "us"}], {"X": _df([119, 118, 117])}, None, s["d"])
     assert any(k.startswith("W2|X|") for k in book["items"]) and "W2" in M.summary(book)
+
+
+def test_learn_finds_filter_candidate_and_lists_losers():
+    items = []
+    for k in range(40):
+        bad = k % 2 == 0
+        items.append({"rule": "W2", "t": f"T{k}", "res": "closed", "exit": f"2026-12-{k % 28 + 1:02d}",
+                      "gross": (-0.02 if bad else 0.01) + 0.001 * (k % 5), "f": {"tief": bad, "extrem": k % 3 == 0}, "f2": {"luecke": False}})
+    L = M.learn(items)
+    row = {r["k"]: r for r in L["features"]}
+    assert row["tief"]["status"] == "Filter-Kandidat" and row["tief"]["with"] < row["tief"]["without"]
+    assert row["luecke"]["status"] == "zu wenig Fälle"                                  # keine Fälle mit Lücke
+    assert L["losers"] and "Fall der 3 Tage größer als 2 ATR" in L["losers"][0]["f"]
+    s = M.signal_today(_df([119, 118, 117]), "A5")
+    assert set(s["f"]) >= {"extrem", "tief", "unruhig"}
