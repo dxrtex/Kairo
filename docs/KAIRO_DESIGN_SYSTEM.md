@@ -63,5 +63,5 @@ einzeilig mit Auslassung; Erklärtexte 12 px, höchstens zwei Zeilen (iPad/Deskt
 ## Präzisions-Kennzeichnung (Finanzdaten)
 
 Bestehende Kennzeichnungen bleiben sichtbar und werden nicht weggestaltet: Kursstand mit Datum („Schlusskurs …“,
-„Kurse vom Abendscan“), Währung an jedem Kurs, „(geschätzt)“ beim Depotwert, Hinweis „Kein Anlageberatung“. Neue Daten
+„Kurse vom Abendscan“), Währung an jedem Kurs, „(geschätzt)“ beim Depotwert, Hinweis „Keine Anlageberatung“. Neue Daten
 wurden nicht erfunden.
