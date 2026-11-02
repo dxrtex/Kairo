@@ -1874,7 +1874,6 @@ function card(r) {
     </div>
     ${kpxHtml(r)}
     ${kplanHtml(r)}
-    ${evidCardHtml(r)}
     <div class="aboutbox" hidden>${aboutHtml(r)}</div>
     <div class="scorebox" hidden>${scoreBoxHtml(r)}</div>
     ${isApple() ? `<div class="aseg rng">${[["1M", 21], ["3M", 63], ["6M", 126], ["1J", 252]].map(([l, n]) => `<button data-rng="${n}" class="${(state.aRng || 63) === n ? "on" : ""}">${l}</button>`).join("")}</div>` : ""}
@@ -1899,7 +1898,7 @@ function card(r) {
 // Kurs ganz oben im Fenster: das Erste, was man nach dem Antippen sieht
 function kpxHtml(r) {
   const sr = rowOf(r.ticker) || {}, d1 = r.live ? null : sr.d1;
-  const ah = r.asia_hit ? `<div class="tip tone-yellow" style="margin:0 0 8px">Alle 11 Kriterien erfüllt – aber <b>kein Treffer</b>: Für Börsen in Asien/Pazifik ist die Kairo-Regel nicht getestet. Getestet und gezählt werden nur USA und Europa.</div>` : "";
+  const ah = "";
   const st = ah + (r.stale ? `<div class="tip tone-yellow" style="margin:0 0 8px">⚠ Yahoo hat für diese Aktie beim letzten Scan keine neuen Kurse geliefert – Stand ${esc(dateDE(r.stale))}. Bewertung erst nach dem nächsten Scan verlässlich.</div>` : "");
   return st + `<div class="kpx"><div class="kpx-p"><b>${fmt(r.close)} <small>${esc(r.currency || "")}</small></b>
       <i class="chgp${d1 == null ? "" : d1 >= 0 ? " up" : " dn"}" data-chg="${esc(r.ticker)}">${d1 == null ? "" : sgnPct(d1, 2)}</i></div>
@@ -3944,7 +3943,7 @@ function gameHtml() {
       <div class="mt"><span>Ø mit Abweichung</span><b>${avg(bad) != null ? `${avg(bad) >= 0 ? "+" : ""}${fmt(avg(bad), 2)} R` : "–"}</b></div></div>
       <div class="note" style="margin:6px 0 0">Nur regelkonforme Trades sagen etwas über die Strategie. Abweichungen (ohne Seitwärtsphase, zu viel Risiko, zu früh verkauft …) testen dein Bauchgefühl.</div></div>` : "";
   const closed = done.slice(0, 20).map(c => `<tr><td><b>${esc(c.n)}</b><small class="muted" style="display:block">${c.kind === "turbo" ? `Turbo${c.wkn ? " " + esc(c.wkn) : ""}` : "Aktie"} · ${dateDE(c.d)} → ${dateDE(c.xd)} · ${esc(c.why)}${(c.rv || []).length ? ` · ⚠️ ${esc(c.rv.join(", "))}` : ""}</small></td><td class="num ${c.pnl >= 0 ? "up" : "down"}">${sEur2(c.pnl)}<small style="display:block">${c.R != null ? `${c.R >= 0 ? "+" : ""}${fmt(c.R, 2)} R` : sgnPct(c.ret, 1)}</small></td></tr>`).join("");
-  const tst = r => ["us", "europe"].includes(String(r.region || "").toLowerCase()), mo6 = r => (r.flags || {}).mom61;   // Rangfolge wie Top-Setups
+  const tst = r => inTrade(r.region), mo6 = r => (r.flags || {}).mom61;   // Rangfolge wie Top-Setups
   const id = data.results.filter(r => r.passed).sort((a, b) => (tst(b) - tst(a)) || ((mo6(a) ?? 9) - (mo6(b) ?? 9))).slice(0, 10), sel = state.gSel;
   const idea = r => { const s = rowOf(r.ticker) || {}, own = g.pos.some(p => p.t === r.ticker);
     return `<button class="g-idea${sel === r.ticker ? " on" : ""}" data-g="pick" data-t="${esc(r.ticker)}"><b>${esc(r.name || r.ticker)}</b>
@@ -4242,12 +4241,11 @@ function kSt(r) {
 const calmOf = r => ((r && r.flags) || {}).calm || null;
 function calmGate(d) {
   (d && d.results || []).forEach(r => {
-    // Asien/Pazifik: die Kairo-Regel ist nur für USA und Europa getestet (Live-Bilanz und Papier-Depots ebenso) → kein Treffer
-    if (r.passed && String(r.region || "").toLowerCase() === "asia") { r.passed = false; r.asia_hit = true; } });
+  });
 }
 const kPill = (r, full) => { const x = kSt(r); return `${full && r.passed ? `<span class="st hit">Treffer</span>` : ""}<span class="st ${x.cls}" title="${esc(x.s)}">${esc(x.t)}</span>`; };
 const statusPill = r => kPill(r);
-const kOrder = (a, b) => kSt(b).lv - kSt(a).lv || (["us", "europe"].includes(String(b.region || "").toLowerCase()) - ["us", "europe"].includes(String(a.region || "").toLowerCase())) || (((a.flags || {}).mom61 ?? 9) - ((b.flags || {}).mom61 ?? 9));
+const kOrder = (a, b) => kSt(b).lv - kSt(a).lv || (inTrade(b.region) - inTrade(a.region)) || (((a.flags || {}).mom61 ?? 9) - ((b.flags || {}).mom61 ?? 9));
 const hHead = (t, link, lbl) => `<div class="hh"><b>${t}</b>${link ? `<button class="hlink" ${link}>${lbl || "Alle"} ›</button>` : ""}</div>`;
 const SEC_LINK = sec => `data-gosec="${sec}"`;
 
@@ -4301,7 +4299,7 @@ function myStocksHtml() {
     <div class="note" style="margin:6px 0 0">Weg zum Kauf: Treffer → Seitwärtsphase → kaufbereit.</div></div>`;
 }
 function topHitsHtml() {
-  const tested = r => ["us", "europe"].includes(String(r.region || "").toLowerCase()), mo = r => (r.flags || {}).mom61;
+  const tested = r => inTrade(r.region), mo = r => (r.flags || {}).mom61;
   const list = data.results.filter(r => r.passed && tested(r)).sort(kOrder).slice(0, 5);   // wie Top-Setups: kaufbereit zuerst
   if (!list.length) return "";
   return `<div class="hcard">${hHead("Top-Setups heute", `data-gokinds="hit"`)}
@@ -4394,7 +4392,7 @@ function postfachItems() {
   out.trend = data.results.filter(r => isTrend(r) && r.tr.top).sort((a, b) => (b.tr.plan && b.tr.plan.crv || 0) - (a.tr.plan && a.tr.plan.crv || 0))
     .map(r => ({ t: r.ticker, c: "b", n: `${r.name || r.ticker}`, d: `Trend-Rücksetzer Top · CRV ${fmt(r.tr.plan && r.tr.plan.crv, 1)}` }));
   // Eine Kairo-Regel: „Jetzt handeln“ = Seitwärtsphase heute fertig (Kauf zur nächsten Eröffnung), „Vorbereiten“ = Treffer wartet noch
-  const tested = ent.filter(r => ["us", "europe"].includes(String(r.region || "").toLowerCase()));
+  const tested = ent.filter(r => inTrade(r.region));
   tested.filter(r => kmReady(r.ticker)).forEach(r => { const kp = kPlan(r.ticker);
     out.now.push({ t: r.ticker, c: "g", n: `${r.name || r.ticker} – Kauf zur nächsten Eröffnung`, d: `Seitwärtsphase fertig · Stop ${fmt(kp.stop)} ${r.currency || ""}` }); });
   tested.filter(r => { const x = kSt(r); return x.k === "wait"; }).slice(0, 8).forEach(r => out.prep.push({ t: r.ticker, c: "y", n: `${r.name || r.ticker} – ${kSt(r).t}`, d: `Kairo-Treffer · Score ${r.score ?? "–"}` }));
@@ -4712,7 +4710,7 @@ function evidTableHtml() {
 // Einordnung eines Treffers in fünf getrennten Ebenen – ein erfülltes Kriterium ist keine nachgewiesene Kaufempfehlung.
 function evidCardHtml(r) {
   if (!r.passed) return "";
-  const x = kSt(r), pl = kPlan(r.ticker), atr = (r.flags || {}).atr, tested = ["us", "europe"].includes(String(r.region || "").toLowerCase());
+  const x = kSt(r), pl = kPlan(r.ticker), atr = (r.flags || {}).atr, tested = inTrade(r.region);
   const ref = pl.base ? pl.base.hi : r.close, dist = ref && pl.stop ? ref - pl.stop : null;
   const costR = dist > 0 ? (2 * TP.spreadStock * ref) / dist : null;              // Spread Kauf + Verkauf in R (ohne Gebühr)
   const b = getJson("bilanz.json"), L = b && b.live && (b.live.strat60 || null);
@@ -5541,7 +5539,9 @@ function mcPaths(days) {
 // Rangfolge der heutigen Kairo-Treffer wie „Top-Setups“ im Scanner (Forschung v2.4): erst USA/Europa (getestet), darin
 // schwächeres Vormomentum (Rendite Monat −6…−1) zuerst; übrige Regionen danach. Score/Volatilität waren kein belegtes Merkmal.
 const kmMom = t => { const r = ((data && data.results) || []).find(x => x.ticker === t); return r ? (r.flags || {}).mom61 : null; };
-const kmTested = x => ["us", "europe"].includes(String(x.r || "").toLowerCase());
+const TRADE_REGIONS = ["us", "europe", "asia"];                // Scanner, Kaufbereit, Trade-Plan: USA, Europa und Asien (seit 02.11.2026)
+const inTrade = reg => TRADE_REGIONS.includes(String(reg || "").toLowerCase());
+const kmTested = x => inTrade(x.r);
 function kmRank() {
   const hits = (searchIdx || []).filter(x => x.s === "hit" && !x.ext).map(x => ({ ...x, mom: kmMom(x.t) }))
     .sort((a, b) => (kmTested(b) - kmTested(a)) || ((a.mom ?? 9) - (b.mom ?? 9)));
@@ -6013,7 +6013,7 @@ function einHtml() {
     <div class="note" style="margin:0 2px 10px">Turbos verstärken Gewinne, Verluste und Kosten – zum Lernen erst in der <a href="#" data-gosec="game">Übung</a>. PRIME+: Orders ab 250 € gebührenfrei.</div>
     <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
     ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Kairo-Treffer</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
-      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Treffer · USA/Europa${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}${kmTested(x) ? "" : " · Region nicht getestet"}${i < free ? "" : " · nur bei freiem Platz"}</span>${(r0 => r0 ? kPill(r0) : einTag(x))(data.results.find(y => y.ticker === x.t))}</button>`).join("")}</div>` : ""}`}`;
+      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Treffer${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}${kmTested(x) ? "" : " · Region nicht getestet"}${i < free ? "" : " · nur bei freiem Platz"}</span>${(r0 => r0 ? kPill(r0) : einTag(x))(data.results.find(y => y.ticker === x.t))}</button>`).join("")}</div>` : ""}`}`;
 }
 document.addEventListener("input", e => {
   if (e.target.id === "gQ") { state.gQ = e.target.value; const l = $("gList"); if (l) l.innerHTML = gListHtml(); }
@@ -6127,7 +6127,7 @@ function shadowHtml(sh) {
 function boardItems() {
   const d = h4Data(), its = ((d && d.items) || []).filter(it => h4Real(it) && (it.st !== "weg" || it.base || it.d >= isoDaysAgo(10)));
   const reg = it => String(it.r || (rowOf(it.t) || {}).r || (byTicker(it.t) || {}).region || "").toLowerCase();
-  const tested = it => ["us", "europe"].includes(reg(it));
+  const tested = it => inTrade(reg(it));
   const own = new Set(plansLoad().filter(p => p.st === "open").map(p => p.t));
   const kind = it => own.has(it.t) ? "own" : kmReady(it.t) ? "ready" : kmDone(it.t) ? "late" : it.st === "basis" ? "wait" : "gone";
   const mom = it => it.mom ?? kmMom(it.t);
@@ -6181,13 +6181,13 @@ function boardHtml() {
   html += sec("🟡 Wartet auf Seitwärtsphase", `${B.wait.length} Treffer · bis zu 10 Tage`, B.wait.length ? B.wait.slice(0, 12).map(boardRow).join("") + (B.wait.length > 12 ? `<details class="bd-in"><summary>Alle ${B.wait.length} zeigen</summary>${B.wait.slice(12).map(boardRow).join("")}</details>` : "") : `<div class="bd-empty">Gerade keine.</div>`);
   const rest = [...B.late, ...B.gone];
   if (rest.length) html += `<details class="bd-more"><summary>Kauftag vorbei oder verfallen · ${rest.length}</summary>${rest.map(boardRow).join("")}</details>`;
-  if (B.asia.length) html += `<details class="bd-more"><summary>Asien/Pazifik · ${B.asia.length} · nicht getestet, kein Kaufsignal</summary>${B.asia.map(boardRow).join("")}</details>`;
+  if (B.asia.length) html += `<details class="bd-more"><summary>Sonstige Börsen · ${B.asia.length} · kein Kaufsignal</summary>${B.asia.map(boardRow).join("")}</details>`;
   return `<div class="board">${html}<div class="note" style="margin:8px 2px 0">So arbeitet Kairo (getestet 2008–2026): Treffer = alle 11 Kriterien. Danach bis zu 10 Tage warten, bis der Kurs 5 Tage eng seitwärts läuft (Spanne ≤ 1,5 ATR) – dann Kauf zur nächsten Eröffnung, Stop unter der Seitwärtsphase. Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)} (ändern unter Einstellungen). Keine Anlageberatung.</div></div>`;
 }
 function topSetupsHtml() {
   if (!searchIdx) loadSearch();
   const c = tpCfg();
-  const hits = data.results.filter(r => r.passed && ["us", "europe"].includes(String(r.region || "").toLowerCase()));
+  const hits = data.results.filter(r => r.passed && inTrade(r.region));
   if (!hits.length) return "";
   const m = r => (r.flags || {}).mom61;
   const list = hits.slice().sort(kOrder).slice(0, 8);
@@ -6200,7 +6200,7 @@ function topSetupsHtml() {
       <td><button class="mini-btn" data-open="${esc(r.ticker)}">Chart</button></td></tr>`;
   }).join("");
   return `<div class="hcard" style="margin-bottom:12px">${hHead("Top-Setups heute")}
-    <div class="note">USA und Europa · kaufbereit zuerst, dann schwächeres Vormomentum. Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)}, höchstens so viel, wie frei ist.</div>
+    <div class="note">USA, Europa und Asien · kaufbereit zuerst, dann schwächeres Vormomentum. Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)}, höchstens so viel, wie frei ist.</div>
     <div class="ts-list">${list.map((r, k) => { const p = { entry: r.close, stop: kPlan(r.ticker).stop }, ps = p.stop ? posSize(p.entry, p.stop, r.currency) : null;
       return `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${k + 1}. ${esc(String(r.name || r.ticker).slice(0, 26))}<small>${kPill(r)} ${insChip(r.ticker)} ${tgtChip(r)} ${esc(r.ticker)} · Vormomentum ${m(r) == null ? "–" : sgnPct(m(r), 0)} · Stop ${fmt(p.stop)}</small></span><span class="ts-q">${ps && ps.qty ? `${ps.qty} Stk.<small>${eur2(ps.val)}</small>` : "–"}</span></button>`; }).join("")}</div>
     <div class="tscroll ts-tab" style="margin-top:8px"><table class="ptab ts"><tr><th>#</th><th>Aktie</th><th>Vormomentum</th><th>Einstieg / Stop</th><th>Größe</th><th>Gebühr</th><th></th></tr>${rows}</table></div></div>`;
@@ -6240,7 +6240,7 @@ function render() { wlSeed(); renderMain(); if (data && $("main") && !$("main").
 function renderMain() {
   if (!data) return;
   const hits = data.results.filter(r => r.passed).length, fast = data.results.filter(r => r.fast_hit).length;
-  const nReady = data.results.filter(r => r.passed && ["us", "europe"].includes(String(r.region || "").toLowerCase()) && kSt(r).k === "ready").length;   // Abzeichen = kaufbereite Treffer
+  const nReady = data.results.filter(r => r.passed && inTrade(r.region) && kSt(r).k === "ready").length;   // Abzeichen = kaufbereite Treffer
   $("wlBadge").hidden = !nReady; $("wlBadge").textContent = nReady; $("wlBadge").title = `${nReady} kaufbereit`;
   document.querySelector(".search").hidden = state.sec !== "scanner";
   if (state.sec === "settings") { $("main").innerHTML = settingsHtml(); return; }
