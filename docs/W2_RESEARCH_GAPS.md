@@ -11,7 +11,7 @@ Status: **getestet** (vorab festgelegt, mit Kontrolle und unabhängiger Bestäti
 | Klasse | Varianten | Status | Ergebnis |
 |---|---|---|---|
 | Kurzfristige Einzelaktien-MR (RSI(2), IBS, 3/4 Verlusttage, Z-Score) | A1–A9, A5L, A1L, A6L, W3, W4 | getestet (Hauptdaten) | A5 vorn, nur mit niedrigen Kosten; Rest schwächer |
-| MR mit Kauf-Limit | W1, W2 | getestet + Bestätigung Vorzeit/Asien | W2 je Trade signifikant über Zufallskauf mit gleichem Limit; Depotwerte im alten Engine-Lauf zu optimistisch (siehe Audit F1/F2) |
+| MR mit Kauf-Limit | W1, W2 | getestet + Bestätigung Vorzeit/Asien + Audit | Signal je Trade signifikant über Zufallskauf mit gleichem Limit; nach Audit-Korrektur im Depot schwächer als A5 (Marktorder) und als der Welt-ETF; Stundenkerzen zeigen negative Auswahl bei sicher ausgeführten Limits |
 | Wochen-Verlierer (Short-Term-Reversal) | A7, A7L | getestet | hohe Kostenempfindlichkeit, nicht bestanden |
 | B60 mit anderen Ausstiegen/Basis | B1–B11 | getestet | nicht besser als B60 |
 | ETF-MR | C1 (Index-ETFs), ETF-RSI(2) live | getestet | robust, aber unter Welt-ETF |

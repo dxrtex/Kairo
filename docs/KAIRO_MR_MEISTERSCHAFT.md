@@ -164,3 +164,11 @@ deutlich besser, in Train und Asien nicht → Hinweis, nicht bestanden.
 **Folgerung:** Keine Änderung an B60 oder W2. Zum Vergleich: W2 lag in den unabhängigen Daten +0,38 / +0,45 Punkte vor
 seiner Kontrolle mit p < 0,001 – das bleibt der klar stärkste Befund. RSI-Rücksetzer unter der 200-Tage-Linie und Harami
 werden als Hypothesen notiert (keine Live-Beobachtung nötig, da nicht bestanden).
+
+## 7. Korrektur durch den W2-Audit (02.11.2026)
+
+Die Depotwerte von Welle 3 (§4) und die 90/10-Mischungen mit W1/W2 waren **zu optimistisch**: Die Engine ließ nach einer
+nicht ausgeführten Limit-Order ein schlechter gereihtes Signal nachrücken (Vorgriff), und jede Berührung des Limits galt
+als Kauf. Korrigiert (Reservierung, vorsichtige Ausführung): W2-Depot gesamt +27,7 % → +6,4 % p. a.; 90/10 mit W2 unter
+dem reinen Welt-ETF. Der Signal-Vorteil gegen Zufallskäufe bleibt in allen drei Datensätzen bestehen. Details:
+docs/W2_INDEPENDENT_AUDIT.md, docs/W2_EXECUTION_AND_COSTS.md, docs/W2_FINAL_VERDICT.md.

@@ -53,6 +53,7 @@ REGISTRY = [
      "evidence": "Welle 3: normal Val +47,5 % / Holdout +12,3 % p. a., Stress Val +15,1 % / Holdout −11,3 %; "
                  "90/10 mit ETF: normal +10,5 % statt +8,5 % p. a., Stress +7,9 %; dieselben Daten dreimal ausgewertet → nur Hinweis",
      "next": "Schattentest läuft seit 01.11.2026 (backend/mrshadow.py); Limit-Füllung live prüfen",
+     "audit": "W2-Audit 02.11.2026 (docs/W2_FINAL_VERDICT.md): Signal echt (+0,26/+0,53/+0,50 Pkt. vs. Zufall, p<0,001), Depot nach Korrektur (Reservierung, vorsichtige Ausführung) +6,4 % p. a. < Welt-ETF; Status: nicht ausreichend bestätigt – Schattentest unverändert, kein Echtgeld",
      "confirm": "02.11.2026 unabhängig bestätigt: Vorzeit 1999–2007 und Asien 2008–2026 je Trade +0,38 / +0,45 Prozentpunkte "
                 "besser als Zufallskauf mit gleichem Limit (p < 0,001); Varianten 250-€-Regel, Vortageshoch, Marktbreite nicht besser"},
     {"id": "C1-ETF", "kind": "regel", "stage": "schatten", "since": "2026-11-01",
