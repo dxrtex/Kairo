@@ -1404,6 +1404,20 @@ nav.tabbar .tabs{background:transparent!important;box-shadow:none!important;bord
 #main:has(>.hgrid)>*{order:1}
 #main:has(>.hgrid)>.hcard:has(>.checks){order:3}
 #main:has(>.hgrid)>.hmore{order:2}
+#main:has(>.hgrid)>.kfoot{order:9}
+/* Cockpit: „Heute zu tun“ als wichtigste Karte */
+.hcard.todo-today{border-color:color-mix(in srgb,var(--accent) 38%,var(--line))!important}
+.hcard.todo-today .hh,.hcard.todo-today>.hhead b{font-size:19px}
+.tdo-rule{font-size:12.5px;color:var(--muted);margin:2px 0 4px}
+/* Cockpit-Kennzahlen */
+.pkpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 16px}
+@media (max-width:640px){.pkpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
+.mt.pk{text-align:left;border:1px solid var(--line);background:var(--surface)!important;border-radius:var(--radius);padding:12px 14px;cursor:pointer;color:var(--text);font:inherit;min-height:44px}
+.mt.pk:hover{background:var(--surface-2)!important}
+.mt.pk>span{font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.mt.pk>b{display:flex;align-items:center;gap:8px;font-size:24px;font-weight:700;margin:4px 0 2px;font-variant-numeric:tabular-nums;line-height:1.15}
+.mt.pk>b>i{width:10px;height:10px;border-radius:50%;flex:none}
+.mt.pk>em{display:block;font-style:normal;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 header.hello{margin-bottom:var(--s4)}
 /* Depot: Positionen vor der Verteilungs-Analyse; Aktionen kompakt (Hauptaktion blau, Rest als Textknöpfe) */
 #main:has(.dck){display:flex;flex-direction:column}
@@ -4685,7 +4699,7 @@ function todayHtml() {
   // Postfach: Aufgaben oben, darunter dieselben Karten wie sonst (ohne „Beste Treffer“ – die stehen schon im Postfach)
   if (isPostfach()) return postfachHtml(`${fedBannerHtml()}${startHtml()}${riskHtml()}${etfTeaserHtml()}${depotSnapHtml()}${myStocksHtml()}`, `${marketHtml()}${soonHtml()}${changesHtml()}${bilanzTeaserHtml()}${journalTeaserHtml()}${tgHint}`);
   const more = `${changesHtml()}${journalTeaserHtml()}`;
-  return fedBannerHtml() + (isApple() ? todoHtml() : kpiHtml()) + `${todoTodayHtml()}${startHtml()}<div class="hgrid"><div class="hcol">${topHitsHtml()}${riskHtml()}${myStocksHtml()}${depotSnapHtml()}</div>
+  return fedBannerHtml() + (isPrem() ? "" : isApple() ? todoHtml() : kpiHtml()) + `${todoTodayHtml()}${isPrem() ? pKpiHtml() : ""}${startHtml()}<div class="hgrid"><div class="hcol">${topHitsHtml()}${riskHtml()}${myStocksHtml()}${depotSnapHtml()}</div>
     <div class="hcol">${etfTeaserHtml()}${marketHtml()}${soonHtml()}${bilanzTeaserHtml()}</div></div>
     ${more.trim() ? `<details class="pdet hmore"${state.hMore ? " open" : ""}><summary class="psum"><b>Mehr für heute</b><span class="ptag">Seit dem letzten Scan · Journal</span></summary><div class="hgrid hgrid-more">${more}</div></details>` : ""}`;   // oben: was heute zu tun ist
 }
@@ -4763,11 +4777,11 @@ function todoTodayHtml() {
   const free = kmSlots(), ready = kmRank().hits.filter(x =>   // Seitwärtsphase im 10-Tage-Fenster heute fertig → Kauf zur nächsten Eröffnung
     kmTested(x) && kmReady(x.t) && !plansLoad().some(p => p.st === "open" && p.t === x.t)).slice(0, Math.max(0, free));
   ready.forEach(x => { const pl = kPlan(x.t);
-    buy.push(`<button class="tdo g" data-ein="${esc(x.t)}"><i></i><span><b>${esc(x.n)}</b><small>Seitwärtsphase fertig – Kauf zur nächsten Eröffnung${pl.base ? ` in der Spanne ${fmt(pl.base.lo)}–${fmt(pl.base.hi)} ${esc(x.cur || "")}` : ""} · Stop ${fmt(pl.stop)} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}</small></span><s>›</s></button>`); });
+    buy.push(`<button class="tdo g" data-ein="${esc(x.t)}"><i></i><span><b>${esc(x.n)}</b><small>${isPrem() ? `${pl.base ? `Kaufzone ${fmt(pl.base.lo)}–${fmt(pl.base.hi)} ${esc(x.cur || "")} · ` : ""}Stop ${fmt(pl.stop)} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}` : `Seitwärtsphase fertig – Kauf zur nächsten Eröffnung${pl.base ? ` in der Spanne ${fmt(pl.base.lo)}–${fmt(pl.base.hi)} ${esc(x.cur || "")}` : ""} · Stop ${fmt(pl.stop)} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}`}</small></span><s>›</s></button>`); });
   const n = sell.length + buy.length;
   return `<div class="hcard todo-today">${hHead(`Heute zu tun${n ? ` · ${n}` : ""}`, SEC_LINK("entry"), "Einstieg")}
     ${sell.length ? `<div class="hsub">Deine Trades</div>${sell.join("")}` : ""}
-    ${buy.length ? `<div class="hsub">Kaufkandidaten · ${free} ${free === 1 ? "Platz" : "Plätze"} frei</div>${buy.join("")}` : ""}
+    ${buy.length ? `<div class="hsub">Kaufkandidaten · ${free} ${free === 1 ? "Platz" : "Plätze"} frei</div>${isPrem() ? `<div class="tdo-rule">Seitwärtsphase fertig – Kauf zur nächsten Eröffnung, nur in der Kaufzone</div>` : ""}${buy.join("")}` : ""}
     ${!n ? `<div class="tdo-none"><b>Nichts zu tun ✓</b><span>${watch.length ? `${watch.length} ${watch.length === 1 ? "Trade läuft" : "Trades laufen"} nach Plan. ` : ""}${free ? "Kein Kairo-Treffer mit fertiger Seitwärtsphase." : "Alle Plätze belegt."} Der Sparplan läuft.</span></div>` : ""}
     ${watch.length && n ? `<div class="note" style="margin:8px 0 0">${watch.length} weitere ${watch.length === 1 ? "Trade läuft" : "Trades laufen"} nach Plan.</div>` : ""}</div>`;
 }
@@ -4776,6 +4790,22 @@ function todoTodayHtml() {
 // Markt – echte Korrelationen bräuchten Kursreihen aller Positionen und werden hier nicht behauptet.
 const MKT_OF = t => { const s = String(t).includes(".") ? String(t).split(".").pop() : "";
   return !s ? "USA" : ["DE", "F", "PA", "AS", "MI", "MC", "VI", "BR", "HE", "LS", "IR", "L", "SW", "ST", "OL", "CO", "WA"].includes(s) ? "Europa" : "Asien/sonstige"; };
+// Premium-Cockpit: vier Kennzahlen unter „Heute zu tun“ – nur vorhandene Werte, sonst „–“ mit Grund
+function pKpiHtml() {
+  const B = h4Data() ? boardItems() : null, nReady = B ? B.ready.length : null;
+  const dep = depotLoad(), inv = dep.reduce((a, p) => a + (+p.qty || 0) * (+p.price || 0), 0);
+  const stops = openPlans().map(p => { const r = rowOf(p.t), px = r && r.c; return px && p.stop ? { n: p.n || p.t, d: (px - p.stop) / px } : null; })
+    .filter(Boolean).sort((a, b) => a.d - b.d);
+  const e = getJson("etf.json"), ef = e && e.ok !== false ? (ETF_TONE[e.lv] || ETF_TONE.go) : null;
+  const tile = (attr, l, v, sub, cls = "", dot = "") => `<button class="mt pk" ${attr}><span>${l}</span><b class="${cls}">${dot ? `<i style="background:${dot}"></i>` : ""}${v}</b><em>${sub}</em></button>`;
+  const [eL, eS] = ef ? String(ef[0]).split(" · ") : ["–", ""];
+  return `<div class="pkpis" role="group" aria-label="Kennzahlen heute">
+    ${tile(SEC_LINK("scanner"), "Kaufbereit", nReady == null ? "–" : nReady, nReady == null ? "Liste lädt" : !nReady ? "heute kein Kauf" : nReady > kmSlots() ? `nur ${kmSlots()} ${kmSlots() === 1 ? "Platz" : "Plätze"} frei – Rangfolge im Scanner` : "Kauf zur nächsten Eröffnung", nReady ? "up" : "")}
+    ${tile(SEC_LINK("depot"), "Positionen", dep.length, dep.length ? `${eur(inv)} Kaufwert` : "Depot leer")}
+    ${tile(SEC_LINK("depot"), "Nächster Stop", stops.length ? (stops[0].d <= 0 ? "unter Stop" : pct(stops[0].d, 1)) : "–", stops.length ? `Abstand · ${esc(String(stops[0].n).slice(0, 22))}` : "kein offener Trade-Plan mit Stop", stops.length && stops[0].d < .03 ? "down" : "")}
+    ${tile(SEC_LINK("etf"), "ETF-Ampel", esc(eL), ef ? esc(eS || "") : "noch keine Daten", "", ef ? ef[1] : "")}
+  </div>`;
+}
 function riskModel() {
   const cfg = tpCfg(), pf = pfCfg(), c = etfCfg(), budget = Math.round(c.inv * pf.trade / 100);
   const open = openPlans();                                        // nur der aktive Modus (echt oder Übung)
