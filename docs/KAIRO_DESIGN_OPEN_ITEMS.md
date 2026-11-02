@@ -1,4 +1,34 @@
-# KAIRO Design V4 – Offene Punkte (02.11.2026)
+# KAIRO Design – Offene Punkte (V4 02.11.2026, aktualisiert V5 03.11.2026)
+
+Stand nach V5 zuerst; darunter die V4-Liste mit Status.
+
+
+## V5 – Status der V4-Punkte
+
+| # | Status nach V5 |
+|---|---|
+| O1 Premium als Standard | **Noch offen** – deine Entscheidung nach der Probe auf dem iPad |
+| O2 Echtes Master-Detail | **Implementiert, getestet** (Scanner, ≥ 1024 px) |
+| O3 „0 Stk.“ in jeder Zeile | **Implementiert** – einmal über der Liste, je Zeile nur bei Stückzahl > 0 |
+| O4 „Nichts zu tun“ vs. „Kaufbereit“ | **Nachweisbar verbessert** – die Kachel erklärt jetzt „nur x Plätze frei“; die Logik selbst unverändert |
+| O5/O6 Kontrast und 5 px in Klassisch | **Noch offen** – Klassisch bewusst unverändert |
+| O9 Trefferflächen | **Noch offen** – keine neuen Verstöße (Kapital-Link 32 px), Bestand v. a. Fließtext-Links/Glossar |
+| O10 Messfehler Reiter | **Erledigt** – Prüfstand erkennt den Indikator; dabei echten Fehler gefunden und behoben (Blau auf Blau, dunkel < 1024 px) |
+
+## V5 – neue offene Punkte
+
+| # | Punkt | Warum offen | Vorschlag |
+|---|---|---|---|
+| V1 | **Charts ohne Achsen** im Detail (Mini-Kerzen-SVG): keine Preis-/Datumsachse, keine Tooltips, kein Zoom | Chart wird von `paintChart` gezeichnet (gemeinsame Funktion); Achsen/Tooltips wären eine neue Chart-Funktion, nicht nur Gestaltung | eigenes Paket „Detail-Chart“: Preis-Skala rechts, Datum unten, Stop-/Einstiegslinie beschriftet; großer TradingView-Chart bleibt im Einstieg |
+| V2 | Master-Detail nur im Scanner | „Heute“, „Einstieg“, „Depot“ öffnen Aktien weiter als Fenster | gleiches Muster für Einstieg/Depot prüfen |
+| V3 | Warte-/Verfallen-Zeilen: Kriterienbalken in eigener Zeile | andere Zeilenart (`.bd-row`), nicht im Ziel­umfang | Balken rechts neben den Namen wie bei Kaufbereit |
+| V4 | Tippfehler „Nur 5 Platze frei“ (gemeinsamer Text) | Korrektur würde Klassisch ändern | einzeilige Textkorrektur mit deiner Freigabe |
+| V5 | Bilanz-Ansicht im Prüfstand ohne Daten | `bilanz.json` entsteht nur im echten Abendscan (Live-Signale) | Fixture um eine kleine Bilanz ergänzen |
+| V6 | Messgrundlage synthetisch | github.io/Artefakte aus der Umgebung gesperrt | sobald erreichbar: zusätzlich mit echten Daten fotografieren (`app_smoke.py --fetch`) |
+| V7 | Kein echtes Gerät / kein Safari (WebKit) | Umgebung | **bitte auf dem iPad in Safari ansehen** (Einstellungen → Design → Premium Workspace) |
+| V8 | Ganzseiten-Screenshots zeigen das Filter-Blatt unterhalb des Bildschirms | Effekt der Aufnahme (Blatt liegt außerhalb), im Gerät unsichtbar | Prüfstand: Blatt vor Ganzseiten-Aufnahme ausblenden |
+
+## V4-Liste (Stand 02.11.2026)
 
 ## Noch offen (machbar, bewusst nicht in diesem Schritt)
 
