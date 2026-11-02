@@ -333,27 +333,27 @@ async def run(port: int) -> list[str]:
             if w > vp["width"] + 2:
                 errs.append(f"{name}: Seite breiter als der Bildschirm ({w}px)")
             await ctx.close()
-        # Postfach-Designs (iPad quer): linke Liste und rechter Bereich dürfen sich nie überlappen
-        for des in ("postfach-classic", "postfach", "postfach-aktien"):
+        # Heute (alle Designs, iPad quer): Aufgabenliste da, Spalten überlappen nie, Abhaken/Vorbereiten ohne JS-Fehler
+        for des in ("classic", "postfach-classic", "postfach", "postfach-aktien"):
             for vw, vh in ((1180, 820), (1024, 768)):
                 ctx = await new_ctx(b, viewport={"width": vw, "height": vh})
                 pg = await ctx.new_page()
+                pg.on("pageerror", lambda e, des=des: errs.append(f"Heute {des}: JS-Fehler {e}"))
                 await pg.add_init_script(f"localStorage.setItem('reversal-finder-v1', JSON.stringify({{design: '{des}'}}))")
                 await pg.goto(f"{url}?nosplash=1&sec=today")
                 await pg.wait_for_timeout(2500)
-                for step in ("Liste", "Detail"):
-                    if step == "Detail":
-                        it = await pg.query_selector(".pf-it[data-pf]")
-                        if not it:
-                            break
-                        await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.remove())')
-                        await it.click()
-                        await pg.wait_for_timeout(1200)
-                    r = await pg.evaluate("""() => { const b = s => { const e = document.querySelector(s); return e && e.getBoundingClientRect(); };
-                        const L = b('.pf-list'), R = b('.pf-detail') || b('.pf-right');
-                        return { ov: !!(L && R && R.left > L.left + 10 && R.left < L.right + 4), sw: document.documentElement.scrollWidth }; }""")
-                    if r["ov"] or r["sw"] > vw + 2:
-                        errs.append(f"{des} {vw}px ({step}): Bereiche überlappen oder Seite zu breit ({r})")
+                await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.remove())')
+                if not await pg.query_selector(".tasks"):
+                    errs.append(f"Heute {des} {vw}px: Aufgabenliste fehlt")
+                for sel in ("[data-hdone]", ".tq-prep > summary"):
+                    el = await pg.query_selector(sel)
+                    if el:
+                        await el.click()
+                        await pg.wait_for_timeout(400)
+                r = await pg.evaluate("""() => { const c = [...document.querySelectorAll('.tgrid > .hcol')].map(e => e.getBoundingClientRect());
+                    return { ov: c.length === 2 && c[1].left < c[0].right - 2 && c[1].top < c[0].bottom, sw: document.documentElement.scrollWidth }; }""")
+                if r["ov"] or r["sw"] > vw + 2:
+                    errs.append(f"Heute {des} {vw}px: Spalten überlappen oder Seite zu breit ({r})")
                 await ctx.close()
         # Übung (Broker): Spiel starten, alle drei Reiter, Order-Ticket öffnen und prüfen lassen – jeder JS-Fehler zählt
         ctx = await new_ctx(b, viewport={"width": 820, "height": 1180})
