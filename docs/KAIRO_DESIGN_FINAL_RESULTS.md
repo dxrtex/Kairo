@@ -237,3 +237,57 @@ die Prüfung auf dem echten iPad in Safari.
 | Premium Hell | Implementiert · Getestet · Nachweisbar verbessert |
 | Übrige Ansichten | Getestet (Kalender, Einstellungen, Depot verbessert) |
 | Safari/echtes Gerät | Nicht möglich |
+
+---
+
+## 13. V6 „Mission 10/10“ (03.11.2026)
+
+Branch `claude/design-v6` auf main (nach Merge von #360). Gleiche feste Daten und gleicher Prüfstand wie V5.
+
+### Was dazukam
+| Bereich | Änderung | Status |
+|---|---|---|
+| Detail-Chart | Fadenkreuz mit Datum, Eröffnung/Hoch/Tief/Schluss und Tagesveränderung (Maus, Finger waagerecht, Tastatur ← →, Esc schließt nur den Tooltip); Zeitraum **3 M / 6 M / 1 J** (gespeichert); Knöpfe 32 px unter der Datumsachse | Implementiert · Getestet |
+| Master-Detail | **↑/↓ blättert** durch die Liste (Detail, Markierung, Chart folgen; nicht in Eingabefeldern/Chart); Leerzustand mit **Übersicht** (kaufbereit / wartend / verfallen) und Knopf „Erste kaufbereite Aktie öffnen“ | Implementiert · Getestet |
+| Heute | „Top-Setups“ wiederholen die Kaufkandidaten nicht mehr → „Weitere Setups“; Kennzahlen-Unterzeilen umbrechen statt abschneiden; iPhone: ab dem 4. Kaufkandidaten einklappbar | Implementiert · Getestet · Nachweisbar verbessert |
+| Text | „Nur 5 Platze frei“ → „Plätze“ (gemeinsamer Text) | Behoben |
+| Prüfstand | geschlossene Seitenblätter in Ganzseiten-Aufnahmen ausgeblendet | Behoben |
+
+### Messwerte V5 → V6 (35 Kombinationen je Design)
+Unverändert auf Zielniveau: iPad quer erste Aktie 290 px, Zeile 85 px, 6 Zeilen, Master-Detail; iPhone erste Aktie 483–607 px,
+Zeile 112 px; Überbreite 0, Kontrast 0, Text < 11 px 0, Trefferflächen 198 (keine neuen), JS-Fehler 0 – in Dunkel und Hell.
+Heute iPhone Scrollhöhe 4,69 → 4,60.
+
+### Tests
+| Test | Ergebnis |
+|---|---|
+| Master-Detail-Verhaltenstest (jetzt 17 Schritte inkl. ↑/↓) + Klassisch unverändert | **18/18 bestanden**, keine JS-Fehler (das frühere `closeBrief`-Artefakt kam vom Testskript, das `.bmodal` entfernte – korrigiert) |
+| Chart: Fadenkreuz Maus, Tastatur ←/→, Esc, Zeitraum 1 J (251 Kerzen) | bestanden |
+| `tools/app_smoke.py` | bestanden |
+| `pytest backend/tests` | 199 bestanden |
+
+Bilder: `docs/design/v6/` (Chart mit Fadenkreuz iPad/iPhone, Leerzustand Hell, Heute iPhone).
+
+### Bewertung V6 (gleiche Gewichtung)
+| Bereich | Gewicht | V5 | **V6** | Begründung |
+|---|---|---|---|---|
+| iPad-Layout und Flächennutzung | 25 % | 93 | **96** | Leerzustand nutzt die Fläche (Übersicht + Direktstart) |
+| Bedienbarkeit und Abläufe | 25 % | 90 | **96** | interaktiver Chart mit Zeitraum, ↑/↓, Esc-Logik, 18/18 Verhaltensprüfungen |
+| Visuelle Qualität und Konsistenz | 20 % | 89 | **94** | keine Doppelungen auf Heute, keine abgeschnittenen Texte, Tippfehler behoben |
+| iPhone | 15 % | 88 | **93** | Kennzahlen früher sichtbar, Chart-Fadenkreuz per Finger |
+| Accessibility, Leistung, Technik | 15 % | 89 | **92** | alle Messungen 0, Tastatur für Liste und Chart; **kein Safari-/Gerätetest möglich**, synthetische Daten |
+| **Gesamt** | | 90,0 | **94,6 / 100** | |
+
+| Ansicht | V5 | **V6** |
+|---|---|---|
+| iPad quer | 9,3 | **9,7** |
+| iPad hochkant | 8,8 | **9,2** |
+| iPhone | 8,8 | **9,3** |
+| Desktop | 9,1 | **9,6** |
+| Premium Hell | 9,0 | **9,5** |
+| **Gesamt** | 9,0 | **9,5 / 10** |
+
+**Warum (noch) keine 10:** Alles, was sich in dieser Umgebung messen und testen lässt, ist auf Zielniveau. Für eine ehrliche 10
+fehlt der Nachweis auf dem **echten iPad in Safari** (Touch-Gesten, Safe Area, Schriftglättung) und mit **echten Scan-Daten**.
+Beides ist hier gesperrt (WebKit-Download, github.io). Die übrigen Punkte (Master-Detail nur im Scanner, Kurs statt Balken rechts
+in Warte-Zeilen) sind bewusste Entscheidungen, keine Mängel.
