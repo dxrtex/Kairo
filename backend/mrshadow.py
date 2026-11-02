@@ -207,6 +207,8 @@ def depot_sim(book: dict, data: dict) -> None:
                 closed.setdefault(f"{rule}|{m}|{t['t']}|{t['buy']}", t)                 # einmal geschrieben, nie geändert
             if m in ("opt", "kons"):
                 for e in r["events"]:
+                    if e["ev"] == "kein_platz":                   # steht in den Zählern – hält das Log klein
+                        continue
                     k = (rule, m, e["d"], e["ev"], e["t"])
                     if k not in seen:
                         log.append({"rule": rule, "m": m, "logged": book.get("updated") or e["d"], **e})
