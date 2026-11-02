@@ -104,3 +104,30 @@ Schattentest auf neuen Daten.
 - W2 läuft ab 01.11.2026 zusätzlich im Schattentest (backend/mrshadow.py), neben A5, ETF-RSI(2) und E2.
 - Echtgeld frühestens nach ~3 Monaten Schattentest, und nur wenn die Limit-Füllung live funktioniert und die echten Kosten
   unter ~0,08 % je Seite liegen. Dann höchstens als 10-%-Satellit.
+
+## 5. Bestätigung auf unabhängigen Daten (mrcf-41398101459, 02.11.2026)
+
+Vorab festgelegt in `research/reversal/mrconfirm.py`. Daten, die A5/W2 nie gesehen haben: USA/Europa **1999–2007**
+(1.727 Aktien) und **Asien 2008–2026** (2.756 Aktien). Weil beide Universen von heute aus gewählt sind (Überlebens-Verzerrung),
+zählt der Abstand zu einer **Zufalls-Kontrolle** mit demselben Fehler: zufälliger Kauf an einem Tag im Aufwärtstrend, gleicher
+Ausstieg – für W2 zusätzlich mit demselben Kauf-Limit. Gegenprobe auf Zufallskursen: kein Scheinvorteil (p 0,32).
+
+| | Vorzeit: Brutto je Trade | Asien: Brutto je Trade | Vorzeit: Depot 0,10 % / 0,25 % je Seite | Asien: Depot 0,10 % / 0,25 % |
+|---|---|---|---|---|
+| **W2** (A5 + Kauf-Limit) | **+0,9 %** | **+0,8 %** | +39 % / +23 % p. a. (Rückgang −17 %) | +29 % / +15 % (−41 %) |
+| A5 | +0,6 % | +0,5 % | +43 % / +16 % (−24 %) | +37 % / +13 % (−52 %) |
+| Kontrolle mit Limit | +0,6 % | +0,4 % | +19 % / +1 % | +5 % / −10 % |
+| Kontrolle ohne Limit | +0,3 % | +0,2 % | +9 % / −26 % | −4 % / −36 % |
+| Universum kaufen und halten | | | +22 % p. a. | +17 % p. a. |
+
+- **W2 gegen Kontrolle mit Limit:** +0,38 bzw. +0,45 Prozentpunkte je Trade, p < 0,001 in beiden Datensätzen → **bestätigt**.
+- **A5 gegen Kontrolle:** +0,35 bzw. +0,30 Prozentpunkte, p < 0,001 → **bestätigt**.
+- **W2 gegen A5:** je Trade +0,3 Prozentpunkte besser und kleinere Rückgänge; bei höheren Kosten (0,25 %) auch im Depot besser.
+- Die absoluten Renditen sind durch die Überlebens-Verzerrung geschönt (schon „kaufen und halten“ bringt +17–22 % p. a.) –
+  aussagekräftig ist nur der Abstand zur Kontrolle.
+- W2-250, W2 mit Vortageshoch-Ausstieg, W2 mit Marktbreite-Filter: **nicht besser** → W2 bleibt unverändert.
+- Einschränkung: Ausführung des Limits bei Berührung des Tagestiefs (eher optimistisch); Kosten pauschal je Seite.
+
+**Folgerung:** Der Effekt „3 Verlusttage im Aufwärtstrend, mit Limit kaufen“ ist kein Zufallsfund aus einem Datensatz – er
+besteht in drei unabhängigen Märkten/Zeiträumen. Die offene Frage ist allein die Umsetzung: echte Limit-Ausführung und echte
+Kosten bei Scalable. Genau das misst der Schattentest.
