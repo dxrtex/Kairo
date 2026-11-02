@@ -88,3 +88,14 @@ def test_learn_finds_filter_candidate_and_lists_losers():
     assert L["losers"] and "Fall der 3 Tage größer als 2 ATR" in L["losers"][0]["f"]
     s = M.signal_today(_df([119, 118, 117]), "A5")
     assert set(s["f"]) >= {"extrem", "tief", "unruhig"}
+
+
+def test_only_strongest_signals_per_day_are_stored():
+    data = {f"X{k}": _df([119, 118, 117 - 0.1 * k]) for k in range(15)}               # 15 Signale am selben Tag
+    rows = [{"ticker": t, "region": "us"} for t in data]
+    today = str(next(iter(data.values())).index[-1].date())
+    book = M.step({}, rows, data, None, today)
+    a5 = [x for x in book["items"].values() if x["rule"] == "A5"]
+    assert len(a5) == M.MAX_DAY and book["signals_today"] == 15
+    kept = {x["t"] for x in a5}
+    assert "X14" in kept and "X0" not in kept                                          # tiefster Fall = niedrigster RSI(2)

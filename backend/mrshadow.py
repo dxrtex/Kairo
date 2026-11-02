@@ -26,6 +26,7 @@ FEAT = {"tief": "Fall der 3 Tage größer als 2 ATR", "extrem": "RSI(2) unter 5"
         "markt_rot": "Markt der Region unter der 200-Tage-Linie", "luecke": "Eröffnung am Kauftag mehr als 1 % unter dem Signal-Schluss"}
 INDEX = {"us": "^GSPC", "europe": "^STOXX", "eu": "^STOXX"}
 MIN_N, FDR_Q = 10, 0.10
+MAX_DAY = 10                         # je Tag nur die 10 stärksten Aktien-Signale speichern (Depot kauft höchstens 5)
 ETFS = ("XLK", "XLF", "XLV", "XLY", "XLP", "XLE", "XLI", "XLB", "XLU", "XLRE", "XLC")
 
 
@@ -111,6 +112,7 @@ def step(book: dict, rows: list[dict], data: dict, ctx: dict | None, today: str,
                 red[reg] = bool(ci.iloc[-1] < ci.iloc[-200:].mean()) if len(ci) >= 200 else None
             except Exception:
                 red[reg] = None
+        new = []
         for t, df in data.items():
             if region.get(t) not in ("us", "europe", "eu") or df is None:
                 continue
@@ -118,9 +120,12 @@ def step(book: dict, rows: list[dict], data: dict, ctx: dict | None, today: str,
             if s and s["d"] >= book["start"]:
                 if red.get(region.get(t)) is not None:
                     s["f"]["markt_rot"] = red[region.get(t)]
-                items.setdefault(f"A5|{t}|{s['d']}", {"rule": "A5", "t": t, **s})
-                if s.get("lim"):
-                    items.setdefault(f"W2|{t}|{s['d']}", {"rule": "W2", "t": t, **s})
+                new.append((t, s))
+        book["signals_today"] = len(new)
+        for t, s in sorted(new, key=lambda x: x[1]["rsi2"])[:MAX_DAY]:   # Rangfolge wie im Depot: niedrigster RSI(2) zuerst
+            items.setdefault(f"A5|{t}|{s['d']}", {"rule": "A5", "t": t, **s})
+            if s.get("lim"):
+                items.setdefault(f"W2|{t}|{s['d']}", {"rule": "W2", "t": t, **s})
         for t in ETFS:
             df = (ctx or {}).get(t)
             if df is None:
