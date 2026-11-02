@@ -1417,6 +1417,107 @@ header.hello{margin-bottom:var(--s4)}
 /* Flächen mit weißer Schrift: dunkleres Kairo-Blau (#0A84FF + Weiß = 3,65:1 < WCAG AA 4,5:1; #0066CC = 5,6:1). Linien, Links, Logo bleiben #0A84FF */
 :root{--accent-fill:#0066cc}
 .btn:not(.ghost):not(.danger),.top,.opt.on,.subnav button.on,.vseg button.on,.kchip.on,.tab-ind,.tab .badge,.mc.today .dn,.tp2-lev i{background:var(--accent-fill)!important;border-color:var(--accent-fill)!important;color:#fff!important}
+/* ===== V5: Scanner-Zeile kompakt (alle Größen) =====
+   Zeile: Rang · Name · Symbol/Treffer/Vormomentum · Kaufzone · Stop · 11 Kriterien als Segmentbalken (✓ grün, ✗ rot, Name im Tooltip).
+   „nächste Eröffnung“ und „Ausstieg“ sind für alle Zeilen gleich → einmal im Kopf der Liste (.bd-rule); Stückzahl 0 ebenfalls dort. */
+.bd-rule{display:flex;flex-wrap:wrap;gap:2px 14px;margin:0 0 4px;padding:0 2px 6px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted);line-height:1.4}
+.bd-rule .bd-cap{color:var(--text)}.bd-rule .bd-cap::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gold);margin-right:6px;vertical-align:1px}
+.bd-rule a{color:var(--accent);font-weight:600;text-decoration:none}
+.bd-card.ready{position:relative;display:grid!important;grid-template-columns:minmax(0,1fr);grid-template-areas:"h" "p";column-gap:12px;row-gap:2px;align-items:center;padding:9px 6px 9px 4px!important;border-radius:var(--r-sm)}
+.bd-card.ready>.bd-h{grid-area:h;min-height:0;padding:0!important}
+.bd-card.ready>.bd-plan{grid-area:p;display:flex!important;flex-wrap:wrap;gap:2px 14px;padding-left:34px;margin:0!important;background:none!important}
+.bd-card.ready>.bd-crit{position:absolute;top:10px;right:6px;margin:0!important}
+.bd-card.ready .bd-h .bd-n b{max-width:calc(100% - 112px)}
+.bd-card.ready .bd-h{width:100%;display:flex;align-items:flex-start;gap:10px}
+.bd-card.ready>.bd-h>s{display:none}
+.bd-card.ready{cursor:pointer}.bd-card.ready:hover{background:var(--surface-2)}
+.bd-card.ready .bd-plan{flex-wrap:nowrap!important;overflow:hidden}
+.bd-card.ready .bd-plan>div{display:flex;align-items:baseline;gap:6px;padding:0!important;background:none!important;border:0!important;min-height:0!important;flex:none}
+.bd-card.ready .bd-plan>div>b,.bd-card.ready .bd-plan>div>em{display:none!important}
+.bd-card.ready .bd-plan>div:nth-child(2)>b{display:inline!important;font-size:13px;font-weight:650}
+.bd-card.ready .bd-plan>div:nth-child(4),.bd-card.ready .bd-plan>div.pq0{display:none!important}
+.bd-card.ready .bd-plan>div:nth-child(3):not(.pq0)>b{display:inline!important;font-size:13.5px}
+.bd-card.ready .bd-plan span{font-size:11.5px!important;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)!important;font-weight:600}
+.bd-card.ready .bd-plan{gap:2px 12px!important}
+.bd-card.ready .bd-plan .pz{font-style:normal;font-size:13px;font-weight:650;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.bd-card.ready .bd-plan>div:nth-child(2) .pz{font-weight:500;color:var(--muted);font-size:12.5px}
+.bd-card.ready .bd-h .bd-n b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.bd-card.ready .bd-h .bd-n small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+.bd-card.ready .bd-h .bd-n{min-width:0;flex:1}
+/* Kriterien als Segmentbalken + Zähler (per CSS-Zähler, keine Logik) */
+.bd-crit{counter-reset:kok;display:flex!important;align-items:center;gap:2px!important;flex-wrap:nowrap!important}
+.bd-crit>span.ok,.bd-crit>span.miss{counter-increment:kok 0;font-size:0!important;width:5px;height:12px;padding:0!important;border-radius:2px!important;border:0!important;background:var(--up)!important;flex:none}
+.bd-crit>span.ok{counter-increment:kok 1}
+.bd-crit>span.miss{background:var(--red)!important}
+.bd-crit:has(>span.ok,>span.miss)::after{content:counter(kok) "/11";order:-1;margin-right:6px;font-size:12.5px;font-weight:650;color:var(--text);font-variant-numeric:tabular-nums}
+.bd-crit>span.muted{font-size:12px}
+/* Erklärung der Ansicht: einzeilig aufklappbar (Inhalt bleibt vollständig) */
+details.vdesc.pv{font-size:var(--t-sm);color:var(--muted);margin:6px 2px 0;padding-right:96px}
+details.vdesc.pv>summary{cursor:pointer;list-style:none;min-height:32px;display:flex;align-items:center;gap:6px;color:var(--accent);font-weight:600}
+details.vdesc.pv>summary::-webkit-details-marker{display:none}
+details.vdesc.pv>summary::before{content:"ⓘ";font-weight:400}
+details.vdesc.pv[open]{padding-right:0}details.vdesc.pv[open]>summary{margin-bottom:4px}
+.kbar{margin-top:-36px!important;justify-content:flex-end;pointer-events:none;position:relative}.kbar>*{pointer-events:auto}
+details.vdesc.pv[open]+.kbar{margin-top:6px!important}
+.vseg button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px}.vseg button small{display:inline!important;margin:0!important}
+/* Scanner-Werkzeugzeile: ⓘ Erklärung · Aktualisieren · Filter in einer Zeile; „Stand …“ nur ausgeblendet,
+   wenn es dieselbe Zeit wie „Scan …“ im Kopf zeigt (kein Teil-Scan, kein laufender Scan, keine Meldung) */
+#main:has(>.scanbar){display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:8px;align-items:center}
+#main:has(>.scanbar)>*{grid-column:1/-1;min-width:0}
+#main:has(>.scanbar)>details.vdesc{grid-row:1;grid-column:1;margin:0!important;padding:0!important}
+#main:has(>.scanbar)>.scanbar{grid-row:1;grid-column:2;margin:0!important;justify-content:flex-end}
+#main:has(>.scanbar)>.kbar{grid-row:1;grid-column:3;margin:0!important;pointer-events:auto}
+#main:has(>.scanbar)>.vseg{grid-row:2;margin:6px 0 4px!important}
+#main:has(>.scanbar)>details.vdesc[open]{grid-row:3;grid-column:1/-1;margin:2px 0 6px!important}
+.scanbar .sb-plain{display:none}
+details.vdesc.pv:not([open])>summary{font-size:0;width:36px;height:36px;justify-content:center;border-radius:50%}
+details.vdesc.pv:not([open])>summary::before{font-size:19px}
+@media (max-width:640px){
+  .bd-card.ready .bd-plan{flex-wrap:wrap!important;padding-left:34px}
+  .bd-card.ready .bd-h .bd-n small{white-space:normal!important;font-size:12px!important}
+  .bd-card.ready .bd-h .bd-n b{max-width:calc(100% - 116px)}
+  .bd-sec{padding:10px 8px!important}
+}
+/* Warte-/Verfallen-Zeilen gleich kompakt */
+.bd-row{padding-top:8px!important;padding-bottom:8px!important}
+.bd-row .bd-n small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+/* ausgewählte Aktie (Master-Detail) */
+.md-sel{background:color-mix(in srgb,var(--accent) 12%,var(--surface))!important;box-shadow:inset 3px 0 0 var(--accent)}
+
+@media (min-width:1024px){header.hello .gear[data-gosec="settings"]{display:none!important}}
+/* ===== V5: Master-Detail im Scanner ab 1024 px (body.md, gesetzt von mdSync nur im Premium-Scanner) ===== */
+:root{--sb:84px}
+@media (min-width:1280px){:root{--sb:224px}}
+@media (min-width:1024px){
+  body.md{--md-w:clamp(520px,calc((100vw - var(--sb)) * .58),900px)}
+  body.md .wrap{margin-right:var(--md-w)!important;max-width:none!important;padding-right:20px!important}
+  body.md .cmodal{display:flex!important;position:fixed;top:0;bottom:0;right:0;left:auto;width:var(--md-w);padding:0!important;z-index:40;background:var(--bg);border-left:1px solid var(--line);overflow:hidden}
+  body.md .cm-back{display:none!important}
+  body.md .cm-box{position:static!important;width:100%!important;max-width:none!important;height:100%!important;max-height:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;transform:none!important;animation:none!important;overflow-y:auto;overscroll-behavior:contain;padding:calc(env(safe-area-inset-top) + 20px) 22px 32px!important;background:var(--bg)!important}
+  body.md .cm-x{top:14px!important;right:14px!important}
+  body.md #cardModalBody .card-top{padding-right:46px}
+  body.md #cardModalBody article.card{border:0!important;background:none!important;padding:0!important}
+  body.md .md-empty{height:calc(100vh - 80px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;color:var(--muted);padding:0 40px}
+  body.md .md-empty svg{width:44px;height:44px;color:var(--accent);opacity:.8;margin-bottom:6px}
+  body.md .md-empty b{font-size:var(--t-lg);color:var(--text)}
+  body.md .md-empty span{max-width:320px;font-size:var(--t-sm);line-height:1.45}
+  body.md:not(.card-open) .cm-x{display:none}
+  /* schmale Liste: Kopf und Werkzeuge einspaltig */
+  body.md .scanbar{justify-content:space-between}
+  body.md .vdesc{padding-right:0}
+  body.md .vseg button{font-size:14px;min-height:40px}
+  body.md #greet{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}   /* Titel bleibt für Screenreader; Seitenleiste zeigt „Scanner“ */
+  body.md header.hello{padding-top:calc(env(safe-area-inset-top) + 14px)!important;margin-bottom:8px!important;align-items:center}
+  body.md #sub{margin:0!important;font-size:12.5px}
+  body.md .search{margin-bottom:8px!important}body.md .search input{height:44px!important;min-height:0!important}
+  body.md .wrap{padding-top:6px!important}
+  body.md header.hello{padding-top:calc(env(safe-area-inset-top) + 8px)!important}
+  /* eine Werkzeugzeile: ⓘ Erklärung · Aktualisieren · Filter; „Stand …“ nur ausgeblendet, wenn es der Scan-Zeit im Kopf entspricht */
+
+  body.md .vseg{margin-bottom:4px!important}
+  body.md .bd-sec.ok{border:0!important;background:none!important;padding:4px 0 0!important}
+  body.md .board>.bd-sec:not(.ok){margin-top:14px}
+}
 /* Filter-Knopf neben die Beschreibung statt eigener Zeile */
 @media (min-width:1024px){.kbar .kchip{min-height:30px;padding:4px 14px}.vseg{margin-bottom:6px}.kbar{margin-top:-36px;justify-content:flex-end;pointer-events:none}.kbar>*{pointer-events:auto}.vdesc{padding-right:110px}}
 /* Telefon: kompakter Kopf, große Trefferflächen */
@@ -1620,7 +1721,7 @@ function scanBarHtml() {
   const since = active && run.created_at ? new Date(run.created_at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
   const w = active && /scan_watch/.test(run.path || ""), dt = x => x.toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const full = data && data.full_at ? new Date(data.full_at) : null;
-  return `<div class="scanbar"><span class="muted">${full && !isNaN(full) && g ? `Alle ${dt(full)} · Watchlist ${dt(g)}` : `Stand ${g && !isNaN(g) ? dt(g) : "–"}`}${active ? ` · <b>${w ? "Watchlist-Scan" : "Scan"} läuft seit ${since}</b> (${w ? "ca. 5–10" : "ca. 45–60"} Min.)` : ""}${SCAN.msg && !active ? ` · ${esc(SCAN.msg)}` : ""}</span>
+  return `<div class="scanbar"><span class="muted${!(full && !isNaN(full) && g) && !active && !(SCAN.msg && !active) ? " sb-plain" : ""}">${full && !isNaN(full) && g ? `Alle ${dt(full)} · Watchlist ${dt(g)}` : `Stand ${g && !isNaN(g) ? dt(g) : "–"}`}${active ? ` · <b>${w ? "Watchlist-Scan" : "Scan"} läuft seit ${since}</b> (${w ? "ca. 5–10" : "ca. 45–60"} Min.)` : ""}${SCAN.msg && !active ? ` · ${esc(SCAN.msg)}` : ""}</span>
     <span class="row-actions" style="margin:0"><button class="btn ghost sm" data-scanstart="watch"${active ? " disabled" : ""}>↻ Watchlist</button><button class="btn ghost sm" data-scanstart="all"${active ? " disabled" : ""}>${active ? "Scan läuft …" : "↻ Alle"}</button></span></div>`;
 }
 const nf = (d = 2) => new Intl.NumberFormat("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -1857,12 +1958,28 @@ function openCard(t) {
   if (!searchIdx) Promise.resolve(loadSearch()).then(() => { if (document.body.classList.contains("card-open") && $("cardModalBody").querySelector(`[data-mini="${CSS.escape(t)}"]`)) openCard(t); });
   $("cardModalBody").innerHTML = card(r);
   document.body.classList.add("card-open");
+  if (document.body.classList.contains("md")) { mdTicker = t; mdSync(); $("cardModalBody").closest(".cm-box").scrollTop = 0; }
   document.querySelectorAll(".aitem").forEach(x => x.classList.toggle("sel", x.dataset.card === t));
   const el = $("cardModalBody").querySelector("[data-mini]");
   if (el) loadChart(t).then(c => paintChart(el, c, r)).catch(() => { delete chartCache[t];
     el.innerHTML = `<div class="chart-miss">Chart gerade nicht verfügbar <a href="${tvUrl(t)}" target="_blank" rel="noopener">in TradingView öffnen ›</a></div>`; });
 }
-function closeCard() { document.body.classList.remove("card-open"); document.querySelectorAll(".aitem.sel").forEach(x => x.classList.remove("sel")); }
+function closeCard() { document.body.classList.remove("card-open"); document.querySelectorAll(".aitem.sel").forEach(x => x.classList.remove("sel")); if (document.body.classList.contains("md")) mdSync(); }
+// Premium Workspace: Master-Detail im Scanner ab 1024 px – Liste links, Detail rechts (gleiches #cardModalBody, kein Overlay).
+// Greift nur bei state.design premium/premium-hell; alle anderen Designs und Größen behalten das Fenster.
+const isPrem = () => String(state.design || "").startsWith("premium");
+let mdTicker = null;
+function mdSync() {
+  const on = isPrem() && state.sec === "scanner" && innerWidth >= 1024, b = document.body, was = b.classList.contains("md");
+  b.classList.toggle("md", on);
+  if (!on) { if (was) { mdTicker = null; b.classList.remove("card-open"); $("cardModalBody").innerHTML = ""; } return; }
+  if (!b.classList.contains("card-open")) {
+    mdTicker = null;
+    if (!$("cardModalBody").querySelector(".md-empty")) $("cardModalBody").innerHTML = `<div class="md-empty" role="status"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l5-5 4 4 8-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><b>Aktie wählen</b><span>Links eine Aktie antippen – Chart, Kriterien und Trade-Plan erscheinen hier, die Liste bleibt stehen.</span></div>`;
+  }
+  document.querySelectorAll("#main [data-card]").forEach(x => { const row = x.closest(".bd-card, .bd-row, .aitem, tr") || x; row.classList.toggle("md-sel", !!mdTicker && x.dataset.card === mdTicker); if (row !== x) x.setAttribute("aria-current", mdTicker && x.dataset.card === mdTicker ? "true" : "false"); });
+}
+addEventListener("resize", () => { if (isPrem()) mdSync(); });
 (() => {   // Apple-Look: Sheet nach unten wischen schließt die Übersicht (nur iPhone / iPad hochkant)
   let y0 = null, box = null;
   document.addEventListener("touchstart", e => { if (!isApple() || innerWidth >= 1100) return; const b = e.target.closest(".cm-box"); if (!b || b.scrollTop > 0) return; y0 = e.touches[0].clientY; box = b; }, { passive: true });
@@ -6292,9 +6409,9 @@ function boardCard(it, rank) {
   return `<div class="bd-card ready">
     <button class="bd-h" ${open}><span class="bd-rk">${rank}</span><span class="bd-n"><b>${name}</b><small>${esc(it.t)}${sr.sec ? " · " + esc(sr.sec) : ""} · Treffer ${dateDE(it.d)}${mo != null ? ` · Vormomentum ${sgnPct(mo, 0)}` : ""}</small></span><s>›</s></button>
     <div class="bd-plan">
-      <div><span>Kauf</span><b>nächste Eröffnung</b><em>nur zwischen ${fmt(b.lo)} und ${fmt(b.hi)} ${esc(cur)}</em></div>
-      <div><span>Stop</span><b class="down">${fmt(b.sl)} ${esc(cur)}</b><em>${last && b.sl ? `${pct((last - b.sl) / last, 1)} unter dem Kurs` : ""}</em></div>
-      <div><span>Größe</span><b>${qTxt}</b><em>${qSub}</em></div>
+      <div><span>Kauf</span><b>nächste Eröffnung</b><em>nur zwischen ${fmt(b.lo)} und ${fmt(b.hi)} ${esc(cur)}</em>${isPrem() ? `<i class="pz">${fmt(b.lo)}–${fmt(b.hi)} ${esc(cur)}</i>` : ""}</div>
+      <div><span>Stop</span><b class="down">${fmt(b.sl)} ${esc(cur)}</b><em>${last && b.sl ? `${pct((last - b.sl) / last, 1)} unter dem Kurs` : ""}</em>${isPrem() && last && b.sl ? `<i class="pz">−${pct((last - b.sl) / last, 1)}</i>` : ""}</div>
+      <div class="${isPrem() && qTxt === "0 Stk." ? "pq0" : ""}"><span>Größe</span><b>${qTxt}</b><em>${qSub}</em></div>
       <div><span>Ausstieg</span><b>Stop oder EMA 20</b><em>ab Tag ${H4X.from} Schluss darunter, spätestens Tag ${KMAX.hold}</em></div>
     </div>
     ${critLine(it.t)}
@@ -6317,7 +6434,10 @@ function boardHtml() {
   const ready = B.ready.length
     ? B.ready.map((it, i) => boardCard(it, i + 1)).join("") + (B.ready.length > free ? `<div class="note" style="margin:6px 2px 0">${free ? `Nur ${free} Platz${free === 1 ? "" : "e"} frei (höchstens ${c.maxOpen} Trades) – die ersten ${free} zuerst` : `Alle ${c.maxOpen} Plätze belegt – heute kein neuer Kauf`}. Rangfolge: schwächeres Vormomentum zuerst (im Test besser).</div>` : "")
     : `<div class="bd-empty">Heute ist kein Treffer kaufbereit. Sobald die Seitwärtsphase eines Treffers fertig ist, steht er hier – und du bekommst eine Mitteilung.</div>`;
-  let html = sec("🟢 Kaufbereit", `${B.ready.length} · Kauf zur nächsten Eröffnung`, ready, "ok");
+  const pHint = isPrem() && B.ready.length ? (() => { const ps = B.ready.map(it => { const sr = rowOf(it.t) || {}, r = byTicker(it.t) || {}, b = it.base || {}; return posSize(sr.c ?? r.close, b.sl, it.cur || sr.cur || r.currency || ""); }).filter(Boolean);
+      const none = ps.length && ps.every(p => !p.qty);
+      return `<div class="bd-rule"><span>Ausstieg: Stop oder EMA 20 (ab Tag ${H4X.from}, spätestens Tag ${KMAX.hold})</span>${none ? `<span class="bd-cap">Kein freies Kapital (${eur(ps[0].free)} frei) → Stückzahl 0 · <a href="#" data-gosec="settings">Einstellen ›</a></span>` : ""}</div>`; })() : "";
+  let html = sec("🟢 Kaufbereit", `${B.ready.length} · Kauf zur nächsten Eröffnung`, pHint + ready, "ok");
   if (B.own.length) html += sec("Im Depot", `${B.own.length}`, B.own.map(boardRow).join(""));
   html += sec("🟡 Wartet auf Seitwärtsphase", `${B.wait.length} Treffer · bis zu 10 Tage`, B.wait.length ? B.wait.slice(0, 12).map(boardRow).join("") + (B.wait.length > 12 ? `<details class="bd-in"><summary>Alle ${B.wait.length} zeigen</summary>${B.wait.slice(12).map(boardRow).join("")}</details>` : "") : `<div class="bd-empty">Gerade keine.</div>`);
   const rest = [...B.late, ...B.gone];
@@ -6377,7 +6497,7 @@ function clampNotes() {                          // lange Hinweise auf 3 Zeilen 
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-notemore]"); if (!b) return;
   const n = b.previousElementSibling; if (!n) return; const open = n.classList.toggle("clamp"); b.textContent = open ? "mehr" : "weniger"; });
-function render() { wlSeed(); renderMain(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); linkTerms(); }
+function render() { wlSeed(); renderMain(); mdSync(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); linkTerms(); }
 function renderMain() {
   if (!data) return;
   const hits = data.results.filter(r => r.passed).length, fast = data.results.filter(r => r.fast_hit).length;
@@ -6406,7 +6526,7 @@ function renderMain() {
   const list = selRows(), k = new Set(state.kinds || []);
   const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
   const bar = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${v === "hit" && h4Data() ? (b => b.ready.length + b.wait.length)(boardItems()) : data.results.filter(f).length}</small></button>`).join("")}</div>
-    ${cur ? `<div class="vdesc">${esc(cur[4])}</div>` : ""}
+    ${cur ? (isPrem() ? `<details class="vdesc pv"><summary>Was heißt „${esc(cur[1])}“?</summary>${esc(cur[4])}</details>` : `<div class="vdesc">${esc(cur[4])}</div>`) : ""}
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       <button class="kchip filt" data-sub="filter">Filter${nFilt ? ` <small>${nFilt}</small>` : ""}</button></div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
