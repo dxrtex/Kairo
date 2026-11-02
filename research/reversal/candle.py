@@ -26,6 +26,9 @@ Messung B: Ertrag 10 Handelstage ab Kauf zur Eröffnung nach dem Signal; Kontrol
   (RSI(14) < 30 in den letzten 20 Tagen), für CUP zusätzlich K-TREND = zufälliger Tag über der 200-Tage-Linie.
   Kerzen in B nur nach Abverkauf (RSI(14) < 30 in den letzten 20 Tagen), wie bei der RSI-Prüfung.
 
+Grundfilter in B: Kurs ≥ 1, Ø Tagesumsatz ≥ 5 Mio. $ – ohne Trendbedingung; Renditen auf −90 % … +300 % begrenzt
+(Datenfehler). Lauf 41410368328 wurde vor der Auswertung abgebrochen, weil der Filter versehentlich den Aufwärtstrend enthielt.
+
 Entscheidung (vorab festgelegt):
   A: Verstärker, wenn Ø-R mit Formation in Train, Validierung UND Holdout je ≥ 0,05 R über ohne liegt und der Welch-Test
      gesamt nach Benjamini-Hochberg q ≤ 0,10 ergibt. Nächster Schritt wäre ein Depot-Test – keine Regeländerung.
@@ -224,6 +227,7 @@ def part_b(a) -> None:
         d = prep(g.set_index("date"), fx)
         if len(d) < 260:
             continue
+        d["base"] = (d["raw"] >= 1) & (d["adv"] >= 5e6)            # Grundfilter ohne Trendbedingung (Abverkäufe auch unter der 200-Tage-Linie)
         P = all_patterns(d)
         os_ = rsi(d["Close"], 14).rolling(20, min_periods=1).min().lt(30).to_numpy()
         ok = ((d.index >= s0) & (d.index <= s1)) & d["base"].to_numpy()
@@ -244,7 +248,7 @@ def part_b(a) -> None:
             ii = np.flatnonzero(f & ok)
             ii = ii[ii + 10 < len(c)]
             for i in ii:
-                rows.append((v, t, d.index[i], c[i + 10] / o[i + 1] - 1))
+                rows.append((v, t, d.index[i], float(np.clip(c[i + 10] / o[i + 1] - 1, -0.9, 3.0))))
     T = pd.DataFrame(rows, columns=["v", "t", "sig", "g"])
     print(f"{a.set}: {len(stash)} Aktien", T.groupby("v").size().to_dict(), flush=True)
     parts = {"all": (s0, s1)} if a.set != "main" else {k: (pd.Timestamp(x), pd.Timestamp(y)) for k, (x, y) in PERIODS.items()}

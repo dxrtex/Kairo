@@ -16,7 +16,10 @@ Definitionen (Tageskerzen, bereinigt; RSI 14 nach Wilder, Signallinie = 14-Tage-
               +VOL Kapitulations-Volumen (in den letzten 10 Tagen ein Tag mit ≥ 2× Ø-Volumen 20 Tage) ·
               +BREIT Marktbreite > 50 % der Aktien über ihrer 200-Tage-Linie
   Referenz    A5 (3 Verlusttage über der 200-Tage-Linie) – das Signal hinter W2
-Grundfilter wie Scanner: Kurs ≥ 1, Ø Tagesumsatz 20 Tage ≥ 5 Mio. $.
+Grundfilter wie Scanner: Kurs ≥ 1, Ø Tagesumsatz 20 Tage ≥ 5 Mio. $ (über UND unter der 200-Tage-Linie).
+Korrektur nach Lauf 41410055775 (vor jeder Auswertung der Varianten neu gestartet): Der Grundfilter enthielt versehentlich
+„über der 200-Tage-Linie“ (aus mrconfirm übernommen) – dadurch fehlten alle Abverkäufe unter der Linie. Außerdem werden
+Renditen auf −90 % … +300 % begrenzt (Datenfehler bei Splits erzeugten unsinnige Werte). Regeln sonst unverändert.
 
 Messung: Kauf zur Eröffnung am Tag nach dem Signal, Rendite bis zum Schluss nach 5 / 10 / 20 Handelstagen (Hauptmaß 10).
 Kontrollen mit gleichem Zufalls-Anteil:
@@ -109,7 +112,7 @@ def fwd(d: pd.DataFrame, idx: np.ndarray) -> dict[int, np.ndarray]:
         g = np.full(len(idx), np.nan)
         ok = idx + h < len(c)
         e = o[idx[ok] + 1]
-        g[ok] = c[idx[ok] + h] / e - 1
+        g[ok] = np.clip(c[idx[ok] + h] / e - 1, -0.9, 3.0)       # Datenfehler begrenzen
         out[h] = g
     return out
 
@@ -170,6 +173,7 @@ def run(a) -> None:
         x = g.set_index("date")
         d = prep(x, fx)
         if len(d) >= 260:
+            d["base"] = (d["raw"] >= 1) & (d["adv"] >= 5e6)        # ohne Trendbedingung (Korrektur)
             v = x["Volume"].reindex(d.index).astype(float)
             d["vr"] = v / v.rolling(20).mean()
             px[t] = d
