@@ -40,7 +40,7 @@ def test_step_only_new_signals_and_freeze():
     today = str(df.index[-1].date())
     rows = [{"ticker": "AAA", "region": "us"}, {"ticker": "BBB", "region": "asia"}]
     book = M.step({}, rows, {"AAA": df, "BBB": df}, {"XLK": df}, today)
-    assert book["start"] == today and set(book["items"]) == {f"A5|AAA|{today}", f"W2|AAA|{today}", f"ETF|XLK|{today}"}   # Asien nicht
+    assert book["start"] == today and {k for k in book["items"] if not k.startswith("CTRL-L|")} == {f"A5|AAA|{today}", f"W2|AAA|{today}", f"ETF|XLK|{today}"}   # Asien nicht
     later = _df([119, 118, 117, 116.5, 121, 122])
     M.step(book, rows, {"AAA": later}, {}, "2099-01-01", record=False)
     it = book["items"][f"A5|AAA|{today}"]
@@ -127,3 +127,18 @@ def test_event_depot_no_backfill_log_append_only_and_frozen():
     assert len(book["log"]) == n_log and book["closed"] == closed           # wiederholter Lauf: nichts doppelt, nichts geändert
     assert all(e["ev"] in ("order_geplant", "order_ausgefuehrt", "order_nicht_ausgefuehrt", "position_geschlossen", "kein_platz",
                            "order_zu_klein", "order_abgelaufen") for e in book["log"])
+
+
+def test_live_control_group_reproducible_and_compared():
+    data = {f"X{k}": _df([119 + 0.1 * k, 120, 121]) for k in range(15)}      # Aufwärtstrend, KEINE 3 Verlusttage
+    rows = [{"ticker": t, "region": "us", "currency": "USD"} for t in data]
+    today = str(next(iter(data.values())).index[-1].date())
+    b1 = M.step({}, rows, data, None, today)
+    b2 = M.step({}, rows, data, None, today)
+    c1 = sorted(k for k in b1["items"] if k.startswith("CTRL-L|"))
+    assert len(c1) == M.N_CTRL and c1 == sorted(k for k in b2["items"] if k.startswith("CTRL-L|"))   # gleicher Tag → gleiche Auswahl
+    assert not any(k.startswith("A5|") for k in b1["items"])
+    it = b1["items"][c1[0]]
+    assert it["lim"] < it["close"] and it["atr"] > 0 and it["sma200"] < it["close"] and it["v"]
+    s = M.summary(b1)
+    assert "vergleich" in s and s["vergleich"]["CTRL-L"]["n"] == 0

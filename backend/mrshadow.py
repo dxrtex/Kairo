@@ -26,7 +26,8 @@ import numpy as np
 import pandas as pd
 
 FILE = "mr_shadow.json"
-RULES = ("A5", "W2", "ETF")
+RULES = ("A5", "W2", "ETF", "CTRL-L")
+N_CTRL = 10                          # Live-Kontrolle: je Abend 10 zufällige Aufwärtstrend-Aktien mit gleichem Limit (W2-Audit)
 SLOTS = 5
 COST = {"normal": 0.0005, "stress": 0.0025}
 # Learning Engine für die Schattentests: vorher erkennbare Merkmale je Signal (Stand Signaltag bzw. Kauf-Eröffnung)
@@ -53,8 +54,9 @@ def signal_today(df: pd.DataFrame, rule: str, cur: str = "USD") -> dict | None:
     if not c.iloc[i] > c.iloc[i - 199:i + 1].mean():
         return None
     r2 = float(rsi2(c).iloc[i])
-    if rule == "A5":
-        if not (c.iloc[i] < c.iloc[i - 1] < c.iloc[i - 2] < c.iloc[i - 3]):
+    adv = 0.0
+    if rule in ("A5", "CTRL-L"):
+        if rule == "A5" and not (c.iloc[i] < c.iloc[i - 1] < c.iloc[i - 2] < c.iloc[i - 3]):
             return None
         vol = df["Volume"] if "Volume" in df else None
         from .mrsim import FX_USD
@@ -70,7 +72,10 @@ def signal_today(df: pd.DataFrame, rule: str, cur: str = "USD") -> dict | None:
     if np.isfinite(a) and a > 0:
         f["tief"] = bool((c.iloc[i - 3] - c.iloc[i]) > 2 * a)
         f["unruhig"] = bool(a / c.iloc[i] > 0.04)
+    sma200 = float(c.iloc[i - 199:i + 1].mean())
     return {"f": f, "d": str(df.index[i].date()), "rsi2": round(r2, 2), "close": round(float(c.iloc[i]), 4),
+            "atr": round(a, 4) if np.isfinite(a) else None, "sma200": round(sma200, 4),
+            "adv": round(adv, 0) if rule == "A5" else None,
             "lim": round(float(c.iloc[i] - 0.5 * a), 4) if np.isfinite(a) else None}
 
 
@@ -137,6 +142,20 @@ def step(book: dict, rows: list[dict], data: dict, ctx: dict | None, today: str,
             items.setdefault(f"A5|{t}|{s['d']}", {"rule": "A5", "t": t, **s})
             if s.get("lim"):
                 items.setdefault(f"W2|{t}|{s['d']}", {"rule": "W2", "t": t, **s})
+        # Live-Kontrolle CTRL-L: zufällige Aufwärtstrend-Aktien (Grundfilter wie W2, ohne 3 Verlusttage), gleiches Limit.
+        # Zufall fest aus dem Datum → reproduzierbar; nur Signale ab Start. Vergleich W2 − CTRL-L je Signal (Audit-Kriterium L2).
+        import zlib
+        pool = [t for t, df in data.items() if region.get(t) in ("us", "europe", "eu") and df is not None]
+        rng = np.random.default_rng(zlib.crc32(today.encode()))
+        picked = 0
+        for t in rng.permutation(sorted(pool)):
+            if picked >= N_CTRL:
+                break
+            s = signal_today(data[t], "CTRL-L", currency.get(t, "USD"))
+            if s and s["d"] >= book["start"] and s.get("lim"):
+                s.update(cur=currency.get(t, "USD"), seen=today, v=RULE_VERSION)
+                items.setdefault(f"CTRL-L|{t}|{s['d']}", {"rule": "CTRL-L", "t": t, **s})
+                picked += 1
         for t in ETFS:
             df = (ctx or {}).get(t)
             if df is None:
@@ -153,7 +172,7 @@ def step(book: dict, rows: list[dict], data: dict, ctx: dict | None, today: str,
         if df is None:
             continue
         try:
-            it.update(replay(df, it["d"], it.get("lim") if it["rule"] == "W2" else None))
+            it.update(replay(df, it["d"], it.get("lim") if it["rule"] in ("W2", "CTRL-L") else None))
         except Exception as exc:
             print("Schattentest:", key, repr(exc)[:80])
     try:
@@ -265,4 +284,13 @@ def summary(book: dict) -> dict:
             for k, v in (book.get("depot") or {}).items():
                 if k.startswith(rule + "|"):
                     out[rule].setdefault("depot", {})[k.split("|")[1]] = {kk: v.get(kk) for kk in ("counts", "cagr", "dd", "end")}
+    # Signal-Ebene (alle gespeicherten Signale, ohne Depotgrenze): W2 gegen Live-Kontrolle mit gleichem Limit
+    def lvl(rule):
+        d = [x for x in items if x["rule"] == rule and x.get("res") == "closed"]
+        nf = sum(x.get("res") == "kein_kauf" for x in items if x["rule"] == rule)
+        return {"n": len(d), "no_fill": nf, "gross": round(float(np.mean([x["gross"] for x in d])), 5) if d else None,
+                "net_normal": round(float(np.mean([x["net_normal"] for x in d])), 5) if d else None}
+    w, k = lvl("W2"), lvl("CTRL-L")
+    out["vergleich"] = {"W2": w, "CTRL-L": k, "diff_net": round(w["net_normal"] - k["net_normal"], 5)
+                        if w["net_normal"] is not None and k["net_normal"] is not None else None}
     return out
