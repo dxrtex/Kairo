@@ -155,4 +155,6 @@ def test_kaufbereit_nur_aus_der_basis():
         {"t": "EEE", "n": "Eps", "st": "4h", "grp": "10", "r": "us", "base": {"pending": True, "lo": 1, "hi": 2}}]}
     sent = {}
     m = ready_messages("2026-10-29", sent, base)
-    assert len(m) == 1 and "2 Kairo-Treffer" in m[0]["title"] and m[0]["body"].index("Beta") < m[0]["body"].index("Alpha")
+    # seit 02.11.2026 auch Asien (wie im Scanner): Alpha, Beta, Delta – nicht Gamma (Basis offen) und nicht Eps (10/11)
+    assert len(m) == 1 and "3 Kairo-Treffer" in m[0]["title"] and m[0]["body"].index("Beta") < m[0]["body"].index("Alpha")
+    assert "Delta" in m[0]["body"] and "Gamma" not in m[0]["body"] and "Eps" not in m[0]["body"]

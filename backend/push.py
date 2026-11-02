@@ -239,10 +239,10 @@ def _h4_base() -> dict:
 
 
 def ready_messages(today: str, sent: dict, base: dict | None = None) -> list[dict]:
-    """Regel B60: Kairo-Treffer (USA/Europa), deren Seitwärtsphase fertig ist → Kauf zur nächsten Eröffnung. Eine Sammel-
+    """Regel B60: Kairo-Treffer (USA/Europa/Asien), deren Seitwärtsphase fertig ist → Kauf zur nächsten Eröffnung. Eine Sammel-
     Mitteilung je Abendscan, geordnet wie in der App (schwächeres Vormomentum zuerst). Review 2: kaufbereit nur aus der Basis."""
     base = base if base is not None else _h4_base()
-    tested = lambda it: (it.get("r") or ("us" if "." not in it["t"] or it["t"].endswith(".TO") else "")) in ("us", "europe")
+    tested = lambda it: (it.get("r") or ("us" if "." not in it["t"] or it["t"].endswith(".TO") else "")) in ("us", "europe", "asia")   # Kaufbereit-Mitteilung: wie im Scanner auch Asien (seit 02.11.2026)
     ready = [it for it in base.get("items") or [] if (it.get("grp") or "11") in ("11", "10s") and tested(it)
              and (it.get("base") or {}).get("pending") and (it.get("base") or {}).get("lo") is not None]
     if not ready:
