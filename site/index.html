@@ -664,8 +664,6 @@
   .tq-done { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; } .tq-done .hlink { font-size: 13px; }
   .mline { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 10px; padding: 8px 0 0; background: none; border: 0; border-top: 1px solid var(--line); color: var(--text); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; }
   .mline i { flex: none; width: 10px; height: 10px; border-radius: 50%; }
-  .mline2 { display: flex !important; align-items: center; gap: 12px; } .mline2 > span:nth-child(2) { flex: 1; min-width: 0; } .mline2 b { display: block; font-size: 15.5px; }
-  .mline2 small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; } .mline2 s { text-decoration: none; color: var(--muted); }
   .mstrip { display: none; } @media (max-width: 600px) { .mstrip { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; margin: 4px 0 -2px; padding: 9px 12px; overflow: hidden; border-radius: 12px; border: 1px solid var(--glass-line); background: var(--glass); color: var(--muted); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }
     .mstrip span { white-space: nowrap; } .mstrip b { color: var(--text); font-size: 13.5px; margin-left: 3px; } .mstrip b.down { color: var(--red); } .mstrip s { display: none; } }
   .mk-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--gold); } .mk-dot.tone-green { background: var(--up); } .mk-dot.tone-red { background: var(--red); }
@@ -4446,14 +4444,6 @@ function moneyHtml() {
     ${amp ? `<button class="mline" ${SEC_LINK("etf")}><i style="background:${amp[1]}"></i>ETF-Ampel: ${esc(amp[0])}${e.lv === "wait" ? " – Sparrate läuft, Extra-Geld zurücklegen" : ""} ›</button>` : ""}
     ${m.warn.map(w => `<div class="note" style="margin:6px 0 0"><i class="vdot y"></i>${esc(w)}${/^Einstieg rechnet/.test(w) ? ` <button class="btn ghost sm" id="etfSync">Auf ${eur(m.budget)} setzen</button>` : ""}</div>`).join("")}</div>`;
 }
-// Markt in einem Satz – Details (Indizes, Stimmung) aufklappbar
-function mktLineHtml() {
-  const mk = anaData && anaData.market; if (!mk) { loadAnalysis(); return ""; }
-  const reg = mk.regime, f = mk.fear, v = mk["^VIX"];
-  if (!reg) return "";
-  const s = reg.tone === "green" ? "Rückenwind für Kairo-Käufe" : reg.tone === "red" ? "Gegenwind – Einstiege scheitern häufiger" : "gemischtes Umfeld";
-  return `<button class="hcard mline2" data-mktgo><span class="mk-dot tone-${esc(reg.tone)}"></span><span><b>Markt: ${esc(reg.label)}</b><small>${s}${v ? ` · VIX ${fmt(v.c, 0)}` : ""}${f ? ` · Stimmung ${esc(f.label)} ${f.score}/100` : ""}</small></span><s>›</s></button>`;
-}
 function startMiniHtml() {
   const h = startHtml(); if (!h) return "";
   const m = h.match(/Erste Schritte · (\d+) von (\d+)/);
@@ -4471,10 +4461,9 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("tq-prep")) { state.hPrep = e.target.open ? 1 : 0; save(); } }, true);
 document.addEventListener("click", e => { if (e.target.closest("[data-mstrip]")) { const m = $("hMoney"); if (m) m.scrollIntoView({ behavior: "smooth", block: "start" }); } });
-document.addEventListener("click", e => { if (e.target.closest("[data-mktgo]")) { state.newsTab = "market"; save(); goSec("news"); } });
 function todayHtml() {
   const M = todayModel(); moneyStrip = "";
-  const right = `${moneyHtml()}${soonHtml()}${mktLineHtml()}${changesHtml()}`;
+  const right = `${moneyHtml()}${soonHtml()}${marketHtml()}${changesHtml()}`;   // Marktampel bleibt als volle Karte (Wunsch 11/2026)
   return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${tasksHtml(M)}${startMiniHtml()}</div>
     <div class="hcol">${right}</div></div>`;
 }
@@ -4965,7 +4954,7 @@ const APP_NEWS = [["2026.11.16", "„Heute“ neu: eine Liste, was zu tun ist", 
   ["Aufgaben zum Abhaken", "Verkaufen, Kaufen, ETF, Vorbereiten – in der Reihenfolge der Dringlichkeit. Gekauft wird nur so viel, wie Plätze frei sind, in der Kairo-Rangfolge. Abhaken gilt für heute."],
   ["Kauf-Zettel", "Für jeden Kauf: Stückzahl, Limit (Obergrenze der Kaufzone), Stop-Loss, Risiko und wann die Börse öffnet. „Order kopieren“ für Scalable, „Gekauft ✓“ legt den Trade-Plan mit Stop und Verkaufstag an."],
   ["Dein Geld", "Vermögen (ETF + Depot), freies Trading-Kapital – jetzt auch mit Depot-Positionen ohne Plan – und Verlust bis zu den Stops. Passt das Trading-Budget nicht zum Profil, gleicht ein Knopf es an."],
-  ["Aufgeräumt", "Termine der nächsten 7 Tage inklusive deiner Verkaufstage, der Markt in einer Zeile (Details im Reiter Markt). Bilanz, Journal und Top-Setups findest du in ihren Reitern."]]],
+  ["Aufgeräumt", "Termine der nächsten 7 Tage inklusive deiner Verkaufstage, die Marktampel wie gewohnt. Bilanz, Journal und Top-Setups findest du in ihren Reitern."]]],
   ["2026.11.15", "Asien wieder im Scanner", [
   ["BYD, Xiaomi & Co.", "Aktien aus Asien/Pazifik zählen wieder ganz normal: Treffer, kaufbereit, Trade-Plan und Kaufbereit-Mitteilung wie bei USA und Europa."],
   ["Detailansicht wie gewohnt", "Der zusätzliche Block „Einordnung“ in der Aktien-Übersicht ist wieder weg."]]],
