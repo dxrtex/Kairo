@@ -40,7 +40,7 @@ def test_step_only_new_signals_and_freeze():
     today = str(df.index[-1].date())
     rows = [{"ticker": "AAA", "region": "us"}, {"ticker": "BBB", "region": "asia"}]
     book = M.step({}, rows, {"AAA": df, "BBB": df}, {"XLK": df}, today)
-    assert book["start"] == today and set(book["items"]) == {f"A5|AAA|{today}", f"W2|AAA|{today}", f"ETF|XLK|{today}"}   # Asien nicht
+    assert book["start"] == today and {k for k in book["items"] if not k.startswith("CTRL-L|")} == {f"A5|AAA|{today}", f"W2|AAA|{today}", f"ETF|XLK|{today}"}   # Asien nicht
     later = _df([119, 118, 117, 116.5, 121, 122])
     M.step(book, rows, {"AAA": later}, {}, "2099-01-01", record=False)
     it = book["items"][f"A5|AAA|{today}"]
@@ -99,3 +99,46 @@ def test_only_strongest_signals_per_day_are_stored():
     assert len(a5) == M.MAX_DAY and book["signals_today"] == 15
     kept = {x["t"] for x in a5}
     assert "X14" in kept and "X0" not in kept                                          # tiefster Fall = niedrigster RSI(2)
+
+
+def test_event_depot_no_backfill_log_append_only_and_frozen():
+    """W2-Audit: Depot über backend/mrsim – bestes Signal (nicht gefüllt) belegt seinen Platz; Log wächst nur, Abschlüsse bleiben."""
+    a = _df([119, 118, 117, 117.5, 118, 118.5, 119, 125, 126, 127, 128])
+    b = _df([119, 118, 116.5, 110, 112, 118, 125, 126, 127, 128, 129])
+    a.iloc[-8, a.columns.get_loc("Low")] = 117.4                           # A: Limit am Folgetag nie erreicht
+    d = str(a.index[-9].date())
+    items = {}
+    for t, df in (("A", a), ("B", b)):
+        s = M.signal_today(df.iloc[:-8], "A5")
+        assert s and s["d"] == d
+        for rule in ("A5", "W2"):
+            items[f"{rule}|{t}|{d}"] = {"rule": rule, "t": t, **s, "rsi2": 1.0 if t == "A" else 2.0, "adv": 1e9}
+    book = {"start": d, "items": items}
+    import backend.mrsim as S
+    old = S.SLOTS
+    try:
+        M.step(book, [], {"A": a, "B": b}, None, str(a.index[-1].date()), record=False)
+    finally:
+        S.SLOTS = old
+    dep = book["depot"]["W2|opt"]["counts"]
+    assert dep["orders"] == 2 and dep["nicht_gefuellt"] == 1                 # 5 Plätze: beide Orders, A nicht gefüllt
+    n_log, closed = len(book["log"]), dict(book["closed"])
+    M.step(book, [], {"A": a, "B": b}, None, str(a.index[-1].date()), record=False)
+    assert len(book["log"]) == n_log and book["closed"] == closed           # wiederholter Lauf: nichts doppelt, nichts geändert
+    assert all(e["ev"] in ("order_geplant", "order_ausgefuehrt", "order_nicht_ausgefuehrt", "position_geschlossen", "kein_platz",
+                           "order_zu_klein", "order_abgelaufen") for e in book["log"])
+
+
+def test_live_control_group_reproducible_and_compared():
+    data = {f"X{k}": _df([119 + 0.1 * k, 120, 121]) for k in range(15)}      # Aufwärtstrend, KEINE 3 Verlusttage
+    rows = [{"ticker": t, "region": "us", "currency": "USD"} for t in data]
+    today = str(next(iter(data.values())).index[-1].date())
+    b1 = M.step({}, rows, data, None, today)
+    b2 = M.step({}, rows, data, None, today)
+    c1 = sorted(k for k in b1["items"] if k.startswith("CTRL-L|"))
+    assert len(c1) == M.N_CTRL and c1 == sorted(k for k in b2["items"] if k.startswith("CTRL-L|"))   # gleicher Tag → gleiche Auswahl
+    assert not any(k.startswith("A5|") for k in b1["items"])
+    it = b1["items"][c1[0]]
+    assert it["lim"] < it["close"] and it["atr"] > 0 and it["sma200"] < it["close"] and it["v"]
+    s = M.summary(b1)
+    assert "vergleich" in s and s["vergleich"]["CTRL-L"]["n"] == 0
