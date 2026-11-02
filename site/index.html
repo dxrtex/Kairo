@@ -503,6 +503,7 @@
   .sb-trend { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
   ul.fcw { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; } ul.fcw li { display: flex; gap: 6px; padding: 2px 0; } ul.fcw li span { color: var(--text); }
   .kbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.wmin { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 2px; }
   .tab.grp-sub { display: none !important; }
   .subnav { display: flex; gap: 6px; margin: 2px 0 16px; overflow-x: auto; scrollbar-width: none; }
   .subnav button { flex: 0 0 auto; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: inherit; font-weight: 650; font-size: 14px; padding: 8px 15px; border-radius: 999px; cursor: pointer; }
@@ -1648,6 +1649,20 @@ function rows(kind) {
 }
 
 // Tabelle: Treffer, Fast-Treffer und Watchlist frei kombinierbar
+// Beobachten ab 9/8/7 von 11: Aktien aus dem Suchindex (alle gescannten), die nicht als volle Zeile im Scan stehen.
+// Nur mit erfüllten Grundfiltern (Börsenwert, Liquidität, Kurs, Historie). Kein Kaufsignal – Antippen öffnet den Einstieg.
+const GF_KEYS = ["cap", "liquidity", "price", "history"];
+const watchMin = () => [7, 8, 9].includes(+state.watchMin) ? +state.watchMin : 9;
+function liteRows(min) {
+  if (!searchIdx) { loadSearch(); return []; }
+  const have = new Set(data.results.map(r => r.ticker));
+  return searchIdx.filter(x => !have.has(x.t) && x.m >= min && x.m <= 10 && !(x.km || []).some(k => GF_KEYS.includes(k)) && x.s !== "hit")
+    .map(x => ({ ticker: x.t, name: x.n, region: x.r, exchange: x.x || "", close: x.c, currency: x.cur, met: x.m, total: 11, sector: x.sec || "",
+      missing: (x.km || []).map(k => SHORT[k] || k), market_cap_usd: x.mc ?? null, volatility: x.vola ?? null, rsi: x.rsi ?? null,
+      passed: false, fast_hit: x.m === 10, near_hit: x.m === 9, score: 0, zone_type: "", bonuses: [], plan: {}, flags: {}, _lite: true }));
+}
+const watchCount = () => { const wm = watchMin(); return data.results.filter(r => !r.passed && (r.met ?? 0) >= wm && (r.fast_hit || r.near_hit || !(r.criteria || []).some(c => GF_KEYS.includes(c.key) && !c.ok))).length + liteRows(wm).length; };
+document.addEventListener("click", e => { const b = e.target.closest("[data-wmin]"); if (!b) return; state.watchMin = +b.dataset.wmin; scanAll = false; save(); render(); });
 function selRows() {
   const k = new Set(state.kinds && state.kinds.length ? state.kinds : ["hit"]);
   const q = $("search").value.trim().toLowerCase();
@@ -1658,8 +1673,11 @@ function selRows() {
     && (!state.zone || r.zone_type.includes(state.zone)) && (!state.div || r.divergence === state.div) && (!state.sector || r.sector === state.sector) && chkIn(r);
   // Watchlist-Aktien: nur Suche, Börsenwert und Volatilität filtern (wie bisher) – sonst alle Filter
   const fv = favs();
-  return data.results.filter(r => ((k.has("hit") && r.passed) || (k.has("soft") && r.mbi_soft) || (k.has("fast") && r.fast_hit && !r.passed) || (k.has("near") && r.near_hit) || (k.has("trend") && isTrend(r))) ? full(r) : ((k.has("watch") && r.in_watchlist) || (k.has("fav") && fv.has(r.ticker)) || (k.has("h4") && isH4(r))) && light(r))
-    .sort((a, b) => b.passed - a.passed || isTrend(b) - isTrend(a) || !!(b.tr && b.tr.top) - !!(a.tr && a.tr.top) || b.fast_hit - a.fast_hit || !!b.near_hit - !!a.near_hit || b.score - a.score || (b.met ?? 0) - (a.met ?? 0));
+  const isWatch = k.has("fast") && k.has("near") && k.size === 2, wm = watchMin();
+  const lite = isWatch ? liteRows(wm).filter(light) : [];
+  return data.results.filter(r => !(isWatch && !r.passed && (r.met ?? 0) < wm)).filter(r => ((k.has("hit") && r.passed) || (k.has("soft") && r.mbi_soft) || (k.has("fast") && r.fast_hit && !r.passed) || (k.has("near") && r.near_hit) || (k.has("trend") && isTrend(r))) ? full(r) : ((k.has("watch") && r.in_watchlist) || (k.has("fav") && fv.has(r.ticker)) || (k.has("h4") && isH4(r))
+      || (isWatch && !r.passed && (r.met ?? 0) >= wm && !(r.criteria || []).some(c => GF_KEYS.includes(c.key) && !c.ok))) && light(r))
+    .concat(lite).sort((a, b) => b.passed - a.passed || isTrend(b) - isTrend(a) || !!(b.tr && b.tr.top) - !!(a.tr && a.tr.top) || b.fast_hit - a.fast_hit || !!b.near_hit - !!a.near_hit || b.score - a.score || (b.met ?? 0) - (a.met ?? 0));
 }
 // Zweites Setup „Trend-Rücksetzer“ (Rücksetzer im Aufwärtstrend) – erscheint nur, wenn der Scan es liefert
 const isTrend = r => false;                // Trend-Rücksetzer: nicht belegt, aus der App entfernt (10/2026) – Scanner rechnet unverändert
@@ -1672,7 +1690,7 @@ let KIND_BTNS = KIND_BTNS_ALL.filter(x => x[0] !== "trend");
 const VIEWS = [
   ["go", "Einstiege", r => isH4(r), ["h4"], "Treffer mit fertiger Seitwärtsphase – ✓ 4H bestätigt = jetzt einsteigen · … wartet auf 4H · ▶ läuft. Bei Bestätigung kommt eine Mitteilung."],
   ["hit", "Treffer", r => r.passed, ["hit"], "Alle gescannten Aktien (USA, Europa, Asien) mit allen 11 Kriterien. Gekauft wird erst, wenn danach die Seitwärtsphase fertig ist – dann steht in der Spalte Status „kaufbereit“."],
-  ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Ein oder zwei Kriterien fehlen – nur beobachten, kein Kaufsignal."],
+  ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Alle gescannten Aktien, denen nur wenige Kriterien fehlen – wählbar ab 9, 8 oder 7 von 11. Nur beobachten, kein Kaufsignal."],
   ["trend", "Trend", r => isTrend(r), ["trend"], "Trend-Rücksetzer – eigene, getrennte Strategie (Rücksetzer im Aufwärtstrend)."],
   ["mine", "Meine", r => r.in_watchlist || favs().has(r.ticker), ["watch", "fav"], "Deine Watchlist (★) – mit Stufe auf dem Weg zum Einstieg."]];
 const viewOfKinds = ks => { const k = new Set(ks); return VIEWS.find(v => v[3].length === k.size && v[3].every(x => k.has(x)))
@@ -2004,8 +2022,8 @@ const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.
 
 // ---------- Tabelle ----------
 const COLS = [
-  { k: "ticker", l: "Ticker", g: r => r.ticker, h: r => `<span class="tk">${favBtn(r.ticker)}<a href="#" data-card="${esc(r.ticker)}">${esc(r.ticker)}</a>${wlTag(r)}</span>` },
-  { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm" data-card="${esc(r.ticker)}">${esc((r.name || r.ticker).slice(0, 28))}</a>` },
+  { k: "ticker", l: "Ticker", g: r => r.ticker, h: r => `<span class="tk">${favBtn(r.ticker)}<a href="#" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${esc(r.ticker)}</a>${wlTag(r)}</span>` },
+  { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${esc((r.name || r.ticker).slice(0, 28))}</a>` },
   { k: "trend", l: "Prognose", g: r => r.trend ? (r.trend.fc ? r.trend.fc.d : r.trend.slope + (r.trend.d5 ?? 0) / 10) : 0, h: r => trendHtml(r) || "–" },
   { k: "status", l: "Status", g: r => kSt(r).lv, h: r => kPill(r, state.view !== "hit") },   // in „Treffer“ ohne doppeltes „Treffer“
   { k: "chk", l: "Rücksetzer-Check", n: 1, g: r => chkP(r) ?? -1, h: r => chkCell(r) },
@@ -6267,8 +6285,9 @@ function renderMain() {
   if (cur && String(state.kinds) !== String(cur[3])) { state.kinds = cur[3]; save(); }   // gespeicherte alte Auswahl (z. B. „MBI gelockert“) angleichen
   const list = selRows(), k = new Set(state.kinds || []);
   const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
-  const bar = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${data.results.filter(f).length}</small></button>`).join("")}</div>
+  const bar = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${v === "watch" ? watchCount() : data.results.filter(f).length}</small></button>`).join("")}</div>
     ${cur ? `<div class="vdesc">${esc(cur[4])}</div>` : ""}
+    ${state.view === "watch" ? `<div class="wmin" role="group" aria-label="Mindestens erfüllte Kriterien">${[9, 8, 7].map(n => `<button class="kchip${watchMin() === n ? " on" : ""}" data-wmin="${n}" aria-pressed="${watchMin() === n}">ab ${n}/11</button>`).join("")}</div>` : ""}
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       <button class="kchip filt" data-sub="filter">Filter${nFilt ? ` <small>${nFilt}</small>` : ""}</button></div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
