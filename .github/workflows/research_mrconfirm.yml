@@ -1,0 +1,63 @@
+name: Research – Mean Reversion Bestätigung (Vorzeit 1999–2007, Asien)
+
+# Nur Forschung. Regeln und Entscheidung vorab festgelegt in research/reversal/mrconfirm.py (02.11.2026).
+# Kurse aus dem Ultimate-Bestätigungslauf 40960444918 (Artefakte bis 28.11.2026). Auslöser: research/reversal/mrconfirm_trigger.txt.
+permissions:
+  contents: write
+  actions: read
+
+on:
+  push:
+    branches: ["claude/ultimate-research"]
+    paths: ["research/reversal/mrconfirm_trigger.txt"]
+  workflow_dispatch:
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PX_RUN: "40960444918"
+
+jobs:
+  work:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        set: [pre, asia]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "ucf-${{ matrix.set }}-*", merge-multiple: true, path: px, run-id: "${{ env.PX_RUN }}", github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Universum
+        run: |
+          ls px | head; ls px/px_*.parquet | wc -l
+          if [ "${{ matrix.set }}" = asia ]; then git fetch -q origin kairo-data && git show origin/kairo-data:universe_asia.csv > uni.csv
+          else cp research/strategy_championship/data/universe_frozen_2026-10-16.csv uni.csv; fi
+      - run: python -W ignore -m research.reversal.mrconfirm --px px --universe uni.csv --set ${{ matrix.set }} --out out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: "mrcf-${{ matrix.set }}", path: out/, retention-days: 30 }
+  report:
+    needs: work
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r research/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { pattern: "mrcf-*", merge-multiple: true, path: res }
+      - run: python -m research.reversal.mrconfirm report --dir res
+      - name: Ergebnis auf Branch claude/reversal-out
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          W=$GITHUB_WORKSPACE; mkdir -p /tmp/pr && cd /tmp/pr && git init -q
+          git config user.name "kairo-research"; git config user.email "research@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch -q origin claude/reversal-out; then git checkout -q -b pub FETCH_HEAD; else git checkout -q --orphan pub; fi
+          mkdir -p "mrcf-$GITHUB_RUN_ID" && cp $W/res/mrconfirm_* "mrcf-$GITHUB_RUN_ID"/
+          git add . && git commit -qm "Mean Reversion Bestätigung $GITHUB_RUN_ID" && git push -q origin pub:claude/reversal-out
