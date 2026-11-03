@@ -13,10 +13,10 @@ jobs:
       - env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
           set -e
-          id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/scan_watch.yml/runs?status=success&per_page=1" --jq '.workflow_runs[0].id')
+          id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/scan.yml/runs?status=success&per_page=1" --jq '.workflow_runs[0].id')
           echo "Lauf $id"; gh run download "$id" -n github-pages -D live; mkdir -p ls && tar -xf live/artifact.tar -C ls
           mkdir -p snapshot && for f in analysis insider search briefing calendar earnings results h4 etf alerts changes; do cp "ls/data/$f.json" snapshot/ 2>/dev/null || true; done
-          sid=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/scan.yml/runs?status=success&per_page=5" --jq '[.workflow_runs[] | select(.run_started_at > "2026-11-03T21:00")][0].id')
-          gh run view "$sid" --log -R "$GITHUB_REPOSITORY" | grep -E "Insider|OpenFIGI|Markt|Branchen|Themen|Fehler|Error|Traceback" | cut -c1-400 > snapshot/scanlog.txt || true
+          sid=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/scan.yml/runs?status=success&per_page=5" --jq '[.workflow_runs[] | select(.run_started_at > "2026-11-03T23:00")][0].id')
+          gh run view "$sid" --log -R "$GITHUB_REPOSITORY" | grep -E "Insider|OpenFIGI|Markt|Branchen|Themen|Fehler|Error|Traceback" | cut -c1-400 > snapshot/scanlog.txt  # Lauf 2 || true
           ls -la snapshot; git config user.name kairo-bot; git config user.email kairo-bot@users.noreply.github.com
           git add snapshot && git commit -q -m "Live-Daten-Kopie $(date -u +%F-%H%M)" && git push -q origin HEAD:claude/livecopy
