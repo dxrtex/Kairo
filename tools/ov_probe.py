@@ -2,11 +2,16 @@
 import json
 import requests
 OV = "https://api.onvista.de/api/v1"
-q = requests.get(f"{OV}/instruments/query?searchValue=IE00B3YLTY66&limit=1", timeout=20).json()
-it = q["list"][0]
-print("Treffer:", it.get("entityType"), it.get("entityValue"), it.get("name"))
-sn = requests.get(f"{OV}/instruments/{it['entityType']}/{it['entityValue']}/snapshot", timeout=20).json()
-print("Schlüssel:", list(sn))
-print("quote:", json.dumps(sn.get("quote"), ensure_ascii=False)[:800])
-for m in (sn.get("quoteList") or {}).get("list", []):
-    print("MARKT", json.dumps({k: m.get(k) for k in ("market", "last", "previousLast", "performancePct", "datetimeLast", "bid", "ask", "isoCurrency", "idNotation")}, ensure_ascii=False)[:400])
+H = {"User-Agent": "Mozilla/5.0"}
+q = requests.get(f"{OV}/instruments/query?searchValue=IE00B3YLTY66&limit=1", headers=H, timeout=20)
+print("query", q.status_code, q.text[:600])
+for u in ("/instruments/FUND/ISIN:IE00B3YLTY66/snapshot", "/funds/ISIN:IE00B3YLTY66/snapshot"):
+    r = requests.get(OV + u, headers=H, timeout=20)
+    print(u, r.status_code)
+    if r.ok:
+        sn = r.json()
+        print("Schlüssel:", list(sn))
+        print("quote:", json.dumps(sn.get("quote"), ensure_ascii=False)[:900])
+        for m in (sn.get("quoteList") or {}).get("list", []):
+            print("MARKT", json.dumps(m, ensure_ascii=False)[:600])
+        break
