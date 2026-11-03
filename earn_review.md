@@ -37,7 +37,7 @@ Schnelligkeit: erste Zahlen im Mittel 173 Min. nach der Meldezeit (90 % innerhal
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
 - TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises as strong forecast signals record growth phase“
-- MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +7.9% · Gewinn +2% · Ausblick angehoben – „Earnings call transcript: Marico lifts FY 2027 outlook after strong Q2 growth“
+- MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +8.0% · Gewinn +2% · Ausblick angehoben – „Earnings call transcript: Marico lifts FY 2027 outlook after strong Q2 growth“
 - ACX.MC 2026-10-29: Kairo 37% steigt, Kurs -5.5% · Gewinn -3% · Ausblick keine Meldung
 - RYAAY 2026-11-02: Kairo 37% steigt, Kurs +2.9% · Gewinn -3% · Ausblick keine Meldung
 - TPEIR.AT 2026-10-30: Kairo 52% steigt, Kurs -2.1% · Gewinn -16% · Ausblick angehoben – „Earnings Call: Piraeus Bank verzeichnet starkes Wachstum in Q3 2026 und hebt Ausblick an“
