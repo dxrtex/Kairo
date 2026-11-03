@@ -727,6 +727,8 @@
   .sp-h { display: grid; grid-template-columns: minmax(90px, 34%) 1fr 70px; align-items: center; gap: 10px; width: 100%; padding: 5px 4px; border: 0; background: none; color: inherit; font: inherit; text-align: left; border-radius: 8px; cursor: pointer; }
   .sp-h:hover { background: var(--surface-2); } .sp-h svg { width: 100%; height: 26px; } .sp-h polyline { fill: none; stroke: var(--muted); stroke-width: 2; vector-effect: non-scaling-stroke; }
   .sp-h svg.up polyline { stroke: var(--up); } .sp-h svg.down polyline { stroke: var(--red); } .sp-hr { font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums; } .sp-hr.muted { color: var(--muted); }
+  .eq-crash { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 13px; } .eq-crash em { display: block; font-style: normal; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .eq-crash.t-red b { color: var(--red); } .eq-crash.t-yellow b { color: var(--gold); } .eq-crash.t-green b { color: var(--up); }
   .mo-today { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; width: 100%; margin: 4px 0 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: inherit; font: inherit; text-align: left; cursor: pointer; }
   .mo-today b { font-size: 13px; color: var(--gold); } .mo-today span { flex: 1; min-width: 0; font-size: 13.5px; } .mo-today i { font-style: normal; font-size: 13px; color: var(--accent); }
   .mkt-ov.mo { display: flex; flex-direction: column; } .mo > div > .hcard:first-child { margin-top: 0; } .mo > div + div { margin-top: 14px; }
@@ -2686,7 +2688,7 @@ function loadEarnLive(fast) {
 }
 // Ehrliche Statistik statt Bauchgefühl (tools/research/earn_stats.py): 14.936 Quartalsberichte von 580 US-Aktien seit 2019 –
 // wie oft stieg die Aktie am Handelstag nach den Zahlen, je nach Überraschung beim Gewinn
-let earnStats = null, earnReview = null, earnCalib = null, earnGuide = null;
+let earnStats = null, earnReview = null, earnCalib = null, earnGuide = null, earnCrash = null;
 // Gewinn × Ausblick aus 8.518 Quartalsberichten 2023–26 (tools/research/earn_guide.py) – in der Prüfzeit genauer als Gewinn allein
 const loadEarnGuide = () => earnGuide || fetch("earn_guide.json").then(r => r.ok ? r.json() : null).then(d => { earnGuide = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnGuide = {}; });
 // Prognose-Bilanz (tools/earn_review.py, nach jedem Prüflauf): wie oft lag die gezeigte Richtung bisher richtig?
@@ -2695,6 +2697,34 @@ const loadEarnReview = () => earnReview || fetch(EARN_LIVE_URL.replace("earnings
 // Nacheichung Gewinn × Ausblick aus den eigenen Meldungen – nur wenn die Bilanz sie als genauer übernommen hat (adopt)
 const loadEarnCalib = () => earnCalib || fetch(EARN_LIVE_URL.replace("earnings_live.json", "earn_calib.json") + "?v=" + Math.floor(Date.now() / 36e5))
   .then(r => r.ok ? r.json() : null).then(d => { earnCalib = d || {}; }).catch(() => { earnCalib = {}; });
+const loadEarnCrash = () => earnCrash || (earnCrash = {}, fetch("earn_crash.json").then(r => r.ok ? r.json() : null).then(d => { earnCrash = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); if (["depot", "calendar"].includes(state.sec)) render(); }).catch(() => {}));
+// Absturz-Risiko (−5 % oder mehr am Tag nach den Zahlen) – logistisches Modell aus 33.968 Berichten (USA/Europa/Asien,
+// tools/research/earn_region.py, geprüft ab 07/2024): vor den Zahlen aus Schwankung, früheren Reaktionen der Aktie, Vorlauf
+// und Marktlage; nach den Zahlen zusätzlich mit der Gewinn-Überraschung. Geeicht: unterstes Fünftel ~2 %, oberstes ~25 %.
+function crashRisk(t, sur) {
+  const C = earnCrash; if (!C || !C.pre) { loadEarnCrash(); return null; }
+  const row = rowOf(t) || {}, reg = regionOf(t);
+  const P = earnStats && earnStats.per && earnStats.per[t], last = (P && P.last || []).map(x => Math.abs(x.r1)).filter(v => isFinite(v)).slice(-8);
+  const mk = anaData && anaData.market, ix = mk && (reg === "europe" ? mk["^STOXX"] : mk["^GSPC"]);
+  const x = { vol20: row.vola != null ? row.vola / Math.sqrt(252) : null, absr: last.length >= 3 ? last.reduce((a, b) => a + b, 0) / last.length : null,
+    run20: row.m1 != null ? row.m1 : null, mkt_up: ix ? (ix.above50 ? 1 : 0) : null };
+  const B = (earnStats && earnStats.buckets) || [], bi = sur != null ? B.findIndex(b => sur * 100 >= b.lo && sur * 100 < b.hi) : -1;
+  const M = sur != null && bi >= 0 && C.post ? C.post : C.pre;
+  const base = M === C.post ? (C.post.rate[`${reg}|${bi}`] ?? C.post.rate[`us|${bi}`]) : (C.pre.reg_rate[reg] ?? C.pre.reg_rate.us);
+  if (base == null) return null;
+  const lg = v => Math.log(Math.min(Math.max(v, 1e-3), 1) / Math.min(Math.max(1 - v, 1e-3), 1));
+  let z = M.icpt + M.coef.base * lg(base);
+  for (const [c, [med, sd]] of Object.entries(M.scale)) z += (M.coef[c] || 0) * (x[c] == null ? 0 : Math.max(-4, Math.min(4, (x[c] - med) / (sd || 1))));
+  const p = 1 / (1 + Math.exp(-z)), why = [];
+  if (x.absr != null && x.absr >= .06) why.push(`reagierte zuletzt im Schnitt ±${fmt(x.absr * 100, 0)} % auf Zahlen`);
+  if (x.vol20 != null && x.vol20 >= .03) why.push("schwankt stark");
+  return { p, lvl: p >= .18 ? "hoch" : p >= .1 ? "erhöht" : "normal", after: M === C.post, why };
+}
+function crashHtml(t, sur) {
+  const c = crashRisk(t, sur); if (!c) return "";
+  return `<div class="eq-crash t-${c.lvl === "hoch" ? "red" : c.lvl === "erhöht" ? "yellow" : "green"}"><b>Absturz-Risiko ${pct(c.p, 0)}</b> <span>${c.lvl}</span>
+    <em>Wahrscheinlichkeit für −5 % oder mehr am Tag ${c.after ? "danach (mit der Überraschung)" : "nach den Zahlen"} · Durchschnitt etwa 10 %${c.why.length ? " · " + esc(c.why.join(", ")) : ""}${c.lvl === "hoch" && !c.after ? " – Position vorher verkleinern oder enger absichern?" : ""}</em></div>`;
+}
 const loadEarnStats = () => earnStats || fetch("earn_stats.json").then(r => r.ok ? r.json() : null).then(d => { earnStats = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnStats = {}; });
 function earnStatHtml(t, sur) {
   if (!earnStats) { loadEarnStats(); return ""; }
@@ -2708,13 +2738,20 @@ function earnStatHtml(t, sur) {
 // Oben im Fenster: Wie wahrscheinlich steigt die Aktie nach Zahlen dieser Art – und was heißt das für einen Einstieg?
 // Vor den Zahlen: Mischung der Eimer nach den bisherigen Überraschungen dieser Aktie (große Stichprobe je Eimer, eigene Historie als Gewicht).
 // Vorsichtsregeln wie backend/earnfast.app_odds (Live-Bilanz 27.10.–02.11.2026, 203 Meldungen): „angehoben“ nur aus
-// Schlagzeilen zählt nicht (48 % gestiegen statt ~60 % gezeigt); außerhalb der USA halber Abstand zu 50 % (Quoten aus US-Berichten)
+// Schlagzeilen zählt nicht (48 % gestiegen statt ~60 % gezeigt). Regionen (Test 03.11.2026, 33.968 Berichte): Europa folgt den
+// US-Quoten (59,9 % Treffer), Asien bekommt eigene, flachere Quoten (54 %).
+const ASIA_UP = [0.439, 0.459, 0.463, 0.508, 0.56];
+const ASIA_SUF = /\.(T|SS|SZ|HK|KS|KQ|TW|TWO|NS|SI|AX|NZ|BK|JK|KL|PS)$/;
+const regionOf = t => (rowOf(t) || {}).r || (!String(t || "").includes(".") ? "us" : ASIA_SUF.test(t) ? "asia" : "europe");
 function earnOdds(t, sur, L) {
   const G = L && L.guide, headUp = G && G.d === 1 && G.src !== "Pressemitteilung (SEC)";
   const o = earnOdds0(t, sur, headUp ? { ...L, guide: { ...G, d: null } } : L);
   if (!o) return o;
   if (headUp) o.how += " · Ausblick laut Schlagzeilen angehoben – zählt erst, wenn die Pressemitteilung es bestätigt";
-  if (o.p != null && t && String(t).includes(".")) { o.p = 0.5 + (o.p - 0.5) / 2; o.nonUS = true; o.how += " · außerhalb der USA: Statistik aus US-Berichten, nur halb gewichtet (wenig Aussagekraft)"; }
+  if (o.p != null && regionOf(t) === "asia" && sur != null && !(L && L.guide && L.guide.d === -1)) {   // Asien: eigene Quoten (10.882 Berichte, geprüft ab 07/2024)
+    const B = (earnStats && earnStats.buckets) || [], bi = B.findIndex(b => sur * 100 >= b.lo && sur * 100 < b.hi);
+    if (ASIA_UP[bi] != null) { o.p = ASIA_UP[bi]; o.how = `bei Gewinn ${B[bi].name} – Quote aus 10.882 Berichten in Asien (dort reagieren Kurse schwächer auf Überraschungen)`; }
+  }
   return o;
 }
 function earnOdds0(t, sur, L) {
@@ -2773,7 +2810,7 @@ function earnTopHtml(t, sur, rx, L) {
       : [hit ? "Münzwurf – der Kairo-Treffer entscheidet" : "Münzwurf – kein Einstiegsgrund", (o.after ? "Zahlen dieser Art bewegen den Kurs kaum vorhersagbar. " : "Vor den Zahlen ist die Richtung offen. ") + (hit ? "Im Kairo-Test waren Käufe kurz vor den Zahlen nicht schlechter – Stop setzen, mit Kurslücke rechnen." : "Ohne Kairo-Setup kein Einstieg.")];
   return `<div class="eq-odds t-${tone}"><div class="eq-odds-top"><span class="eq-odds-p">${o.p == null ? "↓" : pct(o.p, 0)}</span><span class="eq-odds-l">${o.p == null ? "Ausblick gesenkt" : lead}<em>${esc(o.how)}${o.after && !o.guideDown && !o.calib ? ` · ${fmt(o.n, 0)} Berichte seit 2019` : ""}${o.p5 != null ? ` · nach 5 Tagen ${pct(o.p5, 0)} im Plus` : ""}${esc(own)}</em></span></div>
     <div class="eq-bar"><i style="width:${((o.p == null ? .25 : o.p) * 100).toFixed(1)}%"></i></div><div class="eq-scale"><span>fällt</span><span>50 %</span><span>steigt</span></div>
-    <div class="eq-entry"><b>${esc(entry[0])}</b><span>${esc(entry[1])}</span></div></div>`;
+    <div class="eq-entry"><b>${esc(entry[0])}</b><span>${esc(entry[1])}</span></div>${rx && rx.d1 != null ? "" : crashHtml(t, sur)}</div>`;
 }
 function loadEarnings() {
   loadEarnStats(); loadSecHits(true); loadEarnWatch();
@@ -5533,8 +5570,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.38";
-const APP_NEWS = [["2026.11.38", "Markt: Fazit, Warum, gegenüber Markt", [
+const APP_VER = "2026.11.39";
+const APP_NEWS = [["2026.11.39", "Quartalszahlen: Absturz-Risiko und Regionen", [
+  ["Absturz-Risiko", "Im Quartalszahlen-Fenster und bei Trades mit Zahlen in der Haltedauer: Wahrscheinlichkeit für −5 % oder mehr am Tag nach den Zahlen (normal / erhöht / hoch). Getestet an 33.967 Berichten – im obersten Fünftel stürzte jede vierte Aktie ab, im untersten nur 2 %."],
+  ["Regionen", "Europa nutzt wieder die volle Statistik (historisch 60 % Treffer), Asien eigene, vorsichtigere Quoten (dort reagieren Kurse schwächer auf Überraschungen)."]]],
+  ["2026.11.38", "Markt: Fazit, Warum, gegenüber Markt", [
   ["Tages-Fazit", "Ganz oben im Überblick ein Satz: Index, Breite, stärkster und schwächster Sektor, wohin seit Wochen Geld fließt."],
   ["Gewinner/Verlierer: Warum?", "Unter den Movern steht die neueste Schlagzeile der letzten 3 Tage (wenn vorhanden)."],
   ["Sektoren: gegenüber Markt", "Schalter zeigt jeden Sektor relativ zum Durchschnitt – „+2 %“ an einem +3-%-Tag ist dann klar schwächer als der Markt."]]],
@@ -6349,7 +6389,8 @@ function tp2Calc(r, S, o = {}) {
   out.exit2 = addBd(out.d0, KMAX.hold2 - 1, r.t || r.ticker);
   if (r.ed) { const ed = new Date(r.ed + "T12:00:00"); if (ed > out.d0 && ed <= out.exit2) {
     out.edIn = true;
-    out.problems.push(["yellow", `Quartalszahlen am ${dateDE(r.ed)} während der Haltedauer – laut Test halten (Käufe kurz vor den Zahlen waren im Schnitt sogar besser). Aber: Eine Kurslücke kann den Stop und bei Turbos den K.-o. überspringen – mit Turbo lieber kleiner Hebel.`]); } }
+    const cr = crashRisk(r.t || r.ticker, null);
+    out.problems.push([cr && cr.lvl === "hoch" ? "red" : "yellow", `${cr ? `Absturz-Risiko an den Zahlen ${pct(cr.p, 0)} (${cr.lvl}). ` : ""}Quartalszahlen am ${dateDE(r.ed)} während der Haltedauer – laut Test halten (Käufe kurz vor den Zahlen waren im Schnitt sogar besser). Aber: Eine Kurslücke kann den Stop und bei Turbos den K.-o. überspringen – mit Turbo lieber kleiner Hebel.`]); } }
   if (out.exit2 < out.exit) out.exit2 = out.exit;
   out.free = freeCap();                                        // vor den Varianten: Aktie direkt passt sich dem freien Kapital an (Review 2, K2)
   out.levs = TP.levs.map(L => {

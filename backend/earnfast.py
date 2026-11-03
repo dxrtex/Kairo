@@ -326,13 +326,21 @@ def result_pushes(fresh: dict, prev: dict, events: list[dict], out: Path) -> Non
     f.write_text(json.dumps(sent), encoding="utf-8")
 
 
-MODEL = "2026-11-03 Region+Ausblick-Quelle"      # Stand der Prognose-Regel; bei jeder Änderung neu setzen (Auswertung je Stand)
+MODEL = "2026-11-03b Asien-Quoten+Ausblick-Quelle"      # Stand der Prognose-Regel; bei jeder Änderung neu setzen (Auswertung je Stand)
 
 
 GKEY = {-1: "gesenkt", 0: "bestätigt", 1: "angehoben"}
 
 
 SEC_SRC = "Pressemitteilung (SEC)"
+
+
+ASIA_UP = (0.439, 0.459, 0.463, 0.508, 0.56)       # Steig-Quote je Gewinn-Stufe in Asien (10.882 Berichte, tools/research/earn_region.py)
+ASIA_SUF = (".T", ".SS", ".SZ", ".HK", ".KS", ".KQ", ".TW", ".TWO", ".NS", ".SI", ".AX", ".NZ", ".BK", ".JK", ".KL", ".PS")
+
+
+def asia_ticker(t: str | None) -> bool:
+    return bool(t) and str(t).endswith(ASIA_SUF)
 
 
 def us_ticker(t: str | None) -> bool:
@@ -343,13 +351,19 @@ def us_ticker(t: str | None) -> bool:
 def app_odds(last: dict, gst: dict | None = None, calib: dict | None = None, t: str | None = None) -> float | None:
     """Wie _odds, mit zwei Vorsichtsregeln (Live-Bilanz 27.10.–02.11.2026, 203 Meldungen):
     - Ausblick „angehoben“ nur aus Schlagzeilen zählt nicht (48 % gestiegen statt gezeigter ~60 %); aus der Pressemitteilung schon.
-    - Außerhalb der USA zur Mitte gezogen (halber Abstand zu 50 %): die Quoten stammen aus US-Berichten, live dort 51 % Treffer."""
+    - Regionen (Test 03.11.2026, 33.968 Berichte, Prüfzeit ab 07/2024): Europa folgt den US-Quoten (59,9 % Treffer),
+      Asien bekommt eigene, flachere Quoten (Brier besser, 54 % Treffer)."""
     G = last.get("guide") or {}
     if G.get("d") == 1 and G.get("src") != SEC_SRC:
         last = {**last, "guide": {**G, "d": None}}
     p = _odds(last, gst, calib)
-    if p is not None and t is not None and not us_ticker(t):
-        p = round(0.5 + (p - 0.5) / 2, 3)
+    if p is not None and t and asia_ticker(t) and last.get("eps_s") is not None and (last.get("guide") or {}).get("d") != -1:
+        try:                                             # Asien: eigene Quoten je Gewinn-Stufe (Test 03.11.2026)
+            st = json.loads((ROOT / "site" / "earn_stats.json").read_text(encoding="utf-8"))
+            bi = next(i for i, b in enumerate(st["buckets"]) if b["lo"] <= last["eps_s"] * 100 < b["hi"])
+            p = ASIA_UP[bi]
+        except Exception:
+            pass
     return p
 
 
