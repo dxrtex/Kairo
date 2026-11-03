@@ -4443,7 +4443,7 @@ function todayModel() {
   // 4) ETF-Ampel grün → Extra-Geld investieren (Sparrate läuft ohnehin)
   const e = getJson("etf.json");
   if (e && e.ok !== false && ["go", "go2"].includes(e.lv) && pfCfg().etf > 0 && !etfDoneRecent())
-    tasks.push({ k: "etf", cat: "etf", tone: "g", t: "", ttl: e.lv === "go2" ? "Extra-Geld in den ETF – Panik am Markt" : "Extra-Geld in den ETF investieren", sub: (g => (g > 50 ? `bis zu ${eur(g)} (Lücke zu deinem ETF-Ziel) · ` : ""))((ec => ec.units ? ec.inv * ec.share / 100 - ec.units * e.c : 0)(etfCfg())) + (e.lv === "go2" ? "VIX ≥ 30 – gern in 2–3 Raten über einige Wochen" : `ETF-Ampel grün${(e.why || []).length ? ": " + e.why.join(", ") : ""}`),
+    tasks.push({ k: "etf", cat: "etf", tone: "g", t: "", ttl: e.lv === "go2" ? "Extra-Geld in den ETF – Panik am Markt" : "Extra-Geld in den ETF investieren", sub: (g => (g > 50 ? `bis zu ${eur(g)} (Lücke zu deinem ETF-Ziel) · ` : ""))((ec => ec.units ? ec.inv * ec.share / 100 - ec.units * e.c : 0)(etfCfg())) + (e.lv === "go2" ? "VIX ≥ 30 – gern in 2–3 Raten über einige Wochen" : (e.why || []).some(w => /3 Monat/.test(w)) ? "3-Monats-Regel – am besten in 3 Raten über 8 Wochen" : `ETF-Ampel grün${(e.why || []).length ? ": " + e.why.join(", ") : ""}`),
       act: `<button class="btn sm" data-etfdone>Erledigt ✓</button><button class="btn ghost sm" ${SEC_LINK("etf")}>ETF</button>` });
   // 5) Vorbereiten: Treffer, deren Seitwärtsphase noch kommt (beste Rangplätze, keine Doppelten)
   const seen = new Set(tasks.map(x => x.t)), pos = searchIdx ? kmRank().pos : {};
@@ -4659,7 +4659,7 @@ function etfHtml() {
       .concat((e.why || []).some(w => /3 Monat/.test(w)) ? [["3-Monats-Regel", "erfüllt", "up"]] : []) : [];
   const tgtE = c.inv * c.share / 100, gap = etfVal != null ? tgtE - etfVal : null;
   const goLv = e && ["go", "go2", "blue", "green2"].includes(e.lv);
-  const todo = e ? (goLv ? `Sparrate läuft · <b>Extra-Geld jetzt investieren</b>${gap > 50 ? ` – bis zu <b>${eur(gap)}</b> (Lücke zu deinem ETF-Ziel)` : ""}${e.lv === "go2" ? " (gern in 2–3 Raten)" : ""}${(e.why || []).some(w => /3 Monat/.test(w)) ? `<br><small class="muted">Grün wegen der 3-Monats-Regel: seit über 3 Monaten kein Rücksetzer – länger warten hat im Test mehr gekostet als gebracht.</small>` : ""}`
+  const todo = e ? (goLv ? `Sparrate läuft · <b>Extra-Geld jetzt investieren</b>${gap > 50 ? ` – bis zu <b>${eur(gap)}</b> (Lücke zu deinem ETF-Ziel)` : ""}${e.lv === "go2" ? " (gern in 2–3 Raten)" : ""}${(e.why || []).some(w => /3 Monat/.test(w)) ? `<br><b>Tipp: in 3 Raten über 8 Wochen</b> (z. B. alle 4 Wochen ein Drittel)<br><small class="muted">Grün wegen der 3-Monats-Regel: seit über 3 Monaten kein Rücksetzer – länger warten hat im Test mehr gekostet als gebracht. Raten kosteten im Test praktisch nichts (−0,1 bis +0,04 % Endwert, 1990–2026) und nehmen das Risiko, alles am Tag vor einem Rückgang anzulegen. Kommt in der Zeit ein Rücksetzer, den Rest sofort.</small>` : ""}`
     : `Sparrate läuft · <b>Extra-Geld zurücklegen</b> – spätestens nach 3 Monaten trotzdem investieren${e.last_go ? ` (letzter Rücksetzer: ${dateDE(e.last_go)})` : ""}`) : "";
   const hero = e ? `<div class="hcard etf-hero">
       <div class="eh-lights">${lamp("go2", "Panik – kaufen", ETF_DG)}${lamp("go", "Jetzt investieren", "var(--up)")}${lamp("wait", "Abwarten", "var(--gold)")}</div>
@@ -5021,8 +5021,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.20";
-const APP_NEWS = [["2026.11.20", "Scanner aufgeräumt", [
+const APP_VER = "2026.11.21";
+const APP_NEWS = [["2026.11.21", "ETF: Raten bei der 3-Monats-Regel", [
+  ["In 3 Raten über 8 Wochen", "Wird die ETF-Ampel nur wegen der 3-Monats-Regel grün, empfiehlt Kairo jetzt, das Extra-Geld in 3 Raten anzulegen. Im Test (1990–2026, vier Zeiträume) kostete das praktisch nichts und schützt davor, alles am Tag vor einem Rückgang zu investieren. Bei einem echten Rücksetzer-Signal: wie bisher sofort."]]],
+  ["2026.11.20", "Scanner aufgeräumt", [
   ["Gleiche Zahlen überall", "Oben stehen Treffer, kaufbereit und geprüfte Aktien – passend zu den Reitern Treffer / Beobachten / Meine."],
   ["Schnellfilter Region", "Alle · USA · Europa · Asien direkt über der Liste, alles Weitere unter „Weitere Filter“. Der Score-Filter ist weg – der Score ist nicht belegt."],
   ["iPhone: Liste statt Tabelle", "Name, Status (kaufbereit, Seitwärtsphase …) und x/11 auf einen Blick, sortierbar – kein seitliches Wischen mehr."],
