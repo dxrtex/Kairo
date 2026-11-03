@@ -345,7 +345,7 @@ async def run(port: int) -> list[str]:
                 await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.remove())')
                 if not await pg.query_selector(".tasks"):
                     errs.append(f"Heute {des} {vw}px: Aufgabenliste fehlt")
-                for sel in ("[data-hdone]", ".tq-prep > summary"):
+                for sel in ("[data-hdone]", ".tq-prep > summary", ".kb-row[data-kbopen]"):
                     el = await pg.query_selector(sel)
                     if el:
                         await el.click()

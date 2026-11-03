@@ -648,13 +648,25 @@
   .tq-t { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; color: var(--text); font: inherit; cursor: pointer; }
   .tq-t b { display: block; font-weight: 650; font-size: 15.5px; } .tq-t small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
   .tq-a, .slip-act { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0 52px; } .tq-buy .slip-act { margin-left: 24px; }
-  .slip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 10px; margin: 10px 0 0 24px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2, rgba(255,255,255,.04)); border: 1px solid var(--line); }
-  .slip > div { min-width: 0; } .slip span { display: block; font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
-  .slip b { display: block; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; } .slip b small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; }
-  .slip em { display: block; font-style: normal; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .slip p { grid-column: 1 / -1; margin: 2px 0 0; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); } .slip p b { display: inline; font-size: 12.5px; font-weight: 650; color: var(--text); }
   .tq-a .btn, .slip-act .btn { width: auto; flex: none; min-width: 0; padding-left: 16px; padding-right: 16px; }
   @media (max-width: 600px) { .slip { margin-left: 0; } .tq-a { margin-left: 34px; } .tq-buy .slip-act { margin-left: 0; } }
+  .tq-buy { padding: 0; }
+  .kb-row { display: grid; grid-template-columns: 10px minmax(110px, 1fr) auto auto 12px; align-items: center; gap: 12px; padding: 11px 0; cursor: pointer; }
+  .kb-n { min-width: 0; } .kb-n small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .kb-n b { display: block; font-size: 15.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kb-n small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+  .kb-k { display: flex; gap: 12px; font-variant-numeric: tabular-nums; } .kb-k > div { text-align: right; }
+  .kb-k span { display: block; font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; } .kb-k b { font-size: 15px; font-weight: 700; white-space: nowrap; }
+  .kb-buy { width: auto !important; flex: none; padding-left: 14px !important; padding-right: 14px !important; }
+  .kb-chev { text-decoration: none; color: var(--muted); font-size: 18px; transition: transform .2s; } .kb.on .kb-chev { transform: rotate(90deg); }
+  .kb-tk { margin: 0 0 12px 22px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface-2, rgba(255,255,255,.03)); }
+  .kb-tk > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 12px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .kb-tk > div:first-child { border-top: 0; } .kb-tk > div > span { color: var(--muted); font-size: 13.5px; white-space: nowrap; }
+  .kb-tk > div > b { text-align: right; font-size: 14.5px; font-weight: 650; } .kb-tk b small { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+  .kb-tk .kb-act { justify-content: flex-start; gap: 8px; padding: 10px 12px; } .kb-act .btn { width: auto; flex: none; padding-left: 16px; padding-right: 16px; }
+  .kb-warn { margin: 0; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+  .tasks { container-type: inline-size; } .kb-buy { white-space: nowrap; } .kb.on .kb-k { visibility: hidden; }
+  @container (max-width: 500px) { .kb-row { grid-template-columns: 10px minmax(0, 1fr) auto 12px; row-gap: 6px; } .kb-k { grid-column: 2 / -1; grid-row: 2; gap: 22px; } .kb-k > div { text-align: left; } .kb.on .kb-k { display: none; } }
+  @media (max-width: 600px) { .kb-tk { margin-left: 0; } }
   .tq-prog { height: 4px; border-radius: 2px; background: var(--line); margin: -4px 0 10px; overflow: hidden; } .tq-prog i { display: block; height: 100%; background: var(--up); border-radius: 2px; transition: width .3s; }
   .tq-prep > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; } .tq-prep > summary::-webkit-details-marker { display: none; }
   .tq-prep > summary::after { content: "›"; margin-left: auto; font-size: 16px; transition: transform .2s; } .tq-prep[open] > summary::after { transform: rotate(90deg); }
@@ -4360,6 +4372,7 @@ function todaySubHtml() {                       // Kopfzeile unter der Begrüßu
 const hDone = () => { const x = state.hDone; return new Set(x && x.d === isoD(new Date()) ? x.k : []); };
 const etfDoneRecent = () => state.etfDone && daysUntil(state.etfDone) > -30;
 // Kauf-Zettel: dieselbe Rechnung wie im Einstieg (tp2Calc, vorgeschlagener Hebel) – Stückzahl, Kaufzone, Limit, Stop, Zeitpunkt
+let buyOpen = null;                                // aufgeklappte Kauf-Tickets (Standard: das erste, sobald Käufe da sind)
 function buySlip(x) {
   const pl = kPlan(x.t), S = einSetup(x), m = tp2Calc(x, S), lv = m.levs && m.levs.find(l => l.L === m.sug), fx = m.fx || 1, cur = x.cur || "";
   const eu = v => v == null ? "–" : `${fmt(v * fx)} €${cur && cur !== "EUR" ? ` <small>(${fmt(v)} ${esc(cur)})</small>` : ""}`;
@@ -4368,13 +4381,23 @@ function buySlip(x) {
   const txt = [`Kauf ${x.n} (${x.t})`, lv ? (lv.L === 1 ? `${fmt(lv.qty, 0)} Stück` : `Turbo ×${lv.L} für ≈ ${eur(lv.stake)} (Turbo im Einstieg wählen)`) : "",
     lim ? `Limit ${fmt(lim * fx)} €${cur !== "EUR" ? ` (${fmt(lim)} ${cur})` : ""} – Obergrenze der Kaufzone` : "", `Wann: ${whenOpen(x.t)}`,
     m.stop ? `Danach Stop-Loss ${fmt(m.stop * fx)} €${cur !== "EUR" ? ` (${fmt(m.stop)} ${cur})` : ""}` : "", "Verkauf: ab Tag 10 bei Schluss unter der EMA 20, spätestens Tag 60"].filter(Boolean).join("\n");
-  return { lv, m, red, html: `<div class="slip">
-      <div><span>Stückzahl</span><b>${size[0]}</b><em>${size[1]}</em></div>
-      <div><span>Limit</span><b>${eu(lim)}</b><em>Zone ${pl.base ? `${fmt(pl.base.lo * fx)}–${fmt(pl.base.hi * fx)} €` : "–"}</em></div>
-      <div><span>Stop-Loss</span><b class="down">${eu(m.stop)}</b><em>Risiko ${lv ? `−${eur(lv.rEff)}` : "–"}</em></div>
-      <p>🕘 <b>${esc(whenOpen(x.t))}</b> · Verkauf ab Tag 10 bei Schluss unter der EMA 20, spätestens ${m.exit2 ? dateDE(isoD(m.exit2)) : "Tag 60"}</p></div>
-    ${red ? `<div class="note" style="margin:6px 0 0"><i class="vdot r"></i>${esc(red[1])}</div>` : ""}
-    <div class="slip-act"><button class="btn sm" data-hbuy="${esc(x.t)}">Gekauft ✓</button><button class="btn ghost sm" data-hcopy="${esc(txt)}">Order kopieren</button><button class="btn ghost sm" data-ein="${esc(x.t)}">Details</button></div>` };
+  const when = whenOpen(x.t), short = when.replace(/ · Eröffnung /, " · ").replace(" Uhr", ""), open = !!(buyOpen && buyOpen.has(x.t));
+  const num = (l, v, c = "") => `<div><span>${l}</span><b class="${c}">${v}</b></div>`;
+  return { lv, m, red, html: `<div class="kb${open ? " on" : ""}">
+    <div class="kb-row" data-kbopen="${esc(x.t)}" role="button" tabindex="0" aria-expanded="${open}"><i class="tq-d g"></i>
+      <span class="kb-n"><b>${esc(x.n)}</b><small>${esc(short)}</small></span>
+      <span class="kb-k">${num("Stück", lv ? (lv.L === 1 ? fmt(lv.qty, 0) : `×${lv.L}`) : "–")}${num("Limit", lim != null ? `${fmt(lim * fx)} €` : "–")}${num("Stop", m.stop ? `${fmt(m.stop * fx)} €` : "–", "down")}</span>
+      <button class="btn sm kb-buy" data-hbuy="${esc(x.t)}">Gekauft ✓</button><s class="kb-chev">›</s></div>
+    ${open ? `<div class="kb-tk">
+      <div><span>Orderart</span><b>Limit-Kauf</b></div>
+      <div><span>Stück</span><b>${size[0]} <small>${size[1]}</small></b></div>
+      <div><span>Limit</span><b>${eu(lim)}</b></div>
+      <div><span>Kaufzone</span><b>${pl.base ? `${fmt(pl.base.lo * fx)}–${fmt(pl.base.hi * fx)} €` : "–"}</b></div>
+      <div><span>Gültig</span><b>${esc(when)}</b></div>
+      <div><span>Danach Stop-Loss</span><b><span class="down">${eu(m.stop)}</span> <small>· Risiko ${lv ? `−${eur(lv.rEff)}` : "–"}</small></b></div>
+      <div><span>Verkauf</span><b><small>ab Tag 10 bei Schluss unter der EMA 20, spätestens ${m.exit2 ? dateDE(isoD(m.exit2)) : "Tag 60"}</small></b></div>
+      ${red ? `<p class="kb-warn"><i class="vdot r"></i>${esc(red[1])}</p>` : ""}
+      <div class="kb-act"><button class="btn ghost sm" data-hcopy="${esc(txt)}">Order kopieren</button><button class="btn ghost sm" data-ein="${esc(x.t)}">Details</button></div></div>` : ""}</div>` };
 }
 function todayModel() {
   if (!searchIdx) loadSearch();
@@ -4410,9 +4433,11 @@ function todayModel() {
 function tasksHtml(M) {
   const done = hDone(), act = M.tasks.filter(x => !done.has(x.k)), fin = M.tasks.filter(x => done.has(x.k));
   const must = M.tasks.filter(x => x.cat !== "prep"), mustOpen = must.filter(x => !done.has(x.k)).length;
-  const row = x => `<div class="tq tq-${x.cat}"><div class="tq-h">${x.cat === "buy" ? "" : `<button class="tq-c" data-hdone="${esc(x.k)}" aria-label="Erledigt"></button>`}<i class="tq-d ${x.tone}"></i>
+  const buys = act.filter(x => x.cat === "buy");
+  if (!buyOpen && buys.length) buyOpen = new Set([buys[0].t]);
+  const row = x => x.buy ? `<div class="tq tq-buy">${buySlip(x.buy).html}</div>` : `<div class="tq tq-${x.cat}"><div class="tq-h">${x.cat === "buy" ? "" : `<button class="tq-c" data-hdone="${esc(x.k)}" aria-label="Erledigt"></button>`}<i class="tq-d ${x.tone}"></i>
       <button class="tq-t" ${x.t && byTicker(x.t) ? `data-card="${esc(x.t)}"` : x.t ? `data-ein="${esc(x.t)}"` : SEC_LINK("etf")}><b>${esc(x.ttl)}</b><small>${esc(x.sub)}</small></button></div>
-      ${x.buy ? buySlip(x.buy).html : x.act ? `<div class="tq-a">${x.act}</div>` : ""}</div>`;
+      ${x.act ? `<div class="tq-a">${x.act}</div>` : ""}</div>`;
   const grp = (cat, lbl) => { const xs = act.filter(x => x.cat === cat); return xs.length ? `<div class="hsub">${lbl}</div>${xs.map(row).join("")}` : ""; };
   const head = must.length ? `Heute zu tun · ${mustOpen ? `${mustOpen} offen` : "alles erledigt ✓"}` : "Heute zu tun";
   return `<div class="hcard tasks">${hHead(head)}
@@ -4453,6 +4478,8 @@ document.addEventListener("click", e => {
   const d = e.target.closest("[data-hdone]");
   if (d) { const k = d.dataset.hdone, s = hDone(); s.has(k) ? s.delete(k) : s.add(k); state.hDone = { d: isoD(new Date()), k: [...s] }; save(); render(); return; }
   if (e.target.closest("[data-etfdone]")) { state.etfDone = isoD(new Date()); save(); render(); return; }
+  const ko = !e.target.closest("[data-hbuy]") && e.target.closest("[data-kbopen]");
+  if (ko) { const t = ko.dataset.kbopen; buyOpen = buyOpen || new Set(); buyOpen.has(t) ? buyOpen.delete(t) : buyOpen.add(t); render(); return; }
   const b = e.target.closest("[data-hbuy]");
   if (b) { const t = b.dataset.hbuy, x = rowOf(t);
     if (confirm(`${x ? x.n : t} gekauft?\nKairo legt den Trade-Plan an (Stop, Verkaufstag) – wie „Trade eröffnen“ im Einstieg.${paperMode() ? "\nModus: Übung (ohne echtes Geld)." : ""}`)) tpOpen(t); return; }
@@ -4957,8 +4984,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.17";
-const APP_NEWS = [["2026.11.17", "Heute: Marktampel oben, deine Treffer", [
+const APP_VER = "2026.11.18";
+const APP_NEWS = [["2026.11.18", "Kaufen: kompakt mit Order-Ticket", [
+  ["Eine Zeile je Kauf", "Stück, Limit und Stop auf einen Blick, „Gekauft ✓“ direkt daneben."],
+  ["Antippen öffnet das Ticket", "In der Reihenfolge der Scalable-Ordermaske: Orderart, Stück, Limit, Kaufzone, Gültig, danach Stop-Loss und Verkauf – mit „Order kopieren“. Der erste Kauf ist schon offen."]]],
+  ["2026.11.17", "Heute: Marktampel oben, deine Treffer", [
   ["Marktampel oben", "Trend, Stimmung und Indizes stehen jetzt ganz oben rechts auf „Heute“."],
   ["Treffer aus deiner Liste", "Neue Karte unten links: alle Aktien aus deiner Watchlist mit 11/11 Kriterien – mit Status (kaufbereit, Seitwärtsphase, im Depot …), kaufbereit zuerst."]]],
   ["2026.11.16", "„Heute“ neu: eine Liste, was zu tun ist", [
