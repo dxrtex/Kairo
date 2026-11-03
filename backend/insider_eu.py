@@ -217,17 +217,19 @@ def fetch_de(uni: dict[str, str], figi: dict, days: int = 90) -> list[dict]:
     from .bafin import parse_csv
     s = requests.Session(); s.headers.update(UA)
     rows, d1 = [], date.today()
+    capped = 0
     while (date.today() - d1).days < days:
-        d0 = max(d1 - timedelta(days=9), date.today() - timedelta(days=days))
+        d0 = d1                                       # je Tag: der Export liefert höchstens ~29 Zeilen je Abfrage
         p = {"meldepflichtigerName": "", "emittentName": "", "emittentIsin": "", "zeitraum": "1", "zeitraumVon": d0.strftime("%d.%m.%Y"),
              "zeitraumBis": d1.strftime("%d.%m.%Y"), "emittentButton": "Suche Emittent", "d-4000784-e": "1", "6578706f7274": "1"}
         r = s.get(BAFIN, params=p, timeout=60)
         r.encoding = "utf-8"
         got = parse_csv(r.text) if r.ok and "csv" in r.headers.get("content-type", "") else []
         rows += got
-        print(f"BaFin {d0}…{d1}: {len(got)} Käufe/Verkäufe")
+        capped += r.text.count("\n") >= 30
         d1 = d0 - timedelta(days=1)
-        time.sleep(1)
+        time.sleep(0.6)
+    print(f"BaFin: {days} Tage abgefragt, {len(rows)} Käufe/Verkäufe" + (f" · {capped} Tage evtl. gekappt" if capped else ""))
     rows = [x for x in rows if "aktie" in (x.get("inst") or "").lower() or not x.get("inst")]
     figi_map([x["isin"] for x in rows], figi)
     by_key, by_name = _index(uni, ".DE")
@@ -290,6 +292,7 @@ def fetch_nordic(uni: dict[str, str], figi: dict, days: int = 90, max_msgs: int 
             if len(got) < 100:
                 break
             st += 100
+        items = [it for it in items if (it.get("releaseTime") or "")[:10] >= str(d0)]   # die Schnittstelle ignoriert fromDate
         for it in items:
             t = by_name.get(_name_key(it.get("company") or ""))
             if not t or n >= max_msgs:
@@ -303,7 +306,7 @@ def fetch_nordic(uni: dict[str, str], figi: dict, days: int = 90, max_msgs: int 
                 m = None
             base = {"t": t, "n": uni.get(t), "d": (it.get("releaseTime") or "")[:10], "src": "Nasdaq Nordic", "url": it.get("messageUrl")}
             if m and m.get("val"):
-                out.append({**base, "who": m["who"] or it.get("company"), "role": m["role"] or "Führungskraft", "kind": m["kind"], "val": m["val"], "cur": "EUR"})
+                out.append({**base, "who": m["who"] or "Führungskraft (Name in der Meldung)", "role": m["role"] or "Führungskraft", "kind": m["kind"], "val": m["val"], "cur": "EUR"})
             else:
                 out.append({**base, "who": (it.get("headline") or "")[:120], "role": "Führungskraft", "kind": "meld"})
             time.sleep(0.2)
