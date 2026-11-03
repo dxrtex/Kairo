@@ -48,7 +48,7 @@ def fetch(tickers: list[str], cache: dict, limit: int = 250) -> int:
             info = {}
         summary = info.get("longBusinessSummary")
         if summary:
-            cache[t] = {"text": _short(summary), "industry": info.get("industry") or "", "country": info.get("country") or "",
+            cache[t] = {"text": _short(summary), "industry": info.get("industry") or "", "sector": info.get("sector") or "", "country": info.get("country") or "",
                         "employees": info.get("fullTimeEmployees"), "web": info.get("website") or ""}
             got += 1
         time.sleep(0.25)

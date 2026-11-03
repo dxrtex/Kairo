@@ -29,7 +29,7 @@ from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
 from . import insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
-from .analysis import EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, THEME_ETF, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
+from .analysis import EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, THEME_ETF, fill_sectors, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
 from .scanner import evaluate
@@ -569,7 +569,7 @@ def main(argv=None) -> int:
                 figi = state.load("figi.json", {})
                 eu_uni = {t: (m or {}).get("name") or t for t, m in meta.items() if t.endswith((".ST", ".SW", ".DE", ".CO", ".HE", ".OL", ".L"))}
                 eu_cache = state.load("insider_eu_cache.json", {})          # Oslo/UK: jede Meldung nur einmal laden
-                eu_rows, eu_bad = insider_eu.fetch(eu_uni, figi, cache=eu_cache)
+                eu_rows, eu_bad = insider_eu.fetch(eu_uni, figi, cache=eu_cache, ccy={t: (meta.get(t) or {}).get("currency") or "" for t in eu_uni})
                 state.save("figi.json", figi)
                 state.save("insider_eu_cache.json", {k: dict(list(v.items())[-4000:]) for k, v in eu_cache.items()})
                 ins["watch"] = [*ins.get("watch", []), *[x for x in eu_rows if x["t"] in w_ins and not x["t"].endswith(".DE")]]   # DE: BaFin je Aktie (12 Mon.) schon drin
@@ -653,6 +653,7 @@ def main(argv=None) -> int:
     results, stats, near = [], {"universe": len(tickers), "loaded": len(data), "errors": 0}, []
     near_all = []                                    # alle 9/11 (auch ohne Seitwärtsphase) – für die 4H-Prüfung zur Auswahl
     search = {}
+    industry_of: dict[str, str] = {}                 # Yahoo-Branche je Aktie → fehlenden Sektor ergänzen
     for t, df in data.items():
         m = meta.get(t, {})
         info = {"currency": m.get("currency"), "market_cap_usd": m.get("market_cap_usd")}
@@ -671,7 +672,10 @@ def main(argv=None) -> int:
         tr_hit = bool(tres and tres.passed)
         try:
             search[t] = {**search_row(res, m, hint(res)), **entry_fields(res, tres, m), **day_moves(df), **closed_bar(df)}
-            ig = industry_group(m.get("industry") or about.get(t, {}).get("industry"))
+            industry_of[t] = m.get("industry") or about.get(t, {}).get("industry") or ""
+            if not search[t].get("sec") and about.get(t, {}).get("sector"):
+                search[t]["sec"] = SECTOR_DE.get(about[t]["sector"], about[t]["sector"])
+            ig = industry_group(industry_of[t])
             if ig:                                   # Branche (Branchen-ETF-Kürzel) für die Sektor-Ansicht
                 search[t]["ig"] = ig
             try:                                     # Trade-Plan-Struktur (Basis, Stop, Widerstände) für den Reiter „Einstieg“
@@ -804,6 +808,7 @@ def main(argv=None) -> int:
     SITE.mkdir(parents=True, exist_ok=True)
     with open(SITE / "results.json", "w", encoding="utf-8") as f:
         json.dump(_clean(out), f, ensure_ascii=False, separators=(",", ":"))
+    print(f"Sektor ergänzt: {fill_sectors(search, industry_of)} Aktien (aus Branche) · mit Sektor: {sum(1 for r in search.values() if r.get('sec'))} von {len(search)}")
     fx = fx_to_eur({r.get("cur") for r in search.values()})
     if brief is not None:
         with open(SITE / "briefing.json", "w", encoding="utf-8") as f:

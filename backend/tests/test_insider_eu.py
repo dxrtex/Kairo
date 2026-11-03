@@ -75,7 +75,7 @@ def test_parse_uk_buy_sell_pence_and_skip():
 def test_parse_text_trade_oslo():
     r = eu.parse_text_trade("Edorf Invest AS, a company owned by Frode Haugli, Board Member and primary insider in Goodtech ASA, has on 3 November 2026 "
                             "purchased 7,000 shares in Goodtech ASA at an average price of NOK 14,09. Following the transaction")
-    assert r == {"kind": "buy", "val": round(7000 * 14.09 * eu.EUR["NOK"]), "who": "Frode Haugli", "role": "Board Member"}
+    assert r == {"kind": "buy", "val": round(7000 * 14.09 * eu.EUR["NOK"]), "who": "Frode Haugli", "role": "Board Member", "px": 14.09, "pcur": "NOK"}
     assert eu.parse_text_trade("John Smith, CEO of X ASA, has today sold 1 250 000 shares at a price of NOK 102.5")["kind"] == "sell"
     assert eu.parse_text_trade("allocated 500,000 shares in the rights issue") is None
 
@@ -95,3 +95,27 @@ def test_parse_uk_real_layouts():
             "Total £1,010,596.95 Aggregated information: Price £33.686565 Volume 30,000")
     s = eu.parse_uk(shel)
     assert s["kind"] == "sell" and s["val"] == round(33.686565 * 30000 * eu.EUR["GBP"]) and s["who"] == "Sinead Gorman"
+
+
+def test_num_prices_with_many_decimals_and_programs():
+    r = eu.parse_text_trade("Jostein Sørvoll, primary insider and Chair of the Board in Protector Forsikring ASA, has today 13 August 2026 acquired "
+                            "10,000 shares in Protector Forsikring ASA at a price of NOK 490.4066 per share.")
+    assert r["val"] == round(10000 * 490.4066 * eu.EUR["NOK"]) and r["px"] == 490.4066 and r["pcur"] == "NOK"
+    o = eu.parse_text_trade("Syno Invest AS, a related party to Øyvind Torpp, EVP & Investment Executive, has on 22 September 2026 bought "
+                            "10,000 shares in Orkla ASA at a price of NOK 92.6898 per share.")
+    assert o["val"] == round(10000 * 92.6898 * eu.EUR["NOK"])
+    assert eu.parse_text_trade("Today, Yara has purchased 71,592 shares in the market at an average price of NOK 454.7355 per share. "
+                               "The shares are purchased on behalf of and transferred to Yara Group Executive Board members taking part in "
+                               "Yara's Share Based Remuneration (SBR) programs.") is None
+
+
+def test_price_check_drops_implausible_rows():
+    rows = [{"t": "RMV.L", "px": 5416.0, "pcur": "GBP", "val": 1}, {"t": "RMV.L", "px": 5.416, "pcur": "GBP", "val": 2},
+            {"t": "PROT.OL", "px": 490.4, "pcur": "NOK", "val": 3}, {"t": "SAP.DE", "val": 4}, {"t": "X.L", "px": 9.9, "pcur": "GBP", "val": 5}]
+    out = eu.price_check(rows, {"RMV.L": "GBp", "PROT.OL": "NOK", "X.L": "USD"}, closes=lambda ts: {"RMV.L": 541.6, "PROT.OL": 480.0, "X.L": 1.0})
+    assert [x["val"] for x in out] == [2, 3, 4, 5]          # 5416 £ statt 5,416 £ fliegt raus; fremde Währung bleibt
+
+
+def test_parse_uk_returns_price():
+    r = eu.parse_uk(UK_FORM.format(nat="Purchase of shares", pv="1,250.5p 40,000 1,251p 10,000"))
+    assert abs(r["px"] - (12.505 * 40000 + 12.51 * 10000) / 50000) < 1e-9 and r["pcur"] == "GBP"

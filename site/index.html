@@ -2500,8 +2500,9 @@ function spDrillHtml(key) {
 const HM_REG = [["us", "USA"], ["europe", "Europa"], ["de", "Deutschland"], ["asia", "Asien"], ["all", "Alle"]];
 const SP_IDX = { d1: "d1", w1: "d5", m1: "m1", m3: "m3", ytd: "ytd" };
 const SP_CLAMP = { d1: .03, w1: .06, m1: .12, m3: .2, ytd: .3 };
+// Ohne illiquide Zweitlistings (z. B. HP in Wien, 3M in Frankfurt) – die doppeln Firmen und verzerren Tagesbewegung/Volumen
 function hmRows(reg, nur) {
-  return spRows(nur).filter(r => reg === "all" ? true : reg === "de" ? /\.DE$/.test(r.t) : r.r === reg);
+  return spRows(nur).filter(r => !(r.km || []).includes("liquidity") && (reg === "all" ? true : reg === "de" ? /\.DE$/.test(r.t) : r.r === reg));
 }
 function squarify(items, x, y, w, h) {   // items: [{v, ...}] → [{...item, x, y, w, h}] (Bruls et al.)
   const out = [], tot = items.reduce((a, b) => a + b.v, 0); if (!tot || w <= 0 || h <= 0) return out;
@@ -2686,13 +2687,22 @@ const NEWS_KW = [[/\b(earnings|results|quarter|guidance|outlook|forecast|revenue
   [/\b(upgrade|downgrade|price target|rating|Kursziel|hochgestuft|abgestuft)\b/i, 1.5], [/\b(acquire|acquisition|merger|takeover|buyout|Übernahme|Fusion|kauft)\b/i, 2],
   [/\b(FDA|approval|approved|Zulassung|trial results|Studie)\b/i, 2], [/\b(lawsuit|probe|investigation|recall|fine|Klage|Ermittlung|Rückruf|Strafe)\b/i, 1.5],
   [/\b(CEO|CFO|chief executive|resigns|steps down|appointed|Vorstandschef|Rücktritt)\b/i, 1.5], [/\b(dividend|buyback|repurchase|Dividende|Aktienrückkauf)\b/i, 1]];
-const NEWS_FLUFF = /\b(should you|stocks? to (buy|watch)|top \d+|\d+ (stocks|reasons)|better buy|is it (time|too late)|could (soar|double)|millionaire|motley|zacks|prediction|here's why|what to expect|vs\.|forget)\b/i;
-const NEWS_SRC = /reuters|bloomberg|wall street journal|wsj|financial times|cnbc|handelsblatt|dpa|faz|börsen-zeitung|marketwatch|barron/i;
+const NEWS_FLUFF = /\b(should you|stocks? to (buy|watch)|top \d+|\d+ (stocks|reasons)|better buy|is it (time|too late)|could (soar|double)|millionaire|motley|zacks|prediction|here's why|what to expect|vs\.|forget|transcript|prognose \d{4}|kaufen oder verkaufen|lohnt sich|jetzt kaufen|doch jetzt|was jetzt|anleger aufgepasst|achtung|das sollten anleger|kursziel & prognose|aktie news:|trade for a profit|bearish trade|bullish trade|options? trade|preview|vorschau|soaring|send the stock|pulse:)/i;
+const NEWS_SRC = /reuters|bloomberg|wall street journal|wsj|financial times|cnbc|handelsblatt|dpa|faz|börsen-zeitung|marketwatch|barron|welt|n-tv|spiegel|tagesschau|marketscreener|associated press/i;
+// SEO-Portale mit Schablonen-Texten („Aktie: … am Ziel?“) – zählen deutlich weniger
+const NEWS_LOW = /stocktwits|motley|zacks|gurufocus|moby|börse express|finanztrends|kapitalmarktexperten|börse global|ad-hoc-news|tikr|aktiencheck|traders union|sharedeals|invezz|simply wall|24\/7 wall|macerkopf|boerse\.de|finanznachrichten/i;
+// Gehört die Schlagzeile wirklich zur Aktie? (Quelle ordnet manchmal fremde Meldungen zu: „Louisiana-Pacific …“ bei Nvidia)
+const NEWS_STOP = /^(the|der|die|das|inc|corp|group|holding|aktiengesellschaft|ag|se|plc|sa|nv|asa|ab)$/i;
+function newsRelevant(n) {
+  const t = String(n.t || "").toLowerCase(), tk = tkClean(n.tk).split(/[.\-]/)[0].toLowerCase();
+  const nm = String((typeof rowOf === "function" && (rowOf(n.tk) || {}).n) || n.n || "").split(/[\s,.'’()-]+/).filter(w => w.length >= 3 && !NEWS_STOP.test(w)).slice(0, 2);
+  return (tk.length >= 2 && new RegExp(`\\b${tk.replace(/[^a-z0-9]/g, "")}\\b`).test(t)) || nm.some(w => t.includes(w.toLowerCase().slice(0, 6)));
+}
 function newsImportant(list, dep) {
-  const sc = n => { const t = String(n.t || ""); if (NEWS_FLUFF.test(t)) return -9;
+  const sc = n => { const t = String(n.t || ""); if (NEWS_FLUFF.test(t + " " + (n.p || "")) || NEWS_LOW.test(String(n.p || "")) && /\?\s*$/.test(t) || !newsRelevant(n)) return -9;
     const r = rowOf(n.tk) || {}, mv = Math.abs(r.d1 || 0);
     return Math.abs(n.s || 0) * 1.5 + NEWS_KW.reduce((a, [rx, w]) => a + (rx.test(t) ? w : 0), 0) + (mv >= .06 ? 2.5 : mv >= .03 ? 1.5 : 0)
-      + (NEWS_SRC.test(String(n.p || "")) ? 1 : 0) + (dep.has(n.tk) ? 1 : 0); };
+      + (NEWS_SRC.test(String(n.p || "")) ? 1 : 0) - (NEWS_LOW.test(String(n.p || "")) ? 2 : 0) - (/\?\s*$/.test(t) ? 1.5 : 0) + (dep.has(n.tk) ? 1 : 0); };
   const best = {};
   list.forEach(n => { const v = sc(n); if (v >= 3 && (!best[n.tk] || v > best[n.tk].v)) best[n.tk] = { n, v }; });   // je Aktie die wichtigste
   return Object.values(best).sort((a, b) => b.v - a.v).slice(0, 5).map(x => x.n);
@@ -2727,7 +2737,9 @@ function newsHtml() {
     const dep = depotTickers(); plansLoad().forEach(p => p.st === "open" && dep.add(p.t));   // Depot + laufende Trades
     const hot = newsImportant(pool.filter(n => now - n.ms < 2 * 864e5), dep);
     const by = {}; pool.forEach(n => (by[n.tk] = by[n.tk] || []).push(n));
-    const groups = Object.entries(by).sort((a, b) => (dep.has(b[0]) - dep.has(a[0])) || (b[1].some(n => n.s) - a[1].some(n => n.s)) || b[1][0].ms - a[1][0].ms);
+    const low = n => (NEWS_LOW.test(String(n.p || "")) || NEWS_FLUFF.test(String(n.t || ""))) + (newsRelevant(n) ? 0 : 2), newest = l => Math.max(...l.map(n => n.ms || 0));
+    Object.values(by).forEach(l => l.sort((a, b) => low(a) - low(b) || (b.ms || 0) - (a.ms || 0)));   // je Aktie: seriöse Quellen vor SEO-Portalen
+    const groups = Object.entries(by).sort((a, b) => (dep.has(b[0]) - dep.has(a[0])) || (b[1].some(n => n.s) - a[1].some(n => n.s)) || newest(b[1]) - newest(a[1]));
     const grp = ([t, l]) => { const r = rowOf(t) || {}, sr = byTicker(t), d1 = r.d1, open = (state.newsOpen || {})[t];
       const sc = l.reduce((a, n) => a + (n.s || 0), 0);
       return `<div class="ng" data-ngq="${esc((nameOf(t) + " " + tkClean(t)).toLowerCase())}"${state.newsQ && !(nameOf(t) + " " + tkClean(t)).toLowerCase().includes(state.newsQ) ? " hidden" : ""}><button class="ng-h" data-newsopen="${esc(t)}"><span class="ng-n"><b>${esc(nameOf(t))}</b><em>${esc(tkClean(t))}${d1 != null ? ` · <span class="${d1 >= 0 ? "up" : "down"}">${sgnPct(d1, 1)} heute</span>` : ""}${sr && sr.passed && kSt(sr).k === "own" ? " · " + kPill(sr, false) : dep.has(t) ? ' · <span class="st own">im Depot</span>' : sr && sr.passed ? " · " + kPill(sr, false) : ""}</em></span>
@@ -5732,8 +5744,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.47";
-const APP_NEWS = [["2026.11.47", "Markt: Europa, Indizes live, Volumen", [
+const APP_VER = "2026.11.48";
+const APP_NEWS = [["2026.11.48", "Markt: Feinschliff mit echten Daten", [
+  ["Heatmap & Sektoren vollständiger", "Viel mehr Aktien haben jetzt einen Sektor (vorher fehlte er bei vielen – z. B. Visa, Exxon, J&J landeten unter „Sonstige“). Illiquide Zweitlistings (HP in Wien, 3M in Frankfurt) zählen nicht mehr doppelt."],
+  ["News: „Wichtig“ strenger", "Werbe- und Schablonen-Portale zählen weniger, Fragen-Schlagzeilen und Handels-Tipps fliegen raus, Meldungen zu fremden Firmen werden erkannt. Je Aktie stehen seriöse Quellen zuerst."],
+  ["Insider: Beträge geprüft", "Großbritannien/Norwegen: Kurse mit vielen Nachkommastellen werden richtig gelesen, Vergütungsprogramme und doppelte Korrektur-Meldungen zählen nicht, und jeder Betrag wird gegen den Börsenkurs geprüft."]]],
+  ["2026.11.47", "Markt: Europa, Indizes live, Volumen", [
   ["Markt: Europa", "Sektoren & Branchen hat jetzt „Europa“: 19 Sektoren des STOXX Europe 600 (Banken, Autos, Chemie …) mit Rendite, Rotations-Bild gegen den STOXX 600 und Rang-Verlauf."],
   ["Markt: Indizes live + Nikkei", "Die Index-Kacheln (S&P 500, Nasdaq 100, DAX, STOXX 600, neu Nikkei 225, VIX) werden tagsüber alle 30 Minuten aktualisiert."],
   ["Markt: Ungewöhnliches Volumen", "Neben Gewinnern und Verlierern zeigt „Volumen“ die Aktien, die heute mindestens 3× so viel gehandelt werden wie üblich – oft der früheste Hinweis, dass große Anleger ein- oder aussteigen."]]],

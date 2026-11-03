@@ -251,7 +251,7 @@ def fetch_de(uni: dict[str, str], figi: dict, days: int = 90) -> list[dict]:
     return out
 
 
-NUM = r"(\d{1,3}(?:[ ,.\u00a0]\d{3})*(?:[.,]\d+)?|\d+(?:[.,]\d+)?)"
+NUM = r"(\d{1,3}(?:[ ,.\u00a0]\d{3})+(?!\d)(?:[.,]\d+)?|\d+(?:[.,]\d+)?)"   # „454.7355“ ist ein Preis, keine Tausender
 
 
 def _nnum(x: str) -> float:
@@ -324,12 +324,16 @@ def fetch_nordic(uni: dict[str, str], figi: dict, days: int = 90, max_msgs: int 
 
 OSLO_MSG = "https://api3.oslo.oslobors.no/v1/newsreader/message?messageId={id}"
 SH = r"(?:ordinary |new |class [AB] )?shares"
+PROGRAM = re.compile(r"remuneration|incentive (?:plan|program)|share (?:purchase |savings |based )?program|\bLTIP\b|\bSBR\b|bonus share|"
+                     r"allocat|allotted|rights issue|subscription rights|on behalf of", re.I)
 
 
 def parse_text_trade(text: str) -> dict | None:
     """Fließtext-Meldung (Oslo, oft auch UK): „… purchased 7,000 shares in X at an average price of NOK 14,09 …“.
     Gibt Art, Betrag in EUR, Person (falls „owned by …“ / „<Name>, CEO“) zurück – sonst None."""
     t = re.sub(r"\s+", " ", text)
+    if PROGRAM.search(t):                       # Vergütungs-/Aktienprogramme, Zuteilungen – kein freiwilliger Kauf
+        return None
     m = re.search(r"\b(purchased|bought|acquired|subscribed for|sold|disposed of)\s+(?:a total of\s+)?" + NUM + r"\s+" + SH
                   + r".{0,160}?\b(?:at|for)\s+(?:an?\s+)?(?:average\s+|volume[- ]weighted average\s+)?(?:price\s+(?:of\s+)?|kurs\s+)?(?:of\s+)?"
                   r"(NOK|EUR|SEK|DKK|USD|GBP|£)\s?" + NUM, t, re.I)
@@ -338,13 +342,15 @@ def parse_text_trade(text: str) -> dict | None:
     kind = "sell" if m.group(1).lower() in ("sold", "disposed of") else "buy"
     cur = "GBP" if m.group(3) == "£" else m.group(3).upper()
     try:
-        val = _nnum(m.group(2)) * _nnum(m.group(4)) * EUR.get(cur, 0.1)
+        px = _nnum(m.group(4))
+        val = _nnum(m.group(2)) * px * EUR.get(cur, 0.1)
     except Exception:
         return None
     who = re.search(r"(?:owned by|controlled by|related to|close associate of)\s+([A-ZÆØÅ][\w.'-]+(?: [A-ZÆØÅ][\w.'-]+){1,3})", t) \
         or re.search(r"([A-ZÆØÅ][\w.'-]+(?: [A-ZÆØÅ][\w.'-]+){1,3}),\s+(?:the\s+)?(?:CEO|CFO|COO|Chair|Chairman|Chief|Board Member|Director|President|EVP|SVP)", t)
     role = re.search(r"\b(CEO|CFO|COO|CTO|Chair(?:man|person)?|Chief [A-Z]\w+ Officer|Board [Mm]ember|Director|President|EVP|SVP)\b", t)
-    return {"kind": kind, "val": round(val), "who": who.group(1).strip() if who else "", "role": role.group(1) if role else ""}
+    return {"kind": kind, "val": round(val), "who": who.group(1).strip() if who else "", "role": role.group(1) if role else "",
+            "px": px, "pcur": cur}
 
 
 def fetch_oslo(uni: dict[str, str], days: int = 90, cache: dict | None = None, max_new: int = 250) -> list[dict]:
@@ -373,9 +379,16 @@ def fetch_oslo(uni: dict[str, str], days: int = 90, cache: dict | None = None, m
         base = {"t": t, "n": uni[t], "d": (m.get("publishedTime") or "")[:10], "src": "Oslo Børs", "url": f"https://newsweb.oslobors.no/message/{mid}"}
         if p.get("val"):
             out.append({**base, "who": p.get("who") or "Primærinnsider (Name in der Meldung)", "role": p.get("role") or "Primærinnsider",
-                        "kind": p["kind"], "val": p["val"], "cur": "EUR"})
+                        "kind": p["kind"], "val": p["val"], "cur": "EUR", "px": p.get("px"), "pcur": p.get("pcur")})
         else:
             out.append({**base, "who": m.get("title") or "", "role": "Primærinnsider", "kind": "meld"})
+    seen, uniq = set(), []                       # Korrektur-Meldungen wiederholen dasselbe Geschäft
+    for x in out:
+        k = (x["t"], x["who"], x.get("val"), x["kind"])
+        if x["kind"] == "meld" or k not in seen:
+            seen.add(k)
+            uniq.append(x)
+    out = uniq
     trades = net_rows([x for x in out if x["kind"] != "meld"])
     melds = [x for x in out if x["kind"] == "meld"]
     print(f"Insider Norwegen (Oslo Børs): {len(trades)} Geschäfte mit Betrag, {len(melds)} ohne Betrag ({new} Meldungen neu gelesen)")
@@ -419,7 +432,7 @@ def parse_uk(text: str) -> dict | None:
     if not kind:
         return None
     seg = re.search(r"(?:Price\(s\) and volume\(s\)|Currency [A-Z]{3} Price)(.{0,600}?)(?:d\)|Aggregated|Total)", t, re.I)
-    val = None
+    val = px = pcur = None
     if seg:
         toks = re.findall(r"(GB£|US\$|£|\$|€|GBP|GBX|USD|EUR)?\s?" + UK_NUM + r"\s?(p\b|pence|GBP|GBX|USD|EUR)?", seg.group(1))
         prices, vols = [], []
@@ -427,12 +440,16 @@ def parse_uk(text: str) -> dict | None:
             pv = _uk_px(num, unit or None, {"GB£": "£", "US$": "$"}.get(cur, cur) or None)
             (prices.append(pv) if pv else vols.append(_uk_num(num)))
         if prices and vols:
-            val = sum(p * v * EUR.get(c, 0.1) for (p, c), v in zip(prices, vols))
+            pairs = list(zip(prices, vols))
+            val = sum(p * v * EUR.get(c, 0.1) for (p, c), v in pairs)
+            if len({c for (_, c), _ in pairs}) == 1 and sum(v for _, v in pairs):
+                px, pcur = sum(p * v for (p, _), v in pairs) / sum(v for _, v in pairs), pairs[0][0][1]
     who = re.search(r"Name\s*:?\s*([A-Z][\w .'-]{2,60}?)\s*(?:2\s|Reason|b\)|Position)", t)
     role = re.search(r"Position/status\s*:?\s*([\w ,/&()'-]{2,80}?)\s*(?:b\)|Initial|Amendment)", t, re.I)
     if val is not None and not (0 < val < 5e8):
         val = None
-    return {"kind": kind, "val": round(val) if val else None, "who": who.group(1).strip() if who else "", "role": role.group(1).strip() if role else ""}
+    return {"kind": kind, "val": round(val) if val else None, "who": who.group(1).strip() if who else "", "role": role.group(1).strip() if role else "",
+            "px": px, "pcur": pcur}
 
 
 def _uk_tidm(t: str) -> str:
@@ -488,7 +505,7 @@ def fetch_uk(uni: dict[str, str], days: int = 90, cache: dict | None = None, bud
                 p = cache.get(url) or {}
                 if p.get("val"):
                     out.append({"t": t, "n": uni[t], "d": str(d), "src": "RNS (Investegate)", "url": url, "who": p.get("who") or f"PDMR (Meldung {url.rsplit('/', 1)[-1]})",
-                                "role": p.get("role") or "PDMR", "kind": p["kind"], "val": p["val"], "cur": "EUR"})
+                                "role": p.get("role") or "PDMR", "kind": p["kind"], "val": p["val"], "cur": "EUR", "px": p.get("px"), "pcur": p.get("pcur")})
             if not oldest or oldest < d0 or len(rows) < 40:
                 break
             time.sleep(0.15)
@@ -498,12 +515,54 @@ def fetch_uk(uni: dict[str, str], days: int = 90, cache: dict | None = None, bud
     return trades
 
 
-def fetch(uni: dict[str, str], figi: dict, days: int = 90, cache: dict | None = None) -> tuple[list[dict], set]:
+def _last_closes(tickers: list[str]) -> dict[str, float]:
+    import yfinance as yf
+    out = {}
+    try:
+        h = yf.download(sorted(tickers), period="1mo", interval="1d", group_by="ticker", auto_adjust=False, progress=False, threads=True)
+        for t in tickers:
+            try:
+                c = (h[t] if len(tickers) > 1 else h)["Close"].dropna()
+                if len(c):
+                    out[t] = float(c.median())
+            except Exception:
+                pass
+    except Exception as exc:
+        print(f"Insider Preisprüfung: Kurse nicht geladen ({exc!r})"[:160])
+    return out
+
+
+def price_check(rows: list[dict], ccy: dict[str, str], closes=_last_closes) -> list[dict]:
+    """Plausibilität: Preis je Aktie aus der Meldung muss zum Börsenkurs passen (× 0,5 … 2). Fängt Lesefehler wie
+    „£121.213296“ → 121.213 oder Tausender/Dezimal-Verwechslungen ab. Nur Großbritannien/Norwegen (Text-Meldungen).
+    Kurse in Pence (GBp/GBX) werden in Pfund umgerechnet; ohne Kurs oder bei fremder Währung bleibt die Zeile."""
+    chk = [x for x in rows if x.get("px") and x["t"].endswith((".L", ".OL"))]
+    if not chk:
+        return rows
+    ref = closes(list({x["t"] for x in chk}))
+    bad = 0
+    keep = []
+    for x in rows:
+        c, cq = ref.get(x["t"]), (ccy.get(x["t"]) or "").strip()
+        if x in chk and c:
+            if cq in ("GBp", "GBX"):
+                c, cq = c / 100, "GBP"
+            if cq.upper() == (x.get("pcur") or "").upper() and not (0.5 <= x["px"] / c <= 2):
+                bad += 1
+                continue
+        keep.append(x)
+    print(f"Insider Preisprüfung: {len(chk)} Meldungen geprüft, {bad} unplausibel verworfen")
+    return keep
+
+
+def fetch(uni: dict[str, str], figi: dict, days: int = 90, cache: dict | None = None, ccy: dict[str, str] | None = None) -> tuple[list[dict], set]:
     """Alle zugeordneten Geschäfte (Schweden, Schweiz, Deutschland alle, Dänemark/Finnland) und Meldungen (Norwegen);
     zweites Ergebnis: Länder-Endungen, deren Quelle ausgefallen ist."""
     rows, bad = [], set()
     cache = cache if cache is not None else {}
-    oc, uc = cache.setdefault("oslo", {}), cache.setdefault("uk", {})
+    for old_k in ("oslo", "uk"):                  # alte Einträge mit falsch gelesenen Preisen (Fassung 1) verwerfen
+        cache.pop(old_k, None)
+    oc, uc = cache.setdefault("oslo2", {}), cache.setdefault("uk2", {})
     for suf, fn in (("ST", fetch_se), ("SW", fetch_ch), ("DE", fetch_de), ("CO", fetch_nordic), ("OL", lambda u, f, d: fetch_oslo(u, d, oc)),
                     ("L", lambda u, f, d: fetch_uk(u, d, uc))):
         try:
@@ -511,6 +570,8 @@ def fetch(uni: dict[str, str], figi: dict, days: int = 90, cache: dict | None = 
         except Exception as exc:
             bad.add(suf)
             print(f"Insider {suf}: Fehler {exc!r}"[:160])
+    if ccy is not None:
+        rows = price_check(rows, ccy)
     return rows, bad
 
 
