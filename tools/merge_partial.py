@@ -48,6 +48,8 @@ def merge(live: Path, part: Path) -> dict:
     if (part / "analysis.json").exists() and (live / "analysis.json").exists():
         A, AP = _load(live / "analysis.json"), _load(part / "analysis.json")
         A.setdefault("tickers", {}).update(AP.get("tickers") or {})
+        if AP.get("market"):                         # Marktlage, Sektoren, Branchen: der Teil-Scan hat sie frisch berechnet
+            A["market"] = {**(A.get("market") or {}), **AP["market"]}
         A["generated"] = P["generated"]
         _dump(live / "analysis.json", A)
     (live / "charts").mkdir(exist_ok=True)
