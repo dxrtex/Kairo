@@ -660,6 +660,11 @@
   .mrow { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-top: 1px solid var(--line); } .mrow > a { flex: 1; min-width: 0; color: var(--text); text-decoration: none; }
   .mrow > a b { display: block; font-size: 15.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mrow > a span { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mrow .mr { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; } .mrow .mr em { font-style: normal; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .gact { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .gact .gact-btn { width: auto; flex: none; margin-left: auto; }
+  .dep-act { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; } .dep-act .btn { width: auto; flex: none; }
+  .dep-more { position: relative; } .dep-more > summary { list-style: none; cursor: pointer; } .dep-more > summary::-webkit-details-marker { display: none; }
+  .dep-more-p { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: 250px; padding: 12px; border-radius: 14px; background: var(--surface, #1c1c1e); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.35); display: grid; gap: 8px; }
+  .dep-more-p .btn { width: 100%; }
   .ko-list { margin-top: 16px; } .ko-list > summary { display: flex; justify-content: space-between; cursor: pointer; list-style: none; } .ko-list > summary::-webkit-details-marker { display: none; }
   .ko-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); } .ko-row > span:first-child { flex: 1; min-width: 0; }
   .ko-row small { display: block; color: var(--muted); font-size: 12.5px; } .ko-act { display: flex; gap: 8px; align-items: center; flex: none; }
@@ -2616,24 +2621,27 @@ function koOf(p) {
 }
 const depotLive = () => depotLoad().filter(p => !koOf(p));
 let koChecking = false;
-async function koCheck() {
+async function koCheck() {                        // Hintergrund: onvista (Knock-out + echter Geldkurs) und Tagestiefs seit dem Kauf
   if (koChecking) return; koChecking = true;
-  const out = { ...(state.koOut || {}) }, seen = { ...(state.koSeen || {}) }; let hit = 0;
+  const out = { ...(state.koOut || {}) }, seen = { ...(state.koSeen || {}) }, marks = {}; let hit = 0;
   try {
     for (const p of depotLoad().filter(x => x.d && +x.d.ko > 0)) {
       const k = koKey(p); if (out[k] || (state.koKeep || {})[k] || (seen[k] && Date.now() - seen[k] < 6 * 3600e3)) continue;
       seen[k] = Date.now();
-      let res = null;
-      try { const r = p.t ? rowOf(p.t) : null;
+      let res = null; const r = p.t ? rowOf(p.t) : null;
+      if (p.isin) { const q = await ovGet(`/instruments/query?searchValue=${encodeURIComponent(p.isin)}&limit=1`), it = ((q || {}).list || [])[0];
+        if (it && it.entityType === "DERIVATIVE") { const d = ovTurbo(await ovGet(`/derivatives/${it.entityValue}/snapshot`));
+          if (d && d.hit) res = { d: isoD(new Date()), src: "onvista" };
+          else if (d && d.bid > 0 && d.spot > 0 && r && (!d.ucur || d.ucur === r.cur)) marks[k] = { mark: d.bid, markU: d.spot, markDate: isoD(new Date()), markSrc: "onvista" }; } }
+      if (!res) try {
         if (p.t && (!p.d.cur || !r || p.d.cur === r.cur)) { const c = await loadChart(p.t);
           for (let i = 0; c && c.t && i < c.t.length; i++) { if (p.date && String(c.t[i]) < p.date) continue;
             if (p.d.dir === "short" ? c.h[i] >= p.d.ko : c.l[i] <= p.d.ko) { res = { d: String(c.t[i]).slice(0, 10), src: "Tagestief" }; break; } } } } catch (e) {}
-      if (!res && p.isin) { const q = await ovGet(`/instruments/query?searchValue=${encodeURIComponent(p.isin)}&limit=1`), it = ((q || {}).list || [])[0];
-        if (it && it.entityType === "DERIVATIVE") { const d = ovTurbo(await ovGet(`/derivatives/${it.entityValue}/snapshot`)); if (d && d.hit) res = { d: isoD(new Date()), src: "onvista" }; } }
       if (res) { out[k] = res; hit++; }
     }
   } finally { state.koOut = out; state.koSeen = seen; save(); koChecking = false; }
-  if (hit) render();
+  if (Object.keys(marks).length) { const l = depotLoad(); l.forEach(p => { const m = marks[koKey(p)]; if (m) Object.assign(p, m); }); depotSave(l); }   // echter Geldkurs → genaue Turbo-Bewertung
+  if (hit || Object.keys(marks).length) render();
 }
 function depotLoad() { try { return depotFix(JSON.parse(localStorage.getItem(DEPOT_KEY) || "[]")); } catch (e) { return []; } }
 // ETFs aus dem Scalable-Export: nie einer Aktie zuordnen. Seit 2025 heißen SPDR-ETFs „State Street SPDR …“ – der Namensabgleich
@@ -2768,11 +2776,13 @@ function depotHtml() {
       <div class="fig"><span>in %</span><b class="${gv >= 0 ? "up" : "down"}">${einstand ? (gv >= 0 ? "+" : "") + pct(gv / einstand) : "–"}</b></div></div>`
     : list.length ? `<div class="dep-sum"><div class="fig"><span>Eingesetzt gesamt</span><b>${fmt(invested)} €</b></div><div class="fig"><span>Positionen</span><b>${list.length}</b></div></div>` : "";
   const form = depotEdit != null ? depotFormHtml(depotEdit >= 0 ? list[depotEdit] : null) : "";
-  const actions = `<div class="row-actions" style="margin:16px 0">
-      <button class="btn" data-dep="add">+ Position</button>
-      <label class="btn ghost" style="cursor:pointer">${list.some(isImported) ? "Neuen Scalable-Export hochladen" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="depCsv" hidden></label>
-      ${list.length ? `<button class="btn ghost" data-dep="claude">Für Claude kopieren</button><button class="btn ghost danger" data-dep="clearimp">Depot leeren …</button>` : ""}</div>
-    ${list.some(isImported) ? `<div class="note" style="margin:-6px 2px 12px">Ein neuer Export ersetzt den alten Import vollständig (Depot und Journal). Von Hand angelegte Positionen bleiben.</div>` : ""}
+  const actions = `<div class="dep-act">
+      <button class="btn sm" data-dep="add">+ Position</button>
+      <label class="btn ghost sm" style="cursor:pointer" title="Ein neuer Export ersetzt den alten Import vollständig (Depot und Journal). Von Hand angelegte Positionen bleiben.">${list.some(isImported) ? "↻ Scalable-Export" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="depCsv" hidden></label>
+      ${list.length ? `<details class="dep-more"><summary class="btn ghost sm">…</summary><div class="dep-more-p">
+        <button class="btn ghost sm" data-dep="claude">Für Claude kopieren</button>
+        <button class="btn ghost sm danger" data-dep="clearimp">Depot leeren …</button>
+        <div class="muted" style="font-size:12px">Ein neuer Scalable-Export ersetzt den alten Import vollständig (Depot und Journal). Von Hand angelegte Positionen bleiben.</div></div></details>` : ""}</div>
     ${depotMsg ? `<div class="tip tone-gray" style="margin-bottom:14px">${depotMsg}</div>` : ""}`;
   if (!anaData) loadAnalysis();
   const groups = anaData ? groupPositions(items) : [];
@@ -2961,7 +2971,7 @@ function groupHtml(g) {
       <div class="g2"><span class="muted">Gewinn / Verlust</span><b class="${g.pl == null ? "" : g.pl >= 0 ? "up" : "down"}">${g.known ? sgnEur(g.value - g.invested) : "–"}</b><small class="${g.pl == null ? "muted" : g.pl >= 0 ? "up" : "down"}">${g.known ? sgnPct(g.pl, 1) : "Wert unbekannt"}</small></div>
       <div class="g2"><span class="muted">Hebel</span><b>${g.levTxt}</b><small class="${g.koDist != null && g.koDist < .1 ? "down" : "muted"}">${g.koDist != null ? `K.-o. ${pct(g.koDist, 0)} entfernt` : "ohne Knock-out"}</small></div>
       <div class="g2"><span class="muted">Haltedauer</span><b>${st ? `Tag ${st.day}/${st.hold}` : "–"}</b><small class="${st && st.left <= 2 ? "gold" : "muted"}">${st ? `verkaufen am ${dateDE(st.sell)}` : "kein Trade-Plan"}</small></div>
-      <div class="gact tone-${(st || NOPLAN).tone}"><b>${esc((st || NOPLAN).t)}</b><span>${st ? `Stop ${st.fe(pl.stop)} € · noch ${st.slDist != null ? pct(st.slDist, 1) : "–"}${st.R != null ? ` · ${st.R >= 0 ? "+" : ""}${fmt(st.R, 2)} R` : ""}` : "Plan anlegen für Stop und Verkaufstag"}</span></div>
+      <div class="gact tone-${(st || NOPLAN).tone}"><b>${esc((st || NOPLAN).t)}</b><span>${st ? `Stop ${st.fe(pl.stop)} € · noch ${st.slDist != null ? pct(st.slDist, 1) : "–"}${st.R != null ? ` · ${st.R >= 0 ? "+" : ""}${fmt(st.R, 2)} R` : ""}` : "Ohne Plan kein Stop und kein Verkaufstag"}</span>${st ? "" : `<button class="btn sm gact-btn" data-ein="${esc(tkClean(g.t))}">Plan anlegen ›</button>`}</div>
     </summary>`;
   const body = !open ? "" : `<div class="gbody">
     <div class="chartbox">${c ? `<div class="lwc-tools"><span class="muted">Zwei Finger: waagerecht auseinander = Zeit, senkrecht auseinander = Kurs, gemeinsam hoch/runter = Kurs verschieben · wischen = Zeit verschieben</span>
@@ -2987,7 +2997,7 @@ function groupHtml(g) {
         return `<tr><td>${j + 1}</td><td><b>${m.p.date ? dateDE(m.p.date) : "–"}</b><small>${m.held != null ? `seit ${m.held} T.` : ""}${m.ent ? ` · bei ${fmt(m.ent.u)}` : ""}</small></td>
           <td class="num">${m.d ? fmt(m.levNow, 1) + "×" : "1×"}<small>${m.d ? `K.-o. ${fmt(m.d.ko)} (${pct(m.dist, 0)})` : ""}</small></td>
           <td class="num">${eur(m.p.price * m.p.qty)}<small>${fmt(m.p.qty, 0)} × ${fmt(m.p.price)} €</small></td>
-          <td class="num">${m.nowPos != null ? eur(m.nowPos * m.p.qty) : "–"}<small>${m.nowPos != null ? fmt(m.nowPos) + " € je Stk." : ""}</small>${m.d ? `<button class="linkbtn" data-dep="mark" data-i="${m.i}">${m.tm && m.tm.exact ? `✓ exakt (${dateDE(m.p.markDate)})` : "Kurs eintragen"}</button>` : ""}</td>
+          <td class="num">${m.nowPos != null ? eur(m.nowPos * m.p.qty) : "–"}<small>${m.nowPos != null ? fmt(m.nowPos) + " € je Stk." : ""}</small>${m.d ? `<button class="linkbtn" data-dep="mark" data-i="${m.i}">${m.tm && m.tm.exact ? `✓ ${m.p.markSrc === "onvista" ? "onvista" : "exakt"} (${dateDE(m.p.markDate)})` : "Kurs eintragen"}</button>` : ""}</td>
           <td class="num ${m.pl == null ? "" : m.pl >= 0 ? "up" : "down"}">${sgnPct(m.pl)}</td>
           ${pl ? `<td class="num down">${v1 != null ? eur(v1 * m.p.qty) : "–"}<small>${v1 != null ? sgnPct(v1 / m.p.price - 1, 0) : ""}</small></td>` : ""}</tr>`; }).join("")}
     </tbody></table></div>
