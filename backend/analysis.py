@@ -68,6 +68,21 @@ INDUSTRY_ETF = {
     "VNQ": ("REITs", ()),
     "PHO": ("Wasser", ("Utilities - Regulated Water",)),
 }
+# Themen (11/2026): quer zu den Yahoo-Branchen (Cybersecurity steckt dort z. B. in „Software“), deshalb mit festen Hauptwerten
+# für die Liste „stärkste Aktien“. Kurse der ETFs für Rendite, Rang-Verlauf und Rotations-Bild wie bei den Branchen.
+THEME_ETF = {
+    "CIBR": ("Cybersecurity", ("CRWD", "PANW", "FTNT", "ZS", "NET", "OKTA", "CHKP", "CYBR", "S", "TENB", "QLYS", "RPD", "AKAM", "GEN", "VRNS")),
+    "SKYY": ("Cloud", ("SNOW", "DDOG", "MDB", "NOW", "CRM", "WDAY", "NET", "TEAM", "HUBS", "ESTC", "TWLO", "AMZN", "MSFT", "GOOGL", "ORCL")),
+    "BOTZ": ("KI & Robotik", ("NVDA", "ISRG", "PATH", "TER", "CGNX", "ROK", "SYM", "PLTR", "AI", "ZBRA", "6954.T", "6861.T", "ABBN.SW")),
+    "IPAY": ("Zahlungen & Fintech", ("V", "MA", "PYPL", "FI", "FIS", "GPN", "AXP", "XYZ", "AFRM", "TOST", "COIN", "SOFI", "FOUR", "ADYEN.AS")),
+    "GRID": ("Stromnetz & Rechenzentren", ("ETN", "PWR", "VRT", "GEV", "HUBB", "NVT", "POWL", "ANET", "SU.PA", "ABBN.SW", "SIE.DE", "PRY.MI")),
+    "NLR": ("Kernkraft", ("CEG", "VST", "CCJ", "BWXT", "OKLO", "SMR", "LEU", "NXE", "TLN")),
+    "LIT": ("Lithium & Batterien", ("ALB", "SQM", "TSLA", "LAC", "QS", "SLDP", "ENS", "6752.T", "PLS.AX", "MIN.AX")),
+    "REMX": ("Seltene Erden", ("MP", "LYC.AX", "ILU.AX", "USAR", "ALB", "SQM")),
+    "UFO": ("Raumfahrt", ("RKLB", "ASTS", "IRDM", "VSAT", "GSAT", "PL", "LUNR", "SATS", "LMT", "NOC")),
+    "SLX": ("Stahl", ("NUE", "STLD", "CLF", "RS", "CMC", "MT", "TX", "VALE", "MT.AS", "TKA.DE", "SZG.DE")),
+    "MOO": ("Agrar & Dünger", ("DE", "CTVA", "NTR", "CF", "MOS", "ADM", "ZTS", "TSN", "BG", "AGCO", "CNH", "FMC", "YAR.OL", "BAYN.DE")),
+}
 _IND_MAP = {name: k for k, (_, names) in INDUSTRY_ETF.items() for name in names}
 PERIODS = (("d1", 1), ("w1", 5), ("m1", 21), ("m3", 63))
 
@@ -225,6 +240,17 @@ def market_context(hist: dict[str, pd.DataFrame]) -> dict:
         rank_history(inds, hist)
         rotation(inds, hist)
         out["industries"] = sorted(inds, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
+    ths = []                                          # Themen (Cybersecurity, Cloud, KI …) mit festen Hauptwerten
+    for etf, (name, mem) in THEME_ETF.items():
+        df = hist.get(etf)
+        if df is None or len(df) < 70:
+            continue
+        st = trend_state(df) if len(df) >= 210 else {}
+        ths.append({"k": etf, "n": name, "mem": list(mem), "tone": st.get("tone"), "label": st.get("label"), **perf_row(df)})
+    if ths:
+        rank_history(ths, hist)
+        rotation(ths, hist)
+        out["themes"] = sorted(ths, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
     spx, vix = out.get("^GSPC"), out.get("^VIX")
     if spx and vix:
         good = spx["above50"] and vix["c"] < 20
