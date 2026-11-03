@@ -107,10 +107,10 @@ def eval_quad(q: pd.DataFrame, F: dict, uni, start="2008-01-01"):
         r = {}
         for k, nm in names.items():
             m = (Q == k)
-            v = f.where(m).stack()
+            v = f.where(m).stack().dropna()
             r[nm] = {"mean": round(float(v.mean()) * 100, 2), "hit": round(float((v > 0).mean()) * 100, 1), "n": int(v.size)}
         for (a, b) in ((3, 4), (4, 1), (1, 2), (2, 3)):
-            v = f.where((prev == a) & (Q == b)).stack()
+            v = f.where((prev == a) & (Q == b)).stack().dropna()
             r[f"{names[a]}→{names[b]}"] = {"mean": round(float(v.mean()) * 100, 2), "hit": round(float((v > 0).mean()) * 100, 1), "n": int(v.size),
                                            "ab2016": round(float(v.loc["2016-01-01":].mean()) * 100, 2) if v.size else None}
         out[h] = r
