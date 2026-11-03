@@ -2,6 +2,8 @@
 
 - Schweden: Finansinspektionen, Insynsregistret (CSV-Export, alle Emittenten, mit Person, Funktion, Volumen und Preis)
 - Schweiz:  SIX Exchange Regulation, Management-Transaktionen (JSON, alle Emittenten, mit Betrag in CHF, ohne Namen)
+- Deutschland (BaFin), Dänemark/Finnland (Nasdaq Nordic), Norwegen (Oslo Børs, Betrag aus dem Meldungstext),
+  Großbritannien (RNS-Meldungen „Director/PDMR Shareholding“ über Investegate, Betrag aus dem MAR-Formular)
 
 Beide Register melden nach ISIN. Die Zuordnung ISIN → Börsenkürzel läuft über OpenFIGI (frei, ohne Schlüssel) und wird
 zwischengespeichert; ohne Treffer dort hilft beim schwedischen Register der Firmenname.
@@ -16,7 +18,8 @@ import io
 import re
 import sys
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from html import unescape as html_unescape
 
 import requests
 
@@ -319,26 +322,176 @@ def fetch_nordic(uni: dict[str, str], figi: dict, days: int = 90, max_msgs: int 
     return trades + melds
 
 
-def fetch_oslo(uni: dict[str, str], days: int = 90) -> list[dict]:
-    """Norwegen: Osloer Börse (Newsweb, Kategorie Meldepflichtiger Handel) – nur Meldung, Betrag steht im PDF."""
+OSLO_MSG = "https://api3.oslo.oslobors.no/v1/newsreader/message?messageId={id}"
+SH = r"(?:ordinary |new |class [AB] )?shares"
+
+
+def parse_text_trade(text: str) -> dict | None:
+    """Fließtext-Meldung (Oslo, oft auch UK): „… purchased 7,000 shares in X at an average price of NOK 14,09 …“.
+    Gibt Art, Betrag in EUR, Person (falls „owned by …“ / „<Name>, CEO“) zurück – sonst None."""
+    t = re.sub(r"\s+", " ", text)
+    m = re.search(r"\b(purchased|bought|acquired|subscribed for|sold|disposed of)\s+(?:a total of\s+)?" + NUM + r"\s+" + SH
+                  + r".{0,160}?\b(?:at|for)\s+(?:an?\s+)?(?:average\s+|volume[- ]weighted average\s+)?(?:price\s+(?:of\s+)?|kurs\s+)?(?:of\s+)?"
+                  r"(NOK|EUR|SEK|DKK|USD|GBP|£)\s?" + NUM, t, re.I)
+    if not m:
+        return None
+    kind = "sell" if m.group(1).lower() in ("sold", "disposed of") else "buy"
+    cur = "GBP" if m.group(3) == "£" else m.group(3).upper()
+    try:
+        val = _nnum(m.group(2)) * _nnum(m.group(4)) * EUR.get(cur, 0.1)
+    except Exception:
+        return None
+    who = re.search(r"(?:owned by|controlled by|related to|close associate of)\s+([A-ZÆØÅ][\w.'-]+(?: [A-ZÆØÅ][\w.'-]+){1,3})", t) \
+        or re.search(r"([A-ZÆØÅ][\w.'-]+(?: [A-ZÆØÅ][\w.'-]+){1,3}),\s+(?:the\s+)?(?:CEO|CFO|COO|Chair|Chairman|Chief|Board Member|Director|President|EVP|SVP)", t)
+    role = re.search(r"\b(CEO|CFO|COO|CTO|Chair(?:man|person)?|Chief [A-Z]\w+ Officer|Board [Mm]ember|Director|President|EVP|SVP)\b", t)
+    return {"kind": kind, "val": round(val), "who": who.group(1).strip() if who else "", "role": role.group(1) if role else ""}
+
+
+def fetch_oslo(uni: dict[str, str], days: int = 90, cache: dict | None = None, max_new: int = 250) -> list[dict]:
+    """Norwegen: Osloer Börse (Newsweb, Kategorie Meldepflichtiger Handel). Betrag aus dem Meldungstext
+    („purchased 7,000 shares … at NOK 14,09“) oder dem MAR-Formular im Text; sonst Meldung ohne Betrag.
+    cache: messageId → Ergebnis, damit jede Meldung nur einmal geladen wird."""
     d0, d1 = date.today() - timedelta(days=days), date.today()
+    cache = {} if cache is None else cache
     j = requests.get(OSLO.format(d0=d0, d1=d1), headers=UA, timeout=30).json()
-    out = []
+    out, new = [], 0
     for m in (j.get("data") or {}).get("messages") or []:
         t = f"{m.get('issuerSign')}.OL"
-        if t in uni and not re.search(r"bond|obligasjon|\d{4}/\d{4}", m.get("title") or "", re.I):
-            out.append({"t": t, "n": uni[t], "who": m.get("title") or "", "role": "Primærinnsider", "kind": "meld",
-                        "d": (m.get("publishedTime") or "")[:10], "src": "Oslo Børs",
-                        "url": f"https://newsweb.oslobors.no/message/{m.get('messageId')}"})
-    print(f"Insider Norwegen (Oslo Børs): {len(out)} Meldungen ohne Betrag")
-    return out
+        if t not in uni or re.search(r"bond|obligasjon|\d{4}/\d{4}", m.get("title") or "", re.I):
+            continue
+        mid = str(m.get("messageId"))
+        if mid not in cache and new < max_new:
+            new += 1
+            try:
+                msg = (requests.get(OSLO_MSG.format(id=mid), headers=UA, timeout=20).json().get("data") or {}).get("message") or {}
+                body = re.sub(r"<[^>]+>", " ", msg.get("body") or "")
+                cache[mid] = parse_text_trade(body) or parse_mar(body) or {}
+            except Exception:
+                pass
+            time.sleep(0.15)
+        p = cache.get(mid) or {}
+        base = {"t": t, "n": uni[t], "d": (m.get("publishedTime") or "")[:10], "src": "Oslo Børs", "url": f"https://newsweb.oslobors.no/message/{mid}"}
+        if p.get("val"):
+            out.append({**base, "who": p.get("who") or "Primærinnsider (Name in der Meldung)", "role": p.get("role") or "Primærinnsider",
+                        "kind": p["kind"], "val": p["val"], "cur": "EUR"})
+        else:
+            out.append({**base, "who": m.get("title") or "", "role": "Primærinnsider", "kind": "meld"})
+    trades = net_rows([x for x in out if x["kind"] != "meld"])
+    melds = [x for x in out if x["kind"] == "meld"]
+    print(f"Insider Norwegen (Oslo Børs): {len(trades)} Geschäfte mit Betrag, {len(melds)} ohne Betrag ({new} Meldungen neu gelesen)")
+    return trades + melds
 
 
-def fetch(uni: dict[str, str], figi: dict, days: int = 90) -> tuple[list[dict], set]:
+IVG = "https://www.investegate.co.uk"
+UK_SKIP = re.compile(r"dividend|re-?invest|drip|award|grant|vest|exercise|option|\bSIP\b|share incentive|partnership|matching|transfer|gift|"
+                     r"LTIP|bonus|deferred|release|salary|sacrifice|nil[- ]cost|scrip|lapse|pledge|loan|settlement", re.I)
+
+
+def _uk_px(tok: str, unit: str | None, cur: str | None) -> tuple[float, str] | None:
+    v = _nnum(tok)
+    if unit and unit.lower() in ("p", "pence", "gbx") or cur and cur.upper() == "GBX":
+        return v / 100, "GBP"
+    if cur:
+        return v, {"£": "GBP", "$": "USD", "€": "EUR"}.get(cur, cur.upper())
+    if unit:
+        return v, unit.upper()
+    return None
+
+
+def parse_uk(text: str) -> dict | None:
+    """Britische PDMR-Meldung (MAR-Formular als HTML-Text). Nur echte Käufe/Verkäufe – Dividenden-Wiederanlage, Zuteilungen,
+    Optionen, Sparpläne (SIP) usw. sind kein Signal und werden übergangen. Preis in Pence wird in Pfund umgerechnet."""
+    t = re.sub(r"\s+", " ", html_unescape(text))
+    nat = re.search(r"Nature of the transaction\s*(.{0,220}?)\s*(?:c\)|Price\(s\))", t, re.I)
+    if not nat:
+        return parse_text_trade(t)
+    n = nat.group(1)
+    if UK_SKIP.search(n):
+        return None
+    kind = "buy" if re.search(r"purchase|acquisition|buy|bought", n, re.I) else "sell" if re.search(r"\bsale\b|disposal|sell|sold", n, re.I) else None
+    if not kind:
+        return None
+    seg = re.search(r"Price\(s\) and volume\(s\)(.{0,600}?)(?:d\)|Aggregated)", t, re.I)
+    val = None
+    if seg:
+        toks = re.findall(r"(£|\$|€|GBP|GBX|USD|EUR)?\s?" + NUM + r"\s?(p\b|pence|GBP|GBX|USD|EUR)?", seg.group(1))
+        prices, vols = [], []
+        for cur, num, unit in toks:
+            pv = _uk_px(num, unit or None, cur or None)
+            (prices.append(pv) if pv else vols.append(_nnum(num)))
+        if prices and vols:
+            val = sum(p * v * EUR.get(c, 0.1) for (p, c), v in zip(prices, vols))
+    who = re.search(r"Name\s*:?\s*([A-Z][\w .'-]{2,60}?)\s*(?:2\s|Reason|b\))", t)
+    role = re.search(r"Position/status\s*:?\s*([\w ,/&()'-]{2,80}?)\s*(?:b\)|Initial|Amendment)", t, re.I)
+    if val is not None and not (0 < val < 5e8):
+        val = None
+    return {"kind": kind, "val": round(val) if val else None, "who": who.group(1).strip() if who else "", "role": role.group(1).strip() if role else ""}
+
+
+def _uk_tidm(t: str) -> str:
+    return t[:-2].replace("-", ".")
+
+
+def fetch_uk(uni: dict[str, str], days: int = 90, cache: dict | None = None, budget_s: float = 420) -> list[dict]:
+    """Großbritannien: PDMR-Meldungen (RNS/GNW) je Firma über Investegate (Firmenseite → „Director/PDMR Shareholding“),
+    Betrag aus dem MAR-Formular. cache: Meldungs-URL → Ergebnis, damit jede Meldung nur einmal geladen wird."""
+    d0 = date.today() - timedelta(days=days)
+    cache = {} if cache is None else cache
+    hdr = {**UA, "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15", "Accept": "text/html"}
+    t_end, out, seen, new, done = time.time() + budget_s, [], 0, 0, 0
+    for t in [x for x in uni if x.endswith(".L")]:
+        if time.time() > t_end:
+            break
+        done += 1
+        for page in (1, 2):
+            try:
+                h = requests.get(f"{IVG}/company/{_uk_tidm(t)}" + (f"?page={page}" if page > 1 else ""), headers=hdr, timeout=20).text
+            except Exception:
+                break
+            rows = re.findall(r"(?s)<tr[^>]*>(.*?)</tr>", h)
+            oldest = None
+            for r in rows:
+                dm = re.search(r"(\d{1,2} [A-Z][a-z]{2} \d{4})", r)
+                if not dm:
+                    continue
+                try:
+                    d = datetime.strptime(dm.group(1), "%d %b %Y").date()
+                except ValueError:
+                    continue
+                oldest = d
+                lk = re.search(r'href="([^"]*/announcement/[^"]*director-pdmr-shareholding[^"]*)"', r)
+                if not lk or d < d0:
+                    continue
+                url = lk.group(1) if lk.group(1).startswith("http") else IVG + lk.group(1)
+                seen += 1
+                if url not in cache and time.time() < t_end:
+                    new += 1
+                    try:
+                        cache[url] = parse_uk(re.sub(r"<[^>]+>", " ", re.sub(r"(?is)<(script|style).*?</\1>", " ", requests.get(url, headers=hdr, timeout=20).text))) or {}
+                    except Exception:
+                        continue
+                    time.sleep(0.15)
+                p = cache.get(url) or {}
+                if p.get("val"):
+                    out.append({"t": t, "n": uni[t], "d": str(d), "src": "RNS (Investegate)", "url": url, "who": p.get("who") or "PDMR",
+                                "role": p.get("role") or "PDMR", "kind": p["kind"], "val": p["val"], "cur": "EUR"})
+            if not oldest or oldest < d0 or len(rows) < 40:
+                break
+            time.sleep(0.15)
+    trades = net_rows(out)
+    print(f"Insider Großbritannien (Investegate): {done} Firmen geprüft, {seen} PDMR-Meldungen in {days} Tagen ({new} neu gelesen), "
+          f"{len(trades)} Käufe/Verkäufe mit Betrag ({sum(x['kind'] == 'buy' for x in trades)} Käufe)")
+    return trades
+
+
+def fetch(uni: dict[str, str], figi: dict, days: int = 90, cache: dict | None = None) -> tuple[list[dict], set]:
     """Alle zugeordneten Geschäfte (Schweden, Schweiz, Deutschland alle, Dänemark/Finnland) und Meldungen (Norwegen);
     zweites Ergebnis: Länder-Endungen, deren Quelle ausgefallen ist."""
     rows, bad = [], set()
-    for suf, fn in (("ST", fetch_se), ("SW", fetch_ch), ("DE", fetch_de), ("CO", fetch_nordic), ("OL", lambda u, f, d: fetch_oslo(u, d))):
+    cache = cache if cache is not None else {}
+    oc, uc = cache.setdefault("oslo", {}), cache.setdefault("uk", {})
+    for suf, fn in (("ST", fetch_se), ("SW", fetch_ch), ("DE", fetch_de), ("CO", fetch_nordic), ("OL", lambda u, f, d: fetch_oslo(u, d, oc)),
+                    ("L", lambda u, f, d: fetch_uk(u, d, uc))):
         try:
             rows += fn(uni, figi, days)
         except Exception as exc:
@@ -351,7 +504,10 @@ def main() -> int:
     uni = {"VOLV-B.ST": "AB Volvo (publ)", "NESN.SW": "Nestlé S.A.", "SAP.DE": "SAP SE", "AAD.DE": "Amadeus Fire AG", "UBK.DE": "UmweltBank AG",
            "NOVO-B.CO": "Novo Nordisk A/S", "DNORD.CO": "Dampskibsselskabet NORDEN A/S", "NOKIA.HE": "Nokia Oyj", "EQNR.OL": "Equinor ASA", "AIRX.OL": "AirX Group Holdings Ltd."}
     figi: dict = {}
-    for name, fn in (("DE", lambda: fetch_de(uni, figi, 30)), ("Nordic", lambda: fetch_nordic(uni, figi, 30, 40)), ("Oslo", lambda: fetch_oslo(uni, 30))):
+    uni |= {"LSEG.L": "London Stock Exchange Group", "SHEL.L": "Shell", "BARC.L": "Barclays", "AZN.L": "AstraZeneca", "BP.L": "BP", "BT-A.L": "BT Group",
+            "GOD.OL": "Goodtech ASA", "TECH.OL": "Techstep ASA"}
+    for name, fn in (("UK", lambda: fetch_uk(uni, 90, None, 120)), ("Oslo", lambda: fetch_oslo(uni, 30)), ("DE", lambda: fetch_de(uni, figi, 30)),
+                     ("Nordic", lambda: fetch_nordic(uni, figi, 30, 40))):
         try:
             rows = fn()
             print(name, len(rows), rows[:4])
