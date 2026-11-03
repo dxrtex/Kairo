@@ -1,0 +1,47 @@
+name: Quartalszahlen – Regionen und Absturz-Risiko (Forschung)
+on:
+  push:
+    branches: ["claude/earn-region"]
+    paths: ["tools/research/earn_region.py", ".github/workflows/earnregion.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  collect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { reg: us, file: universe_us.csv, n: 600 }
+          - { reg: europe, file: universe_eu.csv, n: 500 }
+          - { reg: asia, file: universe_asia.csv, n: 500 }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: git fetch -q origin kairo-data && git show origin/kairo-data:${{ matrix.file }} > uni.csv
+      - run: python tools/research/earn_region.py collect uni.csv ${{ matrix.reg }} ${{ matrix.n }} ${{ matrix.reg }}.csv
+      - uses: actions/upload-artifact@v4
+        with: { name: "earn-${{ matrix.reg }}", path: "${{ matrix.reg }}.csv" }
+  analyze:
+    needs: collect
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt scikit-learn
+      - uses: actions/download-artifact@v4
+        with: { path: data_in, merge-multiple: true }
+      - run: python tools/research/earn_region.py analyze data_in earn_region.json 2>&1 | grep -v Warning | grep -v "^  m = " | tee earn_region.txt
+      - name: Sichern
+        if: always()
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          cp data_in/*.csv . 2>/dev/null || true
+          gh release create "earnregion-${GITHUB_RUN_ID}" earn_region.json earn_region.txt *.csv --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Quartalszahlen Regionen/Absturz" --notes "Forschung" || true
