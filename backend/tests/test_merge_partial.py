@@ -22,7 +22,7 @@ def test_merge(tmp_path):
                               "results": [{"ticker": "AAA", "passed": False, "score": 70, "senti": {"fu": {"pe": 11}}}]})
     _w(live, "search.json", {"rows": [{"t": "AAA", "s": "hit"}, {"t": "BBB", "s": ""}]})
     _w(part, "search.json", {"rows": [{"t": "AAA", "s": ""}]})
-    _w(live, "analysis.json", {"market": {"x": 1}, "tickers": {"AAA": {"v": 1}, "BBB": {"v": 1}}})
+    _w(live, "analysis.json", {"market": {"x": 1, "fear": 5}, "tickers": {"AAA": {"v": 1}, "BBB": {"v": 1}}})
     _w(part, "analysis.json", {"market": {"x": 2}, "tickers": {"AAA": {"v": 2}}})
     _w(part / "charts", "AAA.json", {"c": [1]})
     out = mp.merge(live, part)
@@ -33,5 +33,5 @@ def test_merge(tmp_path):
     S = json.loads((live / "search.json").read_text())
     assert [r["s"] for r in S["rows"]] == ["", ""]
     A = json.loads((live / "analysis.json").read_text())
-    assert A["tickers"]["AAA"]["v"] == 2 and A["tickers"]["BBB"]["v"] == 1 and A["market"]["x"] == 1
+    assert A["tickers"]["AAA"]["v"] == 2 and A["tickers"]["BBB"]["v"] == 1 and A["market"] == {"x": 2, "fear": 5}   # Marktlage frisch aus dem Teil-Scan, Rest bleibt
     assert (live / "charts" / "AAA.json").exists()
