@@ -678,6 +678,9 @@
   .mline i { flex: none; width: 10px; height: 10px; border-radius: 50%; }
   .mstrip { display: none; } @media (max-width: 600px) { .mstrip { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; margin: 4px 0 -2px; padding: 9px 12px; overflow: hidden; border-radius: 12px; border: 1px solid var(--glass-line); background: var(--glass); color: var(--muted); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }
     .mstrip span { white-space: nowrap; } .mstrip b { color: var(--text); font-size: 13.5px; margin-left: 3px; } .mstrip b.down { color: var(--red); } .mstrip s { display: none; } }
+  @media (max-width: 560px) { .etf-plan .mtiles { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+  .etf-why { margin-top: 10px; } .etf-why > summary { cursor: pointer; font-size: 13.5px; color: var(--accent, var(--up)); font-weight: 600; }
+  .etf-tv > summary { font-weight: 600; } .etf-tv .tvbox { padding: 0; border: 0; background: none; } .etf-tv .tvbox .hh { display: none; } .etf-tv[open] > summary { margin-bottom: 10px; }
   .mk-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--gold); } .mk-dot.tone-green { background: var(--up); } .mk-dot.tone-red { background: var(--red); }
   .money .mt em .up, .money .mt em .down { font-style: normal; }
   .todo-today { margin-bottom: 14px; } .tdo { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 11px 0; cursor: pointer; color: var(--text); }
@@ -1021,7 +1024,7 @@
 .eh-t{display:block;font-size:26px;line-height:1.2;margin:4px 0 6px}.eh-do{margin:0 0 10px;font-size:15px;color:var(--text)}
 .eh-facts{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted)}.eh-facts b{color:var(--text)}
 .eh-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.eh-p{background:var(--surface-2);border-radius:999px;padding:5px 10px;font-size:13px}.eh-p i{font-style:normal;margin-right:4px}
-@media (max-width:560px){.etf-hero{gap:14px;padding:16px!important}.eh-l i{width:32px;height:32px}.eh-t{font-size:21px}}
+@media (max-width:560px){.etf-hero{flex-direction:column;align-items:stretch;gap:14px;padding:16px!important}.eh-lights{flex-direction:row;justify-content:space-around;border-radius:18px;padding:10px 8px}.eh-l i{width:30px;height:30px}.eh-t{font-size:21px}}
 .etf-more>summary{cursor:pointer;font-weight:600;list-style:none}.etf-more>summary::before{content:"› ";color:var(--accent)}.etf-more[open]>summary::before{content:"⌄ "}
 .pf-left,.pf-right{overflow-x:clip}.pf-cards>*{overflow-wrap:anywhere}
 </style>
@@ -4421,7 +4424,7 @@ function todayModel() {
   // 4) ETF-Ampel grün → Extra-Geld investieren (Sparrate läuft ohnehin)
   const e = getJson("etf.json");
   if (e && e.ok !== false && ["go", "go2"].includes(e.lv) && pfCfg().etf > 0 && !etfDoneRecent())
-    tasks.push({ k: "etf", cat: "etf", tone: "g", t: "", ttl: e.lv === "go2" ? "Extra-Geld in den ETF – Panik am Markt" : "Extra-Geld in den ETF investieren", sub: e.lv === "go2" ? "VIX ≥ 30 – gern in 2–3 Raten über einige Wochen" : `ETF-Ampel grün${(e.why || []).length ? ": " + e.why.join(", ") : ""}`,
+    tasks.push({ k: "etf", cat: "etf", tone: "g", t: "", ttl: e.lv === "go2" ? "Extra-Geld in den ETF – Panik am Markt" : "Extra-Geld in den ETF investieren", sub: (g => (g > 50 ? `bis zu ${eur(g)} (Lücke zu deinem ETF-Ziel) · ` : ""))((ec => ec.units ? ec.inv * ec.share / 100 - ec.units * e.c : 0)(etfCfg())) + (e.lv === "go2" ? "VIX ≥ 30 – gern in 2–3 Raten über einige Wochen" : `ETF-Ampel grün${(e.why || []).length ? ": " + e.why.join(", ") : ""}`),
       act: `<button class="btn sm" data-etfdone>Erledigt ✓</button><button class="btn ghost sm" ${SEC_LINK("etf")}>ETF</button>` });
   // 5) Vorbereiten: Treffer, deren Seitwärtsphase noch kommt (beste Rangplätze, keine Doppelten)
   const seen = new Set(tasks.map(x => x.t)), pos = searchIdx ? kmRank().pos : {};
@@ -4534,9 +4537,17 @@ const PF_SCEN = [[100, "100 / 0"], [90, "90 / 10"], [80, "80 / 20"], [70, "70 / 
 const pfCfg = () => { const p = state.pf || {}, e = state.etf || {};
   const etf = p.etf != null && +p.etf >= 0 && +p.etf <= 100 ? +p.etf : e.shareManual && +e.share > 0 ? Math.min(100, +e.share) : 90;
   return { etf, trade: 100 - etf, reserve: +p.reserve > 0 ? +p.reserve : 0 }; };
-const etfCfg = () => { const e = state.etf || {}, total = +e.total > 0 ? +e.total : 3000, pf = pfCfg();
-  return { total, reserve: pf.reserve, inv: Math.max(0, total - pf.reserve), auto: false, share: pf.etf, rate: +e.rate > 0 ? +e.rate : 0, units: +e.units > 0 ? +e.units : 0,
-  buy: +e.buy > 0 ? +e.buy : 0, since: /^\d{4}-\d\d-\d\d$/.test(e.since || "") ? e.since : "" }; };
+// SPYI aus dem Depot (Scalable-Import): Anteile, Ø Kaufkurs, erster Kauf – damit nichts doppelt eingetippt werden muss
+function depotEtf() {
+  const xs = depotLoad().filter(p => p.etf && ETF_ISIN[p.isin] && ETF_ISIN[p.isin][0] === "SPYI" && +p.qty > 0);
+  if (!xs.length) return null;
+  const q = xs.reduce((a, p) => a + +p.qty, 0), cost = xs.reduce((a, p) => a + p.qty * p.price, 0);
+  return { units: q, buy: q ? cost / q : 0, since: xs.map(p => p.date).filter(d => /^\d{4}-\d\d-\d\d$/.test(d || "")).sort()[0] || "" };
+}
+const etfCfg = () => { const e = state.etf || {}, total = +e.total > 0 ? +e.total : 3000, pf = pfCfg(), dp = depotEtf();
+  const units = +e.units > 0 ? +e.units : dp ? dp.units : 0, fromDepot = !(+e.units > 0) && !!dp;
+  return { total, reserve: pf.reserve, inv: Math.max(0, total - pf.reserve), auto: false, share: pf.etf, rate: +e.rate > 0 ? +e.rate : 0, units, fromDepot,
+  buy: +e.buy > 0 ? +e.buy : fromDepot ? dp.buy : 0, since: /^\d{4}-\d\d-\d\d$/.test(e.since || "") ? e.since : fromDepot ? dp.since : "" }; };
 // Gebühren-Bremse: ~93 Trades/Jahr bei 5 Plätzen → 2 Orders je Trade (Anteil am Kapital = Rechnung, kein Backtest).
 // Einordnung nach Forschung 31.10.2026 (korrigierte Engine, 2008–26, 5 × 1 %): 1.000 € Totalverlust durch feste Gebühren, 3.000 € −2 % p. a.,
 // 10.000 € +6 % normal / +1 % Stress. Die ältere capstudy (+12 bis +23 % p. a.) war zu optimistisch.
@@ -4623,20 +4634,22 @@ function etfHtml() {
   const trade = tpCfg().depot, etfVal = e && c.units ? c.units * e.c : null, sum = etfVal != null ? etfVal + trade : null, ist = sum ? etfVal / sum : null;
   const tgtT = c.inv * (100 - c.share) / 100;
   const lamp = (lv, lbl, col) => `<div class="eh-l${e && e.lv === lv ? " on" : ""}" style="--c:${col}"><i></i><span>${lbl}</span></div>`;
-  const facts = e ? [["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "" : e.vix >= 30 ? "up" : e.vix >= 20 ? "gold" : "up"],
+  const facts = e ? [["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "" : e.vix >= 25 ? "up" : "gold"],
       ["EMA 100", e.vs_e100 == null ? "–" : e.vs_e100 >= 0 ? "darüber" : "darunter", e.vs_e100 != null && e.vs_e100 < 0 ? "up" : "gold"],
-      ["Abstand zum Hoch", e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1), e.dd >= .05 ? "up" : "gold"]] : [];
+      ["Abstand zum Hoch", e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1), e.dd >= .05 ? "up" : "gold"]]
+      .concat((e.why || []).some(w => /3 Monat/.test(w)) ? [["3-Monats-Regel", "erfüllt", "up"]] : []) : [];
+  const tgtE = c.inv * c.share / 100, gap = etfVal != null ? tgtE - etfVal : null;
   const goLv = e && ["go", "go2", "blue", "green2"].includes(e.lv);
-  const todo = e ? (goLv ? `Sparrate läuft · <b>Extra-Geld jetzt investieren</b>${e.lv === "go2" ? " (gern in 2–3 Raten)" : ""}`
+  const todo = e ? (goLv ? `Sparrate läuft · <b>Extra-Geld jetzt investieren</b>${gap > 50 ? ` – bis zu <b>${eur(gap)}</b> (Lücke zu deinem ETF-Ziel)` : ""}${e.lv === "go2" ? " (gern in 2–3 Raten)" : ""}${(e.why || []).some(w => /3 Monat/.test(w)) ? `<br><small class="muted">Grün wegen der 3-Monats-Regel: seit über 3 Monaten kein Rücksetzer – länger warten hat im Test mehr gekostet als gebracht.</small>` : ""}`
     : `Sparrate läuft · <b>Extra-Geld zurücklegen</b> – spätestens nach 3 Monaten trotzdem investieren${e.last_go ? ` (letzter Rücksetzer: ${dateDE(e.last_go)})` : ""}`) : "";
   const hero = e ? `<div class="hcard etf-hero">
       <div class="eh-lights">${lamp("go2", "Panik – kaufen", ETF_DG)}${lamp("go", "Jetzt investieren", "var(--up)")}${lamp("wait", "Abwarten", "var(--gold)")}</div>
       <div class="eh-main"><span class="eh-k">ETF-Ampel · ${esc(e.name)}</span><b class="eh-t">${esc(e.t)}</b><p class="eh-do">${todo}</p>
         <div class="eh-facts"><span>Kurs <b>${fmt(e.c)} €</b></span><span>${e.dd < .005 ? "<b>am Allzeithoch</b>" : `<b>−${pct(e.dd, 1)}</b> unter dem Hoch`}</span>${etfStale(e) ? `<span class="gold">Tageskurs vom ${dateDE(e.date)} – Yahoo liefert verzögert, aktueller Kurs im Chart unten</span>` : `<span class="muted">Stand ${dateDE(e.date)}</span>`}</div>
         <div class="eh-pills">${facts.map(([l, v, c]) => `<span class="eh-p"><i class="${c}">●</i>${l}: <b>${v}</b></span>`).join("")}</div></div></div>
-    ${tvEmbedHtml("XETR:SPYI", "SPYI live · TradingView (XETRA, ca. 15 Min. verzögert)")}
-    <div class="hcard">${hHead("Kurs der letzten 3 Jahre · mit 200-Tage-Linie")}${etfLine(e.hist, c.buy)}
-      <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ⚠️ Kurs ist ${e.age} Tage alt` : ""}. Gelegentlich mit Scalable vergleichen.</div></div>`
+    ${c.units && c.buy ? etfDevHtml(e, c) : ""}<div class="hcard">${hHead("Kurs der letzten 3 Jahre · mit 200-Tage-Linie")}${etfLine(e.hist, c.buy)}
+      <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ⚠️ Kurs ist ${e.age} Tage alt` : ""}. Gelegentlich mit Scalable vergleichen.</div></div>
+    <details class="hcard etf-more etf-tv"${state.etfTv ? " open" : ""}><summary>Live-Chart · TradingView (XETRA, ca. 15 Min. verzögert)</summary>${state.etfTv ? tvEmbedHtml("XETR:SPYI", "") : ""}</details>`
     : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? `Die Kursdaten des ETF sehen gerade unplausibel aus${e0.ref_ok === false ? ` (weichen ${pct(e0.ref_dev, 1)} vom Vergleichs-ETF ab)` : ""} – Datenfehler beim Anbieter. Die Ampel ist ausgeblendet, bis sie wieder stimmen.` : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
   const why = e ? `<div class="hsub">Was die Ampel gerade sieht</div><ul class="checks">${[
         ["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "muted" : e.vix >= 25 ? "up" : "gold", e.vix == null ? "keine Daten" : e.vix >= 30 ? "Panik – historisch die besten Kaufzeitpunkte" : e.vix >= 25 ? "Angst – Kaufsignal" : "ruhig – kein Kaufsignal"],
@@ -4645,23 +4658,27 @@ function etfHtml() {
         .map(([l, v, c, t]) => `<li><i class="${c}">●</i><b>${l}: ${v}</b> – ${t}</li>`).join("")}</ul>
       <div class="note" style="margin:6px 0 12px"><i class="vdot g"></i><b>Jetzt investieren</b>, sobald eins davon passt: Kurs unter der EMA 100, mindestens 5 % unter dem Hoch oder VIX ≥ 25 (Dunkelgrün: VIX ≥ 30, Panik).<br><i class="vdot y"></i><b>Abwarten</b>, wenn nichts davon passt – Extra-Geld zurücklegen, aber höchstens 3 Monate, dann trotzdem investieren. Die Sparrate läuft immer. Im Test (S&P 500 ab 1990, Welt ab 2003) kostete diese Regel gegenüber „immer sofort“ nur 0,1–0,7 % Endwert; länger warten (z. B. nur bei Panik kaufen) kostete 7–15 %.</div>` : "";
   const tierHtml = `<div class="note" style="margin:10px 0 0"><b>Aufteilung</b> · Szenario: ${PF_SCEN.map(([v, l]) => `<button class="opt${c.share === v ? " on" : ""}" data-pfetf="${v}">${l}</button>`).join(" ")}
-      <div style="margin-top:6px">Gilt überall in Kairo: ETF-Bereich, Trading-Budget im Einstieg, Kapital &amp; Risiko und neue Übungsdepots. Bestehende Übungsdepots behalten ihre Aufteilung.${c.reserve ? ` Dein Notgroschen von ${eur(c.reserve)} zählt nicht mit.` : ""}</div>
+      <div style="margin-top:6px">Gilt überall in Kairo: ETF-Bereich, Trading-Budget im Einstieg, Kapital &amp; Risiko und neue Übungsdepots.${c.reserve ? ` Dein Notgroschen von ${eur(c.reserve)} zählt nicht mit.` : ""}</div></div>
+      <details class="etf-why"><summary>Warum diese Aufteilung? Forschung &amp; Gebühren</summary><div class="note" style="margin:6px 0 0">Bestehende Übungsdepots behalten ihre Aufteilung.
       ${c.inv < 10000 && c.share < 100 ? `<div style="margin-top:6px" class="gold">Hinweis aus der Gebühren-Forschung: Unter 10.000 € trägt der Trading-Teil die festen Ordergebühren kaum (Test 2008–26) – siehe Gebühren-Bremse unten.</div>` : ""}
-      Forschungsstand 10/2026: Für den Trading-Teil gibt es noch <b>keine belegte</b> Strategie. Bester Kandidat ist Dual Momentum (in allen drei Testzeiträumen besser als der Welt-ETF, im letzten aber nicht sicher von Glück zu unterscheiden) – er läuft im Papier-Test, Entscheidung nach etwa 12 Monaten. Bis dahin ist 100 % ETF die belegte Wahl. Keine Anlageberatung.</div>`;
-  const plan = `<div class="hcard">${hHead(`Mein Plan · ${c.share} % ETF${c.share < 100 ? ` · ${100 - c.share} % Trading` : ""}`)}
+      Forschungsstand 10/2026: Für den Trading-Teil gibt es noch <b>keine belegte</b> Strategie. Bester Kandidat ist Dual Momentum (in allen drei Testzeiträumen besser als der Welt-ETF, im letzten aber nicht sicher von Glück zu unterscheiden) – er läuft im Papier-Test, Entscheidung nach etwa 12 Monaten. Bis dahin ist 100 % ETF die belegte Wahl. Keine Anlageberatung.</div>${tgtT <= 0 ? "" : (() => { const fd = feeDrag(tgtT); return `<div class="note" style="margin:10px 0 0;border-left:3px solid var(--${fd.tone === "red" ? "red" : fd.tone === "yellow" ? "gold" : "up"})"><i class="vdot ${fd.tone === "red" ? "r" : fd.tone === "yellow" ? "y" : "g"}"></i> <b>Trading-Kapital ${eur(tgtT)}:</b> ${fd.t}</div>`; })()}</details>`;
+  const st0 = state.etf || {}, dpx = c.fromDepot;
+  const plan = `<div class="hcard etf-plan">${hHead(`Mein Plan · ${c.share} % ETF${c.share < 100 ? ` · ${100 - c.share} % Trading` : ""}`)}
     <div class="tp2-cfg"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
       <label>Notgroschen – außerhalb (€)<input id="pfReserve" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.reserve || "")}" placeholder="z. B. 5000"></label>
       <label>ETF-Anteil (%)<input id="etfShare" type="number" inputmode="decimal" min="0" max="100" step="5" value="${esc(c.share)}"></label>
       <label>Sparrate je Monat (€)<input id="etfRate" type="number" inputmode="decimal" min="0" step="25" value="${esc(c.rate || "")}" placeholder="z. B. 200"></label>
-      <label>SPYI-Anteile im Depot<input id="etfUnits" type="number" inputmode="decimal" min="0" step="1" value="${esc(c.units || "")}" placeholder="Stück"></label>
-      <label>Ø Kaufkurs (€)<input id="etfBuy" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(c.buy || "")}" placeholder="aus Scalable"></label>
-      <label>Erster Kauf<input id="etfSince" type="date" value="${esc(c.since || "")}"></label></div>
+      <label>SPYI-Anteile im Depot<input id="etfUnits" type="number" inputmode="decimal" min="0" step="1" value="${esc(st0.units || "")}" placeholder="${dpx ? `${fmt(c.units, c.units % 1 ? 3 : 0)} (Depot)` : "Stück"}"></label>
+      <label>Ø Kaufkurs (€)<input id="etfBuy" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(st0.buy || "")}" placeholder="${dpx && c.buy ? `${fmt(c.buy)} (Depot)` : "aus Scalable"}"></label>
+      <label>Erster Kauf<input id="etfSince" type="date" value="${esc(st0.since || (dpx ? c.since : "") || "")}"></label></div>
     <div class="mtiles" style="margin-top:10px"><div class="mt"><span>ETF-Ziel</span><b>${eur(c.inv * c.share / 100)}</b><em>${c.share} %${c.reserve ? ` von ${eur(c.inv)}` : ""}</em></div>
-      <div class="mt"><span>Trading-Kapital</span><b>${eur(tgtT)}</b><em>${100 - c.share} % · im Einstieg: ${eur(trade)}</em></div>
+      <div class="mt"><span>Trading-Kapital</span><b>${eur(tgtT)}</b><em>${100 - c.share} % · im Einstieg: ${eur(trade)}${tgtT > 0 && feeDrag(tgtT).tone === "red" ? ` · <span class="down">Gebühren zu hoch</span>` : ""}</em></div>
       ${etfVal != null ? `<div class="mt"><span>ETF jetzt</span><b>${eur(etfVal)}</b><em>${pct(ist, 0)} vom Ganzen</em></div>` : ""}
+      ${c.rate && etfVal != null ? (() => { const r = .05 / 12, n = 120, rIn = ist != null && ist < c.share / 100 - .05 ? c.rate : c.rate * c.share / 100, fv = etfVal * Math.pow(1 + r, n) + rIn * (Math.pow(1 + r, n) - 1) / r;
+        return `<div class="mt"><span>In 10 Jahren</span><b>${eur(fv)}</b><em>Beispiel: 5 % pro Jahr, keine Prognose</em></div>`; })() : ""}
       ${c.rate ? `<div class="mt"><span>Sparrate</span><b>${eur(c.rate)}</b><em>${ist != null && ist < c.share / 100 - .05 ? "ganz in den ETF (unter Ziel)" : `${eur(c.rate * c.share / 100)} ETF · ${eur(c.rate * (100 - c.share) / 100)} Trading`}</em></div>` : ""}</div>
+    ${c.units && !c.buy ? `<div class="note" style="margin:8px 0 0">Trag deinen Ø Kaufkurs aus Scalable ein (Position → „Einstandskurs“) – dann zeigt Kairo oben Gewinn, Verlust und Rendite.</div>` : ""}
     ${tierHtml}
-    ${tgtT <= 0 ? "" : (() => { const fd = feeDrag(tgtT); return `<div class="note" style="margin:10px 0 0;border-left:3px solid var(--${fd.tone === "red" ? "red" : fd.tone === "yellow" ? "gold" : "up"})"><i class="vdot ${fd.tone === "red" ? "r" : fd.tone === "yellow" ? "y" : "g"}"></i> <b>Trading-Kapital ${eur(tgtT)}:</b> ${fd.t}</div>`; })()}
     ${tgtT <= 0 ? `<div class="note" style="margin:10px 0 0">✓ Bei ${eur(c.inv)} ist alles im ETF. Swing-Trades verfolgst du risikolos im <button class="hlink" ${SEC_LINK("paper")}>Papier-Test ›</button></div>` : Math.abs(tgtT - trade) > 1 ? `<button class="btn" id="etfSync" style="margin-top:10px">Trading-Kapital im Einstieg auf ${eur(tgtT)} setzen</button><div class="note" style="margin:6px 0 0">Das 1-%-Risiko je Trade rechnet mit diesem Betrag – so bleibt der Trading-Bereich bei ${100 - c.share} %.</div>` : `<div class="note" style="margin:10px 0 0">✓ Der Trading-Bereich rechnet mit ${eur(trade)} – passt zu ${100 - c.share} %.</div>`}
     ${ist != null && Math.abs(ist - c.share / 100) > .1 ? `<div class="note" style="margin:8px 0 0">Verteilung weicht um mehr als 10 Punkte ab (${pct(ist, 0)} ETF). Am günstigsten über die Sparrate ausgleichen – Verkaufen kostet Steuern.</div>` : ""}</div>`;
   const how = `<div class="hcard">${hHead("So gehst du vor")}<ul class="checks rules">${[
@@ -4678,7 +4695,7 @@ function etfHtml() {
     <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Regel</th><th class="num">ACWI ab 2008</th><th class="num">Welt ab 2003</th><th class="num">größter Rückgang</th></tr></thead><tbody>
       ${ETF_BT.plans.map(([l, a, b, d, me]) => `<tr${me ? ' class="best"' : ""}><td>${me ? `<b>${l}</b> ★` : l}</td><td class="num">${fmt(a, 2)}×</td><td class="num">${fmt(b, 2)}×</td><td class="num down">−${pct(d, 0)}</td></tr>`).join("")}</tbody></table></div>
     <div class="note" style="margin:6px 0 0">Geld zurückhalten und auf Rücksetzer warten brachte nichts – das wartende Geld verpasst die Zeit am Markt. Ein Trendfilter halbiert die Rückgänge, kostet aber rund ein Fünftel des Endwerts. Deshalb: Sparplan immer, nur <b>zusätzliches</b> Geld nach der Ampel. Welt ab 2003 = 55 % S&amp;P 500 + 35 % Industrieländer + 10 % Schwellenländer; vor Steuern und ohne Kosten.</div></div>`;
-  return `<div class="section-title"><span>ETF-Bereich · ${c.share} % deines Kapitals</span><span>${e ? dateDE(e.date) : ""}</span></div>${hero}${etfDevHtml(e, c)}${plan}
+  return `<div class="section-title"><span>ETF-Bereich · ${c.share} % deines Kapitals</span><span>${e ? dateDE(e.date) : ""}</span></div>${hero}${plan}
     <details class="hcard etf-more"><summary>Hintergrund: Warum diese Ampel? (Regeln &amp; Testergebnisse)</summary><div style="margin-top:10px">${why}${how.replace('<div class="hcard">', '<div>')}${test.replace('<div class="hcard">', '<div style="margin-top:12px">')}</div></details>`;
 }
 document.addEventListener("input", e => {
@@ -4689,6 +4706,7 @@ document.addEventListener("input", e => {
   const k = { etfTotal: "total", etfRate: "rate", etfUnits: "units", etfBuy: "buy" }[e.target.id]; if (!k) return;
   const v = parseFloat(String(e.target.value).replace(",", ".")); state.etf = { ...(state.etf || {}), [k]: v >= 0 ? v : undefined }; save();
 });
+document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("etf-tv")) { const o = e.target.open ? 1 : 0; if (o !== (state.etfTv || 0)) { state.etfTv = o; save(); render(); } } }, true);
 document.addEventListener("change", e => { if (["etfTotal", "etfShare", "pfReserve", "etfRate", "etfUnits", "etfBuy", "etfSince"].includes(e.target.id) && state.sec === "etf") render(); });
 document.addEventListener("click", e => {
   if (e.target.closest("[data-statusok]")) { e.preventDefault(); state.statusSeen = 2; save(); render(); return; }
@@ -4984,8 +5002,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.18";
-const APP_NEWS = [["2026.11.18", "Kaufen: kompakt mit Order-Ticket", [
+const APP_VER = "2026.11.19";
+const APP_NEWS = [["2026.11.19", "ETF-Reiter aufgeräumt", [
+  ["Wie viel investieren?", "Bei grüner Ampel nennt Kairo jetzt den Betrag: bis zu X € – die Lücke zu deinem ETF-Ziel. Auch als Aufgabe auf „Heute“."],
+  ["Ampel erklärt sich", "Steht die Ampel nur wegen der 3-Monats-Regel auf Grün, steht das jetzt dabei. Ein ruhiger VIX ist gelb (kein Kaufsignal) – wie in der Erklärung."],
+  ["Anteile aus dem Depot", "SPYI-Anteile, Ø Kaufkurs und erster Kauf kommen automatisch aus deinem Depot-Import – eintippen nur noch, wenn du etwas anderes willst."],
+  ["Aufgeräumt", "Ein Chart statt zwei (TradingView aufklappbar), Forschung und Gebühren in „Warum diese Aufteilung?“, Rechenbeispiel „In 10 Jahren“ bei Sparrate, Ampel auf dem iPhone quer."]]],
+  ["2026.11.18", "Kaufen: kompakt mit Order-Ticket", [
   ["Eine Zeile je Kauf", "Stück, Limit und Stop auf einen Blick, „Gekauft ✓“ direkt daneben."],
   ["Antippen öffnet das Ticket", "In der Reihenfolge der Scalable-Ordermaske: Orderart, Stück, Limit, Kaufzone, Gültig, danach Stop-Loss und Verkauf – mit „Order kopieren“. Der erste Kauf ist schon offen."]]],
   ["2026.11.17", "Heute: Marktampel oben, deine Treffer", [
