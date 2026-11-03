@@ -661,8 +661,8 @@
   @media (max-width: 700px) { .kchip.spalten { display: none; } }
   @media (max-width: 640px) { html body .kbar { flex-wrap: wrap !important; overflow: visible !important; margin-left: 0 !important; margin-right: 0 !important; padding: 2px 0 6px !important; } }
   /* iPad-Tabelle: Ticker und Name bleiben beim seitlichen Wischen stehen */
-  main .table-wrap th:nth-child(1), main .table-wrap td:nth-child(1) { position: sticky; left: 0; z-index: 2; min-width: 112px; max-width: 112px; background: var(--surface, #161617); }
-  main .table-wrap th:nth-child(2), main .table-wrap td:nth-child(2) { position: sticky; left: 112px; z-index: 2; background: var(--surface, #161617); box-shadow: 6px 0 8px -6px rgba(0,0,0,.45); }
+  main .table-wrap th:nth-child(1), main .table-wrap td:nth-child(1) { position: sticky; left: 0; z-index: 2; min-width: 176px; max-width: 176px; width: 176px; white-space: nowrap; background: var(--surface, #161617); }
+  main .table-wrap th:nth-child(2), main .table-wrap td:nth-child(2) { position: sticky; left: 176px; z-index: 2; background: var(--surface, #161617); box-shadow: 6px 0 8px -6px rgba(0,0,0,.45); }
   .scroll-hint { font-size: 12px; color: var(--muted); text-align: right; margin: -4px 4px 6px; }
   .st-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin: 4px 2px 8px; } .st-legend b { font-weight: 650; }
   .mlist .msort { display: flex; justify-content: flex-end; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 0 2px 8px; }
@@ -1461,6 +1461,8 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
     <div class="opts" data-key="vola"><button class="opt" data-v="">alle</button><button class="opt" data-v="low">niedrig &lt; 30 %</button><button class="opt" data-v="mid">mittel 30–50 %</button><button class="opt" data-v="high">hoch 50–80 %</button><button class="opt" data-v="xhigh">sehr hoch &gt; 80 %</button></div></div>
   <div class="group"><div class="group-label">Analysten-Ziel (Ø Kursziel über dem Kurs)</div>
     <div class="opts" data-key="minTgt"><button class="opt" data-v="">alle</button><button class="opt" data-v="0.1">ab +10 %</button><button class="opt" data-v="0.25">ab +25 %</button><button class="opt" data-v="0.5">ab +50 %</button></div></div>
+  <div class="group"><div class="group-label">Insider-Käufe (90 Tage) – Information, keine Kaufregel</div>
+    <div class="opts" data-key="ins"><button class="opt" data-v="">egal</button><button class="opt" data-v="buy">Insider kauft</button><button class="opt" data-v="strong">starkes Signal (mehrere Käufer, Vorstandsspitze oder gezielt)</button></div></div>
   <div class="group"><div class="group-label">Region</div>
     <div class="opts" data-key="region"><button class="opt" data-v="">alle</button><button class="opt" data-v="us">Nordamerika</button><button class="opt" data-v="europe">Europa</button><button class="opt" data-v="asia">Asien/Pazifik</button></div></div>
   <div class="group"><div class="group-label">Zonen-Typ</div>
@@ -1579,7 +1581,7 @@ const tvUrl = t => {
 };
 
 let data = null;
-const DEFAULTS = { grade: "", minScore: "0", minCap: "0", maxCap: "0", vola: "", minTgt: "", region: "", zone: "", div: "", sector: "", chk: "", sort: "score" };
+const DEFAULTS = { ins: "", grade: "", minScore: "0", minCap: "0", maxCap: "0", vola: "", minTgt: "", region: "", zone: "", div: "", sector: "", chk: "", sort: "score" };
 const VOLA = { low: [0, .3], mid: [.3, .5], high: [.5, .8], xhigh: [.8, Infinity] };
 // Analysten: Ø Kursziel und Abstand zum aktuellen Kurs (aus der Marktstimmung)
 const tgtUp = r => { const t = r.senti && r.senti.tgt; return t && t.m && r.close ? t.m / r.close - 1 : null; };
@@ -1589,6 +1591,9 @@ const tgtZ = r => { const u = tgtUp(r), v = (r.flags || {}).volatility, n = ((r.
 const tgtChip = r => { const t = tgtZ(r); if (!t || t.u <= 0) return "";
   return `<span class="tz${t.z >= 1 ? " on" : ""}" title="Analysten-Kursziel ${sgnPct(t.u, 0)} = ${fmt(t.z, 1)} × Jahresschwankung · ${t.n} Analysten${t.z >= 1 ? " – attraktiv" : ""}">Ziel ${sgnPct(t.u, 0)}${t.z >= 1 ? ` · ${fmt(t.z, 1)}×` : ""}</span>`; };
 const tgtIn = r => !state.minTgt || (tgtUp(r) ?? -1) >= +state.minTgt;
+// Insider-Filter (11/2026): Käufe von Vorstand/Aufsichtsrat in 90 Tagen (SEC Formular 4 für US-Aktien, BaFin/AFM/ASX für deine Aktien).
+// Information, keine getestete Kaufregel.
+const insIn = r => { if (!state.ins) return true; const g = insSig(r.ticker); return !!g && (state.ins === "strong" ? g.score >= 2 : g.buyers >= 1); };
 const volaIn = r => { const b = VOLA[state.vola]; return !b || (r.volatility != null && r.volatility >= b[0] && r.volatility < b[1]); };
 const volaCls = v => v == null ? "muted" : v < .3 ? "up" : v < .5 ? "" : "down";
 const state = { name: "", calView: "month", budget: 400, sec: "scanner", tab: "table", tableKind: "hit", kinds: ["hit", "fast"], calScope: "mine", calKind: "", ...DEFAULTS, tableSort: "score", tableAsc: false };
@@ -1706,7 +1711,7 @@ function rows(kind) {
     && (r.score >= +state.minScore || !r.passed)
     && (!+state.minCap || (r.market_cap_usd ?? 0) >= +state.minCap * 1e9)
     && (!+state.maxCap || (r.market_cap_usd ?? Infinity) <= +state.maxCap * 1e9)
-    && volaIn(r) && tgtIn(r)
+    && volaIn(r) && tgtIn(r) && insIn(r)
     && (!state.region || r.region === state.region)
     && (!state.zone || r.zone_type.includes(state.zone))
     && (!state.div || r.divergence === state.div)
@@ -1734,7 +1739,7 @@ function selRows() {
   const light = r => (!q || r.ticker.toLowerCase().includes(q) || (r.name || "").toLowerCase().includes(q))
     && (!+state.minCap || (r.market_cap_usd ?? 0) >= +state.minCap * 1e9) && (!+state.maxCap || (r.market_cap_usd ?? Infinity) <= +state.maxCap * 1e9) && volaIn(r);
   const gOk = r => !r.passed || !state.grade || (r.grade && (state.grade === "A" ? r.grade.g === "A" : r.grade.g !== "C"));
-  const full = r => light(r) && gOk(r) && tgtIn(r) && (r.score >= +state.minScore || !r.passed) && (!state.region || r.region === state.region)
+  const full = r => light(r) && gOk(r) && tgtIn(r) && insIn(r) && (r.score >= +state.minScore || !r.passed) && (!state.region || r.region === state.region)
     && (!state.zone || r.zone_type.includes(state.zone)) && (!state.div || r.divergence === state.div) && (!state.sector || r.sector === state.sector) && chkIn(r);
   // Watchlist-Aktien: nur Suche, Börsenwert und Volatilität filtern (wie bisher) – sonst alle Filter
   const fv = favs();
@@ -2110,6 +2115,10 @@ const COLS = [
   { k: "earn", l: "Earnings", g: r => r.earnings_date || "9", h: r => `<span class="${r.earnings_risk ? "down" : ""}">${dateDE(r.earnings_date)}</span>` },
   { k: "amp", l: "Kriterien", g: r => -r.missing.length, h: r => ampel(r) },
   { k: "met", l: "Erfüllt", n: 1, watch: 1, g: r => r.met ?? 0, h: r => !r.passed && !r.fast_hit && isTrend(r) ? `<b class="up">${r.tr.met} / ${r.tr.total}</b><small class="muted" style="display:block">Trend · Kairo ${r.met}/${r.total}</small>` : `<b class="${r.passed ? "up" : r.fast_hit ? "" : "muted"}">${r.met ?? "–"} / ${r.total ?? 11}</b>${filterMiss(r) ? `<small class="down" style="display:block">Filter ✗</small>` : ""}` },
+  { k: "ins", l: "Insider", n: 1, g: r => { const g = insSig(r.ticker); return g ? g.score * 1e9 + g.val : -1; },
+    h: r => { const g = insSig(r.ticker); if (!g) return `<span class="muted">–</span>`;
+      const e = g.cur === "EUR" ? g.val : g.val * ((fxEur && fxEur.USD) || 0.9), amt = e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : e > 0 ? `${fmt(e / 1e3, 0)} Tsd. €` : "";
+      return `<span class="${g.score >= 2 ? "up" : ""}" title="${g.buyers} Käufer in 90 Tagen${g.top ? " · Vorstandsspitze" : ""}${g.opp ? " · gezielt" : ""} · zuletzt ${dateDE(g.last)}">${"●".repeat(Math.max(1, g.score))} ${amt}</span><small style="display:block;white-space:nowrap" class="muted">${g.buyers} ${g.buyers === 1 ? "Käufer" : "Käufer"} · ${dateDE(g.last).slice(0, 6)}</small>`; } },
   { k: "miss", l: "Fehlt", fast: 1, g: r => r.missing[0] || "", h: r => { if (r.passed) return `<span class="muted">–</span>`;
     if (isTrend(r) && !r.fast_hit) return `<span class="up">– (Trend-Rücksetzer)</span>`;
     const miss = (r.criteria || []).filter(x => !x.ok && SETUP_KEYS.includes(x.key)).map(x => SHORT[x.key]);
@@ -5137,8 +5146,14 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.26";
-const APP_NEWS = [["2026.11.26", "Scanner: Kauf-Status statt Status", [
+const APP_VER = "2026.11.28";
+const APP_NEWS = [["2026.11.28", "Scanner: Insider-Filter", [
+  ["Insider kaufen", "Neue Spalte und Filter (unter „Weitere Filter“) im Scanner: zeigt Aktien, bei denen Vorstand oder Aufsichtsrat in den letzten 90 Tagen gekauft haben (US: SEC-Meldungen aller Aktien; Deutschland, Niederlande, Australien: für deine Aktien). Unter „Weitere Filter“ auch „starkes Signal“ (mehrere Käufer, Vorstandsspitze oder gezielter Kauf)."],
+  ["Spalte Insider", "Stärke (●), Summe, Zahl der Käufer und letzter Kauf – sortierbar. Information, keine getestete Kaufregel. Der Verlauf füllt sich ab heute mit jedem Abendscan."]]],
+  ["2026.11.27", "Scanner: Sortieren ohne Springen", [
+  ["Tabelle bleibt stehen", "Tippst du auf eine Spalte (z. B. Analysten-Ziel), wird sortiert – die Tabelle bleibt an derselben Stelle, statt an den Anfang zu springen."],
+  ["WL wieder sichtbar", "Die Ticker-Spalte ist breiter – das „WL“ (Scalable-Watchlist) wird auch bei langen Tickern nicht mehr abgeschnitten."]]],
+  ["2026.11.26", "Scanner: Kauf-Status statt Status", [
   ["Nur noch, was zählt", "Die Spalte heißt jetzt „Kauf-Status“ und zeigt nur bei Treffern, wann gekauft wird (kaufbereit, Seitwärtsphase, verfallen, im Depot). Ob Treffer oder Fast-Treffer, siehst du an „Erfüllt x/11“. In „Beobachten“ entfällt die Spalte ganz."]]],
   ["2026.11.25", "Depot: Knock-outs im Journal, Plan vorausgefüllt", [
   ["Knock-out = realisierter Verlust", "Ausgeknockte Turbos stehen jetzt auch im Journal und in der Bilanz – als Verkauf zu 0 € am Knock-out-Tag (nur wenn der Kauf in deinem Scalable-Export steht und Scalable den Verkauf nicht schon selbst liefert)."],
@@ -6494,7 +6509,7 @@ function renderMain() {
   if (cur && String(state.kinds) !== String(cur[3])) { state.kinds = cur[3]; save(); }   // gespeicherte alte Auswahl (z. B. „MBI gelockert“) angleichen
   if (String(state.minScore || "0") !== "0") { state.minScore = "0"; save(); }   // Score-Filter entfernt (Score nicht belegt, 11/2026)
   const list = selRows(), k = new Set(state.kinds || []);
-  const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
+  const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector", "ins"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
   const bar = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${v === "watch" ? watchCount() : data.results.filter(f).length}</small></button>`).join("")}</div>
     ${cur ? `<div class="vdesc">${esc(cur[4])}</div>` : ""}
     ${state.view === "hit" ? `<div class="st-legend"><span><b class="up">kaufbereit</b> – Kauf zur nächsten Eröffnung</span><span><b>Seitwärtsphase x/10</b> – wartet auf 5 ruhige Tage</span><span><b>verfallen</b> – keine Seitwärtsphase in 10 Tagen</span><span><b>im Depot</b> – läuft schon</span></div>` : ""}
@@ -6534,6 +6549,7 @@ function renderMain() {
 const SCAN_LIM = 60;
 let scanAll = false;
 document.addEventListener("click", e => { if (e.target.closest("[data-cols]")) setTimeout(() => { const c = $("colOpts"); if (c) c.scrollIntoView({ block: "center", behavior: "smooth" }); }, 250); });
+document.addEventListener("click", e => { if (!e.target.closest("[data-qins]")) return; state.ins = state.ins ? "" : "buy"; scanAll = false; save(); render(); });
 document.addEventListener("click", e => { const q = e.target.closest("[data-qregion]"); if (!q) return; state.region = q.dataset.qregion; scanAll = false; save(); render(); });
 document.addEventListener("click", e => { if (e.target.closest("[data-scanall]")) { scanAll = true; render(); } else if (e.target.closest("[data-view]")) scanAll = false; });
 // Kompakte Liste fürs iPhone (nur im neuen Design, nur schmale Bildschirme – sonst bleibt die Tabelle)
@@ -6577,7 +6593,7 @@ const sparkIO = "IntersectionObserver" in window ? new IntersectionObserver(es =
   try { const c = await loadChart(t); paintSpark(e.target, c); setChg(e.target.closest(".aitem"), t, dayChg(c)); } catch (err) {}
 }), { rootMargin: "300px" }) : null;
 function observeSparks() { if (sparkIO) document.querySelectorAll("[data-spark]").forEach(el => sparkIO.observe(el)); }
-const FILTER_KEYS = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector"];
+const FILTER_KEYS = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector", "ins"];
 const presetActive = p => FILTER_KEYS.every(k => String(state[k] ?? "") === String(p.f[k] ?? "")) && (p.kinds || []).join() === (state.kinds || []).join();
 function sheetExtras() {
   const gg = document.querySelector('.opts[data-key="grade"]'); if (gg) gg.closest(".group").hidden = !(data.stats && data.stats.grade);
@@ -6902,7 +6918,10 @@ document.addEventListener("click", e => {
   const cd = e.target.closest("[data-card]"); if (cd) { e.preventDefault(); openCard(cd.dataset.card); return; }
   if (e.target.closest("[data-closecard]")) { closeCard(); return; }
   const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); closeCard(); openDetail(o.dataset.open); return; }
-  const th = e.target.closest("th[data-k]"); if (th) { if (th.dataset.k === state.tableSort) state.tableAsc = !state.tableAsc; else { state.tableSort = th.dataset.k; state.tableAsc = false; } render(); }
+  const th = e.target.closest("th[data-k]"); if (th) { if (th.dataset.k === state.tableSort) state.tableAsc = !state.tableAsc; else { state.tableSort = th.dataset.k; state.tableAsc = false; }
+    const tw = document.querySelector("main .table-wrap"), sx = tw ? tw.scrollLeft : 0, sy = window.scrollY;   // Sortieren: Position in der Tabelle behalten
+    render();
+    const tw2 = document.querySelector("main .table-wrap"); if (tw2) tw2.scrollLeft = sx; window.scrollTo(0, sy); }
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape") { closeDetail(); closeCard(); closeBrief(); const t = $("tour"); if (t) t.remove(); const n = $("newsBox"); if (n) n.remove(); const eb = $("earnBox"); if (eb) eb.remove(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey || /input|textarea|select/i.test((e.target.tagName || "")) || e.target.isContentEditable || document.getElementById("gate")) return;

@@ -555,6 +555,11 @@ def main(argv=None) -> int:
             w_ins = {**{t: (meta.get(t) or {}).get("name") or t for t in extra if t}, **watch}
             ins = insider.fetch(watch=w_ins)
             print(f"Insider: {ins['filings']} Meldungen, {len(ins['buys'])} Käufe, {len(ins['sells'])} Verkäufe")
+            # Scanner-Filter „Insider kaufen“: US-Käufe der letzten 90 Tage über die Abende sammeln (der Feed hat nur die neuesten)
+            hist = insider.accumulate(state.load("insider_hist.json", {}).get("rows", []), ins.pop("mkt_buys", []))
+            state.save("insider_hist.json", {"rows": hist})
+            ins["signal"] = insider.signal([*ins.get("watch", []), *hist])
+            print(f"Insider-Verlauf: {len(hist)} Käufe in 90 Tagen, Signal für {len(ins['signal'])} Aktien")
         except Exception as exc:
             print(f"Insider: Fehler {exc!r}")
     watch_dates = {}
