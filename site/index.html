@@ -660,6 +660,9 @@
   .mrow { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-top: 1px solid var(--line); } .mrow > a { flex: 1; min-width: 0; color: var(--text); text-decoration: none; }
   .mrow > a b { display: block; font-size: 15.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mrow > a span { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mrow .mr { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; } .mrow .mr em { font-style: normal; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ko-list { margin-top: 16px; } .ko-list > summary { display: flex; justify-content: space-between; cursor: pointer; list-style: none; } .ko-list > summary::-webkit-details-marker { display: none; }
+  .ko-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); } .ko-row > span:first-child { flex: 1; min-width: 0; }
+  .ko-row small { display: block; color: var(--muted); font-size: 12.5px; } .ko-act { display: flex; gap: 8px; align-items: center; flex: none; }
   .tq-buy { padding: 0; }
   .kb-row { display: grid; grid-template-columns: 10px minmax(110px, 1fr) auto auto 12px; align-items: center; gap: 12px; padding: 11px 0; cursor: pointer; }
   .kb-n { min-width: 0; } .kb-n small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .kb-n b { display: block; font-size: 15.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2146,7 +2149,7 @@ function loadCalendar() {
   return calLoading;
 }
 const daysUntil = iso => Math.round((new Date(iso + "T12:00:00") - new Date(new Date().toDateString() + " 12:00")) / 864e5);
-const depotTickers = () => new Set(depotLoad().map(p => p.t));
+const depotTickers = () => new Set(depotLive().map(p => p.t));
 // Wirklich marktbewegende Termine für US/EU-Aktien: Zinsentscheide Fed/EZB, US-Inflation, US-Arbeitsmarktbericht, großer Verfall.
 // Alles andere (Stimmungsindizes, Reden, Feiertage, kleinere Länder) nur unter „Alle Termine“.
 const CAL_KEY = /^(USA|Eurozone): (Fed-Zinsentscheid|Fed-Pressekonferenz|EZB-Zinsentscheid|Inflation \(CPI\)|PCE-Inflation|Arbeitsmarktbericht)/;
@@ -2599,6 +2602,39 @@ function calendarHtml() {
 
 // ---------- Depot (bleibt nur auf diesem Gerät gespeichert) ----------
 const DEPOT_KEY = "kairo-depot-v1";
+// Ausgeknockte Turbos (11/2026): erkannt am aktuellen Kurs (Basiswert jenseits der K.-o.-Schwelle), am Tageshoch/-tief seit
+// dem Kauf (Chart) oder an onvista „hasBeenHit“ (per ISIN). Sie zählen nirgends mehr mit (Heute, freies Kapital, Risiko,
+// Mitteilungen) und stehen im Depot in einer eigenen Liste – „Doch nicht ausgeknockt“ macht das rückgängig.
+const koKey = p => p.isin || `${p.n}|${p.date}|${p.d && p.d.ko}`;
+function koOf(p) {
+  if (!p || !p.d || !(+p.d.ko > 0)) return null;
+  const k = koKey(p); if ((state.koKeep || {})[k]) return null;
+  const m = (state.koOut || {})[k]; if (m) return m;
+  const r = p.t && typeof rowOf === "function" ? rowOf(p.t) : null;
+  if (r && r.c > 0 && (!p.d.cur || !r.cur || p.d.cur === r.cur) && (p.d.dir === "short" ? r.c >= p.d.ko : r.c <= p.d.ko)) return { d: isoD(new Date()), src: "Kurs" };
+  return null;
+}
+const depotLive = () => depotLoad().filter(p => !koOf(p));
+let koChecking = false;
+async function koCheck() {
+  if (koChecking) return; koChecking = true;
+  const out = { ...(state.koOut || {}) }, seen = { ...(state.koSeen || {}) }; let hit = 0;
+  try {
+    for (const p of depotLoad().filter(x => x.d && +x.d.ko > 0)) {
+      const k = koKey(p); if (out[k] || (state.koKeep || {})[k] || (seen[k] && Date.now() - seen[k] < 6 * 3600e3)) continue;
+      seen[k] = Date.now();
+      let res = null;
+      try { const r = p.t ? rowOf(p.t) : null;
+        if (p.t && (!p.d.cur || !r || p.d.cur === r.cur)) { const c = await loadChart(p.t);
+          for (let i = 0; c && c.t && i < c.t.length; i++) { if (p.date && String(c.t[i]) < p.date) continue;
+            if (p.d.dir === "short" ? c.h[i] >= p.d.ko : c.l[i] <= p.d.ko) { res = { d: String(c.t[i]).slice(0, 10), src: "Tagestief" }; break; } } } } catch (e) {}
+      if (!res && p.isin) { const q = await ovGet(`/instruments/query?searchValue=${encodeURIComponent(p.isin)}&limit=1`), it = ((q || {}).list || [])[0];
+        if (it && it.entityType === "DERIVATIVE") { const d = ovTurbo(await ovGet(`/derivatives/${it.entityValue}/snapshot`)); if (d && d.hit) res = { d: isoD(new Date()), src: "onvista" }; } }
+      if (res) { out[k] = res; hit++; }
+    }
+  } finally { state.koOut = out; state.koSeen = seen; save(); koChecking = false; }
+  if (hit) render();
+}
 function depotLoad() { try { return depotFix(JSON.parse(localStorage.getItem(DEPOT_KEY) || "[]")); } catch (e) { return []; } }
 // ETFs aus dem Scalable-Export: nie einer Aktie zuordnen. Seit 2025 heißen SPDR-ETFs „State Street SPDR …“ – der Namensabgleich
 // hatte sie der Aktie State Street Corp. zugeordnet (ebenso Amundi-, Invesco-, WisdomTree-ETFs den gleichnamigen Firmen).
@@ -2704,7 +2740,10 @@ function depotHtml() {
   if (!searchIdx) { loadSearch(); return `<div class="section-title"><span>Depot</span><span>lädt Kurse …</span></div>`; }
   let wert = 0, einstand = 0, missingFx = false, valued = 0;
   let invested = 0;
+  koCheck();                                       // ausgeknockte Turbos im Hintergrund erkennen (gedrosselt)
+  const koItems = list.map((p, i) => ({ p, i, ko: koOf(p) })).filter(x => x.ko);
   const items = list.map((p, i) => {
+    if (koOf(p)) return null;                       // ausgeknockt: eigene Liste unten, zählt nirgends mehr mit
     const r = p.t ? rowOf(p.t) : null, cur = r ? r.cur : null;
     invested += p.price * p.qty;
     if (p.d) return { p, i, r, cur, nowEur: null, val: null, cost: p.price * p.qty };
@@ -2715,11 +2754,11 @@ function depotHtml() {
     const val = nowEur != null && !isNaN(nowEur) ? nowEur * p.qty : null, cost = p.price * p.qty;
     if (val != null) { wert += val; einstand += cost; valued++; }
     return { p, i, r, cur, nowEur, val, cost };
-  });
+  }).filter(Boolean);
   const gv = wert - einstand;
   liveKick(list.map(p => p.t), "depot");
   const nLive = list.filter(p => p.t && LIVE.map[p.t]).length;
-  const head = `<div class="section-title"><span>Mein Depot</span><span>${list.length} Positionen</span></div>
+  const head = `<div class="section-title"><span>Mein Depot</span><span>${items.length} Positionen${koItems.length ? ` · ${koItems.length} ausgeknockt` : ""}</span></div>
     <div class="live-bar">${liveOn() ? `${nLive ? `<span class="live-tag">● ${nLive} von ${list.filter(p => p.t).length} live · aktualisiert alle 60 s</span>` : `<span class="muted">Live-Kurse werden geladen …</span>`}<button class="live-btn" data-liveall="depot">↻ Alle aktualisieren</button>`
       : `<span class="muted">Kurse vom Abendscan. Für Echtzeit: Einstellungen → Live-Kurse.</span>`}</div>`;
   const sum = list.length && valued ? `<div class="dep-sum">
@@ -2769,8 +2808,26 @@ function depotHtml() {
   return head + (groups.length ? cockpitHtml(groups, items) : sum) + actions + form + empty + depotCheckHtml(items)
     + (groups.length ? `<div class="plan-h" style="margin:4px 2px 8px">Deine Positionen · antippen zum Aufklappen</div>${groups.map(groupHtml).join("")}` : "")
     + (cards.length ? `${groups.length ? `<div class="plan-h" style="margin:18px 2px 8px">Ohne Analyse (nicht auf der Watchlist)</div>` : ""}<div class="grid">${cards}</div>` : "")
+    + koListHtml(koItems)
     + `<div class="note" style="margin:16px 2px 0">Dein Depot wird nur auf diesem Gerät gespeichert (nicht im Internet). Kurse vom letzten Scan, Umrechnung in Euro zum Tageskurs${missingFx ? " – für einige Währungen fehlt der Wechselkurs" : ""}. Regeln der Strategie: halten bis Stop, ab Tag 10 Schluss unter der EMA 20 oder spätestens Tag 60 (vor Quartalszahlen früher), kein Gewinnziel, höchstens ${KMAX.maxOpen} Trades. Keine Anlageberatung.</div>`;
 }
+// Ausgeknockte Turbos: eigene Liste mit Verlust (Einsatz), Ausbuchen oder „doch nicht ausgeknockt“
+function koListHtml(xs) {
+  if (!xs.length) return "";
+  const lost = xs.reduce((a, x) => a + x.p.price * x.p.qty, 0), why = { Kurs: "Basiswert jenseits der Schwelle", Tagestief: "Tagestief erreichte die Schwelle", onvista: "laut onvista ausgeknockt" };
+  return `<details class="hcard ko-list"${state.koOpen ? " open" : ""}><summary><b>Ausgeknockt · ${xs.length}</b><span class="down">−${eur(lost)} Einsatz</span></summary>
+    <div class="note" style="margin:8px 0">Diese Turbos haben ihre K.-o.-Schwelle erreicht und sind (fast) wertlos. Sie zählen nicht mehr zu Depotwert, freiem Kapital und Risiko. Beim nächsten Scalable-Export verschwinden sie ohnehin – oder buch sie hier aus.</div>
+    ${xs.map(({ p, i, ko }) => `<div class="ko-row"><span><b>${esc(p.d.under || p.n || p.t)}</b><small>${esc(p.n || "")} · K.-o. ${fmt(p.d.ko)} ${esc(p.d.cur || "")} · ${esc(why[ko.src] || ko.src)}${ko.d ? ` (${dateDE(ko.d)})` : ""}</small></span>
+      <b class="down">−${eur(p.price * p.qty)}</b><span class="ko-act"><button class="btn ghost sm" data-kodel="${i}">Ausbuchen</button><button class="hlink" data-kokeep="${esc(koKey(p))}">doch nicht</button></span></div>`).join("")}</details>`;
+}
+document.addEventListener("click", e => {
+  const d = e.target.closest("[data-kodel]");
+  if (d) { const l = depotLoad(), p = l[+d.dataset.kodel]; if (!p || !confirm(`${p.d && p.d.under || p.n} ausbuchen? Die Position wird aus dem Depot entfernt.`)) return;
+    l.splice(+d.dataset.kodel, 1); depotSave(l); render(); return; }
+  const k = e.target.closest("[data-kokeep]");
+  if (k) { const key = k.dataset.kokeep, out = { ...(state.koOut || {}) }; delete out[key]; state.koOut = out; state.koKeep = { ...(state.koKeep || {}), [key]: 1 }; save(); render(); }
+});
+document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("ko-list")) { state.koOpen = e.target.open ? 1 : 0; save(); } }, true);
 // ---------- Positions-Analyse (Depot) ----------
 let anaData = null, anaLoading = null;
 const chartReady = {};
@@ -4160,7 +4217,7 @@ function briefHtml() {
   // 1) Depot: was ist zu tun?
   const todo = [];
   if (anaData && searchIdx) {
-    groupPositions(depotLoad().map((p, i) => ({ p, i, r: p.t ? rowOf(p.t) : null }))).forEach(g => {
+    groupPositions(depotLive().map((p, i) => ({ p, i, r: p.t ? rowOf(p.t) : null }))).forEach(g => {
       const st = g.st;
       if (st && ["red", "yellow"].includes(st.tone)) todo.push(row("r", `${g.name}: ${st.t}`, st.s, pill(g.pl), `data-briefdep="${esc(g.t)}"`));
       else if (g.koDist != null && g.koDist < .08) todo.push(row("r", `${g.name}: K.-o. nah`, `nur noch ${pct(g.koDist, 1)} bis zur Schwelle`, pill(g.pl), `data-briefdep="${esc(g.t)}"`));
@@ -4429,7 +4486,7 @@ function buySlip(x) {
       <div class="kb-act"><button class="btn ghost sm" data-hcopy="${esc(txt)}">Order kopieren</button><button class="btn ghost sm" data-ein="${esc(x.t)}">Details</button></div></div>` : ""}</div>` };
 }
 function todayModel() {
-  if (!searchIdx) loadSearch();
+  if (!searchIdx) loadSearch(); else koCheck();
   const tasks = [], openP = plansLoad().filter(p => p.st === "open"), openT = new Set(openP.map(p => p.t));
   let running = 0;
   // 1) Offene Trades: Stop, Verkaufstag, EMA-20-Ausstieg
@@ -4440,7 +4497,7 @@ function todayModel() {
   // 2) Depot ohne Trade-Plan: Knock-out nah (dringend), sonst Plan anlegen (vorbereiten)
   if (anaData && searchIdx) {
     if (!calData) loadCalendar();
-    groupPositions(depotLoad().map((p, i) => ({ p, i, r: p.t ? rowOf(p.t) : null }))).forEach(g => {
+    groupPositions(depotLive().map((p, i) => ({ p, i, r: p.t ? rowOf(p.t) : null }))).forEach(g => {
       if (g.koDist != null && g.koDist < .06) tasks.push({ k: "ko:" + g.t, cat: "sell", tone: "r", t: g.t, ttl: `${g.name} – Knock-out nah`, sub: `Nur noch ${pct(g.koDist, 1)} bis zur K.-o.-Schwelle ${fmt(g.ko)} – Turbo prüfen`, act: `<button class="btn ghost sm" ${SEC_LINK("depot")}>Depot</button>` });
       else if (!g.st && !planFor([g.t], g.name)) tasks.push({ k: "np:" + g.t, cat: "prep", tone: "", t: g.t, ttl: `${g.name} – Stop festlegen`, sub: "Im Depot, aber ohne Trade-Plan: kein Stop, kein Verkaufstag", act: `<button class="btn ghost sm" data-ein="${esc(g.t)}">Plan anlegen</button>` }); });
   } else if (!anaData) loadAnalysis();
@@ -4483,7 +4540,7 @@ let moneyStrip = "";                               // iPhone: dieselben Zahlen a
 function moneyHtml() {
   const m = riskModel(), c = etfCfg(), e = getJson("etf.json"), etfV = e && e.ok !== false && c.units ? c.units * e.c : null;
   let depV = null, depPL = null, noStop = 0;
-  if (anaData && searchIdx) { const gs = groupPositions(depotLoad().filter(p => !p.etf).map((p, i) => ({ p, i, r: p.t ? rowOf(p.t) : null })));
+  if (anaData && searchIdx) { const gs = groupPositions(depotLive().filter(p => !p.etf).map((p, i) => ({ p, i, r: p.t ? rowOf(p.t) : null })));
     const kn = gs.filter(g => g.known); depV = kn.length ? kn.reduce((a, g) => a + g.value, 0) : null;
     const inv = kn.reduce((a, g) => a + g.invested, 0); depPL = depV != null && inv ? depV / inv - 1 : null; noStop = gs.filter(g => !g.st).length; }
   const total = (etfV || 0) + (depV || 0), free = freeCap(), bound = Math.max(0, m.cfg.depot - free);
@@ -4962,7 +5019,7 @@ function learnHtml(L) {
 
 // ---------- Telegram & Backup (Einstellungen) ----------
 function syncText() {
-  const dep = depotLoad().filter(p => p.t).map(p => p.d ? `${p.t}:${p.d.dir}:${p.d.ko}` : p.t);
+  const dep = depotLive().filter(p => p.t).map(p => p.d ? `${p.t}:${p.d.dir}:${p.d.ko}` : p.t);
   return `/sync M=${[...favs()].join(",")};D=${[...new Set(dep)].join(",")}`;
 }
 // ---------- Mitteilungen aufs iPad (Web Push) ----------
@@ -4970,7 +5027,7 @@ const VAPID_PUB = "BFb_qTGdVUSowC4KWbBJ3lvbjKrspo80cI3zaG2Eed4YjUdkW0fq96Uujxiqo
 const pushOk = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 const standalone = () => navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
 function pushCode(sub) {
-  const d = depotLoad().filter(p => p.t).map(p => p.d && p.d.ko ? { t: p.t, dir: p.d.dir, ko: p.d.ko } : { t: p.t });
+  const d = depotLive().filter(p => p.t).map(p => p.d && p.d.ko ? { t: p.t, dir: p.d.dir, ko: p.d.ko } : { t: p.t });
   const seen = new Set(), dep = d.filter(x => { const k = x.t + (x.ko || ""); if (seen.has(k)) return false; seen.add(k); return true; });
   // offene Trade-Pläne: nur Kursmarken und Daten (Stop, Ziel, K.-o., Verkaufstag) – keine Beträge
   const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).includes(":")).map(x => ({ i: x.id, t: String(x.t).replace(/^~/, ""), n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit, ...(x.ema ? { e: 1 } : {}) }));
@@ -4982,7 +5039,7 @@ let pushSub = null;
 // ---------- Abgleich der offenen Trades mit dem eigenen Kursdienst (für die Mitteilungen – ohne Secret-Update je Trade) ----------
 const syncKey = () => { let k = liveKey("sk"); if (!k) { k = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()).replace(/-/g, ""); try { localStorage.setItem("kx-sk", k); } catch (e) {} } return k; };
 function syncPayload() {
-  const d = depotLoad().filter(p => p.t).map(p => p.d && p.d.ko ? { t: p.t, dir: p.d.dir, ko: p.d.ko } : { t: p.t });
+  const d = depotLive().filter(p => p.t).map(p => p.d && p.d.ko ? { t: p.t, dir: p.d.dir, ko: p.d.ko } : { t: p.t });
   const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).includes(":")).map(x => ({ i: x.id, t: String(x.t).replace(/^~/, ""), n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit, ...(x.ema ? { e: 1 } : {}) }));
   return { d, p, ...(state.wlSeeded ? { w: [...favs()].map(t => ({ t, n: String(favName(t)).slice(0, 40) })) } : {}) };
 }
@@ -4993,7 +5050,7 @@ async function kxSync() {
   } catch (e) { state.syncOk = false; state.syncErr = "keine Verbindung"; save(); return null; }
 }
 let kxSyncT = 0; function kxSyncSoon() { clearTimeout(kxSyncT); kxSyncT = setTimeout(kxSync, 1500); }
-const pushSig = () => plansLoad().filter(x => x.st === "open").map(x => x.id).join(",") + "|" + depotLoad().map(p => p.t + (p.d && p.d.ko || "")).join(",");
+const pushSig = () => plansLoad().filter(x => x.st === "open").map(x => x.id).join(",") + "|" + depotLive().map(p => p.t + (p.d && p.d.ko || "")).join(",");
 async function pushInit() {
   if (!pushOk()) return;
   try { const reg = await navigator.serviceWorker.ready; pushSub = await reg.pushManager.getSubscription(); } catch (e) {}
@@ -5027,8 +5084,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.22";
-const APP_NEWS = [["2026.11.22", "Heute: ausgeglichener, klarer beim Kaufen", [
+const APP_VER = "2026.11.23";
+const APP_NEWS = [["2026.11.23", "Ausgeknockte Turbos werden erkannt", [
+  ["Automatisch erkannt", "Liegt der Basiswert jenseits der K.-o.-Schwelle, hat ein Tagestief seit dem Kauf sie erreicht oder meldet onvista den Knock-out, gilt der Turbo als ausgeknockt."],
+  ["Zählt nicht mehr mit", "Ausgeknockte Turbos stehen im Depot in einer eigenen Liste „Ausgeknockt“ und zählen nicht mehr zu Depotwert, freiem Kapital, Risiko, „Heute“ und den Mitteilungen. Ausbuchen mit einem Tipp – oder „doch nicht“, falls Kairo sich irrt."]]],
+  ["2026.11.22", "Heute: ausgeglichener, klarer beim Kaufen", [
   ["Tickets geschlossen", "Kauf-Tickets öffnen sich erst beim Antippen."],
   ["Kein freies Kapital", "Statt „Stück –“ steht jetzt „0 · kein freies Kapital“ – mit Erklärung im Ticket: Depot-Positionen ohne Trade-Plan binden dein Trading-Budget."],
   ["Keine Lücke mehr", "„Seit dem letzten Scan“ steht jetzt links unter deinen Treffern – und zeigt bei deinen Aktien immer den aktuellen Stand (x/11 wie im Scanner)."]]],
@@ -5689,7 +5749,7 @@ const TP_EXP_TREND = { 5: 0.07, 7: 0.07, 10: 0.07, 20: 0.07 };      // Trend-Rü
 // Eine Stückzahl-Rechnung für alle Ansichten (Review 29.10.2026): 1 % Risiko je Trade – aber nie mehr Aktien, als ins freie
 // Kapital passen (Kapital − Einsatz offener Pläne − Kaufwert der Depot-Positionen ohne Plan; sonst wäre Geld doppelt verplant)
 function freeCap() {
-  const cfg = tpCfg(), pm = paperMode(), dep = !pm && typeof depotLoad === "function" ? depotLoad() : [];   // Übung: kein echtes Depot (Review 2, W3)
+  const cfg = tpCfg(), pm = paperMode(), dep = !pm && typeof depotLoad === "function" ? depotLive() : [];   // Übung: kein echtes Depot (Review 2, W3)
   const noPlanCost = dep.filter(p => !p.etf && !planFor([p.t], p.d ? p.d.under : p.n)).reduce((a, p) => a + (+p.price || 0) * (+p.qty || 0), 0);
   return Math.max(0, cfg.depot - openPlans().reduce((a, p) => a + (+p.stake || 0), 0) - noPlanCost);
 }
@@ -5768,7 +5828,7 @@ function tp2Calc(r, S, o = {}) {
   if (r.sec) {
     const same = new Map();
     plansLoad().filter(p => p.st === "open" && p.t !== r.t).forEach(p => { const x = rowOf(p.t); if (x && x.sec === r.sec) same.set(p.t, p.n || x.n); });
-    (typeof depotLoad === "function" ? depotLoad() : []).forEach(p => { const x = p.t && p.t !== r.t && rowOf(p.t); if (x && x.sec === r.sec) same.set(p.t, x.n); });
+    (typeof depotLoad === "function" ? depotLive() : []).forEach(p => { const x = p.t && p.t !== r.t && rowOf(p.t); if (x && x.sec === r.sec) same.set(p.t, x.n); });
     out.cluster = { sec: r.sec, n: same.size, names: [...same.values()] };
     if (same.size >= KMAX.perSector) out.problems.push(["red", `Klumpenschutz: Du hast schon ${same.size} Positionen im Sektor ${r.sec} (${[...same.values()].slice(0, 3).join(", ")}). Höchstens ${KMAX.perSector} je Sektor – fällt der Sektor, fallen alle gleichzeitig. Lieber auslassen oder eine andere Position zuerst schließen.`]);
     else if (same.size) out.problems.push(["yellow", `Klumpenschutz: ${same.size} Position im selben Sektor (${r.sec}: ${[...same.values()].join(", ")}). Diese wäre die letzte erlaubte in ${r.sec}.`]);
