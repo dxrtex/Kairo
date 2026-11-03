@@ -185,6 +185,29 @@ def analyze(folder, out_json):
     r["adopt"] = bool(r["brier"] < r["base_brier"] and r["auc"] > r["base_auc"] and r["diff_ci"][1] < 0)
     r["base_rate"] = float(te["crash"].mean())
     out["crash"] = r
+    # B2: Absturz VOR den Zahlen – ohne Gewinn-Überraschung (die kennt man erst danach); Basis = Absturz-Quote je Region
+    reg_rate = tr.groupby("reg")["crash"].mean()
+    btr, bte = tr["reg"].map(reg_rate).values, te["reg"].map(reg_rate).values
+    cols = ["vol20", "absr", "run20", "mkt_up"]
+    lg = lambda v: np.log(np.clip(v, 1e-3, 1) / np.clip(1 - v, 1e-3, 1))
+    Xtr = feats(tr, cols, tr).assign(base=lg(btr)); Xte = feats(te, cols, tr).assign(base=lg(bte))
+    lr = LogisticRegression(max_iter=2000).fit(Xtr, tr["crash"])
+    p = lr.predict_proba(Xte)[:, 1]
+    lo, hi = _boot(te, bte, p, te["crash"].to_numpy())
+    q = pd.qcut(p, 5, labels=False, duplicates="drop")
+    pre = {"base_brier": _brier(bte, te["crash"]), "brier": _brier(p, te["crash"]), "base_auc": float(roc_auc_score(te["crash"], bte)),
+           "auc": float(roc_auc_score(te["crash"], p)), "diff_ci": [lo, hi], "coef": dict(zip(Xtr.columns, map(float, lr.coef_[0]))),
+           "icpt": float(lr.intercept_[0]), "scale": {c: [float(tr[c].median()), float(tr[c].std() or 1)] for c in cols},
+           "reg_rate": {k: float(v) for k, v in reg_rate.items()},
+           "calib": [[float(p[q == k].mean()), float(te["crash"].values[q == k].mean()), int((q == k).sum())] for k in range(int(q.max()) + 1)]}
+    pre["adopt"] = bool(pre["brier"] < pre["base_brier"] and pre["auc"] > pre["base_auc"] + 0.02 and hi < 0)
+    out["crash_pre"] = pre
+    print(f"Absturz VOR den Zahlen (ohne Überraschung): Brier {pre['base_brier']:.4f} → {pre['brier']:.4f} (95 % {lo:+.4f}…{hi:+.4f}) · AUC {pre['base_auc']:.3f} → {pre['auc']:.3f} · übernehmen: {pre['adopt']}")
+    print("   Eichung (vorhergesagt → eingetreten, n):", [(round(a, 3), round(b, 3), n) for a, b, n in pre["calib"]])
+    print("   Gewichte:", {k: round(v, 3) for k, v in pre["coef"].items()})
+    # Absturz-Quote je Fünftel „frühere Reaktion der Aktie“ (Prüfzeit, beschreibend)
+    te3 = te.dropna(subset=["absr"]).assign(aq=lambda d: pd.qcut(d["absr"], 5, labels=False, duplicates="drop"))
+    print("Absturz-Quote je Fünftel frühere Reaktionsstärke:", [(int(a), round(float(b), 3)) for a, b in te3.groupby("aq")["crash"].mean().items()])
     # beschreibend: Absturz-Quote je Fünftel Schwankung (Prüfzeit)
     te2 = te.assign(vq=pd.qcut(te["vol20"], 5, labels=False, duplicates="drop"))
     out["crash_by_vol"] = te2.groupby("vq")["crash"].agg(["mean", "count"]).reset_index().to_dict("records")
