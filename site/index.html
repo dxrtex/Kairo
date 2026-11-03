@@ -5137,8 +5137,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.26";
-const APP_NEWS = [["2026.11.26", "Scanner: Kauf-Status statt Status", [
+const APP_VER = "2026.11.27";
+const APP_NEWS = [["2026.11.27", "Scanner: Sortieren ohne Springen", [
+  ["Tabelle bleibt stehen", "Tippst du auf eine Spalte (z. B. Analysten-Ziel), wird sortiert – die Tabelle bleibt an derselben Stelle, statt an den Anfang zu springen."]]],
+  ["2026.11.26", "Scanner: Kauf-Status statt Status", [
   ["Nur noch, was zählt", "Die Spalte heißt jetzt „Kauf-Status“ und zeigt nur bei Treffern, wann gekauft wird (kaufbereit, Seitwärtsphase, verfallen, im Depot). Ob Treffer oder Fast-Treffer, siehst du an „Erfüllt x/11“. In „Beobachten“ entfällt die Spalte ganz."]]],
   ["2026.11.25", "Depot: Knock-outs im Journal, Plan vorausgefüllt", [
   ["Knock-out = realisierter Verlust", "Ausgeknockte Turbos stehen jetzt auch im Journal und in der Bilanz – als Verkauf zu 0 € am Knock-out-Tag (nur wenn der Kauf in deinem Scalable-Export steht und Scalable den Verkauf nicht schon selbst liefert)."],
@@ -6902,7 +6904,10 @@ document.addEventListener("click", e => {
   const cd = e.target.closest("[data-card]"); if (cd) { e.preventDefault(); openCard(cd.dataset.card); return; }
   if (e.target.closest("[data-closecard]")) { closeCard(); return; }
   const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); closeCard(); openDetail(o.dataset.open); return; }
-  const th = e.target.closest("th[data-k]"); if (th) { if (th.dataset.k === state.tableSort) state.tableAsc = !state.tableAsc; else { state.tableSort = th.dataset.k; state.tableAsc = false; } render(); }
+  const th = e.target.closest("th[data-k]"); if (th) { if (th.dataset.k === state.tableSort) state.tableAsc = !state.tableAsc; else { state.tableSort = th.dataset.k; state.tableAsc = false; }
+    const tw = document.querySelector("main .table-wrap"), sx = tw ? tw.scrollLeft : 0, sy = window.scrollY;   // Sortieren: Position in der Tabelle behalten
+    render();
+    const tw2 = document.querySelector("main .table-wrap"); if (tw2) tw2.scrollLeft = sx; window.scrollTo(0, sy); }
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape") { closeDetail(); closeCard(); closeBrief(); const t = $("tour"); if (t) t.remove(); const n = $("newsBox"); if (n) n.remove(); const eb = $("earnBox"); if (eb) eb.remove(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey || /input|textarea|select/i.test((e.target.tagName || "")) || e.target.isContentEditable || document.getElementById("gate")) return;
