@@ -2377,9 +2377,9 @@ function spStamp() {
   return g ? `<b>Stand ${new Date(g).toLocaleDateString("de-DE")} ${hm(g)} Uhr</b> · Tagesschluss` : "";
 }
 function spList() {
-  const lv = mktLive(), m = lv ? { sectors: lv.sectors && lv.sectors.length ? lv.sectors : (anaData && anaData.market || {}).sectors, industries: lv.industries && lv.industries.length ? lv.industries : (anaData && anaData.market || {}).industries } : anaData && anaData.market || {};
-  const ind = state.spMode === "ind" && (m.industries || []).length;
-  return { ind, xs: (ind ? m.industries : m.sectors) || [] };
+  const lv = mktLive(), m = lv ? { sectors: lv.sectors && lv.sectors.length ? lv.sectors : (anaData && anaData.market || {}).sectors, industries: lv.industries && lv.industries.length ? lv.industries : (anaData && anaData.market || {}).industries, themes: lv.themes && lv.themes.length ? lv.themes : (anaData && anaData.market || {}).themes } : anaData && anaData.market || {};
+  const th = state.spMode === "th" && (m.themes || []).length, ind = th || (state.spMode === "ind" && (m.industries || []).length);
+  return { ind, th, xs: (th ? m.themes : ind ? m.industries : m.sectors) || [] };
 }
 function spRanked(xs, k) {
   const val = (x, prev) => { const v = prev ? x.p && x.p[k] : x[k]; return v == null ? -Infinity : v; };
@@ -2389,13 +2389,13 @@ function spRanked(xs, k) {
 }
 function sectorsHtml() {
   const lv = mktLive(), a = (anaData && anaData.market) || {};
-  const m = { sectors: (lv && lv.sectors && lv.sectors.length ? lv.sectors : a.sectors) || [], industries: (lv && lv.industries && lv.industries.length ? lv.industries : a.industries) || [] };
+  const m = { sectors: (lv && lv.sectors && lv.sectors.length ? lv.sectors : a.sectors) || [], industries: (lv && lv.industries && lv.industries.length ? lv.industries : a.industries) || [], themes: (lv && lv.themes && lv.themes.length ? lv.themes : a.themes) || [] };
   if (!m.sectors.length) return "";
-  const [k, kl, kn] = spPer(), { ind, xs } = spList(), rows = spRanked(xs, k).filter(x => x.v != null);
+  const [k, kl, kn] = spPer(), { ind, th, xs } = spList(), rows = spRanked(xs, k).filter(x => x.v != null);
   if (!rows.length) return "";
   const mx = Math.max(...rows.map(x => Math.abs(x.v)), 1e-4), neg = rows.some(x => x.v < 0), pos = rows.some(x => x.v > 0);
   const zero = neg && pos ? 50 : neg ? 100 : 0, span = neg && pos ? 50 : 100;
-  const all = !ind || state.spAll, show = all ? rows : [...rows.slice(0, 8), ...rows.slice(-4)];
+  const all = !ind || th || state.spAll, show = all ? rows : [...rows.slice(0, 8), ...rows.slice(-4)];
   const hasHist = xs.some(x => (x.rh || []).length > 3), hv = hasHist && state.spView === "hist";
   const hasRrg = xs.some(x => x.rrg), rv = hasRrg && state.spView === "rrg";
   const bar = x => { const w = Math.abs(x.v) / mx * span; return `<i class="${x.v >= 0 ? "up" : "down"}" style="left:${x.v >= 0 ? zero : zero - w}%;width:${Math.max(w, .8)}%"></i>`; };
@@ -2405,12 +2405,12 @@ function sectorsHtml() {
   const ups = rows.filter(x => x.mv >= 2).sort((a, b) => b.mv - a.mv).slice(0, 3), dns = rows.filter(x => x.mv <= -2).sort((a, b) => a.mv - b.mv).slice(0, 3);
   const rot = ups.length || dns.length ? `<div class="sp-rot">↻ <b>Rotation</b> ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"}: ${ups.length ? `Geld fließt in <span class="up">${ups.map(x => esc(x.n)).join(", ")}</span>` : ""}${ups.length && dns.length ? " · " : ""}${dns.length ? `raus aus <span class="down">${dns.map(x => esc(x.n)).join(", ")}</span>` : ""}</div>` : "";
   return `<div class="hcard sp-card">${hHead("Sektoren & Branchen")}
-    <div class="sp-top"><div class="sp-tg">${[["sec", "Sektoren"], ["ind", "Branchen"]].map(([v, l]) => `<button class="opt${(v === "ind") === !!ind ? " on" : ""}" data-spmode="${v}"${v === "ind" && !(m.industries || []).length ? " disabled title=\"kommt mit dem nächsten Abend-Scan\"" : ""}>${l}</button>`).join("")}</div>
+    <div class="sp-top"><div class="sp-tg">${[["sec", "Sektoren", 1], ["ind", "Branchen", (m.industries || []).length], ["th", "Themen", (m.themes || []).length]].map(([v, l, ok]) => `<button class="opt${(v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind) ? " on" : ""}" data-spmode="${v}"${ok ? "" : ' disabled title="kommt mit dem nächsten Abend-Scan"'}>${l}</button>`).join("")}</div>
       ${hv || rv ? "" : `<div class="sp-tg">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}</div>`}</div>
-    <div class="sp-tg" style="margin:-4px 0 10px">${[["ret", "Rendite", 1], ["rrg", "Rotations-Bild", hasRrg], ["hist", "Rang-Verlauf 12 Wochen", hasHist]].filter(o => o[2]).map(([v, l]) => `<button class="opt${(v === "hist" ? hv : v === "rrg" ? rv : !hv && !rv) ? " on" : ""}" data-spview="${v}">${l}</button>`).join("")}${hv || rv ? "" : `<button class="opt${state.spRel ? " on" : ""}" data-sprel title="Rendite minus Durchschnitt aller ${ind ? "Branchen" : "Sektoren"}">gegenüber Markt</button>`}</div>
+    <div class="sp-tg" style="margin:-4px 0 10px">${[["ret", "Rendite", 1], ["rrg", "Rotations-Bild", hasRrg], ["hist", "Rang-Verlauf 12 Wochen", hasHist]].filter(o => o[2]).map(([v, l]) => `<button class="opt${(v === "hist" ? hv : v === "rrg" ? rv : !hv && !rv) ? " on" : ""}" data-spview="${v}">${l}</button>`).join("")}${hv || rv ? "" : `<button class="opt${state.spRel ? " on" : ""}" data-sprel title="Rendite minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")}">gegenüber Markt</button>`}</div>
     ${rv ? spRrgHtml(xs, ind) : hv ? spHistHtml(xs, ind) : `${rot}${hotHtml(ind ? [] : xs)}<div class="sp-list">${show.map(row).join("")}</div>`}
-    ${ind && !rv ? `<button class="hlink" data-spall style="margin-top:6px">${all ? "weniger zeigen" : `alle ${rows.length} Branchen zeigen`}</button>` : ""}
-    <div class="note" style="margin:8px 0 0">${spStamp()}<br>${rv ? `US-${ind ? "Branchen" : "Sektor"}-ETFs gegenüber dem S&P 500, Wochenwerte.` : `US-${ind ? "Branchen" : "Sektor"}-ETFs, Rendite ${esc(kn)}${state.spRel ? ` minus Durchschnitt aller ${ind ? "Branchen" : "Sektoren"} (> 0 = besser als der Markt)` : ""}. ▲▼ = Plätze gewonnen/verloren ${k === "d1" ? "ggü. gestern" : "ggü. vor einer Woche"}. Antippen zeigt die stärksten Aktien aus deinem Scan.`}</div></div>`;
+    ${ind && !th && !rv ? `<button class="hlink" data-spall style="margin-top:6px">${all ? "weniger zeigen" : `alle ${rows.length} Branchen zeigen`}</button>` : ""}
+    <div class="note" style="margin:8px 0 0">${spStamp()}<br>${rv ? `US-${(th ? "Themen" : ind ? "Branchen" : "Sektor")}-ETFs gegenüber dem S&P 500, Wochenwerte.` : `US-${(th ? "Themen" : ind ? "Branchen" : "Sektor")}-ETFs, Rendite ${esc(kn)}${state.spRel ? ` minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")} (> 0 = besser als der Markt)` : ""}. ▲▼ = Plätze gewonnen/verloren ${k === "d1" ? "ggü. gestern" : "ggü. vor einer Woche"}. Antippen zeigt die stärksten Aktien aus deinem Scan.`}</div></div>`;
 }
 // „Heißgelaufen“: die 2 Sektoren mit der höchsten Mehrrendite über 4 Wochen (backend/analysis.py rotation). Backtest 2008–2026
 // (tools/research/rotation.py): solche Sektoren lagen seit 2016 in den folgenden 13 Wochen im Schnitt ~1 % hinter dem Markt.
@@ -2465,9 +2465,9 @@ function spHistHtml(xs, ind) {
     <div class="note" style="margin:6px 0 0">Platz nach 1-Monats-Rendite, jede Woche neu gemessen (links vor 12 Wochen, rechts heute; oben = stärkster).</div>`;
 }
 function spDrillHtml(key) {
-  const [k, , kn] = spPer(), { ind, xs } = spList(), x = xs.find(v => v.k === key); if (!x) return "";
+  const [k, , kn] = spPer(), { ind, th, xs } = spList(), x = xs.find(v => v.k === key); if (!x) return "";
   const nm = { d1: "d1", w1: "d5", m1: "m1", m3: "m3", ytd: "ytd" }[k];
-  const all = spRows().filter(r => (ind ? r.ig === key : r.sec === x.n) && r[nm] != null);
+  const all = spRows().filter(r => (x.mem ? x.mem.includes(r.t) : ind ? r.ig === key : r.sec === x.n) && r[nm] != null);
   const top = [...all].sort((a, b) => b[nm] - a[nm]).slice(0, 15);
   const up = all.filter(r => r[nm] > 0).length;
   const li = top.map((r, i) => { const sr = byTicker(r.t); return `<button class="sp-s" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}>
@@ -2476,8 +2476,8 @@ function spDrillHtml(key) {
   return `<h3 style="margin:0 0 4px">${esc(x.n)}</h3>
     <p class="muted" style="margin:0 0 12px;font-size:13.5px">${esc(x.k)} ${sgnPct(x[k], 1)} ${esc(kn)} · ${all.length ? `${up} von ${all.length} Aktien im Plus` : ""}</p>
     <div class="sp-tg" style="margin-bottom:10px">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" data-spkeep="${esc(key)}" title="${n}">${l}</button>`).join("")}</div>
-    ${li || `<p class="muted">${searchIdx ? (ind ? "Für diese Branche sind noch keine Aktien zugeordnet – die Zuordnung kommt mit den nächsten Scans." : "Keine Aktien aus dem Scan in diesem Sektor.") : "Lädt …"}</p>`}
-    <div class="note" style="margin:10px 0 0">Stärkste Aktien ${esc(kn)} aus dem Kairo-Scan (weltweit, ab 2 Mrd. $ Börsenwert). Antippen öffnet die Aktie.</div>`;
+    ${li || `<p class="muted">${searchIdx ? (th ? "Keine der Hauptwerte dieses Themas ist im Kairo-Scan." : ind ? "Für diese Branche sind noch keine Aktien zugeordnet – die Zuordnung kommt mit den nächsten Scans." : "Keine Aktien aus dem Scan in diesem Sektor.") : "Lädt …"}</p>`}
+    <div class="note" style="margin:10px 0 0">Stärkste Aktien ${esc(kn)} aus dem Kairo-Scan (weltweit, ab 2 Mrd. $ Börsenwert)${x.mem ? ` – beim Thema aus den fest hinterlegten Hauptwerten (${x.mem.length}), Kurs des Themas = ETF ${esc(x.k)}` : ""}. Antippen öffnet die Aktie.</div>`;
 }
 // Heatmap: größte Aktien je Region, nach Sektor gruppiert, Fläche = Börsenwert, Farbe = Rendite im gewählten Zeitraum
 const HM_REG = [["us", "USA"], ["europe", "Europa"], ["de", "Deutschland"], ["asia", "Asien"], ["all", "Alle"]];
@@ -5708,8 +5708,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.45";
-const APP_NEWS = [["2026.11.45", "Insider: alle Käufe je Aktie", [
+const APP_VER = "2026.11.46";
+const APP_NEWS = [["2026.11.46", "Markt: Themen", [
+  ["Markt: Themen", "Neben Sektoren und Branchen gibt es jetzt „Themen“: Cybersecurity, Cloud, KI & Robotik, Zahlungen & Fintech, Stromnetz & Rechenzentren, Kernkraft, Lithium & Batterien, Seltene Erden, Raumfahrt, Stahl, Agrar & Dünger – mit Rendite, Rotations-Bild, Rang-Verlauf und den stärksten Hauptwerten."]]],
+  ["2026.11.45", "Insider: alle Käufe je Aktie", [
   ["Insider: Details je Aktie", "Tippe in der Rangliste auf eine Aktie (z. B. Deutz): Du siehst jeden einzelnen Kauf der letzten 90 Tage – wer, welche Funktion, wann, wie viel, gezielt oder Routine, wie viel mehr Aktien – mit Link zur Originalmeldung."]]],
   ["2026.11.44", "Rotations-Bild", [
   ["Markt: Rotations-Bild", "Unter Sektoren & Branchen zeigt „Rotations-Bild“, wohin das Geld gerade fließt: Führend, Lässt nach, Schwach, Erholt sich – mit dem Weg der letzten 4 Wochen. Ehrlich beschriftet: Es beschreibt, sagt aber nicht vorher (getestet über 18 Jahre)."],
