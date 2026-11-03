@@ -1,13 +1,13 @@
-"""Test: Europäische Sektor-ETFs (iShares STOXX Europe 600, Xetra) bei Yahoo verfügbar? Länge, letzter Tag, Volumen."""
-import yfinance as yf
-C = {"EXV1.DE": "Banken", "EXV3.DE": "Technologie", "EXV4.DE": "Gesundheit", "EXH1.DE": "Öl & Gas", "EXV2.DE": "Telekom",
-     "EXH4.DE": "Industrie", "EXV6.DE": "Rohstoffe", "EXH3.DE": "Lebensmittel & Getränke", "EXH9.DE": "Versorger", "EXV5.DE": "Autos",
-     "EXH5.DE": "Versicherungen", "EXV8.DE": "Bau & Material", "EXH7.DE": "Konsumgüter", "EXI5.DE": "Immobilien", "EXH2.DE": "Finanzdienste",
-     "EXV9.DE": "Reisen & Freizeit", "EXH8.DE": "Einzelhandel", "EXV7.DE": "Chemie", "EXH6.DE": "Medien", "^STOXX": "STOXX 600", "^N225": "Nikkei 225",
-     "^STOXX50E": "Euro Stoxx 50", "^GDAXI": "DAX"}
-h = yf.download(list(C), period="2y", interval="1d", group_by="ticker", auto_adjust=True, progress=False, threads=True)
-for t, n in C.items():
-    try:
-        df = h[t].dropna(subset=["Close"]); print(f"{t:10s} {n:24s} Tage {len(df):4d} letzter {df.index[-1].date()} Kurs {df['Close'].iloc[-1]:.2f} Vol {df['Volume'].iloc[-5:].mean():.0f}")
-    except Exception as e:
-        print(t, n, "FEHLT", repr(e)[:80])
+"""Test 3d: Originaltexte der Ausreißer (Oslo, UK) – Abschnitt rund um Preis/Volumen."""
+import re, html, requests
+UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15"}
+def strip(t): return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", re.sub(r"(?s)<(script|style).*?</\1>", " ", t))).split())
+for mid in ("680907", "679629", "682835", "681457"):
+    msg = (requests.get(f"https://api3.oslo.oslobors.no/v1/newsreader/message?messageId={mid}", headers=UA, timeout=30).json().get("data") or {}).get("message") or {}
+    print("\n== OSLO", mid, msg.get("issuerSign"), msg.get("title")); print(strip(msg.get("body") or "")[:1500])
+for u in ("https://www.investegate.co.uk/announcement/rns/legal-general-group--lgen/director-pdmr-shareholding/9854351",
+          "https://www.investegate.co.uk/announcement/prn/rightmove--rmv/director-pdmr-shareholding/9834525",
+          "https://www.investegate.co.uk/announcement/rns/seplat-energy-di---sepl/director-pdmr-shareholding/9800105",
+          "https://www.investegate.co.uk/announcement/rns/canal-sa--can/director-pdmr-shareholding/9816570"):
+    t = strip(requests.get(u, headers=UA, timeout=30).text); k = t.find("Nature of the transaction")
+    print("\n== UK", u.split("/")[-3]); print(t[max(0, k - 300):k + 1300] if k >= 0 else t[:1500])
