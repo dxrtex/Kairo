@@ -1,8 +1,7 @@
 name: Wichtige Mitteilungen (tagsüber)
 
+# Läuft tagsüber in der Schleife von tagsueber.yml (GitHub startet Zeitpläne nur alle paar Stunden) – hier nur noch von Hand.
 on:
-  schedule:
-    - cron: "*/30 6-21 * * 1-5"   # alle 30 Minuten, Mo–Fr, ca. 8–23 Uhr Berlin
   workflow_dispatch:
 
 permissions:
@@ -32,10 +31,6 @@ jobs:
         env:
           PUSH_SUBS: ${{ secrets.PUSH_SUBS }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-      - name: Markt tagsüber (Sektoren, Branchen, Heatmap, Gewinner/Verlierer – nur Anzeige)
-        continue-on-error: true
-        timeout-minutes: 8
-        run: python -m backend.mktlive
       - name: Zustand sichern
         if: always()
         run: |

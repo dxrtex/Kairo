@@ -1,0 +1,59 @@
+name: Tagsüber (Mitteilungen + Markt, alle 30 Minuten)
+
+# GitHub startet geplante Abläufe nur unzuverlässig (in diesem Repository oft nur 2–4× am Tag statt alle 30 Min.).
+# Darum läuft hier EIN Job Mo–Fr in einer Schleife und erledigt alle 30 Minuten:
+#   1. Mitteilungen: Stop, Kursziel, Verkaufstag, K.-o. und 4H-Bestätigung (backend/push.py, 06:00–22:00 UTC)
+#   2. Markt: Sektoren, Branchen, Heatmap, Gewinner/Verlierer (backend/mktlive.py, 07:00–21:15 UTC, nur Anzeige)
+# Zustand im Branch kairo-alerts. Nach gut 5 Std. startet sich der Job selbst neu (Jobs dürfen höchstens 6 Std. laufen);
+# drei Anstöße per Zeitplan fangen Ausfälle auf. Öffentliches Repository → keine Minuten-Kosten.
+on:
+  schedule:
+    - cron: "41 5 * * 1-5"
+    - cron: "17 11 * * 1-5"
+    - cron: "47 15 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write                  # Zustand im Branch kairo-alerts (gesendete Meldungen, mktlive.json)
+  actions: write                   # sich selbst neu starten
+
+concurrency:
+  group: tagsueber
+  cancel-in-progress: true         # ein neuer Anstoß ersetzt die laufende Schleife (nie zwei gleichzeitig)
+
+jobs:
+  loop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Schleife (Mo–Fr, alle 30 Min.)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUSH_SUBS: ${{ secrets.PUSH_SUBS }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: |
+          start=$(date +%s)
+          if git fetch -q origin kairo-alerts:kairo-alerts 2>/dev/null; then git worktree add -q state kairo-alerts;
+          else git worktree add -q --orphan -b kairo-alerts state; fi
+          while :; do
+            t0=$(date +%s); now=$((10#$(date -u +%H%M))); dow=$(date -u +%u)
+            if [ "$dow" -gt 5 ] || [ "$now" -ge 2205 ]; then echo "Feierabend – Ende"; exit 0; fi
+            if [ "$now" -ge 600 ]; then
+              echo "::group::Mitteilungen $(date -u +%H:%M)"; timeout 20m python -m backend.push || echo "Mitteilungen: Fehler"; echo "::endgroup::"
+            fi
+            if [ "$now" -ge 700 ] && [ "$now" -lt 2115 ]; then
+              echo "::group::Markt $(date -u +%H:%M)"; timeout 8m python -m backend.mktlive 2>&1 | grep -v -i warning | grep -v "^See \|^  " || true; echo "::endgroup::"
+            fi
+            ( cd state && git add -A && git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Tagsüber $(date -u +%F-%H%M)" \
+              && for i in 1 2 3; do git pull -q --rebase origin kairo-alerts && git push -q origin kairo-alerts && break; sleep 5; done ) || true
+            if [ $(( $(date +%s) - start )) -gt 18000 ]; then
+              echo "5 Stunden um – neu starten"; gh workflow run tagsueber.yml --ref "${GITHUB_REF_NAME}" -R "${GITHUB_REPOSITORY}"; exit 0
+            fi
+            sleep $(( 1800 - ( $(date +%s) - t0 ) > 60 ? 1800 - ( $(date +%s) - t0 ) : 60 ))
+          done
