@@ -1088,6 +1088,11 @@
              transition: left .32s cubic-bezier(.32,.72,0,1), top .32s cubic-bezier(.32,.72,0,1), width .32s cubic-bezier(.32,.72,0,1), height .32s cubic-bezier(.32,.72,0,1), opacity .2s; }
   .tab-ind.on { opacity: 1; }
   @media (prefers-reduced-motion: reduce) { .tab-ind { transition: none; } }
+.etf-live .el-h{display:flex;justify-content:space-between;align-items:center}
+.etf-live .eh-k i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:1px}
+.etf-live .eh-k i.on{background:var(--up);box-shadow:0 0 0 3px color-mix(in srgb,var(--up) 25%,transparent)}
+.etf-live .el-m{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin:6px 0 4px}.etf-live .el-m>b{font-size:26px;font-variant-numeric:tabular-nums}
+.etf-live .el-m span{font-size:14px;font-weight:650}.etf-live .el-s{font-size:12px;color:var(--muted)}
 .etf-hero{display:flex;gap:22px;align-items:center;padding:22px!important}
 .eh-lights{flex:none;display:flex;flex-direction:column;gap:10px;background:#111;border-radius:22px;padding:12px 10px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
 .eh-l{display:flex;flex-direction:column;align-items:center;gap:4px;opacity:.28}.eh-l i{width:44px;height:44px;border-radius:50%;background:var(--c);display:block}
@@ -5005,6 +5010,36 @@ function etfDevHtml(e, c) {
       ${pa != null ? `<div class="mt"><span>≈ pro Jahr</span><b class="${cls(pa)}">${sg(pa)}${pct(pa, 1)}</b><em>seit ${dateDE(c.since)}${c.rate ? " · Sparplan" : ""}</em></div>` : ""}</div>
     ${!c.since ? `<div class="note" style="margin:8px 0 0">Mit dem Datum deines ersten Kaufs zeigt Kairo auch die Rendite pro Jahr.</div>` : ""}</div>`;
 }
+// Live-Kurs des SPDR MSCI ACWI IMI (SPYI) an gettex – onvista (frei, Abfrage direkt aus dem Browser), jede Minute neu
+const SPYI_ISIN = "IE00B3YLTY66";
+let etfLive = null, etfLiveAt = 0, etfLiveBusy = false;
+async function etfLiveLoad(force) {
+  if (etfLiveBusy || (!force && Date.now() - etfLiveAt < 55e3)) return;
+  etfLiveBusy = true;
+  try {
+    const sn = await ovGet(`/instruments/FUND/ISIN:${SPYI_ISIN}/snapshot`);
+    const L = ((sn || {}).quoteList || {}).list || [];
+    const q = L.find(m => m.market && (m.market.codeExchange === "TRO" || /gettex/i.test(m.market.name || ""))) || null;
+    etfLive = q && +q.last > 0 ? { p: +q.last, prev: +q.previousLast || null, pct: q.performancePct != null ? +q.performancePct / 100 : null,
+      bid: +q.bid || null, ask: +q.ask || null, at: q.datetimeLast || q.datetimeBid || q.datetimeAsk || null } : { err: sn ? "gettex-Kurs fehlt" : "onvista nicht erreichbar" };
+  } catch (e) { etfLive = { err: "onvista nicht erreichbar" }; }
+  etfLiveAt = Date.now(); etfLiveBusy = false;
+  if (state.sec === "etf") render();
+}
+setInterval(() => { if (state.sec === "etf" && !document.hidden) etfLiveLoad(); }, 60e3);
+function etfLiveHtml(c) {
+  etfLiveLoad();
+  const L = etfLive;
+  if (!L) return `<div class="hcard etf-live"><span class="muted">Live-Kurs gettex lädt …</span></div>`;
+  if (L.err) return `<div class="hcard etf-live"><span class="muted">Live-Kurs gettex: ${esc(L.err)}</span> <button class="hlink" data-etflive>↻ erneut</button></div>`;
+  const chg = L.pct != null ? L.pct : L.prev ? L.p / L.prev - 1 : null, t = L.at ? new Date(L.at) : null;
+  const old = t && Date.now() - t > 20 * 60e3, hm = t ? t.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
+  const val = c.units ? c.units * L.p : null;
+  return `<div class="hcard etf-live"><div class="el-h"><span class="eh-k"><i class="${old ? "" : "on"}"></i>Live · gettex · SPDR MSCI ACWI IMI</span><button class="hlink" data-etflive title="Jetzt aktualisieren">↻</button></div>
+    <div class="el-m"><b>${fmt(L.p, 3)} €</b>${chg != null ? `<span class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)} heute</span>` : ""}${val ? `<span class="muted">Deine ${fmt(c.units, 0)} Anteile: <b>${eur(val)}</b></span>` : ""}</div>
+    <div class="el-s">${L.bid && L.ask ? `Geld ${fmt(L.bid, 3)} · Brief ${fmt(L.ask, 3)} · ` : ""}${t ? `${old ? "letzter Kurs" : "Stand"} ${t.toDateString() === new Date().toDateString() ? hm + " Uhr" : t.toLocaleDateString("de-DE") + " " + hm}` : ""}${old ? " (gettex handelt Mo–Fr 7:30–23 Uhr)" : " · aktualisiert sich jede Minute"}</div></div>`;
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-etflive]")) etfLiveLoad(true); });
 function etfHtml() {
   const e0 = getJson("etf.json"), c = etfCfg(), e = e0 && e0.ok === false ? null : e0;
   if (e0 === undefined) return `<div class="section-title"><span>ETF-Bereich</span><span>lädt …</span></div>`;
@@ -5025,7 +5060,7 @@ function etfHtml() {
         <div class="eh-facts"><span>Kurs <b>${fmt(e.c)} €</b></span><span>${e.dd < .005 ? "<b>am Allzeithoch</b>" : `<b>−${pct(e.dd, 1)}</b> unter dem Hoch`}</span>${etfStale(e) ? `<span class="gold">Tageskurs vom ${dateDE(e.date)} – Yahoo liefert verzögert, aktueller Kurs im Chart unten</span>` : `<span class="muted">Stand ${dateDE(e.date)}</span>`}</div>
         <div class="eh-pills">${facts.map(([l, v, c]) => `<span class="eh-p"><i class="${c}">●</i>${l}: <b>${v}</b></span>`).join("")}</div>
         ${(lb => lb ? `<div class="eh-last${c.rate && daysUntil(lb.date) < -40 ? " gold" : ""}">Letzter SPYI-Kauf: <b>${dateDE(lb.date)}</b>${lb.plan ? " (Sparplan)" : ""}${c.rate && daysUntil(lb.date) < -40 ? " – seit über 40 Tagen kein Kauf: Sparplan bei Scalable prüfen" : ""} <small class="muted">· aus deinem Scalable-Export</small></div>` : c.rate ? `<div class="eh-last muted">Ob dein Sparplan läuft, sieht Kairo nach dem nächsten Scalable-Export (Depot → Import).</div>` : "")(etfLastBuy())}</div></div>
-    ${c.units && c.buy ? etfDevHtml(e, c) : ""}<div class="hcard">${hHead("Kurs der letzten 3 Jahre · mit 200-Tage-Linie")}${etfLine(e.hist, c.buy)}
+    ${c.units && c.buy ? etfDevHtml(e, c) : ""}${etfLiveHtml(c)}<div class="hcard">${hHead("Kurs der letzten 3 Jahre · mit 200-Tage-Linie")}${etfLine(e.hist, c.buy)}
       <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ⚠️ Kurs ist ${e.age} Tage alt` : ""}. Gelegentlich mit Scalable vergleichen.</div></div>
     <details class="hcard etf-more etf-tv"${state.etfTv ? " open" : ""}><summary>Live-Chart · TradingView (XETRA, ca. 15 Min. verzögert)</summary>${state.etfTv ? tvEmbedHtml("XETR:SPYI", "") : ""}</details>`
     : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? `Die Kursdaten des ETF sehen gerade unplausibel aus${e0.ref_ok === false ? ` (weichen ${pct(e0.ref_dev, 1)} vom Vergleichs-ETF ab)` : ""} – Datenfehler beim Anbieter. Die Ampel ist ausgeblendet, bis sie wieder stimmen.` : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
@@ -5386,8 +5421,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.35";
-const APP_NEWS = [["2026.11.35", "Quartalszahlen vorsichtiger und schneller", [
+const APP_VER = "2026.11.36";
+const APP_NEWS = [["2026.11.36", "ETF: Live-Kurs gettex", [
+  ["ETF: Live-Kurs", "Über dem 3-Jahres-Chart steht jetzt der Live-Kurs des SPDR MSCI ACWI IMI an gettex (über onvista) – mit Tagesveränderung, Geld/Brief und dem aktuellen Wert deiner Anteile. Aktualisiert sich jede Minute."]]],
+  ["2026.11.35", "Quartalszahlen vorsichtiger und schneller", [
   ["Quartalszahlen: ehrlichere Prognose", "Außerhalb der USA zählt die Statistik nur halb (sie stammt aus US-Berichten – live lag sie dort beim Münzwurf). „Ausblick angehoben“ zählt nur noch, wenn die Pressemitteilung es bestätigt – Schlagzeilen allein lagen live bei 48 %."],
   ["Quartalszahlen: schneller", "Die Prüfung läuft in den Meldezeiten zuverlässig alle 10 Minuten (vorher startete GitHub sie nur ein paar Mal am Tag)."]]],
   ["2026.11.34", "Markt neu sortiert", [
