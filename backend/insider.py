@@ -186,7 +186,7 @@ def signal(rows: list[dict], days: int = 90) -> dict:
     for x in rows:
         if x.get("kind") != "buy" or (x.get("d") or "") < since:
             continue
-        o = out.setdefault(x["t"], {"who": set(), "val": 0.0, "top": False, "opp": 0, "unk": 0, "own": 0, "last": "", "cur": x.get("cur") or "USD", "n": x.get("n")})
+        o = out.setdefault(x["t"], {"who": set(), "val": 0.0, "top": False, "opp": 0, "unk": 0, "own": 0, "last": "", "cur": x.get("cur") or "USD", "n": x.get("n"), "x": []})
         o["who"].add(x.get("who"))
         o["val"] += x.get("val") or 0
         o["top"] = o["top"] or bool(TOP.search(x.get("role") or ""))
@@ -195,11 +195,15 @@ def signal(rows: list[dict], days: int = 90) -> dict:
         ow = x.get("own")
         o["own"] = max(o["own"], 100 if ow == "neu" else ow if isinstance(ow, (int, float)) else 0)
         o["last"] = max(o["last"], x.get("d") or "")
+        o.setdefault("x", []).append({"d": x.get("d"), "who": x.get("who"), "role": x.get("role"), "val": round(x.get("val") or 0),
+                                      "cur": x.get("cur") or "USD", "opp": x.get("opp") if "opp" in x else None, "own": ow,
+                                      "src": x.get("src"), "url": x.get("url")})
     res = {}
     for t, o in out.items():
         big = o["opp"] and (o["own"] >= 10 or o["val"] >= 1_000_000)   # nur belegt gezielte Käufe (ohne Historie keine Aussage)
         res[t] = {"buyers": len(o["who"]), "val": round(o["val"]), "cur": o["cur"], "top": o["top"], "opp": o["opp"], "unk": o["unk"],
-                  "own": o["own"], "last": o["last"], "n": o["n"], "score": int(len(o["who"]) >= 2) + int(o["top"]) + int(bool(big))}
+                  "own": o["own"], "last": o["last"], "n": o["n"], "score": int(len(o["who"]) >= 2) + int(o["top"]) + int(bool(big)),
+                  "x": sorted(o["x"], key=lambda r: r["d"] or "", reverse=True)[:30]}          # Einzelkäufe für die Detailansicht
     return res
 
 

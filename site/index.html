@@ -683,6 +683,12 @@
   .rrg { width: 100%; max-width: 520px; height: auto; display: block; border-radius: 12px; background: var(--surface-2); margin: 0 auto 10px; }
   .rrg .rrg-t { font-size: 10px; fill: var(--text); paint-order: stroke; stroke: var(--surface-2); stroke-width: 3px; }
   .rrg .rrg-q { font-size: 10.5px; fill: var(--muted); font-weight: 600; }
+  .ins-sum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 10px; }
+  .ins-sum div { background: var(--surface-2); border-radius: 10px; padding: 8px 6px; text-align: center; }
+  .ins-sum b { display: block; font-size: 15px; } .ins-sum em { font-style: normal; font-size: 11.5px; color: var(--muted); }
+  .ins-x { display: flex; justify-content: space-between; gap: 10px; padding: 9px 2px; border-top: 1px solid var(--line); font-size: 14px; }
+  .ins-x em { display: block; font-style: normal; font-size: 12.5px; color: var(--muted); margin-top: 2px; } .ins-x > b { white-space: nowrap; }
+  .ins-x a { color: var(--accent); } .ins-tag { font-size: 11.5px; font-weight: 600; } .ins-tag.up { color: var(--up); }
   .rrg-l { font-size: 13px; line-height: 1.55; margin: 0 0 6px; }
   .sp-hot { font-size: 10.5px; font-weight: 700; color: var(--gold); background: var(--gold-bg); border-radius: 6px; padding: 1px 5px; margin-left: 4px; white-space: nowrap; }
   .sp-hotbox .muted { display: block; margin-top: 2px; }
@@ -2603,6 +2609,29 @@ function mktBarHtml() {
   return `<div class="hcard mbar">${fz ? `<p class="mb-fz">${fz}</p>` : ""}<div class="mb-top">${reg ? `<div class="mb-reg tone-${esc(reg.tone)}"><i></i><b>Trend: ${esc(reg.label)}</b></div>` : ""}${f ? `<div class="mb-fear">Stimmung <b class="${f.score >= 65 ? "down" : f.score >= 45 ? "gold" : "up"}">${esc(f.label)}</b> <small>${f.score}/100</small></div>` : ""}</div>
     <div class="mb-tiles">${tiles}</div>${br}</div>`;
 }
+// Insider-Detail: alle Käufe einer Aktie (90 Tage) – Person, Funktion, Datum, Betrag, gezielt/Routine, Anteil, Quelle
+const INS_TOP = /\b(CEO|Chief Executive|CFO|Chief Financial|President|Chairman|Chair|COO|Vorstand|Vorsitz)/i;
+function insDetailHtml(t) {
+  const ij = getJson("insider.json"), g = ij && ij.signal && ij.signal[t];
+  if (!g) return `<p class="muted">Keine Insider-Käufe in den letzten 90 Tagen.</p>`;
+  const usd = (fxEur && fxEur.USD) || 0.9, toEur = x => (x.cur === "EUR" ? 1 : usd) * (x.val || 0);
+  const amt = e => e >= 1e6 ? `${fmt(e / 1e6, 2)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`;
+  const xs = g.x || [], sr = byTicker(t), r = rowOf(t) || {};
+  const per = {}; xs.forEach(x => { const o = per[x.who] = per[x.who] || { n: 0, e: 0, role: x.role }; o.n++; o.e += toEur(x); });
+  const opp = x => x.opp === true ? `<span class="ins-tag up">gezielt</span>` : x.opp === false ? `<span class="ins-tag">Routine</span>` : `<span class="ins-tag muted" title="Ohne Kaufhistorie der Vorjahre lässt sich nicht prüfen, ob es ein Routinekauf ist">Routine unbekannt</span>`;
+  const own = x => x.own === "neu" ? " · erster Aktienbesitz" : typeof x.own === "number" && x.own > 0 ? ` · +${fmt(Math.min(x.own, 999), 0)} % mehr Aktien` : "";
+  const li = xs.map(x => `<div class="ins-x"><div><b>${esc(x.who || "–")}</b>${INS_TOP.test(x.role || "") ? ' <span class="ir-top">Vorstandsspitze</span>' : ""}
+      <em>${esc(x.role || "Funktion unbekannt")}</em><em>${dateDE(x.d)} · ${opp(x)}${own(x)}${x.url ? ` · <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.src || "Meldung")}</a>` : x.src ? " · " + esc(x.src) : ""}</em></div>
+      <b class="up">${x.val ? amt(toEur(x)) : "–"}</b></div>`).join("");
+  const ppl = Object.entries(per).sort((a, b) => b[1].e - a[1].e);
+  return `<h3 style="margin:0 0 4px">${esc(g.n || nameOf(t))}</h3>
+    <p class="muted" style="margin:0 0 10px;font-size:13.5px">${esc(tkClean(t))} · Insider-Käufe 90 Tage · Stärke <span class="ir-dots">${"●".repeat(g.score)}<i>${"●".repeat(3 - g.score)}</i></span>${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : ""}</p>
+    <div class="ins-sum"><div><b>${xs.length}</b><em>Käufe</em></div><div><b>${g.buyers}</b><em>Personen</em></div><div><b>${amt(xs.reduce((a, x) => a + toEur(x), 0))}</b><em>zusammen</em></div><div><b>${xs.filter(x => x.opp === true).length}</b><em>gezielt</em></div></div>
+    ${ppl.length > 1 ? `<div class="note" style="margin:0 0 10px">Käufer: ${ppl.map(([w, o]) => `<b>${esc(w)}</b> (${esc(o.role || "–")}) ${o.n}× · ${amt(o.e)}`).join(" · ")}</div>` : ""}
+    <div class="ins-xs">${li || `<p class="muted">Einzelkäufe kommen mit dem nächsten Scan.</p>`}</div>
+    <button class="btn" style="margin-top:12px;width:100%" ${sr ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`}>Aktie öffnen</button>
+    <div class="note" style="margin:10px 0 0">„Gezielt“ = kein Routinekauf (die Person hat nicht in beiden Vorjahren im selben Monat gekauft) – laut Forschung das aussagekräftigere Signal. „Routine unbekannt“ = für die Quelle gibt es keine Kaufhistorie der Vorjahre (z. B. BaFin, Großbritannien). Beträge grob in Euro umgerechnet.</div>`;
+}
 function openSpDrill(key) {
   if (!searchIdx) loadSearch().then(() => { if (!$("spm").hidden) $("spmBody").innerHTML = spDrillHtml(key); });
   $("spmBody").innerHTML = spDrillHtml(key); $("spm").hidden = false; $("spm").dataset.k = key;
@@ -2610,6 +2639,7 @@ function openSpDrill(key) {
 document.addEventListener("click", e => {
   const t = e.target;
   if (t.closest("#spm [data-card], #spm [data-ein], [data-spclose]")) { $("spm").hidden = true; if (t.closest("[data-spclose]")) return; }
+  const io = t.closest("[data-insopen]"); if (io) { $("spmBody").innerHTML = insDetailHtml(io.dataset.insopen); $("spm").hidden = false; $("spm").dataset.k = ""; return; }
   const pm = t.closest("[data-spmode]"); if (pm && !pm.disabled) { state.spMode = pm.dataset.spmode; save(); render(); return; }
   const pp = t.closest("[data-spper]"); if (pp) { state.spPer = pp.dataset.spper; save(); render(); if (pp.dataset.spkeep) $("spmBody").innerHTML = spDrillHtml(pp.dataset.spkeep); return; }
   if (t.closest("[data-spall]")) { state.spAll = !state.spAll; save(); render(); return; }
@@ -2754,7 +2784,7 @@ function newsHtml() {
   const tog = (k, l) => `<button class="opt${F[k] ? " on" : ""}" data-insf="${k}" data-v="${F[k] ? "" : "1"}">${l}</button>`;
   const lim = state.insMore ? 40 : 12;
   const rank = sig.slice(0, lim).map((g, i) => { const sr = byTicker(g.t), r = rowOf(g.t) || {};
-    return `<button class="ir-r" ${sr ? `data-card="${esc(g.t)}"` : `data-ein="${esc(g.t)}"`}><span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(g.n || nameOf(g.t))}${mine.has(g.t) ? ' <small class="mv-own">●</small>' : ""}</b>
+    return `<button class="ir-r" data-insopen="${esc(g.t)}"><span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(g.n || nameOf(g.t))}${mine.has(g.t) ? ' <small class="mv-own">●</small>' : ""}</b>
       <em>${esc(tkClean(g.t))} · ${g.buyers} Käufer${g.top ? ' · <span class="ir-top">Vorstandsspitze</span>' : ""}${g.opp ? " · gezielt" : ""}${g.own >= 10 ? ` · +${fmt(Math.min(g.own, 999), 0)} % Aktien` : ""} · zuletzt ${dateDE(g.last)}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : ""}</em></span>
       <span class="ir-v"><span class="ir-dots">${"●".repeat(g.score)}<i>${"●".repeat(3 - g.score)}</i></span><b>${eurAmt(g.eur)}</b></span></button>`; }).join("");
   const rankHtml = `<div class="hcard ir-card">${hHead("Wo Insider gerade kaufen · 90 Tage")}
@@ -2763,7 +2793,7 @@ function newsHtml() {
       <div class="sp-tg">${tog("top", "Vorstandsspitze")}${tog("big", "ab 1 Mio. €")}${tog("mine", "nur meine")}</div></div>
     ${rank || `<p class="muted">Keine Insider-Käufe für diese Auswahl.</p>`}
     ${sig.length > 12 ? `<button class="hlink" data-insmore style="margin-top:6px">${state.insMore ? "weniger zeigen" : `alle ${Math.min(sig.length, 40)} zeigen`}</button>` : ""}
-    <div class="note" style="margin:8px 0 0">●●● = Stärke: mehrere Käufer · CEO/CFO/Vorsitz kauft · gezielter großer Kauf. Ganzer Markt mit Betrag: USA (SEC), Deutschland (BaFin), Großbritannien (RNS), Schweden (FI), Schweiz (SIX), Norwegen (Oslo Børs, wenn der Betrag im Meldungstext steht). Nur Meldung ohne Betrag: Niederlande, Dänemark, Finnland, Australien.</div></div>`;
+    <div class="note" style="margin:8px 0 0">Antippen zeigt alle Käufe mit Person, Funktion und Betrag. ●●● = Stärke: mehrere Käufer · CEO/CFO/Vorsitz kauft · gezielter großer Kauf. Ganzer Markt mit Betrag: USA (SEC), Deutschland (BaFin), Großbritannien (RNS), Schweden (FI), Schweiz (SIX), Norwegen (Oslo Børs, wenn der Betrag im Meldungstext steht). Nur Meldung ohne Betrag: Niederlande, Dänemark, Finnland, Australien.</div></div>`;
   return head + insGo + rankHtml
     + (wlHtml ? `<details class="hcard ins-more"${state.insWl === false ? "" : " open"} data-insdet="insWl"><summary>Deine Aktien – Käufe, Verkäufe, Abdeckung</summary>${wlHtml}</details>` : "")
     + (live ? block("Deine US-Aktien · 90 Tage (live)", liveRows.map(irow), NEWS.at ? "Keine Insider-Käufe oder -Verkäufe über die Börse." : "lädt …") : "")
@@ -5678,8 +5708,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.44";
-const APP_NEWS = [["2026.11.44", "Rotations-Bild", [
+const APP_VER = "2026.11.45";
+const APP_NEWS = [["2026.11.45", "Insider: alle Käufe je Aktie", [
+  ["Insider: Details je Aktie", "Tippe in der Rangliste auf eine Aktie (z. B. Deutz): Du siehst jeden einzelnen Kauf der letzten 90 Tage – wer, welche Funktion, wann, wie viel, gezielt oder Routine, wie viel mehr Aktien – mit Link zur Originalmeldung."]]],
+  ["2026.11.44", "Rotations-Bild", [
   ["Markt: Rotations-Bild", "Unter Sektoren & Branchen zeigt „Rotations-Bild“, wohin das Geld gerade fließt: Führend, Lässt nach, Schwach, Erholt sich – mit dem Weg der letzten 4 Wochen. Ehrlich beschriftet: Es beschreibt, sagt aber nicht vorher (getestet über 18 Jahre)."],
   ["Markt: „Heißgelaufen“", "Die zwei Sektoren mit dem stärksten Lauf der letzten 4 Wochen sind markiert – solche Sektoren liefen seit 2016 danach im Schnitt schlechter als der Markt."]]],
   ["2026.11.43", "Insider: Großbritannien", [

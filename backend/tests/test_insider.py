@@ -68,6 +68,10 @@ def test_routine_vs_opportunistic_and_signal():
     assert rows[2]["opp"] is False and rows[3]["opp"] is True
     s = signal(rows)["X"]
     assert s["buyers"] == 2 and s["top"] and s["opp"] == 1 and s["score"] == 3
+    xs = s["x"]                                   # Einzelkäufe für die Detailansicht (nur 90 Tage, neueste zuerst)
+    assert len(xs) == 2 and {x["who"] for x in xs} == {"Plan", "Boss"}
+    boss = next(x for x in xs if x["who"] == "Boss")
+    assert boss["opp"] is True and boss["own"] == 12 and boss["role"] == "CEO" and boss["val"] == 2_000_000
 
 
 def test_openinsider_delta_own():
