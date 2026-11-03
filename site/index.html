@@ -650,6 +650,16 @@
   .tq-a, .slip-act { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0 52px; } .tq-buy .slip-act { margin-left: 24px; }
   .tq-a .btn, .slip-act .btn { width: auto; flex: none; min-width: 0; padding-left: 16px; padding-right: 16px; }
   @media (max-width: 600px) { .slip { margin-left: 0; } .tq-a { margin-left: 34px; } .tq-buy .slip-act { margin-left: 0; } }
+  /* Scanner (11/2026): Schnellfilter, Scan-Menü, Liste statt Tabelle auf dem iPhone */
+  .scanmenu { position: relative; margin-left: auto; } .scanmenu > summary { list-style: none; cursor: pointer; } .scanmenu > summary::-webkit-details-marker { display: none; }
+  .scanmenu-p { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 260px; padding: 12px; border-radius: 14px; background: var(--surface, #1c1c1e); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.35); display: grid; gap: 8px; }
+  .scanmenu-p .btn { width: 100%; justify-content: flex-start; } .scanmenu-p .btn small { color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .kbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  @media (max-width: 700px) { .mlist { display: block !important; } main .table-wrap { display: none; } }
+  .mlist .msort { display: flex; justify-content: flex-end; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 0 2px 8px; }
+  .mrow { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-top: 1px solid var(--line); } .mrow > a { flex: 1; min-width: 0; color: var(--text); text-decoration: none; }
+  .mrow > a b { display: block; font-size: 15.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mrow > a span { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mrow .mr { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; } .mrow .mr em { font-style: normal; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .tq-buy { padding: 0; }
   .kb-row { display: grid; grid-template-columns: 10px minmax(110px, 1fr) auto auto 12px; align-items: center; gap: 12px; padding: 11px 0; cursor: pointer; }
   .kb-n { min-width: 0; } .kb-n small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .kb-n b { display: block; font-size: 15.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1420,7 +1430,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
 <section class="sheet" id="sheet" aria-label="Filter">
   <div class="grabber"></div>
   <h3>Filter &amp; Export</h3>
-  <div class="group"><div class="group-label">Mindest-Score</div>
+  <div class="group" hidden><div class="group-label">Mindest-Score</div>
     <div class="opts" data-key="minScore"><button class="opt" data-v="0">alle</button><button class="opt" data-v="40">ab 40</button><button class="opt" data-v="60">ab 60</button><button class="opt" data-v="80">ab 80</button></div></div>
   <div class="group"><div class="group-label">Qualitätsstufe der Treffer (Fast-Treffer bleiben sichtbar)</div>
     <div class="opts" data-key="grade"><button class="opt" data-v="">alle</button><button class="opt" data-v="A">nur A</button><button class="opt" data-v="B">A und B</button></div></div>
@@ -1507,8 +1517,17 @@ function scanBarHtml() {
   const since = active && run.created_at ? new Date(run.created_at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
   const w = active && /scan_watch/.test(run.path || ""), dt = x => x.toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const full = data && data.full_at ? new Date(data.full_at) : null;
-  return `<div class="scanbar"><span class="muted">${full && !isNaN(full) && g ? `Alle ${dt(full)} · Watchlist ${dt(g)}` : `Stand ${g && !isNaN(g) ? dt(g) : "–"}`}${active ? ` · <b>${w ? "Watchlist-Scan" : "Scan"} läuft seit ${since}</b> (${w ? "ca. 5–10" : "ca. 45–60"} Min.)` : ""}${SCAN.msg && !active ? ` · ${esc(SCAN.msg)}` : ""}</span>
-    <span class="row-actions" style="margin:0"><button class="btn ghost sm" data-scanstart="watch"${active ? " disabled" : ""}>↻ Watchlist</button><button class="btn ghost sm" data-scanstart="all"${active ? " disabled" : ""}>${active ? "Scan läuft …" : "↻ Alle"}</button></span></div>`;
+  const info = active ? `<b>${w ? "Watchlist-Scan" : "Scan"} läuft seit ${since}</b> (${w ? "ca. 5–10" : "ca. 45–60"} Min.)` : SCAN.msg ? esc(SCAN.msg) : "";
+  return info ? `<div class="scanbar"><span class="muted">${info}</span></div>` : "";
+}
+function scanMenuHtml() {                        // Scans starten (GitHub): selten gebraucht, deshalb hinter einem kleinen Menü
+  const run = SCAN.run, active = run && run.status !== "completed";
+  const g = data && data.generated ? new Date(data.generated) : null, full = data && data.full_at ? new Date(data.full_at) : null;
+  const dt = x => x.toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return `<details class="scanmenu"><summary class="kchip">${active ? "Scan läuft …" : "↻ Neu scannen"}</summary><div class="scanmenu-p">
+    <div class="muted" style="font-size:12.5px;margin-bottom:8px">${full && !isNaN(full) ? `Alle Aktien: ${dt(full)}<br>` : ""}${g && !isNaN(g) ? `Watchlist: ${dt(g)}` : ""}</div>
+    <button class="btn ghost sm" data-scanstart="watch"${active ? " disabled" : ""}>Watchlist scannen <small>· ca. 5–10 Min.</small></button>
+    <button class="btn ghost sm" data-scanstart="all"${active ? " disabled" : ""}>Alle Aktien scannen <small>· ca. 45–60 Min.</small></button></div></details>`;
 }
 const nf = (d = 2) => new Intl.NumberFormat("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmt = (v, d = 2) => v == null || isNaN(v) ? "–" : nf(d).format(v);
@@ -1716,8 +1735,8 @@ let KIND_BTNS = KIND_BTNS_ALL.filter(x => x[0] !== "trend");
 // Scanner: fünf klare Ansichten statt vieler Knöpfe (eine ist immer aktiv) – [Schlüssel, Name, zählt, Arten für selRows, Erklärung]
 const VIEWS = [
   ["go", "Einstiege", r => isH4(r), ["h4"], "Treffer mit fertiger Seitwärtsphase – ✓ 4H bestätigt = jetzt einsteigen · … wartet auf 4H · ▶ läuft. Bei Bestätigung kommt eine Mitteilung."],
-  ["hit", "Treffer", r => r.passed, ["hit"], "Alle gescannten Aktien (USA, Europa, Asien) mit allen 11 Kriterien. Gekauft wird erst, wenn danach die Seitwärtsphase fertig ist – dann steht in der Spalte Status „kaufbereit“."],
-  ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Alle gescannten Aktien, denen nur wenige Kriterien fehlen – wählbar ab 9, 8 oder 7 von 11. Nur beobachten, kein Kaufsignal."],
+  ["hit", "Treffer", r => r.passed, ["hit"], "Alle 11 Kriterien erfüllt. Gekauft wird erst nach der Seitwärtsphase – dann steht im Status „kaufbereit“."],
+  ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Aktien, denen nur wenige Kriterien fehlen – ab 9, 8 oder 7 von 11. Nur beobachten, kein Kaufsignal."],
   ["trend", "Trend", r => isTrend(r), ["trend"], "Trend-Rücksetzer – eigene, getrennte Strategie (Rücksetzer im Aufwärtstrend)."],
   ["mine", "Meine", r => r.in_watchlist || favs().has(r.ticker), ["watch", "fav"], "Deine Watchlist (★) – mit Stufe auf dem Weg zum Einstieg."]];
 const viewOfKinds = ks => { const k = new Set(ks); return VIEWS.find(v => v[3].length === k.size && v[3].every(x => k.has(x)))
@@ -2057,7 +2076,7 @@ const COLS = [
   { k: "grade", l: "Stufe", g: r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0, h: r => gradeBadge(r) || `<span class="muted">–</span>` },
   { k: "exchange", l: "Börse", g: r => r.exchange, h: r => esc(r.exchange) },
   { k: "cap", l: "Market Cap", n: 1, g: r => r.market_cap_usd ?? 0, h: r => fmtCap(r.market_cap_usd) },
-  { k: "close", l: "Kurs", n: 1, g: r => r.close, h: r => `${fmt(r.close)}${r.live ? ' <span class="live-dot" title="live">●</span>' : ""} ${liveBtn(r.ticker)}` },
+  { k: "close", l: "Kurs", n: 1, g: r => r.close, h: r => `${fmt(r.close)}${r.live ? ' <span class="live-dot" title="live">●</span>' : ""}` },
   { k: "tgt", l: "Analysten-Ziel", n: 1, g: r => tgtUp(r) ?? -9, h: r => { const t = r.senti && r.senti.tgt, u = tgtUp(r);
     return u == null ? `<span class="muted">–</span>` : `<b class="${u >= 0 ? "up" : "down"}">${u >= 0 ? "+" : ""}${pct(u, 0)}</b><small style="display:block" class="muted">Ø ${fmt(t.m)}${r.senti.an && r.senti.an.n ? ` · ${r.senti.an.n} Anal.` : ""}</small>`; } },
   { k: "dd", l: "Rückgang", n: 1, g: r => r.drawdown ?? 0, h: r => `<span class="${(r.drawdown ?? 0) >= 0 ? "down" : "up"}">${ddFmt(r.drawdown)}</span>` },
@@ -5002,8 +5021,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.19";
-const APP_NEWS = [["2026.11.19", "ETF-Reiter aufgeräumt", [
+const APP_VER = "2026.11.20";
+const APP_NEWS = [["2026.11.20", "Scanner aufgeräumt", [
+  ["Gleiche Zahlen überall", "Oben stehen Treffer, kaufbereit und geprüfte Aktien – passend zu den Reitern Treffer / Beobachten / Meine."],
+  ["Schnellfilter Region", "Alle · USA · Europa · Asien direkt über der Liste, alles Weitere unter „Weitere Filter“. Der Score-Filter ist weg – der Score ist nicht belegt."],
+  ["iPhone: Liste statt Tabelle", "Name, Status (kaufbereit, Seitwärtsphase …) und x/11 auf einen Blick, sortierbar – kein seitliches Wischen mehr."],
+  ["Ruhiger", "Kein „↻ Live“ mehr in jeder Zeile, Scans starten über „↻ Neu scannen“, kürzere Erklärung."]]],
+  ["2026.11.19", "ETF-Reiter aufgeräumt", [
   ["Wie viel investieren?", "Bei grüner Ampel nennt Kairo jetzt den Betrag: bis zu X € – die Lücke zu deinem ETF-Ziel. Auch als Aufgabe auf „Heute“."],
   ["Ampel erklärt sich", "Steht die Ampel nur wegen der 3-Monats-Regel auf Grün, steht das jetzt dabei. Ein ruhiger VIX ist gelb (kein Kaufsignal) – wie in der Erklärung."],
   ["Anteile aus dem Depot", "SPYI-Anteile, Ø Kaufkurs und erster Kauf kommen automatisch aus deinem Depot-Import – eintippen nur noch, wenn du etwas anderes willst."],
@@ -6332,15 +6356,17 @@ function renderMain() {
   }
   const cur = views.find(v => v[0] === state.view);
   if (cur && String(state.kinds) !== String(cur[3])) { state.kinds = cur[3]; save(); }   // gespeicherte alte Auswahl (z. B. „MBI gelockert“) angleichen
+  if (String(state.minScore || "0") !== "0") { state.minScore = "0"; save(); }   // Score-Filter entfernt (Score nicht belegt, 11/2026)
   const list = selRows(), k = new Set(state.kinds || []);
   const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
   const bar = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${v === "watch" ? watchCount() : data.results.filter(f).length}</small></button>`).join("")}</div>
     ${cur ? `<div class="vdesc">${esc(cur[4])}</div>` : ""}
     ${state.view === "watch" ? `<div class="wmin" role="group" aria-label="Mindestens erfüllte Kriterien">${[9, 8, 7].map(n => `<button class="kchip${watchMin() === n ? " on" : ""}" data-wmin="${n}" aria-pressed="${watchMin() === n}">ab ${n}/11</button>`).join("")}</div>` : ""}
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
-      <button class="kchip filt" data-sub="filter">Filter${nFilt ? ` <small>${nFilt}</small>` : ""}</button></div>`;
+      ${[["", "Alle"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<button class="kchip${String(state.region || "") === v ? " on" : ""}" data-qregion="${v}">${l}</button>`).join("")}
+      <button class="kchip filt" data-sub="filter">Weitere Filter${nFilt - (state.region ? 1 : 0) > 0 ? ` <small>${nFilt - (state.region ? 1 : 0)}</small>` : ""}</button>${scanMenuHtml()}</div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
-  const head = searchHtml() + scanBarHtml() + bar + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"} · Name antippen für die Übersicht</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner Vorteil je Trade (${resR(RESEARCH.rNorm)} mit normalen, ${resR(RESEARCH.rStress)} mit Stress-Kosten, kaum besser als Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
+  const head = searchHtml() + scanBarHtml() + bar + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"}</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner Vorteil je Trade (${resR(RESEARCH.rNorm)} mit normalen, ${resR(RESEARCH.rStress)} mit Stress-Kosten, kaum besser als Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
   if (!list.length && $("search").value.trim().length >= 2) { $("main").innerHTML = searchHtml() + bar; return; }
   if (!list.length) {
     $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.has("h4") ? "Gerade kein Treffer mit fertiger Seitwärtsphase – die 4H-Prüfung beginnt, sobald eine da ist. Wo die Treffer stehen, siehst du unter „Treffer“ in der Status-Spalte." : k.has("fav") && !data.results.some(r => r.in_watchlist) ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
@@ -6367,16 +6393,16 @@ function renderMain() {
 
 const SCAN_LIM = 60;
 let scanAll = false;
+document.addEventListener("click", e => { const q = e.target.closest("[data-qregion]"); if (!q) return; state.region = q.dataset.qregion; scanAll = false; save(); render(); });
 document.addEventListener("click", e => { if (e.target.closest("[data-scanall]")) { scanAll = true; render(); } else if (e.target.closest("[data-view]")) scanAll = false; });
 // Kompakte Liste fürs iPhone (nur im neuen Design, nur schmale Bildschirme – sonst bleibt die Tabelle)
 function mListHtml(list, col) {
-  const sortable = COLS.filter(c => ["score", "met", "status", "name", "cap", "close", "tgt", "trend", "grade"].includes(c.k));
-  const pill = r => r.passed ? `<span class="mp ok">Treffer${r.score ? " " + r.score : ""}</span>` : isTrend(r) ? `<span class="mp tr">${r.tr.top ? "Trend Top" : "Trend"}</span>`
-    : filterMiss(r) ? `<span class="mp warn">Filter ✗</span>` : r.fast_hit ? `<span class="mp warn">Fast</span>` : `<span class="mp">Watchlist</span>`;
+  const sortable = COLS.filter(c => ["status", "met", "name", "cap", "close", "tgt"].includes(c.k)), sel = col.k === "score" ? "status" : col.k;   // Standard-Sortierung = Status (kaufbereit zuerst)
+  const pill = r => kPill(r, state.view !== "hit");
   const big = r => isTrend(r) && !r.passed ? `${r.tr.met}/${r.tr.total}` : `${r.met ?? "–"}/${r.total ?? 11}`;
-  return `<div class="mlist"><label class="msort">Sortieren<select id="mSort">${sortable.map(c => `<option value="${c.k}"${c.k === col.k ? " selected" : ""}>${esc(c.l)}</option>`).join("")}</select></label>
-    ${list.map(r => `<div class="mrow">${favBtn(r.ticker)}<a href="#" data-card="${esc(r.ticker)}"><b>${esc((r.name || r.ticker).slice(0, 30))}</b>
-      <span>${esc(r.ticker)} · ${fmt(r.close)} ${esc(r.currency || "")}${r.senti && r.senti.tgt ? ` · Ziel ${sgnPct(r.senti.tgt.up, 0)}` : ""}</span></a>
+  return `<div class="mlist"><label class="msort">Sortieren<select id="mSort">${sortable.map(c => `<option value="${c.k}"${c.k === sel ? " selected" : ""}>${esc(c.l)}</option>`).join("")}</select></label>
+    ${list.map(r => `<div class="mrow">${favBtn(r.ticker)}<a href="#" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}"><b>${esc((r.name || r.ticker).slice(0, 30))}</b>
+      <span>${esc(r.ticker)} · ${fmt(r.close)} ${esc(r.currency || "")}${r.market_cap_usd ? ` · ${fmtCap(r.market_cap_usd)}` : ""}${r.senti && r.senti.tgt ? ` · Ziel ${sgnPct(r.senti.tgt.up, 0)}` : ""}</span></a>
       <div class="mr">${pill(r)}<em>${big(r)}</em></div></div>`).join("")}</div>`;
 }
 function aSortHtml(col) {
@@ -6478,7 +6504,7 @@ function renderHead() {
   const s = data.stats || {}, when = new Date(data.generated).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const nH = data.results.filter(r => r.passed).length, nW = data.results.filter(r => !r.passed && (r.fast_hit || r.near_hit)).length;
   const bd = h4Data() ? boardItems() : null;
-  $("sub").innerHTML = state.sec === "today" ? `${todaySubHtml()} ${healthPill()}` : (bd ? `<b>${bd.ready.length} kaufbereit</b> · ${bd.wait.length} Treffer warten · ` : `<b>${nH} Treffer</b> · `) + `${nW} zum Beobachten · `+ `${fmt(s.universe, 0)} Aktien geprüft · Scan ${esc(when)} Uhr ${healthPill()}`;
+  $("sub").innerHTML = state.sec === "today" ? `${todaySubHtml()} ${healthPill()}` : `<b>${nH} Treffer</b>${bd ? ` · <b>${bd.ready.length} kaufbereit</b>` : ""} · ${fmt(s.universe, 0)} Aktien geprüft · Scan ${esc(when)} Uhr ${healthPill()}`;
   const sectors = [...new Set(data.results.map(r => r.sector).filter(Boolean))].sort();
   $("sectorOpts").innerHTML = `<button class="opt" data-v="">alle</button>` + sectors.map(x => `<button class="opt" data-v="${esc(x)}">${esc(x)}</button>`).join("");
 }
