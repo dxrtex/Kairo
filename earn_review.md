@@ -52,7 +52,7 @@ Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhal
 - RYTM 2026-11-03: Kairo 64% steigt, Kurs -7.5% · Gewinn +18% · Ausblick keine Meldung
 - ZBRA 2026-11-03: Kairo 53% steigt, Kurs -8.8% · Gewinn +1% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - MDGL 2026-11-03: Kairo 54% steigt, Kurs -8.1% · Gewinn +310% · Ausblick keine Meldung
-- TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises on strong Q4 revenue guidance“
+- TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises as strong forecast signals record growth phase“
 - SRAD 2026-11-03: Kairo 61% steigt, Kurs +10.3% · Gewinn +60% · Ausblick bestätigt – „SRAD: Q3 growth and strong cash flow underpin reiterated FY2026 guidance and strategic portfolio moves“
 - MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +10.0% · Gewinn +2% · Ausblick angehoben – „MARICO: Broad-based growth lifted Q2 EBITDA 27% and raised FY27 profitability guidance to the mid-20s“
 - ADEA 2026-11-02: Kairo 26% steigt, Kurs -13.6% · Gewinn -30% · Ausblick gesenkt – „Adeia shares tumble 24% on earnings miss and weak guidance“
