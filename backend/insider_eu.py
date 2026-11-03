@@ -216,20 +216,22 @@ def fetch_de(uni: dict[str, str], figi: dict, days: int = 90) -> list[dict]:
     """Deutschland: BaFin-Datenbank für ALLE Emittenten (Zeitraum-Suche, je 10 Tage), Zuordnung über die ISIN (OpenFIGI)."""
     from .bafin import parse_csv
     s = requests.Session(); s.headers.update(UA)
-    rows, d1 = [], date.today()
-    capped = 0
-    while (date.today() - d1).days < days:
-        d0 = d1                                       # je Tag: der Export liefert höchstens ~29 Zeilen je Abfrage
-        p = {"meldepflichtigerName": "", "emittentName": "", "emittentIsin": "", "zeitraum": "1", "zeitraumVon": d0.strftime("%d.%m.%Y"),
-             "zeitraumBis": d1.strftime("%d.%m.%Y"), "emittentButton": "Suche Emittent", "d-4000784-e": "1", "6578706f7274": "1"}
+    rows, seen, since = [], set(), (date.today() - timedelta(days=days)).isoformat()
+    for pg in range(1, 13):                           # der CSV-Export liefert je Seite ~29 Zeilen (neueste zuerst); Zeitraum wird ignoriert
+        p = {"meldepflichtigerName": "", "emittentName": "", "emittentIsin": "", "zeitraum": "0", "zeitraumVon": "", "zeitraumBis": "",
+             "emittentButton": "Suche Emittent", "d-4000784-e": "1", "6578706f7274": "1", "d-4000784-p": str(pg)}
         r = s.get(BAFIN, params=p, timeout=60)
         r.encoding = "utf-8"
         got = parse_csv(r.text) if r.ok and "csv" in r.headers.get("content-type", "") else []
-        rows += got
-        capped += r.text.count("\n") >= 30
-        d1 = d0 - timedelta(days=1)
+        new = [x for x in got if (x["isin"], x["who"], x["d"], x["kind"], x["val"]) not in seen]
+        seen |= {(x["isin"], x["who"], x["d"], x["kind"], x["val"]) for x in got}
+        rows += new
+        oldest = min((x["d"] for x in got), default="")
+        print(f"BaFin Seite {pg}: {len(got)} Zeilen, {len(new)} neu, älteste {oldest}")
+        if not new or (oldest and oldest < since):
+            break
         time.sleep(0.6)
-    print(f"BaFin: {days} Tage abgefragt, {len(rows)} Käufe/Verkäufe" + (f" · {capped} Tage evtl. gekappt" if capped else ""))
+    rows = [x for x in rows if x["d"] >= since]
     rows = [x for x in rows if "aktie" in (x.get("inst") or "").lower() or not x.get("inst")]
     figi_map([x["isin"] for x in rows], figi)
     by_key, by_name = _index(uni, ".DE")
