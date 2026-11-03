@@ -104,6 +104,8 @@
   .search input { width: 100%; background: var(--surface); color: var(--text); border: 1px solid var(--line);
                   border-radius: 999px; padding: 15px 20px 15px 52px; font: inherit; font-size: 17px; outline: none; }
   .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-bg); }
+  .search-x { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 2; width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--surface-2, rgba(128,128,128,.25)); color: var(--text); font-size: 14px; line-height: 30px; text-align: center; cursor: pointer; padding: 0; }
+  .search-x[hidden] { display: none; } .search input { padding-right: 52px !important; } .search input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
   .search svg { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); color: var(--muted); z-index: 1; pointer-events: none; }
 
   .section-title { margin: 30px 2px 14px; font-size: 14px; font-weight: 600; color: var(--muted);
@@ -656,10 +658,22 @@
   .scanmenu-p .btn { width: 100%; justify-content: flex-start; } .scanmenu-p .btn small { color: var(--muted); font-weight: 500; margin-left: 4px; }
   .kbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   @media (max-width: 700px) { .mlist { display: block !important; } main .table-wrap { display: none; } }
+  @media (max-width: 700px) { .kchip.spalten { display: none; } }
+  @media (max-width: 640px) { html body .kbar { flex-wrap: wrap !important; overflow: visible !important; margin-left: 0 !important; margin-right: 0 !important; padding: 2px 0 6px !important; } }
+  /* iPad-Tabelle: Ticker und Name bleiben beim seitlichen Wischen stehen */
+  main .table-wrap th:nth-child(1), main .table-wrap td:nth-child(1) { position: sticky; left: 0; z-index: 2; min-width: 112px; max-width: 112px; background: var(--surface, #161617); }
+  main .table-wrap th:nth-child(2), main .table-wrap td:nth-child(2) { position: sticky; left: 112px; z-index: 2; background: var(--surface, #161617); box-shadow: 6px 0 8px -6px rgba(0,0,0,.45); }
+  .scroll-hint { font-size: 12px; color: var(--muted); text-align: right; margin: -4px 4px 6px; }
+  .st-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin: 4px 2px 8px; } .st-legend b { font-weight: 650; }
   .mlist .msort { display: flex; justify-content: flex-end; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 0 2px 8px; }
   .mrow { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-top: 1px solid var(--line); } .mrow > a { flex: 1; min-width: 0; color: var(--text); text-decoration: none; }
   .mrow > a b { display: block; font-size: 15.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mrow > a span { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mrow .mr { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; } .mrow .mr em { font-style: normal; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .gact { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .gact .gact-btn { width: auto; flex: none; margin-left: auto; }
+  .dep-act { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; } .dep-act .btn { width: auto; flex: none; }
+  .dep-more { position: relative; } .dep-more > summary { list-style: none; cursor: pointer; } .dep-more > summary::-webkit-details-marker { display: none; }
+  .dep-more-p { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: 250px; padding: 12px; border-radius: 14px; background: var(--surface, #1c1c1e); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.35); display: grid; gap: 8px; }
+  .dep-more-p .btn { width: 100%; }
   .ko-list { margin-top: 16px; } .ko-list > summary { display: flex; justify-content: space-between; cursor: pointer; list-style: none; } .ko-list > summary::-webkit-details-marker { display: none; }
   .ko-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); } .ko-row > span:first-child { flex: 1; min-width: 0; }
   .ko-row small { display: block; color: var(--muted); font-size: 12.5px; } .ko-act { display: flex; gap: 8px; align-items: center; flex: none; }
@@ -692,6 +706,7 @@
   .mstrip { display: none; } @media (max-width: 600px) { .mstrip { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; margin: 4px 0 -2px; padding: 9px 12px; overflow: hidden; border-radius: 12px; border: 1px solid var(--glass-line); background: var(--glass); color: var(--muted); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }
     .mstrip span { white-space: nowrap; } .mstrip b { color: var(--text); font-size: 13.5px; margin-left: 3px; } .mstrip b.down { color: var(--red); } .mstrip s { display: none; } }
   @media (max-width: 560px) { .etf-plan .mtiles { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+  .eh-last { margin-top: 10px; font-size: 13px; } .eh-last small { font-size: 12px; }
   .etf-why { margin-top: 10px; } .etf-why > summary { cursor: pointer; font-size: 13.5px; color: var(--accent, var(--up)); font-weight: 600; }
   .etf-tv > summary { font-weight: 600; } .etf-tv .tvbox { padding: 0; border: 0; background: none; } .etf-tv .tvbox .hh { display: none; } .etf-tv[open] > summary { margin-bottom: 10px; }
   .mk-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--gold); } .mk-dot.tone-green { background: var(--up); } .mk-dot.tone-red { background: var(--red); }
@@ -1382,6 +1397,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
   <div class="search">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
     <input type="search" id="search" placeholder="Aktie suchen – Name oder Ticker (alle Aktien)" autocomplete="off">
+    <button type="button" id="searchX" class="search-x" aria-label="Suche löschen" hidden>✕</button>
   </div>
 
   <main id="main"><div class="hgrid boot" aria-busy="true" aria-label="Lädt"><div class="hcard"><div class="skel"></div><div class="skel"></div></div><div class="hcard"><div class="skel"></div><div class="skel"></div></div></div></main>
@@ -2616,24 +2632,27 @@ function koOf(p) {
 }
 const depotLive = () => depotLoad().filter(p => !koOf(p));
 let koChecking = false;
-async function koCheck() {
+async function koCheck() {                        // Hintergrund: onvista (Knock-out + echter Geldkurs) und Tagestiefs seit dem Kauf
   if (koChecking) return; koChecking = true;
-  const out = { ...(state.koOut || {}) }, seen = { ...(state.koSeen || {}) }; let hit = 0;
+  const out = { ...(state.koOut || {}) }, seen = { ...(state.koSeen || {}) }, marks = {}; let hit = 0;
   try {
     for (const p of depotLoad().filter(x => x.d && +x.d.ko > 0)) {
       const k = koKey(p); if (out[k] || (state.koKeep || {})[k] || (seen[k] && Date.now() - seen[k] < 6 * 3600e3)) continue;
       seen[k] = Date.now();
-      let res = null;
-      try { const r = p.t ? rowOf(p.t) : null;
+      let res = null; const r = p.t ? rowOf(p.t) : null;
+      if (p.isin) { const q = await ovGet(`/instruments/query?searchValue=${encodeURIComponent(p.isin)}&limit=1`), it = ((q || {}).list || [])[0];
+        if (it && it.entityType === "DERIVATIVE") { const d = ovTurbo(await ovGet(`/derivatives/${it.entityValue}/snapshot`));
+          if (d && d.hit) res = { d: isoD(new Date()), src: "onvista" };
+          else if (d && d.bid > 0 && d.spot > 0 && r && (!d.ucur || d.ucur === r.cur)) marks[k] = { mark: d.bid, markU: d.spot, markDate: isoD(new Date()), markSrc: "onvista" }; } }
+      if (!res) try {
         if (p.t && (!p.d.cur || !r || p.d.cur === r.cur)) { const c = await loadChart(p.t);
           for (let i = 0; c && c.t && i < c.t.length; i++) { if (p.date && String(c.t[i]) < p.date) continue;
             if (p.d.dir === "short" ? c.h[i] >= p.d.ko : c.l[i] <= p.d.ko) { res = { d: String(c.t[i]).slice(0, 10), src: "Tagestief" }; break; } } } } catch (e) {}
-      if (!res && p.isin) { const q = await ovGet(`/instruments/query?searchValue=${encodeURIComponent(p.isin)}&limit=1`), it = ((q || {}).list || [])[0];
-        if (it && it.entityType === "DERIVATIVE") { const d = ovTurbo(await ovGet(`/derivatives/${it.entityValue}/snapshot`)); if (d && d.hit) res = { d: isoD(new Date()), src: "onvista" }; } }
       if (res) { out[k] = res; hit++; }
     }
   } finally { state.koOut = out; state.koSeen = seen; save(); koChecking = false; }
-  if (hit) render();
+  if (Object.keys(marks).length) { const l = depotLoad(); l.forEach(p => { const m = marks[koKey(p)]; if (m) Object.assign(p, m); }); depotSave(l); }   // echter Geldkurs → genaue Turbo-Bewertung
+  if (hit || Object.keys(marks).length) render();
 }
 function depotLoad() { try { return depotFix(JSON.parse(localStorage.getItem(DEPOT_KEY) || "[]")); } catch (e) { return []; } }
 // ETFs aus dem Scalable-Export: nie einer Aktie zuordnen. Seit 2025 heißen SPDR-ETFs „State Street SPDR …“ – der Namensabgleich
@@ -2701,8 +2720,11 @@ function etfCard(p, i, px, val, cost) {
       <div class="row-actions">${spyi ? `<a class="mini-btn" style="text-decoration:none" href="${tvUrl("SPYI")}" target="_blank" rel="noopener">TradingView</a>` : ""}<button class="mini-btn del" data-dep="del" data-i="${i}">Löschen</button></div>
     </article>`;
 }
-function depotCheckHtml(items) {
-  const st = items.filter(x => !x.p.d && !x.p.etf && x.val != null && x.val > 0), tot = st.reduce((a, x) => a + x.val, 0);
+function depotCheckHtml(items, groups = []) {
+  // Turbos nach aktuellem Wert (onvista-Geldkurs oder Schätzung aus dem Basiswert) – nicht mehr nur nach Einsatz
+  const tv = {}; groups.forEach(g => g.ms.forEach(m => { if (m.d && m.nowPos != null) tv[m.i] = m.nowPos * m.p.qty; }));
+  const st = items.map(x => x.p.d && tv[x.i] != null ? { ...x, val: tv[x.i] } : x).filter(x => !x.p.etf && x.val != null && x.val > 0), tot = st.reduce((a, x) => a + x.val, 0);
+  const turbMiss = items.some(x => x.p.d && tv[x.i] == null);
   const turbCost = items.filter(x => x.p.d).reduce((a, x) => a + x.cost, 0), allCost = items.reduce((a, x) => a + x.cost, 0);
   if (items.length < 2 || (!tot && !turbCost)) return "";
   const nm = x => x.p.n || (x.r && x.r.n) || x.p.t;
@@ -2726,10 +2748,10 @@ function depotCheckHtml(items) {
   if (turbCost && allCost && turbCost / allCost >= .2) notes.push([turbCost / allCost >= .5 ? "red" : "orange", `Hebelprodukte: ${pct(turbCost / allCost, 0)} deines Einsatzes`, "Turbos können bis zum Knock-out und damit zum Totalverlust fallen. Mehr dazu in der Depot-Übersicht bei jeder Position."]);
   if (!notes.length) notes.push(["green", "Gut verteilt", "Keine Aktie über 15 %, keine Branche über 40 %, Hebel unter 20 % des Einsatzes."]);
   const bars = (title, rows) => rows.length ? `<div><b class="dck-t">${title}</b>${rows.slice(0, 5).map(([k, v]) => `<div class="dbar"><span>${esc(k)}</span><i><b style="width:${Math.max(2, v * 100).toFixed(1)}%"></b></i><em>${pct(v, 0)}</em></div>`).join("")}</div>` : "";
-  return `<div class="card jcard dck"><div class="jc-h"><b>Depot-Check</b><span>${tot ? `Aktien nach Wert · ${fmt(tot)} €` : "nach Einsatz"}</span></div>
+  return `<div class="card jcard dck"><div class="jc-h"><b>Depot-Check</b><span>${tot ? `nach Wert · ${fmt(tot)} €` : "nach Einsatz"}</span></div>
     <div class="jins">${notes.map(([tone, t, x]) => `<div class="tip tone-${tone}"><b class="t">${esc(t)}</b>${esc(x)}</div>`).join("")}</div>
     ${tot ? `<div class="dck-g">${bars("Größte Positionen", pos)}${bars("Branchen", sec)}${bars("Regionen", reg)}</div>` : ""}
-    <div class="note" style="margin:10px 0 0">Einordnung deiner Verteilung, keine Anlageberatung. Turbos sind hier nicht nach Wert enthalten (ihr Kurs fehlt im Scan).</div></div>`;
+    <div class="note" style="margin:10px 0 0">Einordnung deiner Verteilung, keine Anlageberatung. Turbos mit ihrem aktuellen Wert${turbMiss ? " – einzelne Turbos ohne Kurs fehlen" : ""}.</div></div>`;
 }
 function nextEvent(t) {
   if (!calData) return null;
@@ -2768,11 +2790,13 @@ function depotHtml() {
       <div class="fig"><span>in %</span><b class="${gv >= 0 ? "up" : "down"}">${einstand ? (gv >= 0 ? "+" : "") + pct(gv / einstand) : "–"}</b></div></div>`
     : list.length ? `<div class="dep-sum"><div class="fig"><span>Eingesetzt gesamt</span><b>${fmt(invested)} €</b></div><div class="fig"><span>Positionen</span><b>${list.length}</b></div></div>` : "";
   const form = depotEdit != null ? depotFormHtml(depotEdit >= 0 ? list[depotEdit] : null) : "";
-  const actions = `<div class="row-actions" style="margin:16px 0">
-      <button class="btn" data-dep="add">+ Position</button>
-      <label class="btn ghost" style="cursor:pointer">${list.some(isImported) ? "Neuen Scalable-Export hochladen" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="depCsv" hidden></label>
-      ${list.length ? `<button class="btn ghost" data-dep="claude">Für Claude kopieren</button><button class="btn ghost danger" data-dep="clearimp">Depot leeren …</button>` : ""}</div>
-    ${list.some(isImported) ? `<div class="note" style="margin:-6px 2px 12px">Ein neuer Export ersetzt den alten Import vollständig (Depot und Journal). Von Hand angelegte Positionen bleiben.</div>` : ""}
+  const actions = `<div class="dep-act">
+      <button class="btn sm" data-dep="add">+ Position</button>
+      <label class="btn ghost sm" style="cursor:pointer" title="Ein neuer Export ersetzt den alten Import vollständig (Depot und Journal). Von Hand angelegte Positionen bleiben.">${list.some(isImported) ? "↻ Scalable-Export" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="depCsv" hidden></label>
+      ${list.length ? `<details class="dep-more"><summary class="btn ghost sm">…</summary><div class="dep-more-p">
+        <button class="btn ghost sm" data-dep="claude">Für Claude kopieren</button>
+        <button class="btn ghost sm danger" data-dep="clearimp">Depot leeren …</button>
+        <div class="muted" style="font-size:12px">Ein neuer Scalable-Export ersetzt den alten Import vollständig (Depot und Journal). Von Hand angelegte Positionen bleiben.</div></div></details>` : ""}</div>
     ${depotMsg ? `<div class="tip tone-gray" style="margin-bottom:14px">${depotMsg}</div>` : ""}`;
   if (!anaData) loadAnalysis();
   const groups = anaData ? groupPositions(items) : [];
@@ -2805,7 +2829,7 @@ function depotHtml() {
     <ol class="rule-steps"><li><i>1</i><span><b>Schnell: Scalable-Export</b>Scalable (Web) → Transaktionen → Export, dann oben „Scalable-Export importieren“.</span></li>
       <li><i>2</i><span><b>Oder von Hand</b>„+ Position“ – Aktie, Stückzahl und Kaufkurs reichen.</span></li>
       <li><i>3</i><span><b>Noch nichts gekauft?</b><a href="#" data-gosec="today">Heute zu tun</a> zeigt die Kaufkandidaten nach der Kairo-Regel, die <a href="#" data-gosec="game">Übung</a> das Gleiche mit Spielgeld.</span></li></ol></div>`;
-  return head + (groups.length ? cockpitHtml(groups, items) : sum) + actions + form + empty + depotCheckHtml(items)
+  return head + (groups.length ? cockpitHtml(groups, items) : sum) + actions + form + empty + depotCheckHtml(items, groups)
     + (groups.length ? `<div class="plan-h" style="margin:4px 2px 8px">Deine Positionen · antippen zum Aufklappen</div>${groups.map(groupHtml).join("")}` : "")
     + (cards.length ? `${groups.length ? `<div class="plan-h" style="margin:18px 2px 8px">Ohne Analyse (nicht auf der Watchlist)</div>` : ""}<div class="grid">${cards}</div>` : "")
     + koListHtml(koItems)
@@ -2961,7 +2985,7 @@ function groupHtml(g) {
       <div class="g2"><span class="muted">Gewinn / Verlust</span><b class="${g.pl == null ? "" : g.pl >= 0 ? "up" : "down"}">${g.known ? sgnEur(g.value - g.invested) : "–"}</b><small class="${g.pl == null ? "muted" : g.pl >= 0 ? "up" : "down"}">${g.known ? sgnPct(g.pl, 1) : "Wert unbekannt"}</small></div>
       <div class="g2"><span class="muted">Hebel</span><b>${g.levTxt}</b><small class="${g.koDist != null && g.koDist < .1 ? "down" : "muted"}">${g.koDist != null ? `K.-o. ${pct(g.koDist, 0)} entfernt` : "ohne Knock-out"}</small></div>
       <div class="g2"><span class="muted">Haltedauer</span><b>${st ? `Tag ${st.day}/${st.hold}` : "–"}</b><small class="${st && st.left <= 2 ? "gold" : "muted"}">${st ? `verkaufen am ${dateDE(st.sell)}` : "kein Trade-Plan"}</small></div>
-      <div class="gact tone-${(st || NOPLAN).tone}"><b>${esc((st || NOPLAN).t)}</b><span>${st ? `Stop ${st.fe(pl.stop)} € · noch ${st.slDist != null ? pct(st.slDist, 1) : "–"}${st.R != null ? ` · ${st.R >= 0 ? "+" : ""}${fmt(st.R, 2)} R` : ""}` : "Plan anlegen für Stop und Verkaufstag"}</span></div>
+      <div class="gact tone-${(st || NOPLAN).tone}"><b>${esc((st || NOPLAN).t)}</b><span>${st ? `Stop ${st.fe(pl.stop)} € · noch ${st.slDist != null ? pct(st.slDist, 1) : "–"}${st.R != null ? ` · ${st.R >= 0 ? "+" : ""}${fmt(st.R, 2)} R` : ""}` : "Ohne Plan kein Stop und kein Verkaufstag"}</span>${st ? "" : `<button class="btn sm gact-btn" data-ein="${esc(tkClean(g.t))}">Plan anlegen ›</button>`}</div>
     </summary>`;
   const body = !open ? "" : `<div class="gbody">
     <div class="chartbox">${c ? `<div class="lwc-tools"><span class="muted">Zwei Finger: waagerecht auseinander = Zeit, senkrecht auseinander = Kurs, gemeinsam hoch/runter = Kurs verschieben · wischen = Zeit verschieben</span>
@@ -2987,7 +3011,7 @@ function groupHtml(g) {
         return `<tr><td>${j + 1}</td><td><b>${m.p.date ? dateDE(m.p.date) : "–"}</b><small>${m.held != null ? `seit ${m.held} T.` : ""}${m.ent ? ` · bei ${fmt(m.ent.u)}` : ""}</small></td>
           <td class="num">${m.d ? fmt(m.levNow, 1) + "×" : "1×"}<small>${m.d ? `K.-o. ${fmt(m.d.ko)} (${pct(m.dist, 0)})` : ""}</small></td>
           <td class="num">${eur(m.p.price * m.p.qty)}<small>${fmt(m.p.qty, 0)} × ${fmt(m.p.price)} €</small></td>
-          <td class="num">${m.nowPos != null ? eur(m.nowPos * m.p.qty) : "–"}<small>${m.nowPos != null ? fmt(m.nowPos) + " € je Stk." : ""}</small>${m.d ? `<button class="linkbtn" data-dep="mark" data-i="${m.i}">${m.tm && m.tm.exact ? `✓ exakt (${dateDE(m.p.markDate)})` : "Kurs eintragen"}</button>` : ""}</td>
+          <td class="num">${m.nowPos != null ? eur(m.nowPos * m.p.qty) : "–"}<small>${m.nowPos != null ? fmt(m.nowPos) + " € je Stk." : ""}</small>${m.d ? `<button class="linkbtn" data-dep="mark" data-i="${m.i}">${m.tm && m.tm.exact ? `✓ ${m.p.markSrc === "onvista" ? "onvista" : "exakt"} (${dateDE(m.p.markDate)})` : "Kurs eintragen"}</button>` : ""}</td>
           <td class="num ${m.pl == null ? "" : m.pl >= 0 ? "up" : "down"}">${sgnPct(m.pl)}</td>
           ${pl ? `<td class="num down">${v1 != null ? eur(v1 * m.p.qty) : "–"}<small>${v1 != null ? sgnPct(v1 / m.p.price - 1, 0) : ""}</small></td>` : ""}</tr>`; }).join("")}
     </tbody></table></div>
@@ -4279,7 +4303,7 @@ async function openBrief() {
   const miss = [...myTickers()].filter(t => { const s = rowOf(t); return !(s && s.d1 != null) && byTicker(t) && briefD1[t] === undefined; });
   await Promise.all(miss.map(t => loadChart(t).then(c => { const n = c.c.length; briefD1[t] = n > 1 ? c.c[n - 1] / c.c[n - 2] - 1 : null; }).catch(() => { briefD1[t] = null; })));
   $("briefBody").innerHTML = briefHtml(); $("brief").hidden = false;
-  state.briefSeen = data.generated; state.briefAt = Date.now(); save();
+  state.briefSeen = data.generated; state.briefAt = Date.now(); state.briefDay = isoD(new Date()); save();
 }
 // Dezente Bewegung: Inhalte gleiten beim Reiterwechsel gestaffelt herein, große Zahlen zählen hoch (aus bei „Bewegung reduzieren“)
 const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -4329,13 +4353,13 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-tour
 (() => { let x0 = null; document.addEventListener("touchstart", e => { if (e.target.closest(".tour-box")) x0 = e.touches[0].clientX; }, { passive: true });   // wischen
   document.addEventListener("touchend", e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0, el = $("tour"); x0 = null; if (!el || Math.abs(dx) < 50) return;
     const i = Math.max(0, Math.min(TOUR.length - 1, +el.dataset.i + (dx < 0 ? 1 : -1))); document.querySelector(".tour-box").innerHTML = tourHtml(i); el.dataset.i = i; }); })();
-// Automatisch beim Öffnen: bei neuem Scan oder wenn das letzte Briefing mehr als 6 Stunden her ist
+// Automatisch nur einmal am Tag: beim ersten Öffnen des Tages (Wunsch 11/2026) – danach über den Briefing-Knopf
 function maybeBrief() {
   if (!data) return;
   if (!state.tourDone && !/nosplash/.test(location.search) || /[?&]tour=1/.test(location.search)) { openTour(); return; }   // erstes Öffnen: Rundgang statt Briefing
   if (maybeNews()) return;
   if (state.briefOff) return;
-  if (state.briefSeen !== data.generated || Date.now() - (state.briefAt || 0) > 6 * 3600e3) openBrief();
+  if (state.briefDay !== isoD(new Date())) openBrief();
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && $("brief").hidden) maybeBrief(); });
 const myTickers = () => new Set([...favs(), ...depotTickers(), ...data.results.filter(r => r.in_watchlist).map(r => r.ticker)]);
@@ -4619,6 +4643,12 @@ const PF_SCEN = [[100, "100 / 0"], [90, "90 / 10"], [80, "80 / 20"], [70, "70 / 
 const pfCfg = () => { const p = state.pf || {}, e = state.etf || {};
   const etf = p.etf != null && +p.etf >= 0 && +p.etf <= 100 ? +p.etf : e.shareManual && +e.share > 0 ? Math.min(100, +e.share) : 90;
   return { etf, trade: 100 - etf, reserve: +p.reserve > 0 ? +p.reserve : 0 }; };
+// Letzter SPYI-Kauf aus den importierten Scalable-Transaktionen – zeigt, ob der Sparplan wirklich läuft
+function etfLastBuy() {
+  const isin = Object.keys(ETF_ISIN).find(k => ETF_ISIN[k][0] === "SPYI");
+  const xs = txLoad().filter(t => t.isin === isin && t.date && /buy|kauf|savings|spar/i.test(`${t.type} ${t.desc}`) && !/sell|verkauf/i.test(t.type)).sort((a, b) => a.date < b.date ? 1 : -1);
+  return xs.length ? { date: xs[0].date, plan: /savings|spar/i.test(`${xs[0].type} ${xs[0].desc}`), n: xs.length } : null;
+}
 // SPYI aus dem Depot (Scalable-Import): Anteile, Ø Kaufkurs, erster Kauf – damit nichts doppelt eingetippt werden muss
 function depotEtf() {
   const xs = depotLoad().filter(p => p.etf && ETF_ISIN[p.isin] && ETF_ISIN[p.isin][0] === "SPYI" && +p.qty > 0);
@@ -4728,7 +4758,8 @@ function etfHtml() {
       <div class="eh-lights">${lamp("go2", "Panik – kaufen", ETF_DG)}${lamp("go", "Jetzt investieren", "var(--up)")}${lamp("wait", "Abwarten", "var(--gold)")}</div>
       <div class="eh-main"><span class="eh-k">ETF-Ampel · ${esc(e.name)}</span><b class="eh-t">${esc(e.t)}</b><p class="eh-do">${todo}</p>
         <div class="eh-facts"><span>Kurs <b>${fmt(e.c)} €</b></span><span>${e.dd < .005 ? "<b>am Allzeithoch</b>" : `<b>−${pct(e.dd, 1)}</b> unter dem Hoch`}</span>${etfStale(e) ? `<span class="gold">Tageskurs vom ${dateDE(e.date)} – Yahoo liefert verzögert, aktueller Kurs im Chart unten</span>` : `<span class="muted">Stand ${dateDE(e.date)}</span>`}</div>
-        <div class="eh-pills">${facts.map(([l, v, c]) => `<span class="eh-p"><i class="${c}">●</i>${l}: <b>${v}</b></span>`).join("")}</div></div></div>
+        <div class="eh-pills">${facts.map(([l, v, c]) => `<span class="eh-p"><i class="${c}">●</i>${l}: <b>${v}</b></span>`).join("")}</div>
+        ${(lb => lb ? `<div class="eh-last${c.rate && daysUntil(lb.date) < -40 ? " gold" : ""}">Letzter SPYI-Kauf: <b>${dateDE(lb.date)}</b>${lb.plan ? " (Sparplan)" : ""}${c.rate && daysUntil(lb.date) < -40 ? " – seit über 40 Tagen kein Kauf: Sparplan bei Scalable prüfen" : ""} <small class="muted">· aus deinem Scalable-Export</small></div>` : c.rate ? `<div class="eh-last muted">Ob dein Sparplan läuft, sieht Kairo nach dem nächsten Scalable-Export (Depot → Import).</div>` : "")(etfLastBuy())}</div></div>
     ${c.units && c.buy ? etfDevHtml(e, c) : ""}<div class="hcard">${hHead("Kurs der letzten 3 Jahre · mit 200-Tage-Linie")}${etfLine(e.hist, c.buy)}
       <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ⚠️ Kurs ist ${e.age} Tage alt` : ""}. Gelegentlich mit Scalable vergleichen.</div></div>
     <details class="hcard etf-more etf-tv"${state.etfTv ? " open" : ""}><summary>Live-Chart · TradingView (XETRA, ca. 15 Min. verzögert)</summary>${state.etfTv ? tvEmbedHtml("XETR:SPYI", "") : ""}</details>`
@@ -5084,8 +5115,14 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.23";
-const APP_NEWS = [["2026.11.23", "Ausgeknockte Turbos werden erkannt", [
+const APP_VER = "2026.11.24";
+const APP_NEWS = [["2026.11.24", "Depot, Scanner, ETF, Briefing", [
+  ["Briefing einmal am Tag", "Das Tagesbriefing öffnet sich nur noch beim ersten Öffnen des Tages – danach über den Briefing-Knopf."],
+  ["Depot: echte Turbo-Kurse", "Kairo holt den Geldkurs deiner Turbos bei onvista (per ISIN) – der Wert ist damit genau statt geschätzt. Kompakte Knöpfe, „Plan anlegen“ direkt an der Position, Depot-Check mit Turbos nach Wert."],
+  ["Scanner", "Ticker und Name bleiben beim Wischen stehen, Hinweis auf weitere Spalten, Spaltenauswahl, Status-Legende, Live-Hinweis; auf dem iPhone brechen die Filter um statt zu verschwinden."],
+  ["Suche: ✕ zum Löschen", "In der Scanner-Suche löscht das ✕ rechts den ganzen Text mit einem Tipp."],
+  ["ETF: läuft dein Sparplan?", "Der letzte SPYI-Kauf aus deinem Scalable-Export steht jetzt an der Ampel – mit Hinweis, wenn länger als 40 Tage nichts gekauft wurde."]]],
+  ["2026.11.23", "Ausgeknockte Turbos werden erkannt", [
   ["Automatisch erkannt", "Liegt der Basiswert jenseits der K.-o.-Schwelle, hat ein Tagestief seit dem Kauf sie erreicht oder meldet onvista den Knock-out, gilt der Turbo als ausgeknockt."],
   ["Zählt nicht mehr mit", "Ausgeknockte Turbos stehen im Depot in einer eigenen Liste „Ausgeknockt“ und zählen nicht mehr zu Depotwert, freiem Kapital, Risiko, „Heute“ und den Mitteilungen. Ausbuchen mit einem Tipp – oder „doch nicht“, falls Kairo sich irrt."]]],
   ["2026.11.22", "Heute: ausgeglichener, klarer beim Kaufen", [
@@ -6433,12 +6470,14 @@ function renderMain() {
   const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
   const bar = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${v === "watch" ? watchCount() : data.results.filter(f).length}</small></button>`).join("")}</div>
     ${cur ? `<div class="vdesc">${esc(cur[4])}</div>` : ""}
+    ${state.view === "hit" ? `<div class="st-legend"><span><b class="up">kaufbereit</b> – Kauf zur nächsten Eröffnung</span><span><b>Seitwärtsphase x/10</b> – wartet auf 5 ruhige Tage</span><span><b>verfallen</b> – keine Seitwärtsphase in 10 Tagen</span><span><b>im Depot</b> – läuft schon</span></div>` : ""}
     ${state.view === "watch" ? `<div class="wmin" role="group" aria-label="Mindestens erfüllte Kriterien">${[9, 8, 7].map(n => `<button class="kchip${watchMin() === n ? " on" : ""}" data-wmin="${n}" aria-pressed="${watchMin() === n}">ab ${n}/11</button>`).join("")}</div>` : ""}
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       ${[["", "Alle"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<button class="kchip${String(state.region || "") === v ? " on" : ""}" data-qregion="${v}">${l}</button>`).join("")}
-      <button class="kchip filt" data-sub="filter">Weitere Filter${nFilt - (state.region ? 1 : 0) > 0 ? ` <small>${nFilt - (state.region ? 1 : 0)}</small>` : ""}</button>${scanMenuHtml()}</div>`;
+      <button class="kchip filt" data-sub="filter">Weitere Filter${nFilt - (state.region ? 1 : 0) > 0 ? ` <small>${nFilt - (state.region ? 1 : 0)}</small>` : ""}</button><button class="kchip spalten" data-sub="filter" data-cols="1">Spalten</button>${scanMenuHtml()}</div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
-  const head = searchHtml() + scanBarHtml() + bar + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"}</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner Vorteil je Trade (${resR(RESEARCH.rNorm)} mit normalen, ${resR(RESEARCH.rStress)} mit Stress-Kosten, kaum besser als Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
+  const head = searchHtml() + scanBarHtml() + bar + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"}</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}${(n => { if (!n) return ""; const at = Math.max(...Object.values(LIVE.map).map(v => v.at || 0)), m = at ? Math.max(0, Math.round((Date.now() - at) / 6e4)) : null;
+      return ` · <span class="up">● ${n} live${m != null ? `, vor ${m < 1 ? "<1" : m} Min.` : ""}</span>`; })(list.filter(r => r.live).length)}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner Vorteil je Trade (${resR(RESEARCH.rNorm)} mit normalen, ${resR(RESEARCH.rStress)} mit Stress-Kosten, kaum besser als Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
   if (!list.length && $("search").value.trim().length >= 2) { $("main").innerHTML = searchHtml() + bar; return; }
   if (!list.length) {
     $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.has("h4") ? "Gerade kein Treffer mit fertiger Seitwärtsphase – die 4H-Prüfung beginnt, sobald eine da ist. Wo die Treffer stehen, siehst du unter „Treffer“ in der Status-Spalte." : k.has("fav") && !data.results.some(r => r.in_watchlist) ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
@@ -6454,7 +6493,9 @@ function renderMain() {
   const hid = new Set(state.hiddenCols || []);
   if (!(data.stats && data.stats.grade)) hid.add("grade");    // Stufen nur, wenn ein geprüftes Modell aktiv ist
   const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss", "chk"].includes(c.k))].filter(c => c.k === "ticker" || !hid.has(c.k));
-  $("main").innerHTML = head + `<div class="table-wrap"><table><thead><tr>${cols.map(c => `<th class="${c.n ? "num " : ""}${c.k === col.k ? "sorted" + (state.tableAsc ? " asc" : "") : ""}" data-k="${c.k}">${c.l}${gl(c.k === "dd" ? "" : c.k)}</th>`).join("")}</tr></thead>
+  requestAnimationFrame(() => { const tw = document.querySelector("main .table-wrap"), h = document.querySelector(".scroll-hint");
+    if (tw && h) h.hidden = !(tw.scrollWidth > tw.clientWidth + 8); });
+  $("main").innerHTML = head + `<div class="scroll-hint" hidden>Wischen für mehr Spalten →</div><div class="table-wrap"><table><thead><tr>${cols.map(c => `<th class="${c.n ? "num " : ""}${c.k === col.k ? "sorted" + (state.tableAsc ? " asc" : "") : ""}" data-k="${c.k}">${c.l}${gl(c.k === "dd" ? "" : c.k)}</th>`).join("")}</tr></thead>
     <tbody>${rows.map(r => `<tr class="${r.passed ? "r-hit" : r.fast_hit ? "r-fast" : ""}">${cols.map(c => `<td class="${c.n ? "num" : ""}">${c.h(r)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` + (isApple() ? "" : mListHtml(rows, col)) + more + extra;
   if (isApple()) {
     const tools = `<div class="atools"><div class="aseg"><button data-aview="list" class="${state.aView !== "table" ? "on" : ""}">Liste</button><button data-aview="table" class="${state.aView === "table" ? "on" : ""}">Tabelle</button></div>${aSortHtml(col)}</div>`;
@@ -6465,6 +6506,7 @@ function renderMain() {
 
 const SCAN_LIM = 60;
 let scanAll = false;
+document.addEventListener("click", e => { if (e.target.closest("[data-cols]")) setTimeout(() => { const c = $("colOpts"); if (c) c.scrollIntoView({ block: "center", behavior: "smooth" }); }, 250); });
 document.addEventListener("click", e => { const q = e.target.closest("[data-qregion]"); if (!q) return; state.region = q.dataset.qregion; scanAll = false; save(); render(); });
 document.addEventListener("click", e => { if (e.target.closest("[data-scanall]")) { scanAll = true; render(); } else if (e.target.closest("[data-view]")) scanAll = false; });
 // Kompakte Liste fürs iPhone (nur im neuen Design, nur schmale Bildschirme – sonst bleibt die Tabelle)
@@ -6742,7 +6784,8 @@ $("sheet").addEventListener("click", e => {
 $("done").onclick = () => document.body.classList.remove("filters-open");
 $("backdrop").onclick = () => document.body.classList.remove("filters-open");
 $("reset").onclick = () => { Object.assign(state, DEFAULTS); syncOpts(); save(); render(); };
-$("search").addEventListener("input", () => { if ($("search").value.trim().length >= 2) loadSearch(); render(); });
+$("search").addEventListener("input", () => { $("searchX").hidden = !$("search").value; if ($("search").value.trim().length >= 2) loadSearch(); render(); });
+$("searchX").addEventListener("click", () => { const i = $("search"); i.value = ""; $("searchX").hidden = true; render(); i.focus(); });   // ganzer Suchtext mit einem Tipp weg
 function goSec(sec) {
   if (SUBNAV[groupOf(sec)]) state.lastSub = { ...(state.lastSub || {}), [groupOf(sec)]: sec };
   state.sec = sec; syncOpts(); save(); render(); window.scrollTo({ top: 0 }); secIn();
