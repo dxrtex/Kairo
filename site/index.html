@@ -703,6 +703,7 @@
   .hm-leg { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11.5px; color: var(--muted); flex-wrap: wrap; }
   .hm-leg i { width: 90px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--red), #23262c, var(--up)); } .hm-leg em { font-style: normal; margin-left: auto; }
   .sp-live { color: var(--up); }
+  .mv-why { color: var(--text) !important; opacity: .8; display: -webkit-box !important; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; }
   .mv-own { color: var(--accent); font-size: 10px; vertical-align: 2px; } .mv-rv { color: var(--gold); font-weight: 650; }
   .sec-t { padding: 10px 12px; border-radius: 12px; background: var(--surface-2, rgba(255,255,255,.04)); border-left: 3px solid var(--muted); min-width: 0; }
   .sec-t.tone-green { border-left-color: var(--up); } .sec-t.tone-red { border-left-color: var(--red); } .sec-t.tone-yellow { border-left-color: var(--gold); }
@@ -710,6 +711,7 @@
   .sec-t em { display: block; font-style: normal; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
   .sec-line { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; width: 100%; margin: 8px 0; padding: 8px 10px; border: 0; border-radius: 10px; background: var(--surface-2); color: inherit; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
   .sec-line i { margin-left: auto; font-style: normal; color: var(--accent); }
+  .mb-fz { margin: 0 0 10px; font-size: 15px; line-height: 1.45; }
   .mbar .mb-top { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin-bottom: 10px; }
   .mb-reg { display: flex; align-items: center; gap: 8px; } .mb-reg i { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); } .mb-reg.tone-green i { background: var(--up); } .mb-reg.tone-red i { background: var(--red); }
   .mb-fear { font-size: 14px; } .mb-fear small { color: var(--muted); }
@@ -2362,7 +2364,8 @@ function spList() {
 function spRanked(xs, k) {
   const val = (x, prev) => { const v = prev ? x.p && x.p[k] : x[k]; return v == null ? -Infinity : v; };
   const now = [...xs].sort((a, b) => val(b) - val(a)), was = [...xs].sort((a, b) => val(b, 1) - val(a, 1));
-  return now.map((x, i) => ({ ...x, v: x[k], rk: i + 1, mv: x.p && x.p[k] != null ? was.indexOf(x) - i : 0 }));
+  const vs = xs.map(x => x[k]).filter(v => v != null), avg = state.spRel && vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : 0;
+  return now.map((x, i) => ({ ...x, v: x[k] == null ? null : x[k] - avg, rk: i + 1, mv: x.p && x.p[k] != null ? was.indexOf(x) - i : 0 }));
 }
 function sectorsHtml() {
   const lv = mktLive(), a = (anaData && anaData.market) || {};
@@ -2383,10 +2386,10 @@ function sectorsHtml() {
   return `<div class="hcard sp-card">${hHead("Sektoren & Branchen")}
     <div class="sp-top"><div class="sp-tg">${[["sec", "Sektoren"], ["ind", "Branchen"]].map(([v, l]) => `<button class="opt${(v === "ind") === !!ind ? " on" : ""}" data-spmode="${v}"${v === "ind" && !(m.industries || []).length ? " disabled title=\"kommt mit dem nächsten Abend-Scan\"" : ""}>${l}</button>`).join("")}</div>
       ${hv ? "" : `<div class="sp-tg">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}</div>`}</div>
-    ${hasHist ? `<div class="sp-tg" style="margin:-4px 0 10px">${[["ret", "Rendite"], ["hist", "Rang-Verlauf 12 Wochen"]].map(([v, l]) => `<button class="opt${(v === "hist") === hv ? " on" : ""}" data-spview="${v}">${l}</button>`).join("")}</div>` : ""}
+    <div class="sp-tg" style="margin:-4px 0 10px">${hasHist ? [["ret", "Rendite"], ["hist", "Rang-Verlauf 12 Wochen"]].map(([v, l]) => `<button class="opt${(v === "hist") === hv ? " on" : ""}" data-spview="${v}">${l}</button>`).join("") : ""}${hv ? "" : `<button class="opt${state.spRel ? " on" : ""}" data-sprel title="Rendite minus Durchschnitt aller ${ind ? "Branchen" : "Sektoren"}">gegenüber Markt</button>`}</div>
     ${hv ? spHistHtml(xs, ind) : `${rot}<div class="sp-list">${show.map(row).join("")}</div>`}
     ${ind ? `<button class="hlink" data-spall style="margin-top:6px">${all ? "weniger zeigen" : `alle ${rows.length} Branchen zeigen`}</button>` : ""}
-    <div class="note" style="margin:8px 0 0">${spStamp()}<br>US-${ind ? "Branchen" : "Sektor"}-ETFs, Rendite ${esc(kn)}. ▲▼ = Plätze gewonnen/verloren ${k === "d1" ? "ggü. gestern" : "ggü. vor einer Woche"}. Antippen zeigt die stärksten Aktien aus deinem Scan.</div></div>`;
+    <div class="note" style="margin:8px 0 0">${spStamp()}<br>US-${ind ? "Branchen" : "Sektor"}-ETFs, Rendite ${esc(kn)}${state.spRel ? ` minus Durchschnitt aller ${ind ? "Branchen" : "Sektoren"} (> 0 = besser als der Markt)` : ""}. ▲▼ = Plätze gewonnen/verloren ${k === "d1" ? "ggü. gestern" : "ggü. vor einer Woche"}. Antippen zeigt die stärksten Aktien aus deinem Scan.</div></div>`;
 }
 // Rang-Verlauf: Platz nach 1-Monats-Rendite an den letzten 12 Wochenenden (1 = stärkster) – zeigt dauerhafte Umschichtung
 function spHistHtml(xs, ind) {
@@ -2475,9 +2478,13 @@ function moversHtml() {
   const near = !!state.mvNear, lim = state.mvMore ? 30 : 10;
   const live = !!mktLive(), all = hmRows(reg, live).filter(r => r[f] != null && (!near || (r.m != null && r.m >= 9)) && (down ? r[f] < 0 : r[f] > 0)).sort((a, b) => down ? a[f] - b[f] : b[f] - a[f]);
   const xs = all.slice(0, lim);
-  const li = xs.map((r, i) => { const sr = byTicker(r.t), rv = k === "d1" && r.rv != null && r.rv >= 1.5;
+  const why = t => {                                    // neueste Schlagzeile der letzten 3 Tage (Scan: Stimmung/Briefing) – „warum bewegt?“
+    const bj = jsonData["briefing.json"], sr0 = byTicker(t), ms = d => { const x = Date.parse(d); return isNaN(x) ? 0 : x; };
+    const l = [...((bj && bj.stocks && bj.stocks[t]) || []), ...((sr0 && sr0.senti && sr0.senti.news) || [])].filter(n => n.t && Date.now() - ms(n.d) < 3 * 864e5).sort((a, b) => ms(b.d) - ms(a.d));
+    return l[0] || null; };
+  const li = xs.map((r, i) => { const sr = byTicker(r.t), rv = k === "d1" && r.rv != null && r.rv >= 1.5, nw = (k === "d1" || k === "w1") ? why(r.t) : null;
     return `<button class="sp-s mv-r" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}><span class="sp-i">${i + 1}</span>
-      <span class="sp-sn"><b>${esc(r.n || r.t)}${mine.has(r.t) ? ` <small class="mv-own">●</small>` : ""}</b><em>${esc(tkClean(r.t))} · ${fmt(r.c)} ${esc(r.cur || "")}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}${rv ? ` · <span class="mv-rv">${fmt(r.rv, 1)}× Volumen</span>` : ""}</em></span>
+      <span class="sp-sn"><b>${esc(r.n || r.t)}${mine.has(r.t) ? ` <small class="mv-own">●</small>` : ""}</b><em>${esc(tkClean(r.t))} · ${fmt(r.c)} ${esc(r.cur || "")}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}${rv ? ` · <span class="mv-rv">${fmt(r.rv, 1)}× Volumen</span>` : ""}</em>${nw ? `<em class="mv-why">📰 ${esc(String(nw.t).slice(0, 110))}</em>` : ""}</span>
       <span class="sp-v ${r[f] >= 0 ? "up" : "down"}">${sgnPct(r[f], 1)}</span></button>`; }).join("");
   return `<div class="hcard mv-card">${hHead(down ? "Verlierer" : "Gewinner")}
     <div class="sp-top"><div class="sp-tg">${[["up", "Gewinner"], ["down", "Verlierer"]].map(([v, l]) => `<button class="opt${(v === "down") === down ? " on" : ""}" data-mvside="${v}">${l}</button>`).join("")}</div>
@@ -2492,6 +2499,7 @@ document.addEventListener("click", e => {
   const ms = e.target.closest("[data-mvside]"); if (ms) { state.mvSide = ms.dataset.mvside; save(); render(); return; }
   if (e.target.closest("[data-mvnear]")) { state.mvNear = !state.mvNear; save(); render(); return; }
   if (e.target.closest("[data-mvmore]")) { state.mvMore = !state.mvMore; save(); render(); return; }
+  if (e.target.closest("[data-sprel]")) { state.spRel = !state.spRel; save(); render(); return; }
   if (e.target.closest("[data-spview]")) { state.spView = e.target.closest("[data-spview]").dataset.spview; save(); render(); return; }
   const pv = e.target.closest("[data-hmpv]"); if (pv) { $("spmBody").innerHTML = hmPreviewHtml(pv.dataset.hmpv); $("spm").hidden = false; return; }
 });
@@ -2509,6 +2517,16 @@ function hmPreviewHtml(t) {
     <div class="row-actions"><button class="btn sm" ${sr ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`}>Aktie öffnen</button>${ind ? `<button class="btn ghost sm" data-spclose data-spdrill2="${esc(r.ig)}">Branche ${esc(ind.n)} ›</button>` : ""}</div>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-spdrill2]"); if (b) { state.spMode = "ind"; save(); setTimeout(() => openSpDrill(b.dataset.spdrill2), 0); } });
+// Tages-Fazit in einem Satz: Index, Breite, stärkster/schwächster Sektor heute, dauerhafte Zuflüsse (12 Wochen)
+function mktFazit(m, adv) {
+  const lv = mktLive(), sx = ((lv && lv.sectors && lv.sectors.length ? lv.sectors : m.sectors) || []).filter(x => x.d1 != null);
+  const spx = m["^GSPC"], parts = [];
+  if (spx && spx.d1 != null) parts.push(`S&P 500 <b class="${spx.d1 >= 0 ? "up" : "down"}">${sgnPct(spx.d1, 1)}</b>${adv != null ? `, ${pct(adv, 0)} der Aktien im Plus` : ""}`);
+  if (sx.length >= 3) { const o = [...sx].sort((a, b) => b.d1 - a.d1); parts.push(`${esc(o[0].n)} führt (<span class="up">${sgnPct(o[0].d1, 1)}</span>), ${esc(o[o.length - 1].n)} hinten (<span class="${o[o.length - 1].d1 >= 0 ? "up" : "down"}">${sgnPct(o[o.length - 1].d1, 1)}</span>)`); }
+  const hs = sx.filter(x => (x.rh || []).filter(v => v != null).length > 3).map(x => { const h = x.rh.filter(v => v != null); return { n: x.n, d: h[0] - h[h.length - 1] }; }).sort((a, b) => b.d - a.d);
+  if (hs.length && hs[0].d >= 3) parts.push(`seit Wochen fließt Geld in ${esc(hs[0].n)}${hs[1] && hs[1].d >= 3 ? " und " + esc(hs[1].n) : ""}`);
+  return parts.length ? "Heute: " + parts.join(" · ") + "." : "";
+}
 // Kompakte Markt-Leiste für den Überblick: Trend, Stimmung, Indizes und Marktbreite in einer Karte
 function mktBarHtml() {
   const m = anaData && anaData.market; if (!m) { loadAnalysis(); return ""; }
@@ -2526,7 +2544,8 @@ function mktBarHtml() {
   const br = rows.length ? `<div class="mb-br"><span class="mb-bl">Marktbreite · ${esc(HM_REG.find(x => x[0] === reg2)[1])} (${rows.length} Aktien)</span>
       <span>Steigen heute <b class="${tone(adv)}">${adv == null ? "–" : pct(adv, 0)}</b></span><span>über 50-Tage-Linie <b class="${tone(a50)}">${a50 == null ? "–" : pct(a50, 0)}</b></span><span>über 200-Tage-Linie <b class="${tone(a200)}">${a200 == null ? "–" : pct(a200, 0)}</b></span>
       ${verdict ? `<em>${verdict}</em>` : ""}</div>` : "";
-  return `<div class="hcard mbar"><div class="mb-top">${reg ? `<div class="mb-reg tone-${esc(reg.tone)}"><i></i><b>Trend: ${esc(reg.label)}</b></div>` : ""}${f ? `<div class="mb-fear">Stimmung <b class="${f.score >= 65 ? "down" : f.score >= 45 ? "gold" : "up"}">${esc(f.label)}</b> <small>${f.score}/100</small></div>` : ""}</div>
+  const fz = mktFazit(m, adv);
+  return `<div class="hcard mbar">${fz ? `<p class="mb-fz">${fz}</p>` : ""}<div class="mb-top">${reg ? `<div class="mb-reg tone-${esc(reg.tone)}"><i></i><b>Trend: ${esc(reg.label)}</b></div>` : ""}${f ? `<div class="mb-fear">Stimmung <b class="${f.score >= 65 ? "down" : f.score >= 45 ? "gold" : "up"}">${esc(f.label)}</b> <small>${f.score}/100</small></div>` : ""}</div>
     <div class="mb-tiles">${tiles}</div>${br}</div>`;
 }
 function openSpDrill(key) {
@@ -5514,8 +5533,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.37";
-const APP_NEWS = [["2026.11.37", "Markt: größer und aufgeräumter", [
+const APP_VER = "2026.11.38";
+const APP_NEWS = [["2026.11.38", "Markt: Fazit, Warum, gegenüber Markt", [
+  ["Tages-Fazit", "Ganz oben im Überblick ein Satz: Index, Breite, stärkster und schwächster Sektor, wohin seit Wochen Geld fließt."],
+  ["Gewinner/Verlierer: Warum?", "Unter den Movern steht die neueste Schlagzeile der letzten 3 Tage (wenn vorhanden)."],
+  ["Sektoren: gegenüber Markt", "Schalter zeigt jeden Sektor relativ zum Durchschnitt – „+2 %“ an einem +3-%-Tag ist dann klar schwächer als der Markt."]]],
+  ["2026.11.37", "Markt: größer und aufgeräumter", [
   ["Markt: neues Layout", "Oben eine kompakte Markt-Leiste (Trend, Stimmung, Indizes, Marktbreite), darunter die große Heatmap über die volle Breite, dann Sektoren und Gewinner/Verlierer nebeneinander – keine Lücken mehr."],
   ["Marktbreite", "Wie viele Aktien steigen heute, liegen über der 50- und 200-Tage-Linie – zeigt, ob ein Anstieg breit getragen ist."],
   ["Sektoren: Rang-Verlauf 12 Wochen", "Je Sektor/Branche der Platz der letzten 12 Wochen als Linie – zeigt, ob Geld dauerhaft umschichtet."],
