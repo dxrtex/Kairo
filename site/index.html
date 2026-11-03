@@ -678,6 +678,22 @@
   .ko-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); } .ko-row > span:first-child { flex: 1; min-width: 0; }
   .ko-row small { display: block; color: var(--muted); font-size: 12.5px; } .ko-act { display: flex; gap: 8px; align-items: center; flex: none; }
   .secg { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .sp-top { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin: 2px 0 10px; }
+  .sp-tg { display: flex; gap: 4px; flex-wrap: wrap; } .sp-tg .opt { padding: 6px 11px; font-size: 13px; min-height: 32px; } .sp-tg .opt[disabled] { opacity: .45; }
+  .sp-rot { font-size: 13px; margin: 0 0 10px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); line-height: 1.45; }
+  .sp-list { display: grid; gap: 2px; }
+  .sp-r { display: grid; grid-template-columns: minmax(90px, 34%) 1fr 58px 30px; align-items: center; gap: 8px; width: 100%; padding: 6px 4px; border: 0; background: none; color: inherit; font: inherit; text-align: left; border-radius: 8px; cursor: pointer; }
+  .sp-r:hover { background: var(--surface-2); }
+  .sp-n { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sp-b { position: relative; height: 14px; } .sp-b i { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: var(--up); } .sp-b i.down { background: var(--red); }
+  .sp-b b { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--line); }
+  .sp-v { font-size: 13.5px; font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sp-r > em { font-style: normal; font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; }
+  @media (max-width: 560px) { .sp-r { grid-template-columns: minmax(0, 42%) 1fr 54px 26px; gap: 6px; } .sp-n { white-space: normal; line-height: 1.2; font-size: 13px; } }
+  .sp-gap { text-align: center; color: var(--muted); font-size: 12px; line-height: 1; }
+  .sp-s { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; width: 100%; padding: 9px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .sp-i { color: var(--muted); font-size: 12.5px; text-align: right; } .sp-sn { min-width: 0; } .sp-sn b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sp-sn em { display: block; font-style: normal; font-size: 12px; color: var(--muted); }
   .sec-t { padding: 10px 12px; border-radius: 12px; background: var(--surface-2, rgba(255,255,255,.04)); border-left: 3px solid var(--muted); min-width: 0; }
   .sec-t.tone-green { border-left-color: var(--up); } .sec-t.tone-red { border-left-color: var(--red); } .sec-t.tone-yellow { border-left-color: var(--gold); }
   .sec-t b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .sec-t > span { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -1493,6 +1509,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
   <div class="group"><div class="group-label">Spalten in der Tabelle</div><div id="colOpts" class="opts"></div></div>
 </section>
 
+<div class="bmodal" id="spm" hidden><div class="bm-back" data-spclose></div><div class="bm-box" role="dialog" aria-label="Sektor"><button class="cm-x" data-spclose aria-label="Schließen">✕</button><div id="spmBody"></div></div></div>
 <div class="bmodal" id="brief" hidden><div class="bm-back" data-briefclose></div><div class="bm-box" role="dialog" aria-label="Tagesbriefing"><button class="cm-x" data-briefclose aria-label="Schließen">✕</button><div id="briefBody"></div></div></div>
 <div class="cmodal" aria-label="Aktien-Übersicht"><div class="cm-back" data-closecard></div><div class="cm-box"><button class="cm-x" data-closecard aria-label="Schließen">✕</button><div id="cardModalBody"></div></div></div>
 <section class="detail" id="detail" aria-label="Detailseite"><div class="wrap" id="detailBody"></div></section>
@@ -2271,13 +2288,65 @@ function newsLoad(force) {
     .finally(() => { NEWS.busy = false; NEWS.at = Date.now(); if (state.sec === "news") render(); });
 }
 // Markt-Überblick (11/2026): Marktampel, Branchen, was heute/morgen wichtig ist, Top-Meldungen, stärkste Insider-Käufe
-function sectorsHtml() {
-  const xs = anaData && anaData.market && anaData.market.sectors; if (!xs || !xs.length) return "";
-  const cls = v => v == null ? "" : v >= 0 ? "up" : "down";
-  return `<div class="hcard">${hHead("Branchen (USA) · 1 Monat")}<div class="secg">${xs.map(x => `<div class="sec-t tone-${esc(x.tone)}"><b>${esc(x.n)}</b>
-      <span class="${cls(x.chg1m)}">${x.chg1m == null ? "–" : sgnPct(x.chg1m, 1)}</span><em title="${esc(x.label)}">heute <span class="${cls(x.d1)}">${x.d1 == null ? "–" : sgnPct(x.d1, 1)}</span></em></div>`).join("")}</div>
-    <div class="note" style="margin:8px 0 0">Sektor-ETFs der USA (XLK, XLF …), sortiert nach dem letzten Monat. Kairo-Treffer in schwachen Branchen sind nicht verboten – die Branche fließt in die Einordnung der Aktie ein.</div></div>`;
+// Sektoren & Branchen: Rendite je Zeitraum als Balken, Rangwechsel ggü. Vorwoche („Rotation“), Antippen → stärkste Aktien
+const SP_PER = [["d1", "1T", "heute"], ["w1", "1W", "1 Woche"], ["m1", "1M", "1 Monat"], ["m3", "3M", "3 Monate"], ["ytd", "YTD", "seit Jahresanfang"]];
+const spPer = () => SP_PER.find(p => p[0] === state.spPer) || SP_PER[1];
+function spList() {
+  const m = anaData && anaData.market || {}, ind = state.spMode === "ind" && (m.industries || []).length;
+  return { ind, xs: (ind ? m.industries : m.sectors) || [] };
 }
+function spRanked(xs, k) {
+  const val = (x, prev) => { const v = prev ? x.p && x.p[k] : x[k]; return v == null ? -Infinity : v; };
+  const now = [...xs].sort((a, b) => val(b) - val(a)), was = [...xs].sort((a, b) => val(b, 1) - val(a, 1));
+  return now.map((x, i) => ({ ...x, v: x[k], rk: i + 1, mv: x.p && x.p[k] != null ? was.indexOf(x) - i : 0 }));
+}
+function sectorsHtml() {
+  const m = anaData && anaData.market; if (!m || !(m.sectors || []).length) return "";
+  const [k, kl, kn] = spPer(), { ind, xs } = spList(), rows = spRanked(xs, k).filter(x => x.v != null);
+  if (!rows.length) return "";
+  const mx = Math.max(...rows.map(x => Math.abs(x.v)), 1e-4), neg = rows.some(x => x.v < 0), pos = rows.some(x => x.v > 0);
+  const zero = neg && pos ? 50 : neg ? 100 : 0, span = neg && pos ? 50 : 100;
+  const all = !ind || state.spAll, show = all ? rows : [...rows.slice(0, 8), ...rows.slice(-4)];
+  const bar = x => { const w = Math.abs(x.v) / mx * span; return `<i class="${x.v >= 0 ? "up" : "down"}" style="left:${x.v >= 0 ? zero : zero - w}%;width:${Math.max(w, .8)}%"></i>`; };
+  const mvH = x => x.mv > 0 ? `<em class="up" title="${x.mv} Plätze besser als ${k === "d1" ? "gestern" : "vor einer Woche"}">▲${x.mv}</em>` : x.mv < 0 ? `<em class="down" title="${-x.mv} Plätze schlechter">▼${-x.mv}</em>` : `<em></em>`;
+  const row = (x, i) => `${!all && i === 8 ? `<div class="sp-gap">⋯</div>` : ""}<button class="sp-r" data-spopen="${esc(x.k)}"><span class="sp-n">${esc(x.n)}</span><span class="sp-b">${bar(x)}${neg && pos ? `<b style="left:${zero}%"></b>` : ""}</span><span class="sp-v ${x.v >= 0 ? "up" : "down"}">${sgnPct(x.v, 1)}</span>${mvH(x)}</button>`;
+  // Rotation: größte Rangsprünge nach oben/unten im gewählten Zeitraum
+  const ups = rows.filter(x => x.mv >= 2).sort((a, b) => b.mv - a.mv).slice(0, 3), dns = rows.filter(x => x.mv <= -2).sort((a, b) => a.mv - b.mv).slice(0, 3);
+  const rot = ups.length || dns.length ? `<div class="sp-rot">↻ <b>Rotation</b> ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"}: ${ups.length ? `Geld fließt in <span class="up">${ups.map(x => esc(x.n)).join(", ")}</span>` : ""}${ups.length && dns.length ? " · " : ""}${dns.length ? `raus aus <span class="down">${dns.map(x => esc(x.n)).join(", ")}</span>` : ""}</div>` : "";
+  return `<div class="hcard sp-card">${hHead("Sektoren & Branchen")}
+    <div class="sp-top"><div class="sp-tg">${[["sec", "Sektoren"], ["ind", "Branchen"]].map(([v, l]) => `<button class="opt${(v === "ind") === !!ind ? " on" : ""}" data-spmode="${v}"${v === "ind" && !(m.industries || []).length ? " disabled title=\"kommt mit dem nächsten Abend-Scan\"" : ""}>${l}</button>`).join("")}</div>
+      <div class="sp-tg">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}</div></div>
+    ${rot}<div class="sp-list">${show.map(row).join("")}</div>
+    ${ind ? `<button class="hlink" data-spall style="margin-top:6px">${all ? "weniger zeigen" : `alle ${rows.length} Branchen zeigen`}</button>` : ""}
+    <div class="note" style="margin:8px 0 0">US-${ind ? "Branchen" : "Sektor"}-ETFs, Rendite ${esc(kn)}. ▲▼ = Plätze gewonnen/verloren ${k === "d1" ? "ggü. gestern" : "ggü. vor einer Woche"}. Antippen zeigt die stärksten Aktien aus deinem Scan.</div></div>`;
+}
+function spDrillHtml(key) {
+  const [k, , kn] = spPer(), { ind, xs } = spList(), x = xs.find(v => v.k === key); if (!x) return "";
+  const nm = { d1: "d1", w1: "d5", m1: "m1", m3: "m3", ytd: "ytd" }[k];
+  const all = (searchIdx || []).filter(r => (ind ? r.ig === key : r.sec === x.n) && r[nm] != null);
+  const top = [...all].sort((a, b) => b[nm] - a[nm]).slice(0, 15);
+  const up = all.filter(r => r[nm] > 0).length;
+  const li = top.map((r, i) => { const sr = byTicker(r.t); return `<button class="sp-s" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}>
+      <span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(r.n || r.t)}</b><em>${esc(tkClean ? tkClean(r.t) : r.t)} · ${fmt(r.c)} ${esc(r.cur || "")} · ${r.m != null ? r.m + "/11" : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}</em></span>
+      <span class="sp-v ${r[nm] >= 0 ? "up" : "down"}">${sgnPct(r[nm], 1)}</span></button>`; }).join("");
+  return `<h3 style="margin:0 0 4px">${esc(x.n)}</h3>
+    <p class="muted" style="margin:0 0 12px;font-size:13.5px">${esc(x.k)} ${sgnPct(x[k], 1)} ${esc(kn)} · ${all.length ? `${up} von ${all.length} Aktien im Plus` : ""}</p>
+    <div class="sp-tg" style="margin-bottom:10px">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" data-spkeep="${esc(key)}" title="${n}">${l}</button>`).join("")}</div>
+    ${li || `<p class="muted">${searchIdx ? (ind ? "Für diese Branche sind noch keine Aktien zugeordnet – die Zuordnung kommt mit den nächsten Scans." : "Keine Aktien aus dem Scan in diesem Sektor.") : "Lädt …"}</p>`}
+    <div class="note" style="margin:10px 0 0">Stärkste Aktien ${esc(kn)} aus dem Kairo-Scan (weltweit, ab 2 Mrd. $ Börsenwert). Antippen öffnet die Aktie.</div>`;
+}
+function openSpDrill(key) {
+  if (!searchIdx) loadSearch().then(() => { if (!$("spm").hidden) $("spmBody").innerHTML = spDrillHtml(key); });
+  $("spmBody").innerHTML = spDrillHtml(key); $("spm").hidden = false; $("spm").dataset.k = key;
+}
+document.addEventListener("click", e => {
+  const t = e.target;
+  if (t.closest("#spm [data-card], #spm [data-ein], [data-spclose]")) { $("spm").hidden = true; if (t.closest("[data-spclose]")) return; }
+  const pm = t.closest("[data-spmode]"); if (pm && !pm.disabled) { state.spMode = pm.dataset.spmode; save(); render(); return; }
+  const pp = t.closest("[data-spper]"); if (pp) { state.spPer = pp.dataset.spper; save(); render(); if (pp.dataset.spkeep) $("spmBody").innerHTML = spDrillHtml(pp.dataset.spkeep); return; }
+  if (t.closest("[data-spall]")) { state.spAll = !state.spAll; save(); render(); return; }
+  const so = t.closest("[data-spopen]"); if (so) { openSpDrill(so.dataset.spopen); return; }
+});
 function marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf) {
   if (!calData) loadCalendar();
   if (!earnData) loadEarnings();
@@ -5199,8 +5268,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.29";
-const APP_NEWS = [["2026.11.29", "Markt-Überblick, ETF-Plan aufgeräumt", [
+const APP_VER = "2026.11.30";
+const APP_NEWS = [["2026.11.30", "Sektoren & Branchen", [
+  ["Markt: Sektoren & Branchen", "Balken für 11 Sektoren oder 34 Branchen, Zeitraum 1T · 1W · 1M · 3M · YTD. ▲▼ zeigen Plätze gewonnen oder verloren, die Rotations-Zeile sagt, wohin das Geld fließt. Antippen zeigt die stärksten Aktien des Zeitraums aus dem Scan."]]],
+  ["2026.11.29", "Markt-Überblick, ETF-Plan aufgeräumt", [
   ["Markt: neuer Überblick", "Marktampel mit Indizes (heute und 1 Monat), Branchen der USA als Kacheln, was heute und morgen wichtig ist, die wichtigsten Meldungen und die stärksten Insider-Käufe – mit einem Tipp in den Scanner."],
   ["Markt: aufgeräumt", "Der Reiter heißt überall „Markt“, Unterreiter Überblick · Meine Aktien · Markt-News · Insider; der Finnhub-Tipp lässt sich ausblenden. Die Marktampel fehlte im Reiter Markt manchmal – behoben."],
   ["ETF: Mein Plan", "Oben das Ergebnis (Ist gegen Ziel als Balken, Lücke zum Ziel, Trading-Budget, Sparrate), darunter nur noch die Aufteilung. Eingaben stehen unter „Einstellungen“, Anteile korrigieren und Forschung zum Aufklappen."]]],

@@ -27,6 +27,81 @@ SECTOR_DE = {"Technology": "Technologie", "Financial Services": "Finanzen", "Hea
              "Consumer Cyclical": "Zyklischer Konsum", "Consumer Defensive": "Basiskonsum", "Energy": "Energie",
              "Industrials": "Industrie", "Basic Materials": "Rohstoffe", "Utilities": "Versorger",
              "Real Estate": "Immobilien", "Communication Services": "Kommunikation"}
+# Branchen-ETFs (US) für die Sektor-Ansicht der App: Kürzel → (deutscher Name, Yahoo-Branchen der Einzelaktien)
+INDUSTRY_ETF = {
+    "SOXX": ("Halbleiter", ("Semiconductors", "Semiconductor Equipment & Materials")),
+    "IGV": ("Software", ("Software - Application", "Software - Infrastructure")),
+    "FDN": ("Internet", ("Internet Content & Information", "Internet Retail")),
+    "IYZ": ("Telekom", ("Telecom Services",)),
+    "ESPO": ("Games & Medien", ("Electronic Gaming & Multimedia", "Entertainment")),
+    "XBI": ("Biotech", ("Biotechnology",)),
+    "PPH": ("Pharma", ("Drug Manufacturers - General", "Drug Manufacturers - Specialty & Generic")),
+    "IHI": ("Medizintechnik", ("Medical Devices", "Medical Instruments & Supplies", "Diagnostics & Research")),
+    "IHF": ("Kliniken & Kassen", ("Healthcare Plans", "Medical Care Facilities")),
+    "KBE": ("Großbanken", ("Banks - Diversified",)),
+    "KRE": ("Regionalbanken", ("Banks - Regional",)),
+    "KIE": ("Versicherungen", ("Insurance - Diversified", "Insurance - Life", "Insurance - Property & Casualty",
+                               "Insurance - Reinsurance", "Insurance - Specialty", "Insurance Brokers")),
+    "IAI": ("Broker & Börsen", ("Capital Markets", "Financial Data & Stock Exchanges")),
+    "ITA": ("Luftfahrt & Verteidigung", ("Aerospace & Defense",)),
+    "IYT": ("Transport & Logistik", ("Railroads", "Trucking", "Integrated Freight & Logistics", "Marine Shipping")),
+    "JETS": ("Airlines", ("Airlines",)),
+    "PAVE": ("Bau & Infrastruktur", ("Engineering & Construction", "Building Products & Equipment",
+                                      "Infrastructure Operations", "Building Materials")),
+    "ITB": ("Hausbau", ("Residential Construction",)),
+    "XOP": ("Öl & Gas", ("Oil & Gas E&P", "Oil & Gas Integrated")),
+    "OIH": ("Öl-Service", ("Oil & Gas Equipment & Services", "Oil & Gas Drilling")),
+    "CRAK": ("Raffinerien", ("Oil & Gas Refining & Marketing",)),
+    "AMLP": ("Pipelines", ("Oil & Gas Midstream",)),
+    "URA": ("Uran", ("Uranium",)),
+    "TAN": ("Solar", ("Solar",)),
+    "GDX": ("Goldminen", ("Gold",)),
+    "SIL": ("Silberminen", ("Silver",)),
+    "COPX": ("Kupfer", ("Copper",)),
+    "PICK": ("Metalle & Bergbau", ("Other Industrial Metals & Mining", "Steel", "Aluminum", "Other Precious Metals & Mining")),
+    "XRT": ("Einzelhandel", ("Specialty Retail", "Department Stores", "Discount Stores", "Apparel Retail",
+                             "Home Improvement Retail", "Luxury Goods")),
+    "PEJ": ("Freizeit & Reisen", ("Lodging", "Resorts & Casinos", "Travel Services", "Leisure", "Restaurants")),
+    "CARZ": ("Autos", ("Auto Manufacturers", "Auto Parts")),
+    "PBJ": ("Lebensmittel & Getränke", ("Packaged Foods", "Beverages - Non-Alcoholic", "Beverages - Brewers",
+                                        "Beverages - Wineries & Distilleries", "Confectioners", "Farm Products")),
+    "VNQ": ("REITs", ()),
+    "PHO": ("Wasser", ("Utilities - Regulated Water",)),
+}
+_IND_MAP = {name: k for k, (_, names) in INDUSTRY_ETF.items() for name in names}
+PERIODS = (("d1", 1), ("w1", 5), ("m1", 21), ("m3", 63))
+
+
+def industry_group(industry: str | None) -> str | None:
+    """Yahoo-Branche einer Aktie → Kürzel des Branchen-ETFs (oder None)."""
+    if not industry or not isinstance(industry, str):
+        return None
+    return _IND_MAP.get(industry) or ("VNQ" if industry.startswith("REIT") else None)
+
+
+def perf_row(df: pd.DataFrame, lag: int = 5) -> dict:
+    """Renditen über 1T/1W/1M/3M/seit Jahresanfang – heute und (p) dieselben Zeiträume vor `lag` Handelstagen,
+    damit die App Rangwechsel („Rotation“) zeigen kann."""
+    c = df["Close"].dropna()
+    v = c.to_numpy(float)
+
+    def ret(end: int, n: int):
+        i, j = len(v) - 1 - end, len(v) - 1 - end - n
+        return round(float(v[i] / v[j] - 1), 4) if j >= 0 and v[j] else None
+
+    def ytd(end: int):
+        if len(v) <= end:
+            return None
+        last = c.index[len(v) - 1 - end]
+        prev = c[c.index.year < last.year]
+        return round(float(v[len(v) - 1 - end] / prev.iloc[-1] - 1), 4) if len(prev) and prev.iloc[-1] else None
+
+    out = {k: ret(0, n) for k, n in PERIODS}
+    out["ytd"] = ytd(0)
+    out["p"] = {**{k: ret(1 if k == "d1" else lag, n) for k, n in PERIODS}, "ytd": ytd(lag)}
+    return out
+
+
 EUROPE = (".PA", ".AS", ".MI", ".MC", ".CO", ".ST", ".SW", ".L", ".HE", ".OL", ".BR", ".VI", ".LS", ".IR")
 
 
@@ -77,9 +152,18 @@ def market_context(hist: dict[str, pd.DataFrame]) -> dict:
             continue
         st = trend_state(df)
         secs.append({"k": etf, "n": SECTOR_DE.get(name, name), "d1": st["d1"], "chg1m": st["chg1m"], "chg3m": st["chg3m"],
-                     "tone": st["tone"], "label": st["label"]})
+                     "tone": st["tone"], "label": st["label"], **perf_row(df)})
     if secs:
         out["sectors"] = sorted(secs, key=lambda x: -(x["chg1m"] if x["chg1m"] is not None else -9))
+    inds = []                                         # Branchen-ETFs (feiner als die 11 Sektoren)
+    for etf, (name, _) in INDUSTRY_ETF.items():
+        df = hist.get(etf)
+        if df is None or len(df) < 70:
+            continue
+        st = trend_state(df) if len(df) >= 210 else {}
+        inds.append({"k": etf, "n": name, "tone": st.get("tone"), "label": st.get("label"), **perf_row(df)})
+    if inds:
+        out["industries"] = sorted(inds, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
     spx, vix = out.get("^GSPC"), out.get("^VIX")
     if spx and vix:
         good = spx["above50"] and vix["c"] < 20
