@@ -611,7 +611,7 @@ def main(argv=None) -> int:
         vix_now = float(ctx_hist["^VIX"]["Close"].dropna().iloc[-1])
     except Exception:
         vix_now = None
-    lage = ", ".join(v["name"] + " " + v["label"] for k, v in market.items() if k != "regime")
+    lage = ", ".join(v["name"] + " " + v["label"] for k, v in market.items() if isinstance(v, dict) and "name" in v)
     print(f"Markt: {lage}; Lage: {market.get('regime', {}).get('label', '?')}")
     sec_cache: dict = {}
 
