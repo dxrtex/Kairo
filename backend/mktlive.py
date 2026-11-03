@@ -18,6 +18,7 @@ TOP_DE = 60                                          # Deutschland extra, damit 
 def pick(rows: list[dict]) -> list[str]:
     """Größte Aktien je Region (Börsenwert) aus dem Suchindex."""
     out = set()
+    rows = [r for r in rows if "liquidity" not in (r.get("km") or [])]    # illiquide Zweitlistings (HP in Wien …) weglassen
     for reg, n in TOP.items():
         xs = sorted([r for r in rows if r.get("r") == reg and r.get("mc")], key=lambda r: -r["mc"])[:n]
         out |= {r["t"] for r in xs}

@@ -21,3 +21,10 @@ def test_build(monkeypatch):
     out = mktlive.build([{"t": "AAA", "r": "us", "mc": 5}])
     assert out["sectors"][0]["k"] == "XLK" and out["industries"][0]["k"] == "SOXX"
     assert set(out["rows"]) == {"AAA"} and out["rows"]["AAA"]["d1"] is not None and "c" in out["rows"]["AAA"]
+
+
+def test_pick_skips_illiquid_listings():
+    from backend.mktlive import pick
+    rows = [{"t": "HPQ", "r": "us", "mc": 3e10}, {"t": "HPQ.VI", "r": "europe", "mc": 3e10, "km": ["liquidity"]},
+            {"t": "SAP.DE", "r": "europe", "mc": 2e11, "km": ["drawdown"]}]
+    assert pick(rows) == ["HPQ", "SAP.DE"]

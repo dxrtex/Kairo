@@ -155,6 +155,38 @@ def rotation(rows: list[dict], hist: dict, bench: str = "^GSPC", tail: int = 5, 
                 next(x for x in rows if x["k"] == k)["hot"] = round(rel4[k], 4)
 
 
+# Sektor einer Aktie aus ihrem Branchen-ETF, wenn Yahoo keinen Sektor liefert (FDN gemischt → offen)
+IG_SECTOR = {"SOXX": "Technologie", "IGV": "Technologie", "TAN": "Technologie", "IYZ": "Kommunikation", "ESPO": "Kommunikation",
+             "XBI": "Gesundheit", "PPH": "Gesundheit", "IHI": "Gesundheit", "IHF": "Gesundheit",
+             "KBE": "Finanzen", "KRE": "Finanzen", "KIE": "Finanzen", "IAI": "Finanzen",
+             "ITA": "Industrie", "IYT": "Industrie", "JETS": "Industrie", "PAVE": "Industrie",
+             "ITB": "Zyklischer Konsum", "XRT": "Zyklischer Konsum", "PEJ": "Zyklischer Konsum", "CARZ": "Zyklischer Konsum",
+             "XOP": "Energie", "OIH": "Energie", "CRAK": "Energie", "AMLP": "Energie", "URA": "Energie",
+             "GDX": "Rohstoffe", "SIL": "Rohstoffe", "COPX": "Rohstoffe", "PICK": "Rohstoffe",
+             "PBJ": "Basiskonsum", "VNQ": "Immobilien", "PHO": "Versorger"}
+
+
+def fill_sectors(rows: dict, industry_of: dict) -> int:
+    """Fehlenden Sektor (sec) nachtragen: zuerst aus der Branche (Yahoo-Branche → Sektor, gelernt an Aktien mit beidem),
+    sonst aus dem Branchen-ETF (ig). Gibt die Zahl der ergänzten Zeilen zurück."""
+    learned: dict[str, dict[str, int]] = {}
+    for t, r in rows.items():
+        ind = industry_of.get(t)
+        if ind and r.get("sec"):
+            learned.setdefault(ind, {}).setdefault(r["sec"], 0)
+            learned[ind][r["sec"]] += 1
+    best = {ind: max(c, key=c.get) for ind, c in learned.items()}
+    n = 0
+    for t, r in rows.items():
+        if r.get("sec"):
+            continue
+        sec = best.get(industry_of.get(t) or "") or IG_SECTOR.get(r.get("ig") or "")
+        if sec:
+            r["sec"] = sec
+            n += 1
+    return n
+
+
 def industry_group(industry: str | None) -> str | None:
     """Yahoo-Branche einer Aktie → Kürzel des Branchen-ETFs (oder None)."""
     if not industry or not isinstance(industry, str):

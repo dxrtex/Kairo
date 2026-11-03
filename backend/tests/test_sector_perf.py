@@ -70,3 +70,11 @@ def test_market_context_europe_and_indices():
     assert set(eu) == {"EXV1.DE", "EXV3.DE", "EXV4.DE"} and eu["EXV1.DE"]["n"] == EU_SECTOR_ETF["EXV1.DE"][0]
     assert eu["EXV1.DE"]["rrg"]["r"] > 100 > eu["EXV3.DE"]["rrg"]["r"] and "hot" not in eu["EXV1.DE"]
     assert eu["EXV1.DE"]["flt"] == {"ig": ["KBE", "KRE"]} and out["^N225"]["name"] == "Nikkei 225"
+
+
+def test_fill_sectors_from_industry_and_ig():
+    from backend.analysis import fill_sectors
+    rows = {"A": {"sec": "Technologie"}, "B": {}, "C": {"ig": "KRE"}, "D": {}, "E": {"sec": "Energie"}}
+    ind = {"A": "Semiconductors", "B": "Semiconductors", "C": "Banks - Regional", "D": "Unbekannt", "E": "Oil & Gas E&P"}
+    assert fill_sectors(rows, ind) == 2
+    assert rows["B"]["sec"] == "Technologie" and rows["C"]["sec"] == "Finanzen" and "sec" not in rows["D"] and rows["E"]["sec"] == "Energie"
