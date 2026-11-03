@@ -2376,8 +2376,15 @@ function spStamp() {
   const g = (anaData && anaData.generated) || searchGen;
   return g ? `<b>Stand ${new Date(g).toLocaleDateString("de-DE")} ${hm(g)} Uhr</b> · Tagesschluss` : "";
 }
+// Tagsüber-Werte (mktlive) über den Scan legen – Felder, die tagsüber fehlen (Rotations-Bild, Heißgelaufen, Themen-Hauptwerte), vom Scan behalten
+function spMarket() {
+  const lv = mktLive(), a = (anaData && anaData.market) || {};
+  const mix = k => { const base = a[k] || [], live = lv && lv[k] && lv[k].length ? lv[k] : null; if (!live) return base;
+    const by = Object.fromEntries(base.map(x => [x.k, x])); return live.map(x => ({ ...(by[x.k] || {}), ...x, ...(x.rrg ? {} : by[x.k] && by[x.k].rrg ? { rrg: by[x.k].rrg, hot: by[x.k].hot } : {}) })); };
+  return { sectors: mix("sectors"), industries: mix("industries"), themes: mix("themes") };
+}
 function spList() {
-  const lv = mktLive(), m = lv ? { sectors: lv.sectors && lv.sectors.length ? lv.sectors : (anaData && anaData.market || {}).sectors, industries: lv.industries && lv.industries.length ? lv.industries : (anaData && anaData.market || {}).industries, themes: lv.themes && lv.themes.length ? lv.themes : (anaData && anaData.market || {}).themes } : anaData && anaData.market || {};
+  const m = spMarket();
   const th = state.spMode === "th" && (m.themes || []).length, ind = th || (state.spMode === "ind" && (m.industries || []).length);
   return { ind, th, xs: (th ? m.themes : ind ? m.industries : m.sectors) || [] };
 }
@@ -2389,7 +2396,7 @@ function spRanked(xs, k) {
 }
 function sectorsHtml() {
   const lv = mktLive(), a = (anaData && anaData.market) || {};
-  const m = { sectors: (lv && lv.sectors && lv.sectors.length ? lv.sectors : a.sectors) || [], industries: (lv && lv.industries && lv.industries.length ? lv.industries : a.industries) || [], themes: (lv && lv.themes && lv.themes.length ? lv.themes : a.themes) || [] };
+  const m = spMarket();
   if (!m.sectors.length) return "";
   const [k, kl, kn] = spPer(), { ind, th, xs } = spList(), rows = spRanked(xs, k).filter(x => x.v != null);
   if (!rows.length) return "";
