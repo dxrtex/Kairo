@@ -104,6 +104,8 @@
   .search input { width: 100%; background: var(--surface); color: var(--text); border: 1px solid var(--line);
                   border-radius: 999px; padding: 15px 20px 15px 52px; font: inherit; font-size: 17px; outline: none; }
   .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-bg); }
+  .search-x { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 2; width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--surface-2, rgba(128,128,128,.25)); color: var(--text); font-size: 14px; line-height: 30px; text-align: center; cursor: pointer; padding: 0; }
+  .search-x[hidden] { display: none; } .search input { padding-right: 52px !important; } .search input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
   .search svg { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); color: var(--muted); z-index: 1; pointer-events: none; }
 
   .section-title { margin: 30px 2px 14px; font-size: 14px; font-weight: 600; color: var(--muted);
@@ -1395,6 +1397,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
   <div class="search">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
     <input type="search" id="search" placeholder="Aktie suchen – Name oder Ticker (alle Aktien)" autocomplete="off">
+    <button type="button" id="searchX" class="search-x" aria-label="Suche löschen" hidden>✕</button>
   </div>
 
   <main id="main"><div class="hgrid boot" aria-busy="true" aria-label="Lädt"><div class="hcard"><div class="skel"></div><div class="skel"></div></div><div class="hcard"><div class="skel"></div><div class="skel"></div></div></div></main>
@@ -5114,6 +5117,7 @@ const APP_NEWS = [["2026.11.24", "Depot, Scanner, ETF, Briefing", [
   ["Briefing einmal am Tag", "Das Tagesbriefing öffnet sich nur noch beim ersten Öffnen des Tages – danach über den Briefing-Knopf."],
   ["Depot: echte Turbo-Kurse", "Kairo holt den Geldkurs deiner Turbos bei onvista (per ISIN) – der Wert ist damit genau statt geschätzt. Kompakte Knöpfe, „Plan anlegen“ direkt an der Position."],
   ["Scanner", "Ticker und Name bleiben beim Wischen stehen, Hinweis auf weitere Spalten, Spaltenauswahl, Status-Legende, Live-Hinweis; auf dem iPhone brechen die Filter um statt zu verschwinden."],
+  ["Suche: ✕ zum Löschen", "In der Scanner-Suche löscht das ✕ rechts den ganzen Text mit einem Tipp."],
   ["ETF: läuft dein Sparplan?", "Der letzte SPYI-Kauf aus deinem Scalable-Export steht jetzt an der Ampel – mit Hinweis, wenn länger als 40 Tage nichts gekauft wurde."]]],
   ["2026.11.23", "Ausgeknockte Turbos werden erkannt", [
   ["Automatisch erkannt", "Liegt der Basiswert jenseits der K.-o.-Schwelle, hat ein Tagestief seit dem Kauf sie erreicht oder meldet onvista den Knock-out, gilt der Turbo als ausgeknockt."],
@@ -6777,7 +6781,8 @@ $("sheet").addEventListener("click", e => {
 $("done").onclick = () => document.body.classList.remove("filters-open");
 $("backdrop").onclick = () => document.body.classList.remove("filters-open");
 $("reset").onclick = () => { Object.assign(state, DEFAULTS); syncOpts(); save(); render(); };
-$("search").addEventListener("input", () => { if ($("search").value.trim().length >= 2) loadSearch(); render(); });
+$("search").addEventListener("input", () => { $("searchX").hidden = !$("search").value; if ($("search").value.trim().length >= 2) loadSearch(); render(); });
+$("searchX").addEventListener("click", () => { const i = $("search"); i.value = ""; $("searchX").hidden = true; render(); i.focus(); });   // ganzer Suchtext mit einem Tipp weg
 function goSec(sec) {
   if (SUBNAV[groupOf(sec)]) state.lastSub = { ...(state.lastSub || {}), [groupOf(sec)]: sec };
   state.sec = sec; syncOpts(); save(); render(); window.scrollTo({ top: 0 }); secIn();
