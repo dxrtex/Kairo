@@ -2720,8 +2720,11 @@ function etfCard(p, i, px, val, cost) {
       <div class="row-actions">${spyi ? `<a class="mini-btn" style="text-decoration:none" href="${tvUrl("SPYI")}" target="_blank" rel="noopener">TradingView</a>` : ""}<button class="mini-btn del" data-dep="del" data-i="${i}">Löschen</button></div>
     </article>`;
 }
-function depotCheckHtml(items) {
-  const st = items.filter(x => !x.p.d && !x.p.etf && x.val != null && x.val > 0), tot = st.reduce((a, x) => a + x.val, 0);
+function depotCheckHtml(items, groups = []) {
+  // Turbos nach aktuellem Wert (onvista-Geldkurs oder Schätzung aus dem Basiswert) – nicht mehr nur nach Einsatz
+  const tv = {}; groups.forEach(g => g.ms.forEach(m => { if (m.d && m.nowPos != null) tv[m.i] = m.nowPos * m.p.qty; }));
+  const st = items.map(x => x.p.d && tv[x.i] != null ? { ...x, val: tv[x.i] } : x).filter(x => !x.p.etf && x.val != null && x.val > 0), tot = st.reduce((a, x) => a + x.val, 0);
+  const turbMiss = items.some(x => x.p.d && tv[x.i] == null);
   const turbCost = items.filter(x => x.p.d).reduce((a, x) => a + x.cost, 0), allCost = items.reduce((a, x) => a + x.cost, 0);
   if (items.length < 2 || (!tot && !turbCost)) return "";
   const nm = x => x.p.n || (x.r && x.r.n) || x.p.t;
@@ -2745,10 +2748,10 @@ function depotCheckHtml(items) {
   if (turbCost && allCost && turbCost / allCost >= .2) notes.push([turbCost / allCost >= .5 ? "red" : "orange", `Hebelprodukte: ${pct(turbCost / allCost, 0)} deines Einsatzes`, "Turbos können bis zum Knock-out und damit zum Totalverlust fallen. Mehr dazu in der Depot-Übersicht bei jeder Position."]);
   if (!notes.length) notes.push(["green", "Gut verteilt", "Keine Aktie über 15 %, keine Branche über 40 %, Hebel unter 20 % des Einsatzes."]);
   const bars = (title, rows) => rows.length ? `<div><b class="dck-t">${title}</b>${rows.slice(0, 5).map(([k, v]) => `<div class="dbar"><span>${esc(k)}</span><i><b style="width:${Math.max(2, v * 100).toFixed(1)}%"></b></i><em>${pct(v, 0)}</em></div>`).join("")}</div>` : "";
-  return `<div class="card jcard dck"><div class="jc-h"><b>Depot-Check</b><span>${tot ? `Aktien nach Wert · ${fmt(tot)} €` : "nach Einsatz"}</span></div>
+  return `<div class="card jcard dck"><div class="jc-h"><b>Depot-Check</b><span>${tot ? `nach Wert · ${fmt(tot)} €` : "nach Einsatz"}</span></div>
     <div class="jins">${notes.map(([tone, t, x]) => `<div class="tip tone-${tone}"><b class="t">${esc(t)}</b>${esc(x)}</div>`).join("")}</div>
     ${tot ? `<div class="dck-g">${bars("Größte Positionen", pos)}${bars("Branchen", sec)}${bars("Regionen", reg)}</div>` : ""}
-    <div class="note" style="margin:10px 0 0">Einordnung deiner Verteilung, keine Anlageberatung. Turbos sind hier nicht nach Wert enthalten (ihr Kurs fehlt im Scan).</div></div>`;
+    <div class="note" style="margin:10px 0 0">Einordnung deiner Verteilung, keine Anlageberatung. Turbos mit ihrem aktuellen Wert${turbMiss ? " – einzelne Turbos ohne Kurs fehlen" : ""}.</div></div>`;
 }
 function nextEvent(t) {
   if (!calData) return null;
@@ -2826,7 +2829,7 @@ function depotHtml() {
     <ol class="rule-steps"><li><i>1</i><span><b>Schnell: Scalable-Export</b>Scalable (Web) → Transaktionen → Export, dann oben „Scalable-Export importieren“.</span></li>
       <li><i>2</i><span><b>Oder von Hand</b>„+ Position“ – Aktie, Stückzahl und Kaufkurs reichen.</span></li>
       <li><i>3</i><span><b>Noch nichts gekauft?</b><a href="#" data-gosec="today">Heute zu tun</a> zeigt die Kaufkandidaten nach der Kairo-Regel, die <a href="#" data-gosec="game">Übung</a> das Gleiche mit Spielgeld.</span></li></ol></div>`;
-  return head + (groups.length ? cockpitHtml(groups, items) : sum) + actions + form + empty + depotCheckHtml(items)
+  return head + (groups.length ? cockpitHtml(groups, items) : sum) + actions + form + empty + depotCheckHtml(items, groups)
     + (groups.length ? `<div class="plan-h" style="margin:4px 2px 8px">Deine Positionen · antippen zum Aufklappen</div>${groups.map(groupHtml).join("")}` : "")
     + (cards.length ? `${groups.length ? `<div class="plan-h" style="margin:18px 2px 8px">Ohne Analyse (nicht auf der Watchlist)</div>` : ""}<div class="grid">${cards}</div>` : "")
     + koListHtml(koItems)
@@ -5115,7 +5118,7 @@ const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 const APP_VER = "2026.11.24";
 const APP_NEWS = [["2026.11.24", "Depot, Scanner, ETF, Briefing", [
   ["Briefing einmal am Tag", "Das Tagesbriefing öffnet sich nur noch beim ersten Öffnen des Tages – danach über den Briefing-Knopf."],
-  ["Depot: echte Turbo-Kurse", "Kairo holt den Geldkurs deiner Turbos bei onvista (per ISIN) – der Wert ist damit genau statt geschätzt. Kompakte Knöpfe, „Plan anlegen“ direkt an der Position."],
+  ["Depot: echte Turbo-Kurse", "Kairo holt den Geldkurs deiner Turbos bei onvista (per ISIN) – der Wert ist damit genau statt geschätzt. Kompakte Knöpfe, „Plan anlegen“ direkt an der Position, Depot-Check mit Turbos nach Wert."],
   ["Scanner", "Ticker und Name bleiben beim Wischen stehen, Hinweis auf weitere Spalten, Spaltenauswahl, Status-Legende, Live-Hinweis; auf dem iPhone brechen die Filter um statt zu verschwinden."],
   ["Suche: ✕ zum Löschen", "In der Scanner-Suche löscht das ✕ rechts den ganzen Text mit einem Tipp."],
   ["ETF: läuft dein Sparplan?", "Der letzte SPYI-Kauf aus deinem Scalable-Export steht jetzt an der Ampel – mit Hinweis, wenn länger als 40 Tage nichts gekauft wurde."]]],
