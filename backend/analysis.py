@@ -72,6 +72,27 @@ _IND_MAP = {name: k for k, (_, names) in INDUSTRY_ETF.items() for name in names}
 PERIODS = (("d1", 1), ("w1", 5), ("m1", 21), ("m3", 63))
 
 
+def rank_history(rows: list[dict], hist: dict, weeks: int = 12, look: int = 21) -> None:
+    """Rang je ETF (1 = stärkste 1-Monats-Rendite) an jedem der letzten `weeks` Wochenenden + heute → x["rh"] (alt → neu).
+    Zeigt, ob Geld dauerhaft umschichtet (Rang steigt Woche für Woche) oder nur kurz."""
+    closes = {}
+    for x in rows:
+        df = hist.get(x["k"])
+        if df is not None:
+            closes[x["k"]] = df["Close"].dropna()
+    if len(closes) < 3:
+        return
+    C = pd.DataFrame(closes).ffill().dropna(how="all")
+    if len(C) < look + 5 * weeks + 1:
+        return
+    pts = [len(C) - 1 - 5 * w for w in range(weeks, -1, -1)]
+    for i in pts:
+        r = (C.iloc[i] / C.iloc[i - look] - 1).rank(ascending=False, method="min")
+        for x in rows:
+            v = r.get(x["k"])
+            x.setdefault("rh", []).append(int(v) if v == v and v is not None else None)
+
+
 def industry_group(industry: str | None) -> str | None:
     """Yahoo-Branche einer Aktie → Kürzel des Branchen-ETFs (oder None)."""
     if not industry or not isinstance(industry, str):
@@ -154,6 +175,7 @@ def market_context(hist: dict[str, pd.DataFrame]) -> dict:
         secs.append({"k": etf, "n": SECTOR_DE.get(name, name), "d1": st["d1"], "chg1m": st["chg1m"], "chg3m": st["chg3m"],
                      "tone": st["tone"], "label": st["label"], **perf_row(df)})
     if secs:
+        rank_history(secs, hist)
         out["sectors"] = sorted(secs, key=lambda x: -(x["chg1m"] if x["chg1m"] is not None else -9))
     inds = []                                         # Branchen-ETFs (feiner als die 11 Sektoren)
     for etf, (name, _) in INDUSTRY_ETF.items():
@@ -163,6 +185,7 @@ def market_context(hist: dict[str, pd.DataFrame]) -> dict:
         st = trend_state(df) if len(df) >= 210 else {}
         inds.append({"k": etf, "n": name, "tone": st.get("tone"), "label": st.get("label"), **perf_row(df)})
     if inds:
+        rank_history(inds, hist)
         out["industries"] = sorted(inds, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
     spx, vix = out.get("^GSPC"), out.get("^VIX")
     if spx and vix:

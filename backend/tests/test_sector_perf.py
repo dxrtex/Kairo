@@ -35,3 +35,9 @@ def test_day_moves_periods_and_rvol():
     df.iloc[-1, df.columns.get_loc("Volume")] = 3000.0
     r = day_moves(df)
     assert r["rv"] == 3.0 and r["m1"] is not None and r["m3"] is not None and r["ytd"] is not None
+
+
+def test_rank_history():
+    out = market_context({"XLK": _df(step=0.002), "XLE": _df(step=-0.001), "XLV": _df(step=0.0005)})
+    rh = {s["k"]: s["rh"] for s in out["sectors"]}
+    assert len(rh["XLK"]) == 13 and rh["XLK"][-1] == 1 and rh["XLE"][-1] == 3
