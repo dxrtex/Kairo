@@ -677,6 +677,12 @@
   .ko-list { margin-top: 16px; } .ko-list > summary { display: flex; justify-content: space-between; cursor: pointer; list-style: none; } .ko-list > summary::-webkit-details-marker { display: none; }
   .ko-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); } .ko-row > span:first-child { flex: 1; min-width: 0; }
   .ko-row small { display: block; color: var(--muted); font-size: 12.5px; } .ko-act { display: flex; gap: 8px; align-items: center; flex: none; }
+  .secg { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .sec-t { padding: 10px 12px; border-radius: 12px; background: var(--surface-2, rgba(255,255,255,.04)); border-left: 3px solid var(--muted); min-width: 0; }
+  .sec-t.tone-green { border-left-color: var(--up); } .sec-t.tone-red { border-left-color: var(--red); } .sec-t.tone-yellow { border-left-color: var(--gold); }
+  .sec-t b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .sec-t > span { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .sec-t em { display: block; font-style: normal; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  @media (min-width: 900px) { .mkt-ov { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; } .mkt-ov > .hcard + .hcard { margin-top: 0; } }
   .tq-buy { padding: 0; }
   .kb-row { display: grid; grid-template-columns: 10px minmax(110px, 1fr) auto auto 12px; align-items: center; gap: 12px; padding: 11px 0; cursor: pointer; }
   .kb-n { min-width: 0; } .kb-n small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .kb-n b { display: block; font-size: 15.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -707,6 +713,11 @@
     .mstrip span { white-space: nowrap; } .mstrip b { color: var(--text); font-size: 13.5px; margin-left: 3px; } .mstrip b.down { color: var(--red); } .mstrip s { display: none; } }
   @media (max-width: 560px) { .etf-plan .mtiles { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
   .eh-last { margin-top: 10px; font-size: 13px; } .eh-last small { font-size: 12px; }
+  .ep-lead { margin: 0 0 10px; font-size: 15px; }
+  .ep-bar { position: relative; height: 10px; border-radius: 5px; background: var(--line); } .ep-bar i { display: block; height: 100%; border-radius: 5px; background: var(--up); }
+  .ep-bar s { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); text-decoration: none; }
+  .ep-bar-l { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .ep-seg { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; } .ep-seg > span { font-size: 13px; color: var(--muted); margin-right: 4px; }
   .etf-why { margin-top: 10px; } .etf-why > summary { cursor: pointer; font-size: 13.5px; color: var(--accent, var(--up)); font-weight: 600; }
   .etf-tv > summary { font-weight: 600; } .etf-tv .tvbox { padding: 0; border: 0; background: none; } .etf-tv .tvbox .hh { display: none; } .etf-tv[open] > summary { margin-bottom: 10px; }
   .mk-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--gold); } .mk-dot.tone-green { background: var(--up); } .mk-dot.tone-red { background: var(--red); }
@@ -2259,9 +2270,43 @@ function newsLoad(force) {
     ...us.map(t => q("stock/insider-transactions", { symbol: t.replace("-", "."), from: ins3 }).then(j => { if (j && Array.isArray(j.data)) NEWS.ins[t] = j.data.filter(x => x.transactionCode === "P" || x.transactionCode === "S"); }))])
     .finally(() => { NEWS.busy = false; NEWS.at = Date.now(); if (state.sec === "news") render(); });
 }
+// Markt-Überblick (11/2026): Marktampel, Branchen, was heute/morgen wichtig ist, Top-Meldungen, stärkste Insider-Käufe
+function sectorsHtml() {
+  const xs = anaData && anaData.market && anaData.market.sectors; if (!xs || !xs.length) return "";
+  const cls = v => v == null ? "" : v >= 0 ? "up" : "down";
+  return `<div class="hcard">${hHead("Branchen (USA) · 1 Monat")}<div class="secg">${xs.map(x => `<div class="sec-t tone-${esc(x.tone)}"><b>${esc(x.n)}</b>
+      <span class="${cls(x.chg1m)}">${x.chg1m == null ? "–" : sgnPct(x.chg1m, 1)}</span><em title="${esc(x.label)}">heute <span class="${cls(x.d1)}">${x.d1 == null ? "–" : sgnPct(x.d1, 1)}</span></em></div>`).join("")}</div>
+    <div class="note" style="margin:8px 0 0">Sektor-ETFs der USA (XLK, XLF …), sortiert nach dem letzten Monat. Kairo-Treffer in schwachen Branchen sind nicht verboten – die Branche fließt in die Einordnung der Aktie ein.</div></div>`;
+}
+function marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf) {
+  if (!calData) loadCalendar();
+  if (!earnData) loadEarnings();
+  const now = Date.now(), mine = myTickers();
+  // Heute & morgen wichtig: Zinsen/Inflation/Verfall + Quartalszahlen deiner Aktien
+  const ev = (calData || []).filter(e => { const d = daysUntil(e.date); return d >= 0 && d <= 1 && ((e.kind === "macro" && (calKey(e) || e.imp === "high")) || e.kind === "expiry" || (e.kind === "earnings" && mine.has(e.ticker))); })
+    .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0).slice(0, 8)
+    .map(e => `<div class="bf-r"><i class="${e.kind === "earnings" ? "g" : "y"}"></i><span><b>${esc(e.ticker ? (e.name || e.ticker) + " · Quartalszahlen" : e.title || "Termin")}</b><em>${daysUntil(e.date) === 0 ? "Heute" : "Morgen"}${e.kind === "macro" && macWhen(e) ? " · " + esc(macWhen(e)) : ""}</em></span></div>`);
+  // Top-Meldungen: deine Aktien mit klarer Stimmung zuerst, dann Markt
+  let pm = bj && bj.stocks ? Object.entries(bj.stocks).filter(([t]) => mine.has(t)).flatMap(([t, l]) => l.map(n => ({ ...n, nm: nameOf(t), ms: msOf(n.d) }))) : [];
+  pm = pm.filter(n => n.t && n.ms && now - n.ms < 2 * 864e5 && n.s).sort((a, b) => Math.abs(b.s) - Math.abs(a.s)).slice(0, 2);
+  const mk = dedup((bj && bj.market || []).map(n => ({ ...n, s: 0, ms: msOf(n.d) })).filter(n => n.t && n.ms && now - n.ms < 2 * 864e5).sort((a, b) => b.ms - a.ms)).slice(0, 3);
+  const top = [...pm, ...mk].slice(0, 4);
+  // Insider: stärkste Käufe (90 Tage) aus dem Scan
+  const sig = Object.entries((ij && ij.signal) || {}).filter(([, g]) => g.score >= 2).sort((a, b) => b[1].score - a[1].score || b[1].val - a[1].val).slice(0, 5);
+  const eur = g => { const e = g.cur === "EUR" ? g.val : g.val * ((fxEur && fxEur.USD) || 0.9); return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
+  const ins = sig.map(([t, g]) => `<button class="bf-r" ${byTicker(t) ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`}><i class="g"></i><span><b>${esc(g.n || nameOf(t))}</b><em>${"●".repeat(g.score)} · ${g.buyers} Käufer · ${eur(g)}${g.top ? " · Vorstandsspitze" : ""} · zuletzt ${dateDE(g.last)}</em></span></button>`);
+  return `<div class="mkt-ov">${marketHtml()}${sectorsHtml()}</div>`
+    + (ev.length ? block("Heute & morgen wichtig", ev, "") : "")
+    + (top.length ? block("Wichtigste Meldungen", top.map(row), "") : "")
+    + (ins.length ? block("Stärkste Insider-Käufe · 90 Tage", ins, "") + `<button class="btn ghost sm" data-insgo style="margin:2px 2px 12px">Alle Insider-Käufe im Scanner ›</button>` : "");
+}
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-fhtipoff]")) { state.fhTipOff = 1; save(); render(); return; }
+  if (e.target.closest("[data-insgo]")) { state.ins = "buy"; state.region = ""; state.view = "hit"; save(); goSec("scanner"); }
+});
 function newsHtml() {
   newsLoad();
-  const tab = state.newsTab || "mine", mine = myTickers(), now = Date.now(), bj = jsonData["briefing.json"], ij = jsonData["insider.json"];
+  const tab = state.newsTab || "overview", mine = myTickers(), now = Date.now(), bj = jsonData["briefing.json"], ij = jsonData["insider.json"];
   const nameOf = t => { const s = rowOf(t), r = byTicker(t); return (r && r.name) || (s && s.n) || t; };
   const ago = ms => { if (!ms) return ""; const h = Math.max(0, Math.round((now - ms) / 36e5)); return h < 1 ? "gerade eben" : h < 24 ? `vor ${h} Std.` : h < 72 ? `vor ${Math.round(h / 24)} Tg.` : new Date(ms).toLocaleDateString("de-DE"); };
   const trU = n => n.o && /^https?:/.test(n.u || "") ? `https://translate.google.com/translate?sl=auto&tl=de&u=${encodeURIComponent(n.u)}` : n.u;
@@ -2269,10 +2314,11 @@ function newsHtml() {
   const block = (title, rows, empty) => `<div class="bf-s"><b>${title}</b><div class="bf-l">${rows.length ? rows.join("") : `<div class="bf-empty" style="padding:12px 14px">${empty}</div>`}</div></div>`;
   const msOf = d => { const t = Date.parse(d); return isNaN(t) ? null : t; };
   const dedup = l => { const s = new Set(); return l.filter(n => { const k = String(n.t).toLowerCase().slice(0, 70); if (s.has(k)) return false; s.add(k); return true; }); };
-  const seg = `<div class="opts seg">${[["mine", "Meine Aktien"], ["market", "Markt"], ["insider", "Insider"]].map(([v, l]) => `<button class="opt${tab === v ? " on" : ""}" data-newstab="${v}">${l}</button>`).join("")}</div>`;
+  const seg = `<div class="opts seg">${[["overview", "Überblick"], ["mine", "Meine Aktien"], ["market", "Markt-News"], ["insider", "Insider"]].map(([v, l]) => `<button class="opt${tab === v ? " on" : ""}" data-newstab="${v}">${l}</button>`).join("")}</div>`;
   const live = liveKey("fh"), src = live ? `Scan + live (Finnhub)${NEWS.at ? " · " + new Date(NEWS.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr" : " · lädt …"}` : "aus dem letzten Scan";
-  const head = `<div class="section-title"><span>Nachrichten</span><span>${esc(src)}</span></div>${seg}
-    ${live ? `<button class="live-btn" data-newsfresh style="margin:0 2px 4px">↻ Aktualisieren</button>` : `<p class="muted" style="font-size:13px;margin:4px 2px">Tipp: Mit einem kostenlosen Finnhub-Schlüssel (Einstellungen → Live-Kurse) kommen die Meldungen live und mit Insider-Geschäften je Aktie.</p>`}`;
+  const head = `<div class="section-title"><span>${tab === "overview" ? "Überblick" : tab === "insider" ? "Insider" : "Nachrichten"}</span><span>${esc(src)}</span></div>${seg}
+    ${live ? `<button class="live-btn" data-newsfresh style="margin:0 2px 4px">↻ Aktualisieren</button>` : state.fhTipOff ? "" : `<p class="muted" style="font-size:13px;margin:4px 2px">Tipp: Mit einem kostenlosen Finnhub-Schlüssel (Einstellungen → Live-Kurse) kommen die Meldungen live und mit Insider-Geschäften je Aktie.<button class="hlink" data-fhtipoff style="margin-left:6px">ausblenden</button></p>`}`;
+  if (tab === "overview") return head + marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf);
   if (tab === "mine") {
     let pool = bj && bj.stocks ? Object.entries(bj.stocks).filter(([t]) => mine.has(t)).flatMap(([t, l]) => l.map(n => ({ ...n, nm: nameOf(t), tk: t, ms: msOf(n.d) }))) : [];
     Object.entries(NEWS.co).forEach(([t, l]) => l.forEach(n => pool.push({ t: n.headline, u: n.url, p: n.source, ms: n.datetime * 1000, nm: nameOf(t), tk: t, s: 0 })));
@@ -2291,11 +2337,12 @@ function newsHtml() {
       .map(e => `<div class="bf-r"><i class="y"></i><span><b>${esc(e.title || "Termin")}</b><em>${daysUntil(e.date) === 0 ? "Heute" : daysUntil(e.date) === 1 ? "Morgen" : dateDE(e.date)}${e.kind === "macro" && macWhen(e) ? " · " + esc(macWhen(e)) : ""}</em></span></div>`);
     if (!calData) loadCalendar();
     const reg = anaData && anaData.market && anaData.market.regime;
-    return head + (marketHtml() || (reg ? `<div class="bf-mkt" style="margin:8px 2px"><i class="${reg.tone}"></i><span>Marktampel: <b>${esc(reg.label)}</b></span></div>` : ""))   // Trend, Stimmung, Indizes (früher auf „Heute“)
+    return head + (reg ? `<div class="bf-mkt" style="margin:8px 2px"><i class="${reg.tone}"></i><span>Marktampel: <b>${esc(reg.label)}</b> · Details unter „Überblick“</span></div>` : "")
       + (mac.length ? block("Termine diese Woche (Zinsen, Inflation, Konjunktur, Verfall)", mac, "") : "")
       + block("Marktmeldungen · 3 Tage", pool.map(row), "Keine Marktmeldungen geladen.");
   }
   // Insider: offizielle SEC-Meldungen (Formular 4) aus dem Scan + live je Aktie (Finnhub)
+  const insGo = `<button class="btn ghost sm" data-insgo style="margin:4px 2px 10px">Alle Aktien mit Insider-Käufen im Scanner ›</button>`;
   const eurAmt = e => e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`;
   const usd = v => { const fx = (fxEur && fxEur.USD) || 0.9, e = v * fx; return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
   const known = t => rowOf(t) || byTicker(t);
@@ -2343,7 +2390,7 @@ function newsHtml() {
       + block(`Deine Aktien · Insider-Verkäufe · 12 Monate · ${byAmt ? "nach Betrag" : "neueste zuerst"}`, wlS.slice(0, 15).map(irow), "Keine großen Verkäufe.")
       + covHtml
       + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${nUS} US-Aktien (SEC/OpenInsider, Käufe ab 10.000 $, Verkäufe ab 250.000 $)${nDE ? ` und ${nDE} deutsche Aktien (BaFin, Käufe ab 5.000 €, Verkäufe ab 100.000 €)` : ""} aus Watchlist, Merkliste und Depot – 12 Monate. Dazu Meldungen ohne Betrag aus den Niederlanden (AFM: Airbus, ASML …) und Australien (ASX: DroneShield …). „Gezielt“ = kein Routine-Käufer (nicht in beiden Vorjahren im selben Monat gekauft) – laut Forschung (Cohen/Malloy/Pomorski 2012) das aussagekräftigere Signal. „Routine unbekannt“ = ohne Kaufhistorie (BaFin) – zählt im Signal nicht als gezielt. Novo Nordisk, BYD, Xiaomi und Tamburi (Dänemark, Hongkong, Italien): keine frei abrufbare Quelle.</div>`;
-  return head + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) und für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften)${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
+  return head + insGo + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) und für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften)${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
     + wlHtml
     + (live ? block("Deine US-Aktien · 90 Tage (live)", liveRows.map(irow), NEWS.at ? "Keine Insider-Käufe oder -Verkäufe über die Börse." : "lädt …") : "")
     + (mineBuys.length ? block("Insider-Käufe bei Aktien aus dem Kairo-Scan", mineBuys.slice(0, 15).map(irow), "") : "")
@@ -2886,7 +2933,7 @@ let anaData = null, anaLoading = null;
 const chartReady = {};
 function loadAnalysis() {
   if (!anaLoading) anaLoading = scanFetch("analysis.json").then(r => r.json())
-    .then(d => { anaData = d; if (["depot", "today"].includes(state.sec)) render(); }).catch(() => { anaData = { tickers: {}, market: {} }; });
+    .then(d => { anaData = d; if (["depot", "today", "news"].includes(state.sec)) render(); }).catch(() => { anaData = { tickers: {}, market: {} }; });
   return anaLoading;
 }
 function needChart(t) {
@@ -4433,7 +4480,7 @@ function marketHtml() {
     ${reg ? `<div class="regime tone-${reg.tone}"><i></i><div><b>Trend: ${esc(reg.label)}</b><span>${reg.tone === "green" ? "Rückenwind für Long-Setups – S&P 500 über der EMA 50, VIX ruhig." : reg.tone === "red" ? "Gegenwind – Reversal-Einstiege scheitern häufiger. Kleiner positionieren." : "Gemischtes Umfeld – Einstiege selektiv."}</span></div></div>` : ""}
     ${fearHtml(m.fear)}
     <div class="mtiles">${ids.map(k => { const x = m[k]; return `<div class="mt"><span>${esc(x.name)}</span><b>${fmt(x.c, k === "^VIX" ? 1 : 0)}</b>
-      <em class="${k === "^VIX" ? (x.tone === "green" ? "up" : x.tone === "red" ? "down" : "") : x.chg1m == null ? "" : x.chg1m >= 0 ? "up" : "down"}" title="${k === "^VIX" ? "" : "Veränderung 1 Monat"}">${k === "^VIX" ? esc(x.label) : `${sgnPct(x.chg1m, 1)} · 1 Mon.`}</em></div>`; }).join("")}</div></div>`;
+      <em class="${k === "^VIX" ? (x.tone === "green" ? "up" : x.tone === "red" ? "down" : "") : x.chg1m == null ? "" : x.chg1m >= 0 ? "up" : "down"}" title="${k === "^VIX" ? "" : "Veränderung 1 Monat"}">${k === "^VIX" ? esc(x.label) : `${x.d1 != null ? `<span class="${x.d1 >= 0 ? "up" : "down"}">${sgnPct(x.d1, 1)} heute</span><br>` : ""}${sgnPct(x.chg1m, 1)} · 1 Mon.`}</em></div>`; }).join("")}</div></div>`;
 }
 // Stimmung/Angst 0–100 (backend/fear.py): eigene Skala neben dem Trend – Information, keine Handelsregel
 function fearHtml(f) {
@@ -4801,30 +4848,35 @@ function etfHtml() {
         ["Abstand zum Hoch", e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1), e.dd >= .05 ? "up" : "gold", e.dd >= .05 ? "mindestens 5 % unter dem Hoch – Kaufsignal" : "weniger als 5 % unter dem Hoch"]]
         .map(([l, v, c, t]) => `<li><i class="${c}">●</i><b>${l}: ${v}</b> – ${t}</li>`).join("")}</ul>
       <div class="note" style="margin:6px 0 12px"><i class="vdot g"></i><b>Jetzt investieren</b>, sobald eins davon passt: Kurs unter der EMA 100, mindestens 5 % unter dem Hoch oder VIX ≥ 25 (Dunkelgrün: VIX ≥ 30, Panik).<br><i class="vdot y"></i><b>Abwarten</b>, wenn nichts davon passt – Extra-Geld zurücklegen, aber höchstens 3 Monate, dann trotzdem investieren. Die Sparrate läuft immer. Im Test (S&P 500 ab 1990, Welt ab 2003) kostete diese Regel gegenüber „immer sofort“ nur 0,1–0,7 % Endwert; länger warten (z. B. nur bei Panik kaufen) kostete 7–15 %.</div>` : "";
-  const tierHtml = `<div class="note" style="margin:10px 0 0"><b>Aufteilung</b> · Szenario: ${PF_SCEN.map(([v, l]) => `<button class="opt${c.share === v ? " on" : ""}" data-pfetf="${v}">${l}</button>`).join(" ")}
-      <div style="margin-top:6px">Gilt überall in Kairo: ETF-Bereich, Trading-Budget im Einstieg, Kapital &amp; Risiko und neue Übungsdepots.${c.reserve ? ` Dein Notgroschen von ${eur(c.reserve)} zählt nicht mit.` : ""}</div></div>
-      <details class="etf-why"><summary>Warum diese Aufteilung? Forschung &amp; Gebühren</summary><div class="note" style="margin:6px 0 0">Bestehende Übungsdepots behalten ihre Aufteilung.
+  const st0 = state.etf || {}, dpx = c.fromDepot, istP = ist != null ? Math.round(ist * 100) : null;
+  const rIn = ist != null && ist < c.share / 100 - .05 ? c.rate : c.rate * c.share / 100;
+  const fv = c.rate && etfVal != null ? (r => etfVal * Math.pow(1 + r, 120) + rIn * (Math.pow(1 + r, 120) - 1) / r)(.05 / 12) : null;
+  const gapE = etfVal != null ? tgtE - etfVal : null, fd = tgtT > 0 ? feeDrag(tgtT) : null;
+  // Mein Plan (11/2026): oben das Ergebnis, darunter nur die Aufteilung – Eingaben und Hintergrund zum Aufklappen
+  const plan = `<div class="hcard etf-plan">${hHead("Mein Plan")}
+    <p class="ep-lead"><b>${c.share} % ETF · ${100 - c.share} % Trading</b>${istP != null ? ` – du liegst bei <b class="${Math.abs(istP - c.share) > 10 ? "gold" : ""}">${istP} % ETF</b>` : ""}</p>
+    ${istP != null ? `<div class="ep-bar"><i style="width:${Math.min(100, istP)}%"></i><s style="left:${c.share}%"></s></div><div class="ep-bar-l"><span>ETF ${eur(etfVal)} · Trading ${eur(trade)}</span><span>Ziel ${c.share} % ETF</span></div>` : ""}
+    <div class="mtiles" style="margin-top:12px">
+      <div class="mt"><span>Lücke zum ETF-Ziel</span><b>${gapE == null ? "–" : gapE > 50 ? eur(gapE) : "erreicht ✓"}</b><em>${gapE == null ? "Anteile fehlen (Depot-Import)" : gapE > 50 ? `Ziel ${eur(tgtE)} · Extra-Geld nach Ampel` : "Sparrate läuft weiter"}</em></div>
+      <div class="mt"><span>Trading-Budget</span><b>${eur(tgtT)}</b><em>${100 - c.share} %${fd && fd.tone === "red" ? ` · <span class="down">Gebühren zu hoch</span>` : ""}</em></div>
+      ${c.rate ? `<div class="mt"><span>Sparrate</span><b>${eur(c.rate)}</b><em>${fv != null ? `in 10 Jahren ≈ ${eur(fv)} (Beispiel 5 % p. a.)` : ist != null && ist < c.share / 100 - .05 ? "ganz in den ETF (unter Ziel)" : `${eur(c.rate * c.share / 100)} ETF · ${eur(c.rate * (100 - c.share) / 100)} Trading`}</em></div>` : ""}</div>
+    <div class="ep-seg"><span>Aufteilung</span>${PF_SCEN.map(([v, l]) => `<button class="opt${c.share === v ? " on" : ""}" data-pfetf="${v}">${l}</button>`).join("")}</div>
+    ${tgtT > 0 && Math.abs(tgtT - trade) > 1 ? `<div class="note" style="margin:10px 0 0"><i class="vdot y"></i>Der Einstieg rechnet noch mit ${eur(trade)}. <button class="btn ghost sm" id="etfSync">Auf ${eur(tgtT)} setzen</button></div>` : ""}
+    ${tgtT <= 0 ? `<div class="note" style="margin:10px 0 0">✓ Alles im ETF. Swing-Trades verfolgst du risikolos im <button class="hlink" ${SEC_LINK("paper")}>Papier-Test ›</button></div>` : ""}
+    ${c.units && !c.buy ? `<div class="note" style="margin:8px 0 0">Trag unter „Einstellungen“ deinen Ø Kaufkurs ein – dann zeigt Kairo oben Gewinn und Rendite.</div>` : ""}
+    <details class="etf-why"${state.etfSet ? " open" : ""} data-etfset><summary>Einstellungen</summary>
+      <div class="tp2-cfg" style="margin-top:8px"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
+        <label>Notgroschen – außerhalb (€)<input id="pfReserve" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.reserve || "")}" placeholder="z. B. 5000"></label>
+        <label>Sparrate je Monat (€)<input id="etfRate" type="number" inputmode="decimal" min="0" step="25" value="${esc(c.rate || "")}" placeholder="z. B. 200"></label>
+        <label>Eigener ETF-Anteil (%)<input id="etfShare" type="number" inputmode="decimal" min="0" max="100" step="5" value="${esc(c.share)}"></label></div>
+      <details class="etf-why"><summary>Anteile korrigieren${dpx ? " (kommen aus deinem Depot)" : ""}</summary>
+        <div class="tp2-cfg" style="margin-top:8px"><label>SPYI-Anteile<input id="etfUnits" type="number" inputmode="decimal" min="0" step="1" value="${esc(st0.units || "")}" placeholder="${dpx ? `${fmt(c.units, c.units % 1 ? 3 : 0)} (Depot)` : "Stück"}"></label>
+          <label>Ø Kaufkurs (€)<input id="etfBuy" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(st0.buy || "")}" placeholder="${dpx && c.buy ? `${fmt(c.buy)} (Depot)` : "aus Scalable"}"></label>
+          <label>Erster Kauf<input id="etfSince" type="date" value="${esc(st0.since || (dpx ? c.since : "") || "")}"></label></div></details>
+      <div class="note" style="margin:8px 0 0">Die Aufteilung gilt überall in Kairo: ETF-Bereich, Trading-Budget im Einstieg, Kapital &amp; Risiko und neue Übungsdepots.${c.reserve ? ` Dein Notgroschen von ${eur(c.reserve)} zählt nicht mit.` : ""}</div></details>
+    <details class="etf-why"><summary>Warum diese Aufteilung? Forschung &amp; Gebühren</summary><div class="note" style="margin:6px 0 0">Bestehende Übungsdepots behalten ihre Aufteilung.
       ${c.inv < 10000 && c.share < 100 ? `<div style="margin-top:6px" class="gold">Hinweis aus der Gebühren-Forschung: Unter 10.000 € trägt der Trading-Teil die festen Ordergebühren kaum (Test 2008–26) – siehe Gebühren-Bremse unten.</div>` : ""}
-      Forschungsstand 10/2026: Für den Trading-Teil gibt es noch <b>keine belegte</b> Strategie. Bester Kandidat ist Dual Momentum (in allen drei Testzeiträumen besser als der Welt-ETF, im letzten aber nicht sicher von Glück zu unterscheiden) – er läuft im Papier-Test, Entscheidung nach etwa 12 Monaten. Bis dahin ist 100 % ETF die belegte Wahl. Keine Anlageberatung.</div>${tgtT <= 0 ? "" : (() => { const fd = feeDrag(tgtT); return `<div class="note" style="margin:10px 0 0;border-left:3px solid var(--${fd.tone === "red" ? "red" : fd.tone === "yellow" ? "gold" : "up"})"><i class="vdot ${fd.tone === "red" ? "r" : fd.tone === "yellow" ? "y" : "g"}"></i> <b>Trading-Kapital ${eur(tgtT)}:</b> ${fd.t}</div>`; })()}</details>`;
-  const st0 = state.etf || {}, dpx = c.fromDepot;
-  const plan = `<div class="hcard etf-plan">${hHead(`Mein Plan · ${c.share} % ETF${c.share < 100 ? ` · ${100 - c.share} % Trading` : ""}`)}
-    <div class="tp2-cfg"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
-      <label>Notgroschen – außerhalb (€)<input id="pfReserve" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.reserve || "")}" placeholder="z. B. 5000"></label>
-      <label>ETF-Anteil (%)<input id="etfShare" type="number" inputmode="decimal" min="0" max="100" step="5" value="${esc(c.share)}"></label>
-      <label>Sparrate je Monat (€)<input id="etfRate" type="number" inputmode="decimal" min="0" step="25" value="${esc(c.rate || "")}" placeholder="z. B. 200"></label>
-      <label>SPYI-Anteile im Depot<input id="etfUnits" type="number" inputmode="decimal" min="0" step="1" value="${esc(st0.units || "")}" placeholder="${dpx ? `${fmt(c.units, c.units % 1 ? 3 : 0)} (Depot)` : "Stück"}"></label>
-      <label>Ø Kaufkurs (€)<input id="etfBuy" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(st0.buy || "")}" placeholder="${dpx && c.buy ? `${fmt(c.buy)} (Depot)` : "aus Scalable"}"></label>
-      <label>Erster Kauf<input id="etfSince" type="date" value="${esc(st0.since || (dpx ? c.since : "") || "")}"></label></div>
-    <div class="mtiles" style="margin-top:10px"><div class="mt"><span>ETF-Ziel</span><b>${eur(c.inv * c.share / 100)}</b><em>${c.share} %${c.reserve ? ` von ${eur(c.inv)}` : ""}</em></div>
-      <div class="mt"><span>Trading-Kapital</span><b>${eur(tgtT)}</b><em>${100 - c.share} % · im Einstieg: ${eur(trade)}${tgtT > 0 && feeDrag(tgtT).tone === "red" ? ` · <span class="down">Gebühren zu hoch</span>` : ""}</em></div>
-      ${etfVal != null ? `<div class="mt"><span>ETF jetzt</span><b>${eur(etfVal)}</b><em>${pct(ist, 0)} vom Ganzen</em></div>` : ""}
-      ${c.rate && etfVal != null ? (() => { const r = .05 / 12, n = 120, rIn = ist != null && ist < c.share / 100 - .05 ? c.rate : c.rate * c.share / 100, fv = etfVal * Math.pow(1 + r, n) + rIn * (Math.pow(1 + r, n) - 1) / r;
-        return `<div class="mt"><span>In 10 Jahren</span><b>${eur(fv)}</b><em>Beispiel: 5 % pro Jahr, keine Prognose</em></div>`; })() : ""}
-      ${c.rate ? `<div class="mt"><span>Sparrate</span><b>${eur(c.rate)}</b><em>${ist != null && ist < c.share / 100 - .05 ? "ganz in den ETF (unter Ziel)" : `${eur(c.rate * c.share / 100)} ETF · ${eur(c.rate * (100 - c.share) / 100)} Trading`}</em></div>` : ""}</div>
-    ${c.units && !c.buy ? `<div class="note" style="margin:8px 0 0">Trag deinen Ø Kaufkurs aus Scalable ein (Position → „Einstandskurs“) – dann zeigt Kairo oben Gewinn, Verlust und Rendite.</div>` : ""}
-    ${tierHtml}
-    ${tgtT <= 0 ? `<div class="note" style="margin:10px 0 0">✓ Bei ${eur(c.inv)} ist alles im ETF. Swing-Trades verfolgst du risikolos im <button class="hlink" ${SEC_LINK("paper")}>Papier-Test ›</button></div>` : Math.abs(tgtT - trade) > 1 ? `<button class="btn" id="etfSync" style="margin-top:10px">Trading-Kapital im Einstieg auf ${eur(tgtT)} setzen</button><div class="note" style="margin:6px 0 0">Das 1-%-Risiko je Trade rechnet mit diesem Betrag – so bleibt der Trading-Bereich bei ${100 - c.share} %.</div>` : `<div class="note" style="margin:10px 0 0">✓ Der Trading-Bereich rechnet mit ${eur(trade)} – passt zu ${100 - c.share} %.</div>`}
-    ${ist != null && Math.abs(ist - c.share / 100) > .1 ? `<div class="note" style="margin:8px 0 0">Verteilung weicht um mehr als 10 Punkte ab (${pct(ist, 0)} ETF). Am günstigsten über die Sparrate ausgleichen – Verkaufen kostet Steuern.</div>` : ""}</div>`;
+      Forschungsstand 10/2026: Für den Trading-Teil gibt es noch <b>keine belegte</b> Strategie. Bester Kandidat ist Dual Momentum (in allen drei Testzeiträumen besser als der Welt-ETF, im letzten aber nicht sicher von Glück zu unterscheiden) – er läuft im Papier-Test, Entscheidung nach etwa 12 Monaten. Bis dahin ist 100 % ETF die belegte Wahl. Keine Anlageberatung.</div>${tgtT <= 0 ? "" : (() => { const fd = feeDrag(tgtT); return `<div class="note" style="margin:10px 0 0;border-left:3px solid var(--${fd.tone === "red" ? "red" : fd.tone === "yellow" ? "gold" : "up"})"><i class="vdot ${fd.tone === "red" ? "r" : fd.tone === "yellow" ? "y" : "g"}"></i> <b>Trading-Kapital ${eur(tgtT)}:</b> ${fd.t}</div>`; })()}</details></div>`;
   const how = `<div class="hcard">${hHead("So gehst du vor")}<ul class="checks rules">${[
       ["Sparplan bei Scalable", "monatlich in den SPYI – läuft automatisch, bei jeder Ampelfarbe"],
       ["Nie wegen Rücksetzern verkaufen", "der Welt-ETF fiel 2008/09 um mehr als 50 % und erholte sich – wer verkaufte, verpasste die Erholung"],
@@ -4850,6 +4902,7 @@ document.addEventListener("input", e => {
   const k = { etfTotal: "total", etfRate: "rate", etfUnits: "units", etfBuy: "buy" }[e.target.id]; if (!k) return;
   const v = parseFloat(String(e.target.value).replace(",", ".")); state.etf = { ...(state.etf || {}), [k]: v >= 0 ? v : undefined }; save();
 });
+document.addEventListener("toggle", e => { if (e.target.matches && e.target.matches("[data-etfset]")) { state.etfSet = e.target.open ? 1 : 0; save(); } }, true);
 document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("etf-tv")) { const o = e.target.open ? 1 : 0; if (o !== (state.etfTv || 0)) { state.etfTv = o; save(); render(); } } }, true);
 document.addEventListener("change", e => { if (["etfTotal", "etfShare", "pfReserve", "etfRate", "etfUnits", "etfBuy", "etfSince"].includes(e.target.id) && state.sec === "etf") render(); });
 document.addEventListener("click", e => {
@@ -5146,8 +5199,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.28";
-const APP_NEWS = [["2026.11.28", "Scanner: Insider-Filter", [
+const APP_VER = "2026.11.29";
+const APP_NEWS = [["2026.11.29", "Markt-Überblick, ETF-Plan aufgeräumt", [
+  ["Markt: neuer Überblick", "Marktampel mit Indizes (heute und 1 Monat), Branchen der USA als Kacheln, was heute und morgen wichtig ist, die wichtigsten Meldungen und die stärksten Insider-Käufe – mit einem Tipp in den Scanner."],
+  ["Markt: aufgeräumt", "Der Reiter heißt überall „Markt“, Unterreiter Überblick · Meine Aktien · Markt-News · Insider; der Finnhub-Tipp lässt sich ausblenden. Die Marktampel fehlte im Reiter Markt manchmal – behoben."],
+  ["ETF: Mein Plan", "Oben das Ergebnis (Ist gegen Ziel als Balken, Lücke zum Ziel, Trading-Budget, Sparrate), darunter nur noch die Aufteilung. Eingaben stehen unter „Einstellungen“, Anteile korrigieren und Forschung zum Aufklappen."]]],
+  ["2026.11.28", "Scanner: Insider-Filter", [
   ["Insider kaufen", "Neue Spalte und Filter (unter „Weitere Filter“) im Scanner: zeigt Aktien, bei denen Vorstand oder Aufsichtsrat in den letzten 90 Tagen gekauft haben (US: SEC-Meldungen aller Aktien; Deutschland, Niederlande, Australien: für deine Aktien). Unter „Weitere Filter“ auch „starkes Signal“ (mehrere Käufer, Vorstandsspitze oder gezielter Kauf)."],
   ["Spalte Insider", "Stärke (●), Summe, Zahl der Käufer und letzter Kauf – sortierbar. Information, keine getestete Kaufregel. Der Verlauf füllt sich ab heute mit jedem Abendscan."]]],
   ["2026.11.27", "Scanner: Sortieren ohne Springen", [
@@ -6465,7 +6522,7 @@ function paperHtml() {
 
 // ---------- Rendern ----------
 // Reiter gebündelt: Depot (Positionen · Journal · Bilanz · Übung) und Markt (News · Kalender) – Unterreiter oben im Bereich
-const SUBNAV = { depot: [["depot", "Bestand"], ["journal", "Journal"], ["game", "Übung"], "|", ["bilanz", "Bilanz"], ["paper", "Papier"]], news: [["news", "News"], ["calendar", "Kalender"]] };
+const SUBNAV = { depot: [["depot", "Bestand"], ["journal", "Journal"], ["game", "Übung"], "|", ["bilanz", "Bilanz"], ["paper", "Papier"]], news: [["news", "Markt & News"], ["calendar", "Kalender"]] };
 const groupOf = sec => Object.keys(SUBNAV).find(g => SUBNAV[g].some(x => x[0] === sec)) || sec;
 const subNavHtml = sec => { const g = groupOf(sec); return SUBNAV[g] ? `<div class="subnav">${SUBNAV[g].map(x => x === "|" ? `<i class="sn-sep" title="Ergebnisse der Strategien"></i>` : `<button class="${x[0] === sec ? "on" : ""}" data-gosub="${x[0]}">${x[1]}</button>`).join("")}</div>` : ""; };
 const KFOOT = `<div class="kfoot">Keine Anlageberatung – Kairo zeigt getestete Regeln, Entscheidungen triffst du selbst. Kairo führt keine Orders aus. <a href="rechtliches.html" style="color:inherit">Impressum · Datenschutz · Risikohinweis</a><br>Deine Trades, Watchlist und Einstellungen bleiben auf diesem Gerät · Kurse: Yahoo Finance, onvista, Finnhub · Momentum Bias Index nach AlgoAlpha (MPL 2.0) · Charts: <a href="https://www.tradingview.com/" target="_blank" rel="noopener" style="color:inherit">TradingView Lightweight Charts™</a></div>`;
@@ -6608,7 +6665,7 @@ function greetText() {
   const h = new Date().getHours(), nm = String(state.name || "").trim();
   return esc(h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend") + (nm ? `, <span class="nm">${esc(nm)}</span>` : "") + greetEmoji();
 }
-const SEC_T = { today: "Heute", etf: "ETF", scanner: "Scanner", entry: "Einstieg", calendar: "Kalender", news: "News", depot: "Depot", journal: "Journal", game: "Übung", paper: "Papier-Test", settings: "Einstellungen", bilanz: "Bilanz" };
+const SEC_T = { today: "Heute", etf: "ETF", scanner: "Scanner", entry: "Einstieg", calendar: "Kalender", news: "Markt", depot: "Depot", journal: "Journal", game: "Übung", paper: "Papier-Test", settings: "Einstellungen", bilanz: "Bilanz" };
 function appleHead() {
   document.body.dataset.sec = state.sec;
   const t = SEC_T[state.sec] || "Kairo";

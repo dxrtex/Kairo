@@ -53,7 +53,7 @@ def trend_state(df: pd.DataFrame) -> dict:
     up = int(c[-1] > e50[-1]) + int(c[-1] > e200[-1]) + int(e50[-1] > e50[-21])
     tone = "green" if up == 3 else "red" if up == 0 else "yellow"
     label = {3: "Aufwärtstrend", 2: "leicht positiv", 1: "angeschlagen", 0: "Abwärtstrend"}[up]
-    return {"c": round(float(c[-1]), 2), "chg1m": _chg(c, 21), "chg3m": _chg(c, 63), "tone": tone, "label": label,
+    return {"c": round(float(c[-1]), 2), "d1": _chg(c, 1), "chg1m": _chg(c, 21), "chg3m": _chg(c, 63), "tone": tone, "label": label,
             "above50": bool(c[-1] > e50[-1]), "above200": bool(c[-1] > e200[-1])}
 
 
@@ -70,6 +70,16 @@ def market_context(hist: dict[str, pd.DataFrame]) -> dict:
             s.update(tone="green" if v < 18 else "yellow" if v < 25 else "red",
                      label="ruhig" if v < 18 else "erhöht" if v < 25 else "Angst/Stress")
         out[t] = s
+    secs = []                                         # Branchen (US-Sektor-ETFs) für den Markt-Überblick in der App
+    for name, etf in SECTOR_ETF.items():
+        df = hist.get(etf)
+        if df is None or len(df) < 210:
+            continue
+        st = trend_state(df)
+        secs.append({"k": etf, "n": SECTOR_DE.get(name, name), "d1": st["d1"], "chg1m": st["chg1m"], "chg3m": st["chg3m"],
+                     "tone": st["tone"], "label": st["label"]})
+    if secs:
+        out["sectors"] = sorted(secs, key=lambda x: -(x["chg1m"] if x["chg1m"] is not None else -9))
     spx, vix = out.get("^GSPC"), out.get("^VIX")
     if spx and vix:
         good = spx["above50"] and vix["c"] < 20
