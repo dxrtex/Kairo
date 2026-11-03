@@ -195,7 +195,12 @@ def day_moves(df) -> dict:
         r = lambda n: round(float(c.iloc[-1] / c.iloc[-1 - n] - 1), 4) if len(c) > n and c.iloc[-1 - n] else None
         y0 = c[c.index.year < c.index[-1].year]           # Jahresanfang: letzter Schluss des Vorjahres
         ytd = round(float(c.iloc[-1] / y0.iloc[-1] - 1), 4) if len(y0) and y0.iloc[-1] else None
-        return {"d1": r(1), "d5": r(5), "m1": r(21), "m3": r(63), "ytd": ytd,     # Zeiträume für die Sektor-Ansicht
+        rv = None                                         # relatives Volumen: heute ggü. Schnitt der 20 Tage davor
+        if "Volume" in df:
+            v = df["Volume"].dropna()
+            base = float(v.iloc[-21:-1].mean()) if len(v) > 21 else 0
+            rv = round(float(v.iloc[-1]) / base, 2) if base > 0 else None
+        return {"d1": r(1), "d5": r(5), "m1": r(21), "m3": r(63), "ytd": ytd, "rv": rv,   # Zeiträume für Sektoren/Heatmap
                 "lw": [[str(i.date()), round(float(r["Low"]), 4), round(float(r["High"]), 4)] for i, r in tail.iterrows()]}
     except Exception:
         return {}

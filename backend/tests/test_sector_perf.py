@@ -26,3 +26,12 @@ def test_market_context_industries_sorted():
     out = market_context({"XLK": _df(step=0.002), "XLE": _df(step=-0.001), "SOXX": _df(step=0.003), "GDX": _df(step=0.0005)})
     assert [s["k"] for s in out["sectors"]] == ["XLK", "XLE"] and "w1" in out["sectors"][0]
     assert [s["k"] for s in out["industries"]] == ["SOXX", "GDX"]
+
+
+def test_day_moves_periods_and_rvol():
+    from backend.run_scan import day_moves
+    df = _df(n=80, start="2024-11-01")
+    df["Volume"] = 1000.0
+    df.iloc[-1, df.columns.get_loc("Volume")] = 3000.0
+    r = day_moves(df)
+    assert r["rv"] == 3.0 and r["m1"] is not None and r["m3"] is not None and r["ytd"] is not None
