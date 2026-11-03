@@ -4394,31 +4394,36 @@ function todaySubHtml() {                       // Kopfzeile unter der Begrüßu
 const hDone = () => { const x = state.hDone; return new Set(x && x.d === isoD(new Date()) ? x.k : []); };
 const etfDoneRecent = () => state.etfDone && daysUntil(state.etfDone) > -30;
 // Kauf-Zettel: dieselbe Rechnung wie im Einstieg (tp2Calc, vorgeschlagener Hebel) – Stückzahl, Kaufzone, Limit, Stop, Zeitpunkt
-let buyOpen = null;                                // aufgeklappte Kauf-Tickets (Standard: das erste, sobald Käufe da sind)
+let buyOpen = null;                                // aufgeklappte Kauf-Tickets (Standard: alle zu – Antippen öffnet)
 function buySlip(x) {
-  const pl = kPlan(x.t), S = einSetup(x), m = tp2Calc(x, S), lv = m.levs && m.levs.find(l => l.L === m.sug), fx = m.fx || 1, cur = x.cur || "";
-  const eu = v => v == null ? "–" : `${fmt(v * fx)} €${cur && cur !== "EUR" ? ` <small>(${fmt(v)} ${esc(cur)})</small>` : ""}`;
+  const pl = kPlan(x.t), S = einSetup(x), m = tp2Calc(x, S), lv = m.levs && m.levs.find(l => l.L === m.sug), cur = x.cur || "";
+  const hasFx = cur === "EUR" || toEur(1, cur) > 0, fx = hasFx ? (m.fx || 1) : 1, unit = hasFx ? "€" : esc(cur);   // ohne Wechselkurs: Originalwährung statt falscher €
+  const eu = v => v == null ? "–" : `${fmt(v * fx)} ${unit}${hasFx && cur && cur !== "EUR" ? ` <small>(${fmt(v)} ${esc(cur)})</small>` : ""}`;
+  const noCap = !lv || (lv.L === 1 && !(lv.qty > 0)), free = m.free;   // 0 Stück: meist kein freies Trading-Kapital
+  const capWhy = noCap ? (free != null && free < 1 ? `Kein freies Trading-Kapital (frei ${eur(free || 0)}). Depot-Positionen ohne Trade-Plan binden dein Budget – dort „Plan anlegen“ oder das Trading-Budget im Einstieg anpassen.`
+    : (m.problems || []).map(p => p[1])[0] || "Keine passende Positionsgröße – Details im Einstieg.") : "";
   const red = (m.problems || []).find(p => p[0] === "red"), lim = pl.base ? pl.base.hi : null;
-  const size = !lv ? ["–", ""] : lv.L === 1 ? [`${fmt(lv.qty, 0)} Stück`, `≈ ${eur(lv.stake)}`] : [`Turbo ×${lv.L}`, `Einsatz ≈ ${eur(lv.stake)}`];
-  const txt = [`Kauf ${x.n} (${x.t})`, lv ? (lv.L === 1 ? `${fmt(lv.qty, 0)} Stück` : `Turbo ×${lv.L} für ≈ ${eur(lv.stake)} (Turbo im Einstieg wählen)`) : "",
-    lim ? `Limit ${fmt(lim * fx)} €${cur !== "EUR" ? ` (${fmt(lim)} ${cur})` : ""} – Obergrenze der Kaufzone` : "", `Wann: ${whenOpen(x.t)}`,
-    m.stop ? `Danach Stop-Loss ${fmt(m.stop * fx)} €${cur !== "EUR" ? ` (${fmt(m.stop)} ${cur})` : ""}` : "", "Verkauf: ab Tag 10 bei Schluss unter der EMA 20, spätestens Tag 60"].filter(Boolean).join("\n");
+  const size = noCap ? ["0 Stück", "kein freies Kapital"] : lv.L === 1 ? [`${fmt(lv.qty, 0)} Stück`, `≈ ${eur(lv.stake)}`] : [`Turbo ×${lv.L}`, `Einsatz ≈ ${eur(lv.stake)}`];
+  const cx = v => `${fmt(v * fx)} ${hasFx ? "€" : cur}${hasFx && cur !== "EUR" ? ` (${fmt(v)} ${cur})` : ""}`;
+  const txt = [`Kauf ${x.n} (${x.t})`, noCap ? "Stückzahl: kein freies Trading-Kapital – im Einstieg prüfen" : lv.L === 1 ? `${fmt(lv.qty, 0)} Stück` : `Turbo ×${lv.L} für ≈ ${eur(lv.stake)} (Turbo im Einstieg wählen)`,
+    lim ? `Limit ${cx(lim)} – Obergrenze der Kaufzone` : "", `Wann: ${whenOpen(x.t)}`,
+    m.stop ? `Danach Stop-Loss ${cx(m.stop)}` : "", "Verkauf: ab Tag 10 bei Schluss unter der EMA 20, spätestens Tag 60"].filter(Boolean).join("\n");
   const when = whenOpen(x.t), short = when.replace(/ · Eröffnung /, " · ").replace(" Uhr", ""), open = !!(buyOpen && buyOpen.has(x.t));
   const num = (l, v, c = "") => `<div><span>${l}</span><b class="${c}">${v}</b></div>`;
   return { lv, m, red, html: `<div class="kb${open ? " on" : ""}">
     <div class="kb-row" data-kbopen="${esc(x.t)}" role="button" tabindex="0" aria-expanded="${open}"><i class="tq-d g"></i>
-      <span class="kb-n"><b>${esc(x.n)}</b><small>${esc(short)}</small></span>
-      <span class="kb-k">${num("Stück", lv ? (lv.L === 1 ? fmt(lv.qty, 0) : `×${lv.L}`) : "–")}${num("Limit", lim != null ? `${fmt(lim * fx)} €` : "–")}${num("Stop", m.stop ? `${fmt(m.stop * fx)} €` : "–", "down")}</span>
+      <span class="kb-n"><b>${esc(x.n)}</b><small>${esc(short)}${noCap ? ` · <span class="gold">kein freies Kapital</span>` : ""}</small></span>
+      <span class="kb-k">${num("Stück", noCap ? "0" : lv.L === 1 ? fmt(lv.qty, 0) : `×${lv.L}`, noCap ? "gold" : "")}${num("Limit", lim != null ? `${fmt(lim * fx)} ${unit}` : "–")}${num("Stop", m.stop ? `${fmt(m.stop * fx)} ${unit}` : "–", "down")}</span>
       <button class="btn sm kb-buy" data-hbuy="${esc(x.t)}">Gekauft ✓</button><s class="kb-chev">›</s></div>
     ${open ? `<div class="kb-tk">
       <div><span>Orderart</span><b>Limit-Kauf</b></div>
       <div><span>Stück</span><b>${size[0]} <small>${size[1]}</small></b></div>
       <div><span>Limit</span><b>${eu(lim)}</b></div>
-      <div><span>Kaufzone</span><b>${pl.base ? `${fmt(pl.base.lo * fx)}–${fmt(pl.base.hi * fx)} €` : "–"}</b></div>
+      <div><span>Kaufzone</span><b>${pl.base ? `${fmt(pl.base.lo * fx)}–${fmt(pl.base.hi * fx)} ${unit}` : "–"}</b></div>
       <div><span>Gültig</span><b>${esc(when)}</b></div>
       <div><span>Danach Stop-Loss</span><b><span class="down">${eu(m.stop)}</span> <small>· Risiko ${lv ? `−${eur(lv.rEff)}` : "–"}</small></b></div>
       <div><span>Verkauf</span><b><small>ab Tag 10 bei Schluss unter der EMA 20, spätestens ${m.exit2 ? dateDE(isoD(m.exit2)) : "Tag 60"}</small></b></div>
-      ${red ? `<p class="kb-warn"><i class="vdot r"></i>${esc(red[1])}</p>` : ""}
+      ${noCap ? `<p class="kb-warn"><i class="vdot y"></i>${esc(capWhy)}</p>` : ""}${red && !(noCap && capWhy === red[1]) ? `<p class="kb-warn"><i class="vdot r"></i>${esc(red[1])}</p>` : ""}
       <div class="kb-act"><button class="btn ghost sm" data-hcopy="${esc(txt)}">Order kopieren</button><button class="btn ghost sm" data-ein="${esc(x.t)}">Details</button></div></div>` : ""}</div>` };
 }
 function todayModel() {
@@ -4456,7 +4461,6 @@ function tasksHtml(M) {
   const done = hDone(), act = M.tasks.filter(x => !done.has(x.k)), fin = M.tasks.filter(x => done.has(x.k));
   const must = M.tasks.filter(x => x.cat !== "prep"), mustOpen = must.filter(x => !done.has(x.k)).length;
   const buys = act.filter(x => x.cat === "buy");
-  if (!buyOpen && buys.length) buyOpen = new Set([buys[0].t]);
   const row = x => x.buy ? `<div class="tq tq-buy">${buySlip(x.buy).html}</div>` : `<div class="tq tq-${x.cat}"><div class="tq-h">${x.cat === "buy" ? "" : `<button class="tq-c" data-hdone="${esc(x.k)}" aria-label="Erledigt"></button>`}<i class="tq-d ${x.tone}"></i>
       <button class="tq-t" ${x.t && byTicker(x.t) ? `data-card="${esc(x.t)}"` : x.t ? `data-ein="${esc(x.t)}"` : SEC_LINK("etf")}><b>${esc(x.ttl)}</b><small>${esc(x.sub)}</small></button></div>
       ${x.act ? `<div class="tq-a">${x.act}</div>` : ""}</div>`;
@@ -4520,8 +4524,8 @@ function myHitsHtml() {
 }
 function todayHtml() {
   const M = todayModel(); moneyStrip = "";
-  const right = `${marketHtml()}${moneyHtml()}${soonHtml()}${changesHtml()}`;   // Marktampel oben als volle Karte (Wunsch 11/2026)
-  return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${tasksHtml(M)}${startMiniHtml()}${myHitsHtml()}</div>
+  const right = `${marketHtml()}${moneyHtml()}${soonHtml()}`;   // Marktampel oben als volle Karte (Wunsch 11/2026)
+  return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${tasksHtml(M)}${startMiniHtml()}${myHitsHtml()}${changesHtml()}</div>
     <div class="hcol">${right}</div></div>`;
 }
 
@@ -5021,8 +5025,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.21";
-const APP_NEWS = [["2026.11.21", "ETF: Raten bei der 3-Monats-Regel", [
+const APP_VER = "2026.11.22";
+const APP_NEWS = [["2026.11.22", "Heute: ausgeglichener, klarer beim Kaufen", [
+  ["Tickets geschlossen", "Kauf-Tickets öffnen sich erst beim Antippen."],
+  ["Kein freies Kapital", "Statt „Stück –“ steht jetzt „0 · kein freies Kapital“ – mit Erklärung im Ticket: Depot-Positionen ohne Trade-Plan binden dein Trading-Budget."],
+  ["Keine Lücke mehr", "„Seit dem letzten Scan“ steht jetzt links unter deinen Treffern."]]],
+  ["2026.11.21", "ETF: Raten bei der 3-Monats-Regel", [
   ["In 3 Raten über 8 Wochen", "Wird die ETF-Ampel nur wegen der 3-Monats-Regel grün, empfiehlt Kairo jetzt, das Extra-Geld in 3 Raten anzulegen. Im Test (1990–2026, vier Zeiträume) kostete das praktisch nichts und schützt davor, alles am Tag vor einem Rückgang zu investieren. Bei einem echten Rücksetzer-Signal: wie bisher sofort."]]],
   ["2026.11.20", "Scanner aufgeräumt", [
   ["Gleiche Zahlen überall", "Oben stehen Treffer, kaufbereit und geprüfte Aktien – passend zu den Reitern Treffer / Beobachten / Meine."],
