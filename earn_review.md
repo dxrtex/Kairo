@@ -37,17 +37,17 @@ Schnelligkeit: erste Zahlen im Mittel 173 Min. nach der Meldezeit (90 % innerhal
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
 - TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises as strong forecast signals record growth phase“
-- MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +8.1% · Gewinn +2% · Ausblick angehoben – „Earnings call transcript: Marico lifts FY 2027 outlook after strong Q2 growth“
+- MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +8.3% · Gewinn +2% · Ausblick angehoben – „Earnings call transcript: Marico lifts FY 2027 outlook after strong Q2 growth“
 - ACX.MC 2026-10-29: Kairo 37% steigt, Kurs -5.5% · Gewinn -3% · Ausblick keine Meldung
 - RYAAY 2026-11-02: Kairo 37% steigt, Kurs +2.9% · Gewinn -3% · Ausblick keine Meldung
 - TPEIR.AT 2026-10-30: Kairo 52% steigt, Kurs -2.1% · Gewinn -16% · Ausblick angehoben – „Earnings Call: Piraeus Bank verzeichnet starkes Wachstum in Q3 2026 und hebt Ausblick an“
 - NTPC.NS 2026-10-31: Kairo 54% steigt, Kurs +2.1% · Gewinn +6% · Ausblick keine Meldung
 - TRUE.BK 2026-11-02: Kairo 37% steigt, Kurs +1.6% · Gewinn -5% · Ausblick keine Meldung
-- NATIONALUM.NS 2026-11-02: Kairo 39% steigt, Kurs -2.5% · Gewinn -24% · Ausblick keine Meldung
+- NATIONALUM.NS 2026-11-02: Kairo 39% steigt, Kurs -2.4% · Gewinn -24% · Ausblick keine Meldung
 - ADRO.JK 2026-10-29: Kairo 42% steigt, Kurs +1.3% · Gewinn +0% · Ausblick keine Meldung
-- ITC.NS 2026-11-02: Kairo 42% steigt, Kurs +1.2% · Gewinn +1% · Ausblick keine Meldung
 - HTO.AT 2026-10-30: Kairo 54% steigt, Kurs +1.5% · Gewinn +5% · Ausblick keine Meldung
 - POWERGRID.NS 2026-11-01: Kairo 37% steigt, Kurs +1.0% · Gewinn -3% · Ausblick keine Meldung
+- ITC.NS 2026-11-02: Kairo 42% steigt, Kurs +1.1% · Gewinn +1% · Ausblick keine Meldung
 - ALPHA.AT 2026-10-30: Kairo 53% steigt, Kurs -0.4% · Gewinn +0% · Ausblick angehoben – „ALPHA: Higher NII and loan growth lifted guidance, while macro risks may raise Q4 provisions“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
