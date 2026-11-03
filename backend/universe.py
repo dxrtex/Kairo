@@ -16,7 +16,7 @@ import pandas as pd
 from .config import CONFIG, ROOT
 
 COLUMNS = ["ticker", "name", "exchange", "country", "currency", "market_cap_usd", "sector",
-           "earnings_date", "earnings_estimate", "ex_dividend_date", "dividend_date", "dividend_rate", "adv_usd"]
+           "earnings_date", "earnings_estimate", "ex_dividend_date", "dividend_date", "dividend_rate", "adv_usd", "industry"]
 US_EXCHANGES = ["NMS", "NYQ", "NGM", "NCM", "ASE"]   # NASDAQ, NYSE, NYSE American
 MAX_PAGES = 80
 
@@ -93,7 +93,7 @@ def screen(country: str, suffixes: tuple, currency: str, min_cap_usd: float) -> 
             if (home and q.get("quoteType", "EQUITY") == "EQUITY" and cap_usd and cap_usd >= min_cap_usd
                     and not _NOT_COMMON.search(name)):
                 rows.append({"ticker": sym, "name": name, "exchange": q.get("exchange", ""), "country": country,
-                             "currency": cur, "market_cap_usd": round(cap_usd), "sector": q.get("sector") or "",
+                             "currency": cur, "market_cap_usd": round(cap_usd), "sector": q.get("sector") or "", "industry": q.get("industry") or "",
                              "adv_usd": round((q.get("averageDailyVolume3Month") or 0) * (q.get("regularMarketPrice") or 0)
                                               * FX_USD.get(cur, FX_USD[currency])),
                              **quote_dates(q)})

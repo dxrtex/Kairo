@@ -29,7 +29,7 @@ from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
 from . import briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
-from .analysis import MARKET, SECTOR_DE, SECTOR_ETF, add_context, analyze, finalize, market_context, trend_state
+from .analysis import INDUSTRY_ETF, MARKET, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
 from .scanner import evaluate
@@ -192,7 +192,10 @@ def day_moves(df) -> dict:
         if len(c) <= 6:
             return {}
         tail = df.dropna(subset=["Low", "High"]).tail(5)       # Tagestiefs/-hochs der letzten 5 Tage (Spiel: K.-o. untertags)
-        return {"d1": round(float(c.iloc[-1] / c.iloc[-2] - 1), 4), "d5": round(float(c.iloc[-1] / c.iloc[-6] - 1), 4),
+        r = lambda n: round(float(c.iloc[-1] / c.iloc[-1 - n] - 1), 4) if len(c) > n and c.iloc[-1 - n] else None
+        y0 = c[c.index.year < c.index[-1].year]           # Jahresanfang: letzter Schluss des Vorjahres
+        ytd = round(float(c.iloc[-1] / y0.iloc[-1] - 1), 4) if len(y0) and y0.iloc[-1] else None
+        return {"d1": r(1), "d5": r(5), "m1": r(21), "m3": r(63), "ytd": ytd,     # Zeiträume für die Sektor-Ansicht
                 "lw": [[str(i.date()), round(float(r["Low"]), 4), round(float(r["High"]), 4)] for i, r in tail.iterrows()]}
     except Exception:
         return {}
@@ -605,7 +608,7 @@ def main(argv=None) -> int:
             print(f"ETF: {eo.get('c')} € · {eo.get('dd', 0) * 100:.1f} % unter dem Hoch · {eo.get('t')} · {len(eh) - eo.get('n', 0) if eh is not None else 0} Fehlkurse entfernt")
         except Exception as exc:
             print(f"ETF: Fehler {exc!r}")
-    ctx_hist = yf.history(sorted({t for t, _ in MARKET} | set(SECTOR_ETF.values()) | set(fear.TICKERS)), CONFIG.history.period, end=args.end)
+    ctx_hist = yf.history(sorted({t for t, _ in MARKET} | set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | set(fear.TICKERS)), CONFIG.history.period, end=args.end)
     market = market_context(ctx_hist)
     try:
         vix_now = float(ctx_hist["^VIX"]["Close"].dropna().iloc[-1])
@@ -650,6 +653,9 @@ def main(argv=None) -> int:
         tr_hit = bool(tres and tres.passed)
         try:
             search[t] = {**search_row(res, m, hint(res)), **entry_fields(res, tres, m), **day_moves(df), **closed_bar(df)}
+            ig = industry_group(m.get("industry") or about.get(t, {}).get("industry"))
+            if ig:                                   # Branche (Branchen-ETF-Kürzel) für die Sektor-Ansicht
+                search[t]["ig"] = ig
             try:                                     # Trade-Plan-Struktur (Basis, Stop, Widerstände) für den Reiter „Einstieg“
                 pl = tradeplan.structure(df, res.flags.get("atr"), ((res.zone or {}).get("fib") or {}).get("levels"),
                                          "trend" if tr_hit and not (res.passed or res.fast_hit) else "kairo")
