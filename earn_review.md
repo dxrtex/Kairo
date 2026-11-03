@@ -41,25 +41,25 @@ Schnelligkeit: erste Zahlen im Mittel 172 Min. nach der Meldezeit (90 % innerhal
 
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
-- XMTR 2026-11-03: Kairo 65% steigt, Kurs +17.7% · Gewinn +47% · Ausblick bestätigt – „For Q4 2026, we expect revenue of $254-$256 million, representing 32-33% growth year-over-year driven by approximately 35-36% marketplace growth.“
+- XMTR 2026-11-03: Kairo 65% steigt, Kurs +18.1% · Gewinn +47% · Ausblick bestätigt – „For Q4 2026, we expect revenue of $254-$256 million, representing 32-33% growth year-over-year driven by approximately 35-36% marketplace growth.“
 - TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises as strong forecast signals record growth phase“
-- MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +10.0% · Gewinn +2% · Ausblick angehoben – „MARICO: Broad-based growth lifted Q2 EBITDA 27% and raised FY27 profitability guidance to the mid-20s“
 - ZBRA 2026-11-03: Kairo 53% steigt, Kurs -7.5% · Gewinn +1% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
-- ADEA 2026-11-02: Kairo 26% steigt, Kurs -14.3% · Gewinn -30% · Ausblick gesenkt – „Adeia shares tumble 24% on earnings miss and weak guidance“
-- JAZZ 2026-11-02: Kairo 52% steigt, Kurs +7.8% · Gewinn -63% · Ausblick angehoben – „Raised 2026 total revenue guidance to a range of $4.775 - $4.85 billion.“
-- LSCC 2026-11-02: Kairo 71% steigt, Kurs +12.2% · Gewinn +31% · Ausblick gesenkt – „Lattice revenue for the fourth quarter of 2026 is expected to be between $325 million and $345 million.“
-- MDGL 2026-11-03: Kairo 54% steigt, Kurs -4.3% · Gewinn +310% · Ausblick keine Meldung
+- MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +10.0% · Gewinn +2% · Ausblick angehoben – „MARICO: Broad-based growth lifted Q2 EBITDA 27% and raised FY27 profitability guidance to the mid-20s“
+- JAZZ 2026-11-02: Kairo 52% steigt, Kurs +7.6% · Gewinn -63% · Ausblick angehoben – „Raised 2026 total revenue guidance to a range of $4.775 - $4.85 billion.“
+- MDGL 2026-11-03: Kairo 54% steigt, Kurs -6.6% · Gewinn +310% · Ausblick keine Meldung
+- ADEA 2026-11-02: Kairo 26% steigt, Kurs -13.4% · Gewinn -30% · Ausblick gesenkt – „Adeia shares tumble 24% on earnings miss and weak guidance“
+- LSCC 2026-11-02: Kairo 71% steigt, Kurs +12.1% · Gewinn +31% · Ausblick gesenkt – „Lattice revenue for the fourth quarter of 2026 is expected to be between $325 million and $345 million.“
 - ACX.MC 2026-10-29: Kairo 37% steigt, Kurs -5.5% · Gewinn -3% · Ausblick keine Meldung
+- IPGP 2026-11-03: Kairo 37% steigt, Kurs +3.1% · Gewinn +24% · Ausblick gesenkt – „For the fourth quarter of 2026, IPG expects revenue of $265 million to $295 million, adjusted gross margin between 37.0% and 40.0% and adjusted operating expens“
 - RYAAY 2026-11-02: Kairo 37% steigt, Kurs +2.9% · Gewinn -3% · Ausblick keine Meldung
-- IPGP 2026-11-03: Kairo 37% steigt, Kurs +2.9% · Gewinn +24% · Ausblick gesenkt – „For the fourth quarter of 2026, IPG expects revenue of $265 million to $295 million, adjusted gross margin between 37.0% and 40.0% and adjusted operating expens“
 - ITC.NS 2026-11-02: Kairo 42% steigt, Kurs +2.8% · Gewinn +1% · Ausblick keine Meldung
-- TVTX 2026-11-02: Kairo 39% steigt, Kurs -3.3% · Gewinn -174% · Ausblick keine Meldung
+- PLTR 2026-11-02: Kairo 60% steigt, Kurs -2.3% · Gewinn +7% · Ausblick angehoben – „We are raising our revenue guidance to between $8.530 - $8.534 billion.“
 - NATIONALUM.NS 2026-11-02: Kairo 39% steigt, Kurs -3.2% · Gewinn -24% · Ausblick keine Meldung
-- PLTR 2026-11-02: Kairo 60% steigt, Kurs -2.0% · Gewinn +7% · Ausblick angehoben – „We are raising our revenue guidance to between $8.530 - $8.534 billion.“
+- TPEIR.AT 2026-10-30: Kairo 52% steigt, Kurs -2.1% · Gewinn -16% · Ausblick angehoben – „Earnings Call: Piraeus Bank verzeichnet starkes Wachstum in Q3 2026 und hebt Ausblick an“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-Noch zu wenige untersuchte Fälle (1 Fehlprognosen, 24 Vergleichsfälle).
+Noch zu wenige untersuchte Fälle (2 Fehlprognosen, 23 Vergleichsfälle).
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
