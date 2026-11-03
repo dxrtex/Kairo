@@ -2090,7 +2090,7 @@ const COLS = [
   { k: "ticker", l: "Ticker", g: r => r.ticker, h: r => `<span class="tk">${favBtn(r.ticker)}<a href="#" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${esc(r.ticker)}</a>${wlTag(r)}</span>` },
   { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${esc((r.name || r.ticker).slice(0, 28))}</a>` },
   { k: "trend", l: "Prognose", g: r => r.trend ? (r.trend.fc ? r.trend.fc.d : r.trend.slope + (r.trend.d5 ?? 0) / 10) : 0, h: r => trendHtml(r) || "–" },
-  { k: "status", l: "Status", g: r => kSt(r).lv, h: r => kPill(r, state.view !== "hit") },   // in „Treffer“ ohne doppeltes „Treffer“
+  { k: "status", l: "Kauf-Status", g: r => r.passed ? kSt(r).lv : -1, h: r => r.passed ? kPill(r, false) : "" },   // nur Treffer: wann kaufen (Treffer/Fast-Treffer steht schon in x/11)   // in „Treffer“ ohne doppeltes „Treffer“
   { k: "chk", l: "Rücksetzer-Check", n: 1, g: r => chkP(r) ?? -1, h: r => chkCell(r) },
   { k: "grade", l: "Stufe", g: r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0, h: r => gradeBadge(r) || `<span class="muted">–</span>` },
   { k: "exchange", l: "Börse", g: r => r.exchange, h: r => esc(r.exchange) },
@@ -2110,7 +2110,7 @@ const COLS = [
   { k: "earn", l: "Earnings", g: r => r.earnings_date || "9", h: r => `<span class="${r.earnings_risk ? "down" : ""}">${dateDE(r.earnings_date)}</span>` },
   { k: "amp", l: "Kriterien", g: r => -r.missing.length, h: r => ampel(r) },
   { k: "met", l: "Erfüllt", n: 1, watch: 1, g: r => r.met ?? 0, h: r => !r.passed && !r.fast_hit && isTrend(r) ? `<b class="up">${r.tr.met} / ${r.tr.total}</b><small class="muted" style="display:block">Trend · Kairo ${r.met}/${r.total}</small>` : `<b class="${r.passed ? "up" : r.fast_hit ? "" : "muted"}">${r.met ?? "–"} / ${r.total ?? 11}</b>${filterMiss(r) ? `<small class="down" style="display:block">Filter ✗</small>` : ""}` },
-  { k: "miss", l: "Fehlt", fast: 1, g: r => r.missing[0] || "", h: r => { if (r.passed) return `<span class="up">– (Treffer)</span>`;
+  { k: "miss", l: "Fehlt", fast: 1, g: r => r.missing[0] || "", h: r => { if (r.passed) return `<span class="muted">–</span>`;
     if (isTrend(r) && !r.fast_hit) return `<span class="up">– (Trend-Rücksetzer)</span>`;
     const miss = (r.criteria || []).filter(x => !x.ok && SETUP_KEYS.includes(x.key)).map(x => SHORT[x.key]);
     const text = miss.length <= 2 ? miss.join(", ") : `${miss.slice(0, 2).join(", ")} +${miss.length - 2}`;
@@ -2764,6 +2764,7 @@ function depotHtml() {
   let invested = 0;
   koCheck();                                       // ausgeknockte Turbos im Hintergrund erkennen (gedrosselt)
   const koItems = list.map((p, i) => ({ p, i, ko: koOf(p) })).filter(x => x.ko);
+  koJournalSync(koItems);                          // Knock-outs als realisierten Verlust ins Journal
   const items = list.map((p, i) => {
     if (koOf(p)) return null;                       // ausgeknockt: eigene Liste unten, zählt nirgends mehr mit
     const r = p.t ? rowOf(p.t) : null, cur = r ? r.cur : null;
@@ -2836,11 +2837,25 @@ function depotHtml() {
     + `<div class="note" style="margin:16px 2px 0">Dein Depot wird nur auf diesem Gerät gespeichert (nicht im Internet). Kurse vom letzten Scan, Umrechnung in Euro zum Tageskurs${missingFx ? " – für einige Währungen fehlt der Wechselkurs" : ""}. Regeln der Strategie: halten bis Stop, ab Tag 10 Schluss unter der EMA 20 oder spätestens Tag 60 (vor Quartalszahlen früher), kein Gewinnziel, höchstens ${KMAX.maxOpen} Trades. Keine Anlageberatung.</div>`;
 }
 // Ausgeknockte Turbos: eigene Liste mit Verlust (Einsatz), Ausbuchen oder „doch nicht ausgeknockt“
+// Knock-out im Journal: Verkauf zu 0 € am K.-o.-Tag (Restwert 0 € angenommen) – nur wenn der Kauf im Scalable-Export steht
+// und Scalable selbst noch keinen Verkauf geliefert hat (sonst doppelt). Ein neuer Export ersetzt die Buchung; sie wird bei Bedarf neu angelegt.
+function koJournalSync(xs) {
+  const tx = txLoad(); if (!tx.length) return 0;
+  let add = 0;
+  xs.forEach(({ p, ko }) => { if (!p.isin || (state.koKeep || {})[koKey(p)]) return;
+    const id = "ko-" + p.isin, d = ko.d || isoD(new Date());
+    if (tx.some(t => t.id === id || (t.isin === p.isin && /sell|verkauf/i.test(t.type) && t.date >= (p.date || "")))) return;
+    if (!tx.some(t => t.isin === p.isin && /buy|kauf/i.test(t.type))) return;
+    tx.push({ id, date: d, time: "", status: "Executed", ref: "Knock-out (Kairo)", desc: p.n || (p.d && p.d.under) || p.isin, asset: "", type: "Sell", isin: p.isin,
+      qty: +p.qty, price: 0, amount: 0, fee: 0, tax: 0, cur: "EUR", ko: 1 }); add++; });
+  if (add) { tx.sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || ""))); txSave(tx); }
+  return add;
+}
 function koListHtml(xs) {
   if (!xs.length) return "";
   const lost = xs.reduce((a, x) => a + x.p.price * x.p.qty, 0), why = { Kurs: "Basiswert jenseits der Schwelle", Tagestief: "Tagestief erreichte die Schwelle", onvista: "laut onvista ausgeknockt" };
   return `<details class="hcard ko-list"${state.koOpen ? " open" : ""}><summary><b>Ausgeknockt · ${xs.length}</b><span class="down">−${eur(lost)} Einsatz</span></summary>
-    <div class="note" style="margin:8px 0">Diese Turbos haben ihre K.-o.-Schwelle erreicht und sind (fast) wertlos. Sie zählen nicht mehr zu Depotwert, freiem Kapital und Risiko. Beim nächsten Scalable-Export verschwinden sie ohnehin – oder buch sie hier aus.</div>
+    <div class="note" style="margin:8px 0">Diese Turbos haben ihre K.-o.-Schwelle erreicht und sind (fast) wertlos. Sie zählen nicht mehr zu Depotwert, freiem Kapital und Risiko. ${txLoad().some(t => t.ko) ? "Im Journal stehen sie als Verkauf zu 0 € am Knock-out-Tag (Restwert 0 € angenommen)." : "Mit deinem Scalable-Export erscheinen sie im Journal als Verlust."} Beim nächsten Export verschwinden sie ohnehin – oder buch sie hier aus.</div>
     ${xs.map(({ p, i, ko }) => `<div class="ko-row"><span><b>${esc(p.d.under || p.n || p.t)}</b><small>${esc(p.n || "")} · K.-o. ${fmt(p.d.ko)} ${esc(p.d.cur || "")} · ${esc(why[ko.src] || ko.src)}${ko.d ? ` (${dateDE(ko.d)})` : ""}</small></span>
       <b class="down">−${eur(p.price * p.qty)}</b><span class="ko-act"><button class="btn ghost sm" data-kodel="${i}">Ausbuchen</button><button class="hlink" data-kokeep="${esc(koKey(p))}">doch nicht</button></span></div>`).join("")}</details>`;
 }
@@ -2851,6 +2866,11 @@ document.addEventListener("click", e => {
   const k = e.target.closest("[data-kokeep]");
   if (k) { const key = k.dataset.kokeep, out = { ...(state.koOut || {}) }; delete out[key]; state.koOut = out; state.koKeep = { ...(state.koKeep || {}), [key]: 1 }; save(); render(); }
 });
+// „Plan anlegen“ aus dem Depot: Kaufdatum und Kaufkurs (€) für den Einstieg vormerken – vor dem Wechsel in den Einstieg
+document.addEventListener("click", e => { const b = e.target.closest("[data-pre-d]"); if (!b) return; const t = b.dataset.ein;
+  if (b.dataset.preD) state.tpD = { ...(state.tpD || {}), [t]: b.dataset.preD };
+  if (+b.dataset.preE > 0) state.tpEe = { ...(state.tpEe || {}), [t]: +(+b.dataset.preE).toFixed(2) };
+  save(); }, true);
 document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("ko-list")) { state.koOpen = e.target.open ? 1 : 0; save(); } }, true);
 // ---------- Positions-Analyse (Depot) ----------
 let anaData = null, anaLoading = null;
@@ -2985,7 +3005,9 @@ function groupHtml(g) {
       <div class="g2"><span class="muted">Gewinn / Verlust</span><b class="${g.pl == null ? "" : g.pl >= 0 ? "up" : "down"}">${g.known ? sgnEur(g.value - g.invested) : "–"}</b><small class="${g.pl == null ? "muted" : g.pl >= 0 ? "up" : "down"}">${g.known ? sgnPct(g.pl, 1) : "Wert unbekannt"}</small></div>
       <div class="g2"><span class="muted">Hebel</span><b>${g.levTxt}</b><small class="${g.koDist != null && g.koDist < .1 ? "down" : "muted"}">${g.koDist != null ? `K.-o. ${pct(g.koDist, 0)} entfernt` : "ohne Knock-out"}</small></div>
       <div class="g2"><span class="muted">Haltedauer</span><b>${st ? `Tag ${st.day}/${st.hold}` : "–"}</b><small class="${st && st.left <= 2 ? "gold" : "muted"}">${st ? `verkaufen am ${dateDE(st.sell)}` : "kein Trade-Plan"}</small></div>
-      <div class="gact tone-${(st || NOPLAN).tone}"><b>${esc((st || NOPLAN).t)}</b><span>${st ? `Stop ${st.fe(pl.stop)} € · noch ${st.slDist != null ? pct(st.slDist, 1) : "–"}${st.R != null ? ` · ${st.R >= 0 ? "+" : ""}${fmt(st.R, 2)} R` : ""}` : "Ohne Plan kein Stop und kein Verkaufstag"}</span>${st ? "" : `<button class="btn sm gact-btn" data-ein="${esc(tkClean(g.t))}">Plan anlegen ›</button>`}</div>
+      <div class="gact tone-${(st || NOPLAN).tone}"><b>${esc((st || NOPLAN).t)}</b><span>${st ? `Stop ${st.fe(pl.stop)} € · noch ${st.slDist != null ? pct(st.slDist, 1) : "–"}${st.R != null ? ` · ${st.R >= 0 ? "+" : ""}${fmt(st.R, 2)} R` : ""}` : "Ohne Plan kein Stop und kein Verkaufstag"}</span>${st ? "" : (() => { const d0 = g.ms.map(m => m.p.date).filter(Boolean).sort()[0] || "", stock = g.ms.every(m => !m.d);
+        const q = g.ms.reduce((a, m) => a + m.p.qty, 0), eP = stock ? (q ? g.ms.reduce((a, m) => a + m.p.price * m.p.qty, 0) / q : 0) : (g.avgEntry ? toEur(g.avgEntry, g.cur) || 0 : 0);
+        return `<button class="btn sm gact-btn" data-ein="${esc(tkClean(g.t))}" data-pre-d="${esc(d0)}" data-pre-e="${eP > 0 ? eP.toFixed(4) : ""}">Plan anlegen ›</button>`; })()}</div>
     </summary>`;
   const body = !open ? "" : `<div class="gbody">
     <div class="chartbox">${c ? `<div class="lwc-tools"><span class="muted">Zwei Finger: waagerecht auseinander = Zeit, senkrecht auseinander = Kurs, gemeinsam hoch/runter = Kurs verschieben · wischen = Zeit verschieben</span>
@@ -5115,8 +5137,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.24";
-const APP_NEWS = [["2026.11.24", "Depot, Scanner, ETF, Briefing", [
+const APP_VER = "2026.11.26";
+const APP_NEWS = [["2026.11.26", "Scanner: Kauf-Status statt Status", [
+  ["Nur noch, was zählt", "Die Spalte heißt jetzt „Kauf-Status“ und zeigt nur bei Treffern, wann gekauft wird (kaufbereit, Seitwärtsphase, verfallen, im Depot). Ob Treffer oder Fast-Treffer, siehst du an „Erfüllt x/11“. In „Beobachten“ entfällt die Spalte ganz."]]],
+  ["2026.11.25", "Depot: Knock-outs im Journal, Plan vorausgefüllt", [
+  ["Knock-out = realisierter Verlust", "Ausgeknockte Turbos stehen jetzt auch im Journal und in der Bilanz – als Verkauf zu 0 € am Knock-out-Tag (nur wenn der Kauf in deinem Scalable-Export steht und Scalable den Verkauf nicht schon selbst liefert)."],
+  ["Plan anlegen mit einem Tipp", "„Plan anlegen“ im Depot übernimmt Kaufdatum und Kaufkurs deiner Position in den Einstieg – nichts mehr abtippen."]]],
+  ["2026.11.24", "Depot, Scanner, ETF, Briefing", [
   ["Briefing einmal am Tag", "Das Tagesbriefing öffnet sich nur noch beim ersten Öffnen des Tages – danach über den Briefing-Knopf."],
   ["Depot: echte Turbo-Kurse", "Kairo holt den Geldkurs deiner Turbos bei onvista (per ISIN) – der Wert ist damit genau statt geschätzt. Kompakte Knöpfe, „Plan anlegen“ direkt an der Position, Depot-Check mit Turbos nach Wert."],
   ["Scanner", "Ticker und Name bleiben beim Wischen stehen, Hinweis auf weitere Spalten, Spaltenauswahl, Status-Legende, Live-Hinweis; auf dem iPhone brechen die Filter um statt zu verschwinden."],
@@ -6489,7 +6516,7 @@ function renderMain() {
   const full = list.length, rows = scanAll || full <= SCAN_LIM ? list : list.slice(0, SCAN_LIM);   // lange Listen: erst die besten 60
   const more = rows.length < full ? `<div class="row-actions" style="justify-content:center;margin:12px 0"><button class="btn ghost" data-scanall>Alle ${full} anzeigen</button></div>` : "";
   const onlyHits = k.size === 1 && k.has("hit");
-  const lead = ["ticker", "name", "status", "grade", "met", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)));   // Status: kaufbereit / Seitwärtsphase x/10 / verfallen
+  const lead = ["ticker", "name", "status", "grade", "met", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)) && !(x === "status" && !list.some(r => r.passed)));   // ohne Treffer in der Liste (z. B. Beobachten): keine Kauf-Status-Spalte   // Status: kaufbereit / Seitwärtsphase x/10 / verfallen
   const hid = new Set(state.hiddenCols || []);
   if (!(data.stats && data.stats.grade)) hid.add("grade");    // Stufen nur, wenn ein geprüftes Modell aktiv ist
   const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss", "chk"].includes(c.k))].filter(c => c.k === "ticker" || !hid.has(c.k));
@@ -6512,7 +6539,7 @@ document.addEventListener("click", e => { if (e.target.closest("[data-scanall]")
 // Kompakte Liste fürs iPhone (nur im neuen Design, nur schmale Bildschirme – sonst bleibt die Tabelle)
 function mListHtml(list, col) {
   const sortable = COLS.filter(c => ["status", "met", "name", "cap", "close", "tgt"].includes(c.k)), sel = col.k === "score" ? "status" : col.k;   // Standard-Sortierung = Status (kaufbereit zuerst)
-  const pill = r => kPill(r, state.view !== "hit");
+  const pill = r => r.passed ? kPill(r, false) : "";
   const big = r => isTrend(r) && !r.passed ? `${r.tr.met}/${r.tr.total}` : `${r.met ?? "–"}/${r.total ?? 11}`;
   return `<div class="mlist"><label class="msort">Sortieren<select id="mSort">${sortable.map(c => `<option value="${c.k}"${c.k === sel ? " selected" : ""}>${esc(c.l)}</option>`).join("")}</select></label>
     ${list.map(r => `<div class="mrow">${favBtn(r.ticker)}<a href="#" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}"><b>${esc((r.name || r.ticker).slice(0, 30))}</b>
