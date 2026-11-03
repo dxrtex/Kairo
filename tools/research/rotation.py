@@ -23,14 +23,14 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, ".")
-from backend.analysis import INDUSTRY_ETF, SECTOR_ETF  # noqa: E402
+from backend.analysis import INDUSTRY_ETF, SECTOR_ETF, THEME_ETF  # noqa: E402
 
 H = (4, 8, 13)
 
 
 def load():
     import yfinance as yf
-    tk = sorted(set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | {"SPY"})
+    tk = sorted(set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | set(THEME_ETF) | {"SPY"})
     h = yf.download(tk, period="max", interval="1d", auto_adjust=True, progress=False, group_by="ticker", threads=True)
     px, dv = {}, {}
     for t in tk:
@@ -127,9 +127,9 @@ def main(out_path: str) -> int:
     px, dv = load()
     print("ETFs:", px.shape[1] - 1, "Wochen:", len(px), "ab", px.index[0].date())
     S, F = signals(px, dv), fwd(px)
-    sec = [t for t in SECTOR_ETF.values() if t in px]; ind = [t for t in INDUSTRY_ETF if t in px]
+    sec = [t for t in SECTOR_ETF.values() if t in px]; ind = [t for t in INDUSTRY_ETF if t in px]; th = [t for t in THEME_ETF if t in px]
     res = {}
-    for uname, uni in (("sektoren", sec), ("branchen", ind), ("alle", sec + ind)):
+    for uname, uni in (("sektoren", sec), ("branchen", ind), ("themen", th), ("branchen+themen", ind + th), ("alle", sec + ind + th)):
         r = {k: eval_rank(S[k], F, uni) for k in ("mom4", "mom13", "mom26", "mom52", "accel", "rrg_speed", "ratio", "flow", "breakout")}
         r["kombi"] = combo(S, F, uni)
         r["quadrant"] = eval_quad(S["quad"], F, uni)
@@ -144,7 +144,7 @@ def main(out_path: str) -> int:
             print(f"  {h}W: " + " · ".join(f"{k} {x['mean']:+.2f}/{x['hit']}% n{x['n']}" for k, x in r["quadrant"][h].items()))
     # Aktueller Stand (letzte Woche) zur Anschauung
     last = S["quad"].iloc[-1]
-    res["jetzt"] = {t: {"quad": int(last[t]) if last[t] == last[t] else None, "ratio": round(float(S["ratio"][t].iloc[-1]), 1), "mom": round(float(S["mom"][t].iloc[-1]), 1)} for t in sec + ind}
+    res["jetzt"] = {t: {"quad": int(last[t]) if last[t] == last[t] else None, "ratio": round(float(S["ratio"][t].iloc[-1]), 1), "mom": round(float(S["mom"][t].iloc[-1]), 1)} for t in sec + ind + th}
     json.dump(res, open(out_path, "w"), ensure_ascii=False, indent=1, default=str)
     return 0
 
