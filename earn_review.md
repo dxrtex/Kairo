@@ -41,16 +41,16 @@ Schnelligkeit: erste Zahlen im Mittel 172 Min. nach der Meldezeit (90 % innerhal
 
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
-- ZBRA 2026-11-03: Kairo 53% steigt, Kurs -11.4% · Gewinn +1% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
-- ADEA 2026-11-02: Kairo 26% steigt, Kurs -15.7% · Gewinn -30% · Ausblick gesenkt – „Adeia shares tumble 24% on earnings miss and weak guidance“
+- ZBRA 2026-11-03: Kairo 53% steigt, Kurs -11.1% · Gewinn +1% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- ADEA 2026-11-02: Kairo 26% steigt, Kurs -16.0% · Gewinn -30% · Ausblick gesenkt – „Adeia shares tumble 24% on earnings miss and weak guidance“
+- MDGL 2026-11-03: Kairo 54% steigt, Kurs +9.0% · Gewinn +310% · Ausblick keine Meldung
 - TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises as strong forecast signals record growth phase“
-- MDGL 2026-11-03: Kairo 54% steigt, Kurs +8.7% · Gewinn +310% · Ausblick keine Meldung
 - MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +10.0% · Gewinn +2% · Ausblick angehoben – „MARICO: Broad-based growth lifted Q2 EBITDA 27% and raised FY27 profitability guidance to the mid-20s“
 - JAZZ 2026-11-02: Kairo 52% steigt, Kurs +7.5% · Gewinn -63% · Ausblick angehoben – „Raised 2026 total revenue guidance to a range of $4.775 - $4.85 billion.“
-- LSCC 2026-11-02: Kairo 71% steigt, Kurs +12.3% · Gewinn +31% · Ausblick angehoben – „Lattice revenue for the fourth quarter of 2026 is expected to be between $325 million and $345 million.“
-- PLTR 2026-11-02: Kairo 60% steigt, Kurs -4.9% · Gewinn +7% · Ausblick angehoben – „We are raising our revenue guidance to between $8.530 - $8.534 billion.“
-- TVTX 2026-11-02: Kairo 39% steigt, Kurs -7.0% · Gewinn -174% · Ausblick keine Meldung
-- XMTR 2026-11-03: Kairo 65% steigt, Kurs -4.0% · Gewinn +47% · Ausblick bestätigt – „For Q4 2026, we expect revenue of $254-$256 million, representing 32-33% growth year-over-year driven by approximately 35-36% marketplace growth.“
+- LSCC 2026-11-02: Kairo 71% steigt, Kurs +12.1% · Gewinn +31% · Ausblick angehoben – „Lattice revenue for the fourth quarter of 2026 is expected to be between $325 million and $345 million.“
+- XMTR 2026-11-03: Kairo 65% steigt, Kurs -4.7% · Gewinn +47% · Ausblick bestätigt – „For Q4 2026, we expect revenue of $254-$256 million, representing 32-33% growth year-over-year driven by approximately 35-36% marketplace growth.“
+- TVTX 2026-11-02: Kairo 39% steigt, Kurs -7.6% · Gewinn -174% · Ausblick keine Meldung
+- PLTR 2026-11-02: Kairo 60% steigt, Kurs -4.7% · Gewinn +7% · Ausblick angehoben – „We are raising our revenue guidance to between $8.530 - $8.534 billion.“
 - ACX.MC 2026-10-29: Kairo 37% steigt, Kurs -5.5% · Gewinn -3% · Ausblick keine Meldung
 - RYAAY 2026-11-02: Kairo 37% steigt, Kurs +2.9% · Gewinn -3% · Ausblick keine Meldung
 - ITC.NS 2026-11-02: Kairo 42% steigt, Kurs +2.8% · Gewinn +1% · Ausblick keine Meldung
