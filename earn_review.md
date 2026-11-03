@@ -1,14 +1,15 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 172 Min. nach der Meldezeit (90 % innerhalb 843 Min., 16 Meldungen); Mitteilung im Mittel 1 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 173 Min. nach der Meldezeit (90 % innerhalb 820 Min., 17 Meldungen); Mitteilung im Mittel 1 Min. danach.
 
-203 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-02), davon 13 mit aufgezeichneter Prognose.
+204 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-03), davon 14 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 13 | 46% | 0.261 | 0.250 |
+| alle | 14 | 50% | 0.257 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
-| Ausblick angehoben | 4 | 25% | 0.268 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 1 | 100% | 0.215 | 0.250 |
+| Ausblick angehoben | 5 | 40% | 0.257 | 0.250 |
 | Ausblick keine Meldung | 9 | 56% | 0.257 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
@@ -17,7 +18,7 @@ Schnelligkeit: erste Zahlen im Mittel 172 Min. nach der Meldezeit (90 % innerhal
 |---|---|---|
 | 30%–40% | 5 | 40% |
 | 40%–50% | 2 | 100% |
-| 50%–60% | 4 | 50% |
+| 50%–60% | 5 | 60% |
 | 60%–70% | 2 | 50% |
 
 ## Gewinn × Ausblick – echte Quote (n)
@@ -27,7 +28,7 @@ Schnelligkeit: erste Zahlen im Mittel 172 Min. nach der Meldezeit (90 % innerhal
 | deutlich unter Erwartung (< −10 %) | 33% (6) | 0% (1) | 29% (7) | 33% (12) |
 | unter Erwartung (−10 bis −2 %) | 14% (7) | 0% (2) | 50% (8) | 46% (13) |
 | im Rahmen (±2 %) | 33% (9) | 0% (2) | 17% (6) | 62% (16) |
-| über Erwartung (+2 bis +10 %) | 0% (6) | 33% (3) | 47% (17) | 58% (19) |
+| über Erwartung (+2 bis +10 %) | 0% (6) | 33% (3) | 50% (18) | 58% (19) |
 | deutlich über Erwartung (> +10 %) | 33% (9) | 67% (6) | 64% (28) | 58% (26) |
 
 ## Vorschläge zur Anpassung
@@ -48,12 +49,13 @@ Schnelligkeit: erste Zahlen im Mittel 172 Min. nach der Meldezeit (90 % innerhal
 - HTO.AT 2026-10-30: Kairo 54% steigt, Kurs +1.5% · Gewinn +5% · Ausblick keine Meldung
 - POWERGRID.NS 2026-11-01: Kairo 37% steigt, Kurs +1.0% · Gewinn -3% · Ausblick keine Meldung
 - ALPHA.AT 2026-10-30: Kairo 53% steigt, Kurs -0.4% · Gewinn +0% · Ausblick angehoben – „ALPHA: Higher NII and loan growth lifted guidance, while macro risks may raise Q4 provisions“
+- ISP.MI 2026-11-03: Kairo 54% steigt, Kurs +0.4% · Gewinn +5% · Ausblick angehoben – „Italy's Intesa lifts full year profit outlook as it prepares to launch MPS bid“
 - TRUE.BK 2026-11-02: Kairo 37% steigt, Kurs +0.0% · Gewinn -5% · Ausblick keine Meldung
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-Noch zu wenige untersuchte Fälle (1 Fehlprognosen, 12 Vergleichsfälle).
+Noch zu wenige untersuchte Fälle (1 Fehlprognosen, 13 Vergleichsfälle).
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Noch nicht: 13 von 200 nötigen Meldungen mit aufgezeichneter Prognose.
+Noch nicht: 14 von 200 nötigen Meldungen mit aufgezeichneter Prognose.
