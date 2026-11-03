@@ -57,3 +57,16 @@ def test_rotation_quadrants_and_hot():
     by = {x["k"]: x for x in rows}
     assert by["A"]["rrg"]["q"] == "leading" and by["B"]["rrg"]["q"] == "lagging"
     assert len(by["A"]["rrg"]["tail"]) == 5 and "hot" in by["A"] and "hot" not in by["B"]
+
+
+def test_market_context_europe_and_indices():
+    from backend.analysis import EU_SECTOR_ETF
+    n = 300
+    idx = pd.bdate_range("2025-01-02", periods=n)
+    mk = lambda st: pd.DataFrame({"Open": 1, "High": 1, "Low": 1, "Close": 100 * np.cumprod(np.full(n, 1 + st))}, index=idx)
+    hist = {"^STOXX": mk(0.0005), "^N225": mk(0.001), "EXV1.DE": mk(0.002), "EXV3.DE": mk(-0.001), "EXV4.DE": mk(0.0)}
+    out = market_context(hist)
+    eu = {x["k"]: x for x in out["sectors_eu"]}
+    assert set(eu) == {"EXV1.DE", "EXV3.DE", "EXV4.DE"} and eu["EXV1.DE"]["n"] == EU_SECTOR_ETF["EXV1.DE"][0]
+    assert eu["EXV1.DE"]["rrg"]["r"] > 100 > eu["EXV3.DE"]["rrg"]["r"] and "hot" not in eu["EXV1.DE"]
+    assert eu["EXV1.DE"]["flt"] == {"ig": ["KBE", "KRE"]} and out["^N225"]["name"] == "Nikkei 225"
