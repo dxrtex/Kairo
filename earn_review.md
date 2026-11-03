@@ -1,17 +1,17 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhalb 1027 Min., 49 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhalb 1020 Min., 52 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-245 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-03), davon 55 mit aufgezeichneter Prognose.
+247 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-03), davon 57 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 55 | 55% | 0.237 | 0.250 |
+| alle | 57 | 56% | 0.234 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 42 | 57% | 0.230 | 0.250 |
-| Ausblick gesenkt | 6 | 67% | 0.208 | 0.250 |
-| Ausblick bestätigt | 5 | 80% | 0.192 | 0.250 |
-| Ausblick angehoben | 22 | 50% | 0.245 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 44 | 59% | 0.226 | 0.250 |
+| Ausblick gesenkt | 8 | 75% | 0.191 | 0.250 |
+| Ausblick bestätigt | 4 | 75% | 0.205 | 0.250 |
+| Ausblick angehoben | 23 | 52% | 0.241 | 0.250 |
 | Ausblick keine Meldung | 22 | 50% | 0.247 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
@@ -19,10 +19,10 @@ Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhal
 | Kairo sagte | n | tatsächlich gestiegen |
 |---|---|---|
 | -0%–30% | 1 | 0% |
-| 30%–40% | 17 | 35% |
+| 30%–40% | 18 | 33% |
 | 40%–50% | 2 | 100% |
 | 50%–60% | 14 | 36% |
-| 60%–70% | 13 | 54% |
+| 60%–70% | 14 | 57% |
 | 70%–100% | 8 | 75% |
 
 ## Gewinn × Ausblick – echte Quote (n)
@@ -31,9 +31,9 @@ Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhal
 |---|---|---|---|---|
 | deutlich unter Erwartung (< −10 %) | 29% (7) | 0% (1) | 33% (9) | 38% (13) |
 | unter Erwartung (−10 bis −2 %) | 14% (7) | 0% (2) | 50% (8) | 31% (16) |
-| im Rahmen (±2 %) | 33% (9) | 0% (3) | 33% (9) | 62% (16) |
-| über Erwartung (+2 bis +10 %) | 12% (8) | 33% (3) | 43% (21) | 48% (23) |
-| deutlich über Erwartung (> +10 %) | 42% (12) | 70% (10) | 68% (37) | 55% (31) |
+| im Rahmen (±2 %) | 30% (10) | 0% (2) | 33% (9) | 62% (16) |
+| über Erwartung (+2 bis +10 %) | 12% (8) | 33% (3) | 45% (22) | 48% (23) |
+| deutlich über Erwartung (> +10 %) | 38% (13) | 70% (10) | 68% (37) | 55% (31) |
 
 ## Vorschläge zur Anpassung
 
@@ -41,35 +41,35 @@ Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhal
 
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
-- STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick bestätigt – „Stevanato Group (STVN) Maintains Fiscal 2026 Revenue Outlook Ami“
+- STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „STVN: Organic growth and stronger adjusted margins offset Engineering weakness and lower GLP-1 outlook“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 - CVI 2026-11-03: Kairo 64% steigt, Kurs -13.1% · Gewinn +37% · Ausblick keine Meldung
 - RRX 2026-11-03: Kairo 32% steigt, Kurs +11.8% · Gewinn +9% · Ausblick gesenkt – „Pressemitteilung: Ausblick gesenkt“
 - XMTR 2026-11-03: Kairo 65% steigt, Kurs +16.6% · Gewinn +47% · Ausblick bestätigt – „For Q4 2026, we expect revenue of $254-$256 million, representing 32-33% growth year-over-year driven by approximately 35-36% marketplace growth.“
+- DT 2026-11-03: Kairo 37% steigt, Kurs -14.7% · Gewinn +10% · Ausblick gesenkt – „Dynatrace shares tumble 16% on disappointing guidance outlook“
 - NBIX 2026-11-02: Kairo 64% steigt, Kurs +13.4% · Gewinn +20% · Ausblick angehoben – „Is Neurocrine Biosciences (NBIX) A Bargain On Raised INGREZZA Guidance?“
 - ADM 2026-11-03: Kairo 71% steigt, Kurs -6.8% · Gewinn +11% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - RYTM 2026-11-03: Kairo 64% steigt, Kurs -7.5% · Gewinn +18% · Ausblick keine Meldung
 - ZBRA 2026-11-03: Kairo 53% steigt, Kurs -8.8% · Gewinn +1% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - MDGL 2026-11-03: Kairo 54% steigt, Kurs -8.1% · Gewinn +310% · Ausblick keine Meldung
-- TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises as strong forecast signals record growth phase“
+- TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises on strong Q4 revenue guidance“
 - SRAD 2026-11-03: Kairo 61% steigt, Kurs +10.3% · Gewinn +60% · Ausblick bestätigt – „SRAD: Q3 growth and strong cash flow underpin reiterated FY2026 guidance and strategic portfolio moves“
 - MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +10.0% · Gewinn +2% · Ausblick angehoben – „MARICO: Broad-based growth lifted Q2 EBITDA 27% and raised FY27 profitability guidance to the mid-20s“
 - ADEA 2026-11-02: Kairo 26% steigt, Kurs -13.6% · Gewinn -30% · Ausblick gesenkt – „Adeia shares tumble 24% on earnings miss and weak guidance“
-- JAZZ 2026-11-02: Kairo 52% steigt, Kurs +7.1% · Gewinn -63% · Ausblick angehoben – „Raised 2026 total revenue guidance to a range of $4.775 - $4.85 billion.“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-6 Fehlprognosen und 49 Vergleichsfälle untersucht.
+6 Fehlprognosen und 51 Vergleichsfälle untersucht.
 
 - Markt: Bei 0% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 0% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -7.8%, getroffene Ø -4.9%.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -7.8%, getroffene Ø -5.2%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 33% (2) | 27% | 1.3 |
-| Marge | 17% (1) | 10% | 1.6 |
+| Ausblick | 33% (2) | 27% | 1.2 |
+| Marge | 17% (1) | 10% | 1.7 |
 | Umsatz | 67% (4) | 49% | 1.4 |
-| KI/Rechenzentren | 33% (2) | 10% | 3.3 |
+| KI/Rechenzentren | 33% (2) | 10% | 3.4 |
 
 **Kandidaten für neue Merkmale:** noch keine (ein Grund braucht ≥ 15 Fehlprognosen und Faktor ≥ 1,5).
 
@@ -83,4 +83,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Noch nicht: 55 von 200 nötigen Meldungen mit aufgezeichneter Prognose.
+Noch nicht: 57 von 200 nötigen Meldungen mit aufgezeichneter Prognose.
