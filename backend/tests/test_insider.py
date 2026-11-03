@@ -96,4 +96,4 @@ def test_filing_date_unknown_routine_and_cover():
                 {"watch": de}, {"AS"})
     assert c["AAPL"]["st"] == "ok" and c["MSFT"]["st"] == "zeitlimit" and c["NVDA"]["st"] == "nicht geprüft"
     assert c["SAP.DE"] == {"st": "ok", "src": "BaFin", "hit": True}
-    assert c["NOVO-B.CO"]["st"] == "keine Quelle" and c["ASML.AS"]["st"] == "fehler"
+    assert c["NOVO-B.CO"]["st"] == "ok" and c["ASML.AS"]["st"] == "fehler"

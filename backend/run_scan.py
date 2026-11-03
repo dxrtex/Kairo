@@ -565,19 +565,19 @@ def main(argv=None) -> int:
             print(f"Insider: {ins['filings']} Meldungen, {len(ins['buys'])} Käufe, {len(ins['sells'])} Verkäufe")
             # Scanner-Filter „Insider kaufen“: US-Käufe der letzten 90 Tage über die Abende sammeln (der Feed hat nur die neuesten)
             eu_rows, eu_bad = [], set()
-            try:                                     # Schweden + Schweiz: Register aller Emittenten → alle gescannten Aktien
+            try:                                     # Register aller Emittenten (SE, CH, DE, DK/FI, NO) → alle gescannten Aktien dieser Länder
                 figi = state.load("figi.json", {})
-                eu_uni = {t: (m or {}).get("name") or t for t, m in meta.items() if t.endswith((".ST", ".SW"))}
+                eu_uni = {t: (m or {}).get("name") or t for t, m in meta.items() if t.endswith((".ST", ".SW", ".DE", ".CO", ".HE", ".OL"))}
                 eu_rows, eu_bad = insider_eu.fetch(eu_uni, figi)
                 state.save("figi.json", figi)
-                ins["watch"] = [*ins.get("watch", []), *[x for x in eu_rows if x["t"] in w_ins]]
+                ins["watch"] = [*ins.get("watch", []), *[x for x in eu_rows if x["t"] in w_ins and not x["t"].endswith(".DE")]]   # DE: BaFin je Aktie (12 Mon.) schon drin
                 ins["cover"] = insider.cover(w_ins, ins, set(ins.get("bad", [])) | eu_bad)
             except Exception as exc:
-                print(f"Insider Schweden/Schweiz: Fehler {exc!r}"[:160])
+                print(f"Insider Europa (Register): Fehler {exc!r}"[:160])
             hist = insider.accumulate(state.load("insider_hist.json", {}).get("rows", []),
                                       [*ins.pop("mkt_buys", []), *[x for x in eu_rows if x["kind"] == "buy"]])
             state.save("insider_hist.json", {"rows": hist})
-            ins["signal"] = insider.signal([*ins.get("watch", []), *hist])
+            ins["signal"] = insider.signal(insider.accumulate([], [*ins.get("watch", []), *hist]))   # gleiche Meldung nur einmal zählen
             print(f"Insider-Verlauf: {len(hist)} Käufe in 90 Tagen, Signal für {len(ins['signal'])} Aktien")
         except Exception as exc:
             print(f"Insider: Fehler {exc!r}")

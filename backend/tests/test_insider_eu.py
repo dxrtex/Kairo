@@ -44,3 +44,14 @@ def test_net_rows_and_exact_name():
 def test_parse_fi_skips_related_company():
     csv_ = FI_CSV.replace("X;Martin Lundstedt;", "X;Lundstedt Invest AB;Martin Lundstedt;", 1).replace("LEI-kod;Person", "LEI-kod;Anmälningsskyldig;Person", 1)
     assert eu.parse_fi(csv_) == []
+
+
+def test_nnum_formats():
+    assert eu._nnum("1,234,567.89") == 1234567.89 and eu._nnum("1.234.567,89") == 1234567.89 and eu._nnum("1 234") == 1234 and eu._nnum("12,5") == 12.5
+
+
+def test_parse_mar():
+    txt = ("a) Name Jane Doe Reason for the notification Position/status CEO b) Initial notification ... Nature of the transaction Acquisition "
+           "c) Price(s) and volume(s) Price(s) 100.50 DKK Volume(s) 1,000 d) Aggregated information")
+    m = eu.parse_mar(txt)
+    assert m["kind"] == "buy" and m["who"] == "Jane Doe" and m["val"] == round(1000 * 100.5 * eu.EUR["DKK"])

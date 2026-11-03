@@ -203,10 +203,142 @@ def fetch_ch(uni: dict[str, str], figi: dict, days: int = 90, max_pages: int = 4
     return out
 
 
+BAFIN = "https://portal.mvp.bafin.de/database/DealingsInfo/sucheForm.do"
+NORDIC = ("https://api.news.eu.nasdaq.com/news/query.action?type=json&showAttachments=false&showCnsSpecific=true&showCompany=true"
+          "&countResults=true&freeText=&company=&market={m}&cnscategory=Managers%27+Transactions&fromDate={d0}&toDate={d1}"
+          "&globalGroup=exchangeNotice&globalName=NordicAllMarkets&displayLanguage=en&language=en&timeZone=CET"
+          "&dateMask=yyyy-MM-dd+HH%3Amm%3Ass&limit=100&start={st}&dir=DESC")
+NORDIC_MKT = {"CO": "Main Market, Copenhagen", "HE": "Main Market, Helsinki"}
+OSLO = "https://api3.oslo.oslobors.no/v1/newsreader/list?category=1102&fromDate={d0}&toDate={d1}"
+
+
+def fetch_de(uni: dict[str, str], figi: dict, days: int = 90) -> list[dict]:
+    """Deutschland: BaFin-Datenbank für ALLE Emittenten (Zeitraum-Suche, je 10 Tage), Zuordnung über die ISIN (OpenFIGI)."""
+    from .bafin import parse_csv
+    s = requests.Session(); s.headers.update(UA)
+    rows, seen, since = [], set(), (date.today() - timedelta(days=days)).isoformat()
+    for pg in range(1, 13):                           # der CSV-Export liefert je Seite ~29 Zeilen (neueste zuerst); Zeitraum wird ignoriert
+        p = {"meldepflichtigerName": "", "emittentName": "", "emittentIsin": "", "zeitraum": "0", "zeitraumVon": "", "zeitraumBis": "",
+             "emittentButton": "Suche Emittent", "d-4000784-e": "1", "6578706f7274": "1", "d-4000784-p": str(pg)}
+        r = s.get(BAFIN, params=p, timeout=60)
+        r.encoding = "utf-8"
+        got = parse_csv(r.text) if r.ok and "csv" in r.headers.get("content-type", "") else []
+        new = [x for x in got if (x["isin"], x["who"], x["d"], x["kind"], x["val"]) not in seen]
+        seen |= {(x["isin"], x["who"], x["d"], x["kind"], x["val"]) for x in got}
+        rows += new
+        oldest = min((x["d"] for x in got), default="")
+        print(f"BaFin Seite {pg}: {len(got)} Zeilen, {len(new)} neu, älteste {oldest}")
+        if not new or (oldest and oldest < since):
+            break
+        time.sleep(0.6)
+    rows = [x for x in rows if x["d"] >= since]
+    rows = [x for x in rows if "aktie" in (x.get("inst") or "").lower() or not x.get("inst")]
+    figi_map([x["isin"] for x in rows], figi)
+    by_key, by_name = _index(uni, ".DE")
+    out = []
+    for x in rows:
+        t = _match(x["isin"], x["n"], uni, figi, by_key, by_name)
+        if t:
+            role = x.get("role") or ""
+            out.append({"t": t, "n": uni.get(t), "who": x["who"], "role": "Vorstand" if re.search(r"vorstand", role, re.I) else "Aufsichtsrat" if re.search(r"aufsicht", role, re.I) else role or "Führungskraft",
+                        "kind": x["kind"], "d": x["d"], "val": x["val"], "cur": "EUR", "src": "BaFin",
+                        "url": f"{BAFIN}?emittentIsin={x['isin']}&zeitraum=0&emittentButton=Suche+Emittent"})
+    out = net_rows(out)
+    print(f"Insider Deutschland (alle): {len(rows)} Geschäfte, {len(out)} zugeordnet ({sum(x['kind'] == 'buy' for x in out)} Käufe)")
+    return out
+
+
+NUM = r"(\d{1,3}(?:[ ,.\u00a0]\d{3})*(?:[.,]\d+)?|\d+(?:[.,]\d+)?)"
+
+
+def _nnum(x: str) -> float:
+    x = x.replace("\u00a0", " ").strip()
+    if re.fullmatch(r"\d{1,3}(?:[ ,]\d{3})+(?:\.\d+)?", x):          # 1,234,567.89 / 1 234 567
+        return float(x.replace(",", "").replace(" ", ""))
+    if re.fullmatch(r"\d{1,3}(?:[ .]\d{3})+(?:,\d+)?", x):            # 1.234.567,89
+        return float(x.replace(".", "").replace(" ", "").replace(",", "."))
+    return float(x.replace(",", ".").replace(" ", ""))
+
+
+def parse_mar(text: str) -> dict | None:
+    """MAR-Artikel-19-Formular (Nasdaq-Nordic-Meldung als Text): Art (Kauf/Verkauf), Person, Funktion, Volumen × Preis, Währung."""
+    t = re.sub(r"\s+", " ", text)
+    kind = "buy" if re.search(r"Nature of the transaction[^.]{0,40}?\b(Acquisition|Purchase|Subscription|Køb|Osto|Merkintä)", t, re.I) else \
+           "sell" if re.search(r"Nature of the transaction[^.]{0,40}?\b(Disposal|Sale|Salg|Myynti)", t, re.I) else None
+    if not kind:
+        return None
+    vol = re.search(r"(?:Aggregated volume|Volume\(s\)|Volume)[\s:]{0,6}" + NUM, t, re.I)          # Zahl direkt nach dem Feld
+    px = re.search(r"(?:Aggregated price|Volume weighted average price|Price\(s\)|Price)[\s:]{0,6}" + NUM, t, re.I)
+    cur = re.search(r"\b(DKK|EUR|SEK|NOK|USD|ISK)\b", t)
+    who = re.search(r"Name[: ]+([A-ZÆØÅÄÖ][\w .'-]{2,60}?)(?: Reason| Position|\s+2\b|\s+b\))", t)
+    role = re.search(r"Position/status[: ]+([\w ,/&-]{2,60}?)(?: b\)| Initial| Amendment)", t, re.I)
+    try:
+        v, p = _nnum(vol.group(1)), _nnum(px.group(1))
+    except Exception:
+        return {"kind": kind, "val": None, "who": who.group(1).strip() if who else "", "role": role.group(1).strip() if role else ""}
+    c = cur.group(1) if cur else "EUR"
+    return {"kind": kind, "val": round(v * p * EUR.get(c, 0.1)), "who": who.group(1).strip() if who else "", "role": role.group(1).strip() if role else ""}
+
+
+def fetch_nordic(uni: dict[str, str], figi: dict, days: int = 90, max_msgs: int = 400) -> list[dict]:
+    """Dänemark/Finnland: Nasdaq-Nordic-Meldungen „Managers' Transactions“; Betrag aus dem MAR-Formular im Meldungstext,
+    sonst Meldung ohne Betrag. Zuordnung über den Firmennamen (exakt)."""
+    d0, d1, out, n = date.today() - timedelta(days=days), date.today(), [], 0
+    for suf, mkt in NORDIC_MKT.items():
+        _, by_name = _index(uni, "." + suf)
+        items, st = [], 0
+        while st < 1000:
+            j = requests.get(NORDIC.format(m=requests.utils.quote(mkt), d0=d0, d1=d1, st=st), headers=UA, timeout=30).json()
+            got = ((j.get("results") or {}).get("item")) or []
+            items += got
+            if len(got) < 100:
+                break
+            st += 100
+        items = [it for it in items if (it.get("releaseTime") or "")[:10] >= str(d0)]   # die Schnittstelle ignoriert fromDate
+        for it in items:
+            t = by_name.get(_name_key(it.get("company") or ""))
+            if not t or n >= max_msgs:
+                continue
+            n += 1
+            try:
+                html = requests.get(it["messageUrl"], headers=UA, timeout=20).text
+                txt = re.sub(r"<[^>]+>", " ", re.sub(r"(?is)<(script|style).*?</\1>", " ", html))
+                m = parse_mar(txt)
+            except Exception:
+                m = None
+            base = {"t": t, "n": uni.get(t), "d": (it.get("releaseTime") or "")[:10], "src": "Nasdaq Nordic", "url": it.get("messageUrl")}
+            if m and m.get("val"):
+                out.append({**base, "who": m["who"] or "Führungskraft (Name in der Meldung)", "role": m["role"] or "Führungskraft", "kind": m["kind"], "val": m["val"], "cur": "EUR"})
+            else:
+                out.append({**base, "who": (it.get("headline") or "")[:120], "role": "Führungskraft", "kind": "meld"})
+            time.sleep(0.2)
+        print(f"Insider {suf} (Nasdaq Nordic): {len(items)} Meldungen")
+    trades = net_rows([x for x in out if x["kind"] != "meld"])
+    melds = [x for x in out if x["kind"] == "meld"]
+    print(f"Insider Dänemark/Finnland: {len(trades)} Geschäfte mit Betrag ({sum(x['kind'] == 'buy' for x in trades)} Käufe), {len(melds)} ohne Betrag")
+    return trades + melds
+
+
+def fetch_oslo(uni: dict[str, str], days: int = 90) -> list[dict]:
+    """Norwegen: Osloer Börse (Newsweb, Kategorie Meldepflichtiger Handel) – nur Meldung, Betrag steht im PDF."""
+    d0, d1 = date.today() - timedelta(days=days), date.today()
+    j = requests.get(OSLO.format(d0=d0, d1=d1), headers=UA, timeout=30).json()
+    out = []
+    for m in (j.get("data") or {}).get("messages") or []:
+        t = f"{m.get('issuerSign')}.OL"
+        if t in uni and not re.search(r"bond|obligasjon|\d{4}/\d{4}", m.get("title") or "", re.I):
+            out.append({"t": t, "n": uni[t], "who": m.get("title") or "", "role": "Primærinnsider", "kind": "meld",
+                        "d": (m.get("publishedTime") or "")[:10], "src": "Oslo Børs",
+                        "url": f"https://newsweb.oslobors.no/message/{m.get('messageId')}"})
+    print(f"Insider Norwegen (Oslo Børs): {len(out)} Meldungen ohne Betrag")
+    return out
+
+
 def fetch(uni: dict[str, str], figi: dict, days: int = 90) -> tuple[list[dict], set]:
-    """Alle zugeordneten Geschäfte beider Länder; zweites Ergebnis: Länder-Endungen, deren Quelle ausgefallen ist."""
+    """Alle zugeordneten Geschäfte (Schweden, Schweiz, Deutschland alle, Dänemark/Finnland) und Meldungen (Norwegen);
+    zweites Ergebnis: Länder-Endungen, deren Quelle ausgefallen ist."""
     rows, bad = [], set()
-    for suf, fn in (("ST", fetch_se), ("SW", fetch_ch)):
+    for suf, fn in (("ST", fetch_se), ("SW", fetch_ch), ("DE", fetch_de), ("CO", fetch_nordic), ("OL", lambda u, f, d: fetch_oslo(u, d))):
         try:
             rows += fn(uni, figi, days)
         except Exception as exc:
@@ -216,26 +348,25 @@ def fetch(uni: dict[str, str], figi: dict, days: int = 90) -> tuple[list[dict], 
 
 
 def main() -> int:
-    uni = {"HACK.ST": "Hacksaw AB (publ)", "BEKN.SW": "Berner Kantonalbank AG", "VOLV-B.ST": "AB Volvo (publ)", "ERIC-B.ST": "Telefonaktiebolaget LM Ericsson (publ)", "INVE-B.ST": "Investor AB (publ)",
-           "NESN.SW": "Nestlé S.A.", "NOVN.SW": "Novartis AG", "UBSG.SW": "UBS Group AG", "ROG.SW": "Roche Holding AG"}
+    uni = {"VOLV-B.ST": "AB Volvo (publ)", "NESN.SW": "Nestlé S.A.", "SAP.DE": "SAP SE", "AAD.DE": "Amadeus Fire AG", "UBK.DE": "UmweltBank AG",
+           "NOVO-B.CO": "Novo Nordisk A/S", "DNORD.CO": "Dampskibsselskabet NORDEN A/S", "NOKIA.HE": "Nokia Oyj", "EQNR.OL": "Equinor ASA", "AIRX.OL": "AirX Group Holdings Ltd."}
     figi: dict = {}
-    try:                                                   # Rohdaten zeigen (Spalten, Werte), damit die Zuordnung prüfbar ist
-        raw = requests.get(FI.format(d0=(date.today() - timedelta(days=7)).isoformat(), d1=date.today().isoformat()), headers=UA, timeout=90).content
-        txt = _decode(raw)
-        print("FI Kopf+2:", txt.splitlines()[:3])
-        p = parse_fi(txt)
-        print("FI geparst:", len(p), "Käufe", sum(x["kind"] == "buy" for x in p), p[:2])
-        it = requests.get(SIX.format(p=0), headers=UA, timeout=30).json().get("itemList") or []
-        from collections import Counter
-        print("SIX Felder:", sorted(it[0]) if it else None, Counter(str(i.get("buySellIndicator")) for i in it), Counter(str(i.get("obligorFunctionCode")) for i in it))
-        print("SIX Beispiele:", it[:3])
-        print("FIGI:", figi_map(["SE0000115446", "CH0038863350", "CH0012005267"], {}))
+    for name, fn in (("DE", lambda: fetch_de(uni, figi, 30)), ("Nordic", lambda: fetch_nordic(uni, figi, 30, 40)), ("Oslo", lambda: fetch_oslo(uni, 30))):
+        try:
+            rows = fn()
+            print(name, len(rows), rows[:4])
+        except Exception as exc:
+            print(name, "Fehler", repr(exc))
+    # MAR-Parser an einer echten Nordic-Meldung prüfen
+    try:
+        j = requests.get(NORDIC.format(m=requests.utils.quote(NORDIC_MKT["CO"]), d0=date.today() - timedelta(days=10), d1=date.today(), st=0), headers=UA, timeout=30).json()
+        for it in ((j.get("results") or {}).get("item") or [])[:6]:
+            html = requests.get(it["messageUrl"], headers=UA, timeout=20).text
+            txt = re.sub(r"<[^>]+>", " ", re.sub(r"(?is)<(script|style).*?</\1>", " ", html))
+            k = txt.find("Nature of the transaction")
+            print("MAR", it.get("company"), "→", parse_mar(txt), "| Ausschnitt:", re.sub(r"\s+", " ", txt[max(0, k - 300):k + 600])[:900] if k >= 0 else "(kein Formular im Text)")
     except Exception as exc:
-        print("Roh-Test Fehler", repr(exc))
-    rows, bad = fetch(uni, figi, days=30)
-    print("Ausfälle:", bad or "keine", "· FIGI-Cache:", len(figi))
-    for x in rows[:25]:
-        print(x)
+        print("MAR-Test Fehler", repr(exc))
     return 0
 
 
