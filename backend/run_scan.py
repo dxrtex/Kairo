@@ -29,7 +29,7 @@ from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
 from . import insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
-from .analysis import INDUSTRY_ETF, MARKET, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
+from .analysis import INDUSTRY_ETF, MARKET, THEME_ETF, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
 from .scanner import evaluate
@@ -626,7 +626,7 @@ def main(argv=None) -> int:
             print(f"ETF: {eo.get('c')} € · {eo.get('dd', 0) * 100:.1f} % unter dem Hoch · {eo.get('t')} · {len(eh) - eo.get('n', 0) if eh is not None else 0} Fehlkurse entfernt")
         except Exception as exc:
             print(f"ETF: Fehler {exc!r}")
-    ctx_hist = yf.history(sorted({t for t, _ in MARKET} | set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | set(fear.TICKERS)), CONFIG.history.period, end=args.end)
+    ctx_hist = yf.history(sorted({t for t, _ in MARKET} | set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | set(THEME_ETF) | set(fear.TICKERS)), CONFIG.history.period, end=args.end)
     market = market_context(ctx_hist)
     try:
         vix_now = float(ctx_hist["^VIX"]["Close"].dropna().iloc[-1])
