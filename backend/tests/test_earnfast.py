@@ -103,5 +103,5 @@ def test_odds_caution_rules():
     head = {"eps_s": 0.12, "guide": {"d": 1, "src": [{"t": "X lifts outlook"}]}}
     p_sec, p_head, p_none = earnfast.app_odds(sec, t="AAPL"), earnfast.app_odds(head, t="AAPL"), earnfast.app_odds({"eps_s": 0.12}, t="AAPL")
     assert p_sec > p_head and p_head == p_none                      # Schlagzeilen-„angehoben“ zählt nicht
-    p_eu = earnfast.app_odds(sec, t="SAP.DE")
-    assert abs(p_eu - (0.5 + (p_sec - 0.5) / 2)) < 1e-3              # außerhalb der USA halber Abstand zu 50 %
+    assert earnfast.app_odds(sec, t="SAP.DE") == p_sec                 # Europa: US-Quoten
+    assert earnfast.app_odds({"eps_s": 0.12}, t="7203.T") == earnfast.ASIA_UP[4]   # Asien: eigene Quote
