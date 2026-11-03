@@ -203,7 +203,7 @@ def signal(rows: list[dict], days: int = 90) -> dict:
     return res
 
 
-SOURCE_BY_SUFFIX = {"DE": "BaFin", "AS": "AFM (ohne Betrag)", "AX": "ASX (ohne Betrag)"}
+SOURCE_BY_SUFFIX = {"DE": "BaFin", "AS": "AFM (ohne Betrag)", "AX": "ASX (ohne Betrag)", "ST": "FI Schweden", "SW": "SIX Schweiz"}
 
 
 def cover(watch: dict[str, str], out: dict, bad: set | frozenset = frozenset()) -> dict:
@@ -366,6 +366,7 @@ def fetch(pages: int = 3, budget_s: float = 150, watch: dict[str, str] | None = 
                 print(f"Insider {nm}: Fehler {exc!r}"[:160])
         out["signal"] = signal(out["watch"])
         out["cover"] = cover(watch, out, bad)
+        out["bad"] = sorted(bad)
     return out
 
 

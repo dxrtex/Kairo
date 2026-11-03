@@ -28,7 +28,7 @@ from .config import CONFIG, ROOT, as_dict
 from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
-from . import briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
+from . import insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import INDUSTRY_ETF, MARKET, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -564,7 +564,18 @@ def main(argv=None) -> int:
             ins = insider.fetch(watch=w_ins)
             print(f"Insider: {ins['filings']} Meldungen, {len(ins['buys'])} Käufe, {len(ins['sells'])} Verkäufe")
             # Scanner-Filter „Insider kaufen“: US-Käufe der letzten 90 Tage über die Abende sammeln (der Feed hat nur die neuesten)
-            hist = insider.accumulate(state.load("insider_hist.json", {}).get("rows", []), ins.pop("mkt_buys", []))
+            eu_rows, eu_bad = [], set()
+            try:                                     # Schweden + Schweiz: Register aller Emittenten → alle gescannten Aktien
+                figi = state.load("figi.json", {})
+                eu_uni = {t: (m or {}).get("name") or t for t, m in meta.items() if t.endswith((".ST", ".SW"))}
+                eu_rows, eu_bad = insider_eu.fetch(eu_uni, figi)
+                state.save("figi.json", figi)
+                ins["watch"] = [*ins.get("watch", []), *[x for x in eu_rows if x["t"] in w_ins]]
+                ins["cover"] = insider.cover(w_ins, ins, set(ins.get("bad", [])) | eu_bad)
+            except Exception as exc:
+                print(f"Insider Schweden/Schweiz: Fehler {exc!r}"[:160])
+            hist = insider.accumulate(state.load("insider_hist.json", {}).get("rows", []),
+                                      [*ins.pop("mkt_buys", []), *[x for x in eu_rows if x["kind"] == "buy"]])
             state.save("insider_hist.json", {"rows": hist})
             ins["signal"] = insider.signal([*ins.get("watch", []), *hist])
             print(f"Insider-Verlauf: {len(hist)} Käufe in 90 Tagen, Signal für {len(ins['signal'])} Aktien")

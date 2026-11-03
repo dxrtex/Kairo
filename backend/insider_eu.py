@@ -90,12 +90,21 @@ def _index(uni: dict[str, str], suffix: str) -> tuple[dict, dict]:
     return {_key(t[: -len(suffix)]): t for t in sub}, {_name_key(n): t for t, n in sub.items() if n}
 
 
+def _decode(raw: bytes) -> str:
+    """FI liefert UTF-16 (mit oder ohne BOM)."""
+    if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        return raw.decode("utf-16")
+    if len(raw) > 3 and raw[1:2] == b"\x00":
+        return raw.decode("utf-16-le", "replace")
+    return raw.decode("utf-8-sig", "replace")
+
+
 def parse_fi(text: str) -> list[dict]:
     """FI-CSV (Semikolon, Kopfzeile auf Schwedisch) → Geschäfte. Nur Börsengeschäfte mit Aktien, ohne Aktienprogramme/Korrekturen."""
     rd = csv.DictReader(io.StringIO(text), delimiter=";")
     out = []
     for r in rd:
-        g = lambda *ks: next((r[k] for k in r if k and any(x.lower() in k.lower() for x in ks) and r[k] is not None), "") or ""
+        g = lambda *ks: next((r[k] for x in ks for k in r if k and x.lower() in k.lower() and r[k] is not None), "") or ""
         kind = g("Karaktär").strip().lower()
         kind = "buy" if kind.startswith("förvärv") else "sell" if kind.startswith("avyttring") else ""
         if not kind or "aktie" not in g("Instrumenttyp").lower():
@@ -113,8 +122,7 @@ def fetch_se(uni: dict[str, str], figi: dict, days: int = 90) -> list[dict]:
     d1, d0 = date.today(), date.today() - timedelta(days=days)
     r = requests.get(FI.format(d0=d0.isoformat(), d1=d1.isoformat()), headers=UA, timeout=90)
     raw = r.content
-    text = raw.decode("utf-16") if raw[:2] in (b"\xff\xfe", b"\xfe\xff") else raw.decode("utf-8-sig", "replace")
-    rows = parse_fi(text)
+    rows = parse_fi(_decode(raw))
     figi_map([x["isin"] for x in rows], figi)
     by_key, by_name = _index(uni, ".ST")
     out = []
@@ -127,6 +135,7 @@ def fetch_se(uni: dict[str, str], figi: dict, days: int = 90) -> list[dict]:
             out.append({"t": t, "n": uni.get(t), "who": x["who"] or x["firm"], "role": role + (" · nahestehend" if x["rel"] else ""),
                         "kind": x["kind"], "d": x["d"], "val": x["val"], "cur": "EUR", "src": "FI Schweden",
                         "url": FI_PAGE.format(q=requests.utils.quote(x["firm"]))})
+    print(f"Insider Schweden: nicht zugeordnet z. B. {[(x['firm'], figi.get(x['isin'])) for x in rows if not _match(x['isin'], x['firm'], uni, figi, by_key, by_name)][:6]}")
     print(f"Insider Schweden: {len(rows)} Geschäfte, {len(out)} zugeordnet ({sum(x['kind'] == 'buy' for x in out)} Käufe)")
     return out
 
@@ -165,6 +174,8 @@ def fetch_ch(uni: dict[str, str], figi: dict, days: int = 90, max_pages: int = 4
         if t and x["val"] >= 5_000:
             out.append({"t": t, "n": uni.get(t), "who": x["who"], "role": x["role"], "kind": x["kind"], "d": x["d"], "val": x["val"],
                         "cur": "EUR", "src": "SIX Schweiz", "url": SIX_PAGE})
+    miss = [(x["isin"], figi.get(x["isin"])) for x in rows if not _match(x["isin"], "", uni, figi, by_key, by_name)][:6]
+    print(f"Insider Schweiz: nicht zugeordnet z. B. {miss}")
     print(f"Insider Schweiz: {len(rows)} Geschäfte, {len(out)} zugeordnet ({sum(x['kind'] == 'buy' for x in out)} Käufe)")
     return out
 
@@ -182,12 +193,12 @@ def fetch(uni: dict[str, str], figi: dict, days: int = 90) -> tuple[list[dict], 
 
 
 def main() -> int:
-    uni = {"VOLV-B.ST": "AB Volvo (publ)", "ERIC-B.ST": "Telefonaktiebolaget LM Ericsson (publ)", "INVE-B.ST": "Investor AB (publ)",
+    uni = {"HACK.ST": "Hacksaw AB (publ)", "BEKN.SW": "Berner Kantonalbank AG", "VOLV-B.ST": "AB Volvo (publ)", "ERIC-B.ST": "Telefonaktiebolaget LM Ericsson (publ)", "INVE-B.ST": "Investor AB (publ)",
            "NESN.SW": "Nestlé S.A.", "NOVN.SW": "Novartis AG", "UBSG.SW": "UBS Group AG", "ROG.SW": "Roche Holding AG"}
     figi: dict = {}
     try:                                                   # Rohdaten zeigen (Spalten, Werte), damit die Zuordnung prüfbar ist
         raw = requests.get(FI.format(d0=(date.today() - timedelta(days=7)).isoformat(), d1=date.today().isoformat()), headers=UA, timeout=90).content
-        txt = raw.decode("utf-16") if raw[:2] in (b"\xff\xfe", b"\xfe\xff") else raw.decode("utf-8-sig", "replace")
+        txt = _decode(raw)
         print("FI Kopf+2:", txt.splitlines()[:3])
         p = parse_fi(txt)
         print("FI geparst:", len(p), "Käufe", sum(x["kind"] == "buy" for x in p), p[:2])
