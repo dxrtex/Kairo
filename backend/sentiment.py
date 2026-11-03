@@ -100,6 +100,8 @@ def fetch(tickers: list[str], cache: dict, names: dict | None = None, limit: int
               if isinstance(info.get(src), (int, float))}
         if fu:
             e["fu"] = fu
+        if info.get("sector"):                    # Sektor/Branche für Heatmap und Sektor-Ansicht (Suchindex)
+            e.update(sec=info["sector"], ind=info.get("industry") or "")
         e["news"] = _news(tk, (names or {}).get(t) or info.get("shortName") or "")
         if len(e) > 2 or e["news"]:
             cache[t] = e
