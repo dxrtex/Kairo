@@ -4309,7 +4309,7 @@ function changesHtml() {
   ch = { new_hit: [], lost_hit: [], new_fast: [], met: {}, ...ch };
   const mine = myTickers(), rowL = (t, extra) => { const r = byTicker(t); return r ? `<button class="hrow" data-card="${esc(t)}"><span class="hn">${mine.has(t) ? (favs().has(t) ? "★ " : "") : ""}${esc((r.name || t).slice(0, 30))}</span>${extra || statusPill(r)}${trendHtml(r)}</button>` : ""; };
   const moves = Object.entries(ch.met || {}).filter(([t]) => mine.has(t)).map(([t, [a, b]]) => [t, a, b]).filter(x => Math.abs(x[2] - x[1]) >= 1).sort((x, y) => (y[2] - y[1]) - (x[2] - x[1]));
-  const lostMine = ch.lost_hit.filter(t => mine.has(t));
+  const lostMine = ch.lost_hit.filter(t => mine.has(t) && !moves.some(x => x[0] === t));
   return `<div class="hcard">${hHead(`Seit dem letzten Scan <small>${dateDE(ch.since)}</small>`)}
     <div class="chg" data-gokinds="hit" role="button" tabindex="0" style="cursor:pointer"><span class="up"><b>+${ch.new_hit.length}</b> neue Treffer</span><span><b>${ch.lost_hit.length}</b> weggefallen</span><span class="gold"><b>+${ch.new_fast.length}</b> neue Fast-Treffer</span></div>
     ${moves.length || lostMine.length ? `<div class="hsub">Deine Aktien</div>${moves.slice(0, 6).map(([t, a, b]) => rowL(t, `<span class="mv ${b > a ? "up" : "down"}">${a} → ${b}/11</span>`)).join("")}${lostMine.map(t => rowL(t, `<span class="mv down">kein Treffer mehr</span>`)).join("")}` : ""}
@@ -4461,10 +4461,18 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("tq-prep")) { state.hPrep = e.target.open ? 1 : 0; save(); } }, true);
 document.addEventListener("click", e => { if (e.target.closest("[data-mstrip]")) { const m = $("hMoney"); if (m) m.scrollIntoView({ behavior: "smooth", block: "start" }); } });
+// Treffer aus deiner Liste: Watchlist (★ und Scalable-Watchlist) mit allen 11 Kriterien – Status wie im Scanner (kaufbereit zuerst)
+function myHitsHtml() {
+  const list = data.results.filter(r => r.passed && (r.in_watchlist || favs().has(r.ticker))).sort(kOrder);
+  return `<div class="hcard">${hHead(`Treffer aus deiner Liste${list.length ? ` · ${list.length}` : ""}`, `data-gokinds="fav,watch"`, "Meine")}
+    ${list.length ? list.slice(0, 8).map(r => `<button class="hrow" data-card="${esc(r.ticker)}"><span class="hn">${esc((r.name || r.ticker).slice(0, 30))}<small>${esc(r.ticker)} · 11/11</small></span>${statusPill(r)}${trendHtml(r)}</button>`).join("")
+      + (list.length > 8 ? `<button class="hlink" style="margin:8px 0 0" data-gokinds="fav,watch">Alle ${list.length} ansehen ›</button>` : "")
+      : `<div class="note" style="margin:0">Heute hat keine Aktie aus deiner Watchlist alle 11 Kriterien.</div>`}</div>`;
+}
 function todayHtml() {
   const M = todayModel(); moneyStrip = "";
-  const right = `${moneyHtml()}${soonHtml()}${marketHtml()}${changesHtml()}`;   // Marktampel bleibt als volle Karte (Wunsch 11/2026)
-  return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${tasksHtml(M)}${startMiniHtml()}</div>
+  const right = `${marketHtml()}${moneyHtml()}${soonHtml()}${changesHtml()}`;   // Marktampel oben als volle Karte (Wunsch 11/2026)
+  return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${tasksHtml(M)}${startMiniHtml()}${myHitsHtml()}</div>
     <div class="hcol">${right}</div></div>`;
 }
 
@@ -4949,8 +4957,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.16";
-const APP_NEWS = [["2026.11.16", "„Heute“ neu: eine Liste, was zu tun ist", [
+const APP_VER = "2026.11.17";
+const APP_NEWS = [["2026.11.17", "Heute: Marktampel oben, deine Treffer", [
+  ["Marktampel oben", "Trend, Stimmung und Indizes stehen jetzt ganz oben rechts auf „Heute“."],
+  ["Treffer aus deiner Liste", "Neue Karte unten links: alle Aktien aus deiner Watchlist mit 11/11 Kriterien – mit Status (kaufbereit, Seitwärtsphase, im Depot …), kaufbereit zuerst."]]],
+  ["2026.11.16", "„Heute“ neu: eine Liste, was zu tun ist", [
   ["Aufgaben zum Abhaken", "Verkaufen, Kaufen, ETF, Vorbereiten – in der Reihenfolge der Dringlichkeit. Gekauft wird nur so viel, wie Plätze frei sind, in der Kairo-Rangfolge. Abhaken gilt für heute."],
   ["Kauf-Zettel", "Für jeden Kauf: Stückzahl, Limit (Obergrenze der Kaufzone), Stop-Loss, Risiko und wann die Börse öffnet. „Order kopieren“ für Scalable, „Gekauft ✓“ legt den Trade-Plan mit Stop und Verkaufstag an."],
   ["Dein Geld", "Vermögen (ETF + Depot), freies Trading-Kapital – jetzt auch mit Depot-Positionen ohne Plan – und Verlust bis zu den Stops. Passt das Trading-Budget nicht zum Profil, gleicht ein Knopf es an."],
