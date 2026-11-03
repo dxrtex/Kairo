@@ -208,6 +208,9 @@ def analyze(folder, out_json):
     # Absturz-Quote je Fünftel „frühere Reaktion der Aktie“ (Prüfzeit, beschreibend)
     te3 = te.dropna(subset=["absr"]).assign(aq=lambda d: pd.qcut(d["absr"], 5, labels=False, duplicates="drop"))
     print("Absturz-Quote je Fünftel frühere Reaktionsstärke:", [(int(a), round(float(b), 3)) for a, b in te3.groupby("aq")["crash"].mean().items()])
+    print("Grenzen frühere Reaktionsstärke (Fünftel):", [round(float(x), 4) for x in te3["absr"].quantile([.2, .4, .6, .8])])
+    print("MODELL-JSON:", json.dumps({"crash": {k: out["crash"].get(k) for k in ("coef", "icpt", "scale")}, "crash_pre": {k: pre.get(k) for k in ("coef", "icpt", "scale", "reg_rate")},
+                                      "crash_rate_reg_b": {f"{a}|{b}": float(v) for (a, b), v in tr.groupby(["reg", "b"])["crash"].mean().items()}}, default=float))
     # beschreibend: Absturz-Quote je Fünftel Schwankung (Prüfzeit)
     te2 = te.assign(vq=pd.qcut(te["vol20"], 5, labels=False, duplicates="drop"))
     out["crash_by_vol"] = te2.groupby("vq")["crash"].agg(["mean", "count"]).reset_index().to_dict("records")
