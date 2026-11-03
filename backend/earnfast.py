@@ -211,7 +211,7 @@ def result_text(t: str, name: str, last: dict, gst: dict | None = None) -> dict:
     if g is not None:
         parts.append({1: "Ausblick angehoben", -1: "Ausblick gesenkt", 0: "Ausblick bestätigt"}.get(g, "Ausblick unklar"))
     v = (last.get("view") or {}).get("lbl")
-    p = app_odds(last, gst)                      # dieselbe Zahl wie oben im Quartalszahlen-Fenster der App
+    p = app_odds(last, gst, t=t)                 # dieselbe Zahl wie oben im Quartalszahlen-Fenster der App
     if p is not None:
         tail = f". Nach solchen Zahlen{' mit diesem Ausblick' if g in (-1, 0, 1) else ''} stieg die Aktie in {round(p * 100)} % der Fälle."
     elif g == -1:
@@ -326,13 +326,34 @@ def result_pushes(fresh: dict, prev: dict, events: list[dict], out: Path) -> Non
     f.write_text(json.dumps(sent), encoding="utf-8")
 
 
-MODEL = "2026-10-30 Gewinn+Ausblick"      # Stand der Prognose-Regel; bei jeder Änderung neu setzen (Auswertung je Stand)
+MODEL = "2026-11-03 Region+Ausblick-Quelle"      # Stand der Prognose-Regel; bei jeder Änderung neu setzen (Auswertung je Stand)
 
 
 GKEY = {-1: "gesenkt", 0: "bestätigt", 1: "angehoben"}
 
 
-def app_odds(last: dict, gst: dict | None = None, calib: dict | None = None) -> float | None:
+SEC_SRC = "Pressemitteilung (SEC)"
+
+
+def us_ticker(t: str | None) -> bool:
+    """US-Aktie (Statistik stammt aus US-Berichten): Kürzel ohne Börsen-Endung."""
+    return bool(t) and "." not in str(t)
+
+
+def app_odds(last: dict, gst: dict | None = None, calib: dict | None = None, t: str | None = None) -> float | None:
+    """Wie _odds, mit zwei Vorsichtsregeln (Live-Bilanz 27.10.–02.11.2026, 203 Meldungen):
+    - Ausblick „angehoben“ nur aus Schlagzeilen zählt nicht (48 % gestiegen statt gezeigter ~60 %); aus der Pressemitteilung schon.
+    - Außerhalb der USA zur Mitte gezogen (halber Abstand zu 50 %): die Quoten stammen aus US-Berichten, live dort 51 % Treffer."""
+    G = last.get("guide") or {}
+    if G.get("d") == 1 and G.get("src") != SEC_SRC:
+        last = {**last, "guide": {**G, "d": None}}
+    p = _odds(last, gst, calib)
+    if p is not None and t is not None and not us_ticker(t):
+        p = round(0.5 + (p - 0.5) / 2, 3)
+    return p
+
+
+def _odds(last: dict, gst: dict | None = None, calib: dict | None = None) -> float | None:
     """Dieselbe Wahrscheinlichkeit „steigt am Tag danach“, die die App oben im Quartalszahlen-Fenster zeigt (earnOdds):
     nachgeeichte Quote Gewinn-Stufe × Ausblick, sobald die Bilanz sie übernommen hat (earn_calib.json, adopt); sonst
     Gewinn-Stufe (mit Umsatz-Beschleunigung) und bei gesenktem Ausblick die eigene Quote nach gesenktem Ausblick."""
@@ -399,7 +420,9 @@ def archive(recs: dict, out: Path) -> int:
                "ts": L.get("ts"), "seen": L.get("seen"), "push": L.get("push_at"), "stage": L.get("stage")}
         old = arc.get(k, {})
         if old.get("r1") is None:                  # Prognose nur bis zur Kursreaktion fortschreiben – danach eingefroren
-            row.update(p=app_odds(L, gst, calib), v=model)
+            row.update(p=app_odds(L, gst, calib, t), v=model)
+            if row.get("r1") is not None and "p" not in old:
+                row["late"] = 1                    # erst nach der Kursreaktion gesehen: Prognose trotzdem merken (Bilanz zählt sie getrennt)
         arc[k] = {**old, **{a: b for a, b in row.items() if b is not None}}
     f.write_text(json.dumps(arc, separators=(",", ":")), encoding="utf-8")
     return len(arc)

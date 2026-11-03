@@ -20,7 +20,7 @@ def test_bilanz_und_vorschlag(tmp_path):
 
 
 def test_archiv_friert_prognose_mit_kursreaktion_ein(tmp_path):
-    rec = {"INTC": {"last": {"date": "2026-10-29", "eps_s": 0.30, "reva": -0.04, "guide": {"d": 1, "t": "Intel lifts outlook"}}}}
+    rec = {"INTC": {"last": {"date": "2026-10-29", "eps_s": 0.30, "reva": -0.04, "guide": {"d": 1, "t": "Intel lifts outlook", "src": "Pressemitteilung (SEC)"}}}}
     earnfast.archive(rec, tmp_path)
     a = json.loads((tmp_path / "earn_archive.json").read_text())["INTC|2026-10-29"]
     assert a["p"] == 0.713 and a["v"] == earnfast.MODEL and a["gt"] == "Intel lifts outlook"

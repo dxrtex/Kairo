@@ -1,21 +1,22 @@
 name: Tagsüber (Mitteilungen + Markt, alle 30 Minuten)
 
 # GitHub startet geplante Abläufe nur unzuverlässig (in diesem Repository oft nur 2–4× am Tag statt alle 30 Min.).
-# Darum läuft hier EIN Job Mo–Fr in einer Schleife und erledigt alle 30 Minuten:
+# Darum läuft hier EIN Job Mo–Fr (04:00–23:55 UTC) in einer Schleife:
+#   0. Quartalszahlen: stößt earnings.yml an – in den Meldezeiten alle 10 Min. (04–08, 10–15, 19–24 UTC), sonst alle 30 Min.
 #   1. Mitteilungen: Stop, Kursziel, Verkaufstag, K.-o. und 4H-Bestätigung (backend/push.py, 06:00–22:00 UTC)
 #   2. Markt: Sektoren, Branchen, Heatmap, Gewinner/Verlierer (backend/mktlive.py, 07:00–21:15 UTC, nur Anzeige)
 # Zustand im Branch kairo-alerts. Nach gut 5 Std. startet sich der Job selbst neu (Jobs dürfen höchstens 6 Std. laufen);
 # drei Anstöße per Zeitplan fangen Ausfälle auf. Öffentliches Repository → keine Minuten-Kosten.
 on:
   schedule:
-    - cron: "41 5 * * 1-5"
+    - cron: "41 3 * * 1-5"
     - cron: "17 11 * * 1-5"
     - cron: "47 15 * * 1-5"
   workflow_dispatch:
 
 permissions:
   contents: write                  # Zustand im Branch kairo-alerts (gesendete Meldungen, mktlive.json)
-  actions: write                   # sich selbst neu starten
+  actions: write                   # sich selbst neu starten, Quartalszahlen-Prüfung anstoßen
 
 concurrency:
   group: tagsueber
@@ -38,22 +39,29 @@ jobs:
           PUSH_SUBS: ${{ secrets.PUSH_SUBS }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
         run: |
-          start=$(date +%s)
+          start=$(date +%s); tick=0
           if git fetch -q origin kairo-alerts:kairo-alerts 2>/dev/null; then git worktree add -q state kairo-alerts;
           else git worktree add -q --orphan -b kairo-alerts state; fi
           while :; do
-            t0=$(date +%s); now=$((10#$(date -u +%H%M))); dow=$(date -u +%u)
-            if [ "$dow" -gt 5 ] || [ "$now" -ge 2205 ]; then echo "Feierabend – Ende"; exit 0; fi
-            if [ "$now" -ge 600 ]; then
-              echo "::group::Mitteilungen $(date -u +%H:%M)"; timeout 20m python -m backend.push || echo "Mitteilungen: Fehler"; echo "::endgroup::"
+            t0=$(date +%s); now=$((10#$(date -u +%H%M))); dow=$(date -u +%u); h=$((now / 100))
+            if [ "$dow" -gt 5 ] || [ "$now" -ge 2355 ]; then echo "Feierabend – Ende"; exit 0; fi
+            # Quartalszahlen: in den Meldezeiten alle 10 Min., sonst alle 30 Min. den Prüf-Workflow anstoßen (er wartet in seiner eigenen Schlange)
+            if [ "$h" -ge 4 ] && { [ "$h" -le 7 ] || { [ "$h" -ge 10 ] && [ "$h" -le 14 ]; } || [ "$h" -ge 19 ] || [ $((tick % 3)) -eq 0 ]; }; then
+              gh workflow run earnings.yml --ref "${GITHUB_REF_NAME}" -R "${GITHUB_REPOSITORY}" && echo "Quartalszahlen angestoßen $(date -u +%H:%M)" || true
             fi
-            if [ "$now" -ge 700 ] && [ "$now" -lt 2115 ]; then
-              echo "::group::Markt $(date -u +%H:%M)"; timeout 8m python -m backend.mktlive 2>&1 | grep -v -i warning | grep -v "^See \|^  " || true; echo "::endgroup::"
+            if [ $((tick % 3)) -eq 0 ]; then
+              if [ "$now" -ge 600 ] && [ "$now" -lt 2205 ]; then
+                echo "::group::Mitteilungen $(date -u +%H:%M)"; timeout 20m python -m backend.push || echo "Mitteilungen: Fehler"; echo "::endgroup::"
+              fi
+              if [ "$now" -ge 700 ] && [ "$now" -lt 2115 ]; then
+                echo "::group::Markt $(date -u +%H:%M)"; timeout 8m python -m backend.mktlive 2>&1 | grep -v -i warning | grep -v "^See \|^  " || true; echo "::endgroup::"
+              fi
+              ( cd state && git add -A && git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Tagsüber $(date -u +%F-%H%M)" \
+                && for i in 1 2 3; do git pull -q --rebase origin kairo-alerts && git push -q origin kairo-alerts && break; sleep 5; done ) || true
             fi
-            ( cd state && git add -A && git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Tagsüber $(date -u +%F-%H%M)" \
-              && for i in 1 2 3; do git pull -q --rebase origin kairo-alerts && git push -q origin kairo-alerts && break; sleep 5; done ) || true
+            tick=$((tick + 1))
             if [ $(( $(date +%s) - start )) -gt 18000 ]; then
               echo "5 Stunden um – neu starten"; gh workflow run tagsueber.yml --ref "${GITHUB_REF_NAME}" -R "${GITHUB_REPOSITORY}"; exit 0
             fi
-            sleep $(( 1800 - ( $(date +%s) - t0 ) > 60 ? 1800 - ( $(date +%s) - t0 ) : 60 ))
+            rest=$(( 600 - ( $(date +%s) - t0 ) )); [ "$rest" -lt 30 ] && rest=30; sleep "$rest"
           done
