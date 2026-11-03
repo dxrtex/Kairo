@@ -20,7 +20,7 @@ def test_watch_file_cik_und_uhrzeit(tmp_path):
 
 
 def test_ergebnis_text():
-    m = earnfast.result_text("AAPL", "Apple", {"eps_s": 0.12, "rev_s": 0.02, "guide": {"d": 1}, "view": {"lbl": "eher positiv"}})
+    m = earnfast.result_text("AAPL", "Apple", {"eps_s": 0.12, "rev_s": 0.02, "guide": {"d": 1, "src": "Pressemitteilung (SEC)"}, "view": {"lbl": "eher positiv"}})
     assert m["title"] == "📊 Apple: eher positiv"
     assert "Gewinn +12,0 % vs. Erwartung" in m["body"] and "Ausblick angehoben" in m["body"] and "mit diesem Ausblick stieg die Aktie in 71 % der Fälle" in m["body"]
 
@@ -52,10 +52,10 @@ def test_gelernte_meldezeit(monkeypatch, tmp_path):
 
 
 def test_archiv(tmp_path):
-    rec = {"BE": {"last": {"date": "2026-10-22", "eps_s": 0.38, "reva": -0.245, "guide": {"d": 1}, "rx": {"d1": -0.112}}}}
+    rec = {"BE": {"last": {"date": "2026-10-22", "eps_s": 0.38, "reva": -0.245, "guide": {"d": 1, "src": "Pressemitteilung (SEC)"}, "rx": {"d1": -0.112}}}}
     assert earnfast.archive(rec, tmp_path) == 1
     a = json.loads((tmp_path / "earn_archive.json").read_text())["BE|2026-10-22"]
-    assert a == {"s": 0.38, "ra": -0.245, "g": 1, "r1": -0.112, "p": 0.713, "v": earnfast.MODEL}
+    assert a == {"s": 0.38, "ra": -0.245, "g": 1, "gs": "Pressemitteilung (SEC)", "r1": -0.112, "p": 0.713, "v": earnfast.MODEL, "late": 1}
 
 
 def test_nasdaq_widerspruch(monkeypatch, tmp_path):
@@ -96,3 +96,12 @@ def test_ausblick_gesenkt_ueberstimmt_gewinn(tmp_path):
     m = earnfast.result_text("INTC", "Intel", last, gst)
     assert "Ausblick gesenkt" in m["body"] and "mit diesem Ausblick stieg die Aktie in 37 % der Fälle" in m["body"] and "61 %" not in m["body"]
     assert earnfast.guide_stats(tmp_path / "fehlt") == {}
+
+
+def test_odds_caution_rules():
+    sec = {"eps_s": 0.12, "guide": {"d": 1, "src": "Pressemitteilung (SEC)"}}
+    head = {"eps_s": 0.12, "guide": {"d": 1, "src": [{"t": "X lifts outlook"}]}}
+    p_sec, p_head, p_none = earnfast.app_odds(sec, t="AAPL"), earnfast.app_odds(head, t="AAPL"), earnfast.app_odds({"eps_s": 0.12}, t="AAPL")
+    assert p_sec > p_head and p_head == p_none                      # Schlagzeilen-„angehoben“ zählt nicht
+    p_eu = earnfast.app_odds(sec, t="SAP.DE")
+    assert abs(p_eu - (0.5 + (p_sec - 0.5) / 2)) < 1e-3              # außerhalb der USA halber Abstand zu 50 %

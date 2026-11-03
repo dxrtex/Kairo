@@ -2610,7 +2610,17 @@ function earnStatHtml(t, sur) {
 }
 // Oben im Fenster: Wie wahrscheinlich steigt die Aktie nach Zahlen dieser Art – und was heißt das für einen Einstieg?
 // Vor den Zahlen: Mischung der Eimer nach den bisherigen Überraschungen dieser Aktie (große Stichprobe je Eimer, eigene Historie als Gewicht).
+// Vorsichtsregeln wie backend/earnfast.app_odds (Live-Bilanz 27.10.–02.11.2026, 203 Meldungen): „angehoben“ nur aus
+// Schlagzeilen zählt nicht (48 % gestiegen statt ~60 % gezeigt); außerhalb der USA halber Abstand zu 50 % (Quoten aus US-Berichten)
 function earnOdds(t, sur, L) {
+  const G = L && L.guide, headUp = G && G.d === 1 && G.src !== "Pressemitteilung (SEC)";
+  const o = earnOdds0(t, sur, headUp ? { ...L, guide: { ...G, d: null } } : L);
+  if (!o) return o;
+  if (headUp) o.how += " · Ausblick laut Schlagzeilen angehoben – zählt erst, wenn die Pressemitteilung es bestätigt";
+  if (o.p != null && t && String(t).includes(".")) { o.p = 0.5 + (o.p - 0.5) / 2; o.nonUS = true; o.how += " · außerhalb der USA: Statistik aus US-Berichten, nur halb gewichtet (wenig Aussagekraft)"; }
+  return o;
+}
+function earnOdds0(t, sur, L) {
   const B = (earnStats && earnStats.buckets) || []; if (!B.length) return null;
   const P = (earnStats.per || {})[t], find = s => B.find(x => s >= x.lo && s < x.hi);
   if (!earnCalib) loadEarnCalib();
@@ -2777,7 +2787,7 @@ function calendarHtml() {
   const all = calData.filter(e => (state.calScope === "all" || calRelevant(e)) && kinds[state.calKind || ""](e));
   const list = all.filter(e => daysUntil(e.date) >= 0 || (e.done && daysUntil(e.date) >= -7));
   const seg = (key, opts) => `<div class="opts seg">${opts.map(([v, l]) => `<button class="opt${(state[key] || "") === v ? " on" : ""}" data-cal="${key}" data-v="${v}">${l}</button>`).join("")}</div>`;
-  const head = `<div class="section-title"><span>Kalender · ${state.calScope === "all" ? "alle Termine" : "nur wichtige"}</span><span>${list.length} Termine</span></div>
+  const head = `<div class="section-title"><span>${state.calScope === "all" ? "Alle Termine" : "Nur wichtige Termine"}</span><span>${list.length} Termine</span></div>
     <div class="cal-top"><div class="vtog">${[["month", "Monat"], ["list", "Liste"]].map(([v, l]) => `<button class="${(month ? "month" : "list") === v ? "on" : ""}" data-cal="calView" data-v="${v}">${v === "month" ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M9.5 10v10M14.5 10v10"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>'}${l}</button>`).join("")}</div>${seg("calScope", [["mine", "Nur wichtige"], ["all", "Alle Termine"]])}</div>`
     + seg("calKind", [["", "Alle"], ["earnings", "Quartalszahlen"], ["div", "Dividenden"], ["macro", "Wirtschaft & Zinsen"]]);
   const nowM = (() => { const p = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }); return +p.slice(0, 2) * 60 + +p.slice(3, 5); })();
@@ -5376,8 +5386,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.34";
-const APP_NEWS = [["2026.11.34", "Markt neu sortiert", [
+const APP_VER = "2026.11.35";
+const APP_NEWS = [["2026.11.35", "Quartalszahlen vorsichtiger und schneller", [
+  ["Quartalszahlen: ehrlichere Prognose", "Außerhalb der USA zählt die Statistik nur halb (sie stammt aus US-Berichten – live lag sie dort beim Münzwurf). „Ausblick angehoben“ zählt nur noch, wenn die Pressemitteilung es bestätigt – Schlagzeilen allein lagen live bei 48 %."],
+  ["Quartalszahlen: schneller", "Die Prüfung läuft in den Meldezeiten zuverlässig alle 10 Minuten (vorher startete GitHub sie nur ein paar Mal am Tag)."]]],
+  ["2026.11.34", "Markt neu sortiert", [
   ["Markt: eine Tab-Reihe", "Überblick · News · Insider · Kalender statt zwei Reihen übereinander. Der Reiter öffnet immer im Überblick: Marktampel, Sektoren & Branchen, Heatmap, Gewinner/Verlierer und eine Zeile „Heute wichtig“. News mit Umschalter Meine Aktien / Markt."],
   ["Heute: Sektoren", "Unter der Marktampel stehen der stärkste und der schwächste Sektor des Tages – Antippen öffnet den Überblick."]]],
   ["2026.11.33", "Markt tagsüber", [
