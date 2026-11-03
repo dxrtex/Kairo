@@ -44,7 +44,7 @@ def _frames(tickers: list[str], period: str) -> dict:
 def build(search_rows: list[dict]) -> dict:
     from .analysis import INDUSTRY_ETF, SECTOR_ETF, market_context
     from .run_scan import day_moves
-    etfs = sorted(set(SECTOR_ETF.values()) | set(INDUSTRY_ETF))
+    etfs = sorted(set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | {"^GSPC"})          # S&P 500 als Maßstab fürs Rotations-Bild
     mkt = market_context(_frames(etfs, "2y"))
     stocks = pick(search_rows)
     rows = {}

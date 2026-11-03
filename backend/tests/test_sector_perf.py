@@ -41,3 +41,19 @@ def test_rank_history():
     out = market_context({"XLK": _df(step=0.002), "XLE": _df(step=-0.001), "XLV": _df(step=0.0005)})
     rh = {s["k"]: s["rh"] for s in out["sectors"]}
     assert len(rh["XLK"]) == 13 and rh["XLK"][-1] == 1 and rh["XLE"][-1] == 3
+
+
+def test_rotation_quadrants_and_hot():
+    from backend.analysis import rotation
+    n = 300
+    idx = pd.bdate_range("2025-01-02", periods=n)
+    mk = lambda c: pd.DataFrame({"Open": c, "High": c, "Low": c, "Close": c}, index=idx)
+    base = 100 * np.cumprod(np.full(n, 1.0005))
+    up_late = base * np.r_[np.ones(n - 30), np.cumprod(np.full(30, 1.004))]          # zieht zuletzt an → stärker, Schwung hoch
+    down_late = base * np.r_[np.ones(n - 30), np.cumprod(np.full(30, 0.996))]
+    hist = {"^GSPC": mk(base), "A": mk(up_late), "B": mk(down_late), "C": mk(base * 1.0), "D": mk(base), "E": mk(base)}
+    rows = [{"k": k} for k in "ABCDE"]
+    rotation(rows, hist, hot_n=2)
+    by = {x["k"]: x for x in rows}
+    assert by["A"]["rrg"]["q"] == "leading" and by["B"]["rrg"]["q"] == "lagging"
+    assert len(by["A"]["rrg"]["tail"]) == 5 and "hot" in by["A"] and "hot" not in by["B"]
