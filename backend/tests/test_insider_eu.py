@@ -82,3 +82,16 @@ def test_parse_text_trade_oslo():
 
 def test_uk_tidm():
     assert eu._uk_tidm("BT-A.L") == "BT.A" and eu._uk_tidm("LSEG.L") == "LSEG"
+
+
+def test_parse_uk_real_layouts():
+    azn = ("a) Name Michel Demaré 2 Reason for the notification a) Position/status Non-Executive Chair of the Board b) Initial notification /Amendment "
+           "Initial notification 4 a) Description Ordinary Shares of US$0.25 each in AstraZeneca PLC GB0009895292 b) Nature of the transaction Purchase of "
+           "AstraZeneca PLC Ordinary Shares of US$0.25 c) Price(s) and volume(s) Price(s) Volume(s) £121.213296 2,500 d) Aggregated information")
+    r = eu.parse_uk(azn)
+    assert r["kind"] == "buy" and r["val"] == round(121.213296 * 2500 * eu.EUR["GBP"]) and r["who"] == "Michel Demaré"
+    shel = ("Name Sinead Gorman Position/status Chief Financial Officer Initial notification Description of the financial instrument Ordinary shares of "
+            "€0.07 each Identification Code GB00BP6MXD84 Nature of the transaction Disposal of ordinary shares Currency GBP Price £33.686565 Volume 30,000 "
+            "Total £1,010,596.95 Aggregated information: Price £33.686565 Volume 30,000")
+    s = eu.parse_uk(shel)
+    assert s["kind"] == "sell" and s["val"] == round(33.686565 * 30000 * eu.EUR["GBP"])

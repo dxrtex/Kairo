@@ -387,8 +387,15 @@ UK_SKIP = re.compile(r"dividend|re-?invest|drip|award|grant|vest|exercise|option
                      r"LTIP|bonus|deferred|release|salary|sacrifice|nil[- ]cost|scrip|lapse|pledge|loan|settlement", re.I)
 
 
+UK_NUM = r"(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)"      # britisch: 1,234.567891 (Komma = Tausender, Punkt = Dezimal)
+
+
+def _uk_num(x: str) -> float:
+    return float(x.replace(",", ""))
+
+
 def _uk_px(tok: str, unit: str | None, cur: str | None) -> tuple[float, str] | None:
-    v = _nnum(tok)
+    v = _uk_num(tok)
     if unit and unit.lower() in ("p", "pence", "gbx") or cur and cur.upper() == "GBX":
         return v / 100, "GBP"
     if cur:
@@ -402,7 +409,7 @@ def parse_uk(text: str) -> dict | None:
     """Britische PDMR-Meldung (MAR-Formular als HTML-Text). Nur echte Käufe/Verkäufe – Dividenden-Wiederanlage, Zuteilungen,
     Optionen, Sparpläne (SIP) usw. sind kein Signal und werden übergangen. Preis in Pence wird in Pfund umgerechnet."""
     t = re.sub(r"\s+", " ", html_unescape(text))
-    nat = re.search(r"Nature of the transaction\s*(.{0,220}?)\s*(?:c\)|Price\(s\))", t, re.I)
+    nat = re.search(r"Nature of the transaction\s*(.{0,220}?)\s*(?:c\)|Price\(s\)|Currency [A-Z]{3})", t, re.I)
     if not nat:
         return parse_text_trade(t)
     n = nat.group(1)
@@ -411,14 +418,14 @@ def parse_uk(text: str) -> dict | None:
     kind = "buy" if re.search(r"purchase|acquisition|buy|bought", n, re.I) else "sell" if re.search(r"\bsale\b|disposal|sell|sold", n, re.I) else None
     if not kind:
         return None
-    seg = re.search(r"Price\(s\) and volume\(s\)(.{0,600}?)(?:d\)|Aggregated)", t, re.I)
+    seg = re.search(r"(?:Price\(s\) and volume\(s\)|Currency [A-Z]{3} Price)(.{0,600}?)(?:d\)|Aggregated|Total)", t, re.I)
     val = None
     if seg:
-        toks = re.findall(r"(£|\$|€|GBP|GBX|USD|EUR)?\s?" + NUM + r"\s?(p\b|pence|GBP|GBX|USD|EUR)?", seg.group(1))
+        toks = re.findall(r"(GB£|US\$|£|\$|€|GBP|GBX|USD|EUR)?\s?" + UK_NUM + r"\s?(p\b|pence|GBP|GBX|USD|EUR)?", seg.group(1))
         prices, vols = [], []
         for cur, num, unit in toks:
-            pv = _uk_px(num, unit or None, cur or None)
-            (prices.append(pv) if pv else vols.append(_nnum(num)))
+            pv = _uk_px(num, unit or None, {"GB£": "£", "US$": "$"}.get(cur, cur) or None)
+            (prices.append(pv) if pv else vols.append(_uk_num(num)))
         if prices and vols:
             val = sum(p * v * EUR.get(c, 0.1) for (p, c), v in zip(prices, vols))
     who = re.search(r"Name\s*:?\s*([A-Z][\w .'-]{2,60}?)\s*(?:2\s|Reason|b\))", t)
@@ -445,7 +452,12 @@ def fetch_uk(uni: dict[str, str], days: int = 90, cache: dict | None = None, bud
         done += 1
         for page in (1, 2):
             try:
-                h = requests.get(f"{IVG}/company/{_uk_tidm(t)}" + (f"?page={page}" if page > 1 else ""), headers=hdr, timeout=20).text
+                code = _uk_tidm(t)
+                h = requests.get(f"{IVG}/company/{code}" + (f"?page={page}" if page > 1 else ""), headers=hdr, timeout=20).text
+                if f"({code})" not in h:                     # z. B. BP heißt dort „BP.“ – sonst landet man auf der Startseite
+                    h = requests.get(f"{IVG}/company/{code}." + (f"?page={page}" if page > 1 else ""), headers=hdr, timeout=20).text
+                    if f"({code}.)" not in h:
+                        break
             except Exception:
                 break
             rows = re.findall(r"(?s)<tr[^>]*>(.*?)</tr>", h)
@@ -463,6 +475,8 @@ def fetch_uk(uni: dict[str, str], days: int = 90, cache: dict | None = None, bud
                 if not lk or d < d0:
                     continue
                 url = lk.group(1) if lk.group(1).startswith("http") else IVG + lk.group(1)
+                if f"--{_uk_tidm(t).lower().replace('.', '')}/" not in url.lower().replace(".", ""):      # Meldung muss zur Firma gehören
+                    continue
                 seen += 1
                 if url not in cache and time.time() < t_end:
                     new += 1
@@ -473,7 +487,7 @@ def fetch_uk(uni: dict[str, str], days: int = 90, cache: dict | None = None, bud
                     time.sleep(0.15)
                 p = cache.get(url) or {}
                 if p.get("val"):
-                    out.append({"t": t, "n": uni[t], "d": str(d), "src": "RNS (Investegate)", "url": url, "who": p.get("who") or "PDMR",
+                    out.append({"t": t, "n": uni[t], "d": str(d), "src": "RNS (Investegate)", "url": url, "who": p.get("who") or f"PDMR (Meldung {url.rsplit('/', 1)[-1]})",
                                 "role": p.get("role") or "PDMR", "kind": p["kind"], "val": p["val"], "cur": "EUR"})
             if not oldest or oldest < d0 or len(rows) < 40:
                 break
