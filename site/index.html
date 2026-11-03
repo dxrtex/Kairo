@@ -2408,7 +2408,7 @@ function sectorsHtml() {
     <div class="sp-top"><div class="sp-tg">${[["sec", "Sektoren", 1], ["ind", "Branchen", (m.industries || []).length], ["th", "Themen", (m.themes || []).length]].map(([v, l, ok]) => `<button class="opt${(v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind) ? " on" : ""}" data-spmode="${v}"${ok ? "" : ' disabled title="kommt mit dem nächsten Abend-Scan"'}>${l}</button>`).join("")}</div>
       ${hv || rv ? "" : `<div class="sp-tg">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}</div>`}</div>
     <div class="sp-tg" style="margin:-4px 0 10px">${[["ret", "Rendite", 1], ["rrg", "Rotations-Bild", hasRrg], ["hist", "Rang-Verlauf 12 Wochen", hasHist]].filter(o => o[2]).map(([v, l]) => `<button class="opt${(v === "hist" ? hv : v === "rrg" ? rv : !hv && !rv) ? " on" : ""}" data-spview="${v}">${l}</button>`).join("")}${hv || rv ? "" : `<button class="opt${state.spRel ? " on" : ""}" data-sprel title="Rendite minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")}">gegenüber Markt</button>`}</div>
-    ${rv ? spRrgHtml(xs, ind) : hv ? spHistHtml(xs, ind) : `${rot}${hotHtml(ind ? [] : xs)}<div class="sp-list">${show.map(row).join("")}</div>`}
+    ${rv ? (th ? themeTrendHtml(xs) : "") + spRrgHtml(xs, ind) : hv ? spHistHtml(xs, ind) : `${rot}${th ? themeTrendHtml(xs) : hotHtml(ind ? [] : xs)}<div class="sp-list">${show.map(row).join("")}</div>`}
     ${ind && !th && !rv ? `<button class="hlink" data-spall style="margin-top:6px">${all ? "weniger zeigen" : `alle ${rows.length} Branchen zeigen`}</button>` : ""}
     <div class="note" style="margin:8px 0 0">${spStamp()}<br>${rv ? `US-${(th ? "Themen" : ind ? "Branchen" : "Sektor")}-ETFs gegenüber dem S&P 500, Wochenwerte.` : `US-${(th ? "Themen" : ind ? "Branchen" : "Sektor")}-ETFs, Rendite ${esc(kn)}${state.spRel ? ` minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")} (> 0 = besser als der Markt)` : ""}. ▲▼ = Plätze gewonnen/verloren ${k === "d1" ? "ggü. gestern" : "ggü. vor einer Woche"}. Antippen zeigt die stärksten Aktien aus deinem Scan.`}</div></div>`;
 }
@@ -2418,6 +2418,14 @@ function hotHtml(xs) {
   const h = xs.filter(x => x.hot); if (!h.length) return "";
   return `<div class="sp-rot sp-hotbox"><b>Heißgelaufen:</b> ${h.map(x => `${esc(x.n)} <span class="up">${sgnPct(x.hot, 1)}</span>`).join(" · ")} gegenüber dem S&P 500 in 4 Wochen.
     <span class="muted">Solche Sektoren liefen seit 2016 in den 13 Wochen danach im Schnitt rund 1 % schlechter als der Markt – nicht hinterherkaufen, eher Gewinne sichern.</span></div>`;
+}
+// Themen-Trend: Backtest (tools/research/rotation.py, 11 Themen-ETFs, ~10 Jahre): anders als bei Sektoren liefen die Themen mit der
+// höchsten relativen Stärke (13-Wochen-Verhältnis) im Schnitt weiter (+1,2 % in 4 Wochen ggü. den schwächsten, t ≈ 3), „Schwach“ blieb eher schwach.
+function themeTrendHtml(xs) {
+  const r = xs.filter(x => x.rrg).sort((a, b) => b.rrg.r - a.rrg.r); if (r.length < 6) return "";
+  const top = r.slice(0, 2), bot = r.slice(-2).reverse();
+  return `<div class="sp-rot"><b>Trend bei Themen:</b> stärkster Trend gerade <span class="up">${top.map(x => esc(x.n)).join(", ")}</span> · schwächster <span class="down">${bot.map(x => esc(x.n)).join(", ")}</span>.
+    <span class="muted" style="display:block;margin-top:2px">Bei Themen hielt der Trend bisher eher an: die stärksten lagen in den 4 Wochen danach im Schnitt gut 1 % vor den schwächsten, schwache Themen blieben oft schwach (Test über ~10 Jahre, nur 11 Themen – ein Hinweis, kein Beweis; bei Sektoren war es umgekehrt).</span></div>`;
 }
 // Rotations-Bild (wie ein Relative Rotation Graph): rechts = stärker als der S&P 500, oben = wird gerade stärker.
 // Schweif = die letzten 4 Wochen. Beschreibt, was passiert – sagt laut Backtest NICHT vorher, was als Nächstes kommt.
