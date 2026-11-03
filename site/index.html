@@ -729,7 +729,7 @@
   .sp-h svg.up polyline { stroke: var(--up); } .sp-h svg.down polyline { stroke: var(--red); } .sp-hr { font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums; } .sp-hr.muted { color: var(--muted); }
   .eq-crash { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 13px; } .eq-crash em { display: block; font-style: normal; color: var(--muted); font-size: 12px; margin-top: 2px; }
   .eq-crash.t-red b { color: var(--red); } .eq-crash.t-yellow b { color: var(--gold); } .eq-crash.t-green b { color: var(--up); }
-  .ng { margin: 0 0 10px; } .ng-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 8px 4px 4px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .ng { margin: 0 0 10px; } .ng[hidden] { display: none; } .ng-search input { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; margin: 6px 0 10px; } .ng-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 8px 4px 4px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
   .ng-n b { display: block; font-size: 15px; } .ng-n em { font-style: normal; font-size: 12.5px; color: var(--muted); } .ng-c { font-size: 12.5px; color: var(--muted); white-space: nowrap; display: flex; align-items: center; gap: 6px; }
   .ng-c i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); } .ng-c i.g { background: var(--up); } .ng-c i.r { background: var(--red); }
   .ir-r { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; width: 100%; padding: 9px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -2579,6 +2579,29 @@ function marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf) {
   const wichtig = `<button class="mo-today" data-gosub="calendar"><b>Heute wichtig</b><span>${ev.length ? ev.join(" · ") : "keine großen Termine heute und morgen"}</span><i>Kalender ›</i></button>`;
   return `${wichtig}${mktBarHtml()}${heatmapHtml()}<div class="mo2"><div>${sectorsHtml()}</div><div>${moversHtml()}</div></div>`;
 }
+// „Wichtig“ = Wirkung statt nur Stimmung: Stimmung, Thema (Zahlen, Ausblick, Analysten, Übernahme, Zulassung, Klage,
+// Vorstand), Kursbewegung der Aktie heute, Qualität der Quelle, Depot-Position; Werbe-/Meinungstexte zählen nicht.
+const NEWS_KW = [[/\b(earnings|results|quarter|guidance|outlook|forecast|revenue|profit|Quartal|Zahlen|Prognose|Ausblick|Umsatz|Gewinn)\b/i, 2],
+  [/\b(upgrade|downgrade|price target|rating|Kursziel|hochgestuft|abgestuft)\b/i, 1.5], [/\b(acquire|acquisition|merger|takeover|buyout|Übernahme|Fusion|kauft)\b/i, 2],
+  [/\b(FDA|approval|approved|Zulassung|trial results|Studie)\b/i, 2], [/\b(lawsuit|probe|investigation|recall|fine|Klage|Ermittlung|Rückruf|Strafe)\b/i, 1.5],
+  [/\b(CEO|CFO|chief executive|resigns|steps down|appointed|Vorstandschef|Rücktritt)\b/i, 1.5], [/\b(dividend|buyback|repurchase|Dividende|Aktienrückkauf)\b/i, 1]];
+const NEWS_FLUFF = /\b(should you|stocks? to (buy|watch)|top \d+|\d+ (stocks|reasons)|better buy|is it (time|too late)|could (soar|double)|millionaire|motley|zacks|prediction|here's why|what to expect|vs\.|forget)\b/i;
+const NEWS_SRC = /reuters|bloomberg|wall street journal|wsj|financial times|cnbc|handelsblatt|dpa|faz|börsen-zeitung|marketwatch|barron/i;
+function newsImportant(list, dep) {
+  const sc = n => { const t = String(n.t || ""); if (NEWS_FLUFF.test(t)) return -9;
+    const r = rowOf(n.tk) || {}, mv = Math.abs(r.d1 || 0);
+    return Math.abs(n.s || 0) * 1.5 + NEWS_KW.reduce((a, [rx, w]) => a + (rx.test(t) ? w : 0), 0) + (mv >= .06 ? 2.5 : mv >= .03 ? 1.5 : 0)
+      + (NEWS_SRC.test(String(n.p || "")) ? 1 : 0) + (dep.has(n.tk) ? 1 : 0); };
+  const best = {};
+  list.forEach(n => { const v = sc(n); if (v >= 3 && (!best[n.tk] || v > best[n.tk].v)) best[n.tk] = { n, v }; });   // je Aktie die wichtigste
+  return Object.values(best).sort((a, b) => b.v - a.v).slice(0, 5).map(x => x.n);
+}
+document.addEventListener("input", e => {
+  if (e.target.id !== "newsQ") return;
+  const q = e.target.value.trim().toLowerCase(); state.newsQ = q; let shown = 0;
+  document.querySelectorAll("[data-ngq]").forEach(g => { const ok = !q || g.dataset.ngq.includes(q); g.hidden = !ok; shown += ok; });
+  const no = document.getElementById("newsQnone"); if (no) no.hidden = shown > 0;
+});
 function newsHtml() {
   newsLoad();
   const tab = newsTabOf(), feedMine = (state.newsTab === "market" ? "market" : state.feedMode || "mine") === "mine", mine = myTickers(), now = Date.now(), bj = jsonData["briefing.json"], ij = jsonData["insider.json"];
@@ -2600,17 +2623,19 @@ function newsHtml() {
     data.results.filter(r => mine.has(r.ticker) && r.senti && r.senti.news).forEach(r => r.senti.news.forEach(n => pool.push({ ...n, nm: r.name || r.ticker, tk: r.ticker, ms: msOf(n.d) })));
     pool = dedup(pool.filter(n => n.t && n.ms && now - n.ms < 7 * 864e5).sort((a, b) => b.ms - a.ms));
     // Wichtig: klare Stimmung in den letzten 48 Std.; danach je Aktie gruppiert (Aktie mit der neuesten/stärksten Meldung zuerst)
-    const hot = pool.filter(n => n.s && Math.abs(n.s) > 0 && now - n.ms < 2 * 864e5).sort((a, b) => Math.abs(b.s) - Math.abs(a.s)).slice(0, 5);
+    const dep = depotTickers(); plansLoad().forEach(p => p.st === "open" && dep.add(p.t));   // Depot + laufende Trades
+    const hot = newsImportant(pool.filter(n => now - n.ms < 2 * 864e5), dep);
     const by = {}; pool.forEach(n => (by[n.tk] = by[n.tk] || []).push(n));
-    const groups = Object.entries(by).sort((a, b) => (b[1].some(n => n.s) - a[1].some(n => n.s)) || b[1][0].ms - a[1][0].ms);
+    const groups = Object.entries(by).sort((a, b) => (dep.has(b[0]) - dep.has(a[0])) || (b[1].some(n => n.s) - a[1].some(n => n.s)) || b[1][0].ms - a[1][0].ms);
     const grp = ([t, l]) => { const r = rowOf(t) || {}, sr = byTicker(t), d1 = r.d1, open = (state.newsOpen || {})[t];
       const sc = l.reduce((a, n) => a + (n.s || 0), 0);
-      return `<div class="ng"><button class="ng-h" data-newsopen="${esc(t)}"><span class="ng-n"><b>${esc(nameOf(t))}</b><em>${esc(tkClean(t))}${d1 != null ? ` · <span class="${d1 >= 0 ? "up" : "down"}">${sgnPct(d1, 1)} heute</span>` : ""}${sr && sr.passed ? " · " + kPill(sr, false) : ""}</em></span>
+      return `<div class="ng" data-ngq="${esc((nameOf(t) + " " + tkClean(t)).toLowerCase())}"${state.newsQ && !(nameOf(t) + " " + tkClean(t)).toLowerCase().includes(state.newsQ) ? " hidden" : ""}><button class="ng-h" data-newsopen="${esc(t)}"><span class="ng-n"><b>${esc(nameOf(t))}</b><em>${esc(tkClean(t))}${d1 != null ? ` · <span class="${d1 >= 0 ? "up" : "down"}">${sgnPct(d1, 1)} heute</span>` : ""}${sr && sr.passed && kSt(sr).k === "own" ? " · " + kPill(sr, false) : dep.has(t) ? ' · <span class="st own">im Depot</span>' : sr && sr.passed ? " · " + kPill(sr, false) : ""}</em></span>
         <span class="ng-c"><i class="${sc > 0 ? "g" : sc < 0 ? "r" : "n"}"></i>${l.length} Meldung${l.length === 1 ? "" : "en"}</span></button>
         <div class="bf-l">${(open ? l.slice(0, 12) : l.slice(0, 2)).map(row).join("")}</div>${l.length > 2 ? `<button class="hlink" data-newsopen="${esc(t)}" style="margin:2px 4px 0">${open ? "weniger" : `alle ${Math.min(l.length, 12)} zeigen`}</button>` : ""}</div>`; };
     return head + (mine.size ? "" : `<p class="muted" style="margin:8px 2px">Lege Aktien in Merkliste, Depot oder Watchlist – dann siehst du hier ihre Meldungen.</p>`)
-      + (hot.length ? block("Wichtig · letzte 48 Std. (klare Stimmung)", hot.map(row), "") : "")
-      + (groups.length ? `<div class="bf-s"><b>Deine Aktien · 7 Tage (${groups.length} mit Meldungen)</b></div>${groups.map(grp).join("")}` : block("Deine Aktien", [], "Keine neuen Meldungen zu deinen Aktien."));
+      + (hot.length ? block("Wichtig · letzte 48 Std. (Zahlen, Ausblick, Analysten, Übernahmen, große Kursbewegung)", hot.map(row), "") : "")
+      + (groups.length ? `<div class="bf-s"><b>Deine Aktien · 7 Tage (${groups.length} mit Meldungen) · Depot zuerst</b></div>
+        <div class="ng-search"><input type="search" id="newsQ" placeholder="Aktie suchen …" value="${esc(state.newsQ || "")}" autocomplete="off"></div>${groups.map(grp).join("")}<p class="muted" id="newsQnone" hidden>Keine deiner Aktien passt zur Suche.</p>` : block("Deine Aktien", [], "Keine neuen Meldungen zu deinen Aktien."));
   }
   if (tab === "feed") {
     let pool = (bj && bj.market || []).map(n => ({ ...n, s: 0, ms: msOf(n.d) }));
@@ -2677,7 +2702,7 @@ function newsHtml() {
   const ctry = t => { const m = /\.([A-Z]+)$/.exec(t); const sfx = m ? m[1] : ""; return !sfx ? "us" : sfx === "DE" ? "de" : ASIA_SUF.test(t) ? "asia" : "eu"; };
   const F = state.insF || {}, sig = Object.entries((ij && ij.signal) || {}).map(([t, g]) => ({ t, ...g, eur: g.cur === "EUR" ? g.val : g.val * ((fxEur && fxEur.USD) || 0.9) }))
     .filter(g => (!F.c || ctry(g.t) === F.c) && (!F.top || g.top) && (!F.big || g.eur >= 1e6) && (!F.mine || mine.has(g.t)))
-    .sort((a, b) => b.score - a.score || b.eur - a.eur);
+    .sort((a, b) => (state.insRank === "strong" ? b.score - a.score || b.eur - a.eur : String(b.last || "").localeCompare(String(a.last || "")) || b.score - a.score || b.eur - a.eur));
   const chip = (k, v, l) => `<button class="opt${(F[k] || "") === v ? " on" : ""}" data-insf="${k}" data-v="${v}">${l}</button>`;
   const tog = (k, l) => `<button class="opt${F[k] ? " on" : ""}" data-insf="${k}" data-v="${F[k] ? "" : "1"}">${l}</button>`;
   const lim = state.insMore ? 40 : 12;
@@ -2686,6 +2711,7 @@ function newsHtml() {
       <em>${esc(tkClean(g.t))} · ${g.buyers} Käufer${g.top ? ' · <span class="ir-top">Vorstandsspitze</span>' : ""}${g.opp ? " · gezielt" : ""}${g.own >= 10 ? ` · +${fmt(Math.min(g.own, 999), 0)} % Aktien` : ""} · zuletzt ${dateDE(g.last)}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : ""}</em></span>
       <span class="ir-v"><span class="ir-dots">${"●".repeat(g.score)}<i>${"●".repeat(3 - g.score)}</i></span><b>${eurAmt(g.eur)}</b></span></button>`; }).join("");
   const rankHtml = `<div class="hcard ir-card">${hHead("Wo Insider gerade kaufen · 90 Tage")}
+    <div class="sp-tg" style="margin:-4px 0 8px">${[["new", "Neueste zuerst"], ["strong", "Stärkste zuerst"]].map(([v, l]) => `<button class="opt${(state.insRank || "new") === v ? " on" : ""}" data-insrank="${v}">${l}</button>`).join("")}</div>
     <div class="sp-top"><div class="sp-tg">${chip("c", "", "Alle")}${chip("c", "us", "USA")}${chip("c", "de", "Deutschland")}${chip("c", "eu", "Europa")}${chip("c", "asia", "Asien")}</div>
       <div class="sp-tg">${tog("top", "Vorstandsspitze")}${tog("big", "ab 1 Mio. €")}${tog("mine", "nur meine")}</div></div>
     ${rank || `<p class="muted">Keine Insider-Käufe für diese Auswahl.</p>`}
@@ -5605,8 +5631,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.41";
-const APP_NEWS = [["2026.11.41", "Insider: ganz Deutschland", [
+const APP_VER = "2026.11.42";
+const APP_NEWS = [["2026.11.42", "News-Suche, Insider nach Datum", [
+  ["News: Suche und Depot zuerst", "Über deinen Aktien steht ein Suchfeld; deine Depot-Werte stehen ganz oben. „Wichtig · 48 Std.“ wählt jetzt nach Wirkung: Quartalszahlen, Ausblick, Analysten, Übernahmen, Zulassungen, Klagen, Vorstandswechsel und große Kursbewegung – Werbetexte wie „Aktien zum Kaufen“ fliegen raus, je Aktie nur die wichtigste Meldung."],
+  ["Insider: neueste zuerst", "Die Rangliste der letzten 90 Tage ist jetzt nach dem letzten Kauf sortiert. Mit „Stärkste zuerst“ kommt die alte Sortierung nach Stärke zurück."]]],
+  ["2026.11.41", "Insider: ganz Deutschland", [
   ["Insider: Deutschland komplett", "Alle Insider-Geschäfte deutscher Firmen (BaFin, 12 Monate) fließen jetzt in Rangliste, Scanner-Spalte und Filter ein – nicht mehr nur deine Aktien. Dazu Meldungen aus Dänemark, Finnland und Norwegen (ohne Betrag)."]]],
   ["2026.11.40", "News und Insider neu", [
   ["Insider: Rangliste", "Oben steht jetzt, wo Insider gerade am stärksten kaufen (90 Tage) – mit Stärke ●●●, Betrag, Käufern, x/11 und Kauf-Status. Filter: Land, nur Vorstandsspitze, ab 1 Mio. €, nur deine Aktien. Einzelmeldungen und Erklärungen zum Aufklappen."],
@@ -7347,6 +7376,7 @@ document.addEventListener("click", e => {
   const no = e.target.closest("[data-newsopen]"); if (no) { const t = no.dataset.newsopen; state.newsOpen = { ...(state.newsOpen || {}), [t]: !(state.newsOpen || {})[t] }; save(); render(); return; }
   const inf = e.target.closest("[data-insf]"); if (inf) { state.insF = { ...(state.insF || {}), [inf.dataset.insf]: inf.dataset.v }; save(); render(); return; }
   if (e.target.closest("[data-insmore]")) { state.insMore = !state.insMore; save(); render(); return; }
+  const irk = e.target.closest("[data-insrank]"); if (irk) { state.insRank = irk.dataset.insrank; save(); render(); return; }
   const fm = e.target.closest("[data-feedmode]"); if (fm) { state.feedMode = fm.dataset.feedmode; state.newsTab = "feed"; save(); render(); return; }
   const nt = e.target.closest("[data-newstab]"); if (nt) { state.newsTab = nt.dataset.newstab; save(); if (state.sec !== "news") goSec("news"); else render(); return; }
   const isb = e.target.closest("[data-inssort]"); if (isb) { state.insSort = isb.dataset.inssort; save(); render(); return; }
