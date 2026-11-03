@@ -1,0 +1,22 @@
+name: Rotations-Radar (Forschung)
+on:
+  push:
+    branches: ["claude/rotation-research"]
+    paths: ["tools/research/rotation.py", ".github/workflows/rotation.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python tools/research/rotation.py rotation.json 2>&1 | grep -v Warning | tee rotation.txt
+      - name: Sichern
+        if: always()
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: gh release create "rotation-${GITHUB_RUN_ID}" rotation.json rotation.txt --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Rotations-Radar" --notes "Forschung" || true
