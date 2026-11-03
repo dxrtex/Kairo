@@ -46,7 +46,7 @@ Schnelligkeit: erste Zahlen im Mittel 174 Min. nach der Meldezeit (90 % innerhal
 - MDGL 2026-11-03: Kairo 54% steigt, Kurs -8.1% · Gewinn +310% · Ausblick keine Meldung
 - TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises as strong forecast signals record growth phase“
 - MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +10.0% · Gewinn +2% · Ausblick angehoben – „MARICO: Broad-based growth lifted Q2 EBITDA 27% and raised FY27 profitability guidance to the mid-20s“
-- ADEA 2026-11-02: Kairo 26% steigt, Kurs -13.6% · Gewinn -30% · Ausblick gesenkt – „Adeia shares tumble 24% on earnings miss and weak guidance“
+- ADEA 2026-11-02: Kairo 26% steigt, Kurs -13.6% · Gewinn -30% · Ausblick gesenkt – „Adeia retreats 14% after Q3 miss and lowered revenue outlook (ADEA:NASDAQ)“
 - JAZZ 2026-11-02: Kairo 52% steigt, Kurs +7.1% · Gewinn -63% · Ausblick angehoben – „Raised 2026 total revenue guidance to a range of $4.775 - $4.85 billion.“
 - LSCC 2026-11-02: Kairo 71% steigt, Kurs +11.0% · Gewinn +31% · Ausblick gesenkt – „Lattice revenue for the fourth quarter of 2026 is expected to be between $325 million and $345 million.“
 - ACX.MC 2026-10-29: Kairo 37% steigt, Kurs -5.5% · Gewinn -3% · Ausblick keine Meldung
