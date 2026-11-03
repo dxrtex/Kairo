@@ -18,7 +18,7 @@ import re
 import sys
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -163,6 +163,20 @@ def routine(rows: list[dict]) -> None:
             continue
         y, m = int(x["d"][:4]), x["d"][5:7]
         x["opp"] = not all(f"{y - k}-{m}" in months.get(x["who"], ()) for k in (1, 2))
+
+
+def accumulate(hist: list[dict], new: list[dict], days: int = 90, today: str | None = None) -> list[dict]:
+    """Insider-Käufe über mehrere Abende sammeln (der Feed liefert nur die neuesten Meldungen): doppelte Meldungen
+    (gleiche Aktie, Person, Tag) einmal, älter als `days` Tage fällt heraus – Grundlage für den Scanner-Filter."""
+    since = (datetime.fromisoformat(today) - timedelta(days=days)).date().isoformat() if today else _days_ago(days)
+    seen, out = set(), []
+    for x in [*new, *hist]:
+        k = (x.get("t"), x.get("who"), x.get("d"), x.get("kind"))
+        if x.get("kind") != "buy" or not x.get("t") or (x.get("d") or "") < since or k in seen:
+            continue
+        seen.add(k)
+        out.append(x)
+    return out
 
 
 def signal(rows: list[dict], days: int = 90) -> dict:
@@ -328,7 +342,8 @@ def fetch(pages: int = 3, budget_s: float = 150, watch: dict[str, str] | None = 
     buys = sorted([r for r in rows if r["kind"] == "buy" and r["val"] >= MIN_BUY], key=lambda r: -r["val"])
     sells = sorted([r for r in rows if r["kind"] == "sell" and r["val"] >= MIN_SELL], key=lambda r: -r["val"])
     out = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "filings": len(seen) or len(rows),
-           "buys": buys[:60], "sells": sells[:40], "source": src}
+           "buys": buys[:60], "sells": sells[:40], "source": src,
+           "mkt_buys": [{k: r.get(k) for k in ("t", "n", "who", "role", "kind", "d", "val", "cur", "opp", "own")} for r in rows if r["kind"] == "buy"]}
     if watch:
         out["watch"], out["watch_n"] = fetch_watch(watch)
         bad = set()                                 # Länder-Endungen, deren Quelle in diesem Lauf ausgefallen ist
