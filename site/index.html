@@ -1093,6 +1093,8 @@
 .etf-live .eh-k i.on{background:var(--up);box-shadow:0 0 0 3px color-mix(in srgb,var(--up) 25%,transparent)}
 .etf-live .el-m{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin:6px 0 4px}.etf-live .el-m>b{font-size:26px;font-variant-numeric:tabular-nums}
 .etf-live .el-m span{font-size:14px;font-weight:650}.etf-live .el-s{font-size:12px;color:var(--muted)}
+.el-tv{margin-top:12px}.el-tvbar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;margin-bottom:8px}
+.el-tv iframe{width:100%;height:420px;border:0;border-radius:12px;display:block}@media (max-width:560px){.el-tv iframe{height:340px}}
 .etf-hero{display:flex;gap:22px;align-items:center;padding:22px!important}
 .eh-lights{flex:none;display:flex;flex-direction:column;gap:10px;background:#111;border-radius:22px;padding:12px 10px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
 .eh-l{display:flex;flex-direction:column;align-items:center;gap:4px;opacity:.28}.eh-l i{width:44px;height:44px;border-radius:50%;background:var(--c);display:block}
@@ -5024,22 +5026,42 @@ async function etfLiveLoad(force) {
       bid: +q.bid || null, ask: +q.ask || null, at: q.datetimeLast || q.datetimeBid || q.datetimeAsk || null } : { err: sn ? "gettex-Kurs fehlt" : "onvista nicht erreichbar" };
   } catch (e) { etfLive = { err: "onvista nicht erreichbar" }; }
   etfLiveAt = Date.now(); etfLiveBusy = false;
-  if (state.sec === "etf") render();
+  const box = document.getElementById("etfLivePx");          // nur den Kurs austauschen – der TradingView-Chart lädt nicht neu
+  if (box && state.sec === "etf") box.innerHTML = etfLivePxHtml(etfCfg());
+  else if (state.sec === "etf") render();
 }
 setInterval(() => { if (state.sec === "etf" && !document.hidden) etfLiveLoad(); }, 60e3);
-function etfLiveHtml(c) {
-  etfLiveLoad();
+// Live-Chart: TradingView an gettex (umschaltbar), darüber der Live-Kurs von onvista
+const ETF_TV = [["GETTEX", "gettex"], ["XETR", "Xetra"], ["TRADEGATE", "Tradegate"]];
+function etfTvHtml() {
+  const v = ETF_TV.some(x => x[0] === state.etfVenue) ? state.etfVenue : "GETTEX";
+  const src = "https://s.tradingview.com/widgetembed/?" + new URLSearchParams({ symbol: v + ":SPYI", interval: state.etfTvIv || "15", theme: isLight() ? "light" : "dark", style: "1",
+    locale: "de_DE", timezone: "Europe/Berlin", hide_side_toolbar: "1", allow_symbol_change: "0", saveimage: "0", withdateranges: "1", studies: "[]" });
+  return `<div class="el-tv"><div class="el-tvbar"><div class="sp-tg">${ETF_TV.map(([k, l]) => `<button class="opt${k === v ? " on" : ""}" data-etfvenue="${k}">${l}</button>`).join("")}</div>
+      <div class="sp-tg">${[["5", "5 Min"], ["15", "15 Min"], ["60", "1 Std"], ["D", "Tag"]].map(([k, l]) => `<button class="opt${(state.etfTvIv || "15") === k ? " on" : ""}" data-etftviv="${k}">${l}</button>`).join("")}</div></div>
+    <iframe src="${src}" loading="lazy" title="Live-Chart SPYI ${esc(v)}" allowtransparency="true" frameborder="0" scrolling="no"></iframe>
+    <div class="el-s">TradingView · ${v === "GETTEX" ? "gettex" : v === "XETR" ? "Xetra (ca. 15 Min. verzögert)" : "Tradegate"} · Bleibt der Chart leer, oben eine andere Börse wählen.</div></div>`;
+}
+function etfLivePxHtml(c) {
   const L = etfLive;
-  if (!L) return `<div class="hcard etf-live"><span class="muted">Live-Kurs gettex lädt …</span></div>`;
-  if (L.err) return `<div class="hcard etf-live"><span class="muted">Live-Kurs gettex: ${esc(L.err)}</span> <button class="hlink" data-etflive>↻ erneut</button></div>`;
+  if (!L) return `<span class="muted">Live-Kurs gettex lädt …</span>`;
+  if (L.err) return `<span class="muted">Live-Kurs gettex: ${esc(L.err)}</span> <button class="hlink" data-etflive>↻ erneut</button>`;
   const chg = L.pct != null ? L.pct : L.prev ? L.p / L.prev - 1 : null, t = L.at ? new Date(L.at) : null;
   const old = t && Date.now() - t > 20 * 60e3, hm = t ? t.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
   const val = c.units ? c.units * L.p : null;
-  return `<div class="hcard etf-live"><div class="el-h"><span class="eh-k"><i class="${old ? "" : "on"}"></i>Live · gettex · SPDR MSCI ACWI IMI</span><button class="hlink" data-etflive title="Jetzt aktualisieren">↻</button></div>
+  return `<div class="el-h"><span class="eh-k"><i class="${old ? "" : "on"}"></i>Live · gettex · SPDR MSCI ACWI IMI</span><button class="hlink" data-etflive title="Jetzt aktualisieren">↻</button></div>
     <div class="el-m"><b>${fmt(L.p, 3)} €</b>${chg != null ? `<span class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)} heute</span>` : ""}${val ? `<span class="muted">Deine ${fmt(c.units, 0)} Anteile: <b>${eur(val)}</b></span>` : ""}</div>
-    <div class="el-s">${L.bid && L.ask ? `Geld ${fmt(L.bid, 3)} · Brief ${fmt(L.ask, 3)} · ` : ""}${t ? `${old ? "letzter Kurs" : "Stand"} ${t.toDateString() === new Date().toDateString() ? hm + " Uhr" : t.toLocaleDateString("de-DE") + " " + hm}` : ""}${old ? " (gettex handelt Mo–Fr 7:30–23 Uhr)" : " · aktualisiert sich jede Minute"}</div></div>`;
+    <div class="el-s">${L.bid && L.ask ? `Geld ${fmt(L.bid, 3)} · Brief ${fmt(L.ask, 3)} · ` : ""}${t ? `${old ? "letzter Kurs" : "Stand"} ${t.toDateString() === new Date().toDateString() ? hm + " Uhr" : t.toLocaleDateString("de-DE") + " " + hm}` : ""}${old ? " (gettex handelt Mo–Fr 7:30–23 Uhr)" : " · aktualisiert sich jede Minute"}</div>`;
 }
-document.addEventListener("click", e => { if (e.target.closest("[data-etflive]")) etfLiveLoad(true); });
+function etfLiveHtml(c) {
+  etfLiveLoad();
+  return `<div class="hcard etf-live"><div id="etfLivePx">${etfLivePxHtml(c)}</div>${etfTvHtml()}</div>`;
+}
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-etflive]")) etfLiveLoad(true);
+  const v = e.target.closest("[data-etfvenue]"); if (v) { state.etfVenue = v.dataset.etfvenue; save(); render(); }
+  const iv = e.target.closest("[data-etftviv]"); if (iv) { state.etfTvIv = iv.dataset.etftviv; save(); render(); }
+});
 function etfHtml() {
   const e0 = getJson("etf.json"), c = etfCfg(), e = e0 && e0.ok === false ? null : e0;
   if (e0 === undefined) return `<div class="section-title"><span>ETF-Bereich</span><span>lädt …</span></div>`;
@@ -5062,7 +5084,7 @@ function etfHtml() {
         ${(lb => lb ? `<div class="eh-last${c.rate && daysUntil(lb.date) < -40 ? " gold" : ""}">Letzter SPYI-Kauf: <b>${dateDE(lb.date)}</b>${lb.plan ? " (Sparplan)" : ""}${c.rate && daysUntil(lb.date) < -40 ? " – seit über 40 Tagen kein Kauf: Sparplan bei Scalable prüfen" : ""} <small class="muted">· aus deinem Scalable-Export</small></div>` : c.rate ? `<div class="eh-last muted">Ob dein Sparplan läuft, sieht Kairo nach dem nächsten Scalable-Export (Depot → Import).</div>` : "")(etfLastBuy())}</div></div>
     ${c.units && c.buy ? etfDevHtml(e, c) : ""}${etfLiveHtml(c)}<div class="hcard">${hHead("Kurs der letzten 3 Jahre · mit 200-Tage-Linie")}${etfLine(e.hist, c.buy)}
       <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ⚠️ Kurs ist ${e.age} Tage alt` : ""}. Gelegentlich mit Scalable vergleichen.</div></div>
-    <details class="hcard etf-more etf-tv"${state.etfTv ? " open" : ""}><summary>Live-Chart · TradingView (XETRA, ca. 15 Min. verzögert)</summary>${state.etfTv ? tvEmbedHtml("XETR:SPYI", "") : ""}</details>`
+`
     : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? `Die Kursdaten des ETF sehen gerade unplausibel aus${e0.ref_ok === false ? ` (weichen ${pct(e0.ref_dev, 1)} vom Vergleichs-ETF ab)` : ""} – Datenfehler beim Anbieter. Die Ampel ist ausgeblendet, bis sie wieder stimmen.` : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
   const why = e ? `<div class="hsub">Was die Ampel gerade sieht</div><ul class="checks">${[
         ["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "muted" : e.vix >= 25 ? "up" : "gold", e.vix == null ? "keine Daten" : e.vix >= 30 ? "Panik – historisch die besten Kaufzeitpunkte" : e.vix >= 25 ? "Angst – Kaufsignal" : "ruhig – kein Kaufsignal"],
@@ -5422,8 +5444,9 @@ function pushHtml() {
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
 const APP_VER = "2026.11.36";
-const APP_NEWS = [["2026.11.36", "ETF: Live-Kurs gettex", [
-  ["ETF: Live-Kurs", "Über dem 3-Jahres-Chart steht jetzt der Live-Kurs des SPDR MSCI ACWI IMI an gettex (über onvista) – mit Tagesveränderung, Geld/Brief und dem aktuellen Wert deiner Anteile. Aktualisiert sich jede Minute."]]],
+const APP_NEWS = [["2026.11.36", "ETF: Live-Chart und Live-Kurs gettex", [
+  ["ETF: Live-Chart", "Über dem 3-Jahres-Chart: TradingView-Chart des SPYI an gettex (umschaltbar auf Xetra/Tradegate, 5 Min bis Tag)."],
+  ["ETF: Live-Kurs", "Darüber steht der Live-Kurs des SPDR MSCI ACWI IMI an gettex (über onvista) – mit Tagesveränderung, Geld/Brief und dem aktuellen Wert deiner Anteile. Aktualisiert sich jede Minute."]]],
   ["2026.11.35", "Quartalszahlen vorsichtiger und schneller", [
   ["Quartalszahlen: ehrlichere Prognose", "Außerhalb der USA zählt die Statistik nur halb (sie stammt aus US-Berichten – live lag sie dort beim Münzwurf). „Ausblick angehoben“ zählt nur noch, wenn die Pressemitteilung es bestätigt – Schlagzeilen allein lagen live bei 48 %."],
   ["Quartalszahlen: schneller", "Die Prüfung läuft in den Meldezeiten zuverlässig alle 10 Minuten (vorher startete GitHub sie nur ein paar Mal am Tag)."]]],
