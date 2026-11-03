@@ -702,6 +702,7 @@
   .hm-s { position: absolute; pointer-events: none; font-size: 10px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: rgba(255,255,255,.85); background: rgba(0,0,0,.45); padding: 1px 5px; border-bottom-right-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 2; }
   .hm-leg { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11.5px; color: var(--muted); flex-wrap: wrap; }
   .hm-leg i { width: 90px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--red), #23262c, var(--up)); } .hm-leg em { font-style: normal; margin-left: auto; }
+  .sp-live { color: var(--up); }
   .mv-own { color: var(--accent); font-size: 10px; vertical-align: 2px; } .mv-rv { color: var(--gold); font-weight: 650; }
   .sec-t { padding: 10px 12px; border-radius: 12px; background: var(--surface-2, rgba(255,255,255,.04)); border-left: 3px solid var(--muted); min-width: 0; }
   .sec-t.tone-green { border-left-color: var(--up); } .sec-t.tone-red { border-left-color: var(--red); } .sec-t.tone-yellow { border-left-color: var(--gold); }
@@ -2164,12 +2165,12 @@ const COLS = [
 ];
 
 // ---------- Suche in allen Aktien mit Kurz-Hinweis ----------
-let searchIdx = null, searchLoading = null, fxEur = { EUR: 1 };
+let searchIdx = null, searchLoading = null, fxEur = { EUR: 1 }, searchGen = "";
 // Dateien, die nur der Abendscan schreibt: mit Scan-Stempel laden → nach dem ersten Mal sofort aus dem Speicher (Service Worker)
 const scanFetch = f => data && data.generated ? fetch(`data/${f}?v=${encodeURIComponent(data.generated)}`) : fetch(`data/${f}`, { cache: "no-store" });
 function loadSearch() {
   if (!searchLoading) searchLoading = scanFetch("search.json").then(r => r.json())
-    .then(d => { searchIdx = d.rows || []; fxEur = d.fx_eur || { EUR: 1 };
+    .then(d => { searchIdx = d.rows || []; searchGen = d.generated || ""; fxEur = d.fx_eur || { EUR: 1 };
       try { (JSON.parse(localStorage.getItem("kairo-ext") || "[]")).forEach(x => { if (!searchIdx.some(r => r.t === x.t)) searchIdx.push(x); }); } catch (e) {}
       render(); }).catch(() => { searchIdx = []; render(); });
   return searchLoading;
@@ -2300,8 +2301,33 @@ function newsLoad(force) {
 // Sektoren & Branchen: Rendite je Zeitraum als Balken, Rangwechsel ggü. Vorwoche („Rotation“), Antippen → stärkste Aktien
 const SP_PER = [["d1", "1T", "heute"], ["w1", "1W", "1 Woche"], ["m1", "1M", "1 Monat"], ["m3", "3M", "3 Monate"], ["ytd", "YTD", "seit Jahresanfang"]];
 const spPer = () => SP_PER.find(p => p[0] === state.spPer) || SP_PER[1];
+// Markt tagsüber (backend/mktlive.py, alle 30 Min. im Branch kairo-alerts): gilt nur, wenn neuer als der letzte Scan
+const MKTLIVE_URL = REPO.replace("https://github.com/", "https://raw.githubusercontent.com/") + "/kairo-alerts/mktlive.json";
+let mktLiveData;
+function mktLive() {
+  if (mktLiveData === undefined) {
+    mktLiveData = null;
+    fetch(MKTLIVE_URL + "?v=" + Math.floor(Date.now() / 3e5)).then(r => r.ok ? r.json() : null).then(d => {
+      if (d && d.rows) { mktLiveData = d; if (state.sec === "news") render(); } }).catch(() => {});
+  }
+  const lv = mktLiveData, base = String((anaData && anaData.generated) || "");
+  return lv && String(lv.generated) > base && Date.now() - Date.parse(lv.generated) < 20 * 36e5 ? lv : null;
+}
+// Zeilen des Suchindex mit den Tageswerten (falls tagsüber aktualisiert); nur = nur die tagsüber aktualisierten Aktien
+function spRows(nur) {
+  const lv = mktLive(), xs = searchIdx || [];
+  if (!lv) return xs;
+  return xs.flatMap(r => { const l = lv.rows[r.t]; return l ? [{ ...r, ...l }] : nur ? [] : [r]; });
+}
+function spStamp() {
+  const lv = mktLive(), hm = s => new Date(s).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  if (lv) return `<b class="sp-live">● Stand ${hm(lv.generated)} Uhr</b> · tagsüber, ca. 15 Min. verzögert`;
+  const g = (anaData && anaData.generated) || searchGen;
+  return g ? `<b>Stand ${new Date(g).toLocaleDateString("de-DE")} ${hm(g)} Uhr</b> · Tagesschluss` : "";
+}
 function spList() {
-  const m = anaData && anaData.market || {}, ind = state.spMode === "ind" && (m.industries || []).length;
+  const lv = mktLive(), m = lv ? { sectors: lv.sectors && lv.sectors.length ? lv.sectors : (anaData && anaData.market || {}).sectors, industries: lv.industries && lv.industries.length ? lv.industries : (anaData && anaData.market || {}).industries } : anaData && anaData.market || {};
+  const ind = state.spMode === "ind" && (m.industries || []).length;
   return { ind, xs: (ind ? m.industries : m.sectors) || [] };
 }
 function spRanked(xs, k) {
@@ -2310,7 +2336,9 @@ function spRanked(xs, k) {
   return now.map((x, i) => ({ ...x, v: x[k], rk: i + 1, mv: x.p && x.p[k] != null ? was.indexOf(x) - i : 0 }));
 }
 function sectorsHtml() {
-  const m = anaData && anaData.market; if (!m || !(m.sectors || []).length) return "";
+  const lv = mktLive(), a = (anaData && anaData.market) || {};
+  const m = { sectors: (lv && lv.sectors && lv.sectors.length ? lv.sectors : a.sectors) || [], industries: (lv && lv.industries && lv.industries.length ? lv.industries : a.industries) || [] };
+  if (!m.sectors.length) return "";
   const [k, kl, kn] = spPer(), { ind, xs } = spList(), rows = spRanked(xs, k).filter(x => x.v != null);
   if (!rows.length) return "";
   const mx = Math.max(...rows.map(x => Math.abs(x.v)), 1e-4), neg = rows.some(x => x.v < 0), pos = rows.some(x => x.v > 0);
@@ -2327,12 +2355,12 @@ function sectorsHtml() {
       <div class="sp-tg">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}</div></div>
     ${rot}<div class="sp-list">${show.map(row).join("")}</div>
     ${ind ? `<button class="hlink" data-spall style="margin-top:6px">${all ? "weniger zeigen" : `alle ${rows.length} Branchen zeigen`}</button>` : ""}
-    <div class="note" style="margin:8px 0 0">US-${ind ? "Branchen" : "Sektor"}-ETFs, Rendite ${esc(kn)}. ▲▼ = Plätze gewonnen/verloren ${k === "d1" ? "ggü. gestern" : "ggü. vor einer Woche"}. Antippen zeigt die stärksten Aktien aus deinem Scan.</div></div>`;
+    <div class="note" style="margin:8px 0 0">${spStamp()}<br>US-${ind ? "Branchen" : "Sektor"}-ETFs, Rendite ${esc(kn)}. ▲▼ = Plätze gewonnen/verloren ${k === "d1" ? "ggü. gestern" : "ggü. vor einer Woche"}. Antippen zeigt die stärksten Aktien aus deinem Scan.</div></div>`;
 }
 function spDrillHtml(key) {
   const [k, , kn] = spPer(), { ind, xs } = spList(), x = xs.find(v => v.k === key); if (!x) return "";
   const nm = { d1: "d1", w1: "d5", m1: "m1", m3: "m3", ytd: "ytd" }[k];
-  const all = (searchIdx || []).filter(r => (ind ? r.ig === key : r.sec === x.n) && r[nm] != null);
+  const all = spRows().filter(r => (ind ? r.ig === key : r.sec === x.n) && r[nm] != null);
   const top = [...all].sort((a, b) => b[nm] - a[nm]).slice(0, 15);
   const up = all.filter(r => r[nm] > 0).length;
   const li = top.map((r, i) => { const sr = byTicker(r.t); return `<button class="sp-s" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}>
@@ -2348,8 +2376,8 @@ function spDrillHtml(key) {
 const HM_REG = [["us", "USA"], ["europe", "Europa"], ["de", "Deutschland"], ["asia", "Asien"], ["all", "Alle"]];
 const SP_IDX = { d1: "d1", w1: "d5", m1: "m1", m3: "m3", ytd: "ytd" };
 const SP_CLAMP = { d1: .03, w1: .06, m1: .12, m3: .2, ytd: .3 };
-function hmRows(reg) {
-  return (searchIdx || []).filter(r => reg === "all" ? true : reg === "de" ? /\.DE$/.test(r.t) : r.r === reg);
+function hmRows(reg, nur) {
+  return spRows(nur).filter(r => reg === "all" ? true : reg === "de" ? /\.DE$/.test(r.t) : r.r === reg);
 }
 function squarify(items, x, y, w, h) {   // items: [{v, ...}] → [{...item, x, y, w, h}] (Bruls et al.)
   const out = [], tot = items.reduce((a, b) => a + b.v, 0); if (!tot || w <= 0 || h <= 0) return out;
@@ -2395,13 +2423,13 @@ function heatmapHtml() {
   return `<div class="hcard hm-card">${hHead("Heatmap")}<div class="sp-top">${regBar}${perBar}</div>
     <div class="hm" style="aspect-ratio:${W}/${H}">${tiles}${labels}</div>
     <div class="hm-leg"><span>${sgnPct(-lim, 0)}</span><i></i><span>${sgnPct(lim, 0)}</span><em>${up} von ${xs.length} im Plus · ${esc(kn)}</em></div>
-    <div class="note" style="margin:6px 0 0">Die ${xs.length} größten Aktien der Region aus dem Scan, Fläche = Börsenwert. Goldener Rahmen = Kairo-Treffer, weißer Rahmen = Depot/Watchlist. Antippen öffnet die Aktie.</div></div>`;
+    <div class="note" style="margin:6px 0 0">${spStamp()}<br>Die ${xs.length} größten Aktien der Region aus dem Scan, Fläche = Börsenwert. Goldener Rahmen = Kairo-Treffer, weißer Rahmen = Depot/Watchlist. Antippen öffnet die Aktie.</div></div>`;
 }
 // Gewinner / Verlierer im gewählten Zeitraum (gleiche Region wie die Heatmap)
 function moversHtml() {
   if (!searchIdx) return "";
   const [k, , kn] = spPer(), f = SP_IDX[k], reg = state.hmReg || "us", down = state.mvSide === "down", mine = myTickers();
-  const xs = hmRows(reg).filter(r => r[f] != null).sort((a, b) => down ? a[f] - b[f] : b[f] - a[f]).slice(0, 15).filter(r => down ? r[f] < 0 : r[f] > 0);
+  const live = !!mktLive(), xs = hmRows(reg, live).filter(r => r[f] != null).sort((a, b) => down ? a[f] - b[f] : b[f] - a[f]).slice(0, 15).filter(r => down ? r[f] < 0 : r[f] > 0);
   const li = xs.map((r, i) => { const sr = byTicker(r.t), rv = k === "d1" && r.rv != null && r.rv >= 1.5;
     return `<button class="sp-s mv-r" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}><span class="sp-i">${i + 1}</span>
       <span class="sp-sn"><b>${esc(r.n || r.t)}${mine.has(r.t) ? ` <small class="mv-own">●</small>` : ""}</b><em>${esc(tkClean(r.t))} · ${fmt(r.c)} ${esc(r.cur || "")}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}${rv ? ` · <span class="mv-rv">${fmt(r.rv, 1)}× Volumen</span>` : ""}</em></span>
@@ -2410,7 +2438,7 @@ function moversHtml() {
     <div class="sp-top"><div class="sp-tg">${[["up", "Gewinner"], ["down", "Verlierer"]].map(([v, l]) => `<button class="opt${(v === "down") === down ? " on" : ""}" data-mvside="${v}">${l}</button>`).join("")}</div>
       <span class="muted" style="font-size:12.5px;align-self:center">${esc(HM_REG.find(x => x[0] === reg)[1])} · ${esc(kn)}</span></div>
     ${li || `<p class="muted">Keine Daten für diese Auswahl.</p>`}
-    <div class="note" style="margin:8px 0 0">${down ? "Starke Rücksetzer sind oft die Kandidaten von morgen – x/11 zeigt, wie nah eine Aktie an einem Kairo-Treffer ist." : "Zum Beobachten, nicht zum Hinterherkaufen: Kairo kauft Rücksetzer, keine Kurssprünge."} ● = in deinem Depot oder auf der Watchlist.${k === "d1" ? " „× Volumen“ = Handel ggü. dem 20-Tage-Schnitt – hohes Volumen heißt meist echte Nachricht." : ""}</div></div>`;
+    <div class="note" style="margin:8px 0 0">${spStamp()}${live ? " · tagsüber nur die größten Werte je Region" : ""}<br>${down ? "Starke Rücksetzer sind oft die Kandidaten von morgen – x/11 zeigt, wie nah eine Aktie an einem Kairo-Treffer ist." : "Zum Beobachten, nicht zum Hinterherkaufen: Kairo kauft Rücksetzer, keine Kurssprünge."} ● = in deinem Depot oder auf der Watchlist.${k === "d1" ? " „× Volumen“ = Handel ggü. dem 20-Tage-Schnitt – hohes Volumen heißt meist echte Nachricht." : ""}</div></div>`;
 }
 document.addEventListener("click", e => {
   const hr = e.target.closest("[data-hmreg]"); if (hr) { state.hmReg = hr.dataset.hmreg; save(); render(); return; }
@@ -5349,8 +5377,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.32";
-const APP_NEWS = [["2026.11.32", "Insider aus Schweden und der Schweiz", [
+const APP_VER = "2026.11.33";
+const APP_NEWS = [["2026.11.33", "Markt tagsüber", [
+  ["Markt: alle 30 Minuten", "Sektoren, Branchen, Heatmap und Gewinner/Verlierer werden während der Börsenzeiten alle 30 Minuten aktualisiert (ca. 15 Min. verzögert). Jede Karte zeigt ihren Stand. x/11 und Kauf-Status bleiben beim Tagesschluss."]]],
+  ["2026.11.32", "Insider aus Schweden und der Schweiz", [
   ["Insider: Schweden und Schweiz", "Insider-Käufe aller gescannten schwedischen und Schweizer Aktien (Register von Finansinspektionen und SIX) fließen jetzt in die Insider-Spalte und den Filter im Scanner ein. Käufe und Verkäufe derselben Person am selben Tag werden verrechnet, Käufe über Beteiligungsfirmen zählen nicht."]]],
   ["2026.11.31", "Heatmap, Gewinner & Verlierer", [
   ["Markt: Heatmap", "Die größten Aktien je Region (USA, Europa, Deutschland, Asien, alle) als Kacheln – Fläche = Börsenwert, Farbe = Rendite im gewählten Zeitraum. Goldener Rahmen = Kairo-Treffer, weißer = Depot/Watchlist."],
