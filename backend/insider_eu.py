@@ -75,13 +75,9 @@ def _match(isin: str, firm: str, uni: dict[str, str], figi: dict, by_key: dict, 
     for k in figi.get(isin) or []:
         if k in by_key:
             return by_key[k]
-    nk = _name_key(firm)
-    if len(nk) >= 4:
-        if nk in by_name:
-            return by_name[nk]
-        for n, t in by_name.items():
-            if len(n) >= 5 and (nk.startswith(n) or n.startswith(nk)):
-                return t
+    nk = _name_key(firm)                              # ohne FIGI-Treffer nur bei exakt gleichem Firmennamen (Volvo ≠ Volvo Car)
+    if len(nk) >= 4 and nk in by_name:
+        return by_name[nk]
     return None
 
 
@@ -99,6 +95,31 @@ def _decode(raw: bytes) -> str:
     return raw.decode("utf-8-sig", "replace")
 
 
+CORP = re.compile(r"\b(AB|Aktiebolag|Holding|Invest|Förvaltning|Stiftelse|Ltd|GmbH|AS|A/S|Oy|Fond|Capital|Partners|LLC|Trust)\b", re.I)
+
+
+def _role_se(r: str) -> str:
+    r = (r or "").replace("\xa0", " ")
+    return ("Vorstand (CEO)" if re.search(r"\bvd\b|verkställande direktör", r, re.I) else
+            "Finanzvorstand (CFO)" if re.search(r"finans|ekonomichef|cfo", r, re.I) else
+            "Vorsitz" if re.search(r"ordförande", r, re.I) else
+            "Aufsichtsrat" if re.search(r"styrelse", r, re.I) else "Führungskraft")
+
+
+def net_rows(rows: list[dict]) -> list[dict]:
+    """Käufe und Verkäufe derselben Person am selben Tag verrechnen (Umschichtungen sind kein Signal)."""
+    acc = {}
+    for x in rows:
+        k = (x["t"], x["who"], x["d"])
+        o = acc.setdefault(k, {**x, "val": 0})
+        o["val"] += x["val"] if x["kind"] == "buy" else -x["val"]
+    out = []
+    for o in acc.values():
+        if abs(o["val"]) >= 5_000:
+            out.append({**o, "kind": "buy" if o["val"] > 0 else "sell", "val": abs(o["val"])})
+    return out
+
+
 def parse_fi(text: str) -> list[dict]:
     """FI-CSV (Semikolon, Kopfzeile auf Schwedisch) → Geschäfte. Nur Börsengeschäfte mit Aktien, ohne Aktienprogramme/Korrekturen."""
     rd = csv.DictReader(io.StringIO(text), delimiter=";")
@@ -112,7 +133,10 @@ def parse_fi(text: str) -> list[dict]:
         if g("aktieprogram").strip().lower() in ("ja", "yes") or g("Status").lower().startswith("rev"):
             continue
         vol, px, cur = _num(g("Volym")), _num(g("Pris")), (g("Valuta") or "SEK").strip().upper()
-        out.append({"isin": g("ISIN").strip(), "firm": g("Emittent").strip(), "who": g("Person i ledande", "Anmälningsskyldig").strip(),
+        rep, who = g("Anmälningsskyldig").strip(), g("Person i ledande").strip()
+        if rep and who and rep != who and CORP.search(rep):  # nahestehende Firma (Holding, Beteiligungsgesellschaft) – kein eigenes Geld
+            continue
+        out.append({"isin": g("ISIN").strip(), "firm": g("Emittent").strip(), "who": (who or rep).replace("\xa0", " "),
                     "role": g("Befattning").strip(), "rel": g("Närstående").strip().lower() in ("ja", "yes"),
                     "kind": kind, "d": g("Transaktionsdatum")[:10], "val": round(vol * px * EUR.get(cur, 0.1)), "cur": "EUR"})
     return out
@@ -128,13 +152,11 @@ def fetch_se(uni: dict[str, str], figi: dict, days: int = 90) -> list[dict]:
     out = []
     for x in rows:
         t = _match(x["isin"], x["firm"], uni, figi, by_key, by_name)
-        if t and x["val"] >= 5_000:
-            role = ("Vorstand (CEO)" if re.search(r"\bvd\b|verkställande direktör", x["role"], re.I) else
-                    "Finanzvorstand (CFO)" if re.search(r"finans|ekonomichef|cfo", x["role"], re.I) else
-                    "Vorsitz" if re.search(r"ordförande", x["role"], re.I) else x["role"] or "Führungskraft")
-            out.append({"t": t, "n": uni.get(t), "who": x["who"] or x["firm"], "role": role + (" · nahestehend" if x["rel"] else ""),
+        if t:
+            out.append({"t": t, "n": uni.get(t), "who": x["who"] or x["firm"], "role": _role_se(x["role"]) + (" · nahestehend" if x["rel"] else ""),
                         "kind": x["kind"], "d": x["d"], "val": x["val"], "cur": "EUR", "src": "FI Schweden",
                         "url": FI_PAGE.format(q=requests.utils.quote(x["firm"]))})
+    out = net_rows(out)
     print(f"Insider Schweden: nicht zugeordnet z. B. {[(x['firm'], figi.get(x['isin'])) for x in rows if not _match(x['isin'], x['firm'], uni, figi, by_key, by_name)][:6]}")
     print(f"Insider Schweden: {len(rows)} Geschäfte, {len(out)} zugeordnet ({sum(x['kind'] == 'buy' for x in out)} Käufe)")
     return out
@@ -171,9 +193,10 @@ def fetch_ch(uni: dict[str, str], figi: dict, days: int = 90, max_pages: int = 4
     out = []
     for x in rows:
         t = _match(x["isin"], "", uni, figi, by_key, by_name)
-        if t and x["val"] >= 5_000:
+        if t:
             out.append({"t": t, "n": uni.get(t), "who": x["who"], "role": x["role"], "kind": x["kind"], "d": x["d"], "val": x["val"],
                         "cur": "EUR", "src": "SIX Schweiz", "url": SIX_PAGE})
+    out = net_rows(out)
     miss = [(x["isin"], figi.get(x["isin"])) for x in rows if not _match(x["isin"], "", uni, figi, by_key, by_name)][:6]
     print(f"Insider Schweiz: nicht zugeordnet z. B. {miss}")
     print(f"Insider Schweiz: {len(rows)} Geschäfte, {len(out)} zugeordnet ({sum(x['kind'] == 'buy' for x in out)} Käufe)")

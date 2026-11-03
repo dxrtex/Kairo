@@ -28,3 +28,19 @@ def test_match_figi_then_name():
     assert eu._match("SE1", "", uni, {"SE1": ["VOLVB"]}, by_key, by_name) == "VOLV-B.ST"
     assert eu._match("SE2", "Telefonaktiebolaget LM Ericsson", uni, {}, by_key, by_name) == "ERIC-B.ST"
     assert eu._match("SE3", "Okänd", uni, {}, by_key, by_name) is None
+
+
+def test_net_rows_and_exact_name():
+    rows = [{"t": "A.ST", "who": "P", "d": "2026-10-01", "kind": "buy", "val": 100_000},
+            {"t": "A.ST", "who": "P", "d": "2026-10-01", "kind": "sell", "val": 90_000},
+            {"t": "A.ST", "who": "Q", "d": "2026-10-01", "kind": "sell", "val": 50_000}]
+    out = {x["who"]: x for x in eu.net_rows(rows)}
+    assert out["P"]["kind"] == "buy" and out["P"]["val"] == 10_000 and out["Q"]["kind"] == "sell"
+    uni = {"VOLV-B.ST": "AB Volvo (publ)"}
+    by_key, by_name = eu._index(uni, ".ST")
+    assert eu._match("X", "Volvo Car AB", uni, {}, by_key, by_name) is None
+
+
+def test_parse_fi_skips_related_company():
+    csv_ = FI_CSV.replace("X;Martin Lundstedt;", "X;Lundstedt Invest AB;Martin Lundstedt;", 1).replace("LEI-kod;Person", "LEI-kod;Anmälningsskyldig;Person", 1)
+    assert eu.parse_fi(csv_) == []
