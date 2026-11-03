@@ -10,9 +10,9 @@ Schnelligkeit: erste Zahlen im Mittel 605 Min. nach der Meldezeit (90 % innerhal
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 42 | 57% | 0.230 | 0.250 |
 | Ausblick gesenkt | 6 | 67% | 0.208 | 0.250 |
-| Ausblick bestätigt | 4 | 75% | 0.202 | 0.250 |
+| Ausblick bestätigt | 5 | 80% | 0.192 | 0.250 |
 | Ausblick angehoben | 22 | 50% | 0.245 | 0.250 |
-| Ausblick keine Meldung | 23 | 52% | 0.243 | 0.250 |
+| Ausblick keine Meldung | 22 | 50% | 0.247 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -33,7 +33,7 @@ Schnelligkeit: erste Zahlen im Mittel 605 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 14% (7) | 0% (2) | 50% (8) | 31% (16) |
 | im Rahmen (±2 %) | 33% (9) | 0% (3) | 33% (9) | 62% (16) |
 | über Erwartung (+2 bis +10 %) | 12% (8) | 33% (3) | 43% (21) | 48% (23) |
-| deutlich über Erwartung (> +10 %) | 42% (12) | 67% (9) | 68% (37) | 56% (32) |
+| deutlich über Erwartung (> +10 %) | 42% (12) | 70% (10) | 68% (37) | 55% (31) |
 
 ## Vorschläge zur Anpassung
 
@@ -52,24 +52,24 @@ Schnelligkeit: erste Zahlen im Mittel 605 Min. nach der Meldezeit (90 % innerhal
 - ZBRA 2026-11-03: Kairo 53% steigt, Kurs -8.8% · Gewinn +1% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - MDGL 2026-11-03: Kairo 54% steigt, Kurs -8.1% · Gewinn +310% · Ausblick keine Meldung
 - TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises as strong forecast signals record growth phase“
-- SRAD 2026-11-03: Kairo 61% steigt, Kurs +10.3% · Gewinn +60% · Ausblick keine Meldung
+- SRAD 2026-11-03: Kairo 61% steigt, Kurs +10.3% · Gewinn +60% · Ausblick bestätigt – „SRAD: Q3 growth and strong cash flow underpin reiterated FY2026 guidance and strategic portfolio moves“
 - MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +10.0% · Gewinn +2% · Ausblick angehoben – „MARICO: Broad-based growth lifted Q2 EBITDA 27% and raised FY27 profitability guidance to the mid-20s“
 - ADEA 2026-11-02: Kairo 26% steigt, Kurs -13.6% · Gewinn -30% · Ausblick gesenkt – „Adeia retreats 14% after Q3 miss and lowered revenue outlook (ADEA:NASDAQ)“
 - JAZZ 2026-11-02: Kairo 52% steigt, Kurs +7.1% · Gewinn -63% · Ausblick angehoben – „Raised 2026 total revenue guidance to a range of $4.775 - $4.85 billion.“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-6 Fehlprognosen und 35 Vergleichsfälle untersucht.
+6 Fehlprognosen und 49 Vergleichsfälle untersucht.
 
 - Markt: Bei 0% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 0% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -7.8%, getroffene Ø -6.3%.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -7.8%, getroffene Ø -4.9%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 33% (2) | 26% | 1.3 |
-| Marge | 17% (1) | 14% | 1.2 |
-| Umsatz | 67% (4) | 51% | 1.3 |
-| KI/Rechenzentren | 33% (2) | 14% | 2.3 |
+| Ausblick | 33% (2) | 27% | 1.3 |
+| Marge | 17% (1) | 10% | 1.6 |
+| Umsatz | 67% (4) | 49% | 1.4 |
+| KI/Rechenzentren | 33% (2) | 10% | 3.3 |
 
 **Kandidaten für neue Merkmale:** noch keine (ein Grund braucht ≥ 15 Fehlprognosen und Faktor ≥ 1,5).
 
