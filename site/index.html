@@ -5201,7 +5201,7 @@ function etfTvHtml() {
   return `<div class="el-tv"><div class="el-tvbar"><div class="sp-tg">${ETF_TV.map(([k, l]) => `<button class="opt${k === v ? " on" : ""}" data-etfvenue="${k}">${l}</button>`).join("")}</div>
       <div class="sp-tg">${[["5", "5 Min"], ["15", "15 Min"], ["60", "1 Std"], ["D", "Tag"]].map(([k, l]) => `<button class="opt${(state.etfTvIv || "15") === k ? " on" : ""}" data-etftviv="${k}">${l}</button>`).join("")}</div></div>
     <iframe src="${src}" loading="lazy" title="Live-Chart SPYI ${esc(v)}" allowtransparency="true" frameborder="0" scrolling="no"></iframe>
-    <div class="el-s">TradingView · ${v === "GETTEX" ? "gettex" : v === "XETR" ? "Xetra (ca. 15 Min. verzögert)" : "Tradegate"} · Bleibt der Chart leer, oben eine andere Börse wählen.</div></div>`;
+    <div class="el-s">Chart: <b>SPDR MSCI ACWI IMI (SPYI) · ISIN IE00B3YLTY66</b> an ${v === "GETTEX" ? "gettex" : v === "XETR" ? "Xetra (ca. 15 Min. verzögert)" : "Tradegate"} · TradingView nennt im Namen die Fondsgesellschaft „State Street“ (SPDR-Anbieter) – es ist dein ETF, nicht die State-Street-Aktie. Bleibt der Chart leer, oben eine andere Börse wählen.</div></div>`;
 }
 function etfLivePxHtml(c) {
   const L = etfLive;
@@ -5210,7 +5210,7 @@ function etfLivePxHtml(c) {
   const chg = L.pct != null ? L.pct : L.prev ? L.p / L.prev - 1 : null, t = L.at ? new Date(L.at) : null;
   const old = t && Date.now() - t > 20 * 60e3, hm = t ? t.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
   const val = c.units ? c.units * L.p : null;
-  return `<div class="el-h"><span class="eh-k"><i class="${old ? "" : "on"}"></i>Live · gettex · SPDR MSCI ACWI IMI</span><button class="hlink" data-etflive title="Jetzt aktualisieren">↻</button></div>
+  return `<div class="el-h"><span class="eh-k"><i class="${old ? "" : "on"}"></i>Live-Kurs gettex · SPDR MSCI ACWI IMI (SPYI · IE00B3YLTY66)</span><button class="hlink" data-etflive title="Jetzt aktualisieren">↻</button></div>
     <div class="el-m"><b>${fmt(L.p, 3)} €</b>${chg != null ? `<span class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)} heute</span>` : ""}${val ? `<span class="muted">Deine ${fmt(c.units, 0)} Anteile: <b>${eur(val)}</b></span>` : ""}</div>
     <div class="el-s">${L.bid && L.ask ? `Geld ${fmt(L.bid, 3)} · Brief ${fmt(L.ask, 3)} · ` : ""}${t ? `${old ? "letzter Kurs" : "Stand"} ${t.toDateString() === new Date().toDateString() ? hm + " Uhr" : t.toLocaleDateString("de-DE") + " " + hm}` : ""}${old ? " (gettex handelt Mo–Fr 7:30–23 Uhr)" : " · aktualisiert sich jede Minute"}</div>`;
 }
