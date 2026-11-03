@@ -203,7 +203,8 @@ def signal(rows: list[dict], days: int = 90) -> dict:
     return res
 
 
-SOURCE_BY_SUFFIX = {"DE": "BaFin", "AS": "AFM (ohne Betrag)", "AX": "ASX (ohne Betrag)", "ST": "FI Schweden", "SW": "SIX Schweiz"}
+SOURCE_BY_SUFFIX = {"DE": "BaFin", "AS": "AFM (ohne Betrag)", "AX": "ASX (ohne Betrag)", "ST": "FI Schweden", "SW": "SIX Schweiz",
+                    "CO": "Nasdaq Nordic (ohne Betrag)", "HE": "Nasdaq Nordic (ohne Betrag)", "OL": "Oslo Børs (ohne Betrag)"}
 
 
 def cover(watch: dict[str, str], out: dict, bad: set | frozenset = frozenset()) -> dict:

@@ -267,8 +267,8 @@ def parse_mar(text: str) -> dict | None:
            "sell" if re.search(r"Nature of the transaction[^.]{0,40}?\b(Disposal|Sale|Salg|Myynti)", t, re.I) else None
     if not kind:
         return None
-    vol = re.search(r"(?:Aggregated volume|Volume\(s\)|Volume)[^0-9]{0,40}" + NUM, t, re.I)
-    px = re.search(r"(?:Price\(s\)|Price|Aggregated price|Volume weighted average price)[^0-9]{0,40}" + NUM, t, re.I)
+    vol = re.search(r"(?:Aggregated volume|Volume\(s\)|Volume)[\s:]{0,6}" + NUM, t, re.I)          # Zahl direkt nach dem Feld
+    px = re.search(r"(?:Aggregated price|Volume weighted average price|Price\(s\)|Price)[\s:]{0,6}" + NUM, t, re.I)
     cur = re.search(r"\b(DKK|EUR|SEK|NOK|USD|ISK)\b", t)
     who = re.search(r"Name[: ]+([A-ZÆØÅÄÖ][\w .'-]{2,60}?)(?: Reason| Position|\s+2\b|\s+b\))", t)
     role = re.search(r"Position/status[: ]+([\w ,/&-]{2,60}?)(?: b\)| Initial| Amendment)", t, re.I)
