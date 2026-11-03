@@ -94,4 +94,4 @@ def test_parse_uk_real_layouts():
             "€0.07 each Identification Code GB00BP6MXD84 Nature of the transaction Disposal of ordinary shares Currency GBP Price £33.686565 Volume 30,000 "
             "Total £1,010,596.95 Aggregated information: Price £33.686565 Volume 30,000")
     s = eu.parse_uk(shel)
-    assert s["kind"] == "sell" and s["val"] == round(33.686565 * 30000 * eu.EUR["GBP"])
+    assert s["kind"] == "sell" and s["val"] == round(33.686565 * 30000 * eu.EUR["GBP"]) and s["who"] == "Sinead Gorman"

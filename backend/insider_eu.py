@@ -428,7 +428,7 @@ def parse_uk(text: str) -> dict | None:
             (prices.append(pv) if pv else vols.append(_uk_num(num)))
         if prices and vols:
             val = sum(p * v * EUR.get(c, 0.1) for (p, c), v in zip(prices, vols))
-    who = re.search(r"Name\s*:?\s*([A-Z][\w .'-]{2,60}?)\s*(?:2\s|Reason|b\))", t)
+    who = re.search(r"Name\s*:?\s*([A-Z][\w .'-]{2,60}?)\s*(?:2\s|Reason|b\)|Position)", t)
     role = re.search(r"Position/status\s*:?\s*([\w ,/&()'-]{2,80}?)\s*(?:b\)|Initial|Amendment)", t, re.I)
     if val is not None and not (0 < val < 5e8):
         val = None
