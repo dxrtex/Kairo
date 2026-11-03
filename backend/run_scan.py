@@ -567,7 +567,7 @@ def main(argv=None) -> int:
             eu_rows, eu_bad = [], set()
             try:                                     # Schweden + Schweiz: Register aller Emittenten → alle gescannten Aktien
                 figi = state.load("figi.json", {})
-                eu_uni = {t: (m or {}).get("name") or t for t, m in meta.items() if t.endswith((".ST", ".SW"))}
+                eu_uni = {t: (m or {}).get("name") or t for t, m in meta.items() if t.endswith((".ST", ".SW", ".DE", ".CO", ".HE", ".OL"))}
                 eu_rows, eu_bad = insider_eu.fetch(eu_uni, figi)
                 state.save("figi.json", figi)
                 ins["watch"] = [*ins.get("watch", []), *[x for x in eu_rows if x["t"] in w_ins]]
