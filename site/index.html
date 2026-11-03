@@ -683,6 +683,7 @@
   .rrg { width: 100%; max-width: 520px; height: auto; display: block; border-radius: 12px; background: var(--surface-2); margin: 0 auto 10px; }
   .rrg .rrg-t { font-size: 10px; fill: var(--text); paint-order: stroke; stroke: var(--surface-2); stroke-width: 3px; }
   .rrg .rrg-q { font-size: 10.5px; fill: var(--muted); font-weight: 600; }
+  .mv-rvb { display: block; font-size: 12px; color: var(--gold); font-weight: 700; text-align: right; }
   .ins-sum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 10px; }
   .ins-sum div { background: var(--surface-2); border-radius: 10px; padding: 8px 6px; text-align: center; }
   .ins-sum b { display: block; font-size: 15px; } .ins-sum em { font-style: normal; font-size: 11.5px; color: var(--muted); }
@@ -727,7 +728,7 @@
   .mbar .mb-top { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin-bottom: 10px; }
   .mb-reg { display: flex; align-items: center; gap: 8px; } .mb-reg i { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); } .mb-reg.tone-green i { background: var(--up); } .mb-reg.tone-red i { background: var(--red); }
   .mb-fear { font-size: 14px; } .mb-fear small { color: var(--muted); }
-  .mb-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+  .mb-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
   .mb-t { padding: 8px 10px; border-radius: 10px; background: var(--surface-2); min-width: 0; } .mb-t span { display: block; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mb-t b { display: block; font-size: 16px; } .mb-t em, .mb-t small { display: block; font-style: normal; font-size: 11.5px; }
   .mb-br { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; margin-top: 10px; font-size: 13px; } .mb-bl { color: var(--muted); font-size: 12px; width: 100%; } .mb-br em { font-style: normal; color: var(--muted); }
@@ -2381,12 +2382,13 @@ function spMarket() {
   const lv = mktLive(), a = (anaData && anaData.market) || {};
   const mix = k => { const base = a[k] || [], live = lv && lv[k] && lv[k].length ? lv[k] : null; if (!live) return base;
     const by = Object.fromEntries(base.map(x => [x.k, x])); return live.map(x => ({ ...(by[x.k] || {}), ...x, ...(x.rrg ? {} : by[x.k] && by[x.k].rrg ? { rrg: by[x.k].rrg, hot: by[x.k].hot } : {}) })); };
-  return { sectors: mix("sectors"), industries: mix("industries"), themes: mix("themes") };
+  return { sectors: mix("sectors"), industries: mix("industries"), themes: mix("themes"), sectors_eu: mix("sectors_eu") };
 }
 function spList() {
   const m = spMarket();
+  const eu = state.spMode === "eu" && (m.sectors_eu || []).length;
   const th = state.spMode === "th" && (m.themes || []).length, ind = th || (state.spMode === "ind" && (m.industries || []).length);
-  return { ind, th, xs: (th ? m.themes : ind ? m.industries : m.sectors) || [] };
+  return { ind, th, eu, xs: (eu ? m.sectors_eu : th ? m.themes : ind ? m.industries : m.sectors) || [] };
 }
 function spRanked(xs, k) {
   const val = (x, prev) => { const v = prev ? x.p && x.p[k] : x[k]; return v == null ? -Infinity : v; };
@@ -2398,7 +2400,7 @@ function sectorsHtml() {
   const lv = mktLive(), a = (anaData && anaData.market) || {};
   const m = spMarket();
   if (!m.sectors.length) return "";
-  const [k, kl, kn] = spPer(), { ind, th, xs } = spList(), rows = spRanked(xs, k).filter(x => x.v != null);
+  const [k, kl, kn] = spPer(), { ind, th, eu, xs } = spList(), rows = spRanked(xs, k).filter(x => x.v != null);
   if (!rows.length) return "";
   const mx = Math.max(...rows.map(x => Math.abs(x.v)), 1e-4), neg = rows.some(x => x.v < 0), pos = rows.some(x => x.v > 0);
   const zero = neg && pos ? 50 : neg ? 100 : 0, span = neg && pos ? 50 : 100;
@@ -2412,12 +2414,12 @@ function sectorsHtml() {
   const ups = rows.filter(x => x.mv >= 2).sort((a, b) => b.mv - a.mv).slice(0, 3), dns = rows.filter(x => x.mv <= -2).sort((a, b) => a.mv - b.mv).slice(0, 3);
   const rot = ups.length || dns.length ? `<div class="sp-rot">↻ <b>Rotation</b> ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"}: ${ups.length ? `Geld fließt in <span class="up">${ups.map(x => esc(x.n)).join(", ")}</span>` : ""}${ups.length && dns.length ? " · " : ""}${dns.length ? `raus aus <span class="down">${dns.map(x => esc(x.n)).join(", ")}</span>` : ""}</div>` : "";
   return `<div class="hcard sp-card">${hHead("Sektoren & Branchen")}
-    <div class="sp-top"><div class="sp-tg">${[["sec", "Sektoren", 1], ["ind", "Branchen", (m.industries || []).length], ["th", "Themen", (m.themes || []).length]].map(([v, l, ok]) => `<button class="opt${(v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind) ? " on" : ""}" data-spmode="${v}"${ok ? "" : ' disabled title="kommt mit dem nächsten Abend-Scan"'}>${l}</button>`).join("")}</div>
+    <div class="sp-top"><div class="sp-tg">${[["sec", "Sektoren", 1], ["ind", "Branchen", (m.industries || []).length], ["th", "Themen", (m.themes || []).length], ["eu", "Europa", (m.sectors_eu || []).length]].map(([v, l, ok]) => `<button class="opt${(v === "eu" ? !!eu : v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind && !eu) ? " on" : ""}" data-spmode="${v}"${ok ? "" : ' disabled title="kommt mit dem nächsten Abend-Scan"'}>${l}</button>`).join("")}</div>
       ${hv || rv ? "" : `<div class="sp-tg">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}</div>`}</div>
     <div class="sp-tg" style="margin:-4px 0 10px">${[["ret", "Rendite", 1], ["rrg", "Rotations-Bild", hasRrg], ["hist", "Rang-Verlauf 12 Wochen", hasHist]].filter(o => o[2]).map(([v, l]) => `<button class="opt${(v === "hist" ? hv : v === "rrg" ? rv : !hv && !rv) ? " on" : ""}" data-spview="${v}">${l}</button>`).join("")}${hv || rv ? "" : `<button class="opt${state.spRel ? " on" : ""}" data-sprel title="Rendite minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")}">gegenüber Markt</button>`}</div>
     ${rv ? (th ? themeTrendHtml(xs) : "") + spRrgHtml(xs, ind) : hv ? spHistHtml(xs, ind) : `${rot}${th ? themeTrendHtml(xs) : hotHtml(ind ? [] : xs)}<div class="sp-list">${show.map(row).join("")}</div>`}
     ${ind && !th && !rv ? `<button class="hlink" data-spall style="margin-top:6px">${all ? "weniger zeigen" : `alle ${rows.length} Branchen zeigen`}</button>` : ""}
-    <div class="note" style="margin:8px 0 0">${spStamp()}<br>${rv ? `US-${(th ? "Themen" : ind ? "Branchen" : "Sektor")}-ETFs gegenüber dem S&P 500, Wochenwerte.` : `US-${(th ? "Themen" : ind ? "Branchen" : "Sektor")}-ETFs, Rendite ${esc(kn)}${state.spRel ? ` minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")} (> 0 = besser als der Markt)` : ""}. ▲▼ = Plätze gewonnen/verloren ${k === "d1" ? "ggü. gestern" : "ggü. vor einer Woche"}. Antippen zeigt die stärksten Aktien aus deinem Scan.`}</div></div>`;
+    <div class="note" style="margin:8px 0 0">${spStamp()}<br>${rv ? (eu ? "Europa: iShares-STOXX-Europe-600-Sektor-ETFs (Xetra) gegenüber dem STOXX 600, Wochenwerte." : `US-${(th ? "Themen" : ind ? "Branchen" : "Sektor")}-ETFs gegenüber dem S&P 500, Wochenwerte.`) : `${eu ? "Europa: STOXX-Europe-600-Sektor" : "US-" + (th ? "Themen" : ind ? "Branchen" : "Sektor")}-ETFs, Rendite ${esc(kn)}${state.spRel ? ` minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")} (> 0 = besser als der Markt)` : ""}. ▲▼ = Plätze gewonnen/verloren ${k === "d1" ? "ggü. gestern" : "ggü. vor einer Woche"}. Antippen zeigt die stärksten Aktien aus deinem Scan.`}</div></div>`;
 }
 // „Heißgelaufen“: die 2 Sektoren mit der höchsten Mehrrendite über 4 Wochen (backend/analysis.py rotation). Backtest 2008–2026
 // (tools/research/rotation.py): solche Sektoren lagen seit 2016 in den folgenden 13 Wochen im Schnitt ~1 % hinter dem Markt.
@@ -2464,7 +2466,7 @@ function spRrgHtml(xs, ind) {
       <text x="${W - 6}" y="14" text-anchor="end" class="rrg-q">Führend</text><text x="${W - 6}" y="${H - 6}" text-anchor="end" class="rrg-q">Lässt nach</text>
       <text x="6" y="${H - 6}" class="rrg-q">Schwach</text><text x="6" y="14" class="rrg-q">Erholt sich</text>${pts}</svg>
     <div class="rrg-l">${qs}</div>
-    <div class="note" style="margin:6px 0 0">Rechts = stärker als der S&P 500 (gegenüber dem eigenen 13-Wochen-Schnitt), oben = wird gerade stärker (Schwung über 4 Wochen). Der Schweif zeigt die letzten 4 Wochen; der übliche Weg läuft im Uhrzeigersinn: Erholt sich → Führend → Lässt nach → Schwach.
+    <div class="note" style="margin:6px 0 0">Rechts = stärker als der ${state.spMode === "eu" ? "STOXX 600" : "S&P 500"} (gegenüber dem eigenen 13-Wochen-Schnitt), oben = wird gerade stärker (Schwung über 4 Wochen). Der Schweif zeigt die letzten 4 Wochen; der übliche Weg läuft im Uhrzeigersinn: Erholt sich → Führend → Lässt nach → Schwach.
       <b>Wichtig:</b> Das Bild zeigt, wohin Geld gerade fließt – es sagt nicht vorher, wohin es als Nächstes fließt. Im Test über 18 Jahre (45 ETFs) hatte kein Bereich danach einen Vorsprung; wer bei „Führend“ einstieg, lag in 13 Wochen sogar leicht hinten. Antippen zeigt die stärksten Aktien.</div>`;
 }
 // Rang-Verlauf: Platz nach 1-Monats-Rendite an den letzten 12 Wochenenden (1 = stärkster) – zeigt dauerhafte Umschichtung
@@ -2482,7 +2484,7 @@ function spHistHtml(xs, ind) {
 function spDrillHtml(key) {
   const [k, , kn] = spPer(), { ind, th, xs } = spList(), x = xs.find(v => v.k === key); if (!x) return "";
   const nm = { d1: "d1", w1: "d5", m1: "m1", m3: "m3", ytd: "ytd" }[k];
-  const all = spRows().filter(r => (x.mem ? x.mem.includes(r.t) : ind ? r.ig === key : r.sec === x.n) && r[nm] != null);
+  const all = spRows().filter(r => (x.mem ? x.mem.includes(r.t) : x.flt ? r.r === "europe" && ((x.flt.sec || []).includes(r.sec) || (x.flt.ig || []).includes(r.ig)) : ind ? r.ig === key : r.sec === x.n) && r[nm] != null);
   const top = [...all].sort((a, b) => b[nm] - a[nm]).slice(0, 15);
   const up = all.filter(r => r[nm] > 0).length;
   const li = top.map((r, i) => { const sr = byTicker(r.t); return `<button class="sp-s" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}>
@@ -2492,7 +2494,7 @@ function spDrillHtml(key) {
     <p class="muted" style="margin:0 0 12px;font-size:13.5px">${esc(x.k)} ${sgnPct(x[k], 1)} ${esc(kn)} · ${all.length ? `${up} von ${all.length} Aktien im Plus` : ""}</p>
     <div class="sp-tg" style="margin-bottom:10px">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" data-spkeep="${esc(key)}" title="${n}">${l}</button>`).join("")}</div>
     ${li || `<p class="muted">${searchIdx ? (th ? "Keine der Hauptwerte dieses Themas ist im Kairo-Scan." : ind ? "Für diese Branche sind noch keine Aktien zugeordnet – die Zuordnung kommt mit den nächsten Scans." : "Keine Aktien aus dem Scan in diesem Sektor.") : "Lädt …"}</p>`}
-    <div class="note" style="margin:10px 0 0">Stärkste Aktien ${esc(kn)} aus dem Kairo-Scan (weltweit, ab 2 Mrd. $ Börsenwert)${x.mem ? ` – beim Thema aus den fest hinterlegten Hauptwerten (${x.mem.length}), Kurs des Themas = ETF ${esc(x.k)}` : ""}. Antippen öffnet die Aktie.</div>`;
+    <div class="note" style="margin:10px 0 0">Stärkste Aktien ${esc(kn)} aus dem Kairo-Scan (weltweit, ab 2 Mrd. $ Börsenwert)${x.mem ? ` – beim Thema aus den fest hinterlegten Hauptwerten (${x.mem.length}), Kurs des Themas = ETF ${esc(x.k)}` : x.flt ? " – nur europäische Aktien, Zuordnung über Sektor bzw. Branche" : ""}. Antippen öffnet die Aktie.</div>`;
 }
 // Heatmap: größte Aktien je Region, nach Sektor gruppiert, Fläche = Börsenwert, Farbe = Rendite im gewählten Zeitraum
 const HM_REG = [["us", "USA"], ["europe", "Europa"], ["de", "Deutschland"], ["asia", "Asien"], ["all", "Alle"]];
@@ -2548,27 +2550,33 @@ function heatmapHtml() {
     <div class="note" style="margin:6px 0 0">${spStamp()}<br>Die ${xs.length} größten Aktien der Region aus dem Scan, Fläche = Börsenwert. Goldener Rahmen = Kairo-Treffer, weißer Rahmen = Depot/Watchlist. Antippen zeigt eine Vorschau.</div></div>`;
 }
 // Gewinner / Verlierer im gewählten Zeitraum (gleiche Region wie die Heatmap)
+// „Ungewöhnliches Volumen“: heute mindestens 3× so viel gehandelt wie im Schnitt der 20 Tage davor – oft der früheste Hinweis,
+// dass große Anleger ein- oder aussteigen (Richtung = Kurs). Tagsüber zählt das Volumen bis jetzt, der Wert steigt also noch.
+const MV_RV = 3;
 function moversHtml() {
   if (!searchIdx) return "";
-  const [k, , kn] = spPer(), f = SP_IDX[k], reg = state.hmReg || "us", down = state.mvSide === "down", mine = myTickers();
+  const vol = state.mvSide === "vol", [k0, , kn0] = spPer(), [k, kn] = vol ? ["d1", "heute"] : [k0, kn0];
+  const f = SP_IDX[k], reg = state.hmReg || "us", down = state.mvSide === "down", mine = myTickers();
   const near = !!state.mvNear, lim = state.mvMore ? 30 : 10;
-  const live = !!mktLive(), all = hmRows(reg, live).filter(r => r[f] != null && (!near || (r.m != null && r.m >= 9)) && (down ? r[f] < 0 : r[f] > 0)).sort((a, b) => down ? a[f] - b[f] : b[f] - a[f]);
+  const live = !!mktLive(), all = vol
+    ? hmRows(reg, live).filter(r => r.rv != null && r.rv >= MV_RV && r.d1 != null && (!near || (r.m != null && r.m >= 9))).sort((a, b) => b.rv - a.rv)
+    : hmRows(reg, live).filter(r => r[f] != null && (!near || (r.m != null && r.m >= 9)) && (down ? r[f] < 0 : r[f] > 0)).sort((a, b) => down ? a[f] - b[f] : b[f] - a[f]);
   const xs = all.slice(0, lim);
   const why = t => {                                    // neueste Schlagzeile der letzten 3 Tage (Scan: Stimmung/Briefing) – „warum bewegt?“
     const bj = jsonData["briefing.json"], sr0 = byTicker(t), ms = d => { const x = Date.parse(d); return isNaN(x) ? 0 : x; };
     const l = [...((bj && bj.stocks && bj.stocks[t]) || []), ...((sr0 && sr0.senti && sr0.senti.news) || [])].filter(n => n.t && Date.now() - ms(n.d) < 3 * 864e5).sort((a, b) => ms(b.d) - ms(a.d));
     return l[0] || null; };
-  const li = xs.map((r, i) => { const sr = byTicker(r.t), rv = k === "d1" && r.rv != null && r.rv >= 1.5, nw = (k === "d1" || k === "w1") ? why(r.t) : null;
+  const li = xs.map((r, i) => { const sr = byTicker(r.t), rv = !vol && k === "d1" && r.rv != null && r.rv >= 1.5, nw = (k === "d1" || k === "w1") ? why(r.t) : null;
     return `<button class="sp-s mv-r" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}><span class="sp-i">${i + 1}</span>
       <span class="sp-sn"><b>${esc(r.n || r.t)}${mine.has(r.t) ? ` <small class="mv-own">●</small>` : ""}</b><em>${esc(tkClean(r.t))} · ${fmt(r.c)} ${esc(r.cur || "")}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}${rv ? ` · <span class="mv-rv">${fmt(r.rv, 1)}× Volumen</span>` : ""}</em>${nw ? `<em class="mv-why">📰 ${esc(String(nw.t).slice(0, 110))}</em>` : ""}</span>
-      <span class="sp-v ${r[f] >= 0 ? "up" : "down"}">${sgnPct(r[f], 1)}</span></button>`; }).join("");
-  return `<div class="hcard mv-card">${hHead(down ? "Verlierer" : "Gewinner")}
-    <div class="sp-top"><div class="sp-tg">${[["up", "Gewinner"], ["down", "Verlierer"]].map(([v, l]) => `<button class="opt${(v === "down") === down ? " on" : ""}" data-mvside="${v}">${l}</button>`).join("")}</div>
+      <span class="sp-v ${r[f] >= 0 ? "up" : "down"}">${vol ? `<b class="mv-rvb">${fmt(r.rv, 1)}×</b>` : ""}${sgnPct(r[f], 1)}</span></button>`; }).join("");
+  return `<div class="hcard mv-card">${hHead(vol ? "Ungewöhnliches Volumen" : down ? "Verlierer" : "Gewinner")}
+    <div class="sp-top"><div class="sp-tg">${[["up", "Gewinner"], ["down", "Verlierer"], ["vol", "Volumen"]].map(([v, l]) => `<button class="opt${(state.mvSide || "up") === v ? " on" : ""}" data-mvside="${v}">${l}</button>`).join("")}</div>
       <div class="sp-tg"><button class="opt${near ? " on" : ""}" data-mvnear title="nur Aktien mit mindestens 9 von 11 Kairo-Kriterien">nah am Treffer ≥ 9/11</button></div></div>
     <div class="muted" style="font-size:12.5px;margin:-2px 2px 6px">${esc(HM_REG.find(x => x[0] === reg)[1])} · ${esc(kn)}${near ? " · nur ≥ 9/11" : ""}</div>
-    ${li || `<p class="muted">${near ? "Keine Aktie mit ≥ 9/11 in dieser Auswahl." : "Keine Daten für diese Auswahl."}</p>`}
+    ${li || `<p class="muted">${vol ? `Heute keine Aktie mit ≥ ${MV_RV}× Volumen in dieser Auswahl${live ? " (bis jetzt)" : ""}.` : near ? "Keine Aktie mit ≥ 9/11 in dieser Auswahl." : "Keine Daten für diese Auswahl."}</p>`}
     ${all.length > 10 ? `<button class="hlink" data-mvmore style="margin-top:6px">${state.mvMore ? "weniger zeigen" : `mehr zeigen (${Math.min(all.length, 30)})`}</button>` : ""}
-    <div class="note" style="margin:8px 0 0">${spStamp()}${live ? " · tagsüber nur die größten Werte je Region" : ""}<br>${down ? "Starke Rücksetzer sind oft die Kandidaten von morgen – x/11 zeigt, wie nah eine Aktie an einem Kairo-Treffer ist." : "Zum Beobachten, nicht zum Hinterherkaufen: Kairo kauft Rücksetzer, keine Kurssprünge."} ● = in deinem Depot oder auf der Watchlist.${k === "d1" ? " „× Volumen“ = Handel ggü. dem 20-Tage-Schnitt – hohes Volumen heißt meist echte Nachricht." : ""}</div></div>`;
+    <div class="note" style="margin:8px 0 0">${spStamp()}${live ? " · tagsüber nur die größten Werte je Region" : ""}<br>${vol ? `Heute mindestens ${MV_RV}× so viel gehandelt wie im Schnitt der 20 Tage davor – oft steigen große Anleger ein (Kurs steigt) oder aus (Kurs fällt), etwa nach Zahlen, Übernahme-Gerüchten oder Analystenurteilen. ${live ? "Tagsüber zählt das Volumen bis jetzt – der Wert steigt bis Handelsschluss noch. " : ""}` : down ? "Starke Rücksetzer sind oft die Kandidaten von morgen – x/11 zeigt, wie nah eine Aktie an einem Kairo-Treffer ist." : "Zum Beobachten, nicht zum Hinterherkaufen: Kairo kauft Rücksetzer, keine Kurssprünge."} ● = in deinem Depot oder auf der Watchlist.${k === "d1" ? " „× Volumen“ = Handel ggü. dem 20-Tage-Schnitt – hohes Volumen heißt meist echte Nachricht." : ""}</div></div>`;
 }
 document.addEventListener("click", e => {
   const hr = e.target.closest("[data-hmreg]"); if (hr) { state.hmReg = hr.dataset.hmreg; save(); render(); return; }
@@ -2605,8 +2613,9 @@ function mktFazit(m, adv) {
 }
 // Kompakte Markt-Leiste für den Überblick: Trend, Stimmung, Indizes und Marktbreite in einer Karte
 function mktBarHtml() {
-  const m = anaData && anaData.market; if (!m) { loadAnalysis(); return ""; }
-  const reg = m.regime, f = m.fear, ids = ["^GSPC", "^NDX", "^GDAXI", "^STOXX", "^VIX"].filter(k => m[k]);
+  const m0 = anaData && anaData.market; if (!m0) { loadAnalysis(); return ""; }
+  const lvI = (mktLive() || {}).idx || {}, m = { ...m0, ...lvI };            // Index-Kacheln tagsüber alle 30 Min. neu
+  const reg = m.regime, f = m.fear, ids = ["^GSPC", "^NDX", "^GDAXI", "^STOXX", "^N225", "^VIX"].filter(k => m[k]);
   const tiles = ids.map(k => { const x = m[k], vix = k === "^VIX";
     return `<div class="mb-t"><span>${esc(x.name)}</span><b>${fmt(x.c, vix ? 1 : 0)}</b>${vix ? `<em class="${x.tone === "green" ? "up" : x.tone === "red" ? "down" : "gold"}">${esc(x.label)}</em>`
       : `<em class="${(x.d1 || 0) >= 0 ? "up" : "down"}">${x.d1 != null ? sgnPct(x.d1, 1) + " heute" : ""}</em><small class="${(x.chg1m || 0) >= 0 ? "up" : "down"}">${x.chg1m != null ? sgnPct(x.chg1m, 1) + " · 1 Mon." : ""}</small>`}</div>`; }).join("");
@@ -5723,8 +5732,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.46";
-const APP_NEWS = [["2026.11.46", "Markt: Themen", [
+const APP_VER = "2026.11.47";
+const APP_NEWS = [["2026.11.47", "Markt: Europa, Indizes live, Volumen", [
+  ["Markt: Europa", "Sektoren & Branchen hat jetzt „Europa“: 19 Sektoren des STOXX Europe 600 (Banken, Autos, Chemie …) mit Rendite, Rotations-Bild gegen den STOXX 600 und Rang-Verlauf."],
+  ["Markt: Indizes live + Nikkei", "Die Index-Kacheln (S&P 500, Nasdaq 100, DAX, STOXX 600, neu Nikkei 225, VIX) werden tagsüber alle 30 Minuten aktualisiert."],
+  ["Markt: Ungewöhnliches Volumen", "Neben Gewinnern und Verlierern zeigt „Volumen“ die Aktien, die heute mindestens 3× so viel gehandelt werden wie üblich – oft der früheste Hinweis, dass große Anleger ein- oder aussteigen."]]],
+  ["2026.11.46", "Markt: Themen", [
   ["Markt: Themen", "Neben Sektoren und Branchen gibt es jetzt „Themen“: Cybersecurity, Cloud, KI & Robotik, Zahlungen & Fintech, Stromnetz & Rechenzentren, Kernkraft, Lithium & Batterien, Seltene Erden, Raumfahrt, Stahl, Agrar & Dünger – mit Rendite, Rotations-Bild, Rang-Verlauf und den stärksten Hauptwerten."]]],
   ["2026.11.45", "Insider: alle Käufe je Aktie", [
   ["Insider: Details je Aktie", "Tippe in der Rangliste auf eine Aktie (z. B. Deutz): Du siehst jeden einzelnen Kauf der letzten 90 Tage – wer, welche Funktion, wann, wie viel, gezielt oder Routine, wie viel mehr Aktien – mit Link zur Originalmeldung."]]],

@@ -19,7 +19,7 @@ import pandas as pd
 
 from .indicators import ema, pivot_highs, pivot_lows
 
-MARKET = (("^GSPC", "S&P 500"), ("^NDX", "Nasdaq 100"), ("^GDAXI", "DAX"), ("^STOXX", "STOXX Europe 600"), ("^VIX", "VIX"))
+MARKET = (("^GSPC", "S&P 500"), ("^NDX", "Nasdaq 100"), ("^GDAXI", "DAX"), ("^STOXX", "STOXX Europe 600"), ("^N225", "Nikkei 225"), ("^VIX", "VIX"))
 SECTOR_ETF = {"Technology": "XLK", "Financial Services": "XLF", "Healthcare": "XLV", "Consumer Cyclical": "XLY",
               "Consumer Defensive": "XLP", "Energy": "XLE", "Industrials": "XLI", "Basic Materials": "XLB",
               "Utilities": "XLU", "Real Estate": "XLRE", "Communication Services": "XLC"}
@@ -82,6 +82,17 @@ THEME_ETF = {
     "UFO": ("Raumfahrt", ("RKLB", "ASTS", "IRDM", "VSAT", "GSAT", "PL", "LUNR", "SATS", "LMT", "NOC")),
     "SLX": ("Stahl", ("NUE", "STLD", "CLF", "RS", "CMC", "MT", "TX", "VALE", "MT.AS", "TKA.DE", "SZG.DE")),
     "MOO": ("Agrar & Dünger", ("DE", "CTVA", "NTR", "CF", "MOS", "ADM", "ZTS", "TSN", "BG", "AGCO", "CNH", "FMC", "YAR.OL", "BAYN.DE")),
+}
+# Europa (11/2026): iShares STOXX Europe 600 Sektor-ETFs (Xetra), Maßstab STOXX 600. „flt“ = welche Aktien aus dem Scan
+# (Region Europa) beim Antippen gezeigt werden – über den Sektor (sec, deutsch) oder den Branchen-ETF (ig) der Aktie.
+EU_SECTOR_ETF = {
+    "EXV1.DE": ("Banken", {"ig": ["KBE", "KRE"]}), "EXH5.DE": ("Versicherungen", {"ig": ["KIE"]}), "EXH2.DE": ("Finanzdienste", {"ig": ["IAI"]}),
+    "EXV3.DE": ("Technologie", {"sec": ["Technologie"]}), "EXV4.DE": ("Gesundheit", {"sec": ["Gesundheit"]}), "EXH1.DE": ("Öl & Gas", {"sec": ["Energie"]}),
+    "EXV2.DE": ("Telekom", {"ig": ["IYZ"]}), "EXH6.DE": ("Medien", {"ig": ["ESPO"]}), "EXH4.DE": ("Industrie", {"sec": ["Industrie"]}),
+    "EXV8.DE": ("Bau & Material", {"ig": ["PAVE", "ITB"]}), "EXV6.DE": ("Rohstoffe & Bergbau", {"ig": ["PICK", "GDX", "SIL", "COPX"]}),
+    "EXV7.DE": ("Chemie", {"sec": ["Rohstoffe"]}), "EXV5.DE": ("Autos", {"ig": ["CARZ"]}), "EXH3.DE": ("Lebensmittel & Getränke", {"ig": ["PBJ"]}),
+    "EXH7.DE": ("Konsumgüter", {"sec": ["Basiskonsum"]}), "EXH8.DE": ("Einzelhandel", {"ig": ["XRT"]}), "EXV9.DE": ("Reisen & Freizeit", {"ig": ["PEJ", "JETS"]}),
+    "EXH9.DE": ("Versorger", {"sec": ["Versorger"]}), "EXI5.DE": ("Immobilien", {"sec": ["Immobilien"]}),
 }
 _IND_MAP = {name: k for k, (_, names) in INDUSTRY_ETF.items() for name in names}
 PERIODS = (("d1", 1), ("w1", 5), ("m1", 21), ("m3", 63))
@@ -240,6 +251,17 @@ def market_context(hist: dict[str, pd.DataFrame]) -> dict:
         rank_history(inds, hist)
         rotation(inds, hist)
         out["industries"] = sorted(inds, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
+    eus = []                                          # Europa: STOXX-600-Sektoren gegen den STOXX 600
+    for etf, (name, flt) in EU_SECTOR_ETF.items():
+        df = hist.get(etf)
+        if df is None or len(df) < 70:
+            continue
+        st = trend_state(df) if len(df) >= 210 else {}
+        eus.append({"k": etf, "n": name, "flt": flt, "tone": st.get("tone"), "label": st.get("label"), **perf_row(df)})
+    if eus:
+        rank_history(eus, hist)
+        rotation(eus, hist, bench="^STOXX")           # ohne „Heißgelaufen“: der Befund ist nur für US-Sektoren getestet
+        out["sectors_eu"] = sorted(eus, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
     ths = []                                          # Themen (Cybersecurity, Cloud, KI …) mit festen Hauptwerten
     for etf, (name, mem) in THEME_ETF.items():
         df = hist.get(etf)
