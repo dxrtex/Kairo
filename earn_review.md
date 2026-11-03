@@ -41,21 +41,21 @@ Schnelligkeit: erste Zahlen im Mittel 172 Min. nach der Meldezeit (90 % innerhal
 
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
-- XMTR 2026-11-03: Kairo 65% steigt, Kurs +18.7% · Gewinn +47% · Ausblick bestätigt – „For Q4 2026, we expect revenue of $254-$256 million, representing 32-33% growth year-over-year driven by approximately 35-36% marketplace growth.“
-- ZBRA 2026-11-03: Kairo 53% steigt, Kurs -8.1% · Gewinn +1% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- XMTR 2026-11-03: Kairo 65% steigt, Kurs +19.9% · Gewinn +47% · Ausblick bestätigt – „For Q4 2026, we expect revenue of $254-$256 million, representing 32-33% growth year-over-year driven by approximately 35-36% marketplace growth.“
 - TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises as strong forecast signals record growth phase“
-- MDGL 2026-11-03: Kairo 54% steigt, Kurs -7.3% · Gewinn +310% · Ausblick keine Meldung
 - MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +10.0% · Gewinn +2% · Ausblick angehoben – „MARICO: Broad-based growth lifted Q2 EBITDA 27% and raised FY27 profitability guidance to the mid-20s“
-- JAZZ 2026-11-02: Kairo 52% steigt, Kurs +7.7% · Gewinn -63% · Ausblick angehoben – „Raised 2026 total revenue guidance to a range of $4.775 - $4.85 billion.“
-- LSCC 2026-11-02: Kairo 71% steigt, Kurs +12.1% · Gewinn +31% · Ausblick gesenkt – „Lattice revenue for the fourth quarter of 2026 is expected to be between $325 million and $345 million.“
-- ADEA 2026-11-02: Kairo 26% steigt, Kurs -12.5% · Gewinn -30% · Ausblick gesenkt – „Adeia shares tumble 24% on earnings miss and weak guidance“
+- ZBRA 2026-11-03: Kairo 53% steigt, Kurs -7.5% · Gewinn +1% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- JAZZ 2026-11-02: Kairo 52% steigt, Kurs +7.5% · Gewinn -63% · Ausblick angehoben – „Raised 2026 total revenue guidance to a range of $4.775 - $4.85 billion.“
+- LSCC 2026-11-02: Kairo 71% steigt, Kurs +12.2% · Gewinn +31% · Ausblick gesenkt – „Lattice revenue for the fourth quarter of 2026 is expected to be between $325 million and $345 million.“
+- ADEA 2026-11-02: Kairo 26% steigt, Kurs -13.1% · Gewinn -30% · Ausblick gesenkt – „Adeia shares tumble 24% on earnings miss and weak guidance“
+- MDGL 2026-11-03: Kairo 54% steigt, Kurs -6.1% · Gewinn +310% · Ausblick keine Meldung
 - ACX.MC 2026-10-29: Kairo 37% steigt, Kurs -5.5% · Gewinn -3% · Ausblick keine Meldung
 - RYAAY 2026-11-02: Kairo 37% steigt, Kurs +2.9% · Gewinn -3% · Ausblick keine Meldung
-- IPGP 2026-11-03: Kairo 37% steigt, Kurs +2.6% · Gewinn +24% · Ausblick gesenkt – „For the fourth quarter of 2026, IPG expects revenue of $265 million to $295 million, adjusted gross margin between 37.0% and 40.0% and adjusted operating expens“
+- IPGP 2026-11-03: Kairo 37% steigt, Kurs +2.7% · Gewinn +24% · Ausblick gesenkt – „For the fourth quarter of 2026, IPG expects revenue of $265 million to $295 million, adjusted gross margin between 37.0% and 40.0% and adjusted operating expens“
 - ITC.NS 2026-11-02: Kairo 42% steigt, Kurs +2.8% · Gewinn +1% · Ausblick keine Meldung
 - NATIONALUM.NS 2026-11-02: Kairo 39% steigt, Kurs -3.2% · Gewinn -24% · Ausblick keine Meldung
+- TVTX 2026-11-02: Kairo 39% steigt, Kurs -3.0% · Gewinn -174% · Ausblick keine Meldung
 - TPEIR.AT 2026-10-30: Kairo 52% steigt, Kurs -2.1% · Gewinn -16% · Ausblick angehoben – „Earnings Call: Piraeus Bank verzeichnet starkes Wachstum in Q3 2026 und hebt Ausblick an“
-- TVTX 2026-11-02: Kairo 39% steigt, Kurs -2.7% · Gewinn -174% · Ausblick keine Meldung
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
