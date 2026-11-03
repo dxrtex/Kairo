@@ -729,6 +729,12 @@
   .sp-h svg.up polyline { stroke: var(--up); } .sp-h svg.down polyline { stroke: var(--red); } .sp-hr { font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums; } .sp-hr.muted { color: var(--muted); }
   .eq-crash { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 13px; } .eq-crash em { display: block; font-style: normal; color: var(--muted); font-size: 12px; margin-top: 2px; }
   .eq-crash.t-red b { color: var(--red); } .eq-crash.t-yellow b { color: var(--gold); } .eq-crash.t-green b { color: var(--up); }
+  .ng { margin: 0 0 10px; } .ng-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 8px 4px 4px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .ng-n b { display: block; font-size: 15px; } .ng-n em { font-style: normal; font-size: 12.5px; color: var(--muted); } .ng-c { font-size: 12.5px; color: var(--muted); white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+  .ng-c i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); } .ng-c i.g { background: var(--up); } .ng-c i.r { background: var(--red); }
+  .ir-r { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; width: 100%; padding: 9px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .ir-v { text-align: right; } .ir-v b { display: block; font-size: 14px; font-variant-numeric: tabular-nums; } .ir-dots { color: var(--up); font-size: 11px; letter-spacing: 1px; } .ir-dots i { font-style: normal; color: var(--line); }
+  .ir-top { color: var(--up); font-weight: 650; } .ins-more { margin-top: 12px; } .ins-more > summary { cursor: pointer; font-weight: 650; padding: 2px 0; } .ins-src summary { cursor: pointer; }
   .mo-today { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; width: 100%; margin: 4px 0 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: inherit; font: inherit; text-align: left; cursor: pointer; }
   .mo-today b { font-size: 13px; color: var(--gold); } .mo-today span { flex: 1; min-width: 0; font-size: 13.5px; } .mo-today i { font-style: normal; font-size: 13px; color: var(--accent); }
   .mkt-ov.mo { display: flex; flex-direction: column; } .mo > div > .hcard:first-child { margin-top: 0; } .mo > div + div { margin-top: 14px; }
@@ -2593,10 +2599,18 @@ function newsHtml() {
     Object.entries(NEWS.co).forEach(([t, l]) => l.forEach(n => pool.push({ t: n.headline, u: n.url, p: n.source, ms: n.datetime * 1000, nm: nameOf(t), tk: t, s: 0 })));
     data.results.filter(r => mine.has(r.ticker) && r.senti && r.senti.news).forEach(r => r.senti.news.forEach(n => pool.push({ ...n, nm: r.name || r.ticker, tk: r.ticker, ms: msOf(n.d) })));
     pool = dedup(pool.filter(n => n.t && n.ms && now - n.ms < 7 * 864e5).sort((a, b) => b.ms - a.ms));
-    const hot = pool.filter(n => n.s && Math.abs(n.s) > 0).slice(0, 6), rest = pool.filter(n => !hot.includes(n)).slice(0, 40);
+    // Wichtig: klare Stimmung in den letzten 48 Std.; danach je Aktie gruppiert (Aktie mit der neuesten/stärksten Meldung zuerst)
+    const hot = pool.filter(n => n.s && Math.abs(n.s) > 0 && now - n.ms < 2 * 864e5).sort((a, b) => Math.abs(b.s) - Math.abs(a.s)).slice(0, 5);
+    const by = {}; pool.forEach(n => (by[n.tk] = by[n.tk] || []).push(n));
+    const groups = Object.entries(by).sort((a, b) => (b[1].some(n => n.s) - a[1].some(n => n.s)) || b[1][0].ms - a[1][0].ms);
+    const grp = ([t, l]) => { const r = rowOf(t) || {}, sr = byTicker(t), d1 = r.d1, open = (state.newsOpen || {})[t];
+      const sc = l.reduce((a, n) => a + (n.s || 0), 0);
+      return `<div class="ng"><button class="ng-h" data-newsopen="${esc(t)}"><span class="ng-n"><b>${esc(nameOf(t))}</b><em>${esc(tkClean(t))}${d1 != null ? ` · <span class="${d1 >= 0 ? "up" : "down"}">${sgnPct(d1, 1)} heute</span>` : ""}${sr && sr.passed ? " · " + kPill(sr, false) : ""}</em></span>
+        <span class="ng-c"><i class="${sc > 0 ? "g" : sc < 0 ? "r" : "n"}"></i>${l.length} Meldung${l.length === 1 ? "" : "en"}</span></button>
+        <div class="bf-l">${(open ? l.slice(0, 12) : l.slice(0, 2)).map(row).join("")}</div>${l.length > 2 ? `<button class="hlink" data-newsopen="${esc(t)}" style="margin:2px 4px 0">${open ? "weniger" : `alle ${Math.min(l.length, 12)} zeigen`}</button>` : ""}</div>`; };
     return head + (mine.size ? "" : `<p class="muted" style="margin:8px 2px">Lege Aktien in Merkliste, Depot oder Watchlist – dann siehst du hier ihre Meldungen.</p>`)
-      + (hot.length ? block("Wichtig – mit klarer Stimmung", hot.map(row), "") : "")
-      + block(`Neueste Meldungen zu deinen Aktien · 7 Tage`, rest.map(row), "Keine neuen Meldungen zu deinen Aktien.");
+      + (hot.length ? block("Wichtig · letzte 48 Std. (klare Stimmung)", hot.map(row), "") : "")
+      + (groups.length ? `<div class="bf-s"><b>Deine Aktien · 7 Tage (${groups.length} mit Meldungen)</b></div>${groups.map(grp).join("")}` : block("Deine Aktien", [], "Keine neuen Meldungen zu deinen Aktien."));
   }
   if (tab === "feed") {
     let pool = (bj && bj.market || []).map(n => ({ ...n, s: 0, ms: msOf(n.d) }));
@@ -2659,12 +2673,32 @@ function newsHtml() {
       + block(`Deine Aktien · Insider-Verkäufe · 12 Monate · ${byAmt ? "nach Betrag" : "neueste zuerst"}`, wlS.slice(0, 15).map(irow), "Keine großen Verkäufe.")
       + covHtml
       + `<div class="note" style="margin:-4px 2px 12px">Geprüft: ${nUS} US-Aktien (SEC/OpenInsider, Käufe ab 10.000 $, Verkäufe ab 250.000 $)${nDE ? ` und ${nDE} deutsche Aktien (BaFin, Käufe ab 5.000 €, Verkäufe ab 100.000 €)` : ""} aus Watchlist, Merkliste und Depot – 12 Monate. Schweden (Finansinspektionen) und Schweiz (SIX): alle gescannten Aktien, Käufe ab 5.000 €, 90 Tage; die Schweiz meldet ohne Namen, nur Geschäftsleitung oder Verwaltungsrat. Dazu Meldungen ohne Betrag aus den Niederlanden (AFM: Airbus, ASML …) und Australien (ASX: DroneShield …). „Gezielt“ = kein Routine-Käufer (nicht in beiden Vorjahren im selben Monat gekauft) – laut Forschung (Cohen/Malloy/Pomorski 2012) das aussagekräftigere Signal. „Routine unbekannt“ = ohne Kaufhistorie (BaFin) – zählt im Signal nicht als gezielt. Novo Nordisk, BYD, Xiaomi und Tamburi (Dänemark, Hongkong, Italien): keine frei abrufbare Quelle.</div>`;
-  return head + insGo + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften), für schwedische und Schweizer Aktien die Register von Finansinspektionen und SIX${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>`
-    + wlHtml
+  // Rangliste: wo Insider gerade am stärksten kaufen (90 Tage, ganzer Markt USA + Schweden/Schweiz + deine Aktien)
+  const ctry = t => { const m = /\.([A-Z]+)$/.exec(t); const sfx = m ? m[1] : ""; return !sfx ? "us" : sfx === "DE" ? "de" : ASIA_SUF.test(t) ? "asia" : "eu"; };
+  const F = state.insF || {}, sig = Object.entries((ij && ij.signal) || {}).map(([t, g]) => ({ t, ...g, eur: g.cur === "EUR" ? g.val : g.val * ((fxEur && fxEur.USD) || 0.9) }))
+    .filter(g => (!F.c || ctry(g.t) === F.c) && (!F.top || g.top) && (!F.big || g.eur >= 1e6) && (!F.mine || mine.has(g.t)))
+    .sort((a, b) => b.score - a.score || b.eur - a.eur);
+  const chip = (k, v, l) => `<button class="opt${(F[k] || "") === v ? " on" : ""}" data-insf="${k}" data-v="${v}">${l}</button>`;
+  const tog = (k, l) => `<button class="opt${F[k] ? " on" : ""}" data-insf="${k}" data-v="${F[k] ? "" : "1"}">${l}</button>`;
+  const lim = state.insMore ? 40 : 12;
+  const rank = sig.slice(0, lim).map((g, i) => { const sr = byTicker(g.t), r = rowOf(g.t) || {};
+    return `<button class="ir-r" ${sr ? `data-card="${esc(g.t)}"` : `data-ein="${esc(g.t)}"`}><span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(g.n || nameOf(g.t))}${mine.has(g.t) ? ' <small class="mv-own">●</small>' : ""}</b>
+      <em>${esc(tkClean(g.t))} · ${g.buyers} Käufer${g.top ? ' · <span class="ir-top">Vorstandsspitze</span>' : ""}${g.opp ? " · gezielt" : ""}${g.own >= 10 ? ` · +${fmt(Math.min(g.own, 999), 0)} % Aktien` : ""} · zuletzt ${dateDE(g.last)}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : ""}</em></span>
+      <span class="ir-v"><span class="ir-dots">${"●".repeat(g.score)}<i>${"●".repeat(3 - g.score)}</i></span><b>${eurAmt(g.eur)}</b></span></button>`; }).join("");
+  const rankHtml = `<div class="hcard ir-card">${hHead("Wo Insider gerade kaufen · 90 Tage")}
+    <div class="sp-top"><div class="sp-tg">${chip("c", "", "Alle")}${chip("c", "us", "USA")}${chip("c", "de", "Deutschland")}${chip("c", "eu", "Europa")}${chip("c", "asia", "Asien")}</div>
+      <div class="sp-tg">${tog("top", "Vorstandsspitze")}${tog("big", "ab 1 Mio. €")}${tog("mine", "nur meine")}</div></div>
+    ${rank || `<p class="muted">Keine Insider-Käufe für diese Auswahl.</p>`}
+    ${sig.length > 12 ? `<button class="hlink" data-insmore style="margin-top:6px">${state.insMore ? "weniger zeigen" : `alle ${Math.min(sig.length, 40)} zeigen`}</button>` : ""}
+    <div class="note" style="margin:8px 0 0">●●● = Stärke: mehrere Käufer · CEO/CFO/Vorsitz kauft · gezielter großer Kauf. Ganzer Markt: USA (SEC), Schweden, Schweiz; Deutschland, Niederlande, Australien nur für deine Aktien.</div></div>`;
+  return head + insGo + rankHtml
+    + (wlHtml ? `<details class="hcard ins-more"${state.insWl === false ? "" : " open"} data-insdet="insWl"><summary>Deine Aktien – Käufe, Verkäufe, Abdeckung</summary>${wlHtml}</details>` : "")
     + (live ? block("Deine US-Aktien · 90 Tage (live)", liveRows.map(irow), NEWS.at ? "Keine Insider-Käufe oder -Verkäufe über die Börse." : "lädt …") : "")
+    + `<details class="hcard ins-more"${state.insAll ? " open" : ""} data-insdet="insAll"><summary>Alle Einzelmeldungen (USA, neueste zuerst)</summary>`
     + (mineBuys.length ? block("Insider-Käufe bei Aktien aus dem Kairo-Scan", mineBuys.slice(0, 15).map(irow), "") : "")
     + block("Insider-Käufe (USA) · neueste zuerst", buys.slice(0, 25).map(irow), ij === null ? "Noch keine Insider-Daten – kommen mit dem nächsten Scan." : "lädt …")
-    + block("Insider-Verkäufe · neueste zuerst", sells.slice(0, 12).map(irow), "–");
+    + block("Insider-Verkäufe · neueste zuerst", sells.slice(0, 12).map(irow), "–") + `</details>`
+    + `<details class="note ins-src" style="margin:4px 2px 12px"><summary>Quellen und Erklärung</summary>` + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften), für schwedische und Schweizer Aktien die Register von Finansinspektionen und SIX${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>` + `</details>`;
 }
 // ---------- Quartalszahlen: Antippen im Kalender → Ergebnis, Ausblick, Kursreaktion, Einschätzung (data/earnings.json) ----------
 // Abendscan (earnings.json) + Prüfdienst tagsüber (earnings_live.json im Branch kairo-earnings, alle 10–30 Min.)
@@ -5274,6 +5308,7 @@ document.addEventListener("input", e => {
   const v = parseFloat(String(e.target.value).replace(",", ".")); state.etf = { ...(state.etf || {}), [k]: v >= 0 ? v : undefined }; save();
 });
 document.addEventListener("toggle", e => { if (e.target.matches && e.target.matches("[data-etfset]")) { state.etfSet = e.target.open ? 1 : 0; save(); } }, true);
+document.addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.insdet; if (k && state[k] !== e.target.open) { state[k] = e.target.open; save(); } }, true);
 document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("etf-tv")) { const o = e.target.open ? 1 : 0; if (o !== (state.etfTv || 0)) { state.etfTv = o; save(); render(); } } }, true);
 document.addEventListener("change", e => { if (["etfTotal", "etfShare", "pfReserve", "etfRate", "etfUnits", "etfBuy", "etfSince"].includes(e.target.id) && state.sec === "etf") render(); });
 document.addEventListener("click", e => {
@@ -5570,8 +5605,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.39";
-const APP_NEWS = [["2026.11.39", "Quartalszahlen: Absturz-Risiko und Regionen", [
+const APP_VER = "2026.11.40";
+const APP_NEWS = [["2026.11.40", "News und Insider neu", [
+  ["Insider: Rangliste", "Oben steht jetzt, wo Insider gerade am stärksten kaufen (90 Tage) – mit Stärke ●●●, Betrag, Käufern, x/11 und Kauf-Status. Filter: Land, nur Vorstandsspitze, ab 1 Mio. €, nur deine Aktien. Einzelmeldungen und Erklärungen zum Aufklappen."],
+  ["News: nach Aktien sortiert", "Deine Meldungen stehen je Aktie zusammen (mit Kurs heute und Kauf-Status), oben das Wichtigste der letzten 48 Stunden."]]],
+  ["2026.11.39", "Quartalszahlen: Absturz-Risiko und Regionen", [
   ["Absturz-Risiko", "Im Quartalszahlen-Fenster und bei Trades mit Zahlen in der Haltedauer: Wahrscheinlichkeit für −5 % oder mehr am Tag nach den Zahlen (normal / erhöht / hoch). Getestet an 33.967 Berichten – im obersten Fünftel stürzte jede vierte Aktie ab, im untersten nur 2 %."],
   ["Regionen", "Europa nutzt wieder die volle Statistik (historisch 60 % Treffer), Asien eigene, vorsichtigere Quoten (dort reagieren Kurse schwächer auf Überraschungen)."]]],
   ["2026.11.38", "Markt: Fazit, Warum, gegenüber Markt", [
@@ -7304,6 +7342,9 @@ function goSec(sec) {
 }
 document.addEventListener("click", e => {
   if (e.target.closest("[data-brief]")) { openBrief(); return; }
+  const no = e.target.closest("[data-newsopen]"); if (no) { const t = no.dataset.newsopen; state.newsOpen = { ...(state.newsOpen || {}), [t]: !(state.newsOpen || {})[t] }; save(); render(); return; }
+  const inf = e.target.closest("[data-insf]"); if (inf) { state.insF = { ...(state.insF || {}), [inf.dataset.insf]: inf.dataset.v }; save(); render(); return; }
+  if (e.target.closest("[data-insmore]")) { state.insMore = !state.insMore; save(); render(); return; }
   const fm = e.target.closest("[data-feedmode]"); if (fm) { state.feedMode = fm.dataset.feedmode; state.newsTab = "feed"; save(); render(); return; }
   const nt = e.target.closest("[data-newstab]"); if (nt) { state.newsTab = nt.dataset.newstab; save(); if (state.sec !== "news") goSec("news"); else render(); return; }
   const isb = e.target.closest("[data-inssort]"); if (isb) { state.insSort = isb.dataset.inssort; save(); render(); return; }
