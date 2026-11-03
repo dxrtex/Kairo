@@ -2,34 +2,38 @@
 
 Schnelligkeit: erste Zahlen im Mittel 173 Min. nach der Meldezeit (90 % innerhalb 820 Min., 17 Meldungen); Mitteilung im Mittel 1 Min. danach.
 
-204 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-03), davon 14 mit aufgezeichneter Prognose.
+214 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-03), davon 24 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 14 | 50% | 0.257 | 0.250 |
+| alle | 24 | 54% | 0.241 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 1 | 100% | 0.215 | 0.250 |
-| Ausblick angehoben | 5 | 40% | 0.257 | 0.250 |
-| Ausblick keine Meldung | 9 | 56% | 0.257 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 11 | 64% | 0.217 | 0.250 |
+| Ausblick gesenkt | 3 | 67% | 0.189 | 0.250 |
+| Ausblick bestätigt | 1 | 0% | 0.424 | 0.250 |
+| Ausblick angehoben | 10 | 50% | 0.232 | 0.250 |
+| Ausblick keine Meldung | 10 | 60% | 0.247 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
 | Kairo sagte | n | tatsächlich gestiegen |
 |---|---|---|
-| 30%–40% | 5 | 40% |
+| -0%–30% | 1 | 0% |
+| 30%–40% | 8 | 38% |
 | 40%–50% | 2 | 100% |
-| 50%–60% | 5 | 60% |
-| 60%–70% | 2 | 50% |
+| 50%–60% | 7 | 57% |
+| 60%–70% | 4 | 25% |
+| 70%–100% | 2 | 100% |
 
 ## Gewinn × Ausblick – echte Quote (n)
 
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
-| deutlich unter Erwartung (< −10 %) | 33% (6) | 0% (1) | 29% (7) | 33% (12) |
+| deutlich unter Erwartung (< −10 %) | 29% (7) | 0% (1) | 38% (8) | 31% (13) |
 | unter Erwartung (−10 bis −2 %) | 14% (7) | 0% (2) | 50% (8) | 46% (13) |
-| im Rahmen (±2 %) | 33% (9) | 0% (2) | 17% (6) | 62% (16) |
-| über Erwartung (+2 bis +10 %) | 0% (6) | 33% (3) | 50% (18) | 58% (19) |
-| deutlich über Erwartung (> +10 %) | 33% (9) | 67% (6) | 64% (28) | 58% (26) |
+| im Rahmen (±2 %) | 33% (9) | 0% (2) | 14% (7) | 62% (16) |
+| über Erwartung (+2 bis +10 %) | 0% (7) | 33% (3) | 47% (19) | 58% (19) |
+| deutlich über Erwartung (> +10 %) | 40% (10) | 57% (7) | 67% (30) | 58% (26) |
 
 ## Vorschläge zur Anpassung
 
@@ -37,25 +41,26 @@ Schnelligkeit: erste Zahlen im Mittel 173 Min. nach der Meldezeit (90 % innerhal
 
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
+- ZBRA 2026-11-03: Kairo 53% steigt, Kurs -12.7% · Gewinn +1% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- ADEA 2026-11-02: Kairo 26% steigt, Kurs -16.3% · Gewinn -30% · Ausblick gesenkt – „Adeia shares tumble 24% on earnings miss and weak guidance“
 - TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises as strong forecast signals record growth phase“
 - MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +10.0% · Gewinn +2% · Ausblick angehoben – „MARICO: Broad-based growth lifted Q2 EBITDA 27% and raised FY27 profitability guidance to the mid-20s“
+- XMTR 2026-11-03: Kairo 65% steigt, Kurs -5.8% · Gewinn +50% · Ausblick bestätigt – „For Q4 2026, we expect revenue of $254-$256 million, representing 32-33% growth year-over-year driven by approximately 35-36% marketplace growth.“
+- PLTR 2026-11-02: Kairo 60% steigt, Kurs -5.4% · Gewinn +7% · Ausblick angehoben – „We are raising our revenue guidance to between $8.530 - $8.534 billion.“
+- JAZZ 2026-11-02: Kairo 52% steigt, Kurs +5.4% · Gewinn -63% · Ausblick angehoben – „Raised 2026 total revenue guidance to a range of $4.775 - $4.85 billion.“
+- LSCC 2026-11-02: Kairo 71% steigt, Kurs +7.7% · Gewinn +31% · Ausblick angehoben – „Lattice revenue for the fourth quarter of 2026 is expected to be between $325 million and $345 million.“
 - ACX.MC 2026-10-29: Kairo 37% steigt, Kurs -5.5% · Gewinn -3% · Ausblick keine Meldung
 - RYAAY 2026-11-02: Kairo 37% steigt, Kurs +2.9% · Gewinn -3% · Ausblick keine Meldung
+- TVTX 2026-11-02: Kairo 39% steigt, Kurs -4.7% · Gewinn -174% · Ausblick keine Meldung
 - ITC.NS 2026-11-02: Kairo 42% steigt, Kurs +2.8% · Gewinn +1% · Ausblick keine Meldung
 - NATIONALUM.NS 2026-11-02: Kairo 39% steigt, Kurs -3.2% · Gewinn -24% · Ausblick keine Meldung
 - TPEIR.AT 2026-10-30: Kairo 52% steigt, Kurs -2.1% · Gewinn -16% · Ausblick angehoben – „Earnings Call: Piraeus Bank verzeichnet starkes Wachstum in Q3 2026 und hebt Ausblick an“
 - NTPC.NS 2026-10-31: Kairo 54% steigt, Kurs +2.1% · Gewinn +6% · Ausblick keine Meldung
-- ADRO.JK 2026-10-29: Kairo 42% steigt, Kurs +1.3% · Gewinn +0% · Ausblick keine Meldung
-- HTO.AT 2026-10-30: Kairo 54% steigt, Kurs +1.5% · Gewinn +5% · Ausblick keine Meldung
-- POWERGRID.NS 2026-11-01: Kairo 37% steigt, Kurs +1.0% · Gewinn -3% · Ausblick keine Meldung
-- ALPHA.AT 2026-10-30: Kairo 53% steigt, Kurs -0.4% · Gewinn +0% · Ausblick angehoben – „ALPHA: Higher NII and loan growth lifted guidance, while macro risks may raise Q4 provisions“
-- ISP.MI 2026-11-03: Kairo 54% steigt, Kurs +0.4% · Gewinn +5% · Ausblick angehoben – „Italy's Intesa lifts full year profit outlook as it prepares to launch MPS bid“
-- TRUE.BK 2026-11-02: Kairo 37% steigt, Kurs +0.0% · Gewinn -5% · Ausblick keine Meldung
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-Noch zu wenige untersuchte Fälle (1 Fehlprognosen, 13 Vergleichsfälle).
+Noch zu wenige untersuchte Fälle (3 Fehlprognosen, 21 Vergleichsfälle).
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Noch nicht: 14 von 200 nötigen Meldungen mit aufgezeichneter Prognose.
+Noch nicht: 24 von 200 nötigen Meldungen mit aufgezeichneter Prognose.
