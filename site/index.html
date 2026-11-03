@@ -2090,7 +2090,7 @@ const COLS = [
   { k: "ticker", l: "Ticker", g: r => r.ticker, h: r => `<span class="tk">${favBtn(r.ticker)}<a href="#" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${esc(r.ticker)}</a>${wlTag(r)}</span>` },
   { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${esc((r.name || r.ticker).slice(0, 28))}</a>` },
   { k: "trend", l: "Prognose", g: r => r.trend ? (r.trend.fc ? r.trend.fc.d : r.trend.slope + (r.trend.d5 ?? 0) / 10) : 0, h: r => trendHtml(r) || "–" },
-  { k: "status", l: "Status", g: r => kSt(r).lv, h: r => kPill(r, state.view !== "hit") },   // in „Treffer“ ohne doppeltes „Treffer“
+  { k: "status", l: "Kauf-Status", g: r => r.passed ? kSt(r).lv : -1, h: r => r.passed ? kPill(r, false) : "" },   // nur Treffer: wann kaufen (Treffer/Fast-Treffer steht schon in x/11)   // in „Treffer“ ohne doppeltes „Treffer“
   { k: "chk", l: "Rücksetzer-Check", n: 1, g: r => chkP(r) ?? -1, h: r => chkCell(r) },
   { k: "grade", l: "Stufe", g: r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0, h: r => gradeBadge(r) || `<span class="muted">–</span>` },
   { k: "exchange", l: "Börse", g: r => r.exchange, h: r => esc(r.exchange) },
@@ -2110,7 +2110,7 @@ const COLS = [
   { k: "earn", l: "Earnings", g: r => r.earnings_date || "9", h: r => `<span class="${r.earnings_risk ? "down" : ""}">${dateDE(r.earnings_date)}</span>` },
   { k: "amp", l: "Kriterien", g: r => -r.missing.length, h: r => ampel(r) },
   { k: "met", l: "Erfüllt", n: 1, watch: 1, g: r => r.met ?? 0, h: r => !r.passed && !r.fast_hit && isTrend(r) ? `<b class="up">${r.tr.met} / ${r.tr.total}</b><small class="muted" style="display:block">Trend · Kairo ${r.met}/${r.total}</small>` : `<b class="${r.passed ? "up" : r.fast_hit ? "" : "muted"}">${r.met ?? "–"} / ${r.total ?? 11}</b>${filterMiss(r) ? `<small class="down" style="display:block">Filter ✗</small>` : ""}` },
-  { k: "miss", l: "Fehlt", fast: 1, g: r => r.missing[0] || "", h: r => { if (r.passed) return `<span class="up">– (Treffer)</span>`;
+  { k: "miss", l: "Fehlt", fast: 1, g: r => r.missing[0] || "", h: r => { if (r.passed) return `<span class="muted">–</span>`;
     if (isTrend(r) && !r.fast_hit) return `<span class="up">– (Trend-Rücksetzer)</span>`;
     const miss = (r.criteria || []).filter(x => !x.ok && SETUP_KEYS.includes(x.key)).map(x => SHORT[x.key]);
     const text = miss.length <= 2 ? miss.join(", ") : `${miss.slice(0, 2).join(", ")} +${miss.length - 2}`;
@@ -5137,8 +5137,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.25";
-const APP_NEWS = [["2026.11.25", "Depot: Knock-outs im Journal, Plan vorausgefüllt", [
+const APP_VER = "2026.11.26";
+const APP_NEWS = [["2026.11.26", "Scanner: Kauf-Status statt Status", [
+  ["Nur noch, was zählt", "Die Spalte heißt jetzt „Kauf-Status“ und zeigt nur bei Treffern, wann gekauft wird (kaufbereit, Seitwärtsphase, verfallen, im Depot). Ob Treffer oder Fast-Treffer, siehst du an „Erfüllt x/11“. In „Beobachten“ entfällt die Spalte ganz."]]],
+  ["2026.11.25", "Depot: Knock-outs im Journal, Plan vorausgefüllt", [
   ["Knock-out = realisierter Verlust", "Ausgeknockte Turbos stehen jetzt auch im Journal und in der Bilanz – als Verkauf zu 0 € am Knock-out-Tag (nur wenn der Kauf in deinem Scalable-Export steht und Scalable den Verkauf nicht schon selbst liefert)."],
   ["Plan anlegen mit einem Tipp", "„Plan anlegen“ im Depot übernimmt Kaufdatum und Kaufkurs deiner Position in den Einstieg – nichts mehr abtippen."]]],
   ["2026.11.24", "Depot, Scanner, ETF, Briefing", [
@@ -6514,7 +6516,7 @@ function renderMain() {
   const full = list.length, rows = scanAll || full <= SCAN_LIM ? list : list.slice(0, SCAN_LIM);   // lange Listen: erst die besten 60
   const more = rows.length < full ? `<div class="row-actions" style="justify-content:center;margin:12px 0"><button class="btn ghost" data-scanall>Alle ${full} anzeigen</button></div>` : "";
   const onlyHits = k.size === 1 && k.has("hit");
-  const lead = ["ticker", "name", "status", "grade", "met", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)));   // Status: kaufbereit / Seitwärtsphase x/10 / verfallen
+  const lead = ["ticker", "name", "status", "grade", "met", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)) && !(x === "status" && !list.some(r => r.passed)));   // ohne Treffer in der Liste (z. B. Beobachten): keine Kauf-Status-Spalte   // Status: kaufbereit / Seitwärtsphase x/10 / verfallen
   const hid = new Set(state.hiddenCols || []);
   if (!(data.stats && data.stats.grade)) hid.add("grade");    // Stufen nur, wenn ein geprüftes Modell aktiv ist
   const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss", "chk"].includes(c.k))].filter(c => c.k === "ticker" || !hid.has(c.k));
@@ -6537,7 +6539,7 @@ document.addEventListener("click", e => { if (e.target.closest("[data-scanall]")
 // Kompakte Liste fürs iPhone (nur im neuen Design, nur schmale Bildschirme – sonst bleibt die Tabelle)
 function mListHtml(list, col) {
   const sortable = COLS.filter(c => ["status", "met", "name", "cap", "close", "tgt"].includes(c.k)), sel = col.k === "score" ? "status" : col.k;   // Standard-Sortierung = Status (kaufbereit zuerst)
-  const pill = r => kPill(r, state.view !== "hit");
+  const pill = r => r.passed ? kPill(r, false) : "";
   const big = r => isTrend(r) && !r.passed ? `${r.tr.met}/${r.tr.total}` : `${r.met ?? "–"}/${r.total ?? 11}`;
   return `<div class="mlist"><label class="msort">Sortieren<select id="mSort">${sortable.map(c => `<option value="${c.k}"${c.k === sel ? " selected" : ""}>${esc(c.l)}</option>`).join("")}</select></label>
     ${list.map(r => `<div class="mrow">${favBtn(r.ticker)}<a href="#" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}"><b>${esc((r.name || r.ticker).slice(0, 30))}</b>
