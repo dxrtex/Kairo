@@ -341,9 +341,10 @@ def parse_text_trade(text: str) -> dict | None:
         return None
     kind = "sell" if m.group(1).lower() in ("sold", "disposed of") else "buy"
     cur = "GBP" if m.group(3) == "£" else m.group(3).upper()
+    num = _uk_num if cur in ("GBP", "USD") else _nnum          # £/$: Punkt = Dezimal („£3.049“), Komma = Tausender
     try:
-        px = _nnum(m.group(4))
-        val = _nnum(m.group(2)) * px * EUR.get(cur, 0.1)
+        px = num(m.group(4))
+        val = num(m.group(2)) * px * EUR.get(cur, 0.1)
     except Exception:
         return None
     who = re.search(r"(?:owned by|controlled by|related to|close associate of)\s+([A-ZÆØÅ][\w.'-]+(?: [A-ZÆØÅ][\w.'-]+){1,3})", t) \
@@ -551,7 +552,7 @@ def price_check(rows: list[dict], ccy: dict[str, str], closes=_last_closes) -> l
                 bad += 1
                 continue
         keep.append(x)
-    print(f"Insider Preisprüfung: {len(chk)} Meldungen geprüft, {bad} unplausibel verworfen")
+    print(f"Insider Preisprüfung: {len(chk)} Meldungen, Kurs für {len(ref)} von {len({x['t'] for x in chk})} Aktien, {bad} unplausibel verworfen")
     return keep
 
 

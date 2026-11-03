@@ -119,3 +119,9 @@ def test_price_check_drops_implausible_rows():
 def test_parse_uk_returns_price():
     r = eu.parse_uk(UK_FORM.format(nat="Purchase of shares", pv="1,250.5p 40,000 1,251p 10,000"))
     assert abs(r["px"] - (12.505 * 40000 + 12.51 * 10000) / 50000) < 1e-9 and r["pcur"] == "GBP"
+
+
+def test_text_trade_pounds_decimal_point():
+    r = eu.parse_text_trade("Non-Executive Director Mark Jordy purchased 3,468 ordinary shares (GB0005603997) at £3.049 per share on 02 November 2026")
+    assert r["px"] == 3.049 and r["val"] == round(3468 * 3.049 * eu.EUR["GBP"])
+    assert eu.parse_uk("Legal & General Group Plc Mark Jordy purchased 3,468 ordinary shares (GB0005603997) at £3.049 per share")["px"] == 3.049

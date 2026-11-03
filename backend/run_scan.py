@@ -576,7 +576,8 @@ def main(argv=None) -> int:
                 ins["cover"] = insider.cover(w_ins, ins, set(ins.get("bad", [])) | eu_bad)
             except Exception as exc:
                 print(f"Insider Europa (Register): Fehler {exc!r}"[:160])
-            hist = insider.accumulate(state.load("insider_hist.json", {}).get("rows", []),
+            refetched = {"RNS (Investegate)", "Oslo Børs"}             # jeden Abend komplett neu gelesen → alte (evtl. falsch gelesene) Zeilen nicht behalten
+            hist = insider.accumulate([x for x in state.load("insider_hist.json", {}).get("rows", []) if x.get("src") not in refetched],
                                       [*ins.pop("mkt_buys", []), *[x for x in eu_rows if x["kind"] == "buy"]])
             state.save("insider_hist.json", {"rows": hist})
             ins["signal"] = insider.signal(insider.accumulate([], [*ins.get("watch", []), *hist]))   # gleiche Meldung nur einmal zählen
@@ -672,9 +673,11 @@ def main(argv=None) -> int:
         tr_hit = bool(tres and tres.passed)
         try:
             search[t] = {**search_row(res, m, hint(res)), **entry_fields(res, tres, m), **day_moves(df), **closed_bar(df)}
-            industry_of[t] = m.get("industry") or about.get(t, {}).get("industry") or ""
-            if not search[t].get("sec") and about.get(t, {}).get("sector"):
-                search[t]["sec"] = SECTOR_DE.get(about[t]["sector"], about[t]["sector"])
+            se = senti.get(t) or {}
+            industry_of[t] = m.get("industry") or about.get(t, {}).get("industry") or se.get("ind") or ""
+            sec_en = about.get(t, {}).get("sector") or se.get("sec")
+            if not search[t].get("sec") and sec_en:
+                search[t]["sec"] = SECTOR_DE.get(sec_en, sec_en)
             ig = industry_group(industry_of[t])
             if ig:                                   # Branche (Branchen-ETF-Kürzel) für die Sektor-Ansicht
                 search[t]["ig"] = ig
@@ -786,7 +789,9 @@ def main(argv=None) -> int:
     if not quiet:
         about["_want"] = [r["ticker"] for r in rows if r["ticker"] not in about]
         company.save(about)
-        senti["_want"] = [r["ticker"] for r in rows]
+        no_sec = [t for t in sorted(meta, key=lambda t: -((meta.get(t) or {}).get("market_cap_usd") or 0))[:1500]
+                  if not (search.get(t) or {}).get("sec")]          # größte Aktien ohne Sektor nach und nach nachladen
+        senti["_want"] = list(dict.fromkeys([r["ticker"] for r in rows] + no_sec))
         sentiment.save(senti)
     if GRADE and GRADE.get("valid"):
         stats["grade"] = {"test": GRADE["test"], "split": GRADE["split"], "period": GRADE["period"]}
