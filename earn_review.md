@@ -9,8 +9,8 @@ Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhal
 | alle | 63 | 57% | 0.235 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 50 | 60% | 0.228 | 0.250 |
-| Ausblick gesenkt | 8 | 62% | 0.209 | 0.250 |
-| Ausblick bestätigt | 5 | 80% | 0.192 | 0.250 |
+| Ausblick gesenkt | 9 | 67% | 0.202 | 0.250 |
+| Ausblick bestätigt | 4 | 75% | 0.205 | 0.250 |
 | Ausblick angehoben | 24 | 54% | 0.239 | 0.250 |
 | Ausblick keine Meldung | 26 | 54% | 0.247 | 0.250 |
 
@@ -31,7 +31,7 @@ Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhal
 |---|---|---|---|---|
 | deutlich unter Erwartung (< −10 %) | 29% (7) | 0% (1) | 33% (9) | 38% (13) |
 | unter Erwartung (−10 bis −2 %) | 14% (7) | 0% (2) | 50% (8) | 35% (17) |
-| im Rahmen (±2 %) | 33% (9) | 0% (3) | 33% (9) | 65% (17) |
+| im Rahmen (±2 %) | 30% (10) | 0% (2) | 33% (9) | 65% (17) |
 | über Erwartung (+2 bis +10 %) | 11% (9) | 33% (3) | 45% (22) | 54% (24) |
 | deutlich über Erwartung (> +10 %) | 38% (13) | 70% (10) | 68% (38) | 56% (32) |
 
@@ -41,7 +41,7 @@ Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhal
 
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
-- STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick bestätigt – „Stevanato Group (STVN) Maintains Fiscal 2026 Revenue Outlook Ami“
+- STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „STVN: Organic growth and stronger adjusted margins offset Engineering weakness and lower GLP-1 outlook“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 - CVI 2026-11-03: Kairo 64% steigt, Kurs -13.1% · Gewinn +37% · Ausblick keine Meldung
 - RRX 2026-11-03: Kairo 32% steigt, Kurs +11.8% · Gewinn +9% · Ausblick gesenkt – „Pressemitteilung: Ausblick gesenkt“
