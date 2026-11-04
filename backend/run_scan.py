@@ -790,7 +790,8 @@ def main(argv=None) -> int:
         about["_want"] = [r["ticker"] for r in rows if r["ticker"] not in about]
         company.save(about)
         no_sec = [t for t in sorted(meta, key=lambda t: -((meta.get(t) or {}).get("market_cap_usd") or 0))[:1500]
-                  if not (search.get(t) or {}).get("sec")]          # größte Aktien ohne Sektor nach und nach nachladen
+                  if not (search.get(t) or {}).get("sec")
+                  or (not (search.get(t) or {}).get("ig") and not (senti.get(t) or {}).get("ind"))]   # ohne Sektor oder Branche: nach und nach nachladen
         senti["_want"] = list(dict.fromkeys([r["ticker"] for r in rows] + no_sec))
         sentiment.save(senti)
     if GRADE and GRADE.get("valid"):

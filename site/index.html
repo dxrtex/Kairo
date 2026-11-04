@@ -2512,21 +2512,25 @@ function spDrillHtml(key) {
   const [k, , kn] = spPer(), { ind, th, xs } = spList(), x = xs.find(v => v.k === key); if (!x) return "";
   const nm = { d1: "d1", w1: "d5", m1: "m1", m3: "m3", ytd: "ytd" }[k];
   // Die Schwergewichte: größte Werte nach Börsenwert (sie bewegen die Branche), nicht die Tagesgewinner.
-  // US-Karten: in den USA gehandelte Werte (wie die Branchen-ETFs, inkl. ADRs wie TSMC/ASML); ohne illiquide Zweitlistings, je Firma eine Notierung.
-  const raw = spRows().filter(r => !(r.km || []).includes("liquidity") && (x.mem ? x.mem.includes(r.t) : x.flt ? r.r === "europe" && ((x.flt.sec || []).includes(r.sec) || (x.flt.ig || []).includes(r.ig))
-    : (ind ? r.ig === key : r.sec === x.n) && r.r === "us"));
+  // Weltweit (alle Regionen des Scans) oder je Region; ohne illiquide Zweitlistings, je Firma eine Notierung. Börsenwert in US-Dollar.
+  const rg = x.mem ? "all" : x.flt && !state.spDr ? "europe" : state.spDr || "all";
+  const inSel = r => x.mem ? x.mem.includes(r.t) : x.flt ? ((x.flt.sec || []).includes(r.sec) || (x.flt.ig || []).includes(r.ig)) : ind ? r.ig === key : r.sec === x.n;
+  const raw = spRows().filter(r => !(r.km || []).includes("liquidity") && inSel(r) && (rg === "all" || r.r === rg));
   const seen = new Map(); raw.forEach(r => { const n = normName(r.n || r.t), o = seen.get(n); if (!o || (r.mc || 0) > (o.mc || 0)) seen.set(n, r); });
   const all = [...seen.values()], capSum = all.reduce((a, r) => a + (r.mc || 0), 0);
-  const top = [...all].sort((a, b) => (b.mc || 0) - (a.mc || 0)).slice(0, 15);
+  const srt = [...all].sort((a, b) => (b.mc || 0) - (a.mc || 0)), top = state.spDrAll ? srt : srt.slice(0, 30);
+  const RGN = { us: "USA", europe: "Europa", asia: "Asien" };
   const wr = all.filter(r => r[nm] != null), up = wr.filter(r => r[nm] > 0).length;
   const li = top.map((r, i) => { const sr = byTicker(r.t); return `<button class="sp-s" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}>
-      <span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(r.n || r.t)}</b><em>${esc(tkClean ? tkClean(r.t) : r.t)} · ${r.mc ? fmtCap(r.mc) : `${fmt(r.c)} ${esc(r.cur || "")}`}${r.mc && capSum ? ` · Gewicht ${pct(r.mc / capSum, 0)}` : ""}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}</em></span>
+      <span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(r.n || r.t)}</b><em>${esc(tkClean ? tkClean(r.t) : r.t)}${rg === "all" && RGN[r.r] ? ` · ${RGN[r.r]}` : ""} · ${r.mc ? fmtCap(r.mc) : `${fmt(r.c)} ${esc(r.cur || "")}`}${r.mc && capSum ? ` · Gewicht ${pct(r.mc / capSum, 0)}` : ""}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}</em></span>
       <span class="sp-v ${r[nm] == null ? "" : r[nm] >= 0 ? "up" : "down"}">${r[nm] == null ? "–" : sgnPct(r[nm], 1)}</span></button>`; }).join("");
   return `<h3 style="margin:0 0 4px">${esc(x.n)}</h3>
     <p class="muted" style="margin:0 0 12px;font-size:13.5px">${esc(x.k)} ${sgnPct(x[k], 1)} ${esc(kn)} · ${wr.length ? `${up} von ${wr.length} Aktien im Plus` : ""}</p>
-    <div class="sp-tg" style="margin-bottom:10px">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" data-spkeep="${esc(key)}" title="${n}">${l}</button>`).join("")}</div>
+    <div class="sp-tg" style="margin-bottom:8px">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" data-spkeep="${esc(key)}" title="${n}">${l}</button>`).join("")}</div>
+    ${x.mem ? "" : `<div class="sp-seg" style="margin-bottom:10px">${[["all", "Welt"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<button class="${v === rg ? "on" : ""}" data-spdr="${v}" data-spkeep="${esc(key)}">${l}</button>`).join("")}</div>`}
     ${li || `<p class="muted">${searchIdx ? (th ? "Keine der Hauptwerte dieses Themas ist im Kairo-Scan." : ind ? "Für diese Branche sind noch keine Aktien zugeordnet – die Zuordnung kommt mit den nächsten Scans." : "Keine Aktien aus dem Scan in diesem Sektor.") : "Lädt …"}</p>`}
-    <div class="note" style="margin:10px 0 0">Die Schwergewichte: größte Aktien nach Börsenwert – sie bewegen ${th ? "das Thema" : ind ? "die Branche" : "den Sektor"} am stärksten. Gewicht = Anteil am Börsenwert aller ${all.length} Aktien im Scan${x.mem || x.flt ? "" : " (in den USA gehandelt, wie der ETF)"}; Rendite ${esc(kn)}${x.mem ? ` – beim Thema aus den fest hinterlegten Hauptwerten (${x.mem.length}), Kurs des Themas = ETF ${esc(x.k)}` : x.flt ? " – nur europäische Aktien, Zuordnung über Sektor bzw. Branche" : ""}. Antippen öffnet die Aktie.</div>`;
+    ${srt.length > 30 ? `<button class="hlink" data-spdrall data-spkeep="${esc(key)}" style="margin-top:6px">${state.spDrAll ? "weniger zeigen" : `alle ${srt.length} zeigen`}</button>` : ""}
+    <div class="note" style="margin:10px 0 0">Die Schwergewichte: größte Aktien nach Börsenwert – sie bewegen ${th ? "das Thema" : ind ? "die Branche" : "den Sektor"} am stärksten. Gewicht = Anteil am Börsenwert aller ${all.length} Aktien ${rg === "all" ? "weltweit" : `in ${RGN[rg]}`} im Scan (ab 2 Mrd. $); Rendite ${esc(kn)}${x.mem ? ` – beim Thema aus den fest hinterlegten Hauptwerten (${x.mem.length}), Kurs des Themas = ETF ${esc(x.k)}` : x.flt ? " – Zuordnung über Sektor bzw. Branche" : ""}. Antippen öffnet die Aktie.</div>`;
 }
 // Heatmap: größte Aktien je Region, nach Sektor gruppiert, Fläche = Börsenwert, Farbe = Rendite im gewählten Zeitraum
 const HM_REG = [["us", "USA"], ["europe", "Europa"], ["de", "Deutschland"], ["asia", "Asien"], ["all", "Alle"]];
@@ -2704,6 +2708,8 @@ document.addEventListener("click", e => {
   const io = t.closest("[data-insopen]"); if (io) { $("spmBody").innerHTML = insDetailHtml(io.dataset.insopen); $("spm").hidden = false; $("spm").dataset.k = ""; return; }
   const pm = t.closest("[data-spmode]"); if (pm && !pm.disabled) { state.spMode = pm.dataset.spmode; if (state.spMode !== "sec") state.spReg = "us"; save(); render(); return; }
   const pr = t.closest("[data-spreg]"); if (pr) { state.spReg = pr.dataset.spreg; if (state.spReg === "eu") state.spMode = "sec"; save(); render(); return; }
+  const dr = t.closest("[data-spdr],[data-spdrall]");
+  if (dr) { if (dr.dataset.spdr) state.spDr = dr.dataset.spdr; else state.spDrAll = !state.spDrAll; save(); $("spmBody").innerHTML = spDrillHtml(dr.dataset.spkeep); return; }
   const pp = t.closest("[data-spper]"); if (pp) { state.spPer = pp.dataset.spper; if (pp.dataset.spret) state.spView = "ret"; save(); render(); if (pp.dataset.spkeep) $("spmBody").innerHTML = spDrillHtml(pp.dataset.spkeep); return; }
   if (t.closest("[data-spall]")) { state.spAll = !state.spAll; save(); render(); return; }
   const so = t.closest("[data-spopen]"); if (so) { openSpDrill(so.dataset.spopen); return; }
@@ -5832,8 +5838,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.52";
-const APP_NEWS = [["2026.11.52", "Neues Intro", [
+const APP_VER = "2026.11.53";
+const APP_NEWS = [["2026.11.53", "Branchen: alle Schwergewichte weltweit", [
+  ["Längere Listen, weltweit", "Antippen einer Branche zeigt jetzt bis zu 30 Aktien (mit „alle zeigen“ alle) – weltweit nach Börsenwert, umschaltbar auf USA, Europa oder Asien. Bei Airlines z. B. Delta, United, Ryanair, IAG, IndiGo, Singapore Airlines, Lufthansa …"],
+  ["Fehlende Branchen nachgeladen", "Für Aktien ohne Branchen-Zuordnung (z. B. Southwest, easyJet) holt Kairo Sektor und Branche einmalig nach – sie erscheinen nach dem nächsten Scan in den Listen."]]],
+  ["2026.11.52", "Neues Intro", [
   ["Startanimation", "Die Geschichte ist jetzt zu sehen: groß der Markt aus grauen Kerzen, eine wird blau – der richtige Moment –, dann Zoom ins Kairo-Zeichen. Kürzer (2,7 s), größeres Logo, lesbarer Claim."],
   ["Rundgang aktuell", "Zeigt alle sechs Reiter und passt auch aufs kleine iPhone. Noch einmal ansehen: Einstellungen → Rundgang."]]],
   ["2026.11.51", "Markt: Zeitraum immer sichtbar, Schwergewichte je Branche", [
