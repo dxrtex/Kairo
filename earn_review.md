@@ -1,39 +1,39 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhalb 965 Min., 87 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhalb 998 Min., 106 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-283 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-04), davon 93 mit aufgezeichneter Prognose.
+298 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-04), davon 108 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 93 | 53% | 0.251 | 0.250 |
+| alle | 108 | 51% | 0.259 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 80 | 54% | 0.249 | 0.250 |
-| Ausblick gesenkt | 15 | 53% | 0.256 | 0.250 |
-| Ausblick bestätigt | 8 | 62% | 0.245 | 0.250 |
-| Ausblick angehoben | 35 | 54% | 0.247 | 0.250 |
-| Ausblick keine Meldung | 35 | 49% | 0.253 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 95 | 52% | 0.259 | 0.250 |
+| Ausblick gesenkt | 17 | 47% | 0.285 | 0.250 |
+| Ausblick bestätigt | 9 | 67% | 0.230 | 0.250 |
+| Ausblick angehoben | 40 | 52% | 0.256 | 0.250 |
+| Ausblick keine Meldung | 42 | 48% | 0.257 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
 | Kairo sagte | n | tatsächlich gestiegen |
 |---|---|---|
-| -0%–30% | 4 | 50% |
-| 30%–40% | 26 | 46% |
-| 40%–50% | 6 | 83% |
-| 50%–60% | 23 | 43% |
-| 60%–70% | 23 | 61% |
-| 70%–100% | 11 | 73% |
+| -0%–30% | 5 | 60% |
+| 30%–40% | 29 | 48% |
+| 40%–50% | 9 | 67% |
+| 50%–60% | 25 | 44% |
+| 60%–70% | 28 | 57% |
+| 70%–100% | 12 | 67% |
 
 ## Gewinn × Ausblick – echte Quote (n)
 
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
-| deutlich unter Erwartung (< −10 %) | 44% (9) | 33% (3) | 45% (11) | 40% (15) |
-| unter Erwartung (−10 bis −2 %) | 14% (7) | 33% (3) | 50% (8) | 33% (18) |
-| im Rahmen (±2 %) | 27% (11) | 0% (2) | 33% (9) | 67% (18) |
-| über Erwartung (+2 bis +10 %) | 10% (10) | 50% (4) | 52% (23) | 50% (26) |
-| deutlich über Erwartung (> +10 %) | 47% (15) | 70% (10) | 65% (46) | 54% (35) |
+| deutlich unter Erwartung (< −10 %) | 50% (10) | 33% (3) | 45% (11) | 40% (15) |
+| unter Erwartung (−10 bis −2 %) | 14% (7) | 25% (4) | 44% (9) | 37% (19) |
+| im Rahmen (±2 %) | 27% (11) | 0% (2) | 33% (9) | 65% (20) |
+| über Erwartung (+2 bis +10 %) | 18% (11) | 50% (4) | 50% (24) | 52% (27) |
+| deutlich über Erwartung (> +10 %) | 47% (15) | 70% (10) | 63% (49) | 53% (38) |
 
 ## Vorschläge zur Anpassung
 
@@ -45,49 +45,49 @@ Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhal
 - DUOL 2026-11-03: Kairo 36% steigt, Kurs +26.0% · Gewinn -17% · Ausblick bestätigt – „We expect Q4 revenue of $322 million, up 14% over the prior year.“
 - OUST 2026-11-03: Kairo 26% steigt, Kurs +15.7% · Gewinn -90% · Ausblick gesenkt – „For the fourth quarter of 2026, Ouster expects to achieve $61 million to $64 million in total revenue.“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
+- MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 - CVI 2026-11-03: Kairo 64% steigt, Kurs -13.1% · Gewinn +37% · Ausblick keine Meldung
 - RRX 2026-11-03: Kairo 32% steigt, Kurs +11.8% · Gewinn +9% · Ausblick gesenkt – „Pressemitteilung: Ausblick gesenkt“
 - MIRM 2026-11-03: Kairo 33% steigt, Kurs +11.4% · Gewinn -2% · Ausblick bestätigt – „2026 net product sales guidance increased to $715 million to $720 million – Received U.S.“
 - ANDE 2026-11-03: Kairo 61% steigt, Kurs -11.7% · Gewinn +24% · Ausblick keine Meldung
+- CWK 2026-11-04: Kairo 32% steigt, Kurs +9.6% · Gewinn +3% · Ausblick gesenkt – „News | Colliers cuts forecast, Cushman sticks to growth outlook as brokerages weigh midterm boost“
 - SKY 2026-11-03: Kairo 42% steigt, Kurs +11.3% · Gewinn +1% · Ausblick keine Meldung
+- OC 2026-11-04: Kairo 26% steigt, Kurs +8.5% · Gewinn -20% · Ausblick gesenkt – „For the fourth-quarter 2026, Owens Corning expects revenue of $2.0 billion to $2.2 billion.“
 - XYZ 2026-11-03: Kairo 60% steigt, Kurs +15.3% · Gewinn +10% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - XMTR 2026-11-03: Kairo 65% steigt, Kurs +16.6% · Gewinn +47% · Ausblick bestätigt – „For Q4 2026, we expect revenue of $254-$256 million, representing 32-33% growth year-over-year driven by approximately 35-36% marketplace growth.“
-- DT 2026-11-03: Kairo 37% steigt, Kurs -14.7% · Gewinn +10% · Ausblick gesenkt – „Dynatrace shares tumble 16% on disappointing guidance outlook“
-- LTM 2026-11-03: Kairo 37% steigt, Kurs +8.4% · Gewinn +16% · Ausblick gesenkt – „LATAM Airlines trims earnings outlook as fuel costs bite“
-- PAYP 2026-11-03: Kairo 39% steigt, Kurs +8.5% · Gewinn -18% · Ausblick angehoben – „PayPay FY26 sales guidance of $3.003 billion tops $2.550 billion estimate“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-20 Fehlprognosen und 73 Vergleichsfälle untersucht.
+25 Fehlprognosen und 83 Vergleichsfälle untersucht.
 
-- Markt: Bei 5% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 11% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -12.0%, getroffene Ø -4.7%.
+- Markt: Bei 12% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 8% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -10.0%, getroffene Ø -4.2%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 40% (8) | 32% | 1.3 |
-| Marge | 15% (3) | 11% | 1.4 |
-| Umsatz | 60% (12) | 52% | 1.2 |
-| Nutzer/Kunden | 10% (2) | 1% | 7.3 |
-| Aufträge | 10% (2) | 5% | 1.8 |
-| Kosten | 5% (1) | 8% | 0.6 |
-| KI/Rechenzentren | 15% (3) | 11% | 1.4 |
-| Management | 5% (1) | 3% | 1.8 |
-| Sondereffekt | 5% (1) | 1% | 3.7 |
+| Ausblick | 40% (10) | 30% | 1.3 |
+| Marge | 20% (5) | 10% | 2.1 |
+| Umsatz | 52% (13) | 51% | 1.0 |
+| Nutzer/Kunden | 8% (2) | 1% | 6.6 |
+| Aufträge | 8% (2) | 5% | 1.7 |
+| Kosten | 4% (1) | 7% | 0.6 |
+| KI/Rechenzentren | 12% (3) | 13% | 0.9 |
+| Management | 4% (1) | 2% | 1.7 |
+| Sondereffekt | 4% (1) | 1% | 3.3 |
 
-**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -12.0% gegen -4.7% → „schon eingepreist“ als Merkmal prüfen
+**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -10.0% gegen -4.2% → „schon eingepreist“ als Merkmal prüfen
 
 Beispiele:
 - ECG 2026-11-03: Kairo 71%, Kurs -29.3% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
 - DUOL 2026-11-03: Kairo 36%, Kurs +26.0% (Markt +0.3%) · Gründe: Umsatz, Nutzer/Kunden – „Duolingo Misses on Earnings. The Stock Soars 15%.“
+- MTRN 2026-11-04: Kairo 60%, Kurs -17.7% (Markt +1.7%) · Gründe: Marge – „Earnings call transcript: Materion beats EPS in Q3 2026 but shares slide“
 - OUST 2026-11-03: Kairo 26%, Kurs +15.7% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Why is Ouster stock surging today?“
 - CVI 2026-11-03: Kairo 64%, Kurs -13.1% (Markt +0.3%) – „CVR Energy slumps 13% amid results and stock offering (CVI:NYSE)“
 - RRX 2026-11-03: Kairo 32%, Kurs +11.8% (Markt +0.3%) · Gründe: Umsatz, KI/Rechenzentren – „Why is Regal Rexnord stock surging today? By Investing.com“
 - ANDE 2026-11-03: Kairo 61%, Kurs -11.7% (Markt +0.3%) · Gründe: Umsatz – „Andersons earnings beat by $0.31, revenue fell short of estimates“
 - MIRM 2026-11-03: Kairo 33%, Kurs +11.4% (Markt +0.3%) – „Mirum Pharmaceuticals reports Q3 2026 financial results as stock rises 2.2%“
-- SKY 2026-11-03: Kairo 42%, Kurs +11.3% (Markt +0.3%) · Gründe: Umsatz – „Champion Electric Metals Inc. (CN:LTHM) Sinks Despite a Refreshed Leadership Team: Can Idaho Copper, Gold and Cobalt Claims Revive Investor Appetite?“
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Noch nicht: 93 von 200 nötigen Meldungen mit aufgezeichneter Prognose.
+Noch nicht: 108 von 200 nötigen Meldungen mit aufgezeichneter Prognose.
