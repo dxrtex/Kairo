@@ -41,7 +41,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
-- STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „STVN: Organic growth and stronger adjusted margins offset Engineering weakness and lower GLP-1 outlook“
+- STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 - CVI 2026-11-03: Kairo 64% steigt, Kurs -13.1% · Gewinn +37% · Ausblick keine Meldung
 - RRX 2026-11-03: Kairo 32% steigt, Kurs +11.8% · Gewinn +9% · Ausblick gesenkt – „Pressemitteilung: Ausblick gesenkt“
