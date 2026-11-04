@@ -161,6 +161,8 @@
   .score.fast span { font-size: 14px; color: var(--gold); }
   .score.trend { display: grid; background: conic-gradient(var(--accent) 100%, var(--surface-3) 0); grid-template-rows: auto auto; align-content: center; gap: 1px; } .score.trend span { line-height: 1; font-size: 14px; } .score.trend small { position: relative; font-size: 9px; color: var(--accent); font-weight: 700; line-height: 1; }
   .ein-search { position: relative; margin: 0 0 12px; } .ein-search input { width: 100%; font-size: 17px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2, #1c1c1e); color: var(--text); }
+  .ein-kz { display: grid; gap: 2px; margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2, #1c1c1e); } .ein-kz span { color: var(--muted); font-size: 13px; } .ein-kz b.kz-y { color: var(--gold); }
+  .tp-more { margin: 6px 0 0; font-size: 13px; color: var(--muted); } .tp-more > summary { cursor: pointer; color: var(--accent); } .ein-opt b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .ein-list { display: grid; gap: 6px; margin-top: 8px; } .ein-opt { display: grid; grid-template-columns: 1fr auto; text-align: left; gap: 2px 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2, #1c1c1e); color: var(--text); cursor: pointer; }
   .ein-opt span { color: var(--muted); font-size: 13px; grid-column: 1; } .ein-opt i { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-style: normal; }
   .ein-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; } .ein-steps.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -190,7 +192,7 @@
   .g-pos, .g-buy { border: 1px solid var(--line); border-radius: var(--radius-s); padding: 12px; margin-bottom: 8px; background: var(--card, transparent); }
   .g-buy { outline: 1px solid var(--accent); margin: 10px 0 16px; }
   .g-pos-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; } .g-nm { background: none; border: 0; color: var(--text); font: inherit; text-align: left; padding: 0; cursor: pointer; } .g-nm small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
-  .g-pl { text-align: right; } .g-pl small { display: block; font-weight: 600; }
+  .g-pl { text-align: right; white-space: nowrap; } .g-pl small { display: block; font-weight: 600; }
   .g-row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; margin-top: 6px; }
   .g-tag { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, currentColor 14%, transparent); }
   .g-act { margin-top: 8px; display: flex; justify-content: flex-end; } .btn.sm { padding: 6px 12px; font-size: 13px; }
@@ -5770,8 +5772,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.49";
-const APP_NEWS = [["2026.11.49", "Markt aufgeräumt", [
+const APP_VER = "2026.11.50";
+const APP_NEWS = [["2026.11.50", "Einstieg: klarer und richtig gerechnet", [
+  ["Einsatz stimmt", "Bei „Aktie direkt“ ist der Einsatz jetzt Stückzahl × Kurs (vorher z. B. 624 € statt 593 € bei 2 Stück) – auch das freie Kapital und das Risiko stimmen damit."],
+  ["Kein „traden“ mehr vor der Seitwärtsphase", "Grün „traden“ erscheint nur, wenn der Treffer kaufbereit ist. Vorher steht „noch warten (Tag x/10)“, danach „Einstieg vorbei“ oder „verfallen“. Regelwidriges Speichern fragt nach."],
+  ["Das Wichtigste oben", "Urteil, Kauf, Stop und Stückzahl stehen direkt unter dem Namen. Erklärungen und Turbo-Rechner sind eingeklappt."],
+  ["Treffer-Liste geordnet", "Kaufbereite Treffer zuerst (in der getesteten Reihenfolge), darunter die, die noch auf ihre Seitwärtsphase warten."]]],
+  ["2026.11.49", "Markt aufgeräumt", [
   ["Sektoren & Branchen übersichtlicher", "Oben rechts USA oder Europa, darunter Sektoren · Branchen · Themen und Rendite · Rotation · Verlauf – Zeiträume nur noch bei Rendite."],
   ["Rotation klarer", "Feste Farben je Feld (Erholt sich ist jetzt blau), kurze 3-Wochen-Striche statt langer Schweife, keine überlappenden Namen und darunter vier Kästen mit Pfeil, wohin sich jeder Bereich bewegt."],
   ["Volumen nach Richtung", "Ungewöhnliches Volumen ist jetzt getrennt in Kaufdruck (Kurs steigt) und Verkaufsdruck (Kurs fällt)."]]],
@@ -6402,9 +6409,10 @@ function einSteps(r) {                           // Weg zum Einstieg nach der Ka
   const sig = it && h4Real(it) ? (it.soft ? "10/11 ✓" : "11/11 ✓") : r.s === "hit" ? "11/11 ✓" : r.m != null ? `${r.m}/11` : "–";
   const s1 = it && h4Real(it) || r.s === "hit" ? "ok" : r.s === "fast" || r.s === "near" ? "wait" : "no";
   const s2 = st === "basis" ? ["wait", `Tag ${it.day}/10`] : based ? ["ok", "✓"] : it && it.st === "weg" ? ["no", "verfallen"] : now ? [now.b ? "ok" : "no", now.b ? "✓" : "✗"] : ["no", "–"];
-  const s3 = based || (now && now.b && r.s === "hit") ? ["ok", "nächste Eröffnung"] : ["no", "–"];
+  const s3 = s1 === "ok" && (based || (now && now.b && r.s === "hit")) ? ["ok", "kaufbereit"] : ["no", "–"];   // ohne Treffer kein Einstieg
   const b = (it && it.base) || {}, P = v => v == null ? "–" : `${fmt(v)} ${it && it.cur || ""}`.trim();
-  const next = based ? `Seitwärtsphase fertig – laut Regel Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt${b.lo != null ? ` (${P(b.lo)}–${P(b.hi)})` : ""}. Stop ${P(b.sl)}.`
+  const next = based && s1 !== "ok" ? `Seitwärtsphase fertig – aber kein voller Treffer (${sig}). Kein Kauf, nur Beobachtung.`
+    : based ? `Seitwärtsphase fertig – laut Regel Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt${b.lo != null ? ` (${P(b.lo)}–${P(b.hi)})` : ""}. Stop ${P(b.sl)}.`
     : st === "basis" ? `Wartet auf die Seitwärtsphase · Tag ${it.day} von 10 – noch ${it.left} Handelstage Zeit für 5 enge Tage.`
     : it ? `Verfallen: ${it.why || "Bedingungen nicht erfüllt"}`
     : r.s === "hit" ? "Treffer – jetzt beginnt die Suche nach der Seitwärtsphase (bis zu 10 Handelstage)."
@@ -6420,6 +6428,16 @@ function einDataHtml(r) {
   const d = h4Data(), h4t = d && (d.live || d.generated);
   return `<div class="ein-data">Stand: Tageskerzen &amp; Stop ${data && data.generated ? T(data.generated) : "–"} · Kurs ${LIVE.map[r.t] ? `live ${liveTime(r.t)}` : "vom Abendscan"}</div>`;
 }
+// Kurzfassung oben: Urteil + Kauf, Stop, Stück/Einsatz – dieselbe Rechnung wie der Trade-Plan darunter
+function einKzHtml(r, S) {
+  try {
+    const fx0 = toEur(1, r.cur || "EUR") || 1, ee = (state.tpEe || {})[r.t];
+    const m = tp2Calc(r, S, { entry: ee > 0 ? ee / fx0 : null, date: (state.tpD || {})[r.t] });
+    if (!m.stop || !m.fit || r.s !== "hit") return "";
+    const lv = (m.levs || []).find(x => x.L === m.sug), cls = { green: "up", red: "down" }[m.fit.tone] || "kz-y";
+    return `<div class="ein-kz"><b class="${cls}">${esc(m.fit.t)}</b><span>Kauf ${fmt(m.E * m.fx)} € · Stop ${fmt(m.stop * m.fx)} €${lv ? ` · ${lv.L === 1 ? `${lv.qty} Stück` : `Turbo ×${lv.L}`} für ${eur(lv.stake)}` : ""}</span></div>`;
+  } catch (e) { return ""; }
+}
 function einPlanHtml(r) {
   if (liveOn()) { const o = LIVE.map[r.t]; if (!o || Date.now() - o.at > LIVE.ttl) liveQuote(r.t).then(q => { if (q && state.sec === "entry" && state.einT === r.t) render(); }); }
   const S = einSetup(r), res = data.results.find(x => x.ticker === r.t), cur = esc(r.cur || "");
@@ -6431,7 +6449,7 @@ function einPlanHtml(r) {
   return `<div class="hcard ein-head tone-${S.tone}">
       <div class="ein-top"><div><h2>${favBtn(r.t)} ${esc(r.n)}</h2><div class="meta">${r.ext ? esc(r.x) : `${esc(r.t)} · ${esc(r.x || "")}`} · ${fmt(c)} ${cur}${r.d1 != null ? ` <span class="${r.d1 >= 0 ? "up" : "down"}">${sgnPct(r.d1, 1)}</span>` : ""} · Vola ${pct(r.vola, 0)} ${liveTag(r.t)}</div></div>${liveBtn(r.t)}</div>
       <div class="ein-verdict"><b>${esc(S.title)}</b><span>${esc(S.sub)}</span></div>
-      ${einSteps(r)}${einDataHtml(r)}
+      ${einSteps(r)}${einKzHtml(r, S)}${einDataHtml(r)}
       ${warn.length ? `<div class="note" style="margin:8px 0 0">${warn.map(esc).join("<br>")}</div>` : ""}</div>
     ${tvChartHtml(r.t)}
     ${plan}
@@ -6493,7 +6511,15 @@ function kmFit(r, mk) {
   const weak = mk && mk.k === "weak";
   if (r.s === "hit") {
     const all = kmRank().hits, hits = all.filter(x => kmReady(x.t)), ri = hits.findIndex(x => x.t === r.t), rk = ri >= 0 ? ri + 1 : null, free = kmSlots();
-    const mo = kmMom(r.t);
+    const mo = kmMom(r.t), it = h4Of(r.t);
+    // Grün „traden“ nur, wenn die Seitwärtsphase fertig ist – vorher sagt der Plan „warten“ (sonst widerspricht er den Schritten)
+    if (h4Data() && !kmReady(r.t)) {
+      const w = it && it.st === "weg" ? ["red", "Kairo-Treffer verfallen – nicht traden", `Innerhalb von 10 Handelstagen keine Seitwärtsphase${it.why ? ` (${it.why})` : ""}. Auf den nächsten Treffer warten.`]
+        : kmDone(r.t) ? ["yellow", "Kairo-Treffer – Einstieg vorbei", "Der Kauftag nach der Seitwärtsphase ist schon vorbei – nicht nachkaufen (später Einstieg ist nicht getestet)."]
+        : ["yellow", `Kairo-Treffer – noch warten${it && it.st === "basis" ? ` (Seitwärtsphase Tag ${it.day}/10)` : ""}`,
+           "Gekauft wird erst, wenn die Seitwärtsphase fertig ist (5 enge Tage) – dann meldet sich Kairo. Der Plan unten ist eine Vorschau mit dem heutigen Kurs."];
+      return { ok: false, wait: true, k: "hit", tone: w[0], mult: weak ? KMAX.weakMult : 1, t: w[1], s: w[2] };
+    }
     const rank = rk ? ` Rang ${rk} von ${hits.length} kaufbereiten Treffern (Vormomentum ${mo != null ? sgnPct(mo, 0) : "–"}${kmTested(r) ? "" : ", Region nicht getestet"}) – bei mehr Treffern als freien Plätzen zuerst USA/Europa mit schwächerem Vormomentum (Forschung: in allen drei Testzeiträumen bessere Trades; muss sich live bestätigen).` : "";
     const fit = weak
       ? { ok: true, k: "hit", tone: "green", mult: KMAX.weakMult, t: "A-Setup – Kairo-Treffer im Ausverkauf: traden",
@@ -6590,6 +6616,7 @@ function tp2Calc(r, S, o = {}) {
   out.dist = risk / E;
   out.mk = tpMarket();
   out.fit = kmFit(r, out.mk);
+  if (out.fit.wait) out.problems = out.problems.filter(p => !/^Noch keine enge Seitwärtsphase/.test(p[1]));   // steht schon im Urteil
   out.riskPct = cfg.risk * out.fit.mult;
   // Klumpenschutz: offene Trades und Depot-Positionen im selben Sektor – höchstens 2 je Sektor
   if (r.sec) {
@@ -6628,9 +6655,10 @@ function tp2Calc(r, S, o = {}) {
     const stake0 = expo / L;
     if (stake0 > cfg.depot) { expo = cfg.depot * L; capped = true; }   // nicht genug Kapital → kleinere Position
     if (L === 1 && expo > out.free) { expo = Math.max(0, out.free - (out.free < 250 ? cfg.fee : 0)); capped = true; }
+    const qty = L === 1 ? Math.floor(expo / (E * fx)) : null;
+    if (L === 1) expo = qty * E * fx;                            // Aktie direkt: Einsatz = ganze Stück × Kurs (nicht der ungerundete Betrag)
     const stake = expo / L, fees = stake >= 250 ? 0 : 2 * cfg.fee;    // Scalable PRIME+: ab 250 € Orderwert gebührenfrei
     const cost = fees + expo * (L > 1 ? TP.spreadTurbo : TP.spreadStock) + (L > 1 ? TP.fin * (1 - 1 / L) * expo * cal / 365 : 0);
-    const qty = L === 1 ? Math.floor(expo / (E * fx)) : null;
     const rEff = expo * out.dist;                              // tatsächliches Risiko bis zum Stop
     return { L, ko, ok, stake, expo, capped, cost, qty, rEff, koGap: ko ? (stop - ko) / atr : null, gapLoss: L > 1 ? stake : null,
              tStop: L > 1 ? Math.min(1, L * out.dist) : out.dist };              // so viel verliert der Turbo bis zum Stop
@@ -6639,7 +6667,7 @@ function tp2Calc(r, S, o = {}) {
   // Vorschlag: der KLEINSTE Hebel, dessen Einsatz noch ins freie Kapital passt (Depot minus Einsatz der offenen Trades).
   // Wahrheits-Test (2 × 10 Jahre): spart Finanzierungskosten – +11 bis +20 % statt +4 bis +15 % p. a., auch auf den Prüfjahren besser.
   // Frei = Kapital − Einsatz offener Pläne − Kaufwert der Depot-Positionen ohne Plan (sonst wäre Geld doppelt verplant)
-  const okL = out.levs.filter(x => x.ok && !x.capped);
+  const okL = out.levs.filter(x => x.ok && !x.capped && (x.L > 1 || x.qty > 0));   // 0 Stück ist kein Kauf
   const fit = okL.find(x => x.stake <= out.free);
   // Passt kein Einsatz ins freie Kapital: nicht auf den größten Hebel ausweichen, sondern warnen (kleinster Hebel bleibt Vorschlag)
   if (!fit && okL.length) out.problems.push(["red", `Nicht genug freies Trading-Kapital: frei ${fmt(out.free, 0)} €, nötig mindestens ${fmt(okL[okL.length - 1].stake, 0)} € – erst eine Position schließen oder das Trading-Kapital in den Einstellungen anpassen.`]);
@@ -6685,12 +6713,15 @@ function tpInner(r, S) {
       ${m.ema ? row("Verkaufen", `ab Tag ${H4X.from} unter EMA 20`, `Schließt ein Tag unter der EMA 20, am nächsten Morgen verkaufen – spätestens ${m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" })} (Tag ${m.hold}). Kairo meldet sich.`)
         : row("Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), `zum Schluss – nach ${m.hold} Handelstagen, falls der SL nicht vorher greift`)}
       ${row("Produkt", prod, lv.L > 1 ? `K.-o. höchstens ${X(lv.ko)} ${cur}` : (lv.qty != null ? `${lv.qty} Stück` : ""))}
-      ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(m.riskPct, 1)} %${m.fit.mult > 1 ? " – Ausverkauf" : ""})`)}
+      ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(cfg.depot ? 100 * lv.rEff / cfg.depot : m.riskPct, 1)} %${m.fit.mult > 1 ? " – Ausverkauf" : ""})`)}
       ${lv.L > 1 && !(((state.tpT || {})[r.t] || {}).p > 0) ? row("SL am Turbo (Schätzung)", sgnPct(-lv.tStop, 0), `für einen ×${lv.L}-Turbo bei Kauf zu ${X(m.E)} ${cur} – genau rechnet „Dein Turbo“ unten${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
     </div>
-    ${tpTurboHtml(r, m, lv)}
-    <div class="note" style="margin:8px 0 0">So setzt du es bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position setzen. Keinen Limit-Verkauf – ${m.ema ? `ab Tag ${H4X.from} verkaufen, sobald ein Tag unter der EMA 20 schließt (Mitteilung kommt), spätestens an Tag ${m.hold}` : `an Tag ${m.hold} zum Schluss verkaufen, falls der SL nicht vorher greift`}. Nicht vorher verkaufen, auch wenn es gut läuft: Die großen Gewinner machen das Ergebnis. Kairo führt keine Orders aus.</div>
-    <div class="note">Warum diese Werte: SL = ${esc(m.src)} (${fmt(m.riskAtr, 1)} ATR). ${m.tpWhy || ""} Hebel = der kleinste, dessen Einsatz noch in dein freies Kapital passt (frei: ${eur(m.free)}) – Aktie direkt, wenn möglich, sonst ×2/3/5/10 mit K.-o. mindestens 1 ATR unter dem SL (höchstens ×${fmt(Math.min(10, m.maxL), 1)}). Weniger Hebel = weniger Finanzierungskosten; im Test brachte das deutlich mehr als immer ×10. Das Risiko bis zum SL bleibt gleich. Kosten ≈ ${eur2(lv.cost)} sind eingerechnet.${lv.L > 1 ? ` Kurslücke unter den K.-o.: Einsatz verloren (${sgnEur(-lv.stake - 2 * cfg.fee)}).` : ""}</div>
+    ${(tt => lv.L === 1 && !(tt.p > 0 || tt.w || tt.us > 0)   // Aktie direkt: Turbo-Rechner und eigener Stop eingeklappt
+      ? `<details class="tp-more" style="margin-top:12px"><summary>Lieber mit Turbo oder eigenem Stop? Hier eintragen</summary>${tpTurboHtml(r, m, lv)}</details>`
+      : tpTurboHtml(r, m, lv))((state.tpT || {})[r.t] || {})}
+    <div class="note" style="margin:8px 0 0"><b>Direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position setzen.</b> Kairo führt keine Orders aus.</div>
+    <details class="tp-more"><summary>So setzt du es um · warum diese Werte</summary><p style="margin:6px 0 0">Bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position setzen. Keinen Limit-Verkauf – ${m.ema ? `ab Tag ${H4X.from} verkaufen, sobald ein Tag unter der EMA 20 schließt (Mitteilung kommt), spätestens an Tag ${m.hold}` : `an Tag ${m.hold} zum Schluss verkaufen, falls der SL nicht vorher greift`}. Nicht vorher verkaufen, auch wenn es gut läuft: Die großen Gewinner machen das Ergebnis. </p>
+    <p style="margin:6px 0 0">Warum diese Werte: SL = ${esc(m.src)} (${fmt(m.riskAtr, 1)} ATR). ${m.tpWhy || ""} Hebel = der kleinste, dessen Einsatz noch in dein freies Kapital passt (frei: ${eur(m.free)}) – Aktie direkt, wenn möglich, sonst ×2/3/5/10 mit K.-o. mindestens 1 ATR unter dem SL (höchstens ×${fmt(Math.min(10, m.maxL), 1)}). Weniger Hebel = weniger Finanzierungskosten; im Test brachte das deutlich mehr als immer ×10. Das Risiko bis zum SL bleibt gleich. Kosten ≈ ${eur2(lv.cost)} sind eingerechnet.${lv.L > 1 ? ` Kurslücke unter den K.-o.: Einsatz verloren (${sgnEur(-lv.stake - 2 * cfg.fee)}).` : ""}</p></details>
     ${lv.L > 1 ? `<div class="row-actions" style="margin-top:10px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Turbo bei onvista suchen</a></div>` : ""}
     <div class="row-actions" style="margin-top:12px"><button class="btn${m.fit.ok ? "" : " ghost"}" data-tpopen="${esc(r.t)}">${m.fit.ok ? (paperMode() ? "Übungs-Trade eröffnen" : "Trade eröffnen & speichern") : "Trotzdem speichern"}</button></div>
     <div class="note">Speichert den Plan unverändert. ${r.ext ? "Kairo zeigt ihn mit Live-Kursen in Deine Trades." : "Kairo prüft ihn tagsüber alle 30 Minuten (Stop, Verkaufstag, K.-o.) und meldet sich per Mitteilung."}</div>
@@ -6842,6 +6873,7 @@ function tpOpen(t) {
   if (!m.stop || !m.dist) return;
   const lv = m.levs.find(x => x.L === m.sug);
   if (!lv || lv.stake > m.free + 1e-6 || (lv.L === 1 && !(lv.qty > 0))) { alert(`Nicht genug freies Kapital für diesen Trade (frei ${eur(m.free)}).`); return; }
+  if (!m.fit.ok && !confirm(`${m.fit.t}.\n\nDieser Trade weicht von der getesteten Regel ab. Trotzdem speichern?`)) return;
   const l = plansLoad();
   if (l.filter(p => p.st === "open").length >= m.cfg.maxOpen && !confirm(`Schon ${m.cfg.maxOpen} offene Trades – Gesamtrisiko steigt. Trotzdem eröffnen?`)) return;
   l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, h4: m.h4 ? (h4Go(m.h4) ? "go" : m.h4.st) : null, d: isoD(m.d0), scan: String(data.generated).slice(0, 10),
@@ -6869,9 +6901,10 @@ function tpPlansHtml() {
   const l = plansLoad(), open = l.filter(p => p.st === "open"), done = l.filter(p => p.st === "closed");
   liveKick(open.map(p => p.t), "entry");
   if (!l.length) return "";
-  const row = p => { const r = rowOf(p.t), c = r ? r.c : null, s = tpStatus(p), pnl = c != null ? (c - p.E) / p.E * p.expo - p.cost : null;
+  const row = p => { const r = rowOf(p.t), c = r ? r.c : null, s = tpStatus(p), ex = +p.expo || (+p.stake || 0) * (p.L || 1),
+      pnl = c != null && ex > 0 && p.E > 0 ? (c - p.E) / p.E * ex - (+p.cost || 0) : null;   // fehlt ein Wert: neutral „–“ statt rotem „−− €“
     return `<div class="g-pos"><div class="g-pos-h"><button class="g-nm" data-ein="${esc(p.t)}"><b>${esc(p.n)}</b><small>${p.paper ? "Übung · " : ""}${esc(p.t)} · ${p.L === 1 ? "Aktie" : `Turbo ×${p.L}`} · seit ${dateDE(p.d)} · verkaufen am ${dateDE(p.exit2 || p.exit)}</small></button>
-      <div class="g-pl ${pnl >= 0 ? "up" : "down"}"><b>${sgnEur(pnl)}</b><small>${c != null ? sgnPct(c / p.E - 1, 1) : ""}</small></div></div>
+      <div class="g-pl ${pnl == null ? "" : pnl >= 0 ? "up" : "down"}"><b>${pnl == null ? "–" : sgnEur(pnl)}</b><small>${c != null ? sgnPct(c / p.E - 1, 1) : ""}</small></div></div>
       <div class="g-row"><span>${(fe => `Kauf ${fe(p.E)} · SL ${fe(p.stop)}${p.tp ? ` · TP ${fe(p.tp)}` : ""} · jetzt ${fe(c)} €${p.ko ? ` · K.-o. ${fe(p.ko)} €` : ""}`)(v => fmt(v * (toEur(1, p.cur || "EUR") || 1)))}</span><span class="g-tag ${s.tone === "red" ? "down" : s.tone === "green" ? "up" : ""}">${esc(s.t)}</span></div>
       <div class="g-act">${p.tp && p.x1 == null ? `<button class="btn ghost sm" data-tph1="${p.id}">Hälfte 1 verkauft …</button>` : ""}<button class="btn ghost sm" data-tph2="${p.id}">${p.tp && p.x1 != null ? "Hälfte 2 verkauft …" : "Verkauft …"}</button><button class="btn ghost sm" data-tpdel="${p.id}">Löschen</button></div></div>`; };
   const rs = done.map(p => p.R).filter(x => x != null), avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
@@ -6937,17 +6970,25 @@ document.addEventListener("change", e => {
   if (["tpE", "tpD", "tpDepot", "tpRisk", "tpTP", "tpKO", "tpCR", "tpFX", "tpKC", "tpUS"].includes(e.target.id)) tpRefresh();
 });
 document.addEventListener("change", e => { if (e.target.id === "tpPaper") { state.tpPaper = e.target.checked; save(); render(); } });
+// Kurzname für Listen: Rechtsform-Zusätze weg („Prologis, Inc.“ → „Prologis“)
+const shortNm = n => String(n || "").replace(/,?\s+(Inc\.?|Corp\.?|Corporation|Incorporated|plc|PLC|AG|SE|N\.V\.|S\.A\.|S\.p\.A\.|ASA|AB( \(publ\))?|Ltd\.?|Limited|Co\.,? Ltd\.?|Holdings?|Group|& Co\.? KGaA|KGaA)\s*$/i, "").replace(/,\s*$/, "").trim() || n;
 function einHtml() {
   if (!searchIdx) { loadSearch(); return `<div class="section-title"><span>Einstieg</span><span>lädt …</span></div>`; }
   if (!anaData) loadAnalysis();
   const r = state.einT && searchIdx.find(x => x.t === state.einT);
   const lvT = x => { const r0 = data.results.find(y => y.ticker === x.t); return r0 ? kSt(r0).lv : 0; };
-  const best = kmRank().hits.filter(kmTested).sort((a, b) => lvT(b) - lvT(a)).slice(0, 8), free = kmSlots();
+  const all = kmRank().hits.filter(kmTested).sort((a, b) => lvT(b) - lvT(a)), free = kmSlots();
+  const rdy = all.filter(x => kmReady(x.t)), wt = all.filter(x => !kmReady(x.t)).slice(0, Math.max(0, 8 - rdy.length));
+  const opt = (x, i) => { const r0 = data.results.find(y => y.ticker === x.t), ok = i != null;
+    return `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${ok ? `${i + 1}. ` : ""}${esc(shortNm(x.n))}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")}${ok ? (i < free ? " · Platz frei" : " · nur wenn ein Platz frei wird") : ""}</span>${r0 ? kPill(r0) : einTag(x)}</button>`; };
   return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span></span></div>
     <div class="note" style="margin:0 2px 10px">Turbos verstärken Gewinne, Verluste und Kosten – zum Lernen erst in der <a href="#" data-gosec="game">Übung</a>. PRIME+: Orders ab 250 € gebührenfrei.</div>
     <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
     ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Kairo-Treffer</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
-      ${best.length ? `<div class="plan-h" style="margin:14px 2px 6px">Heutige Treffer${free < best.length ? ` · ${free} ${free === 1 ? "Platz" : "Plätze"} frei` : ""}</div><div class="ein-list">${best.map((x, i) => `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${i + 1}. ${esc(x.n)}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")} · Vormomentum ${x.mom != null ? sgnPct(x.mom, 0) : "–"}${kmTested(x) ? "" : " · Region nicht getestet"}${i < free ? "" : " · nur bei freiem Platz"}</span>${(r0 => r0 ? kPill(r0) : einTag(x))(data.results.find(y => y.ticker === x.t))}</button>`).join("")}</div>` : ""}`}`;
+      ${rdy.length ? `<div class="plan-h" style="margin:14px 2px 6px">Kaufbereit · ${free} ${free === 1 ? "Platz" : "Plätze"} frei</div><div class="ein-list">${rdy.map(opt).join("")}</div>
+        <div class="note" style="margin:4px 2px 0">Reihenfolge wie getestet: zuerst die Treffer, die vorher am stärksten gefallen sind.</div>` : ""}
+      ${wt.length ? `<div class="plan-h" style="margin:14px 2px 6px">Treffer – warten auf die Seitwärtsphase</div><div class="ein-list">${wt.map(x => opt(x, null)).join("")}</div>` : ""}
+      ${!all.length ? `<div class="note" style="margin:14px 2px">Heute keine Kairo-Treffer in deinen Handelsregionen.</div>` : ""}`}`;
 }
 document.addEventListener("input", e => {
   if (e.target.id === "gQ") { state.gQ = e.target.value; const l = $("gList"); if (l) l.innerHTML = gListHtml(); }
