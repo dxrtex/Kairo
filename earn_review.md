@@ -42,20 +42,20 @@ Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhal
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
 - DUOL 2026-11-03: Kairo 36% steigt, Kurs +34.3% · Gewinn -17% · Ausblick bestätigt – „We expect Q4 revenue of $322 million, up 14% over the prior year.“
-- ECG 2026-11-03: Kairo 71% steigt, Kurs -28.9% · Gewinn +34% · Ausblick angehoben – „We now expect revenues to be in the range of $5.0 billion to $5.1 billion and EBITDA in the range of $485 million to $495 million.“
-- OUST 2026-11-03: Kairo 26% steigt, Kurs +14.7% · Gewinn -90% · Ausblick gesenkt – „For the fourth quarter of 2026, Ouster expects to achieve $61 million to $64 million in total revenue.“
+- ECG 2026-11-03: Kairo 71% steigt, Kurs -29.0% · Gewinn +34% · Ausblick angehoben – „We now expect revenues to be in the range of $5.0 billion to $5.1 billion and EBITDA in the range of $485 million to $495 million.“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
+- OUST 2026-11-03: Kairo 26% steigt, Kurs +14.0% · Gewinn -90% · Ausblick gesenkt – „For the fourth quarter of 2026, Ouster expects to achieve $61 million to $64 million in total revenue.“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 - CVI 2026-11-03: Kairo 64% steigt, Kurs -13.1% · Gewinn +37% · Ausblick keine Meldung
 - RRX 2026-11-03: Kairo 32% steigt, Kurs +11.8% · Gewinn +9% · Ausblick gesenkt – „Pressemitteilung: Ausblick gesenkt“
-- ANDE 2026-11-03: Kairo 61% steigt, Kurs -10.8% · Gewinn +24% · Ausblick keine Meldung
-- XYZ 2026-11-03: Kairo 60% steigt, Kurs +15.7% · Gewinn +10% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- ANDE 2026-11-03: Kairo 61% steigt, Kurs -11.0% · Gewinn +24% · Ausblick keine Meldung
+- XYZ 2026-11-03: Kairo 60% steigt, Kurs +15.8% · Gewinn +10% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - XMTR 2026-11-03: Kairo 65% steigt, Kurs +16.6% · Gewinn +47% · Ausblick bestätigt – „For Q4 2026, we expect revenue of $254-$256 million, representing 32-33% growth year-over-year driven by approximately 35-36% marketplace growth.“
-- LTM 2026-11-03: Kairo 37% steigt, Kurs +9.1% · Gewinn +16% · Ausblick gesenkt – „LATAM Airlines trims earnings outlook as fuel costs bite“
-- SKY 2026-11-03: Kairo 42% steigt, Kurs +9.9% · Gewinn +1% · Ausblick keine Meldung
+- SKY 2026-11-03: Kairo 42% steigt, Kurs +10.0% · Gewinn +1% · Ausblick keine Meldung
+- LTM 2026-11-03: Kairo 37% steigt, Kurs +8.8% · Gewinn +16% · Ausblick gesenkt – „LATAM Airlines trims earnings outlook as fuel costs bite“
 - DT 2026-11-03: Kairo 37% steigt, Kurs -14.7% · Gewinn +10% · Ausblick gesenkt – „Dynatrace shares tumble 16% on disappointing guidance outlook“
-- MIRM 2026-11-03: Kairo 33% steigt, Kurs +8.2% · Gewinn -2% · Ausblick bestätigt – „2026 net product sales guidance increased to $715 million to $720 million – Received U.S.“
-- UBER 2026-11-04: Kairo 26% steigt, Kurs +7.0% · Gewinn -72% · Ausblick gesenkt – „Uber's profit forecast disappoints as driver shortages, Middle East conflict hurt“
+- UBER 2026-11-04: Kairo 26% steigt, Kurs +7.1% · Gewinn -72% · Ausblick gesenkt – „Uber's profit forecast disappoints as driver shortages, Middle East conflict hurt“
+- MIRM 2026-11-03: Kairo 33% steigt, Kurs +7.8% · Gewinn -2% · Ausblick bestätigt – „2026 net product sales guidance increased to $715 million to $720 million – Received U.S.“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
@@ -80,13 +80,13 @@ Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhal
 
 Beispiele:
 - DUOL 2026-11-03: Kairo 36%, Kurs +34.3% (Markt +0.3%) · Gründe: Umsatz, Nutzer/Kunden – „Duolingo Misses on Earnings. The Stock Soars 15%.“
-- ECG 2026-11-03: Kairo 71%, Kurs -28.9% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
-- OUST 2026-11-03: Kairo 26%, Kurs +14.7% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Why is Ouster stock surging today?“
+- ECG 2026-11-03: Kairo 71%, Kurs -29.0% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
+- OUST 2026-11-03: Kairo 26%, Kurs +14.0% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Why is Ouster stock surging today?“
 - CVI 2026-11-03: Kairo 64%, Kurs -13.1% (Markt +0.3%) – „CVR Energy slumps 13% amid results and stock offering (CVI:NYSE)“
 - RRX 2026-11-03: Kairo 32%, Kurs +11.8% (Markt +0.3%) · Gründe: Umsatz, KI/Rechenzentren – „Why is Regal Rexnord stock surging today? By Investing.com“
-- ANDE 2026-11-03: Kairo 61%, Kurs -10.8% (Markt +0.3%) · Gründe: Umsatz – „Andersons earnings beat by $0.31, revenue fell short of estimates“
-- SKY 2026-11-03: Kairo 42%, Kurs +9.9% (Markt +0.3%) · Gründe: Umsatz – „Champion Electric Metals Inc. (CN:LTHM) Sinks Despite a Refreshed Leadership Team: Can Idaho Copper, Gold and Cobalt Claims Revive Investor Appetite?“
-- LTM 2026-11-03: Kairo 37%, Kurs +9.1% (Markt +0.3%) – „LATAM Airlines Q3 2026 slides: premium growth offsets fuel surge By Investing.com“
+- ANDE 2026-11-03: Kairo 61%, Kurs -11.0% (Markt +0.3%) · Gründe: Umsatz – „Andersons earnings beat by $0.31, revenue fell short of estimates“
+- SKY 2026-11-03: Kairo 42%, Kurs +10.0% (Markt +0.3%) · Gründe: Umsatz – „Champion Electric Metals Inc. (CN:LTHM) Sinks Despite a Refreshed Leadership Team: Can Idaho Copper, Gold and Cobalt Claims Revive Investor Appetite?“
+- LTM 2026-11-03: Kairo 37%, Kurs +8.8% (Markt +0.3%) – „LATAM Airlines Q3 2026 slides: premium growth offsets fuel surge By Investing.com“
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
