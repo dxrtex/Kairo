@@ -688,7 +688,7 @@
   .sp-seg button.on { background: var(--surface-3); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.25); }
   .sp-seg button:disabled { opacity: .35; cursor: default; }
   .sp-reg { margin: 0; flex: none; } .sp-reg button { padding: 5px 12px; font-size: 13px; }
-  .sp-view { margin-bottom: 10px; } .sp-per { margin: 0 0 10px; gap: 6px; } .sp-per .opt { padding: 6px 12px; font-size: 13.5px; } .sp-relb { margin-left: auto; }
+  .sp-view { margin-bottom: 10px; } .sp-per { margin: 0 0 10px; gap: 6px; } .sp-per .opt { padding: 6px 12px; font-size: 13.5px; } .sp-relb { margin-left: auto; } .sp-dim { flex-wrap: wrap; } .sp-dim > span { width: 100%; font-size: 12.5px; } .sp-dim .opt { opacity: .65; }
   .rrg { width: 100%; max-width: 520px; height: auto; display: block; border-radius: 12px; background: var(--surface-2); margin: 0 auto 10px; }
   .rrg .rrg-t { font-size: 10px; fill: var(--text); paint-order: stroke; stroke: var(--surface-2); stroke-width: 3px; }
   .rrg .rrg-q { font-size: 11px; font-weight: 700; opacity: .85; }
@@ -2432,7 +2432,7 @@ function sectorsHtml() {
   return `<div class="hcard sp-card"><div class="hh sp-hh"><b>Sektoren & Branchen</b>${reg}</div>
     <div class="sp-seg sp-lev">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu && (m.industries || []).length], ["th", "Themen", !eu && (m.themes || []).length]].map(([v, l, ok]) => `<button class="${(v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind) ? "on" : ""}" data-spmode="${v}"${ok ? "" : ` disabled title="${eu ? "nur für USA" : "kommt mit dem nächsten Abend-Scan"}"`}>${l}</button>`).join("")}</div>
     <div class="sp-seg sp-view">${[["ret", "Rendite", 1], ["rrg", "Rotation", hasRrg], ["hist", "Verlauf", hasHist]].filter(o => o[2]).map(([v, l]) => `<button class="${(v === "hist" ? hv : v === "rrg" ? rv : !hv && !rv) ? "on" : ""}" data-spview="${v}">${l}</button>`).join("")}</div>
-    ${hv || rv ? "" : `<div class="sp-tg sp-per">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}<button class="opt sp-relb${state.spRel ? " on" : ""}" data-sprel title="Rendite minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")}">ggü. Markt</button></div>`}
+    ${hv || rv ? `<div class="sp-tg sp-per sp-dim"><span class="muted">${rv ? "Rotation rechnet mit Wochenwerten" : "Verlauf zeigt den Rang je Woche"} – Zeitraum antippen = Rendite</span>${SP_PER.map(([v, l, n]) => `<button class="opt" data-spper="${v}" data-spret="1" title="${n} – wechselt zu Rendite">${l}</button>`).join("")}</div>` : `<div class="sp-tg sp-per">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}<button class="opt sp-relb${state.spRel ? " on" : ""}" data-sprel title="Rendite minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")}">ggü. Markt</button></div>`}
     ${rv ? spRrgHtml(xs, ind) + (th ? themeTrendHtml(xs) : "") : hv ? spHistHtml(xs, ind) : `${rot}${th ? themeTrendHtml(xs) : hotHtml(ind ? [] : xs)}<div class="sp-list">${show.map(row).join("")}</div>`}
     ${ind && !th && !rv ? `<button class="hlink" data-spall style="margin-top:6px">${all ? "weniger zeigen" : `alle ${rows.length} Branchen zeigen`}</button>` : ""}
     <div class="note" style="margin:8px 0 0">${spStamp()}<br>${rv ? (eu ? "Europa: iShares-STOXX-Europe-600-Sektor-ETFs (Xetra) gegenüber dem STOXX 600, Wochenwerte." : `US-${(th ? "Themen" : ind ? "Branchen" : "Sektor")}-ETFs gegenüber dem S&P 500, Wochenwerte.`) : `${eu ? "Europa: STOXX-Europe-600-Sektor" : "US-" + (th ? "Themen" : ind ? "Branchen" : "Sektor")}-ETFs, Rendite ${esc(kn)}${state.spRel ? ` minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")} (> 0 = besser als der Markt)` : ""}. ▲▼ = Plätze gewonnen/verloren ${k === "d1" ? "ggü. gestern" : "ggü. vor einer Woche"}. Antippen zeigt die stärksten Aktien aus deinem Scan.`}</div></div>`;
@@ -2694,7 +2694,7 @@ document.addEventListener("click", e => {
   const io = t.closest("[data-insopen]"); if (io) { $("spmBody").innerHTML = insDetailHtml(io.dataset.insopen); $("spm").hidden = false; $("spm").dataset.k = ""; return; }
   const pm = t.closest("[data-spmode]"); if (pm && !pm.disabled) { state.spMode = pm.dataset.spmode; if (state.spMode !== "sec") state.spReg = "us"; save(); render(); return; }
   const pr = t.closest("[data-spreg]"); if (pr) { state.spReg = pr.dataset.spreg; if (state.spReg === "eu") state.spMode = "sec"; save(); render(); return; }
-  const pp = t.closest("[data-spper]"); if (pp) { state.spPer = pp.dataset.spper; save(); render(); if (pp.dataset.spkeep) $("spmBody").innerHTML = spDrillHtml(pp.dataset.spkeep); return; }
+  const pp = t.closest("[data-spper]"); if (pp) { state.spPer = pp.dataset.spper; if (pp.dataset.spret) state.spView = "ret"; save(); render(); if (pp.dataset.spkeep) $("spmBody").innerHTML = spDrillHtml(pp.dataset.spkeep); return; }
   if (t.closest("[data-spall]")) { state.spAll = !state.spAll; save(); render(); return; }
   const so = t.closest("[data-spopen]"); if (so) { openSpDrill(so.dataset.spopen); return; }
 });
@@ -5820,8 +5820,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.50";
-const APP_NEWS = [["2026.11.50", "Einstieg: klarer und richtig gerechnet", [
+const APP_VER = "2026.11.51";
+const APP_NEWS = [["2026.11.51", "Markt: Zeitraum immer sichtbar", [
+  ["Zeitraum bei Sektoren & Branchen", "Die Zeitraum-Knöpfe (1T bis YTD) stehen jetzt auch bei Rotation und Verlauf – antippen wechselt zur Rendite im gewählten Zeitraum. Rotation und Verlauf selbst rechnen fest mit Wochenwerten."]]],
+  ["2026.11.50", "Einstieg: klarer und richtig gerechnet", [
   ["Einsatz stimmt", "Bei „Aktie direkt“ ist der Einsatz jetzt Stückzahl × Kurs (vorher z. B. 624 € statt 593 € bei 2 Stück) – auch das freie Kapital und das Risiko stimmen damit."],
   ["Kein „traden“ mehr vor der Seitwärtsphase", "Grün „traden“ erscheint nur, wenn der Treffer kaufbereit ist. Vorher steht „noch warten (Tag x/10)“, danach „Einstieg vorbei“ oder „verfallen“. Regelwidriges Speichern fragt nach."],
   ["Das Wichtigste oben", "Urteil, Kauf, Stop und Stückzahl stehen direkt unter dem Namen. Erklärungen und Turbo-Rechner sind eingeklappt."],
