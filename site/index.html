@@ -3298,6 +3298,15 @@ function etfCard(p, i, px, val, cost) {
       <div class="row-actions">${spyi ? `<a class="mini-btn" style="text-decoration:none" href="${tvUrl("SPYI")}" target="_blank" rel="noopener">TradingView</a>` : ""}<button class="mini-btn del" data-dep="del" data-i="${i}">Löschen</button></div>
     </article>`;
 }
+// Eigener Stop bei Scalable auf Karten ohne Analyse: Hinweis + Knopf (Kurs in € je Stück)
+const slBtn = (p, i) => `<button class="mini-btn" data-dep="sl" data-i="${i}">${p.sl > 0 ? `Stop ${eur2(p.sl)} ändern` : "Mein Stop bei Scalable"}</button>`;
+function slCardHtml(p, now) {
+  if (!(p.sl > 0)) return "";
+  const ok = now > 0 && !isNaN(now), hit = ok && now <= p.sl;
+  return `<div class="tip tone-${hit ? "red" : "gray"}" style="margin-top:8px"><b class="t">${hit ? "Stop vermutlich ausgelöst" : `Dein Stop bei Scalable: ${eur2(p.sl)}`}</b>${hit
+    ? `Kurs ${eur2(now)} liegt unter deinem Stop ${eur2(p.sl)} – Scalable-Export neu importieren oder die Position löschen, wenn verkauft.`
+    : ok ? `noch ${pct(1 - p.sl / now, 1)} Abstand – fällt der Kurs darunter, meldet Kairo „vermutlich verkauft“.` : "Kurs des Zertifikats unbekannt – mit „Kurs eintragen“ prüft Kairo den Abstand."}</div>`;
+}
 function depotCheckHtml(items, groups = []) {
   // Turbos nach aktuellem Wert (onvista-Geldkurs oder Schätzung aus dem Basiswert) – nicht mehr nur nach Einsatz
   const tv = {}; groups.forEach(g => g.ms.forEach(m => { if (m.d && m.nowPos != null) tv[m.i] = m.nowPos * m.p.qty; }));
@@ -3399,8 +3408,9 @@ function depotHtml() {
         <div class="fig"><span>Abstand Stop</span><b class="${st.slAtr != null && st.slAtr < .5 ? "down" : ""}">${st.slDist != null ? pct(st.slDist, 1) : "–"}</b></div><div class="fig"><span>Stand in R</span><b class="${(st.R ?? 0) >= 0 ? "up" : "down"}">${st.R != null ? (st.R >= 0 ? "+" : "") + fmt(st.R, 2) + " R" : "–"}</b></div></div>` : ""}
       ${stratTipHtml(st, p.t)}
       ${ev ? `<div class="note" style="margin-top:0">Nächster Termin: <b>${dateDE(ev.date)}</b> – ${(CAL_KIND[ev.kind] || [])[2] || ""}${ev.estimate ? " (geschätzt)" : ""}</div>` : ""}
+      ${slCardHtml(p, nowEur)}
       <div class="row-actions">${inRes ? `<button class="mini-btn" data-open="${esc(p.t)}">Chart</button>` : ""}<a class="mini-btn" style="text-decoration:none" href="${tvUrl(p.t)}" target="_blank" rel="noopener">TradingView</a>
-        <button class="mini-btn" data-dep="edit" data-i="${i}">Bearbeiten</button><button class="mini-btn del" data-dep="del" data-i="${i}">Löschen</button></div>
+        ${slBtn(p, i)}<button class="mini-btn" data-dep="edit" data-i="${i}">Bearbeiten</button><button class="mini-btn del" data-dep="del" data-i="${i}">Löschen</button></div>
     </article>`;
   }).join("");
   const empty = list.length ? "" : `<div class="card empty-st"><div class="es-ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 40h32"/><path d="M13 34V22M21 34V14M29 34V24M37 34V18"/></svg></div><b>Dein Depot ist noch leer</b>
@@ -3504,7 +3514,9 @@ function turboModel(p, a, ent) {
 const VERDICT = s => s >= 65 ? ["green", "Gut"] : s >= 45 ? ["yellow", "Neutral"] : ["red", "Kritisch"];
 // Alles, was eine Position ausmacht – einmal berechnet, von Übersicht und Karte genutzt
 function posModel(p, r, a) {
-  const d = p.d, short = !!(d && d.dir === "short"), cur = a.cur || (r && r.cur) || "";
+  const cur = a.cur || (r && r.cur) || "", kx = p.d && p.d.cur && cur && p.d.cur !== cur ? koPx(p.d.ko, p.d.cur, cur) : null;
+  if (kx != null) p = { ...p, d: { ...p.d, ko: kx, cur } };   // K.-o. in € / Aktie in HKD: in Aktienwährung rechnen
+  const d = p.d, short = !!(d && d.dir === "short");
   const ent = entryEval(needChart(p.t), p.date), held = p.date ? Math.max(0, -daysUntil(p.date)) : null;
   const tm = d && !short ? turboModel(p, { ...a, cur }, ent) : null;
   const fxC = fxEur[cur] ?? (cur === "EUR" ? 1 : null);
@@ -3518,7 +3530,16 @@ function posModel(p, r, a) {
   if (dist != null && dist < .05) score = Math.min(score, 30);
   const [tone, label] = short ? ["gray", "Short"] : VERDICT(score);
   const underMove = ent ? a.c / ent.u - 1 : null;
-  return { p, r, a, d, short, cur, ent, held, tm, valAt, nowPos, pl, plAt, dist, score, tone, label, underMove,
+  // Eigener Stop bei Scalable (€ je Stück, wie die Order): unterschritten – heute oder per Tagestief seit dem Eintragen?
+  let slHit = null;
+  if (p.sl > 0 && !short) {
+    if (nowPos != null && nowPos <= p.sl) slHit = { d: isoD(new Date()) };
+    const c = needChart(p.t), from = p.slD || p.date || "";
+    for (let i = 0; !slHit && c && c.t && i < c.t.length; i++) { if (String(c.t[i]) < from) continue;
+      const v = valAt(c.l[i]); if (v != null && v <= p.sl) slHit = { d: String(c.t[i]).slice(0, 10) }; }
+  }
+  const slDist = p.sl > 0 && nowPos > 0 ? 1 - p.sl / nowPos : null;
+  return { p, r, a, d, short, cur, ent, held, tm, valAt, nowPos, pl, plAt, dist, score, tone, label, underMove, slHit, slDist,
            levNow: lev(a.c), levBuy: ent ? lev(ent.u) : null, stopBelowKo: !!(d && !short && a.stop.p <= d.ko) };
 }
 // ---------- Depot: Übersicht je Basiswert (aufklappbar) – Stand, Hebel, Trade-Plan (Stop · EMA 20 · Tag 60) ----------
@@ -3535,7 +3556,7 @@ function analyzedListing(p, r) {
   hits.sort((a, b) => (b.cur === cur) - (a.cur === cur));
   return hits[0] || null;
 }
-const urg = g => !g.st ? 3 : ({ red: 0, yellow: 1, orange: 2 })[g.st.tone] ?? 4;
+const urg = g => g.slHit ? -1 : !g.st ? 3 : ({ red: 0, yellow: 1, orange: 2 })[g.st.tone] ?? 4;
 function groupPositions(items) {
   const by = new Map();
   items.forEach(x => {
@@ -3568,6 +3589,8 @@ function groupPositions(items) {
     const levs = g.ms.map(m => m.levNow);
     g.levTxt = g.ms.some(m => m.d) ? (Math.min(...levs).toFixed(1) === Math.max(...levs).toFixed(1) ? `${fmt(levs[0], 1)}×` : `${fmt(Math.min(...levs), 1)}–${fmt(Math.max(...levs), 1)}×`) : "1×";
     g.ev = nextEvent(g.t);
+    g.slHit = g.ms.find(m => m.slHit) || null;
+    g.slOwn = g.ms.filter(m => m.p.sl > 0);
     // Strategie: offener Trade-Plan → Stop, Tag X von 20, Verkaufstag; Verlust bis zum Stop (Wert heute minus Wert am Stop)
     g.st = stratOf(planFor([g.t, ...g.alias], g.name));
     const stop = g.st ? g.st.plan.stop : null;
@@ -3583,9 +3606,9 @@ function groupHtml(g) {
       <div class="g2"><span class="muted">Gewinn / Verlust</span><b class="${g.pl == null ? "" : g.pl >= 0 ? "up" : "down"}">${g.known ? sgnEur(g.value - g.invested) : "–"}</b><small class="${g.pl == null ? "muted" : g.pl >= 0 ? "up" : "down"}">${g.known ? sgnPct(g.pl, 1) : "Wert unbekannt"}</small></div>
       <div class="g2"><span class="muted">Hebel</span><b>${g.levTxt}</b><small class="${g.koDist != null && g.koDist < .1 ? "down" : "muted"}">${g.koDist != null ? `K.-o. ${pct(g.koDist, 0)} entfernt` : "ohne Knock-out"}</small></div>
       <div class="g2"><span class="muted">Haltedauer</span><b>${st ? `Tag ${st.day}/${st.hold}` : "–"}</b><small class="${st && st.left <= 2 ? "gold" : "muted"}">${st ? `verkaufen am ${dateDE(st.sell)}` : "kein Trade-Plan"}</small></div>
-      <div class="gact tone-${(st || NOPLAN).tone}"><b>${esc((st || NOPLAN).t)}</b><span>${st ? `Stop ${st.fe(pl.stop)} € · noch ${st.slDist != null ? pct(st.slDist, 1) : "–"}${st.R != null ? ` · ${st.R >= 0 ? "+" : ""}${fmt(st.R, 2)} R` : ""}` : "Ohne Plan kein Stop und kein Verkaufstag"}</span>${st ? "" : (() => { const d0 = g.ms.map(m => m.p.date).filter(Boolean).sort()[0] || "", stock = g.ms.every(m => !m.d);
+      ${g.slHit ? `<div class="gact tone-red"><b>Stop vermutlich ausgelöst</b><span>Dein Stop ${eur2(g.slHit.p.sl)} wurde ${g.slHit.slHit.d === isoD(new Date()) ? "heute" : `am ${dateDE(g.slHit.slHit.d)}`} erreicht${g.slHit.d && !(g.slHit.tm && g.slHit.tm.exact) ? " (Turbo-Wert geschätzt)" : ""}. Scalable-Export neu importieren – oder die Position löschen, wenn verkauft.</span></div>` : `<div class="gact tone-${(st || NOPLAN).tone}"><b>${esc((st || NOPLAN).t)}</b><span>${st ? `Stop ${st.fe(pl.stop)} € · noch ${st.slDist != null ? pct(st.slDist, 1) : "–"}${st.R != null ? ` · ${st.R >= 0 ? "+" : ""}${fmt(st.R, 2)} R` : ""}` : g.slOwn.length ? `Dein Stop bei Scalable ${g.slOwn.map(m => eur2(m.p.sl)).join(" / ")}${g.slOwn[0].slDist != null ? ` · noch ${pct(g.slOwn[0].slDist, 1)}` : ""}` : "Ohne Plan kein Stop und kein Verkaufstag"}</span>${st ? "" : (() => { const d0 = g.ms.map(m => m.p.date).filter(Boolean).sort()[0] || "", stock = g.ms.every(m => !m.d);
         const q = g.ms.reduce((a, m) => a + m.p.qty, 0), eP = stock ? (q ? g.ms.reduce((a, m) => a + m.p.price * m.p.qty, 0) / q : 0) : (g.avgEntry ? toEur(g.avgEntry, g.cur) || 0 : 0);
-        return `<button class="btn sm gact-btn" data-ein="${esc(tkClean(g.t))}" data-pre-d="${esc(d0)}" data-pre-e="${eP > 0 ? eP.toFixed(4) : ""}">Plan anlegen ›</button>`; })()}</div>
+        return `<button class="btn sm gact-btn" data-ein="${esc(tkClean(g.t))}" data-pre-d="${esc(d0)}" data-pre-e="${eP > 0 ? eP.toFixed(4) : ""}">Plan anlegen ›</button>`; })()}</div>`}
     </summary>`;
   const body = !open ? "" : `<div class="gbody">
     <div class="chartbox">${c ? `<div class="lwc-tools"><span class="muted">Zwei Finger: waagerecht auseinander = Zeit, senkrecht auseinander = Kurs, gemeinsam hoch/runter = Kurs verschieben · wischen = Zeit verschieben</span>
@@ -3618,6 +3641,7 @@ function groupHtml(g) {
     ${g.ms.some(m => m.d) ? `<div class="note" style="margin:6px 2px 0">Werte der Zertifikate geschätzt (aus Kaufkurs und Kurs des Basiswerts am Kauftag) – mit „Kurs eintragen“ werden sie exakt.</div>` : ""}</div>
     ${g.ev ? `<div class="note" style="margin:0">Nächster Termin: <b>${dateDE(g.ev.date)}</b> – ${(CAL_KIND[g.ev.kind] || [])[2] || ""}${g.ev.estimate ? " (geschätzt)" : ""}${g.ev.kind === "earnings" && st && g.ev.date <= st.sell ? " – liegt vor dem Verkaufstag: am Handelstag davor verkaufen" : ""}</div>` : ""}
     <div class="row-actions">${pl ? `<button class="mini-btn" data-ein="${esc(pl.t)}">Trade-Plan</button>` : ""}${data.results.some(x => x.ticker === g.t) ? `<button class="mini-btn" data-open="${esc(g.t)}">Großer Chart</button>` : ""}<a class="mini-btn" style="text-decoration:none" href="${tvUrl(g.t)}" target="_blank" rel="noopener">TradingView</a>
+      ${g.ms.map((m, j) => `<button class="mini-btn" data-dep="sl" data-i="${m.i}">${g.ms.length > 1 ? `#${j + 1} ` : ""}${m.p.sl > 0 ? `Stop ${eur2(m.p.sl)} ändern` : "Mein Stop bei Scalable"}</button>`).join("")}
       ${g.ms.map((m, j) => `<button class="mini-btn del" data-dep="del" data-i="${m.i}">#${j + 1} löschen</button>`).join("")}</div>
   </div>`;
   return `<details class="card grp" data-grp="${esc(g.t)}" ${open ? "open" : ""}>${head}${body}</details>`;
@@ -3739,14 +3763,14 @@ function aCockpitHtml(groups, items) {
 // Turbo-/Knock-out-Zertifikat ohne Analyse (Basiswert nicht auf der Watchlist) (keine Zertifikatskurse), aber den Basiswert
 function turboCard(p, i, r) {
   const d = p.d, held = p.date ? Math.max(0, -daysUntil(p.date)) : null, ev = p.t ? nextEvent(p.t) : null;
-  const same = r && (!d.cur || d.cur === r.cur);
-  const dist = same ? (d.dir === "long" ? (r.c - d.ko) / r.c : (d.ko - r.c) / r.c) : null;
-  const lev = same && Math.abs(r.c - d.ko) > 0 ? r.c / Math.abs(r.c - d.ko) : null;
+  const koU = r ? koPx(d.ko, d.cur || r.cur, r.cur) : null, same = koU != null;   // Schwelle in Aktienwährung (z. B. € → HKD)
+  const dist = same ? (d.dir === "long" ? (r.c - koU) / r.c : (koU - r.c) / r.c) : null;
+  const lev = same && Math.abs(r.c - koU) > 0 ? r.c / Math.abs(r.c - koU) : null;
   const koTone = dist == null ? "gray" : dist <= 0 ? "red" : dist < 0.05 ? "red" : dist < 0.12 ? "orange" : "green";
   const koText = dist == null ? (r ? `Schwelle in ${esc(d.cur || "?")}, Basiswert notiert in ${esc(r.cur)} – Abstand nicht berechenbar.` : "Basiswert nicht im Scan – Abstand nicht berechenbar.")
     : dist <= 0 ? "Der Basiswert steht jenseits der Schwelle – das Zertifikat ist vermutlich ausgeknockt. Bitte in Scalable prüfen."
     : `Noch ${pct(dist)} bis zum Knock-out${dist < 0.05 ? " – sehr knapp, schon ein normaler Tagesausschlag kann reichen" : dist < 0.12 ? " – wenig Puffer" : ""}.`
-      + (r && r.atr ? ` Das sind etwa ${fmt((d.dir === "long" ? r.c - d.ko : d.ko - r.c) / r.atr, 1)} typische Tagesspannen (ATR).` : "");
+      + (r && r.atr && koU != null ? ` Das sind etwa ${fmt((d.dir === "long" ? r.c - koU : koU - r.c) / r.atr, 1)} typische Tagesspannen (ATR).` : "");
   const st = d.dir === "long" ? stratOf(planFor([p.t], d.under)) : null;
   return `<article class="card">
     <div class="card-top"><div class="card-title"><h2>${esc(d.under)} <span class="pill">${d.dir === "long" ? "Turbo Long" : "Turbo Short"}</span></h2>
@@ -3762,7 +3786,8 @@ function turboCard(p, i, r) {
     ${d.dir === "long" ? stratTipHtml(st, p.t) : ""}
     ${st && st.koAtr != null && st.koAtr < 1 ? `<div class="tip tone-orange"><b class="t">K.-o. zu nah am Stop</b>Der K.-o. liegt weniger als 1 ATR unter dem Stop – eine Kurslücke kann ausknocken, bevor der Stop greift.</div>` : ""}
     ${ev ? `<div class="note" style="margin-top:0">Nächster Termin ${esc(d.under)}: <b>${dateDE(ev.date)}</b> – ${(CAL_KIND[ev.kind] || [])[2] || ""}${ev.estimate ? " (geschätzt)" : ""}. Regel: am Handelstag vor den Quartalszahlen verkaufen.</div>` : ""}
-    <div class="row-actions">${r && data.results.some(x => x.ticker === p.t) ? `<button class="mini-btn" data-open="${esc(p.t)}">Chart</button>` : ""}${p.t ? `<a class="mini-btn" style="text-decoration:none" href="${tvUrl(p.t)}" target="_blank" rel="noopener">TradingView</a>` : ""}
+    ${slCardHtml(p, p.mark > 0 && p.markU > 0 && r && r.c > 0 && koU != null && d.dir === "long" && p.markU > koU ? p.mark * (r.c - koU) / (p.markU - koU) : null)}
+    <div class="row-actions">${r && data.results.some(x => x.ticker === p.t) ? `<button class="mini-btn" data-open="${esc(p.t)}">Chart</button>` : ""}${p.t ? `<a class="mini-btn" style="text-decoration:none" href="${tvUrl(p.t)}" target="_blank" rel="noopener">TradingView</a>` : ""}${slBtn(p, i)}
       <button class="mini-btn del" data-dep="del" data-i="${i}">Löschen</button></div>
     <div class="note" style="margin:0">Schwelle laut letzter Transaktion; bei Open-End-Turbos verschiebt sie sich täglich leicht (Finanzierungskosten). Aktueller Zertifikatskurs: in Scalable.</div>
   </article>`;
@@ -3774,7 +3799,8 @@ function depotFormHtml(p) {
       <label class="full">Aktie (Name oder Ticker)<input id="dfStock" list="dfList" value="${p ? esc(`${p.n} (${p.t})`) : ""}" placeholder="z. B. Rheinmetall"><datalist id="dfList">${opts}</datalist></label>
       <label>Stück<input id="dfQty" type="number" step="any" min="0" inputmode="decimal" value="${p ? p.qty : ""}"></label>
       <label>Kaufkurs je Aktie in €<input id="dfPrice" type="number" step="any" min="0" inputmode="decimal" value="${p ? p.price : ""}"></label>
-      <label class="full">Kaufdatum<input id="dfDate" type="date" value="${p ? p.date || "" : ""}"></label>
+      <label>Kaufdatum<input id="dfDate" type="date" value="${p ? p.date || "" : ""}"></label>
+      <label>Mein Stop bei Scalable (€, optional)<input id="dfSl" type="number" step="any" min="0" inputmode="decimal" value="${p && p.sl ? p.sl : ""}"></label>
     </div>
     <div class="row-actions"><button class="btn" data-dep="save">Speichern</button><button class="btn ghost" data-dep="cancel">Abbrechen</button></div></div>`;
 }
@@ -3882,7 +3908,7 @@ function importRows(rows) {
     if (etf) entry.etf = 1;
     if (!r && !etf) noData.push(d ? d.under : p.name);
     const j = list.findIndex(x => (p.isin && x.isin === p.isin) || (!x.isin && !d && r && x.t === r.t));
-    if (j >= 0) { ["mark", "markU", "markDate"].forEach(k => { if (list[j][k] != null && list[j].isin === entry.isin) entry[k] = list[j][k]; }); list[j] = entry; } else list.push(entry);
+    if (j >= 0) { ["mark", "markU", "markDate", "sl", "slD"].forEach(k => { if (list[j][k] != null && list[j].isin === entry.isin) entry[k] = list[j][k]; }); list[j] = entry; } else list.push(entry);
     added++;
   });
   // Positionen aus früheren Importen, die laut Datei inzwischen verkauft sind, entfernen
@@ -3957,9 +3983,17 @@ document.addEventListener("click", e => {
     const r = findStock($("dfStock").value), qty = parseFloat(String($("dfQty").value).replace(",", ".")), price = parseFloat(String($("dfPrice").value).replace(",", "."));
     if (!r) { depotMsg = "Aktie nicht gefunden – bitte aus der Vorschlagsliste wählen."; render(); return; }
     if (!(qty > 0) || !(price > 0)) { depotMsg = "Bitte Stück und Kaufkurs angeben."; render(); return; }
-    const entry = { t: r.t, n: r.n, qty, price, date: $("dfDate").value || "", src: "hand" };
+    const entry = { t: r.t, n: r.n, qty, price, date: $("dfDate").value || "", src: "hand" }, sl = parseFloat(String($("dfSl").value).replace(",", "."));
+    if (sl > 0) { entry.sl = sl; entry.slD = depotEdit >= 0 && list[depotEdit].sl === sl ? list[depotEdit].slD : isoD(new Date()); }
     if (depotEdit >= 0) list[depotEdit] = entry; else list.push(entry);
     depotSave(list); depotEdit = null;
+  } else if (act === "sl") {
+    const p = list[i]; if (!p) return;
+    const v = prompt(`Dein Stop-Loss bei Scalable für ${p.d ? p.n : p.n || p.t}: der Stop-Kurs der Order in € je Stück${p.d ? " (Kurs des Zertifikats, wie in Scalable)" : ""}.\nKairo warnt, wenn der Kurs ihn erreicht – dann ist die Position vermutlich verkauft.\nLeer lassen = entfernen.`, p.sl ? String(p.sl).replace(".", ",") : "");
+    if (v === null) return;
+    const x = parseFloat(String(v).replace(/\./g, "").replace(",", "."));
+    if (x > 0) { p.sl = x; p.slD = isoD(new Date()); } else { delete p.sl; delete p.slD; }
+    depotSave(list);
   } else if (act === "mark") {
     const p = list[i], a = anaData && anaData.tickers[p.t];
     const v = prompt(`Aktueller Kurs von ${p.d ? p.d.under + " " + (p.d.dir === "long" ? "Turbo Long" : "Turbo Short") : p.n} (${p.isin || p.t}) in € – z. B. den Geldkurs aus Scalable.\nLeer lassen = wieder schätzen.`, p.mark ? String(p.mark).replace(".", ",") : "");
@@ -5792,7 +5826,8 @@ const APP_NEWS = [["2026.11.50", "Einstieg: klarer und richtig gerechnet", [
   ["Kein „traden“ mehr vor der Seitwärtsphase", "Grün „traden“ erscheint nur, wenn der Treffer kaufbereit ist. Vorher steht „noch warten (Tag x/10)“, danach „Einstieg vorbei“ oder „verfallen“. Regelwidriges Speichern fragt nach."],
   ["Das Wichtigste oben", "Urteil, Kauf, Stop und Stückzahl stehen direkt unter dem Namen. Erklärungen und Turbo-Rechner sind eingeklappt."],
   ["Treffer-Liste geordnet", "Kaufbereite Treffer zuerst (in der getesteten Reihenfolge), darunter die, die noch auf ihre Seitwärtsphase warten."],
-  ["Depot: ausgeknockte Turbos verschwinden", "Knock-outs und Ausbuchungen aus dem Scalable-Export zählen als Abgang, Turbos mit Schwelle in HKD & Co. werden erkannt, und die K.-o.-Prüfung rechnet zwischen Euro und Aktienwährung um (z. B. BYD in HKD, Schwelle in €). Einmal den Export neu importieren."]]],
+  ["Depot: ausgeknockte Turbos verschwinden", "Knock-outs und Ausbuchungen aus dem Scalable-Export zählen als Abgang, Turbos mit Schwelle in HKD & Co. werden erkannt, und die K.-o.-Prüfung rechnet zwischen Euro und Aktienwährung um (z. B. BYD in HKD, Schwelle in €). Einmal den Export neu importieren."],
+  ["Depot: „Mein Stop bei Scalable“", "Je Position kannst du den Stop eintragen, den du bei Scalable gesetzt hast. Erreicht der Kurs ihn, steht oben „Stop vermutlich ausgelöst“ – Kairo sieht deine Orders nicht, so fällt ein Verkauf trotzdem auf. Bleibt beim Neu-Import erhalten."]]],
   ["2026.11.49", "Markt aufgeräumt", [
   ["Sektoren & Branchen übersichtlicher", "Oben rechts USA oder Europa, darunter Sektoren · Branchen · Themen und Rendite · Rotation · Verlauf – Zeiträume nur noch bei Rendite."],
   ["Rotation klarer", "Feste Farben je Feld (Erholt sich ist jetzt blau), kurze 3-Wochen-Striche statt langer Schweife, keine überlappenden Namen und darunter vier Kästen mit Pfeil, wohin sich jeder Bereich bewegt."],
