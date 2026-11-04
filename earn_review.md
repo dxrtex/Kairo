@@ -51,7 +51,7 @@ Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhal
 - MIRM 2026-11-03: Kairo 33% steigt, Kurs +11.4% · Gewinn -2% · Ausblick bestätigt – „2026 net product sales guidance increased to $715 million to $720 million – Received U.S.“
 - ANDE 2026-11-03: Kairo 61% steigt, Kurs -11.7% · Gewinn +24% · Ausblick keine Meldung
 - SKY 2026-11-03: Kairo 42% steigt, Kurs +11.5% · Gewinn +1% · Ausblick keine Meldung
-- XYZ 2026-11-03: Kairo 60% steigt, Kurs +15.2% · Gewinn +10% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- XYZ 2026-11-03: Kairo 60% steigt, Kurs +15.3% · Gewinn +10% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - XMTR 2026-11-03: Kairo 65% steigt, Kurs +16.6% · Gewinn +47% · Ausblick bestätigt – „For Q4 2026, we expect revenue of $254-$256 million, representing 32-33% growth year-over-year driven by approximately 35-36% marketplace growth.“
 - DT 2026-11-03: Kairo 37% steigt, Kurs -14.7% · Gewinn +10% · Ausblick gesenkt – „Dynatrace shares tumble 16% on disappointing guidance outlook“
 - LTM 2026-11-03: Kairo 37% steigt, Kurs +8.4% · Gewinn +16% · Ausblick gesenkt – „LATAM Airlines trims earnings outlook as fuel costs bite“
