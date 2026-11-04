@@ -1,0 +1,42 @@
+name: Branchen nachladen
+
+# Einmal-Lauf per Knopf: Sektor/Branche (Yahoo) für alle Aktien ohne Branche in den Stimmungs-Cache schreiben.
+# Der nächste Scan übernimmt sie in den Suchindex (Sektor-Ansicht, Heatmap). Ändert keine Kurse, Signale oder Nutzerdaten.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: scan-${{ github.ref }}  # nie gleichzeitig mit einem Scan (der denselben Cache schreibt)
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Stimmungs-Cache laden
+        uses: actions/cache/restore@v4
+        with: { path: data/sentiment.json, key: stimmung-none, restore-keys: stimmung- }
+      - name: Letzten Suchindex holen
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          set -e
+          for id in $(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/scan.yml/runs?status=success&per_page=15" --jq '.workflow_runs[].id'); do
+            rm -rf live; if gh run download "$id" -n github-pages -D live 2>/dev/null; then echo "Suchindex aus Lauf $id"; break; fi   # übersprungene Läufe haben kein Paket
+          done
+          mkdir -p ls && tar -xf live/artifact.tar -C ls && ls -la ls/data/search.json
+      - name: Branchen nachladen
+        run: python -m backend.sector_backfill ls/data/search.json 2400
+      - name: Stimmungs-Cache speichern
+        if: always()
+        uses: actions/cache/save@v4
+        with: { path: data/sentiment.json, key: "stimmung-${{ github.run_id }}" }
