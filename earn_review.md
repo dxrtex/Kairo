@@ -9,8 +9,8 @@ Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhal
 | alle | 57 | 56% | 0.234 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 44 | 59% | 0.226 | 0.250 |
-| Ausblick gesenkt | 8 | 75% | 0.191 | 0.250 |
-| Ausblick bestätigt | 4 | 75% | 0.205 | 0.250 |
+| Ausblick gesenkt | 7 | 71% | 0.198 | 0.250 |
+| Ausblick bestätigt | 5 | 80% | 0.192 | 0.250 |
 | Ausblick angehoben | 23 | 52% | 0.241 | 0.250 |
 | Ausblick keine Meldung | 22 | 50% | 0.247 | 0.250 |
 
@@ -31,7 +31,7 @@ Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhal
 |---|---|---|---|---|
 | deutlich unter Erwartung (< −10 %) | 29% (7) | 0% (1) | 33% (9) | 38% (13) |
 | unter Erwartung (−10 bis −2 %) | 14% (7) | 0% (2) | 50% (8) | 31% (16) |
-| im Rahmen (±2 %) | 30% (10) | 0% (2) | 33% (9) | 62% (16) |
+| im Rahmen (±2 %) | 33% (9) | 0% (3) | 33% (9) | 62% (16) |
 | über Erwartung (+2 bis +10 %) | 12% (8) | 33% (3) | 45% (22) | 48% (23) |
 | deutlich über Erwartung (> +10 %) | 38% (13) | 70% (10) | 68% (37) | 55% (31) |
 
@@ -41,7 +41,7 @@ Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhal
 
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
-- STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „STVN: Organic growth and stronger adjusted margins offset Engineering weakness and lower GLP-1 outlook“
+- STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick bestätigt – „Stevanato Group (STVN) Maintains Fiscal 2026 Revenue Outlook Ami“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 - CVI 2026-11-03: Kairo 64% steigt, Kurs -13.1% · Gewinn +37% · Ausblick keine Meldung
 - RRX 2026-11-03: Kairo 32% steigt, Kurs +11.8% · Gewinn +9% · Ausblick gesenkt – „Pressemitteilung: Ausblick gesenkt“
@@ -52,7 +52,7 @@ Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhal
 - RYTM 2026-11-03: Kairo 64% steigt, Kurs -7.5% · Gewinn +18% · Ausblick keine Meldung
 - ZBRA 2026-11-03: Kairo 53% steigt, Kurs -8.8% · Gewinn +1% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - MDGL 2026-11-03: Kairo 54% steigt, Kurs -8.1% · Gewinn +310% · Ausblick keine Meldung
-- TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises as strong forecast signals record growth phase“
+- TSEM 2026-11-02: Kairo 60% steigt, Kurs -6.7% · Gewinn +7% · Ausblick angehoben – „Tower Semiconductor rises on strong Q4 revenue guidance“
 - SRAD 2026-11-03: Kairo 61% steigt, Kurs +10.3% · Gewinn +60% · Ausblick bestätigt – „SRAD: Q3 growth and strong cash flow underpin reiterated FY2026 guidance and strategic portfolio moves“
 - MARICO.NS 2026-11-02: Kairo 60% steigt, Kurs +10.0% · Gewinn +2% · Ausblick angehoben – „MARICO: Broad-based growth lifted Q2 EBITDA 27% and raised FY27 profitability guidance to the mid-20s“
 - ADEA 2026-11-02: Kairo 26% steigt, Kurs -13.6% · Gewinn -30% · Ausblick gesenkt – „Adeia shares tumble 24% on earnings miss and weak guidance“
