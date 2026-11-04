@@ -1,18 +1,18 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhalb 1020 Min., 52 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhalb 963 Min., 69 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-253 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-03), davon 63 mit aufgezeichneter Prognose.
+254 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-03), davon 64 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 63 | 57% | 0.235 | 0.250 |
+| alle | 64 | 58% | 0.234 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 50 | 60% | 0.228 | 0.250 |
-| Ausblick gesenkt | 9 | 67% | 0.202 | 0.250 |
-| Ausblick bestätigt | 4 | 75% | 0.205 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 51 | 61% | 0.228 | 0.250 |
+| Ausblick gesenkt | 8 | 62% | 0.209 | 0.250 |
+| Ausblick bestätigt | 5 | 80% | 0.192 | 0.250 |
 | Ausblick angehoben | 24 | 54% | 0.239 | 0.250 |
-| Ausblick keine Meldung | 26 | 54% | 0.247 | 0.250 |
+| Ausblick keine Meldung | 27 | 56% | 0.245 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -20,7 +20,7 @@ Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhal
 |---|---|---|
 | -0%–30% | 1 | 0% |
 | 30%–40% | 18 | 33% |
-| 40%–50% | 4 | 100% |
+| 40%–50% | 5 | 80% |
 | 50%–60% | 18 | 50% |
 | 60%–70% | 14 | 57% |
 | 70%–100% | 8 | 75% |
@@ -30,8 +30,8 @@ Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhal
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
 | deutlich unter Erwartung (< −10 %) | 29% (7) | 0% (1) | 33% (9) | 38% (13) |
-| unter Erwartung (−10 bis −2 %) | 14% (7) | 0% (2) | 50% (8) | 35% (17) |
-| im Rahmen (±2 %) | 30% (10) | 0% (2) | 33% (9) | 65% (17) |
+| unter Erwartung (−10 bis −2 %) | 14% (7) | 0% (2) | 50% (8) | 33% (18) |
+| im Rahmen (±2 %) | 33% (9) | 0% (3) | 33% (9) | 65% (17) |
 | über Erwartung (+2 bis +10 %) | 11% (9) | 33% (3) | 45% (22) | 54% (24) |
 | deutlich über Erwartung (> +10 %) | 38% (13) | 70% (10) | 68% (38) | 56% (32) |
 
@@ -41,7 +41,7 @@ Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhal
 
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
-- STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „STVN: Organic growth and stronger adjusted margins offset Engineering weakness and lower GLP-1 outlook“
+- STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick bestätigt – „Stevanato Group (STVN) Maintains Fiscal 2026 Revenue Outlook Ami“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 - CVI 2026-11-03: Kairo 64% steigt, Kurs -13.1% · Gewinn +37% · Ausblick keine Meldung
 - RRX 2026-11-03: Kairo 32% steigt, Kurs +11.8% · Gewinn +9% · Ausblick gesenkt – „Pressemitteilung: Ausblick gesenkt“
@@ -59,17 +59,17 @@ Schnelligkeit: erste Zahlen im Mittel 578 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-6 Fehlprognosen und 57 Vergleichsfälle untersucht.
+6 Fehlprognosen und 58 Vergleichsfälle untersucht.
 
 - Markt: Bei 0% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 0% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -7.8%, getroffene Ø -5.1%.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -7.8%, getroffene Ø -5.2%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
 | Ausblick | 33% (2) | 26% | 1.3 |
-| Marge | 17% (1) | 12% | 1.4 |
-| Umsatz | 67% (4) | 49% | 1.4 |
-| KI/Rechenzentren | 33% (2) | 9% | 3.8 |
+| Marge | 17% (1) | 14% | 1.2 |
+| Umsatz | 67% (4) | 50% | 1.3 |
+| KI/Rechenzentren | 33% (2) | 9% | 3.9 |
 
 **Kandidaten für neue Merkmale:** noch keine (ein Grund braucht ≥ 15 Fehlprognosen und Faktor ≥ 1,5).
 
@@ -83,4 +83,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Noch nicht: 63 von 200 nötigen Meldungen mit aufgezeichneter Prognose.
+Noch nicht: 64 von 200 nötigen Meldungen mit aufgezeichneter Prognose.
