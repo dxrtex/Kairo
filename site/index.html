@@ -719,6 +719,7 @@
   @media (max-width: 560px) { .sp-r { grid-template-columns: minmax(0, 42%) 1fr 54px 26px; gap: 6px; } .sp-n { white-space: normal; line-height: 1.2; font-size: 13px; } }
   .sp-gap { text-align: center; color: var(--muted); font-size: 12px; line-height: 1; }
   .sp-s { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; width: 100%; padding: 9px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .sp-s.own { background: color-mix(in srgb, var(--accent) 9%, transparent); border-radius: 10px; } .sp-own { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; margin-right: 2px; white-space: nowrap; background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); vertical-align: 1px; } .sp-own.dep { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
   .sp-i { color: var(--muted); font-size: 12.5px; text-align: right; } .sp-sn { min-width: 0; } .sp-sn b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sp-sn em { display: block; font-style: normal; font-size: 12px; color: var(--muted); }
   .hm { position: relative; width: 100%; border-radius: 10px; overflow: hidden; background: #1b1d22; }
@@ -2515,17 +2516,23 @@ function spDrillHtml(key) {
   // Weltweit (alle Regionen des Scans) oder je Region; ohne illiquide Zweitlistings, je Firma eine Notierung. Börsenwert in US-Dollar.
   const rg = x.mem ? "all" : x.flt && !state.spDr ? "europe" : state.spDr || "all";
   const inSel = r => x.mem ? x.mem.includes(r.t) : x.flt ? ((x.flt.sec || []).includes(r.sec) || (x.flt.ig || []).includes(r.ig)) : ind ? r.ig === key : r.sec === x.n;
-  const raw = spRows().filter(r => !(r.km || []).includes("liquidity") && inSel(r) && (rg === "all" || r.r === rg));
+  const raw = spRows().filter(r => !(r.km || []).includes("liquidity") && inSel(r) && (rg === "all" || (r.hr || r.r) === rg));   // hr = Firmensitz (ADRs)
   const seen = new Map(); raw.forEach(r => { const n = normName(r.n || r.t), o = seen.get(n); if (!o || (r.mc || 0) > (o.mc || 0)) seen.set(n, r); });
   const all = [...seen.values()], capSum = all.reduce((a, r) => a + (r.mc || 0), 0);
   const srt = [...all].sort((a, b) => (b.mc || 0) - (a.mc || 0)), top = state.spDrAll ? srt : srt.slice(0, 30);
   const RGN = { us: "USA", europe: "Europa", asia: "Asien" };
+  // Deine Aktien markieren: Depot und Watchlist (Stern) – auch, wenn du eine andere Notierung derselben Firma hast
+  const nmOf = t => { const z = byTicker(t) || (searchIdx || []).find(y => y.t === t); return z ? normName(z.n || z.name || "") : ""; };
+  const depT = depotTickers(), watT = new Set([...favs(), ...data.results.filter(y => y.in_watchlist).map(y => y.ticker)]);
+  const depN = new Set([...depT].map(nmOf).filter(Boolean)), watN = new Set([...watT].map(nmOf).filter(Boolean));
+  const ownOf = r => { const n = normName(r.n || r.t); return depT.has(r.t) || depN.has(n) ? "dep" : watT.has(r.t) || watN.has(n) ? "wat" : ""; };
+  const nOwn = all.filter(ownOf).length;
   const wr = all.filter(r => r[nm] != null), up = wr.filter(r => r[nm] > 0).length;
-  const li = top.map((r, i) => { const sr = byTicker(r.t); return `<button class="sp-s" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}>
-      <span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(r.n || r.t)}</b><em>${esc(tkClean ? tkClean(r.t) : r.t)}${rg === "all" && RGN[r.r] ? ` · ${RGN[r.r]}` : ""} · ${r.mc ? fmtCap(r.mc) : `${fmt(r.c)} ${esc(r.cur || "")}`}${r.mc && capSum ? ` · Gewicht ${pct(r.mc / capSum, 0)}` : ""}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}</em></span>
+  const li = top.map((r, i) => { const sr = byTicker(r.t), ow = ownOf(r); return `<button class="sp-s${ow ? " own" : ""}" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}>
+      <span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(r.n || r.t)}</b><em>${ow === "dep" ? '<small class="sp-own dep">Depot</small> ' : ow === "wat" ? '<small class="sp-own">★ Watchlist</small> ' : ""}${esc(tkClean ? tkClean(r.t) : r.t)}${rg === "all" && RGN[r.hr || r.r] ? ` · ${RGN[r.hr || r.r]}` : ""} · ${r.mc ? fmtCap(r.mc) : `${fmt(r.c)} ${esc(r.cur || "")}`}${r.mc && capSum ? ` · Gewicht ${pct(r.mc / capSum, 0)}` : ""}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}</em></span>
       <span class="sp-v ${r[nm] == null ? "" : r[nm] >= 0 ? "up" : "down"}">${r[nm] == null ? "–" : sgnPct(r[nm], 1)}</span></button>`; }).join("");
   return `<h3 style="margin:0 0 4px">${esc(x.n)}</h3>
-    <p class="muted" style="margin:0 0 12px;font-size:13.5px">${esc(x.k)} ${sgnPct(x[k], 1)} ${esc(kn)} · ${wr.length ? `${up} von ${wr.length} Aktien im Plus` : ""}</p>
+    <p class="muted" style="margin:0 0 12px;font-size:13.5px">${esc(x.k)} ${sgnPct(x[k], 1)} ${esc(kn)} · ${wr.length ? `${up} von ${wr.length} Aktien im Plus` : ""}${nOwn ? ` · <b>${nOwn} aus deiner Liste</b>` : ""}</p>
     <div class="sp-tg" style="margin-bottom:8px">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" data-spkeep="${esc(key)}" title="${n}">${l}</button>`).join("")}</div>
     ${x.mem ? "" : `<div class="sp-seg" style="margin-bottom:10px">${[["all", "Welt"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<button class="${v === rg ? "on" : ""}" data-spdr="${v}" data-spkeep="${esc(key)}">${l}</button>`).join("")}</div>`}
     ${li || `<p class="muted">${searchIdx ? (th ? "Keine der Hauptwerte dieses Themas ist im Kairo-Scan." : ind ? "Für diese Branche sind noch keine Aktien zugeordnet – die Zuordnung kommt mit den nächsten Scans." : "Keine Aktien aus dem Scan in diesem Sektor.") : "Lädt …"}</p>`}
@@ -5838,8 +5845,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.53";
-const APP_NEWS = [["2026.11.53", "Branchen: alle Schwergewichte weltweit", [
+const APP_VER = "2026.11.54";
+const APP_NEWS = [["2026.11.54", "Deine Aktien in den Branchen, Region nach Firmensitz", [
+  ["Markiert", "In den Listen beim Antippen einer Branche oder eines Sektors sind deine Aktien hervorgehoben: „Depot“ für Positionen, „★ Watchlist“ für deine Watchlist – auch bei einer anderen Notierung derselben Firma. Oben steht, wie viele aus deiner Liste dabei sind."],
+  ["Region nach Firmensitz", "ASML, STMicro oder TSMC zählen in den Branchen-Listen jetzt zu Europa bzw. Asien, auch wenn Kairo sie über ihre US-Notierung scannt."]]],
+  ["2026.11.53", "Branchen: alle Schwergewichte weltweit", [
   ["Längere Listen, weltweit", "Antippen einer Branche zeigt jetzt bis zu 30 Aktien (mit „alle zeigen“ alle) – weltweit nach Börsenwert, umschaltbar auf USA, Europa oder Asien. Bei Airlines z. B. Delta, United, Ryanair, IAG, IndiGo, Singapore Airlines, Lufthansa …"],
   ["Fehlende Branchen nachgeladen", "Für Aktien ohne Branchen-Zuordnung (z. B. Southwest, easyJet) holt Kairo Sektor und Branche einmalig nach – sie erscheinen nach dem nächsten Scan in den Listen."]]],
   ["2026.11.52", "Neues Intro", [
