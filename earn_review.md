@@ -1,25 +1,25 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhalb 906 Min., 82 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhalb 900 Min., 83 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-257 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-04), davon 67 mit aufgezeichneter Prognose.
+258 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-04), davon 68 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 67 | 55% | 0.235 | 0.250 |
+| alle | 68 | 54% | 0.237 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 54 | 57% | 0.229 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 55 | 56% | 0.231 | 0.250 |
 | Ausblick gesenkt | 10 | 70% | 0.192 | 0.250 |
 | Ausblick bestätigt | 5 | 80% | 0.195 | 0.250 |
 | Ausblick angehoben | 24 | 50% | 0.246 | 0.250 |
-| Ausblick keine Meldung | 28 | 50% | 0.247 | 0.250 |
+| Ausblick keine Meldung | 29 | 48% | 0.252 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
 | Kairo sagte | n | tatsächlich gestiegen |
 |---|---|---|
 | -0%–30% | 1 | 0% |
-| 30%–40% | 18 | 33% |
+| 30%–40% | 19 | 37% |
 | 40%–50% | 5 | 80% |
 | 50%–60% | 19 | 37% |
 | 60%–70% | 16 | 62% |
@@ -29,7 +29,7 @@ Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhal
 
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
-| deutlich unter Erwartung (< −10 %) | 29% (7) | 0% (1) | 33% (9) | 38% (13) |
+| deutlich unter Erwartung (< −10 %) | 29% (7) | 0% (1) | 33% (9) | 43% (14) |
 | unter Erwartung (−10 bis −2 %) | 14% (7) | 0% (2) | 50% (8) | 33% (18) |
 | im Rahmen (±2 %) | 30% (10) | 0% (2) | 33% (9) | 65% (17) |
 | über Erwartung (+2 bis +10 %) | 10% (10) | 50% (4) | 45% (20) | 48% (25) |
@@ -59,7 +59,7 @@ Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-6 Fehlprognosen und 61 Vergleichsfälle untersucht.
+6 Fehlprognosen und 62 Vergleichsfälle untersucht.
 
 - Markt: Bei 0% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 0% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
 - Vorlauf (20 Handelstage davor): Fehlprognosen Ø -7.8%, getroffene Ø -5.4%.
@@ -68,7 +68,7 @@ Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhal
 |---|---|---|---|
 | Ausblick | 33% (2) | 26% | 1.3 |
 | Marge | 17% (1) | 13% | 1.3 |
-| Umsatz | 67% (4) | 49% | 1.4 |
+| Umsatz | 67% (4) | 48% | 1.4 |
 | KI/Rechenzentren | 33% (2) | 8% | 4.1 |
 
 **Kandidaten für neue Merkmale:** noch keine (ein Grund braucht ≥ 15 Fehlprognosen und Faktor ≥ 1,5).
@@ -83,4 +83,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Noch nicht: 67 von 200 nötigen Meldungen mit aufgezeichneter Prognose.
+Noch nicht: 68 von 200 nötigen Meldungen mit aufgezeichneter Prognose.
