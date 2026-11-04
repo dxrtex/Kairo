@@ -59,17 +59,17 @@ Schnelligkeit: erste Zahlen im Mittel 552 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-6 Fehlprognosen und 62 Vergleichsfälle untersucht.
+7 Fehlprognosen und 61 Vergleichsfälle untersucht.
 
 - Markt: Bei 0% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 0% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -7.8%, getroffene Ø -5.4%.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -7.5%, getroffene Ø -5.4%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 33% (2) | 26% | 1.3 |
-| Marge | 17% (1) | 13% | 1.3 |
-| Umsatz | 67% (4) | 48% | 1.4 |
-| KI/Rechenzentren | 33% (2) | 8% | 4.1 |
+| Ausblick | 29% (2) | 26% | 1.1 |
+| Marge | 14% (1) | 13% | 1.1 |
+| Umsatz | 57% (4) | 49% | 1.2 |
+| KI/Rechenzentren | 29% (2) | 8% | 3.5 |
 
 **Kandidaten für neue Merkmale:** noch keine (ein Grund braucht ≥ 15 Fehlprognosen und Faktor ≥ 1,5).
 
@@ -80,6 +80,7 @@ Beispiele:
 - ADM 2026-11-03: Kairo 71%, Kurs -6.8% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Archer-Daniels-Midland earnings beat by $0.20, revenue fell short of estimates“
 - TSEM 2026-11-02: Kairo 60%, Kurs -6.7% (Markt +0.6%) · Gründe: Ausblick, Umsatz, KI/Rechenzentren – „Tower Semiconductor rises on strong Q4 revenue guidance“
 - SHA0.DE 2026-11-02: Kairo 65%, Kurs -5.2% (Markt -0.5%) · Gründe: Marge, Umsatz – „Earnings call transcript: Schaeffler Group Q3 2026 sales fall as restructuring deepens“
+- SOLB.BR 2026-11-04: Kairo 39%, Kurs +3.1% – „Solvay Reports Lower Q3 Earnings Amid Regional Disruptions“
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
