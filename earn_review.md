@@ -80,7 +80,7 @@ Beispiele:
 - ADM 2026-11-03: Kairo 71%, Kurs -6.8% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Archer-Daniels-Midland earnings beat by $0.20, revenue fell short of estimates“
 - TSEM 2026-11-02: Kairo 60%, Kurs -6.7% (Markt +0.6%) · Gründe: Ausblick, Umsatz, KI/Rechenzentren – „Tower Semiconductor rises on strong Q4 revenue guidance“
 - SHA0.DE 2026-11-02: Kairo 65%, Kurs -5.2% (Markt -0.5%) · Gründe: Marge, Umsatz – „Earnings call transcript: Schaeffler Group Q3 2026 sales fall as restructuring deepens“
-- SOLB.BR 2026-11-04: Kairo 39%, Kurs +3.4% – „Solvay Reports Lower Q3 Earnings Amid Regional Disruptions“
+- SOLB.BR 2026-11-04: Kairo 39%, Kurs +3.6% – „Solvay Reports Lower Q3 Earnings Amid Regional Disruptions“
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
