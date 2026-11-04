@@ -3198,8 +3198,15 @@ function koOf(p) {
   const k = koKey(p); if ((state.koKeep || {})[k]) return null;
   const m = (state.koOut || {})[k]; if (m) return m;
   const r = p.t && typeof rowOf === "function" ? rowOf(p.t) : null;
-  if (r && r.c > 0 && (!p.d.cur || !r.cur || p.d.cur === r.cur) && (p.d.dir === "short" ? r.c >= p.d.ko : r.c <= p.d.ko)) return { d: isoD(new Date()), src: "Kurs" };
+  const c = r && r.c > 0 ? koPx(r.c, r.cur, p.d.cur) : null;
+  if (c != null && (p.d.dir === "short" ? c >= p.d.ko : c <= p.d.ko)) return { d: isoD(new Date()), src: "Kurs" };
   return null;
+}
+// Kurs der Aktie in der Währung der K.-o.-Schwelle (z. B. BYD in HKD, Turbo-Schwelle in €); ohne Wechselkurs: kein Vergleich
+function koPx(v, from, to) {
+  if (!to || !from || to === from) return v;
+  const a = toEur(1, from), b = to === "EUR" ? 1 : toEur(1, to);
+  return a > 0 && b > 0 ? v * a / b : null;
 }
 const depotLive = () => depotLoad().filter(p => !koOf(p));
 let koChecking = false;
@@ -3216,9 +3223,9 @@ async function koCheck() {                        // Hintergrund: onvista (Knock
           if (d && d.hit) res = { d: isoD(new Date()), src: "onvista" };
           else if (d && d.bid > 0 && d.spot > 0 && r && (!d.ucur || d.ucur === r.cur)) marks[k] = { mark: d.bid, markU: d.spot, markDate: isoD(new Date()), markSrc: "onvista" }; } }
       if (!res) try {
-        if (p.t && (!p.d.cur || !r || p.d.cur === r.cur)) { const c = await loadChart(p.t);
+        if (p.t && (!p.d.cur || !r || koPx(1, r.cur, p.d.cur) != null)) { const c = await loadChart(p.t), X = v => r ? koPx(v, r.cur, p.d.cur) : v;
           for (let i = 0; c && c.t && i < c.t.length; i++) { if (p.date && String(c.t[i]) < p.date) continue;
-            if (p.d.dir === "short" ? c.h[i] >= p.d.ko : c.l[i] <= p.d.ko) { res = { d: String(c.t[i]).slice(0, 10), src: "Tagestief" }; break; } } } } catch (e) {}
+            if (p.d.dir === "short" ? X(c.h[i]) >= p.d.ko : X(c.l[i]) <= p.d.ko) { res = { d: String(c.t[i]).slice(0, 10), src: "Tagestief" }; break; } } } } catch (e) {}
       if (res) { out[k] = res; hit++; }
     }
   } finally { state.koOut = out; state.koSeen = seen; save(); koChecking = false; }
@@ -3415,7 +3422,7 @@ function koJournalSync(xs) {
   let add = 0;
   xs.forEach(({ p, ko }) => { if (!p.isin || (state.koKeep || {})[koKey(p)]) return;
     const id = "ko-" + p.isin, d = ko.d || isoD(new Date());
-    if (tx.some(t => t.id === id || (t.isin === p.isin && /sell|verkauf/i.test(t.type) && t.date >= (p.date || "")))) return;
+    if (tx.some(t => t.id === id || (t.isin === p.isin && TX_OUT.test(t.type) && t.date >= (p.date || "")))) return;
     if (!tx.some(t => t.isin === p.isin && /buy|kauf/i.test(t.type))) return;
     tx.push({ id, date: d, time: "", status: "Executed", ref: "Knock-out (Kairo)", desc: p.n || (p.d && p.d.under) || p.isin, asset: "", type: "Sell", isin: p.isin,
       qty: +p.qty, price: 0, amount: 0, fee: 0, tax: 0, cur: "EUR", ko: 1 }); add++; });
@@ -3821,10 +3828,11 @@ function csvRows(text) {
 // „Uber Technologies Long 54,76 $ Turbo Open End HSBC“ → Basiswert, Richtung, Knock-out
 const CUR_SIGN = { "$": "USD", "€": "EUR", "£": "GBP", "CHF": "CHF" };
 function parseDerivative(desc) {
-  const m = String(desc).match(/^(.+?)\s+(Long|Short|Call|Put)\s+([\d.,]+)\s*(\$|€|£|CHF)?\s*(Turbo|Mini|Knock|Optionsschein|Open End|Faktor)/i);
+  const m = String(desc).match(/^(.+?)\s+(Long|Short|Call|Put)\s+([\d.,]+)\s*(\$|€|£|[A-Z]{3})?\s*(Turbo|Mini|Knock|Optionsschein|Open End|Faktor)/i);   // auch „85,00 HKD Turbo“
   if (!m) return null;
   const ko = parseFloat(m[3].replace(/\./g, "").replace(",", "."));
-  return { under: m[1].trim(), dir: /long|call/i.test(m[2]) ? "long" : "short", ko, cur: CUR_SIGN[m[4]] || null };
+  const cu = m[4] ? CUR_SIGN[m[4]] || m[4].toUpperCase() : null;
+  return { under: m[1].trim(), dir: /long|call/i.test(m[2]) ? "long" : "short", ko, cur: cu };
 }
 function matchUnderlying(name, cur) {
   const k = normName(name); if (k.length < 3) return null;
@@ -3851,9 +3859,13 @@ function importRows(rows) {
     if (iStatus >= 0 && /cancel|reject|storn|abgelehnt|pending|offen/i.test(c[iStatus])) return;
     if (iAsset >= 0 && c[iAsset] && !/security|wertpapier/i.test(c[iAsset])) return;
     const type = iType >= 0 ? String(c[iType]).toLowerCase() : "kauf";
-    const sell = /sell|verkauf/.test(type), buy = /buy|kauf|savings|spar|einbuch|transfer/.test(type) && !sell;
+    // Knock-out/Fälligkeit bucht Scalable aus (kein „Sell“) – sonst bliebe ein wertloser Turbo als Position stehen.
+    // Überträge und Kapitalmaßnahmen: Richtung aus dem Vorzeichen der Stückzahl (negativ = Abgang).
+    const q0 = num(c[iQty]), signed = /transfer|übertrag|corporate|kapitalma|einbuch|ausbuch/.test(type);
+    const sell = /sell|verkauf|ausbuch|knock|tilgung|rückzahl|redemption|expir|fällig|outbound|abgang/.test(type) || (signed && q0 < 0);
+    const buy = !sell && (/buy|kauf|savings|spar|einbuch|inbound|zugang/.test(type) || signed);
     if (!sell && !buy) return;
-    const qty = Math.abs(num(c[iQty])), price = Math.abs(num(c[iPrice])); if (!qty) return;
+    const qty = Math.abs(q0), price = Math.abs(num(c[iPrice])); if (!qty) return;
     const name = fix(iName >= 0 ? c[iName] : ""), k = (iIsin >= 0 && c[iIsin]) || name;
     const p = pos[k] = pos[k] || { isin: iIsin >= 0 ? c[iIsin] : "", name, qty: 0, cost: 0, date: "" };
     p.name = name || p.name;   // bei Open-End-Turbos steht die aktuelle K.-o.-Schwelle in der neuesten Zeile
@@ -3863,7 +3875,8 @@ function importRows(rows) {
   const list = depotLoad(), noData = [];
   let added = 0, turbos = 0;
   Object.values(pos).filter(p => p.qty > 1e-9).forEach(p => {
-    const d = parseDerivative(p.name), etf = !d && etfLike(p.name, p.isin), r = d ? matchUnderlying(d.under, d.cur) : etf ? null : matchName(p.name);
+    const d = parseDerivative(p.name), etf = !d && etfLike(p.name, p.isin), lev = !d && /\b(Turbo|Knock|Mini|Optionsschein|Faktor|Open End|Long|Short)\b/i.test(p.name);
+    const r = d ? matchUnderlying(d.under, d.cur) : etf || lev ? null : matchName(p.name);   // unbekanntes Hebelprodukt ≠ Aktie
     const entry = { t: r ? r.t : "", n: d ? p.name : r ? r.n : etf && ETF_ISIN[p.isin] ? ETF_ISIN[p.isin][1] : p.name, isin: p.isin, qty: +p.qty.toFixed(6), price: +(p.cost / p.qty).toFixed(4), date: p.date, src: "csv" };
     if (d) { entry.d = d; turbos++; }
     if (etf) entry.etf = 1;
@@ -4070,6 +4083,7 @@ function txKind(desc, isin) {
 }
 const KIND_COL = { tl: "var(--up)", ts: "var(--red)", stock: "var(--accent)", etf: "var(--gold)" };
 // FIFO: Käufe als Posten, jeder Verkauf schließt die ältesten Posten. Ein „Trade“ = Eröffnung bis Bestand 0.
+const TX_OUT = /sell|verkauf|ausbuch|knock|tilgung|rückzahl|redemption|expir|fällig/i;
 function journalModel(tx) {
   const ok = tx.filter(t => /executed|ausgeführt/i.test(t.status) || !t.status);
   const pos = {}, trades = [], events = [];
@@ -4081,7 +4095,7 @@ function journalModel(tx) {
     if (/deposit|einzahlung/.test(type)) { deposits += Math.abs(t.amount); return; }
     if (/withdraw|auszahlung/.test(type)) { withdrawals += Math.abs(t.amount); return; }
     if (/^tax|steuer/.test(type)) return;   // Steuer-Verrechnung (Rückerstattung/Nachbuchung) – nicht Teil des Trading-Ergebnisses
-    const sell = /sell|verkauf/.test(type), buy = /buy|kauf|savings|spar/.test(type) && !sell;
+    const sell = TX_OUT.test(type), buy = /buy|kauf|savings|spar/.test(type) && !sell;   // Ausbuchung (Knock-out, Fälligkeit) = Abgang
     if ((!buy && !sell) || !t.qty) return;
     fees += t.fee; taxes += t.tax;
     const key = t.isin || t.desc;
@@ -5777,7 +5791,8 @@ const APP_NEWS = [["2026.11.50", "Einstieg: klarer und richtig gerechnet", [
   ["Einsatz stimmt", "Bei „Aktie direkt“ ist der Einsatz jetzt Stückzahl × Kurs (vorher z. B. 624 € statt 593 € bei 2 Stück) – auch das freie Kapital und das Risiko stimmen damit."],
   ["Kein „traden“ mehr vor der Seitwärtsphase", "Grün „traden“ erscheint nur, wenn der Treffer kaufbereit ist. Vorher steht „noch warten (Tag x/10)“, danach „Einstieg vorbei“ oder „verfallen“. Regelwidriges Speichern fragt nach."],
   ["Das Wichtigste oben", "Urteil, Kauf, Stop und Stückzahl stehen direkt unter dem Namen. Erklärungen und Turbo-Rechner sind eingeklappt."],
-  ["Treffer-Liste geordnet", "Kaufbereite Treffer zuerst (in der getesteten Reihenfolge), darunter die, die noch auf ihre Seitwärtsphase warten."]]],
+  ["Treffer-Liste geordnet", "Kaufbereite Treffer zuerst (in der getesteten Reihenfolge), darunter die, die noch auf ihre Seitwärtsphase warten."],
+  ["Depot: ausgeknockte Turbos verschwinden", "Knock-outs und Ausbuchungen aus dem Scalable-Export zählen als Abgang, Turbos mit Schwelle in HKD & Co. werden erkannt, und die K.-o.-Prüfung rechnet zwischen Euro und Aktienwährung um (z. B. BYD in HKD, Schwelle in €). Einmal den Export neu importieren."]]],
   ["2026.11.49", "Markt aufgeräumt", [
   ["Sektoren & Branchen übersichtlicher", "Oben rechts USA oder Europa, darunter Sektoren · Branchen · Themen und Rendite · Rotation · Verlauf – Zeiträume nur noch bei Rendite."],
   ["Rotation klarer", "Feste Farben je Feld (Erholt sich ist jetzt blau), kurze 3-Wochen-Striche statt langer Schweife, keine überlappenden Namen und darunter vier Kästen mit Pfeil, wohin sich jeder Bereich bewegt."],
