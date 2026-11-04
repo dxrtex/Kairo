@@ -384,6 +384,7 @@ async def run(port: int) -> list[str]:
             if (!r) return null; state.einT = r.t; state.tpT = {}; render();
             const m = tp2Calc(r, einSetup(r)); return m && m.stop ? { t: r.t, cur: r.cur || "EUR", E: m.E, stop: m.stop, fx: m.fx } : null; }""")
         await pg.wait_for_timeout(1500)
+        await pg.evaluate('document.querySelectorAll("#tpBox details.tp-more").forEach(d => d.open = true)')   # Turbo-Rechner ist bei Aktie direkt eingeklappt
         if info and await pg.query_selector("#tpKO"):
             ko = info["stop"] - (info["E"] - info["stop"])            # K.-o. in Aktienwährung, Abstand wie Kauf→Stop
             p_brief = (info["E"] - ko) * 0.1 * info["fx"]
