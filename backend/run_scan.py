@@ -29,7 +29,7 @@ from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
 from . import insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
-from .analysis import EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, THEME_ETF, fill_sectors, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
+from .analysis import EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, THEME_ETF, fill_sectors, home_region, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
 from .scanner import evaluate
@@ -678,6 +678,9 @@ def main(argv=None) -> int:
             sec_en = about.get(t, {}).get("sector") or se.get("sec")
             if not search[t].get("sec") and sec_en:
                 search[t]["sec"] = SECTOR_DE.get(sec_en, sec_en)
+            hr = home_region(about.get(t, {}).get("country") or se.get("co"))
+            if hr and hr != search[t].get("r"):      # Firmensitz in anderer Region (ADR, z. B. ASML in New York) → Branchen-Liste
+                search[t]["hr"] = hr
             ig = industry_group(industry_of[t])
             if ig:                                   # Branche (Branchen-ETF-Kürzel) für die Sektor-Ansicht
                 search[t]["ig"] = ig

@@ -187,6 +187,22 @@ def fill_sectors(rows: dict, industry_of: dict) -> int:
     return n
 
 
+# Firmensitz → Region der App (us = Amerika, europe, asia = Rest). Steuer-Sitze (Irland, Bermuda …) sagen wenig über das
+# Geschäft (Accenture, Medtronic) – dort bleibt die Region des Handelsplatzes.
+_EUROPE = {"Austria", "Belgium", "Czech Republic", "Denmark", "Finland", "France", "Germany", "Greece", "Hungary", "Iceland", "Italy",
+           "Netherlands", "Norway", "Poland", "Portugal", "Spain", "Sweden", "Switzerland", "United Kingdom", "Israel"}
+_AMERICAS = {"United States", "Canada", "Mexico", "Brazil", "Argentina", "Chile", "Colombia", "Peru", "Uruguay"}
+_HAVEN = {"Ireland", "Bermuda", "Cayman Islands", "Jersey", "Guernsey", "Luxembourg", "Bahamas", "Panama", "Marshall Islands",
+          "Puerto Rico", "British Virgin Islands", "Curacao", "Isle of Man", "Monaco", "Cyprus", "Gibraltar"}
+
+
+def home_region(country: str | None) -> str | None:
+    """Region des Firmensitzes (oder None, wenn unbekannt bzw. Steuer-Sitz)."""
+    if not country or country in _HAVEN:
+        return None
+    return "us" if country in _AMERICAS else "europe" if country in _EUROPE else "asia"
+
+
 def industry_group(industry: str | None) -> str | None:
     """Yahoo-Branche einer Aktie → Kürzel des Branchen-ETFs (oder None)."""
     if not industry or not isinstance(industry, str):
