@@ -6,13 +6,13 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 123 | 51% | 0.261 | 0.250 |
+| alle | 123 | 52% | 0.261 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 110 | 52% | 0.261 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 110 | 53% | 0.261 | 0.250 |
 | Ausblick gesenkt | 18 | 44% | 0.295 | 0.250 |
 | Ausblick bestätigt | 9 | 67% | 0.230 | 0.250 |
 | Ausblick angehoben | 41 | 51% | 0.262 | 0.250 |
-| Ausblick keine Meldung | 55 | 51% | 0.254 | 0.250 |
+| Ausblick keine Meldung | 55 | 53% | 0.254 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -21,7 +21,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | -0%–30% | 5 | 60% |
 | 30%–40% | 30 | 50% |
 | 40%–50% | 17 | 47% |
-| 50%–60% | 30 | 43% |
+| 50%–60% | 30 | 47% |
 | 60%–70% | 28 | 57% |
 | 70%–100% | 13 | 62% |
 
@@ -32,7 +32,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | deutlich unter Erwartung (< −10 %) | 50% (10) | 33% (3) | 45% (11) | 41% (17) |
 | unter Erwartung (−10 bis −2 %) | 14% (7) | 25% (4) | 44% (9) | 36% (22) |
 | im Rahmen (±2 %) | 27% (11) | 0% (2) | 33% (9) | 57% (23) |
-| über Erwartung (+2 bis +10 %) | 25% (12) | 50% (4) | 50% (24) | 52% (31) |
+| über Erwartung (+2 bis +10 %) | 25% (12) | 50% (4) | 50% (24) | 55% (31) |
 | deutlich über Erwartung (> +10 %) | 47% (15) | 70% (10) | 62% (50) | 51% (39) |
 
 ## Vorschläge zur Anpassung
@@ -59,23 +59,23 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-27 Fehlprognosen und 96 Vergleichsfälle untersucht.
+28 Fehlprognosen und 95 Vergleichsfälle untersucht.
 
-- Markt: Bei 15% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 8% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Markt: Bei 19% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 11% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
 - Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.1%, getroffene Ø -4.5%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 37% (10) | 28% | 1.3 |
-| Marge | 19% (5) | 10% | 1.8 |
-| Umsatz | 52% (14) | 52% | 1.0 |
-| Nutzer/Kunden | 7% (2) | 1% | 7.1 |
-| Aufträge | 11% (3) | 4% | 2.7 |
-| Kosten | 7% (2) | 8% | 0.9 |
-| KI/Rechenzentren | 11% (3) | 11% | 1.0 |
-| Management | 4% (1) | 4% | 0.9 |
-| Analysten | 4% (1) | 10% | 0.4 |
-| Sondereffekt | 4% (1) | 1% | 3.6 |
+| Ausblick | 39% (11) | 27% | 1.4 |
+| Marge | 18% (5) | 11% | 1.7 |
+| Umsatz | 54% (15) | 52% | 1.0 |
+| Nutzer/Kunden | 7% (2) | 1% | 6.8 |
+| Aufträge | 11% (3) | 4% | 2.5 |
+| Kosten | 7% (2) | 8% | 0.8 |
+| KI/Rechenzentren | 11% (3) | 12% | 0.9 |
+| Management | 4% (1) | 4% | 0.8 |
+| Analysten | 4% (1) | 11% | 0.3 |
+| Sondereffekt | 4% (1) | 1% | 3.4 |
 
 **Kandidaten für neue Merkmale:** noch keine (ein Grund braucht ≥ 15 Fehlprognosen und Faktor ≥ 1,5).
 
