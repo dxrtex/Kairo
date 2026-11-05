@@ -1,6 +1,6 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhalb 971 Min., 112 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhalb 970 Min., 114 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
 313 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-04), davon 123 mit aufgezeichneter Prognose.
 
