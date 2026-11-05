@@ -9,10 +9,10 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | alle | 123 | 52% | 0.261 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 110 | 53% | 0.261 | 0.250 |
-| Ausblick gesenkt | 17 | 47% | 0.285 | 0.250 |
+| Ausblick gesenkt | 18 | 50% | 0.278 | 0.250 |
 | Ausblick bestätigt | 9 | 67% | 0.230 | 0.250 |
 | Ausblick angehoben | 42 | 50% | 0.267 | 0.250 |
-| Ausblick keine Meldung | 55 | 53% | 0.254 | 0.250 |
+| Ausblick keine Meldung | 54 | 52% | 0.256 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -33,7 +33,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 14% (7) | 25% (4) | 44% (9) | 36% (22) |
 | im Rahmen (±2 %) | 27% (11) | 0% (2) | 33% (9) | 57% (23) |
 | über Erwartung (+2 bis +10 %) | 18% (11) | 50% (4) | 52% (25) | 55% (31) |
-| deutlich über Erwartung (> +10 %) | 47% (15) | 70% (10) | 62% (50) | 51% (39) |
+| deutlich über Erwartung (> +10 %) | 50% (16) | 70% (10) | 62% (50) | 50% (38) |
 
 ## Vorschläge zur Anpassung
 
@@ -59,23 +59,23 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-28 Fehlprognosen und 95 Vergleichsfälle untersucht.
+29 Fehlprognosen und 94 Vergleichsfälle untersucht.
 
-- Markt: Bei 19% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 11% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.1%, getroffene Ø -4.5%.
+- Markt: Bei 18% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 14% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.4%, getroffene Ø -4.4%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 39% (11) | 27% | 1.4 |
-| Marge | 18% (5) | 11% | 1.7 |
-| Umsatz | 54% (15) | 52% | 1.0 |
-| Nutzer/Kunden | 7% (2) | 1% | 6.8 |
-| Aufträge | 11% (3) | 4% | 2.5 |
-| Kosten | 7% (2) | 8% | 0.8 |
-| KI/Rechenzentren | 11% (3) | 12% | 0.9 |
-| Management | 4% (1) | 4% | 0.8 |
-| Analysten | 4% (1) | 11% | 0.3 |
-| Sondereffekt | 4% (1) | 1% | 3.4 |
+| Ausblick | 38% (11) | 28% | 1.4 |
+| Marge | 17% (5) | 11% | 1.6 |
+| Umsatz | 55% (16) | 51% | 1.1 |
+| Nutzer/Kunden | 7% (2) | 1% | 6.5 |
+| Aufträge | 10% (3) | 4% | 2.4 |
+| Kosten | 7% (2) | 9% | 0.8 |
+| KI/Rechenzentren | 10% (3) | 12% | 0.9 |
+| Management | 3% (1) | 4% | 0.8 |
+| Analysten | 3% (1) | 11% | 0.3 |
+| Sondereffekt | 3% (1) | 1% | 3.2 |
 
 **Kandidaten für neue Merkmale:** noch keine (ein Grund braucht ≥ 15 Fehlprognosen und Faktor ≥ 1,5).
 
