@@ -45,16 +45,16 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 - DUOL 2026-11-03: Kairo 36% steigt, Kurs +26.0% · Gewinn -17% · Ausblick bestätigt – „We expect Q4 revenue of $322 million, up 14% over the prior year.“
 - FSLY 2026-11-04: Kairo 64% steigt, Kurs -24.7% · Gewinn +42% · Ausblick angehoben – „Fastly (FSLY) Reports Record Q3 Revenue and Raises 2026 Guidance“
 - OUST 2026-11-03: Kairo 26% steigt, Kurs +15.7% · Gewinn -90% · Ausblick gesenkt – „For the fourth quarter of 2026, Ouster expects to achieve $61 million to $64 million in total revenue.“
-- VIAV 2026-11-04: Kairo 71% steigt, Kurs -15.7% · Gewinn +15% · Ausblick angehoben – „Business Outlook for the Second Quarter of Fiscal 2027 For the second quarter of fiscal 2027 ending January 2, 2027, the Company expects net revenue to be betwe“
+- VIAV 2026-11-04: Kairo 71% steigt, Kurs -16.0% · Gewinn +15% · Ausblick angehoben – „Business Outlook for the Second Quarter of Fiscal 2027 For the second quarter of fiscal 2027 ending January 2, 2027, the Company expects net revenue to be betwe“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
-- MTSI 2026-11-05: Kairo 60% steigt, Kurs -16.5% · Gewinn +4% · Ausblick angehoben – „Business Outlook For the fiscal first quarter ending January 1, 2027, MACOM expects revenue to be in the range of $450 million to $460 million.“
+- MTSI 2026-11-05: Kairo 60% steigt, Kurs -17.1% · Gewinn +4% · Ausblick angehoben – „Business Outlook For the fiscal first quarter ending January 1, 2027, MACOM expects revenue to be in the range of $450 million to $460 million.“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
+- POWI 2026-11-04: Kairo 54% steigt, Kurs -15.9% · Gewinn +10% · Ausblick gesenkt – „Paddy Power owner Flutter cuts outlook after hefty quarterly loss“
 - CVI 2026-11-03: Kairo 64% steigt, Kurs -13.1% · Gewinn +37% · Ausblick keine Meldung
 - RRX 2026-11-03: Kairo 32% steigt, Kurs +11.8% · Gewinn +9% · Ausblick gesenkt – „Pressemitteilung: Ausblick gesenkt“
 - MIRM 2026-11-03: Kairo 33% steigt, Kurs +11.4% · Gewinn -2% · Ausblick bestätigt – „2026 net product sales guidance increased to $715 million to $720 million – Received U.S.“
 - ANDE 2026-11-03: Kairo 61% steigt, Kurs -11.7% · Gewinn +24% · Ausblick keine Meldung
-- POWI 2026-11-04: Kairo 54% steigt, Kurs -13.2% · Gewinn +10% · Ausblick gesenkt – „Paddy Power owner Flutter cuts outlook after hefty quarterly loss“
 - CWK 2026-11-04: Kairo 32% steigt, Kurs +9.6% · Gewinn +3% · Ausblick gesenkt – „News | Colliers cuts forecast, Cushman sticks to growth outlook as brokerages weigh midterm boost“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
@@ -85,9 +85,9 @@ Beispiele:
 - DUOL 2026-11-03: Kairo 36%, Kurs +26.0% (Markt +0.3%) · Gründe: Umsatz, Nutzer/Kunden – „Duolingo Misses on Earnings. The Stock Soars 15%.“
 - FSLY 2026-11-04: Kairo 64%, Kurs -24.7% (Markt +1.7%) · Gründe: Ausblick, Umsatz, Nutzer/Kunden – „Fastly (NASDAQ:FSLY) beats Q3 2026 sales expectations but stock drops 13%“
 - MTRN 2026-11-04: Kairo 60%, Kurs -17.7% (Markt +1.7%) · Gründe: Marge – „Earnings call transcript: Materion beats EPS in Q3 2026 but shares slide“
-- MTSI 2026-11-05: Kairo 60%, Kurs -16.5% (Markt -2.5%) · Gründe: Umsatz, KI/Rechenzentren – „MACOM (NASDAQ:MTSI) Q3 sales beat estimates but stock drops“
+- MTSI 2026-11-05: Kairo 60%, Kurs -17.1% (Markt -2.5%) · Gründe: Umsatz, KI/Rechenzentren – „MACOM (NASDAQ:MTSI) Q3 sales beat estimates but stock drops“
+- VIAV 2026-11-04: Kairo 71%, Kurs -16.0% (Markt +1.7%) · Gründe: Ausblick, Umsatz, Rückkauf/Dividende – „VIAVI reports Q1 revenue up 57%, strong profit growth, and raises stock buyback program by $500M“
 - OUST 2026-11-03: Kairo 26%, Kurs +15.7% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Why is Ouster stock surging today?“
-- VIAV 2026-11-04: Kairo 71%, Kurs -15.7% (Markt +1.7%) · Gründe: Ausblick, Umsatz, Rückkauf/Dividende – „VIAVI reports Q1 revenue up 57%, strong profit growth, and raises stock buyback program by $500M“
 - CVI 2026-11-03: Kairo 64%, Kurs -13.1% (Markt +0.3%) – „CVR Energy slumps 13% amid results and stock offering (CVI:NYSE)“
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
