@@ -61,28 +61,28 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-51 Fehlprognosen und 139 Vergleichsfälle untersucht.
+51 Fehlprognosen und 153 Vergleichsfälle untersucht.
 
 - Markt: Bei 28% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 14% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.4%, getroffene Ø -4.8%.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.4%, getroffene Ø -4.4%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 31% (16) | 29% | 1.1 |
+| Ausblick | 31% (16) | 30% | 1.0 |
 | Marge | 18% (9) | 8% | 2.2 |
-| Umsatz | 59% (30) | 50% | 1.2 |
-| Nutzer/Kunden | 8% (4) | 1% | 10.9 |
-| Aufträge | 10% (5) | 3% | 3.4 |
+| Umsatz | 59% (30) | 52% | 1.1 |
+| Nutzer/Kunden | 8% (4) | 1% | 12.0 |
+| Aufträge | 10% (5) | 3% | 3.8 |
 | Kosten | 6% (3) | 7% | 0.8 |
-| Zölle/Politik | 2% (1) | 1% | 2.7 |
-| KI/Rechenzentren | 12% (6) | 12% | 1.0 |
-| Management | 2% (1) | 3% | 0.7 |
+| Zölle/Politik | 2% (1) | 1% | 3.0 |
+| KI/Rechenzentren | 12% (6) | 11% | 1.1 |
+| Management | 2% (1) | 3% | 0.8 |
 | Rückkauf/Dividende | 2% (1) | 5% | 0.4 |
-| Analysten | 4% (2) | 10% | 0.4 |
-| Sondereffekt | 2% (1) | 1% | 2.7 |
-| Übernahme | 2% (1) | 4% | 0.5 |
+| Analysten | 4% (2) | 9% | 0.4 |
+| Sondereffekt | 2% (1) | 1% | 3.0 |
+| Übernahme | 2% (1) | 3% | 0.6 |
 
-**Kandidaten für neue Merkmale:** noch keine (ein Grund braucht ≥ 15 Fehlprognosen und Faktor ≥ 1,5).
+**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -9.4% gegen -4.4% → „schon eingepreist“ als Merkmal prüfen
 
 Beispiele:
 - ECG 2026-11-03: Kairo 71%, Kurs -29.3% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
