@@ -6,13 +6,13 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 134 | 50% | 0.264 | 0.250 |
+| alle | 134 | 49% | 0.265 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 121 | 50% | 0.264 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 121 | 50% | 0.265 | 0.250 |
 | Ausblick gesenkt | 21 | 52% | 0.267 | 0.250 |
 | Ausblick bestätigt | 10 | 60% | 0.249 | 0.250 |
 | Ausblick angehoben | 50 | 48% | 0.277 | 0.250 |
-| Ausblick keine Meldung | 53 | 49% | 0.253 | 0.250 |
+| Ausblick keine Meldung | 53 | 47% | 0.255 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -21,7 +21,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | -0%–30% | 6 | 50% |
 | 30%–40% | 31 | 48% |
 | 40%–50% | 17 | 47% |
-| 50%–60% | 34 | 41% |
+| 50%–60% | 34 | 38% |
 | 60%–70% | 31 | 55% |
 | 70%–100% | 15 | 53% |
 
@@ -32,7 +32,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | deutlich unter Erwartung (< −10 %) | 50% (10) | 33% (3) | 42% (12) | 44% (16) |
 | unter Erwartung (−10 bis −2 %) | 14% (7) | 25% (4) | 44% (9) | 35% (23) |
 | im Rahmen (±2 %) | 25% (12) | 0% (2) | 30% (10) | 57% (23) |
-| über Erwartung (+2 bis +10 %) | 25% (12) | 50% (4) | 54% (26) | 48% (31) |
+| über Erwartung (+2 bis +10 %) | 25% (12) | 50% (4) | 54% (26) | 45% (31) |
 | deutlich über Erwartung (> +10 %) | 47% (17) | 64% (11) | 58% (55) | 51% (37) |
 
 ## Vorschläge zur Anpassung
@@ -43,16 +43,16 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 - ECG 2026-11-03: Kairo 71% steigt, Kurs -29.3% · Gewinn +34% · Ausblick angehoben – „We now expect revenues to be in the range of $5.0 billion to $5.1 billion and EBITDA in the range of $485 million to $495 million.“
 - DUOL 2026-11-03: Kairo 36% steigt, Kurs +26.0% · Gewinn -17% · Ausblick bestätigt – „We expect Q4 revenue of $322 million, up 14% over the prior year.“
+- FSLY 2026-11-04: Kairo 64% steigt, Kurs -21.6% · Gewinn +42% · Ausblick angehoben – „Fastly (FSLY) Reports Record Q3 Revenue and Raises 2026 Guidance“
 - OUST 2026-11-03: Kairo 26% steigt, Kurs +15.7% · Gewinn -90% · Ausblick gesenkt – „For the fourth quarter of 2026, Ouster expects to achieve $61 million to $64 million in total revenue.“
-- FSLY 2026-11-04: Kairo 64% steigt, Kurs -17.9% · Gewinn +42% · Ausblick angehoben – „Fastly (FSLY) Reports Record Q3 Revenue and Raises 2026 Guidance“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
-- MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Materion Corporation Reports Record Third-Quarter 2026 Financial Results and Raises Full-Year Outlook“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 - CVI 2026-11-03: Kairo 64% steigt, Kurs -13.1% · Gewinn +37% · Ausblick keine Meldung
-- VIAV 2026-11-04: Kairo 71% steigt, Kurs -11.5% · Gewinn +15% · Ausblick angehoben – „Business Outlook for the Second Quarter of Fiscal 2027 For the second quarter of fiscal 2027 ending January 2, 2027, the Company expects net revenue to be betwe“
 - RRX 2026-11-03: Kairo 32% steigt, Kurs +11.8% · Gewinn +9% · Ausblick gesenkt – „Pressemitteilung: Ausblick gesenkt“
+- POWI 2026-11-04: Kairo 54% steigt, Kurs -14.7% · Gewinn +10% · Ausblick keine Meldung
 - MIRM 2026-11-03: Kairo 33% steigt, Kurs +11.4% · Gewinn -2% · Ausblick bestätigt – „2026 net product sales guidance increased to $715 million to $720 million – Received U.S.“
-- POWI 2026-11-04: Kairo 54% steigt, Kurs -14.0% · Gewinn +10% · Ausblick keine Meldung
+- VIAV 2026-11-04: Kairo 71% steigt, Kurs -10.1% · Gewinn +15% · Ausblick angehoben – „Business Outlook for the Second Quarter of Fiscal 2027 For the second quarter of fiscal 2027 ending January 2, 2027, the Company expects net revenue to be betwe“
 - ANDE 2026-11-03: Kairo 61% steigt, Kurs -11.7% · Gewinn +24% · Ausblick keine Meldung
 - CWK 2026-11-04: Kairo 32% steigt, Kurs +9.6% · Gewinn +3% · Ausblick gesenkt – „News | Colliers cuts forecast, Cushman sticks to growth outlook as brokerages weigh midterm boost“
 - SKY 2026-11-03: Kairo 42% steigt, Kurs +11.3% · Gewinn +1% · Ausblick keine Meldung
@@ -83,7 +83,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 Beispiele:
 - ECG 2026-11-03: Kairo 71%, Kurs -29.3% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
 - DUOL 2026-11-03: Kairo 36%, Kurs +26.0% (Markt +0.3%) · Gründe: Umsatz, Nutzer/Kunden – „Duolingo Misses on Earnings. The Stock Soars 15%.“
-- FSLY 2026-11-04: Kairo 64%, Kurs -17.9% (Markt +1.7%) · Gründe: Ausblick, Umsatz, Nutzer/Kunden – „Fastly (NASDAQ:FSLY) beats Q3 2026 sales expectations but stock drops 13%“
+- FSLY 2026-11-04: Kairo 64%, Kurs -21.6% (Markt +1.7%) · Gründe: Ausblick, Umsatz, Nutzer/Kunden – „Fastly (NASDAQ:FSLY) beats Q3 2026 sales expectations but stock drops 13%“
 - MTRN 2026-11-04: Kairo 60%, Kurs -17.7% (Markt +1.7%) · Gründe: Marge – „Earnings call transcript: Materion beats EPS in Q3 2026 but shares slide“
 - OUST 2026-11-03: Kairo 26%, Kurs +15.7% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Why is Ouster stock surging today?“
 - CVI 2026-11-03: Kairo 64%, Kurs -13.1% (Markt +0.3%) – „CVR Energy slumps 13% amid results and stock offering (CVI:NYSE)“
