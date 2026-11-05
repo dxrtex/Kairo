@@ -61,26 +61,26 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-51 Fehlprognosen und 109 Vergleichsfälle untersucht.
+51 Fehlprognosen und 124 Vergleichsfälle untersucht.
 
 - Markt: Bei 28% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 14% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.4%, getroffene Ø -4.9%.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.4%, getroffene Ø -5.1%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 31% (16) | 28% | 1.1 |
-| Marge | 18% (9) | 10% | 1.7 |
-| Umsatz | 59% (30) | 53% | 1.1 |
-| Nutzer/Kunden | 8% (4) | 1% | 8.5 |
-| Aufträge | 10% (5) | 4% | 2.7 |
+| Ausblick | 31% (16) | 29% | 1.1 |
+| Marge | 18% (9) | 9% | 2.0 |
+| Umsatz | 59% (30) | 52% | 1.1 |
+| Nutzer/Kunden | 8% (4) | 1% | 9.7 |
+| Aufträge | 10% (5) | 3% | 3.0 |
 | Kosten | 6% (3) | 8% | 0.7 |
 | Zölle/Politik | 2% (1) | 0% | inf |
-| KI/Rechenzentren | 12% (6) | 10% | 1.2 |
-| Management | 2% (1) | 4% | 0.5 |
-| Rückkauf/Dividende | 2% (1) | 6% | 0.4 |
+| KI/Rechenzentren | 12% (6) | 12% | 1.0 |
+| Management | 2% (1) | 3% | 0.6 |
+| Rückkauf/Dividende | 2% (1) | 5% | 0.4 |
 | Analysten | 4% (2) | 10% | 0.4 |
-| Sondereffekt | 2% (1) | 1% | 2.1 |
-| Übernahme | 2% (1) | 4% | 0.5 |
+| Sondereffekt | 2% (1) | 1% | 2.4 |
+| Übernahme | 2% (1) | 3% | 0.6 |
 
 **Kandidaten für neue Merkmale:** noch keine (ein Grund braucht ≥ 15 Fehlprognosen und Faktor ≥ 1,5).
 
