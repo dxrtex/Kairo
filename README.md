@@ -1,10 +1,10 @@
 # Papier-Handel S19 / S19-B / S19-C / S20 (echte 4-Stunden-Kerzen, keine echten Orders)
 
-Stand: 2026-11-04 02:22 UTC · Startkapital je Strategie 2,000 € · Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5; S19-B/-C: v1.7). Kosten: Scalable PRIME+ (ab 250 € Orderwert gebührenfrei, sonst 0,99 €) + halber Spread je Seite.
+Stand: 2026-11-05 02:29 UTC · Startkapital je Strategie 2,000 € · Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5; S19-B/-C: v1.7). Kosten: Scalable PRIME+ (ab 250 € Orderwert gebührenfrei, sonst 0,99 €) + halber Spread je Seite.
 
 ## S19 Hybride Mean Reversion (Original)
 
-- Start: 2026-10-16 · Handelstage: 13
+- Start: 2026-10-16 · Handelstage: 14
 - Depot: **1,986.27 €** (-0.69%) · größter Rückgang -1.0%
 - Abgeschlossene Trades: 1 · Trefferquote 0% · Ø R -0.73
 - Offen: 0 · warten auf H4-Auslöser: 0
@@ -17,8 +17,6 @@ Letzte Trades:
 
 Letzte Ereignisse:
 
-- 2026-10-27 neue Tagessignale: 0 (wartend gesamt 0)
-- 2026-10-28 16:30:00 VERKAUF SCHW stop @ 88.16 PnL -13.73 €
 - 2026-10-28 Filter: Qualität 842 → Kursdaten 830 → liquide 829 → ≥ 2,5 Std unter EMA20 9 → 3 Tage fallend 4 → Volumen sinkt 0 → schwächer als Branche 0
 - 2026-10-28 neue Tagessignale: 0 (wartend gesamt 0)
 - 2026-10-29 Filter: Qualität 842 → Kursdaten 829 → liquide 828 → ≥ 2,5 Std unter EMA20 8 → 3 Tage fallend 2 → Volumen sinkt 0 → schwächer als Branche 0
@@ -29,10 +27,12 @@ Letzte Ereignisse:
 - 2026-11-02 neue Tagessignale: 0 (wartend gesamt 0)
 - 2026-11-03 Filter: Qualität 853 → Kursdaten 0 → liquide 0 → ≥ 2,5 Std unter EMA20 0 → 3 Tage fallend 0 → Volumen sinkt 0 → schwächer als Branche 0
 - 2026-11-03 neue Tagessignale: 0 (wartend gesamt 0)
+- 2026-11-04 Filter: Qualität 853 → Kursdaten 780 → liquide 779 → ≥ 2,5 Std unter EMA20 13 → 3 Tage fallend 4 → Volumen sinkt 0 → schwächer als Branche 0
+- 2026-11-04 neue Tagessignale: 0 (wartend gesamt 0)
 
 ## S19-B (Volumen 2 von 3 Tagen)
 
-- Start: 2026-10-16 · Handelstage: 13
+- Start: 2026-10-16 · Handelstage: 14
 - Depot: **1,986.27 €** (-0.69%) · größter Rückgang -1.0%
 - Abgeschlossene Trades: 1 · Trefferquote 0% · Ø R -0.73
 - Offen: 0 · warten auf H4-Auslöser: 1
@@ -45,8 +45,6 @@ Letzte Trades:
 
 Letzte Ereignisse:
 
-- 2026-10-27 neue Tagessignale: 0 (wartend gesamt 0)
-- 2026-10-28 16:30:00 VERKAUF SCHW stop @ 88.16 PnL -13.73 €
 - 2026-10-28 Filter: Qualität 842 → Kursdaten 830 → liquide 829 → ≥ 2,5 Std unter EMA20 9 → 3 Tage fallend 4 → Volumen sinkt 0 → schwächer als Branche 0
 - 2026-10-28 neue Tagessignale: 0 (wartend gesamt 0)
 - 2026-10-29 Filter: Qualität 842 → Kursdaten 829 → liquide 828 → ≥ 2,5 Std unter EMA20 8 → 3 Tage fallend 2 → Volumen sinkt 0 → schwächer als Branche 0
@@ -57,13 +55,15 @@ Letzte Ereignisse:
 - 2026-11-02 neue Tagessignale: 1 (wartend gesamt 1)
 - 2026-11-03 Filter: Qualität 852 → Kursdaten 0 → liquide 0 → ≥ 2,5 Std unter EMA20 0 → 3 Tage fallend 0 → Volumen sinkt 0 → schwächer als Branche 0
 - 2026-11-03 neue Tagessignale: 0 (wartend gesamt 1)
+- 2026-11-04 Filter: Qualität 852 → Kursdaten 779 → liquide 778 → ≥ 2,5 Std unter EMA20 13 → 3 Tage fallend 4 → Volumen sinkt 0 → schwächer als Branche 0
+- 2026-11-04 neue Tagessignale: 0 (wartend gesamt 1)
 
 ## S19-C (2,0 Std, Volumen 2 von 3)
 
-- Start: 2026-10-16 · Handelstage: 13
-- Depot: **1,966.67 €** (-1.67%) · größter Rückgang -1.7%
+- Start: 2026-10-16 · Handelstage: 14
+- Depot: **1,965.01 €** (-1.75%) · größter Rückgang -1.7%
 - Abgeschlossene Trades: 2 · Trefferquote 0% · Ø R -0.94
-- Offen: 1 · warten auf H4-Auslöser: 5
+- Offen: 1 · warten auf H4-Auslöser: 3
 
 | Titel | Kauf | Einstieg | Stop | Stück |
 |---|---|---|---|---|
@@ -78,10 +78,6 @@ Letzte Trades:
 
 Letzte Ereignisse:
 
-- 2026-10-27 neue Tagessignale: 0 (wartend gesamt 0)
-- 2026-10-28 16:30:00 VERKAUF SCHW stop @ 88.16 PnL -13.73 €
-- 2026-10-28 Filter: Qualität 841 → Kursdaten 829 → liquide 828 → ≥ 2,0 Std unter EMA20 17 → 3 Tage fallend 6 → Volumen sinkt 0 → schwächer als Branche 0
-- 2026-10-28 neue Tagessignale: 0 (wartend gesamt 0)
 - 2026-10-29 Filter: Qualität 841 → Kursdaten 828 → liquide 827 → ≥ 2,0 Std unter EMA20 17 → 3 Tage fallend 6 → Volumen sinkt 0 → schwächer als Branche 0
 - 2026-10-29 neue Tagessignale: 0 (wartend gesamt 0)
 - 2026-10-30 Filter: Qualität 841 → Kursdaten 828 → liquide 827 → ≥ 2,0 Std unter EMA20 38 → 3 Tage fallend 15 → Volumen sinkt 1 → schwächer als Branche 1
@@ -90,19 +86,23 @@ Letzte Ereignisse:
 - 2026-11-02 neue Tagessignale: 4 (wartend gesamt 5)
 - 2026-11-03 Filter: Qualität 847 → Kursdaten 0 → liquide 0 → ≥ 2,0 Std unter EMA20 0 → 3 Tage fallend 0 → Volumen sinkt 0 → schwächer als Branche 0
 - 2026-11-03 neue Tagessignale: 0 (wartend gesamt 5)
+- 2026-11-04 17:30:00 BAP: H4-Auslöser, CRV 0.49 < 2 – kein Trade
+- 2026-11-04 17:30:00 SNX: H4-Auslöser, CRV 1.34 < 2 – kein Trade
+- 2026-11-04 Filter: Qualität 849 → Kursdaten 777 → liquide 776 → ≥ 2,0 Std unter EMA20 31 → 3 Tage fallend 11 → Volumen sinkt 0 → schwächer als Branche 0
+- 2026-11-04 neue Tagessignale: 0 (wartend gesamt 3)
 
 ## S20 Trendfolge / VCP
 
-- Start: 2026-10-16 · Handelstage: 13
-- Depot: **2,067.63 €** (+3.38%) · größter Rückgang -1.2%
+- Start: 2026-10-16 · Handelstage: 14
+- Depot: **2,074.62 €** (+3.73%) · größter Rückgang -1.2%
 - Abgeschlossene Trades: 3 · Trefferquote 100% · Ø R +0.98
-- Offen: 4 · warten auf H4-Auslöser: 125
+- Offen: 4 · warten auf H4-Auslöser: 113
 
 | Titel | Kauf | Einstieg | Stop | Stück |
 |---|---|---|---|---|
 | ADM.L | 2026-10-22 14:00 | 3806 | 3687 | 13 |
-| BCVN.SW | 2026-10-22 15:00 | 130.4 | 126.6 | 2 |
-| ELE.MC | 2026-10-23 15:00 | 43.34 | 42.2 | 17 |
+| BCVN.SW | 2026-10-22 15:00 | 130.4 | 135.2 | 2 |
+| ELE.MC | 2026-10-23 15:00 | 43.34 | 44.37 | 17 |
 | VONN.SW | 2026-11-03 15:00 | 92.7 | 90.15 | 4 |
 
 Letzte Trades:
@@ -115,23 +115,23 @@ Letzte Trades:
 
 Letzte Ereignisse:
 
-- 2026-11-03 20:30:00 DE: Auslöser, aber zu wenig Cash/Mindestgröße – kein Kauf
-- 2026-11-03 20:30:00 EMBJ: Auslöser, aber zu wenig Cash/Mindestgröße – kein Kauf
-- 2026-11-03 20:30:00 CLBK: Auslöser, aber zu wenig Cash/Mindestgröße – kein Kauf
-- 2026-11-03 20:30:00 LNC: Auslöser, aber zu wenig Cash/Mindestgröße – kein Kauf
-- 2026-11-03 20:30:00 AVAH: Auslöser, aber zu wenig Cash/Mindestgröße – kein Kauf
-- 2026-11-03 20:30:00 CNS: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-11-03 20:30:00 MANU: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-11-03 20:30:00 NDSN: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-11-03 20:30:00 PAYX: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-11-03 20:30:00 RDNT: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-11-03 20:30:00 SW: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
-- 2026-11-03 neue Tagessignale: 2 (wartend gesamt 125)
+- 2026-11-04 20:30:00 MGA: Auslöser, aber zu wenig Cash/Mindestgröße – kein Kauf
+- 2026-11-04 20:30:00 RJF: Auslöser, aber zu wenig Cash/Mindestgröße – kein Kauf
+- 2026-11-04 20:30:00 PCVX: Auslöser, aber zu wenig Cash/Mindestgröße – kein Kauf
+- 2026-11-04 20:30:00 WFG: Auslöser, aber zu wenig Cash/Mindestgröße – kein Kauf
+- 2026-11-04 20:30:00 ACT: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-11-04 20:30:00 AMBP: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-11-04 20:30:00 EMP-A.TO: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-11-04 20:30:00 GWRE: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-11-04 20:30:00 MTG: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-11-04 20:30:00 OMF: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-11-04 20:30:00 PFG: H4-Auslöser – Kauf zur Eröffnung der nächsten 4H-Kerze vorgemerkt
+- 2026-11-04 neue Tagessignale: 56 (wartend gesamt 113)
 
 ## MOM5 Momentum Top 5 (monatlich)
 
-- Start: 2026-10-16 · Handelstage: 13
-- Depot: **1,889.22 €** (-5.54%) · größter Rückgang -5.6%
+- Start: 2026-10-16 · Handelstage: 14
+- Depot: **1,949.67 €** (-2.52%) · größter Rückgang -5.6%
 - Abgeschlossene Trades: 1
 - Offen: 3 · warten auf H4-Auslöser: 0
 
@@ -164,8 +164,8 @@ Letzte Ereignisse:
 
 ## MOM10 Momentum Top 10 (monatlich; Holdout nicht bestanden)
 
-- Start: 2026-10-16 · Handelstage: 13
-- Depot: **1,909.60 €** (-4.52%) · größter Rückgang -6.0%
+- Start: 2026-10-16 · Handelstage: 14
+- Depot: **1,968.78 €** (-1.56%) · größter Rückgang -6.0%
 - Abgeschlossene Trades: 2
 - Offen: 6 · warten auf H4-Auslöser: 0
 
@@ -202,8 +202,8 @@ Letzte Ereignisse:
 
 ## DM Dual Momentum SPY/EFA/QQQ → SHY
 
-- Start: 2026-10-16 · Handelstage: 13
-- Depot: **1,940.21 €** (-2.99%) · größter Rückgang -5.1%
+- Start: 2026-10-16 · Handelstage: 14
+- Depot: **1,973.75 €** (-1.31%) · größter Rückgang -5.1%
 - Abgeschlossene Trades: 1
 - Offen: 1 · warten auf H4-Auslöser: 0
 
@@ -227,7 +227,7 @@ Letzte Ereignisse:
 
 ## SP2F S&P 500 2× nur über der 200-Tage-Linie (DBPG.DE, sonst Bargeld)
 
-- Start: 2026-10-23 · Handelstage: 8
+- Start: 2026-10-23 · Handelstage: 9
 - Depot: **2,000.00 €** (+0.00%) · größter Rückgang 0.0%
 - Abgeschlossene Trades: 0
 - Offen: 0 · warten auf H4-Auslöser: 0
@@ -238,49 +238,54 @@ Letzte Ereignisse:
 
 ## KAIRO Scanner-Treffer (Basis-Einstieg)
 
-- Start: 2026-10-15 · Handelstage: 13
-- Depot: **2,067.85 €** (+3.39%) · größter Rückgang -0.7%
-- Abgeschlossene Trades: 0
-- Offen: 3 · warten auf H4-Auslöser: 173
+- Start: 2026-10-15 · Handelstage: 14
+- Depot: **2,021.64 €** (+1.08%) · größter Rückgang -2.2%
+- Abgeschlossene Trades: 1 · Trefferquote 0% · Ø R -1.99
+- Offen: 2 · warten auf H4-Auslöser: 153
 
 | Titel | Kauf | Einstieg | Stop | Stück |
 |---|---|---|---|---|
 | BNY | 2026-10-26 | 145.4 | 141.2 | 5 |
-| BMRN | 2026-10-27 | 55.83 | 54.5 | 16 |
 | ATRL.TO | 2026-10-27 | 86.13 | 82.94 | 9 |
+
+Letzte Trades:
+
+| Titel | Kauf | Verkauf | Grund | R | PnL € |
+|---|---|---|---|---|---|
+| BMRN | 2026-10-27 | 2026-11-03 | stop_gap | -2.079 | -38.56 |
 
 Letzte Ereignisse:
 
-- 2026-11-02 TRLV: Auslöser, aber zu wenig Cash/Mindestgröße – kein Kauf
-- 2026-11-02 PLUS.L: Treffer gescheitert (neues Tief)
-- 2026-11-02 SUPN: Treffer gescheitert (neues Tief)
-- 2026-11-02 AXTI: Treffer gescheitert (neues Tief)
-- 2026-11-02 SBLK: Treffer gescheitert (neues Tief)
-- 2026-11-02 SEB: Treffer gescheitert (neues Tief)
-- 2026-11-02 BGEO.L: Treffer gescheitert (neues Tief)
-- 2026-11-02 PPTA: Treffer gescheitert (neues Tief)
-- 2026-11-02 CORZ: Treffer gescheitert (neues Tief)
-- 2026-11-02 WDC: Treffer gescheitert (neues Tief)
-- 2026-11-02 MU: Treffer gescheitert (neues Tief)
-- 2026-11-02 STX: Treffer gescheitert (neues Tief)
+- 2026-11-03 VERKAUF BMRN stop_gap @ 53.06 PnL -38.56 €
+- 2026-11-03 RYTM: Treffer gescheitert (neues Tief)
+- 2026-11-03 CBT: Treffer gescheitert (neues Tief)
+- 2026-11-03 SA: Treffer gescheitert (neues Tief)
+- 2026-11-03 TIGO: Treffer gescheitert (neues Tief)
+- 2026-11-03 AKAM: Treffer gescheitert (neues Tief)
+- 2026-11-03 HOS: Treffer gescheitert (neues Tief)
+- 2026-11-03 MYCR.ST: Treffer gescheitert (neues Tief)
+- 2026-11-03 BCP.LS: Treffer gescheitert (neues Tief)
+- 2026-11-03 TVTX: Treffer gescheitert (neues Tief)
+- 2026-11-03 QCOM: Treffer gescheitert (neues Tief)
+- 2026-11-03 ADEA: Treffer gescheitert (neues Tief)
 
 ## KAIROS Scanner-Treffer, schwache Aktien zuerst
 
-- Start: 2026-10-15 · Handelstage: 13
-- Depot: **20,221.99 €** (+1.11%) · größter Rückgang -1.0%
-- Abgeschlossene Trades: 3 · Trefferquote 0% · Ø R -0.97
-- Offen: 8 · warten auf H4-Auslöser: 169
+- Start: 2026-10-15 · Handelstage: 14
+- Depot: **20,043.70 €** (+0.22%) · größter Rückgang -1.0%
+- Abgeschlossene Trades: 4 · Trefferquote 0% · Ø R -1.23
+- Offen: 8 · warten auf H4-Auslöser: 149
 
 | Titel | Kauf | Einstieg | Stop | Stück |
 |---|---|---|---|---|
 | BNY | 2026-10-26 | 145.4 | 141.2 | 13 |
 | TTD | 2026-10-27 | 12.75 | 12.19 | 98 |
 | ATRL.TO | 2026-10-27 | 86.13 | 82.94 | 24 |
-| BMRN | 2026-10-27 | 55.83 | 54.5 | 41 |
 | AED.BR | 2026-10-28 | 62.8 | 62.3 | 84 |
 | NLY | 2026-10-28 | 18.34 | 17.87 | 115 |
 | WDP.BR | 2026-10-29 | 19.15 | 18.94 | 178 |
 | ITV.L | 2026-11-02 | 65 | 63.51 | 1610 |
+| CLDX | 2026-11-03 | 29.36 | 28.21 | 48 |
 
 Letzte Trades:
 
@@ -289,28 +294,29 @@ Letzte Trades:
 | AGNC | 2026-10-28 | 2026-10-30 | stop | -1.0 | -52.57 |
 | PLUS.L | 2026-10-27 | 2026-11-02 | stop | -1.0 | -44.63 |
 | ERAS | 2026-11-02 | 2026-11-02 | stop | -1.0 | -48.24 |
+| BMRN | 2026-10-27 | 2026-11-03 | stop_gap | -2.079 | -98.82 |
 
 Letzte Ereignisse:
 
-- 2026-11-02 VERKAUF PLUS.L stop @ 3242 PnL -44.63 €
-- 2026-11-02 VERKAUF ERAS stop @ 13.78 PnL -48.24 €
-- 2026-11-02 SUPN: Treffer gescheitert (neues Tief)
-- 2026-11-02 AXTI: Treffer gescheitert (neues Tief)
-- 2026-11-02 SBLK: Treffer gescheitert (neues Tief)
-- 2026-11-02 SEB: Treffer gescheitert (neues Tief)
-- 2026-11-02 BGEO.L: Treffer gescheitert (neues Tief)
-- 2026-11-02 PPTA: Treffer gescheitert (neues Tief)
-- 2026-11-02 CORZ: Treffer gescheitert (neues Tief)
-- 2026-11-02 WDC: Treffer gescheitert (neues Tief)
-- 2026-11-02 MU: Treffer gescheitert (neues Tief)
-- 2026-11-02 STX: Treffer gescheitert (neues Tief)
+- 2026-11-03 VERKAUF BMRN stop_gap @ 53.06 PnL -98.82 €
+- 2026-11-03 RYTM: Treffer gescheitert (neues Tief)
+- 2026-11-03 CBT: Treffer gescheitert (neues Tief)
+- 2026-11-03 SA: Treffer gescheitert (neues Tief)
+- 2026-11-03 TIGO: Treffer gescheitert (neues Tief)
+- 2026-11-03 AKAM: Treffer gescheitert (neues Tief)
+- 2026-11-03 HOS: Treffer gescheitert (neues Tief)
+- 2026-11-03 MYCR.ST: Treffer gescheitert (neues Tief)
+- 2026-11-03 BCP.LS: Treffer gescheitert (neues Tief)
+- 2026-11-03 TVTX: Treffer gescheitert (neues Tief)
+- 2026-11-03 QCOM: Treffer gescheitert (neues Tief)
+- 2026-11-03 ADEA: Treffer gescheitert (neues Tief)
 
 ## KAIROZ Kairo-Ziel (attraktives Kursziel, halten bis zum Ziel)
 
-- Start: 2026-10-19 · Handelstage: 11
-- Depot: **20,088.53 €** (+0.44%) · größter Rückgang -0.1%
+- Start: 2026-10-19 · Handelstage: 12
+- Depot: **20,084.87 €** (+0.42%) · größter Rückgang -0.1%
 - Abgeschlossene Trades: 0
-- Offen: 6 · warten auf H4-Auslöser: 48
+- Offen: 6 · warten auf H4-Auslöser: 47
 
 | Titel | Kauf | Einstieg | Stop | Stück |
 |---|---|---|---|---|
@@ -323,9 +329,6 @@ Letzte Ereignisse:
 
 Letzte Ereignisse:
 
-- 2026-10-29 HUH1V.HE: Treffer gescheitert (neues Tief)
-- 2026-10-30 KAUF ONEX.TO 14 Stk @ 104.6, Stop 73.2, Risiko 1.5%
-- 2026-10-30 KAUF ITV.L 1285 Stk @ 64.8, Stop 45.36, Risiko 1.5%
 - 2026-10-30 SKYW: Treffer gescheitert (neues Tief)
 - 2026-10-30 AC.TO: Treffer gescheitert (neues Tief)
 - 2026-10-30 ENS: Treffer gescheitert (neues Tief)
@@ -335,13 +338,16 @@ Letzte Ereignisse:
 - 2026-11-02 PPTA: Treffer gescheitert (neues Tief)
 - 2026-11-02 CORZ: Treffer gescheitert (neues Tief)
 - 2026-11-02 MU: Treffer gescheitert (neues Tief)
+- 2026-11-03 RYTM: Treffer gescheitert (neues Tief)
+- 2026-11-03 AKAM: Treffer gescheitert (neues Tief)
+- 2026-11-03 TVTX: Treffer gescheitert (neues Tief)
 
 ## KAIROL Kairo lang (Vergleich ohne Kursziel)
 
-- Start: 2026-10-19 · Handelstage: 11
-- Depot: **20,144.76 €** (+0.72%) · größter Rückgang -0.6%
+- Start: 2026-10-19 · Handelstage: 12
+- Depot: **20,133.25 €** (+0.67%) · größter Rückgang -0.6%
 - Abgeschlossene Trades: 0
-- Offen: 17 · warten auf H4-Auslöser: 136
+- Offen: 17 · warten auf H4-Auslöser: 139
 
 | Titel | Kauf | Einstieg | Stop | Stück |
 |---|---|---|---|---|
@@ -365,18 +371,18 @@ Letzte Ereignisse:
 
 Letzte Ereignisse:
 
-- 2026-11-02 KAUF LHA.DE 136 Stk @ 7.252, Stop 5.076, Risiko 1.5%
-- 2026-11-02 KAUF TRLV 106 Stk @ 10.38, Stop 7.266, Risiko 1.5%
-- 2026-11-02 SUPN: Treffer gescheitert (neues Tief)
-- 2026-11-02 AXTI: Treffer gescheitert (neues Tief)
-- 2026-11-02 SBLK: Treffer gescheitert (neues Tief)
-- 2026-11-02 SEB: Treffer gescheitert (neues Tief)
-- 2026-11-02 BGEO.L: Treffer gescheitert (neues Tief)
-- 2026-11-02 PPTA: Treffer gescheitert (neues Tief)
-- 2026-11-02 CORZ: Treffer gescheitert (neues Tief)
-- 2026-11-02 WDC: Treffer gescheitert (neues Tief)
-- 2026-11-02 MU: Treffer gescheitert (neues Tief)
 - 2026-11-02 STX: Treffer gescheitert (neues Tief)
+- 2026-11-03 RYTM: Treffer gescheitert (neues Tief)
+- 2026-11-03 CBT: Treffer gescheitert (neues Tief)
+- 2026-11-03 SA: Treffer gescheitert (neues Tief)
+- 2026-11-03 TIGO: Treffer gescheitert (neues Tief)
+- 2026-11-03 AKAM: Treffer gescheitert (neues Tief)
+- 2026-11-03 HOS: Treffer gescheitert (neues Tief)
+- 2026-11-03 MYCR.ST: Treffer gescheitert (neues Tief)
+- 2026-11-03 BCP.LS: Treffer gescheitert (neues Tief)
+- 2026-11-03 TVTX: Treffer gescheitert (neues Tief)
+- 2026-11-03 QCOM: Treffer gescheitert (neues Tief)
+- 2026-11-03 ADEA: Treffer gescheitert (neues Tief)
 
 ---
 Grenzen: Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser, Yahoo-Stundenkerzen (teils verzögert),
