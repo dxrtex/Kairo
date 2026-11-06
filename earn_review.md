@@ -6,13 +6,13 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 229 | 50% | 0.262 | 0.250 |
+| alle | 229 | 49% | 0.264 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 25 | 64% | 0.214 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 25 | 60% | 0.227 | 0.250 |
 | Ausblick gesenkt | 38 | 61% | 0.246 | 0.250 |
 | Ausblick bestätigt | 17 | 47% | 0.278 | 0.250 |
-| Ausblick angehoben | 83 | 47% | 0.277 | 0.250 |
+| Ausblick angehoben | 83 | 46% | 0.281 | 0.250 |
 | Ausblick keine Meldung | 91 | 48% | 0.253 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
@@ -20,7 +20,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | Kairo sagte | n | tatsächlich gestiegen |
 |---|---|---|
 | -0%–30% | 11 | 45% |
-| 30%–40% | 55 | 38% |
+| 30%–40% | 55 | 40% |
 | 40%–50% | 33 | 45% |
 | 50%–60% | 56 | 41% |
 | 60%–70% | 52 | 40% |
@@ -31,7 +31,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
 | deutlich unter Erwartung (< −10 %) | 54% (13) | 40% (5) | 33% (15) | 43% (23) |
-| unter Erwartung (−10 bis −2 %) | 10% (10) | 20% (5) | 50% (12) | 34% (29) |
+| unter Erwartung (−10 bis −2 %) | 10% (10) | 20% (5) | 58% (12) | 34% (29) |
 | im Rahmen (±2 %) | 27% (15) | 0% (2) | 29% (14) | 52% (25) |
 | über Erwartung (+2 bis +10 %) | 24% (17) | 40% (5) | 47% (34) | 46% (35) |
 | deutlich über Erwartung (> +10 %) | 40% (20) | 50% (14) | 56% (70) | 50% (56) |
@@ -52,8 +52,8 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
-- FIVN 2026-11-05: Kairo 49% steigt, Kurs -20.2% · Gewinn +2% · Ausblick gesenkt – „Five9 falls 22% on disappointing fourth quarter EPS outlook“
 - DAVE 2026-11-04: Kairo 53% steigt, Kurs -18.1% · Gewinn -2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- FIVN 2026-11-05: Kairo 49% steigt, Kurs -19.1% · Gewinn +2% · Ausblick gesenkt – „Five9 falls 22% on disappointing fourth quarter EPS outlook“
 - POWI 2026-11-04: Kairo 54% steigt, Kurs -17.0% · Gewinn +10% · Ausblick gesenkt – „Paddy Power owner Flutter cuts outlook after hefty quarterly loss“
 - SHOO 2026-11-05: Kairo 54% steigt, Kurs -17.0% · Gewinn +5% · Ausblick angehoben – „Steven Madden Raises 2026 Adjusted Profit Outlook After Q3 Earnings Beat, Sales Miss“
 - NTCT 2026-11-05: Kairo 55% steigt, Kurs -16.5% · Gewinn +6% · Ausblick bestätigt – „NETSCOUT Q2 Revenue Rises 1.4% to $222.2 Million; Reaffirms FY2027 Outlook“
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 115 Meldungen: Brier nachgeeicht 0.263 gegen gezeigt 0.275 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 115 Meldungen: Brier nachgeeicht 0.265 gegen gezeigt 0.278 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
