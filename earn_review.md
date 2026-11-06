@@ -48,11 +48,11 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 - APP 2026-11-04: Kairo 55% steigt, Kurs +31.0% · Gewinn +7% · Ausblick angehoben – „AppLovin shares rally as Q3 results top estimates, Q4 outlook beats (APP:NASDAQ)“
 - RDW 2026-11-04: Kairo 65% steigt, Kurs -19.8% · Gewinn +33% · Ausblick bestätigt – „Redwire Corporation Reaffirms Revenue Guidance for the Full Year Ending December 31, 2026“
 - OUST 2026-11-03: Kairo 26% steigt, Kurs +15.7% · Gewinn -90% · Ausblick gesenkt – „For the fourth quarter of 2026, Ouster expects to achieve $61 million to $64 million in total revenue.“
+- IONQ 2026-11-05: Kairo 52% steigt, Kurs +23.2% · Gewinn +271% · Ausblick angehoben – „EX-99.1 3 ionq-ex99_1.htm EX-99.1 EX-99.1 Exhibit 99.1 IonQ Announces Record 3Q26 Revenues and Raises FY2026 Guidance to $505 - $515 Million as Backlog Grows to“
 - MTSI 2026-11-05: Kairo 60% steigt, Kurs -18.4% · Gewinn +4% · Ausblick angehoben – „Business Outlook For the fiscal first quarter ending January 1, 2027, MACOM expects revenue to be in the range of $450 million to $460 million.“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
-- IONQ 2026-11-05: Kairo 52% steigt, Kurs +20.5% · Gewinn +271% · Ausblick angehoben – „EX-99.1 3 ionq-ex99_1.htm EX-99.1 EX-99.1 Exhibit 99.1 IonQ Announces Record 3Q26 Revenues and Raises FY2026 Guidance to $505 - $515 Million as Backlog Grows to“
 - DAVE 2026-11-04: Kairo 53% steigt, Kurs -18.1% · Gewinn -2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - POWI 2026-11-04: Kairo 54% steigt, Kurs -17.0% · Gewinn +10% · Ausblick gesenkt – „Paddy Power owner Flutter cuts outlook after hefty quarterly loss“
 - SHOO 2026-11-05: Kairo 54% steigt, Kurs -17.0% · Gewinn +7% · Ausblick angehoben – „Steven Madden Raises 2026 Adjusted Profit Outlook After Q3 Earnings Beat, Sales Miss“
