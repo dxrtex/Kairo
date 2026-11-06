@@ -1,19 +1,19 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhalb 984 Min., 174 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhalb 983 Min., 175 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-417 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-06), davon 227 mit aufgezeichneter Prognose.
+418 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-06), davon 228 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 227 | 50% | 0.263 | 0.250 |
+| alle | 228 | 49% | 0.263 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 23 | 65% | 0.212 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 24 | 58% | 0.218 | 0.250 |
 | Ausblick gesenkt | 38 | 61% | 0.246 | 0.250 |
 | Ausblick bestätigt | 17 | 47% | 0.278 | 0.250 |
 | Ausblick angehoben | 83 | 47% | 0.277 | 0.250 |
-| Ausblick keine Meldung | 89 | 48% | 0.254 | 0.250 |
+| Ausblick keine Meldung | 90 | 47% | 0.255 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -21,8 +21,8 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 |---|---|---|
 | -0%–30% | 11 | 45% |
 | 30%–40% | 55 | 38% |
-| 40%–50% | 32 | 47% |
-| 50%–60% | 55 | 42% |
+| 40%–50% | 32 | 50% |
+| 50%–60% | 56 | 41% |
 | 60%–70% | 52 | 40% |
 | 70%–100% | 22 | 55% |
 
@@ -30,11 +30,11 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
-| deutlich unter Erwartung (< −10 %) | 54% (13) | 40% (5) | 33% (15) | 45% (22) |
+| deutlich unter Erwartung (< −10 %) | 54% (13) | 40% (5) | 33% (15) | 50% (22) |
 | unter Erwartung (−10 bis −2 %) | 10% (10) | 20% (5) | 50% (12) | 34% (29) |
 | im Rahmen (±2 %) | 27% (15) | 0% (2) | 29% (14) | 52% (25) |
 | über Erwartung (+2 bis +10 %) | 24% (17) | 40% (5) | 47% (34) | 46% (35) |
-| deutlich über Erwartung (> +10 %) | 40% (20) | 50% (14) | 56% (70) | 51% (55) |
+| deutlich über Erwartung (> +10 %) | 40% (20) | 50% (14) | 56% (70) | 50% (56) |
 
 ## Vorschläge zur Anpassung
 
@@ -47,11 +47,11 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 - DUOL 2026-11-03: Kairo 36% steigt, Kurs +26.0% · Gewinn -17% · Ausblick bestätigt – „We expect Q4 revenue of $322 million, up 14% over the prior year.“
 - APP 2026-11-04: Kairo 55% steigt, Kurs +31.0% · Gewinn +7% · Ausblick angehoben – „AppLovin shares rally as Q3 results top estimates, Q4 outlook beats (APP:NASDAQ)“
 - RDW 2026-11-04: Kairo 65% steigt, Kurs -19.8% · Gewinn +33% · Ausblick bestätigt – „Redwire Corporation Reaffirms Revenue Guidance for the Full Year Ending December 31, 2026“
-- FIVN 2026-11-05: Kairo 49% steigt, Kurs -24.0% · Gewinn +2% · Ausblick gesenkt – „Five9 falls 22% on disappointing fourth quarter EPS outlook“
 - OUST 2026-11-03: Kairo 26% steigt, Kurs +15.7% · Gewinn -90% · Ausblick gesenkt – „For the fourth quarter of 2026, Ouster expects to achieve $61 million to $64 million in total revenue.“
 - MTSI 2026-11-05: Kairo 60% steigt, Kurs -18.4% · Gewinn +4% · Ausblick angehoben – „Business Outlook For the fiscal first quarter ending January 1, 2027, MACOM expects revenue to be in the range of $450 million to $460 million.“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- FIVN 2026-11-05: Kairo 49% steigt, Kurs -21.0% · Gewinn +2% · Ausblick gesenkt – „Five9 falls 22% on disappointing fourth quarter EPS outlook“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 - DAVE 2026-11-04: Kairo 53% steigt, Kurs -18.1% · Gewinn -2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - POWI 2026-11-04: Kairo 54% steigt, Kurs -17.0% · Gewinn +10% · Ausblick gesenkt – „Paddy Power owner Flutter cuts outlook after hefty quarterly loss“
@@ -60,14 +60,14 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-52 Fehlprognosen und 175 Vergleichsfälle untersucht.
+52 Fehlprognosen und 176 Vergleichsfälle untersucht.
 
 - Markt: Bei 29% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 14% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
 - Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.4%, getroffene Ø -4.5%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 33% (17) | 31% | 1.1 |
+| Ausblick | 33% (17) | 31% | 1.0 |
 | Marge | 17% (9) | 7% | 2.5 |
 | Umsatz | 58% (30) | 54% | 1.1 |
 | Nutzer/Kunden | 8% (4) | 1% | 13.5 |
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 114 Meldungen: Brier nachgeeicht 0.263 gegen gezeigt 0.276 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 114 Meldungen: Brier nachgeeicht 0.266 gegen gezeigt 0.277 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
