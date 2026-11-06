@@ -10,9 +10,9 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 26 | 62% | 0.226 | 0.250 |
-| Ausblick gesenkt | 38 | 61% | 0.246 | 0.250 |
+| Ausblick gesenkt | 39 | 59% | 0.247 | 0.250 |
 | Ausblick bestätigt | 17 | 47% | 0.278 | 0.250 |
-| Ausblick angehoben | 84 | 45% | 0.281 | 0.250 |
+| Ausblick angehoben | 83 | 46% | 0.281 | 0.250 |
 | Ausblick keine Meldung | 91 | 49% | 0.252 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
@@ -34,7 +34,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 10% (10) | 20% (5) | 58% (12) | 34% (29) |
 | im Rahmen (±2 %) | 27% (15) | 0% (2) | 29% (14) | 52% (25) |
 | über Erwartung (+2 bis +10 %) | 24% (17) | 40% (5) | 47% (34) | 46% (35) |
-| deutlich über Erwartung (> +10 %) | 40% (20) | 50% (14) | 56% (70) | 50% (56) |
+| deutlich über Erwartung (> +10 %) | 38% (21) | 50% (14) | 57% (69) | 50% (56) |
 
 ## Vorschläge zur Anpassung
 
