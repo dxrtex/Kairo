@@ -56,28 +56,28 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 - POWI 2026-11-04: Kairo 54% steigt, Kurs -17.0% · Gewinn +10% · Ausblick gesenkt – „Paddy Power owner Flutter cuts outlook after hefty quarterly loss“
 - SHOO 2026-11-05: Kairo 54% steigt, Kurs -17.0% · Gewinn +7% · Ausblick angehoben – „Steven Madden Raises 2026 Adjusted Profit Outlook After Q3 Earnings Beat, Sales Miss“
 - NTCT 2026-11-05: Kairo 55% steigt, Kurs -16.5% · Gewinn +6% · Ausblick bestätigt – „NETSCOUT Q2 Revenue Rises 1.4% to $222.2 Million; Reaffirms FY2027 Outlook“
-- SEI 2026-11-04: Kairo 71% steigt, Kurs -12.3% · Gewinn +61% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- IONQ 2026-11-05: Kairo 52% steigt, Kurs +18.8% · Gewinn +271% · Ausblick angehoben – „EX-99.1 3 ionq-ex99_1.htm EX-99.1 EX-99.1 Exhibit 99.1 IonQ Announces Record 3Q26 Revenues and Raises FY2026 Guidance to $505 - $515 Million as Backlog Grows to“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-52 Fehlprognosen und 179 Vergleichsfälle untersucht.
+53 Fehlprognosen und 178 Vergleichsfälle untersucht.
 
-- Markt: Bei 29% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 14% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.4%, getroffene Ø -4.5%.
+- Markt: Bei 29% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 13% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.4%, getroffene Ø -4.4%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 33% (17) | 32% | 1.0 |
-| Marge | 17% (9) | 7% | 2.6 |
-| Umsatz | 58% (30) | 53% | 1.1 |
-| Nutzer/Kunden | 8% (4) | 1% | 13.8 |
-| Aufträge | 10% (5) | 3% | 3.4 |
+| Ausblick | 32% (17) | 32% | 1.0 |
+| Marge | 17% (9) | 7% | 2.5 |
+| Umsatz | 58% (31) | 53% | 1.1 |
+| Nutzer/Kunden | 8% (4) | 1% | 13.4 |
+| Aufträge | 9% (5) | 3% | 3.4 |
 | Kosten | 6% (3) | 6% | 0.9 |
 | Zölle/Politik | 2% (1) | 1% | 3.4 |
-| KI/Rechenzentren | 12% (6) | 11% | 1.0 |
+| KI/Rechenzentren | 11% (6) | 11% | 1.0 |
 | Management | 2% (1) | 4% | 0.5 |
 | Rückkauf/Dividende | 2% (1) | 4% | 0.4 |
-| Analysten | 4% (2) | 9% | 0.4 |
+| Analysten | 4% (2) | 10% | 0.4 |
 | Sondereffekt | 2% (1) | 1% | 3.4 |
 | Übernahme | 2% (1) | 6% | 0.3 |
 
