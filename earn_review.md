@@ -53,10 +53,10 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 - DAVE 2026-11-04: Kairo 53% steigt, Kurs -18.1% · Gewinn -2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- IONQ 2026-11-05: Kairo 52% steigt, Kurs +19.1% · Gewinn +271% · Ausblick angehoben – „EX-99.1 3 ionq-ex99_1.htm EX-99.1 EX-99.1 Exhibit 99.1 IonQ Announces Record 3Q26 Revenues and Raises FY2026 Guidance to $505 - $515 Million as Backlog Grows to“
 - POWI 2026-11-04: Kairo 54% steigt, Kurs -17.0% · Gewinn +10% · Ausblick gesenkt – „Paddy Power owner Flutter cuts outlook after hefty quarterly loss“
 - SHOO 2026-11-05: Kairo 54% steigt, Kurs -17.0% · Gewinn +7% · Ausblick angehoben – „Steven Madden Raises 2026 Adjusted Profit Outlook After Q3 Earnings Beat, Sales Miss“
 - NTCT 2026-11-05: Kairo 55% steigt, Kurs -16.5% · Gewinn +6% · Ausblick bestätigt – „NETSCOUT Q2 Revenue Rises 1.4% to $222.2 Million; Reaffirms FY2027 Outlook“
-- IONQ 2026-11-05: Kairo 52% steigt, Kurs +18.8% · Gewinn +271% · Ausblick angehoben – „EX-99.1 3 ionq-ex99_1.htm EX-99.1 EX-99.1 Exhibit 99.1 IonQ Announces Record 3Q26 Revenues and Raises FY2026 Guidance to $505 - $515 Million as Backlog Grows to“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
