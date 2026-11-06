@@ -54,7 +54,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 - DAVE 2026-11-04: Kairo 53% steigt, Kurs -18.1% · Gewinn -2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - POWI 2026-11-04: Kairo 54% steigt, Kurs -17.0% · Gewinn +10% · Ausblick gesenkt – „Paddy Power owner Flutter cuts outlook after hefty quarterly loss“
-- SHOO 2026-11-05: Kairo 54% steigt, Kurs -17.0% · Gewinn +7% · Ausblick angehoben – „Steven Madden Raises 2026 Adjusted Profit Outlook After Q3 Earnings Beat, Sales Miss“
+- SHOO 2026-11-05: Kairo 54% steigt, Kurs -17.0% · Gewinn +5% · Ausblick angehoben – „Steven Madden Raises 2026 Adjusted Profit Outlook After Q3 Earnings Beat, Sales Miss“
 - NTCT 2026-11-05: Kairo 55% steigt, Kurs -16.5% · Gewinn +6% · Ausblick bestätigt – „NETSCOUT Q2 Revenue Rises 1.4% to $222.2 Million; Reaffirms FY2027 Outlook“
 - SEI 2026-11-04: Kairo 71% steigt, Kurs -12.3% · Gewinn +61% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 
