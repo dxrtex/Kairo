@@ -9,9 +9,9 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | alle | 204 | 48% | 0.268 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
-| Ausblick gesenkt | 30 | 53% | 0.272 | 0.250 |
-| Ausblick bestätigt | 15 | 53% | 0.258 | 0.250 |
-| Ausblick angehoben | 76 | 43% | 0.284 | 0.250 |
+| Ausblick gesenkt | 32 | 56% | 0.263 | 0.250 |
+| Ausblick bestätigt | 17 | 47% | 0.278 | 0.250 |
+| Ausblick angehoben | 72 | 43% | 0.285 | 0.250 |
 | Ausblick keine Meldung | 83 | 49% | 0.254 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
@@ -32,13 +32,13 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | deutlich unter Erwartung (< −10 %) | 50% (12) | 40% (5) | 38% (13) | 47% (19) |
 | unter Erwartung (−10 bis −2 %) | 14% (7) | 20% (5) | 50% (10) | 33% (27) |
 | im Rahmen (±2 %) | 29% (14) | 0% (2) | 29% (14) | 52% (25) |
-| über Erwartung (+2 bis +10 %) | 27% (15) | 40% (5) | 44% (34) | 46% (35) |
-| deutlich über Erwartung (> +10 %) | 42% (19) | 58% (12) | 52% (67) | 50% (54) |
+| über Erwartung (+2 bis +10 %) | 25% (16) | 40% (5) | 45% (33) | 46% (35) |
+| deutlich über Erwartung (> +10 %) | 40% (20) | 50% (14) | 55% (64) | 50% (54) |
 
 ## Vorschläge zur Anpassung
 
-- über Erwartung (+2 bis +10 %) + Ausblick angehoben: gezeigt Ø 54%, tatsächlich 44% (n 34)
-- deutlich über Erwartung (> +10 %) + Ausblick angehoben: gezeigt Ø 66%, tatsächlich 52% (n 67)
+- über Erwartung (+2 bis +10 %) + Ausblick angehoben: gezeigt Ø 56%, tatsächlich 45% (n 33)
+- deutlich über Erwartung (> +10 %) + Ausblick angehoben: gezeigt Ø 67%, tatsächlich 55% (n 64)
 
 ## Größte Fehlprognosen (zum Nachprüfen der Ausblick-Erkennung)
 
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 102 Meldungen: Brier nachgeeicht 0.272 gegen gezeigt 0.287 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 102 Meldungen: Brier nachgeeicht 0.273 gegen gezeigt 0.287 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
