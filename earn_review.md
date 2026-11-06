@@ -1,26 +1,26 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhalb 1002 Min., 177 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhalb 1021 Min., 178 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-420 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-06), davon 230 mit aufgezeichneter Prognose.
+421 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-06), davon 231 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 230 | 50% | 0.263 | 0.250 |
+| alle | 231 | 50% | 0.263 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 26 | 62% | 0.226 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 27 | 63% | 0.223 | 0.250 |
 | Ausblick gesenkt | 39 | 59% | 0.247 | 0.250 |
 | Ausblick bestätigt | 17 | 47% | 0.278 | 0.250 |
 | Ausblick angehoben | 83 | 46% | 0.281 | 0.250 |
-| Ausblick keine Meldung | 91 | 49% | 0.252 | 0.250 |
+| Ausblick keine Meldung | 92 | 50% | 0.251 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
 | Kairo sagte | n | tatsächlich gestiegen |
 |---|---|---|
 | -0%–30% | 11 | 45% |
-| 30%–40% | 55 | 40% |
+| 30%–40% | 56 | 39% |
 | 40%–50% | 34 | 44% |
 | 50%–60% | 56 | 41% |
 | 60%–70% | 52 | 40% |
@@ -30,7 +30,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
-| deutlich unter Erwartung (< −10 %) | 54% (13) | 40% (5) | 38% (16) | 39% (23) |
+| deutlich unter Erwartung (< −10 %) | 54% (13) | 40% (5) | 38% (16) | 38% (24) |
 | unter Erwartung (−10 bis −2 %) | 10% (10) | 20% (5) | 58% (12) | 34% (29) |
 | im Rahmen (±2 %) | 27% (15) | 0% (2) | 29% (14) | 52% (25) |
 | über Erwartung (+2 bis +10 %) | 24% (17) | 40% (5) | 47% (34) | 46% (35) |
@@ -60,22 +60,22 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-52 Fehlprognosen und 178 Vergleichsfälle untersucht.
+53 Fehlprognosen und 178 Vergleichsfälle untersucht.
 
-- Markt: Bei 29% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 14% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.4%, getroffene Ø -4.5%.
+- Markt: Bei 29% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 13% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.4%, getroffene Ø -4.4%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 33% (17) | 32% | 1.0 |
-| Marge | 17% (9) | 7% | 2.6 |
-| Umsatz | 58% (30) | 53% | 1.1 |
-| Nutzer/Kunden | 8% (4) | 1% | 13.7 |
-| Aufträge | 10% (5) | 2% | 4.3 |
+| Ausblick | 32% (17) | 32% | 1.0 |
+| Marge | 17% (9) | 7% | 2.5 |
+| Umsatz | 58% (31) | 53% | 1.1 |
+| Nutzer/Kunden | 8% (4) | 1% | 13.4 |
+| Aufträge | 9% (5) | 3% | 3.4 |
 | Kosten | 6% (3) | 6% | 0.9 |
 | Zölle/Politik | 2% (1) | 1% | 3.4 |
-| KI/Rechenzentren | 12% (6) | 11% | 1.0 |
-| Management | 2% (1) | 3% | 0.6 |
+| KI/Rechenzentren | 11% (6) | 11% | 1.0 |
+| Management | 2% (1) | 4% | 0.5 |
 | Rückkauf/Dividende | 2% (1) | 4% | 0.4 |
 | Analysten | 4% (2) | 10% | 0.4 |
 | Sondereffekt | 2% (1) | 1% | 3.4 |
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 115 Meldungen: Brier nachgeeicht 0.263 gegen gezeigt 0.277 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 116 Meldungen: Brier nachgeeicht 0.262 gegen gezeigt 0.276 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
