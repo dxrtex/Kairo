@@ -47,7 +47,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 - DUOL 2026-11-03: Kairo 36% steigt, Kurs +26.0% · Gewinn -17% · Ausblick bestätigt – „We expect Q4 revenue of $322 million, up 14% over the prior year.“
 - APP 2026-11-04: Kairo 55% steigt, Kurs +31.0% · Gewinn +7% · Ausblick angehoben – „AppLovin shares rally as Q3 results top estimates, Q4 outlook beats (APP:NASDAQ)“
 - RDW 2026-11-04: Kairo 65% steigt, Kurs -19.8% · Gewinn +33% · Ausblick bestätigt – „Redwire Corporation Reaffirms Revenue Guidance for the Full Year Ending December 31, 2026“
-- FIVN 2026-11-05: Kairo 49% steigt, Kurs -25.2% · Gewinn +2% · Ausblick gesenkt – „Five9 falls 22% on disappointing fourth quarter EPS outlook“
+- FIVN 2026-11-05: Kairo 49% steigt, Kurs -24.0% · Gewinn +2% · Ausblick gesenkt – „Five9 falls 22% on disappointing fourth quarter EPS outlook“
 - OUST 2026-11-03: Kairo 26% steigt, Kurs +15.7% · Gewinn -90% · Ausblick gesenkt – „For the fourth quarter of 2026, Ouster expects to achieve $61 million to $64 million in total revenue.“
 - MTSI 2026-11-05: Kairo 60% steigt, Kurs -18.4% · Gewinn +4% · Ausblick angehoben – „Business Outlook For the fiscal first quarter ending January 1, 2027, MACOM expects revenue to be in the range of $450 million to $460 million.“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
