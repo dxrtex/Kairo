@@ -52,7 +52,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
-- IONQ 2026-11-05: Kairo 52% steigt, Kurs +20.1% · Gewinn +271% · Ausblick angehoben – „EX-99.1 3 ionq-ex99_1.htm EX-99.1 EX-99.1 Exhibit 99.1 IonQ Announces Record 3Q26 Revenues and Raises FY2026 Guidance to $505 - $515 Million as Backlog Grows to“
+- IONQ 2026-11-05: Kairo 52% steigt, Kurs +20.2% · Gewinn +271% · Ausblick angehoben – „EX-99.1 3 ionq-ex99_1.htm EX-99.1 EX-99.1 Exhibit 99.1 IonQ Announces Record 3Q26 Revenues and Raises FY2026 Guidance to $505 - $515 Million as Backlog Grows to“
 - DAVE 2026-11-04: Kairo 53% steigt, Kurs -18.1% · Gewinn -2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - POWI 2026-11-04: Kairo 54% steigt, Kurs -17.0% · Gewinn +10% · Ausblick gesenkt – „Paddy Power owner Flutter cuts outlook after hefty quarterly loss“
 - SHOO 2026-11-05: Kairo 54% steigt, Kurs -17.0% · Gewinn +7% · Ausblick angehoben – „Steven Madden Raises 2026 Adjusted Profit Outlook After Q3 Earnings Beat, Sales Miss“
@@ -60,25 +60,25 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-53 Fehlprognosen und 180 Vergleichsfälle untersucht.
+52 Fehlprognosen und 181 Vergleichsfälle untersucht.
 
-- Markt: Bei 29% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 13% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.4%, getroffene Ø -4.5%.
+- Markt: Bei 29% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 14% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.4%, getroffene Ø -4.6%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 32% (17) | 32% | 1.0 |
-| Marge | 17% (9) | 7% | 2.5 |
-| Umsatz | 58% (31) | 53% | 1.1 |
-| Nutzer/Kunden | 8% (4) | 1% | 13.6 |
-| Aufträge | 9% (5) | 3% | 2.8 |
+| Ausblick | 33% (17) | 32% | 1.0 |
+| Marge | 17% (9) | 7% | 2.6 |
+| Umsatz | 58% (30) | 53% | 1.1 |
+| Nutzer/Kunden | 8% (4) | 1% | 13.9 |
+| Aufträge | 10% (5) | 3% | 2.9 |
 | Kosten | 6% (3) | 6% | 0.9 |
-| Zölle/Politik | 2% (1) | 1% | 3.4 |
-| KI/Rechenzentren | 11% (6) | 12% | 1.0 |
+| Zölle/Politik | 2% (1) | 1% | 3.5 |
+| KI/Rechenzentren | 12% (6) | 12% | 1.0 |
 | Management | 2% (1) | 4% | 0.4 |
 | Rückkauf/Dividende | 2% (1) | 4% | 0.4 |
 | Analysten | 4% (2) | 9% | 0.4 |
-| Sondereffekt | 2% (1) | 1% | 3.4 |
+| Sondereffekt | 2% (1) | 1% | 3.5 |
 | Übernahme | 2% (1) | 6% | 0.3 |
 
 **Kandidaten für neue Merkmale:** noch keine (ein Grund braucht ≥ 15 Fehlprognosen und Faktor ≥ 1,5).
