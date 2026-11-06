@@ -51,8 +51,8 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 - MTSI 2026-11-05: Kairo 60% steigt, Kurs -18.4% · Gewinn +4% · Ausblick angehoben – „Business Outlook For the fiscal first quarter ending January 1, 2027, MACOM expects revenue to be in the range of $450 million to $460 million.“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
-- FIVN 2026-11-05: Kairo 49% steigt, Kurs -21.0% · Gewinn +2% · Ausblick gesenkt – „Five9 falls 22% on disappointing fourth quarter EPS outlook“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
+- FIVN 2026-11-05: Kairo 49% steigt, Kurs -20.2% · Gewinn +2% · Ausblick gesenkt – „Five9 falls 22% on disappointing fourth quarter EPS outlook“
 - DAVE 2026-11-04: Kairo 53% steigt, Kurs -18.1% · Gewinn -2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - POWI 2026-11-04: Kairo 54% steigt, Kurs -17.0% · Gewinn +10% · Ausblick gesenkt – „Paddy Power owner Flutter cuts outlook after hefty quarterly loss“
 - SHOO 2026-11-05: Kairo 54% steigt, Kurs -17.0% · Gewinn +5% · Ausblick angehoben – „Steven Madden Raises 2026 Adjusted Profit Outlook After Q3 Earnings Beat, Sales Miss“
