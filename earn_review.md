@@ -9,10 +9,10 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | alle | 207 | 48% | 0.268 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 3 | 67% | 0.232 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 3 | 33% | 0.260 | 0.250 |
 | Ausblick gesenkt | 32 | 56% | 0.263 | 0.250 |
 | Ausblick bestätigt | 17 | 47% | 0.278 | 0.250 |
-| Ausblick angehoben | 74 | 45% | 0.283 | 0.250 |
+| Ausblick angehoben | 74 | 43% | 0.284 | 0.250 |
 | Ausblick keine Meldung | 84 | 49% | 0.255 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
@@ -21,7 +21,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 |---|---|---|
 | -0%–30% | 9 | 56% |
 | 30%–40% | 50 | 42% |
-| 40%–50% | 24 | 42% |
+| 40%–50% | 24 | 46% |
 | 50%–60% | 50 | 40% |
 | 60%–70% | 52 | 40% |
 | 70%–100% | 22 | 55% |
@@ -31,7 +31,7 @@ Schnelligkeit: erste Zahlen im Mittel 571 Min. nach der Meldezeit (90 % innerhal
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
 | deutlich unter Erwartung (< −10 %) | 50% (12) | 40% (5) | 38% (13) | 47% (19) |
-| unter Erwartung (−10 bis −2 %) | 14% (7) | 20% (5) | 45% (11) | 36% (28) |
+| unter Erwartung (−10 bis −2 %) | 14% (7) | 20% (5) | 55% (11) | 36% (28) |
 | im Rahmen (±2 %) | 29% (14) | 0% (2) | 29% (14) | 52% (25) |
 | über Erwartung (+2 bis +10 %) | 25% (16) | 40% (5) | 47% (34) | 44% (34) |
 | deutlich über Erwartung (> +10 %) | 40% (20) | 50% (14) | 55% (64) | 51% (55) |
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 104 Meldungen: Brier nachgeeicht 0.272 gegen gezeigt 0.284 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 104 Meldungen: Brier nachgeeicht 0.274 gegen gezeigt 0.285 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
