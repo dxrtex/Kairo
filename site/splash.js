@@ -5,7 +5,7 @@
    1,30 s  die zwei silbernen Klingen des K gleiten mit Bewegungsunschärfe heran
    1,50 s  die Kachel materialisiert sich dahinter, 1,70 s Lichtreflex über das Zeichen
    1,72 s  das Zeichen rückt nach links, KAIRO wird Buchstabe für Buchstabe scharf
-   2,10 s  Claim „Der richtige Moment“
+   2,10 s  Claim „Patience, then precision.“
    Übergang: Logo zoomt sanft weg, die App blendet ein. Wartet die App noch, läuft eine feine Ladelinie.
    Startet den Übergang erst, wenn die Animation durch ist UND die App KairoSplash.ready() gemeldet hat – spätestens nach 6 s. */
 (function () {
@@ -41,11 +41,11 @@
           </svg>
         </div>
       </div>
-      <div class="sp-tag">Der richtige Moment</div>
+      <div class="sp-tag">Patience, then precision.</div>
       <div class="sp-load"><i></i></div>
     </div>`;
   const ANIM_MS = 2700, SHORT_MS = 850, EXIT_MS = 560, TIMEOUT_MS = 6000;
-  const INTRO_V = "6";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
+  const INTRO_V = "7";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
   const mark = () => { try { localStorage.setItem("kairo-intro", INTRO_V); } catch (e) {} };
   let current = null;
   // Nach dem Intro: Start-Schwarz entfernen, damit helle Designs ihre eigene Hintergrundfarbe zeigen
