@@ -5394,8 +5394,8 @@ function todayModel() {
   ready.slice(0, free).forEach(x => tasks.push({ k: "b:" + x.t, cat: "buy", tone: "g", t: x.t, buy: x, ttl: `${x.n} kaufen`, sub: `Seitwärtsphase fertig${x.mom != null ? ` · Vormomentum ${sgnPct(x.mom, 0)}` : ""}` }));
   // 4) ETF-Ampel grün → Extra-Geld investieren (Sparrate läuft ohnehin)
   const e = getJson("etf.json");
-  if (e && e.ok !== false && ["go", "go2"].includes(e.lv) && pfCfg().etf > 0 && !etfDoneRecent())
-    tasks.push({ k: "etf", cat: "etf", tone: "g", t: "", ttl: e.lv === "go2" ? "Extra-Geld in den ETF – Panik am Markt" : "Extra-Geld in den ETF investieren", sub: (g => (g > 50 ? `bis zu ${eur(g)} (Lücke zu deinem ETF-Ziel) · ` : ""))((ec => ec.units ? ec.inv * ec.share / 100 - ec.units * e.c : 0)(etfCfg())) + (e.lv === "go2" ? "VIX ≥ 30 – gern in 2–3 Raten über einige Wochen" : (e.why || []).some(w => /3 Monat/.test(w)) ? "3-Monats-Regel – am besten in 3 Raten über 8 Wochen" : `ETF-Ampel grün${(e.why || []).length ? ": " + e.why.join(", ") : ""}`),
+  if (e && e.ok !== false && ["go2", "rate"].includes(e.lv) && pfCfg().etf > 0 && !etfDoneRecent())   // „Normal“ ist keine Aufgabe – nur Gelegenheit und Raten
+    tasks.push({ k: "etf", cat: "etf", tone: e.lv === "rate" ? "y" : "g", t: "", ttl: e.lv === "go2" ? "ETF: Gelegenheit – zusätzlich nachlegen" : "ETF: Extra-Geld in Raten anlegen", sub: e.lv === "rate" ? "unter der 200-Tage-Linie, Kreditmarkt schwach – auf 3 Monate verteilen" : (g => (g > 50 ? `bis zu ${eur(g)} (Lücke zu deinem ETF-Ziel) · ` : ""))((ec => ec.units ? ec.inv * ec.share / 100 - ec.units * e.c : 0)(etfCfg())) + (e.lv === "go2" ? "VIX ≥ 30 – gern in 2–3 Raten über einige Wochen" : (e.why || []).some(w => /3 Monat/.test(w)) ? "3-Monats-Regel – am besten in 3 Raten über 8 Wochen" : `ETF-Ampel grün${(e.why || []).length ? ": " + e.why.join(", ") : ""}`),
       act: `<button class="btn sm" data-etfdone>Erledigt ✓</button><button class="btn ghost sm" ${SEC_LINK("etf")}>ETF</button>` });
   // 5) Vorbereiten: Treffer, deren Seitwärtsphase noch kommt (beste Rangplätze, keine Doppelten)
   const seen = new Set(tasks.map(x => x.t)), pos = searchIdx ? kmRank().pos : {};
@@ -5493,7 +5493,7 @@ const ETF_BT = {
 const ETF_DG = "#0b7a35";
 // go = Extra-Geld jetzt (Rücksetzer: unter EMA 100, ≥ 5 % unter Hoch, VIX ≥ 25 – oder 3 Monate gewartet) · go2 = Panik (VIX ≥ 30)
 // wait = abwarten, höchstens 3 Monate (backend/etfextra.py: kostete nur −0,1 bis −0,7 % gegenüber „sofort“)
-const ETF_TONE = { go: ["Grün · jetzt investieren", "var(--up)"], go2: ["Dunkelgrün · Panik, jetzt investieren", ETF_DG], wait: ["Gelb · abwarten", "var(--gold)"],
+const ETF_TONE = { go: ["Normal · Extra-Geld anlegen", "var(--up)"], go2: ["Gelegenheit · zusätzlich nachlegen", ETF_DG], rate: ["Gelb · in Raten anlegen", "var(--gold)"], wait: ["Normal · Extra-Geld anlegen", "var(--up)"],
   blue: ["Grün · jetzt investieren", "var(--up)"], yellow: ["Gelb · abwarten", "var(--gold)"], green2: ["Dunkelgrün · Panik", ETF_DG] };
 // Aufteilung nach Kapitalgröße (Strategie-Forschung Okt. 2026, Phase D, Train + Validierung 2008–2021, Option A ≈ 22 % Rückgang):
 // unter 10.000 € trägt kein Satellit die festen Gebühren → 100 % ETF; 10–20 k€: 80 % ETF + 20 % Momentum-Satellit (+10,5 % p. a., −20 %);
@@ -5660,16 +5660,17 @@ function etfHtml() {
   const trade = tpCfg().depot, etfVal = e && c.units ? c.units * e.c : null, sum = etfVal != null ? etfVal + trade : null, ist = sum ? etfVal / sum : null;
   const tgtT = c.inv * (100 - c.share) / 100;
   const lamp = (lv, lbl, col) => `<div class="eh-l${e && e.lv === lv ? " on" : ""}" style="--c:${col}"><i></i><span>${lbl}</span></div>`;
-  const facts = e ? [["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "" : e.vix >= 25 ? "up" : "gold"],
-      ["EMA 100", e.vs_e100 == null ? "–" : e.vs_e100 >= 0 ? "darüber" : "darunter", e.vs_e100 != null && e.vs_e100 < 0 ? "up" : "gold"],
-      ["Abstand zum Hoch", e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1), e.dd >= .05 ? "up" : "gold"]]
-      .concat((e.why || []).some(w => /3 Monat/.test(w)) ? [["3-Monats-Regel", "erfüllt", "up"]] : []) : [];
+  // Neue Ampel (11/2026): die drei Größen, nach denen sie entscheidet – grün = spricht für „Gelegenheit“, gelb = für „In Raten“
+  const facts = e ? [["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "" : e.vix >= 30 ? "up" : ""],
+      ["200-Tage-Linie", e.vs_sma == null ? "–" : e.vs_sma >= 0 ? "darüber" : "darunter", e.vs_sma != null && e.vs_sma < 0 ? "gold" : ""],
+      ["Kreditmarkt", e.credit_weak == null ? "–" : e.credit_weak ? "schwach" : "gesund", e.credit_weak ? "gold" : ""]] : [];
   const tgtE = c.inv * c.share / 100, gap = etfVal != null ? tgtE - etfVal : null;
-  const goLv = e && ["go", "go2", "blue", "green2"].includes(e.lv);
-  const todo = e ? (goLv ? `Sparrate läuft · <b>Extra-Geld jetzt investieren</b>${gap > 50 ? ` – bis zu <b>${eur(gap)}</b> (Lücke zu deinem ETF-Ziel)` : ""}${e.lv === "go2" ? " (gern in 2–3 Raten)" : ""}${(e.why || []).some(w => /3 Monat/.test(w)) ? `<br><b>Tipp: in 3 Raten über 8 Wochen</b> (z. B. alle 4 Wochen ein Drittel)<br><small class="muted">Grün wegen der 3-Monats-Regel: seit über 3 Monaten kein Rücksetzer – länger warten hat im Test mehr gekostet als gebracht. Raten kosteten im Test praktisch nichts (−0,1 bis +0,04 % Endwert, 1990–2026) und nehmen das Risiko, alles am Tag vor einem Rückgang anzulegen. Kommt in der Zeit ein Rücksetzer, den Rest sofort.</small>` : ""}`
+  const goLv = e && ["go", "go2", "blue", "green2", "rate"].includes(e.lv);
+  const todo = e ? (e.lv === "rate" ? `Sparrate läuft · <b>Extra-Geld auf 3 Monate verteilen</b>${gap > 50 ? ` – z. B. ${eur(gap / 3)} je Monat (Lücke ${eur(gap)})` : ""}`
+    : goLv ? `Sparrate läuft · <b>${e.lv === "go2" ? "Extra-Geld anlegen und zusätzlich nachlegen" : "Extra-Geld wie geplant anlegen"}</b>${gap > 50 ? ` – bis zu <b>${eur(gap)}</b> (Lücke zu deinem ETF-Ziel)` : ""}${e.lv === "go2" ? " (gern in 2–3 Raten)" : ""}${(e.why || []).some(w => /3 Monat/.test(w)) ? `<br><b>Tipp: in 3 Raten über 8 Wochen</b> (z. B. alle 4 Wochen ein Drittel)<br><small class="muted">Grün wegen der 3-Monats-Regel: seit über 3 Monaten kein Rücksetzer – länger warten hat im Test mehr gekostet als gebracht. Raten kosteten im Test praktisch nichts (−0,1 bis +0,04 % Endwert, 1990–2026) und nehmen das Risiko, alles am Tag vor einem Rückgang anzulegen. Kommt in der Zeit ein Rücksetzer, den Rest sofort.</small>` : ""}`
     : `Sparrate läuft · <b>Extra-Geld zurücklegen</b> – spätestens nach 3 Monaten trotzdem investieren${e.last_go ? ` (letzter Rücksetzer: ${dateDE(e.last_go)})` : ""}`) : "";
   const hero = e ? `<div class="hcard etf-hero">
-      <div class="eh-lights">${lamp("go2", "Panik – kaufen", ETF_DG)}${lamp("go", "Jetzt investieren", "var(--up)")}${lamp("wait", "Abwarten", "var(--gold)")}</div>
+      <div class="eh-lights">${lamp("go2", "Gelegenheit", ETF_DG)}${lamp("go", "Normal", "var(--up)")}${lamp("rate", "In Raten", "var(--gold)")}</div>
       <div class="eh-main"><span class="eh-k">ETF-Ampel · ${esc(e.name)}</span><b class="eh-t">${esc(e.t)}</b><p class="eh-do">${todo}</p>
         <div class="eh-facts"><span>Kurs <b>${fmt(e.c)} €</b></span><span>${e.dd < .005 ? "<b>am Allzeithoch</b>" : `<b>−${pct(e.dd, 1)}</b> unter dem Hoch`}</span>${etfStale(e) ? `<span class="gold">Tageskurs vom ${dateDE(e.date)} – Yahoo liefert verzögert, aktueller Kurs im Chart unten</span>` : `<span class="muted">Stand ${dateDE(e.date)}</span>`}</div>
         <div class="eh-pills">${facts.map(([l, v, c]) => `<span class="eh-p"><i class="${c}">●</i>${l}: <b>${v}</b></span>`).join("")}</div>
@@ -5679,11 +5680,15 @@ function etfHtml() {
 `
     : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? `Die Kursdaten des ETF sehen gerade unplausibel aus${e0.ref_ok === false ? ` (weichen ${pct(e0.ref_dev, 1)} vom Vergleichs-ETF ab)` : ""} – Datenfehler beim Anbieter. Die Ampel ist ausgeblendet, bis sie wieder stimmen.` : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
   const why = e ? `<div class="hsub">Was die Ampel gerade sieht</div><ul class="checks">${[
-        ["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "muted" : e.vix >= 25 ? "up" : "gold", e.vix == null ? "keine Daten" : e.vix >= 30 ? "Panik – historisch die besten Kaufzeitpunkte" : e.vix >= 25 ? "Angst – Kaufsignal" : "ruhig – kein Kaufsignal"],
-        ["EMA 100", e.vs_e100 == null ? "–" : e.vs_e100 >= 0 ? "darüber" : "darunter", e.vs_e100 == null ? "muted" : e.vs_e100 < 0 ? "up" : "gold", e.vs_e100 == null ? "keine Daten" : e.vs_e100 < 0 ? "Rücksetzer – Kaufsignal" : "Kurs läuft über der EMA 100 – kein Rücksetzer"],
-        ["Abstand zum Hoch", e.dd < .005 ? "am Hoch" : "−" + pct(e.dd, 1), e.dd >= .05 ? "up" : "gold", e.dd >= .05 ? "mindestens 5 % unter dem Hoch – Kaufsignal" : "weniger als 5 % unter dem Hoch"]]
+        ["Angst (VIX)", e.vix == null ? "–" : fmt(e.vix, 1), e.vix == null ? "muted" : e.vix >= 30 ? "up" : "muted", e.vix == null ? "keine Daten" : e.vix >= 30 ? "Angst am Markt – Gelegenheit" : "unter 30 – keine Ausnahmesituation"],
+        ["200-Tage-Linie", e.vs_sma == null ? "–" : e.vs_sma >= 0 ? "darüber" : "darunter", e.vs_sma != null && e.vs_sma < 0 ? "gold" : "muted", e.vs_sma == null ? "keine Daten" : e.vs_sma < 0 ? `${pct(-e.vs_sma, 1)} darunter – Abwärtstrend` : "Aufwärtstrend intakt"],
+        ["Kreditmarkt (Hochzins- gegen Staatsanleihen)", e.credit_weak == null ? "–" : e.credit_weak ? "schwach" : "gesund", e.credit_weak ? "gold" : "muted", e.credit_weak == null ? "keine Daten" : e.credit_weak ? "Anleger meiden Risiko" : "keine Stresszeichen"]]
         .map(([l, v, c, t]) => `<li><i class="${c}">●</i><b>${l}: ${v}</b> – ${t}</li>`).join("")}</ul>
-      <div class="note" style="margin:6px 0 12px"><i class="vdot g"></i><b>Jetzt investieren</b>, sobald eins davon passt: Kurs unter der EMA 100, mindestens 5 % unter dem Hoch oder VIX ≥ 25 (Dunkelgrün: VIX ≥ 30, Panik).<br><i class="vdot y"></i><b>Abwarten</b>, wenn nichts davon passt – Extra-Geld zurücklegen, aber höchstens 3 Monate, dann trotzdem investieren. Die Sparrate läuft immer. Im Test (S&P 500 ab 1990, Welt ab 2003) kostete diese Regel gegenüber „immer sofort“ nur 0,1–0,7 % Endwert; länger warten (z. B. nur bei Panik kaufen) kostete 7–15 %.</div>` : "";
+      <div class="note" style="margin:6px 0 12px"><b>Warum es kein „Abwarten“ mehr gibt:</b> Im Test über 35 Jahre (S&P 500 ab 1990, Welt ab 2003, ACWI ab 2008) war <b>jede</b> Warte-Regel schlechter, als Extra-Geld sofort anzulegen – strengere Regeln kosteten sogar mehr (bis −3 %). Darum sagt die Ampel nur noch, <i>wie</i> du anlegst:<br>
+        <i class="vdot" style="background:${ETF_DG}"></i><b>Gelegenheit</b> (VIX ≥ 30, ≈ 10 % der Monate): danach im Schnitt +28 bis +30 % in 12 Monaten – zusätzlich nachlegen.<br>
+        <i class="vdot g"></i><b>Normal</b> (≈ 79 %): Extra-Geld wie geplant anlegen.<br>
+        <i class="vdot y"></i><b>In Raten</b> (unter der 200-Tage-Linie + Kreditmarkt schwach, ≈ 11 %): öfter kam noch ein weiterer Rückgang – auf 3 Monate verteilen.<br>
+        Die Sparrate läuft immer. Daten: Monatsenden 2007–2025 (SPY, ACWI).</div>` : "";
   const st0 = state.etf || {}, dpx = c.fromDepot, istP = ist != null ? Math.round(ist * 100) : null;
   const rIn = ist != null && ist < c.share / 100 - .05 ? c.rate : c.rate * c.share / 100;
   const fv = c.rate && etfVal != null ? (r => etfVal * Math.pow(1 + r, 120) + rIn * (Math.pow(1 + r, 120) - 1) / r)(.05 / 12) : null;

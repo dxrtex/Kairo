@@ -1,4 +1,4 @@
-"""ETF-Ampel: Fehlkurse raus; Extra-Geld jetzt (Rücksetzer/VIX) oder abwarten (höchstens 3 Monate)."""
+"""ETF-Ampel: Fehlkurse raus; Gelegenheit (VIX ≥ 30) · In Raten (unter 200-Tage-Linie + Kreditmarkt schwach) · Normal."""
 
 import numpy as np
 import pandas as pd
@@ -7,13 +7,12 @@ from backend.etf import clean, compute, level
 
 
 def test_levels():
-    assert level(13, False, 0.01, "2026-09-01", "2026-10-14")["lv"] == "wait"   # nahe Hoch, über EMA 100, ruhig → abwarten
-    assert level(13, False, 0.01, "2026-06-01", "2026-10-14")["lv"] == "go"     # über 3 Monate gewartet → trotzdem rein
-    assert level(13, True, 0.01)["lv"] == "go"                                   # unter der EMA 100
-    assert level(13, False, 0.06)["lv"] == "go"                                  # ≥ 5 % unter dem Hoch
-    assert level(26, False, 0.0)["lv"] == "go"                                   # VIX ≥ 25
-    assert level(35, True, 0.2)["lv"] == "go2"                                   # Panik
-    assert level(None, False, 0.0)["lv"] == "wait"
+    assert level(13, False, False)["lv"] == "go"                                 # ruhig, über der 200-Tage-Linie → normal anlegen
+    assert level(26, False, None)["lv"] == "go"                                  # VIX 25–30: kein eigenes Signal mehr
+    assert level(18, True, False)["lv"] == "go"                                  # unter der Linie, Kreditmarkt gesund → normal
+    assert level(18, True, True)["lv"] == "rate"                                 # unter der Linie + Kreditmarkt schwach → in Raten
+    assert level(35, True, True)["lv"] == "go2"                                  # Angst (VIX ≥ 30) → Gelegenheit, hat Vorrang
+    assert level(None, False, None)["lv"] == "go"
 
 
 def test_clean_removes_spike_and_compute():
