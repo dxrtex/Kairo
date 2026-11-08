@@ -43,9 +43,9 @@ def _frames(tickers: list[str], period: str) -> dict:
 
 
 def build(search_rows: list[dict]) -> dict:
-    from .analysis import EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, SECTOR_ETF, THEME_ETF, market_context
+    from .analysis import ASSET_ETF, EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, SECTOR_ETF, THEME_ETF, market_context
     from .run_scan import day_moves
-    etfs = sorted(set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | set(THEME_ETF) | set(EU_SECTOR_ETF) | {t for t, _ in MARKET})   # Indizes: Kacheln + Maßstab
+    etfs = sorted(set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | set(THEME_ETF) | set(EU_SECTOR_ETF) | set(ASSET_ETF) | {t for t, _ in MARKET})   # Indizes: Kacheln + Maßstab
     mkt = market_context(_frames(etfs, "2y"))
     stocks = pick(search_rows)
     rows = {}
@@ -54,7 +54,7 @@ def build(search_rows: list[dict]) -> dict:
         if m.get("d1") is not None:
             rows[t] = {k: m.get(k) for k in ("d1", "d5", "m1", "m3", "ytd", "rv")} | {"c": round(float(df["Close"].iloc[-1]), 4)}
     return {"generated": datetime.now(timezone.utc).isoformat(timespec="minutes"),
-            "sectors": mkt.get("sectors", []), "industries": mkt.get("industries", []), "themes": mkt.get("themes", []), "sectors_eu": mkt.get("sectors_eu", []),
+            "sectors": mkt.get("sectors", []), "industries": mkt.get("industries", []), "themes": mkt.get("themes", []), "sectors_eu": mkt.get("sectors_eu", []), "assets": mkt.get("assets", []),
             "idx": {t: mkt[t] for t, _ in MARKET if t in mkt}, "rows": rows}
 
 

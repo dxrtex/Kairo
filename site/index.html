@@ -2436,13 +2436,14 @@ function spMarket() {
   const lv = mktLive(), a = (anaData && anaData.market) || {};
   const mix = k => { const base = a[k] || [], live = lv && lv[k] && lv[k].length ? lv[k] : null; if (!live) return base;
     const by = Object.fromEntries(base.map(x => [x.k, x])); return live.map(x => ({ ...(by[x.k] || {}), ...x, ...(x.rrg ? {} : by[x.k] && by[x.k].rrg ? { rrg: by[x.k].rrg, hot: by[x.k].hot } : {}) })); };
-  return { sectors: mix("sectors"), industries: mix("industries"), themes: mix("themes"), sectors_eu: mix("sectors_eu") };
+  return { sectors: mix("sectors"), industries: mix("industries"), themes: mix("themes"), sectors_eu: mix("sectors_eu"), assets: mix("assets") };
 }
 function spList() {
   const m = spMarket();
   const eu = (state.spReg === "eu" || state.spMode === "eu") && (m.sectors_eu || []).length;     // Europa: nur Sektoren
-  const th = !eu && state.spMode === "th" && (m.themes || []).length, ind = th || (!eu && state.spMode === "ind" && (m.industries || []).length);
-  return { ind, th, eu, xs: (eu ? m.sectors_eu : th ? m.themes : ind ? m.industries : m.sectors) || [] };
+  const as = !eu && state.spMode === "as" && (m.assets || []).length;          // „Markt-Rad“: Anlageklassen gegen Aktien
+  const th = !as && !eu && state.spMode === "th" && (m.themes || []).length, ind = th || (!as && !eu && state.spMode === "ind" && (m.industries || []).length);
+  return { ind, th, eu, as, xs: (as ? m.assets : eu ? m.sectors_eu : th ? m.themes : ind ? m.industries : m.sectors) || [] };
 }
 function spRanked(xs, k) {
   const val = (x, prev) => { const v = prev ? x.p && x.p[k] : x[k]; return v == null ? -Infinity : v; };
@@ -2469,7 +2470,7 @@ function sectorsHtml() {
   const rot = ups.length || dns.length ? `<div class="sp-rot">↻ <b>Rotation</b> ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"}: ${ups.length ? `Geld fließt in <span class="up">${ups.map(x => esc(x.n)).join(", ")}</span>` : ""}${ups.length && dns.length ? " · " : ""}${dns.length ? `raus aus <span class="down">${dns.map(x => esc(x.n)).join(", ")}</span>` : ""}</div>` : "";
   const reg = (m.sectors_eu || []).length ? `<div class="sp-seg sp-reg">${[["us", "USA"], ["eu", "Europa"]].map(([v, l]) => `<button class="${(v === "eu") === !!eu ? "on" : ""}" data-spreg="${v}">${l}</button>`).join("")}</div>` : "";
   return `<div class="hcard sp-card"><div class="hh sp-hh"><b>Sektoren & Branchen</b>${reg}${fsBtn("sp")}</div>
-    <div class="sp-seg sp-lev">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu && (m.industries || []).length], ["th", "Themen", !eu && (m.themes || []).length]].map(([v, l, ok]) => `<button class="${(v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind) ? "on" : ""}" data-spmode="${v}"${ok ? "" : ` disabled title="${eu ? "nur für USA" : "kommt mit dem nächsten Abend-Scan"}"`}>${l}</button>`).join("")}</div>
+    <div class="sp-seg sp-lev">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu && (m.industries || []).length], ["th", "Themen", !eu && (m.themes || []).length], ["as", "Anlagen", !eu && (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? state.spMode === "as" && !eu : v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind && state.spMode !== "as") ? "on" : ""}" data-spmode="${v}"${ok ? "" : ` disabled title="${eu ? "nur für USA" : "kommt mit dem nächsten Abend-Scan"}"`}>${l}</button>`).join("")}</div>
     <div class="sp-seg sp-view">${[["ret", "Rendite", 1], ["rrg", "Rotation", hasRrg], ["hist", "Verlauf", hasHist]].filter(o => o[2]).map(([v, l]) => `<button class="${(v === "hist" ? hv : v === "rrg" ? rv : !hv && !rv) ? "on" : ""}" data-spview="${v}">${l}</button>`).join("")}</div>
     ${hv || rv ? `<div class="sp-tg sp-per sp-dim"><span class="muted">${rv ? "Rotation rechnet mit Wochenwerten" : "Verlauf zeigt den Rang je Woche"} – Zeitraum antippen = Rendite</span>${SP_PER.map(([v, l, n]) => `<button class="opt" data-spper="${v}" data-spret="1" title="${n} – wechselt zu Rendite">${l}</button>`).join("")}</div>` : `<div class="sp-tg sp-per">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}<button class="opt sp-relb${state.spRel ? " on" : ""}" data-sprel title="Rendite minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")}">ggü. Markt</button></div>`}
     ${rv ? spRrgHtml(xs, ind) + (th ? themeTrendHtml(xs) : "") : hv ? spHistHtml(xs, ind) : `${rot}${th ? themeTrendHtml(xs) : hotHtml(ind ? [] : xs)}<div class="sp-list">${show.map(row).join("")}</div>`}
@@ -2543,7 +2544,8 @@ function spHistHtml(xs, ind) {
     <div class="note" style="margin:6px 0 0">Platz nach 1-Monats-Rendite, jede Woche neu gemessen (links vor 12 Wochen, rechts heute; oben = stärkster).</div>`;
 }
 function spDrillHtml(key) {
-  const [k, , kn] = spPer(), { ind, th, xs } = spList(), x = xs.find(v => v.k === key); if (!x) return "";
+  const [k, , kn] = spPer(), { ind, th, as, xs } = spList(), x = xs.find(v => v.k === key); if (!x) return "";
+  if (as) return `<h3 style="margin:0 0 4px">${esc(x.n)}</h3><p class="muted" style="margin:0 0 10px;font-size:13.5px">${esc(x.k)} · ${SP_PER.map(([v, l]) => `${l} ${sgnPct(x[v], 1)}`).join(" · ")}</p><p style="font-size:14px">${x.corr != null ? `Korrelation mit dem S&P 500 (3 Monate): <b>${fmt(x.corr, 2)}</b> – ${x.corr <= -.3 ? "läuft eher gegenläufig zu Aktien" : x.corr >= .3 ? "läuft eher mit Aktien" : "läuft weitgehend eigenständig"}.` : ""}</p>`;
   const nm = { d1: "d1", w1: "d5", m1: "m1", m3: "m3", ytd: "ytd" }[k];
   // Die Schwergewichte: größte Werte nach Börsenwert (sie bewegen die Branche), nicht die Tagesgewinner.
   // Weltweit (alle Regionen des Scans) oder je Region; ohne illiquide Zweitlistings, je Firma eine Notierung. Börsenwert in US-Dollar.
@@ -2672,7 +2674,7 @@ document.addEventListener("click", e => {
 });
 // ---------- Vollbild-Ansichten (Markt): Heatmap, Sektoren & Branchen mit Rotation, Gewinner/Verlierer – groß, mit Filtern ----------
 const fsBtn = k => `<button class="fs-btn" data-fsv="${k}" aria-label="Groß anzeigen" title="Groß anzeigen">⤢ Groß</button>`;
-const RRG_GROUP = () => { const { ind, th, eu } = spList(); return eu ? "sectors_eu" : th ? "themes" : ind ? "industries" : "sectors"; };
+const RRG_GROUP = () => { const { ind, th, eu, as } = spList(); return as ? "assets" : eu ? "sectors_eu" : th ? "themes" : ind ? "industries" : "sectors"; };
 // Aktien je Bereich (einmal je Aufbau indiziert): Branche (ig), Sektor (sec), Europa-Filter (flt), Thema (mem)
 function spMemberIdx() {
   const rows = spRows().filter(r => !(r.km || []).includes("liquidity")), ig = {}, sec = {};
@@ -2685,7 +2687,7 @@ function spMemberIdx() {
 const fsSortBtn = (key, lbl, cur, num) => `<th class="${num ? "num " : ""}${cur.k === key ? "sorted" + (cur.asc ? " asc" : "") : ""}" data-fssort="${key}">${lbl}</th>`;
 function fsSort(id, def) { const s = (state.fsSort || {})[id]; return s && s.k ? s : { k: def, asc: false }; }
 function fsSpHtml() {
-  const { ind, th, eu, xs: all } = spList(), m = (anaData && anaData.market) || {}, st = (m.rrg_stats || {})[RRG_GROUP()] || {};
+  const { ind, th, eu, as, xs: all } = spList(), m = { ...((anaData && anaData.market) || {}), assets: spMarket().assets }, st = (m.rrg_stats || {})[RRG_GROUP()] || {};
   const mem = spMemberIdx(), mine = myTickers(), onlyMine = !!state.fsMine;
   const rows = all.map(x => { const l = mem(x, ind); return { x, n: l.length, hit: l.filter(r => r.s === "hit").length, near: l.filter(r => r.m != null && r.m >= 9).length, own: l.filter(r => mine.has(r.t)).length }; })
     .filter(o => !onlyMine || o.own);
@@ -2695,10 +2697,10 @@ function fsSpHtml() {
   const qb = q => q ? `<span class="fs-q" style="--qc:${RRG_Q[q][1]}">${RRG_Q[q][0]}</span>` : "–";
   const pc = v => v == null ? "–" : `<span class="${v >= 0 ? "up" : "down"}">${sgnPct(v, 1)}</span>`;
   const fresh = rows.filter(o => o.x.rrg && ["improving", "leading"].includes(o.x.rrg.q) && o.x.rrg.wk <= 2 && o.x.rrg.pq && o.x.rrg.pq !== o.x.rrg.q);
-  const lvl = th ? "Themen" : ind ? "Branchen" : "Sektoren";
+  const lvl = as ? "Anlageklassen" : th ? "Themen" : ind ? "Branchen" : "Sektoren";
   const typ = ["improving", "leading", "weakening", "lagging"].filter(q => st[q]).map(q => `<span><i style="background:${RRG_Q[q][1]}"></i>${RRG_Q[q][0]} ≈ ${fmt(st[q].med, 0)} Wo.</span>`).join("");
   const head = `<div class="fs-ctl"><div class="sp-seg">${(m.sectors_eu || []).length ? [["us", "USA"], ["eu", "Europa"]].map(([v, l]) => `<button class="${(v === "eu") === !!eu ? "on" : ""}" data-spreg="${v}">${l}</button>`).join("") : ""}</div>
-    <div class="sp-seg">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu], ["th", "Themen", !eu]].map(([v, l, ok]) => `<button class="${(v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind) ? "on" : ""}" data-spmode="${v}"${ok ? "" : " disabled"}>${l}</button>`).join("")}</div>
+    <div class="sp-seg">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu], ["th", "Themen", !eu], ["as", "Markt-Rad", !eu && (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? !!as : v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind && !as) ? "on" : ""}" data-spmode="${v}"${ok ? "" : " disabled"}>${l}</button>`).join("")}</div>
     <button class="kchip${onlyMine ? " on" : ""}" data-fsmine>★ nur mit meinen Aktien</button></div>`;
   const list = rows.filter(o => o.x.rrg);
   return `${head}
@@ -2708,9 +2710,10 @@ function fsSpHtml() {
       ${typ ? `<div class="fs-h" style="margin-top:14px">So lange bleiben ${lvl} typischerweise in einem Feld</div><div class="fs-typ">${typ}</div>
         <p class="muted" style="font-size:12.5px;margin:6px 0 0">Median der abgeschlossenen Phasen aller ${lvl} (Wochenwerte, ${(Object.values(st).reduce((a, v) => a + v.n, 0))} Phasen). Beschreibt die Vergangenheit – sagt nicht voraus, wann ein Bereich wechselt.</p>` : ""}
       <p class="muted" style="font-size:12.5px;margin:10px 0 0">Unser 18-Jahre-Test: Sektoren in „Führend“ hatten danach keinen Vorsprung, heißgelaufene liefen eher schlechter; bei Themen hielt Stärke über ~3 Monate eher an. Treffer und ≥ 9/11 zeigen, wo Kairo-Setups gerade entstehen – oft in schwachen, gefallenen Bereichen.</p></div></div>
-    <div class="fs-panel"><div class="fs-h">Alle ${rows.length} ${lvl} · antippen zeigt die Schwergewichte</div>
-      <div class="table-wrap fs-tw"><table class="fs-t fs-sp"><thead><tr>${fsSortBtn("n", "Bereich", s)}${fsSortBtn("q", "Feld", s)}${fsSortBtn("wk", "seit Wo.", s, 1)}${SP_PER.map(([v, l]) => fsSortBtn(v, l, s, 1)).join("")}${fsSortBtn("hit", "Treffer", s, 1)}${fsSortBtn("near", "≥ 9/11", s, 1)}${fsSortBtn("own", "★ Meine", s, 1)}</tr></thead>
-      <tbody>${rows.map(o => `<tr data-spopen="${esc(o.x.k)}"><td><b>${esc(o.x.n)}</b>${o.x.hot ? ' <small class="sp-hot">heißgelaufen</small>' : ""}<small class="muted fs-k">${esc(o.x.k)} · ${o.n} Aktien</small></td><td>${qb((o.x.rrg || {}).q)}</td><td class="num">${o.x.rrg ? o.x.rrg.wk : "–"}</td>${SP_PER.map(([v]) => `<td class="num">${pc(o.x[v])}</td>`).join("")}<td class="num">${o.hit || "–"}</td><td class="num">${o.near || "–"}</td><td class="num">${o.own ? `<b class="gold">${o.own}</b>` : "–"}</td></tr>`).join("")}</tbody></table></div></div>`;
+    <div class="fs-panel"><div class="fs-h">Alle ${rows.length} ${lvl}${as ? "" : " · antippen zeigt die Schwergewichte"}</div>
+      <div class="table-wrap fs-tw"><table class="fs-t fs-sp"><thead><tr>${fsSortBtn("n", "Bereich", s)}${fsSortBtn("q", "Feld", s)}${fsSortBtn("wk", "seit Wo.", s, 1)}${SP_PER.map(([v, l]) => fsSortBtn(v, l, s, 1)).join("")}${as ? fsSortBtn("corr", "Korrelation S&P 500", s, 1) : fsSortBtn("hit", "Treffer", s, 1) + fsSortBtn("near", "≥ 9/11", s, 1) + fsSortBtn("own", "★ Meine", s, 1)}</tr></thead>
+      <tbody>${rows.map(o => `<tr${as ? "" : ` data-spopen="${esc(o.x.k)}"`}><td><b>${esc(o.x.n)}</b>${o.x.hot ? ' <small class="sp-hot">heißgelaufen</small>' : ""}<small class="muted fs-k">${esc(o.x.k)}${as ? "" : ` · ${o.n} Aktien`}</small></td><td>${qb((o.x.rrg || {}).q)}</td><td class="num">${o.x.rrg && o.x.rrg.wk != null ? o.x.rrg.wk : "–"}</td>${SP_PER.map(([v]) => `<td class="num">${pc(o.x[v])}</td>`).join("")}${as ? `<td class="num">${o.x.corr == null ? "–" : `<b class="${o.x.corr <= -.3 ? "up" : o.x.corr >= .3 ? "down" : ""}">${fmt(o.x.corr, 2)}</b> <small class="muted">${o.x.corr <= -.3 ? "gegenläufig" : o.x.corr >= .3 ? "läuft mit" : "eigenständig"}</small>`}</td>` : `<td class="num">${o.hit || "–"}</td><td class="num">${o.near || "–"}</td><td class="num">${o.own ? `<b class="gold">${o.own}</b>` : "–"}</td>`}</tr>`).join("")}</tbody></table></div>
+      ${as ? `<p class="muted" style="font-size:12.5px;margin:8px 0 0">Markt-Rad: Wohin fließt Geld außerhalb der Aktien? Gegenläufige Anlagen (negative Korrelation, oft Anleihen oder Gold in Stressphasen) steigen eher, wenn Aktien fallen – laufen sie im Rotationsbild nach „Führend“, suchen Anleger Sicherheit. Korrelation der Tagesrenditen über 3 Monate.</p>` : ""}</div>`;
 }
 const FS_CAP = [[0, "alle Größen"], [10e9, "ab 10 Mrd. $"], [50e9, "ab 50 Mrd. $"], [200e9, "ab 200 Mrd. $"]];
 function fsMvHtml() {

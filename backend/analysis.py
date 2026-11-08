@@ -70,6 +70,11 @@ INDUSTRY_ETF = {
 }
 # Themen (11/2026): quer zu den Yahoo-Branchen (Cybersecurity steckt dort z. B. in „Software“), deshalb mit festen Hauptwerten
 # für die Liste „stärkste Aktien“. Kurse der ETFs für Rendite, Rang-Verlauf und Rotations-Bild wie bei den Branchen.
+# „Markt-Rad“: Anlageklassen gegen Aktien (S&P 500) – wohin Geld außerhalb der Aktien fließt. corr = Korrelation der
+# Tagesrenditen mit dem S&P 500 über 3 Monate (−1 = läuft gegenläufig, +1 = läuft mit).
+ASSET_ETF = {"GLD": "Gold", "SLV": "Silber", "TLT": "US-Staatsanleihen (20 J.)", "UUP": "US-Dollar", "USO": "Öl",
+             "DBC": "Rohstoffe", "BTC-USD": "Bitcoin", "EEM": "Schwellenländer-Aktien", "IWM": "US-Nebenwerte"}
+
 THEME_ETF = {
     "CIBR": ("Cybersecurity", ("CRWD", "PANW", "FTNT", "ZS", "NET", "OKTA", "CHKP", "CYBR", "S", "TENB", "QLYS", "RPD", "AKAM", "GEN", "VRNS")),
     "SKYY": ("Cloud", ("SNOW", "DDOG", "MDB", "NOW", "CRM", "WDAY", "NET", "TEAM", "HUBS", "ESTC", "TWLO", "AMZN", "MSFT", "GOOGL", "ORCL")),
@@ -343,6 +348,22 @@ def market_context(hist: dict[str, pd.DataFrame]) -> dict:
         rank_history(ths, hist)
         out.setdefault("rrg_stats", {})["themes"] = rotation(ths, hist)
         out["themes"] = sorted(ths, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
+    ass = []                                          # Anlageklassen (Markt-Rad)
+    spx_r = hist["^GSPC"]["Close"].dropna().pct_change() if hist.get("^GSPC") is not None else None
+    for etf, name in ASSET_ETF.items():
+        df = hist.get(etf)
+        if df is None or len(df) < 70:
+            continue
+        row = {"k": etf, "n": name, **perf_row(df)}
+        if spx_r is not None:
+            r = df["Close"].dropna().pct_change()
+            j = pd.concat([r, spx_r], axis=1, join="inner").dropna().iloc[-63:]
+            if len(j) >= 40:
+                row["corr"] = round(float(j.iloc[:, 0].corr(j.iloc[:, 1])), 2)
+        ass.append(row)
+    if ass:
+        out.setdefault("rrg_stats", {})["assets"] = rotation(ass, hist)
+        out["assets"] = sorted(ass, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
     spx, vix = out.get("^GSPC"), out.get("^VIX")
     if spx and vix:
         good = spx["above50"] and vix["c"] < 20

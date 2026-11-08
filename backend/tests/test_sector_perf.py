@@ -94,3 +94,15 @@ def test_fill_sectors_from_industry_and_ig():
     ind = {"A": "Semiconductors", "B": "Semiconductors", "C": "Banks - Regional", "D": "Unbekannt", "E": "Oil & Gas E&P"}
     assert fill_sectors(rows, ind) == 2
     assert rows["B"]["sec"] == "Technologie" and rows["C"]["sec"] == "Finanzen" and "sec" not in rows["D"] and rows["E"]["sec"] == "Energie"
+
+
+def test_market_context_assets_corr():
+    n = 300
+    idx = pd.bdate_range("2025-01-02", periods=n)
+    rng = np.random.default_rng(1)
+    spx = 100 * np.cumprod(1 + rng.normal(0.0004, 0.01, n))
+    anti = 100 * np.cumprod(1 - np.r_[0, np.diff(spx) / spx[:-1]])      # genau gegenläufige Tagesrenditen
+    mk = lambda c: pd.DataFrame({"Open": c, "High": c, "Low": c, "Close": c}, index=idx)
+    out = market_context({"^GSPC": mk(spx), "GLD": mk(anti), "IWM": mk(spx * 1.01)})
+    a = {x["k"]: x for x in out["assets"]}
+    assert a["GLD"]["corr"] < -0.9 and a["IWM"]["corr"] > 0.9 and a["GLD"]["n"] == "Gold" and "rrg" in a["IWM"]
