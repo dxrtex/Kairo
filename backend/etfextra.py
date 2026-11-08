@@ -39,6 +39,12 @@ def signals(px: pd.Series, vix: pd.Series) -> dict[str, pd.Series]:
         "VIX ≥ 25": v >= 25,
         "VIX ≥ 30": v >= 30,
         "unter EMA 100 oder ≥ 5 % unter Hoch oder VIX ≥ 25": (px < e100) | (dd >= 0.05) | (v >= 25),
+        # strengere Varianten (11/2026: Ampel stand gefühlt immer auf Grün)
+        "≥ 8 % unter Hoch oder VIX ≥ 28": (dd >= 0.08) | (v >= 28),
+        "≥ 10 % unter Hoch oder VIX ≥ 30": (dd >= 0.10) | (v >= 30),
+        "unter EMA 200 oder ≥ 10 % unter Hoch oder VIX ≥ 30": (px < e200) | (dd >= 0.10) | (v >= 30),
+        "unter EMA 200 oder VIX ≥ 30": (px < e200) | (v >= 30),
+        "unter EMA 100 und ≥ 5 % unter Hoch oder VIX ≥ 30": ((px < e100) & (dd >= 0.05)) | (v >= 30),
     }
 
 

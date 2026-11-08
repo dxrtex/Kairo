@@ -1,0 +1,18 @@
+name: ETF-Ampel Probe
+on:
+  push:
+    branches: ["claude/etf-probe"]
+permissions: { contents: write }
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python -m backend.etfextra | tee etfprobe.txt
+      - run: |
+          git config user.name kairo-bot; git config user.email kairo-bot@users.noreply.github.com
+          git add -f etfprobe.txt data/etfextra.json && git commit -q -m "ETF-Probe Ergebnis" && git push -q origin HEAD:claude/etf-probe
