@@ -13,10 +13,10 @@ jobs:
       - env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
           set -e
-          id=41827322963
-          echo "Lauf $id"; gh run download "$id" -n github-pages -D live; mkdir -p ls && tar -xf live/artifact.tar -C ls
+          id=""; for r in $(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/scan.yml/runs?status=success&per_page=15" --jq '.workflow_runs[].id'); do rm -rf live; if gh run download "$r" -n github-pages -D live 2>/dev/null; then id=$r; break; fi; done; echo "Lauf $id"
+          mkdir -p ls && tar -xf live/artifact.tar -C ls
           mkdir -p snapshot && for f in analysis insider search briefing calendar earnings results h4 etf alerts changes; do cp "ls/data/$f.json" snapshot/ 2>/dev/null || true; done
-          sid=41827322963
-          gh run view "$sid" --log -R "$GITHUB_REPOSITORY" | grep -E "Insider|OpenFIGI|Markt|Branchen|Themen|Fehler|Error|Traceback" | cut -c1-400 > snapshot/scanlog.txt  # Lauf 6 || true
+          sid=$id
+          gh run view "$sid" --log -R "$GITHUB_REPOSITORY" | grep -E "Insider|OpenFIGI|Markt|Branchen|Themen|Fehler|Error|Traceback" | cut -c1-400 > snapshot/scanlog.txt  # Lauf 7 || true
           ls -la snapshot; git config user.name kairo-bot; git config user.email kairo-bot@users.noreply.github.com
           git add snapshot && git commit -q -m "Live-Daten-Kopie $(date -u +%F-%H%M)" && git push -q origin HEAD:claude/livecopy
