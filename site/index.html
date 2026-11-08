@@ -1141,6 +1141,8 @@
   .fs-typ { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; } .fs-typ i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
   .fs-hm { border: 0; background: none; padding: 0; } .fsv .rrg { max-width: 720px; display: block; margin: 0 auto; }
   .dck-more { margin-top: 10px; } .dck-more > summary { cursor: pointer; color: var(--accent); font-size: 14px; font-weight: 600; } .dck-more .dck-g { margin-top: 10px; }
+  .fear-hint { margin: 8px 0 0; font-size: 13.5px; } .fear-more { margin-top: 6px; } .fear-more > summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+  .mtiles[hidden] { display: none !important; }
   .pcheck { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; } .pcheck li { display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px; border-radius: 12px; background: var(--surface-2); }
   .pcheck i { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; color: #000; margin-top: 1px; }
   .pc-ok i { background: var(--up); } .pc-warn i { background: var(--gold); } .pc-bad i { background: var(--red); color: #fff; }
@@ -5258,7 +5260,7 @@ function marketHtml() {
   return `<div class="hcard mkt">${hHead("Markt")}
     ${reg ? `<div class="regime tone-${reg.tone}"><i></i><div><b>Trend: ${esc(reg.label)}</b><span>${reg.tone === "green" ? "Rückenwind für Long-Setups – S&P 500 über der EMA 50, VIX ruhig." : reg.tone === "red" ? "Gegenwind – Reversal-Einstiege scheitern häufiger. Kleiner positionieren." : "Gemischtes Umfeld – Einstiege selektiv."}</span></div></div>` : ""}
     ${state.sec === "today" ? secLineHtml() : ""}${fearHtml(m.fear)}
-    <div class="mtiles">${ids.map(k => { const x = m[k]; return `<div class="mt"><span>${esc(x.name)}</span><b>${fmt(x.c, k === "^VIX" ? 1 : 0)}</b>
+    <div class="mtiles"${state.sec === "today" ? " hidden" : ""}>${ids.map(k => { const x = m[k]; return `<div class="mt"><span>${esc(x.name)}</span><b>${fmt(x.c, k === "^VIX" ? 1 : 0)}</b>
       <em class="${k === "^VIX" ? (x.tone === "green" ? "up" : x.tone === "red" ? "down" : "") : x.chg1m == null ? "" : x.chg1m >= 0 ? "up" : "down"}" title="${k === "^VIX" ? "" : "Veränderung 1 Monat"}">${k === "^VIX" ? esc(x.label) : `${x.d1 != null ? `<span class="${x.d1 >= 0 ? "up" : "down"}">${sgnPct(x.d1, 1)} heute</span><br>` : ""}${sgnPct(x.chg1m, 1)} · 1 Mon.`}</em></div>`; }).join("")}</div></div>`;
 }
 // „Heute“: stärkster und schwächster Sektor (heute) – Antippen öffnet Markt → Überblick
@@ -5278,8 +5280,9 @@ function fearHtml(f) {
   return `<div class="fear tone-${f.tone}"><div class="fear-h"><b>Stimmung: ${esc(f.label)} <small>${f.score}/100</small></b>${gl("fear")}</div>
     <div class="fear-bar" role="img" aria-label="Angst ${f.score} von 100"><i style="left:${f.score}%"></i></div>
     <div class="fear-sc"><span>Sorglos</span><span>Neutral</span><span>Vorsicht</span><span>Angst</span><span>Panik</span></div>
-    <div class="fear-p">${top.map(p => `<span class="${p.s >= 65 ? "down" : p.s >= 45 ? "gold" : ""}">${esc(p.l)} <b>${esc(p.v)}</b></span>`).join("")}</div>
-    <div class="note" style="margin:6px 0 0">${hint}</div></div>`;
+    <p class="fear-hint">${hint.split(/(?<=\.)\s/)[0]}</p>
+    <details class="fear-more"><summary>Woraus sich die Stimmung zusammensetzt</summary><div class="fear-p">${top.map(p => `<span class="${p.s >= 65 ? "down" : p.s >= 45 ? "gold" : ""}">${esc(p.l)} <b>${esc(p.v)}</b></span>`).join("")}</div>
+      <div class="note" style="margin:6px 0 0">${hint}</div></details></div>`;
 }
 function changesHtml() {
   let ch = getJson("changes.json");
@@ -6042,8 +6045,16 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.54";
-const APP_NEWS = [["2026.11.54", "Deine Aktien in den Branchen, Region nach Firmensitz", [
+const APP_VER = "2026.11.55";
+const APP_NEWS = [["2026.11.55", "Großes Update: Übersicht, Vollbild, neue Ampel", [
+  ["Markt im Vollbild", "„⤢ Groß“ an Heatmap, Sektoren & Branchen und Gewinner/Verlierer: große Ansicht mit Filtern (★ nur meine, ≥ 9/11, Sektor, Größe), sortierbaren Tabellen und dem Rotationsbild – mit „gerade neu in Erholt sich/Führend“, wie lange ein Bereich schon im Feld ist und typischer Verweildauer."],
+  ["Markt-Rad", "Neue Ebene „Anlagen“: Gold, Silber, Anleihen, Dollar, Öl, Rohstoffe, Bitcoin, Schwellenländer und Nebenwerte im Rotationsbild – mit Korrelation zum S&P 500 (läuft mit oder gegenläufig)."],
+  ["News & Briefing klarer", "Meldungen farbig (▲ positiv, ▼ negativ) mit Tendenz und Kairo-Einordnung je Aktie, Filter positiv/negativ. Das Tagesbriefing zeigt oben drei Kennzahlen und nur noch das Wichtigste."],
+  ["Insider aufgeräumt", "Eine Liste Käufe, eine Liste Verkäufe – neueste oben, Filter für Zeitraum, Region, nur meine, Vorstandsspitze, gezielt und Betrag. Viele Käufe derselben Firma am selben Tag stehen in einer Zeile."],
+  ["ETF-Ampel neu", "Kein „Abwarten“ mehr – im Test über 35 Jahre war jede Warte-Regel schlechter als sofort anlegen. Die Ampel sagt jetzt: Gelegenheit (VIX ≥ 30, zusätzlich nachlegen) · Normal · In Raten (unter der 200-Tage-Linie bei schwachem Kreditmarkt)."],
+  ["Charts & Pläne", "Fibonacci- und Unterstützungszonen als farbige Flächen, dazu die tiefere Zone der großen Welle und 2 Jahre Kursverlauf. Trade-Plan und Depot-Check als kompakte Prüfliste mit dem Puffer bis zum Stop in ATR."],
+  ["Bedienung", "✕ in den Suchfeldern, Scanner am iPhone als wischbare Tabelle, Übergang zwischen Markt-Unterreitern, kleineres Intro mit der Kairo-Wende, Abend-Scan pünktlich um 22:30 Uhr."]]],
+  ["2026.11.54", "Deine Aktien in den Branchen, Region nach Firmensitz", [
   ["Markiert", "In den Listen beim Antippen einer Branche oder eines Sektors sind deine Aktien hervorgehoben: „Depot“ für Positionen, „★ Watchlist“ für deine Watchlist – auch bei einer anderen Notierung derselben Firma. Oben steht, wie viele aus deiner Liste dabei sind."],
   ["Region nach Firmensitz", "ASML, STMicro oder TSMC zählen in den Branchen-Listen jetzt zu Europa bzw. Asien, auch wenn Kairo sie über ihre US-Notierung scannt."]]],
   ["2026.11.53", "Branchen: alle Schwergewichte weltweit", [
