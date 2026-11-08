@@ -59,6 +59,22 @@ def test_rotation_quadrants_and_hot():
     assert len(by["A"]["rrg"]["tail"]) == 5 and "hot" in by["A"] and "hot" not in by["B"]
 
 
+def test_rotation_weeks_in_quadrant_and_stats():
+    from backend.analysis import rotation
+    n = 400
+    idx = pd.bdate_range("2024-01-02", periods=n)
+    mk = lambda c: pd.DataFrame({"Open": c, "High": c, "Low": c, "Close": c}, index=idx)
+    base = 100 * np.cumprod(np.full(n, 1.0005))
+    wave = base * (1 + 0.08 * np.sin(np.arange(n) / 18))                            # wechselt regelmäßig die Felder
+    late = base * np.r_[np.cumprod(np.full(n - 30, 0.9997)), 0.9997 ** (n - 30) * np.cumprod(np.full(30, 1.004))]   # erst schwächer, dann stark
+    hist = {"^GSPC": mk(base), "W": mk(wave), "L": mk(late)}
+    rows = [{"k": "W"}, {"k": "L"}]
+    st = rotation(rows, hist)
+    by = {x["k"]: x["rrg"] for x in rows}
+    assert by["L"]["q"] == "leading" and 1 <= by["L"]["wk"] <= 7 and by["L"]["pq"] in ("improving", "weakening", "lagging")
+    assert st and all(v["med"] >= 1 and v["n"] >= 1 for v in st.values())
+
+
 def test_market_context_europe_and_indices():
     from backend.analysis import EU_SECTOR_ETF
     n = 300
