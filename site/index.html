@@ -105,7 +105,8 @@
                   border-radius: 999px; padding: 15px 20px 15px 52px; font: inherit; font-size: 17px; outline: none; }
   .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-bg); }
   .search-x { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 2; width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--surface-2, rgba(128,128,128,.25)); color: var(--text); font-size: 14px; line-height: 30px; text-align: center; cursor: pointer; padding: 0; }
-  .search-x[hidden] { display: none; } .search input { padding-right: 52px !important; } .search input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+  .search-x[hidden] { display: none; } .ein-search, .ng-search { position: relative; } .ein-search > .search-x { top: 24.5px; } .ng-search > .search-x { top: 50%; width: 26px; height: 26px; font-size: 12px; }
+  .ein-search input, .ng-search input { padding-right: 48px !important; } .ein-search input::-webkit-search-cancel-button, .ng-search input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; } .search input { padding-right: 52px !important; } .search input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
   .search svg { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); color: var(--muted); z-index: 1; pointer-events: none; }
 
   .section-title { margin: 30px 2px 14px; font-size: 14px; font-weight: 600; color: var(--muted);
@@ -659,7 +660,13 @@
   .scanmenu-p { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 260px; padding: 12px; border-radius: 14px; background: var(--surface, #1c1c1e); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.35); display: grid; gap: 8px; }
   .scanmenu-p .btn { width: 100%; justify-content: flex-start; } .scanmenu-p .btn small { color: var(--muted); font-weight: 500; margin-left: 4px; }
   .kbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  @media (max-width: 700px) { .mlist { display: block !important; } main .table-wrap { display: none; } }
+  /* iPhone: standardmäßig die wischbare Tabelle wie am iPad (1. Spalte fest), wahlweise die kompakte Liste */
+  .mvtog { display: none; }
+  @media (max-width: 700px) { .mvtog { display: flex; gap: 6px; margin: 0 2px 8px; } .mvtog .kchip { flex: 1; }
+    main .mvtog.mv-list ~ .mlist { display: block !important; } main .mvtog.mv-list ~ .table-wrap, main .mvtog.mv-list ~ .scroll-hint { display: none !important; }
+    main .table-wrap th, main .table-wrap td { padding: 10px 10px; font-size: 14px; }
+    main .table-wrap th:nth-child(1), main .table-wrap td:nth-child(1) { min-width: 122px !important; max-width: 122px !important; width: 122px !important; font-size: 13px; overflow: hidden; text-overflow: ellipsis; box-shadow: 6px 0 8px -6px rgba(0,0,0,.45); }
+    main .table-wrap th:nth-child(2), main .table-wrap td:nth-child(2) { position: static !important; box-shadow: none !important; max-width: 150px; overflow: hidden; text-overflow: ellipsis; } }
   @media (max-width: 700px) { .kchip.spalten { display: none; } }
   @media (max-width: 640px) { html body .kbar { flex-wrap: wrap !important; overflow: visible !important; margin-left: 0 !important; margin-right: 0 !important; padding: 2px 0 6px !important; } }
   /* iPad-Tabelle: Ticker und Name bleiben beim seitlichen Wischen stehen */
@@ -747,7 +754,10 @@
   .mb-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
   .mb-t { padding: 8px 10px; border-radius: 10px; background: var(--surface-2); min-width: 0; } .mb-t span { display: block; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mb-t b { display: block; font-size: 16px; } .mb-t em, .mb-t small { display: block; font-style: normal; font-size: 11.5px; }
-  .mb-br { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; margin-top: 10px; font-size: 13px; } .mb-bl { color: var(--muted); font-size: 12px; width: 100%; } .mb-br em { font-style: normal; color: var(--muted); }
+  .mb-br { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 14px; margin-top: 10px; font-size: 12.5px; } .mb-bl { color: var(--muted); font-size: 12px; grid-column: 1 / -1; }
+  .mb-bx { display: grid; grid-template-columns: 1fr auto; gap: 3px 6px; align-items: center; } .mb-bx span { grid-column: 1 / -1; color: var(--muted); white-space: nowrap; font-size: 12px; } .mb-bx b { font-size: 13px; grid-row: 2; grid-column: 2; }
+  .mb-bx i { grid-column: 1; grid-row: 2; height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; } .mb-bx u { display: block; height: 100%; border-radius: 3px; background: currentColor; text-decoration: none; }
+  .mb-bx u.up { color: var(--up); } .mb-bx u.down { color: var(--red); } .mb-bx u.gold { color: var(--gold); }
   @media (max-width: 640px) { .mb-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .mo2 { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; } .mo2 > div > .hcard { margin-top: 0; height: 100%; box-sizing: border-box; }
   @media (min-width: 900px) { .mo2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; } }
@@ -765,7 +775,7 @@
   .ir-v { text-align: right; } .ir-v b { display: block; font-size: 14px; font-variant-numeric: tabular-nums; } .ir-dots { color: var(--up); font-size: 11px; letter-spacing: 1px; } .ir-dots i { font-style: normal; color: var(--line); }
   .ir-top { color: var(--up); font-weight: 650; } .ins-more { margin-top: 12px; } .ins-more > summary { cursor: pointer; font-weight: 650; padding: 2px 0; } .ins-src summary { cursor: pointer; }
   .mo-today { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; width: 100%; margin: 4px 0 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: inherit; font: inherit; text-align: left; cursor: pointer; }
-  .mo-today b { font-size: 13px; color: var(--gold); } .mo-today span { flex: 1; min-width: 0; font-size: 13.5px; } .mo-today i { font-style: normal; font-size: 13px; color: var(--accent); }
+  .mo-today b { font-size: 13px; color: var(--gold); } .mo-today span { flex: 1; min-width: 0; font-size: 13.5px; } .mo-today > span { display: grid; gap: 4px; } .mo-d { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline; } .mo-d b { color: var(--muted) !important; font-size: 12px !important; min-width: 52px; } .mo-d em { font-style: normal; font-size: 13px; padding: 2px 8px; border-radius: 8px; background: var(--surface-2); } .mo-today i { font-style: normal; font-size: 13px; color: var(--accent); }
   .mkt-ov.mo { display: flex; flex-direction: column; } .mo > div > .hcard:first-child { margin-top: 0; } .mo > div + div { margin-top: 14px; }
   @media (min-width: 900px) { .mkt-ov.mo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a b" "c c"; gap: 14px; }
     .mo-a { grid-area: a; } .mo-b { grid-area: b; } .mo-c { grid-area: c; } .mo > div + div { margin-top: 0; } }
@@ -1099,6 +1109,29 @@
   .tabs { position: relative; } .tab { z-index: 1; }
   /* Tagesbriefing */
   .brand .brief-btn { margin-left: auto; } .brand .brief-btn + .gear { margin-left: 8px; }
+  /* Vollbild-Ansichten (Markt) */
+  .fs-btn { margin-left: auto; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .hh .fs-btn + .hlink, .sp-hh .sp-reg + .fs-btn { margin-left: 8px; } .sp-hh { gap: 8px; }
+  .fsv { position: fixed; inset: 0; z-index: 65; background: var(--bg, #000); display: flex; flex-direction: column; animation: bm-in .22s ease both; }
+  .fsv[hidden] { display: none; } html.fs-on body { overflow: hidden; }
+  .fs-top { display: flex; align-items: center; gap: 10px; padding: calc(env(safe-area-inset-top) + 12px) 16px 10px; border-bottom: 1px solid var(--line); }
+  .fs-top b { font-size: 19px; font-weight: 750; } .fs-top .cm-x { position: static; margin-left: auto; }
+  .fs-body { flex: 1; overflow-y: auto; padding: 14px 16px calc(env(safe-area-inset-bottom) + 24px); -webkit-overflow-scrolling: touch; }
+  .fs-body > * { max-width: 1400px; margin-left: auto; margin-right: auto; }
+  .fs-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; } .fs-ctl .sp-seg { margin: 0; }
+  .fs-ctl2 { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; } .fs-ctl2 select { font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); }
+  .fs-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+  .fs-h { font-size: 12.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .fs-2 { display: grid; gap: 12px; } @media (min-width: 900px) { .fs-2 { grid-template-columns: 1.3fr 1fr; } .fs-2 .fs-panel { margin: 0; } .fs-2 { margin-bottom: 12px; } }
+  .fs-tw { border: 0; background: none; } .fs-t { width: 100%; min-width: 0; } .fs-sp { min-width: 820px; }
+  @media (max-width: 700px) { .fs-mv th:nth-child(n+6), .fs-mv td:nth-child(n+6) { display: none; } .fs-mv th:first-child, .fs-mv td:first-child { width: 22px; } } .fs-t th { font-size: 12px; padding: 9px 10px; position: sticky; top: 0; } .fs-t td { padding: 10px; font-size: 14px; vertical-align: middle; }
+  .fs-t td b { white-space: normal; } @media (max-width: 700px) { .fs-t td:nth-child(2) b { display: block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .fs-t th, .fs-t td { padding: 9px 8px; } }
+  .fs-t tbody tr { cursor: pointer; } .fs-t tbody tr:hover td { background: var(--surface-2); } .fs-k { display: block; font-size: 12px; margin-top: 2px; }
+  .fs-q { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; color: var(--qc); background: color-mix(in srgb, var(--qc) 15%, transparent); white-space: nowrap; }
+  .fs-new { display: grid; gap: 2px; width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
+  .fs-new b { font-size: 15px; } .fs-new span { font-size: 13px; color: var(--muted); } .fs-new em { font-style: normal; font-size: 12.5px; color: var(--muted); }
+  .fs-typ { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; } .fs-typ i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .fs-hm { border: 0; background: none; padding: 0; } .fsv .rrg { max-width: 720px; display: block; margin: 0 auto; }
   .bmodal { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 16px; }
   .bmodal[hidden] { display: none; }
   .tour-box { width: min(460px, 100%); text-align: center; padding: 34px 28px 24px; max-height: calc(100dvh - 24px); overflow-y: auto; }
@@ -1435,7 +1468,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
 @media (max-width:640px){.kbar{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;margin-left:-20px;margin-right:-20px;padding:2px 20px 6px}.kbar::-webkit-scrollbar{display:none}.kbar .kchip{flex:0 0 auto}}
 
 </style>
-<link rel="stylesheet" href="splash.css?v=5">
+<link rel="stylesheet" href="splash.css?v=6">
 <style>
   html.locked, html.locked body { overflow: hidden; }
   #gate { position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center; background: radial-gradient(120% 90% at 50% 0%, #10213f 0%, #05070c 60%, #000 100%); color: #f4f6fa;
@@ -1495,7 +1528,7 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
 </script>
 <!-- Für KI-Assistenten und Leser ohne JavaScript: Die App als Text steht unter ai/ (https://dxrtex.github.io/Kairo/ai/), alle getesteten Strategien unter research/ (https://dxrtex.github.io/Kairo/research/), Kurzfassung unter llms.txt. -->
 <noscript><p>Kairo ist eine JavaScript-App. Die ganze App als Text: <a href="ai/">KI-Ansicht</a>. Alle getesteten Strategien und Backtests: <a href="research/">Forschung &amp; Backtests</a>.</p></noscript>
-<script src="splash.js?v=5" data-autoplay></script>
+<script src="splash.js?v=6" data-autoplay></script>
 <div class="wrap">
   <header class="hello">
     <div class="brand" aria-label="Kairo"><svg class="wm" viewBox="57 305 633 154" role="img" aria-label="Kairo"><defs><linearGradient id="lhg" x1="0" y1="215" x2="0" y2="785" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#64B1FF"/><stop offset="1" stop-color="#0A84FF"/></linearGradient><linearGradient id="lhb" x1="0" y1="321" x2="0" y2="679" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#62B0FF"/><stop offset="1" stop-color="#0A84FF"/></linearGradient><linearGradient id="lht" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1A1C20"/><stop offset="1" stop-color="#000"/></linearGradient><linearGradient id="lhnw" x1="0" y1="159" x2="0" y2="833" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3D9BFF"/><stop offset="1" stop-color="#0A6FFF"/></linearGradient><linearGradient id="lhnb" x1="0" y1="296" x2="0" y2="672" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4AA3FF"/><stop offset="1" stop-color="#0A6FFF"/></linearGradient><linearGradient id="lhns" x1="413" y1="222" x2="819" y2="819" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".55" stop-color="#E3E6EB"/><stop offset="1" stop-color="#B4BAC3"/></linearGradient></defs><rect x="57.5" y="305.5" width="153" height="153" rx="34" fill="url(#lht)" stroke="rgba(255,255,255,.09)"/><g transform="translate(57 305) scale(.154)"><rect x="301.5" y="159" width="30" height="674" rx="15" fill="url(#lhnw)"/><rect x="240" y="296" width="150" height="376" rx="20" fill="url(#lhnb)"/><path d="M413 433L627 222H816L413 590Z" fill="url(#lhns)"/><path d="M441 620L567 505L819 819H607Z" fill="url(#lhns)"/></g><path d="M257.3 420.6V340.7H279.51V377.75L316.83 340.7H344.57L311.56 373.48L345.27 420.6H318.35L295.67 387.68L279.51 401.58V420.6Z M341.11 420.6 375.59 340.7H401.19L435.7 420.6H411.83L406.46 407.24H369.28L363.94 420.6ZM375.73 390.82H400.02L393.53 374.28Q393.07 373.08 392.36 371.14Q391.65 369.2 390.9 366.97Q390.15 364.75 389.46 362.68Q388.77 360.61 388.32 359.29H387.51Q386.8 361.46 385.81 364.26Q384.83 367.06 383.89 369.75Q382.94 372.44 382.21 374.3Z M502.3 420.6V340.7H558.36Q567.18 340.7 573 344.15Q578.82 347.61 581.74 353.39Q584.66 359.17 584.66 366.2Q584.66 373.86 581.09 379.96Q577.51 386.06 570.7 389.53L586.9 420.6H562.01L548.72 393.21H524.51V420.6ZM524.51 376.78H552.57Q556.85 376.78 559.41 374.08Q561.98 371.37 561.98 366.81Q561.98 363.83 560.83 361.72Q559.68 359.62 557.59 358.48Q555.49 357.34 552.57 357.34H524.51Z M642.2 422Q627.68 422 617.14 417.26Q606.61 412.52 600.95 403.29Q595.3 394.06 595.3 380.66Q595.3 367.15 600.95 357.95Q606.61 348.75 617.14 344.02Q627.68 339.3 642.2 339.3Q656.88 339.3 667.37 344.02Q677.87 348.75 683.52 357.95Q689.18 367.15 689.18 380.66Q689.18 394.06 683.52 403.29Q677.87 412.52 667.37 417.26Q656.88 422 642.2 422ZM642.22 405.12Q647.85 405.12 652.32 403.59Q656.79 402.07 659.94 399.16Q663.09 396.26 664.75 392.07Q666.4 387.88 666.4 382.63V378.61Q666.4 373.35 664.75 369.17Q663.09 364.99 659.94 362.1Q656.79 359.21 652.32 357.69Q647.85 356.18 642.22 356.18Q636.6 356.18 632.13 357.69Q627.66 359.21 624.52 362.1Q621.38 364.99 619.76 369.17Q618.13 373.35 618.13 378.61V382.63Q618.13 387.88 619.76 392.07Q621.38 396.26 624.52 399.16Q627.66 402.07 632.13 403.59Q636.6 405.12 642.22 405.12Z" fill="currentColor"/><rect x="462.35" y="329.3" width="4.7" height="105.7" rx="2.35" fill="#0A84FF"/><rect x="451.6" y="352" width="25.8" height="60.3" rx="3.5" fill="#0A84FF"/></svg><button class="gear brief-btn" data-brief aria-label="Tagesbriefing öffnen" title="Tagesbriefing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><button class="gear" data-gosec="settings" aria-label="Einstellungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div>
@@ -1711,7 +1744,7 @@ const state = { name: "", calView: "month", budget: 400, sec: "scanner", tab: "t
 const PREF = "reversal-finder-v1";
 try { Object.assign(state, JSON.parse(localStorage.getItem(PREF) || "{}")); } catch (e) {}
 if (state.tab === "settings" || state.tab === "filter") state.tab = "cards";
-state.sec = "today";   // App startet immer auf „Heute“
+state.sec = "today"; state.fsv = null;   // App startet immer auf „Heute“, ohne offene Vollbild-Ansicht
 // Design: "new" (Standard) oder "classic" (ursprüngliches Design) – Umschalten in den Einstellungen
 const isApple = () => state.design === "apple";
 const isLight = () => ["ioslight", "postfach", "light"].includes(state.design) || (state.design === "auto" && matchMedia("(prefers-color-scheme: light)").matches);
@@ -2403,13 +2436,14 @@ function spMarket() {
   const lv = mktLive(), a = (anaData && anaData.market) || {};
   const mix = k => { const base = a[k] || [], live = lv && lv[k] && lv[k].length ? lv[k] : null; if (!live) return base;
     const by = Object.fromEntries(base.map(x => [x.k, x])); return live.map(x => ({ ...(by[x.k] || {}), ...x, ...(x.rrg ? {} : by[x.k] && by[x.k].rrg ? { rrg: by[x.k].rrg, hot: by[x.k].hot } : {}) })); };
-  return { sectors: mix("sectors"), industries: mix("industries"), themes: mix("themes"), sectors_eu: mix("sectors_eu") };
+  return { sectors: mix("sectors"), industries: mix("industries"), themes: mix("themes"), sectors_eu: mix("sectors_eu"), assets: mix("assets") };
 }
 function spList() {
   const m = spMarket();
   const eu = (state.spReg === "eu" || state.spMode === "eu") && (m.sectors_eu || []).length;     // Europa: nur Sektoren
-  const th = !eu && state.spMode === "th" && (m.themes || []).length, ind = th || (!eu && state.spMode === "ind" && (m.industries || []).length);
-  return { ind, th, eu, xs: (eu ? m.sectors_eu : th ? m.themes : ind ? m.industries : m.sectors) || [] };
+  const as = !eu && state.spMode === "as" && (m.assets || []).length;          // „Markt-Rad“: Anlageklassen gegen Aktien
+  const th = !as && !eu && state.spMode === "th" && (m.themes || []).length, ind = th || (!as && !eu && state.spMode === "ind" && (m.industries || []).length);
+  return { ind, th, eu, as, xs: (as ? m.assets : eu ? m.sectors_eu : th ? m.themes : ind ? m.industries : m.sectors) || [] };
 }
 function spRanked(xs, k) {
   const val = (x, prev) => { const v = prev ? x.p && x.p[k] : x[k]; return v == null ? -Infinity : v; };
@@ -2435,8 +2469,8 @@ function sectorsHtml() {
   const ups = rows.filter(x => x.mv >= 2).sort((a, b) => b.mv - a.mv).slice(0, 3), dns = rows.filter(x => x.mv <= -2).sort((a, b) => a.mv - b.mv).slice(0, 3);
   const rot = ups.length || dns.length ? `<div class="sp-rot">↻ <b>Rotation</b> ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"}: ${ups.length ? `Geld fließt in <span class="up">${ups.map(x => esc(x.n)).join(", ")}</span>` : ""}${ups.length && dns.length ? " · " : ""}${dns.length ? `raus aus <span class="down">${dns.map(x => esc(x.n)).join(", ")}</span>` : ""}</div>` : "";
   const reg = (m.sectors_eu || []).length ? `<div class="sp-seg sp-reg">${[["us", "USA"], ["eu", "Europa"]].map(([v, l]) => `<button class="${(v === "eu") === !!eu ? "on" : ""}" data-spreg="${v}">${l}</button>`).join("")}</div>` : "";
-  return `<div class="hcard sp-card"><div class="hh sp-hh"><b>Sektoren & Branchen</b>${reg}</div>
-    <div class="sp-seg sp-lev">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu && (m.industries || []).length], ["th", "Themen", !eu && (m.themes || []).length]].map(([v, l, ok]) => `<button class="${(v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind) ? "on" : ""}" data-spmode="${v}"${ok ? "" : ` disabled title="${eu ? "nur für USA" : "kommt mit dem nächsten Abend-Scan"}"`}>${l}</button>`).join("")}</div>
+  return `<div class="hcard sp-card"><div class="hh sp-hh"><b>Sektoren & Branchen</b>${reg}${fsBtn("sp")}</div>
+    <div class="sp-seg sp-lev">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu && (m.industries || []).length], ["th", "Themen", !eu && (m.themes || []).length], ["as", "Anlagen", !eu && (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? state.spMode === "as" && !eu : v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind && state.spMode !== "as") ? "on" : ""}" data-spmode="${v}"${ok ? "" : ` disabled title="${eu ? "nur für USA" : "kommt mit dem nächsten Abend-Scan"}"`}>${l}</button>`).join("")}</div>
     <div class="sp-seg sp-view">${[["ret", "Rendite", 1], ["rrg", "Rotation", hasRrg], ["hist", "Verlauf", hasHist]].filter(o => o[2]).map(([v, l]) => `<button class="${(v === "hist" ? hv : v === "rrg" ? rv : !hv && !rv) ? "on" : ""}" data-spview="${v}">${l}</button>`).join("")}</div>
     ${hv || rv ? `<div class="sp-tg sp-per sp-dim"><span class="muted">${rv ? "Rotation rechnet mit Wochenwerten" : "Verlauf zeigt den Rang je Woche"} – Zeitraum antippen = Rendite</span>${SP_PER.map(([v, l, n]) => `<button class="opt" data-spper="${v}" data-spret="1" title="${n} – wechselt zu Rendite">${l}</button>`).join("")}</div>` : `<div class="sp-tg sp-per">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}<button class="opt sp-relb${state.spRel ? " on" : ""}" data-sprel title="Rendite minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")}">ggü. Markt</button></div>`}
     ${rv ? spRrgHtml(xs, ind) + (th ? themeTrendHtml(xs) : "") : hv ? spHistHtml(xs, ind) : `${rot}${th ? themeTrendHtml(xs) : hotHtml(ind ? [] : xs)}<div class="sp-list">${show.map(row).join("")}</div>`}
@@ -2510,7 +2544,8 @@ function spHistHtml(xs, ind) {
     <div class="note" style="margin:6px 0 0">Platz nach 1-Monats-Rendite, jede Woche neu gemessen (links vor 12 Wochen, rechts heute; oben = stärkster).</div>`;
 }
 function spDrillHtml(key) {
-  const [k, , kn] = spPer(), { ind, th, xs } = spList(), x = xs.find(v => v.k === key); if (!x) return "";
+  const [k, , kn] = spPer(), { ind, th, as, xs } = spList(), x = xs.find(v => v.k === key); if (!x) return "";
+  if (as) return `<h3 style="margin:0 0 4px">${esc(x.n)}</h3><p class="muted" style="margin:0 0 10px;font-size:13.5px">${esc(x.k)} · ${SP_PER.map(([v, l]) => `${l} ${sgnPct(x[v], 1)}`).join(" · ")}</p><p style="font-size:14px">${x.corr != null ? `Korrelation mit dem S&P 500 (3 Monate): <b>${fmt(x.corr, 2)}</b> – ${x.corr <= -.3 ? "läuft eher gegenläufig zu Aktien" : x.corr >= .3 ? "läuft eher mit Aktien" : "läuft weitgehend eigenständig"}.` : ""}</p>`;
   const nm = { d1: "d1", w1: "d5", m1: "m1", m3: "m3", ytd: "ytd" }[k];
   // Die Schwergewichte: größte Werte nach Börsenwert (sie bewegen die Branche), nicht die Tagesgewinner.
   // Weltweit (alle Regionen des Scans) oder je Region; ohne illiquide Zweitlistings, je Firma eine Notierung. Börsenwert in US-Dollar.
@@ -2565,14 +2600,14 @@ function squarify(items, x, y, w, h) {   // items: [{v, ...}] → [{...item, x, 
   }
   return out;
 }
-function heatmapHtml() {
+function heatmapHtml(fs) {
   if (!searchIdx) { loadSearch(); return ""; }
   const [k, kl, kn] = spPer(), f = SP_IDX[k], reg = state.hmReg || "us", phone = innerWidth < 640;
-  const xs = hmRows(reg).filter(r => r.mc > 0 && r[f] != null).sort((a, b) => b.mc - a.mc).slice(0, phone ? 100 : 220);
+  const xs = hmRows(reg).filter(r => r.mc > 0 && r[f] != null).sort((a, b) => b.mc - a.mc).slice(0, fs ? (phone ? 200 : 400) : phone ? 100 : 220);
   const regBar = `<div class="sp-tg">${HM_REG.map(([v, l]) => `<button class="opt${v === reg ? " on" : ""}" data-hmreg="${v}">${l}</button>`).join("")}</div>`;
   const perBar = `<div class="sp-tg">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}</div>`;
-  if (xs.length < 5) return `<div class="hcard">${hHead("Heatmap")}<div class="sp-top">${regBar}${perBar}</div><p class="muted">Für diese Auswahl gibt es noch keine Daten – sie kommen mit dem nächsten Abend-Scan.</p></div>`;
-  const W = 100, H = phone ? 150 : 60, cw = Math.min(innerWidth, 1400) - (phone ? 40 : innerWidth >= 900 ? 300 : 70), px = cw / W;
+  if (xs.length < 5) return `<div class="hcard">${fs ? "" : hHead("Heatmap")}<div class="sp-top">${regBar}${perBar}</div><p class="muted">Für diese Auswahl gibt es noch keine Daten – sie kommen mit dem nächsten Abend-Scan.</p></div>`;
+  const W = 100, H = fs ? Math.max(55, Math.round(100 * (innerHeight - 260) / (innerWidth - 40))) : phone ? 150 : 60, cw = fs ? innerWidth - 40 : Math.min(innerWidth, 1400) - (phone ? 40 : innerWidth >= 900 ? 300 : 70), px = cw / W;
   const groups = {}; xs.forEach(r => { (groups[r.sec || "Sonstige"] = groups[r.sec || "Sonstige"] || []).push(r); });
   const secs = squarify(Object.entries(groups).map(([n, l]) => ({ n, l, v: l.reduce((a, b) => a + b.mc, 0) })).sort((a, b) => b.v - a.v), 0, 0, W, H);
   const lim = SP_CLAMP[k], mine = myTickers();
@@ -2588,7 +2623,7 @@ function heatmapHtml() {
     if (S.w * px > 60 && S.h * px > 40) labels += `<span class="hm-s" style="left:${pc(S.x, W)};top:${pc(S.y, H)};max-width:${pc(S.w, W)}">${esc(S.n)}</span>`;
   });
   const up = xs.filter(r => r[f] > 0).length;
-  return `<div class="hcard hm-card">${hHead("Heatmap")}<div class="sp-top">${regBar}${perBar}</div>
+  return `<div class="hcard hm-card${fs ? " fs-hm" : ""}">${fs ? "" : hHead("Heatmap").replace(/<\/div>$/, fsBtn("hm") + "</div>")}<div class="sp-top">${regBar}${perBar}</div>
     <div class="hm" style="aspect-ratio:${W}/${H}">${tiles}${labels}</div>
     <div class="hm-leg"><span>${sgnPct(-lim, 0)}</span><i></i><span>${sgnPct(lim, 0)}</span><em>${up} von ${xs.length} im Plus · ${esc(kn)}</em></div>
     <div class="note" style="margin:6px 0 0">${spStamp()}<br>Die ${xs.length} größten Aktien der Region aus dem Scan, Fläche = Börsenwert. Goldener Rahmen = Kairo-Treffer, weißer Rahmen = Depot/Watchlist. Antippen zeigt eine Vorschau.</div></div>`;
@@ -2601,10 +2636,10 @@ function moversHtml() {
   if (!searchIdx) return "";
   const vol = state.mvSide === "vol", [k0, , kn0] = spPer(), [k, kn] = vol ? ["d1", "heute"] : [k0, kn0];
   const f = SP_IDX[k], reg = state.hmReg || "us", down = state.mvSide === "down", mine = myTickers();
-  const near = !!state.mvNear, lim = state.mvMore ? 30 : 10;
+  const near = !!state.mvNear, own = !!state.mvMine, lim = state.mvMore ? 30 : 10;
   const live = !!mktLive(), all = vol
-    ? hmRows(reg, live).filter(r => r.rv != null && r.rv >= MV_RV && r.d1 != null && (!near || (r.m != null && r.m >= 9))).sort((a, b) => b.rv - a.rv)
-    : hmRows(reg, live).filter(r => r[f] != null && (!near || (r.m != null && r.m >= 9)) && (down ? r[f] < 0 : r[f] > 0)).sort((a, b) => down ? a[f] - b[f] : b[f] - a[f]);
+    ? hmRows(reg, live).filter(r => r.rv != null && r.rv >= MV_RV && r.d1 != null && (!near || (r.m != null && r.m >= 9)) && (!own || mine.has(r.t))).sort((a, b) => b.rv - a.rv)
+    : hmRows(reg, live).filter(r => r[f] != null && (!near || (r.m != null && r.m >= 9)) && (!own || mine.has(r.t)) && (down ? r[f] < 0 : r[f] > 0)).sort((a, b) => down ? a[f] - b[f] : b[f] - a[f]);
   const xs = all.slice(0, lim);
   const why = t => {                                    // neueste Schlagzeile der letzten 3 Tage (Scan: Stimmung/Briefing) – „warum bewegt?“
     const bj = jsonData["briefing.json"], sr0 = byTicker(t), ms = d => { const x = Date.parse(d); return isNaN(x) ? 0 : x; };
@@ -2619,10 +2654,10 @@ function moversHtml() {
   const vSec = (l, cls, ttl) => l.length ? `<div class="mv-vh ${cls}">${ttl} <small>${l.length}</small></div>${l.slice(0, vLim).map(one).join("")}` : "";
   const li = vol ? vSec(vUp, "up", "▲ Kaufdruck – Kurs steigt bei hohem Volumen") + vSec(vDn, "down", "▼ Verkaufsdruck – Kurs fällt bei hohem Volumen") : xs.map(one).join("");
   const more = vol ? Math.max(vUp.length, vDn.length) > 5 : all.length > 10;
-  return `<div class="hcard mv-card">${hHead(vol ? "Ungewöhnliches Volumen" : down ? "Verlierer" : "Gewinner")}
+  return `<div class="hcard mv-card">${hHead(vol ? "Ungewöhnliches Volumen" : down ? "Verlierer" : "Gewinner").replace(/<\/div>$/, fsBtn("mv") + "</div>")}
     <div class="sp-top"><div class="sp-tg">${[["up", "Gewinner"], ["down", "Verlierer"], ["vol", "Volumen"]].map(([v, l]) => `<button class="opt${(state.mvSide || "up") === v ? " on" : ""}" data-mvside="${v}">${l}</button>`).join("")}</div>
-      <div class="sp-tg"><button class="opt${near ? " on" : ""}" data-mvnear title="nur Aktien mit mindestens 9 von 11 Kairo-Kriterien">nah am Treffer ≥ 9/11</button></div></div>
-    <div class="muted" style="font-size:12.5px;margin:-2px 2px 6px">${esc(HM_REG.find(x => x[0] === reg)[1])} · ${esc(kn)}${near ? " · nur ≥ 9/11" : ""}</div>
+      <div class="sp-tg"><button class="opt${own ? " on" : ""}" data-mvmine title="nur Depot und Watchlist">★ Meine</button><button class="opt${near ? " on" : ""}" data-mvnear title="nur Aktien mit mindestens 9 von 11 Kairo-Kriterien">≥ 9/11</button></div></div>
+    <div class="muted" style="font-size:12.5px;margin:-2px 2px 6px">${esc(HM_REG.find(x => x[0] === reg)[1])} · ${esc(kn)}${near ? " · nur ≥ 9/11" : ""}${own ? " · nur deine Aktien" : ""}</div>
     ${li || `<p class="muted">${vol ? `Heute keine Aktie mit ≥ ${MV_RV}× Volumen in dieser Auswahl${live ? " (bis jetzt)" : ""}.` : near ? "Keine Aktie mit ≥ 9/11 in dieser Auswahl." : "Keine Daten für diese Auswahl."}</p>`}
     ${more ? `<button class="hlink" data-mvmore style="margin-top:6px">${state.mvMore ? "weniger zeigen" : vol ? "mehr zeigen" : `mehr zeigen (${Math.min(all.length, 30)})`}</button>` : ""}
     <div class="note" style="margin:8px 0 0">${spStamp()}${live ? " · tagsüber nur die größten Werte je Region" : ""}<br>${vol ? `Heute mindestens ${MV_RV}× so viel gehandelt wie im Schnitt der 20 Tage davor – oft steigen große Anleger ein (Kurs steigt) oder aus (Kurs fällt), etwa nach Zahlen, Übernahme-Gerüchten oder Analystenurteilen. ${live ? "Tagsüber zählt das Volumen bis jetzt – der Wert steigt bis Handelsschluss noch. " : ""}` : down ? "Starke Rücksetzer sind oft die Kandidaten von morgen – x/11 zeigt, wie nah eine Aktie an einem Kairo-Treffer ist." : "Zum Beobachten, nicht zum Hinterherkaufen: Kairo kauft Rücksetzer, keine Kurssprünge."} ● = in deinem Depot oder auf der Watchlist.${k === "d1" ? " „× Volumen“ = Handel ggü. dem 20-Tage-Schnitt – hohes Volumen heißt meist echte Nachricht." : ""}</div></div>`;
@@ -2631,11 +2666,106 @@ document.addEventListener("click", e => {
   const hr = e.target.closest("[data-hmreg]"); if (hr) { state.hmReg = hr.dataset.hmreg; save(); render(); return; }
   const ms = e.target.closest("[data-mvside]"); if (ms) { state.mvSide = ms.dataset.mvside; save(); render(); return; }
   if (e.target.closest("[data-mvnear]")) { state.mvNear = !state.mvNear; save(); render(); return; }
+  if (e.target.closest("[data-mvmine]")) { state.mvMine = !state.mvMine; save(); render(); return; }
   if (e.target.closest("[data-mvmore]")) { state.mvMore = !state.mvMore; save(); render(); return; }
   if (e.target.closest("[data-sprel]")) { state.spRel = !state.spRel; save(); render(); return; }
   if (e.target.closest("[data-spview]")) { state.spView = e.target.closest("[data-spview]").dataset.spview; save(); render(); return; }
   const pv = e.target.closest("[data-hmpv]"); if (pv) { $("spmBody").innerHTML = hmPreviewHtml(pv.dataset.hmpv); $("spm").hidden = false; return; }
 });
+// ---------- Vollbild-Ansichten (Markt): Heatmap, Sektoren & Branchen mit Rotation, Gewinner/Verlierer – groß, mit Filtern ----------
+const fsBtn = k => `<button class="fs-btn" data-fsv="${k}" aria-label="Groß anzeigen" title="Groß anzeigen">⤢ Groß</button>`;
+const RRG_GROUP = () => { const { ind, th, eu, as } = spList(); return as ? "assets" : eu ? "sectors_eu" : th ? "themes" : ind ? "industries" : "sectors"; };
+// Aktien je Bereich (einmal je Aufbau indiziert): Branche (ig), Sektor (sec), Europa-Filter (flt), Thema (mem)
+function spMemberIdx() {
+  const rows = spRows().filter(r => !(r.km || []).includes("liquidity")), ig = {}, sec = {};
+  rows.forEach(r => { if (r.ig) (ig[r.ig] = ig[r.ig] || []).push(r); if (r.sec) (sec[r.sec] = sec[r.sec] || []).push(r); });
+  const by = new Map(rows.map(r => [r.t, r]));
+  return (x, ind) => x.mem ? x.mem.map(t => by.get(t)).filter(Boolean)
+    : x.flt ? rows.filter(r => (r.hr || r.r) === "europe" && ((x.flt.sec || []).includes(r.sec) || (x.flt.ig || []).includes(r.ig)))
+    : ind ? ig[x.k] || [] : (sec[x.n] || []).filter(r => (r.hr || r.r) === "us");
+}
+const fsSortBtn = (key, lbl, cur, num) => `<th class="${num ? "num " : ""}${cur.k === key ? "sorted" + (cur.asc ? " asc" : "") : ""}" data-fssort="${key}">${lbl}</th>`;
+function fsSort(id, def) { const s = (state.fsSort || {})[id]; return s && s.k ? s : { k: def, asc: false }; }
+function fsSpHtml() {
+  const { ind, th, eu, as, xs: all } = spList(), m = { ...((anaData && anaData.market) || {}), assets: spMarket().assets }, st = (m.rrg_stats || {})[RRG_GROUP()] || {};
+  const mem = spMemberIdx(), mine = myTickers(), onlyMine = !!state.fsMine;
+  const rows = all.map(x => { const l = mem(x, ind); return { x, n: l.length, hit: l.filter(r => r.s === "hit").length, near: l.filter(r => r.m != null && r.m >= 9).length, own: l.filter(r => mine.has(r.t)).length }; })
+    .filter(o => !onlyMine || o.own);
+  const s = fsSort("sp", "m1"), val = o => s.k === "n" ? o.x.n : s.k === "q" ? ["leading", "improving", "weakening", "lagging"].indexOf((o.x.rrg || {}).q) * -1 : s.k === "wk" ? (o.x.rrg || {}).wk ?? -1
+    : ["hit", "near", "own"].includes(s.k) ? o[s.k] : o.x[s.k] ?? -1e9;
+  rows.sort((a, b) => { const p = val(a), q = val(b), c = typeof p === "string" ? p.localeCompare(q) : p - q; return s.asc ? c : -c; });
+  const qb = q => q ? `<span class="fs-q" style="--qc:${RRG_Q[q][1]}">${RRG_Q[q][0]}</span>` : "–";
+  const pc = v => v == null ? "–" : `<span class="${v >= 0 ? "up" : "down"}">${sgnPct(v, 1)}</span>`;
+  const fresh = rows.filter(o => o.x.rrg && ["improving", "leading"].includes(o.x.rrg.q) && o.x.rrg.wk <= 2 && o.x.rrg.pq && o.x.rrg.pq !== o.x.rrg.q);
+  const lvl = as ? "Anlageklassen" : th ? "Themen" : ind ? "Branchen" : "Sektoren";
+  const typ = ["improving", "leading", "weakening", "lagging"].filter(q => st[q]).map(q => `<span><i style="background:${RRG_Q[q][1]}"></i>${RRG_Q[q][0]} ≈ ${fmt(st[q].med, 0)} Wo.</span>`).join("");
+  const head = `<div class="fs-ctl"><div class="sp-seg">${(m.sectors_eu || []).length ? [["us", "USA"], ["eu", "Europa"]].map(([v, l]) => `<button class="${(v === "eu") === !!eu ? "on" : ""}" data-spreg="${v}">${l}</button>`).join("") : ""}</div>
+    <div class="sp-seg">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu], ["th", "Themen", !eu], ["as", "Markt-Rad", !eu && (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? !!as : v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind && !as) ? "on" : ""}" data-spmode="${v}"${ok ? "" : " disabled"}>${l}</button>`).join("")}</div>
+    <button class="kchip${onlyMine ? " on" : ""}" data-fsmine>★ nur mit meinen Aktien</button></div>`;
+  const list = rows.filter(o => o.x.rrg);
+  return `${head}
+    <div class="fs-2"><div class="fs-panel"><div class="fs-h">Rotation · ${lvl}</div>${list.length ? spRrgHtml(list.map(o => o.x), ind) : `<p class="muted">Keine Daten für diese Auswahl.</p>`}</div>
+    <div class="fs-panel"><div class="fs-h">Gerade neu in „Erholt sich“ oder „Führend“</div>
+      ${fresh.length ? fresh.map(o => `<button class="fs-new" data-spopen="${esc(o.x.k)}"><b>${esc(o.x.n)}</b><span>${RRG_Q[o.x.rrg.pq][0]} → ${qb(o.x.rrg.q)} · seit ${o.x.rrg.wk} ${o.x.rrg.wk === 1 ? "Woche" : "Wochen"}</span><em>${o.hit ? `${o.hit} Treffer · ` : ""}${o.near} mit ≥ 9/11${o.own ? ` · ★ ${o.own}` : ""}</em></button>`).join("") : `<p class="muted" style="margin:4px 0">Diese Woche ist kein Bereich neu dazugekommen.</p>`}
+      ${typ ? `<div class="fs-h" style="margin-top:14px">So lange bleiben ${lvl} typischerweise in einem Feld</div><div class="fs-typ">${typ}</div>
+        <p class="muted" style="font-size:12.5px;margin:6px 0 0">Median der abgeschlossenen Phasen aller ${lvl} (Wochenwerte, ${(Object.values(st).reduce((a, v) => a + v.n, 0))} Phasen). Beschreibt die Vergangenheit – sagt nicht voraus, wann ein Bereich wechselt.</p>` : ""}
+      <p class="muted" style="font-size:12.5px;margin:10px 0 0">Unser 18-Jahre-Test: Sektoren in „Führend“ hatten danach keinen Vorsprung, heißgelaufene liefen eher schlechter; bei Themen hielt Stärke über ~3 Monate eher an. Treffer und ≥ 9/11 zeigen, wo Kairo-Setups gerade entstehen – oft in schwachen, gefallenen Bereichen.</p></div></div>
+    <div class="fs-panel"><div class="fs-h">Alle ${rows.length} ${lvl}${as ? "" : " · antippen zeigt die Schwergewichte"}</div>
+      <div class="table-wrap fs-tw"><table class="fs-t fs-sp"><thead><tr>${fsSortBtn("n", "Bereich", s)}${fsSortBtn("q", "Feld", s)}${fsSortBtn("wk", "seit Wo.", s, 1)}${SP_PER.map(([v, l]) => fsSortBtn(v, l, s, 1)).join("")}${as ? fsSortBtn("corr", "Korrelation S&P 500", s, 1) : fsSortBtn("hit", "Treffer", s, 1) + fsSortBtn("near", "≥ 9/11", s, 1) + fsSortBtn("own", "★ Meine", s, 1)}</tr></thead>
+      <tbody>${rows.map(o => `<tr${as ? "" : ` data-spopen="${esc(o.x.k)}"`}><td><b>${esc(o.x.n)}</b>${o.x.hot ? ' <small class="sp-hot">heißgelaufen</small>' : ""}<small class="muted fs-k">${esc(o.x.k)}${as ? "" : ` · ${o.n} Aktien`}</small></td><td>${qb((o.x.rrg || {}).q)}</td><td class="num">${o.x.rrg && o.x.rrg.wk != null ? o.x.rrg.wk : "–"}</td>${SP_PER.map(([v]) => `<td class="num">${pc(o.x[v])}</td>`).join("")}${as ? `<td class="num">${o.x.corr == null ? "–" : `<b class="${o.x.corr <= -.3 ? "up" : o.x.corr >= .3 ? "down" : ""}">${fmt(o.x.corr, 2)}</b> <small class="muted">${o.x.corr <= -.3 ? "gegenläufig" : o.x.corr >= .3 ? "läuft mit" : "eigenständig"}</small>`}</td>` : `<td class="num">${o.hit || "–"}</td><td class="num">${o.near || "–"}</td><td class="num">${o.own ? `<b class="gold">${o.own}</b>` : "–"}</td>`}</tr>`).join("")}</tbody></table></div>
+      ${as ? `<p class="muted" style="font-size:12.5px;margin:8px 0 0">Markt-Rad: Wohin fließt Geld außerhalb der Aktien? Gegenläufige Anlagen (negative Korrelation, oft Anleihen oder Gold in Stressphasen) steigen eher, wenn Aktien fallen – laufen sie im Rotationsbild nach „Führend“, suchen Anleger Sicherheit. Korrelation der Tagesrenditen über 3 Monate.</p>` : ""}</div>`;
+}
+const FS_CAP = [[0, "alle Größen"], [10e9, "ab 10 Mrd. $"], [50e9, "ab 50 Mrd. $"], [200e9, "ab 200 Mrd. $"]];
+function fsMvHtml() {
+  if (!searchIdx) { loadSearch(); return `<p class="muted">Lädt …</p>`; }
+  const side = state.mvSide || "up", vol = side === "vol", [k0, , kn0] = spPer(), [k, kn] = vol ? ["d1", "heute"] : [k0, kn0], f = SP_IDX[k];
+  const reg = state.hmReg || "us", live = !!mktLive(), mine = myTickers(), F = state.fsMv || {};
+  let xs = hmRows(reg, live).filter(r => vol ? r.rv != null && r.rv >= MV_RV && r.d1 != null : r[f] != null && (side === "down" ? r[f] < 0 : r[f] > 0));
+  if (F.mine) xs = xs.filter(r => mine.has(r.t));
+  if (F.near) xs = xs.filter(r => r.m != null && r.m >= 9);
+  if (F.sec) xs = xs.filter(r => r.sec === F.sec);
+  if (F.cap) xs = xs.filter(r => (r.mc || 0) >= F.cap);
+  const s = fsSort("mv", vol ? "rv" : "ret"), g = r => s.k === "ret" ? r[f] * (side === "down" ? -1 : 1) : s.k === "mc" ? r.mc || 0 : s.k === "rv" ? r.rv || 0 : s.k === "m" ? r.m ?? -1 : s.k === "n" ? (r.n || r.t) : 0;
+  xs.sort((a, b) => { const p = g(a), q = g(b), c = typeof p === "string" ? p.localeCompare(q) : p - q; return s.asc ? c : -c; });
+  const secs = [...new Set(hmRows(reg).map(r => r.sec).filter(Boolean))].sort(), n = xs.length, show = F.all ? xs : xs.slice(0, 100);
+  const head = `<div class="fs-ctl"><div class="sp-seg">${[["up", "Gewinner"], ["down", "Verlierer"], ["vol", "Volumen"]].map(([v, l]) => `<button class="${side === v ? "on" : ""}" data-mvside="${v}">${l}</button>`).join("")}</div>
+    <div class="sp-tg">${HM_REG.map(([v, l]) => `<button class="opt${v === reg ? " on" : ""}" data-hmreg="${v}">${l}</button>`).join("")}</div>
+    ${vol ? "" : `<div class="sp-tg">${SP_PER.map(([v, l, t]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${t}">${l}</button>`).join("")}</div>`}
+    <div class="fs-ctl2"><button class="kchip${F.mine ? " on" : ""}" data-fsmv="mine">★ nur meine</button><button class="kchip${F.near ? " on" : ""}" data-fsmv="near">≥ 9/11</button>
+      <select data-fsmvsel="sec"><option value="">alle Sektoren</option>${secs.map(x => `<option${F.sec === x ? " selected" : ""}>${esc(x)}</option>`).join("")}</select>
+      <select data-fsmvsel="cap">${FS_CAP.map(([v, l]) => `<option value="${v}"${+(F.cap || 0) === v ? " selected" : ""}>${l}</option>`).join("")}</select></div></div>`;
+  return `${head}<div class="fs-panel"><div class="fs-h">${vol ? `Ungewöhnliches Volumen (≥ ${MV_RV}× Schnitt) · heute` : `${side === "down" ? "Verlierer" : "Gewinner"} · ${esc(kn)}`} · ${esc(HM_REG.find(x => x[0] === reg)[1])} · ${n} Aktien</div>
+    ${n ? `<div class="table-wrap fs-tw"><table class="fs-t fs-mv"><thead><tr><th>#</th>${fsSortBtn("n", "Aktie", s)}${fsSortBtn(vol ? "rv" : "ret", vol ? "Volumen" : kn, s, 1)}${vol ? fsSortBtn("ret", "Kurs heute", s, 1) : fsSortBtn("rv", "Volumen", s, 1)}${fsSortBtn("m", "Kairo", s, 1)}${fsSortBtn("mc", "Börsenwert", s, 1)}<th>Sektor</th></tr></thead>
+      <tbody>${show.map((r, i) => { const sr = byTicker(r.t); return `<tr ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}><td class="muted">${i + 1}</td><td><b>${esc(r.n || r.t)}</b>${mine.has(r.t) ? ' <small class="sp-own">★</small>' : ""}<small class="muted fs-k">${esc(tkClean(r.t))} · ${fmt(r.c)} ${esc(r.cur || "")}</small></td>
+        <td class="num">${vol ? `<b>${fmt(r.rv, 1)}×</b>` : `<b class="${r[f] >= 0 ? "up" : "down"}">${sgnPct(r[f], 1)}</b>`}</td><td class="num">${vol ? `<span class="${r.d1 >= 0 ? "up" : "down"}">${sgnPct(r.d1, 1)}</span>` : r.rv != null ? `${fmt(r.rv, 1)}×` : "–"}</td>
+        <td class="num">${r.m != null ? `${r.m}/11` : "–"}${sr && sr.passed ? " " + kPill(sr, false) : ""}</td><td class="num">${r.mc ? fmtCap(r.mc) : "–"}</td><td class="muted">${esc(r.sec || "–")}</td></tr>`; }).join("")}</tbody></table></div>
+      ${n > 100 ? `<button class="hlink" data-fsmv="all" style="margin-top:8px">${F.all ? "nur die ersten 100" : `alle ${n} zeigen`}</button>` : ""}` : `<p class="muted">Keine Aktie für diese Filter.</p>`}
+    <p class="muted" style="font-size:12.5px;margin:10px 0 0">${spStamp()} · Volumen = heute gehandelt im Verhältnis zum Schnitt der 20 Tage davor. ★ = Depot/Watchlist. Spaltenkopf antippen sortiert.</p></div>`;
+}
+function fsvHtml() {
+  const k = state.fsv, t = { sp: "Sektoren & Branchen", mv: "Gewinner, Verlierer & Volumen", hm: "Heatmap" }[k];
+  const body = k === "sp" ? fsSpHtml() : k === "mv" ? fsMvHtml() : k === "hm" ? heatmapHtml(true) : "";
+  return `<div class="fs-top"><b>${t || ""}</b><button class="cm-x" data-fsclose aria-label="Schließen">✕</button></div><div class="fs-body">${body}</div>`;
+}
+function fsvRender() {
+  let el = $("fsv"); if (!state.fsv) { if (el) el.hidden = true; document.documentElement.classList.remove("fs-on"); return; }
+  if (!el) { el = document.createElement("div"); el.id = "fsv"; el.className = "fsv"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); document.body.appendChild(el); }
+  const y = el.querySelector(".fs-body") ? el.querySelector(".fs-body").scrollTop : 0;
+  el.innerHTML = fsvHtml(); el.hidden = false; document.documentElement.classList.add("fs-on");
+  const b = el.querySelector(".fs-body"); if (b) b.scrollTop = y;
+}
+document.addEventListener("click", e => {
+  const o = e.target.closest("[data-fsv]"); if (o) { state.fsv = o.dataset.fsv; fsvRender(); return; }
+  if (e.target.closest("[data-fsclose]")) { state.fsv = null; fsvRender(); return; }
+  if (!e.target.closest("#fsv")) return;
+  if (e.target.closest("[data-card],[data-ein]")) { state.fsv = null; fsvRender(); return; }   // Aktie öffnen: Vollbild schließen, Aktie öffnet sich normal
+  const so = e.target.closest("[data-fssort]"); if (so) { const id = state.fsv, cur = fsSort(id, ""), key = so.dataset.fssort;
+    state.fsSort = { ...(state.fsSort || {}), [id]: { k: key, asc: cur.k === key ? !cur.asc : key === "n" } }; save(); fsvRender(); return; }
+  if (e.target.closest("[data-fsmine]")) { state.fsMine = !state.fsMine; save(); fsvRender(); return; }
+  const fm = e.target.closest("[data-fsmv]"); if (fm) { const F = { ...(state.fsMv || {}) }; F[fm.dataset.fsmv] = !F[fm.dataset.fsmv]; state.fsMv = F; save(); fsvRender(); return; }
+});
+document.addEventListener("change", e => { const s = e.target.closest("[data-fsmvsel]"); if (!s) return; const F = { ...(state.fsMv || {}) }; F[s.dataset.fsmvsel] = s.dataset.fsmvsel === "cap" ? +s.value : s.value; state.fsMv = F; save(); fsvRender(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && state.fsv) { state.fsv = null; fsvRender(); } });
 // Heatmap-Vorschau: Eckdaten ohne die Heatmap zu verlassen
 function hmPreviewHtml(t) {
   const r = spRows().find(x => x.t === t); if (!r) return "";
@@ -2667,7 +2797,7 @@ function mktBarHtml() {
   const reg = m.regime, f = m.fear, ids = ["^GSPC", "^NDX", "^GDAXI", "^STOXX", "^N225", "^VIX"].filter(k => m[k]);
   const tiles = ids.map(k => { const x = m[k], vix = k === "^VIX";
     return `<div class="mb-t"><span>${esc(x.name)}</span><b>${fmt(x.c, vix ? 1 : 0)}</b>${vix ? `<em class="${x.tone === "green" ? "up" : x.tone === "red" ? "down" : "gold"}">${esc(x.label)}</em>`
-      : `<em class="${(x.d1 || 0) >= 0 ? "up" : "down"}">${x.d1 != null ? sgnPct(x.d1, 1) + " heute" : ""}</em><small class="${(x.chg1m || 0) >= 0 ? "up" : "down"}">${x.chg1m != null ? sgnPct(x.chg1m, 1) + " · 1 Mon." : ""}</small>`}</div>`; }).join("");
+      : `<em class="${(x.d1 || 0) >= 0 ? "up" : "down"}">${x.d1 != null ? sgnPct(x.d1, 1) : ""}</em>`}</div>`; }).join("");   // nur Stand + heute – Monatswerte stehen in der Vollansicht/Charts
   // Marktbreite aus dem Suchindex (gleiche Region wie Heatmap)
   const reg2 = state.hmReg || "us", rows = searchIdx ? hmRows(reg2) : [];
   const share = (xs, fn) => xs.length ? xs.filter(fn).length / xs.length : null;
@@ -2675,9 +2805,9 @@ function mktBarHtml() {
   const a50 = share(w50, r => r.c > r.e50), a200 = share(w200, r => r.c > r.e200), adv = share(wd, r => r.d1 > 0);
   const tone = v => v == null ? "" : v >= .6 ? "up" : v < .4 ? "down" : "gold";
   const verdict = a50 == null ? "" : a50 >= .6 ? "breit getragen – die meisten Aktien laufen mit" : a50 < .4 ? "schwach – die Mehrheit liegt unter der 50-Tage-Linie" : "gemischt – nur ein Teil des Marktes trägt";
-  const br = rows.length ? `<div class="mb-br"><span class="mb-bl">Marktbreite · ${esc(HM_REG.find(x => x[0] === reg2)[1])} (${rows.length} Aktien)</span>
-      <span>Steigen heute <b class="${tone(adv)}">${adv == null ? "–" : pct(adv, 0)}</b></span><span>über 50-Tage-Linie <b class="${tone(a50)}">${a50 == null ? "–" : pct(a50, 0)}</b></span><span>über 200-Tage-Linie <b class="${tone(a200)}">${a200 == null ? "–" : pct(a200, 0)}</b></span>
-      ${verdict ? `<em>${verdict}</em>` : ""}</div>` : "";
+  const bar = (l, v) => `<div class="mb-bx"><span>${l}</span><i><u class="${tone(v)}" style="width:${v == null ? 0 : Math.round(v * 100)}%"></u></i><b class="${tone(v)}">${v == null ? "–" : pct(v, 0)}</b></div>`;
+  const br = rows.length ? `<div class="mb-br" title="${esc(verdict)}"><span class="mb-bl">Marktbreite ${esc(HM_REG.find(x => x[0] === reg2)[1])}${verdict ? ` · ${esc(verdict.split(" – ")[0])}` : ""}</span>
+      ${bar("steigen heute", adv)}${bar("> EMA 50", a50)}${bar("> EMA 200", a200)}</div>` : "";
   const fz = mktFazit(m, adv);
   return `<div class="hcard mbar">${fz ? `<p class="mb-fz">${fz}</p>` : ""}<div class="mb-top">${reg ? `<div class="mb-reg tone-${esc(reg.tone)}"><i></i><b>Trend: ${esc(reg.label)}</b></div>` : ""}${f ? `<div class="mb-fear">Stimmung <b class="${f.score >= 65 ? "down" : f.score >= 45 ? "gold" : "up"}">${esc(f.label)}</b> <small>${f.score}/100</small></div>` : ""}</div>
     <div class="mb-tiles">${tiles}</div>${br}</div>`;
@@ -2727,9 +2857,13 @@ function marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf) {
   const mine = myTickers();
   // Heute & morgen wichtig: eine Zeile (Zinsen/Inflation/Verfall + Quartalszahlen deiner Aktien), Details im Kalender
   const ev = (calData || []).filter(e => { const d = daysUntil(e.date); return d >= 0 && d <= 1 && ((e.kind === "macro" && (calKey(e) || e.imp === "high")) || e.kind === "expiry" || (e.kind === "earnings" && mine.has(e.ticker))); })
-    .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0).slice(0, 4)
-    .map(e => `${daysUntil(e.date) === 0 ? "" : "morgen "}${esc(e.ticker ? (e.name || e.ticker) + " Zahlen" : e.title || "Termin")}${e.kind === "macro" && macWhen(e) ? " " + esc(macWhen(e)) : ""}`);
-  const wichtig = `<button class="mo-today" data-gosub="calendar"><b>Heute wichtig</b><span>${ev.length ? ev.join(" · ") : "keine großen Termine heute und morgen"}</span><i>Kalender ›</i></button>`;
+    .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  // kompakt je Tag: Termine als kurze Chips, Quartalszahlen zusammengefasst („Zahlen: AST SpaceMobile, Rocket Lab …“)
+  const day = d => { const l = ev.filter(e => (daysUntil(e.date) === 0) === d); if (!l.length) return "";
+    const mac = l.filter(e => e.kind !== "earnings").slice(0, 3).map(e => `<em>${esc(e.title || "Termin")}${e.kind === "macro" && macWhen(e) ? ` ${esc(macWhen(e))}` : ""}</em>`);
+    const er = l.filter(e => e.kind === "earnings"), en = er.slice(0, 3).map(e => esc(shortNm(e.name || e.ticker))).join(", ") + (er.length > 3 ? ` +${er.length - 3}` : "");
+    return `<span class="mo-d"><b>${d ? "Heute" : "Morgen"}</b>${mac.join("")}${er.length ? `<em>Zahlen: ${en}</em>` : ""}</span>`; };
+  const wichtig = `<button class="mo-today" data-gosub="calendar"><b>Wichtig</b><span>${ev.length ? day(true) + day(false) : "keine großen Termine heute und morgen"}</span><i>Kalender ›</i></button>`;
   return `${wichtig}${mktBarHtml()}${heatmapHtml()}<div class="mo2"><div>${sectorsHtml()}</div><div>${moversHtml()}</div></div>`;
 }
 // „Wichtig“ = Wirkung statt nur Stimmung: Stimmung, Thema (Zahlen, Ausblick, Analysten, Übernahme, Zulassung, Klage,
@@ -2799,7 +2933,7 @@ function newsHtml() {
     return head + (mine.size ? "" : `<p class="muted" style="margin:8px 2px">Lege Aktien in Merkliste, Depot oder Watchlist – dann siehst du hier ihre Meldungen.</p>`)
       + (hot.length ? block("Wichtig · letzte 48 Std. (Zahlen, Ausblick, Analysten, Übernahmen, große Kursbewegung)", hot.map(row), "") : "")
       + (groups.length ? `<div class="bf-s"><b>Deine Aktien · 7 Tage (${groups.length} mit Meldungen) · Depot zuerst</b></div>
-        <div class="ng-search"><input type="search" id="newsQ" placeholder="Aktie suchen …" value="${esc(state.newsQ || "")}" autocomplete="off"></div>${groups.map(grp).join("")}<p class="muted" id="newsQnone" hidden>Keine deiner Aktien passt zur Suche.</p>` : block("Deine Aktien", [], "Keine neuen Meldungen zu deinen Aktien."));
+        <div class="ng-search"><input type="search" id="newsQ" placeholder="Aktie suchen …" value="${esc(state.newsQ || "")}" autocomplete="off"><button type="button" class="search-x" data-clr="newsQ" aria-label="Eingabe löschen"${state.newsQ ? "" : " hidden"}>✕</button></div>${groups.map(grp).join("")}<p class="muted" id="newsQnone" hidden>Keine deiner Aktien passt zur Suche.</p>` : block("Deine Aktien", [], "Keine neuen Meldungen zu deinen Aktien."));
   }
   if (tab === "feed") {
     let pool = (bj && bj.market || []).map(n => ({ ...n, s: 0, ms: msOf(n.d) }));
@@ -4786,7 +4920,7 @@ function gameHtml() {
     <div class="section-title"><span>Kairo-Treffer</span><span>antippen → Order-Ticket</span></div>
     <div class="g-ideas">${id.length ? id.map(idea).join("") : `<div class="note">Heute keine Kairo-Treffer.</div>`}</div>
     <div class="section-title"><span>Aktie suchen</span><span>alle ${searchIdx ? fmt(searchIdx.length, 0) : ""} Aktien</span></div>
-    <div class="ein-search"><input id="gQ" type="search" placeholder="Aktie eingeben – z. B. Apple, SAP, Rheinmetall" autocomplete="off" value="${esc(state.gQ || "")}"><div id="gList">${searchIdx ? gListHtml() : ""}</div></div>`;
+    <div class="ein-search"><input id="gQ" type="search" placeholder="Aktie eingeben – z. B. Apple, SAP, Rheinmetall" autocomplete="off" value="${esc(state.gQ || "")}"><button type="button" class="search-x" data-clr="gQ" aria-label="Eingabe löschen"${state.gQ ? "" : " hidden"}>✕</button><div id="gList">${searchIdx ? gListHtml() : ""}</div></div>`;
   const orders = (g.orders && g.orders.length ? g.orders : [...g.pos.map(p => ({ ts: p.d, side: "Kauf", n: p.n, kind: p.kind, wkn: p.wkn, qty: p.qty, px: p.P0, fee: null, why: "" })),
     ...g.closed.flatMap(c => [{ ts: c.xd, side: "Verkauf", n: c.n, kind: c.kind, wkn: c.wkn, qty: c.qty, px: c.xu, fee: null, why: c.why }, { ts: c.d, side: "Kauf", n: c.n, kind: c.kind, wkn: c.wkn, qty: c.qty, px: c.P0, fee: null, why: "" }])]
     .sort((a, b) => String(b.ts).localeCompare(String(a.ts))));
@@ -7070,13 +7204,19 @@ function einHtml() {
     return `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${ok ? `${i + 1}. ` : ""}${esc(shortNm(x.n))}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")}${ok ? (i < free ? " · Platz frei" : " · nur wenn ein Platz frei wird") : ""}</span>${r0 ? kPill(r0) : einTag(x)}</button>`; };
   return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span></span></div>
     <div class="note" style="margin:0 2px 10px">Turbos verstärken Gewinne, Verluste und Kosten – zum Lernen erst in der <a href="#" data-gosec="game">Übung</a>. PRIME+: Orders ab 250 € gebührenfrei.</div>
-    <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><div id="einList">${einListHtml()}</div></div>
+    <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><button type="button" class="search-x" data-clr="einQ" aria-label="Eingabe löschen"${state.einQ ? "" : " hidden"}>✕</button><div id="einList">${einListHtml()}</div></div>
     ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Kairo-Treffer</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
       ${rdy.length ? `<div class="plan-h" style="margin:14px 2px 6px">Kaufbereit · ${free} ${free === 1 ? "Platz" : "Plätze"} frei</div><div class="ein-list">${rdy.map(opt).join("")}</div>
         <div class="note" style="margin:4px 2px 0">Reihenfolge wie getestet: zuerst die Treffer, die vorher am stärksten gefallen sind.</div>` : ""}
       ${wt.length ? `<div class="plan-h" style="margin:14px 2px 6px">Treffer – warten auf die Seitwärtsphase</div><div class="ein-list">${wt.map(x => opt(x, null)).join("")}</div>` : ""}
       ${!all.length ? `<div class="note" style="margin:14px 2px">Heute keine Kairo-Treffer in deinen Handelsregionen.</div>` : ""}`}`;
 }
+// ✕ in Suchfeldern (Einstieg, Übung, News): Eingabe löschen, Liste zurücksetzen
+document.addEventListener("click", e => { const b = e.target.closest("[data-clr]"); if (!b) return;
+  const id = b.dataset.clr, el = $(id); if (!el) return; el.value = ""; state[id] = "";
+  if (id === "einQ") state.einT = null;
+  save(); render(); setTimeout(() => { const n = $(id); if (n) n.focus(); }, 0); });
+document.addEventListener("input", e => { const x = e.target.id && document.querySelector(`[data-clr="${e.target.id}"]`); if (x) x.hidden = !e.target.value; });
 document.addEventListener("input", e => {
   if (e.target.id === "gQ") { state.gQ = e.target.value; const l = $("gList"); if (l) l.innerHTML = gListHtml(); }
   if (e.target.id === "einQ") { state.einQ = e.target.value; if (!state.einQ) state.einT = null; $("einList").innerHTML = einListHtml(); }
@@ -7304,7 +7444,7 @@ function clampNotes() {                          // lange Hinweise auf 3 Zeilen 
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-notemore]"); if (!b) return;
   const n = b.previousElementSibling; if (!n) return; const open = n.classList.toggle("clamp"); b.textContent = open ? "mehr" : "weniger"; });
-function render() { wlSeed(); renderMain(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); linkTerms(); }
+function render() { wlSeed(); renderMain(); if (state.fsv) fsvRender(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); linkTerms(); }
 function renderMain() {
   if (!data) return;
   const hits = data.results.filter(r => r.passed).length, fast = data.results.filter(r => r.fast_hit).length;
@@ -7360,7 +7500,8 @@ function renderMain() {
   const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss", "chk"].includes(c.k))].filter(c => c.k === "ticker" || !hid.has(c.k));
   requestAnimationFrame(() => { const tw = document.querySelector("main .table-wrap"), h = document.querySelector(".scroll-hint");
     if (tw && h) h.hidden = !(tw.scrollWidth > tw.clientWidth + 8); });
-  $("main").innerHTML = head + `<div class="scroll-hint" hidden>Wischen für mehr Spalten →</div><div class="table-wrap"><table><thead><tr>${cols.map(c => `<th class="${c.n ? "num " : ""}${c.k === col.k ? "sorted" + (state.tableAsc ? " asc" : "") : ""}" data-k="${c.k}">${c.l}${gl(c.k === "dd" ? "" : c.k)}</th>`).join("")}</tr></thead>
+  const mv = state.mView === "list" ? "list" : "table";
+  $("main").innerHTML = head + `<div class="mvtog${mv === "list" ? " mv-list" : ""}"><button class="kchip${mv === "table" ? " on" : ""}" data-mview="table">Tabelle</button><button class="kchip${mv === "list" ? " on" : ""}" data-mview="list">Liste</button></div><div class="scroll-hint" hidden>Wischen für mehr Spalten →</div><div class="table-wrap"><table><thead><tr>${cols.map(c => `<th class="${c.n ? "num " : ""}${c.k === col.k ? "sorted" + (state.tableAsc ? " asc" : "") : ""}" data-k="${c.k}">${c.l}${gl(c.k === "dd" ? "" : c.k)}</th>`).join("")}</tr></thead>
     <tbody>${rows.map(r => `<tr class="${r.passed ? "r-hit" : r.fast_hit ? "r-fast" : ""}">${cols.map(c => `<td class="${c.n ? "num" : ""}">${c.h(r)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` + (isApple() ? "" : mListHtml(rows, col)) + more + extra;
   if (isApple()) {
     const tools = `<div class="atools"><div class="aseg"><button data-aview="list" class="${state.aView !== "table" ? "on" : ""}">Liste</button><button data-aview="table" class="${state.aView === "table" ? "on" : ""}">Tabelle</button></div>${aSortHtml(col)}</div>`;
@@ -7374,6 +7515,7 @@ let scanAll = false;
 document.addEventListener("click", e => { if (e.target.closest("[data-cols]")) setTimeout(() => { const c = $("colOpts"); if (c) c.scrollIntoView({ block: "center", behavior: "smooth" }); }, 250); });
 document.addEventListener("click", e => { if (!e.target.closest("[data-qins]")) return; state.ins = state.ins ? "" : "buy"; scanAll = false; save(); render(); });
 document.addEventListener("click", e => { const q = e.target.closest("[data-qregion]"); if (!q) return; state.region = q.dataset.qregion; scanAll = false; save(); render(); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-mview]"); if (!b) return; state.mView = b.dataset.mview; save(); render(); });
 document.addEventListener("click", e => { if (e.target.closest("[data-scanall]")) { scanAll = true; render(); } else if (e.target.closest("[data-view]")) scanAll = false; });
 // Kompakte Liste fürs iPhone (nur im neuen Design, nur schmale Bildschirme – sonst bleibt die Tabelle)
 function mListHtml(list, col) {
@@ -7666,7 +7808,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-insmore]")) { state.insMore = !state.insMore; save(); render(); return; }
   const irk = e.target.closest("[data-insrank]"); if (irk) { state.insRank = irk.dataset.insrank; save(); render(); return; }
   const fm = e.target.closest("[data-feedmode]"); if (fm) { state.feedMode = fm.dataset.feedmode; state.newsTab = "feed"; save(); render(); return; }
-  const nt = e.target.closest("[data-newstab]"); if (nt) { state.newsTab = nt.dataset.newstab; save(); if (state.sec !== "news") goSec("news"); else render(); return; }
+  const nt = e.target.closest("[data-newstab]"); if (nt) { const ch = state.newsTab !== nt.dataset.newstab; state.newsTab = nt.dataset.newstab; save(); if (state.sec !== "news") goSec("news"); else { render(); if (ch && nt.closest(".subnav")) secIn(); } return; }   // Unterreiter: gleicher Übergang wie zwischen Reitern
   const isb = e.target.closest("[data-inssort]"); if (isb) { state.insSort = isb.dataset.inssort; save(); render(); return; }
   if (e.target.closest("[data-newsfresh]")) { newsLoad(true); render(); return; }
   const bc = e.target.closest("[data-briefcard]"); if (bc) { closeBrief(); openCard(bc.dataset.briefcard); return; }

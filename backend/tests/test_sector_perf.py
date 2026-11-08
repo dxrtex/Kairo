@@ -59,6 +59,22 @@ def test_rotation_quadrants_and_hot():
     assert len(by["A"]["rrg"]["tail"]) == 5 and "hot" in by["A"] and "hot" not in by["B"]
 
 
+def test_rotation_weeks_in_quadrant_and_stats():
+    from backend.analysis import rotation
+    n = 400
+    idx = pd.bdate_range("2024-01-02", periods=n)
+    mk = lambda c: pd.DataFrame({"Open": c, "High": c, "Low": c, "Close": c}, index=idx)
+    base = 100 * np.cumprod(np.full(n, 1.0005))
+    wave = base * (1 + 0.08 * np.sin(np.arange(n) / 18))                            # wechselt regelmäßig die Felder
+    late = base * np.r_[np.cumprod(np.full(n - 30, 0.9997)), 0.9997 ** (n - 30) * np.cumprod(np.full(30, 1.004))]   # erst schwächer, dann stark
+    hist = {"^GSPC": mk(base), "W": mk(wave), "L": mk(late)}
+    rows = [{"k": "W"}, {"k": "L"}]
+    st = rotation(rows, hist)
+    by = {x["k"]: x["rrg"] for x in rows}
+    assert by["L"]["q"] == "leading" and 1 <= by["L"]["wk"] <= 7 and by["L"]["pq"] in ("improving", "weakening", "lagging")
+    assert st and all(v["med"] >= 1 and v["n"] >= 1 for v in st.values())
+
+
 def test_market_context_europe_and_indices():
     from backend.analysis import EU_SECTOR_ETF
     n = 300
@@ -78,3 +94,15 @@ def test_fill_sectors_from_industry_and_ig():
     ind = {"A": "Semiconductors", "B": "Semiconductors", "C": "Banks - Regional", "D": "Unbekannt", "E": "Oil & Gas E&P"}
     assert fill_sectors(rows, ind) == 2
     assert rows["B"]["sec"] == "Technologie" and rows["C"]["sec"] == "Finanzen" and "sec" not in rows["D"] and rows["E"]["sec"] == "Energie"
+
+
+def test_market_context_assets_corr():
+    n = 300
+    idx = pd.bdate_range("2025-01-02", periods=n)
+    rng = np.random.default_rng(1)
+    spx = 100 * np.cumprod(1 + rng.normal(0.0004, 0.01, n))
+    anti = 100 * np.cumprod(1 - np.r_[0, np.diff(spx) / spx[:-1]])      # genau gegenläufige Tagesrenditen
+    mk = lambda c: pd.DataFrame({"Open": c, "High": c, "Low": c, "Close": c}, index=idx)
+    out = market_context({"^GSPC": mk(spx), "GLD": mk(anti), "IWM": mk(spx * 1.01)})
+    a = {x["k"]: x for x in out["assets"]}
+    assert a["GLD"]["corr"] < -0.9 and a["IWM"]["corr"] > 0.9 and a["GLD"]["n"] == "Gold" and "rrg" in a["IWM"]

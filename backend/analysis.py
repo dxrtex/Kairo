@@ -70,6 +70,11 @@ INDUSTRY_ETF = {
 }
 # Themen (11/2026): quer zu den Yahoo-Branchen (Cybersecurity steckt dort z. B. in „Software“), deshalb mit festen Hauptwerten
 # für die Liste „stärkste Aktien“. Kurse der ETFs für Rendite, Rang-Verlauf und Rotations-Bild wie bei den Branchen.
+# „Markt-Rad“: Anlageklassen gegen Aktien (S&P 500) – wohin Geld außerhalb der Aktien fließt. corr = Korrelation der
+# Tagesrenditen mit dem S&P 500 über 3 Monate (−1 = läuft gegenläufig, +1 = läuft mit).
+ASSET_ETF = {"GLD": "Gold", "SLV": "Silber", "TLT": "US-Staatsanleihen (20 J.)", "UUP": "US-Dollar", "USO": "Öl",
+             "DBC": "Rohstoffe", "BTC-USD": "Bitcoin", "EEM": "Schwellenländer-Aktien", "IWM": "US-Nebenwerte"}
+
 THEME_ETF = {
     "CIBR": ("Cybersecurity", ("CRWD", "PANW", "FTNT", "ZS", "NET", "OKTA", "CHKP", "CYBR", "S", "TENB", "QLYS", "RPD", "AKAM", "GEN", "VRNS")),
     "SKYY": ("Cloud", ("SNOW", "DDOG", "MDB", "NOW", "CRM", "WDAY", "NET", "TEAM", "HUBS", "ESTC", "TWLO", "AMZN", "MSFT", "GOOGL", "ORCL")),
@@ -119,16 +124,23 @@ def rank_history(rows: list[dict], hist: dict, weeks: int = 12, look: int = 21) 
             x.setdefault("rh", []).append(int(v) if v == v and v is not None else None)
 
 
-def rotation(rows: list[dict], hist: dict, bench: str = "^GSPC", tail: int = 5, hot_n: int = 0) -> None:
+def _quad(r: float, m: float) -> str:
+    return "leading" if r >= 100 and m >= 100 else "weakening" if r >= 100 else "improving" if m >= 100 else "lagging"
+
+
+def rotation(rows: list[dict], hist: dict, bench: str = "^GSPC", tail: int = 5, hot_n: int = 0) -> dict:
     """Rotations-Bild (wie ein Relative Rotation Graph) – beschreibt, sagt NICHT vorher (Backtest 2008–2026: kein Quadrant
     hatte danach einen Vorteil, siehe tools/research/rotation.py).
     x["rrg"] = {"r": relative Stärke ggü. S&P 500 im Verhältnis zum 13-Wochen-Schnitt (100 = Schnitt),
                "m": Schwung = Änderung von r über 4 Wochen (100 = keine Änderung), "q": Quadrant, "tail": letzte Wochen (alt → neu)}.
     hot_n > 0: die hot_n Zeilen mit der höchsten Mehrrendite über 4 Wochen bekommen x["hot"] (nur wenn > 0) – solche Sektoren
-    liefen seit 2016 in den folgenden 13 Wochen im Schnitt ~1 % schlechter als der Markt (Hinterherkaufen lohnt nicht)."""
+    liefen seit 2016 in den folgenden 13 Wochen im Schnitt ~1 % schlechter als der Markt (Hinterherkaufen lohnt nicht).
+    Zusätzlich: rrg["wk"] = Wochen ununterbrochen im aktuellen Feld, rrg["pq"] = Feld davor. Rückgabe: typische Verweildauer je Feld
+    über alle Zeilen und die geladene Historie ({q: {"med": Wochen, "n": abgeschlossene Phasen}}) – beschreibend, keine Prognose."""
+    runs: dict[str, list[int]] = {}
     b = hist.get(bench)
     if b is None or len(b) < 120:
-        return
+        return {}
     bw = b["Close"].dropna().resample("W-FRI").last()
     rel4 = {}
     for x in rows:
@@ -145,14 +157,29 @@ def rotation(rows: list[dict], hist: dict, bench: str = "^GSPC", tail: int = 5, 
         if not pts:
             continue
         r, m = pts[-1]
-        q = "leading" if r >= 100 and m >= 100 else "weakening" if r >= 100 else "improving" if m >= 100 else "lagging"
-        x["rrg"] = {"r": r, "m": m, "q": q, "tail": [list(p) for p in pts]}
+        q = _quad(r, m)
+        qs = [_quad(a, c) for a, c in zip(ratio, mom) if a == a and c == c]   # Feld je Woche über die ganze Historie
+        wk, i = 0, len(qs) - 1
+        while i >= 0 and qs[i] == q:
+            wk += 1; i -= 1
+        x["rrg"] = {"r": r, "m": m, "q": q, "tail": [list(p) for p in pts], "wk": wk, "pq": qs[i] if i >= 0 else None}
+        n, prev = 0, None
+        for j, v in enumerate(qs[:i + 1]):           # abgeschlossene Phasen (die laufende nicht – sie ist noch nicht zu Ende)
+            if v == prev:
+                n += 1
+            else:
+                if prev is not None and j - n > 0:   # die erste Phase ist am Anfang abgeschnitten → nicht zählen
+                    runs.setdefault(prev, []).append(n)
+                prev, n = v, 1
+        if prev is not None and i + 1 - n > 0:
+            runs.setdefault(prev, []).append(n)
         if len(rs) > 4:
             rel4[x["k"]] = float(rs.iloc[-1] / rs.iloc[-5] - 1)
     if hot_n and len(rel4) >= 5:
         for k in sorted(rel4, key=lambda k: -rel4[k])[:hot_n]:
             if rel4[k] > 0:
                 next(x for x in rows if x["k"] == k)["hot"] = round(rel4[k], 4)
+    return {q: {"med": float(np.median(v)), "n": len(v)} for q, v in runs.items() if v}
 
 
 # Sektor einer Aktie aus ihrem Branchen-ETF, wenn Yahoo keinen Sektor liefert (FDN gemischt → offen)
@@ -286,7 +313,7 @@ def market_context(hist: dict[str, pd.DataFrame]) -> dict:
                      "tone": st["tone"], "label": st["label"], **perf_row(df)})
     if secs:
         rank_history(secs, hist)
-        rotation(secs, hist, hot_n=2)                 # oberstes Fünftel der 11 Sektoren nach 4-Wochen-Mehrrendite
+        out.setdefault("rrg_stats", {})["sectors"] = rotation(secs, hist, hot_n=2)   # oberstes Fünftel der 11 Sektoren nach 4-Wochen-Mehrrendite
         out["sectors"] = sorted(secs, key=lambda x: -(x["chg1m"] if x["chg1m"] is not None else -9))
     inds = []                                         # Branchen-ETFs (feiner als die 11 Sektoren)
     for etf, (name, _) in INDUSTRY_ETF.items():
@@ -297,7 +324,7 @@ def market_context(hist: dict[str, pd.DataFrame]) -> dict:
         inds.append({"k": etf, "n": name, "tone": st.get("tone"), "label": st.get("label"), **perf_row(df)})
     if inds:
         rank_history(inds, hist)
-        rotation(inds, hist)
+        out.setdefault("rrg_stats", {})["industries"] = rotation(inds, hist)
         out["industries"] = sorted(inds, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
     eus = []                                          # Europa: STOXX-600-Sektoren gegen den STOXX 600
     for etf, (name, flt) in EU_SECTOR_ETF.items():
@@ -308,7 +335,7 @@ def market_context(hist: dict[str, pd.DataFrame]) -> dict:
         eus.append({"k": etf, "n": name, "flt": flt, "tone": st.get("tone"), "label": st.get("label"), **perf_row(df)})
     if eus:
         rank_history(eus, hist)
-        rotation(eus, hist, bench="^STOXX")           # ohne „Heißgelaufen“: der Befund ist nur für US-Sektoren getestet
+        out.setdefault("rrg_stats", {})["sectors_eu"] = rotation(eus, hist, bench="^STOXX")           # ohne „Heißgelaufen“: der Befund ist nur für US-Sektoren getestet
         out["sectors_eu"] = sorted(eus, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
     ths = []                                          # Themen (Cybersecurity, Cloud, KI …) mit festen Hauptwerten
     for etf, (name, mem) in THEME_ETF.items():
@@ -319,8 +346,24 @@ def market_context(hist: dict[str, pd.DataFrame]) -> dict:
         ths.append({"k": etf, "n": name, "mem": list(mem), "tone": st.get("tone"), "label": st.get("label"), **perf_row(df)})
     if ths:
         rank_history(ths, hist)
-        rotation(ths, hist)
+        out.setdefault("rrg_stats", {})["themes"] = rotation(ths, hist)
         out["themes"] = sorted(ths, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
+    ass = []                                          # Anlageklassen (Markt-Rad)
+    spx_r = hist["^GSPC"]["Close"].dropna().pct_change() if hist.get("^GSPC") is not None else None
+    for etf, name in ASSET_ETF.items():
+        df = hist.get(etf)
+        if df is None or len(df) < 70:
+            continue
+        row = {"k": etf, "n": name, **perf_row(df)}
+        if spx_r is not None:
+            r = df["Close"].dropna().pct_change()
+            j = pd.concat([r, spx_r], axis=1, join="inner").dropna().iloc[-63:]
+            if len(j) >= 40:
+                row["corr"] = round(float(j.iloc[:, 0].corr(j.iloc[:, 1])), 2)
+        ass.append(row)
+    if ass:
+        out.setdefault("rrg_stats", {})["assets"] = rotation(ass, hist)
+        out["assets"] = sorted(ass, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
     spx, vix = out.get("^GSPC"), out.get("^VIX")
     if spx and vix:
         good = spx["above50"] and vix["c"] < 20
