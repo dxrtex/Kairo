@@ -346,7 +346,7 @@ async def run(port: int) -> list[str]:
                 if not await pg.query_selector(".tasks"):
                     errs.append(f"Heute {des} {vw}px: Aufgabenliste fehlt")
                 for sel in ("[data-hdone]", ".tq-prep > summary", ".kb-row[data-kbopen]"):
-                    el = await pg.query_selector(sel)
+                    el = await pg.query_selector(sel + " >> visible=true")   # nur Sichtbares (Aufgaben können zugeklappt sein)
                     if el:
                         await el.click()
                         await pg.wait_for_timeout(400)

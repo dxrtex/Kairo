@@ -167,12 +167,13 @@ def etf_message(today: str, sent: dict) -> list[dict]:
     lv, prev = e.get("lv"), sent.get("etf:last")
     sent["etf:last"] = lv or prev
     key = f"etf:{lv}:{today[:7]}"
-    # nur beim Wechsel auf „jetzt investieren“ (aus „abwarten“) bzw. auf Panik – höchstens einmal je Farbe und Monat
-    if lv not in ("go", "go2") or lv == prev or (lv == "go" and prev == "go2") or key in sent:
+    # nur beim Wechsel auf „Gelegenheit“ (VIX ≥ 30) oder „In Raten“ – höchstens einmal je Stufe und Monat („Normal“ meldet sich nicht)
+    if lv not in ("go2", "rate") or lv == prev or key in sent:
         return []
     sent[key] = today
-    return [{"title": f"🟢 ETF-Ampel: {e['t']}", "body": f"SPYI {_num(e['c'])} € · {_pct(e['dd'])} unter dem Hoch · VIX {e.get('vix') or '–'}. "
-             "Zurückgelegtes Extra-Geld jetzt investieren – die Sparrate läuft ohnehin weiter.",
+    body = ("Angst am Markt – historisch die besten Einstiege. Extra-Geld jetzt anlegen, Reserve gern zusätzlich in 2–3 Raten."
+            if lv == "go2" else "Unter der 200-Tage-Linie und Kreditmarkt schwach – Extra-Geld auf 3 Monate verteilen statt auf einmal.")
+    return [{"title": f"{'🟢' if lv == 'go2' else '🟡'} ETF-Ampel: {e['t']}", "body": f"SPYI {_num(e['c'])} € · {_pct(e['dd'])} unter dem Hoch · VIX {e.get('vix') or '–'}. {body}",
              "url": APP + "?sec=etf", "tag": "kairo-etf"}]
 
 

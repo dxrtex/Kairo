@@ -5,6 +5,7 @@ name: Tagsüber (Mitteilungen + Markt, alle 30 Minuten)
 #   0. Quartalszahlen: stößt earnings.yml an – in den Meldezeiten alle 10 Min. (04–08, 10–15, 19–24 UTC), sonst alle 30 Min.
 #   1. Mitteilungen: Stop, Kursziel, Verkaufstag, K.-o. und 4H-Bestätigung (backend/push.py, 06:00–22:00 UTC)
 #   2. Markt: Sektoren, Branchen, Heatmap, Gewinner/Verlierer (backend/mktlive.py, 07:00–21:15 UTC, nur Anzeige)
+#   3. Abend-Scan: stößt scan.yml um 22:30 Berlin an (einmal je Handelstag) – pünktlicher als der GitHub-Zeitplan
 # Zustand im Branch kairo-alerts. Nach gut 5 Std. startet sich der Job selbst neu (Jobs dürfen höchstens 6 Std. laufen);
 # drei Anstöße per Zeitplan fangen Ausfälle auf. Öffentliches Repository → keine Minuten-Kosten.
 on:
@@ -48,6 +49,16 @@ jobs:
             # Quartalszahlen: in den Meldezeiten alle 10 Min., sonst alle 30 Min. den Prüf-Workflow anstoßen (er wartet in seiner eigenen Schlange)
             if [ "$h" -ge 4 ] && { [ "$h" -le 7 ] || { [ "$h" -ge 10 ] && [ "$h" -le 14 ]; } || [ "$h" -ge 19 ] || [ $((tick % 3)) -eq 0 ]; }; then
               gh workflow run earnings.yml --ref "${GITHUB_REF_NAME}" -R "${GITHUB_REPOSITORY}" && echo "Quartalszahlen angestoßen $(date -u +%H:%M)" || true
+            fi
+            # Abend-Scan pünktlich um 22:30 Berlin anstoßen: geplante GitHub-Läufe kommen hier oft 3–4 Std. zu spät (11/2026).
+            # Einmal je Handelstag (Merker im Zustands-Branch); die verspäteten Zeitplan-Läufe sehen den fertigen Scan und enden sofort.
+            bh=$((10#$(TZ=Europe/Berlin date +%H%M))); bd=$(TZ=Europe/Berlin date +%F); bdow=$(TZ=Europe/Berlin date +%u)
+            if [ "$bdow" -le 5 ] && [ "$bh" -ge 2230 ] && [ "$bh" -lt 2355 ] && [ "$(cat state/scan_kick 2>/dev/null)" != "$bd" ]; then
+              if gh workflow run scan.yml --ref "${GITHUB_REF_NAME}" -R "${GITHUB_REPOSITORY}"; then
+                echo "$bd" > state/scan_kick; echo "::notice::Abend-Scan angestoßen $(TZ=Europe/Berlin date +%H:%M) Berlin"
+                ( cd state && git add scan_kick && git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Abend-Scan angestoßen $bd" \
+                  && for i in 1 2 3; do git pull -q --rebase origin kairo-alerts && git push -q origin kairo-alerts && break; sleep 5; done ) || true
+              fi
             fi
             if [ $((tick % 3)) -eq 0 ]; then
               if [ "$now" -ge 600 ] && [ "$now" -lt 2205 ]; then
