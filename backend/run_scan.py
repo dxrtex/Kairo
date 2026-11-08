@@ -45,7 +45,7 @@ def region_of(ticker: str) -> str:
     return "asia" if "." + ticker.rsplit(".", 1)[1] in _ASIA_SUFFIXES else "europe"
 
 SITE = ROOT / "site" / "data"
-CHART_BARS = 260
+CHART_BARS = 500                     # ≈ 2 Jahre: auch tiefere Fibonacci-Zonen (große Welle) sichtbar
 
 
 SLIM = ("criteria", "zone", "div", "bonuses", "hint")
@@ -74,7 +74,7 @@ def _clean(x):
 
 
 def chart_payload(df: pd.DataFrame, cfg=CONFIG) -> dict:
-    """Zeitreihen für TradingView Lightweight Charts (letzte ~260 Kerzen)."""
+    """Zeitreihen für TradingView Lightweight Charts (letzte ~500 Kerzen ≈ 2 Jahre)."""
     c = df["Close"]
     m = macd(c, cfg.macd.fast, cfg.macd.slow, cfg.macd.signal)
     r = rsi(c, cfg.rsi.length)

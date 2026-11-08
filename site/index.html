@@ -1140,6 +1140,13 @@
   .fs-new b { font-size: 15px; } .fs-new span { font-size: 13px; color: var(--muted); } .fs-new em { font-style: normal; font-size: 12.5px; color: var(--muted); }
   .fs-typ { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; } .fs-typ i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
   .fs-hm { border: 0; background: none; padding: 0; } .fsv .rrg { max-width: 720px; display: block; margin: 0 auto; }
+  .dck-more { margin-top: 10px; } .dck-more > summary { cursor: pointer; color: var(--accent); font-size: 14px; font-weight: 600; } .dck-more .dck-g { margin-top: 10px; }
+  .pcheck { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; } .pcheck li { display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px; border-radius: 12px; background: var(--surface-2); }
+  .pcheck i { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; color: #000; margin-top: 1px; }
+  .pc-ok i { background: var(--up); } .pc-warn i { background: var(--gold); } .pc-bad i { background: var(--red); color: #fff; }
+  .pcheck b { display: block; font-size: 14px; } .pcheck em { display: block; font-style: normal; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+  .cbands { position: absolute; left: 0; top: 0; bottom: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+  .cband { position: absolute; left: 0; right: 0; } .cband span { position: absolute; left: 8px; top: 2px; font-size: 11px; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,.6); white-space: nowrap; }
   .bmodal { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 16px; }
   .bmodal[hidden] { display: none; }
   .tour-box { width: min(460px, 100%); text-align: center; padding: 34px 28px 24px; max-height: calc(100dvh - 24px); overflow-y: auto; }
@@ -3540,9 +3547,9 @@ function depotCheckHtml(items, groups = []) {
   if (!notes.length) notes.push(["green", "Gut verteilt", "Keine Aktie über 15 %, keine Branche über 40 %, Hebel unter 20 % des Einsatzes."]);
   const bars = (title, rows) => rows.length ? `<div><b class="dck-t">${title}</b>${rows.slice(0, 5).map(([k, v]) => `<div class="dbar"><span>${esc(k)}</span><i><b style="width:${Math.max(2, v * 100).toFixed(1)}%"></b></i><em>${pct(v, 0)}</em></div>`).join("")}</div>` : "";
   return `<div class="card jcard dck"><div class="jc-h"><b>Depot-Check</b><span>${tot ? `nach Wert · ${fmt(tot)} €` : "nach Einsatz"}</span></div>
-    <div class="jins">${notes.map(([tone, t, x]) => `<div class="tip tone-${tone}"><b class="t">${esc(t)}</b>${esc(x)}</div>`).join("")}</div>
-    ${tot ? `<div class="dck-g">${bars("Größte Positionen", pos)}${bars("Branchen", sec)}${bars("Regionen", reg)}</div>` : ""}
-    <div class="note" style="margin:10px 0 0">Einordnung deiner Verteilung, keine Anlageberatung. Turbos mit ihrem aktuellen Wert${turbMiss ? " – einzelne Turbos ohne Kurs fehlen" : ""}.</div></div>`;
+    <ul class="pcheck" style="margin-top:4px">${notes.map(([tone, t, x]) => `<li class="pc-${tone === "red" ? "bad" : tone === "green" ? "ok" : "warn"}"><i>${tone === "red" ? "✕" : tone === "green" ? "✓" : "!"}</i><span><b>${esc(t)}</b><em>${esc(x)}</em></span></li>`).join("")}</ul>
+    ${tot ? `<details class="dck-more"${state.dckOpen ? " open" : ""} data-dckopen><summary>Verteilung anzeigen</summary><div class="dck-g">${bars("Größte Positionen", pos)}${bars("Branchen", sec)}${bars("Regionen", reg)}</div>
+      <div class="note" style="margin:8px 0 0">Keine Anlageberatung. Turbos mit ihrem aktuellen Wert${turbMiss ? " – einzelne Turbos ohne Kurs fehlen" : ""}.</div></details>` : ""}</div>`;
 }
 function nextEvent(t) {
   if (!calData) return null;
@@ -5732,6 +5739,7 @@ document.addEventListener("input", e => {
   const v = parseFloat(String(e.target.value).replace(",", ".")); state.etf = { ...(state.etf || {}), [k]: v >= 0 ? v : undefined }; save();
 });
 document.addEventListener("toggle", e => { if (e.target.matches && e.target.matches("[data-etfset]")) { state.etfSet = e.target.open ? 1 : 0; save(); } }, true);
+document.addEventListener("toggle", e => { if (e.target.dataset && e.target.dataset.dckopen !== undefined) { state.dckOpen = e.target.open; save(); } }, true);
 document.addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.insdet; if (k && state[k] !== e.target.open) { state[k] = e.target.open; save(); } }, true);
 document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("etf-tv")) { const o = e.target.open ? 1 : 0; if (o !== (state.etfTv || 0)) { state.etfTv = o; save(); render(); } } }, true);
 document.addEventListener("change", e => { if (["etfTotal", "etfShare", "pfReserve", "etfRate", "etfUnits", "etfBuy", "etfSince"].includes(e.target.id) && state.sec === "etf") render(); });
@@ -6976,10 +6984,10 @@ function tpInner(r, S) {
   return `${head}
     <div class="tip tone-${m.fit.tone}" style="margin-top:12px"><b class="t">${esc(m.fit.t)}</b>${esc(m.fit.s)}</div>
     ${m.mk ? `<div class="note" style="margin:6px 2px 0">Marktampel: ${esc(m.mk.t)} – ${esc(m.mk.s)}</div>` : ""}
-    ${m.problems.map(([t, x]) => `<div class="tip tone-${t}" style="margin-top:8px">${esc(x)}</div>`).join("")}
+    ${tpCheckHtml(m, lv)}
     <div class="tp2-plan">
       ${row("Kauf", `${X(m.E)} ${cur}`, m.base ? `in der Seitwärtsphase ${X(m.base.lo)}–${X(m.base.hi)} €` : "keine Seitwärtsphase erkannt")}
-      ${row("Stop-Loss (SL)", `${X(m.stop)} ${cur}`, `${sgnPct(m.stop / m.E - 1, 1)} · Verlust ${sgnEur(at(m.stop))}`, "down")}
+      ${row("Stop-Loss (SL)", `${X(m.stop)} ${cur}`, `${sgnPct(m.stop / m.E - 1, 1)} · Verlust ${sgnEur(at(m.stop))} · Abstand ${fmt(m.riskAtr, 1)} ATR`, "down")}
       ${row("Take-Profit", "keiner", "Gewinner laufen lassen – das bringt laut Test am meisten")}
       ${m.ema ? row("Verkaufen", `ab Tag ${H4X.from} unter EMA 20`, `Schließt ein Tag unter der EMA 20, am nächsten Morgen verkaufen – spätestens ${m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" })} (Tag ${m.hold}). Kairo meldet sich.`)
         : row("Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), `zum Schluss – nach ${m.hold} Handelstagen, falls der SL nicht vorher greift`)}
@@ -6997,6 +7005,18 @@ function tpInner(r, S) {
     <div class="row-actions" style="margin-top:12px"><button class="btn${m.fit.ok ? "" : " ghost"}" data-tpopen="${esc(r.t)}">${m.fit.ok ? (paperMode() ? "Übungs-Trade eröffnen" : "Trade eröffnen & speichern") : "Trotzdem speichern"}</button></div>
     <div class="note">Speichert den Plan unverändert. ${r.ext ? "Kairo zeigt ihn mit Live-Kursen in Deine Trades." : "Kairo prüft ihn tagsüber alle 30 Minuten (Stop, Verkaufstag, K.-o.) und meldet sich per Mitteilung."}</div>
     ${acct}`;
+}
+// Plan-Check: eine kompakte Prüfliste statt mehrerer langer Hinweis-Kästen – ✓ passt, ⚠ beachten, ✗ so nicht kaufen
+function tpCheckHtml(m, lv) {
+  const ok = (c, t, d) => `<li class="pc-${c}"><i>${c === "ok" ? "✓" : c === "warn" ? "!" : "✕"}</i><span><b>${t}</b>${d ? `<em>${d}</em>` : ""}</span></li>`;
+  const ra = m.riskAtr, items = [];
+  items.push(ra > TP.maxAtr ? ok("bad", "Stop zu weit weg", `${fmt(ra, 1)} ATR – mehr als ${TP.maxAtr} ATR passen nicht zur Strategie`)
+    : ra < TP.minAtr ? ok("warn", "Stop sehr eng", `${fmt(ra, 1)} ATR – schon normales Tagesrauschen kann ihn auslösen`)
+    : ra < 1 ? ok("warn", "Puffer bis zum Stop eher eng", `${fmt(ra, 1)} ATR – weniger als eine typische Tagesschwankung. Regelgerecht (0,25 ATR unter dem Tief der Seitwärtsphase); dafür ist die Position größer. Ein Kauf am unteren Rand der Spanne gibt mehr Luft.`)
+    : ok("ok", "Puffer bis zum Stop", `${fmt(ra, 1)} ATR = ${fmt(ra, 1)} typische Tagesschwankungen; Stop 0,25 ATR unter dem Tief der Seitwärtsphase (getestete Regel)`));
+  items.push(ok("ok", `Risiko ${eur2(lv.rEff)} (${fmt(m.cfg.depot ? 100 * lv.rEff / m.cfg.depot : m.riskPct, 1)} % vom Trading-Kapital)`, "Größe aus dem Abstand zum Stop berechnet – enger Stop = mehr Stück, weiter Stop = weniger"));
+  m.problems.filter(([, x]) => !/^Stop (nur )?[\d,]+ ATR/.test(x)).forEach(([t, x]) => { const [h, ...r] = String(x).split(/ – |: /); items.push(ok(t === "red" ? "bad" : "warn", h, r.join(" – "))); });
+  return `<ul class="pcheck">${items.join("")}</ul>`;
 }
 // Dein echter Turbo: Stop-Kurs am Turbo und Stückzahl aus Kaufkurs (€) und K.-o.-Schwelle des Produkts.
 // Turbo-Wert ≈ (Kurs − K.-o.) × Bezugsverhältnis ÷ Devisenkurs → verhältnisgleich: SL-Turbo = Kauf × (SL − K.-o.) ÷ (Kauf Aktie − K.-o.).
@@ -7723,7 +7743,7 @@ async function openDetail(t) {
       <button class="close" id="closeDetail" aria-label="Schließen">✕</button></div>
     <div style="margin-top:12px">${kpxHtml(r)}</div>
     <div style="margin-top:14px">${tipHtml(r.hint)}</div>
-    <div class="pane"><div class="pane-label"><span><i style="background:#f4b740"></i>EMA 20</span><span><i style="background:#4aa3ff"></i>EMA 50</span><span><i style="background:#b07cff"></i>EMA 100</span><span><i style="background:#ff8a65"></i>EMA 200</span><span>Fib-Level / Zone gestrichelt · Entry/Stop/Ziele durchgezogen</span></div><div class="lw" id="cMain" style="height:420px"></div></div>
+    <div class="pane"><div class="pane-label"><span><i style="background:#f4b740"></i>EMA 20</span><span><i style="background:#4aa3ff"></i>EMA 50</span><span><i style="background:#b07cff"></i>EMA 100</span><span><i style="background:#ff8a65"></i>EMA 200</span><span><i style="background:rgba(255,176,32,.6)"></i>Fibonacci-Zone</span><span><i style="background:rgba(74,163,255,.6)"></i>Unterstützung</span><span><i style="background:rgba(176,124,255,.6)"></i>große Welle</span></div><div class="lw" id="cMain" style="height:420px"></div></div>
     <div class="pane"><div class="pane-label">RSI 14 · SMA 14 · 30/50/70${r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}</div><div class="lw" id="cRsi" style="height:150px"></div></div>
     <div class="pane"><div class="pane-label">MACD 12/26/9 · Linie, Signal, Histogramm</div><div class="lw" id="cMacd" style="height:150px"></div></div>
     <div class="pane"><div class="pane-label">Momentum Bias Index [AlgoAlpha] · grün/rot · Referenzlinie · X-Signale</div><div class="lw" id="cMbi" style="height:150px"></div></div>
@@ -7765,9 +7785,20 @@ function drawCharts(c, r) {
   vol.setData(T.map((t, i) => ({ time: t, value: c.v[i] || 0, color: c.c[i] >= c.o[i] ? "rgba(48,209,88,.22)" : "rgba(255,69,58,.22)" })));
   const line = (price, title, color, style = 2) => price != null && candles.createPriceLine({ price, title, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true });
   const fib = r.zone && r.zone.fib, sup = r.zone && r.zone.support, p = chartPlan(r) || {};
-  if (fib) [["0", "Fib 0"], ["0.618", "0,618"], ["0.706", "0,706"], ["0.79", "0,79"], ["1", "Fib 1"]].forEach(([k, l]) => line(fib.levels[k], l, "#f4b740"));
-  if (sup) { line(sup.band[1], "Support oben", "#4aa3ff"); line(sup.center, "Support", "#4aa3ff", 0); line(sup.band[0], "Support unten", "#4aa3ff"); }
+  // Zonen als Flächen statt vieler Linien (Wunsch 11/2026: kontrastreicher, aufgeräumter). Linien nur für Hoch/Tief der Welle, Kauf und Stop.
+  const bands = [];
+  if (fib) { line(fib.levels["0"], "Hoch", "#f4b740", 1); line(fib.levels["1"], "Tief", "#f4b740", 1);
+    const a = fib.levels["0.618"], b = fib.levels["0.79"]; if (a != null && b != null) bands.push({ lo: Math.min(a, b), hi: Math.max(a, b), c: "255,176,32", l: "Fibonacci-Zone 0,618–0,79" }); }
+  if (sup) { bands.push({ lo: sup.band[0], hi: sup.band[1], c: "74,163,255", l: `Unterstützung · ${sup.touches}× getestet` }); line(sup.center, "Support", "#4aa3ff", 0); }
+  // Große Welle: tiefstes Tief vor dem Hoch über die ganze geladene Historie (≈ 2 Jahre) – liegt es deutlich unter dem Tief der
+  // aktuellen Welle, zeigt das Chart zusätzlich deren 0,618–0,786-Zone (tiefere Unterstützung, z. B. wenn die kleine Zone bricht)
+  if (fib && r.zone.H) { const hi = fib.levels["0"], hIdx = T.indexOf(r.zone.H_date || ""), end = hIdx > 0 ? hIdx : T.length - 1;
+    let L = Infinity; for (let i = 0; i < end; i++) if (c.l[i] != null && c.l[i] < L) L = c.l[i];
+    if (isFinite(L) && fib.levels["1"] && L < fib.levels["1"] * .95 && hi > L) { const lv = q => hi - (hi - L) * q;
+      bands.push({ lo: lv(.786), hi: lv(.618), c: "176,124,255", l: "Große Welle · Zone 0,618–0,786" }); line(L, "Tief große Welle", "#b07cff", 1); } }
   line(p.entry, "Kaufzone oben", "#eceef2", 0); line(p.stop, "Stop", "#ff453a", 0);
+  if (bands.length) chartBands(main, candles, $("cMain"), bands);
+  if (T.length > 300) main.timeScale().setVisibleLogicalRange({ from: T.length - 260, to: T.length + 3 });   // Start: letztes Jahr, nach links wischen = 2 Jahre
   line(tpKoStock(r.ticker, r.currency || r.cur), "K.-o. Turbo", "#ff9f0a", 1);
 
   const rsiC = LW.createChart($("cRsi"), opts($("cRsi")));
@@ -7803,6 +7834,16 @@ function drawCharts(c, r) {
   new ResizeObserver(() => charts.forEach((ch, k) => { const el = [$("cMain"), $("cRsi"), $("cMacd"), $("cMbi")][k]; el && ch.applyOptions({ width: el.clientWidth }); })).observe($("detailBody"));
 }
 
+// Farbige Zonen-Flächen über dem Chart (Lightweight Charts kennt keine Bänder): Overlay, das bei Zoom/Scroll nachgeführt wird
+function chartBands(chart, series, el, bands) {
+  el.style.position = "relative"; let ov = el.querySelector(".cbands"); if (!ov) { ov = document.createElement("div"); ov.className = "cbands"; el.appendChild(ov); }
+  const draw = () => { const w = chart.timeScale().width(); ov.style.width = w + "px";
+    ov.innerHTML = bands.map((b, i) => { const y1 = series.priceToCoordinate(b.hi), y2 = series.priceToCoordinate(b.lo); if (y1 == null || y2 == null) return "";
+      const t = Math.min(y1, y2), h = Math.max(3, Math.abs(y2 - y1));
+      return `<div class="cband" style="top:${t}px;height:${h}px;background:rgba(${b.c},.16);border-top:1px solid rgba(${b.c},.75);border-bottom:1px solid rgba(${b.c},.75)"><span style="color:rgb(${b.c});left:${8 + i * Math.min(220, w / 3)}px">${esc(b.l)}</span></div>`; }).join(""); };   // Beschriftungen versetzt, falls Zonen sich überlappen
+  const raf = () => requestAnimationFrame(draw);
+  chart.timeScale().subscribeVisibleLogicalRangeChange(raf); chart.subscribeCrosshairMove(raf); new ResizeObserver(raf).observe(el); setTimeout(draw, 60);
+}
 // ---------- Export ----------
 function exportRows() {
   return selRows().map(r => ({ Ticker: r.ticker, Name: r.name, "Börse": r.exchange, Region: REGION[r.region] || "", Sektor: r.sector,
