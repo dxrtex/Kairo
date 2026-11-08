@@ -1,6 +1,6 @@
 /* Kairo – Start-Animation „Vom Lärm zum einen Moment“ (≈ 2,7 s). Ablauf auf reinem Schwarz:
-   0,00 s  graue Kerzen (der Markt) laufen groß über einer feinen blauen Kurslinie ein (Szene 1,75 × vergrößert)
-   0,56 s  eine Kerze wird blau und leuchtet auf, die übrigen treten zurück
+   0,00 s  Kerzen laufen ein und zeichnen eine Korrektur mit Wende (V) – der Markt; die Szene ist vergrößert
+   0,56 s  die Kerze am Tiefpunkt wird blau und leuchtet auf – der richtige Moment –, die übrigen treten zurück
    0,92 s  Zoom ins Zeichen; an der Stelle der blauen Kerze wächst die Kerze des Zeichens, 1,15 s der Körper federt auf
    1,30 s  die zwei silbernen Klingen des K gleiten mit Bewegungsunschärfe heran
    1,50 s  die Kachel materialisiert sich dahinter, 1,70 s Lichtreflex über das Zeichen
@@ -17,7 +17,7 @@
       <div class="sp-lock">
         <div class="sp-mark">
           <div class="sp-tile"></div>
-          <div class="sp-noise"><i style="--x:-6;--h:0.3;--y:0.1;--o:12;--d:6"></i><i style="--x:-5;--h:0.42;--y:0.04;--o:11;--d:5"></i><i style="--x:-4;--h:0.26;--y:0.12;--o:10;--d:4"></i><i style="--x:-3;--h:0.48;--y:-0.02;--o:9;--d:3"></i><i style="--x:-2;--h:0.34;--y:0.06;--o:8;--d:2"></i><i style="--x:-1;--h:0.52;--y:-0.06;--o:7;--d:1"></i><i class="on" style="--x:0;--h:0.376;--y:-0.016;--o:6;--d:0"></i><i style="--x:1;--h:0.4;--y:-0.04;--o:5;--d:1"></i><i style="--x:2;--h:0.28;--y:0.08;--o:4;--d:2"></i><i style="--x:3;--h:0.46;--y:-0.1;--o:3;--d:3"></i><i style="--x:4;--h:0.32;--y:-0.02;--o:2;--d:4"></i><i style="--x:5;--h:0.44;--y:-0.12;--o:1;--d:5"></i><i style="--x:6;--h:0.3;--y:-0.06;--o:0;--d:6"></i></div>
+          <div class="sp-noise"><i class="dn" style="--x:-6;--h:0.3;--y:-0.596;--o:12;--d:6"></i><i class="dn" style="--x:-5;--h:0.42;--y:-0.546;--o:11;--d:5"></i><i class="dn" style="--x:-4;--h:0.26;--y:-0.406;--o:10;--d:4"></i><i class="dn" style="--x:-3;--h:0.48;--y:-0.336;--o:9;--d:3"></i><i class="dn" style="--x:-2;--h:0.34;--y:-0.196;--o:8;--d:2"></i><i class="dn" style="--x:-1;--h:0.52;--y:-0.116;--o:7;--d:1"></i><i class="on" style="--x:0;--h:0.376;--y:-0.016;--o:6;--d:0"></i><i class="up" style="--x:1;--h:0.4;--y:-0.106;--o:5;--d:1"></i><i class="up" style="--x:2;--h:0.28;--y:-0.236;--o:4;--d:2"></i><i class="up" style="--x:3;--h:0.46;--y:-0.296;--o:3;--d:3"></i><i class="up" style="--x:4;--h:0.32;--y:-0.426;--o:2;--d:4"></i><i class="up" style="--x:5;--h:0.44;--y:-0.496;--o:1;--d:5"></i><i class="up" style="--x:6;--h:0.3;--y:-0.636;--o:0;--d:6"></i></div>
           <svg viewBox="0 0 1000 1000" aria-hidden="true">
             <defs>
               <linearGradient id="spW" x1="0" y1="159" x2="0" y2="833" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3D9BFF"/><stop offset="1" stop-color="#0A6FFF"/></linearGradient>
@@ -45,7 +45,7 @@
       <div class="sp-load"><i></i></div>
     </div>`;
   const ANIM_MS = 2700, SHORT_MS = 850, EXIT_MS = 560, TIMEOUT_MS = 6000;
-  const INTRO_V = "5";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
+  const INTRO_V = "6";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
   const mark = () => { try { localStorage.setItem("kairo-intro", INTRO_V); } catch (e) {} };
   let current = null;
   // Nach dem Intro: Start-Schwarz entfernen, damit helle Designs ihre eigene Hintergrundfarbe zeigen
