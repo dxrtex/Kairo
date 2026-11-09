@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import time
 from pathlib import Path
@@ -26,6 +27,7 @@ from .config import CONFIG, ROOT
 HOLD = 63           # max. Haltedauer: 3 Monate (Swing-Trading)
 GAP = 5             # neue Signal-Phase erst nach ≥ 5 Tagen ohne Signal
 RET_DAYS = (5, 10, 20, 40, 63)
+PXH = int(os.environ.get("KAIRO_PX_HOLD", HOLD))   # Studien: längerer Kursverlauf (z. B. 75 = 10 Tage Warten + 60 Tage Halten + Puffer)
 
 
 def _race(h, l, i: int, n: int, stop: float, target: float | None, o=None):
@@ -223,10 +225,13 @@ def scan_history(df: pd.DataFrame, ticker: str, start: int = 260, base_every: in
                           "div_age": _py(r.flags.get("div_t2_age")) if kind else None,
                           "ok": "".join("1" if c.ok else "0" for c in r.criteria) if kind else None,
                           "met": int(sum(c.ok for c in r.criteria if c.key not in ("cap", "liquidity", "price", "history")))}})
+        fz = (r.zone or {}).get("fib") or {}         # Fibonacci-Messwerte für die Zonen-Studie (fibstudy.py) – nur Aufzeichnung
+        out[-1]["f"]["fib"] = {"ret": _r(fz.get("retracement"), 3), "imp": _r(fz.get("impulse"), 3), "ok": bool(fz.get("ok")),
+                               "core": bool(fz.get("core")), "valid": bool(fz.get("valid")), "sup": bool((r.zone or {}).get("support"))} if fz else None
         if kind:                                   # Kursverlauf danach (für den Ausstiegs-Backtest, relativ zum Schluss)
-            out[-1]["px"] = pxrec(i, p["stop"], p.get("target1"), p.get("target2"), lv, r.flags.get("atr") or 0)
+            out[-1]["px"] = pxrec(i, p["stop"], p.get("target1"), p.get("target2"), lv, r.flags.get("atr") or 0, hold=PXH)
         elif px_base:                              # Vergleichstage: 40 Tage – genug für Basis-Wartezeit (10) + 30 Tage halten
-            out[-1]["px"] = pxrec(i, p["stop"], p.get("target1"), p.get("target2"), lv, r.flags.get("atr") or 0, hold=40)
+            out[-1]["px"] = pxrec(i, p["stop"], p.get("target1"), p.get("target2"), lv, r.flags.get("atr") or 0, hold=max(40, PXH if PXH != HOLD else 40))
     return out
 
 
