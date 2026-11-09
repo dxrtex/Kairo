@@ -2801,7 +2801,17 @@ function zmTo(el, s, cx, cy) {                       // auf Faktor s zoomen, Pun
   };
   document.addEventListener("pointerup", end); document.addEventListener("pointercancel", end);
   document.addEventListener("click", e => { if (Date.now() - noClick < 350 && e.target.closest && e.target.closest(".zm")) { e.stopPropagation(); e.preventDefault(); } }, true);
-  document.addEventListener("gesturestart", e => { if (e.target.closest && e.target.closest(".zm")) e.preventDefault(); });   // Safari: Seite selbst nicht zoomen
+  // Safari (iPad-Trackpad, Mac): Zusammenziehen auf dem Trackpad kommt als GestureEvent (scale), nicht als Finger/Pointer –
+  // daraus den Zoom machen. Bei echten Fingern auf dem Bildschirm laufen die Pointer-Events (oben), dann hier nichts tun.
+  let ge = null;
+  document.addEventListener("gesturestart", e => { const el = e.target.closest && e.target.closest(".zm"); if (!el) return; e.preventDefault();
+    if (P.size >= 2) return; const c = ZM[el.dataset.zm]; if (!c) return; const [x, y] = rel(el, e.clientX, e.clientY);
+    ge = { el, s0: c.s, x0: c.x, y0: c.y, mx: x, my: y }; });
+  document.addEventListener("gesturechange", e => { if (!ge) return; e.preventDefault(); if (P.size >= 2) { ge = null; return; }
+    const c = ZM[ge.el.dataset.zm], s1 = Math.max(1, Math.min(10, ge.s0 * e.scale)), k = s1 / ge.s0;
+    ge.z = zmClamp(ge.el, { s: s1, x: ge.mx - (ge.mx - ge.x0) * k, y: ge.my - (ge.my - ge.y0) * k });
+    ge.el.firstElementChild.style.transform = `translate(${ge.z.x}px,${ge.z.y}px) scale(${ge.z.s / c.s})`; });
+  document.addEventListener("gestureend", e => { if (!ge) return; e.preventDefault(); if (ge.z) { zmCommit(ge.el, ge.z); noClick = Date.now(); } ge = null; });
   document.addEventListener("wheel", e => {
     const el = e.target.closest && e.target.closest(".zm"); if (!el) return; const c = ZM[el.dataset.zm]; if (!c) return;
     if (e.ctrlKey) { e.preventDefault(); const [x, y] = rel(el, e.clientX, e.clientY); zmTo(el, c.s * Math.exp(-e.deltaY * .012), x, y); }
@@ -2924,7 +2934,10 @@ function hmPreviewHtml(t) {
     <div class="pv-g">${cell("Heute", r.d1)}${cell("1 Woche", r.d5)}${cell("1 Monat", r.m1)}${cell("3 Monate", r.m3)}${cell("seit Jan.", r.ytd)}</div>
     <p style="margin:12px 0 4px;font-size:14px">Kairo: <b>${r.m != null ? r.m + "/11" : "–"}</b>${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}${r.rv != null && r.rv >= 1.5 ? ` · <span class="mv-rv">${fmt(r.rv, 1)}× Volumen</span>` : ""}</p>
     ${r.title ? `<p class="muted" style="margin:0 0 12px;font-size:13px">${esc(r.title)}</p>` : ""}
-    <div class="row-actions"><button class="btn sm" ${sr ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`}>Aktie öffnen</button>${ind ? `<button class="btn ghost sm" data-spclose data-spdrill2="${esc(r.ig)}">Branche ${esc(ind.n)} ›</button>` : ""}</div>`;
+    <div class="row-actions pv-act">${sr ? `<button class="btn sm" data-open="${esc(t)}">Details öffnen</button><button class="btn ghost sm" data-card="${esc(t)}">Übersicht</button>` : `<button class="btn sm" data-ein="${esc(t)}">Einstieg planen</button>`}
+      <button class="btn ghost sm fav-l${mine || favs().has(t) ? " on" : ""}" data-fav="${esc(t)}" data-favlbl>${favs().has(t) ? "★ Auf der Watchlist" : "☆ Zur Watchlist"}</button>
+      ${ind ? `<button class="btn ghost sm" data-spclose data-spdrill2="${esc(r.ig)}">Branche ${esc(ind.n)} ›</button>` : ""}</div>
+    ${sr ? "" : `<p class="muted" style="font-size:12.5px;margin:8px 0 0">Nicht im Kairo-Scan – darum ohne Kairo-Detailseite. „Einstieg planen“ zeigt Kurs, Trend und Trade-Plan.</p>`}`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-spdrill2]"); if (b) { state.spMode = "ind"; save(); setTimeout(() => openSpDrill(b.dataset.spdrill2), 0); } });
 // Tages-Fazit in einem Satz: Index, Breite, stärkster/schwächster Sektor heute, dauerhafte Zuflüsse (12 Wochen)
@@ -2988,7 +3001,7 @@ function openSpDrill(key) {
 }
 document.addEventListener("click", e => {
   const t = e.target;
-  if (t.closest("#spm [data-card], #spm [data-ein], [data-spclose]")) { $("spm").hidden = true; if (t.closest("[data-spclose]")) return; }
+  if (t.closest("#spm [data-card], #spm [data-ein], [data-spclose]")) { $("spm").hidden = true; if (state.fsv && t.closest("#spm [data-card], #spm [data-ein]")) { state.fsv = null; fsvRender(); } if (t.closest("[data-spclose]")) return; }
   const io = t.closest("[data-insopen]"); if (io) { $("spmBody").innerHTML = insDetailHtml(io.dataset.insopen); $("spm").hidden = false; $("spm").dataset.k = ""; return; }
   const pm = t.closest("[data-spmode]"); if (pm && !pm.disabled) { state.spMode = pm.dataset.spmode; if (state.spMode !== "sec") state.spReg = "us"; save(); render(); return; }
   const pr = t.closest("[data-spreg]"); if (pr) { state.spReg = pr.dataset.spreg; if (state.spReg === "eu") state.spMode = "sec"; save(); render(); return; }
@@ -6211,8 +6224,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.61";
-const APP_NEWS = [["2026.11.61", "Chart wie in einer Profi-App", [
+const APP_VER = "2026.11.62";
+const APP_NEWS = [["2026.11.62", "Heatmap: Watchlist, Details, Trackpad-Zoom", [
+  ["Aus der Heatmap auf die Watchlist", "Eine Aktie in der Heatmap antippen: In der Vorschau gibt es jetzt „☆ Zur Watchlist“ und – bei Aktien aus dem Kairo-Scan – „Details öffnen“ mit großem Chart wie im Scanner."],
+  ["Trackpad-Zoom", "Zusammenziehen auf dem Trackpad (iPad-Tastatur, Mac) zoomt Heatmap und Rotation jetzt genauso wie zwei Finger auf dem Bildschirm – mit Namen auch für kleine Firmen."]]],
+  ["2026.11.61", "Chart wie in einer Profi-App", [
   ["Richtige Welle", "Fibonacci misst jetzt vom echten Anfang der Welle: vom Hoch rückwärts bis zum Tief, vor dem eine fast vollständige Korrektur lag (Siemens Energy: 3.9.2025 statt eines Zwischentiefs). Eine feine Linie zeigt, welche Welle gemessen wird."],
   ["Aufgeräumt", "Zone beginnt am Tief statt über die ganze Breite, Hoch und Tief als Marken an den Kerzen, 61,8 % / 79 % am Rand; rechts an der Achse nur noch Kurs, Kaufzone, Stop und K.-o. Der Chart öffnet so, dass die ganze Welle zu sehen ist."]]],
   ["2026.11.60", "Chart: nur eine Fibonacci-Zone", [
@@ -8220,7 +8236,7 @@ document.addEventListener("click", e => {
   }
   const fb = e.target.closest("[data-fav]");
   if (fb) { e.preventDefault(); e.stopPropagation(); const t = fb.dataset.fav; favToggle(t);
-    document.querySelectorAll(`[data-fav="${CSS.escape(t)}"]`).forEach(b => { const on = favs().has(t); b.classList.toggle("on", on); b.textContent = on ? "★" : "☆"; b.title = on ? "Von der Merkliste nehmen" : "Auf die Merkliste"; });
+    document.querySelectorAll(`[data-fav="${CSS.escape(t)}"]`).forEach(b => { const on = favs().has(t); b.classList.toggle("on", on); b.textContent = b.hasAttribute("data-favlbl") ? (on ? "★ Auf der Watchlist" : "☆ Zur Watchlist") : on ? "★" : "☆"; b.title = on ? "Von der Merkliste nehmen" : "Auf die Merkliste"; });
     if (state.sec === "scanner" && !(fb.closest(".cmodal"))) { const y = scrollY, tw = document.querySelector(".table-wrap"), sx = tw && tw.scrollLeft; render(); scrollTo(0, y); const tw2 = document.querySelector(".table-wrap"); if (tw2 && sx) tw2.scrollLeft = sx; }
     else if (state.sec === "scanner") render();
     else if (state.sec === "calendar") render();
@@ -8239,7 +8255,7 @@ document.addEventListener("click", e => {
     state.kinds = KIND_BTNS_ALL.map(x => x[0]).filter(x => set.has(x)); save(); render(); return; }
   const cd = e.target.closest("[data-card]"); if (cd) { e.preventDefault(); openCard(cd.dataset.card); return; }
   if (e.target.closest("[data-closecard]")) { closeCard(); return; }
-  const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); closeCard(); openDetail(o.dataset.open); return; }
+  const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); closeCard(); if ($("spm")) $("spm").hidden = true; if (state.fsv) { state.fsv = null; fsvRender(); } openDetail(o.dataset.open); return; }
   const th = e.target.closest("th[data-k]"); if (th) { if (th.dataset.k === state.tableSort) state.tableAsc = !state.tableAsc; else { state.tableSort = th.dataset.k; state.tableAsc = false; }
     const tw = document.querySelector("main .table-wrap"), sx = tw ? tw.scrollLeft : 0, sy = window.scrollY;   // Sortieren: Position in der Tabelle behalten
     render();
