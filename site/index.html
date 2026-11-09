@@ -164,7 +164,7 @@
   .ein-search { position: relative; margin: 0 0 12px; } .ein-search input { width: 100%; font-size: 17px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2, #1c1c1e); color: var(--text); }
   .ein-kz { display: grid; gap: 2px; margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2, #1c1c1e); } .ein-kz span { color: var(--muted); font-size: 13px; } .ein-kz b.kz-y { color: var(--gold); }
   .tp-more { margin: 6px 0 0; font-size: 13px; color: var(--muted); } .tp-more > summary { cursor: pointer; color: var(--accent); } .ein-opt b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .ein-list { display: grid; gap: 6px; margin-top: 8px; } .ein-opt { display: grid; grid-template-columns: 1fr auto; text-align: left; gap: 2px 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2, #1c1c1e); color: var(--text); cursor: pointer; }
+  .ein-list { display: grid; gap: 6px; margin-top: 8px; } @media (min-width: 900px) { .ein-list { grid-template-columns: 1fr 1fr; } } .ein-opt { display: grid; grid-template-columns: 1fr auto; text-align: left; gap: 2px 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2, #1c1c1e); color: var(--text); cursor: pointer; }
   .ein-opt span { color: var(--muted); font-size: 13px; grid-column: 1; } .ein-opt i { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-style: normal; }
   .ein-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; } .ein-steps.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ein-steps .es { padding: 7px 8px; border-radius: 10px; background: var(--surface-2, rgba(255,255,255,.05)); border: 1px solid var(--line); min-width: 0; }
@@ -673,6 +673,7 @@
   main .table-wrap th:nth-child(1), main .table-wrap td:nth-child(1) { position: sticky; left: 0; z-index: 2; min-width: 176px; max-width: 176px; width: 176px; white-space: nowrap; background: var(--surface, #161617); }
   main .table-wrap th:nth-child(2), main .table-wrap td:nth-child(2) { position: sticky; left: 176px; z-index: 2; background: var(--surface, #161617); box-shadow: 6px 0 8px -6px rgba(0,0,0,.45); }
   .scroll-hint { font-size: 12px; color: var(--muted); text-align: right; margin: -4px 4px 6px; }
+  .st-legend-d { margin: 2px 2px 8px; } .st-legend-d > summary { font-size: 12.5px; color: var(--accent); cursor: pointer; } .st-legend-d .st-legend { flex-direction: column; margin-top: 6px; }
   .st-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin: 4px 2px 8px; } .st-legend b { font-weight: 650; }
   .mlist .msort { display: flex; justify-content: flex-end; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 0 2px 8px; }
   .mrow { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-top: 1px solid var(--line); } .mrow > a { flex: 1; min-width: 0; color: var(--text); text-decoration: none; }
@@ -913,6 +914,7 @@
   .bh-l em { font-style: normal; color: var(--muted); font-size: 14px; } .bh-l em b { color: var(--text); }
   .bh-r { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-self: center; }
   .bh-r .mt span { white-space: normal; line-height: 1.25; }
+  @media (max-width: 640px) { .bh-r { grid-template-columns: 1fr; } .bh-r .mt { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 10px; } .bh-r .mt em { grid-column: 1 / -1; } }
   .obar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; }
   .obar i.t1 { background: var(--up); } .obar i.op { background: var(--surface-3); } .obar i.st { background: var(--red); }
   .pkpi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0 4px; } @media (min-width: 760px) { .pkpi { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
@@ -2176,7 +2178,7 @@ function card(r) {
     </div>
     <span class="flag">${esc(r.zone_type)}${r.divergence ? " · " + esc(r.divergence) : ""}</span>
     ${agrp(`Kriterien · ${r.met ?? "–"}/${r.total ?? 11}`, r.criteria ? `<div class="chips">${chips(r)}</div>` : `<div class="note" style="margin:0">${r.met ?? "–"} von ${r.total ?? 11} Kriterien erfüllt${(r.missing || []).length ? ` – es fehlen: ${esc(r.missing.map(shortCrit).join(", "))}` : ""}.</div>`, true)}
-    ${tipHtml(r.hint)}
+    ${tipHtml(hintNow(r))}
     ${agrp("Marktstimmung", sentiHtml(r))}
     ${agrp("Fundament & Wochentrend", fundHtml(r))}
     <div class="actions">
@@ -2338,6 +2340,17 @@ function loadSearch() {
       try { (JSON.parse(localStorage.getItem("kairo-ext") || "[]")).forEach(x => { if (!searchIdx.some(r => r.t === x.t)) searchIdx.push(x); }); } catch (e) {}
       render(); }).catch(() => { searchIdx = []; render(); });
   return searchLoading;
+}
+// Hinweis des Abend-Scans + aktueller Kauf-Status (verfallen, Einstieg vorbei, kaufbereit, im Depot) – sonst widerspricht
+// die Detailseite der Heute-Ansicht (Siemens Energy 11/2026: „Treffer – warten“ im Detail, „verfallen“ auf Heute).
+function hintNow(r) {
+  const h = r && r.hint; if (!r || !r.passed) return h;
+  const k = kSt(r), it = h4Of(r.ticker);
+  if (k.k === "gone") return { tone: "red", title: "Kairo-Treffer verfallen – nicht traden", text: `${it && it.why ? `${it.why[0].toUpperCase() + it.why.slice(1)}. ` : "Innerhalb von 10 Handelstagen keine Seitwärtsphase. "}Laut getesteter Regel ist das Signal damit erledigt – auf den nächsten Treffer warten.` };
+  if (k.k === "late") return { tone: "yellow", title: "Einstieg vorbei", text: k.s + "." };
+  if (k.k === "ready") return { tone: "green", title: "Kaufbereit – Kauf zur nächsten Eröffnung", text: "Die Seitwärtsphase ist fertig. Den Trade-Plan (Stop, Stückzahl) zeigt der Reiter Einstieg." };
+  if (k.k === "own") return { tone: "green", title: "Im Depot", text: "Der Trade läuft – Stop und Verkaufstag stehen im Depot." };
+  return h;
 }
 function tipHtml(h) {
   if (!h || !h.title) return "";
@@ -5515,8 +5528,9 @@ const atDE = (x, day) => x.at ? x.at.toLocaleString("de-DE", { timeZone: "Europe
 const whenOpen = t => { const x = mktClock(t); return x.open ? `jetzt (${x.n} offen)` : x.at ? `${x.k === 0 ? "heute" : x.k === 1 && x.at.getDate() === new Date(Date.now() + 864e5).getDate() ? "morgen" : x.at.toLocaleDateString("de-DE", { weekday: "long" })} ${atDE(x)} · Eröffnung ${x.n}` : "zur nächsten Eröffnung"; };
 function todaySubHtml() {                       // Kopfzeile unter der Begrüßung: Datum, Börsen, Datenstand
   const dt = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
-  const ex = [["Xetra", "X.DE"], ["New York", ""]].map(([n, t]) => { const x = mktClock(t);
-    return x.open ? `<span class="up">● ${n} offen, noch ${durDE(x.mins)}</span>` : x.at ? `<span>${n} ${x.k ? "öffnet " + atDE(x, true).replace(" Uhr", "") : "öffnet in " + durDE(x.mins)}</span>` : ""; });
+  const ph = innerWidth < 640, dur = n => ph ? `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")} h` : durDE(n);   // Handy: „6:39 h“ statt „6 Std. 39 Min.“
+  const ex = [[ph ? "Xetra" : "Xetra", "X.DE"], [ph ? "NY" : "New York", ""]].map(([n, t]) => { const x = mktClock(t);
+    return x.open ? `<span class="up">● ${n} offen${ph ? " · " : ", noch "}${dur(x.mins)}</span>` : x.at ? `<span>${n} ${x.k ? "öffnet " + atDE(x, true).replace(" Uhr", "") : (ph ? "in " : "öffnet in ") + dur(x.mins)}</span>` : ""; });
   const g = data && data.generated ? new Date(data.generated) : null, old = g && bdBetween(g, new Date()) > 1;
   return [`<b>${dt}</b>`, ...ex, g ? `<span class="${old ? "gold" : ""}">${old ? "⚠︎ veraltet: " : ""}Daten ${g.toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" }).replace(",", "")}</span>` : ""].filter(Boolean).join(" · ");
 }
@@ -5718,15 +5732,18 @@ function feeDrag(cap) {
 }
 function etfLine(h, buy) {
   if (!h || h.length < 20) return "";
-  const W = 640, H = 220, p = 8, xs = h.map(x => x[1]), ms = h.map(x => x[2]).filter(v => v != null), bl = buy > 0 ? [buy] : [], lo = Math.min(...xs, ...ms, ...bl) * .98, hi = Math.max(...xs, ...ms, ...bl) * 1.01;
-  const X = i => p + i / (h.length - 1) * (W - 2 * p), Y = v => H - 24 - (v - lo) / (hi - lo) * (H - 40);
+  const mw = ($("main") && $("main").clientWidth) || innerWidth - 40;   // echte Breite des Inhalts (iPad mit/ohne Seitenleiste, iPhone)
+  const W = Math.round(Math.max(300, Math.min(1400, mw - 36))), H = Math.round(Math.min(260, Math.max(200, W * .28))), p = 8, xs = h.map(x => x[1]), ms = h.map(x => x[2]).filter(v => v != null), bl = buy > 0 ? [buy] : [], lo = Math.min(...xs, ...ms, ...bl) * .98, hi = Math.max(...xs, ...ms, ...bl) * 1.01;
+  const X = i => p + i / (h.length - 1) * (W - 2 * p - 46), Y = v => H - 24 - (v - lo) / (hi - lo) * (H - 40);
+  const step = (hi - lo) / 3, grid = [1, 2, 3].map(k => lo + step * k - step / 2);   // Preis-Hilfslinien mit Beschriftung rechts
   const path = k => h.map((x, i) => x[k] == null ? null : `${X(i).toFixed(1)},${Y(x[k]).toFixed(1)}`).filter(Boolean).join(" ");
   const yrs = [...new Set(h.map(x => x[0].slice(0, 4)))].map(y => [y, h.findIndex(x => x[0].startsWith(y))]).filter(x => x[1] > 10);
   return `<svg class="rp" viewBox="0 0 ${W} ${H}" role="img" aria-label="Kursverlauf mit 200-Tage-Linie">
     <polyline points="${path(2)}" fill="none" stroke="var(--gold)" stroke-width="1.5" stroke-dasharray="4 3"/>
     <polyline points="${path(1)}" fill="none" stroke="var(--accent, #0a84ff)" stroke-width="2"/>
     ${buy > 0 ? `<line x1="${p}" x2="${W - p}" y1="${Y(buy).toFixed(1)}" y2="${Y(buy).toFixed(1)}" stroke="var(--up)" stroke-width="1.5" stroke-dasharray="2 4"/>` : ""}
-    ${yrs.map(([y, i]) => `<line x1="${X(i)}" x2="${X(i)}" y1="10" y2="${H - 22}" stroke="var(--line)"/><text x="${X(i) + 3}" y="${H - 8}">${y}</text>`).join("")}</svg>
+    ${yrs.map(([y, i]) => `<line x1="${X(i)}" x2="${X(i)}" y1="10" y2="${H - 22}" stroke="var(--line)"/><text x="${X(i) + 3}" y="${H - 8}">${y}</text>`).join("")}
+    ${grid.map(v => `<line x1="${p}" x2="${W - 50}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--line)" stroke-dasharray="2 4"/><text x="${W - 4}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end">${fmt(v)} €</text>`).join("")}</svg>
     <div class="oleg"><span style="color:var(--accent, #0a84ff)">■ Kurs (€)</span><span class="gold">┄ 200-Tage-Linie</span>${buy > 0 ? `<span class="up">┈ dein Ø Kaufkurs ${fmt(buy)} €</span>` : ""}</div>`;
 }
 function etfAmpelHtml(e, compact) {
@@ -6043,7 +6060,7 @@ function myTradesHtml() {
 const ST_TXT = { wait: ["wartet auf Seitwärtsphase", "muted"], nobase: ["kein Einstieg", "muted"], run: ["läuft", "gold"], stop: ["Stop", "down"], ema: ["Ausstieg EMA 20", ""], zeit: ["Ausstieg Tag 60", ""] };
 function bilanzHtml() {
   const b = getJson("bilanz.json");
-  const back = `<button class="backbtn" data-gosec="today">‹ Heute</button>`, M = STRAT_BT.main;
+  const back = "", M = STRAT_BT.main;   // Bilanz liegt unter Depot (Unterreiter) – kein „‹ Heute“ mehr
   const rng = (a, d = 0, p = "") => a[0] === a[1] ? p + pct(a[0], d) : `${p}${pct(Math.min(...a), d)} bis ${p}${pct(Math.max(...a), d)}`;
   const sg = v => (v >= 0 ? "+" : "−") + pct(Math.abs(v), 0), R = v => `${v >= 0 ? "+" : "−"}${fmt(Math.abs(v), 2)} R`;
   const D = RESEARCH.d20;
@@ -6051,7 +6068,7 @@ function bilanzHtml() {
       <b>${resR(RESEARCH.rNorm)}</b><em>Ø je Trade mit normalen Kosten (Scalable PRIME+), mit Stress-Kosten (doppelter Spread, Schlupf) <b>${resR(RESEARCH.rStress)}</b>.
       Nur etwa ${resR(RESEARCH.vsRandom)} besser als Zufalls-Einstiege mit denselben Regeln – ein kleiner Vorteil, den die Kosten fast ganz aufzehren.
       Als Depot (20 Trades × 0,25 % Risiko): <b>${sgnPct(D.norm, 0)} pro Jahr</b> mit normalen, <b>${sgnPct(D.stress, 1)}</b> mit Stress-Kosten – Welt-ETF im selben Zeitraum ${sgnPct(RESEARCH.acwi, 0)}.</em></div>
-      <div class="bh-r"><div class="mt"><span>Größter Rückgang</span><b class="down">${pct(D.ddNorm, 0)} bis ${pct(D.ddStress, 0)}</b><em>20 × 0,25 % · mit 5 × 1 % Risiko ${pct(RESEARCH.d5.ddNorm, 0)} bis ${pct(RESEARCH.d5.ddStress, 0)}</em></div>
+      <div class="bh-r"><div class="mt"><span>Größter Rückgang</span><b class="down" style="white-space:nowrap;font-size:clamp(15px,2vw,19px)">${pct(D.ddNorm, 0)} bis ${pct(D.ddStress, 0)}</b><em>20 × 0,25 % · mit 5 × 1 % Risiko ${pct(RESEARCH.d5.ddNorm, 0)} bis ${pct(RESEARCH.d5.ddStress, 0)}</em></div>
         <div class="mt"><span>Entscheidend</span><b>Kosten</b><em>Spread und Ausführung → Kosten-Check im Journal</em></div>
         <div class="mt"><span>Realistisch</span><b>eher weniger</b><em>Pleite-Aktien fehlen im Test</em></div></div></div>`;
   const rules = `<div class="hcard">${hHead("Die Kairo-Regel")}<ol class="rule-steps">${[
@@ -6224,8 +6241,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.62";
-const APP_NEWS = [["2026.11.62", "Heatmap: Watchlist, Details, Trackpad-Zoom", [
+const APP_VER = "2026.11.63";
+const APP_NEWS = [["2026.11.63", "Gesamtprüfung: Feinschliff", [
+  ["Status überall gleich", "Die Detailseite zeigt jetzt den aktuellen Kauf-Status (verfallen, Einstieg vorbei, kaufbereit, im Depot) statt des Hinweises vom Vorabend – wie auf Heute."],
+  ["Aufgeräumt", "ETF-Kurve über die ganze Breite mit Preisen, Einstieg-Liste auf dem iPad zweispaltig, Bilanz-Kennzahlen auf dem iPhone lesbar, kürzere Börsenzeiten und Suchfelder auf dem iPhone, Status-Erklärung im Scanner einklappbar, richtige Versionsnummer in den Einstellungen."]]],
+  ["2026.11.62", "Heatmap: Watchlist, Details, Trackpad-Zoom", [
   ["Aus der Heatmap auf die Watchlist", "Eine Aktie in der Heatmap antippen: In der Vorschau gibt es jetzt „☆ Zur Watchlist“ und – bei Aktien aus dem Kairo-Scan – „Details öffnen“ mit großem Chart wie im Scanner."],
   ["Trackpad-Zoom", "Zusammenziehen auf dem Trackpad (iPad-Tastatur, Mac) zoomt Heatmap und Rotation jetzt genauso wie zwei Finger auf dem Bildschirm – mit Namen auch für kleine Firmen."]]],
   ["2026.11.61", "Chart wie in einer Profi-App", [
@@ -6509,7 +6529,7 @@ function reportText(msg) {
     `Gerät: ${navigator.userAgent.replace(/\s*\(KHTML.*$/, "")} · ${innerWidth}×${innerHeight}${navigator.onLine === false ? " · offline" : ""}`].filter(Boolean).join("\n");
 }
 function feedbackHtml() {
-  return `<div class="section-title"><span>Hilfe &amp; Feedback</span><span>Version ${APP_VER.split(".").reverse().join(".")}</span></div>
+  return `<div class="section-title"><span>Hilfe &amp; Feedback</span><span>Version ${APP_VER}</span></div>
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0"><label class="full">Was ist dir aufgefallen?<textarea id="fbText" rows="3" placeholder="z. B. „Im Depot stimmt der Wert von SAP nicht“ oder eine Idee"></textarea></label></div>
       <div class="row-actions" style="margin-top:10px"><button class="btn" data-fb="copy">Für Claude kopieren</button>${navigator.share ? `<button class="btn ghost" data-fb="share">Teilen …</button>` : ""}<button class="btn ghost" data-newsall>Was ist neu</button><a class="btn ghost" href="rechtliches.html">Rechtliches</a></div>
       <div class="note" id="fbMsg">Kopiert Beschreibung plus Bereich, Datenstand, Version und Gerät – keine Depot- oder Journal-Daten. Einfach im Chat mit Claude einfügen.</div>
@@ -7489,7 +7509,7 @@ function einHtml() {
     return `<button class="ein-opt" data-ein="${esc(x.t)}"><b>${ok ? `${i + 1}. ` : ""}${esc(shortNm(x.n))}</b><span>${esc(x.t)} · ${fmt(x.c)} ${esc(x.cur || "")}${ok ? (i < free ? " · Platz frei" : " · nur wenn ein Platz frei wird") : ""}</span>${r0 ? kPill(r0) : einTag(x)}</button>`; };
   return `${tpPlansHtml()}<div class="section-title"><span>Einstieg planen</span><span></span></div>
     <div class="note" style="margin:0 2px 10px">Turbos verstärken Gewinne, Verluste und Kosten – zum Lernen erst in der <a href="#" data-gosec="game">Übung</a>. PRIME+: Orders ab 250 € gebührenfrei.</div>
-    <div class="ein-search"><input id="einQ" type="search" placeholder="Aktie eingeben – z. B. Uber, TUI, Nvidia" autocomplete="off" value="${esc(state.einQ || "")}"><button type="button" class="search-x" data-clr="einQ" aria-label="Eingabe löschen"${state.einQ ? "" : " hidden"}>✕</button><div id="einList">${einListHtml()}</div></div>
+    <div class="ein-search"><input id="einQ" type="search" placeholder="${innerWidth < 640 ? "Aktie, z. B. Uber, TUI" : "Aktie eingeben – z. B. Uber, TUI, Nvidia"}" autocomplete="off" value="${esc(state.einQ || "")}"><button type="button" class="search-x" data-clr="einQ" aria-label="Eingabe löschen"${state.einQ ? "" : " hidden"}>✕</button><div id="einList">${einListHtml()}</div></div>
     ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Kairo-Treffer</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
       ${rdy.length ? `<div class="plan-h" style="margin:14px 2px 6px">Kaufbereit · ${free} ${free === 1 ? "Platz" : "Plätze"} frei</div><div class="ein-list">${rdy.map(opt).join("")}</div>
         <div class="note" style="margin:4px 2px 0">Reihenfolge wie getestet: zuerst die Treffer, die vorher am stärksten gefallen sind.</div>` : ""}
@@ -7760,7 +7780,7 @@ function renderMain() {
   const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector", "ins"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
   const bar = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${v === "watch" ? watchCount() : data.results.filter(f).length}</small></button>`).join("")}</div>
     ${cur ? `<div class="vdesc">${esc(cur[4])}</div>` : ""}
-    ${state.view === "hit" ? `<div class="st-legend"><span><b class="up">kaufbereit</b> – Kauf zur nächsten Eröffnung</span><span><b>Seitwärtsphase x/10</b> – wartet auf 5 ruhige Tage</span><span><b>verfallen</b> – keine Seitwärtsphase in 10 Tagen</span><span><b>im Depot</b> – läuft schon</span></div>` : ""}
+    ${state.view === "hit" ? (l => innerWidth < 640 ? `<details class="st-legend-d"><summary>Was bedeuten die Status?</summary>${l}</details>` : l)(`<div class="st-legend"><span><b class="up">kaufbereit</b> – Kauf zur nächsten Eröffnung</span><span><b>Seitwärtsphase x/10</b> – wartet auf 5 ruhige Tage</span><span><b>verfallen</b> – keine Seitwärtsphase in 10 Tagen</span><span><b>im Depot</b> – läuft schon</span></div>`) : ""}
     ${state.view === "watch" ? `<div class="wmin" role="group" aria-label="Mindestens erfüllte Kriterien">${[9, 8, 7].map(n => `<button class="kchip${watchMin() === n ? " on" : ""}" data-wmin="${n}" aria-pressed="${watchMin() === n}">ab ${n}/11</button>`).join("")}</div>` : ""}
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       ${[["", "Alle"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<button class="kchip${String(state.region || "") === v ? " on" : ""}" data-qregion="${v}">${l}</button>`).join("")}
@@ -7957,7 +7977,7 @@ async function openDetail(t) {
       <span class="flag">MBI: ${esc(f.mbi_source || "")}</span></div>
       <button class="close" id="closeDetail" aria-label="Schließen">✕</button></div>
     <div style="margin-top:12px">${kpxHtml(r)}</div>
-    <div style="margin-top:14px">${tipHtml(r.hint)}</div>
+    <div style="margin-top:14px">${tipHtml(hintNow(r))}</div>
     <div class="pane"><div class="pane-label"><span><i style="background:#f4b740"></i>EMA 20</span><span><i style="background:#4aa3ff"></i>EMA 50</span><span><i style="background:#b07cff"></i>EMA 100</span><span><i style="background:#ff8a65"></i>EMA 200</span><span data-lg="fib" hidden><i style="background:rgba(255,176,32,.6)"></i>Fibonacci 0,618–0,79</span><span data-lg="sup" hidden><i style="background:rgba(74,163,255,.6)"></i>Unterstützung</span><span data-lg="big" hidden><i style="background:rgba(176,124,255,.6)"></i>Fib-Zone große Welle</span><span data-lg="note" class="lg-note" hidden></span></div><div class="lw" id="cMain" style="height:420px"></div></div>
     <div class="pane"><div class="pane-label">RSI 14 · SMA 14 · 30/50/70${r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}</div><div class="lw" id="cRsi" style="height:150px"></div></div>
     <div class="pane"><div class="pane-label">MACD 12/26/9 · Linie, Signal, Histogramm</div><div class="lw" id="cMacd" style="height:150px"></div></div>
@@ -8295,6 +8315,7 @@ function boot(d) {
   const waitSplash = () => document.querySelector(".splash") ? setTimeout(waitSplash, 500) : unboot();
   setTimeout(waitSplash, 400);
   if (state.sec === "depot") loadSearch();
+  if (innerWidth < 640 && $("search")) $("search").placeholder = "Name oder Ticker";   // Handy: Platzhalter nicht abschneiden
   if (location.hash) openDetail(decodeURIComponent(location.hash.slice(1)));
 }
 (async () => { try { if (window.caches && !/nosplash/.test(location.search)) { const c = await caches.match("data/results.json", { ignoreSearch: true });
