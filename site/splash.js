@@ -1,4 +1,8 @@
-/* Kairo – Start-Animation „Vom Lärm zum einen Moment“ (≈ 2,7 s). Ablauf auf reinem Schwarz:
+/* Kairo – Start-Intro „Zeitraffer“ (≈ 4,1 s) als Video: ein Jahr Tageskerzen rauscht vorbei, bremst genau am Signal,
+   die Kerze wird blau und gleitet ins Zeichen, KAIRO und der Claim erscheinen. Das Video spielt das Gerät selbst ab
+   (Hardware-Decoder) – es läuft deshalb immer flüssig, auch wenn die App im Hintergrund lädt. Hoch- und Querformat je eigene Fassung.
+   Spielt das Video nicht (z. B. Stromsparmodus, offline ohne Zwischenspeicher), läuft die bisherige Animation:
+   Start-Animation „Vom Lärm zum einen Moment“ (≈ 2,7 s). Ablauf auf reinem Schwarz:
    0,00 s  Kerzen laufen ein und zeichnen eine Korrektur mit Wende (V) – der Markt; die Szene ist vergrößert
    0,56 s  die Kerze am Tiefpunkt wird blau und leuchtet auf – der richtige Moment –, die übrigen treten zurück
    0,92 s  Zoom ins Zeichen; an der Stelle der blauen Kerze wächst die Kerze des Zeichens, 1,15 s der Körper federt auf
@@ -40,7 +44,7 @@
       <div class="sp-load"><i></i></div>
     </div>`;
   const ANIM_MS = 2700, SHORT_MS = 850, EXIT_MS = 560, TIMEOUT_MS = 6000;
-  const INTRO_V = "8";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
+  const INTRO_V = "9";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
   const mark = () => { try { localStorage.setItem("kairo-intro", INTRO_V); } catch (e) {} };
   let current = null;
   // Nach dem Intro: Start-Schwarz entfernen, damit helle Designs ihre eigene Hintergrundfarbe zeigen
@@ -55,10 +59,26 @@
     const short = !reduce && opts.full === false;                       // immer das volle Intro (Wunsch 25.10.2026)
     if (short) el.classList.add("short");
     mark();
+    let doneRes; const animDone = new Promise(r => { doneRes = r; });
+    const useVideo = !reduce && !short && opts.video !== false;
+    if (useVideo) {                                                    // Video-Intro; bei Problemen die Animation als Ersatz
+      el.classList.add("vid"); el.innerHTML = `<div class="sp-bg"></div><div class="sp-load"><i></i></div>`;
+      const v = document.createElement("video"), port = innerHeight > innerWidth;
+      v.className = "sp-vid"; v.muted = true; v.defaultMuted = true; v.playsInline = true; v.preload = "auto";
+      ["muted", "playsinline", "webkit-playsinline", "disablepictureinpicture"].forEach(a => v.setAttribute(a, ""));
+      v.src = `intro-${port ? "hoch" : "quer"}.mp4?v=${INTRO_V}`;
+      let started = false, fell = false;
+      const fallback = () => { if (started || fell) return; fell = true; v.remove(); el.classList.remove("vid"); el.innerHTML = LOGO; setTimeout(doneRes, ANIM_MS); };
+      v.addEventListener("playing", () => { if (fell) return; started = true; v.classList.add("on"); }, { once: true });
+      v.addEventListener("ended", () => doneRes());
+      v.addEventListener("error", fallback);
+      el.appendChild(v);
+      const pr = v.play(); if (pr && pr.catch) pr.catch(fallback);
+      setTimeout(fallback, 1200);                                       // startet nicht rechtzeitig → Animation
+    } else setTimeout(doneRes, reduce ? 300 : short ? SHORT_MS : ANIM_MS);
     document.body.appendChild(el);
     let resolveReady;
     const ready = new Promise(r => { resolveReady = r; });
-    const animDone = new Promise(r => setTimeout(r, reduce ? 300 : short ? SHORT_MS : ANIM_MS));
     animDone.then(() => el.classList.add("waiting"));               // App lädt noch → feine Ladelinie
     const handle = { el, ready: resolveReady };
     current = handle;

@@ -5,6 +5,7 @@ self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
 self.addEventListener("fetch", e => {
   const u = new URL(e.request.url);
   if (e.request.method !== "GET" || u.origin !== location.origin) return;
+  if (/\.mp4$/.test(u.pathname)) return;                              // Videos (Intro): Safari braucht Teil-Abrufe – direkt vom Browser laden lassen
   if (u.pathname.includes("/data/") && u.searchParams.has("v")) {   // Scan-Datei mit Stempel: ändert sich nie → zuerst aus dem Speicher
     e.respondWith(caches.open(CACHE).then(c => c.match(e.request).then(hit => hit || fetch(e.request).then(r => {
       if (r.ok) { const copy = r.clone();                            // ältere Stände derselben Datei entfernen
