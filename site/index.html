@@ -1145,6 +1145,14 @@
   .fs-new { display: grid; gap: 2px; width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
   .fs-new b { font-size: 15px; } .fs-new span { font-size: 13px; color: var(--muted); } .fs-new em { font-style: normal; font-size: 12.5px; color: var(--muted); }
   .fs-typ { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; } .fs-typ i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .zm { position: relative; overflow: hidden; touch-action: none; border-radius: 12px; background: var(--surface-2); -webkit-user-select: none; user-select: none; }
+  .zm-in { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+  .zm .zm-in > .hm, .zm .zm-in > .rrg { width: 100%; height: 100%; max-width: none; margin: 0; border-radius: 0; }
+  .zm-ctl { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 5; }
+  .zm-ctl button { width: 40px; height: 40px; border-radius: 12px; border: 1px solid rgba(255,255,255,.18); background: rgba(20,22,26,.82); color: #fff; font: 600 20px/1 inherit; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .zm-hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 5; pointer-events: none; font-size: 12.5px; color: #fff; background: rgba(20,22,26,.78); padding: 6px 12px; border-radius: 999px; white-space: nowrap; animation: zm-h 4s ease 1.5s forwards; }
+  .zm.zoomed .zm-hint { display: none; } @keyframes zm-h { to { opacity: 0; } }
+  .zm .hm-s { pointer-events: auto; cursor: zoom-in; } .zm .hm-t small { display: block; font-size: 11px; opacity: .85; max-width: 94%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .fs-hm { border: 0; background: none; padding: 0; } .fsv .rrg { max-width: 720px; display: block; margin: 0 auto; }
   .dck-more { margin-top: 10px; } .dck-more > summary { cursor: pointer; color: var(--accent); font-size: 14px; font-weight: 600; } .dck-more .dck-g { margin-top: 10px; }
   .fear-hint { margin: 8px 0 0; font-size: 13.5px; } .fear-more { margin-top: 6px; } .fear-more > summary { cursor: pointer; font-size: 13px; color: var(--accent); }
@@ -2527,20 +2535,23 @@ function themeTrendHtml(xs) {
 // Rotations-Bild (wie ein Relative Rotation Graph): rechts = stärker als der S&P 500, oben = wird gerade stärker.
 // Schweif = die letzten 4 Wochen. Beschreibt, was passiert – sagt laut Backtest NICHT vorher, was als Nächstes kommt.
 const RRG_Q = { leading: ["Führend", "#30d158"], improving: ["Erholt sich", "#0a84ff"], weakening: ["Lässt nach", "#ffb340"], lagging: ["Schwach", "#ff453a"] };
-function spRrgHtml(xs, ind) {
+// o (Vollbild): W/H = Zeichenfläche in Bildschirm-Pixeln, s = Zoom, svg = nur das Bild. Beim Zoomen wird neu gezeichnet:
+// Schrift und Punkte bleiben gleich groß, gezoomt werden nur die Abstände – und alle Punkte bekommen ihren vollen Namen.
+function spRrgHtml(xs, ind, o) {
   const ps = xs.filter(x => x.rrg && (x.rrg.tail || []).length);
   if (!ps.length) return `<p class="muted">Kommt mit dem nächsten Scan.</p>`;
-  const eu = state.spReg === "eu" || state.spMode === "eu";
+  const eu = state.spReg === "eu" || state.spMode === "eu", zs = o ? o.s || 1 : 1, u = o ? 1 / zs : 1, zoomed = zs >= 1.5;
   // Maßstab nur aus den aktuellen Punkten (Schweife werden abgeschnitten) – sonst drücken alte Ausreißer alles in die Mitte
   const dr = Math.max(1.2, ...ps.map(x => Math.abs(x.rrg.r - 100))) * 1.3, dm = Math.max(.8, ...ps.map(x => Math.abs(x.rrg.m - 100))) * 1.3;
-  const W = 340, H = 300, X = r => W / 2 + (r - 100) / dr * (W / 2 - 10), Y = m => H / 2 - (m - 100) / dm * (H / 2 - 10);
-  const col = q => RRG_Q[q][1], short = n => { const w = String(n).split(/[ &/-]/)[0]; return w.length > 11 ? w.slice(0, 10) + "." : w; };
-  const dist = x => Math.hypot((x.rrg.r - 100) / dr, (x.rrg.m - 100) / dm), lab = new Set([...ps].sort((a, b) => dist(b) - dist(a)).slice(0, ind ? 12 : 19).map(x => x.k));
-  const placed = ps.map(x => [X(x.rrg.r) - 5, Y(x.rrg.m) - 5, 10, 10]), spot = (cx, cy, txt) => {   // Punkte selbst sind auch Hindernisse
-    const w = txt.length * 6.2 + 4;
-    for (const [dx, dy, al] of [[0, -8, "middle"], [0, 15, "middle"], [8, 4, "start"], [-8, 4, "end"], [7, -6, "start"], [-7, -6, "end"], [7, 14, "start"], [-7, 14, "end"]]) {
-      const x0 = al === "middle" ? cx + dx - w / 2 : al === "start" ? cx + dx : cx + dx - w, y0 = cy + dy - 10;
-      if (x0 < 2 || x0 + w > W - 2 || y0 < 16 || y0 + 12 > H - 16 || placed.some(b => x0 < b[0] + b[2] && b[0] < x0 + w && y0 < b[1] + (b[3] || 12) && b[1] < y0 + 12)) continue;
+  const W = o ? o.W : 340, H = o ? o.H : 300, X = r => W / 2 + (r - 100) / dr * (W / 2 - 10), Y = m => H / 2 - (m - 100) / dm * (H / 2 - 10);
+  const fz = o ? 13 * u : 10;                                              // Schriftgröße (Vollbild: 13 px auf dem Schirm, egal wie gezoomt)
+  const col = q => RRG_Q[q][1], short = n => { if (zoomed) return String(n); const w = String(n).split(/[ &/-]/)[0]; return w.length > 11 ? w.slice(0, 10) + "." : w; };
+  const dist = x => Math.hypot((x.rrg.r - 100) / dr, (x.rrg.m - 100) / dm), lab = new Set([...ps].sort((a, b) => dist(b) - dist(a)).slice(0, zoomed ? ps.length : o ? (ind ? 24 : 30) : ind ? 12 : 19).map(x => x.k));
+  const pr = 5 * u, placed = ps.map(x => [X(x.rrg.r) - pr, Y(x.rrg.m) - pr, 2 * pr, 2 * pr]), spot = (cx, cy, txt) => {   // Punkte selbst sind auch Hindernisse
+    const w = txt.length * fz * .62 + 4 * u, lh = fz * 1.2, k = fz / 10;
+    for (const [dx, dy, al] of [[0, -8, "middle"], [0, 15, "middle"], [8, 4, "start"], [-8, 4, "end"], [7, -6, "start"], [-7, -6, "end"], [7, 14, "start"], [-7, 14, "end"]].map(([a, b, c]) => [a * k, b * k, c])) {
+      const x0 = al === "middle" ? cx + dx - w / 2 : al === "start" ? cx + dx : cx + dx - w, y0 = cy + dy - fz;
+      if (x0 < 2 * u || x0 + w > W - 2 * u || y0 < 1.6 * fz || y0 + lh > H - 1.6 * fz || placed.some(b => x0 < b[0] + b[2] && b[0] < x0 + w && y0 < b[1] + (b[3] || lh) && b[1] < y0 + lh)) continue;
       placed.push([x0, y0, w]); return { x: cx + dx, y: cy + dy, al };
     }
     return null; };
@@ -2549,16 +2560,19 @@ function spRrgHtml(xs, ind) {
     if (Math.hypot(dx, dy) < .08) return "•"; return dy >= 0 ? (dx >= 0 ? "↗" : "↖") : (dx >= 0 ? "↘" : "↙"); };
   const pts = ps.map(x => { const t = x.rrg.tail.slice(-3), [r, m] = t[t.length - 1], c = col(x.rrg.q), nm = short(x.n), cx = X(r), cy = Y(m);
     const sp = lab.has(x.k) ? spot(cx, cy, nm) : null;
-    const seg = t.slice(1).map((p, i) => `<line x1="${X(t[i][0]).toFixed(1)}" y1="${Y(t[i][1]).toFixed(1)}" x2="${X(p[0]).toFixed(1)}" y2="${Y(p[1]).toFixed(1)}" stroke="${c}" stroke-width="1.6" stroke-opacity="${(.2 + .3 * (i + 1) / t.length).toFixed(2)}"/>`).join("");
-    return `<g data-spopen="${esc(x.k)}" style="cursor:pointer">${seg}<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${ind ? 4 : 5}" fill="${c}" stroke="var(--surface-2)" stroke-width="1.5"/>${sp ? `<text x="${sp.x.toFixed(1)}" y="${sp.y.toFixed(1)}" text-anchor="${sp.al}" class="rrg-t">${esc(nm)}</text>` : ""}<title>${esc(x.n)} · ${RRG_Q[x.rrg.q][0]}</title></g>`; }).join("");
+    const seg = t.slice(1).map((p, i) => `<line x1="${X(t[i][0]).toFixed(1)}" y1="${Y(t[i][1]).toFixed(1)}" x2="${X(p[0]).toFixed(1)}" y2="${Y(p[1]).toFixed(1)}" stroke="${c}" stroke-width="${(1.6 * (o ? 1.3 * u : 1)).toFixed(2)}" stroke-opacity="${(.2 + .3 * (i + 1) / t.length).toFixed(2)}"/>`).join("");
+    return `<g data-spopen="${esc(x.k)}" style="cursor:pointer">${seg}<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${o ? (ind ? 5.5 : 6.5) * u : ind ? 4 : 5}" fill="${c}" stroke="var(--surface-2)" stroke-width="${o ? 1.5 * u : 1.5}"/>${sp ? `<text x="${sp.x.toFixed(1)}" y="${sp.y.toFixed(1)}" text-anchor="${sp.al}" class="rrg-t"${o ? ` style="font-size:${fz.toFixed(2)}px;stroke-width:${(3 * u).toFixed(2)}px"` : ""}>${esc(nm)}</text>` : ""}<title>${esc(x.n)} · ${RRG_Q[x.rrg.q][0]}</title></g>`; }).join("");
   const box = q => { const l = ps.filter(x => x.rrg.q === q).sort((a, b) => dist(b) - dist(a));
     return `<div class="rrg-b" style="--qc:${col(q)}"><b>${RRG_Q[q][0]}</b>${l.length ? l.map(x => `<button data-spopen="${esc(x.k)}"><i>${dir(x)}</i>${esc(x.n)}</button>`).join("") : `<em>–</em>`}</div>`; };
-  return `<svg class="rrg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rotations-Bild"><defs><clipPath id="rrgc"><rect x="0" y="0" width="${W}" height="${H}" rx="12"/></clipPath></defs><g clip-path="url(#rrgc)">
+  const qf = o ? ` style="font-size:${(17 * u).toFixed(2)}px"` : "", qo = o ? 12 * u : 8, qy = o ? 26 * u : 16;
+  const svg = `<svg class="rrg${o ? " rrg-fs" : ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rotations-Bild"><defs><clipPath id="rrgc"><rect x="0" y="0" width="${W}" height="${H}" rx="12"/></clipPath></defs><g clip-path="url(#rrgc)">
       <rect x="${W / 2}" y="0" width="${W / 2}" height="${H / 2}" fill="${col("leading")}" fill-opacity=".07"/><rect x="${W / 2}" y="${H / 2}" width="${W / 2}" height="${H / 2}" fill="${col("weakening")}" fill-opacity=".07"/>
       <rect x="0" y="${H / 2}" width="${W / 2}" height="${H / 2}" fill="${col("lagging")}" fill-opacity=".07"/><rect x="0" y="0" width="${W / 2}" height="${H / 2}" fill="${col("improving")}" fill-opacity=".07"/>
       <line x1="${W / 2}" y1="0" x2="${W / 2}" y2="${H}" stroke="var(--line)"/><line x1="0" y1="${H / 2}" x2="${W}" y2="${H / 2}" stroke="var(--line)"/>
-      <text x="${W - 8}" y="16" text-anchor="end" class="rrg-q" fill="${col("leading")}">Führend</text><text x="${W - 8}" y="${H - 8}" text-anchor="end" class="rrg-q" fill="${col("weakening")}">Lässt nach</text>
-      <text x="8" y="${H - 8}" class="rrg-q" fill="${col("lagging")}">Schwach</text><text x="8" y="16" class="rrg-q" fill="${col("improving")}">Erholt sich</text>${pts}</g></svg>
+      <text x="${W - qo}" y="${qy}" text-anchor="end" class="rrg-q"${qf} fill="${col("leading")}">Führend</text><text x="${W - qo}" y="${H - qo}" text-anchor="end" class="rrg-q"${qf} fill="${col("weakening")}">Lässt nach</text>
+      <text x="${qo}" y="${H - qo}" class="rrg-q"${qf} fill="${col("lagging")}">Schwach</text><text x="${qo}" y="${qy}" class="rrg-q"${qf} fill="${col("improving")}">Erholt sich</text>${pts}</g></svg>`;
+  if (o && o.svg) return svg;
+  return `${svg}
     <div class="rrg-grid">${box("improving")}${box("leading")}${box("lagging")}${box("weakening")}</div>
     <div class="note" style="margin:6px 0 0">Rechts = stärker als der ${eu ? "STOXX 600" : "S&P 500"}, oben = wird gerade stärker. Der kurze Strich zeigt die letzten 3 Wochen, der Pfeil in der Liste die Richtung (↗ = auf dem Weg nach „Führend“). Üblicher Kreislauf im Uhrzeigersinn: Erholt sich → Führend → Lässt nach → Schwach.
       <b>Wichtig:</b> Das Bild zeigt, wohin Geld gerade fließt – nicht, wohin es als Nächstes fließt (Test über 18 Jahre: kein Bereich hatte danach einen Vorsprung). Antippen zeigt die stärksten Aktien.</div>`;
@@ -2635,7 +2649,7 @@ function squarify(items, x, y, w, h) {   // items: [{v, ...}] → [{...item, x, 
 function heatmapHtml(fs) {
   if (!searchIdx) { loadSearch(); return ""; }
   const [k, kl, kn] = spPer(), f = SP_IDX[k], reg = state.hmReg || "us", phone = innerWidth < 640;
-  const xs = hmRows(reg).filter(r => r.mc > 0 && r[f] != null).sort((a, b) => b.mc - a.mc).slice(0, fs ? (phone ? 200 : 400) : phone ? 100 : 220);
+  const xs = hmRows(reg).filter(r => r.mc > 0 && r[f] != null).sort((a, b) => b.mc - a.mc).slice(0, fs ? (phone ? 400 : 800) : phone ? 100 : 220);
   const regBar = `<div class="sp-tg">${HM_REG.map(([v, l]) => `<button class="opt${v === reg ? " on" : ""}" data-hmreg="${v}">${l}</button>`).join("")}</div>`;
   const perBar = `<div class="sp-tg">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}</div>`;
   if (xs.length < 5) return `<div class="hcard">${fs ? "" : hHead("Heatmap")}<div class="sp-top">${regBar}${perBar}</div><p class="muted">Für diese Auswahl gibt es noch keine Daten – sie kommen mit dem nächsten Abend-Scan.</p></div>`;
@@ -2645,20 +2659,23 @@ function heatmapHtml(fs) {
   const lim = SP_CLAMP[k], mine = myTickers();
   const col = v => { const t = Math.max(-1, Math.min(1, v / lim)), p = Math.round(18 + 72 * Math.abs(t)); return `color-mix(in srgb, ${t >= 0 ? "var(--up)" : "var(--red)"} ${p}%, #23262c)`; };
   const pc = (a, b) => `${(a / b * 100).toFixed(3)}%`;
-  let tiles = "", labels = "";
-  secs.forEach(S => {
-    squarify(S.l.map(r => ({ r, v: r.mc })).sort((a, b) => b.v - a.v), S.x, S.y, S.w, S.h).forEach(T => {
-      const r = T.r, wpx = T.w * px, hpx = T.h * px, sr = byTicker(r.t), big = wpx > 44 && hpx > 30, mid = wpx > 30 && hpx > 18;
-      const cls = wpx < 12 || hpx < 12 ? "" : (sr && sr.passed ? " hit" : "") + (mine.has(r.t) ? " mine" : "");
-      tiles += `<button class="hm-t${cls}" style="left:${pc(T.x, W)};top:${pc(T.y, H)};width:${pc(T.w, W)};height:${pc(T.h, H)};background:${col(r[f])}" data-hmpv="${esc(r.t)}" title="${esc(r.n || r.t)} ${sgnPct(r[f], 1)}">${mid ? `<b style="font-size:${Math.max(9, Math.min(16, wpx / 5))}px">${esc(tkClean(r.t).replace(/\.[A-Z]+$/, ""))}</b>` : ""}${big ? `<em>${sgnPct(r[f], 1)}</em>` : ""}</button>`;
+  const lay = secs.map(S => ({ S, T: squarify(S.l.map(r => ({ r, v: r.mc })).sort((a, b) => b.v - a.v), S.x, S.y, S.w, S.h) }));
+  // z = Zoomfaktor (Vollbild): Beschriftung nach der echten Größe auf dem Schirm – beim Hineinzoomen bekommen auch kleine Firmen Namen
+  const draw = z => { let tiles = "", labels = ""; const zp = px * z;
+    lay.forEach(({ S, T: ts }) => {
+      ts.forEach(T => {
+        const r = T.r, wpx = T.w * zp, hpx = T.h * zp, sr = byTicker(r.t), big = wpx > 44 && hpx > 30, mid = wpx > 30 && hpx > 18, nm = fs && z > 1.01 && wpx > 90 && hpx > 54;
+        const cls = wpx < 12 || hpx < 12 ? "" : (sr && sr.passed ? " hit" : "") + (mine.has(r.t) ? " mine" : "");
+        tiles += `<button class="hm-t${cls}" style="left:${pc(T.x, W)};top:${pc(T.y, H)};width:${pc(T.w, W)};height:${pc(T.h, H)};background:${col(r[f])}" data-hmpv="${esc(r.t)}" title="${esc(r.n || r.t)} ${sgnPct(r[f], 1)}">${mid ? `<b style="font-size:${Math.max(9, Math.min(fs ? 22 : 16, wpx / 5))}px">${esc(tkClean(r.t).replace(/\.[A-Z]+$/, ""))}</b>` : ""}${nm ? `<small>${esc(String(r.n || "").slice(0, Math.floor(wpx / 6.5)))}</small>` : ""}${big ? `<em${fs ? ` style="font-size:${Math.max(10.5, Math.min(15, wpx / 7))}px"` : ""}>${sgnPct(r[f], 1)}</em>` : ""}</button>`;
+      });
+      if (S.w * zp > 60 && S.h * zp > 40) labels += `<span class="hm-s"${fs ? ` data-zmrect="${(S.x / W).toFixed(4)},${(S.y / H).toFixed(4)},${(S.w / W).toFixed(4)},${(S.h / H).toFixed(4)}" title="auf ${esc(S.n)} zoomen"` : ""} style="left:${pc(S.x, W)};top:${pc(S.y, H)};max-width:${pc(S.w, W)}">${esc(S.n)}</span>`;
     });
-    if (S.w * px > 60 && S.h * px > 40) labels += `<span class="hm-s" style="left:${pc(S.x, W)};top:${pc(S.y, H)};max-width:${pc(S.w, W)}">${esc(S.n)}</span>`;
-  });
+    return `<div class="hm"${fs ? "" : ` style="aspect-ratio:${W}/${H}"`}>${tiles}${labels}</div>`; };
   const up = xs.filter(r => r[f] > 0).length;
   return `<div class="hcard hm-card${fs ? " fs-hm" : ""}">${fs ? "" : hHead("Heatmap").replace(/<\/div>$/, fsBtn("hm") + "</div>")}<div class="sp-top">${regBar}${perBar}</div>
-    <div class="hm" style="aspect-ratio:${W}/${H}">${tiles}${labels}</div>
+    ${fs ? zoomBox(`hm-${reg}-${k}`, draw, `aspect-ratio:${W}/${H}`) : draw(1)}
     <div class="hm-leg"><span>${sgnPct(-lim, 0)}</span><i></i><span>${sgnPct(lim, 0)}</span><em>${up} von ${xs.length} im Plus · ${esc(kn)}</em></div>
-    <div class="note" style="margin:6px 0 0">${spStamp()}<br>Die ${xs.length} größten Aktien der Region aus dem Scan, Fläche = Börsenwert. Goldener Rahmen = Kairo-Treffer, weißer Rahmen = Depot/Watchlist. Antippen zeigt eine Vorschau.</div></div>`;
+    <div class="note" style="margin:6px 0 0">${spStamp()}<br>Die ${xs.length} größten Aktien der Region aus dem Scan, Fläche = Börsenwert. Goldener Rahmen = Kairo-Treffer, weißer Rahmen = Depot/Watchlist. Antippen zeigt eine Vorschau.${fs ? " Mit zwei Fingern zoomen oder einen Sektor-Namen antippen – dann erscheinen auch die kleineren Firmen." : ""}</div></div>`;
 }
 // Gewinner / Verlierer im gewählten Zeitraum (gleiche Region wie die Heatmap)
 // „Ungewöhnliches Volumen“: heute mindestens 3× so viel gehandelt wie im Schnitt der 20 Tage davor – oft der früheste Hinweis,
@@ -2704,6 +2721,79 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-spview]")) { state.spView = e.target.closest("[data-spview]").dataset.spview; save(); render(); return; }
   const pv = e.target.closest("[data-hmpv]"); if (pv) { $("spmBody").innerHTML = hmPreviewHtml(pv.dataset.hmpv); $("spm").hidden = false; return; }
 });
+// ---------- Zoom (Vollbild-Heatmap und -Rotation): zwei Finger, Trackpad (Strg/Pinch), Mausrad bei gedrückter Strg-Taste, +/−, ziehen ----------
+// Während der Geste wird nur skaliert (flüssig); beim Loslassen zeichnet render(s) neu – kleine Kacheln bekommen dann Namen,
+// Schrift bleibt scharf und gleich groß. Zustand je Ansicht (id), wird beim Öffnen des Vollbilds zurückgesetzt.
+const ZM = {};
+function zoomBox(id, render, style) {
+  const z = ZM[id] = { s: 1, x: 0, y: 0, ...(ZM[id] || {}), render };
+  return `<div class="zm${z.s > 1.01 ? " zoomed" : ""}" data-zm="${id}" style="${style || ""}"><div class="zm-in" style="width:${z.s * 100}%;height:${z.s * 100}%;transform:translate(${z.x}px,${z.y}px)">${render(z.s)}</div>
+    <div class="zm-ctl"><button data-zmb="in" aria-label="Vergrößern">+</button><button data-zmb="out" aria-label="Verkleinern">−</button><button data-zmb="reset" aria-label="Ganze Ansicht">⤢</button></div>
+    <div class="zm-hint">Mit zwei Fingern zoomen · ziehen zum Verschieben</div></div>`;
+}
+function zmClamp(el, z) {
+  const r = el.getBoundingClientRect(); z.s = Math.max(1, Math.min(10, z.s));
+  z.x = Math.min(0, Math.max(r.width * (1 - z.s), z.x)); z.y = Math.min(0, Math.max(r.height * (1 - z.s), z.y)); return z;
+}
+function zmCommit(el, z) {
+  const c = ZM[el.dataset.zm]; if (!c) return; zmClamp(el, z);
+  const re = Math.abs(z.s - c.s) > 1e-3; Object.assign(c, { s: z.s, x: z.x, y: z.y });
+  const inn = el.firstElementChild; inn.style.width = inn.style.height = c.s * 100 + "%"; inn.style.transform = `translate(${c.x}px,${c.y}px)`;
+  if (re) inn.innerHTML = c.render(c.s); el.classList.toggle("zoomed", c.s > 1.01);
+}
+function zmTo(el, s, cx, cy) {                       // auf Faktor s zoomen, Punkt (cx, cy) im Rahmen bleibt stehen
+  const c = ZM[el.dataset.zm]; if (!c) return; const ns = Math.max(1, Math.min(10, s)), k = ns / c.s;
+  zmCommit(el, { s: ns, x: cx - (cx - c.x) * k, y: cy - (cy - c.y) * k });
+}
+(() => {
+  const P = new Map(); let g = null, noClick = 0;
+  const rel = (el, x, y) => { const r = el.getBoundingClientRect(); return [x - r.left, y - r.top]; };
+  const base = () => { const c = ZM[g.el.dataset.zm], pts = [...P.values()], [mx, my] = rel(g.el, pts.reduce((a, p) => a + p.x, 0) / pts.length, pts.reduce((a, p) => a + p.y, 0) / pts.length);
+    Object.assign(g, { s0: g.z.s, x0: g.z.x, y0: g.z.y, mx, my, d0: pts.length > 1 ? Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) : 0, c }); };
+  const live = () => { const c = ZM[g.el.dataset.zm]; zmClamp(g.el, g.z); g.el.firstElementChild.style.transform = `translate(${g.z.x}px,${g.z.y}px) scale(${g.z.s / c.s})`; };
+  document.addEventListener("pointerdown", e => {
+    const el = e.target.closest && e.target.closest(".zm"); if (!el || e.target.closest(".zm-ctl") || (e.pointerType === "mouse" && e.button !== 0)) return;
+    P.set(e.pointerId, { x: e.clientX, y: e.clientY, x1: e.clientX, y1: e.clientY });
+    if (!g || g.el !== el) { const c = ZM[el.dataset.zm]; g = { el, z: { s: c.s, x: c.x, y: c.y }, moved: false }; }
+    base();
+  });
+  document.addEventListener("pointermove", e => {
+    const p = P.get(e.pointerId); if (!p || !g) return;
+    const ly = p.y; p.x = e.clientX; p.y = e.clientY;
+    if (Math.hypot(p.x - p.x1, p.y - p.y1) > 6) g.moved = true;
+    const pts = [...P.values()];
+    if (pts.length >= 2) {
+      const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), [mx, my] = rel(g.el, (pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2);
+      const s1 = Math.max(1, Math.min(10, g.s0 * d / (g.d0 || d))), k = s1 / g.s0;
+      g.z = { s: s1, x: mx - (g.mx - g.x0) * k, y: my - (g.my - g.y0) * k }; live();
+    } else if (g.z.s > 1.01) {
+      g.z = { ...g.z, x: g.x0 + (p.x - p.x1), y: g.y0 + (p.y - p.y1) }; live();
+    } else {                                          // nicht gezoomt: ein Finger scrollt die Seite wie gewohnt
+      const b = g.el.closest(".fs-body"); if (b) b.scrollTop -= p.y - ly;
+    }
+  });
+  const end = e => {
+    if (!P.has(e.pointerId) || !g) return; P.delete(e.pointerId);
+    if (P.size) { [...P.values()].forEach(p => { p.x1 = p.x; p.y1 = p.y; }); base(); return; }
+    if (g.moved) { noClick = Date.now(); if (Math.abs(g.z.s - ZM[g.el.dataset.zm].s) > 1e-3 || g.z.x !== ZM[g.el.dataset.zm].x || g.z.y !== ZM[g.el.dataset.zm].y) zmCommit(g.el, g.z); }
+    g = null;
+  };
+  document.addEventListener("pointerup", end); document.addEventListener("pointercancel", end);
+  document.addEventListener("click", e => { if (Date.now() - noClick < 350 && e.target.closest && e.target.closest(".zm")) { e.stopPropagation(); e.preventDefault(); } }, true);
+  document.addEventListener("gesturestart", e => { if (e.target.closest && e.target.closest(".zm")) e.preventDefault(); });   // Safari: Seite selbst nicht zoomen
+  document.addEventListener("wheel", e => {
+    const el = e.target.closest && e.target.closest(".zm"); if (!el) return; const c = ZM[el.dataset.zm]; if (!c) return;
+    if (e.ctrlKey) { e.preventDefault(); const [x, y] = rel(el, e.clientX, e.clientY); zmTo(el, c.s * Math.exp(-e.deltaY * .012), x, y); }
+    else if (c.s > 1.01) { e.preventDefault(); zmCommit(el, { s: c.s, x: c.x - e.deltaX, y: c.y - e.deltaY }); }
+  }, { passive: false });
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-zmb]"); if (b) { const el = b.closest(".zm"), c = ZM[el.dataset.zm], r = el.getBoundingClientRect(), a = b.dataset.zmb;
+      zmTo(el, a === "in" ? c.s * 1.7 : a === "out" ? c.s / 1.7 : 1, r.width / 2, r.height / 2); return; }
+    const z = e.target.closest("[data-zmrect]"); if (z) {           // Sektor antippen → auf den Sektor zoomen
+      const el = z.closest(".zm"), r = el.getBoundingClientRect(), [x, y, w, h] = z.dataset.zmrect.split(",").map(Number), s = Math.min(1 / w, 1 / h);
+      zmCommit(el, { s, x: -x * r.width * s, y: -y * r.height * s }); }
+  });
+})();
 // ---------- Vollbild-Ansichten (Markt): Heatmap, Sektoren & Branchen mit Rotation, Gewinner/Verlierer – groß, mit Filtern ----------
 const fsBtn = k => `<button class="fs-btn" data-fsv="${k}" aria-label="Groß anzeigen" title="Groß anzeigen">⤢ Groß</button>`;
 const RRG_GROUP = () => { const { ind, th, eu, as } = spList(); return as ? "assets" : eu ? "sectors_eu" : th ? "themes" : ind ? "industries" : "sectors"; };
@@ -2736,8 +2826,11 @@ function fsSpHtml() {
     <button class="kchip${onlyMine ? " on" : ""}" data-fsmine>★ nur mit meinen Aktien</button></div>`;
   const list = rows.filter(o => o.x.rrg);
   return `${head}
-    <div class="fs-2"><div class="fs-panel"><div class="fs-h">Rotation · ${lvl}</div>${list.length ? spRrgHtml(list.map(o => o.x), ind) : `<p class="muted">Keine Daten für diese Auswahl.</p>`}</div>
-    <div class="fs-panel"><div class="fs-h">Gerade neu in „Erholt sich“ oder „Führend“</div>
+    <div class="fs-panel"><div class="fs-h">Rotation · ${lvl} · ${list.length} Punkte</div>${list.length ? (() => {
+      const W = Math.round(Math.min(innerWidth, 1400) - 64), H = Math.round(Math.max(340, Math.min(innerHeight - 250, W * (innerWidth < 640 ? 1.3 : .9)))), xs2 = list.map(o => o.x);
+      return zoomBox(`rrg-${RRG_GROUP()}-${onlyMine ? 1 : 0}`, z => spRrgHtml(xs2, ind, { W, H, s: z, svg: true }), `height:${H}px`)
+        + `<p class="muted" style="font-size:12.5px;margin:8px 0 0">Mit zwei Fingern hineinzoomen – ab doppelter Größe steht an jedem Punkt der volle Name. Punkt antippen zeigt die stärksten Aktien des Bereichs. Rechts = stärker als der ${eu ? "STOXX 600" : "S&P 500"}, oben = wird gerade stärker.</p>`; })() : `<p class="muted">Keine Daten für diese Auswahl.</p>`}</div>
+    <div class="fs-2">${list.length ? `<div class="fs-panel"><div class="fs-h">Wer steht in welchem Feld</div>${spRrgHtml(list.map(o => o.x), ind).replace(/<svg[\s\S]*?<\/svg>/, "")}</div>` : ""}<div class="fs-panel"><div class="fs-h">Gerade neu in „Erholt sich“ oder „Führend“</div>
       ${fresh.length ? fresh.map(o => `<button class="fs-new" data-spopen="${esc(o.x.k)}"><b>${esc(o.x.n)}</b><span>${RRG_Q[o.x.rrg.pq][0]} → ${qb(o.x.rrg.q)} · seit ${o.x.rrg.wk} ${o.x.rrg.wk === 1 ? "Woche" : "Wochen"}</span><em>${o.hit ? `${o.hit} Treffer · ` : ""}${o.near} mit ≥ 9/11${o.own ? ` · ★ ${o.own}` : ""}</em></button>`).join("") : `<p class="muted" style="margin:4px 0">Diese Woche ist kein Bereich neu dazugekommen.</p>`}
       ${typ ? `<div class="fs-h" style="margin-top:14px">So lange bleiben ${lvl} typischerweise in einem Feld</div><div class="fs-typ">${typ}</div>
         <p class="muted" style="font-size:12.5px;margin:6px 0 0">Median der abgeschlossenen Phasen aller ${lvl} (Wochenwerte, ${(Object.values(st).reduce((a, v) => a + v.n, 0))} Phasen). Beschreibt die Vergangenheit – sagt nicht voraus, wann ein Bereich wechselt.</p>` : ""}
@@ -2787,7 +2880,7 @@ function fsvRender() {
   const b = el.querySelector(".fs-body"); if (b) b.scrollTop = y;
 }
 document.addEventListener("click", e => {
-  const o = e.target.closest("[data-fsv]"); if (o) { state.fsv = o.dataset.fsv; fsvRender(); return; }
+  const o = e.target.closest("[data-fsv]"); if (o) { state.fsv = o.dataset.fsv; Object.keys(ZM).forEach(k => delete ZM[k]); fsvRender(); return; }
   if (e.target.closest("[data-fsclose]")) { state.fsv = null; fsvRender(); return; }
   if (!e.target.closest("#fsv")) return;
   if (e.target.closest("[data-card],[data-ein]")) { state.fsv = null; fsvRender(); return; }   // Aktie öffnen: Vollbild schließen, Aktie öffnet sich normal
@@ -6073,8 +6166,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.56";
-const APP_NEWS = [["2026.11.56", "Quartalszahlen mit genauer Uhrzeit", [
+const APP_VER = "2026.11.57";
+const APP_NEWS = [["2026.11.57", "Zoomen in Heatmap und Rotation", [
+  ["Heatmap zoomen", "Im Vollbild mit zwei Fingern hineinzoomen (oder + / −): Beim Vergrößern bekommen auch die kleineren Firmen Kürzel, Name und Prozent. Einen Sektor-Namen antippen springt direkt in den Sektor. Jetzt bis zu 800 Aktien."],
+  ["Rotation über den ganzen Bildschirm", "Das Rotationsbild füllt das Vollbild und lässt sich zoomen – ab doppelter Größe steht an jedem Punkt der volle Name. Antippen zeigt die stärksten Aktien des Bereichs."]]],
+  ["2026.11.56", "Quartalszahlen mit genauer Uhrzeit", [
   ["Heute: Zahlen hervorgehoben", "Quartalszahlen deiner Aktien von heute stehen farbig oben – nach Uhrzeit sortiert, morgen gleich darunter."],
   ["Uhrzeit nur, wenn sie stimmt", "Geprüft an der letzten Woche: die aus den bisherigen SEC-Meldungen gelernte Uhrzeit lag im Mittel 3 Minuten daneben, Yahoos Angaben im Mittel 8 Stunden. Darum zeigt Kairo eine Minute nur noch, wenn sie belastbar ist – sonst „vorbörslich“/„nachbörslich“ laut Nasdaq oder „Uhrzeit offen“."]]],
   ["2026.11.55", "Großes Update: Übersicht, Vollbild, neue Ampel", [
