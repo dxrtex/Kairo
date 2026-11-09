@@ -768,7 +768,10 @@
   .sp-h svg.up polyline { stroke: var(--up); } .sp-h svg.down polyline { stroke: var(--red); } .sp-hr { font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums; } .sp-hr.muted { color: var(--muted); }
   .eq-crash { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 13px; } .eq-crash em { display: block; font-style: normal; color: var(--muted); font-size: 12px; margin-top: 2px; }
   .eq-crash.t-red b { color: var(--red); } .eq-crash.t-yellow b { color: var(--gold); } .eq-crash.t-green b { color: var(--up); }
-  .ins-side { margin-bottom: 10px; } .ins-side button small { opacity: .7; font-weight: 600; } .ins-f { display: grid; gap: 6px; margin-bottom: 10px; } .ins-sort { margin-left: auto; display: inline-flex; gap: 6px; }
+  .ins-side { margin-bottom: 10px; }
+  .ins-side button.ins-buy { color: var(--up); } .ins-side button.ins-sell { color: var(--red); }
+  .ins-side button.ins-buy.on { background: var(--up); color: #fff; } .ins-side button.ins-sell.on { background: var(--red); color: #fff; }
+  .ins-side button:not(.on):hover { background: color-mix(in srgb, currentColor 12%, transparent); } .ins-side button small { opacity: .7; font-weight: 600; } .ins-f { display: grid; gap: 6px; margin-bottom: 10px; } .ins-sort { margin-left: auto; display: inline-flex; gap: 6px; }
   .ins-l .bf-r { padding: 10px 12px; } .ins-sel { display: flex; gap: 8px; } .ins-sel select { flex: 1; font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); }
   .ins-tg { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; } .ins-tg::-webkit-scrollbar { display: none; } .ins-tg .opt { flex: none; }
   .ng { margin: 0 0 10px; } .ng[hidden] { display: none; } .ng-search input { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; margin: 6px 0 10px; } .ng-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 8px 4px 4px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -3211,7 +3214,7 @@ function newsHtml() {
   const f2chip = (k, v, l) => `<button class="opt${String(IF[k] || "") === String(v) ? " on" : ""}" data-insf2="${k}" data-v="${v}">${l}</button>`;
   const f2tog = (k, l) => `<button class="opt${IF[k] ? " on" : ""}" data-insf2="${k}" data-v="${IF[k] ? "" : "1"}">${l}</button>`;
   const cnt = l => l.filter(x => (!x.d || ageD(x.d) <= days)).length;
-  const listHtml = `<div class="hcard ins-card"><div class="sp-seg ins-side">${[["buy", "Käufe", cnt(B)], ["sell", "Verkäufe", cnt(S)]].map(([v, l, n]) => `<button class="${side === v ? "on" : ""}" data-insside="${v}">${l} <small>${n}</small></button>`).join("")}</div>
+  const listHtml = `<div class="hcard ins-card"><div class="sp-seg ins-side">${[["buy", "Käufe", cnt(B)], ["sell", "Verkäufe", cnt(S)]].map(([v, l, n]) => `<button data-insside="${v}" class="ins-${v}${side === v ? " on" : ""}">${l} <small>${n}</small></button>`).join("")}</div>
     <div class="ins-f"><div class="ins-sel"><select data-insf2sel="days">${[[30, "30 Tage"], [90, "90 Tage"], [365, "12 Monate"]].map(([v, l]) => `<option value="${v}"${days === v ? " selected" : ""}>${l}</option>`).join("")}</select>
         <select data-insf2sel="c">${[["", "alle Regionen"], ["us", "USA"], ["de", "Deutschland"], ["eu", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<option value="${v}"${(IF.c || "") === v ? " selected" : ""}>${l}</option>`).join("")}</select></div>
       <div class="sp-tg ins-tg">${f2tog("mine", "★ nur meine")}${f2tog("top", "Vorstandsspitze")}${side === "buy" ? f2tog("opp", "nur gezielt") : ""}${f2tog("big", "ab 1 Mio. €")}
@@ -6209,8 +6212,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.58";
-const APP_NEWS = [["2026.11.58", "News aufgeräumt", [
+const APP_VER = "2026.11.59";
+const APP_NEWS = [["2026.11.59", "Insider: Käufe grün, Verkäufe rot", [
+  ["Farbige Umschalter", "Bei den Insidern ist „Käufe“ grün und „Verkäufe“ rot – du siehst sofort, welche Liste offen ist."]]],
+  ["2026.11.58", "News aufgeräumt", [
   ["Eine Zeile je Aktie", "Name, Kurs heute und die eine wichtigste Schlagzeile – antippen zeigt alle Meldungen. Wichtiges (Zahlen, Ausblick, Analysten, Übernahmen) steht oben und ist markiert, statt doppelt in einer zweiten Liste."],
   ["Weniger Rauschen", "Kurs- und Chartseiten fliegen raus, Meldungen, die gar nicht zur Aktie gehören, ebenso; dieselbe Meldung auf Englisch und Deutsch erscheint nur einmal. Themen-Marke (Zahlen, Analyst, Ausblick …) vor der Schlagzeile."]]],
   ["2026.11.57", "Zoomen in Heatmap und Rotation", [
