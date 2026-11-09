@@ -1178,6 +1178,9 @@
   .zm-hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 5; pointer-events: none; font-size: 12.5px; color: #fff; background: rgba(20,22,26,.78); padding: 6px 12px; border-radius: 999px; white-space: nowrap; animation: zm-h 4s ease 1.5s forwards; }
   .zm.zoomed .zm-hint { display: none; } @keyframes zm-h { to { opacity: 0; } }
   .zm .hm-s { pointer-events: auto; cursor: zoom-in; } .zm .hm-t small { display: block; font-size: 11px; opacity: .85; max-width: 94%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .upd-bar { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 84px); transform: translateX(-50%); z-index: 70; border: 0; border-radius: 999px; padding: 10px 18px;
+    background: var(--accent); color: #fff; font: 600 14px/1 inherit; box-shadow: 0 8px 24px rgba(0,0,0,.35); cursor: pointer; animation: bm-in .25s ease both; }
+  html.zg-on, html.zg-on body { touch-action: pan-x pan-y; } html.zg-on .hmc, html.zg-on .hmc canvas, html.zg-on .zm { touch-action: none; }
   .hmc { position: relative; overflow: hidden; border-radius: 12px; background: #1b1d22; touch-action: none; -webkit-user-select: none; user-select: none; }
   .hmc canvas { display: block; touch-action: none; cursor: grab; } .hmc.zoomed .zm-hint { display: none; }
   .fs-hm { border: 0; background: none; padding: 0; } .fsv .rrg { max-width: 720px; display: block; margin: 0 auto; }
@@ -2785,6 +2788,25 @@ document.addEventListener("click", e => {
 });
 // ---------- Heatmap im Vollbild als Zeichenfläche (Canvas): Zoom zeichnet nur das Bild neu (Millisekunden je Bild), scharf in jeder Stufe ----------
 // Bedienung: zwei Finger, Trackpad (Safari-Geste oder Strg+Scroll), Scrollen verschiebt im Zoom, Doppel-Tipp nicht nötig: Sektor-Name antippen.
+// ---------- Zoom-Wächter für alle Vollbilder (Heatmap, Rotation, Chart-Cockpit) ----------
+// Safari vergrößert sonst bei einer Trackpad-Geste (iPad-Tastatur) die ganze Seite – verschwommen, Kopfzeile weg.
+// Solange ein Vollbild offen ist: Seiten-Zoom aus (viewport + touch-action) und jede Zoom-Geste – Safari-Geste, Strg+Scroll,
+// zwei Finger – wird oben im Dokument abgefangen und an die Ansicht weitergegeben, egal über welchem Element der Zeiger steht.
+const ZG = { target: null, vp: null,
+  open() { return !!(state.fsv || ($("chfs") && !$("chfs").hidden)); },
+  sync() { const m = document.querySelector('meta[name="viewport"]'); if (!m) return; if (this.vp == null) this.vp = m.content;
+    const on = this.open(); m.content = on ? this.vp + ", maximum-scale=1, user-scalable=no" : this.vp;
+    document.documentElement.classList.toggle("zg-on", on); if (!on) this.target = null; },
+  t() { const t = this.target; return t && document.body.contains(t.el) ? t : null; } };
+["gesturestart", "gesturechange", "gestureend"].forEach(type => document.addEventListener(type, e => {
+  if (!ZG.open()) return; e.preventDefault(); const t = ZG.t(); if (!t) return;
+  if (type === "gesturestart") t.gstart(e); else if (type === "gesturechange") t.gchange(e); else t.gend(e); }, { capture: true, passive: false }));
+document.addEventListener("wheel", e => {
+  if (!ZG.open()) return; const t = ZG.t();
+  if (e.ctrlKey || e.metaKey) { e.preventDefault(); if (t) t.wheel(e); return; }      // Pinch auf dem Trackpad kommt hier als Strg+Scroll
+  if (t && t.wheel(e)) e.preventDefault(); }, { capture: true, passive: false });
+document.addEventListener("touchmove", e => {                                            // zwei Finger außerhalb einer Zoom-Fläche: Seite nicht vergrößern
+  if (ZG.open() && e.touches && e.touches.length > 1 && !(e.target.closest && e.target.closest(".hmc, .zm, .chfs-chart"))) e.preventDefault(); }, { capture: true, passive: false });
 let HMC = null;
 function hmcMix(v, lim) { const t = Math.max(-1, Math.min(1, (v || 0) / lim)), p = .18 + .72 * Math.abs(t), c = t >= 0 ? [48, 209, 88] : [255, 69, 58], b = [35, 38, 44];
   return `rgb(${c.map((x, i) => Math.round(b[i] + (x - b[i]) * p)).join(",")})`; }
@@ -2842,18 +2864,18 @@ function hmcInit(el, data) {
       animate({ s: s1, x: R.width / 2 - (S.x + S.w / 2) / data.W * R.width * s1, y: R.height / 2 - (S.y + S.h / 2) / data.H * R.height * s1 }); return; }
     const ux = (x - st.x) / (R.width * st.s) * data.W, uy = (y - st.y) / (R.height * st.s) * data.H;
     for (const { T } of data.lay) for (const t of T) if (ux >= t.x && ux <= t.x + t.w && uy >= t.y && uy <= t.y + t.h) { $("spmBody").innerHTML = hmPreviewHtml(t.t); $("spm").hidden = false; return; } };
-  // Trackpad / Mausrad: Zusammenziehen (Strg+Scroll) zoomt, Scrollen verschiebt im Zoom – je Bild gebündelt
-  el.addEventListener("wheel", e => { R = el.getBoundingClientRect(); const [x, y] = rel(e.clientX, e.clientY);
-    if (e.ctrlKey || e.metaKey) { e.preventDefault(); zoomAt(st.s * Math.exp(-Math.max(-40, Math.min(40, e.deltaY)) * .01), x, y); }
-    else if (st.s > 1.01) { e.preventDefault(); set({ s: st.s, x: st.x - e.deltaX, y: st.y - e.deltaY }); } }, { passive: false });
-  // Safari (iPad-Trackpad, Mac): Pinch kommt als GestureEvent mit scale
+  // Trackpad, Mausrad und Safari-Gesten kommen über den zentralen Zoom-Wächter (ZG) – der verhindert zuerst den Seiten-Zoom
   let ge = null;
-  // auf document: Safari ordnet Trackpad-Gesten nicht immer dem Element unter dem Zeiger zu
-  document.addEventListener("gesturestart", e => { if (!document.body.contains(el)) return; e.preventDefault(); if (P.size >= 2) return; R = el.getBoundingClientRect();
-    const [x, y] = e.clientX != null ? rel(e.clientX, e.clientY) : [R.width / 2, R.height / 2]; ge = { s0: st.s, x0: st.x, y0: st.y, x, y }; });
-  document.addEventListener("gesturechange", e => { if (!ge || !document.body.contains(el)) return; e.preventDefault(); if (P.size >= 2) return; const s1 = Math.max(1, Math.min(14, ge.s0 * e.scale)), k = s1 / ge.s0;
-    Object.assign(st, clamp({ s: s1, x: ge.x - (ge.x - ge.x0) * k, y: ge.y - (ge.y - ge.y0) * k })); req(); });
-  document.addEventListener("gestureend", e => { if (!ge) return; e.preventDefault(); ge = null; });
+  ZG.target = { el,
+    wheel(e) { R = el.getBoundingClientRect(); const inside = e.clientX >= R.left && e.clientX <= R.right && e.clientY >= R.top && e.clientY <= R.bottom;
+      const [x, y] = inside ? rel(e.clientX, e.clientY) : [R.width / 2, R.height / 2];
+      if (e.ctrlKey || e.metaKey) { zoomAt(st.s * Math.exp(-Math.max(-40, Math.min(40, e.deltaY)) * .012), x, y); return true; }
+      if (inside && st.s > 1.01) { set({ s: st.s, x: st.x - e.deltaX, y: st.y - e.deltaY }); return true; } return false; },
+    gstart(e) { if (P.size >= 2) return; R = el.getBoundingClientRect(); const inside = e.clientX >= R.left && e.clientX <= R.right && e.clientY >= R.top && e.clientY <= R.bottom;
+      const [x, y] = e.clientX != null && inside ? rel(e.clientX, e.clientY) : [R.width / 2, R.height / 2]; ge = { s0: st.s, x0: st.x, y0: st.y, x, y }; },
+    gchange(e) { if (!ge || P.size >= 2) return; const s1 = Math.max(1, Math.min(14, ge.s0 * (e.scale || 1))), k = s1 / ge.s0;
+      Object.assign(st, clamp({ s: s1, x: ge.x - (ge.x - ge.x0) * k, y: ge.y - (ge.y - ge.y0) * k })); req(); },
+    gend() { ge = null; } };
   el.querySelectorAll("[data-hmcb]").forEach(b => b.addEventListener("click", ev => { ev.stopPropagation(); const a = b.dataset.hmcb, cx = R.width / 2, cy = R.height / 2;
     const s1 = a === "in" ? st.s * 1.8 : a === "out" ? st.s / 1.8 : 1, k = Math.max(1, Math.min(14, s1)) / st.s;
     animate(a === "reset" ? { s: 1, x: 0, y: 0 } : { s: st.s * k, x: cx - (cx - st.x) * k, y: cy - (cy - st.y) * k }); }));
@@ -3028,11 +3050,12 @@ function fsvHtml() {
   return `<div class="fs-top"><b>${t || ""}</b><button class="cm-x" data-fsclose aria-label="Schließen">✕</button></div><div class="fs-body">${body}</div>`;
 }
 function fsvRender() {
-  let el = $("fsv"); if (!state.fsv) { if (el) el.hidden = true; document.documentElement.classList.remove("fs-on"); return; }
+  let el = $("fsv"); if (!state.fsv) { if (el) el.hidden = true; document.documentElement.classList.remove("fs-on"); ZG.sync(); return; }
   if (!el) { el = document.createElement("div"); el.id = "fsv"; el.className = "fsv"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); document.body.appendChild(el); }
   const y = el.querySelector(".fs-body") ? el.querySelector(".fs-body").scrollTop : 0;
   el.innerHTML = fsvHtml(); el.hidden = false; document.documentElement.classList.add("fs-on");
   const hc = el.querySelector(".hmc"); if (hc && HMC) hmcInit(hc, HMC);
+  ZG.sync();
   const b = el.querySelector(".fs-body"); if (b) b.scrollTop = y;
 }
 document.addEventListener("click", e => {
@@ -6365,8 +6388,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.67";
-const APP_NEWS = [["2026.11.67", "Cockpit: Zeitachse frei bedienbar", [
+const APP_VER = "2026.11.68";
+const APP_NEWS = [["2026.11.68", "Trackpad-Zoom und Updates", [
+  ["Kein Seiten-Zoom mehr im Vollbild", "Zusammenziehen auf dem Trackpad der iPad-Tastatur vergrößerte bisher die ganze Seite (verschwommen). Im Vollbild ist das jetzt gesperrt – die Geste zoomt die Heatmap bzw. Rotation, egal wo der Zeiger steht."],
+  ["Updates sofort", "Kairo prüft beim Öffnen, ob es eine neue Version gibt, und lädt sie direkt – ohne zweimal schließen."]]],
+  ["2026.11.67", "Cockpit: Zeitachse frei bedienbar", [
   ["Abstand zum Bildschirmrand", "Im Chart-Cockpit liegt die Zeitachse nicht mehr am unteren Rand – Ziehen zum Vergrößern/Verkleinern öffnet nicht mehr die iOS-Leiste."]]],
   ["2026.11.66", "Chart-Cockpit, Linien, flüssige Heatmap", [
   ["Linien statt Zonen", "Fibonacci als einzelne Stufen (38,2 / 50 / 61,8 / 70,5 / 78,6 / 88,6 %) mit Preis am Rand; Unterstützungen (blau) und Widerstände (rot) aus den Wendepunkten des Charts – jeweils mit Anzahl der Berührungen."],
@@ -8294,13 +8320,13 @@ function openCockpit() {
       <span class="st ${k.cls}">${esc(k.t)}</span><button class="cm-x" data-chfsclose aria-label="Schließen">✕</button></div>
     <div class="chfs-bar"><div class="cl-bar" id="cfBar"></div><div class="sp-tg cf-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["all", "2J"], ["wave", "Welle"]].map(([v, l]) => `<button class="opt" data-cfr="${v}">${l}</button>`).join("")}</div></div>
     <div class="chfs-main"><div class="chfs-chart" id="cfMain"></div><aside class="chfs-side" id="cfSide"></aside></div>`;
-  el.hidden = false; document.documentElement.classList.add("fs-on");
+  el.hidden = false; document.documentElement.classList.add("fs-on"); ZG.sync();
   if (cfChart) { try { cfChart.chart.remove(); } catch (e) {} }
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.bar = "cfBar"; cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
   $("cfBar").innerHTML = clBarHtml(cfChart); $("cfSide").innerHTML = cockpitSide(cfChart, r);
   if (cfRO) cfRO.disconnect(); cfRO = new ResizeObserver(() => { const m = $("cfMain"); if (m && cfChart) cfChart.chart.applyOptions({ width: m.clientWidth, height: m.clientHeight }); }); cfRO.observe($("cfMain"));
 }
-function closeCockpit() { const el = $("chfs"); if (!el || el.hidden) return; el.hidden = true; document.documentElement.classList.remove("fs-on");
+function closeCockpit() { const el = $("chfs"); if (!el || el.hidden) return; el.hidden = true; document.documentElement.classList.remove("fs-on"); ZG.sync();
   if (cfRO) cfRO.disconnect(); if (cfChart) { CL_LIVE.delete(cfChart); try { cfChart.chart.remove(); } catch (e) {} cfChart = null; } el.innerHTML = ""; }
 document.addEventListener("click", e => {
   if (e.target.closest("[data-chfs]")) { openCockpit(); return; }
@@ -8511,6 +8537,25 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") { closeDetai
   if (e.key === "/") { e.preventDefault(); if (state.sec !== "scanner") goSec("scanner"); setTimeout(() => { const s = $("search"); if (s) s.focus(); }, 50); } });
 
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").then(pushInit).catch(() => {});
+// ---------- Update-Erkennung: die App startet aus dem Speicher (schnell, offline) – ohne Prüfung käme ein Update erst beim
+// zweiten Öffnen. Beim Start und bei jeder Rückkehr zur App: Versionsnummer der Live-Seite holen; neuer → frisch geöffnet
+// automatisch einmal neu laden, sonst Hinweis „Neue Version – jetzt laden“.
+(() => {
+  const t0 = Date.now(); let touched = false, shown = false;
+  ["pointerdown", "keydown"].forEach(t => addEventListener(t, () => { touched = true; }, { once: true, capture: true }));
+  const apply = html => (window.caches ? caches.open("kairo-v1").then(c => c.put("index.html", new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } }))) : Promise.resolve())
+    .catch(() => {}).then(() => location.reload());
+  const check = () => fetch("index.html?vcheck=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "").then(html => {
+    const m = html.match(/const APP_VER = "([^"]+)"/), num = v => v.split(".").map(Number), a = m && num(m[1]), b0 = num(APP_VER);
+    const newer = a && (() => { for (let i = 0; i < Math.max(a.length, b0.length); i++) { if ((a[i] || 0) !== (b0[i] || 0)) return (a[i] || 0) > (b0[i] || 0); } return false; })();
+    if (!newer) return;
+    let tried = ""; try { tried = sessionStorage.getItem("kairo-upd") || ""; } catch (e) {}
+    if (!touched && Date.now() - t0 < 12000 && tried !== m[1]) { try { sessionStorage.setItem("kairo-upd", m[1]); } catch (e) {} apply(html); return; }
+    if (shown) return; shown = true;
+    const b = document.createElement("button"); b.className = "upd-bar"; b.innerHTML = `Neue Version ${m[1]} – <b>jetzt laden</b>`;
+    b.onclick = () => { b.textContent = "Lädt …"; apply(html); }; document.body.appendChild(b); }).catch(() => {});
+  if (location.protocol === "https:") { setTimeout(check, 1500); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); }); }
+})();
 // Neue App-Version erkennen: Die Seite kommt (offline-fähig) zuerst aus dem Speicher – ohne Hinweis sähe man ein Update erst
 // beim übernächsten Öffnen. Prüft beim Start und alle 30 Min. (sichtbar) die veröffentlichte Version und bietet „Neu laden“ an.
 function verCheck() {
