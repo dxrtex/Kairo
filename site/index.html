@@ -1208,6 +1208,9 @@
     padding: 0 env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 34px) env(safe-area-inset-left); }   /* Zeitachse weg vom iOS-Wischbereich (Home-Balken) */
   .chfs.side-off .chfs-main { grid-template-columns: 1fr; } .chfs.side-off .chfs-side { display: none; }
   .cf-sidebtn { flex: none; font: 600 13px/1 inherit; color: var(--text); background: rgba(127,127,127,.14); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+  .vault-row { display: flex; gap: 8px; margin-top: 10px; } .vault-row input { flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; }
+  .vault-st { margin-top: 8px; font-size: 13px; font-weight: 600; } .vault-st.up { color: var(--up); } .vault-st.down { color: var(--down); }
+  .vault-rest { margin-top: 12px; } .vault-rest summary { cursor: pointer; font-size: 14px; color: var(--muted); }
   .cl-live { flex: none; align-self: center; } .cl-live:empty { display: none; }
   .chfs-chart { min-width: 0; min-height: 0; } .chfs-side { border-left: 1px solid var(--line); overflow-y: auto; padding: 12px 14px calc(env(safe-area-inset-bottom) + 16px); }
   .cf-s { padding: 0 0 12px; margin: 0 0 12px; border-bottom: 1px solid var(--line); } .cf-h { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
@@ -6366,7 +6369,53 @@ async function kxSync() {
     const j = await r.json(); state.syncOk = !!(j && j.ok); state.syncErr = j && j.error || ""; state.syncAt = Date.now(); save(); return j;
   } catch (e) { state.syncOk = false; state.syncErr = "keine Verbindung"; save(); return null; }
 }
-let kxSyncT = 0; function kxSyncSoon() { clearTimeout(kxSyncT); kxSyncT = setTimeout(kxSync, 1500); }
+let kxSyncT = 0; function kxSyncSoon() { clearTimeout(kxSyncT); kxSyncT = setTimeout(kxSync, 1500); vaultSoon(); }
+// ---------- Automatische Datensicherung über den eigenen Kursdienst (ab Version 8) ----------
+// Alles wird auf dem Gerät mit dem Sicherungs-Passwort verschlüsselt (AES-GCM, Schlüssel per PBKDF2) – der Kursdienst sieht nur unlesbaren Text.
+// Das Passwort bleibt nur auf diesem Gerät (kx-vp) und ist selbst nie Teil der Sicherung. Wiederherstellen: Kursdienst-Adresse + Passwort.
+const VAULT_ITER = 210000, b64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); };
+const unb64 = t => Uint8Array.from(atob(t), ch => ch.charCodeAt(0)), hex = u8 => [...u8].map(b => b.toString(16).padStart(2, "0")).join("");
+async function vaultKeys(pass) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveBits", "deriveKey"]);
+  const idBits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: new TextEncoder().encode("kairo-vault-id-v1"), iterations: VAULT_ITER, hash: "SHA-256" }, base, 256);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: new TextEncoder().encode("kairo-vault-enc-v1"), iterations: VAULT_ITER, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  return { id: hex(new Uint8Array(await crypto.subtle.digest("SHA-256", idBits))), key };
+}
+let vaultK = null, vaultKP = "";
+const vaultGet = async pass => { if (!vaultK || vaultKP !== pass) { vaultK = await vaultKeys(pass); vaultKP = pass; } return vaultK; };
+function vaultData() { const d = {}; Object.keys(localStorage).filter(k => (BACKUP_KEYS(k) || k.startsWith("kx-")) && k !== "kx-vp").forEach(k => d[k] = localStorage.getItem(k)); return d; }
+const vaultCount = d => { const n = k => { try { const v = JSON.parse(d[k] || "null"); return Array.isArray(v) ? v.length : v && typeof v === "object" ? Object.keys(v).length : 0; } catch (e) { return 0; } };
+  return { depot: n(DEPOT_KEY), plans: n(PLAN_KEY), fav: n(FAV_KEY) }; };
+async function vaultSave(manual) {
+  const yq = liveKey("yq"), pass = liveKey("vp"); if (!yq || !pass) return null;
+  const d = vaultData(), c = vaultCount(d), plain = JSON.stringify({ app: "kairo", v: 1, date: new Date().toISOString(), c, data: d });
+  const core = Object.fromEntries(Object.entries(d).filter(([k]) => k !== PREF));   // Ansichts-Einstellungen ändern sich ständig – lösen allein keine Sicherung aus
+  const sig = hex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(core)))));
+  if (!manual && sig === state.vaultSig && Date.now() - (state.vaultAt || 0) < 864e5) return { ok: true, same: true };   // unverändert: höchstens einmal am Tag
+  const last = state.vaultC || {};                              // Schutz: automatisch nie einen fast leeren Stand über einen vollen legen
+  if (!manual && c.depot + c.plans + c.fav === 0 && (last.depot || 0) + (last.plans || 0) + (last.fav || 0) > 0) return { ok: false, skipped: true };
+  try { const { id, key } = await vaultGet(pass), iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plain)));
+    const j = await (await fetch(`${yq}/vault?id=${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ iv: b64(iv), ct: b64(ct) }) })).json();
+    if (!j || !j.vault) { state.vaultErr = "Kursdienst zu alt – Version 8 nötig (Einstellungen → Kursdienst)"; save(); return j; }
+    if (j.ok) { state.vaultAt = Date.now(); state.vaultSig = sig; state.vaultC = c; state.vaultErr = ""; } else state.vaultErr = j.error || "Fehler";
+    save(); return j;
+  } catch (e) { state.vaultErr = !(window.crypto && crypto.subtle) ? "Verschlüsselung auf diesem Gerät nicht verfügbar" : e instanceof TypeError && /fetch|network|load/i.test(e.message) ? "keine Verbindung" : "Fehler: " + e.message; save(); return null; }
+}
+let vaultT = 0; function vaultSoon() { if (!liveKey("vp")) return; clearTimeout(vaultT); vaultT = setTimeout(() => vaultSave(false), 8000); }
+setInterval(() => { if (liveKey("vp") && document.visibilityState === "visible") vaultSave(false); }, 60e3);   // fängt jede Änderung (auch Journal) ab
+async function vaultList(pass) {
+  const yq = liveKey("yq"); if (!yq) throw new Error("Zuerst die Kursdienst-Adresse eintragen (Einstellungen → Live-Kurse).");
+  const { id } = await vaultGet(pass), j = await (await fetch(`${yq}/vault?id=${id}`)).json();
+  if (!j || !j.vault) throw new Error("Kursdienst zu alt – Version 8 nötig.");
+  if (!j.ok) throw new Error(j.error || "Fehler"); return j.list || [];
+}
+async function vaultLoad(pass, at) {
+  const yq = liveKey("yq"), { id, key } = await vaultGet(pass), j = await (await fetch(`${yq}/vault?id=${id}&at=${at}`)).json();
+  if (!j || !j.ok) throw new Error((j && j.error) || "Stand nicht gefunden");
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(j.iv) }, key, unb64(j.ct)).catch(() => { throw new Error("Passwort passt nicht zu diesem Stand"); });
+  return JSON.parse(new TextDecoder().decode(plain));
+}
 const pushSig = () => plansLoad().filter(x => x.st === "open").map(x => x.id).join(",") + "|" + depotLive().map(p => p.t + (p.d && p.d.ko || "")).join(",");
 async function pushInit() {
   if (!pushOk()) return;
@@ -6779,7 +6828,46 @@ function backupHtml() {
       <button class="btn ghost danger" data-impclear>Scalable-Daten löschen</button></div>
     <label class="note" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;cursor:pointer"><input type="checkbox" id="bkKeys" style="margin-top:3px"><span><b>Schlüssel mitnehmen</b> (Live-Kurse, Kursdienst, Mitteilungs-Verknüpfung) – zum Umzug auf ein neues App-Symbol oder Gerät. Die Schlüssel stehen dann lesbar in der Datei: nach dem Einlesen sofort löschen.</span></label>
     <div class="note">„Scalable-Daten löschen“ entfernt den importierten Export (Depot-Positionen aus der Datei und das Journal) – danach einfach den neuen Export hochladen. Von Hand angelegte Positionen, Übung und Einstellungen bleiben.</div>
-    <div class="note">Die Datei enthält deine Depot- und Journal-Daten – nur an sichere Orte speichern (z. B. iCloud Drive).</div></div>`;
+    <div class="note">Die Datei enthält deine Depot- und Journal-Daten – nur an sichere Orte speichern (z. B. iCloud Drive).</div></div>
+    ${vaultHtml()}`;
+}
+document.addEventListener("click", async e => {
+  const vb = e.target.closest("[data-vault]");
+  if (vb) { const a = vb.dataset.vault;
+    if (a === "on") { const pw = ($("vaultPass") || {}).value || "";
+      if (pw.length < 10) { alert("Bitte ein Passwort mit mindestens 10 Zeichen wählen."); return; }
+      try { localStorage.setItem("kx-vp", pw); } catch (er) {} vb.disabled = true; vb.textContent = "Sichere …";
+      const j = await vaultSave(true); if (!(j && j.ok)) { try { localStorage.removeItem("kx-vp"); } catch (er) {} alert("Sicherung nicht möglich: " + (state.vaultErr || (j && j.error) || "unbekannt")); }
+      render(); return; }
+    if (a === "now") { vb.disabled = true; vb.textContent = "Sichere …"; await vaultSave(true); render(); return; }
+    if (a === "off") { if (confirm("Automatische Sicherung ausschalten? Die gespeicherten Stände im Kursdienst bleiben erhalten.")) { try { localStorage.removeItem("kx-vp"); } catch (er) {} render(); } return; }
+    if (a === "list") { const pw = ($("vaultPass2") || {}).value || "", box = $("vaultList"); box.innerHTML = `<div class="note">Lade …</div>`;
+      try { const l = await vaultList(pw);
+        box.innerHTML = l.length ? l.map(x => `<div class="cf-r"><span>${new Date(x.at).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span><button class="btn ghost sm" data-vault="load" data-at="${x.at}">Einlesen</button></div>`).join("") : `<div class="note">Noch keine Sicherung vorhanden.</div>`;
+      } catch (er) { box.innerHTML = `<div class="note">⚠ ${esc(er.message)}</div>`; } return; }
+    if (a === "load") { const pw = ($("vaultPass2") || {}).value || "";
+      try { const j = await vaultLoad(pw, vb.dataset.at), c = j.c || vaultCount(j.data || {});
+        if (j.app !== "kairo" || !j.data) throw new Error("keine Kairo-Sicherung");
+        if (confirm(`Stand vom ${new Date(j.date).toLocaleString("de-DE")} einlesen (${c.depot} Positionen, ${c.plans} Pläne, ${c.fav} Watchlist)? Die Daten auf diesem Gerät werden ersetzt.`)) {
+          Object.entries(j.data).forEach(([k, v]) => (BACKUP_KEYS(k) || k.startsWith("kx-")) && k !== "kx-vp" && localStorage.setItem(k, v));
+          try { localStorage.setItem("kx-vp", pw); } catch (er) {}           // danach automatisch weiter sichern
+          location.reload(); }
+      } catch (er) { alert(er.message); } return; }
+  }
+});
+function vaultHtml() {
+  const yq = liveKey("yq"), on = !!liveKey("vp"), at = state.vaultAt ? new Date(state.vaultAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+  const c = state.vaultC || {};
+  return `<div class="card" id="vaultCard"><div class="cf-h" style="margin-bottom:6px">Automatische Sicherung</div>
+    <div class="tgdesc">Depot, Journal, Trade-Pläne, Watchlist und Einstellungen werden nach jeder Änderung verschlüsselt in deinem Kursdienst gesichert. Nur dieses Gerät kennt das Passwort – Cloudflare sieht unlesbaren Text. Bei Verlust des iPads: Kursdienst-Adresse und Passwort eingeben, Stand wählen, fertig.</div>
+    ${!yq ? `<div class="note">Braucht deinen Kairo-Kursdienst (Version 8) – Adresse unter Live-Kurse eintragen.</div>` : on
+      ? `<div class="vault-st ${state.vaultErr ? "down" : "up"}">${state.vaultErr ? `⚠ ${esc(state.vaultErr)}` : at ? `● aktiv · zuletzt ${at} · ${c.depot || 0} Positionen, ${c.plans || 0} Pläne, ${c.fav || 0} Watchlist` : "● aktiv · erste Sicherung folgt"}</div>
+         <div class="row-actions" style="margin-top:10px"><button class="btn sm" data-vault="now">Jetzt sichern</button><button class="btn ghost sm" data-vault="off">Ausschalten</button></div>`
+      : `<div class="vault-row"><input id="vaultPass" type="password" autocomplete="new-password" placeholder="Sicherungs-Passwort (mind. 10 Zeichen)"><button class="btn sm" data-vault="on">Einschalten</button></div>
+         <div class="note">Das Passwort gut aufheben (z. B. im iCloud-Schlüsselbund) – ohne Passwort lässt sich die Sicherung nicht öffnen, auch nicht von Claude.</div>`}
+    ${yq ? `<details class="vault-rest"><summary>Aus Sicherung wiederherstellen</summary>
+      <div class="vault-row"><input id="vaultPass2" type="password" autocomplete="current-password" placeholder="Sicherungs-Passwort"><button class="btn ghost sm" data-vault="list">Stände anzeigen</button></div>
+      <div id="vaultList"></div></details>` : ""}</div>`;
 }
 
 // ---------- Einstellungen ----------

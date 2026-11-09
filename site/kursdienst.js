@@ -1,8 +1,9 @@
-// Kairo-Kursdienst (Version 7) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
+// Kairo-Kursdienst (Version 8) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
 //   ?s=SAP.DE,AAPL      Kurse (Yahoo Finance, je nach Börse leicht verzögert)
 //   ?q=Rheinmetall      Aktiensuche an allen Börsen
 //   ?c=RHM.DE           Tageskerzen (1 Jahr) – damit plant Kairo auch Aktien außerhalb des Scans
 //   /trades?key=…       offene Trades, Depot und Watchlist für Scan und Mitteilungen (GET lesen, POST speichern) – braucht den KV-Speicher „KAIRO“
+//   /vault              verschlüsselte Datensicherung der App (ab Version 8): Depot, Journal, Pläne, Watchlist – nur das iPad kann sie lesen
 //   /earn               Quartalszahlen, die gerade offiziell bei der SEC gemeldet wurden (ab Version 6; v7: eine 6-K beendet die Suche nicht)
 // Einrichtung: Cloudflare → Workers & Pages → Worker → Edit code → alles ersetzen → Deploy (Anleitung in Kairo → Einstellungen).
 
@@ -113,6 +114,7 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
     const url = new URL(request.url);
     if (url.pathname.replace(/\/+$/, "") === "/trades") return trades(request, env, url, cors);
+    if (url.pathname.replace(/\/+$/, "") === "/vault") return vault(request, env, url, cors);
     if (url.pathname.replace(/\/+$/, "") === "/earn") return json({ ok: true, hits: env && env.KAIRO ? Object.values(JSON.parse((await env.KAIRO.get("e8k")) || "{}")) : [] }, cors);
     const q = (url.searchParams.get("q") || "").trim();
     if (q) return json(await search(q), cors);
@@ -120,7 +122,7 @@ export default {
     if (c && /^[A-Z0-9.\-^=]{1,20}$/.test(c)) return json(await candles(c), cors);
     const syms = (url.searchParams.get("s") || "").split(",").map(x => x.trim().toUpperCase())
       .filter(x => /^[A-Z0-9.\-^=]{1,20}$/.test(x)).slice(0, MAX);
-    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 6). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
+    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 8). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
     const diag = url.searchParams.has("debug") ? [] : null;
     const out = await quotes(syms, ctx, diag);
     return json(diag ? { ...out, _diag: diag } : out, cors);
@@ -238,6 +240,38 @@ async function trades(request, env, url, cors) {
     return json({ ok: true }, cors);
   }
   return json(JSON.parse((await env.KAIRO.get("trades")) || '{"p":[],"d":[]}'), cors);
+}
+
+// Datensicherung (ab Version 8): Die App verschlüsselt alles auf dem Gerät (AES-GCM, Schlüssel aus deinem Sicherungs-Passwort) –
+// hier liegt nur unlesbarer Text. Kennung = Prüfsumme aus dem Passwort; die erste Kennung, die speichert, gehört dem Dienst.
+// Verlauf: nichts wird ersetzt – die 10 neuesten Stände bleiben, ältere je einer pro Tag (zusammen höchstens 30).
+// So überschreibt auch ein leeres neues Gerät keinen guten Stand.
+async function vault(request, env, url, cors) {
+  if (!env || !env.KAIRO) return json({ vault: 1, error: "KV-Speicher „KAIRO“ fehlt – in Cloudflare unter Settings → Bindings anlegen" }, cors, 501);
+  const id = url.searchParams.get("id") || "";
+  if (!/^[0-9a-f]{64}$/.test(id)) return json({ vault: 1, error: "Kennung fehlt" }, cors, 400);
+  const h = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode("kairo-vault:" + id)))].map(b => b.toString(16).padStart(2, "0")).join("");
+  const own = await env.KAIRO.get("vown");
+  if (own && own !== h) return json({ vault: 1, error: "falsches Passwort" }, cors, 403);
+  const idx = JSON.parse((await env.KAIRO.get("vidx")) || "[]");
+  if (request.method === "POST") {
+    const body = await request.text();
+    if (body.length > 2000000) return json({ vault: 1, error: "zu groß" }, cors, 413);
+    let d; try { d = JSON.parse(body); } catch (e) { return json({ vault: 1, error: "kein JSON" }, cors, 400); }
+    if (!d.iv || !d.ct) return json({ vault: 1, error: "unvollständig" }, cors, 400);
+    if (!own) await env.KAIRO.put("vown", h);
+    const at = Math.max(Date.now(), (idx[0] || {}).at + 1 || 0);
+    await env.KAIRO.put("v:" + at, JSON.stringify({ iv: d.iv, ct: d.ct, at }));
+    idx.unshift({ at, size: body.length });
+    const keep = idx.slice(0, 10), days = new Set();
+    for (const e of idx.slice(10)) { const day = new Date(e.at).toISOString().slice(0, 10);
+      if (!days.has(day) && keep.length < 30) { keep.push(e); days.add(day); } else await env.KAIRO.delete("v:" + e.at); }
+    await env.KAIRO.put("vidx", JSON.stringify(keep));
+    return json({ vault: 1, ok: true, at, n: keep.length }, cors);
+  }
+  const at = url.searchParams.get("at");
+  if (at) { const v = await env.KAIRO.get("v:" + at); return v ? json({ vault: 1, ok: true, ...JSON.parse(v) }, cors) : json({ vault: 1, error: "Stand nicht gefunden" }, cors, 404); }
+  return json({ vault: 1, ok: true, list: idx }, cors);
 }
 
 const key = s => new Request("https://kairo-kurse.cache/" + s);
