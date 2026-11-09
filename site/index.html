@@ -238,6 +238,7 @@
   .tz.on { color: var(--gold); background: color-mix(in srgb, var(--gold) 16%, transparent); }
   .btn.danger { color: var(--red); }
   .st.wait { background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--muted); } .st.own { background: var(--accent-bg); color: var(--accent); }
+  .empty-st .es-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
   .empty-st { text-align: center; padding: 28px 22px; margin-bottom: 14px; } .empty-st .es-ic, .jicon { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 18px; display: grid; place-items: center; color: #fff; background: linear-gradient(145deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000)); } .es-ic svg, .jicon svg { width: 34px; height: 34px; }
   .vdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 7px 1px 0; vertical-align: middle; background: var(--gold); } .vdot.g { background: var(--up); } .vdot.r { background: var(--red); } .vdot.y { background: var(--gold); }
   .empty-st > b { font-size: 19px; } .empty-st > p { color: var(--muted); margin: 6px auto 18px; max-width: 460px; }
@@ -3053,10 +3054,23 @@ const NEWS_JUNK = /\b(live[- ]charts?|aktienkurs|chart (&|und) analyse|marktkapi
 const NEWS_LOW = /stocktwits|motley|zacks|gurufocus|moby|börse express|finanztrends|kapitalmarktexperten|börse global|ad-hoc-news|tikr|aktiencheck|traders union|sharedeals|invezz|simply wall|24\/7 wall|macerkopf|boerse\.de|finanznachrichten/i;
 // Gehört die Schlagzeile wirklich zur Aktie? (Quelle ordnet manchmal fremde Meldungen zu: „Louisiana-Pacific …“ bei Nvidia)
 const NEWS_STOP = /^(the|der|die|das|inc|corp|group|holding|aktiengesellschaft|ag|se|plc|sa|nv|asa|ab)$/i;
+// Bank/Analyst nur als Quelle einer Meinung über eine ANDERE Firma: „Coloplast down 4% as UBS sees limited upside“ gehört nicht zu UBS
+const NEWS_SRCROLE = [/\b(as|after|amid|while|with)\s+$/i,
+  /^[a-z]*(\s+[a-z.&'’]+){0,2}?\s+(sees?|downgrades?|upgrades?|initiates?|reiterates?|(cuts?|raises?|lifts?|lowers?|trims?|boosts?)\s+(its\s+|the\s+)?(price\s+)?(targets?|ratings?|estimates?)|sieht|stuft)\b/i];
+// Gängige Kurznamen, die weder Kürzel noch erstes Namenswort sind (TSMC, Citi, Google …)
+const NEWS_ALIAS = { TSM: /\btsmc\b/, "2330.TW": /\btsmc\b/, C: /\bciti\b/, GOOGL: /\bgoogle\b/, GOOG: /\bgoogle\b/, "BRK-B": /\bberkshire\b/,
+  "005930.KS": /\bsamsung electronics\b/, "000660.KS": /\bsk hynix\b/, "9988.HK": /\balibaba\b/, BABA: /\balibaba\b/, "700.HK": /\btencent\b/, "0700.HK": /\btencent\b/, "VOW3.DE": /\b(vw|volkswagen)\b/, "MBG.DE": /\bmercedes\b/ };
 function newsRelevant(n) {
   const t = String(n.t || "").toLowerCase(), tk = tkClean(n.tk).split(/[.\-]/)[0].toLowerCase();
   const nm = String((typeof rowOf === "function" && (rowOf(n.tk) || {}).n) || n.n || "").split(/[\s,.'’()-]+/).filter(w => w.length >= 3 && !NEWS_STOP.test(w)).slice(0, 2);
-  return (tk.length >= 2 && new RegExp(`\\b${tk.replace(/[^a-z0-9]/g, "")}\\b`).test(t)) || nm.some(w => t.includes(w.toLowerCase().slice(0, 6)));
+  const hits = [];
+  if (tk.length >= 2) { const m = t.match(new RegExp(`\\b${tk.replace(/[^a-z0-9]/g, "")}\\b`)); if (m) hits.push(m.index); }
+  // Name: das erste (unterscheidende) Namenswort muss vorkommen – „Cipher Digital“ ist nicht Applied Digital
+  if (nm[0]) { const k = t.search(new RegExp(`\\b${nm[0].toLowerCase().slice(0, 6).replace(/[^a-z0-9äöüß]/g, ".")}`)); if (k >= 0) hits.push(k); }
+  const al = NEWS_ALIAS[n.tk]; if (al) { const k = t.search(al); if (k >= 0) hits.push(k); }
+  if (!hits.length) return false;
+  // nur als Meinungsquelle genannt („… as UBS sees …“, „… after Goldman Sachs downgrades …“) → gehört nicht zur Aktie
+  return !hits.every(k => k > 0 && NEWS_SRCROLE[0].test(t.slice(Math.max(0, k - 12), k)) && NEWS_SRCROLE[1].test(t.slice(k)));
 }
 function newsImportant(list, dep) {
   const sc = n => { const t = String(n.t || ""); if (NEWS_FLUFF.test(t + " " + (n.p || "")) || NEWS_LOW.test(String(n.p || "")) && /\?\s*$/.test(t) || !newsRelevant(n)) return -9;
@@ -3817,10 +3831,8 @@ function depotHtml() {
     </article>`;
   }).join("");
   const empty = list.length ? "" : `<div class="card empty-st"><div class="es-ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 40h32"/><path d="M13 34V22M21 34V14M29 34V24M37 34V18"/></svg></div><b>Dein Depot ist noch leer</b>
-    <p>Trag deine Positionen ein – Kairo prüft sie dann jeden Tag: Stop, EMA 20, Verkaufstag und nächste Termine.</p>
-    <ol class="rule-steps"><li><i>1</i><span><b>Schnell: Scalable-Export</b>Scalable (Web) → Transaktionen → Export, dann oben „Scalable-Export importieren“.</span></li>
-      <li><i>2</i><span><b>Oder von Hand</b>„+ Position“ – Aktie, Stückzahl und Kaufkurs reichen.</span></li>
-      <li><i>3</i><span><b>Noch nichts gekauft?</b><a href="#" data-gosec="today">Heute zu tun</a> zeigt die Kaufkandidaten nach der Kairo-Regel, die <a href="#" data-gosec="game">Übung</a> das Gleiche mit Spielgeld.</span></li></ol></div>`;
+    <p>Kairo prüft deine Positionen jeden Tag: Stop, EMA 20, Verkaufstag, Termine.</p>
+    <p class="es-sub">Oben „Scalable-Export importieren“ oder „+ Position“ · noch nichts gekauft? <a href="#" data-gosec="today">Heute</a> oder <a href="#" data-gosec="game">Übung</a></p></div>`;
   return head + (groups.length ? cockpitHtml(groups, items) : sum) + actions + form + empty + depotCheckHtml(items, groups)
     + (groups.length ? `<div class="plan-h" style="margin:4px 2px 8px">Deine Positionen · antippen zum Aufklappen</div>${groups.map(groupHtml).join("")}` : "")
     + (cards.length ? `${groups.length ? `<div class="plan-h" style="margin:18px 2px 8px">Ohne Analyse (nicht auf der Watchlist)</div>` : ""}<div class="grid">${cards}</div>` : "")
@@ -4798,8 +4810,8 @@ function journalHtml() {
   const tx = txLoad();
   const imp = `<label class="btn${tx.length ? " ghost" : ""}" style="cursor:pointer">${tx.length ? "Neuen Export hochladen (ersetzt den alten)" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="jrCsv" hidden></label>`;
   const head = `<div class="section-title"><span>Journal · deine Trades</span><span>${tx.length ? tx.length + " Transaktionen" : ""}</span></div>`;
-  if (!tx.length) return head + jStrategyHtml() + `<div class="card jempty"><div class="jicon"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="7" width="26" height="34" rx="4"/><path d="M17 16h14M17 23h14M17 30h8"/></svg></div><b>Dein Trading-Journal</b>
-      <p>Lies deinen Transaktions-Export aus Scalable Capital ein (Web-Version → Transaktionen → Export). Kairo ordnet alle Käufe und Verkäufe zu Trades, rechnet Gewinne und Verluste nach Gebühren und zeigt deine Statistik.</p>
+  if (!tx.length) return head + `<div class="card jempty"><div class="jicon"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="7" width="26" height="34" rx="4"/><path d="M17 16h14M17 23h14M17 30h8"/></svg></div><b>Dein Trading-Journal</b>
+      <p>Scalable-Export einlesen (Web → Transaktionen → Export): Kairo bildet daraus deine Trades, rechnet nach Gebühren und zeigt, ob du die Test-Erwartung erreichst.</p>
       <div class="row-actions" style="justify-content:center">${imp}</div>${depotMsg ? `<div class="tip tone-gray" style="margin-top:14px;text-align:left">${depotMsg}</div>` : ""}
       <div class="note">Die Datei bleibt auf diesem Gerät – nichts wird hochgeladen. Positionen im Depot werden dabei ebenfalls aktualisiert.</div></div>`;
   const m = journalModel(tx), per = state.jPer || "all", cut = jCut(per);
@@ -6241,8 +6253,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.63";
-const APP_NEWS = [["2026.11.63", "Gesamtprüfung: Feinschliff", [
+const APP_VER = "2026.11.64";
+const APP_NEWS = [["2026.11.64", "News treffsicherer, Depot klarer", [
+  ["Richtige Aktie zur Schlagzeile", "„Coloplast fällt, weil UBS wenig Potenzial sieht“ landet nicht mehr bei UBS, „Cipher Digital“ nicht mehr bei Applied Digital. Banken, die nur ihre Meinung über eine andere Firma äußern, zählen nicht; gängige Kurznamen (TSMC, Citi, Google …) werden erkannt."],
+  ["Leeres Depot und Journal", "Kurz und klar statt langer Anleitungen."]]],
+  ["2026.11.63", "Gesamtprüfung: Feinschliff", [
   ["Status überall gleich", "Die Detailseite zeigt jetzt den aktuellen Kauf-Status (verfallen, Einstieg vorbei, kaufbereit, im Depot) statt des Hinweises vom Vorabend – wie auf Heute."],
   ["Aufgeräumt", "ETF-Kurve über die ganze Breite mit Preisen, Einstieg-Liste auf dem iPad zweispaltig, Bilanz-Kennzahlen auf dem iPhone lesbar, kürzere Börsenzeiten und Suchfelder auf dem iPhone, Status-Erklärung im Scanner einklappbar, richtige Versionsnummer in den Einstellungen."]]],
   ["2026.11.62", "Heatmap: Watchlist, Details, Trackpad-Zoom", [
