@@ -1183,7 +1183,7 @@
   .pcheck i { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; color: #000; margin-top: 1px; }
   .pc-ok i { background: var(--up); } .pc-warn i { background: var(--gold); } .pc-bad i { background: var(--red); color: #fff; }
   .pcheck b { display: block; font-size: 14px; } .pcheck em { display: block; font-style: normal; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
-  .lg-note { color: #b07cff; font-style: italic; } .pane-label [hidden] { display: none !important; }
+  .lg-note { color: var(--muted); } .lg-note.big { color: #b07cff; } .pane-label [hidden] { display: none !important; }
   .bmodal { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 16px; }
   .bmodal[hidden] { display: none; }
   .tour-box { width: min(460px, 100%); text-align: center; padding: 34px 28px 24px; max-height: calc(100dvh - 24px); overflow-y: auto; }
@@ -6211,8 +6211,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.60";
-const APP_NEWS = [["2026.11.60", "Chart: nur eine Fibonacci-Zone", [
+const APP_VER = "2026.11.61";
+const APP_NEWS = [["2026.11.61", "Chart wie in einer Profi-App", [
+  ["Richtige Welle", "Fibonacci misst jetzt vom echten Anfang der Welle: vom Hoch rückwärts bis zum Tief, vor dem eine fast vollständige Korrektur lag (Siemens Energy: 3.9.2025 statt eines Zwischentiefs). Eine feine Linie zeigt, welche Welle gemessen wird."],
+  ["Aufgeräumt", "Zone beginnt am Tief statt über die ganze Breite, Hoch und Tief als Marken an den Kerzen, 61,8 % / 79 % am Rand; rechts an der Achse nur noch Kurs, Kaufzone, Stop und K.-o. Der Chart öffnet so, dass die ganze Welle zu sehen ist."]]],
+  ["2026.11.60", "Chart: nur eine Fibonacci-Zone", [
   ["Eine Zone statt drei", "Der Chart zeigt die Fibonacci-Zone der aktuellen Welle. Erst wenn der Kurs darunter schließt, ersetzt sie die Zone der großen Welle – mit Hinweis in der Legende."],
   ["Zonen ziehen nicht mehr nach", "Beim Zoomen und Verschieben bewegen sich die Flächen jetzt exakt mit den Kerzen."]]],
   ["2026.11.59", "Insider: Käufe grün, Verkäufe rot", [
@@ -7939,7 +7942,7 @@ async function openDetail(t) {
       <button class="close" id="closeDetail" aria-label="Schließen">✕</button></div>
     <div style="margin-top:12px">${kpxHtml(r)}</div>
     <div style="margin-top:14px">${tipHtml(r.hint)}</div>
-    <div class="pane"><div class="pane-label"><span><i style="background:#f4b740"></i>EMA 20</span><span><i style="background:#4aa3ff"></i>EMA 50</span><span><i style="background:#b07cff"></i>EMA 100</span><span><i style="background:#ff8a65"></i>EMA 200</span><span data-lg="fib" hidden><i style="background:rgba(255,176,32,.6)"></i>Fibonacci-Zone</span><span data-lg="sup" hidden><i style="background:rgba(74,163,255,.6)"></i>Unterstützung</span><span data-lg="big" hidden><i style="background:rgba(176,124,255,.6)"></i>Fib-Zone große Welle</span><span data-lg="note" class="lg-note" hidden></span></div><div class="lw" id="cMain" style="height:420px"></div></div>
+    <div class="pane"><div class="pane-label"><span><i style="background:#f4b740"></i>EMA 20</span><span><i style="background:#4aa3ff"></i>EMA 50</span><span><i style="background:#b07cff"></i>EMA 100</span><span><i style="background:#ff8a65"></i>EMA 200</span><span data-lg="fib" hidden><i style="background:rgba(255,176,32,.6)"></i>Fibonacci 0,618–0,79</span><span data-lg="sup" hidden><i style="background:rgba(74,163,255,.6)"></i>Unterstützung</span><span data-lg="big" hidden><i style="background:rgba(176,124,255,.6)"></i>Fib-Zone große Welle</span><span data-lg="note" class="lg-note" hidden></span></div><div class="lw" id="cMain" style="height:420px"></div></div>
     <div class="pane"><div class="pane-label">RSI 14 · SMA 14 · 30/50/70${r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}</div><div class="lw" id="cRsi" style="height:150px"></div></div>
     <div class="pane"><div class="pane-label">MACD 12/26/9 · Linie, Signal, Histogramm</div><div class="lw" id="cMacd" style="height:150px"></div></div>
     <div class="pane"><div class="pane-label">Momentum Bias Index [AlgoAlpha] · grün/rot · Referenzlinie · X-Signale</div><div class="lw" id="cMbi" style="height:150px"></div></div>
@@ -7953,7 +7956,7 @@ async function openDetail(t) {
         <button class="btn" data-ein="${esc(r.ticker)}">Einstieg planen →</button>
         <div class="pane-label" style="margin-top:14px">Zone</div>
         <div class="note" style="margin-top:0">${fib ? `Fibonacci: H ${fmt(r.zone.H)} (${dateDE(r.zone.H_date)}) → L ${fmt(fib.L)} (${dateDE(fib.L_date)}), Impuls ${pct(fib.impulse)}, Retracement ${fmt(fib.retracement, 3)}${fib.ok ? " ✓" : ""}<br>` : ""}
-          ${sup ? `Support: Mitte ${fmt(sup.center)}, ${sup.touches} Touches (${sup.touch_dates.map(dateDE).join(", ")})` : "Kein horizontaler Mehrfachboden."}</div>
+          <span id="zoneWave"></span>${sup ? `Support: Mitte ${fmt(sup.center)}, ${sup.touches} Touches (${sup.touch_dates.map(dateDE).join(", ")})` : "Kein horizontaler Mehrfachboden."}</div>
         <div class="links"><a class="btn" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">In TradingView öffnen</a></div>
       </div>
     </div>`;
@@ -7981,28 +7984,57 @@ function drawCharts(c, r) {
   vol.setData(T.map((t, i) => ({ time: t, value: c.v[i] || 0, color: c.c[i] >= c.o[i] ? "rgba(48,209,88,.22)" : "rgba(255,69,58,.22)" })));
   const line = (price, title, color, style = 2) => price != null && candles.createPriceLine({ price, title, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true });
   const fib = r.zone && r.zone.fib, sup = r.zone && r.zone.support, p = chartPlan(r) || {};
-  // Zonen als Flächen statt vieler Linien (Wunsch 11/2026: kontrastreicher, aufgeräumter). Linien nur für Hoch/Tief der Welle, Kauf und Stop.
-  // Immer nur EINE Fibonacci-Zone: die der aktuellen Welle. Schließt der Kurs darunter (Zone gebrochen), tritt die Zone der großen
-  // Welle an ihre Stelle – tiefstes Tief vor dem Hoch über die ganze geladene Historie (≈ 2 Jahre), wenn es deutlich tiefer liegt.
-  const bands = [], lg = new Set(), last = c.c[c.c.length - 1];
-  let note = "";
-  if (fib) { const a = fib.levels["0.618"], b = fib.levels["0.79"], lo = Math.min(a, b), hi0 = fib.levels["0"];
-    const broken = a != null && b != null && last != null && last < lo * .995;
-    if (!broken) { line(hi0, "Hoch", "#f4b740", 1); line(fib.levels["1"], "Tief", "#f4b740", 1);
-      if (a != null && b != null) { bands.push({ lo, hi: Math.max(a, b), c: "255,176,32", l: "Fibonacci-Zone 0,618–0,79", fit: true }); lg.add("fib"); } }
-    else {
-      const hIdx = T.indexOf(r.zone.H_date || ""), end = hIdx > 0 ? hIdx : T.length - 1; let L = Infinity;
-      for (let i = 0; i < end; i++) if (c.l[i] != null && c.l[i] < L) L = c.l[i];
-      if (isFinite(L) && fib.levels["1"] && L < fib.levels["1"] * .95 && hi0 > L) { const lv = q => hi0 - (hi0 - L) * q;
-        line(hi0, "Hoch", "#b07cff", 1); line(L, "Tief große Welle", "#b07cff", 1);
-        bands.push({ lo: lv(.786), hi: lv(.618), c: "176,124,255", l: "Fib-Zone große Welle 0,618–0,786", fit: true }); lg.add("big");
-        note = "Kurs unter der Fibonacci-Zone der aktuellen Welle – gezeigt wird die Zone der großen Welle"; }
-      else note = "Kurs unter der Fibonacci-Zone – keine tiefere Welle in den letzten 2 Jahren"; } }
-  if (sup) { bands.push({ lo: sup.band[0], hi: sup.band[1], c: "74,163,255", l: `Unterstützung · ${sup.touches}× getestet` }); line(sup.center, "Support", "#4aa3ff", 0); lg.add("sup"); }
-  document.querySelectorAll("#detail [data-lg]").forEach(x => { const k = x.dataset.lg; x.hidden = k === "note" ? !note : !lg.has(k); if (k === "note") x.textContent = note; });
+  // ---- Fibonacci im Chart (nur Anzeige – die Fibonacci-Regel des Scans bleibt unverändert) ----
+  // Welle = vom Hoch rückwärts von Tief zu tieferem Tief (Wendepunkte ±10 Tage), bis davor eine fast volle Korrektur (≥ 78,6 %)
+  // liegt – dort beginnt die Welle. Siemens Energy 11/2026: Start 3.9.2025 (82,97) statt Zwischentief 13.11.2025.
+  // Immer nur EINE Zone; schließt der Kurs darunter, ersetzt sie die nächstgrößere Welle. Hoch/Tief als Marken an den Kerzen.
+  const bands = [], segs = [], marks = [], lg = new Set(), last = c.c[c.c.length - 1];
+  let note = "", noteCls = "";
+  const hI = fib && r.zone.H_date ? T.indexOf(r.zone.H_date) : -1;
+  // Start beim Tief des Scans; zurück zum nächsten tieferen Wendepunkt, solange die Korrektur dazwischen < 78,6 % war
+  // (≥ 78,6 % = fast volle Korrektur → dort beginnt die Welle) und die Welle höchstens doppelt so groß wird wie die des Scans.
+  const waveStarts = h => {
+    const W = 10, piv = [];
+    for (let i = h - 1; i >= 0; i--) { const v = c.l[i]; if (v == null) continue; let ok = true;
+      for (let k = Math.max(0, i - W); k <= Math.min(h - 1, i + W); k++) if (c.l[k] != null && c.l[k] < v) { ok = false; break; }
+      if (ok) piv.push(i); }
+    const sI = T.indexOf(fib.L_date || ""), s0 = sI >= 0 && sI < h ? sI : piv[0]; if (s0 == null) return [];
+    const Hp = c.h[h], amp0 = Hp - c.l[s0], out = []; let cur = s0;
+    for (const j of piv) { if (j >= cur || c.l[j] >= c.l[cur]) continue;
+      let M = -Infinity; for (let k = j; k <= cur; k++) if (c.h[k] != null && c.h[k] > M) M = c.h[k];
+      const full = (M - c.l[cur]) / (M - c.l[j]) >= .786;
+      if (full) out.push(cur);
+      else if (Hp - c.l[j] > 2 * amp0) break;          // Welle würde zu groß (AMD: bis zum Crash 4/2025) → hier aufhören
+      cur = j; if (out.length >= 2) break; }
+    if (!out.includes(cur) && out.length < 2 && cur >= W) out.push(cur);   // ganz am Anfang der Daten: Wellenstart unbekannt
+    return out; };
+  const fibBand = (H, L, from, q2, col, lbl) => { const lv = q => H - (H - L) * q;
+    bands.push({ lo: lv(q2), hi: lv(.618), from, c: col, l: lbl, fit: true, et: "61,8 %", eb: (q2 === .79 ? "79" : "78,6") + " %" });
+    segs.push({ i1: from, p1: L, i2: hI, p2: H, c: col }); };
+  if (hI > 0) {
+    const H = c.h[hI] != null ? Math.max(c.h[hI], fib.levels["0"] || 0) : fib.levels["0"], ws = waveStarts(hI);
+    if (ws.length) {
+      const L0 = c.l[ws[0]], lo0 = H - (H - L0) * .79, broken = last != null && last < lo0 * .995;
+      if (!broken) { fibBand(H, L0, ws[0], .79, "255,176,32", "Fibonacci 0,618–0,79"); lg.add("fib");
+        marks.push({ i: hI, t: `H ${fmt(H)}`, c: "#f4b740", up: false }, { i: ws[0], t: `L ${fmt(L0)}`, c: "#f4b740", up: true });
+        note = `Welle ${dateDE(T[ws[0]])} → ${dateDE(T[hI])}`; }
+      else if (ws[1] != null) { const L1 = c.l[ws[1]];
+        fibBand(H, L1, ws[1], .786, "176,124,255", "Fibonacci große Welle 0,618–0,786"); lg.add("big");
+        marks.push({ i: hI, t: `H ${fmt(H)}`, c: "#b07cff", up: false }, { i: ws[1], t: `L ${fmt(L1)}`, c: "#b07cff", up: true });
+        note = `Kurs unter der Zone der Welle ab ${dateDE(T[ws[0]])} – gezeigt wird die große Welle ${dateDE(T[ws[1]])} → ${dateDE(T[hI])}`; noteCls = "big"; }
+      else { note = "Kurs unter der Fibonacci-Zone – keine größere Welle in den geladenen 2 Jahren"; noteCls = "big"; }
+    }
+  } else if (fib) { const a = fib.levels["0.618"], b = fib.levels["0.79"];   // Hoch liegt vor dem geladenen Zeitraum: Zone des Scans
+    if (a != null && b != null && !(last < Math.min(a, b) * .995)) { bands.push({ lo: Math.min(a, b), hi: Math.max(a, b), c: "255,176,32", l: "Fibonacci 0,618–0,79", fit: true, et: "61,8 %", eb: "79 %" }); lg.add("fib"); } }
+  if (sup) { const f0 = (sup.touch_dates || []).map(d => T.indexOf(d)).filter(x => x >= 0).sort((a, b) => a - b)[0];
+    bands.push({ lo: sup.band[0], hi: sup.band[1], from: f0 != null ? Math.max(0, f0 - 3) : null, c: "74,163,255", l: `Unterstützung · ${sup.touches}× getestet` }); lg.add("sup"); }
+  document.querySelectorAll("#detail [data-lg]").forEach(x => { const k = x.dataset.lg; x.hidden = k === "note" ? !note : !lg.has(k); if (k === "note") { x.textContent = note; x.classList.toggle("big", noteCls === "big"); } });
+  const zw = $("zoneWave"); if (zw) zw.innerHTML = segs.length ? `Chart: Welle ${dateDE(T[segs[0].i1])} (${fmt(segs[0].p1)}) → ${dateDE(T[segs[0].i2])} (${fmt(segs[0].p2)}) – vom Wellenanfang gemessen; die Scan-Regel misst ihre eigene Welle (oben).<br>` : "";
+  if (marks.length) candles.setMarkers(marks.sort((a, b) => a.i - b.i).map(m => ({ time: T[m.i], position: m.up ? "belowBar" : "aboveBar", color: m.c, shape: m.up ? "arrowUp" : "arrowDown", text: m.t })));
   line(p.entry, "Kaufzone oben", "#eceef2", 0); line(p.stop, "Stop", "#ff453a", 0);
-  if (bands.length) candles.attachPrimitive(bandPrimitive(bands));
-  if (T.length > 300) main.timeScale().setVisibleLogicalRange({ from: T.length - 260, to: T.length + 3 });   // Start: letztes Jahr, nach links wischen = 2 Jahre
+  if (bands.length) candles.attachPrimitive(bandPrimitive(bands, segs));
+  // Start: letztes Jahr – reicht die gezeigte Welle weiter zurück, so weit, dass sie ganz zu sehen ist
+  const w0 = Math.min(...segs.map(x => x.i1), T.length - 130), vr0 = { from: Math.max(0, w0 - 12), to: T.length + 3 };
   line(tpKoStock(r.ticker, r.currency || r.cur), "K.-o. Turbo", "#ff9f0a", 1);
 
   const rsiC = LW.createChart($("cRsi"), opts($("cRsi")));
@@ -8034,26 +8066,35 @@ function drawCharts(c, r) {
   charts.forEach(ch => ch.timeScale().subscribeVisibleLogicalRangeChange(range => {
     if (syncing || !range) return; syncing = true; charts.forEach(o => o !== ch && o.timeScale().setVisibleLogicalRange(range)); syncing = false;
   }));
-  main.timeScale().setVisibleLogicalRange({ from: T.length - 130, to: T.length + 3 });
+  main.timeScale().setVisibleLogicalRange(vr0);   // halbes Jahr – oder so weit zurück, dass die gezeigte Fibonacci-Welle ganz zu sehen ist
   new ResizeObserver(() => charts.forEach((ch, k) => { const el = [$("cMain"), $("cRsi"), $("cMacd"), $("cMbi")][k]; el && ch.applyOptions({ width: el.clientWidth }); })).observe($("detailBody"));
 }
 
-// Farbige Zonen-Flächen über dem Chart (Lightweight Charts kennt keine Bänder): Overlay, das bei Zoom/Scroll nachgeführt wird
 // Zonen-Flächen direkt im Chart gezeichnet (Series-Primitive): bewegen sich beim Zoomen/Verschieben exakt mit – kein Nachziehen.
-function bandPrimitive(bands) {
-  let series = null, geo = [];
-  const font = "600 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+// Eine Fläche beginnt an ihrem Ursprung (from = Kerzen-Index, z. B. Tief der Welle), die Welle selbst als feine gestrichelte Linie.
+function bandPrimitive(bands, segs = []) {
+  let series = null, chart = null, geo = [], sg = [];
+  const font = "600 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif", small = "600 10.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
   const each = f => geo.forEach((g, i) => { if (g.y1 != null && g.y2 != null) f(g, i, Math.min(g.y1, g.y2), Math.max(3, Math.abs(g.y2 - g.y1))); });
-  const fill = { draw: target => target.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => each((g, i, t, h) => {
-    x.fillStyle = `rgba(${g.c},.16)`; x.fillRect(0, t, m.width, h);
-    x.fillStyle = `rgba(${g.c},.75)`; x.fillRect(0, t, m.width, 1); x.fillRect(0, t + h - 1, m.width, 1); })) };
-  const text = { draw: target => target.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => each((g, i, t) => {   // Beschriftung über den Kerzen
-    x.font = font; x.textBaseline = "top"; const tx = 8 + i * Math.min(240, m.width / 3), w = x.measureText(g.l).width;
-    x.fillStyle = "rgba(20,22,26,.72)"; x.fillRect(tx - 4, t + 2, w + 8, 17); x.fillStyle = `rgb(${g.c})`; x.fillText(g.l, tx, t + 4); })) };
+  const fill = { draw: target => target.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => {
+    each((g, i, t, h) => { const x0 = Math.max(0, g.x0 ?? 0); if (x0 >= m.width) return;
+      x.fillStyle = `rgba(${g.c},.13)`; x.fillRect(x0, t, m.width - x0, h);
+      x.fillStyle = `rgba(${g.c},.7)`; x.fillRect(x0, t, m.width - x0, 1); x.fillRect(x0, t + h - 1, m.width - x0, 1); });
+    sg.forEach(s => { if ([s.x1, s.y1, s.x2, s.y2].some(v => v == null)) return;
+      x.save(); x.strokeStyle = `rgba(${s.c},.85)`; x.lineWidth = 1.3; x.setLineDash([5, 4]); x.beginPath(); x.moveTo(s.x1, s.y1); x.lineTo(s.x2, s.y2); x.stroke(); x.restore(); }); }) };
+  const text = { draw: target => target.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { const used = []; each((g, i, t, h) => {   // Beschriftung über den Kerzen
+    const x0 = Math.max(0, g.x0 ?? 0); if (x0 >= m.width - 40) return;
+    x.font = font; x.textBaseline = "top"; const w = x.measureText(g.l).width; let tx = Math.min(x0 + 8, m.width - 220), ty = t + 3;
+    for (let k = 0; k < 4 && used.some(u => tx < u[0] + u[2] && u[0] < tx + w + 8 && ty < u[1] + 19 && u[1] < ty + 19); k++) ty += 20;   // nicht überlappen
+    used.push([tx - 4, ty, w + 8]);
+    x.fillStyle = "rgba(20,22,26,.75)"; x.fillRect(tx - 4, ty, w + 8, 17); x.fillStyle = `rgb(${g.c})`; x.fillText(g.l, tx, ty + 2);
+    if (g.et && h > 26) { x.font = small; x.textAlign = "right"; x.fillStyle = `rgba(${g.c},.95)`; x.fillText(g.et, m.width - 6, t + 3); x.textBaseline = "bottom"; x.fillText(g.eb, m.width - 6, t + h - 3); x.textAlign = "left"; } }); }) };
   const views = [{ zOrder: () => "bottom", renderer: () => fill }, { zOrder: () => "top", renderer: () => text }];
   return {
-    attached: p => { series = p.series; }, detached: () => { series = null; },
-    updateAllViews: () => { geo = series ? bands.map(b => ({ ...b, y1: series.priceToCoordinate(b.hi), y2: series.priceToCoordinate(b.lo) })) : []; },
+    attached: p => { series = p.series; chart = p.chart; }, detached: () => { series = null; chart = null; },
+    updateAllViews: () => { if (!series || !chart) { geo = []; sg = []; return; } const ts = chart.timeScale();
+      geo = bands.map(b => ({ ...b, y1: series.priceToCoordinate(b.hi), y2: series.priceToCoordinate(b.lo), x0: b.from != null ? ts.logicalToCoordinate(b.from) : 0 }));
+      sg = segs.map(s => ({ c: s.c, x1: ts.logicalToCoordinate(s.i1), y1: series.priceToCoordinate(s.p1), x2: ts.logicalToCoordinate(s.i2), y2: series.priceToCoordinate(s.p2) })); },
     paneViews: () => views,
     // Zonen mit fit (die aktive Fibonacci-Zone) immer im Bild halten – auch wenn sie unter den sichtbaren Kerzen liegt
     autoscaleInfo: () => { const f = bands.filter(b => b.fit); return f.length ? { priceRange: { minValue: Math.min(...f.map(b => b.lo)), maxValue: Math.max(...f.map(b => b.hi)) } } : null; },
