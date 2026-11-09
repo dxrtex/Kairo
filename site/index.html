@@ -868,6 +868,12 @@
   .regime b { display: block; } .regime span { font-size: 13px; color: var(--muted); }
   .hev { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); } .hev:first-of-type { border-top: 0; }
   .hev .k { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+  .hev-q .hn { white-space: normal; } .hev-q .hn small { display: block; white-space: normal; overflow: visible; font-size: 12px; line-height: 1.3; color: var(--muted); margin-top: 1px; }
+  .hev-q.now { margin: 4px -10px; padding: 9px 10px; border-radius: 12px; border-top: 0; background: color-mix(in srgb, var(--accent, #2f81f7) 13%, transparent); box-shadow: inset 3px 0 0 var(--accent, #2f81f7); }
+  .hev-q.now + .hev { border-top: 0; }
+  .hq-t { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; } .hq-t b { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .hev-q.now .hq-t b { font-size: 17px; color: var(--accent, #2f81f7); } .hq-t.un b { font-size: 13px; font-weight: 600; color: var(--muted); } .hev-q.now .hq-t.un b { font-size: 13px; color: var(--text); }
+  .hq-t i { font-style: normal; font-size: 12px; color: var(--muted); } .hev-q.done .hq-t b { color: var(--up); }
   .hev .hn { flex: 1; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .hev em { font-style: normal; font-size: 13px; color: var(--muted); }
   .bil { background: linear-gradient(135deg, rgba(48,209,88,.14), rgba(255,255,255,.03) 60%) !important; }
   .bilrow { display: flex; gap: 14px; align-items: center; } .bilrow b { display: block; font-size: 15px; } .bilrow span { font-size: 13px; color: var(--muted); }
@@ -2386,9 +2392,12 @@ const macWhen = (e, noTime) => [fedRes(e) ? "✓ " + fedRes(e).head : "", e.time
 function evTime(e) {
   if (e.kind === "macro" || e.kind === "expiry") return e.time ? { m: +e.time.slice(0, 2) * 60 + +e.time.slice(3, 5), lbl: e.time, ca: false } : { m: -1, lbl: "ganzt.", ca: false };
   if (e.kind !== "earnings") return { m: -1, lbl: "ganzt.", ca: false };
-  const er = earnData && earnData[e.ticker], N = er && er.next && er.next.date === e.date ? er.next : null, L = er && er.last && er.last.date === e.date ? er.last : null;
+  const er = earnData && earnData[e.ticker], L = er && er.last && er.last.date === e.date ? er.last : null;
   const sec = secHits[e.ticker] && secHits[e.ticker].date === e.date ? secHits[e.ticker].at : null;
-  const ex = earnWatch[e.ticker + "|" + e.date], ts = sec || ex || (N && N.ts) || (L && L.ts);
+  const ex = earnWatch[e.ticker + "|" + e.date], wi = earnWatchInfo[e.ticker + "|" + e.date];
+  if (!sec && !ex && !L && wi && wi.ses) return wi.ses === "pre" ? { m: 900, lbl: "vorbörsl.", ca: true } : { m: 1320, lbl: "nachbörsl.", ca: true };
+  if (!sec && !ex && !L) return { m: earnWhen(e).m, lbl: "offen", ca: false };   // Yahoo-Uhrzeit ist meist ein Platzhalter → nicht als Zeit zeigen
+  const N = er && er.next && er.next.date === e.date ? er.next : null, ts = sec || ex || (N && N.ts) || (L && L.ts);
   if (!ts) return { m: 1500, lbl: "–", ca: false };
   const x = new Date(ts); if (isNaN(x)) return { m: 1500, lbl: "–", ca: false };
   const hm = x.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
@@ -3234,7 +3243,7 @@ function loadEarnings() {
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && earnData && Date.now() - earnLiveAt > 4 * 6e4) loadEarnLive(); });
 setInterval(() => { if (document.visibilityState === "visible" && earnData && state.sec === "calendar") loadEarnLive(); }, 5 * 6e4);
-setInterval(() => { const b = $("earnBox"); if (document.visibilityState === "visible" && (state.sec === "calendar" || (b && !b.hidden))) loadSecHits(); }, 6e4);
+setInterval(() => { const b = $("earnBox"); if (document.visibilityState === "visible" && (state.sec === "calendar" || state.sec === "today" || (b && !b.hidden))) loadSecHits(); }, 6e4);
 const bigNum = (v, cur) => v == null ? "–" : `${Math.abs(v) >= 1e9 ? fmt(v / 1e9, 2) + " Mrd." : Math.abs(v) >= 1e6 ? fmt(v / 1e6, 0) + " Mio." : fmt(v, 0)}${cur ? " " + cur : ""}`;
 const sgn = (v, d = 1) => v == null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : "±"}${pct(Math.abs(v), d)}`;
 const upDown = v => v == null ? "" : v > 0 ? "up" : v < 0 ? "down" : "";
@@ -3242,10 +3251,27 @@ const upDown = v => v == null ? "" : v > 0 ? "up" : v < 0 ? "down" : "";
 // Gelernte Meldezeit (Uhrzeit der letzten SEC-Meldungen der Firma, earn_watch.json) schlägt die Yahoo-Platzhalter (14:00 / 22:00)
 let earnWatch = {}, earnWatchInfo = {};
 const loadEarnWatch = () => fetch(EARN_LIVE_URL.replace("earnings_live.json", "earn_watch.json") + "?v=" + Math.floor(Date.now() / 6e5)).then(r => r.ok ? r.json() : null)
-  .then(d => { if (!d) return; earnWatch = {}; earnWatchInfo = {}; (d.items || []).forEach(x => { if (x.exact) earnWatch[x.t + "|" + x.date] = x.ts; earnWatchInfo[x.t + "|" + x.date] = x; }); if (state.sec === "calendar") render(); }).catch(() => {});
+  .then(d => { if (!d) return; earnWatch = {}; earnWatchInfo = {}; (d.items || []).forEach(x => { if (x.exact) earnWatch[x.t + "|" + x.date] = x.ts; earnWatchInfo[x.t + "|" + x.date] = x; }); if (state.sec === "calendar" || state.sec === "today") render(); }).catch(() => {});
 const earnTime = (N, t) => { if (!N || !N.ts) return ""; const ex = t && earnWatch[t + "|" + N.date], x = new Date(ex || N.ts); if (isNaN(x)) return "";
   const hm = x.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }); const wi = t && earnWatchInfo[t + "|" + N.date];
-  return hm === "00:00" ? "" : `ca. ${hm} Uhr${ex ? (wi && wi.ok2 ? " (wie bisher · Nasdaq bestätigt)" : " (wie bisher)") : wi && wi.check ? ` (${wi.check})` : ""}`; };
+  if (!ex && wi && wi.ses) return wi.ses === "pre" ? "vor US-Börsenstart (laut Nasdaq, genaue Uhrzeit unbekannt)" : "nach US-Börsenschluss, ab 22:00 Uhr (laut Nasdaq, genaue Uhrzeit unbekannt)";
+  return hm === "00:00" ? "" : ex ? `${hm} Uhr${wi && wi.ok2 ? " (wie bisher · Nasdaq bestätigt)" : " (wie bisher)"}` : `ca. ${hm} Uhr (laut Yahoo, unsicher${wi && wi.check ? " · " + wi.check : ""})`; };
+// Wann kommen die Zahlen? Nur eine genaue Uhrzeit zeigen, wenn sie belastbar ist (Prüfung 11/2026: gelernte SEC-Zeit im Mittel
+// 3 Min. genau, Yahoo-Platzhalter 14:00/22:00 im Mittel 8 Std. daneben) – sonst Tageszeit laut Nasdaq oder „unsicher“.
+function earnWhen(e) {
+  const k = e.ticker + "|" + e.date, er = earnData && earnData[e.ticker], wi = earnWatchInfo[k];
+  const hmOf = v => { const x = new Date(v); return isNaN(x) ? "" : x.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }); };
+  const sec = secHits[e.ticker] && secHits[e.ticker].date === e.date ? secHits[e.ticker] : null;
+  if (e.done || (er && er.last && er.last.date === e.date)) return { lbl: "Zahlen da", sub: "antippen für Ergebnis und Einschätzung", sure: true, done: true, m: -1 };
+  if (sec) return { lbl: hmOf(sec.at), sub: "Zahlen sind raus (SEC) – Werte folgen", sure: true, done: true, m: -1 };
+  const toM = hm => +hm.slice(0, 2) * 60 + +hm.slice(3, 5);
+  if (earnWatch[k]) { const hm = hmOf(earnWatch[k]); return { lbl: hm + " Uhr", sub: `genaue Zeit${wi && wi.ok2 ? " · Nasdaq ✓" : ""}`, sure: true, m: toM(hm) }; }
+  if (wi && wi.ses) return wi.ses === "pre" ? { lbl: "vorbörslich", sub: "vor 15:30 Uhr · laut Nasdaq", sure: false, m: 900 }
+    : { lbl: "nachbörslich", sub: "ab 22:00 Uhr · laut Nasdaq", sure: false, m: 1320 };
+  const N = er && er.next && er.next.date === e.date ? er.next : null, hm = N && N.ts ? hmOf(N.ts) : "";
+  if (hm && hm !== "00:00") return { lbl: "Uhrzeit offen", sub: `Yahoo-Zeit (${hm}) unzuverlässig`, sure: false, m: toM(hm) };
+  return { lbl: "Uhrzeit offen", sub: wi && wi.check ? wi.check : "noch keine verlässliche Uhrzeit", sure: false, m: 1500 };
+}
 // Kursdienst ab Version 6: meldet, sobald eine Firma ihre Zahlen offiziell bei der SEC einreicht (1–5 Min. nach Veröffentlichung)
 let secHits = {}, secAt = 0;
 function loadSecHits(force) {
@@ -3257,7 +3283,7 @@ function loadSecHits(force) {
     j.hits.forEach(h => { secHits[h.t] = h; });
     const fresh = j.hits.some(h => Date.now() - Date.parse(h.at) < 45 * 6e4);
     if (fresh) loadEarnLive(true);                    // Werte von Yahoo so schnell wie möglich nachholen
-    if (Object.keys(secHits).length !== prev || fresh) { if (state.sec === "calendar") render(); const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }
+    if (Object.keys(secHits).length !== prev || fresh) { if (state.sec === "calendar" || state.sec === "today") render(); const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }
   }).catch(() => {});
 }
 const secBanner = (t, d) => { const h = secHits[t]; if (!h || (d && h.date !== d)) return "";
@@ -5306,13 +5332,15 @@ function soonHtml() {
   if (!earnData) loadEarnings();
   const mine = myTickers(), evs = calData.filter(e => { const d = daysUntil(e.date); return d >= 0 && d <= 7 && (e.ticker ? mine.has(e.ticker) : calKey(e)); })
     .concat(plansLoad().filter(p => p.st === "open").map(p => ({ kind: "sell", date: p.exit2 || p.exit, ticker: p.t, name: p.n })).filter(e => daysUntil(e.date) >= 0 && daysUntil(e.date) <= 7))
-    .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0).slice(0, 7);
+    .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.kind === "earnings" && b.kind === "earnings" ? earnWhen(a).m - earnWhen(b).m : 0)).slice(0, 9);
   const fresh = earnData ? Object.values(earnData).filter(r => r && r.last && mine.has(r.t) && daysUntil(r.last.date) >= -3 && daysUntil(r.last.date) <= 0) : [];
   const freshHtml = fresh.length ? `<div class="hcard">${hHead("Neue Quartalszahlen", SEC_LINK("calendar"), "Kalender")}
     ${fresh.map(r => { const v = r.last.view || {}, rx = r.last.rx; return `<div class="hev ev-tap" data-earn="${esc(r.t)}" data-edate="${esc(r.last.date)}" role="button" tabindex="0"><span class="k k-earn">Q</span><span class="hn">${esc(r.name || r.t)}<small style="display:block;color:var(--muted)">${esc(v.lbl ? "Für den Kurs: " + v.lbl : "Zahlen da")}${rx && rx.d1 != null ? ` · Reaktion ${sgnPct(rx.d1, 1)}` : ""}</small></span><span class="ev-res t-${esc(v.tone || "gray")}"><i></i></span></div>`; }).join("")}</div>` : "";
   if (!evs.length) return freshHtml;
   return freshHtml + `<div class="hcard">${hHead("Demnächst · 7 Tage", SEC_LINK("calendar"), "Kalender")}
     ${evs.map(e => { const [icon, cls] = e.kind === "sell" ? ["↘", "k-earn"] : CAL_KIND[e.kind] || ["•", "k-exp"], n = daysUntil(e.date);
+      if (e.kind === "earnings" && n <= 1) { const w = earnWhen(e);   // Quartalszahlen heute/morgen: hervorgehoben, mit Uhrzeit
+        return `<div class="hev ev-tap hev-q${n === 0 ? " now" : ""}${w.done ? " done" : ""}" data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0"><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.name || e.ticker)}<small>Zahlen ${n === 0 ? "heute" : "morgen"} · ${esc(w.sub)}</small></span><span class="hq-t${w.sure ? "" : " un"}"><b>${esc(w.lbl)}</b>${n === 0 ? "" : "<i>morgen</i>"}</span></div>`; }
       return `<div class="hev${e.kind === "earnings" ? " ev-tap" : ""}"${e.kind === "earnings" ? ` data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0"` : ""}><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.ticker ? (e.name || e.ticker) + " · " + (e.kind === "sell" ? "Verkaufstag deines Trades" : e.kind === "earnings" ? "Quartalszahlen" : "Dividende") : e.title)}</span><em>${n === 0 ? "heute" : n === 1 ? "morgen" : new Date(e.date + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}</em></div>`; }).join("")}</div>`;
 }
 // ---------- Heute (11/2026): ein Aufgabenmodell für alle Designs ----------
@@ -6045,8 +6073,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.55";
-const APP_NEWS = [["2026.11.55", "Großes Update: Übersicht, Vollbild, neue Ampel", [
+const APP_VER = "2026.11.56";
+const APP_NEWS = [["2026.11.56", "Quartalszahlen mit genauer Uhrzeit", [
+  ["Heute: Zahlen hervorgehoben", "Quartalszahlen deiner Aktien von heute stehen farbig oben – nach Uhrzeit sortiert, morgen gleich darunter."],
+  ["Uhrzeit nur, wenn sie stimmt", "Geprüft an der letzten Woche: die aus den bisherigen SEC-Meldungen gelernte Uhrzeit lag im Mittel 3 Minuten daneben, Yahoos Angaben im Mittel 8 Stunden. Darum zeigt Kairo eine Minute nur noch, wenn sie belastbar ist – sonst „vorbörslich“/„nachbörslich“ laut Nasdaq oder „Uhrzeit offen“."]]],
+  ["2026.11.55", "Großes Update: Übersicht, Vollbild, neue Ampel", [
   ["Markt im Vollbild", "„⤢ Groß“ an Heatmap, Sektoren & Branchen und Gewinner/Verlierer: große Ansicht mit Filtern (★ nur meine, ≥ 9/11, Sektor, Größe), sortierbaren Tabellen und dem Rotationsbild – mit „gerade neu in Erholt sich/Führend“, wie lange ein Bereich schon im Feld ist und typischer Verweildauer."],
   ["Markt-Rad", "Neue Ebene „Anlagen“: Gold, Silber, Anleihen, Dollar, Öl, Rohstoffe, Bitcoin, Schwellenländer und Nebenwerte im Rotationsbild – mit Korrelation zum S&P 500 (läuft mit oder gegenläufig)."],
   ["News & Briefing klarer", "Meldungen farbig (▲ positiv, ▼ negativ) mit Tendenz und Kairo-Einordnung je Aktie, Filter positiv/negativ. Das Tagesbriefing zeigt oben drei Kennzahlen und nur noch das Wichtigste."],

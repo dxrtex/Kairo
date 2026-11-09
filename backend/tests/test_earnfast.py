@@ -49,6 +49,23 @@ def test_gelernte_meldezeit(monkeypatch, tmp_path):
     a = json.loads((tmp_path / "earn_watch.json").read_text())["items"][0]
     assert a["exact"] is True and a["ts"].startswith("2026-10-29T20:32:00")
     assert a["ok2"] is True and a["from"].startswith("2026-10-29T19:32:00") and a["to"].startswith("2026-10-29T23:32:00")
+    assert a["ses"] == "after"
+
+
+def test_meldezeit_schwankt_keine_genaue_uhrzeit(monkeypatch, tmp_path):
+    """IREN 11/2026: Meldezeiten der letzten Quartale weit auseinander → keine „genaue“ Uhrzeit, nur Tageszeit laut Nasdaq."""
+    class R:
+        def json(self):
+            return {"filings": {"recent": {"form": ["8-K"] * 4, "items": ["2.02"] * 4,
+                    "acceptanceDateTime": ["2026-08-27T20:05:00.000Z", "2026-05-14T11:30:00.000Z", "2026-02-12T21:10:00.000Z", "2025-11-06T01:02:00.000Z"]}}}
+    import requests
+    monkeypatch.setattr(requests, "get", lambda *a, **k: R())
+    monkeypatch.setattr(earnfast, "nasdaq_day", lambda d: {"IREN": "after"})
+    assert earnfast.typical_time(1878848) is None
+    ev = [{"kind": "earnings", "ticker": "IREN", "name": "IREN", "date": "2026-11-05"}]
+    earnfast.watch_file(ev, {}, tmp_path, pd.Timestamp("2026-11-05"))
+    a = json.loads((tmp_path / "earn_watch.json").read_text())["items"][0]
+    assert "exact" not in a and a["ses"] == "after"
 
 
 def test_archiv(tmp_path):

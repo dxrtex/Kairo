@@ -49,6 +49,8 @@ def typical_time(cik: int) -> str | None:
                 break
     if len(mins) < 2:
         return None
+    if max(mins) - min(mins) > 90:                         # Firma meldet mal früh, mal spät (IREN 11/2026: 5 Std. daneben) →
+        return None                                        # keine genaue Uhrzeit, nur Tageszeit laut Nasdaq
     m = int(sorted(mins)[len(mins) // 2])
     return f"{m // 60:02d}:{m % 60:02d}"
 
@@ -106,6 +108,11 @@ def watch_file(events: list[dict], nexts: dict, out: Path, today: pd.Timestamp, 
         items.append({"t": t, "n": e.get("name") or t, "cik": cm[t], "date": e["date"], "ts": ts, "w": bool(e.get("watch"))})
     nasdaq: dict = {}
     if learn:
+        for x in items:                                    # Tageszeit laut Nasdaq (vor Börsenstart / nach Börsenschluss) für die Anzeige
+            if "." not in x["t"]:
+                ses = nasdaq.setdefault(x["date"], nasdaq_day(x["date"])).get(x["t"])
+                if ses in ("pre", "after"):
+                    x["ses"] = ses
         hm = _times({x["t"]: x["cik"] for x in items if x["t"] in cm and "." not in x["t"]}, out, today)
         for x in items:
             h = hm.get(x["t"])
