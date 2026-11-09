@@ -897,7 +897,7 @@
   .hev-q.now + .hev { border-top: 0; }
   .hq-t { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; } .hq-t b { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .hev-q.now .hq-t b { font-size: 17px; color: var(--accent, #2f81f7); } .hq-t.un b { font-size: 13px; font-weight: 600; color: var(--muted); } .hev-q.now .hq-t.un b { font-size: 13px; color: var(--text); }
-  .hq-t i { font-style: normal; font-size: 12px; color: var(--muted); } .hev-q.done .hq-t b { color: var(--up); }
+  .hq-t i { font-style: normal; font-size: 12px; color: var(--muted); } .hq-t em.hq-live { display: block; font-style: normal; font-size: 12px; font-weight: 700; } .hev-q.done .hq-t b { color: var(--up); }
   .hev .hn { flex: 1; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .hev em { font-style: normal; font-size: 13px; color: var(--muted); }
   .bil { background: linear-gradient(135deg, rgba(48,209,88,.14), rgba(255,255,255,.03) 60%) !important; }
   .bilrow { display: flex; gap: 14px; align-items: center; } .bilrow b { display: block; font-size: 15px; } .bilrow span { font-size: 13px; color: var(--muted); }
@@ -2391,7 +2391,7 @@ function tipHtml(h) {
 function searchCard(r) {
   return `<article class="card">
       <div class="card-title"><h2 title="${esc(r.n)}">${favBtn(r.t)} ${esc(r.n)}</h2>
-        <div class="meta">${esc(r.t)}${r.x ? " · " + esc(r.x) : ""} · ${REGION[r.r] || ""} · Kurs ${fmt(r.c)} ${esc(r.cur || "")} · ${r.m} / 11 Kriterien</div></div>
+        <div class="meta">${esc(r.t)}${r.x ? " · " + esc(r.x) : ""} · ${REGION[r.r] || ""} · Kurs ${fmt(r.c)} ${esc(r.cur || "")}${r.live ? ' <span class="live-dot" title="live">●</span>' : ""} · ${r.m} / 11 Kriterien</div></div>
       ${tipHtml(r)}
       <div class="actions">${r.detail ? `<button class="btn" data-${data.results.some(x => x.ticker === r.t) ? "card" : "open"}="${esc(r.t)}">Übersicht</button>` : ""}
         <a class="btn ghost" href="${tvUrl(r.t)}" target="_blank" rel="noopener">TradingView</a></div>
@@ -5660,10 +5660,11 @@ function soonHtml() {
   const freshHtml = fresh.length ? `<div class="hcard">${hHead("Neue Quartalszahlen", SEC_LINK("calendar"), "Kalender")}
     ${fresh.map(r => { const v = r.last.view || {}, rx = r.last.rx; return `<div class="hev ev-tap" data-earn="${esc(r.t)}" data-edate="${esc(r.last.date)}" role="button" tabindex="0"><span class="k k-earn">Q</span><span class="hn">${esc(r.name || r.t)}<small style="display:block;color:var(--muted)">${esc(v.lbl ? "Für den Kurs: " + v.lbl : "Zahlen da")}${rx && rx.d1 != null ? ` · Reaktion ${sgnPct(rx.d1, 1)}` : ""}</small></span><span class="ev-res t-${esc(v.tone || "gray")}"><i></i></span></div>`; }).join("")}</div>` : "";
   if (!evs.length) return freshHtml;
+  liveKick(evs.filter(e => e.kind === "earnings" && e.ticker && daysUntil(e.date) <= 1).map(e => e.ticker), "today");   // Quartalszahlen heute/morgen: Kurs live
   return freshHtml + `<div class="hcard">${hHead("Demnächst · 7 Tage", SEC_LINK("calendar"), "Kalender")}
     ${evs.map(e => { const [icon, cls] = e.kind === "sell" ? ["↘", "k-earn"] : CAL_KIND[e.kind] || ["•", "k-exp"], n = daysUntil(e.date);
       if (e.kind === "earnings" && n <= 1) { const w = earnWhen(e);   // Quartalszahlen heute/morgen: hervorgehoben, mit Uhrzeit
-        return `<div class="hev ev-tap hev-q${n === 0 ? " now" : ""}${w.done ? " done" : ""}" data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0"><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.name || e.ticker)}<small>Zahlen ${n === 0 ? "heute" : "morgen"} · ${esc(w.sub)}</small></span><span class="hq-t${w.sure ? "" : " un"}"><b>${esc(w.lbl)}</b>${n === 0 ? "" : "<i>morgen</i>"}</span></div>`; }
+        return `<div class="hev ev-tap hev-q${n === 0 ? " now" : ""}${w.done ? " done" : ""}" data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0"><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.name || e.ticker)}<small>Zahlen ${n === 0 ? "heute" : "morgen"} · ${esc(w.sub)}</small></span><span class="hq-t${w.sure ? "" : " un"}"><b>${esc(w.lbl)}</b>${n === 0 ? "" : "<i>morgen</i>"}${liveChg(e.ticker)}</span></div>`; }
       return `<div class="hev${e.kind === "earnings" ? " ev-tap" : ""}"${e.kind === "earnings" ? ` data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0"` : ""}><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.ticker ? (e.name || e.ticker) + " · " + (e.kind === "sell" ? "Verkaufstag deines Trades" : e.kind === "earnings" ? "Quartalszahlen" : "Dividende") : e.title)}</span><em>${n === 0 ? "heute" : n === 1 ? "morgen" : new Date(e.date + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}</em></div>`; }).join("")}</div>`;
 }
 // ---------- Heute (11/2026): ein Aufgabenmodell für alle Designs ----------
@@ -7003,7 +7004,22 @@ function liveApply(t, q) {
   const x = data && data.results && data.results.find(y => y.ticker === t);
   if (x) { if (x.close0 == null) x.close0 = x.close; x.close = q.c; x.live = q.at; }
 }
-async function liveMany(ts) { const out = []; for (const t of [...new Set(ts)]) out.push(await liveQuote(t)); return out.filter(Boolean).length; }
+async function liveMany(ts) {                                // mit Kursdienst: bis zu 25 Aktien je Abruf statt einzeln (Watchlist, Heute)
+  ts = [...new Set(ts.filter(Boolean))]; const yq = liveKey("yq"), fh = liveKey("fh"); let n = 0;
+  if (yq) {
+    const bt = ts.filter(t => { const xr = rowOf(t), o = LIVE.map[t]; return !(xr && xr.ext) && !(isUS(t) && fh) && !LIVE.busy.has(t) && (!o || Date.now() - o.at >= LIVE.ttl); });
+    for (let i = 0; i < bt.length; i += 25) {
+      const ch = bt.slice(i, i + 25); ch.forEach(t => LIVE.busy.add(t));
+      try { const j = await (await fetch(`${yq}/?s=${ch.map(encodeURIComponent).join(",")}`)).json();
+        ch.forEach(t => { const q = j && j[t.toUpperCase()]; if (q && q.c > 0) { const o = { c: +q.c, pc: q.pc != null ? +q.pc : null, h: q.h, l: q.l, ts: q.t || Date.now(), src: "Kursdienst", at: Date.now() };
+          LIVE.map[t] = o; liveApply(t, o); n++; } });
+      } catch (e) {} finally { ch.forEach(t => LIVE.busy.delete(t)); }
+    }
+    ts = ts.filter(t => !bt.includes(t));
+  }
+  for (const t of ts) if (await liveQuote(t)) n++;
+  return n;
+}
 const liveTime = t => { const q = LIVE.map[t]; return q ? new Date(q.ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : ""; };
 const liveTag = t => LIVE.map[t] ? `<span class="live-tag" title="Live-Kurs von ${esc(LIVE.map[t].src)}">● Live ${liveTime(t)}</span>` : "";
 const liveBtn = t => `<button class="live-btn" data-live="${esc(t)}" title="Nur diese Aktie mit dem aktuellen Kurs aktualisieren">↻ Live</button>`;
@@ -7018,9 +7034,14 @@ document.addEventListener("click", async e => {
 // Depot und offene Trades: alle 60 s nachladen, solange der Reiter offen und die App sichtbar ist
 setInterval(() => {
   if (!liveOn() || document.visibilityState !== "visible" || !searchIdx) return;
-  const ts = state.sec === "depot" ? depotLoad().map(p => p.t).filter(Boolean) : state.sec === "game" ? ((gLoad() || {}).pos || []).map(p => p.t) : state.sec === "entry" ? [...plansLoad().filter(p => p.st === "open").map(p => p.t), state.einT].filter(Boolean) : [];
+  const ts = state.sec === "depot" ? depotLoad().map(p => p.t).filter(Boolean) : state.sec === "game" ? ((gLoad() || {}).pos || []).map(p => p.t) : state.sec === "entry" ? [...plansLoad().filter(p => p.st === "open").map(p => p.t), state.einT].filter(Boolean)
+    : state.sec === "today" ? todayLiveTs() : state.sec === "scanner" && state.view === "mine" ? [...favs()].slice(0, 40) : [];   // Watchlist und Quartalszahlen heute ebenfalls live
   if (ts.length) liveMany(ts).then(n => { if (n) render(); });
 }, 60e3);
+// Live-Veränderung zum Vortag als kleine Zeile (Quartalszahlen im Reiter Heute)
+const liveChg = t => { const q = t && LIVE.map[t]; if (!q || !q.pc) return ""; const d = q.c / q.pc - 1;
+  return `<em class="hq-live ${d >= 0 ? "up" : "down"}" title="Live-Kurs ${esc(liveTime(t))}">${sgnPct(d, 1)}</em>`; };
+const todayLiveTs = () => (calData || []).filter(e => e.kind === "earnings" && e.ticker && myTickers().has(e.ticker) && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 1).map(e => e.ticker);
 const liveStale = ts => ts.filter(t => { const o = LIVE.map[t]; return !o || Date.now() - o.at > LIVE.ttl; });
 function liveKick(ts, sec) {                                  // veraltete Kurse nachladen und einmal neu zeichnen
   const st = liveOn() ? liveStale([...new Set(ts.filter(Boolean))]) : [];
@@ -7981,6 +8002,7 @@ function renderMain() {
   if (state.tableSort !== "score" || state.tableAsc) list.sort((a, b) => { const x = col.g(a), y = col.g(b); const c = typeof x === "string" ? x.localeCompare(y) : x - y; return state.tableAsc ? c : -c; });
   else list.sort(kOrder);          // Standard: „perfekte“ Aktien (Treffer + 4H bestätigt) ganz oben, sonst Score
   const full = list.length, rows = scanAll || full <= SCAN_LIM ? list : list.slice(0, SCAN_LIM);   // lange Listen: erst die besten 60
+  if (state.view === "mine") liveKick([...rows.map(r => r.ticker), ...favs()].slice(0, 40), "scanner");   // Watchlist: Kurse live
   const more = rows.length < full ? `<div class="row-actions" style="justify-content:center;margin:12px 0"><button class="btn ghost" data-scanall>Alle ${full} anzeigen</button></div>` : "";
   const onlyHits = k.size === 1 && k.has("hit");
   const lead = ["ticker", "name", "status", "grade", "met", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)) && !(x === "status" && !list.some(r => r.passed)));   // ohne Treffer in der Liste (z. B. Beobachten): keine Kauf-Status-Spalte   // Status: kaufbereit / Seitwärtsphase x/10 / verfallen
