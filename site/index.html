@@ -6388,8 +6388,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.68";
-const APP_NEWS = [["2026.11.68", "Trackpad-Zoom und Updates", [
+const APP_VER = "2026.11.69";
+const APP_NEWS = [["2026.11.69", "Fibonacci vom höchsten Hoch", [
+  ["Richtiges Hoch", "Die Fibonacci-Welle im Chart reicht jetzt vom Tief bis zum höchsten Hoch danach – nicht mehr bis zum letzten Hoch (IREN: 76,87 im Oktober 2025 statt 70,71 im Juni 2026)."]]],
+  ["2026.11.68", "Trackpad-Zoom und Updates", [
   ["Kein Seiten-Zoom mehr im Vollbild", "Zusammenziehen auf dem Trackpad der iPad-Tastatur vergrößerte bisher die ganze Seite (verschwommen). Im Vollbild ist das jetzt gesperrt – die Geste zoomt die Heatmap bzw. Rotation, egal wo der Zeiger steht."],
   ["Updates sofort", "Kairo prüft beim Öffnen, ob es eine neue Version gibt, und lädt sie direkt – ohne zweimal schließen."]]],
   ["2026.11.67", "Cockpit: Zeitachse frei bedienbar", [
@@ -8178,24 +8180,31 @@ const EMA_DEF = [["e20", "#f4b740", "EMA 20"], ["e50", "#4aa3ff", "EMA 50"], ["e
 function chartModel(c, r) {
   const T = c.t, n = T.length, fib = r.zone && r.zone.fib, sup = r.zone && r.zone.support, last = c.c[n - 1];
   const hI = fib && r.zone.H_date ? T.indexOf(r.zone.H_date) : -1, out = { cls: null, big: null, broken: false, lines: [], note: "" };
-  if (hI > 0) {
+  // Wellenanfänge vom Hoch h aus: von Tief zu tieferem Wendepunkt (±10 Tage) zurück, bis davor eine fast volle Korrektur liegt
+  const starts = (h, s0) => {
     const W = 10, piv = [];
-    for (let i = hI - 1; i >= 0; i--) { const v = c.l[i]; if (v == null) continue; let ok = true;
-      for (let k = Math.max(0, i - W); k <= Math.min(hI - 1, i + W); k++) if (c.l[k] != null && c.l[k] < v) { ok = false; break; }
+    for (let i = h - 1; i >= 0; i--) { const v = c.l[i]; if (v == null) continue; let ok = true;
+      for (let k = Math.max(0, i - W); k <= Math.min(h - 1, i + W); k++) if (c.l[k] != null && c.l[k] < v) { ok = false; break; }
       if (ok) piv.push(i); }
-    const sI = T.indexOf(fib.L_date || ""), s0 = sI >= 0 && sI < hI ? sI : piv[0];
-    if (s0 != null) {
-      const Hp = c.h[hI], amp0 = Hp - c.l[s0], ws = []; let cur = s0;
-      for (const j of piv) { if (j >= cur || c.l[j] >= c.l[cur]) continue;
-        let M = -Infinity; for (let k = j; k <= cur; k++) if (c.h[k] != null && c.h[k] > M) M = c.h[k];
-        if ((M - c.l[cur]) / (M - c.l[j]) >= .786) ws.push(cur); else if (Hp - c.l[j] > 2 * amp0) break;
-        cur = j; if (ws.length >= 2) break; }
-      if (!ws.includes(cur) && ws.length < 2 && cur >= W) ws.push(cur);
-      const H = Math.max(Hp, fib.levels["0"] || 0), mk = i => i != null && { H, L: c.l[i], iL: i, iH: hI };
-      out.cls = mk(ws[0]); out.big = mk(ws[1]);
-      if (out.cls) { out.broken = last < (H - (H - out.cls.L) * .786) * .995;
-        out.note = `Welle ${dateDE(T[out.cls.iL])} (${fmt(out.cls.L)}) → ${dateDE(T[hI])} (${fmt(H)})${out.broken ? " – Kurs darunter, die große Welle ist eingeblendet" : ""}`; }
-    }
+    s0 = s0 != null && s0 < h ? s0 : piv[0]; if (s0 == null) return [];
+    const Hp = c.h[h], amp0 = Hp - c.l[s0], ws = []; let cur = s0;
+    for (const j of piv) { if (j >= cur || c.l[j] >= c.l[cur]) continue;
+      let M = -Infinity; for (let k = j; k <= cur; k++) if (c.h[k] != null && c.h[k] > M) M = c.h[k];
+      if ((M - c.l[cur]) / (M - c.l[j]) >= .786) ws.push(cur); else if (Hp - c.l[j] > 2 * amp0) break;
+      cur = j; if (ws.length >= 2) break; }
+    if (!ws.includes(cur) && ws.length < 2 && cur >= W) ws.push(cur);
+    return ws; };
+  // Hoch der Welle = das HÖCHSTE Hoch seit ihrem Tief (nicht das letzte Hoch des Scans, das nur 20–180 Tage zurückblickt –
+  // IREN 11/2026: Spitze ~77 im Okt. 2025 statt 70,71 im Juni 2026)
+  const topSince = i => { let b = i; for (let k = i; k < n; k++) if (c.h[k] != null && c.h[k] > c.h[b]) b = k; return b; };
+  if (hI > 0) {
+    const sI = T.indexOf(fib.L_date || "");
+    let ws = starts(hI, sI >= 0 ? sI : null);
+    if (ws.length) { const top = topSince(ws[0]); if (top !== hI) ws = starts(top, ws[0]).length ? starts(top, ws[0]) : ws; }
+    const mk = i => { if (i == null) return null; const iH = topSince(i); return c.h[iH] > c.l[i] ? { H: c.h[iH], L: c.l[i], iL: i, iH } : null; };
+    out.cls = mk(ws[0]); out.big = mk(ws[1]);
+    if (out.cls) { const w = out.cls; out.broken = last < (w.H - (w.H - w.L) * .786) * .995;
+      out.note = `Welle ${dateDE(T[w.iL])} (${fmt(w.L)}) → ${dateDE(T[w.iH])} (${fmt(w.H)})${out.broken ? " – Kurs darunter, die große Welle ist eingeblendet" : ""}`; }
   }
   // Unterstützungen / Widerstände aus Wendepunkten
   let atr = 0, m = 0; for (let i = Math.max(1, n - 14); i < n; i++) { atr += Math.max(c.h[i] - c.l[i], Math.abs(c.h[i] - c.c[i - 1]), Math.abs(c.l[i] - c.c[i - 1])); m++; } atr /= Math.max(1, m);
