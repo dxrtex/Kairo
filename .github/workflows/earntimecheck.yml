@@ -1,0 +1,20 @@
+name: Meldezeit-Prüfung (Claude)
+on:
+  push:
+    branches: ["claude/earn-timecheck"]
+    paths: [".github/workflows/earntimecheck.yml", "tools/research/earn_time_check.py"]
+permissions: { contents: write }
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11" }
+      - run: pip install -q pandas requests
+      - env: { SEC_CONTACT: "${{ secrets.SEC_CONTACT }}" }
+        run: |
+          python tools/research/earn_time_check.py tools/research/earn_time_pred.json tools/research/earn_time_result.json | tee tools/research/earn_time_result.txt
+          git config user.name kairo-bot; git config user.email kairo-bot@users.noreply.github.com
+          git add tools/research && git commit -q -m "Meldezeit-Prüfung Ergebnis" && git push -q origin HEAD:claude/earn-timecheck
