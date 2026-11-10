@@ -897,7 +897,7 @@
   .hev-q.now + .hev { border-top: 0; }
   .hq-t { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; } .hq-t b { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .hev-q.now .hq-t b { font-size: 17px; color: var(--accent, #2f81f7); } .hq-t.un b { font-size: 13px; font-weight: 600; color: var(--muted); } .hev-q.now .hq-t.un b { font-size: 13px; color: var(--text); }
-  .hq-t i { font-style: normal; font-size: 12px; color: var(--muted); } .hev-q.done .hq-t b { color: var(--up); }
+  .hq-t i { font-style: normal; font-size: 12px; color: var(--muted); } .hq-t em.hq-live { display: block; font-style: normal; font-size: 12px; font-weight: 700; } .hev-q.done .hq-t b { color: var(--up); }
   .hev .hn { flex: 1; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .hev em { font-style: normal; font-size: 13px; color: var(--muted); }
   .bil { background: linear-gradient(135deg, rgba(48,209,88,.14), rgba(255,255,255,.03) 60%) !important; }
   .bilrow { display: flex; gap: 14px; align-items: center; } .bilrow b { display: block; font-size: 15px; } .bilrow span { font-size: 13px; color: var(--muted); }
@@ -1208,6 +1208,9 @@
     padding: 0 env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 34px) env(safe-area-inset-left); }   /* Zeitachse weg vom iOS-Wischbereich (Home-Balken) */
   .chfs.side-off .chfs-main { grid-template-columns: 1fr; } .chfs.side-off .chfs-side { display: none; }
   .cf-sidebtn { flex: none; font: 600 13px/1 inherit; color: var(--text); background: rgba(127,127,127,.14); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+  .vault-row { display: flex; gap: 8px; margin-top: 10px; } .vault-row input { flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; }
+  .vault-st { margin-top: 8px; font-size: 13px; font-weight: 600; } .vault-st.up { color: var(--up); } .vault-st.down { color: var(--down); }
+  .vault-rest { margin-top: 12px; } .vault-rest summary { cursor: pointer; font-size: 14px; color: var(--muted); }
   .cl-live { flex: none; align-self: center; } .cl-live:empty { display: none; }
   .chfs-chart { min-width: 0; min-height: 0; } .chfs-side { border-left: 1px solid var(--line); overflow-y: auto; padding: 12px 14px calc(env(safe-area-inset-bottom) + 16px); }
   .cf-s { padding: 0 0 12px; margin: 0 0 12px; border-bottom: 1px solid var(--line); } .cf-h { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
@@ -1785,7 +1788,7 @@ function scanMenuHtml() {                        // Scans starten (GitHub): selt
     <button class="btn ghost sm" data-scanstart="watch"${active ? " disabled" : ""}>Watchlist scannen <small>· ca. 5–10 Min.</small></button>
     <button class="btn ghost sm" data-scanstart="all"${active ? " disabled" : ""}>Alle Aktien scannen <small>· ca. 45–60 Min.</small></button></div></details>`;
 }
-const nf = (d = 2) => new Intl.NumberFormat("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+const nf = (d = 2) => (nf.c || (nf.c = {}))[d] || (nf.c[d] = new Intl.NumberFormat("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d }));   // einmal anlegen, dann wiederverwenden
 const fmt = (v, d = 2) => v == null || isNaN(v) ? "–" : nf(d).format(v);
 const pct = (v, d = 1) => v == null ? "–" : fmt(100 * v, d) + " %";
 const fmtCap = v => v == null ? "unbekannt" : v >= 1e12 ? fmt(v / 1e12, 1) + " Bio. $" : fmt(v / 1e9, v >= 1e10 ? 0 : 1) + " Mrd. $";
@@ -2391,7 +2394,7 @@ function tipHtml(h) {
 function searchCard(r) {
   return `<article class="card">
       <div class="card-title"><h2 title="${esc(r.n)}">${favBtn(r.t)} ${esc(r.n)}</h2>
-        <div class="meta">${esc(r.t)}${r.x ? " · " + esc(r.x) : ""} · ${REGION[r.r] || ""} · Kurs ${fmt(r.c)} ${esc(r.cur || "")} · ${r.m} / 11 Kriterien</div></div>
+        <div class="meta">${esc(r.t)}${r.x ? " · " + esc(r.x) : ""} · ${REGION[r.r] || ""} · Kurs ${fmt(r.c)} ${esc(r.cur || "")}${r.live ? ' <span class="live-dot" title="live">●</span>' : ""} · ${r.m} / 11 Kriterien</div></div>
       ${tipHtml(r)}
       <div class="actions">${r.detail ? `<button class="btn" data-${data.results.some(x => x.ticker === r.t) ? "card" : "open"}="${esc(r.t)}">Übersicht</button>` : ""}
         <a class="btn ghost" href="${tvUrl(r.t)}" target="_blank" rel="noopener">TradingView</a></div>
@@ -3807,7 +3810,11 @@ function depotFix(list) {
 function etfPx(p) { return ETF_ISIN[p.isin] && ETF_ISIN[p.isin][0] === "SPYI" ? gEtfPx() : null; }
 function depotSave(list) { try { localStorage.setItem(DEPOT_KEY, JSON.stringify(list)); } catch (e) {} calBadge(); kxSyncSoon(); }
 let depotEdit = null, depotMsg = "";
-const rowOf = t => searchIdx && searchIdx.find(r => r.t === t);
+// Nachschlagen per Verzeichnis statt Durchsuchen der ganzen Liste (beim Start tausendfach aufgerufen – 11/2026: ~0,6 s gespart)
+let rowMap = null, rowMapA = null, rowMapN = -1;
+const rowOf = t => { if (!searchIdx) return searchIdx && undefined;
+  if (rowMapA !== searchIdx || rowMapN !== searchIdx.length) { rowMap = new Map(); for (const r of searchIdx) if (!rowMap.has(r.t)) rowMap.set(r.t, r); rowMapA = searchIdx; rowMapN = searchIdx.length; }
+  return rowMap.get(t); };
 const toEur = (v, cur) => v == null ? null : v * (fxEur[cur] ?? (cur === "EUR" ? 1 : NaN));
 // ---------- Strategie im Depot: jede Position gegen ihren Trade-Plan (Stop · EMA 20 ab Tag 10 · spätestens Tag 60 · kein Gewinnziel) ----------
 const tkClean = t => String(t || "").replace(/^~/, "");
@@ -5422,7 +5429,10 @@ const h4Prio = r => { const it = h4Of(r.ticker); if (!it || it.st === "weg") ret
   const real = h4Real(it);
   if (h4Go(it) || it.st === "sell") return real ? 5 : 1;
   return real ? ({ "4h": 4, run: 3 }[it.st] || 0) : 0; };
-const h4Of = t => { const d = h4Data(); return d && t ? (d.items || []).find(x => x.t === t) || null : null; };
+let h4Map = null, h4MapA = null, h4MapN = -1;
+const h4Of = t => { const d = h4Data(); if (!d || !t) return null; const it = d.items || [];
+  if (h4MapA !== it || h4MapN !== it.length) { h4Map = new Map(); for (const x of it) if (!h4Map.has(x.t)) h4Map.set(x.t, x); h4MapA = it; h4MapN = it.length; }
+  return h4Map.get(t) || null; };
 const h4Now = t => { const d = h4Data(); return d && d.now ? d.now[t] || null : null; };
 const H4F = [["R40", "RSI"], ["M", "MACD"], ["B", "MBI"], ["S", "Bruch"]];
 const h4Go = it => it && (it.st === "go" || (it.st === "run" && ((it.trade || {}).day || 99) <= 1));
@@ -5653,10 +5663,11 @@ function soonHtml() {
   const freshHtml = fresh.length ? `<div class="hcard">${hHead("Neue Quartalszahlen", SEC_LINK("calendar"), "Kalender")}
     ${fresh.map(r => { const v = r.last.view || {}, rx = r.last.rx; return `<div class="hev ev-tap" data-earn="${esc(r.t)}" data-edate="${esc(r.last.date)}" role="button" tabindex="0"><span class="k k-earn">Q</span><span class="hn">${esc(r.name || r.t)}<small style="display:block;color:var(--muted)">${esc(v.lbl ? "Für den Kurs: " + v.lbl : "Zahlen da")}${rx && rx.d1 != null ? ` · Reaktion ${sgnPct(rx.d1, 1)}` : ""}</small></span><span class="ev-res t-${esc(v.tone || "gray")}"><i></i></span></div>`; }).join("")}</div>` : "";
   if (!evs.length) return freshHtml;
+  liveKick(evs.filter(e => e.kind === "earnings" && e.ticker && daysUntil(e.date) <= 1).map(e => e.ticker), "today");   // Quartalszahlen heute/morgen: Kurs live
   return freshHtml + `<div class="hcard">${hHead("Demnächst · 7 Tage", SEC_LINK("calendar"), "Kalender")}
     ${evs.map(e => { const [icon, cls] = e.kind === "sell" ? ["↘", "k-earn"] : CAL_KIND[e.kind] || ["•", "k-exp"], n = daysUntil(e.date);
       if (e.kind === "earnings" && n <= 1) { const w = earnWhen(e);   // Quartalszahlen heute/morgen: hervorgehoben, mit Uhrzeit
-        return `<div class="hev ev-tap hev-q${n === 0 ? " now" : ""}${w.done ? " done" : ""}" data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0"><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.name || e.ticker)}<small>Zahlen ${n === 0 ? "heute" : "morgen"} · ${esc(w.sub)}</small></span><span class="hq-t${w.sure ? "" : " un"}"><b>${esc(w.lbl)}</b>${n === 0 ? "" : "<i>morgen</i>"}</span></div>`; }
+        return `<div class="hev ev-tap hev-q${n === 0 ? " now" : ""}${w.done ? " done" : ""}" data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0"><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.name || e.ticker)}<small>Zahlen ${n === 0 ? "heute" : "morgen"} · ${esc(w.sub)}</small></span><span class="hq-t${w.sure ? "" : " un"}"><b>${esc(w.lbl)}</b>${n === 0 ? "" : "<i>morgen</i>"}${liveChg(e.ticker)}</span></div>`; }
       return `<div class="hev${e.kind === "earnings" ? " ev-tap" : ""}"${e.kind === "earnings" ? ` data-earn="${esc(e.ticker)}" data-edate="${esc(e.date)}" role="button" tabindex="0"` : ""}><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.ticker ? (e.name || e.ticker) + " · " + (e.kind === "sell" ? "Verkaufstag deines Trades" : e.kind === "earnings" ? "Quartalszahlen" : "Dividende") : e.title)}</span><em>${n === 0 ? "heute" : n === 1 ? "morgen" : new Date(e.date + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}</em></div>`; }).join("")}</div>`;
 }
 // ---------- Heute (11/2026): ein Aufgabenmodell für alle Designs ----------
@@ -6358,7 +6369,53 @@ async function kxSync() {
     const j = await r.json(); state.syncOk = !!(j && j.ok); state.syncErr = j && j.error || ""; state.syncAt = Date.now(); save(); return j;
   } catch (e) { state.syncOk = false; state.syncErr = "keine Verbindung"; save(); return null; }
 }
-let kxSyncT = 0; function kxSyncSoon() { clearTimeout(kxSyncT); kxSyncT = setTimeout(kxSync, 1500); }
+let kxSyncT = 0; function kxSyncSoon() { clearTimeout(kxSyncT); kxSyncT = setTimeout(kxSync, 1500); vaultSoon(); }
+// ---------- Automatische Datensicherung über den eigenen Kursdienst (ab Version 8) ----------
+// Alles wird auf dem Gerät mit dem Sicherungs-Passwort verschlüsselt (AES-GCM, Schlüssel per PBKDF2) – der Kursdienst sieht nur unlesbaren Text.
+// Das Passwort bleibt nur auf diesem Gerät (kx-vp) und ist selbst nie Teil der Sicherung. Wiederherstellen: Kursdienst-Adresse + Passwort.
+const VAULT_ITER = 210000, b64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); };
+const unb64 = t => Uint8Array.from(atob(t), ch => ch.charCodeAt(0)), hex = u8 => [...u8].map(b => b.toString(16).padStart(2, "0")).join("");
+async function vaultKeys(pass) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveBits", "deriveKey"]);
+  const idBits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: new TextEncoder().encode("kairo-vault-id-v1"), iterations: VAULT_ITER, hash: "SHA-256" }, base, 256);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: new TextEncoder().encode("kairo-vault-enc-v1"), iterations: VAULT_ITER, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  return { id: hex(new Uint8Array(await crypto.subtle.digest("SHA-256", idBits))), key };
+}
+let vaultK = null, vaultKP = "";
+const vaultGet = async pass => { if (!vaultK || vaultKP !== pass) { vaultK = await vaultKeys(pass); vaultKP = pass; } return vaultK; };
+function vaultData() { const d = {}; Object.keys(localStorage).filter(k => (BACKUP_KEYS(k) || k.startsWith("kx-")) && k !== "kx-vp").forEach(k => d[k] = localStorage.getItem(k)); return d; }
+const vaultCount = d => { const n = k => { try { const v = JSON.parse(d[k] || "null"); return Array.isArray(v) ? v.length : v && typeof v === "object" ? Object.keys(v).length : 0; } catch (e) { return 0; } };
+  return { depot: n(DEPOT_KEY), plans: n(PLAN_KEY), fav: n(FAV_KEY) }; };
+async function vaultSave(manual) {
+  const yq = liveKey("yq"), pass = liveKey("vp"); if (!yq || !pass) return null;
+  const d = vaultData(), c = vaultCount(d), plain = JSON.stringify({ app: "kairo", v: 1, date: new Date().toISOString(), c, data: d });
+  const core = Object.fromEntries(Object.entries(d).filter(([k]) => k !== PREF));   // Ansichts-Einstellungen ändern sich ständig – lösen allein keine Sicherung aus
+  const sig = hex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(core)))));
+  if (!manual && sig === state.vaultSig && Date.now() - (state.vaultAt || 0) < 864e5) return { ok: true, same: true };   // unverändert: höchstens einmal am Tag
+  const last = state.vaultC || {};                              // Schutz: automatisch nie einen fast leeren Stand über einen vollen legen
+  if (!manual && c.depot + c.plans + c.fav === 0 && (last.depot || 0) + (last.plans || 0) + (last.fav || 0) > 0) return { ok: false, skipped: true };
+  try { const { id, key } = await vaultGet(pass), iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plain)));
+    const j = await (await fetch(`${yq}/vault?id=${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ iv: b64(iv), ct: b64(ct) }) })).json();
+    if (!j || !j.vault) { state.vaultErr = "Kursdienst zu alt – Version 8 nötig (Einstellungen → Kursdienst)"; save(); return j; }
+    if (j.ok) { state.vaultAt = Date.now(); state.vaultSig = sig; state.vaultC = c; state.vaultErr = ""; } else state.vaultErr = j.error || "Fehler";
+    save(); return j;
+  } catch (e) { state.vaultErr = !(window.crypto && crypto.subtle) ? "Verschlüsselung auf diesem Gerät nicht verfügbar" : e instanceof TypeError && /fetch|network|load/i.test(e.message) ? "keine Verbindung" : "Fehler: " + e.message; save(); return null; }
+}
+let vaultT = 0; function vaultSoon() { if (!liveKey("vp")) return; clearTimeout(vaultT); vaultT = setTimeout(() => vaultSave(false), 8000); }
+setInterval(() => { if (liveKey("vp") && document.visibilityState === "visible") vaultSave(false); }, 60e3);   // fängt jede Änderung (auch Journal) ab
+async function vaultList(pass) {
+  const yq = liveKey("yq"); if (!yq) throw new Error("Zuerst die Kursdienst-Adresse eintragen (Einstellungen → Live-Kurse).");
+  const { id } = await vaultGet(pass), j = await (await fetch(`${yq}/vault?id=${id}`)).json();
+  if (!j || !j.vault) throw new Error("Kursdienst zu alt – Version 8 nötig.");
+  if (!j.ok) throw new Error(j.error || "Fehler"); return j.list || [];
+}
+async function vaultLoad(pass, at) {
+  const yq = liveKey("yq"), { id, key } = await vaultGet(pass), j = await (await fetch(`${yq}/vault?id=${id}&at=${at}`)).json();
+  if (!j || !j.ok) throw new Error((j && j.error) || "Stand nicht gefunden");
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(j.iv) }, key, unb64(j.ct)).catch(() => { throw new Error("Passwort passt nicht zu diesem Stand"); });
+  return JSON.parse(new TextDecoder().decode(plain));
+}
 const pushSig = () => plansLoad().filter(x => x.st === "open").map(x => x.id).join(",") + "|" + depotLive().map(p => p.t + (p.d && p.d.ko || "")).join(",");
 async function pushInit() {
   if (!pushOk()) return;
@@ -6393,8 +6450,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.72";
-const APP_NEWS = [["2026.11.72", "Große Fibonacci-Welle", [
+const APP_VER = "2026.11.73";
+const APP_NEWS = [["2026.11.73", "Schneller, mehr live, Datensicherung", [
+  ["Schnellerer Start", "Beim Öffnen rechnet Kairo jetzt etwa 60 % weniger – die App reagiert direkt nach dem Intro flüssig."],
+  ["Watchlist und Quartalszahlen live", "Die Watchlist-Ansicht im Scanner und die Quartalszahlen von heute und morgen im Reiter Heute zeigen Live-Kurse (jede Minute, mit Kursdienst bis zu 25 Aktien in einem Abruf)."],
+  ["Automatische Sicherung", "Depot, Journal, Trade-Pläne und Watchlist werden nach jeder Änderung verschlüsselt in deinem Kursdienst gesichert – mit eigenem Passwort, bis zu 30 Stände. Einschalten unter Einstellungen → Daten & Backup (braucht Kursdienst Version 8)."]]],
+  ["2026.11.72", "Große Fibonacci-Welle", [
   ["Start des ganzen Trends", "Die große Welle wird nur noch gezeigt, wenn sie deutlich größer ist als die klassische (mindestens 1,3-fache Spanne). Sonst lag sie fast deckungsgleich darüber (TSMC: 264,03 statt 272,93) – jetzt beginnt sie am Start des ganzen Trends (TSMC: 131,94 im April 2025, NVIDIA: 86,40)."]]],
   ["2026.11.71", "Neues Intro", [
   ["Zeitraffer", "Beim Öffnen rauscht ein Jahr Tageskerzen vorbei und bremst genau am Signal – die Kerze wird blau und gleitet ins Kairo-Zeichen. Als Video läuft das Intro immer flüssig, ohne Glanzeffekte, im Hoch- und Querformat."]]],
@@ -6771,7 +6832,46 @@ function backupHtml() {
       <button class="btn ghost danger" data-impclear>Scalable-Daten löschen</button></div>
     <label class="note" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;cursor:pointer"><input type="checkbox" id="bkKeys" style="margin-top:3px"><span><b>Schlüssel mitnehmen</b> (Live-Kurse, Kursdienst, Mitteilungs-Verknüpfung) – zum Umzug auf ein neues App-Symbol oder Gerät. Die Schlüssel stehen dann lesbar in der Datei: nach dem Einlesen sofort löschen.</span></label>
     <div class="note">„Scalable-Daten löschen“ entfernt den importierten Export (Depot-Positionen aus der Datei und das Journal) – danach einfach den neuen Export hochladen. Von Hand angelegte Positionen, Übung und Einstellungen bleiben.</div>
-    <div class="note">Die Datei enthält deine Depot- und Journal-Daten – nur an sichere Orte speichern (z. B. iCloud Drive).</div></div>`;
+    <div class="note">Die Datei enthält deine Depot- und Journal-Daten – nur an sichere Orte speichern (z. B. iCloud Drive).</div></div>
+    ${vaultHtml()}`;
+}
+document.addEventListener("click", async e => {
+  const vb = e.target.closest("[data-vault]");
+  if (vb) { const a = vb.dataset.vault;
+    if (a === "on") { const pw = ($("vaultPass") || {}).value || "";
+      if (pw.length < 10) { alert("Bitte ein Passwort mit mindestens 10 Zeichen wählen."); return; }
+      try { localStorage.setItem("kx-vp", pw); } catch (er) {} vb.disabled = true; vb.textContent = "Sichere …";
+      const j = await vaultSave(true); if (!(j && j.ok)) { try { localStorage.removeItem("kx-vp"); } catch (er) {} alert("Sicherung nicht möglich: " + (state.vaultErr || (j && j.error) || "unbekannt")); }
+      render(); return; }
+    if (a === "now") { vb.disabled = true; vb.textContent = "Sichere …"; await vaultSave(true); render(); return; }
+    if (a === "off") { if (confirm("Automatische Sicherung ausschalten? Die gespeicherten Stände im Kursdienst bleiben erhalten.")) { try { localStorage.removeItem("kx-vp"); } catch (er) {} render(); } return; }
+    if (a === "list") { const pw = ($("vaultPass2") || {}).value || "", box = $("vaultList"); box.innerHTML = `<div class="note">Lade …</div>`;
+      try { const l = await vaultList(pw);
+        box.innerHTML = l.length ? l.map(x => `<div class="cf-r"><span>${new Date(x.at).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span><button class="btn ghost sm" data-vault="load" data-at="${x.at}">Einlesen</button></div>`).join("") : `<div class="note">Noch keine Sicherung vorhanden.</div>`;
+      } catch (er) { box.innerHTML = `<div class="note">⚠ ${esc(er.message)}</div>`; } return; }
+    if (a === "load") { const pw = ($("vaultPass2") || {}).value || "";
+      try { const j = await vaultLoad(pw, vb.dataset.at), c = j.c || vaultCount(j.data || {});
+        if (j.app !== "kairo" || !j.data) throw new Error("keine Kairo-Sicherung");
+        if (confirm(`Stand vom ${new Date(j.date).toLocaleString("de-DE")} einlesen (${c.depot} Positionen, ${c.plans} Pläne, ${c.fav} Watchlist)? Die Daten auf diesem Gerät werden ersetzt.`)) {
+          Object.entries(j.data).forEach(([k, v]) => (BACKUP_KEYS(k) || k.startsWith("kx-")) && k !== "kx-vp" && localStorage.setItem(k, v));
+          try { localStorage.setItem("kx-vp", pw); } catch (er) {}           // danach automatisch weiter sichern
+          location.reload(); }
+      } catch (er) { alert(er.message); } return; }
+  }
+});
+function vaultHtml() {
+  const yq = liveKey("yq"), on = !!liveKey("vp"), at = state.vaultAt ? new Date(state.vaultAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+  const c = state.vaultC || {};
+  return `<div class="card" id="vaultCard"><div class="cf-h" style="margin-bottom:6px">Automatische Sicherung</div>
+    <div class="tgdesc">Depot, Journal, Trade-Pläne, Watchlist und Einstellungen werden nach jeder Änderung verschlüsselt in deinem Kursdienst gesichert. Nur dieses Gerät kennt das Passwort – Cloudflare sieht unlesbaren Text. Bei Verlust des iPads: Kursdienst-Adresse und Passwort eingeben, Stand wählen, fertig.</div>
+    ${!yq ? `<div class="note">Braucht deinen Kairo-Kursdienst (Version 8) – Adresse unter Live-Kurse eintragen.</div>` : on
+      ? `<div class="vault-st ${state.vaultErr ? "down" : "up"}">${state.vaultErr ? `⚠ ${esc(state.vaultErr)}` : at ? `● aktiv · zuletzt ${at} · ${c.depot || 0} Positionen, ${c.plans || 0} Pläne, ${c.fav || 0} Watchlist` : "● aktiv · erste Sicherung folgt"}</div>
+         <div class="row-actions" style="margin-top:10px"><button class="btn sm" data-vault="now">Jetzt sichern</button><button class="btn ghost sm" data-vault="off">Ausschalten</button></div>`
+      : `<div class="vault-row"><input id="vaultPass" type="password" autocomplete="new-password" placeholder="Sicherungs-Passwort (mind. 10 Zeichen)"><button class="btn sm" data-vault="on">Einschalten</button></div>
+         <div class="note">Das Passwort gut aufheben (z. B. im iCloud-Schlüsselbund) – ohne Passwort lässt sich die Sicherung nicht öffnen, auch nicht von Claude.</div>`}
+    ${yq ? `<details class="vault-rest"><summary>Aus Sicherung wiederherstellen</summary>
+      <div class="vault-row"><input id="vaultPass2" type="password" autocomplete="current-password" placeholder="Sicherungs-Passwort"><button class="btn ghost sm" data-vault="list">Stände anzeigen</button></div>
+      <div id="vaultList"></div></details>` : ""}</div>`;
 }
 
 // ---------- Einstellungen ----------
@@ -6996,7 +7096,22 @@ function liveApply(t, q) {
   const x = data && data.results && data.results.find(y => y.ticker === t);
   if (x) { if (x.close0 == null) x.close0 = x.close; x.close = q.c; x.live = q.at; }
 }
-async function liveMany(ts) { const out = []; for (const t of [...new Set(ts)]) out.push(await liveQuote(t)); return out.filter(Boolean).length; }
+async function liveMany(ts) {                                // mit Kursdienst: bis zu 25 Aktien je Abruf statt einzeln (Watchlist, Heute)
+  ts = [...new Set(ts.filter(Boolean))]; const yq = liveKey("yq"), fh = liveKey("fh"); let n = 0;
+  if (yq) {
+    const bt = ts.filter(t => { const xr = rowOf(t), o = LIVE.map[t]; return !(xr && xr.ext) && !(isUS(t) && fh) && !LIVE.busy.has(t) && (!o || Date.now() - o.at >= LIVE.ttl); });
+    for (let i = 0; i < bt.length; i += 25) {
+      const ch = bt.slice(i, i + 25); ch.forEach(t => LIVE.busy.add(t));
+      try { const j = await (await fetch(`${yq}/?s=${ch.map(encodeURIComponent).join(",")}`)).json();
+        ch.forEach(t => { const q = j && j[t.toUpperCase()]; if (q && q.c > 0) { const o = { c: +q.c, pc: q.pc != null ? +q.pc : null, h: q.h, l: q.l, ts: q.t || Date.now(), src: "Kursdienst", at: Date.now() };
+          LIVE.map[t] = o; liveApply(t, o); n++; } });
+      } catch (e) {} finally { ch.forEach(t => LIVE.busy.delete(t)); }
+    }
+    ts = ts.filter(t => !bt.includes(t));
+  }
+  for (const t of ts) if (await liveQuote(t)) n++;
+  return n;
+}
 const liveTime = t => { const q = LIVE.map[t]; return q ? new Date(q.ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : ""; };
 const liveTag = t => LIVE.map[t] ? `<span class="live-tag" title="Live-Kurs von ${esc(LIVE.map[t].src)}">● Live ${liveTime(t)}</span>` : "";
 const liveBtn = t => `<button class="live-btn" data-live="${esc(t)}" title="Nur diese Aktie mit dem aktuellen Kurs aktualisieren">↻ Live</button>`;
@@ -7011,9 +7126,14 @@ document.addEventListener("click", async e => {
 // Depot und offene Trades: alle 60 s nachladen, solange der Reiter offen und die App sichtbar ist
 setInterval(() => {
   if (!liveOn() || document.visibilityState !== "visible" || !searchIdx) return;
-  const ts = state.sec === "depot" ? depotLoad().map(p => p.t).filter(Boolean) : state.sec === "game" ? ((gLoad() || {}).pos || []).map(p => p.t) : state.sec === "entry" ? [...plansLoad().filter(p => p.st === "open").map(p => p.t), state.einT].filter(Boolean) : [];
+  const ts = state.sec === "depot" ? depotLoad().map(p => p.t).filter(Boolean) : state.sec === "game" ? ((gLoad() || {}).pos || []).map(p => p.t) : state.sec === "entry" ? [...plansLoad().filter(p => p.st === "open").map(p => p.t), state.einT].filter(Boolean)
+    : state.sec === "today" ? todayLiveTs() : state.sec === "scanner" && state.view === "mine" ? [...favs()].slice(0, 40) : [];   // Watchlist und Quartalszahlen heute ebenfalls live
   if (ts.length) liveMany(ts).then(n => { if (n) render(); });
 }, 60e3);
+// Live-Veränderung zum Vortag als kleine Zeile (Quartalszahlen im Reiter Heute)
+const liveChg = t => { const q = t && LIVE.map[t]; if (!q || !q.pc) return ""; const d = q.c / q.pc - 1;
+  return `<em class="hq-live ${d >= 0 ? "up" : "down"}" title="Live-Kurs ${esc(liveTime(t))}">${sgnPct(d, 1)}</em>`; };
+const todayLiveTs = () => (calData || []).filter(e => e.kind === "earnings" && e.ticker && myTickers().has(e.ticker) && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 1).map(e => e.ticker);
 const liveStale = ts => ts.filter(t => { const o = LIVE.map[t]; return !o || Date.now() - o.at > LIVE.ttl; });
 function liveKick(ts, sec) {                                  // veraltete Kurse nachladen und einmal neu zeichnen
   const st = liveOn() ? liveStale([...new Set(ts.filter(Boolean))]) : [];
@@ -7974,6 +8094,7 @@ function renderMain() {
   if (state.tableSort !== "score" || state.tableAsc) list.sort((a, b) => { const x = col.g(a), y = col.g(b); const c = typeof x === "string" ? x.localeCompare(y) : x - y; return state.tableAsc ? c : -c; });
   else list.sort(kOrder);          // Standard: „perfekte“ Aktien (Treffer + 4H bestätigt) ganz oben, sonst Score
   const full = list.length, rows = scanAll || full <= SCAN_LIM ? list : list.slice(0, SCAN_LIM);   // lange Listen: erst die besten 60
+  if (state.view === "mine") liveKick([...rows.map(r => r.ticker), ...favs()].slice(0, 40), "scanner");   // Watchlist: Kurse live
   const more = rows.length < full ? `<div class="row-actions" style="justify-content:center;margin:12px 0"><button class="btn ghost" data-scanall>Alle ${full} anzeigen</button></div>` : "";
   const onlyHits = k.size === 1 && k.has("hit");
   const lead = ["ticker", "name", "status", "grade", "met", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)) && !(x === "status" && !list.some(r => r.passed)));   // ohne Treffer in der Liste (z. B. Beobachten): keine Kauf-Status-Spalte   // Status: kaufbereit / Seitwärtsphase x/10 / verfallen
