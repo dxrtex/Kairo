@@ -249,7 +249,7 @@ def evaluate(df: pd.DataFrame, info: dict | None = None, cfg: SimpleNamespace = 
         parts.append("Fib: kein Impuls")
     parts.append(f"Support: Mitte {de(zone_b['center'])}, {zone_b['touches']} Touches ✓" if zone_b
                  else "Support: kein gültiger Mehrfachboden")
-    add("zone", "Unterstützungszone (Fib 0,618–0,79 oder Support)", zone_ok, "; ".join(parts),
+    add("zone", f"Unterstützungszone (Fib {de(fz.zone[0], 3)}–{de(fz.zone[1], 2)} oder Support)", zone_ok, "; ".join(parts),
         "Fib-Zone (Impuls ≥ 15 %, nicht unter 0,886) oder ≥ 2 Touches ± 3 %")
     res.zone = {"fib": zone_a, "support": zone_b, "H": H, "H_date": None if H_idx is None else str(df.index[H_idx].date())}
     bands = [z["band"] for z in (zone_a if zone_a and zone_a["ok"] else None, zone_b) if z]
@@ -394,7 +394,7 @@ def evaluate(df: pd.DataFrame, info: dict | None = None, cfg: SimpleNamespace = 
     res.flags["fib_core"] = bool(zone_a and zone_a["ok"] and zone_a["core"])
     res.flags["support_3_touches"] = bool(zone_b and zone_b["touches"] >= 3)
     res.flags["overlap"] = bool(zone_a and zone_a["ok"] and zone_b
-                                and zone_a["levels"]["0.79"] * 0.97 <= zone_b["center"] <= zone_a["levels"]["0.618"] * 1.03)
+                                and zone_a["levels"]["0.79"] * 0.97 <= zone_b["center"] <= zone_a["levels"][str(cfg.fib.zone[0])] * 1.03)
     res.flags["ema200_in_zone"] = bool(bands and any(lo * 0.98 <= e200[-1] <= hi * 1.02 for lo, hi in bands))
     # Vormomentum (Rendite Monat −6 … −1) – nur zur Rangfolge der Top-Setups (Forschung v2.4), kein Kriterium
     res.flags["mom61"] = float(c[-22] / c[-127] - 1) if n >= 127 and c[-127] > 0 else None
