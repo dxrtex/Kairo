@@ -1,6 +1,6 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 605 Min. nach der Meldezeit (90 % innerhalb 1118 Min., 229 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 605 Min. nach der Meldezeit (90 % innerhalb 1114 Min., 230 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
 521 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-09), davon 331 mit aufgezeichneter Prognose.
 
@@ -60,28 +60,28 @@ Schnelligkeit: erste Zahlen im Mittel 605 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-59 Fehlprognosen und 272 Vergleichsfälle untersucht.
+60 Fehlprognosen und 271 Vergleichsfälle untersucht.
 
-- Markt: Bei 31% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 17% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.9%, getroffene Ø -4.2%.
+- Markt: Bei 32% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 19% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.6%, getroffene Ø -4.3%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 32% (19) | 29% | 1.1 |
+| Ausblick | 33% (20) | 29% | 1.1 |
 | Marge | 15% (9) | 6% | 2.4 |
-| Umsatz | 58% (34) | 52% | 1.1 |
-| Nutzer/Kunden | 7% (4) | 0% | 18.4 |
+| Umsatz | 58% (35) | 52% | 1.1 |
+| Nutzer/Kunden | 7% (4) | 0% | 18.1 |
 | Aufträge | 8% (5) | 4% | 2.3 |
 | Kosten | 5% (3) | 6% | 0.8 |
-| Zölle/Politik | 2% (1) | 0% | 4.6 |
+| Zölle/Politik | 2% (1) | 0% | 4.5 |
 | KI/Rechenzentren | 10% (6) | 10% | 1.0 |
 | Management | 2% (1) | 3% | 0.5 |
-| Rückkauf/Dividende | 2% (1) | 5% | 0.4 |
+| Rückkauf/Dividende | 2% (1) | 5% | 0.3 |
 | Analysten | 5% (3) | 8% | 0.6 |
 | Sondereffekt | 2% (1) | 1% | 1.5 |
-| Übernahme | 2% (1) | 5% | 0.4 |
+| Übernahme | 2% (1) | 5% | 0.3 |
 
-**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -9.9% gegen -4.2% → „schon eingepreist“ als Merkmal prüfen
+**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -9.6% gegen -4.3% → „schon eingepreist“ als Merkmal prüfen
 
 Beispiele:
 - ECG 2026-11-03: Kairo 71%, Kurs -29.3% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
