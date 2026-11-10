@@ -34,12 +34,13 @@ def _zone_where(res: Result, cfg: SimpleNamespace) -> str:
     if not fib or fib["impulse"] < cfg.fib.min_impulse:
         return "Keine brauchbare Fib-Zone (Aufwärtsimpuls davor zu klein) und kein Mehrfachboden."
     lv = fib["levels"]
-    top, bottom = lv["0.618"], lv["0.79"]
+    z0, z1 = cfg.fib.zone  # Golden Pocket aus config.yaml (0,706–0,79)
+    top, bottom = lv.get(str(z0), lv["0.618"]), lv.get(str(z1), lv["0.79"])
     if fib["ok"]:
         return f"Kurs ist bereits in der Fib-Zone ({de(bottom)}–{de(top)})."
     if not fib["valid"]:
         return f"Fib-Zone nach unten durchbrochen (unter 0,886 = {de(lv['0.886'])}) – Setup nur noch über einen neuen Boden möglich."
-    return f"Fib-Zone 0,618–0,79 liegt bei {de(bottom)}–{de(top)}, also noch {pct((res.close - top) / res.close)} tiefer."
+    return f"Fib-Zone {de(z0, 3)}–{de(z1, 2)} liegt bei {de(bottom)}–{de(top)}, also noch {pct((res.close - top) / res.close)} tiefer."
 
 
 def _macd_eta(f: dict, cap: int = 15) -> int | None:
