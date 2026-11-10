@@ -1211,6 +1211,13 @@
   .vault-row { display: flex; gap: 8px; margin-top: 10px; } .vault-row input { flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; }
   .vault-st { margin-top: 8px; font-size: 13px; font-weight: 600; } .vault-st.up { color: var(--up); } .vault-st.down { color: var(--down); }
   .vault-rest { margin-top: 12px; } .vault-rest summary { cursor: pointer; font-size: 14px; color: var(--muted); }
+  .cl-ohlc { position: absolute; left: 8px; top: 6px; z-index: 3; pointer-events: none; display: flex; flex-wrap: wrap; gap: 2px 9px; align-items: baseline;
+    max-width: calc(100% - 90px); font: 600 12px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-variant-numeric: tabular-nums;
+    color: var(--muted); padding: 3px 7px; border-radius: 8px; background: color-mix(in srgb, var(--bg, #000) 72%, transparent); }
+  .cl-ohlc b { color: var(--text); font-weight: 700; } .cl-ohlc em { font-style: normal; font-weight: 700; } .cl-ohlc i { font-style: normal; color: var(--accent, #0a84ff); font-weight: 700; }
+  @media (max-width: 640px) { .cl-ohlc { font-size: 11px; gap: 1px 7px; } .cl-ohlc .v { display: none; } }
+  .cl-m.on { background: color-mix(in srgb, var(--accent, #0a84ff) 22%, transparent); border-color: var(--accent, #0a84ff); color: var(--text); }
+  .measuring { cursor: crosshair; }
   .cl-live { flex: none; align-self: center; } .cl-live:empty { display: none; }
   .chfs-chart { min-width: 0; min-height: 0; } .chfs-side { border-left: 1px solid var(--line); overflow-y: auto; padding: 12px 14px calc(env(safe-area-inset-bottom) + 16px); }
   .cf-s { padding: 0 0 12px; margin: 0 0 12px; border-bottom: 1px solid var(--line); } .cf-h { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
@@ -6450,8 +6457,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.74";
-const APP_NEWS = [["2026.11.74", "Kaufzone nur noch Golden Pocket", [
+const APP_VER = "2026.11.75";
+const APP_NEWS = [["2026.11.75", "Kerzen-Info und Messwerkzeug", [
+  ["Kerzen-Info", "Oben links im Chart steht immer die Kerze unter Finger oder Zeiger: Datum, Eröffnung, Hoch, Tief, Schluss, Veränderung zum Vortag und Volumen. Ohne Zeiger der letzte Tag."],
+  ["📏 Messen", "In der Schalterleiste „Messen“ antippen, dann Start- und Endkerze: Kairo zeigt die Veränderung in %, die Handelstage, die Kurse von–bis und Hoch/Tief im Zeitraum. Ein dritter Tipp startet eine neue Messung, nochmal „Messen“ beendet sie."]]],
+  ["2026.11.74", "Kaufzone nur noch Golden Pocket", [
   ["Fibonacci 70,6–79 %", "Der Scan zählt als Fibonacci-Zone nur noch den Golden Pocket (70,6–79 % Rücksetzer). Grund: In 10 Jahren Test war das die beste Zone (+0,24 R je Trade), 61,8–70,6 % lag seit 2024 bei null – oft fiel der Kurs danach noch bis 79 %. Im Chart ist genau dieser Bereich als Kaufzone hinterlegt. Signale über eine Unterstützungslinie bleiben unverändert."]]],
   ["2026.11.73", "Schneller, mehr live, Datensicherung", [
   ["Schnellerer Start", "Beim Öffnen rechnet Kairo jetzt etwa 60 % weniger – die App reagiert direkt nach dem Intro flüssig."],
@@ -8389,6 +8399,45 @@ function levelsPrimitive() {
     autoscaleInfo: () => it.fit.length ? { priceRange: { minValue: Math.min(...it.fit), maxValue: Math.max(...it.fit) } } : null,
   };
 }
+// Messwerkzeug im Chart: Start- und Endkerze antippen → Veränderung, Handelstage, Hoch/Tief im Zeitraum
+const MEAS = { on: false };
+const tkey = t => typeof t === "string" ? t : t && t.year ? `${t.year}-${String(t.month).padStart(2, "0")}-${String(t.day).padStart(2, "0")}` : typeof t === "number" ? new Date(t * 1000).toISOString().slice(0, 10) : "";
+const volFmt = v => v >= 1e9 ? fmt(v / 1e9, 1) + " Mrd" : v >= 1e6 ? fmt(v / 1e6, 1) + " Mio" : v >= 1e3 ? fmt(v / 1e3, 0) + " Tsd" : fmt(v, 0);
+const dayDE = k => { const d = new Date(k + "T12:00:00"); return isNaN(d) ? k : `${["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][d.getDay()]} ${dateDE(k)}`; };
+function measurePrimitive(barAt, count) {
+  let series = null, chart = null, req = null, a = null, b = null, g = null;
+  const font = "600 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif", font2 = "500 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+  const bottom = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { if (!g) return;
+    x.fillStyle = g.fill; x.fillRect(g.x1, 0, Math.max(1, g.x2 - g.x1), m.height);
+    x.strokeStyle = g.line; x.lineWidth = 1; x.setLineDash([4, 3]);
+    [g.x1, g.x2].forEach(v => { x.beginPath(); x.moveTo(Math.round(v) + .5, 0); x.lineTo(Math.round(v) + .5, m.height); x.stroke(); });
+    x.setLineDash([]); if (g.y1 != null && g.y2 != null) { x.lineWidth = 1.6; x.beginPath(); x.moveTo(g.xa, g.y1); x.lineTo(g.xb, g.y2); x.stroke(); } }) };
+  const top = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { if (!g) return;
+    const narrow = m.width < 560, t2 = narrow ? g.t2s : g.t2;          // schmal (iPhone): kürzer und unter der Kerzen-Info
+    x.font = font; const w1 = x.measureText(g.t1).width; x.font = font2; const w2 = x.measureText(t2).width, w = Math.max(w1, w2) + 20;
+    const cx = Math.min(m.width - w / 2 - 6, Math.max(w / 2 + 6, (g.x1 + g.x2) / 2)), y = narrow ? 58 : 34;
+    x.fillStyle = isLight() ? "rgba(255,255,255,.95)" : "rgba(16,18,22,.92)"; x.strokeStyle = g.line; x.lineWidth = 1;
+    x.beginPath(); x.roundRect(cx - w / 2, y, w, 40, 8); x.fill(); x.stroke();
+    x.textAlign = "center"; x.textBaseline = "middle"; x.font = font; x.fillStyle = g.line; x.fillText(g.t1, cx, y + 13);
+    x.font = font2; x.fillStyle = isLight() ? "#3a3f47" : "#c9ced6"; x.fillText(t2, cx, y + 28); }) };
+  const views = [{ zOrder: () => "bottom", renderer: () => bottom }, { zOrder: () => "top", renderer: () => top }];
+  return {
+    set(i, j) { a = i; b = j; req && req(); },
+    attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; }, detached() { series = chart = null; },
+    updateAllViews() {
+      if (!series || !chart || a == null || b == null) { g = null; return; }
+      const i1 = Math.max(0, Math.min(a, b)), i2 = Math.min(count() - 1, Math.max(a, b)), A = barAt(i1), B = barAt(i2); if (!A || !B) { g = null; return; }
+      let hi = -Infinity, lo = Infinity; for (let i = i1; i <= i2; i++) { const z = barAt(i); if (z) { hi = Math.max(hi, z.high); lo = Math.min(lo, z.low); } }
+      const ts = chart.timeScale(), X = i => ts.logicalToCoordinate(i), half = Math.max(2, ((X(i1 + 1) ?? 0) - (X(i1) ?? 0)) / 2), ch = B.close / A.close - 1, up = ch >= 0;
+      if (X(i1) == null || X(i2) == null) { g = null; return; }
+      g = { x1: X(i1) - half, x2: X(i2) + half, xa: X(i1), xb: X(i2), y1: series.priceToCoordinate(A.close), y2: series.priceToCoordinate(B.close),
+            fill: up ? "rgba(48,209,88,.10)" : "rgba(255,69,58,.10)", line: up ? "rgb(48,209,88)" : "rgb(255,69,58)",
+            t1: `${sgnPct(ch, 2)}  ·  ${i2 - i1} Handelstage`, t2: `${dateDE(tkey(A.time))} ${fmt(A.close)} → ${dateDE(tkey(B.time))} ${fmt(B.close)}  ·  Hoch ${fmt(hi)}  ·  Tief ${fmt(lo)}`,
+            t2s: `${fmt(A.close)} → ${fmt(B.close)} · H ${fmt(hi)} · T ${fmt(lo)}` };
+    },
+    paneViews: () => views,
+  };
+}
 function buildMain(el, c, r, opts) {
   const LW = window.LightweightCharts, T = c.t, pts = k => T.map((t, i) => c[k][i] == null ? null : { time: t, value: c[k][i] }).filter(Boolean);
   const chart = LW.createChart(el, opts(el));
@@ -8401,6 +8450,29 @@ function buildMain(el, c, r, opts) {
   const M = chartModel(c, r), prim = levelsPrimitive(); candles.attachPrimitive(prim);
   const p = chartPlan(r) || {}, ko = tpKoStock(r.ticker, r.currency || r.cur); let pls = [];
   const h = { el, chart, candles, M, r };
+  // Kerzen-Info (oben links) und Messwerkzeug
+  const cnt = () => candles.data().length, barAt = i => candles.data()[i], mp = measurePrimitive(barAt, cnt); candles.attachPrimitive(mp); h.mp = mp;
+  if (getComputedStyle(el).position === "static") el.style.position = "relative";
+  const lg = document.createElement("div"); lg.className = "cl-ohlc"; el.appendChild(lg);
+  const idxOf = tm => { const k = tkey(tm), d = candles.data(); for (let i = d.length - 1; i >= 0; i--) if (tkey(d[i].time) === k) return i; return -1; };
+  let hov = false;
+  h.legend = i => { const d = candles.data(); if (i == null || i < 0 || !d[i]) i = d.length - 1; const b = d[i]; if (!b) return; const pv = d[i - 1], ch = pv ? b.close / pv.close - 1 : null, v = i < T.length ? c.v[i] : null;
+    lg.innerHTML = `<b>${dayDE(tkey(b.time))}</b><span>E ${fmt(b.open)}</span><span>H ${fmt(b.high)}</span><span>T ${fmt(b.low)}</span><span>S ${fmt(b.close)}</span>${ch != null ? `<em class="${ch >= 0 ? "up" : "down"}">${sgnPct(ch, 2)}</em>` : ""}${v ? `<span class="v">Vol ${volFmt(v)}</span>` : ""}${MEAS.on && (h.mA == null || h.mB != null) ? `<i>${h.mA == null ? "📏 Startkerze antippen" : "📏 neue Messung: Startkerze antippen"}</i>` : MEAS.on ? `<i>📏 Endkerze antippen</i>` : ""}`; };
+  const clampI = l => Math.max(0, Math.min(cnt() - 1, Math.round(l)));
+  chart.subscribeCrosshairMove(pr => { hov = !!pr.time; h.legend(pr.time ? idxOf(pr.time) : -1);
+    if (MEAS.on && h.mA != null && h.mB == null && pr.logical != null) mp.set(h.mA, clampI(pr.logical)); });
+  // Tipps selbst auswerten (der Chart wertet schnelles Nachtippen als Doppelklick und meldet es nicht): kurz an derselben Stelle = Tipp
+  let pd = null;
+  el.addEventListener("pointerdown", e => { pd = { x: e.clientX, y: e.clientY }; });
+  el.addEventListener("pointerup", e => {
+    if (!MEAS.on || !pd || Math.hypot(e.clientX - pd.x, e.clientY - pd.y) > 8) return;
+    const x = e.clientX - el.getBoundingClientRect().left, ts = chart.timeScale(); if (x < 0 || x > ts.width()) return;
+    const lgc = ts.coordinateToLogical(x); if (lgc == null) return; const i = clampI(lgc);
+    if (h.mA == null || h.mB != null) { h.mA = i; h.mB = null; mp.set(i, i); } else { h.mB = i; mp.set(h.mA, i); }
+    h.legend(i); });
+  h.measureOff = () => { h.mA = h.mB = null; mp.set(null, null); el.classList.remove("measuring"); h.legend(-1); };
+  h.legendLast = () => { if (!hov) h.legend(-1); };
+  h.legend(-1);
   h.apply = () => {
     EMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); vol.applyOptions({ visible: !!clGet("vol") });
     pls.forEach(x => candles.removePriceLine(x)); pls = [];
@@ -8427,7 +8499,7 @@ function buildMain(el, c, r, opts) {
     const hi = v => v > 0 ? v : -Infinity, lo = v => v > 0 ? v : Infinity;
     candles.update(day === lb.time ? { time: day, open: lb.open, high: Math.max(lb.high, hi(q.h), q.c), low: Math.min(lb.low, lo(q.l), q.c), close: q.c }
       : { time: day, open: q.o > 0 ? q.o : q.pc > 0 ? q.pc : lb.close, high: Math.max(hi(q.h), q.c), low: Math.min(lo(q.l), q.c), close: q.c });
-    return true;
+    h.legendLast && h.legendLast(); return true;
   };
   if (LIVE.map[r.ticker]) h.live();
   if (liveOn()) liveQuote(r.ticker).then(q => { if (q) liveChartsPaint(r.ticker); });
@@ -8441,7 +8513,8 @@ function clBarHtml(h) {
   const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
   return chip("fib", "Fibonacci", "#f4b740", !!M.cls) + chip("big", "große Welle", "#b07cff", !!M.big, M.broken)
     + chip("sup", `Linien ${ns}↓ ${nr}↑`, "#4aa3ff", M.lines.length > 0) + EMA_DEF.map(([k, col, l]) => chip(k, l, col)).join("")
-    + chip("vol", "Volumen", "#5d6676") + chip("plan", "Kauf/Stop/K.-o.", "#ff453a");
+    + chip("vol", "Volumen", "#5d6676") + chip("plan", "Kauf/Stop/K.-o.", "#ff453a")
+    + `<button class="cl-c cl-m${MEAS.on ? " on" : ""}" data-clm title="Zeitraum messen: Start- und Endkerze antippen">📏 Messen</button>`;
 }
 function clRefresh() {
   CL_LIVE.forEach(h => { if (!document.body.contains(h.el)) { CL_LIVE.delete(h); return; } h.apply(); });
@@ -8471,6 +8544,12 @@ setInterval(() => {
   const ts = new Set(); CL_LIVE.forEach(h => { if (document.body.contains(h.el)) ts.add(h.r.ticker); });
   ts.forEach(t => liveQuote(t).then(q => { if (q) liveChartsPaint(t); }));
 }, 30e3);
+document.addEventListener("click", e => {
+  if (!e.target.closest("[data-clm]")) return;
+  MEAS.on = !MEAS.on;
+  CL_LIVE.forEach(h => { if (!MEAS.on) h.measureOff && h.measureOff(); else { h.el.classList.add("measuring"); h.legend && h.legend(-1); } });
+  CL_LIVE.forEach(h => { const b = h.bar && document.getElementById(h.bar); if (b) b.innerHTML = clBarHtml(h); });
+});
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-cl]"); if (!b) return;
   const k = b.dataset.cl, cur = clGet(k, b.dataset.auto === "1"); state.cl = { ...(state.cl || {}), [k]: cur ? 0 : 1 }; save(); clRefresh();
