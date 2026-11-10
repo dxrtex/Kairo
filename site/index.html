@@ -6457,8 +6457,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.75";
-const APP_NEWS = [["2026.11.75", "Kerzen-Info und Messwerkzeug", [
+const APP_VER = "2026.11.76";
+const APP_NEWS = [["2026.11.76", "4 Jahre Chart und große Welle", [
+  ["Längere Charts", "Die Charts zeigen jetzt rund 4 statt 2 Jahre (im großen Chart „Alle“). Die Signale rechnen unverändert wie bisher."],
+  ["Große Welle bis zum Trendstart", "Kairo sucht die große Fibonacci-Welle weiter in der Vergangenheit. Ist auch sie schon gebrochen, geht es noch eine Ebene zurück – z. B. Rheinmetall: 173,60 (Dez. 2022) → 2.008, Golden Pocket 566–713."]]],
+  ["2026.11.75", "Kerzen-Info und Messwerkzeug", [
   ["Kerzen-Info", "Oben links im Chart steht immer die Kerze unter Finger oder Zeiger: Datum, Eröffnung, Hoch, Tief, Schluss, Veränderung zum Vortag und Volumen. Ohne Zeiger der letzte Tag."],
   ["📏 Messen", "In der Schalterleiste „Messen“ antippen, dann Start- und Endkerze: Kairo zeigt die Veränderung in %, die Handelstage, die Kurse von–bis und Hoch/Tief im Zeitraum. Ein dritter Tipp startet eine neue Messung, nochmal „Messen“ beendet sie."]]],
   ["2026.11.74", "Kaufzone nur noch Golden Pocket", [
@@ -8350,7 +8353,21 @@ function chartModel(c, r) {
     let ws = starts(hI, sI >= 0 ? sI : null);
     if (ws.length) { const top = topSince(ws[0]); if (top !== hI) ws = starts(top, ws[0]).length ? starts(top, ws[0]) : ws; }
     const mk = i => { if (i == null) return null; const iH = topSince(i); return c.h[iH] > c.l[i] ? { H: c.h[iH], L: c.l[i], iL: i, iH } : null; };
-    out.cls = mk(ws[0]); out.big = mk(ws[1]);
+    // große Welle, falls oben keine gefunden: eigene Suche ab dem Tief der klassischen Welle weiter zurück (bis zur 3-fachen Spanne) –
+    // erstes Tief mit fast voller Korrektur davor (≥ 78,6 %) und ≥ 1,3-facher Spanne, sonst das tiefste erreichte Tief (Start des ganzen Trends)
+    // (RHM 11/2026: Suche brach bei 688 ab, weil die Grenze an der kleineren Scan-Welle hing)
+    const bigFrom = (s, f = 1.3) => { if (s == null) return null; const hT = topSince(s), Hp = c.h[hT], a0 = Hp - c.l[s], W = 10;
+      const piv = []; for (let i = s - 1; i >= 0; i--) { const v = c.l[i]; if (v == null) continue; let ok = true;
+        for (let k = Math.max(0, i - W); k <= Math.min(n - 1, i + W); k++) if (c.l[k] != null && c.l[k] < v) { ok = false; break; } if (ok) piv.push(i); }
+      let cur = s;
+      for (const j of piv) { if (j >= cur || c.l[j] >= c.l[cur]) continue; if (Hp - c.l[j] > 3 * a0) break;
+        let M = -Infinity; for (let k = j; k <= cur; k++) if (c.h[k] != null && c.h[k] > M) M = c.h[k];
+        if (cur !== s && (M - c.l[cur]) / (M - c.l[j]) >= .786 && Hp - c.l[cur] >= f * a0) return cur;
+        cur = j; }
+      return cur !== s && cur >= W && Hp - c.l[cur] >= f * a0 ? cur : null; };
+    out.cls = mk(ws[0]); out.big = mk(ws[1] ?? bigFrom(ws[0]));
+    // ist auch die große Welle schon gebrochen (Kurs unter 78,6 %), noch eine Ebene weiter zurück (RHM 11/2026: Start Ende 2022 statt Jan. 2025)
+    if (out.big && last < (out.big.H - (out.big.H - out.big.L) * .786) * .995) { const b2 = mk(bigFrom(out.big.iL, 1.2)); if (b2) out.big = b2; }
     if (out.cls) { const w = out.cls; out.broken = last < (w.H - (w.H - w.L) * .786) * .995;
       out.note = `Welle ${dateDE(T[w.iL])} (${fmt(w.L)}) → ${dateDE(T[w.iH])} (${fmt(w.H)})${out.broken ? " – Kurs darunter, die große Welle ist eingeblendet" : ""}`; }
   }
