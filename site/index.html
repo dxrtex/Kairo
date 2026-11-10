@@ -6457,8 +6457,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.76";
-const APP_NEWS = [["2026.11.76", "4 Jahre Chart und große Welle", [
+const APP_VER = "2026.11.77";
+const APP_NEWS = [["2026.11.77", "Kleine Welle ab dem letzten Tief", [
+  ["Jüngere Welle statt gebrochener", "Ist die kleine Fibonacci-Welle klar gebrochen (Kurs mehr als 1 % unter ihr Tief gefallen) und danach eine neue Aufwärtswelle von mindestens 15 % entstanden, zeichnet Kairo diese neue Welle – z. B. Alibaba: Juni-Tief 91,99 → August-Hoch statt der alten Welle ab 116,86. Die Signale rechnen unverändert wie bisher."]]],
+  ["2026.11.76", "4 Jahre Chart und große Welle", [
   ["Längere Charts", "Die Charts zeigen jetzt rund 4 statt 2 Jahre (im großen Chart „Alle“). Die Signale rechnen unverändert wie bisher."],
   ["Große Welle bis zum Trendstart", "Kairo sucht die große Fibonacci-Welle weiter in der Vergangenheit. Ist auch sie schon gebrochen, geht es noch eine Ebene zurück – z. B. Rheinmetall: 173,60 (Dez. 2022) → 2.008, Golden Pocket 566–713."]]],
   ["2026.11.75", "Kerzen-Info und Messwerkzeug", [
@@ -8371,8 +8373,8 @@ function chartModel(c, r) {
     for (let g = 0; g < 4 && out.cls; g++) {
       const w = out.cls; let lo = -1;
       for (let k = w.iH + 1; k < n; k++) if (c.l[k] != null && (lo < 0 || c.l[k] < c.l[lo])) lo = k;
-      if (lo < 0 || c.l[lo] >= w.L) break;
-      const w2 = mk(lo); if (!w2 || w2.iH <= lo || w2.H < w2.L * 1.15) break;
+      if (lo < 0 || c.l[lo] >= w.L * .99) break;                       // klar gebrochen (≥ 1 %), kein Doppelboden
+      const w2 = mk(lo); if (!w2 || w2.iH <= lo || w2.iH > n - 4 || w2.H < w2.L * 1.15) break; // Hoch bestätigt (≥ 3 Kerzen alt)
       out.cls = w2;
     }
     // ist auch die große Welle schon gebrochen (Kurs unter 78,6 %), noch eine Ebene weiter zurück (RHM 11/2026: Start Ende 2022 statt Jan. 2025)
