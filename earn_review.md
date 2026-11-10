@@ -60,28 +60,28 @@ Schnelligkeit: erste Zahlen im Mittel 605 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-61 Fehlprognosen und 278 Vergleichsfälle untersucht.
+60 Fehlprognosen und 279 Vergleichsfälle untersucht.
 
-- Markt: Bei 32% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 18% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.8%, getroffene Ø -4.6%.
+- Markt: Bei 32% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 19% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.6%, getroffene Ø -4.7%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
 | Ausblick | 33% (20) | 29% | 1.1 |
 | Marge | 15% (9) | 7% | 2.2 |
-| Umsatz | 59% (36) | 52% | 1.1 |
-| Nutzer/Kunden | 7% (4) | 1% | 9.1 |
-| Aufträge | 8% (5) | 5% | 1.6 |
-| Kosten | 7% (4) | 6% | 1.0 |
-| Zölle/Politik | 2% (1) | 0% | 4.6 |
-| KI/Rechenzentren | 11% (7) | 10% | 1.1 |
+| Umsatz | 58% (35) | 52% | 1.1 |
+| Nutzer/Kunden | 7% (4) | 1% | 9.3 |
+| Aufträge | 8% (5) | 5% | 1.7 |
+| Kosten | 5% (3) | 7% | 0.7 |
+| Zölle/Politik | 2% (1) | 0% | 4.7 |
+| KI/Rechenzentren | 10% (6) | 10% | 1.0 |
 | Management | 2% (1) | 3% | 0.5 |
 | Rückkauf/Dividende | 2% (1) | 5% | 0.4 |
-| Analysten | 5% (3) | 9% | 0.5 |
+| Analysten | 5% (3) | 9% | 0.6 |
 | Sondereffekt | 2% (1) | 1% | 1.5 |
 | Übernahme | 2% (1) | 5% | 0.4 |
 
-**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -9.8% gegen -4.6% → „schon eingepreist“ als Merkmal prüfen
+**Kandidaten für neue Merkmale:** noch keine (ein Grund braucht ≥ 15 Fehlprognosen und Faktor ≥ 1,5).
 
 Beispiele:
 - ECG 2026-11-03: Kairo 71%, Kurs -29.3% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
