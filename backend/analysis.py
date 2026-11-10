@@ -17,6 +17,7 @@ import math
 import numpy as np
 import pandas as pd
 
+from .config import CONFIG
 from .indicators import ema, pivot_highs, pivot_lows
 
 MARKET = (("^GSPC", "S&P 500"), ("^NDX", "Nasdaq 100"), ("^GDAXI", "DAX"), ("^STOXX", "STOXX Europe 600"), ("^N225", "Nikkei 225"), ("^VIX", "VIX"))
@@ -566,7 +567,7 @@ def analyze(df: pd.DataFrame, res, ath: dict | None = None) -> dict:
             rt = fib["retracement"]
             fac.append({"k": "fib", "l": "Fibonacci", "s": 1 if 0.5 <= rt <= 0.79 and fib.get("valid") else -1 if rt > 0.886 else 0,
                         "t": f"{dd * 100:.0f} % unter dem Hoch, Retracement {rt:.2f}".replace(".", ",")
-                             + (" – in der Kaufzone" if 0.618 <= rt <= 0.79 else " – unter 0,886, Impuls gebrochen" if rt > 0.886 else "")})
+                             + (" – in der Kaufzone" if CONFIG.fib.zone[0] <= rt <= CONFIG.fib.zone[1] else " – unter 0,886, Impuls gebrochen" if rt > 0.886 else "")})
     vola = f.get("volatility")
     out = {"c": close, "atr": atr, "sigma": sigma, "vola": vola,
            "stop": {"p": round(stop, 4), "src": stop_src, "pct": (stop - close) / close},

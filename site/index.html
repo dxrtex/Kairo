@@ -2318,7 +2318,7 @@ function paintChart(el, c, r) {
 }
 function zoneBand(r) {
   const f = r.zone && r.zone.fib, s = r.zone && r.zone.support;
-  if (f && f.ok) return [f.levels["0.79"], f.levels["0.618"]];
+  if (f && f.ok) return [f.levels["0.79"], f.levels["0.706"] ?? f.levels["0.618"]];   // Kaufzone = Golden Pocket 70,6–79 %
   if (s) return s.band;
   return null;
 }
@@ -6450,8 +6450,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.73";
-const APP_NEWS = [["2026.11.73", "Schneller, mehr live, Datensicherung", [
+const APP_VER = "2026.11.74";
+const APP_NEWS = [["2026.11.74", "Kaufzone nur noch Golden Pocket", [
+  ["Fibonacci 70,6–79 %", "Der Scan zählt als Fibonacci-Zone nur noch den Golden Pocket (70,6–79 % Rücksetzer). Grund: In 10 Jahren Test war das die beste Zone (+0,24 R je Trade), 61,8–70,6 % lag seit 2024 bei null – oft fiel der Kurs danach noch bis 79 %. Im Chart ist genau dieser Bereich als Kaufzone hinterlegt. Signale über eine Unterstützungslinie bleiben unverändert."]]],
+  ["2026.11.73", "Schneller, mehr live, Datensicherung", [
   ["Schnellerer Start", "Beim Öffnen rechnet Kairo jetzt etwa 60 % weniger – die App reagiert direkt nach dem Intro flüssig."],
   ["Watchlist und Quartalszahlen live", "Die Watchlist-Ansicht im Scanner und die Quartalszahlen von heute und morgen im Reiter Heute zeigen Live-Kurse (jede Minute, mit Kursdienst bis zu 25 Aktien in einem Abruf)."],
   ["Automatische Sicherung", "Depot, Journal, Trade-Pläne und Watchlist werden nach jeder Änderung verschlüsselt in deinem Kursdienst gesichert – mit eigenem Passwort, bis zu 30 Stände. Einschalten unter Einstellungen → Daten & Backup (braucht Kursdienst Version 8)."]]],
@@ -8305,7 +8307,7 @@ async function openDetail(t) {
 const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1 };   // EMA 100 aus: weniger Linien im Standard
 const clGet = (k, auto) => { const v = (state.cl || {})[k]; return v == null ? (k in CL_DEF ? CL_DEF[k] : auto ? 1 : 0) : v; };
 const CL_LIVE = new Set();
-const FIBQ = [[0, "Hoch"], [.382, "38,2 %"], [.5, "50 %"], [.618, "61,8 %", 1], [.705, "70,5 %"], [.786, "78,6 %", 1], [.886, "88,6 %"], [1, "Tief"]];
+const FIBQ = [[0, "Hoch"], [.382, "38,2 %"], [.5, "50 %"], [.618, "61,8 %"], [.706, "70,6 %", 1], [.786, "78,6 %", 1], [.886, "88,6 %"], [1, "Tief"]];   // betont: Kaufzone Golden Pocket
 const EMA_DEF = [["e20", "#f4b740", "EMA 20"], ["e50", "#4aa3ff", "EMA 50"], ["e100", "#b07cff", "EMA 100"], ["e200", "#ff8a65", "EMA 200"]];
 // Rechenmodell (nur Anzeige – die Regeln des Scans bleiben unverändert):
 // Welle = vom Hoch rückwärts von Tief zu tieferem Wendepunkt, bis davor eine fast volle Korrektur (≥ 78,6 %) liegt (höchstens
@@ -8406,7 +8408,7 @@ function buildMain(el, c, r, opts) {
       .forEach(([pr, t, col, st]) => { if (pr != null) pls.push(candles.createPriceLine({ price: pr, title: t, color: col, lineWidth: 1, lineStyle: st, axisLabelVisible: true })); });
     const it = { fills: [], lines: [], segs: [], fit: [] }, marks = [];
     const wave = (w, col) => { const lv = q => w.H - (w.H - w.L) * q;
-      it.fills.push({ lo: lv(.786), hi: lv(.618), from: w.iL, c: col, a: .07 });
+      it.fills.push({ lo: lv(.786), hi: lv(.706), from: w.iL, c: col, a: .07 });
       FIBQ.forEach(([q, lbl, strong]) => it.lines.push({ p: lv(q), from: w.iL, c: col, w: strong ? 1.6 : 1, a: strong ? .95 : q === 0 || q === 1 ? .4 : .42, dash: q === 0 || q === 1 ? [2, 3] : strong ? null : [6, 4], lr: `${lbl} · ${fmt(lv(q))}` }));
       it.segs.push({ i1: w.iL, p1: w.L, i2: w.iH, p2: w.H, c: col }); it.fit.push(lv(.886), lv(.5));
       marks.push({ i: w.iH, t: `H ${fmt(w.H)}`, c: `rgb(${col})`, up: false }, { i: w.iL, t: `L ${fmt(w.L)}`, c: `rgb(${col})`, up: true }); };
