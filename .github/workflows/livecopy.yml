@@ -17,14 +17,7 @@ jobs:
           mkdir -p ls && tar -xf live/artifact.tar -C ls
           mkdir -p snapshot && for f in analysis insider search briefing calendar earnings results h4 etf alerts changes; do cp "ls/data/$f.json" snapshot/ 2>/dev/null || true; done
           mkdir -p snapshot/charts && for t in NVDA AVGO AMD AAPL SAP.DE ENR.DE IREN TSM MSFT META RHM.DE ASML; do cp "ls/data/charts/$t.json" snapshot/charts/ 2>/dev/null || true; done
-          pip install -q yfinance pandas >/dev/null 2>&1 && python -c "
-import yfinance as yf, json
-for t in ['RHM.DE','TSM','NVDA','SAP.DE','ENR.DE','AAPL']:
-    d=yf.Ticker(t).history(period='5y', auto_adjust=False)
-    d=d.dropna(subset=['Open','High','Low','Close'])
-    json.dump({'t':[x.strftime('%Y-%m-%d') for x in d.index],'o':[round(float(v),4) for v in d['Open']],'h':[round(float(v),4) for v in d['High']],'l':[round(float(v),4) for v in d['Low']],'c':[round(float(v),4) for v in d['Close']],'v':[int(v) for v in d['Volume']]}, open('snapshot/long_'+t+'.json','w'))
-    print(t, len(d))
-" || true
+          pip install -q yfinance pandas >/dev/null 2>&1 && python tools/long5y.py || true
           sid=$id
           gh run view "$sid" --log -R "$GITHUB_REPOSITORY" | grep -E "Insider|OpenFIGI|Markt|Branchen|Themen|Fehler|Error|Traceback" | cut -c1-400 > snapshot/scanlog.txt  # Lauf 12 || true
           ls -la snapshot; git config user.name kairo-bot; git config user.email kairo-bot@users.noreply.github.com
