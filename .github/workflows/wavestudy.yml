@@ -1,0 +1,70 @@
+name: Studie Fibonacci-Wellen (welches Tief startet die Welle?)
+
+# Läuft beim Push auf den Studien-Branch oder von Hand. Ändert nichts an Scan oder App – liefert nur die Auswertung.
+on:
+  push:
+    branches: ["claude/wavestudy"]
+    paths: [".github/workflows/wavestudy.yml", "backend/wavestudy.py", "tools/wave_js.mjs"]
+  workflow_dispatch:
+    inputs:
+      reuse_run:
+        description: "Kursverläufe aus einem früheren Lauf wiederverwenden (Run-ID) – nur Auswertung neu"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  shard:
+    if: ${{ !inputs.reuse_run }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 12        # höchstens 12 von 20 Runnern – Scan, Quartalszahlen und Mitteilungen laufen nebenher weiter
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m backend.universe
+      - run: python -m backend.wavestudy --shard ${{ matrix.shard }} --shards 40 --n 1600 --period 10y
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wave-${{ matrix.shard }}
+          path: wave_part_${{ matrix.shard }}.json
+          retention-days: 30
+  study:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wave-*
+          merge-multiple: true
+          path: wave
+          run-id: ${{ inputs.reuse_run || github.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: python -m backend.wavestudy --report wave
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wavestudy
+          path: data/wavestudy.json
+          retention-days: 30
