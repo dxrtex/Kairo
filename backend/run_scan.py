@@ -45,7 +45,8 @@ def region_of(ticker: str) -> str:
     return "asia" if "." + ticker.rsplit(".", 1)[1] in _ASIA_SUFFIXES else "europe"
 
 SITE = ROOT / "site" / "data"
-CHART_BARS = 500                     # ≈ 2 Jahre: auch tiefere Fibonacci-Zonen (große Welle) sichtbar
+CHART_BARS = 1000                    # ≈ 4 Jahre im Chart: auch die große Welle (Start des ganzen Trends, z. B. RHM 2022/23)
+CHART_PERIOD = "5y"                  # nur für die Chart-Dateien nachgeladen (+1 Jahr Vorlauf für EMA 200) – der Scan selbst bleibt bei history.period
 
 
 SLIM = ("criteria", "zone", "div", "bonuses", "hint")
@@ -73,8 +74,21 @@ def _clean(x):
     return x
 
 
+def chart_frame(df: pd.DataFrame, long: pd.DataFrame | None) -> pd.DataFrame:
+    """Kerzen für den Chart: die längere Historie VOR dem ersten Scan-Tag, ab dann exakt die Scan-Daten
+    (so stimmen Chart und Signal immer überein). Fehlt die lange Reihe oder passt sie nicht, bleibt es bei den Scan-Daten."""
+    if long is None or long.empty or df.empty:
+        return df
+    try:
+        cols = [c for c in df.columns if c in long.columns]
+        older = long.loc[long.index < df.index[0], cols].dropna(subset=[c for c in ("Open", "High", "Low", "Close") if c in cols])
+        return pd.concat([older, df[cols]]) if len(older) else df
+    except Exception:
+        return df
+
+
 def chart_payload(df: pd.DataFrame, cfg=CONFIG) -> dict:
-    """Zeitreihen für TradingView Lightweight Charts (letzte ~500 Kerzen ≈ 2 Jahre)."""
+    """Zeitreihen für TradingView Lightweight Charts (letzte ~1000 Kerzen ≈ 4 Jahre)."""
     c = df["Close"]
     m = macd(c, cfg.macd.fast, cfg.macd.slow, cfg.macd.signal)
     r = rsi(c, cfg.rsi.length)
@@ -726,6 +740,12 @@ def main(argv=None) -> int:
     state.save("info_cache.json", {t: v for t, v in icache.items() if v.get("ts", "") >= cutoff})
     print(f"Stammdaten: {info_fresh} frisch, {info_cached} aus dem Cache, {len(infos) - info_fresh - info_cached} fehlen")
     rows, final = [], {}
+    try:                                             # längere Historie nur für die Chart-Dateien (große Fibonacci-Welle)
+        chart_long = yf.history([t for t, _, _ in results], CHART_PERIOD, end=args.end)
+        print(f"Chart-Historie ({CHART_PERIOD}): {len(chart_long)} von {len(results)}")
+    except Exception as exc:
+        chart_long = {}
+        print(f"Chart-Historie nicht geladen: {exc!r} – Charts mit Scan-Daten")
     (SITE / "charts").mkdir(parents=True, exist_ok=True)
     for old in (SITE / "charts").glob("*.json"):
         old.unlink()
@@ -776,7 +796,7 @@ def main(argv=None) -> int:
             pass
         search[t] = {**search[t], **search_row(res, m, rows[-1]["hint"]), "detail": 1} if t in search else {**search_row(res, m, rows[-1]["hint"]), "detail": 1}
         with open(SITE / "charts" / f"{t}.json", "w", encoding="utf-8") as f:
-            json.dump(_clean(chart_payload(df)), f, separators=(",", ":"))
+            json.dump(_clean(chart_payload(chart_frame(df, chart_long.get(t)))), f, separators=(",", ":"))
     rows.sort(key=lambda r: (r["passed"], r["score"], r["crv"] or 0), reverse=True)
     # Fundamentaldaten: KGV im Vergleich zum Median der Branche (aus allen Aktien der Tabelle)
     pes = {}
