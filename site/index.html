@@ -8366,6 +8366,15 @@ function chartModel(c, r) {
         cur = j; }
       return cur !== s && cur >= W && Hp - c.l[cur] >= f * a0 ? cur : null; };
     out.cls = mk(ws[0]); out.big = mk(ws[1] ?? bigFrom(ws[0]));
+    // klassische Welle gebrochen (nach dem Hoch unter ihr Tief gefallen) → die jüngere Welle: tiefstes Tief danach bis zum höchsten Hoch danach,
+    // wenn dieser Anstieg ≥ 15 % ist (wie min_impulse im Scan) – BABA 11/2026: 116,86→145,53 gebrochen, jetzt Juli-Tief → August-Hoch
+    for (let g = 0; g < 4 && out.cls; g++) {
+      const w = out.cls; let lo = -1;
+      for (let k = w.iH + 1; k < n; k++) if (c.l[k] != null && (lo < 0 || c.l[k] < c.l[lo])) lo = k;
+      if (lo < 0 || c.l[lo] >= w.L) break;
+      const w2 = mk(lo); if (!w2 || w2.iH <= lo || w2.H < w2.L * 1.15) break;
+      out.cls = w2;
+    }
     // ist auch die große Welle schon gebrochen (Kurs unter 78,6 %), noch eine Ebene weiter zurück (RHM 11/2026: Start Ende 2022 statt Jan. 2025)
     if (out.big && last < (out.big.H - (out.big.H - out.big.L) * .786) * .995) { const b2 = mk(bigFrom(out.big.iL, 1.2)); if (b2) out.big = b2; }
     if (out.cls) { const w = out.cls; out.broken = last < (w.H - (w.H - w.L) * .786) * .995;
