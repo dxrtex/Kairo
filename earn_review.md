@@ -1,28 +1,28 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 605 Min. nach der Meldezeit (90 % innerhalb 1127 Min., 237 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhalb 1179 Min., 254 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-530 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-10), davon 340 mit aufgezeichneter Prognose.
+551 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-10), davon 361 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 340 | 52% | 0.257 | 0.250 |
+| alle | 361 | 52% | 0.257 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 136 | 59% | 0.239 | 0.250 |
-| Ausblick gesenkt | 53 | 58% | 0.244 | 0.250 |
-| Ausblick bestätigt | 22 | 55% | 0.258 | 0.250 |
-| Ausblick angehoben | 112 | 48% | 0.272 | 0.250 |
-| Ausblick keine Meldung | 153 | 53% | 0.249 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 157 | 57% | 0.243 | 0.250 |
+| Ausblick gesenkt | 56 | 57% | 0.245 | 0.250 |
+| Ausblick bestätigt | 23 | 52% | 0.264 | 0.250 |
+| Ausblick angehoben | 119 | 50% | 0.271 | 0.250 |
+| Ausblick keine Meldung | 163 | 52% | 0.250 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
 | Kairo sagte | n | tatsächlich gestiegen |
 |---|---|---|
 | -0%–30% | 11 | 45% |
-| 30%–40% | 79 | 39% |
-| 40%–50% | 71 | 49% |
-| 50%–60% | 105 | 52% |
+| 30%–40% | 83 | 41% |
+| 40%–50% | 79 | 49% |
+| 50%–60% | 114 | 53% |
 | 60%–70% | 52 | 40% |
 | 70%–100% | 22 | 55% |
 
@@ -30,11 +30,11 @@ Schnelligkeit: erste Zahlen im Mittel 605 Min. nach der Meldezeit (90 % innerhal
 
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
-| deutlich unter Erwartung (< −10 %) | 50% (16) | 29% (7) | 37% (19) | 34% (41) |
-| unter Erwartung (−10 bis −2 %) | 9% (11) | 17% (6) | 67% (15) | 44% (39) |
+| deutlich unter Erwartung (< −10 %) | 50% (16) | 38% (8) | 41% (22) | 38% (45) |
+| unter Erwartung (−10 bis −2 %) | 9% (11) | 17% (6) | 67% (15) | 42% (40) |
 | im Rahmen (±2 %) | 25% (16) | 0% (2) | 33% (15) | 50% (28) |
-| über Erwartung (+2 bis +10 %) | 39% (23) | 33% (6) | 46% (41) | 48% (44) |
-| deutlich über Erwartung (> +10 %) | 42% (24) | 53% (15) | 61% (84) | 54% (78) |
+| über Erwartung (+2 bis +10 %) | 39% (23) | 33% (6) | 45% (42) | 48% (46) |
+| deutlich über Erwartung (> +10 %) | 41% (27) | 53% (15) | 62% (87) | 53% (81) |
 
 ## Vorschläge zur Anpassung
 
@@ -60,28 +60,28 @@ Schnelligkeit: erste Zahlen im Mittel 605 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-61 Fehlprognosen und 279 Vergleichsfälle untersucht.
+65 Fehlprognosen und 290 Vergleichsfälle untersucht.
 
-- Markt: Bei 33% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 18% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -9.9%, getroffene Ø -4.7%.
+- Markt: Bei 38% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 20% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.0%, getroffene Ø -4.8%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 33% (20) | 30% | 1.1 |
-| Marge | 15% (9) | 7% | 2.2 |
-| Umsatz | 59% (36) | 52% | 1.1 |
-| Nutzer/Kunden | 7% (4) | 1% | 9.1 |
-| Aufträge | 10% (6) | 5% | 2.1 |
-| Kosten | 5% (3) | 7% | 0.7 |
-| Zölle/Politik | 2% (1) | 0% | 4.6 |
-| KI/Rechenzentren | 10% (6) | 11% | 0.9 |
+| Ausblick | 31% (20) | 30% | 1.0 |
+| Marge | 14% (9) | 7% | 2.0 |
+| Umsatz | 57% (37) | 52% | 1.1 |
+| Nutzer/Kunden | 6% (4) | 1% | 8.9 |
+| Aufträge | 9% (6) | 4% | 2.1 |
+| Kosten | 5% (3) | 8% | 0.6 |
+| Zölle/Politik | 2% (1) | 0% | 4.5 |
+| KI/Rechenzentren | 11% (7) | 11% | 1.0 |
 | Management | 2% (1) | 3% | 0.5 |
-| Rückkauf/Dividende | 2% (1) | 5% | 0.4 |
-| Analysten | 7% (4) | 9% | 0.8 |
-| Sondereffekt | 2% (1) | 1% | 1.5 |
-| Übernahme | 2% (1) | 5% | 0.4 |
+| Rückkauf/Dividende | 2% (1) | 4% | 0.3 |
+| Analysten | 6% (4) | 9% | 0.7 |
+| Sondereffekt | 3% (2) | 1% | 3.0 |
+| Übernahme | 2% (1) | 5% | 0.3 |
 
-**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -9.9% gegen -4.7% → „schon eingepreist“ als Merkmal prüfen
+**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -11.0% gegen -4.8% → „schon eingepreist“ als Merkmal prüfen
 
 Beispiele:
 - ECG 2026-11-03: Kairo 71%, Kurs -29.3% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 170 Meldungen: Brier nachgeeicht 0.252 gegen gezeigt 0.260 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 181 Meldungen: Brier nachgeeicht 0.249 gegen gezeigt 0.258 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
