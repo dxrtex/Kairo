@@ -771,6 +771,12 @@
   .eq-crash { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 13px; } .eq-crash em { display: block; font-style: normal; color: var(--muted); font-size: 12px; margin-top: 2px; }
   .eq-crash.t-red b { color: var(--red); } .eq-crash.t-yellow b { color: var(--gold); } .eq-crash.t-green b { color: var(--up); }
   .ins-side { margin-bottom: 10px; }
+  .ins-vw { margin-top: 2px; } .ins-at { display: grid; } .ins-ar { display: grid; grid-template-columns: 1fr 92px 92px; gap: 8px; align-items: center; padding: 10px 6px; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .ins-ar:hover { background: var(--surface-2); } .ins-ah { cursor: default; border-top: 0; font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 2px; } .ins-ah:hover { background: none; }
+  .ins-an { min-width: 0; } .ins-an b { display: block; font-size: 14.5px; } .ins-an em { font-style: normal; font-size: 12.5px; color: var(--muted); }
+  .ins-ac { text-align: right; } .ins-ac b { display: block; font-size: 17px; } .ins-ac em { font-style: normal; font-size: 11.5px; color: var(--muted); } .ins-ac.muted b { color: var(--muted); font-weight: 500; }
+  .pill.ins-cl.up { color: var(--up); } .pill.ins-cl.down { color: var(--red); }
+  @media (max-width: 420px) { .ins-ar { grid-template-columns: 1fr 70px 70px; } }
   .ins-side button.ins-buy { color: var(--up); } .ins-side button.ins-sell { color: var(--red); }
   .ins-side button.ins-buy.on { background: var(--up); color: #fff; } .ins-side button.ins-sell.on { background: var(--red); color: #fff; }
   .ins-side button:not(.on):hover { background: color-mix(in srgb, currentColor 12%, transparent); } .ins-side button small { opacity: .7; font-weight: 600; } .ins-f { display: grid; gap: 6px; margin-bottom: 10px; } .ins-sort { margin-left: auto; display: inline-flex; gap: 6px; }
@@ -3137,6 +3143,22 @@ function mktBarHtml() {
 }
 // Insider-Detail: alle Käufe einer Aktie (90 Tage) – Person, Funktion, Datum, Betrag, gezielt/Routine, Anteil, Quelle
 const INS_TOP = /\b(CEO|Chief Executive|CFO|Chief Financial|President|Chairman|Chair|COO|Vorstand|Vorsitz)/i;
+// Je-Aktie-Ansicht: alle Insider einer Aktie im gewählten Zeitraum, Käufer und Verkäufer getrennt
+let INS_AGG = null;
+function insAggHtml(t) {
+  const a = INS_AGG && INS_AGG.m.get(t); if (!a) return `<p class="muted">Keine Insider-Geschäfte im Zeitraum.</p>`;
+  const usd = (fxEur && fxEur.USD) || 0.9, eur = x => (x.cur === "EUR" ? 1 : usd) * (x.val || 0);
+  const amt = e => e >= 1e6 ? `${fmt(e / 1e6, 2)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`;
+  const ppl = xs => { const m = new Map(); xs.forEach(x => { const k = String(x.who || "–"), o = m.get(k) || { who: k, role: x.role, n: 0, e: 0, d: x.d, url: x.url };
+    o.n++; o.e += eur(x); if (String(x.d) > String(o.d)) o.d = x.d; m.set(k, o); }); return [...m.values()].sort((p, q) => q.e - p.e); };
+  const sec = (xs, k) => { const l = ppl(xs); return `<h4 style="margin:12px 0 6px" class="${k === "b" ? "up" : "down"}">${l.length} ${k === "b" ? "Käufer" : "Verkäufer"}${xs.some(x => x.val) ? " · " + amt(xs.reduce((s, x) => s + eur(x), 0)) : ""}</h4>`
+    + (l.length ? l.map(o => `<div class="ins-x"><div><b>${esc(o.who)}</b>${INS_TOP.test(o.role || "") ? ' <span class="ir-top">Vorstandsspitze</span>' : ""}<em>${esc(o.role || "Funktion unbekannt")}</em><em>${o.n}× · zuletzt ${dateDE(o.d)}${o.url ? ` · <a href="${esc(o.url)}" target="_blank" rel="noopener">Meldung</a>` : ""}</em></div><b class="${k === "b" ? "up" : "down"}">${o.e ? amt(o.e) : "–"}</b></div>`).join("") : `<p class="muted">keine</p>`); };
+  const sr = byTicker(t), d = INS_AGG.days;
+  return `<h3 style="margin:0 0 4px">${esc(a.n)}</h3><p class="muted" style="margin:0 0 6px;font-size:13.5px">${esc(tkClean(t))} · Insider ${d === 365 ? "12 Monate" : d + " Tage"}</p>
+    <div class="ins-sum"><div><b class="up">${a.b.size}</b><em>Käufer</em></div><div><b class="down">${a.s.size}</b><em>Verkäufer</em></div><div><b>${a.be ? amt(a.be) : "–"}</b><em>gekauft</em></div><div><b>${a.se ? amt(a.se) : "–"}</b><em>verkauft</em></div></div>
+    ${a.xb.length ? sec(a.xb, "b") : ""}${a.xs.length ? sec(a.xs, "s") : ""}
+    <button class="btn" style="margin-top:12px;width:100%" ${sr ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`}>Aktie öffnen</button>`;
+}
 function insDetailHtml(t) {
   const ij = getJson("insider.json"), g = ij && ij.signal && ij.signal[t];
   if (!g) return `<p class="muted">Keine Insider-Käufe in den letzten 90 Tagen.</p>`;
@@ -3403,14 +3425,31 @@ function newsHtml() {
   const f2chip = (k, v, l) => `<button class="opt${String(IF[k] || "") === String(v) ? " on" : ""}" data-insf2="${k}" data-v="${v}">${l}</button>`;
   const f2tog = (k, l) => `<button class="opt${IF[k] ? " on" : ""}" data-insf2="${k}" data-v="${IF[k] ? "" : "1"}">${l}</button>`;
   const cnt = l => l.filter(x => (!x.d || ageD(x.d) <= days)).length;
+  // Je Aktie gezählt (Wunsch 11/2026): wie viele VERSCHIEDENE Insider im Zeitraum gekauft bzw. verkauft haben – je mehr, desto stärker
+  const vw = state.insView === "agg" ? "agg" : "list";
+  const keepT = x => (!x.d || ageD(x.d) <= days) && (!IF.c || ctry(x.t) === IF.c) && (!IF.mine || own(x.t)) && (!IF.top || INS_TOP.test(x.role || "")) && (!IF.big || (inEur(x) || 0) >= 1e6);
+  const agg = new Map();
+  [["b", B], ["s", S]].forEach(([k, l]) => l.filter(keepT).forEach(x => { let a = agg.get(x.t);
+    if (!a) agg.set(x.t, a = { t: x.t, n: x.n || nameOf(x.t), b: new Set(), s: new Set(), be: 0, se: 0, xb: [], xs: [] });
+    a[k].add(String(x.who || "").toLowerCase().replace(/[^a-z0-9äöüßéèàåø]+/g, " ").trim() || `${x.d}|${x.val}`); a[k + "e"] += inEur(x) || 0; a["x" + k].push(x); }));
+  INS_AGG = { m: agg, days };
+  const aggL = [...agg.values()].filter(a => (side === "buy" ? a.b.size : a.s.size) > 0)
+    .sort((p, q) => side === "buy" ? q.b.size - p.b.size || q.be - p.be : q.s.size - p.s.size || q.se - p.se);
+  const aCell = (n, e, c) => `<span class="ins-ac ${n ? c : "muted"}"><b>${n || "–"}</b>${n && e ? `<em>${eurAmt(e)}</em>` : ""}</span>`;
+  const aRow = a => `<button class="ins-ar" data-insagg="${esc(a.t)}"><span class="ins-an"><b>${esc(a.n)}${own(a.t) ? ' <span class="pill dep">Deine</span>' : ""}${(side === "buy" ? a.b.size : a.s.size) >= 3 ? ` <span class="pill ins-cl ${side === "buy" ? "up" : "down"}">${side === "buy" ? "Kauf" : "Verkaufs"}-Cluster</span>` : ""}</b><em>${esc(tkClean(a.t))}</em></span>${aCell(a.b.size, a.be, "up")}${aCell(a.s.size, a.se, "down")}</button>`;
+  const aggHtml = `<div class="ins-at"><div class="ins-ar ins-ah"><span class="ins-an">Aktie</span><span class="ins-ac">Käufer</span><span class="ins-ac">Verkäufer</span></div>
+    ${aggL.length ? aggL.slice(0, lim2).map(aRow).join("") : `<div class="bf-empty">Keine Insider-${side === "buy" ? "Käufe" : "Verkäufe"} für diese Filter.</div>`}</div>
+    ${aggL.length > lim2 || state.insMore ? `<button class="hlink" data-insmore style="margin-top:8px">${state.insMore ? "weniger zeigen" : `alle ${Math.min(aggL.length, 150)} zeigen`}</button>` : ""}`;
   const listHtml = `<div class="hcard ins-card"><div class="sp-seg ins-side">${[["buy", "Käufe", cnt(B)], ["sell", "Verkäufe", cnt(S)]].map(([v, l, n]) => `<button data-insside="${v}" class="ins-${v}${side === v ? " on" : ""}">${l} <small>${n}</small></button>`).join("")}</div>
-    <div class="ins-f"><div class="ins-sel"><select data-insf2sel="days">${[[30, "30 Tage"], [90, "90 Tage"], [365, "12 Monate"]].map(([v, l]) => `<option value="${v}"${days === v ? " selected" : ""}>${l}</option>`).join("")}</select>
+    <div class="ins-f"><div class="ins-sel"><select data-insf2sel="days">${[[30, "30 Tage"], [60, "60 Tage"], [90, "90 Tage"], [365, "12 Monate"]].map(([v, l]) => `<option value="${v}"${days === v ? " selected" : ""}>${l}</option>`).join("")}</select>
         <select data-insf2sel="c">${[["", "alle Regionen"], ["us", "USA"], ["de", "Deutschland"], ["eu", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<option value="${v}"${(IF.c || "") === v ? " selected" : ""}>${l}</option>`).join("")}</select></div>
       <div class="sp-tg ins-tg">${f2tog("mine", "★ nur meine")}${f2tog("top", "Vorstandsspitze")}${side === "buy" ? f2tog("opp", "nur gezielt") : ""}${f2tog("big", "ab 1 Mio. €")}
-        <span class="ins-sort">${[["new", "Neueste"], ["amt", "Betrag"]].map(([v, l]) => `<button class="opt${(state.insSort || "new") === v ? " on" : ""}" data-inssort="${v}">${l}</button>`).join("")}</span></div></div>
-    <div class="bf-l ins-l">${list.length ? grpd.slice(0, lim2).map(g => g.length > 1 ? igrp(g) : irow(g[0])).join("") : `<div class="bf-empty">Keine Insider-${side === "buy" ? "Käufe" : "Verkäufe"} für diese Filter.</div>`}</div>
-    ${grpd.length > lim2 || state.insMore ? `<button class="hlink" data-insmore style="margin-top:8px">${state.insMore ? "weniger zeigen" : `alle ${Math.min(grpd.length, 150)} zeigen`}</button>` : ""}
-    <div class="note" style="margin:8px 0 0">${list.length} ${side === "buy" ? "Käufe" : "Verkäufe"} · ${days === 365 ? "12 Monate" : days + " Tage"}. <b>gezielt</b> = kein Routine-Kauf (die Person kauft nicht jedes Jahr im selben Monat). Antippen öffnet die Meldung. Ganzer Markt: USA (SEC), Deutschland (BaFin), Großbritannien, Schweden, Schweiz, Norwegen; deine Aktien zusätzlich 12 Monate. Stand ${esc(when)}.</div></div>`;
+        ${vw === "list" ? `<span class="ins-sort">${[["new", "Neueste"], ["amt", "Betrag"]].map(([v, l]) => `<button class="opt${(state.insSort || "new") === v ? " on" : ""}" data-inssort="${v}">${l}</button>`).join("")}</span>` : ""}</div>
+      <div class="sp-tg ins-vw">${[["list", "Einzelne Meldungen"], ["agg", "Je Aktie gezählt"]].map(([v, l]) => `<button class="opt${vw === v ? " on" : ""}" data-insview="${v}">${l}</button>`).join("")}</div></div>
+    ${vw === "agg" ? aggHtml : `<div class="bf-l ins-l">${list.length ? grpd.slice(0, lim2).map(g => g.length > 1 ? igrp(g) : irow(g[0])).join("") : `<div class="bf-empty">Keine Insider-${side === "buy" ? "Käufe" : "Verkäufe"} für diese Filter.</div>`}</div>
+    ${grpd.length > lim2 || state.insMore ? `<button class="hlink" data-insmore style="margin-top:8px">${state.insMore ? "weniger zeigen" : `alle ${Math.min(grpd.length, 150)} zeigen`}</button>` : ""}`}
+    ${vw === "agg" ? `<div class="note" style="margin:8px 0 0">Gezählt werden verschiedene Personen je Aktie (mehrere Käufe derselben Person zählen einmal), sortiert nach ${side === "buy" ? "Käufern" : "Verkäufern"}. <b>Cluster</b> = mindestens 3 Insider – das stärkste Signal. Deine Aktien: alle Meldungen der letzten 12 Monate; ganzer Markt: Käufe 90 Tage, Verkäufe nur die größten der letzten Tage. Antippen zeigt die Personen.</div>` : ""}
+    <div class="note" style="margin:8px 0 0"${vw === "agg" ? " hidden" : ""}>${list.length} ${side === "buy" ? "Käufe" : "Verkäufe"} · ${days === 365 ? "12 Monate" : days + " Tage"}. <b>gezielt</b> = kein Routine-Kauf (die Person kauft nicht jedes Jahr im selben Monat). Antippen öffnet die Meldung. Ganzer Markt: USA (SEC), Deutschland (BaFin), Großbritannien, Schweden, Schweiz, Norwegen; deine Aktien zusätzlich 12 Monate. Stand ${esc(when)}.</div></div>`;
   return head + listHtml
     + (rank ? `<details class="hcard ins-more"${state.insRk ? " open" : ""} data-insdet="insRk"><summary>Wo Insider am stärksten kaufen (je Aktie gebündelt)</summary>${rankHtml.replace(/^<div class="hcard ir-card">/, "<div>")}</details>` : "")
     + (covHtml ? covHtml.replace('style="margin:-4px 2px 12px"', 'style="margin:4px 2px 12px"') : "")
@@ -6457,8 +6496,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.77";
-const APP_NEWS = [["2026.11.77", "Kleine Welle ab dem letzten Tief", [
+const APP_VER = "2026.11.78";
+const APP_NEWS = [["2026.11.78", "Insider je Aktie gezählt", [
+  ["Wie viele Insider kaufen?", "Unter Markt → Insider gibt es die Ansicht „Je Aktie gezählt“: je Aktie, wie viele verschiedene Insider im gewählten Zeitraum (30, 60, 90 Tage oder 12 Monate) gekauft und verkauft haben. Ab 3 Insidern wird ein Cluster markiert, das stärkste Signal. Antippen zeigt die Personen."]]],
+  ["2026.11.77", "Kleine Welle ab dem letzten Tief", [
   ["Jüngere Welle statt gebrochener", "Ist die kleine Fibonacci-Welle klar gebrochen (Kurs mehr als 1 % unter ihr Tief gefallen) und danach eine neue Aufwärtswelle von mindestens 15 % entstanden, zeichnet Kairo diese neue Welle – z. B. Alibaba: Juni-Tief 91,99 → August-Hoch statt der alten Welle ab 116,86. Die Signale rechnen unverändert wie bisher."]]],
   ["2026.11.76", "4 Jahre Chart und große Welle", [
   ["Längere Charts", "Die Charts zeigen jetzt rund 4 statt 2 Jahre (im großen Chart „Alle“). Die Signale rechnen unverändert wie bisher."],
@@ -8724,6 +8765,8 @@ function goSec(sec) {
 }
 document.addEventListener("click", e => {
   if (e.target.closest("[data-brief]")) { openBrief(); return; }
+  const ivw = e.target.closest("[data-insview]"); if (ivw) { state.insView = ivw.dataset.insview; state.insMore = false; save(); render(); return; }
+  const iag = e.target.closest("[data-insagg]"); if (iag) { $("spmBody").innerHTML = insAggHtml(iag.dataset.insagg); $("spm").hidden = false; $("spm").dataset.k = ""; return; }
   const iss = e.target.closest("[data-insside]"); if (iss) { state.insSide = iss.dataset.insside; state.insMore = false; save(); render(); return; }
   const if2 = e.target.closest("[data-insf2]"); if (if2) { state.insF2 = { ...(state.insF2 || {}), [if2.dataset.insf2]: if2.dataset.v }; state.insMore = false; save(); render(); return; }
   const nto = e.target.closest("[data-newstone]"); if (nto) { state.newsTone = nto.dataset.newstone; save(); render(); return; }
