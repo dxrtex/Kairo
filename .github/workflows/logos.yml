@@ -1,0 +1,54 @@
+name: Firmenlogos
+
+# Lädt für jede Aktie des Scans das Firmenlogo (kostenlose Quellen, ohne Schlüssel) und legt es im Branch kairo-logos ab.
+# Der große Scan und der Watchlist-Scan liefern die Logos dann mit der App aus (site/logos) – unabhängig von fremden Servern im Browser.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 0"        # sonntags: neue Aktien nachladen, Fehlversuche erneut versuchen
+  push:
+    paths: [tools/fetch_logos.py, .github/workflows/logos.yml]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: logos
+  cancel-in-progress: false
+
+jobs:
+  logos:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt pillow
+      - name: Unternehmens-Cache laden (nur lesen, enthält die Websites)
+        uses: actions/cache/restore@v4
+        with: { path: data/company.json, key: firmen-none, restore-keys: firmen- }
+      - name: Aktienliste vom letzten veröffentlichten Scan
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          set -e
+          for wf in scan.yml scan_watch.yml; do
+            id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/$wf/runs?status=success&branch=main&per_page=1" --jq '.workflow_runs[0].id // empty')
+            [ -n "$id" ] && gh run download "$id" -n github-pages -D live 2>/dev/null && break
+          done
+          mkdir -p livesite && tar -xf live/artifact.tar -C livesite --wildcards '*data/search.json'
+          ls -la livesite/data
+      - name: Vorhandene Logos laden (Branch kairo-logos)
+        run: |
+          if git fetch -q origin kairo-logos:kairo-logos 2>/dev/null; then git worktree add -q store kairo-logos;
+          else git worktree add -q --orphan -b kairo-logos store; fi
+          mkdir -p store/logos; ls store/logos | wc -l
+      - name: Logos laden
+        run: python tools/fetch_logos.py "$(find livesite -name search.json | head -1)" store/logos
+      - name: Speichern
+        run: |
+          cd store
+          git add -A
+          git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Logos $(date +%F)" || exit 0
+          git push -q origin kairo-logos

@@ -60,6 +60,9 @@ jobs:
           PUSH_SUBS: ${{ secrets.PUSH_SUBS }}
       - name: In den letzten Scan eintragen
         run: python tools/merge_partial.py site/data part
+      - name: Firmenlogos dazulegen (Branch kairo-logos, fehlt er, zeigt die App Buchstaben)
+        run: |
+          if git fetch -q origin kairo-logos 2>/dev/null; then mkdir -p site && git archive origin/kairo-logos logos | tar -x -C site && ls site/logos | wc -l; else echo "noch keine Logos"; fi
       - name: Browser für den App-Test
         id: browser
         continue-on-error: true

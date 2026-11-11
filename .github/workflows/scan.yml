@@ -111,6 +111,10 @@ jobs:
           git add -A
           git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Zustand $(date +%F)" || exit 0
           git push -q origin kairo-data
+      - name: Firmenlogos dazulegen (Branch kairo-logos, fehlt er, zeigt die App Buchstaben)
+        if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'
+        run: |
+          if git fetch -q origin kairo-logos 2>/dev/null; then mkdir -p site && git archive origin/kairo-logos logos | tar -x -C site && ls site/logos | wc -l; else echo "noch keine Logos"; fi
       - name: Browser für den App-Test installieren (3 Versuche)
         id: browser
         if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'

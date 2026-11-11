@@ -15,6 +15,11 @@ self.addEventListener("fetch", e => {
       .catch(() => caches.match(e.request, { ignoreSearch: true })));
     return;
   }
+  if (u.pathname.includes("/logos/")) {                               // Firmenlogos ändern sich praktisch nie → zuerst aus dem Speicher
+    e.respondWith(caches.open(CACHE).then(c => c.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request).then(r => {
+      if (r.ok) c.put(e.request, r.clone()).catch(() => {}); return r; }))));
+    return;
+  }
   const root = new URL("./", location).pathname;
   if (e.request.mode === "navigate" && (u.pathname === root || u.pathname === root + "index.html")) {     // App-Seite: sofort aus dem Speicher (kein weißer Bildschirm), im Hintergrund aktualisieren
     const net = fetch(e.request).then(r => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put("index.html", copy)).catch(() => {}); } return r; });
