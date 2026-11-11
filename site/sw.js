@@ -16,7 +16,7 @@ self.addEventListener("fetch", e => {
     return;
   }
   if (u.pathname.includes("/logos/")) {                               // Firmenlogos ändern sich praktisch nie → zuerst aus dem Speicher
-    e.respondWith(caches.open(CACHE).then(c => c.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request).then(r => {
+    e.respondWith(caches.open(CACHE).then(c => c.match(e.request).then(hit => hit || fetch(e.request).then(r => {
       if (r.ok) c.put(e.request, r.clone()).catch(() => {}); return r; }))));
     return;
   }
