@@ -6517,8 +6517,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.83";
-const APP_NEWS = [["2026.11.83", "Volumenprofil", [
+const APP_VER = "2026.11.84";
+const APP_NEWS = [["2026.11.84", "Doppelboden: das tiefere Tief zählt", [
+  ["Wellenstart am tiefsten Punkt der Bodenzone", "Liegen zwei Tiefs in derselben Bodenzone (Doppelboden, der Kurs ist dazwischen kaum gestiegen), beginnt die Welle jetzt am tieferen der beiden – bei der kleinen und der großen Welle. Beispiele: CrowdStrike 85,68 statt 90,45, Xiaomi 8,32 (Okt. 2022) statt 11,22. Geprüft an über 1.100 Aktien. Die Signale rechnen unverändert."]]],
+  ["2026.11.83", "Volumenprofil", [
   ["Aktien-Wähler im TradingView-Stil", "Unten links eine gläserne Pille mit der aktuellen Aktie (darüber/darunter die Nachbarn): nach oben/unten wischen wechselt die Aktie, Antippen öffnet die gläserne Liste mit Suche."],
   ["Volumen je Kursniveau", "Rechts im Chart zeigt das Volumenprofil, auf welchen Kursniveaus im sichtbaren Zeitraum am meisten gehandelt wurde – breite Balken sind oft Unterstützung oder Widerstand. Orange: das meistgehandelte Niveau, blau: die Zone mit 70 % des Volumens. Passt sich beim Zoomen an, abschaltbar über den Chip „Volumenprofil“."]]],
   ["2026.11.82", "Charts direkt öffnen", [
@@ -8444,7 +8446,16 @@ function chartModel(c, r) {
         if (cur !== s && (M - c.l[cur]) / (M - c.l[j]) >= .786 && Hp - c.l[cur] >= f * a0) return cur;
         cur = j; }
       return cur !== s && cur >= W && Hp - c.l[cur] >= f * a0 ? cur : null; };
-    out.cls = mk(ws[0]); out.big = mk(ws[1] ?? bigFrom(ws[0]));
+    // tiefstes Tief derselben Bodenzone (Wünsche CRWD/Xiaomi 11/2026 – Doppelboden: das tiefere Tief zählt):
+    // kleine Welle: tiefere Wendepunkte bis 10 % darunter mit Zwischenanstieg < 20 % der Wellenhöhe (oder < 5 %), nie über den Start der großen Welle hinaus
+    // große Welle: tiefere Wendepunkte, solange der Kurs dazwischen um weniger als 10 % der Wellenhöhe stieg
+    const baseLow = (i, big, stop) => { if (i == null) return i; const Hp = c.h[topSince(i)], W = 10; let p = i;
+      for (let j = i - 1; j >= 0 && (stop == null || j > stop); j--) { const v = c.l[j]; if (v == null || v >= c.l[p]) continue; let ok = true;
+        for (let k = Math.max(0, j - W); k <= Math.min(n - 1, j + W); k++) if (c.l[k] != null && c.l[k] < v) { ok = false; break; } if (!ok) continue;
+        let M = -Infinity; for (let k = j; k <= p; k++) if (c.h[k] != null && c.h[k] > M) M = c.h[k];
+        const rise = (M - v) / (Hp - v); if (big ? rise < .1 : (v >= c.l[p] * .9 && rise < .2) || rise < .05) p = j; else break; }
+      return p; };
+    out.cls = mk(baseLow(ws[0], false, ws[1])); out.big = mk(baseLow(ws[1] ?? bigFrom(ws[0]), true));
     // klassische Welle gebrochen (nach dem Hoch unter ihr Tief gefallen) → die jüngere Welle: tiefstes Tief danach bis zum höchsten Hoch danach,
     // wenn dieser Anstieg ≥ 15 % ist (wie min_impulse im Scan) – BABA 11/2026: 116,86→145,53 gebrochen, jetzt Juli-Tief → August-Hoch
     for (let g = 0; g < 4 && out.cls; g++) {
@@ -8466,7 +8477,9 @@ function chartModel(c, r) {
         let M = -Infinity; for (let k = j; k <= cur; k++) if (c.h[k] != null && c.h[k] > M) M = c.h[k];
         if (cur !== s && (M - c.l[cur]) / (M - c.l[j]) >= .786 && last >= (Hp - (Hp - c.l[cur]) * .786) * .995) { pick = cur; break; }
         cur = j; }
-      if (pick != null) for (const j of piv) { if (j >= pick || c.l[j] >= c.l[pick]) continue; if (c.l[j] < c.l[pick] * .9) break; pick = j; }
+      if (pick != null) for (const j of piv) { if (j >= pick || c.l[j] >= c.l[pick]) continue;
+        let M = -Infinity; for (let k = j; k <= pick; k++) if (c.h[k] != null && c.h[k] > M) M = c.h[k];
+        if (c.l[j] < c.l[pick] * .9 && (M - c.l[j]) / (Hp - c.l[j]) >= .1) break; pick = j; }
       const b2 = mk(pick ?? bigFrom(out.big.iL, 1.2)); if (b2) out.big = b2; }
     if (out.cls) { const w = out.cls; out.broken = last < (w.H - (w.H - w.L) * .786) * .995;
       out.note = `Welle ${dateDE(T[w.iL])} (${fmt(w.L)}) → ${dateDE(T[w.iH])} (${fmt(w.H)})${out.broken ? " – Kurs darunter, die große Welle ist eingeblendet" : ""}`; }
