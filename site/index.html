@@ -1239,8 +1239,9 @@
   .cf-pill { position: relative; display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 7px; border-radius: 999px; cursor: pointer; font: inherit; color: var(--text);
     box-shadow: 0 12px 34px rgba(0,0,0,.42), 0 1px 3px rgba(0,0,0,.3); touch-action: none; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; transition: transform .15s ease; }
   .cf-pill.hold { transform: scale(.96); }
-  .cf-av { --h: 210; flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 13px; color: #fff;
+  .cf-av { --h: 210; position: relative; overflow: hidden; flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 13px; color: #fff;
     background: linear-gradient(145deg, hsl(var(--h) 70% 58%), hsl(calc(var(--h) + 30) 70% 42%)); box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
+  .cf-logo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 4px; box-sizing: border-box; background: #fff; opacity: 0; transition: opacity .2s; } .cf-av.lg .cf-logo { opacity: 1; }
   .cf-wh { display: grid; line-height: 1.05; min-width: 64px; } .cf-wh b { font-size: 18px; font-weight: 700; letter-spacing: .01em; }
   .cf-wh small { font-size: 10.5px; font-weight: 600; opacity: .35; height: 11px; overflow: hidden; } .cf-pill em { font-style: normal; font-weight: 600; font-size: 15px; opacity: .85; margin-left: 10px; }
   .cf-pick { position: absolute; left: 50%; top: 50%; z-index: 6; width: min(360px, calc(100% - 32px)); height: min(470px, calc(100% - 40px)); display: flex; flex-direction: column; gap: 8px; padding: 12px 10px 10px;
@@ -6596,8 +6597,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.89";
-const APP_NEWS = [["2026.11.89", "Glas-Optik wie iOS", [
+const APP_VER = "2026.11.90";
+const APP_NEWS = [["2026.11.90", "Firmenlogos", [
+  ["Echte Logos in der Aktienauswahl", "Pille und Auswahl-Rad zeigen jetzt die echten Firmenlogos (wie bei TradingView). Gibt es kein Logo, bleibt der farbige Buchstabe."]]],
+  ["2026.11.89", "Glas-Optik wie iOS", [
   ["Schwebende Elemente aus Glas", "Reiter-Leiste, runde Knöpfe, Dialoge, Umschalter und Chart-Schalter sind jetzt aus Glas – wie im iOS-Kontrollzentrum. Gefällt es dir nicht: Einstellungen → Glas-Optik → Aus."]]],
   ["2026.11.88", "Halten zum Wählen, echteres Glas", [
   ["Gedrückt halten", "Unten links auf der Aktien-Pille gedrückt halten: das gläserne Rad öffnet sich in der Mitte, mit dem Finger hoch/runter wählen, loslassen – fertig. Kurz antippen öffnet die Liste wie bisher."],
@@ -8928,7 +8931,10 @@ function closeCockpit() { const el = $("chfs"); if (!el || el.hidden) return; el
 // Aktien-Wähler im Cockpit (Wunsch 11/2026, wie TradingView unten links): Suche + Meine/Depot/Treffer/Zuletzt, ‹ › blättert
 const cfPick = { seg: null };
 const cfAv = t => { const k = tkClean(t), r = byTicker(t) || {}; let h = 0; for (const ch of k) h = (h * 31 + ch.charCodeAt(0)) % 360;
-  const L = (/^[A-Za-z]/.test(k) ? k : String(r.name || k).replace(/[^A-Za-zÄÖÜäöü0-9]/g, "")).slice(0, 1).toUpperCase(); return `<i class="cf-av" style="--h:${h}">${esc(L)}</i>`; };
+  const L = (/^[A-Za-z]/.test(k) ? k : String(r.name || k).replace(/[^A-Za-zÄÖÜäöü0-9]/g, "")).slice(0, 1).toUpperCase();
+  // echtes Firmenlogo (kostenlos, Financial Modeling Prep, ohne Schlüssel); lädt es nicht, bleibt der farbige Buchstabe
+  const logo = state.logos === 0 ? "" : `<img class="cf-logo" src="https://financialmodelingprep.com/image-stock/${encodeURIComponent(k)}.png" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="if(this.naturalWidth>8)this.parentNode.classList.add('lg');else this.remove()" onerror="this.remove()">`;
+  return `<i class="cf-av" style="--h:${h}">${esc(L)}${logo}</i>`; };
 function cfPillHtml(t) {
   if (!cfPick.seg) cfPick.seg = state.cfSeg || "mine";
   let l = cfList(cfPick.seg); if (!l.includes(t)) l = cfList("hits").includes(t) ? cfList("hits") : l;
