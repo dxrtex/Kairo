@@ -1,5 +1,10 @@
 # KAIRO – Markenidentität, Slogan und Intro
 
+> **Update 11.11.2026 – Hauptslogan: „The moment has a method.“** (Entscheidung mit Jonny). Er verbindet den Namen
+> (Kairos = der richtige Moment) mit der Methode (getestete Regel) und erzählt genau das Intro: Ein Fadenkreuz findet den Moment,
+> daraus entsteht die Kerze des Zeichens. Websuche (11.11.2026): kein prominenter Gebrauch gefunden – keine Markenrechtsprüfung.
+> Alternative: „Precision over prediction.“ Der frühere Claim „Patience, then precision.“ bleibt als Beschreibung der Regel nutzbar.
+
 Stand: 12.11.2026. Grundlage ist die geprüfte App (`site/index.html`, `backend/`, `research/`), nicht Wunschfunktionen.
 
 ## 1. Was Kairo wirklich ist (aus dem Code geprüft)

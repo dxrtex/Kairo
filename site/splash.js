@@ -6,7 +6,7 @@
    0,66 s  Zoom ins Zeichen, Linie tritt zurück; aus dem Punkt wächst der Docht, 0,78 s der Körper
    0,94 s  Klingen des K gleiten heran, 1,00 s Kachel
    1,18 s  Zeichen rückt nach links, KAIRO wird Buchstabe für Buchstabe sichtbar
-   1,50 s  Claim „Patience, then precision.“
+   1,50 s  Claim „The moment has a method.“
    Übergang ab ≈ 1,9 s (frühestens, wenn die App bereit ist): Logo zoomt sanft weg, die App blendet ein.
    Antippen, Klick oder Taste überspringt. „Bewegung reduzieren“: fertiges Logo, sanft ausgeblendet.
    Technik: nur transform/opacity (Grafikkarte), SVG + CSS, kein Video, keine Bibliothek. */
@@ -37,7 +37,7 @@
           <svg class="sp-lay sp-l sp-l4" viewBox="255 327 436 110" aria-hidden="true"><path d="${L.O}"/></svg>
         </div>
       </div>
-      <div class="sp-tag">Patience, then precision.</div>
+      <div class="sp-tag">The moment has a method.</div>
       <div class="sp-load"><i></i></div>
     </div>`;
   const ANIM_MS = 1900, SHORT_MS = 520, EXIT_MS = 520, TIMEOUT_MS = 5000;
@@ -51,7 +51,7 @@
   function play(opts = {}) {
     if (current) current.el.remove();
     const el = document.createElement("div");
-    el.className = "splash"; el.setAttribute("role", "img"); el.setAttribute("aria-label", "Kairo – Patience, then precision."); el.innerHTML = LOGO;
+    el.className = "splash"; el.setAttribute("role", "img"); el.setAttribute("aria-label", "Kairo – The moment has a method."); el.innerHTML = LOGO;
     const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) el.classList.add("reduce");
     // Volles Intro beim ersten Öffnen und nach einem Update (neue INTRO_V); sonst nur kurz das Logo – keine Wartezeit bei jedem Start
