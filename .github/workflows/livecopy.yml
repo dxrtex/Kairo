@@ -1,4 +1,4 @@
-name: Live-Daten-Kopie (Prüfung) # 1810
+name: Live-Daten-Kopie (Prüfung) # logos
 on:
   push:
     branches: ["claude/livecopy"]
@@ -18,6 +18,7 @@ jobs:
           mkdir -p snapshot && for f in analysis insider search briefing calendar earnings results h4 etf alerts changes; do cp "ls/data/$f.json" snapshot/ 2>/dev/null || true; done
           mkdir -p snapshot/charts && for t in NVDA AVGO AMD AAPL SAP.DE ENR.DE IREN TSM MSFT META RHM.DE ASML BABA TKA.DE CRWD 1810.HK GOOGL; do cp "ls/data/charts/$t.json" snapshot/charts/ 2>/dev/null || true; done
           pip install -q yfinance pandas >/dev/null 2>&1 && python tools/long5y.py || true
+          python tools/logoprobe.py || true
           sid=$id
           gh run view "$sid" --log -R "$GITHUB_REPOSITORY" | grep -E "Insider|OpenFIGI|Markt|Branchen|Themen|Fehler|Error|Traceback" | cut -c1-400 > snapshot/scanlog.txt  # Lauf 12 || true
           ls -la snapshot; git config user.name kairo-bot; git config user.email kairo-bot@users.noreply.github.com
