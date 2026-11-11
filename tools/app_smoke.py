@@ -160,6 +160,8 @@ async def ui_check(b, url, errs):
         if not await pg.query_selector("#cardModalBody .kplan"):
             errs.append("Detailansicht ohne Kriterien-Details: Fehler")
         await pg.evaluate("closeCard()")
+    # Tagesbriefing heute als gesehen markieren – es öffnet sich sonst verzögert (lädt Daten) und verdeckt die Einstellungen
+    await pg.evaluate("state.briefDay = isoD(new Date()); save()")
     await pg.goto(f"{url}?nosplash=1&sec=settings")
     await pg.wait_for_timeout(1500)
     await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.hidden = true)')
@@ -168,9 +170,9 @@ async def ui_check(b, url, errs):
     if not await pg.evaluate("document.documentElement.classList.contains('big')"):
         errs.append("Textgröße: wird nicht übernommen")
     await pg.click('[data-tsize=""]')
-    await pg.click('[data-design="light"]')
+    await pg.click('[data-design="postfach"]')
     await pg.wait_for_timeout(300)
-    if not await pg.evaluate("isLight() && document.getElementById('ds-light').media === 'all'"):
+    if not await pg.evaluate("isLight() && document.getElementById('ds-postfach').media === 'all'"):
         errs.append("Design Hell: wird nicht aktiv")
     if not await pg.query_selector('[data-fb="copy"]'):
         errs.append("Einstellungen: Feedback fehlt")
@@ -334,8 +336,8 @@ async def run(port: int) -> list[str]:
                 errs.append(f"{name}: Seite breiter als der Bildschirm ({w}px)")
             await ctx.close()
         # Heute (alle Designs, iPad quer): Aufgabenliste da, Spalten überlappen nie, Abhaken/Vorbereiten ohne JS-Fehler
-        for des in ("classic", "postfach-classic", "postfach", "postfach-aktien"):
-            for vw, vh in ((1180, 820), (1024, 768)):
+        for des in ("postfach-classic", "postfach", "postfach-aktien"):
+            for vw, vh in ((1180, 820), (820, 1180)):
                 ctx = await new_ctx(b, viewport={"width": vw, "height": vh})
                 pg = await ctx.new_page()
                 pg.on("pageerror", lambda e, des=des: errs.append(f"Heute {des}: JS-Fehler {e}"))
