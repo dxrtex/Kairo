@@ -160,6 +160,8 @@ async def ui_check(b, url, errs):
         if not await pg.query_selector("#cardModalBody .kplan"):
             errs.append("Detailansicht ohne Kriterien-Details: Fehler")
         await pg.evaluate("closeCard()")
+    # Tagesbriefing heute als gesehen markieren – es öffnet sich sonst verzögert (lädt Daten) und verdeckt die Einstellungen
+    await pg.evaluate("state.briefDay = isoD(new Date()); save()")
     await pg.goto(f"{url}?nosplash=1&sec=settings")
     await pg.wait_for_timeout(1500)
     await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.hidden = true)')
