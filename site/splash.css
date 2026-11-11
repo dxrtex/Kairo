@@ -1,7 +1,7 @@
 /* Kairo – Brand Reveal „Der Moment“ (≈ 1,9 s, erstes Öffnen/Update) · Zeitplan siehe splash.js
    Farben: Kairo Blau #0A84FF · Schwarz #000 · Kachel #1A1C20→#000 · Signal Weiß #F4F6FA · Nebel #8A93A3
    Bewegung: eine Kurve für alles Auftauchende (sanft auslaufend), eine Feder für die Kerze – nichts hüpft, nichts blinkt. */
-.splash { --T: min(104px, 15vw); --ease: cubic-bezier(.16, 1, .3, 1); --io: cubic-bezier(.65, 0, .35, 1);
+.splash { --T: min(118px, 16.5vw); --ease: cubic-bezier(.16, 1, .3, 1); --io: cubic-bezier(.65, 0, .35, 1);
   position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; overflow: hidden;
   font-synthesis: none; -webkit-font-smoothing: antialiased; }
 .sp-bg { position: absolute; inset: 0; background: #000; }
@@ -17,9 +17,9 @@
   transform: translateY(-1.5vh); }
 .sp-lock { will-change: transform; display: flex; align-items: center; gap: calc(var(--T) * .3);
   transform: translateX(calc(var(--T) * 1.759));   /* blaue Kerze (31,6 % des Zeichens) genau in der Bildmitte */
-  animation: sp-slide .7s var(--io) 1.18s forwards; }
+  animation: sp-slide .62s var(--io) 1.04s forwards; }
 .sp-mark { will-change: transform; position: relative; width: var(--T); height: var(--T); flex: none; border-radius: 22.4%;
-  transform-origin: 31.6% 50%; animation: sp-zoom .7s var(--io) .62s both; }   /* Markt-Szene groß, dann Zoom ins Zeichen */
+  transform-origin: 31.6% 50%; animation: sp-zoom .66s var(--io) .54s both; }   /* Markt-Szene groß, dann Zoom ins Zeichen */
 /* Ebenen: jede für sich, deckungsgleich über dem Zeichen; animiert werden nur transform und opacity (Grafikkarte) */
 .sp-lay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; will-change: transform, opacity; backface-visibility: hidden; }
 
@@ -28,36 +28,37 @@
   background: radial-gradient(130% 110% at 50% 0%, #1d2026 0%, #0a0b0d 55%, #000 100%);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .09), inset 0 1px 0 rgba(255, 255, 255, .08),
               0 calc(var(--T) * .22) calc(var(--T) * .6) rgba(0, 0, 0, .7);
-  animation: sp-tile .7s var(--ease) 1.0s forwards; }
+  animation: sp-tile .6s var(--ease) .8s forwards; }
 
 /* 1) Der Markt als eine ruhige Linie; am Tief rastet ein Fadenkreuz ein – der richtige Moment */
 .sp-scene { position: absolute; left: 31.6%; top: 49.6%; width: 0; height: 0; z-index: 2; }
 .sp-curve { position: absolute; left: calc(var(--T) * -3); top: calc(var(--T) * -1.5); width: calc(var(--T) * 6); height: calc(var(--T) * 1.7); overflow: visible; will-change: opacity; }
-.sp-curve path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: sp-draw .62s cubic-bezier(.45, 0, .2, 1) 0s forwards; }
-.sp-curve { animation: sp-out .3s ease-in .7s forwards; }
+.sp-curve path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: sp-draw .56s cubic-bezier(.45, 0, .2, 1) 0s forwards; }
+.sp-curve { animation: sp-out .3s ease-in .62s forwards; }
+.sp-curve .sp-hit { stroke-dasharray: .1 1; stroke-dashoffset: -.45; opacity: 0; animation: sp-fade .2s ease-out .44s forwards; }
 .sp-x { position: absolute; left: 0; top: 0; background: #0a84ff; opacity: 0; will-change: transform, opacity; }
 .sp-xh { width: calc(var(--T) * .7); height: max(1px, calc(var(--T) * .014)); margin: 0 0 0 calc(var(--T) * -.35); transform: scaleX(2.2);
   -webkit-mask: linear-gradient(90deg, #000 38%, transparent 38% 62%, #000 62%); mask: linear-gradient(90deg, #000 38%, transparent 38% 62%, #000 62%);
-  animation: sp-lock .34s cubic-bezier(.2, .9, .25, 1) .42s forwards, sp-out .2s ease-in .78s forwards; }
+  animation: sp-lock .3s cubic-bezier(.2, .9, .25, 1) .36s forwards, sp-out .2s ease-in .7s forwards; }
 .sp-xv { height: calc(var(--T) * .7); width: max(1px, calc(var(--T) * .014)); margin: calc(var(--T) * -.35) 0 0; transform: scaleY(2.2);
   -webkit-mask: linear-gradient(180deg, #000 38%, transparent 38% 62%, #000 62%); mask: linear-gradient(180deg, #000 38%, transparent 38% 62%, #000 62%);
-  animation: sp-lock .34s cubic-bezier(.2, .9, .25, 1) .44s forwards, sp-out .2s ease-in .78s forwards; }
+  animation: sp-lock .3s cubic-bezier(.2, .9, .25, 1) .38s forwards, sp-out .2s ease-in .7s forwards; }
 .sp-dot { position: absolute; left: calc(var(--T) * -.045); top: calc(var(--T) * -.045); width: calc(var(--T) * .09); height: calc(var(--T) * .09); border-radius: 50%;
   background: #0a84ff; opacity: 0; transform: scale(0); will-change: transform, opacity;
-  animation: sp-pop .3s cubic-bezier(.2, .9, .25, 1.2) .42s forwards, sp-out .14s linear .72s forwards; }
+  animation: sp-pop .28s cubic-bezier(.2, .9, .25, 1.2) .36s forwards, sp-out .14s linear .66s forwards; }
 
 /* 2) Kerze: Docht aus der Mitte, Körper federt auf, Leuchten blüht */
 .sp-wick { transform-origin: 31.65% 49.6%; transform: scaleY(0);
-  animation: sp-grow .5s var(--ease) .66s forwards; }
+  animation: sp-grow .46s var(--ease) .58s forwards; }
 .sp-body { transform-origin: 31.5% 67.2%; transform: scaleY(0);
-  animation: sp-spring .6s cubic-bezier(.3, .7, .3, 1) .78s forwards; }
+  animation: sp-spring .56s cubic-bezier(.3, .7, .3, 1) .68s forwards; }
 .sp-glow { inset: 29.6% auto auto 24%; width: 15%; height: 37.6%; border-radius: 13%; background: #0a84ff;
   filter: blur(calc(var(--T) * .05)); opacity: 0; animation: sp-glow 1.1s ease-out 1.2s forwards; }   /* Unschärfe fest, nur Deckkraft animiert */
 
 /* 3) Klingen des K mit Bewegungsunschärfe */
 .sp-arm { opacity: 0; }
-.sp-up { transform: translate(calc(var(--T) * .12), calc(var(--T) * -.12)); animation: sp-arm .65s var(--ease) .94s forwards; }
-.sp-lo { transform: translate(calc(var(--T) * .12), calc(var(--T) * .12)); animation: sp-arm .65s var(--ease) 1.0s forwards; }
+.sp-up { transform: translate(calc(var(--T) * .12), calc(var(--T) * -.12)); animation: sp-arm .6s var(--ease) .82s forwards; }
+.sp-lo { transform: translate(calc(var(--T) * .12), calc(var(--T) * .12)); animation: sp-arm .6s var(--ease) .88s forwards; }
 
 /* 4b) Lichtreflex über das Zeichen */
 .sp-shine { position: absolute; inset: 0; border-radius: 22.4%; overflow: hidden; pointer-events: none; }
@@ -68,17 +69,17 @@
 /* 5) Wortmarke: Buchstaben werden scharf, Abstände ziehen sich zusammen */
 .sp-word { position: relative; width: calc(var(--T) * 2.85); height: calc(var(--T) * .719); flex: none; }
 .sp-l { fill: #f4f6fa; opacity: 0; }
-.sp-l1 { transform: translateX(calc(var(--T) * -.222)); animation: sp-letter .7s var(--ease) 1.28s forwards; }
-.sp-l2 { transform: translateX(calc(var(--T) * -.092)); animation: sp-letter .7s var(--ease) 1.33s forwards; }
-.sp-l3 { transform: translateX(calc(var(--T) * .092));  animation: sp-letter .7s var(--ease) 1.43s forwards; }
-.sp-l4 { transform: translateX(calc(var(--T) * .222));  animation: sp-letter .7s var(--ease) 1.48s forwards; }
+.sp-l1 { transform: translateX(calc(var(--T) * -.222)); animation: sp-letter .62s var(--ease) 1.12s forwards; }
+.sp-l2 { transform: translateX(calc(var(--T) * -.092)); animation: sp-letter .62s var(--ease) 1.17s forwards; }
+.sp-l3 { transform: translateX(calc(var(--T) * .092));  animation: sp-letter .62s var(--ease) 1.27s forwards; }
+.sp-l4 { transform: translateX(calc(var(--T) * .222));  animation: sp-letter .62s var(--ease) 1.32s forwards; }
 .sp-wc { fill: #0a84ff; transform-origin: 48.1% 50%; transform: scaleY(0);
-  animation: sp-spring .55s cubic-bezier(.3, .7, .3, 1) 1.36s forwards; }
+  animation: sp-spring .5s cubic-bezier(.3, .7, .3, 1) 1.2s forwards; }
 
 /* 6) Unterzeile + Ladelinie */
-.sp-tag { font: 600 clamp(12px, 3.3vw, 15px)/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-  letter-spacing: .36em; text-transform: uppercase; color: #aab2bf; padding-left: .36em; opacity: 0; white-space: nowrap; will-change: transform, opacity;
-  animation: sp-tag .8s var(--ease) 1.5s forwards; }
+.sp-tag { font: 600 clamp(12px, 3.1vw, 17px)/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  letter-spacing: .3em; text-transform: uppercase; color: #b7bfcb; padding-left: .3em; opacity: 0; white-space: nowrap; will-change: transform, opacity;
+  animation: sp-tag .6s var(--ease) 1.3s forwards; }
 .sp-load { width: calc(var(--T) * 1.4); height: 2px; border-radius: 2px; background: rgba(255, 255, 255, .08); overflow: hidden;
   opacity: 0; transition: opacity .4s ease .35s; }
 .sp-load i { display: block; width: 40%; height: 100%; border-radius: 2px; background: linear-gradient(90deg, transparent, #0a84ff, transparent);
@@ -89,7 +90,7 @@
 /* Übergang: Logo zoomt sanft weg, die App blendet ein */
 .splash.exit { pointer-events: none; }
 .splash.exit .sp-stage { transition: transform .56s cubic-bezier(.5, 0, .75, 0), opacity .42s ease-in .08s;
-  transform: translateY(-1.5vh) scale(1.1); opacity: 0; }
+  transform: translateY(-1.5vh) scale(1.06); opacity: 0; }
 .splash.exit .sp-bg { transition: opacity .5s ease-in .06s; opacity: 0; }
 .splash.exit .sp-load { transition: opacity .15s; opacity: 0; }
 

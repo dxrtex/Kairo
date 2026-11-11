@@ -1,13 +1,13 @@
-/* Kairo – Brand Reveal „Der Moment“ (≈ 1,9 s, nur beim ersten Öffnen und nach einem Update; sonst 0,5 s Logo).
+/* Kairo – Brand Reveal „Der Moment“ (≈ 2,3 s, nur beim ersten Öffnen und nach einem Update; sonst 0,5 s Logo).
    Idee: Eine ruhige Kurslinie fällt und wendet. Ein Fadenkreuz rastet am Tief ein – der richtige Moment. Aus dem Punkt wächst
    die blaue Kerze, die Kerze ist der Stamm des K, die Klingen schließen das Zeichen, KAIRO und der Claim erscheinen.
    0,00 s  Linie zeichnet sich von links (die Szene ist vergrößert)
-   0,42 s  Punkt am Tief, Fadenkreuz rastet ein (von groß auf präzise)
-   0,66 s  Zoom ins Zeichen, Linie tritt zurück; aus dem Punkt wächst der Docht, 0,78 s der Körper
-   0,94 s  Klingen des K gleiten heran, 1,00 s Kachel
-   1,18 s  Zeichen rückt nach links, KAIRO wird Buchstabe für Buchstabe sichtbar
-   1,50 s  Claim „The moment has a method.“
-   Übergang ab ≈ 1,9 s (frühestens, wenn die App bereit ist): Logo zoomt sanft weg, die App blendet ein.
+   0,36 s  Punkt am Tief, Fadenkreuz rastet ein, das Kursstück am Tief leuchtet blau
+   0,54 s  Zoom ins Zeichen, Linie tritt zurück; aus dem Punkt wächst der Docht, 0,68 s der Körper
+   0,80 s  Kachel und Klingen des K gleichzeitig – kein Teil schwebt allein
+   1,04 s  Zeichen rückt nach links, KAIRO wird Buchstabe für Buchstabe sichtbar
+   1,30 s  Claim (ab 1,9 s voll lesbar) „The moment has a method.“
+   Übergang ab ≈ 2,3 s – das fertige Bild steht vorher 0,4 s ruhig (frühestens, wenn die App bereit ist): Logo zoomt sanft weg, die App blendet ein.
    Antippen, Klick oder Taste überspringt. „Bewegung reduzieren“: fertiges Logo, sanft ausgeblendet.
    Technik: nur transform/opacity (Grafikkarte), SVG + CSS, kein Video, keine Bibliothek. */
 (function () {
@@ -19,7 +19,7 @@
       <div class="sp-lock">
         <div class="sp-mark">
           <div class="sp-tile"></div>
-          <div class="sp-scene"><svg class="sp-curve" viewBox="0 0 600 170" aria-hidden="true"><defs><linearGradient id="spC" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#8a93a3" stop-opacity="0"/><stop offset=".25" stop-color="#8a93a3" stop-opacity=".55"/><stop offset=".5" stop-color="#c9d0db"/><stop offset=".75" stop-color="#8a93a3" stop-opacity=".55"/><stop offset="1" stop-color="#8a93a3" stop-opacity="0"/></linearGradient></defs><path d="M0 18 C 120 24, 205 150, 300 150 C 395 150, 470 46, 600 8" fill="none" stroke="url(#spC)" stroke-width="2.2" stroke-linecap="round" pathLength="1"/></svg>
+          <div class="sp-scene"><svg class="sp-curve" viewBox="0 0 600 170" aria-hidden="true"><defs><linearGradient id="spC" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#8a93a3" stop-opacity="0"/><stop offset=".25" stop-color="#8a93a3" stop-opacity=".55"/><stop offset=".5" stop-color="#c9d0db"/><stop offset=".75" stop-color="#8a93a3" stop-opacity=".55"/><stop offset="1" stop-color="#8a93a3" stop-opacity="0"/></linearGradient></defs><path d="M0 18 C 120 24, 205 150, 300 150 C 395 150, 470 46, 600 8" fill="none" stroke="url(#spC)" stroke-width="2.2" stroke-linecap="round" pathLength="1"/><path class="sp-hit" d="M0 18 C 120 24, 205 150, 300 150 C 395 150, 470 46, 600 8" fill="none" stroke="#0a84ff" stroke-width="3" stroke-linecap="round" pathLength="1"/></svg>
             <i class="sp-x sp-xh"></i><i class="sp-x sp-xv"></i><i class="sp-dot"></i></div>
           <!-- Jede Ebene eigenes Element: nur transform/opacity → läuft auf der Grafikkarte (flüssig, auch während die App lädt) -->
           <div class="sp-lay sp-glow"></div>
@@ -40,8 +40,8 @@
       <div class="sp-tag">The moment has a method.</div>
       <div class="sp-load"><i></i></div>
     </div>`;
-  const ANIM_MS = 1900, SHORT_MS = 520, EXIT_MS = 520, TIMEOUT_MS = 5000;
-  const INTRO_V = "10";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
+  const ANIM_MS = 2300, SHORT_MS = 520, EXIT_MS = 520, TIMEOUT_MS = 5000;
+  const INTRO_V = "11";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
   const mark = () => { try { localStorage.setItem("kairo-intro", INTRO_V); } catch (e) {} };
   const seen = () => { try { return localStorage.getItem("kairo-intro") === INTRO_V; } catch (e) { return false; } };
   let current = null;
