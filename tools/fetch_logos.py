@@ -27,6 +27,7 @@ from PIL import Image
 
 UA = {"User-Agent": "Mozilla/5.0 (Kairo logo fetcher)"}
 SIZE = 96
+LOGO_V = 2          # Version der Aufbereitung – ältere Logos werden einmal neu geladen
 MIN_SRC = 48
 
 
@@ -65,6 +66,14 @@ def normalize(raw: bytes) -> tuple[bytes, str] | None:
     vis = [p for p in px if p[3] > 24]
     if len(vis) < 6:
         return None
+    # einfarbiger heller Hintergrund (z. B. hellgraues Quadrat): von den Ecken aus transparent füllen
+    from PIL import ImageDraw
+    w0, h0 = im.size
+    cs = [im.getpixel(p) for p in ((0, 0), (w0 - 1, 0), (0, h0 - 1), (w0 - 1, h0 - 1))]
+    if all(c[3] > 200 and min(c[:3]) > 205 for c in cs) and max(max(abs(a - b) for a, b in zip(c[:3], cs[0][:3])) for c in cs) < 10:
+        for p in ((0, 0), (w0 - 1, 0), (0, h0 - 1), (w0 - 1, h0 - 1)):
+            if im.getpixel(p)[3] > 0:
+                ImageDraw.floodfill(im, p, (255, 255, 255, 0), thresh=14)
     # fast weißen oder transparenten Rand abschneiden
     bg = Image.new("RGBA", im.size, (255, 255, 255, 0))
     flat = Image.alpha_composite(Image.new("RGBA", im.size, (255, 255, 255, 255)), im).convert("L")
@@ -165,7 +174,8 @@ def main() -> None:
             meta.pop(t)
     now = time.time()
     # neu versuchen: ohne Logo, und Fehlversuche frühestens nach 7 Tagen erneut
-    todo = [t for t in tickers if t not in meta or (not meta[t].get("src") and now - meta[t].get("at", 0) > 7 * 86400)]
+    todo = [t for t in tickers if t not in meta or (meta[t].get("src") and meta[t].get("v") != LOGO_V)
+            or (not meta[t].get("src") and now - meta[t].get("at", 0) > 7 * 86400)]
     todo = todo[:limit]
     print(f"{len(tickers)} Aktien, {sum(1 for m in meta.values() if m.get('src'))} Logos vorhanden, {len(todo)} zu laden")
     got = Counter()
@@ -173,7 +183,7 @@ def main() -> None:
         for i, (t, src, png, h) in enumerate(ex.map(lambda t: fetch_one(t, company, skip), todo)):
             if src:
                 (out / f"{safe(t)}.png").write_bytes(png)
-                meta[t] = {"src": src, "h": h, "at": now}
+                meta[t] = {"src": src, "h": h, "at": now, "v": LOGO_V}
             else:
                 meta[t] = {"src": None, "at": now}
             got[src or "–"] += 1
