@@ -1446,6 +1446,36 @@
   .cf-pill .cf-wh b, .cfp-n b { text-shadow: 0 1px 2px rgba(0,0,0,.55); } .cf-pill .cf-wh small, .cfp-n small { text-shadow: 0 1px 2px rgba(0,0,0,.5); }
   html.lt .cf-pill, html.lt .cf-pick { background:
       radial-gradient(120% 140% at var(--lx) var(--ly), rgba(255,255,255,.75), rgba(255,255,255,.35) 40%, rgba(255,255,255,.18) 70%), rgba(255,255,255,.35) !important; }
+  /* Glas v4 „Liquid Glass“ (Wunsch 11/2026, Vorbild Apple): fast klar, Mitte scharf; dicker Rand bricht das Licht
+     (Hintergrund am Rand heller, kräftiger, leicht verwaschen = Linse), zwei scharfe Lichtkanten (oben links stark, unten rechts
+     schwächer), dunklere Innenkante für Glasdicke, feine Farbsäume, kaum Schlagschatten. Lichtrichtung folgt dem Finger (--la/--lx). */
+  .cf-pill, .cf-pick { --rim: 7px;
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.02) 55%, rgba(255,255,255,.05)), rgba(18,20,26,.10) !important;
+    -webkit-backdrop-filter: blur(1px) saturate(150%) brightness(1.06) contrast(1.05); backdrop-filter: blur(1px) saturate(150%) brightness(1.06) contrast(1.05);
+    box-shadow:
+      inset 1.5px 1.5px .5px -.5px rgba(255,255,255,.95),
+      inset -1.5px -1.5px .5px -.5px rgba(255,255,255,.55),
+      inset 0 0 0 .6px rgba(255,255,255,.28),
+      inset 0 0 calc(var(--rim) * 1.6) calc(var(--rim) * -.2) rgba(255,255,255,.16),
+      inset 0 calc(var(--rim) * -1.3) calc(var(--rim) * 1.6) calc(var(--rim) * -1.1) rgba(0,0,0,.35),
+      0 10px 28px -10px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.25) !important; }
+  /* Linsen-Rand: eigener Hintergrund-Filter nur im Rand – heller, gesättigter, weicher als die Mitte (Lichtbrechung) */
+  .cf-pill::before, .cf-pick::before { padding: var(--rim) !important; z-index: 0 !important;
+    background: linear-gradient(calc(var(--la) + 180deg), rgba(255,255,255,.10), rgba(255,255,255,0) 40%, rgba(255,255,255,.06)) !important;
+    -webkit-backdrop-filter: blur(2.5px) saturate(240%) brightness(1.22) contrast(1.1); backdrop-filter: blur(2.5px) saturate(240%) brightness(1.22) contrast(1.1); }
+  /* Glanz + Farbsaum: schmaler Regenbogen-Schimmer auf der Kante, Glanzfleck zur Lichtquelle */
+  .cf-pill::after, .cf-pick::after { inset: 0; padding: 1.5px; mix-blend-mode: screen !important; opacity: .9;
+    background:
+      conic-gradient(from var(--la), rgba(255,255,255,.95), rgba(140,220,255,.45) 9%, rgba(255,255,255,0) 20%, rgba(255,255,255,0) 42%,
+        rgba(255,170,230,.35) 48%, rgba(255,255,255,.55) 52%, rgba(255,230,150,.30) 57%, rgba(255,255,255,0) 66%, rgba(255,255,255,0) 86%, rgba(160,200,255,.4) 94%, rgba(255,255,255,.95)) !important;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+  .cf-pill > i, .cf-pill > span, .cf-pill > em { position: relative; z-index: 2; }
+  .cf-pick { --rim: 8px; background-color: rgba(14,16,22,.52) !important; -webkit-backdrop-filter: blur(5px) saturate(160%) brightness(1.02); backdrop-filter: blur(5px) saturate(160%) brightness(1.02); }
+  .cf-pick > * { z-index: 2 !important; }
+  .cf-pill .cf-wh b { text-shadow: 0 1px 3px rgba(0,0,0,.6), 0 0 1px rgba(0,0,0,.4); }
+  html.lt .cf-pill { background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.06) 55%, rgba(255,255,255,.14)) !important; }
+  html.lt .cf-pick { background: rgba(255,255,255,.55) !important; }
+  html.lt .cf-pill .cf-wh b { text-shadow: 0 0 6px rgba(255,255,255,.9), 0 0 1px rgba(255,255,255,.9) !important; }
   .cf-pick.show { opacity: 1; transform: translate(-50%, -50%) scale(1); } .cf-pick[hidden] { display: none; }
   .cf-pick input { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.08); color: var(--text); }
   .cf-pick input::placeholder { color: rgba(235,235,245,.45); }
@@ -6903,8 +6933,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.102";
-const APP_NEWS = [["2026.11.102", "Intro verfeinert", [
+const APP_VER = "2026.11.103";
+const APP_NEWS = [["2026.11.103", "Liquid Glass", [
+  ["Glas wie bei Apple", "Die Aktienauswahl ist jetzt fast klares Glas: Die Mitte bleibt scharf, der dicke Rand bricht das Licht (heller, kräftiger, wie eine Linse), zwei scharfe Lichtkanten und ein feiner Farbsaum folgen deinem Finger."]]],
+  ["2026.11.102", "Intro verfeinert", [
   ["Ruhiger Abschluss", "Das fertige Logo mit dem Claim steht jetzt kurz ruhig da, bevor die App erscheint – vorher war der Claim noch nicht ganz eingeblendet. Kachel und Klingen erscheinen gemeinsam, das Kursstück am Tief leuchtet beim Einrasten blau, Logo und Claim sind etwas größer."]]],
   ["2026.11.101", "Neuer Slogan", [
   ["The moment has a method.", "Kairos neuer Claim: Der richtige Moment ist kein Zufall, sondern folgt einer getesteten Methode. Er steht im Intro, im Rundgang und im App-Titel."]]],
