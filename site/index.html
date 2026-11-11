@@ -6597,8 +6597,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.92";
-const APP_NEWS = [["2026.11.92", "Auswahl schließt beim Antippen daneben", [
+const APP_VER = "2026.11.93";
+const APP_NEWS = [["2026.11.93", "Volumenprofil steht fest", [
+  ["Fest statt springend", "Das Volumenprofil rechnet jetzt fest ab dem Tief der Fibonacci-Welle bis heute (ohne Welle: 1 Jahr) – es springt nicht mehr beim Verschieben oder Zoomen. Das meistgehandelte Niveau seit Wellenbeginn zeigt, wo die großen Käufer im Schnitt eingestiegen sind."]]],
+  ["2026.11.92", "Auswahl schließt beim Antippen daneben", [
   ["Einfach wegtippen", "Ist die Aktienauswahl offen, schließt sie sich, sobald du irgendwo anders hintippst – auch mitten in den Chart."]]],
   ["2026.11.91", "Korrektur Postfach-Design", [
   ["Seitenleisten-Design repariert", "Im Aufgaben-Postfach-Design war der Inhalt in eine schmale Spalte gequetscht – behoben."]]],
@@ -6619,7 +6621,7 @@ const APP_NEWS = [["2026.11.92", "Auswahl schließt beim Antippen daneben", [
   ["Wellenstart am tiefsten Punkt der Bodenzone", "Liegen zwei Tiefs in derselben Bodenzone (Doppelboden, der Kurs ist dazwischen kaum gestiegen), beginnt die Welle jetzt am tieferen der beiden – bei der kleinen und der großen Welle. Beispiele: CrowdStrike 85,68 statt 90,45, Xiaomi 8,32 (Okt. 2022) statt 11,22. Geprüft an über 1.100 Aktien. Die Signale rechnen unverändert."]]],
   ["2026.11.83", "Volumenprofil", [
   ["Aktien-Wähler im TradingView-Stil", "Unten links eine gläserne Pille mit der aktuellen Aktie (darüber/darunter die Nachbarn): nach oben/unten wischen wechselt die Aktie, Antippen öffnet die gläserne Liste mit Suche."],
-  ["Volumen je Kursniveau", "Rechts im Chart zeigt das Volumenprofil, auf welchen Kursniveaus im sichtbaren Zeitraum am meisten gehandelt wurde – breite Balken sind oft Unterstützung oder Widerstand. Grün: Volumen an steigenden Tagen, rot: an fallenden. Orange umrandet: das meistgehandelte Niveau; kräftiger: die Zone mit 70 % des Volumens. Passt sich beim Zoomen an, abschaltbar über den Chip „Volumenprofil“."]]],
+  ["Volumen je Kursniveau", "Rechts im Chart zeigt das Volumenprofil, auf welchen Kursniveaus im sichtbaren Zeitraum am meisten gehandelt wurde – breite Balken sind oft Unterstützung oder Widerstand. Grün: Volumen an steigenden Tagen, rot: an fallenden. Orange umrandet: das meistgehandelte Niveau; kräftiger: die Zone mit 70 % des Volumens. Abschaltbar über den Chip „Volumenprofil“."]]],
   ["2026.11.82", "Charts direkt öffnen", [
   ["Aktien-Wähler im Chart", "Unten links im Chart-Vollbild: Kürzel antippen öffnet Suche und Listen (Meine, Depot, Treffer, Zuletzt) – Aktie antippen, Chart wechselt sofort. ‹ › blättert durch die Liste (auf der Tastatur ← →)."],
   ["Chart-Knopf oben", "Das Chart-Symbol oben neben dem Briefing öffnet das Vollbild direkt – ohne Umweg über den Scanner."]]],
@@ -8645,15 +8647,18 @@ function ownWaveSave(t, L, H, lp, hp) { const m = { ...(state.myWave || {}) }; i
 // Griffe zum Ziehen (Messen: Start/Ende, eigene Welle: Tief/Hoch) – unten im Chart, damit man sie mit dem Finger trifft
 // Volumenprofil (Wunsch 11/2026, wie „VPVR“ bei TradingView): Volumen je Kursniveau über den sichtbaren Zeitraum, rechts am Rand.
 // Breite Balken = viel gehandelt = oft Unterstützung/Widerstand. Hervorgehoben: meistgehandeltes Niveau (POC) und die 70 % Wertzone.
-function profilePrimitive(barAt, count, volAt, on) {
-  let series = null, chart = null, req = null;
+function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
+  let series = null, chart = null, req = null, memo = null;
   const r = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { if (!series || !chart || !on()) return;
-    const vr = chart.timeScale().getVisibleLogicalRange(); if (!vr) return;
-    const i1 = Math.max(0, Math.floor(vr.from)), i2 = Math.min(count() - 1, Math.ceil(vr.to)); if (i2 - i1 < 5) return;
-    const pTop = series.coordinateToPrice(0), pBot = series.coordinateToPrice(m.height); if (pTop == null || pBot == null || !(pTop > pBot)) return;
-    const N = Math.max(24, Math.min(90, Math.round(m.height / 7))), step = (pTop - pBot) / N, bins = new Float64Array(N), ups = new Float64Array(N);
+    // fest (Wunsch 11/2026): Zeitraum ab dem Tief der Fibonacci-Welle (sonst 1 Jahr), Preisstufen aus den Kursen – unabhängig vom Bildausschnitt
+    const n = count(); if (n < 10) return; const a0 = anchor(), i1 = Math.max(0, a0 == null ? n - 252 : a0), i2 = n - 1, lastB = barAt(i2);
+    const key = `${i1}|${n}|${lastB && lastB.close}|${lastB && lastB.high}|${lastB && lastB.low}`;
+    if (!memo || memo.key !== key) { let pLo = Infinity, pHi = -Infinity; for (let i = i1; i <= i2; i++) { const b = barAt(i); if (b) { pLo = Math.min(pLo, b.low); pHi = Math.max(pHi, b.high); } }
+      memo = { key, pLo, pHi, data: null }; }
+    const pBot = memo.pLo, pTop = memo.pHi; if (!(pTop > pBot)) return;
+    const N = 64, step = (pTop - pBot) / N, bins = new Float64Array(N), ups = new Float64Array(N);
     for (let i = i1; i <= i2; i++) { const b = barAt(i), v = volAt(i); if (!b || !(v > 0)) continue;
-      const lo = Math.max(b.low, pBot), hi = Math.min(b.high, pTop); if (hi < lo) continue;
+      const lo = b.low, hi = b.high;
       const a0 = Math.floor((lo - pBot) / step), a1 = Math.min(N - 1, Math.floor((hi - pBot) / step)), share = v / (a1 - a0 + 1);
       const up = b.close >= b.open; for (let k = Math.max(0, a0); k <= a1; k++) { bins[k] += share; if (up) ups[k] += share; } }
     let max = 0, poc = 0, tot = 0; for (let k = 0; k < N; k++) { tot += bins[k]; if (bins[k] > max) { max = bins[k]; poc = k; } } if (!max) return;
@@ -8668,10 +8673,10 @@ function profilePrimitive(barAt, count, volAt, on) {
       if (k === poc) { x.strokeStyle = "rgba(255,159,10,.95)"; x.lineWidth = 1.2; x.strokeRect(xr - w - .5, yy - .5, w + 1, hh + 1); } }
     const yp = series.priceToCoordinate(pBot + (poc + .5) * step);
     if (yp != null) { x.strokeStyle = "rgba(255,159,10,.75)"; x.lineWidth = 1; x.setLineDash([2, 3]); x.beginPath(); x.moveTo(m.width - W - 8, Math.round(yp) + .5); x.lineTo(m.width, Math.round(yp) + .5); x.stroke(); x.setLineDash([]);
-      x.font = "600 10.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"; x.fillStyle = "rgb(255,159,10)"; x.textAlign = "right"; x.textBaseline = "bottom"; x.textBaseline = "middle"; const tx = `meistgehandelt ${fmt(pBot + (poc + .5) * step)}`, tw = x.measureText(tx).width, lx = m.width - W - 12;
+      x.font = "600 10.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"; x.fillStyle = "rgb(255,159,10)"; x.textAlign = "right"; x.textBaseline = "bottom"; x.textBaseline = "middle"; const tx = `meistgehandelt seit ${dateAt(i1)}: ${fmt(pBot + (poc + .5) * step)}`, tw = x.measureText(tx).width, lx = m.width - W - 12;
       x.fillStyle = light ? "rgba(255,255,255,.9)" : "rgba(16,18,22,.85)"; x.fillRect(lx - tw - 6, Math.round(yp) - 8, tw + 10, 16); x.fillStyle = "rgb(255,159,10)"; x.fillText(tx, lx, Math.round(yp)); } }) };
   const views = [{ zOrder: () => "bottom", renderer: () => r }];
-  return { attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; chart.timeScale().subscribeVisibleLogicalRangeChange(() => req && req()); },
+  return { attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; },
     detached() { series = chart = null; }, update() { req && req(); }, updateAllViews() {}, paneViews: () => views };
 }
 function gripPrimitive(get) {
@@ -8745,7 +8750,8 @@ function buildMain(el, c, r, opts) {
   const h = { el, chart, candles, M, r, c };
   // Kerzen-Info (oben links) und Messwerkzeug
   const cnt = () => candles.data().length, barAt = i => candles.data()[i], mp = measurePrimitive(barAt, cnt); candles.attachPrimitive(mp); h.mp = mp;
-  const vpp = profilePrimitive(barAt, cnt, i => i < T.length ? c.v[i] : (LIVE.map[r.ticker] && LIVE.map[r.ticker].v) || 0, () => !!clGet("vp")); candles.attachPrimitive(vpp);
+  const vpp = profilePrimitive(barAt, cnt, i => i < T.length ? c.v[i] : (LIVE.map[r.ticker] && LIVE.map[r.ticker].v) || 0, () => !!clGet("vp"),
+    () => h.M && h.M.cls ? h.M.cls.iL : null, i => dateDE(T[Math.min(i, T.length - 1)])); candles.attachPrimitive(vpp);
   if (getComputedStyle(el).position === "static") el.style.position = "relative";
   const lg = document.createElement("div"); lg.className = "cl-ohlc"; el.appendChild(lg);
   const idxOf = tm => { const k = tkey(tm), d = candles.data(); for (let i = d.length - 1; i >= 0; i--) if (tkey(d[i].time) === k) return i; return -1; };
