@@ -599,6 +599,7 @@
   .tw-save { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--line); } .tw-save .btn { padding: 13px 22px; font-size: 16px; } .tw-save span { font-size: 13px; color: var(--muted); flex: 1; min-width: 200px; }
   .tw-adj, .tw-acct { margin-top: 12px; } .tw-adj summary, .tw-acct summary { cursor: pointer; font-size: 14px; color: var(--accent); font-weight: 600; }
   .tw-stop { font-size: 17px; font-weight: 700; margin-top: 10px; }
+  .tw-block { margin: 10px 0 0; padding: 10px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.45; color: var(--text); background: color-mix(in srgb, var(--red) 10%, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--red) 35%, transparent); }
   @media (max-width: 640px) { .tw-card { padding: 16px !important; } .tw-glance { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tw-k b { font-size: 18px; } .tw-os { grid-template-columns: 1fr; } .tw-s { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; } .tw-n { width: 28px; height: 28px; font-size: 13px; } .tw-s::before { left: 13px; top: 30px; } .tw-big b { font-size: 26px; } }
   @media (min-width: 700px) { .tp2-cfg { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .tp2-cfg label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
@@ -6874,10 +6875,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.97";
-const APP_NEWS = [["2026.11.97", "Neues Intro", [
+const APP_VER = "2026.11.99";
+const APP_NEWS = [["2026.11.99", "Neues Intro", [
   ["Der Moment", "Neues Intro in 1,9 Sekunden: Eine ruhige Kurslinie fällt und wendet, ein Fadenkreuz rastet am Tief ein, daraus wächst die blaue Kerze – der Stamm des K. Dann KAIRO und der Claim „Patience, then precision.“"],
   ["Nur beim ersten Mal", "Das volle Intro läuft beim ersten Öffnen und nach einem Update. Sonst erscheint nur kurz das Logo – ohne Wartezeit. Antippen überspringt; mit „Bewegung reduzieren“ ohne Animation."]]],
+  ["2026.11.98", "Trade-Plan schlanker", [
+  ["Vier Schritte", "Der Trade-Plan beginnt jetzt direkt mit „Aktie oder Hebel?“ – danach Kaufen, Absichern, Verkaufen. Die Prüfliste ist weg; nur harte Stopper (z. B. kein freies Kapital) erscheinen noch als eine Zeile."]]],
   ["2026.11.96", "Chart aufgeräumt, Markt neu", [
   ["Chart-Werkzeuge", "Statt vieler Knöpfe: ein Menü „Ebenen“ mit Schaltern (Fibonacci, Linien, Durchschnitte, Volumen, Trade-Plan), daneben Messen und Welle als Symbole, rechts Zeitraum, Vollbild und Kairo-Leiste."],
   ["Alles groß", "Chart, RSI, MACD und Momentum Bias Index lassen sich einzeln im Vollbild öffnen (⤢) – Esc oder „Schließen“ kehrt zurück."],
@@ -8018,7 +8021,6 @@ function tpInner(r, S) {
   const tt = (state.tpT || {})[r.t] || {}, own = +tt.us > 0, stopE = own ? +tt.us : m.stop * m.fx;
   if (lv.L === 1) stIsinLoad(r.t, r.n);
   const isn = stIsin[r.t];
-  const fitC = { green: "ok", yellow: "warn", red: "bad" }[m.fit.tone] || "neutral";
   // Auf einen Blick: das „Order-Ticket“
   const tk = (l, v, sub, cls = "") => `<div class="tw-k"><span>${l}</span><b class="${cls}">${v}</b>${sub ? `<em>${sub}</em>` : ""}</div>`;
   const glance = `<div class="tw-glance">
@@ -8029,8 +8031,6 @@ function tpInner(r, S) {
       ${tk("Risiko bis Stop", eur2(lv.rEff), `${fmt(cfg.depot ? 100 * lv.rEff / cfg.depot : m.riskPct, 1)} % vom Trading-Kapital`, "down")}
       ${tk("Verkauf", m.ema ? `ab Tag ${H4X.from}` : dts(m.exit), m.ema ? `unter EMA 20 · spätestens ${m.exit.toLocaleDateString("de-DE", { day: "numeric", month: "short" })}` : "")}</div>`;
   const step = (n, t, body, st = "") => `<li class="tw-s ${st}"><div class="tw-n">${st === "done" ? "✓" : n}</div><div class="tw-b"><h4>${t}</h4>${body}</div></li>`;
-  // 1 · Prüfen
-  const s1 = `<div class="tw-fit ${fitC}"><b>${esc(m.fit.t)}</b><span>${esc(m.fit.s)}</span></div>${m.mk ? `<div class="tw-mk">Marktampel: <b>${esc(m.mk.t.split(" · ")[0])}</b> · ${esc(m.mk.s)}</div>` : ""}${tpCheckHtml(m, lv)}`;
   // 2 · Aktie oder Hebel
   const opt = (k, v, t, sub, rows) => { const on = mode === k, rec = v && v.L === sug.L;
     return `<button class="tw-o${on ? " on" : ""}" data-tpmode="${k}" data-t="${esc(r.t)}"${v ? "" : " disabled"} aria-pressed="${on}"><span class="tw-oh"><b>${t}</b>${rec ? `<em>Kairo-Vorschlag</em>` : ""}</span><small>${sub}</small>${v ? `<span class="tw-or">${rows}</span>` : `<span class="tw-or muted">nicht möglich</span>`}</button>`; };
@@ -8059,7 +8059,9 @@ function tpInner(r, S) {
       <li><b>Kairo meldet sich</b> – ${r.ext ? "mit Live-Kursen unter Deine Trades" : "tagsüber alle 30 Minuten geprüft (Stop, EMA 20, Verkaufstag)"}.</li></ul>`;
   const save = `<div class="tw-save"><button class="btn${m.fit.ok ? "" : " ghost"}" data-tpopen="${esc(r.t)}">${m.fit.ok ? (paperMode() ? "Übungs-Trade speichern" : "Trade speichern") : "Trotzdem speichern"}</button>
       <span>${paperMode() ? "Übungsmodus – ohne echtes Geld. " : ""}Speichert genau diesen Plan. Kairo führt keine Orders aus.</span></div>`;
-  return `${glance}<ol class="tw">${step(1, "Passt der Trade?", s1, fitC === "ok" ? "done" : fitC === "bad" ? "bad" : "")}${step(2, "Aktie oder Hebel?", s2)}${step(3, lv.L === 1 ? "Kaufen" : "Turbo auswählen und kaufen", s3)}${step(4, "Sofort absichern", s4)}${step(5, "Wann verkaufen?", s5)}</ol>${save}${acct}`;
+  // Nur harte Stopper (z. B. kein freies Kapital, Klumpenschutz, Signal verfallen) als eine Zeile – die Prüfliste entfällt (Wunsch 11/2026)
+  const block = m.problems.filter(([t]) => t === "red").map(([, x]) => `<div class="tw-block">${esc(x)}</div>`).join("");
+  return `${glance}${block}<ol class="tw">${step(1, "Aktie oder Hebel?", s2)}${step(2, lv.L === 1 ? "Kaufen" : "Turbo auswählen und kaufen", s3)}${step(3, "Sofort absichern", s4)}${step(4, "Wann verkaufen?", s5)}</ol>${save}${acct}`;
 }
 // Plan-Check: eine kompakte Prüfliste statt mehrerer langer Hinweis-Kästen – ✓ passt, ⚠ beachten, ✗ so nicht kaufen
 function tpCheckHtml(m, lv) {
@@ -8206,7 +8208,7 @@ function tpTurboHtml(r, m, lv) {
     ${near ? `<div class="tip tone-yellow" style="margin-top:8px">K.-o. liegt weniger als 1 ATR unter dem Stop – eine Kurslücke kann den Turbo ausknocken, bevor der Stop greift. Besser einen Turbo mit K.-o. unter ${X(stop - TP.kob * m.atr)} ${cur}.</div>` : ""}
     <div class="note" style="margin:6px 0 0">Stop-Order (${fp(sl)} €)${m.tp ? ` und Limit-Verkauf (${fp(tv(m.tp))} €)` : ""} bei Scalable direkt auf den Turbo setzen. Der echte Turbo-Kurs liegt meist ein paar Cent über dem inneren Wert – die Order löst also knapp unter deinem Stop aus. Der K.-o. von Open-End-Turbos steigt täglich leicht (Finanzierung)${kc !== "EUR" ? ", der Wechselkurs schwankt" : ""}: bei längeren Trades ab und zu neu eintragen.</div>`;
 }
-function tpHtml(r, S) { return `<div class="hcard tw-card"><div class="tw-title"><span>Dein Trade-Plan</span><small>Schritt für Schritt – vom Prüfen bis zum Verkauf</small></div><div id="tpBox">${tpInner(r, S)}</div></div>`; }
+function tpHtml(r, S) { return `<div class="hcard tw-card"><div class="tw-title"><span>Dein Trade-Plan</span><small>In vier Schritten vom Kauf bis zum Verkauf</small></div><div id="tpBox">${tpInner(r, S)}</div></div>`; }
 // Gespeicherte Trades (geplant → eröffnet → geschlossen), eingefroren beim Eröffnen
 const PLAN_KEY = "kairo-plans";
 // Übungsmodus: Trades mit echten Signalen und Regeln, aber ohne echtes Geld – Standard, solange Gebühren den Vorteil fressen (backend/capstudy.py)
