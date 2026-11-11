@@ -173,6 +173,21 @@
   .ein-steps .es.ok { border-color: rgba(48,209,88,.55); } .ein-steps .es.ok b { color: #30d158; }
   .ein-steps .es.wait { border-color: rgba(244,183,64,.55); } .ein-steps .es.wait b { color: #f4b740; }
   .ein-steps .es.no b { color: var(--muted); }
+  .ein-hero-l { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 12px; } .ein-rc { min-width: 0; overflow: hidden; grid-template-columns: minmax(0, 1fr); } .ein-rc-h .st { display: inline-block; width: auto !important; min-width: 0 !important; flex: none !important; max-width: none !important; white-space: nowrap; } .ein-rc-h > :last-child:not(span) { flex: none; width: auto !important; max-width: 40%; } .ein-rc-g > div { min-width: 0; }
+  .ein-rc { display: grid; gap: 14px; text-align: left; padding: 18px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; transition: border-color .15s, transform .15s; }
+  .ein-rc:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); } .ein-rc:active { transform: scale(.99); }
+  .ein-rc-h { display: flex; align-items: center; gap: 12px; } .ein-rc-h > i { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 750; background: var(--up); color: #fff; }
+  .ein-rc-h > span { flex: 1; min-width: 0; } .ein-rc-h b { display: block; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ein-rc-h small { display: block; color: var(--muted); font-size: 13px; }
+  .ein-rc-g { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); padding-top: 12px; }
+  .ein-rc-g span { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); } .ein-rc-g b { display: block; font-size: 16.5px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .ein-rc-go { font-size: 14px; font-weight: 650; color: var(--accent); }
+  /* Kopf des Einstiegs ruhiger (11/2026): Fortschritt als Leiste statt Kästen */
+  .ein-steps { gap: 10px; margin-top: 14px; } .ein-steps .es { padding: 10px 0 0; border: 0 !important; border-radius: 0; background: none; border-top: 3px solid var(--line) !important; }
+  .ein-steps .es.ok { border-top-color: var(--up) !important; } .ein-steps .es.wait { border-top-color: var(--gold) !important; }
+  .ein-steps .es span { font-size: 11.5px; letter-spacing: .03em; } .ein-steps .es b { font-size: 15px; margin-top: 2px; }
+  .ein-next { font-size: 14px; line-height: 1.5; color: var(--muted); margin-top: 10px; }
+  .ein-head { padding: 22px !important; } .ein-head h2 { font-size: 24px; letter-spacing: -.02em; }
+  .ein-verdict { padding: 12px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--c, var(--line)) 40%, transparent); background: color-mix(in srgb, var(--c, #888) 8%, transparent) !important; }
   .ein-next { margin-top: 8px; font-size: 14px; } .ein-data { margin-top: 6px; font-size: 12px; color: var(--muted); }
   .kfoot { margin: 22px 2px 6px; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.5; }
   .ein-head h2 { margin: 0; font-size: 21px; } .ein-verdict { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--cb, rgba(255,255,255,.05)); } .ein-verdict b { display: block; color: var(--c, var(--text)); font-size: 18px; } .ein-verdict span { font-size: 14px; }
@@ -206,7 +221,16 @@
   @keyframes secin { from { opacity: 0; transform: translateY(10px); } }
   .btn, .opt, .kchip, .tab, .g-idea, .bf-r, .hlink { transition: transform .12s ease, background-color .2s, color .2s; }
   .btn:active, .opt:active, .kchip:active, .g-idea:active, .bf-r:active { transform: scale(.97); } .tab:active svg { transform: scale(.88); } .tab svg { transition: transform .15s; }
-  @media (prefers-reduced-motion: reduce) { #main.sec-in > * { animation: none; } .btn:active, .opt:active, .kchip:active, .g-idea:active, .bf-r:active { transform: none; } }
+  /* gleitender Segment-Balken in Akzentfarbe (Wunsch 11/2026) – wie die Markierung der Seitenleiste */
+  .has-ind { position: relative; isolation: isolate; } .has-ind > button { position: relative; z-index: 1; }
+  .has-ind > button.on { background: transparent !important; box-shadow: none !important; color: var(--accent-ink, #fff) !important; opacity: 1; }
+  .has-ind > button.on small { color: inherit !important; opacity: .75; }
+  .seg-ind { position: absolute; z-index: 0; border-radius: 11px; background: var(--accent); pointer-events: none;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 32%, transparent), inset 0 1px 0 rgba(255,255,255,.18);
+    transition: left .34s cubic-bezier(.3, .9, .25, 1), width .34s cubic-bezier(.3, .9, .25, 1), top .34s ease; }
+  /* sanftes Einblenden des Inhalts beim Wechsel eines Unterreiters/einer Ansicht (Kopf und Schalter bleiben ruhig) */
+  #main.sub-in > *:not(.subnav):not(.vseg):not(.mvtog):not(.section-title) { animation: secin .3s cubic-bezier(.2, .8, .2, 1) both; }
+  @media (prefers-reduced-motion: reduce) { #main.sec-in > * { animation: none; } #main.sub-in > * { animation: none !important; } .seg-ind { transition: none; } .btn:active, .opt:active, .kchip:active, .g-idea:active, .bf-r:active { transform: none; } }
   .gl { border: 0; background: none; color: var(--muted); font-size: 12px; padding: 0 2px; margin-left: 2px; cursor: pointer; vertical-align: 1px; line-height: 1; }
   .gl:hover { color: var(--accent); }
   .glpop { position: fixed; z-index: 90; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; box-shadow: 0 12px 40px rgba(0,0,0,.45); font-size: 14px; line-height: 1.45; text-transform: none; letter-spacing: 0; font-weight: 400; animation: secin .18s ease both; }
@@ -541,6 +565,41 @@
   .tpform { margin: 12px 0 10px; }
   /* Trade-Plan (Einstieg) */
   .tp2-cfg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  /* Trade-Plan als Anleitung (11/2026) */
+  .tw-card { padding: 22px !important; } .tw-title span { display: block; font-size: 22px; font-weight: 750; letter-spacing: -.02em; } .tw-title small { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
+  .tw-glance { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 16px 0 6px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface-2); }
+  .tw-k { padding: 12px 14px; min-width: 0; border-left: 1px solid var(--line); border-top: 1px solid var(--line); margin: 0 0 -1px -1px; }
+  .tw-k span { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  .tw-k b { display: block; font-size: 20px; font-weight: 750; letter-spacing: -.01em; margin-top: 3px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tw-k em { display: block; font-style: normal; font-size: 12.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tw { list-style: none; margin: 14px 0 0; padding: 0; }
+  .tw-s { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding-bottom: 22px; }
+  .tw-s::before { content: ""; position: absolute; left: 16px; top: 36px; bottom: 2px; width: 2px; background: var(--line); }
+  .tw-s:last-child::before { display: none; } .tw-s:last-child { padding-bottom: 6px; }
+  .tw-n { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 750; font-size: 15px; background: var(--accent); color: var(--accent-ink, #fff); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent); }
+  .tw-s.done .tw-n { background: var(--up); box-shadow: 0 0 0 4px color-mix(in srgb, var(--up) 16%, transparent); } .tw-s.bad .tw-n { background: var(--red); box-shadow: 0 0 0 4px color-mix(in srgb, var(--red) 16%, transparent); }
+  .tw-b { min-width: 0; padding-top: 4px; } .tw-b h4 { margin: 0 0 10px; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+  .tw-fit { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); } .tw-fit b { display: block; font-size: 15.5px; } .tw-fit span { display: block; font-size: 13.5px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+  .tw-fit.ok { border-color: color-mix(in srgb, var(--up) 45%, transparent); } .tw-fit.ok b { color: var(--up); } .tw-fit.warn { border-color: color-mix(in srgb, var(--gold) 45%, transparent); } .tw-fit.warn b { color: var(--gold); }
+  .tw-fit.bad { border-color: color-mix(in srgb, var(--red) 45%, transparent); } .tw-fit.bad b { color: var(--red); }
+  .tw-mk { font-size: 13px; color: var(--muted); margin: 8px 2px 0; } .tw-mk b { color: var(--text); font-weight: 600; }
+  .tw .pcheck { margin-top: 10px; }
+  .tw-os { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .tw-o { display: grid; gap: 4px; align-content: start; text-align: left; padding: 14px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+  .tw-o:disabled { opacity: .45; cursor: not-allowed; } .tw-o.on { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+  .tw-oh { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .tw-oh b { font-size: 16px; } .tw-oh em { font-style: normal; font-size: 10.5px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); padding: 3px 7px; border-radius: 6px; white-space: nowrap; }
+  .tw-o small { color: var(--muted); font-size: 12.5px; } .tw-or { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 13.5px; font-weight: 600; } .tw-or i { font-style: normal; }
+  .tw-why { font-size: 13.5px; line-height: 1.5; color: var(--muted); margin: 10px 0 0; } .tw-why b { color: var(--text); font-weight: 600; } .tw-why b.gold { color: var(--gold); }
+  .tw-order { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; } .tw-oh2 { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 10px 14px; background: var(--surface-2); }
+  .tw-ot { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 14.5px; } .tw-ot span { color: var(--muted); } .tw-ot b { font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
+  .tw-ot.tot b { font-size: 17px; } .tw-copy { border: 0; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font: inherit; font-weight: 700; padding: 2px 8px; border-radius: 7px; cursor: pointer; }
+  .tw-big { padding: 14px 16px; border-radius: 14px; background: color-mix(in srgb, var(--red) 9%, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--red) 30%, transparent); }
+  .tw-big span { display: block; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); } .tw-big b { display: block; font-size: 30px; font-weight: 800; letter-spacing: -.02em; margin: 2px 0; font-variant-numeric: tabular-nums; } .tw-big em { font-style: normal; font-size: 13px; color: var(--muted); }
+  .tw-ex { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; } .tw-ex li { position: relative; padding-left: 18px; font-size: 14.5px; line-height: 1.45; color: var(--muted); } .tw-ex li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); } .tw-ex b { color: var(--text); font-weight: 650; }
+  .tw-save { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--line); } .tw-save .btn { padding: 13px 22px; font-size: 16px; } .tw-save span { font-size: 13px; color: var(--muted); flex: 1; min-width: 200px; }
+  .tw-adj, .tw-acct { margin-top: 12px; } .tw-adj summary, .tw-acct summary { cursor: pointer; font-size: 14px; color: var(--accent); font-weight: 600; }
+  .tw-stop { font-size: 17px; font-weight: 700; margin-top: 10px; }
+  @media (max-width: 640px) { .tw-card { padding: 16px !important; } .tw-glance { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tw-k b { font-size: 18px; } .tw-os { grid-template-columns: 1fr; } .tw-s { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; } .tw-n { width: 28px; height: 28px; font-size: 13px; } .tw-s::before { left: 13px; top: 30px; } .tw-big b { font-size: 26px; } }
   @media (min-width: 700px) { .tp2-cfg { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .tp2-cfg label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
   .tp2-cfg input { width: 100%; font: inherit; font-size: 16px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
@@ -697,6 +756,8 @@
   .scroll-hint { font-size: 12px; color: var(--muted); text-align: right; margin: -4px 4px 6px; }
   .st-legend-d { margin: 2px 2px 8px; } .st-legend-d > summary { font-size: 12.5px; color: var(--accent); cursor: pointer; } .st-legend-d .st-legend { flex-direction: column; margin-top: 6px; }
   .st-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin: 4px 2px 8px; } .st-legend b { font-weight: 650; }
+  .nm-l { display: inline-flex; align-items: center; gap: 10px; max-width: 260px; min-width: 0; } .nm-l > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nm-l .cf-av, .mrow > .cf-av { width: 26px; height: 26px; font-size: 11.5px; flex: none; } .mrow > .cf-av { margin-right: 2px; }
   .mlist .msort { display: flex; justify-content: flex-end; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 0 2px 8px; }
   .mrow { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-top: 1px solid var(--line); } .mrow > a { flex: 1; min-width: 0; color: var(--text); text-decoration: none; }
   .mrow > a b { display: block; font-size: 15.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mrow > a span { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -782,6 +843,32 @@
   .mb-bx i { grid-column: 1; grid-row: 2; height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; } .mb-bx u { display: block; height: 100%; border-radius: 3px; background: currentColor; text-decoration: none; }
   .mb-bx u.up { color: var(--up); } .mb-bx u.down { color: var(--red); } .mb-bx u.gold { color: var(--gold); }
   @media (max-width: 640px) { .mb-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  /* Markt-Überblick neu (11/2026) */
+  .mkb { padding: 20px 22px !important; }
+  .mk-k { font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .mk-h { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 24px; align-items: start; }
+  .mk-reg { display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 750; letter-spacing: -.02em; margin: 4px 0 6px; }
+  .mk-reg i { width: 11px; height: 11px; border-radius: 50%; background: #ffd60a; box-shadow: 0 0 0 4px color-mix(in srgb, #ffd60a 18%, transparent); }
+  .mk-reg.t-up i { background: var(--up); box-shadow: 0 0 0 4px color-mix(in srgb, var(--up) 18%, transparent); } .mk-reg.t-down i { background: var(--red); box-shadow: 0 0 0 4px color-mix(in srgb, var(--red) 18%, transparent); }
+  .mk-fz { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--muted); } .mk-fz b, .mk-fz span { font-weight: 650; }
+  .mk-f b { display: block; font-size: 17px; font-weight: 700; margin: 6px 0 10px; } .mk-f b small { font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .mk-g { position: relative; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #30d158, #ffd60a 50%, #ff9f0a 70%, #ff453a); opacity: .9; }
+  .mk-g i { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--text); border: 3px solid var(--surface); transform: translate(-50%, -50%); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+  .mk-gl { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+  .mk-is { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 18px 0 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .mk-i { padding: 14px 14px 14px 0; min-width: 0; } .mk-i + .mk-i { padding-left: 14px; border-left: 1px solid var(--line); }
+  .mk-i span { display: block; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mk-i b { display: block; font-size: 19px; font-weight: 700; letter-spacing: -.01em; margin: 3px 0 4px; font-variant-numeric: tabular-nums; }
+  .mk-ch { display: inline-block; font-style: normal; font-size: 12.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+  .mk-ch.up { color: var(--up); background: color-mix(in srgb, var(--up) 14%, transparent); } .mk-ch.down { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); } .mk-ch.gold { color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, transparent); }
+  .mk-i small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 5px; font-variant-numeric: tabular-nums; }
+  .mk-br { margin-top: 16px; } .mk-bs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 10px; }
+  .mk-b > div { display: flex; justify-content: space-between; align-items: baseline; font-size: 13.5px; } .mk-b span { color: var(--muted); } .mk-b b { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .mk-b i { position: relative; display: block; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--text) 10%, transparent); margin-top: 7px; overflow: hidden; }
+  .mk-b u { display: block; height: 100%; border-radius: 2px; background: color-mix(in srgb, var(--text) 55%, transparent); } .mk-b u.up { background: var(--up); } .mk-b u.down { background: var(--red); }
+  .mk-b s { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: color-mix(in srgb, var(--text) 30%, transparent); }
+  @media (max-width: 760px) { .mk-h { grid-template-columns: 1fr; gap: 14px; } .mk-is { grid-template-columns: repeat(3, minmax(0, 1fr)); } .mk-i:nth-child(4) { padding-left: 0; border-left: 0; } .mk-i:nth-child(n+4) { border-top: 1px solid var(--line); }
+    .mk-bs { grid-template-columns: 1fr; gap: 12px; } .mkb { padding: 16px !important; } .mk-reg { font-size: 23px; } }
   .mo2 { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; } .mo2 > div > .hcard { margin-top: 0; height: 100%; box-sizing: border-box; }
   @media (min-width: 900px) { .mo2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; } }
   .hm-card { margin-top: 14px; }
@@ -834,6 +921,13 @@
   .ir-v { text-align: right; } .ir-v b { display: block; font-size: 14px; font-variant-numeric: tabular-nums; } .ir-dots { color: var(--up); font-size: 11px; letter-spacing: 1px; } .ir-dots i { font-style: normal; color: var(--line); }
   .ir-top { color: var(--up); font-weight: 650; } .ins-more { margin-top: 12px; } .ins-more > summary { cursor: pointer; font-weight: 650; padding: 2px 0; } .ins-src summary { cursor: pointer; }
   .mo-today { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; width: 100%; margin: 4px 0 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .mw { padding: 16px 20px !important; } .mw-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; } .mw-h .hlink { font-size: 14px; }
+  .mw-l { display: grid; }
+  .mw-r { display: grid; grid-template-columns: 70px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .mw-r time { font-size: 13.5px; font-weight: 650; } .mw-r time small { display: block; font-weight: 500; font-size: 12.5px; color: var(--muted); }
+  .mw-r span { font-size: 14.5px; font-weight: 550; line-height: 1.35; min-width: 0; } .mw-r span small { display: block; font-size: 12.5px; font-weight: 400; color: var(--muted); margin-top: 2px; }
+  .mw-r em { font-style: normal; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--gold); margin-left: 4px; vertical-align: 1px; }
+  .mw-e { color: var(--muted); font-size: 14px; padding: 6px 0 2px; }
   .mo-today b { font-size: 13px; color: var(--gold); } .mo-today span { flex: 1; min-width: 0; font-size: 13.5px; } .mo-today > span { display: grid; gap: 4px; } .mo-d { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline; } .mo-d b { color: var(--muted) !important; font-size: 12px !important; min-width: 52px; } .mo-d em { font-style: normal; font-size: 13px; padding: 2px 8px; border-radius: 8px; background: var(--surface-2); } .mo-today i { font-style: normal; font-size: 13px; color: var(--accent); }
   .mkt-ov.mo { display: flex; flex-direction: column; } .mo > div > .hcard:first-child { margin-top: 0; } .mo > div + div { margin-top: 14px; }
   @media (min-width: 900px) { .mkt-ov.mo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a b" "c c"; gap: 14px; }
@@ -1254,6 +1348,39 @@
   .chfs-chart { min-width: 0; min-height: 0; position: relative; } .cf-canvas { position: absolute; inset: 0; }
   .cf-pickbar { position: absolute; left: 12px; bottom: 38px; z-index: 5; }
   /* Chart-Reiter */
+  .ct-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 0 12px; }
+  .ct-tools { position: relative; } .ct-tl { display: flex; gap: 8px; align-items: center; }
+  .ct-seg { display: flex; gap: 2px; padding: 3px; border-radius: 13px; background: rgba(118,118,128,.18); } html.lt .ct-seg, html.lt .ct-rg { background: rgba(118,118,128,.12); }
+  .ct-b { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; opacity: .8; transition: background .15s, opacity .15s; }
+  .ct-b svg { width: 18px; height: 18px; flex: none; } .ct-b:hover { opacity: 1; background: rgba(127,127,127,.14); }
+  .ct-b.on { opacity: 1; background: var(--accent); color: var(--accent-ink, #fff); } .ct-b small { font-size: 12px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px; display: grid; place-items: center; background: rgba(127,127,127,.22); padding: 0 6px; }
+  .ct-b.on small { background: rgba(255,255,255,.25); }
+  .ct-right { display: flex; align-items: center; gap: 8px; } .ct-right > .ct-b { background: rgba(118,118,128,.18); height: 40px; width: 40px; justify-content: center; padding: 0; border-radius: 12px; } .ct-right > .ct-b.on { background: var(--accent); }
+  .ct-rg { display: flex; gap: 2px; padding: 3px; border-radius: 13px; background: rgba(118,118,128,.18); }
+  .ct-rg button { border: 0; background: none; color: var(--text); opacity: .75; font: inherit; font-size: 13.5px; font-weight: 600; padding: 7px 11px; border-radius: 10px; cursor: pointer; }
+  .ct-rg button.on { opacity: 1; background: var(--seg-thumb, #48484d); box-shadow: 0 2px 6px rgba(0,0,0,.15); } html.lt .ct-rg button.on { background: #fff; }
+  .ct-pop { position: absolute; left: 0; top: calc(100% + 8px); z-index: 20; width: 300px; max-height: min(70vh, 560px); overflow-y: auto; padding: 8px; border-radius: 16px; background: var(--surface);
+    border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.2); animation: secin .2s cubic-bezier(.2, .8, .2, 1) both; }
+  .ct-g + .ct-g { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 6px; } .ct-gh { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); padding: 6px 10px 4px; }
+  .ct-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; font-size: 14.5px; text-align: left; cursor: pointer; }
+  .ct-row:hover { background: rgba(127,127,127,.12); } .ct-row i { width: 14px; height: 3px; border-radius: 2px; flex: none; } .ct-row span { flex: 1; }
+  .ct-sw { position: relative; width: 38px; height: 23px; border-radius: 12px; background: rgba(120,120,128,.32); flex: none; transition: background .2s; text-decoration: none; }
+  .ct-sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 19px; height: 19px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.25); transition: transform .2s cubic-bezier(.3, .9, .3, 1); }
+  .ct-sw.on { background: #30d158; } .ct-sw.on::after { transform: translateX(15px); }
+  .ct-ph { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .ct-x { width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
+  .ct-x svg { width: 16px; height: 16px; } .ct-x:hover { background: rgba(127,127,127,.14); color: var(--text); }
+  .ctab-chart > .ct-x { position: absolute; }
+  .ct-close { display: none !important; }
+  /* Vollbild/Fokus */
+  .ctab.fs { position: fixed; inset: 0; z-index: 75; background: var(--bg, #000); padding: calc(env(safe-area-inset-top) + 12px) calc(env(safe-area-inset-right) + 16px) calc(env(safe-area-inset-bottom) + 12px) calc(env(safe-area-inset-left) + 16px);
+    display: flex; flex-direction: column; animation: secin .22s ease both; }
+  .ctab.fs .ct-close { display: inline-flex !important; margin-left: auto; background: rgba(118,118,128,.18); }
+  .ctab.fs .ctab-grid { flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr); } .ctab.fs .ctab-side { display: none; } .ctab.fs .ct-sideb { display: none; }
+  .ctab.fs .ctab-l { display: flex; flex-direction: column; height: 100%; }
+  .ctab.fs .ctab-l > * { display: none; } .ctab.fs-main .ctab-chart, .ctab.fs-rsi [data-pane="rsi"], .ctab.fs-macd [data-pane="macd"], .ctab.fs-mbi [data-pane="mbi"] { display: flex; flex-direction: column; flex: 1; min-height: 0; height: auto; margin: 0; }
+  .ctab.fs-main .ctab-chart { display: block; }
+  .ctab.fs [data-pane] .ctab-c { flex: 1; height: auto; min-height: 0; }
+  @media (max-width: 700px) { .ct-lbl, .ct-lay span { display: none; } .ct-bar { gap: 8px; } .ct-rg button { padding: 7px 8px; font-size: 13px; } .ct-pop { width: min(300px, calc(100vw - 32px)); } .ct-right > .ct-b { width: 36px; height: 36px; } }
   .ctab-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 8px; } .ctab-top .cf-sidebtn { margin-left: auto; }
   .ctab .chfs-bar { padding: 0 0 10px; border-bottom: 0; }
   .ctab-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; } .ctab.side-off .ctab-grid { grid-template-columns: minmax(0, 1fr); } .ctab.side-off .ctab-side { display: none; }
@@ -1267,7 +1394,7 @@
   @media (min-width: 701px) { .ph-only { display: none !important; } }
   body[data-sec="chart"] #greet { display: none; }   /* Chart-Reiter: Platz für den Chart, Name steht im Kopf */
   .ctab-top .chfs-tt { flex: 1; min-width: 0; } .ctab-top .chfs-tt b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  @media (max-width: 900px) { .ctab-top .cf-sidebtn { display: none; } .ctab.side-off .ctab-side { display: block; } }
+  @media (max-width: 900px) { .ctab-top .cf-sidebtn, .ct-sideb { display: none !important; } .ctab.side-off .ctab-side { display: block; } }
   /* Glas (Wunsch 11/2026, „realistischer“): Unschärfe + Sättigung, lichtbrechende Kante mit Verlauf, Glanzlicht, Tiefenschatten */
   .cf-pill, .cf-pick { --gl-tint: rgba(28,30,36,.34); --gl-edge: linear-gradient(155deg, rgba(255,255,255,.60), rgba(255,255,255,.10) 32%, rgba(255,255,255,.03) 58%, rgba(255,255,255,.28));
     isolation: isolate; background: linear-gradient(160deg, rgba(255,255,255,.13), rgba(255,255,255,.035) 45%, rgba(255,255,255,.015)), var(--gl-tint); border: 0;
@@ -1746,6 +1873,22 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
 @media (max-width:640px){.kbar{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;margin-left:-20px;margin-right:-20px;padding:2px 20px 6px}.kbar::-webkit-scrollbar{display:none}.kbar .kchip{flex:0 0 auto}}
 
 </style>
+<style id="ds-tones">
+/* Farbwelten – überschreiben nur Variablen und die festen Hintergründe der Basis-Designs */
+html[data-tone="midnight"]{--bg:#060a14;--surface:#0e1424;--surface-2:#151d31;--surface-3:#1f2940;--line:#1c2640;--glass:#0e1424;--glass-line:#1c2640;--text:#f2f5fb;--muted:#8691a8;--faint:#525d76;
+  --accent:#5b9cff;--accent-ink:#fff;--accent-bg:color-mix(in srgb,#5b9cff 18%,transparent);--zone:color-mix(in srgb,#5b9cff 14%,transparent)}
+html[data-tone="graphit"]{--bg:#111112;--surface:#1a1a1c;--surface-2:#232326;--surface-3:#2e2e32;--line:#2b2b2f;--glass:#1a1a1c;--glass-line:#2b2b2f;--text:#f4f4f5;--muted:#929297;--faint:#5c5c61;
+  --accent:#b07cff;--accent-ink:#fff;--accent-bg:color-mix(in srgb,#b07cff 18%,transparent);--zone:color-mix(in srgb,#b07cff 14%,transparent)}
+html[data-tone="wald"]{--bg:#06100b;--surface:#0d1913;--surface-2:#14231b;--surface-3:#1c3026;--line:#1a2c22;--glass:#0d1913;--glass-line:#1a2c22;--text:#eef6f1;--muted:#87a194;--faint:#526b5e;
+  --accent:#2aa8b8;--accent-ink:#fff;--accent-bg:color-mix(in srgb,#2aa8b8 18%,transparent);--zone:color-mix(in srgb,#2aa8b8 14%,transparent)}
+html[data-tone="sand"]{--bg:#f4efe7;--surface:#fffdf9;--surface-2:#eee7dc;--surface-3:#e4dbcd;--line:#e2d9cb;--glass:#fffdf9;--glass-line:#e2d9cb;--text:#1f1b16;--muted:#776d61;--faint:#aea493;
+  --accent:#b25a26;--accent-ink:#fff;--accent-bg:color-mix(in srgb,#b25a26 14%,transparent);--zone:color-mix(in srgb,#b25a26 12%,transparent)}
+html[data-tone] body{background:var(--bg)!important;color:var(--text)}
+html[data-tone] nav.tabbar{background:var(--surface)!important}
+html[data-tone] .score::before{background:var(--surface)!important} html[data-tone] .cm-box{background:var(--surface)}
+html[data-tone] .eh-lights{background:color-mix(in srgb,var(--bg) 70%,#000)}
+@media (max-width:767px){html[data-tone] nav.tabbar{background:color-mix(in srgb,var(--surface) 90%,transparent)!important}}
+</style>
 <link rel="stylesheet" href="splash.css?v=9">
 <style>
   html.locked, html.locked body { overflow: hidden; }
@@ -2028,21 +2171,25 @@ if (state.tab === "settings" || state.tab === "filter") state.tab = "cards";
 state.sec = "today"; state.fsv = null;   // App startet immer auf „Heute“, ohne offene Vollbild-Ansicht
 // Design: "new" (Standard) oder "classic" (ursprüngliches Design) – Umschalten in den Einstellungen
 const isApple = () => state.design === "apple";
-const isLight = () => ["ioslight", "postfach", "light"].includes(state.design) || (state.design === "auto" && matchMedia("(prefers-color-scheme: light)").matches);
+const isLight = () => ["ioslight", "postfach", "light", "tone-sand"].includes(state.design) || (state.design === "auto" && matchMedia("(prefers-color-scheme: light)").matches);
 const LC = () => isLight() ? { t: "#6e6e73", g: "#ececf0", b: "#d1d1d6", k: "#3a3a3c" } : { t: "#9a9a9f", g: "#1d1d1f", b: "#2a2a2d", k: "#e5e5ea" };
 // Designs: Klassisch (Standard) oder eines der wählbaren Designs – jedes ist ein eigenes Stylesheet
 // Nur noch Designs mit Seitenleiste auf iPad/PC (Wunsch 11/2026: „alle Designs, wo die Leiste unten ist, raus“) – frühere Wahl wird übernommen:
 // Hell/Automatisch-hell → Hell, alles andere → Dunkel
-const DESIGNS = [["postfach-classic", "Dunkel"], ["postfach-aktien", "Apple Aktien"], ["postfach", "Hell"]];
+const DESIGNS = [["postfach-classic", "Dunkel"], ["postfach-aktien", "Apple Aktien"], ["postfach", "Hell"],
+  ["tone-midnight", "Mitternacht"], ["tone-graphit", "Graphit"], ["tone-wald", "Wald"], ["tone-sand", "Sand"]];
+// Farbwelten (11/2026): bauen auf Dunkel bzw. Hell auf und tauschen nur Flächen- und Akzentfarben (CSS unten: html[data-tone])
+const DS_BASE = { "tone-midnight": "postfach-classic", "tone-graphit": "postfach-classic", "tone-wald": "postfach-classic", "tone-sand": "postfach" };
 if (!DESIGNS.some(([k]) => k === state.design)) state.design = ["light", "ioslight"].includes(state.design) || (state.design === "auto" && matchMedia("(prefers-color-scheme: light)").matches) ? "postfach" : "postfach-classic";
-const isPostfach = () => String(state.design).startsWith("postfach");
+const isPostfach = () => /^(postfach|tone-)/.test(String(state.design));
 const applyTextSize = () => { document.documentElement.classList.toggle("big", state.textSize === "big"); document.documentElement.classList.toggle("bigger", state.textSize === "bigger"); };
 const applyDesign = () => {
   if (String(state.design || "").startsWith("premium")) state.design = "postfach-classic";   // Premium-Design entfernt (11/2026) → Standard (wird beim nächsten Speichern übernommen)
   applyTextSize();
-  DESIGNS.forEach(([k]) => { const el = document.getElementById("ds-" + k); if (el) el.media = k === state.design ? "all" : "not all"; });
+  DESIGNS.forEach(([k]) => { const el = document.getElementById("ds-" + k); if (el) el.media = k === state.design || k === DS_BASE[state.design] ? "all" : "not all"; });
+  if (String(state.design).startsWith("tone-")) document.documentElement.dataset.tone = state.design.slice(5); else delete document.documentElement.dataset.tone;
   document.documentElement.classList.remove("glass");   /* Glas-Optik entfernt (Wunsch 11/2026) */ document.documentElement.classList.toggle("lt", isLight()); document.documentElement.classList.toggle("k-side", isPostfach());   // Glas-Optik (abschaltbar; Postfach-Designs mit Seitenleiste: Leiste bleibt)
-  const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = isLight() ? "#f2f2f7" : getComputedStyle(document.body).backgroundColor;
+  const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = getComputedStyle(document.body).backgroundColor || (isLight() ? "#f2f2f7" : "#000");
 };
 applyDesign();
 try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => { if (state.design === "auto") { applyDesign(); render(); } }); } catch (e) {}
@@ -2521,7 +2668,7 @@ const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.
 // ---------- Tabelle ----------
 const COLS = [
   { k: "ticker", l: "Ticker", g: r => r.ticker, h: r => `<span class="tk">${favBtn(r.ticker)}<a href="#" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${esc(r.ticker)}</a>${wlTag(r)}</span>` },
-  { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${esc((r.name || r.ticker).slice(0, 28))}</a>` },
+  { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm nm-l" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${cfAv(r.ticker)}<span>${esc(r.name || r.ticker)}</span></a>` },
   { k: "trend", l: "Prognose", g: r => r.trend ? (r.trend.fc ? r.trend.fc.d : r.trend.slope + (r.trend.d5 ?? 0) / 10) : 0, h: r => trendHtml(r) || "–" },
   { k: "status", l: "Kauf-Status", g: r => r.passed ? kSt(r).lv : -1, h: r => r.passed ? kPill(r, false) : "" },   // nur Treffer: wann kaufen (Treffer/Fast-Treffer steht schon in x/11)   // in „Treffer“ ohne doppeltes „Treffer“
   { k: "chk", l: "Rücksetzer-Check", n: 1, g: r => chkP(r) ?? -1, h: r => chkCell(r) },
@@ -3301,22 +3448,23 @@ function mktBarHtml() {
   const m0 = anaData && anaData.market; if (!m0) { loadAnalysis(); return ""; }
   const lvI = (mktLive() || {}).idx || {}, m = { ...m0, ...lvI };            // Index-Kacheln tagsüber alle 30 Min. neu
   const reg = m.regime, f = m.fear, ids = ["^GSPC", "^NDX", "^GDAXI", "^STOXX", "^N225", "^VIX"].filter(k => m[k]);
-  const tiles = ids.map(k => { const x = m[k], vix = k === "^VIX";
-    return `<div class="mb-t"><span>${esc(x.name)}</span><b>${fmt(x.c, vix ? 1 : 0)}</b>${vix ? `<em class="${x.tone === "green" ? "up" : x.tone === "red" ? "down" : "gold"}">${esc(x.label)}</em>`
-      : `<em class="${(x.d1 || 0) >= 0 ? "up" : "down"}">${x.d1 != null ? sgnPct(x.d1, 1) : ""}</em>`}</div>`; }).join("");   // nur Stand + heute – Monatswerte stehen in der Vollansicht/Charts
-  // Marktbreite aus dem Suchindex (gleiche Region wie Heatmap)
+  // Neues Layout (Wunsch 11/2026: „ästhetischer“): Lage groß, Satz darunter, Indizes als ruhige Spalten mit Haarlinien, Breite als feine Balken
+  const tiles = ids.map(k => { const x = m[k], vix = k === "^VIX", up = (x.d1 || 0) >= 0;
+    return `<div class="mk-i"><span>${esc(x.name.replace("STOXX Europe 600", "STOXX 600"))}</span><b>${fmt(x.c, vix ? 1 : 0)}</b>${vix ? `<em class="mk-ch ${x.tone === "green" ? "up" : x.tone === "red" ? "down" : "gold"}">${esc(x.label)}</em>`
+      : `<em class="mk-ch ${up ? "up" : "down"}">${x.d1 != null ? sgnPct(x.d1, 1) : "–"}</em>`}${x.chg1m != null ? `<small>1 Monat ${sgnPct(x.chg1m, 1)}</small>` : ""}</div>`; }).join("");
   const reg2 = state.hmReg || "us", rows = searchIdx ? hmRows(reg2) : [];
   const share = (xs, fn) => xs.length ? xs.filter(fn).length / xs.length : null;
   const w50 = rows.filter(r => r.c && r.e50), w200 = rows.filter(r => r.c && r.e200), wd = rows.filter(r => r.d1 != null);
   const a50 = share(w50, r => r.c > r.e50), a200 = share(w200, r => r.c > r.e200), adv = share(wd, r => r.d1 > 0);
-  const tone = v => v == null ? "" : v >= .6 ? "up" : v < .4 ? "down" : "gold";
-  const verdict = a50 == null ? "" : a50 >= .6 ? "breit getragen – die meisten Aktien laufen mit" : a50 < .4 ? "schwach – die Mehrheit liegt unter der 50-Tage-Linie" : "gemischt – nur ein Teil des Marktes trägt";
-  const bar = (l, v) => `<div class="mb-bx"><span>${l}</span><i><u class="${tone(v)}" style="width:${v == null ? 0 : Math.round(v * 100)}%"></u></i><b class="${tone(v)}">${v == null ? "–" : pct(v, 0)}</b></div>`;
-  const br = rows.length ? `<div class="mb-br" title="${esc(verdict)}"><span class="mb-bl">Marktbreite ${esc(HM_REG.find(x => x[0] === reg2)[1])}${verdict ? ` · ${esc(verdict.split(" – ")[0])}` : ""}</span>
-      ${bar("steigen heute", adv)}${bar("> EMA 50", a50)}${bar("> EMA 200", a200)}</div>` : "";
-  const fz = mktFazit(m, adv);
-  return `<div class="hcard mbar">${fz ? `<p class="mb-fz">${fz}</p>` : ""}<div class="mb-top">${reg ? `<div class="mb-reg tone-${esc(reg.tone)}"><i></i><b>Trend: ${esc(reg.label)}</b></div>` : ""}${f ? `<div class="mb-fear">Stimmung <b class="${f.score >= 65 ? "down" : f.score >= 45 ? "gold" : "up"}">${esc(f.label)}</b> <small>${f.score}/100</small></div>` : ""}</div>
-    <div class="mb-tiles">${tiles}</div>${br}</div>`;
+  const tone = v => v == null ? "" : v >= .6 ? "up" : v < .4 ? "down" : "";
+  const verdict = a50 == null ? "" : a50 >= .6 ? "breit getragen" : a50 < .4 ? "schwach" : "gemischt";
+  const bar = (l, v) => `<div class="mk-b"><div><span>${l}</span><b class="${tone(v)}">${v == null ? "–" : pct(v, 0)}</b></div><i><u class="${tone(v)}" style="width:${v == null ? 0 : Math.round(v * 100)}%"></u><s></s></i></div>`;
+  const br = rows.length ? `<div class="mk-br"><div class="mk-k">Marktbreite · ${esc(HM_REG.find(x => x[0] === reg2)[1])}${verdict ? ` · ${verdict}` : ""}</div><div class="mk-bs">${bar("Steigen heute", adv)}${bar("Über EMA 50", a50)}${bar("Über EMA 200", a200)}</div></div>` : "";
+  const fz = mktFazit(m, adv), tc = reg ? { green: "up", red: "down" }[reg.tone] || "gold" : "";
+  const fear = f ? `<div class="mk-f" title="Stimmung 0–100: VIX, Tech/KI, Marktbreite, Kreditmarkt"><div class="mk-k">Stimmung</div><b class="${f.score >= 65 ? "down" : f.score >= 45 ? "gold" : "up"}">${esc(f.label)} <small>${f.score}</small></b>
+      <div class="mk-g"><i style="left:${Math.max(2, Math.min(98, f.score))}%"></i></div><div class="mk-gl"><span>Sorglos</span><span>Panik</span></div></div>` : "";
+  return `<div class="hcard mkb"><div class="mk-h"><div class="mk-l"><div class="mk-k">Marktlage</div>${reg ? `<div class="mk-reg t-${tc}"><i></i>${esc(reg.label.charAt(0).toUpperCase() + reg.label.slice(1))}</div>` : ""}${fz ? `<p class="mk-fz">${fz}</p>` : ""}</div>${fear}</div>
+    <div class="mk-is">${tiles}</div>${br}</div>`;
 }
 // Insider-Detail: alle Käufe einer Aktie (90 Tage) – Person, Funktion, Datum, Betrag, gezielt/Routine, Anteil, Quelle
 const INS_TOP = /\b(CEO|Chief Executive|CFO|Chief Financial|President|Chairman|Chair|COO|Vorstand|Vorsitz)/i;
@@ -3381,11 +3529,12 @@ function marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf) {
   const ev = (calData || []).filter(e => { const d = daysUntil(e.date); return d >= 0 && d <= 1 && ((e.kind === "macro" && (calKey(e) || e.imp === "high")) || e.kind === "expiry" || (e.kind === "earnings" && mine.has(e.ticker))); })
     .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
   // kompakt je Tag: Termine als kurze Chips, Quartalszahlen zusammengefasst („Zahlen: AST SpaceMobile, Rocket Lab …“)
-  const day = d => { const l = ev.filter(e => (daysUntil(e.date) === 0) === d); if (!l.length) return "";
-    const mac = l.filter(e => e.kind !== "earnings").slice(0, 3).map(e => `<em>${esc(e.title || "Termin")}${e.kind === "macro" && macWhen(e) ? ` ${esc(macWhen(e))}` : ""}</em>`);
-    const er = l.filter(e => e.kind === "earnings"), en = er.slice(0, 3).map(e => esc(shortNm(e.name || e.ticker))).join(", ") + (er.length > 3 ? ` +${er.length - 3}` : "");
-    return `<span class="mo-d"><b>${d ? "Heute" : "Morgen"}</b>${mac.join("")}${er.length ? `<em>Zahlen: ${en}</em>` : ""}</span>`; };
-  const wichtig = `<button class="mo-today" data-gosub="calendar"><b>Wichtig</b><span>${ev.length ? day(true) + day(false) : "keine großen Termine heute und morgen"}</span><i>Kalender ›</i></button>`;
+  // ruhige Liste wie im Briefing (11/2026): Tag + Uhrzeit links, Termin rechts; Quartalszahlen je Tag zusammengefasst
+  const rowsW = [0, 1].flatMap(d => { const l = ev.filter(e => daysUntil(e.date) === d); if (!l.length) return [];
+    const mac = l.filter(e => e.kind !== "earnings").slice(0, 3).map(e => `<div class="mw-r"><time>${d ? "Morgen" : "Heute"}${e.time ? `<small>${esc(e.time)}</small>` : ""}</time><span>${esc(e.title || "Termin")}${e.imp === "high" ? ` <em>wichtig</em>` : ""}${e.why ? `<small>${esc(e.why)}</small>` : ""}</span></div>`);
+    const er = l.filter(e => e.kind === "earnings"), en = er.slice(0, 4).map(e => esc(shortNm(e.name || e.ticker))).join(", ") + (er.length > 4 ? ` +${er.length - 4}` : "");
+    return [...mac, ...(er.length ? [`<div class="mw-r"><time>${d ? "Morgen" : "Heute"}</time><span>Quartalszahlen<small>${en}</small></span></div>`] : [])]; });
+  const wichtig = `<div class="hcard mw"><div class="mw-h"><span class="mk-k">Heute &amp; morgen wichtig</span><button class="hlink" data-gosub="calendar">Kalender ›</button></div>${rowsW.length ? `<div class="mw-l">${rowsW.join("")}</div>` : `<div class="mw-e">Keine großen Termine heute und morgen.</div>`}</div>`;
   return `${wichtig}${mktBarHtml()}${heatmapHtml()}<div class="mo2"><div>${sectorsHtml()}</div><div>${moversHtml()}</div></div>`;
 }
 // „Wichtig“ = Wirkung statt nur Stimmung: Stimmung, Thema (Zahlen, Ausblick, Analysten, Übernahme, Zulassung, Klage,
@@ -6725,8 +6874,16 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.95";
-const APP_NEWS = [["2026.11.95", "Neue ETF-Ampel, Briefing, ruhigeres Design", [
+const APP_VER = "2026.11.96";
+const APP_NEWS = [["2026.11.96", "Chart aufgeräumt, Markt neu", [
+  ["Chart-Werkzeuge", "Statt vieler Knöpfe: ein Menü „Ebenen“ mit Schaltern (Fibonacci, Linien, Durchschnitte, Volumen, Trade-Plan), daneben Messen und Welle als Symbole, rechts Zeitraum, Vollbild und Kairo-Leiste."],
+  ["Alles groß", "Chart, RSI, MACD und Momentum Bias Index lassen sich einzeln im Vollbild öffnen (⤢) – Esc oder „Schließen“ kehrt zurück."],
+  ["Markt-Überblick", "Neu gestaltet: Marktlage groß, Stimmung als Skala, Indizes als ruhige Spalten, Marktbreite mit feinen Balken. Wichtige Termine heute und morgen als klare Liste."],
+  ["Bewegung", "Der Balken in den Umschaltern (Markt, Depot, Scanner) gleitet jetzt in deiner Akzentfarbe zum gewählten Punkt, der Inhalt blendet sanft ein."],
+  ["Einstieg: Schritt für Schritt", "Der Trade-Plan führt dich jetzt in fünf Schritten: Passt der Trade? · Aktie oder Hebel? · Kaufen (Order mit ISIN, Limit, Stückzahl) · Sofort absichern (Stop-Loss) · Wann verkaufen? Oben steht alles auf einen Blick. Kaufbereite Treffer erscheinen als große Karten mit Kauf, Stop, Größe und Risiko. Die Rechnung ist unverändert."],
+  ["Neue Farbwelten", "Vier neue Designs in den Einstellungen: Mitternacht (tiefblau), Graphit (neutral mit Violett), Wald (dunkelgrün mit Petrol) und Sand (warm hell mit Terrakotta)."],
+  ["Scanner", "Firmenlogos in Tabelle und Liste."]]],
+  ["2026.11.95", "Neue ETF-Ampel, Briefing, ruhigeres Design", [
   ["ETF-Ampel lebt", "Die Ampel bewertet jetzt jeden Tag den Einstieg für Extra-Geld: Grün bei Rücksetzern an die EMA 100/200, abgekühltem RSI oder Angst am Markt, Rot wenn der ETF heiß gelaufen ist. Sie zeigt auch, was nach jeder Farbe in den letzten zwei Jahren folgte. Die Sparrate läuft immer."],
   ["Tagesbriefing neu", "Ein Satz zur Lage, dann nummeriert, was heute zählt – Markt, deine Aktien, wichtige Termine und Schlagzeilen, ohne bunte Kästen."],
   ["Design", "Nur noch die Designs mit Seitenleiste auf iPad und PC (jetzt auch im Hochformat); die Glas-Optik ist entfernt. Die Leiste Treffer · Beobachten · Meine ist jetzt ein runder Schalter wie bei iOS."],
@@ -7590,10 +7747,10 @@ function einPlanHtml(r) {
   return `<div class="hcard ein-head tone-${S.tone}">
       <div class="ein-top"><div><h2>${favBtn(r.t)} ${esc(r.n)}</h2><div class="meta">${r.ext ? esc(r.x) : `${esc(r.t)} · ${esc(r.x || "")}`} · ${fmt(c)} ${cur}${r.d1 != null ? ` <span class="${r.d1 >= 0 ? "up" : "down"}">${sgnPct(r.d1, 1)}</span>` : ""} · Vola ${pct(r.vola, 0)} ${liveTag(r.t)}</div></div>${liveBtn(r.t)}</div>
       <div class="ein-verdict"><b>${esc(S.title)}</b><span>${esc(S.sub)}</span></div>
-      ${einSteps(r)}${einKzHtml(r, S)}${einDataHtml(r)}
+      ${einSteps(r)}${einDataHtml(r)}
       ${warn.length ? `<div class="note" style="margin:8px 0 0">${warn.map(esc).join("<br>")}</div>` : ""}</div>
-    ${tvChartHtml(r.t)}
     ${plan}
+    ${tvChartHtml(r.t)}
     <div class="hcard"><div class="plan-h">Kairo-Setup · ${r.m ?? "–"}/11 erfüllt</div>
       <div class="note" style="margin:0">${r.s === "hit" ? "Alle Kriterien erfüllt." : (r.km || []).length ? "Fehlt: " + (r.km || []).map(k => esc(SHORT[k] || k)).join(", ") : "–"}${r.title ? ` · ${esc(r.title)}` : ""}</div></div>
     <div class="row-actions">${res ? `<button class="btn" data-open="${esc(r.t)}">Chart & Details</button>` : ""}<a class="btn ghost" href="${tvUrl(r.t)}" target="_blank" rel="noopener">TradingView</a></div>`;
@@ -7822,6 +7979,15 @@ function tp2Calc(r, S, o = {}) {
   out.expR = trend ? ex[0] : RESEARCH.rNorm;
   return out;
 }
+// Trade-Plan als Schritt-für-Schritt-Anleitung (Wunsch 11/2026: „muss Vertrauen geben, von vorne bis hinten“).
+// Die Rechnung bleibt tp2Calc (unverändert) – hier nur die Darstellung: Auf einen Blick → 1 Prüfen → 2 Aktie oder Hebel → 3 Kaufen → 4 Absichern → 5 Verkaufen.
+const stIsin = {};                                             // ISIN/WKN der Aktie (onvista), für die Kauforder
+async function stIsinLoad(t, n) {
+  if (stIsin[t] !== undefined) return; stIsin[t] = null;
+  const q = await ovGet(`/instruments/query?searchValue=${encodeURIComponent(n || tkClean(t))}&limit=6`);
+  const it = ((q || {}).list || []).find(x => x.entityType === "STOCK" && x.isin) || null;
+  stIsin[t] = it ? { isin: it.isin, wkn: it.wkn || "", n: it.name || "" } : false; tpRefresh();
+}
 function tpInner(r, S) {
   const dt = (state.tpD || {})[r.t], entE = (state.tpEe || {})[r.t], fx0 = toEur(1, r.cur || "EUR") || 1;
   const m = tp2Calc(r, S, { entry: entE > 0 ? entE / fx0 : null, date: dt });
@@ -7829,44 +7995,68 @@ function tpInner(r, S) {
   const head = `<div class="tp2-cfg">
       <label>Kaufkurs Aktie (€)<input id="tpE" type="number" inputmode="decimal" step="any" value="${esc(entE || +(r.c * fx0).toFixed(2))}" data-t="${esc(r.t)}"></label>
       <label>Kaufdatum<input id="tpD" type="date" value="${esc(dt || isoD(tpEntryDay()))}" data-t="${esc(r.t)}"></label></div>
-    <div class="note" style="margin:4px 0 0">Vorgabe: ${r.live ? `Live-Kurs ${liveTime(r.t)} Uhr` : `letzter Schluss (${dateDE(String(data.generated).slice(0, 10))})${liveOn() ? "" : " – für Live-Kurse Schlüssel in den Einstellungen eintragen"}`}. Schon gekauft? Echten Kurs und Datum eintragen – der Plan rechnet neu.${r.cur && r.cur !== "EUR" ? ` Alle Kurse in Euro (umgerechnet aus ${esc(r.cur)} zum aktuellen Devisenkurs).` : ""}</div>`;
-  const acct = `<details class="tp2-acc"><summary>Konto: ${eur(cfg.depot)} · Risiko ${fmt(cfg.risk, 1)} % je Trade${KMAX.weakMult > 1 ? ` (bei grüner Ampel ×${fmt(KMAX.weakMult, 0)})` : ""}</summary>
+    <div class="note" style="margin:6px 0 0">Vorgabe: ${r.live ? `Live-Kurs ${liveTime(r.t)} Uhr` : `letzter Schluss (${dateDE(String(data.generated).slice(0, 10))})${liveOn() ? "" : " – für Live-Kurse Schlüssel in den Einstellungen eintragen"}`}. Schon gekauft? Echten Kurs und Datum eintragen – der Plan rechnet neu.${r.cur && r.cur !== "EUR" ? ` Alle Kurse in Euro (umgerechnet aus ${esc(r.cur)} zum aktuellen Devisenkurs).` : ""}</div>`;
+  const adj = `<details class="tw-adj"${entE > 0 || dt ? " open" : ""}><summary>Kaufkurs oder Kaufdatum anpassen</summary><div style="margin-top:10px">${head}</div></details>`;
+  const acct = `<details class="tp2-acc tw-acct"><summary>Konto: ${eur(cfg.depot)} · Risiko ${fmt(cfg.risk, 1)} % je Trade${KMAX.weakMult > 1 ? ` (bei grüner Ampel ×${fmt(KMAX.weakMult, 0)})` : ""}</summary>
       <div class="tp2-cfg" style="margin-top:8px"><label>Depot (€)<input id="tpDepot" type="number" inputmode="decimal" min="0" step="100" value="${esc(cfg.depot)}"></label>
       <label>Risiko je Trade (%)<input id="tpRisk" type="number" inputmode="decimal" min="0.1" max="5" step="0.1" value="${esc(cfg.risk)}"></label></div>
       <div class="note">Einmal einstellen, gilt für alle Pläne. Empfehlung: 1 % (so getestet). Höchstens ${KMAX.maxOpen} Trades gleichzeitig.</div>
       ${(() => { const fd = feeDrag(cfg.depot); return fd.tone === "green" ? "" : `<div class="tip tone-${fd.tone}" style="margin-top:6px">${esc(fd.t)}</div>`; })()}
       <label class="chk" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="tpPaper" ${paperMode() ? "checked" : ""}> Übungsmodus – neue Trades ohne echtes Geld (zählen getrennt in der Bilanz)</label></details>`;
-  if (!m.stop || (m.problems.length && m.problems[0][0] === "red" && !m.dist)) return head + m.problems.map(([t, x]) => `<div class="tip tone-${t === "red" ? "red" : "yellow"}" style="margin-top:10px">${esc(x)}</div>`).join("") + acct;
-  const lv = m.levs.find(x => x.L === m.sug);
-  if (!lv) return head + m.problems.map(([t, x]) => `<div class="tip tone-${t === "red" ? "red" : "yellow"}" style="margin-top:10px">${esc(x)}</div>`).join("")
-    + `<div class="tip tone-red" style="margin-top:10px"><b class="t">Kein Kauf möglich</b>Keine Variante passt ins freie Kapital (frei ${eur(m.free)}). Erst eine Position schließen oder das Trading-Kapital anpassen.</div>` + acct;
-  const at = px => (px - m.E) / m.E * lv.expo - lv.cost;
-  const prod = lv.L === 1 ? `Aktie direkt` : `Turbo Long ×${lv.L}`;
-  const row = (k, v, sub, cls = "") => `<div class="tp2-row"><span>${k}</span><b class="${cls}">${v}</b>${sub ? `<em>${sub}</em>` : ""}</div>`;
-  return `${head}
-    <div class="tip tone-${m.fit.tone}" style="margin-top:12px"><b class="t">${esc(m.fit.t)}</b>${esc(m.fit.s)}</div>
-    ${m.mk ? `<div class="note" style="margin:6px 2px 0">Marktampel: ${esc(m.mk.t)} – ${esc(m.mk.s)}</div>` : ""}
-    ${tpCheckHtml(m, lv)}
-    <div class="tp2-plan">
-      ${row("Kauf", `${X(m.E)} ${cur}`, m.base ? `in der Seitwärtsphase ${X(m.base.lo)}–${X(m.base.hi)} €` : "keine Seitwärtsphase erkannt")}
-      ${row("Stop-Loss (SL)", `${X(m.stop)} ${cur}`, `${sgnPct(m.stop / m.E - 1, 1)} · Verlust ${sgnEur(at(m.stop))} · Abstand ${fmt(m.riskAtr, 1)} ATR`, "down")}
-      ${row("Take-Profit", "keiner", "Gewinner laufen lassen – das bringt laut Test am meisten")}
-      ${m.ema ? row("Verkaufen", `ab Tag ${H4X.from} unter EMA 20`, `Schließt ein Tag unter der EMA 20, am nächsten Morgen verkaufen – spätestens ${m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" })} (Tag ${m.hold}). Kairo meldet sich.`)
-        : row("Verkaufen am", m.exit.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" }), `zum Schluss – nach ${m.hold} Handelstagen, falls der SL nicht vorher greift`)}
-      ${row("Produkt", prod, lv.L > 1 ? `K.-o. höchstens ${X(lv.ko)} ${cur}` : (lv.qty != null ? `${lv.qty} Stück` : ""))}
-      ${row("Einsatz", eur(lv.stake), `Positionsgröße ${eur(lv.expo)} · Risiko ${eur2(lv.rEff)} (${fmt(cfg.depot ? 100 * lv.rEff / cfg.depot : m.riskPct, 1)} %${m.fit.mult > 1 ? " – Ausverkauf" : ""})`)}
-      ${lv.L > 1 && !(((state.tpT || {})[r.t] || {}).p > 0) ? row("SL am Turbo (Schätzung)", sgnPct(-lv.tStop, 0), `für einen ×${lv.L}-Turbo bei Kauf zu ${X(m.E)} ${cur} – genau rechnet „Dein Turbo“ unten${m.tp ? ` · TP am Turbo ${sgnPct(lv.L * (m.tp / m.E - 1), 0)}` : ""}`) : ""}
-    </div>
-    ${(tt => lv.L === 1 && !(tt.p > 0 || tt.w || tt.us > 0 || tt.kon > 0 || tt.ko > 0 || tt.cr > 0 || tt.fxr > 0 || tt.kc)   // Aktie direkt: Turbo-Rechner und eigener Stop eingeklappt
-      ? `<details class="tp-more" style="margin-top:12px"><summary>Lieber mit Turbo oder eigenem Stop? Hier eintragen</summary>${tpTurboHtml(r, m, lv)}</details>`
-      : tpTurboHtml(r, m, lv))((state.tpT || {})[r.t] || {})}
-    <div class="note" style="margin:8px 0 0"><b>Direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position setzen.</b> Kairo führt keine Orders aus.</div>
-    <details class="tp-more"><summary>So setzt du es um · warum diese Werte</summary><p style="margin:6px 0 0">Bei deinem Broker: direkt nach dem Kauf eine Stop-Loss-Order über die ganze Position setzen. Keinen Limit-Verkauf – ${m.ema ? `ab Tag ${H4X.from} verkaufen, sobald ein Tag unter der EMA 20 schließt (Mitteilung kommt), spätestens an Tag ${m.hold}` : `an Tag ${m.hold} zum Schluss verkaufen, falls der SL nicht vorher greift`}. Nicht vorher verkaufen, auch wenn es gut läuft: Die großen Gewinner machen das Ergebnis. </p>
-    <p style="margin:6px 0 0">Warum diese Werte: SL = ${esc(m.src)} (${fmt(m.riskAtr, 1)} ATR). ${m.tpWhy || ""} Hebel = der kleinste, dessen Einsatz noch in dein freies Kapital passt (frei: ${eur(m.free)}) – Aktie direkt, wenn möglich, sonst ×2/3/5/10 mit K.-o. mindestens 1 ATR unter dem SL (höchstens ×${fmt(Math.min(10, m.maxL), 1)}). Weniger Hebel = weniger Finanzierungskosten; im Test brachte das deutlich mehr als immer ×10. Das Risiko bis zum SL bleibt gleich. Kosten ≈ ${eur2(lv.cost)} sind eingerechnet.${lv.L > 1 ? ` Kurslücke unter den K.-o.: Einsatz verloren (${sgnEur(-lv.stake - 2 * cfg.fee)}).` : ""}</p></details>
-    ${lv.L > 1 ? `<div class="row-actions" style="margin-top:10px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Turbo bei onvista suchen</a></div>` : ""}
-    <div class="row-actions" style="margin-top:12px"><button class="btn${m.fit.ok ? "" : " ghost"}" data-tpopen="${esc(r.t)}">${m.fit.ok ? (paperMode() ? "Übungs-Trade eröffnen" : "Trade eröffnen & speichern") : "Trotzdem speichern"}</button></div>
-    <div class="note">Speichert den Plan unverändert. ${r.ext ? "Kairo zeigt ihn mit Live-Kursen in Deine Trades." : "Kairo prüft ihn tagsüber alle 30 Minuten (Stop, Verkaufstag, K.-o.) und meldet sich per Mitteilung."}</div>
-    ${acct}`;
+  const probs = () => m.problems.map(([t, x]) => `<div class="tip tone-${t === "red" ? "red" : "yellow"}" style="margin-top:10px">${esc(x)}</div>`).join("");
+  if (!m.stop || (m.problems.length && m.problems[0][0] === "red" && !m.dist)) return `<div class="tw-stop"><b>Kein Trade-Plan möglich</b></div>` + probs() + adj + acct;
+  const sug = m.levs.find(x => x.L === m.sug);
+  if (!sug) return probs() + `<div class="tip tone-red" style="margin-top:10px"><b class="t">Kein Kauf möglich</b>Keine Variante passt ins freie Kapital (frei ${eur(m.free)}). Erst eine Position schließen oder das Trading-Kapital anpassen.</div>` + adj + acct;
+  // Produktwahl: Vorschlag = Kairo (kleinster Hebel, der passt); die andere Art wird als Alternative gezeigt
+  const L1 = m.levs.find(x => x.L === 1), LT = m.levs.find(x => x.L > 1 && x.ok && !x.capped && x.stake <= m.free + 1e-6) || m.levs.find(x => x.L > 1 && x.ok);
+  const mode = ((state.tpMode || {})[r.t]) || (sug.L === 1 ? "stock" : "turbo");
+  const lv = mode === "stock" ? (L1 && L1.qty > 0 ? L1 : sug) : (sug.L > 1 ? sug : LT || sug), isSug = lv.L === sug.L;
+  const at = px => (px - m.E) / m.E * lv.expo - lv.cost, dts = d => d.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const tt = (state.tpT || {})[r.t] || {}, own = +tt.us > 0, stopE = own ? +tt.us : m.stop * m.fx;
+  if (lv.L === 1) stIsinLoad(r.t, r.n);
+  const isn = stIsin[r.t];
+  const fitC = { green: "ok", yellow: "warn", red: "bad" }[m.fit.tone] || "neutral";
+  // Auf einen Blick: das „Order-Ticket“
+  const tk = (l, v, sub, cls = "") => `<div class="tw-k"><span>${l}</span><b class="${cls}">${v}</b>${sub ? `<em>${sub}</em>` : ""}</div>`;
+  const glance = `<div class="tw-glance">
+      ${tk("Produkt", lv.L === 1 ? "Aktie" : `Turbo ×${lv.L}`, lv.L === 1 ? `${lv.qty} Stück` : `K.-o. ≤ ${X(lv.ko)} €`)}
+      ${tk("Kauf", `${X(m.E)} €`, m.base ? `Spanne ${X(m.base.lo)}–${X(m.base.hi)} €` : "letzter Kurs")}
+      ${tk("Stop-Loss", `${fmt(stopE)} €`, `${sgnPct(stopE / (m.E * m.fx) - 1, 1)}${own ? " · dein Stop" : ""}`, "down")}
+      ${tk("Einsatz", eur(lv.stake), lv.L > 1 ? `Position ${eur(lv.expo)}` : "")}
+      ${tk("Risiko bis Stop", eur2(lv.rEff), `${fmt(cfg.depot ? 100 * lv.rEff / cfg.depot : m.riskPct, 1)} % vom Trading-Kapital`, "down")}
+      ${tk("Verkauf", m.ema ? `ab Tag ${H4X.from}` : dts(m.exit), m.ema ? `unter EMA 20 · spätestens ${m.exit.toLocaleDateString("de-DE", { day: "numeric", month: "short" })}` : "")}</div>`;
+  const step = (n, t, body, st = "") => `<li class="tw-s ${st}"><div class="tw-n">${st === "done" ? "✓" : n}</div><div class="tw-b"><h4>${t}</h4>${body}</div></li>`;
+  // 1 · Prüfen
+  const s1 = `<div class="tw-fit ${fitC}"><b>${esc(m.fit.t)}</b><span>${esc(m.fit.s)}</span></div>${m.mk ? `<div class="tw-mk">Marktampel: <b>${esc(m.mk.t.split(" · ")[0])}</b> · ${esc(m.mk.s)}</div>` : ""}${tpCheckHtml(m, lv)}`;
+  // 2 · Aktie oder Hebel
+  const opt = (k, v, t, sub, rows) => { const on = mode === k, rec = v && v.L === sug.L;
+    return `<button class="tw-o${on ? " on" : ""}" data-tpmode="${k}" data-t="${esc(r.t)}"${v ? "" : " disabled"} aria-pressed="${on}"><span class="tw-oh"><b>${t}</b>${rec ? `<em>Kairo-Vorschlag</em>` : ""}</span><small>${sub}</small>${v ? `<span class="tw-or">${rows}</span>` : `<span class="tw-or muted">nicht möglich</span>`}</button>`; };
+  const s2 = `<div class="tw-os">${opt("stock", L1 && L1.qty > 0 ? L1 : null, "Aktie direkt", "Einfach, keine Finanzierungskosten, kein K.-o.", L1 && L1.qty > 0 ? `<i>${L1.qty} Stück</i><i>Einsatz ${eur(L1.stake)}</i><i>Kosten ≈ ${eur2(L1.cost)}</i>${L1.capped ? `<i class="gold">begrenzt aufs freie Kapital</i>` : ""}` : "")}
+      ${opt("turbo", LT, `Turbo Long${LT ? ` ×${LT.L}` : ""}`, "Weniger Kapital gebunden – K.-o.-Schwelle beachten", LT ? `<i>Einsatz ${eur(LT.stake)}</i><i>K.-o. ≤ ${X(LT.ko)} €</i><i>Kosten ≈ ${eur2(LT.cost)}</i>` : "")}</div>
+    <p class="tw-why">${sug.L === 1 ? "Kairo nimmt die Aktie direkt, weil der Einsatz in dein freies Kapital passt – das spart die Finanzierung eines Turbos." : `Kairo nimmt den kleinsten Hebel, dessen Einsatz in dein freies Kapital (${eur(m.free)}) passt: ×${sug.L}. Weniger Hebel = weniger Kosten.`} Das Risiko bis zum Stop ist bei beiden gleich.${isSug ? "" : ` <b class="gold">Du weichst vom Kairo-Vorschlag ab – beim Speichern fragt Kairo nach.</b>`}</p>`;
+  // 3 · Kaufen
+  const s3 = lv.L === 1 ? `<div class="tw-order"><div class="tw-oh2">Kauforder bei deinem Broker</div>
+        <div class="tw-ot"><span>Wertpapier</span><b>${esc(r.n)}</b></div>
+        <div class="tw-ot"><span>ISIN / WKN</span><b>${isn ? `<button class="tw-copy" data-tfcopy="${esc(isn.isin)}" title="ISIN kopieren">${esc(isn.isin)}</button>${isn.wkn ? ` · ${esc(isn.wkn)}` : ""}` : isn === false ? `<span class="muted">über den Namen suchen</span>` : `<span class="muted">wird gesucht …</span>`}</b></div>
+        <div class="tw-ot"><span>Ordertyp</span><b>Limit-Kauf</b></div>
+        <div class="tw-ot"><span>Limit</span><b>${X(m.E)} €</b></div>
+        <div class="tw-ot"><span>Stückzahl</span><b>${lv.qty}</b></div>
+        <div class="tw-ot tot"><span>Orderwert</span><b>${eur2(lv.qty * m.E * m.fx)}</b></div></div>
+      <p class="tw-why">${m.base ? `Laut Regel zur nächsten Eröffnung kaufen, solange der Kurs in der Seitwärtsphase ${X(m.base.lo)}–${X(m.base.hi)} € liegt.` : "Keine Seitwärtsphase erkannt – laut Regel erst kaufen, wenn sie fertig ist."} ${lv.qty * m.E * m.fx >= 250 ? "Ab 250 € Orderwert bei Scalable PRIME+ gebührenfrei." : `Unter 250 € kostet die Order ${eur2(cfg.fee)}.`}</p>${adj}`
+    : `<p class="tw-why" style="margin-top:0">Such einen <b>Turbo Long</b> (Open End) auf ${esc(r.n)} mit <b>K.-o.-Schwelle höchstens ${X(lv.ko)} €</b> – mindestens 1 ATR unter dem Stop, damit eine normale Schwankung ihn nicht ausknockt. Dann WKN oder ISIN eintragen: Kairo holt Kurs und K.-o. und rechnet Stückzahl und Stop am Turbo.</p>
+      <div class="row-actions" style="margin:8px 0 4px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Passende Turbos bei onvista</a></div>
+      ${tpTurboHtml(r, m, lv)}${adj}`;
+  // 4 · Absichern
+  const s4 = `<div class="tw-big"><span>Stop-Loss-Order${lv.L > 1 ? " – Aktienkurs (Chart-Linie)" : ""}</span><b class="down">${fmt(stopE)} €</b><em>${sgnPct(stopE / (m.E * m.fx) - 1, 1)} vom Kauf · Verlust ≈ ${sgnEur(at(stopE / m.fx))} · ${fmt(m.riskAtr, 1)} ATR Abstand</em></div>
+    <p class="tw-why">${lv.L === 1 ? "Direkt nach dem Kauf eine <b>Stop-Loss-Order (Stop-Market)</b> über die ganze Position setzen." : "Die Stop-Order setzt du auf den <b>Turbo</b> – den genauen Turbo-Kurs rechnet Schritt 3, sobald dein Turbo eingetragen ist."} Warum hier: ${esc(m.src)}. Nicht verschieben.</p>
+    ${lv.L === 1 ? `<details class="tp-more"${tt.p > 0 || tt.w || tt.us > 0 || tt.kon > 0 || tt.ko > 0 || tt.cr > 0 || tt.fxr > 0 || tt.kc ? " open" : ""}><summary>Eigenen Stop verwenden oder doch Turbo eintragen</summary>${tpTurboHtml(r, m, lv)}</details>` : ""}`;   // offen, sobald etwas eingetragen ist
+  // 5 · Verkaufen
+  const s5 = `<ul class="tw-ex"><li><b>Kein Kursziel.</b> Gewinner laufen lassen – jedes feste Ziel brachte im Test weniger.</li>
+      ${m.ema ? `<li><b>Ab Tag ${H4X.from}:</b> schließt ein Tag unter der EMA 20, am nächsten Morgen verkaufen.</li><li><b>Spätestens ${dts(m.exit)}</b> (Tag ${m.hold}).</li>` : `<li><b>Verkaufen am ${dts(m.exit)}</b> zum Schluss, falls der Stop nicht vorher greift.</li>`}
+      <li><b>Kairo meldet sich</b> – ${r.ext ? "mit Live-Kursen unter Deine Trades" : "tagsüber alle 30 Minuten geprüft (Stop, EMA 20, Verkaufstag)"}.</li></ul>`;
+  const save = `<div class="tw-save"><button class="btn${m.fit.ok ? "" : " ghost"}" data-tpopen="${esc(r.t)}">${m.fit.ok ? (paperMode() ? "Übungs-Trade speichern" : "Trade speichern") : "Trotzdem speichern"}</button>
+      <span>${paperMode() ? "Übungsmodus – ohne echtes Geld. " : ""}Speichert genau diesen Plan. Kairo führt keine Orders aus.</span></div>`;
+  return `${glance}<ol class="tw">${step(1, "Passt der Trade?", s1, fitC === "ok" ? "done" : fitC === "bad" ? "bad" : "")}${step(2, "Aktie oder Hebel?", s2)}${step(3, lv.L === 1 ? "Kaufen" : "Turbo auswählen und kaufen", s3)}${step(4, "Sofort absichern", s4)}${step(5, "Wann verkaufen?", s5)}</ol>${save}${acct}`;
 }
 // Plan-Check: eine kompakte Prüfliste statt mehrerer langer Hinweis-Kästen – ✓ passt, ⚠ beachten, ✗ so nicht kaufen
 function tpCheckHtml(m, lv) {
@@ -7936,6 +8126,7 @@ async function turboLoad(tk, id) {
         warn: [it.entityType === "STOCK" ? "das ist eine Aktie, kein Turbo" : "", d.hit ? "K.-o. wurde schon erreicht – Turbo ist wertlos" : "", d.put ? "das ist ein Short/Put – Kairo plant Long" : "", mism ? `Basiswert passt nicht zu ${r.n}` : ""].filter(Boolean).join(" · ") } });
   } catch (e) { set({ busy: 0, src: { err: "onvista nicht erreichbar – Kurs und K.-o. bitte von Hand eintragen." } }); }
 }
+document.addEventListener("click", e => { const b = e.target.closest("[data-tpmode]"); if (!b || b.disabled) return; state.tpMode = { ...(state.tpMode || {}), [b.dataset.t]: b.dataset.tpmode }; save(); tpRefresh(); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-tpus]"); if (!b) return; const t = b.dataset.tpus; state.tpT = { ...(state.tpT || {}), [t]: { ...((state.tpT || {})[t] || {}), us: undefined } }; save(); tpRefresh(); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-tpload]"); if (!b) return; turboLoad(b.dataset.tpload, ($("tpW") || {}).value); });
 document.addEventListener("keydown", e => { if (e.target.id === "tpW" && e.key === "Enter") { e.preventDefault(); turboLoad(e.target.dataset.t, e.target.value); } });
@@ -8012,7 +8203,7 @@ function tpTurboHtml(r, m, lv) {
     ${near ? `<div class="tip tone-yellow" style="margin-top:8px">K.-o. liegt weniger als 1 ATR unter dem Stop – eine Kurslücke kann den Turbo ausknocken, bevor der Stop greift. Besser einen Turbo mit K.-o. unter ${X(stop - TP.kob * m.atr)} ${cur}.</div>` : ""}
     <div class="note" style="margin:6px 0 0">Stop-Order (${fp(sl)} €)${m.tp ? ` und Limit-Verkauf (${fp(tv(m.tp))} €)` : ""} bei Scalable direkt auf den Turbo setzen. Der echte Turbo-Kurs liegt meist ein paar Cent über dem inneren Wert – die Order löst also knapp unter deinem Stop aus. Der K.-o. von Open-End-Turbos steigt täglich leicht (Finanzierung)${kc !== "EUR" ? ", der Wechselkurs schwankt" : ""}: bei längeren Trades ab und zu neu eintragen.</div>`;
 }
-function tpHtml(r, S) { return `<div class="hcard"><div class="plan-h">Trade-Plan</div><div id="tpBox">${tpInner(r, S)}</div></div>`; }
+function tpHtml(r, S) { return `<div class="hcard tw-card"><div class="tw-title"><span>Dein Trade-Plan</span><small>Schritt für Schritt – vom Prüfen bis zum Verkauf</small></div><div id="tpBox">${tpInner(r, S)}</div></div>`; }
 // Gespeicherte Trades (geplant → eröffnet → geschlossen), eingefroren beim Eröffnen
 const PLAN_KEY = "kairo-plans";
 // Übungsmodus: Trades mit echten Signalen und Regeln, aber ohne echtes Geld – Standard, solange Gebühren den Vorteil fressen (backend/capstudy.py)
@@ -8024,7 +8215,10 @@ function tpOpen(t) {
   const S = einSetup(r), fx0 = toEur(1, r.cur || "EUR") || 1, ee = (state.tpEe || {})[t];
   const m = tp2Calc(r, S, { entry: ee > 0 ? ee / fx0 : null, date: (state.tpD || {})[t] });
   if (!m.stop || !m.dist) return;
-  const lv = m.levs.find(x => x.L === m.sug);
+  const sugL = m.levs.find(x => x.L === m.sug), md = (state.tpMode || {})[t];
+  const alt = !sugL ? null : md === "stock" && sugL.L > 1 ? m.levs.find(x => x.L === 1 && x.qty > 0) : md === "turbo" && sugL.L === 1 ? m.levs.find(x => x.L > 1 && x.ok && !x.capped && x.stake <= m.free + 1e-6) || m.levs.find(x => x.L > 1 && x.ok) : null;
+  if (alt && !confirm(`Kairo schlägt ${sugL.L === 1 ? "die Aktie direkt" : `einen Turbo ×${sugL.L}`} vor (kleinster Hebel, der ins freie Kapital passt). Du hast ${alt.L === 1 ? "die Aktie direkt" : `einen Turbo ×${alt.L}`} gewählt. Mit deiner Wahl speichern?`)) return;
+  const lv = alt || sugL;
   if (!lv || lv.stake > m.free + 1e-6 || (lv.L === 1 && !(lv.qty > 0))) { alert(`Nicht genug freies Kapital für diesen Trade (frei ${eur(m.free)}).`); return; }
   if (!m.fit.ok && !confirm(`${m.fit.t}.\n\nDieser Trade weicht von der getesteten Regel ab. Trotzdem speichern?`)) return;
   const l = plansLoad();
@@ -8125,6 +8319,15 @@ document.addEventListener("change", e => {
 document.addEventListener("change", e => { if (e.target.id === "tpPaper") { state.tpPaper = e.target.checked; save(); render(); } });
 // Kurzname für Listen: Rechtsform-Zusätze weg („Prologis, Inc.“ → „Prologis“)
 const shortNm = n => String(n || "").replace(/,?\s+(Inc\.?|Corp\.?|Corporation|Incorporated|plc|PLC|AG|SE|N\.V\.|S\.A\.|S\.p\.A\.|ASA|AB( \(publ\))?|Ltd\.?|Limited|Co\.,? Ltd\.?|Holdings?|Group|& Co\.? KGaA|KGaA)\s*$/i, "").replace(/,\s*$/, "").trim() || n;
+// Große Karte je kaufbereitem Treffer (11/2026): Kauf, Stop, Größe, Risiko – dieselbe Rechnung wie der Trade-Plan
+function einReadyCard(x, i) {
+  const r0 = data.results.find(y => y.ticker === x.t), free = kmSlots(); let m = null, lv = null;
+  try { m = tp2Calc(x, einSetup(x)); lv = m && m.levs ? m.levs.find(v => v.L === m.sug) : null; } catch (e) {}
+  const c = (l, v, cls = "") => `<div><span>${l}</span><b class="${cls}">${v}</b></div>`;
+  return `<button class="ein-rc" data-ein="${esc(x.t)}"><div class="ein-rc-h"><i>${i + 1}</i><span><b>${esc(shortNm(x.n))}</b><small>${esc(x.t)} · ${i < free ? "Platz frei" : "nur wenn ein Platz frei wird"}</small></span>${r0 ? kPill(r0) : ""}</div>
+    ${m && m.stop && lv ? `<div class="ein-rc-g">${c("Kauf", `${fmt(m.E * m.fx)} €`)}${c("Stop", `${fmt(m.stop * m.fx)} €`, "down")}${c(lv.L === 1 ? "Stück" : "Turbo", lv.L === 1 ? fmt(lv.qty, 0) : `×${lv.L}`)}${c("Risiko", eur2(lv.rEff), "down")}</div>` : ""}
+    <span class="ein-rc-go">Trade-Plan öffnen ›</span></button>`;
+}
 function einHtml() {
   if (!searchIdx) { loadSearch(); return `<div class="section-title"><span>Einstieg</span><span>lädt …</span></div>`; }
   if (!anaData) loadAnalysis();
@@ -8138,7 +8341,7 @@ function einHtml() {
     <div class="note" style="margin:0 2px 10px">Turbos verstärken Gewinne, Verluste und Kosten – zum Lernen erst in der <a href="#" data-gosec="game">Übung</a>. PRIME+: Orders ab 250 € gebührenfrei.</div>
     <div class="ein-search"><input id="einQ" type="search" placeholder="${innerWidth < 640 ? "Aktie, z. B. Uber, TUI" : "Aktie eingeben – z. B. Uber, TUI, Nvidia"}" autocomplete="off" value="${esc(state.einQ || "")}"><button type="button" class="search-x" data-clr="einQ" aria-label="Eingabe löschen"${state.einQ ? "" : " hidden"}>✕</button><div id="einList">${einListHtml()}</div></div>
     ${r ? einPlanHtml(r) : `<div class="note" style="margin:10px 2px">Gib den Namen oder das Kürzel einer Aktie ein. Kairo prüft sofort, ob ein <b>Kairo-Treffer</b> vorliegt, und stellt dir Trade-Plan, Turbo-K.-o. und Hebel zusammen.</div>
-      ${rdy.length ? `<div class="plan-h" style="margin:14px 2px 6px">Kaufbereit · ${free} ${free === 1 ? "Platz" : "Plätze"} frei</div><div class="ein-list">${rdy.map(opt).join("")}</div>
+      ${rdy.length ? `<div class="plan-h" style="margin:14px 2px 6px">Kaufbereit · ${free} ${free === 1 ? "Platz" : "Plätze"} frei</div><div class="ein-hero-l">${rdy.map(einReadyCard).join("")}</div>
         <div class="note" style="margin:4px 2px 0">Reihenfolge wie getestet: zuerst die Treffer, die vorher am stärksten gefallen sind.</div>` : ""}
       ${wt.length ? `<div class="plan-h" style="margin:14px 2px 6px">Treffer – warten auf die Seitwärtsphase</div><div class="ein-list">${wt.map(x => opt(x, null)).join("")}</div>` : ""}
       ${!all.length ? `<div class="note" style="margin:14px 2px">Heute keine Kairo-Treffer in deinen Handelsregionen.</div>` : ""}`}`;
@@ -8376,7 +8579,20 @@ function clampNotes() {                          // lange Hinweise auf 3 Zeilen 
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-notemore]"); if (!b) return;
   const n = b.previousElementSibling; if (!n) return; const open = n.classList.toggle("clamp"); b.textContent = open ? "mehr" : "weniger"; });
-function render() { wlSeed(); renderMain(); if (state.fsv) fsvRender(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); linkTerms(); }
+const segPrev = {};
+function segInd() {
+  document.querySelectorAll("#main .subnav, #main .vseg, #main .mvtog").forEach((g, k) => {
+    const on = g.querySelector(":scope > button.on"); if (!on || !on.offsetWidth) return;
+    let ind = g.querySelector(":scope > .seg-ind"); if (!ind) { ind = document.createElement("span"); ind.className = "seg-ind"; ind.setAttribute("aria-hidden", "true"); g.prepend(ind); }
+    g.classList.add("has-ind");
+    const key = groupOf(state.sec) + g.classList[0] + k, box = { l: on.offsetLeft, t: on.offsetTop, w: on.offsetWidth, h: on.offsetHeight }, prev = segPrev[key];
+    const place = b => Object.assign(ind.style, { left: b.l + "px", top: b.t + "px", width: b.w + "px", height: b.h + "px" });
+    if (prev && (prev.l !== box.l || prev.w !== box.w)) { ind.style.transition = "none"; place(prev); void ind.offsetWidth; ind.style.transition = ""; }
+    place(box); segPrev[key] = box; });
+}
+addEventListener("resize", () => { clearTimeout(segInd.t); segInd.t = setTimeout(segInd, 120); });
+function subIn() { const m = $("main"); if (!m || calm()) return; m.classList.remove("sub-in"); void m.offsetWidth; m.classList.add("sub-in"); clearTimeout(subIn.t); subIn.t = setTimeout(() => m.classList.remove("sub-in"), 500); }
+function render() { wlSeed(); renderMain(); if (state.fsv) fsvRender(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); linkTerms(); segInd(); }
 function renderMain() {
   if (!data) return;
   const hits = data.results.filter(r => r.passed).length, fast = data.results.filter(r => r.fast_hit).length;
@@ -8450,7 +8666,7 @@ let scanAll = false;
 document.addEventListener("click", e => { if (e.target.closest("[data-cols]")) setTimeout(() => { const c = $("colOpts"); if (c) c.scrollIntoView({ block: "center", behavior: "smooth" }); }, 250); });
 document.addEventListener("click", e => { if (!e.target.closest("[data-qins]")) return; state.ins = state.ins ? "" : "buy"; scanAll = false; save(); render(); });
 document.addEventListener("click", e => { const q = e.target.closest("[data-qregion]"); if (!q) return; state.region = q.dataset.qregion; scanAll = false; save(); render(); });
-document.addEventListener("click", e => { const b = e.target.closest("[data-mview]"); if (!b) return; state.mView = b.dataset.mview; save(); render(); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-mview]"); if (!b) return; const ch = state.mView !== b.dataset.mview; state.mView = b.dataset.mview; save(); render(); if (ch) subIn(); });
 document.addEventListener("click", e => { if (e.target.closest("[data-scanall]")) { scanAll = true; render(); } else if (e.target.closest("[data-view]")) scanAll = false; });
 // Kompakte Liste fürs iPhone (nur im neuen Design, nur schmale Bildschirme – sonst bleibt die Tabelle)
 function mListHtml(list, col) {
@@ -8458,7 +8674,7 @@ function mListHtml(list, col) {
   const pill = r => r.passed ? kPill(r, false) : "";
   const big = r => isTrend(r) && !r.passed ? `${r.tr.met}/${r.tr.total}` : `${r.met ?? "–"}/${r.total ?? 11}`;
   return `<div class="mlist"><label class="msort">Sortieren<select id="mSort">${sortable.map(c => `<option value="${c.k}"${c.k === sel ? " selected" : ""}>${esc(c.l)}</option>`).join("")}</select></label>
-    ${list.map(r => `<div class="mrow">${favBtn(r.ticker)}<a href="#" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}"><b>${esc((r.name || r.ticker).slice(0, 30))}</b>
+    ${list.map(r => `<div class="mrow">${favBtn(r.ticker)}${cfAv(r.ticker)}<a href="#" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}"><b>${esc((r.name || r.ticker).slice(0, 30))}</b>
       <span>${esc(r.ticker)} · ${fmt(r.close)} ${esc(r.currency || "")}${r.market_cap_usd ? ` · ${fmtCap(r.market_cap_usd)}` : ""}${r.senti && r.senti.tgt ? ` · Ziel ${sgnPct(r.senti.tgt.up, 0)}` : ""}</span></a>
       <div class="mr">${pill(r)}<em>${big(r)}</em></div></div>`).join("")}</div>`;
 }
@@ -8998,7 +9214,7 @@ function clBarHtml(h) {
 }
 function clRefresh() {
   CL_LIVE.forEach(h => { if (!document.body.contains(h.el)) { CL_LIVE.delete(h); return; } h.apply(); });
-  CL_LIVE.forEach(h => { const b = h.bar && document.getElementById(h.bar); if (b) b.innerHTML = clBarHtml(h); });
+  CL_LIVE.forEach(h => { const b = h.bar && document.getElementById(h.bar); if (b) b.innerHTML = (h.barFn || clBarHtml)(h); });
   if (cfChart && $("cfSide")) $("cfSide").innerHTML = cockpitSide(cfChart, cfChart.r);
 }
 // Live-Charts: Detail-Chart und Cockpit holen alle 30 s den Kurs (nur sichtbar, nur mit Live-Schlüssel)
@@ -9028,7 +9244,7 @@ document.addEventListener("click", e => {
   if (!e.target.closest("[data-clm]")) return;
   MEAS.on = !MEAS.on; if (MEAS.on) WAVE.on = false;
   CL_LIVE.forEach(h => { h.measureOff && h.measureOff(); if (MEAS.on) { h.el.classList.add("measuring"); h.legend && h.legend(-1); } });
-  CL_LIVE.forEach(h => { const b = h.bar && document.getElementById(h.bar); if (b) b.innerHTML = clBarHtml(h); });
+  CL_LIVE.forEach(h => { const b = h.bar && document.getElementById(h.bar); if (b) b.innerHTML = (h.barFn || clBarHtml)(h); });
 });
 document.addEventListener("click", e => {
   const w = e.target.closest("[data-clw]"), wr = e.target.closest("[data-clwreset]"); if (!w && !wr) return;
@@ -9063,6 +9279,7 @@ var cfChart = null, cfRO = null;
 function PHONE() { return matchMedia("(max-width: 700px)").matches; }
 var ctabInd = [], ctabRO = null, ctabSeq = 0;
 function ctabDrop() {
+  if (ctFocus && state.sec !== "chart") { ctFocus = null; document.documentElement.classList.remove("fs-on"); }
   if (ctabRO) { ctabRO.disconnect(); ctabRO = null; }
   ctabInd.forEach(ch => { try { ch.remove(); } catch (e) {} }); ctabInd = [];
   if (cfChart && cfChart.tab) { CL_LIVE.delete(cfChart); try { cfChart.chart.remove(); } catch (e) {} cfChart = null; }
@@ -9085,27 +9302,67 @@ async function ctabLoad(t) {
   if (!c || !c.t || !r) { delete el.dataset.busy; el.innerHTML = `<div class="hcard"><div class="note">Für ${esc(tkClean(t))} gibt es noch keinen Chart.</div><button class="btn sm" data-cfquick>Andere Aktie wählen</button></div>`; return; }
   window.__lastChart = { c, r }; state.cfLast = t; save(); ctabBuild(c, r);
 }
+// Werkzeugleiste des Chart-Reiters (Wunsch 11/2026: „so wäre eine professionelle App nie aufgebaut“): links Ebenen-Menü
+// (gruppiert, mit Schaltern), daneben Werkzeuge als Symbole, rechts Zeitraum, Vollbild und Kairo-Leiste
+const CT_IC = {
+  layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="m3 13 9 5 9-5"/></svg>',
+  ruler: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16 16 4l4 4L8 20z"/><path d="m8 12 2 2M11 9l2 2M14 6l2 2"/></svg>',
+  wave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19 10 6l4 8 2-4 4 9"/><circle cx="10" cy="6" r="1.6"/><circle cx="4" cy="19" r="1.6"/></svg>',
+  reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6L4 8.6"/><path d="M4 4v4.6h4.6"/></svg>',
+  expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>',
+  shrink: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg>',
+  side: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/></svg>' };
+let ctPop = false, ctFocus = null;
+function ctabBarHtml(h) {
+  const M = h.M, sw = (k, lbl, col, ok = true, auto) => ok ? `<button class="ct-row" data-cl="${k}"${auto != null ? ` data-auto="${auto ? 1 : 0}"` : ""} role="switch" aria-checked="${clGet(k, auto) ? "true" : "false"}"><i style="background:${col}"></i><span>${lbl}</span><u class="ct-sw${clGet(k, auto) ? " on" : ""}"></u></button>` : "";
+  const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
+  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), "vol", "vp", "plan"], nOn = keys.filter(k => clGet(k, k === "big" ? M.broken : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length)).length;
+  const grp = (t, body) => body ? `<div class="ct-g"><div class="ct-gh">${t}</div>${body}</div>` : "";
+  return `<div class="ct-tl"><div class="ct-seg"><button class="ct-b ct-lay${ctPop ? " on" : ""}" data-ctlayers aria-expanded="${ctPop}" title="Ebenen ein-/ausblenden">${CT_IC.layers}<span>Ebenen</span><small>${nOn}</small></button></div>
+      <div class="ct-seg"><button class="ct-b${MEAS.on ? " on" : ""}" data-clm title="Messen: Start- und Endkerze antippen" aria-label="Messen">${CT_IC.ruler}<span class="ct-lbl">Messen</span></button><button class="ct-b${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle setzen" aria-label="Welle setzen">${CT_IC.wave}<span class="ct-lbl">${M.own ? "Eigene Welle" : "Welle"}</span></button>${M.own ? `<button class="ct-b" data-clwreset title="Zurück zur Welle, die Kairo bestimmt" aria-label="Kairo-Welle">${CT_IC.reset}</button>` : ""}</div></div>
+    ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, M.broken))}
+      ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.map(([k, col, l]) => sw(k, l, col)).join(""))}
+      ${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a"))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
+}
 function ctabBuild(c, r) {
   const el = $("ctab"); if (!el || !window.LightweightCharts) return; ctabDrop(); delete el.dataset.busy;
   const k = kSt(r), chg = r.change ?? r.d1, off = !!state.cfSideOff;
-  el.dataset.t = r.ticker; el.classList.toggle("side-off", off);
+  el.dataset.t = r.ticker; el.classList.toggle("side-off", off); ctPop = false;
+  const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="${lbl.split(" ·")[0]} groß">${CT_IC.expand}</button></div><div class="ctab-c" id="${id}"></div></div>`;
   el.innerHTML = `<div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(r.ticker)} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
-      <span class="st ${k.cls}">${esc(k.t)}</span><button class="cf-sidebtn" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausklappen">${off ? "◧ Status zeigen" : "◨ Status ausblenden"}</button></div>
-    <div class="chfs-bar ctab-bar"><div class="cl-bar" id="cfBar"></div><div class="sp-tg cf-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Welle"]].map(([v, l]) => `<button class="opt${v === "wave" ? " on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div></div>
+      <span class="st ${k.cls}">${esc(k.t)}</span><button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
+    <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
+      <div class="ct-right"><div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Welle"]].map(([v, l]) => `<button class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
+        <button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
     <div class="ctab-grid"><div class="ctab-l">
-      <div class="chfs-chart ctab-chart"><div id="cfMain" class="cf-canvas"></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
-      <div class="ctab-p"><div class="pane-label">RSI 14 · SMA 14 · 30/50/70${r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}</div><div class="ctab-c" id="tRsi"></div></div>
-      <div class="ctab-p"><div class="pane-label">MACD 12/26/9 · Linie, Signal, Histogramm</div><div class="ctab-c" id="tMacd"></div></div>
-      <div class="ctab-p"><div class="pane-label">Momentum Bias Index · grün/rot · X-Signale</div><div class="ctab-c" id="tMbi"></div></div>
+      <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
+      ${pane("tRsi", `RSI 14 · SMA 14 · 30/50/70${r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}`, "rsi")}${pane("tMacd", "MACD 12/26/9 · Linie, Signal, Histogramm", "macd")}${pane("tMbi", "Momentum Bias Index · grün/rot · X-Signale", "mbi")}
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside></div>`;
-  cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar";
+  cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml;
   ctabInd = indCharts(c, r, $("tRsi"), $("tMacd"), $("tMbi")); syncCharts([cfChart.chart, ...ctabInd]);
   cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
-  $("cfBar").innerHTML = clBarHtml(cfChart); $("cfSide").innerHTML = cockpitSide(cfChart, r);
+  $("cfBar").innerHTML = ctabBarHtml(cfChart); $("cfSide").innerHTML = cockpitSide(cfChart, r);
   const els = [$("cfMain"), $("tRsi"), $("tMacd"), $("tMbi")];
   ctabRO = new ResizeObserver(() => { const all = [cfChart && cfChart.chart, ...ctabInd]; els.forEach((e, i) => { if (all[i] && e.clientWidth) all[i].applyOptions({ width: e.clientWidth, height: e.clientHeight }); }); });
   els.forEach(e => ctabRO.observe(e));
+  ctabFocus(ctFocus);
 }
+// Fokus/Vollbild: ein Fenster (Chart, RSI, MACD oder MBI) füllt den Bildschirm – Werkzeuge bleiben oben, Esc oder ⤡ schließt
+function ctabFocus(f) {
+  const el = $("ctab"); if (!el) return; ctFocus = f || null;
+  el.classList.toggle("fs", !!ctFocus); ["main", "rsi", "macd", "mbi"].forEach(k => el.classList.toggle("fs-" + k, ctFocus === k));
+  document.documentElement.classList.toggle("fs-on", !!ctFocus);
+  el.querySelectorAll("[data-ctfocus]").forEach(b => { if (b.dataset.ctfocus && b.closest(".ctab-p, .ct-right")) { const on = ctFocus === b.dataset.ctfocus; b.innerHTML = on ? CT_IC.shrink : CT_IC.expand; b.dataset.ctfocus = on ? "" : (b.closest(".ctab-p") ? b.closest(".ctab-p").dataset.pane : "main"); } });
+}
+document.addEventListener("click", e => {
+  const f = e.target.closest("[data-ctfocus]"); if (f) { const v = f.dataset.ctfocus; ctabFocus(v && v !== ctFocus ? v : null);
+    // Knöpfe neu beschriften (Ziel umschalten)
+    document.querySelectorAll("#ctab .ctab-p [data-ctfocus], #ctab .ct-right [data-ctfocus]").forEach(b => { const p = b.closest(".ctab-p"), k = p ? p.dataset.pane : "main", on = ctFocus === k; b.innerHTML = on ? CT_IC.shrink : CT_IC.expand; b.dataset.ctfocus = on ? "" : k; b.title = on ? "Verkleinern" : "Groß anzeigen"; });
+    return; }
+  const ly = e.target.closest("[data-ctlayers]"); if (ly && cfChart) { ctPop = !ctPop; $("cfBar").innerHTML = ctabBarHtml(cfChart); return; }
+  if (ctPop && cfChart && !e.target.closest(".ct-pop") && !e.target.closest("[data-ctlayers]")) { ctPop = false; const b = $("cfBar"); if (b) b.innerHTML = ctabBarHtml(cfChart); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && ctFocus) ctabFocus(null); });
 function openCockpit() {
   if (!window.__lastChart) return; if ($("detail").classList.contains("open")) closeDetail();
   if (state.sec === "chart") ctabRender(); else goSec("chart");
@@ -9211,7 +9468,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-chfs]")) { openCockpit(); return; }
   if (e.target.closest("[data-chfsclose]")) { closeCockpit(); return; }
   const sb = e.target.closest("[data-cfside]"); if (sb) { state.cfSideOff = state.cfSideOff ? 0 : 1; save(); const el = $("ctab") || $("chfs"); if (el) el.classList.toggle("side-off", !!state.cfSideOff);
-    sb.textContent = state.cfSideOff ? "◧ Status zeigen" : "◨ Status ausblenden"; sb.setAttribute("aria-pressed", state.cfSideOff ? "false" : "true"); return; }
+    if (!sb.classList.contains("ct-b")) sb.textContent = state.cfSideOff ? "◧ Status zeigen" : "◨ Status ausblenden"; else sb.classList.toggle("on", !state.cfSideOff); sb.setAttribute("aria-pressed", state.cfSideOff ? "false" : "true"); return; }
   if (e.target.closest("#chfs [data-ein]")) { closeCockpit(); return; }
   const rg = e.target.closest("[data-cfr]"); if (rg && cfChart) { const n = cfChart.r && window.__lastChart.c.t.length, v = rg.dataset.cfr;
     cfChart.chart.timeScale().setVisibleLogicalRange(v === "wave" ? cfChart.vr0 : { from: v === "all" ? 0 : n - +v, to: n + 3 });
@@ -9313,9 +9570,9 @@ $("backdrop").onclick = () => document.body.classList.remove("filters-open");
 $("reset").onclick = () => { Object.assign(state, DEFAULTS); syncOpts(); save(); render(); };
 $("search").addEventListener("input", () => { $("searchX").hidden = !$("search").value; if ($("search").value.trim().length >= 2) loadSearch(); render(); });
 $("searchX").addEventListener("click", () => { const i = $("search"); i.value = ""; $("searchX").hidden = true; render(); i.focus(); });   // ganzer Suchtext mit einem Tipp weg
-function goSec(sec) {
+function goSec(sec, sub) {
   if (SUBNAV[groupOf(sec)]) state.lastSub = { ...(state.lastSub || {}), [groupOf(sec)]: sec };
-  state.sec = sec; syncOpts(); save(); render(); window.scrollTo({ top: 0 }); secIn();
+  state.sec = sec; syncOpts(); save(); render(); if (!sub) window.scrollTo({ top: 0 }); sub ? subIn() : secIn();
   if (sec === "calendar") loadCalendar();
   if (sec === "depot" || sec === "today" || sec === "entry") loadSearch();
 }
@@ -9332,7 +9589,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-insmore]")) { state.insMore = !state.insMore; save(); render(); return; }
   const irk = e.target.closest("[data-insrank]"); if (irk) { state.insRank = irk.dataset.insrank; save(); render(); return; }
   const fm = e.target.closest("[data-feedmode]"); if (fm) { state.feedMode = fm.dataset.feedmode; state.newsTab = "feed"; save(); render(); return; }
-  const nt = e.target.closest("[data-newstab]"); if (nt) { const ch = state.newsTab !== nt.dataset.newstab; state.newsTab = nt.dataset.newstab; save(); if (state.sec !== "news") goSec("news"); else { render(); if (ch && nt.closest(".subnav")) secIn(); } return; }   // Unterreiter: gleicher Übergang wie zwischen Reitern
+  const nt = e.target.closest("[data-newstab]"); if (nt) { const ch = state.newsTab !== nt.dataset.newstab; state.newsTab = nt.dataset.newstab; save(); if (state.sec !== "news") goSec("news"); else { render(); if (ch && nt.closest(".subnav")) subIn(); } return; }   // Unterreiter: gleicher Übergang wie zwischen Reitern
   const isb = e.target.closest("[data-inssort]"); if (isb) { state.insSort = isb.dataset.inssort; save(); render(); return; }
   if (e.target.closest("[data-newsfresh]")) { newsLoad(true); render(); return; }
   const bc = e.target.closest("[data-briefcard]"); if (bc) { closeBrief(); openCard(bc.dataset.briefcard); return; }
@@ -9348,11 +9605,11 @@ document.addEventListener("click", e => {
   const gs = e.target.closest("[data-gosec]");
   if (gs) { e.preventDefault(); closeCard(); goSec(gs.dataset.gosec); return; }
   const gu = e.target.closest("[data-gosub]");
-  if (gu) { goSec(gu.dataset.gosub); return; }
+  if (gu) { goSec(gu.dataset.gosub, !!gu.closest(".subnav")); return; }
   const gk = e.target.closest("[data-gokinds]");
   if (gk) { e.preventDefault(); const v = viewOfKinds(gk.dataset.gokinds.split(",")); state.view = v ? v[0] : null; state.kinds = v ? v[3] : gk.dataset.gokinds.split(","); goSec("scanner"); return; }
   const vb = e.target.closest("[data-view]");
-  if (vb) { const v = VIEWS.find(x => x[0] === vb.dataset.view); if (v) { state.view = v[0]; state.kinds = v[3]; save(); render(); } return; }
+  if (vb) { const v = VIEWS.find(x => x[0] === vb.dataset.view); if (v) { const ch = state.view !== v[0]; state.view = v[0]; state.kinds = v[3]; save(); render(); if (ch) subIn(); } return; }
   const tf = e.target.closest("[data-tfcopy]");
   if (tf) { const t = tf.dataset.tfcopy; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { tf.textContent = "✓ Kopiert"; }).catch(() => prompt("Suchwerte:", t)); return; }
   const pb = e.target.closest("[data-push]");
