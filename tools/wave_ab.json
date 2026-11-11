@@ -1,5 +1,5 @@
 {
- "name": "Bedeutung: Rücksetzer zählt für die große Welle nur, wenn der Anstieg davor ≥ 5 % der Wellenhöhe ist",
- "find": "      if ((M - c.l[cur]) / (M - c.l[j]) >= .786 && big(cur)) ws.push(cur); else if (Hp - c.l[j] > lim()) break;",
- "replace": "      if ((M - c.l[cur]) / (M - c.l[j]) >= .786 && big(cur) && (!ws.length || M - c.l[j] >= .05 * (Hp - c.l[cur]))) ws.push(cur); else if (Hp - c.l[j] > lim()) break;"
+ "name": "Kleine Welle: tiefstes Tief der Bodenzone (Doppelboden → tieferes Tief)",
+ "find": "    out.cls = mk(ws[0]); out.big = mk(ws[1] ?? bigFrom(ws[0]));\n",
+ "replace": "    // Variante: tiefstes Tief derselben Bodenzone (Doppelboden → das tiefere Tief): tiefere Wendepunkte bis 10 % darunter mit\n    // Zwischenhoch < 20 % der Wellenhöhe, oder Zwischenhoch < 5 %\n    const baseLow = (i, stop) => { if (i == null) return i; const Hp = c.h[topSince(i)], W = 10; let p = i;\n      for (let j = i - 1; j >= 0 && (stop == null || j > stop); j--) { const v = c.l[j]; if (v == null || v >= c.l[p]) continue; let ok = true;\n        for (let k = Math.max(0, j - W); k <= Math.min(n - 1, j + W); k++) if (c.l[k] != null && c.l[k] < v) { ok = false; break; } if (!ok) continue;\n        let M = -Infinity; for (let k = j; k <= p; k++) if (c.h[k] != null && c.h[k] > M) M = c.h[k];\n        const rise = (M - v) / (Hp - v); if ((v >= c.l[p] * .9 && rise < .2) || rise < .05) p = j; else break; }\n      return p; };\n    out.cls = mk(baseLow(ws[0], ws[1])); out.big = mk(ws[1] ?? bigFrom(ws[0]));\n"
 }

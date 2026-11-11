@@ -196,7 +196,7 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     global MODE, THRS, BASE
     MODE = a.mode
-    if MODE == "big":
+    if MODE in ("big", "clsab"):
         THRS, BASE = [0, 1], 0
     if a.report is not None:
         return report(a.report or ["."])
