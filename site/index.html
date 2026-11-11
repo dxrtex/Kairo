@@ -1476,6 +1476,20 @@
   html.lt .cf-pill { background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.06) 55%, rgba(255,255,255,.14)) !important; }
   html.lt .cf-pick { background: rgba(255,255,255,.55) !important; }
   html.lt .cf-pill .cf-wh b { text-shadow: 0 0 6px rgba(255,255,255,.9), 0 0 1px rgba(255,255,255,.9) !important; }
+  /* Glas v5: echte Lichtbrechung (Leinwand .cf-lens), elastisches Antippen, feiner Farbsaum nur, wo das Licht streift */
+  .cf-pill > .cf-lens { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; z-index: 0 !important; pointer-events: none; opacity: 0; transition: opacity .25s; filter: saturate(1.15) brightness(1.05); }
+  .cf-pill.lensed .cf-lens { opacity: 1; }
+  .cf-pill.lensed { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .cf-pill.lensed::before { -webkit-backdrop-filter: brightness(1.18) saturate(1.5) !important; backdrop-filter: brightness(1.18) saturate(1.5) !important; }
+  .cf-pill > .cf-glint { position: absolute; inset: 0; border-radius: inherit; z-index: 1; pointer-events: none; opacity: 0; transition: opacity .35s ease;
+    background: radial-gradient(60px 40px at var(--px, 50%) var(--py, 50%), rgba(255,255,255,.38), rgba(255,255,255,0) 70%); mix-blend-mode: screen; }
+  .cf-pill.press > .cf-glint { opacity: 1; transition-duration: .12s; }
+  .cf-pill { transition: transform .55s cubic-bezier(.34, 1.7, .42, 1) !important; }
+  .cf-pill.press, .cf-pill.hold { transform: scale(1.045, .93) !important; transition: transform .16s cubic-bezier(.2, .8, .2, 1) !important; }
+  .cf-pill::after, .cf-pick::after { padding: 1px !important;
+    background: conic-gradient(from var(--la), rgba(255,255,255,.95), rgba(150,220,255,.55) 2.5%, rgba(255,255,255,0) 7%, rgba(255,255,255,0) 45%,
+      rgba(255,190,235,.35) 48.5%, rgba(255,255,255,.55) 50%, rgba(255,235,165,.3) 51.5%, rgba(255,255,255,0) 55%, rgba(255,255,255,0) 93%, rgba(170,210,255,.55) 97.5%, rgba(255,255,255,.95)) !important; }
+  @media (prefers-reduced-motion: reduce) { .cf-pill, .cf-pill.press { transition: none !important; transform: none !important; } }
   .cf-pick.show { opacity: 1; transform: translate(-50%, -50%) scale(1); } .cf-pick[hidden] { display: none; }
   .cf-pick input { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.08); color: var(--text); }
   .cf-pick input::placeholder { color: rgba(235,235,245,.45); }
@@ -6933,9 +6947,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.103";
-const APP_NEWS = [["2026.11.103", "Liquid Glass", [
-  ["Glas wie bei Apple", "Die Aktienauswahl ist jetzt fast klares Glas: Die Mitte bleibt scharf, der dicke Rand bricht das Licht (heller, kräftiger, wie eine Linse), zwei scharfe Lichtkanten und ein feiner Farbsaum folgen deinem Finger."]]],
+const APP_VER = "2026.11.104";
+const APP_NEWS = [["2026.11.104", "Liquid Glass", [
+  ["Glas wie bei Apple", "Die Aktienauswahl ist jetzt fast klares Glas: Die Mitte bleibt scharf, der dicke Rand bricht das Licht (heller, kräftiger, wie eine Linse), zwei scharfe Lichtkanten und ein feiner Farbsaum folgen deinem Finger."],
+  ["Echte Lichtbrechung", "Kerzen und Linien hinter der Pille biegen sich am Glasrand wirklich – wie durch eine Linse, mit feinem Farbsaum. Beim Antippen gibt das Glas elastisch nach und federt zurück."]]],
   ["2026.11.102", "Intro verfeinert", [
   ["Ruhiger Abschluss", "Das fertige Logo mit dem Claim steht jetzt kurz ruhig da, bevor die App erscheint – vorher war der Claim noch nicht ganz eingeblendet. Kachel und Klingen erscheinen gemeinsam, das Kursstück am Tief leuchtet beim Einrasten blau, Logo und Claim sind etwas größer."]]],
   ["2026.11.101", "Neuer Slogan", [
@@ -9287,6 +9302,7 @@ function clRefresh() {
   CL_LIVE.forEach(h => { if (!document.body.contains(h.el)) { CL_LIVE.delete(h); return; } h.apply(); });
   CL_LIVE.forEach(h => { const b = h.bar && document.getElementById(h.bar); if (b) b.innerHTML = (h.barFn || clBarHtml)(h); });
   if (cfChart && $("cfSide")) $("cfSide").innerHTML = cockpitSide(cfChart, cfChart.r);
+  if (typeof lensSoon === "function") lensSoon();
 }
 // Live-Charts: Detail-Chart und Cockpit holen alle 30 s den Kurs (nur sichtbar, nur mit Live-Schlüssel)
 const LIVE_TZ = { DE: "Europe/Berlin", F: "Europe/Berlin", L: "Europe/London", PA: "Europe/Paris", AS: "Europe/Amsterdam", SW: "Europe/Zurich", MI: "Europe/Rome",
@@ -9417,6 +9433,8 @@ function ctabBuild(c, r) {
   ctabRO = new ResizeObserver(() => { const all = [cfChart && cfChart.chart, ...ctabInd]; els.forEach((e, i) => { if (all[i] && e.clientWidth) all[i].applyOptions({ width: e.clientWidth, height: e.clientHeight }); }); });
   els.forEach(e => ctabRO.observe(e));
   ctabFocus(ctFocus);
+  try { cfChart.chart.subscribeVisibleLogicalRangeChange(lensSoon); cfChart.chart.subscribeCrosshairMove(lensSoon); } catch (e) {}
+  setTimeout(lensSoon, 120); setTimeout(lensSoon, 600);
 }
 // Fokus/Vollbild: ein Fenster (Chart, RSI, MACD oder MBI) füllt den Bildschirm – Werkzeuge bleiben oben, Esc oder ⤡ schließt
 function ctabFocus(f) {
@@ -9451,7 +9469,7 @@ function cfPillHtml(t) {
   if (!cfPick.seg) cfPick.seg = state.cfSeg || "mine";
   let l = cfList(cfPick.seg); if (!l.includes(t)) l = cfList("hits").includes(t) ? cfList("hits") : l;
   const i = l.indexOf(t), nb = d => i < 0 || l.length < 2 ? "" : tkClean(l[(i + d + l.length) % l.length]);
-  return `<button class="cf-pill" data-cfpick aria-label="Aktie wählen – wischen wechselt">${cfAv(t)}<span class="cf-wh"><small>${esc(nb(-1))}</small><b>${esc(tkClean(t))}</b><small>${esc(nb(1))}</small></span><em>1D</em></button>`;
+  return `<button class="cf-pill" data-cfpick aria-label="Aktie wählen – wischen wechselt"><canvas class="cf-lens" aria-hidden="true"></canvas><i class="cf-glint" aria-hidden="true"></i>${cfAv(t)}<span class="cf-wh"><small>${esc(nb(-1))}</small><b>${esc(tkClean(t))}</b><small>${esc(nb(1))}</small></span><em>1D</em></button>`;
 }
 function cfList(seg) {
   const res = data.results || [], mine = myTickers(), dep = depotTickers(), ok = t => !!byTicker(t);
@@ -9495,6 +9513,57 @@ document.addEventListener("pointermove", e => { if (!e.target.closest || !e.targ
     const dx = ev.clientX - cx, dy = ev.clientY - cy, ang = Math.atan2(dx, -dy) * 180 / Math.PI;
     const lx = Math.max(-10, Math.min(110, 50 + dx / Math.max(r.width, 260) * 90)), ly = Math.max(-30, Math.min(60, dy / Math.max(r.height, 200) * 60));
     el.style.setProperty("--lx", lx.toFixed(1) + "%"); el.style.setProperty("--ly", ly.toFixed(1) + "%"); el.style.setProperty("--la", (ang - 18).toFixed(0) + "deg"); }); }); }, { passive: true });
+// Echte Lichtbrechung (Glas v5): Der Hintergrund der Pille ist unser eigener Chart – sein Ausschnitt wird in eine Leinwand in der
+// Pille kopiert und am Rand wie durch eine Linse verbogen (Rand zieht Inhalt von außen herein, Mitte leicht vergrößert, am Rand
+// trennen sich Rot/Blau minimal = Farbsaum). Rechnet nur, wenn sich der Chart ändert; geht etwas schief, bleibt das CSS-Glas.
+const LENS = { key: "", mR: null, mG: null, mB: null, off: null, raf: 0, bad: false };
+function lensMap(W, H, pad, dpr) {
+  const n = W * H, mR = new Uint32Array(n), mG = new Uint32Array(n), mB = new Uint32Array(n), rad = H / 2, rim = 10 * dpr, sw = W + 2 * pad, sh = H + 2 * pad, cx = W / 2, cy = H / 2, mag = .955;
+  const idx = (x, y) => (Math.max(0, Math.min(sh - 1, Math.round(y + pad))) * sw) + Math.max(0, Math.min(sw - 1, Math.round(x + pad)));
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const px = x + .5 - cx, py = y + .5 - cy, qx = Math.max(Math.abs(px) - (W / 2 - rad), 0), qy = py, r = Math.hypot(qx, qy), dist = rad - r;
+    let sx = cx + px * mag, sy = cy + py * mag, ox = 0, oy = 0;
+    if (dist < rim && r > 0) { const t = 1 - Math.max(0, dist) / rim, push = t * t * (pad * .95), nx = (qx > 0 ? Math.sign(px) * qx : 0) / r, ny = qy / r;
+      sx += nx * push; sy += ny * push; ox = nx * t * t * 1.6 * dpr; oy = ny * t * t * 1.6 * dpr; }
+    const i = y * W + x; mG[i] = idx(sx, sy); mR[i] = idx(sx + ox, sy + oy); mB[i] = idx(sx - ox, sy - oy); }
+  return { mR, mG, mB };
+}
+function lensDraw() {
+  if (LENS.bad) return;
+  const pill = document.querySelector("#cfPill .cf-pill"), cv = pill && pill.querySelector(".cf-lens"), host = $("cfMain");
+  if (!cv || !host) return;
+  const pr = pill.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1), W = Math.round(pr.width * dpr), H = Math.round(pr.height * dpr);
+  if (!W || !H) return;
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const padC = 12, pad = Math.round(padC * dpr), sw = W + 2 * pad, sh = H + 2 * pad;
+  const off = LENS.off || (LENS.off = document.createElement("canvas")); if (off.width !== sw || off.height !== sh) { off.width = sw; off.height = sh; }
+  const oc = off.getContext("2d", { willReadFrequently: true }), bg = getComputedStyle(host.closest(".chfs-chart") || host).backgroundColor;
+  oc.globalCompositeOperation = "source-over"; oc.fillStyle = bg && bg !== "rgba(0, 0, 0, 0)" ? bg : getComputedStyle(document.body).backgroundColor; oc.fillRect(0, 0, sw, sh);
+  const x0 = pr.left - padC, y0 = pr.top - padC, x1 = pr.right + padC, y1 = pr.bottom + padC;
+  host.querySelectorAll("canvas").forEach(c => { const r = c.getBoundingClientRect(); if (!r.width || !c.width) return;
+    const ix0 = Math.max(x0, r.left), iy0 = Math.max(y0, r.top), ix1 = Math.min(x1, r.right), iy1 = Math.min(y1, r.bottom); if (ix1 <= ix0 || iy1 <= iy0) return;
+    const kx = c.width / r.width, ky = c.height / r.height;
+    oc.drawImage(c, (ix0 - r.left) * kx, (iy0 - r.top) * ky, (ix1 - ix0) * kx, (iy1 - iy0) * ky, (ix0 - x0) * dpr, (iy0 - y0) * dpr, (ix1 - ix0) * dpr, (iy1 - iy0) * dpr); });
+  const src = oc.getImageData(0, 0, sw, sh).data, key = W + "x" + H + "@" + dpr;
+  if (LENS.key !== key) { Object.assign(LENS, lensMap(W, H, pad, dpr)); LENS.key = key; }
+  const ctx = cv.getContext("2d"), out = ctx.createImageData(W, H), d = out.data, { mR, mG, mB } = LENS;
+  for (let i = 0, j = 0; i < mG.length; i++, j += 4) { d[j] = src[mR[i] * 4]; d[j + 1] = src[mG[i] * 4 + 1]; d[j + 2] = src[mB[i] * 4 + 2]; d[j + 3] = 255; }
+  ctx.putImageData(out, 0, 0);
+  // Lesbarkeit wie bei Apple: Mitte leicht abgedunkelt (hell: aufgehellt), zum Rand hin klarer – die Brechung am Rand bleibt sichtbar
+  const lt = document.documentElement.classList.contains("lt"), g = ctx.createRadialGradient(W / 2, H / 2, H * .2, W / 2, H / 2, W * .62);
+  g.addColorStop(0, lt ? "rgba(255,255,255,.42)" : "rgba(8,10,14,.42)"); g.addColorStop(.7, lt ? "rgba(255,255,255,.22)" : "rgba(8,10,14,.2)"); g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); pill.classList.add("lensed");
+}
+const lensSoon = () => { if (LENS.raf || LENS.bad) return; LENS.raf = requestAnimationFrame(() => requestAnimationFrame(() => { LENS.raf = 0;
+  try { lensDraw(); } catch (e) { LENS.bad = true; document.querySelectorAll(".cf-pill").forEach(p => p.classList.remove("lensed")); } })); };
+addEventListener("resize", lensSoon);
+document.addEventListener("pointermove", e => { if (e.target.closest && e.target.closest(".chfs-chart")) lensSoon(); }, { passive: true });
+document.addEventListener("wheel", e => { if (e.target.closest && e.target.closest(".chfs-chart")) lensSoon(); }, { passive: true });
+// Elastisches Antippen: Glas gibt nach wie Gel und federt zurück, Licht sammelt sich an der Druckstelle
+document.addEventListener("pointerdown", e => { const p = e.target.closest && e.target.closest(".cf-pill"); if (!p) return; const r = p.getBoundingClientRect();
+  p.style.setProperty("--px", ((e.clientX - r.left) / r.width * 100).toFixed(1) + "%"); p.style.setProperty("--py", ((e.clientY - r.top) / r.height * 100).toFixed(1) + "%"); p.classList.add("press"); });
+const cfUnpress = () => document.querySelectorAll(".cf-pill.press").forEach(p => p.classList.remove("press"));
+document.addEventListener("pointerup", cfUnpress); document.addEventListener("pointercancel", cfUnpress);
 // Rad-Effekt: Zeilen weiter weg von der Mitte werden blasser und kleiner (wie die Auswahl bei TradingView/iOS)
 let cfFxRaf = 0;
 function cfWheelFx() { cfFxRaf = 0; const L = $("cfPickL"); if (!L) return; const R = L.getBoundingClientRect(), mid = R.top + R.height / 2, half = R.height / 2 || 1;
