@@ -11,6 +11,10 @@ on:
         description: "Kursverläufe aus einem früheren Lauf wiederverwenden (Run-ID) – nur Auswertung neu"
         required: false
         default: ""
+      mode:
+        description: "cls = kleine Welle (Grenzen), big = große Welle (heute gegen „nächste ungebrochene Welle“)"
+        required: false
+        default: "big"
 
 permissions:
   contents: read
@@ -37,7 +41,7 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - run: python -m backend.universe
-      - run: python -m backend.wavestudy --shard ${{ matrix.shard }} --shards 40 --n 1600 --period 10y
+      - run: python -m backend.wavestudy --shard ${{ matrix.shard }} --shards 40 --n 1600 --period 10y --mode ${{ inputs.mode || 'big' }}
       - uses: actions/upload-artifact@v4
         with:
           name: wave-${{ matrix.shard }}
@@ -62,7 +66,7 @@ jobs:
           path: wave
           run-id: ${{ inputs.reuse_run || github.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: python -m backend.wavestudy --report wave
+      - run: python -m backend.wavestudy --mode ${{ inputs.mode || 'big' }} --report wave
       - uses: actions/upload-artifact@v4
         with:
           name: wavestudy

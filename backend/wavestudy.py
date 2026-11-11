@@ -34,6 +34,7 @@ from .indicators import pivot_highs, pivot_lows
 
 THRS = [0.5, 0.618, 0.706, 0.786, 0.886]
 BASE = THRS.index(0.786)
+MODE = "cls"   # „big“: große Welle, heute (0) gegen Variante „nächste ungebrochene ältere Welle“ (1)
 EVERY, START, WIN, FWD = 10, 300, 420, 250
 BANDS = [(0.0, 0.5), (0.5, 0.618), (0.618, 0.706), (0.706, 0.79), (0.79, 0.886), (0.886, 1.0), (1.0, 99.0)]
 
@@ -61,15 +62,19 @@ def scan_wave(h: np.ndarray, l: np.ndarray, i: int):
 def outcome(h, l, c, iL: int, iH: int, i: int) -> float | None:
     """Rücksetzer-Tiefe r des tatsächlichen Korrekturtiefs nach dem Hoch (None = noch offen/ungeeignet)."""
     H, L = h[iH], l[iL]
-    if not (H > L) or iH > i - 3 or c[i] < H - 0.5 * (H - L):   # Hoch bestätigt, Korrektur noch nicht über 50 %
+    if not (H > L) or iH > i - 3:
         return None
-    m = float(np.nanmin(l[iH + 1:i + 1])) if i > iH else np.inf
+    if MODE != "big" and c[i] < H - 0.5 * (H - L):   # klassisch: Korrektur am Stichtag noch nicht über 50 %
+        return None
+    m0 = float(np.nanmin(l[iH + 1:i + 1])) if i > iH else np.inf
+    m = m0
     for k in range(i + 1, min(len(c), i + 1 + FWD)):
         if np.isnan(l[k]):
             continue
         m = min(m, l[k])
         if h[k] > H or c[k] >= m + 0.25 * (H - L):   # echte Wende: Rückprall ≥ ¼ der Welle oder neues Hoch
-            return float((H - m) / (H - L))
+            # große Welle: das Wendetief muss NACH dem Stichtag liegen (sonst wäre es schon bekannt)
+            return None if MODE == "big" and not m < m0 else float((H - m) / (H - L))
     return None
 
 
@@ -93,7 +98,7 @@ def run_shard(shard: int, shards: int, n_max: int, period: str) -> int:
         if not samples:
             continue
         clean = lambda a: [None if np.isnan(x) else round(float(x), 4) for x in a]
-        inp = {"t": T, "o": clean(o), "h": clean(h), "l": clean(l), "c": clean(c), "samples": samples, "thrs": THRS}
+        inp = {"t": T, "o": clean(o), "h": clean(h), "l": clean(l), "c": clean(c), "samples": samples, "thrs": THRS, "mode": MODE}
         try:
             res = json.loads(subprocess.run(["node", str(ROOT / "tools" / "wave_js.mjs")], input=json.dumps(inp),
                                             capture_output=True, text=True, timeout=600, check=True).stdout)
@@ -187,7 +192,12 @@ def main(argv=None) -> int:
     ap.add_argument("--n", type=int, default=1600)
     ap.add_argument("--period", default="10y")
     ap.add_argument("--report", nargs="*")
+    ap.add_argument("--mode", default="cls")
     a = ap.parse_args(argv)
+    global MODE, THRS, BASE
+    MODE = a.mode
+    if MODE == "big":
+        THRS, BASE = [0, 1], 0
     if a.report is not None:
         return report(a.report or ["."])
     return run_shard(a.shard, a.shards, a.n, a.period)
