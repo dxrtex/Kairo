@@ -6496,8 +6496,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.78";
-const APP_NEWS = [["2026.11.78", "Insider je Aktie gezählt", [
+const APP_VER = "2026.11.79";
+const APP_NEWS = [["2026.11.79", "Große Welle: nächste ungebrochene Welle", [
+  ["Große Welle neu bestimmt", "Ist die große Fibonacci-Welle gebrochen, nimmt Kairo jetzt die nächste ältere Welle, die noch nicht gebrochen ist, und dort das tiefste Tief der Bodenzone. In der Wellenstudie (1.180 Aktien) drehte der Kurs damit fast doppelt so oft im Golden Pocket. Beispiele: Rheinmetall ab August 2024, Alibaba ab Januar 2024. Die Signale rechnen unverändert wie bisher."]]],
+  ["2026.11.78", "Insider je Aktie gezählt", [
   ["Wie viele Insider kaufen?", "Unter Markt → Insider gibt es die Ansicht „Je Aktie gezählt“: je Aktie, wie viele verschiedene Insider im gewählten Zeitraum (30, 60, 90 Tage oder 12 Monate) gekauft und verkauft haben. Ab 3 Insidern wird ein Cluster markiert, das stärkste Signal. Antippen zeigt die Personen."]]],
   ["2026.11.77", "Kleine Welle ab dem letzten Tief", [
   ["Jüngere Welle statt gebrochener", "Ist die kleine Fibonacci-Welle klar gebrochen (Kurs mehr als 1 % unter ihr Tief gefallen) und danach eine neue Aufwärtswelle von mindestens 15 % entstanden, zeichnet Kairo diese neue Welle – z. B. Alibaba: Juni-Tief 91,99 → August-Hoch statt der alten Welle ab 116,86. Die Signale rechnen unverändert wie bisher."]]],
@@ -8418,8 +8420,20 @@ function chartModel(c, r) {
       const w2 = mk(lo); if (!w2 || w2.iH <= lo || w2.iH > n - 4 || w2.H < w2.L * 1.15) break; // Hoch bestätigt (≥ 3 Kerzen alt)
       out.cls = w2;
     }
-    // ist auch die große Welle schon gebrochen (Kurs unter 78,6 %), noch eine Ebene weiter zurück (RHM 11/2026: Start Ende 2022 statt Jan. 2025)
-    if (out.big && last < (out.big.H - (out.big.H - out.big.L) * .786) * .995) { const b2 = mk(bigFrom(out.big.iL, 1.2)); if (b2) out.big = b2; }
+    // ist auch die große Welle schon gebrochen (Kurs unter 78,6 %): die nächste ältere Welle, die noch NICHT gebrochen ist –
+    // erstes Tief mit fast voller Korrektur davor (≥ 78,6 %), dessen 78,6-%-Linie der Kurs noch nicht unterschritten hat,
+    // dann das tiefste Tief derselben Bodenzone (tiefere Tiefs bis 10 % darunter). Wellenstudie 11/2026 (1.180 Aktien, 183 abweichende
+    // Fälle): Wende im Golden Pocket 12,6 % statt 7,1 % (Lern- und Prüfjahre). RHM: Aug. 2024 → 1.988, BABA: Jan. 2024 → 192,67
+    if (out.big && last < (out.big.H - (out.big.H - out.big.L) * .786) * .995) {
+      const s = out.big.iL, Hp = c.h[topSince(s)], W = 10, piv = []; let cur = s, pick = null;
+      for (let i = s - 1; i >= 0; i--) { const v = c.l[i]; if (v == null) continue; let ok = true;
+        for (let k = Math.max(0, i - W); k <= Math.min(n - 1, i + W); k++) if (c.l[k] != null && c.l[k] < v) { ok = false; break; } if (ok) piv.push(i); }
+      for (const j of piv) { if (j >= cur || c.l[j] >= c.l[cur]) continue;
+        let M = -Infinity; for (let k = j; k <= cur; k++) if (c.h[k] != null && c.h[k] > M) M = c.h[k];
+        if (cur !== s && (M - c.l[cur]) / (M - c.l[j]) >= .786 && last >= (Hp - (Hp - c.l[cur]) * .786) * .995) { pick = cur; break; }
+        cur = j; }
+      if (pick != null) for (const j of piv) { if (j >= pick || c.l[j] >= c.l[pick]) continue; if (c.l[j] < c.l[pick] * .9) break; pick = j; }
+      const b2 = mk(pick ?? bigFrom(out.big.iL, 1.2)); if (b2) out.big = b2; }
     if (out.cls) { const w = out.cls; out.broken = last < (w.H - (w.H - w.L) * .786) * .995;
       out.note = `Welle ${dateDE(T[w.iL])} (${fmt(w.L)}) → ${dateDE(T[w.iH])} (${fmt(w.H)})${out.broken ? " – Kurs darunter, die große Welle ist eingeblendet" : ""}`; }
   }
