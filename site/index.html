@@ -1223,7 +1223,7 @@
   .cl-ohlc b { color: var(--text); font-weight: 700; } .cl-ohlc em { font-style: normal; font-weight: 700; } .cl-ohlc i { font-style: normal; color: var(--accent, #0a84ff); font-weight: 700; }
   @media (max-width: 640px) { .cl-ohlc { font-size: 11px; gap: 1px 7px; } .cl-ohlc .v { display: none; } }
   .cl-m.on { background: color-mix(in srgb, var(--accent, #0a84ff) 22%, transparent); border-color: var(--accent, #0a84ff); color: var(--text); }
-  .measuring { cursor: crosshair; }
+  .measuring { cursor: crosshair; } .dragging, .dragging * { cursor: ew-resize !important; touch-action: none; }
   .cl-live { flex: none; align-self: center; } .cl-live:empty { display: none; }
   .chfs-chart { min-width: 0; min-height: 0; } .chfs-side { border-left: 1px solid var(--line); overflow-y: auto; padding: 12px 14px calc(env(safe-area-inset-bottom) + 16px); }
   .cf-s { padding: 0 0 12px; margin: 0 0 12px; border-bottom: 1px solid var(--line); } .cf-h { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
@@ -8487,7 +8487,31 @@ function levelsPrimitive() {
   };
 }
 // Messwerkzeug im Chart: Start- und Endkerze antippen → Veränderung, Handelstage, Hoch/Tief im Zeitraum
-const MEAS = { on: false };
+const MEAS = { on: false }, WAVE = { on: false };   // Messen / eigene Welle setzen (nie beides zugleich)
+// Eigene Welle (Wunsch 11/2026): je Aktie selbst gesetztes Tief/Hoch, nur auf diesem Gerät – ersetzt die kleine Kairo-Welle im Chart
+function ownWave(M, c, r) {
+  const o = ((state.myWave || {})[r.ticker]) || null; if (!M.kcls && !M.own) M.kcls = M.cls;
+  const iL = o ? c.t.indexOf(o.L) : -1, iH = o ? c.t.indexOf(o.H) : -1;
+  if (iL < 0 || iH <= iL || !(c.h[iH] > c.l[iL])) { M.own = false; M.cls = M.kcls; } else { M.own = true; M.cls = { H: c.h[iH], L: c.l[iL], iL, iH }; }
+  const last = c.c[c.c.length - 1], w = M.cls;
+  if (w) { M.broken = last < (w.H - (w.H - w.L) * .786) * .995;
+    M.note = `${M.own ? "Eigene Welle" : "Welle"} ${dateDE(c.t[w.iL])} (${fmt(w.L)}) → ${dateDE(c.t[w.iH])} (${fmt(w.H)})${M.broken ? " – Kurs darunter, die große Welle ist eingeblendet" : ""}`; }
+  return M;
+}
+function ownWaveSave(t, L, H) { const m = { ...(state.myWave || {}) }; if (L) m[t] = { L, H }; else delete m[t]; state.myWave = m; save();
+  CL_LIVE.forEach(h => { if (h.r.ticker === t && document.body.contains(h.el)) { ownWave(h.M, h.c, h.r); } }); clRefresh(); }
+// Griffe zum Ziehen (Messen: Start/Ende, eigene Welle: Tief/Hoch) – unten im Chart, damit man sie mit dem Finger trifft
+function gripPrimitive(get) {
+  let chart = null, req = null;
+  const r = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { const gs = get(); if (!gs.length || !chart) return;
+    const ts = chart.timeScale(), y = m.height - 34;
+    gs.forEach(g => { const cx = ts.logicalToCoordinate(g.i); if (cx == null || cx < -10 || cx > m.width + 10) return;
+      x.strokeStyle = g.c; x.lineWidth = 1; x.setLineDash([3, 3]); x.beginPath(); x.moveTo(Math.round(cx) + .5, 0); x.lineTo(Math.round(cx) + .5, m.height); x.stroke(); x.setLineDash([]);
+      x.fillStyle = isLight() ? "#fff" : "#16181d"; x.beginPath(); x.roundRect(cx - 13, y - 13, 26, 26, 13); x.fill(); x.lineWidth = g.on ? 2.5 : 1.6; x.stroke();
+      x.fillStyle = g.c; x.font = "700 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("↔", cx, y + 1); }); }) };
+  const views = [{ zOrder: () => "top", renderer: () => r }];
+  return { attached(p) { chart = p.chart; req = p.requestUpdate; }, detached() { chart = null; }, update() { req && req(); }, updateAllViews() {}, paneViews: () => views };
+}
 const tkey = t => typeof t === "string" ? t : t && t.year ? `${t.year}-${String(t.month).padStart(2, "0")}-${String(t.day).padStart(2, "0")}` : typeof t === "number" ? new Date(t * 1000).toISOString().slice(0, 10) : "";
 const volFmt = v => v >= 1e9 ? fmt(v / 1e9, 1) + " Mrd" : v >= 1e6 ? fmt(v / 1e6, 1) + " Mio" : v >= 1e3 ? fmt(v / 1e3, 0) + " Tsd" : fmt(v, 0);
 const dayDE = k => { const d = new Date(k + "T12:00:00"); return isNaN(d) ? k : `${["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][d.getDay()]} ${dateDE(k)}`; };
@@ -8534,9 +8558,9 @@ function buildMain(el, c, r, opts) {
   const vol = chart.addHistogramSeries({ priceScaleId: "vol", priceFormat: { type: "volume" }, lastValueVisible: false, priceLineVisible: false });
   chart.priceScale("vol").applyOptions({ scaleMargins: { top: .87, bottom: 0 } });
   vol.setData(T.map((t, i) => ({ time: t, value: c.v[i] || 0, color: c.c[i] >= c.o[i] ? "rgba(48,209,88,.22)" : "rgba(255,69,58,.22)" })));
-  const M = chartModel(c, r), prim = levelsPrimitive(); candles.attachPrimitive(prim);
+  const M = ownWave(chartModel(c, r), c, r), prim = levelsPrimitive(); candles.attachPrimitive(prim);
   const p = chartPlan(r) || {}, ko = tpKoStock(r.ticker, r.currency || r.cur); let pls = [];
-  const h = { el, chart, candles, M, r };
+  const h = { el, chart, candles, M, r, c };
   // Kerzen-Info (oben links) und Messwerkzeug
   const cnt = () => candles.data().length, barAt = i => candles.data()[i], mp = measurePrimitive(barAt, cnt); candles.attachPrimitive(mp); h.mp = mp;
   if (getComputedStyle(el).position === "static") el.style.position = "relative";
@@ -8544,20 +8568,55 @@ function buildMain(el, c, r, opts) {
   const idxOf = tm => { const k = tkey(tm), d = candles.data(); for (let i = d.length - 1; i >= 0; i--) if (tkey(d[i].time) === k) return i; return -1; };
   let hov = false;
   h.legend = i => { const d = candles.data(); if (i == null || i < 0 || !d[i]) i = d.length - 1; const b = d[i]; if (!b) return; const pv = d[i - 1], ch = pv ? b.close / pv.close - 1 : null, v = i < T.length ? c.v[i] : null;
-    lg.innerHTML = `<b>${dayDE(tkey(b.time))}</b><span>E ${fmt(b.open)}</span><span>H ${fmt(b.high)}</span><span>T ${fmt(b.low)}</span><span>S ${fmt(b.close)}</span>${ch != null ? `<em class="${ch >= 0 ? "up" : "down"}">${sgnPct(ch, 2)}</em>` : ""}${v ? `<span class="v">Vol ${volFmt(v)}</span>` : ""}${MEAS.on && (h.mA == null || h.mB != null) ? `<i>${h.mA == null ? "📏 Startkerze antippen" : "📏 neue Messung: Startkerze antippen"}</i>` : MEAS.on ? `<i>📏 Endkerze antippen</i>` : ""}`; };
+    lg.innerHTML = `<b>${dayDE(tkey(b.time))}</b><span>E ${fmt(b.open)}</span><span>H ${fmt(b.high)}</span><span>T ${fmt(b.low)}</span><span>S ${fmt(b.close)}</span>${ch != null ? `<em class="${ch >= 0 ? "up" : "down"}">${sgnPct(ch, 2)}</em>` : ""}${v ? `<span class="v">Vol ${volFmt(v)}</span>` : ""}${MEAS.on && (h.mA == null || h.mB != null) ? `<i>${h.mA == null ? "📏 Startkerze antippen" : "📏 Griffe ↔ ziehen · neu: Startkerze antippen"}</i>` : MEAS.on ? `<i>📏 Endkerze antippen</i>` : ""}${WAVE.on ? `<i>${h.wA != null ? "✎ jetzt das Hoch der Welle antippen" : h.M.own ? "✎ Griffe ↔ ziehen · neu: Tief antippen" : "✎ Tief der Welle antippen"}</i>` : ""}`; };
   const clampI = l => Math.max(0, Math.min(cnt() - 1, Math.round(l)));
   chart.subscribeCrosshairMove(pr => { hov = !!pr.time; h.legend(pr.time ? idxOf(pr.time) : -1);
     if (MEAS.on && h.mA != null && h.mB == null && pr.logical != null) mp.set(h.mA, clampI(pr.logical)); });
   // Tipps selbst auswerten (der Chart wertet schnelles Nachtippen als Doppelklick und meldet es nicht): kurz an derselben Stelle = Tipp
   let pd = null;
+  // Griffe: nach dem Setzen lassen sich Start/Ende (Messen) bzw. Tief/Hoch (eigene Welle) verschieben – solange man zieht, steht der Chart still
+  const drag = { k: null }, gp = gripPrimitive(() => { const g = [];
+    if (MEAS.on && h.mA != null && h.mB != null) g.push({ i: h.mA, c: "rgb(10,132,255)", on: drag.k === "mA" }, { i: h.mB, c: "rgb(10,132,255)", on: drag.k === "mB" });
+    if (WAVE.on && h.M.own && h.M.cls) g.push({ i: h.M.cls.iL, c: "rgb(255,176,32)", on: drag.k === "wL" }, { i: h.M.cls.iH, c: "rgb(255,176,32)", on: drag.k === "wH" });
+    return g; }); candles.attachPrimitive(gp);
+  const gripAt = (cx, cy) => { const R = el.getBoundingClientRect(), x = cx - R.left, ts = chart.timeScale(); if (cy - R.top > R.height - 26 || x > ts.width()) return null;
+    let best = null, bd = 22; gp.paneViews && [["mA", MEAS.on && h.mB != null ? h.mA : null], ["mB", MEAS.on && h.mA != null ? h.mB : null],
+      ["wL", WAVE.on && h.M.own ? h.M.cls.iL : null], ["wH", WAVE.on && h.M.own ? h.M.cls.iH : null]].forEach(([k, i]) => {
+      if (i == null) return; const hx = ts.logicalToCoordinate(i); if (hx == null) return; const d = Math.abs(hx - x); if (d < bd) { bd = d; best = k; } });
+    return best; };
+  let raf = 0, dragI = null;
+  const dragTo = i => { const k = drag.k; if (!k) return;
+    if (k === "mA" || k === "mB") { h[k] = i; mp.set(h.mA, h.mB); }
+    else { const w = h.M.cls; let iL = k === "wL" ? i : w.iL, iH = k === "wH" ? i : w.iH; if (iH <= iL || !(c.h[iH] > c.l[iL])) return;
+      h.M.cls = { H: c.h[iH], L: c.l[iL], iL, iH }; h.apply(); }
+    gp.update(); h.legend(i); };
+  const grab = e => { if (!(MEAS.on || WAVE.on)) return false; const k = gripAt(e.clientX, e.clientY); if (!k) return false;
+    drag.k = k; chart.applyOptions({ handleScroll: false, handleScale: false }); el.classList.add("dragging"); gp.update(); return true; };
+  el.addEventListener("pointerdown", e => { if (grab(e)) { e.stopPropagation(); if (e.cancelable) e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch (x) {} } }, true);
+  el.addEventListener("touchstart", e => { const t = e.touches[0]; if (drag.k || (t && (MEAS.on || WAVE.on) && gripAt(t.clientX, t.clientY))) { e.stopPropagation(); if (e.cancelable) e.preventDefault(); } }, { capture: true, passive: false });
+  el.addEventListener("mousedown", e => { if (drag.k) e.stopPropagation(); }, true);
+  el.addEventListener("pointermove", e => { if (!drag.k) return; e.stopPropagation(); const x = e.clientX - el.getBoundingClientRect().left, lg = chart.timeScale().coordinateToLogical(x); if (lg == null) return;
+    dragI = clampI(lg); if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (dragI != null) dragTo(dragI); }); }, true);
+  const dragEnd = e => { if (!drag.k) return; const k = drag.k; if (e) e.stopPropagation(); drag.k = null; drag.t = Date.now();
+    chart.applyOptions({ handleScroll: true, handleScale: true }); el.classList.remove("dragging"); gp.update();
+    if (k[0] === "w" && h.M.cls) ownWaveSave(r.ticker, T[h.M.cls.iL], T[h.M.cls.iH]); };
+  el.addEventListener("pointerup", dragEnd, true); el.addEventListener("pointercancel", dragEnd, true);
+  h.gripsUpdate = () => gp.update();
+  // eigene Welle: angetippte Kerze rastet auf das tiefste Tief bzw. höchste Hoch der Nachbarkerzen (± 3) ein
+  const snap = (i, low) => { let b = i; for (let k = Math.max(0, i - 3); k <= Math.min(T.length - 1, i + 3); k++) if (low ? c.l[k] < c.l[b] : c.h[k] > c.h[b]) b = k; return b; };
   el.addEventListener("pointerdown", e => { pd = { x: e.clientX, y: e.clientY }; });
   el.addEventListener("pointerup", e => {
-    if (!MEAS.on || !pd || Math.hypot(e.clientX - pd.x, e.clientY - pd.y) > 8) return;
+    if (!(MEAS.on || WAVE.on) || drag.k || (drag.t && Date.now() - drag.t < 350) || !pd || Math.hypot(e.clientX - pd.x, e.clientY - pd.y) > 8) return;
     const x = e.clientX - el.getBoundingClientRect().left, ts = chart.timeScale(); if (x < 0 || x > ts.width()) return;
-    const lgc = ts.coordinateToLogical(x); if (lgc == null) return; const i = clampI(lgc);
+    const lgc = ts.coordinateToLogical(x); if (lgc == null) return; let i = clampI(lgc); if (i >= T.length) i = T.length - 1;
+    if (WAVE.on) {
+      if (h.wA == null) { h.wA = snap(i, true); mp.set(h.wA, h.wA); h.legend(h.wA); return; }
+      let a = h.wA, b = snap(i, false); h.wA = null; mp.set(null, null);
+      if (b <= a) { const lo = snap(i, true), hi = snap(a, false); if (hi > lo) { a = lo; b = hi; } else { h.legend(i); return; } }
+      ownWaveSave(r.ticker, T[a], T[b]); h.legend(b); return; }
     if (h.mA == null || h.mB != null) { h.mA = i; h.mB = null; mp.set(i, i); } else { h.mB = i; mp.set(h.mA, i); }
-    h.legend(i); });
-  h.measureOff = () => { h.mA = h.mB = null; mp.set(null, null); el.classList.remove("measuring"); h.legend(-1); };
+    gp.update(); h.legend(i); });
+  h.measureOff = () => { h.mA = h.mB = h.wA = null; mp.set(null, null); el.classList.remove("measuring"); gp.update(); h.legend(-1); };
   h.legendLast = () => { if (!hov) h.legend(-1); };
   h.legend(-1);
   h.apply = () => {
@@ -8598,10 +8657,12 @@ function buildMain(el, c, r, opts) {
 function clBarHtml(h) {
   const M = h.M, chip = (k, lbl, col, ok = true, auto) => ok ? `<button class="cl-c${clGet(k, auto) ? " on" : ""}" data-cl="${k}"${auto != null ? ` data-auto="${auto ? 1 : 0}"` : ""}><i style="background:${col}"></i>${lbl}</button>` : "";
   const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
-  return chip("fib", "Fibonacci", "#f4b740", !!M.cls) + chip("big", "große Welle", "#b07cff", !!M.big, M.broken)
+  return chip("fib", M.own ? "Fibonacci (eigene)" : "Fibonacci", "#f4b740", !!M.cls) + chip("big", "große Welle", "#b07cff", !!M.big, M.broken)
     + chip("sup", `Linien ${ns}↓ ${nr}↑`, "#4aa3ff", M.lines.length > 0) + EMA_DEF.map(([k, col, l]) => chip(k, l, col)).join("")
     + chip("vol", "Volumen", "#5d6676") + chip("plan", "Kauf/Stop/K.-o.", "#ff453a")
-    + `<button class="cl-c cl-m${MEAS.on ? " on" : ""}" data-clm title="Zeitraum messen: Start- und Endkerze antippen">📏 Messen</button>`;
+    + `<button class="cl-c cl-m${MEAS.on ? " on" : ""}" data-clm title="Zeitraum messen: Start- und Endkerze antippen">📏 Messen</button>`
+    + `<button class="cl-c cl-m${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle: Tief und Hoch antippen, danach mit den Griffen verschieben">✎ ${M.own ? "eigene Welle" : "Welle setzen"}</button>`
+    + (M.own ? `<button class="cl-c" data-clwreset title="Zurück zur Welle, die Kairo bestimmt">↺ Kairo-Welle</button>` : "");
 }
 function clRefresh() {
   CL_LIVE.forEach(h => { if (!document.body.contains(h.el)) { CL_LIVE.delete(h); return; } h.apply(); });
@@ -8633,9 +8694,16 @@ setInterval(() => {
 }, 30e3);
 document.addEventListener("click", e => {
   if (!e.target.closest("[data-clm]")) return;
-  MEAS.on = !MEAS.on;
-  CL_LIVE.forEach(h => { if (!MEAS.on) h.measureOff && h.measureOff(); else { h.el.classList.add("measuring"); h.legend && h.legend(-1); } });
+  MEAS.on = !MEAS.on; if (MEAS.on) WAVE.on = false;
+  CL_LIVE.forEach(h => { h.measureOff && h.measureOff(); if (MEAS.on) { h.el.classList.add("measuring"); h.legend && h.legend(-1); } });
   CL_LIVE.forEach(h => { const b = h.bar && document.getElementById(h.bar); if (b) b.innerHTML = clBarHtml(h); });
+});
+document.addEventListener("click", e => {
+  const w = e.target.closest("[data-clw]"), wr = e.target.closest("[data-clwreset]"); if (!w && !wr) return;
+  if (wr) { const bar = wr.closest("[id]"), h = [...CL_LIVE].find(x => bar && x.bar === bar.id) || [...CL_LIVE].find(x => document.body.contains(x.el)); if (h) ownWaveSave(h.r.ticker, null); WAVE.on = false; }
+  else { WAVE.on = !WAVE.on; if (WAVE.on) { MEAS.on = false; if (!clGet("fib")) { state.cl = { ...(state.cl || {}), fib: 1 }; save(); } } }
+  CL_LIVE.forEach(h => { h.measureOff && h.measureOff(); if (WAVE.on) { h.el.classList.add("measuring"); h.legend && h.legend(-1); } });
+  clRefresh();
 });
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-cl]"); if (!b) return;
