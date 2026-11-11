@@ -1227,6 +1227,21 @@
   .cl-live { flex: none; align-self: center; } .cl-live:empty { display: none; }
   .chfs-chart { min-width: 0; min-height: 0; position: relative; } .cf-canvas { position: absolute; inset: 0; }
   .cf-pickbar { position: absolute; left: 12px; bottom: 38px; z-index: 5; }
+  /* Chart-Reiter */
+  .ctab-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 8px; } .ctab-top .cf-sidebtn { margin-left: auto; }
+  .ctab .chfs-bar { padding: 0 0 10px; border-bottom: 0; }
+  .ctab-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; } .ctab.side-off .ctab-grid { grid-template-columns: minmax(0, 1fr); } .ctab.side-off .ctab-side { display: none; }
+  .ctab-chart { height: clamp(360px, 62vh, 760px); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface); }
+  .ctab-p { margin-top: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 8px 4px 0 8px; } .ctab-p .pane-label { margin: 0 0 2px 2px; }
+  .ctab-c { height: 130px; position: relative; }
+  .ctab-side { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow-y: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 14px 14px 4px; }
+  @media (max-width: 900px) { .ctab-grid { grid-template-columns: minmax(0, 1fr); } .ctab-side { position: static; max-height: none; } }
+  @media (max-width: 700px) { .ctab-chart { height: 56vh; margin: 0 -4px; border-radius: 14px; } .ctab-c { height: 104px; } .ctab-top .chfs-tt b { font-size: 17px; }
+    .tab[data-sec="etf"] { display: none !important; } }
+  @media (min-width: 701px) { .ph-only { display: none !important; } }
+  body[data-sec="chart"] #greet { display: none; }   /* Chart-Reiter: Platz für den Chart, Name steht im Kopf */
+  .ctab-top .chfs-tt { flex: 1; min-width: 0; } .ctab-top .chfs-tt b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 900px) { .ctab-top .cf-sidebtn { display: none; } .ctab.side-off .ctab-side { display: block; } }
   /* Glas (Wunsch 11/2026, „realistischer“): Unschärfe + Sättigung, lichtbrechende Kante mit Verlauf, Glanzlicht, Tiefenschatten */
   .cf-pill, .cf-pick { --gl-tint: rgba(28,30,36,.34); --gl-edge: linear-gradient(155deg, rgba(255,255,255,.60), rgba(255,255,255,.10) 32%, rgba(255,255,255,.03) 58%, rgba(255,255,255,.28));
     isolation: isolate; background: linear-gradient(160deg, rgba(255,255,255,.13), rgba(255,255,255,.035) 45%, rgba(255,255,255,.015)), var(--gl-tint); border: 0;
@@ -1766,6 +1781,9 @@ body::before{display:none}.card,.table-wrap,.pane,.search input,.hcard{-webkit-b
     <button class="tab" data-sec="scanner">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5M8 11h6M11 8v6"/></svg>
       Scanner<span class="badge" id="wlBadge" hidden></span></button>
+    <button class="tab" data-sec="chart">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5v3.5M7 15v5.5M17 3.5v6M17 17v3.5"/><rect x="5" y="7" width="4" height="8" rx="1"/><rect x="15" y="9.5" width="4" height="7.5" rx="1"/></svg>
+      Chart</button>
     <button class="tab" data-sec="entry">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
       Einstieg</button>
@@ -4119,7 +4137,7 @@ function depotHtml() {
       ${stratTipHtml(st, p.t)}
       ${ev ? `<div class="note" style="margin-top:0">Nächster Termin: <b>${dateDE(ev.date)}</b> – ${(CAL_KIND[ev.kind] || [])[2] || ""}${ev.estimate ? " (geschätzt)" : ""}</div>` : ""}
       ${slCardHtml(p, nowEur)}
-      <div class="row-actions">${inRes ? `<button class="mini-btn" data-open="${esc(p.t)}">Chart</button>` : ""}<a class="mini-btn" style="text-decoration:none" href="${tvUrl(p.t)}" target="_blank" rel="noopener">TradingView</a>
+      <div class="row-actions">${inRes ? `<button class="mini-btn" data-chartgo="${esc(p.t)}">Chart</button>` : ""}<a class="mini-btn" style="text-decoration:none" href="${tvUrl(p.t)}" target="_blank" rel="noopener">TradingView</a>
         ${slBtn(p, i)}<button class="mini-btn" data-dep="edit" data-i="${i}">Bearbeiten</button><button class="mini-btn del" data-dep="del" data-i="${i}">Löschen</button></div>
     </article>`;
   }).join("");
@@ -4348,7 +4366,7 @@ function groupHtml(g) {
     </tbody></table></div>
     ${g.ms.some(m => m.d) ? `<div class="note" style="margin:6px 2px 0">Werte der Zertifikate geschätzt (aus Kaufkurs und Kurs des Basiswerts am Kauftag) – mit „Kurs eintragen“ werden sie exakt.</div>` : ""}</div>
     ${g.ev ? `<div class="note" style="margin:0">Nächster Termin: <b>${dateDE(g.ev.date)}</b> – ${(CAL_KIND[g.ev.kind] || [])[2] || ""}${g.ev.estimate ? " (geschätzt)" : ""}${g.ev.kind === "earnings" && st && g.ev.date <= st.sell ? " – liegt vor dem Verkaufstag: am Handelstag davor verkaufen" : ""}</div>` : ""}
-    <div class="row-actions">${pl ? `<button class="mini-btn" data-ein="${esc(pl.t)}">Trade-Plan</button>` : ""}${data.results.some(x => x.ticker === g.t) ? `<button class="mini-btn" data-open="${esc(g.t)}">Großer Chart</button>` : ""}<a class="mini-btn" style="text-decoration:none" href="${tvUrl(g.t)}" target="_blank" rel="noopener">TradingView</a>
+    <div class="row-actions">${pl ? `<button class="mini-btn" data-ein="${esc(pl.t)}">Trade-Plan</button>` : ""}${data.results.some(x => x.ticker === g.t) ? `<button class="mini-btn" data-chartgo="${esc(g.t)}">Großer Chart</button>` : ""}<a class="mini-btn" style="text-decoration:none" href="${tvUrl(g.t)}" target="_blank" rel="noopener">TradingView</a>
       ${g.ms.map((m, j) => `<button class="mini-btn" data-dep="sl" data-i="${m.i}">${g.ms.length > 1 ? `#${j + 1} ` : ""}${m.p.sl > 0 ? `Stop ${eur2(m.p.sl)} ändern` : "Mein Stop bei Scalable"}</button>`).join("")}
       ${g.ms.map((m, j) => `<button class="mini-btn del" data-dep="del" data-i="${m.i}">#${j + 1} löschen</button>`).join("")}</div>
   </div>`;
@@ -4495,7 +4513,7 @@ function turboCard(p, i, r) {
     ${st && st.koAtr != null && st.koAtr < 1 ? `<div class="tip tone-orange"><b class="t">K.-o. zu nah am Stop</b>Der K.-o. liegt weniger als 1 ATR unter dem Stop – eine Kurslücke kann ausknocken, bevor der Stop greift.</div>` : ""}
     ${ev ? `<div class="note" style="margin-top:0">Nächster Termin ${esc(d.under)}: <b>${dateDE(ev.date)}</b> – ${(CAL_KIND[ev.kind] || [])[2] || ""}${ev.estimate ? " (geschätzt)" : ""}. Regel: am Handelstag vor den Quartalszahlen verkaufen.</div>` : ""}
     ${slCardHtml(p, p.mark > 0 && p.markU > 0 && r && r.c > 0 && koU != null && d.dir === "long" && p.markU > koU ? p.mark * (r.c - koU) / (p.markU - koU) : null)}
-    <div class="row-actions">${r && data.results.some(x => x.ticker === p.t) ? `<button class="mini-btn" data-open="${esc(p.t)}">Chart</button>` : ""}${p.t ? `<a class="mini-btn" style="text-decoration:none" href="${tvUrl(p.t)}" target="_blank" rel="noopener">TradingView</a>` : ""}${slBtn(p, i)}
+    <div class="row-actions">${r && data.results.some(x => x.ticker === p.t) ? `<button class="mini-btn" data-chartgo="${esc(p.t)}">Chart</button>` : ""}${p.t ? `<a class="mini-btn" style="text-decoration:none" href="${tvUrl(p.t)}" target="_blank" rel="noopener">TradingView</a>` : ""}${slBtn(p, i)}
       <button class="mini-btn del" data-dep="del" data-i="${i}">Löschen</button></div>
     <div class="note" style="margin:0">Schwelle laut letzter Transaktion; bei Open-End-Turbos verschiebt sie sich täglich leicht (Finanzierungskosten). Aktueller Zertifikatskurs: in Scalable.</div>
   </article>`;
@@ -6597,8 +6615,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.93";
-const APP_NEWS = [["2026.11.93", "Volumenprofil steht fest", [
+const APP_VER = "2026.11.94";
+const APP_NEWS = [["2026.11.94", "Neuer Reiter: Chart", [
+  ["Alles auf einen Blick", "Der Reiter Chart zeigt den großen Chart mit Fibonacci, Linien und Volumenprofil, darunter RSI, MACD und Momentum Bias Index – alle gekoppelt, Zoomen und Verschieben bewegt alle. Rechts (iPad/PC) die Kairo-Leiste mit Status, Trade-Plan und Fibonacci-Stufen."],
+  ["Aktie wechseln", "Unten links die Glas-Auswahl: tippen, wischen oder gedrückt halten. Die zuletzt geöffnete Aktie bleibt. „Chart“-Knöpfe in der App springen direkt hierher."],
+  ["iPhone", "Damit sechs Reiter Platz haben, liegt ETF auf dem iPhone jetzt unter Markt. Auf iPad und PC bleibt der ETF-Reiter."]]],
+  ["2026.11.93", "Volumenprofil steht fest", [
   ["Fest statt springend", "Das Volumenprofil rechnet jetzt fest ab dem Tief der Fibonacci-Welle bis heute (ohne Welle: 1 Jahr) – es springt nicht mehr beim Verschieben oder Zoomen. Das meistgehandelte Niveau seit Wellenbeginn zeigt, wo die großen Käufer im Schnitt eingestiegen sind."]]],
   ["2026.11.92", "Auswahl schließt beim Antippen daneben", [
   ["Einfach wegtippen", "Ist die Aktienauswahl offen, schließt sie sich, sobald du irgendwo anders hintippst – auch mitten in den Chart."]]],
@@ -8195,7 +8217,7 @@ function topSetupsHtml() {
     return `<tr><td>${k + 1}</td><td><b>${esc(r.ticker)}</b> ${kPill(r)} ${tgtChip(r)}<br><span class="note">${esc(String(r.name || "").slice(0, 24))}</span></td>
       <td>${m(r) == null ? "–" : sgnPct(m(r), 0)}</td><td>${fmt(p.entry)}<br><span class="down">${fmt(p.stop)}</span></td>
       <td>${qty ? `${qty} Stk.<br><span class="note">${eur2(val)}</span>` : "–"}</td><td>${fee == null ? "–" : fee ? "0,99 €" : "0 €"}</td>
-      <td><button class="mini-btn" data-open="${esc(r.ticker)}">Chart</button></td></tr>`;
+      <td><button class="mini-btn" data-chartgo="${esc(r.ticker)}">Chart</button></td></tr>`;
   }).join("");
   return `<div class="hcard" style="margin-bottom:12px">${hHead("Top-Setups heute")}
     <div class="note">USA, Europa und Asien · kaufbereit zuerst, dann schwächeres Vormomentum. Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)}, höchstens so viel, wie frei ist.</div>
@@ -8224,8 +8246,8 @@ const groupOf = sec => Object.keys(SUBNAV).find(g => SUBNAV[g].some(x => x[0] ==
 const NEWS_TABS = [["overview", "Überblick"], ["feed", "News"], ["insider", "Insider"], ["calendar", "Kalender"]];
 const newsTabOf = () => { const t = state.newsTab || "overview"; return t === "mine" || t === "market" ? "feed" : NEWS_TABS.some(x => x[0] === t) ? t : "overview"; };
 const subNavHtml = sec => { const g = groupOf(sec);
-  if (g === "news") { const cur = sec === "calendar" ? "calendar" : newsTabOf();
-    return `<div class="subnav">${NEWS_TABS.map(([v, l]) => `<button class="${v === cur ? "on" : ""}" ${v === "calendar" ? 'data-gosub="calendar"' : `data-newstab="${v}"`}>${l}</button>`).join("")}</div>`; }
+  if (g === "news" || sec === "etf") { const cur = sec === "calendar" ? "calendar" : sec === "etf" ? "etf" : newsTabOf();
+    return `<div class="subnav${sec === "etf" ? " ph-only" : ""}">${NEWS_TABS.map(([v, l]) => `<button class="${v === cur ? "on" : ""}" ${v === "calendar" ? 'data-gosub="calendar"' : `data-newstab="${v}"`}>${l}</button>`).join("")}<button class="ph-only${cur === "etf" ? " on" : ""}" data-gosub="etf">ETF</button></div>`; }
   return SUBNAV[g] ? `<div class="subnav">${SUBNAV[g].map(x => x === "|" ? `<i class="sn-sep" title="Ergebnisse der Strategien"></i>` : `<button class="${x[0] === sec ? "on" : ""}" data-gosub="${x[0]}">${x[1]}</button>`).join("")}</div>` : ""; };
 const KFOOT = `<div class="kfoot">Keine Anlageberatung – Kairo zeigt getestete Regeln, Entscheidungen triffst du selbst. Kairo führt keine Orders aus. <a href="rechtliches.html" style="color:inherit">Impressum · Datenschutz · Risikohinweis</a><br>Deine Trades, Watchlist und Einstellungen bleiben auf diesem Gerät · Kurse: Yahoo Finance, onvista, Finnhub · Momentum Bias Index nach AlgoAlpha (MPL 2.0) · Charts: <a href="https://www.tradingview.com/" target="_blank" rel="noopener" style="color:inherit">TradingView Lightweight Charts™</a></div>`;
 function clampNotes() {                          // lange Hinweise auf 3 Zeilen kürzen, „mehr“ zeigt alles
@@ -8250,7 +8272,9 @@ function renderMain() {
   if (state.sec === "settings") { $("main").innerHTML = settingsHtml(); return; }
   if (state.sec === "today") { $("main").innerHTML = todayHtml(); return; }
   if (state.sec === "bilanz") { $("main").innerHTML = subNavHtml("bilanz") + bilanzHtml(); return; }
-  if (state.sec === "etf") { $("main").innerHTML = etfHtml(); return; }
+  if (state.sec !== "chart") ctabDrop();
+  if (state.sec === "chart") { ctabRender(); return; }
+  if (state.sec === "etf") { $("main").innerHTML = subNavHtml("etf") + etfHtml(); return; }
   if (state.sec === "calendar") { $("main").innerHTML = subNavHtml("calendar") + calendarHtml(); return; }
   if (state.sec === "news") { $("main").innerHTML = subNavHtml("news") + newsHtml(); return; }
   if (state.sec === "entry") { $("main").innerHTML = einHtml(); return; }
@@ -8370,7 +8394,7 @@ function greetText() {
   const h = new Date().getHours(), nm = String(state.name || "").trim();
   return esc(h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend") + (nm ? `, <span class="nm">${esc(nm)}</span>` : "") + greetEmoji();
 }
-const SEC_T = { today: "Heute", etf: "ETF", scanner: "Scanner", entry: "Einstieg", calendar: "Kalender", news: "Markt", depot: "Depot", journal: "Journal", game: "Übung", paper: "Papier-Test", settings: "Einstellungen", bilanz: "Bilanz" };
+const SEC_T = { today: "Heute", etf: "ETF", scanner: "Scanner", chart: "Chart", entry: "Einstieg", calendar: "Kalender", news: "Markt", depot: "Depot", journal: "Journal", game: "Übung", paper: "Papier-Test", settings: "Einstellungen", bilanz: "Bilanz" };
 function appleHead() {
   document.body.dataset.sec = state.sec;
   const t = SEC_T[state.sec] || "Kairo";
@@ -8450,7 +8474,7 @@ addEventListener("resize", () => moveTabInd(null));
 function syncOpts() {
   document.querySelectorAll(".opts").forEach(g => g.querySelectorAll(".opt").forEach(b => b.classList.toggle("on", b.dataset.v === String(state[g.dataset.key] ?? ""))));
   const prev = document.querySelector(".tab.on");
-  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.sec === groupOf(state.sec)));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.sec === (state.sec === "etf" && PHONE() ? "news" : groupOf(state.sec))));
   moveTabInd(prev);
 }
 
@@ -8919,22 +8943,58 @@ function cockpitSide(h, r) {
     <div class="cf-s"><div class="cf-h">Kairo-Kriterien · ${r.met ?? "–"}/${r.total ?? 11}</div><div class="cf-crit">${crit.map(x => `<span class="${x.ok ? "ok" : "no"}">${x.ok ? "✓" : "✗"} ${esc(shortCrit(x.label))}</span>`).join("")}</div></div>
     <div class="row-actions"><button class="btn sm" data-ein="${esc(r.ticker)}">Einstieg planen</button><a class="btn ghost sm" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">TradingView</a></div>`;
 }
-let cfChart = null, cfRO = null;
-function openCockpit() {
-  const L = window.__lastChart; if (!L || !window.LightweightCharts) return; const { c, r } = L;
-  let el = $("chfs"); if (!el) { el = document.createElement("div"); el.id = "chfs"; el.className = "chfs"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); document.body.appendChild(el); }
-  const k = kSt(r), chg = r.change ?? r.d1;
-  el.innerHTML = `<div class="chfs-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(r.ticker)} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
-      <span class="st ${k.cls}">${esc(k.t)}</span><button class="cf-sidebtn" data-cfside aria-pressed="${state.cfSideOff ? "false" : "true"}" title="Status-Leiste ein-/ausklappen">${state.cfSideOff ? "◧ Status zeigen" : "◨ Status ausblenden"}</button><button class="cm-x" data-chfsclose aria-label="Schließen">✕</button></div>
-    <div class="chfs-bar"><div class="cl-bar" id="cfBar"></div><div class="sp-tg cf-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Welle"]].map(([v, l]) => `<button class="opt" data-cfr="${v}">${l}</button>`).join("")}</div></div>
-    <div class="chfs-main"><div class="chfs-chart"><div id="cfMain" class="cf-canvas"></div>
-      <div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div>
-      <div class="cf-pick" id="cfPick" hidden></div></div><aside class="chfs-side" id="cfSide"></aside></div>`;
-  el.classList.toggle("side-off", !!state.cfSideOff); el.hidden = false; document.documentElement.classList.add("fs-on"); ZG.sync();
-  if (cfChart) { try { cfChart.chart.remove(); } catch (e) {} }
-  cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.bar = "cfBar"; cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
+var cfChart = null, cfRO = null;
+// ---------- Chart-Reiter (Wunsch 11/2026): großer Chart, darunter RSI, MACD, MBI gekoppelt, Kairo-Leiste rechts, Aktienwähler unten links ----------
+// ersetzt das Vollbild-Cockpit; „Groß“ und „Chart“-Knöpfe springen hierher, die zuletzt geöffnete Aktie bleibt
+function PHONE() { return matchMedia("(max-width: 700px)").matches; }
+var ctabInd = [], ctabRO = null, ctabSeq = 0;
+function ctabDrop() {
+  if (ctabRO) { ctabRO.disconnect(); ctabRO = null; }
+  ctabInd.forEach(ch => { try { ch.remove(); } catch (e) {} }); ctabInd = [];
+  if (cfChart && cfChart.tab) { CL_LIVE.delete(cfChart); try { cfChart.chart.remove(); } catch (e) {} cfChart = null; }
+}
+const ctabPick = () => { const L = window.__lastChart;
+  return [L && L.r && L.r.ticker, state.cfLast, ...cfList("mine"), ...cfList("hits"), ...(data.results || []).map(r => r.ticker)].find(t => t && byTicker(t)); };
+function ctabRender() {
+  const t = ctabPick(), box = $("ctab");
+  if (box && box.dataset.t === t && (cfChart && cfChart.tab || box.dataset.busy)) return;      // läuft schon – nicht neu bauen (Zoom bleibt)
+  ctabDrop();
+  if (!t) { $("main").innerHTML = `<div class="hcard"><div class="note">Noch keine Aktie geladen.</div></div>`; return; }
+  $("main").innerHTML = `<div id="ctab" class="ctab" data-t="${esc(t)}" data-busy="1"><div class="note" style="padding:24px 4px">Lade Chart …</div></div>`;
+  ctabLoad(t);
+}
+async function ctabLoad(t) {
+  const seq = ++ctabSeq, L = window.__lastChart, r = byTicker(t);
+  let c = L && L.r && L.r.ticker === t ? L.c : null;
+  if (!c) try { c = await loadChart(t); } catch (e) { delete chartCache[t]; }
+  const el = $("ctab"); if (seq !== ctabSeq || state.sec !== "chart" || !el || el.dataset.t !== t) return;
+  if (!c || !c.t || !r) { delete el.dataset.busy; el.innerHTML = `<div class="hcard"><div class="note">Für ${esc(tkClean(t))} gibt es noch keinen Chart.</div><button class="btn sm" data-cfquick>Andere Aktie wählen</button></div>`; return; }
+  window.__lastChart = { c, r }; state.cfLast = t; save(); ctabBuild(c, r);
+}
+function ctabBuild(c, r) {
+  const el = $("ctab"); if (!el || !window.LightweightCharts) return; ctabDrop(); delete el.dataset.busy;
+  const k = kSt(r), chg = r.change ?? r.d1, off = !!state.cfSideOff;
+  el.dataset.t = r.ticker; el.classList.toggle("side-off", off);
+  el.innerHTML = `<div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(r.ticker)} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
+      <span class="st ${k.cls}">${esc(k.t)}</span><button class="cf-sidebtn" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausklappen">${off ? "◧ Status zeigen" : "◨ Status ausblenden"}</button></div>
+    <div class="chfs-bar ctab-bar"><div class="cl-bar" id="cfBar"></div><div class="sp-tg cf-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Welle"]].map(([v, l]) => `<button class="opt${v === "wave" ? " on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div></div>
+    <div class="ctab-grid"><div class="ctab-l">
+      <div class="chfs-chart ctab-chart"><div id="cfMain" class="cf-canvas"></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
+      <div class="ctab-p"><div class="pane-label">RSI 14 · SMA 14 · 30/50/70${r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}</div><div class="ctab-c" id="tRsi"></div></div>
+      <div class="ctab-p"><div class="pane-label">MACD 12/26/9 · Linie, Signal, Histogramm</div><div class="ctab-c" id="tMacd"></div></div>
+      <div class="ctab-p"><div class="pane-label">Momentum Bias Index · grün/rot · X-Signale</div><div class="ctab-c" id="tMbi"></div></div>
+    </div><aside class="chfs-side ctab-side" id="cfSide"></aside></div>`;
+  cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar";
+  ctabInd = indCharts(c, r, $("tRsi"), $("tMacd"), $("tMbi")); syncCharts([cfChart.chart, ...ctabInd]);
+  cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
   $("cfBar").innerHTML = clBarHtml(cfChart); $("cfSide").innerHTML = cockpitSide(cfChart, r);
-  if (cfRO) cfRO.disconnect(); cfRO = new ResizeObserver(() => { const m = $("cfMain"); if (m && cfChart) cfChart.chart.applyOptions({ width: m.clientWidth, height: m.clientHeight }); }); cfRO.observe($("cfMain"));
+  const els = [$("cfMain"), $("tRsi"), $("tMacd"), $("tMbi")];
+  ctabRO = new ResizeObserver(() => { const all = [cfChart && cfChart.chart, ...ctabInd]; els.forEach((e, i) => { if (all[i] && e.clientWidth) all[i].applyOptions({ width: e.clientWidth, height: e.clientHeight }); }); });
+  els.forEach(e => ctabRO.observe(e));
+}
+function openCockpit() {
+  if (!window.__lastChart) return; if ($("detail").classList.contains("open")) closeDetail();
+  if (state.sec === "chart") ctabRender(); else goSec("chart");
 }
 function closeCockpit() { const el = $("chfs"); if (!el || el.hidden) return; el.hidden = true; document.documentElement.classList.remove("fs-on"); ZG.sync();
   if (cfRO) cfRO.disconnect(); if (cfChart) { CL_LIVE.delete(cfChart); try { cfChart.chart.remove(); } catch (e) {} cfChart = null; } el.innerHTML = ""; }
@@ -9018,13 +9078,14 @@ document.addEventListener("touchstart", e => { const p = e.target.closest && e.t
 document.addEventListener("touchend", e => { if (!cfSw) return; if (cfHold.on || Date.now() - (cfPick.holdEnd || 0) < 500) { cfSw = null; return; } const dy = e.changedTouches[0].clientY - cfSw.y; const ok = Math.abs(dy) > 22 && Date.now() - cfSw.t < 700; cfSw = null;
   if (ok) { e.preventDefault(); cfPick.swiped = Date.now(); cfStep(dy < 0 ? 1 : -1); } }, { passive: false });
 document.addEventListener("wheel", e => { if (!(e.target.closest && e.target.closest(".cf-pill"))) return; e.preventDefault(); if (Date.now() - cfWheelT < 350) return; cfWheelT = Date.now(); cfStep(e.deltaY > 0 ? 1 : -1); }, { passive: false });
-document.addEventListener("keydown", e => { const el = $("chfs"); if (!el || el.hidden || e.target.closest("input, textarea, select")) return;
-  if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) { e.preventDefault(); cfStep(e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1); } });
+document.addEventListener("keydown", e => { const el = $("chfs"), fs = el && !el.hidden; if (!(fs || (state.sec === "chart" && cfChart)) || e.target.closest("input, textarea, select") || $("detail").classList.contains("open")) return;
+  if ((fs ? ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"] : ["ArrowLeft", "ArrowRight"]).includes(e.key)) { e.preventDefault(); cfStep(e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1); } });
 document.addEventListener("click", e => {
   const pk = e.target.closest("[data-cfpick]"); if (pk) { if ((cfPick.swiped && Date.now() - cfPick.swiped < 500) || Date.now() - (cfPick.holdEnd || 0) < 500) return; const el = $("cfPick"); cfPickOpen(el && el.hidden); return; }
   const sg = e.target.closest("[data-cfseg]"); if (sg) { cfPick.seg = sg.dataset.cfseg; state.cfSeg = cfPick.seg; save(); const q = $("cfPickQ"); if (q) q.value = "";
     document.querySelectorAll("[data-cfseg]").forEach(b => b.classList.toggle("on", b === sg)); $("cfPickL").innerHTML = cfPickRows(); $("cfPickL").scrollTop = 0; cfWheelFx(); return; }
   const go = e.target.closest("[data-cfgo]"); if (go) { cockpitGo(go.dataset.cfgo); return; }
+  const cg = e.target.closest("[data-chartgo]"); if (cg) { closeCard(); if ($("spm")) $("spm").hidden = true; if (state.fsv) { state.fsv = null; fsvRender(); } cockpitGo(cg.dataset.chartgo); return; }
   const st = e.target.closest("[data-cfstep]"); if (st && cfChart) { if (!cfPick.seg) cfPick.seg = state.cfSeg || "mine";
     let l = cfList(cfPick.seg); if (!l.length) l = cfList("hits"); if (!l.length) return; const i = l.indexOf(cfChart.r.ticker);
     const d = +st.dataset.cfstep; (async () => { for (let k = 1; k < Math.min(l.length, 25); k++) if (await cockpitGo(l[((i < 0 ? -d : i) + d * k + l.length * 25) % l.length])) return; })(); return; }
@@ -9035,7 +9096,7 @@ document.addEventListener("click", e => {
 document.addEventListener("click", e => {
   if (e.target.closest("[data-chfs]")) { openCockpit(); return; }
   if (e.target.closest("[data-chfsclose]")) { closeCockpit(); return; }
-  const sb = e.target.closest("[data-cfside]"); if (sb) { state.cfSideOff = state.cfSideOff ? 0 : 1; save(); const el = $("chfs"); el.classList.toggle("side-off", !!state.cfSideOff);
+  const sb = e.target.closest("[data-cfside]"); if (sb) { state.cfSideOff = state.cfSideOff ? 0 : 1; save(); const el = $("ctab") || $("chfs"); if (el) el.classList.toggle("side-off", !!state.cfSideOff);
     sb.textContent = state.cfSideOff ? "◧ Status zeigen" : "◨ Status ausblenden"; sb.setAttribute("aria-pressed", state.cfSideOff ? "false" : "true"); return; }
   if (e.target.closest("#chfs [data-ein]")) { closeCockpit(); return; }
   const rg = e.target.closest("[data-cfr]"); if (rg && cfChart) { const n = cfChart.r && window.__lastChart.c.t.length, v = rg.dataset.cfr;
@@ -9047,6 +9108,38 @@ const chartOpts = el => ({ width: el.clientWidth, height: el.clientHeight, layou
     fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" },
     grid: { vertLines: { color: LC().g }, horzLines: { color: LC().g } }, rightPriceScale: { borderColor: LC().b },
     timeScale: { borderColor: LC().b }, crosshair: { mode: 0 }, localization: { locale: "de-DE", priceFormatter: v => fmt(v) } });
+// RSI, MACD und Momentum Bias Index als eigene Fenster – für Detailseite und Chart-Reiter
+function indCharts(c, r, eR, eM, eB) {
+  const LW = window.LightweightCharts, opts = chartOpts, T = c.t, pts = (k, f = v => v) => T.map((t, i) => c[k][i] == null ? null : { time: t, value: f(c[k][i]) }).filter(Boolean);
+  const rsiC = LW.createChart(eR, opts(eR));
+  const rs = rsiC.addLineSeries({ color: "#b07cff", lineWidth: 1.5, priceLineVisible: false });
+  rs.setData(pts("rsi"));
+  rsiC.addLineSeries({ color: "#f4b740", lineWidth: 1, priceLineVisible: false, lastValueVisible: false }).setData(pts("rsi_sma"));
+  [30, 50, 70].forEach(v => rs.createPriceLine({ price: v, color: "#5d6676", lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
+  if (r.div && r.div.t1) rsiC.addLineSeries({ color: "#30d158", lineWidth: 2, priceLineVisible: false, lastValueVisible: false })
+    .setData([{ time: r.div.t1, value: r.div.rsi_t1 }, { time: r.div.t2, value: r.div.rsi_t2 }]);
+
+  const macdC = LW.createChart(eM, opts(eM));
+  macdC.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false }).setData(T.map((t, i) => c.hist[i] == null ? null :
+    ({ time: t, value: c.hist[i], color: c.hist[i] >= 0 ? (i && c.hist[i] < c.hist[i - 1] ? "rgba(48,209,88,.5)" : "#30d158") : (i && c.hist[i] > c.hist[i - 1] ? "rgba(255,69,58,.5)" : "#ff453a") })).filter(Boolean));
+  macdC.addLineSeries({ color: "#4aa3ff", lineWidth: 1.5, priceLineVisible: false }).setData(pts("macd"));
+  macdC.addLineSeries({ color: "#f4b740", lineWidth: 1.5, priceLineVisible: false }).setData(pts("sig"));
+
+  const mbiC = LW.createChart(eB, opts(eB));
+  mbiC.addHistogramSeries({ color: "rgba(48,209,88,.75)", priceLineVisible: false, lastValueVisible: false }).setData(pts("mbi_up"));
+  const lo = mbiC.addHistogramSeries({ color: "rgba(255,69,58,.75)", priceLineVisible: false, lastValueVisible: false });
+  lo.setData(pts("mbi_lo"));
+  mbiC.addLineSeries({ color: "#8d96a7", lineWidth: 1, lineStyle: 1, priceLineVisible: false, lastValueVisible: false }).setData(pts("mbi_ref"));
+  lo.setMarkers(T.flatMap((t, i) => [
+    ...(c.gx[i] ? [{ time: t, position: "aboveBar", color: "#30d158", shape: "circle", text: "X" }] : []),
+    ...(c.rx[i] ? [{ time: t, position: "aboveBar", color: "#ff453a", shape: "circle", text: "X" }] : [])]));
+
+  return [rsiC, macdC, mbiC];
+}
+// Zeitachsen koppeln: Verschieben/Zoomen in einem Fenster bewegt alle
+function syncCharts(list) { let syncing = false;
+  list.forEach(ch => ch.timeScale().subscribeVisibleLogicalRangeChange(range => {
+    if (syncing || !range) return; syncing = true; list.forEach(o => o !== ch && o.timeScale().setVisibleLogicalRange(range)); syncing = false; })); }
 function drawCharts(c, r) {
   if (!window.LightweightCharts) return;
   const LW = window.LightweightCharts, opts = chartOpts;
@@ -9058,35 +9151,8 @@ function drawCharts(c, r) {
   if ($("clNote")) $("clNote").textContent = [MB.M.note, MB.M.lines.length ? "Linien: Wendepunkte mit mindestens 2 Berührungen (blau Unterstützung, rot Widerstand)" : ""].filter(Boolean).join(" · ");
   const zw = $("zoneWave"); if (zw) zw.innerHTML = MB.M.cls ? `Chart: ${esc(MB.M.note)} – vom Wellenanfang gemessen; die Scan-Regel misst ihre eigene Welle (oben).<br>` : "";
 
-  const rsiC = LW.createChart($("cRsi"), opts($("cRsi")));
-  const rs = rsiC.addLineSeries({ color: "#b07cff", lineWidth: 1.5, priceLineVisible: false });
-  rs.setData(pts("rsi"));
-  rsiC.addLineSeries({ color: "#f4b740", lineWidth: 1, priceLineVisible: false, lastValueVisible: false }).setData(pts("rsi_sma"));
-  [30, 50, 70].forEach(v => rs.createPriceLine({ price: v, color: "#5d6676", lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
-  if (r.div && r.div.t1) rsiC.addLineSeries({ color: "#30d158", lineWidth: 2, priceLineVisible: false, lastValueVisible: false })
-    .setData([{ time: r.div.t1, value: r.div.rsi_t1 }, { time: r.div.t2, value: r.div.rsi_t2 }]);
-
-  const macdC = LW.createChart($("cMacd"), opts($("cMacd")));
-  macdC.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false }).setData(T.map((t, i) => c.hist[i] == null ? null :
-    ({ time: t, value: c.hist[i], color: c.hist[i] >= 0 ? (i && c.hist[i] < c.hist[i - 1] ? "rgba(48,209,88,.5)" : "#30d158") : (i && c.hist[i] > c.hist[i - 1] ? "rgba(255,69,58,.5)" : "#ff453a") })).filter(Boolean));
-  macdC.addLineSeries({ color: "#4aa3ff", lineWidth: 1.5, priceLineVisible: false }).setData(pts("macd"));
-  macdC.addLineSeries({ color: "#f4b740", lineWidth: 1.5, priceLineVisible: false }).setData(pts("sig"));
-
-  const mbiC = LW.createChart($("cMbi"), opts($("cMbi")));
-  mbiC.addHistogramSeries({ color: "rgba(48,209,88,.75)", priceLineVisible: false, lastValueVisible: false }).setData(pts("mbi_up"));
-  const lo = mbiC.addHistogramSeries({ color: "rgba(255,69,58,.75)", priceLineVisible: false, lastValueVisible: false });
-  lo.setData(pts("mbi_lo"));
-  mbiC.addLineSeries({ color: "#8d96a7", lineWidth: 1, lineStyle: 1, priceLineVisible: false, lastValueVisible: false }).setData(pts("mbi_ref"));
-  lo.setMarkers(T.flatMap((t, i) => [
-    ...(c.gx[i] ? [{ time: t, position: "aboveBar", color: "#30d158", shape: "circle", text: "X" }] : []),
-    ...(c.rx[i] ? [{ time: t, position: "aboveBar", color: "#ff453a", shape: "circle", text: "X" }] : [])]));
-
-  charts = [main, rsiC, macdC, mbiC];
-  // Zeitachsen koppeln
-  let syncing = false;
-  charts.forEach(ch => ch.timeScale().subscribeVisibleLogicalRangeChange(range => {
-    if (syncing || !range) return; syncing = true; charts.forEach(o => o !== ch && o.timeScale().setVisibleLogicalRange(range)); syncing = false;
-  }));
+  const [rsiC, macdC, mbiC] = indCharts(c, r, $("cRsi"), $("cMacd"), $("cMbi"));
+  charts = [main, rsiC, macdC, mbiC]; syncCharts(charts);
   main.timeScale().setVisibleLogicalRange(vr0);   // halbes Jahr – oder so weit zurück, dass die gezeigte Fibonacci-Welle ganz zu sehen ist
   new ResizeObserver(() => charts.forEach((ch, k) => { const el = [$("cMain"), $("cRsi"), $("cMacd"), $("cMbi")][k]; el && ch.applyOptions({ width: el.clientWidth }); })).observe($("detailBody"));
 }

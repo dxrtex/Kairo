@@ -23,7 +23,7 @@ SITE = Path(__file__).resolve().parents[1] / "site"
 LIVE = "https://dxrtex.github.io/Kairo/data/"
 FILES = ["results.json", "search.json", "analysis.json", "alerts.json", "bilanz.json", "changes.json", "calendar.json",
          "etf.json", "briefing.json", "insider.json", "h4.json", "earnings.json"]
-SECS = ["today", "etf", "scanner", "entry", "calendar", "news", "depot", "journal", "game", "paper", "bilanz", "settings"]
+SECS = ["today", "etf", "scanner", "chart", "entry", "calendar", "news", "depot", "journal", "game", "paper", "bilanz", "settings"]
 
 
 def fetch() -> None:
@@ -324,7 +324,7 @@ async def run(port: int) -> list[str]:
             for sec in ("depot", "news"):
                 await pg.goto(f"{url}?nosplash=1&sec={sec}")
                 await pg.wait_for_timeout(1500)
-                for sub in await pg.eval_on_selector_all("[data-gosub]", "els => els.map(e => e.dataset.gosub)"):
+                for sub in await pg.eval_on_selector_all("[data-gosub]", "els => els.filter(e => e.offsetParent).map(e => e.dataset.gosub)"):
                     await pg.click(f'[data-gosub="{sub}"]')
                     await pg.wait_for_timeout(800)
                     if len((await pg.inner_text("#main")).strip()) < 20:
