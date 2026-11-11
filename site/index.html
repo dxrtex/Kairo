@@ -6597,8 +6597,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.91";
-const APP_NEWS = [["2026.11.91", "Korrektur Postfach-Design", [
+const APP_VER = "2026.11.92";
+const APP_NEWS = [["2026.11.92", "Auswahl schließt beim Antippen daneben", [
+  ["Einfach wegtippen", "Ist die Aktienauswahl offen, schließt sie sich, sobald du irgendwo anders hintippst – auch mitten in den Chart."]]],
+  ["2026.11.91", "Korrektur Postfach-Design", [
   ["Seitenleisten-Design repariert", "Im Aufgaben-Postfach-Design war der Inhalt in eine schmale Spalte gequetscht – behoben."]]],
   ["2026.11.90", "Firmenlogos", [
   ["Echte Logos in der Aktienauswahl", "Pille und Auswahl-Rad zeigen jetzt die echten Firmenlogos (wie bei TradingView). Gibt es kein Logo, bleibt der farbige Buchstabe."]]],
@@ -9002,6 +9004,9 @@ const cfHoldEnd = () => { clearTimeout(cfHold.timer); cfHold.timer = 0; if (!cfH
   if (t && cfChart && t !== cfChart.r.ticker) cockpitGo(t); };
 document.addEventListener("pointerup", cfHoldEnd); document.addEventListener("pointercancel", cfHoldEnd);
 document.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest(".cf-pill")) e.preventDefault(); });
+// Antippen irgendwo außerhalb (auch im Chart, der Klicks selbst verarbeitet) schließt die Aktienauswahl
+document.addEventListener("pointerdown", e => { const pe = $("cfPick"); if (!pe || pe.hidden || cfHold.on) return;
+  if (e.target.closest && (e.target.closest(".cf-pick") || e.target.closest(".cf-pill"))) return; cfPickOpen(false); }, true);
 const cfStep = d => { const b = document.createElement("button"); b.dataset.cfstep = d; b.hidden = true; document.body.appendChild(b); b.click(); b.remove(); };
 document.addEventListener("touchstart", e => { const p = e.target.closest && e.target.closest(".cf-pill"); cfSw = p && e.touches.length === 1 ? { y: e.touches[0].clientY, t: Date.now() } : null; }, { passive: true });
 document.addEventListener("touchend", e => { if (!cfSw) return; if (cfHold.on || Date.now() - (cfPick.holdEnd || 0) < 500) { cfSw = null; return; } const dy = e.changedTouches[0].clientY - cfSw.y; const ok = Math.abs(dy) > 22 && Date.now() - cfSw.t < 700; cfSw = null;
