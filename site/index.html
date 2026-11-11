@@ -1153,7 +1153,7 @@
   /* Reiter-Leiste: Markierung gleitet zum neuen Reiter und dehnt sich dabei kurz (wie iOS) */
   .tabs { position: relative; } .tab { z-index: 1; }
   /* Tagesbriefing */
-  .brand .brief-btn { margin-left: auto; } .brand .brief-btn + .gear { margin-left: 8px; }
+  .brand [data-cfquick] { margin-left: auto; } .brand [data-cfquick] + .brief-btn { margin-left: 8px; } .brand .brief-btn + .gear { margin-left: 8px; }
   /* Vollbild-Ansichten (Markt) */
   .fs-btn { margin-left: auto; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
   .hh .fs-btn + .hlink, .sp-hh .sp-reg + .fs-btn { margin-left: 8px; } .sp-hh { gap: 8px; }
@@ -1343,6 +1343,66 @@
 @media (max-width:560px){.etf-hero{flex-direction:column;align-items:stretch;gap:14px;padding:16px!important}.eh-lights{flex-direction:row;justify-content:space-around;border-radius:18px;padding:10px 8px}.eh-l i{width:30px;height:30px}.eh-t{font-size:21px}}
 .etf-more>summary{cursor:pointer;font-weight:600;list-style:none}.etf-more>summary::before{content:"› ";color:var(--accent)}.etf-more[open]>summary::before{content:"⌄ "}
 .pf-left,.pf-right{overflow-x:clip}.pf-cards>*{overflow-wrap:anywhere}
+
+  /* ============ Glas-Optik (iOS „Liquid Glass“, Wunsch 11/2026) – nur auf schwebenden Elementen; Schalter in den Einstellungen (state.glass) ============ */
+  html.glass { --g-tint: rgba(36,38,46,.30); --g-tint-2: rgba(255,255,255,.07); --g-hi: rgba(255,255,255,.34); --g-lo: rgba(255,255,255,.07); --g-ring: rgba(255,255,255,.12);
+    --g-shadow: 0 10px 30px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.25); --g-blur: blur(24px) saturate(200%) contrast(1.05) brightness(1.04);
+    --g-edge: linear-gradient(155deg, rgba(255,255,255,.62), rgba(255,255,255,.10) 32%, rgba(255,255,255,.03) 58%, rgba(255,255,255,.30)); }
+  html.glass.lt { --g-tint: rgba(255,255,255,.42); --g-tint-2: rgba(255,255,255,.35); --g-hi: rgba(255,255,255,.9); --g-lo: rgba(255,255,255,.35); --g-ring: rgba(0,0,0,.06);
+    --g-shadow: 0 10px 30px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.08); --g-edge: linear-gradient(155deg, rgba(255,255,255,.95), rgba(255,255,255,.4) 35%, rgba(255,255,255,.2) 60%, rgba(255,255,255,.8)); }
+  /* Grundrezept: Tönung + Verlauf, Unschärfe/Sättigung, Lichtkante oben, schwache Kante unten, feiner Ring, Schatten */
+  html.glass :is(.brand .gear, .cm-x, .cf-sidebtn, .fs-btn, .cl-c, .sp-seg, .cl-ohlc, .live-btn) {
+    background: linear-gradient(160deg, var(--g-tint-2), transparent 60%), var(--g-tint) !important; border: 0 !important;
+    -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
+    box-shadow: inset 0 1px 0 var(--g-hi), inset 0 -1px 0 var(--g-lo), inset 0 0 0 1px var(--g-ring), var(--g-shadow) !important; }
+  html.glass .brand .gear, html.glass .cm-x { border-radius: 50% !important; color: var(--text); }
+  html.glass .brand .gear:active, html.glass .cm-x:active, html.glass .cl-c:active { transform: scale(.94); }
+  html.glass .cl-ohlc { padding: 3px 10px; border-radius: 999px; box-shadow: inset 0 1px 0 var(--g-hi), inset 0 0 0 1px var(--g-ring) !important; }
+  html.glass .cl-c.on { color: var(--text); background: linear-gradient(160deg, rgba(255,255,255,.22), rgba(255,255,255,.06) 70%), var(--g-tint) !important; }
+  /* Umschalter (Segmente): Glas-Spur, aktiver Teil als heller Glas-Tropfen */
+  html.glass .sp-seg { border-radius: 999px; padding: 4px; }
+  html.glass .sp-seg button { border-radius: 999px; }
+  html.glass .sp-seg button.on { background: linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.10)) !important; color: var(--text);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(255,255,255,.10), 0 4px 14px rgba(0,0,0,.25) !important; }
+  html.glass.lt .sp-seg button.on { background: rgba(255,255,255,.95) !important; box-shadow: 0 3px 10px rgba(0,0,0,.12), inset 0 0 0 .5px rgba(0,0,0,.05) !important; }
+  html.glass .sp-seg button.ins-buy.on, html.glass .sp-seg button.ins-sell.on { color: #fff; background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 60%), currentColor !important; }
+  html.glass .sp-seg button.ins-buy.on { background-color: var(--up) !important; } html.glass .sp-seg button.ins-sell.on { background-color: var(--red) !important; }
+  /* Chips (.opt): leichtes Glas, aktiv kräftig mit Glanz */
+  html.glass .opt { background: linear-gradient(160deg, var(--g-tint-2), transparent 70%), var(--g-tint); border-color: transparent;
+    box-shadow: inset 0 1px 0 var(--g-hi), inset 0 0 0 1px var(--g-ring); }
+  html.glass .opt.on { background: linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,0) 55%), var(--accent); border-color: transparent;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -1px 0 rgba(0,0,0,.12), 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+  /* Reiter-Leiste: schwebende Glas-Kapsel, aktiver Reiter als Glas-Tropfen */
+  html.glass nav.tabbar { left: 50%; right: auto; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 10px); width: min(720px, calc(100% - 20px));
+    padding: 6px; border-radius: 34px; border: 0; isolation: isolate;
+    background: linear-gradient(160deg, rgba(255,255,255,.12), rgba(255,255,255,.03) 50%), var(--g-tint);
+    -webkit-backdrop-filter: blur(30px) saturate(210%) contrast(1.06) brightness(1.04); backdrop-filter: blur(30px) saturate(210%) contrast(1.06) brightness(1.04);
+    box-shadow: 0 18px 50px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.25); }
+  html.glass nav.tabbar::before, html.glass .bm-box::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: var(--g-edge); pointer-events: none; z-index: 2;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+  html.glass nav.tabbar::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+    background: radial-gradient(90% 120% at 12% -30%, rgba(255,255,255,.18), transparent 55%); }
+  html.glass nav.tabbar .tabs { position: relative; z-index: 1; }
+  html.glass .tab { border-radius: 28px; } html.glass .tab.on { color: var(--text); }
+  html.glass .tab-ind { border-radius: 28px !important; background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.08)) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(255,255,255,.08), 0 6px 18px rgba(0,0,0,.25); }
+  html.glass.lt .tab-ind { background: rgba(255,255,255,.9) !important; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+  html.glass body { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 40px); }
+  /* Dialoge: Glas-Karte über verschwommenem Hintergrund */
+  html.glass .bm-back { background: rgba(0,0,0,.38); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); }
+  html.glass .bm-box { isolation: isolate; border: 0; border-radius: 30px;
+    background: linear-gradient(165deg, rgba(255,255,255,.10), rgba(255,255,255,.02) 45%), rgba(26,28,34,.62);
+    -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.05); backdrop-filter: blur(40px) saturate(200%) brightness(1.05);
+    box-shadow: 0 40px 100px rgba(0,0,0,.55), 0 10px 30px rgba(0,0,0,.3); }
+  html.glass.lt .bm-box { background: linear-gradient(165deg, rgba(255,255,255,.7), rgba(255,255,255,.45)), rgba(255,255,255,.4); }
+  html.glass .bm-box > * { position: relative; z-index: 1; } html.glass .bm-box > .cm-x { position: absolute; z-index: 3; }
+  html.glass .subnav { background: linear-gradient(160deg, var(--g-tint-2), transparent 60%), var(--g-tint) !important; border: 0 !important; border-radius: 999px; padding: 4px;
+    -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: inset 0 1px 0 var(--g-hi), inset 0 -1px 0 var(--g-lo), inset 0 0 0 1px var(--g-ring), var(--g-shadow) !important; }
+  html.glass .subnav button { border-radius: 999px; }
+  html.glass .subnav button.on { background: linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.10)) !important; color: var(--text) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(255,255,255,.10), 0 4px 14px rgba(0,0,0,.25) !important; }
+  html.glass.lt .subnav button.on { background: rgba(255,255,255,.95) !important; box-shadow: 0 3px 10px rgba(0,0,0,.12) !important; }
+  @media (prefers-reduced-transparency: reduce) { html.glass :is(nav.tabbar, .bm-box) { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface) !important; } }
 </style>
 <style id="ds-auto" media="not all">
 
@@ -1903,6 +1963,7 @@ const applyDesign = () => {
   if (String(state.design || "").startsWith("premium")) state.design = "classic";   // Premium-Design entfernt (11/2026) → Standard (wird beim nächsten Speichern übernommen)
   applyTextSize();
   DESIGNS.forEach(([k]) => { const el = document.getElementById("ds-" + k); if (el) el.media = k === state.design ? "all" : "not all"; });
+  document.documentElement.classList.toggle("glass", state.glass !== 0); document.documentElement.classList.toggle("lt", isLight());   // Glas-Optik (abschaltbar)
   const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = isLight() ? "#f2f2f7" : getComputedStyle(document.body).backgroundColor;
 };
 applyDesign();
@@ -4664,6 +4725,7 @@ document.addEventListener("click", e => {
 document.addEventListener("click", e => {
   const ts = e.target.closest("[data-tsize]"); if (ts) { state.textSize = ts.dataset.tsize; save(); applyTextSize(); render(); return; }
   const d = e.target.closest("[data-design]"); if (d) { state.design = d.dataset.design; save(); applyDesign(); renderHead(); render(); return; }
+  const gl = e.target.closest("[data-glass]"); if (gl) { state.glass = +gl.dataset.glass; save(); applyDesign(); render(); return; }
   const b = e.target.closest("[data-emoji]"); if (!b) return;
   state.emoji = b.dataset.emoji; save(); renderHead(); appleHead();
   const inp = $("cfgEmoji"); if (inp) inp.value = state.emoji;
@@ -6534,8 +6596,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.88";
-const APP_NEWS = [["2026.11.88", "Halten zum Wählen, echteres Glas", [
+const APP_VER = "2026.11.89";
+const APP_NEWS = [["2026.11.89", "Glas-Optik wie iOS", [
+  ["Schwebende Elemente aus Glas", "Reiter-Leiste, runde Knöpfe, Dialoge, Umschalter und Chart-Schalter sind jetzt aus Glas – wie im iOS-Kontrollzentrum. Gefällt es dir nicht: Einstellungen → Glas-Optik → Aus."]]],
+  ["2026.11.88", "Halten zum Wählen, echteres Glas", [
   ["Gedrückt halten", "Unten links auf der Aktien-Pille gedrückt halten: das gläserne Rad öffnet sich in der Mitte, mit dem Finger hoch/runter wählen, loslassen – fertig. Kurz antippen öffnet die Liste wie bisher."],
   ["Glas wie echt", "Pille und Rad mit lichtbrechender Kante, Glanzlicht und stärkerer Tiefe."]]],
   ["2026.11.87", "Eigene Welle wie bei TradingView", [
@@ -7013,6 +7077,7 @@ function settingsHtml() {
       <div class="set-lbl">Textgröße</div><div class="set-chips">${[["", "Normal"], ["big", "Größer"], ["bigger", "Sehr groß"]].map(([k, l]) => `<button type="button" class="opt${(state.textSize || "") === k ? " on" : ""}" data-tsize="${k}">${l}</button>`).join("")}</div>
       <div class="set-lbl">Rundgang</div><button type="button" class="btn ghost sm" data-tour="0">Rundgang noch einmal ansehen</button>
       <div class="set-lbl">Design</div><div class="set-chips">${DESIGNS.map(([k, l]) => `<button type="button" class="opt${(state.design || "classic") === k ? " on" : ""}" data-design="${k}">${l}</button>`).join("")}</div>
+      <div class="set-lbl">Glas-Optik (iOS)</div><div class="set-chips">${[[1, "An – schwebende Elemente aus Glas"], [0, "Aus – klassisch"]].map(([v, l]) => `<button type="button" class="opt${(state.glass !== 0) === !!v ? " on" : ""}" data-glass="${v}">${l}</button>`).join("")}</div>
       <div class="note">Wechselt sofort, alle Funktionen und Daten bleiben gleich.</div></div>
     ${feedbackHtml()}
     ${pushHtml()}
