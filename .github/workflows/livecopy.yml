@@ -1,4 +1,4 @@
-name: Live-Daten-Kopie (Prüfung) # BABA
+name: Live-Daten-Kopie (Prüfung) # TKA
 on:
   push:
     branches: ["claude/livecopy"]
@@ -16,7 +16,7 @@ jobs:
           id=""; for r in $( (gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/scan_watch.yml/runs?status=success&per_page=5" --jq '.workflow_runs[] | "\(.created_at) \(.id)"'; gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/scan.yml/runs?status=success&per_page=10" --jq '.workflow_runs[] | "\(.created_at) \(.id)"') | sort -r | cut -d" " -f2); do rm -rf live; if gh run download "$r" -n github-pages -D live 2>/dev/null; then id=$r; break; fi; done; echo "Lauf $id"
           mkdir -p ls && tar -xf live/artifact.tar -C ls
           mkdir -p snapshot && for f in analysis insider search briefing calendar earnings results h4 etf alerts changes; do cp "ls/data/$f.json" snapshot/ 2>/dev/null || true; done
-          mkdir -p snapshot/charts && for t in NVDA AVGO AMD AAPL SAP.DE ENR.DE IREN TSM MSFT META RHM.DE ASML; do cp "ls/data/charts/$t.json" snapshot/charts/ 2>/dev/null || true; done
+          mkdir -p snapshot/charts && for t in NVDA AVGO AMD AAPL SAP.DE ENR.DE IREN TSM MSFT META RHM.DE ASML BABA TKA.DE; do cp "ls/data/charts/$t.json" snapshot/charts/ 2>/dev/null || true; done
           pip install -q yfinance pandas >/dev/null 2>&1 && python tools/long5y.py || true
           sid=$id
           gh run view "$sid" --log -R "$GITHUB_REPOSITORY" | grep -E "Insider|OpenFIGI|Markt|Branchen|Themen|Fehler|Error|Traceback" | cut -c1-400 > snapshot/scanlog.txt  # Lauf 12 || true
