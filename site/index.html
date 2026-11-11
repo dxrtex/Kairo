@@ -9209,39 +9209,93 @@ function ownWave(M, c, r) {
 function ownWaveSave(t, L, H, lp, hp) { const m = { ...(state.myWave || {}) }; if (L) m[t] = { L, H, ...(lp > 0 ? { lp: +(+lp).toPrecision(6) } : {}), ...(hp > 0 ? { hp: +(+hp).toPrecision(6) } : {}) }; else delete m[t]; state.myWave = m; save();
   CL_LIVE.forEach(h => { if (h.r.ticker === t && document.body.contains(h.el)) { ownWave(h.M, h.c, h.r); } }); clRefresh(); }
 // Griffe zum Ziehen (Messen: Start/Ende, eigene Welle: Tief/Hoch) – unten im Chart, damit man sie mit dem Finger trifft
-// Volumenprofil (Wunsch 11/2026, wie „VPVR“ bei TradingView): Volumen je Kursniveau über den sichtbaren Zeitraum, rechts am Rand.
+// Volumenprofil (Wunsch 11/2026, wie „VPVR“ bei TradingView): Volumen je Kursniveau, rechts am Rand.
 // Breite Balken = viel gehandelt = oft Unterstützung/Widerstand. Hervorgehoben: meistgehandeltes Niveau (POC) und die 70 % Wertzone.
+// 12.11.: feine Stufen nach Bildschirmhöhe, Volumen je Tag um den typischen Kurs verteilt, Big-Player-Zonen aus Großvolumen-Tagen
+// (≥ 2× Ø-Volumen der 50 Tage davor – solche Mengen bewegen Fonds und Banken). Reine Anzeige, keine Kaufregel.
 function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
   let series = null, chart = null, req = null, memo = null;
+  const F1 = "600 10.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+  // Volumen eines Tages auf die Preisstufen verteilen: Dreieck um den typischen Kurs (H+L+C)/3 statt gleichmäßig über die Spanne –
+  // so liegt das Volumen dort, wo der Tag wirklich gehandelt wurde (genauer als gleichmäßig, solange keine Minutenkerzen vorliegen)
+  const spread = (b, v, pBot, step, N, add) => { const lo = b.low, hi = b.high, tp = (b.high + b.low + b.close) / 3;
+    const a0 = Math.max(0, Math.floor((lo - pBot) / step)), a1 = Math.min(N - 1, Math.floor((hi - pBot) / step));
+    if (a1 <= a0) { add(a0, v); return; }
+    const half = Math.max(tp - lo, hi - tp) || step; let sw = 0; const w = [];
+    for (let k = a0; k <= a1; k++) { const mid = pBot + (k + .5) * step, x = Math.max(.12, 1 - Math.abs(mid - tp) / half); w.push(x); sw += x; }
+    for (let k = a0; k <= a1; k++) add(k, v * w[k - a0] / sw); };
+  const calc = (i1, i2, pBot, pTop, N) => {
+    const step = (pTop - pBot) / N, bins = new Float64Array(N), ups = new Float64Array(N), bigU = new Float64Array(N), bigD = new Float64Array(N), days = [];
+    for (let i = i1; i <= i2; i++) { const b = barAt(i), v = volAt(i); if (!b || !(v > 0)) continue;
+      // Ø-Volumen der 50 Tage davor: Tage mit ≥ 2× davon = Großvolumen (Fonds, Banken, Pensionskassen bewegen solche Mengen)
+      let sv = 0, nv = 0; for (let k = Math.max(0, i - 50); k < i; k++) { const z = volAt(k); if (z > 0) { sv += z; nv++; } }
+      const rv = nv >= 20 ? v / (sv / nv) : 0, up = b.close >= b.open, big = rv >= 2;
+      spread(b, v, pBot, step, N, (k, x) => { bins[k] += x; if (up) ups[k] += x; if (big) (up ? bigU : bigD)[k] += x; });
+      if (big) days.push({ i, tp: (b.high + b.low + b.close) / 3, rv, up, v }); }
+    let max = 0, poc = 0, tot = 0; for (let k = 0; k < N; k++) { tot += bins[k]; if (bins[k] > max) { max = bins[k]; poc = k; } }
+    let lo = poc, hi = poc, acc = bins[poc]; while (acc < tot * .7 && (lo > 0 || hi < N - 1)) { const dn = lo > 0 ? bins[lo - 1] : -1, upv = hi < N - 1 ? bins[hi + 1] : -1; if (upv >= dn) acc += bins[++hi]; else acc += bins[--lo]; }
+    // Big-Player-Zonen: Gipfel im geglätteten Großvolumen-Profil (Kauf = steigende Großvolumen-Tage, Verkauf = fallende)
+    const zones = (src, kind) => { const sm = new Float64Array(N), r = Math.max(1, Math.round(N / 60)); let mx = 0;
+      for (let k = 0; k < N; k++) { let a = 0; for (let d = -r; d <= r; d++) { const q = k + d; if (q >= 0 && q < N) a += src[q]; } sm[k] = a; mx = Math.max(mx, a); }
+      if (!mx) return []; const pk = [];
+      for (let k = 0; k < N; k++) if (sm[k] >= mx * .3 && (k === 0 || sm[k] >= sm[k - 1]) && (k === N - 1 || sm[k] > sm[k + 1])) pk.push(k);
+      pk.sort((a, b) => sm[b] - sm[a]); const out = [], gap = Math.max(3, Math.round(N / 14));
+      for (const k of pk) { if (out.length >= 3 || out.some(z => Math.abs(z.k - k) < gap)) continue;
+        let a = k, b = k; while (a > 0 && sm[a - 1] >= sm[k] * .55) a--; while (b < N - 1 && sm[b + 1] >= sm[k] * .55) b++;
+        const zLo = pBot + a * step, zHi = pBot + (b + 1) * step, ds = days.filter(d => d.up === (kind === "buy") && d.tp >= zLo && d.tp <= zHi);
+        const rvA = ds.length ? ds.reduce((s, d) => s + d.rv, 0) / ds.length : 0;
+        if (ds.length < 2 && rvA < 3) continue;                  // ein einzelner, nur leicht erhöhter Tag ist keine Zone
+        out.push({ k, lo: zLo, hi: zHi, kind, n: ds.length, rv: rvA, first: Math.min(...ds.map(d => d.i)), last: Math.max(...ds.map(d => d.i)), share: sm[k] / mx }); }
+      return out; };
+    return { step, bins, ups, bigU, bigD, max, poc, lo, hi, buy: zones(bigU, "buy"), sell: zones(bigD, "sell"), nBig: days.length };
+  };
   const r = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { if (!series || !chart || !on()) return;
     // fest (Wunsch 11/2026): Zeitraum ab dem Tief der Fibonacci-Welle (sonst 1 Jahr), Preisstufen aus den Kursen – unabhängig vom Bildausschnitt
     const n = count(); if (n < 10) return; const a0 = anchor(), i1 = Math.max(0, a0 == null ? n - 252 : a0), i2 = n - 1, lastB = barAt(i2);
-    const key = `${i1}|${n}|${lastB && lastB.close}|${lastB && lastB.high}|${lastB && lastB.low}`;
-    if (!memo || memo.key !== key) { let pLo = Infinity, pHi = -Infinity; for (let i = i1; i <= i2; i++) { const b = barAt(i); if (b) { pLo = Math.min(pLo, b.low); pHi = Math.max(pHi, b.high); } }
-      memo = { key, pLo, pHi, data: null }; }
-    const pBot = memo.pLo, pTop = memo.pHi; if (!(pTop > pBot)) return;
-    const N = 64, step = (pTop - pBot) / N, bins = new Float64Array(N), ups = new Float64Array(N);
-    for (let i = i1; i <= i2; i++) { const b = barAt(i), v = volAt(i); if (!b || !(v > 0)) continue;
-      const lo = b.low, hi = b.high;
-      const a0 = Math.floor((lo - pBot) / step), a1 = Math.min(N - 1, Math.floor((hi - pBot) / step)), share = v / (a1 - a0 + 1);
-      const up = b.close >= b.open; for (let k = Math.max(0, a0); k <= a1; k++) { bins[k] += share; if (up) ups[k] += share; } }
-    let max = 0, poc = 0, tot = 0; for (let k = 0; k < N; k++) { tot += bins[k]; if (bins[k] > max) { max = bins[k]; poc = k; } } if (!max) return;
-    let lo = poc, hi = poc, acc = bins[poc]; while (acc < tot * .7 && (lo > 0 || hi < N - 1)) { const dn = lo > 0 ? bins[lo - 1] : -1, up = hi < N - 1 ? bins[hi + 1] : -1; if (up >= dn) acc += bins[++hi]; else acc += bins[--lo]; }
-    const W = Math.min(m.width * .24, 260), xr = m.width - 2, light = isLight();
-    for (let k = 0; k < N; k++) { if (!bins[k]) continue; const y0 = series.priceToCoordinate(pBot + (k + 1) * step), y1 = series.priceToCoordinate(pBot + k * step); if (y0 == null || y1 == null) continue;
-      // grün = Volumen an steigenden Tagen, rot = an fallenden (wie bei TradingView); kräftiger in der 70-%-Zone, Rahmen am meistgehandelten Niveau
-      const w = W * bins[k] / max, wu = w * ups[k] / bins[k], inVA = k >= lo && k <= hi, a = k === poc ? .75 : inVA ? .5 : .22;
-      const yy = Math.min(y0, y1) + .5, hh = Math.max(1, Math.abs(y1 - y0) - 1);
-      x.fillStyle = `rgba(48,209,88,${a})`; x.fillRect(xr - w, yy, wu, hh);
-      x.fillStyle = `rgba(255,69,58,${a})`; x.fillRect(xr - w + wu, yy, w - wu, hh);
-      if (k === poc) { x.strokeStyle = "rgba(255,159,10,.95)"; x.lineWidth = 1.2; x.strokeRect(xr - w - .5, yy - .5, w + 1, hh + 1); } }
-    const yp = series.priceToCoordinate(pBot + (poc + .5) * step);
-    if (yp != null) { x.strokeStyle = "rgba(255,159,10,.75)"; x.lineWidth = 1; x.setLineDash([2, 3]); x.beginPath(); x.moveTo(m.width - W - 8, Math.round(yp) + .5); x.lineTo(m.width, Math.round(yp) + .5); x.stroke(); x.setLineDash([]);
-      x.font = "600 10.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"; x.fillStyle = "rgb(255,159,10)"; x.textAlign = "right"; x.textBaseline = "bottom"; x.textBaseline = "middle"; const tx = `meistgehandelt seit ${dateAt(i1)}: ${fmt(pBot + (poc + .5) * step)}`, tw = x.measureText(tx).width, lx = m.width - W - 12;
-      x.fillStyle = light ? "rgba(255,255,255,.9)" : "rgba(16,18,22,.85)"; x.fillRect(lx - tw - 6, Math.round(yp) - 8, tw + 10, 16); x.fillStyle = "rgb(255,159,10)"; x.fillText(tx, lx, Math.round(yp)); } }) };
-  const views = [{ zOrder: () => "bottom", renderer: () => r }];
+    let pLo = Infinity, pHi = -Infinity;
+    for (let i = i1; i <= i2; i++) { const b = barAt(i); if (b) { pLo = Math.min(pLo, b.low); pHi = Math.max(pHi, b.high); } }
+    if (!(pHi > pLo)) return;
+    // Feinheit nach Bildschirmhöhe (12.11.): etwa eine Stufe je 3 Pixel – dünne Balken wie bei TradingView, 40 bis 260 Stufen
+    const yA = series.priceToCoordinate(pHi), yB = series.priceToCoordinate(pLo); if (yA == null || yB == null) return;
+    const N = Math.max(40, Math.min(260, Math.round(Math.abs(yB - yA) / 3)));
+    const key = `${i1}|${n}|${N}|${lastB && lastB.close}|${lastB && lastB.high}|${lastB && lastB.low}|${lastB && volAt(i2)}`;
+    if (!memo || memo.key !== key) memo = { key, i1, n, pLo, pHi, d: calc(i1, i2, pLo, pHi, N) };
+    const D = memo.d, step = D.step, light = isLight(), W = Math.min(m.width * .24, 260), xr = m.width - 2, Y = p => series.priceToCoordinate(p);
+    // 1) Big-Player-Zonen als ruhige Bänder über den ganzen Chart (hinter den Kerzen)
+    const zs = [...D.buy, ...D.sell];
+    const ts = chart.timeScale(), xEnd = m.width - W - 4;
+    zs.forEach(z => { const y0 = Y(z.hi), y1 = Y(z.lo); if (y0 == null || y1 == null) return; const yy = Math.min(y0, y1), hh = Math.max(2, Math.abs(y1 - y0));
+      const c = z.kind === "buy" ? "10,132,255" : "191,90,242", xs = Math.max(0, Math.min(xEnd - 30, ts.logicalToCoordinate(z.first) ?? 0)); z.xs = xs;
+      x.fillStyle = `rgba(${c},${light ? .08 : .11})`; x.fillRect(xs, yy, xEnd - xs, hh);
+      x.strokeStyle = `rgba(${c},.6)`; x.lineWidth = 1; x.setLineDash([5, 4]);
+      [yy, yy + hh].forEach(v => { x.beginPath(); x.moveTo(xs, Math.round(v) + .5); x.lineTo(xEnd, Math.round(v) + .5); x.stroke(); }); x.setLineDash([]);
+      x.fillStyle = `rgb(${c})`; x.fillRect(xs, yy, 2.5, hh); });
+    // 2) feine Balken: grün/rot = Volumen an steigenden/fallenden Tagen, kräftiger in der 70-%-Wertzone, blau = Großvolumen-Käufe
+    for (let k = 0; k < D.bins.length; k++) { const v = D.bins[k]; if (!v) continue; const y0 = Y(memo.pLo + (k + 1) * step), y1 = Y(memo.pLo + k * step); if (y0 == null || y1 == null) continue;
+      const w = W * v / D.max, wu = w * D.ups[k] / v, inVA = k >= D.lo && k <= D.hi, a = k === D.poc ? .8 : inVA ? .5 : .24;
+      const yy = Math.min(y0, y1), hh = Math.abs(y1 - y0), gap = hh >= 3 ? .8 : hh >= 2 ? .5 : 0, h2 = Math.max(.8, hh - gap);
+      x.fillStyle = `rgba(48,209,88,${a})`; x.fillRect(xr - w, yy, wu, h2);
+      x.fillStyle = `rgba(255,69,58,${a})`; x.fillRect(xr - w + wu, yy, w - wu, h2);
+      const bu = W * D.bigU[k] / D.max; if (bu > .5) { x.fillStyle = `rgba(10,132,255,${inVA ? .95 : .8})`; x.fillRect(xr - bu, yy, bu, h2); } }
+    // 3) meistgehandeltes Niveau (POC)
+    const yp = Y(memo.pLo + (D.poc + .5) * step);
+    if (yp != null) { const wp = W; x.strokeStyle = "rgba(255,159,10,.85)"; x.lineWidth = 1; x.setLineDash([2, 3]); x.beginPath(); x.moveTo(m.width - wp - 8, Math.round(yp) + .5); x.lineTo(m.width, Math.round(yp) + .5); x.stroke(); x.setLineDash([]);
+      x.font = F1; x.textAlign = "right"; x.textBaseline = "middle"; const tx = `meistgehandelt seit ${dateAt(i1)}: ${fmt(memo.pLo + (D.poc + .5) * step)}`, tw = x.measureText(tx).width, lx = m.width - wp - 12;
+      x.fillStyle = light ? "rgba(255,255,255,.92)" : "rgba(16,18,22,.86)"; x.fillRect(lx - tw - 6, Math.round(yp) - 8, tw + 10, 16); x.fillStyle = "rgb(255,159,10)"; x.fillText(tx, lx, Math.round(yp)); }
+    // 4) Beschriftung der Zonen (oben über den Kerzen gezeichnet, rechts an der Zone)
+    x.font = F1; const used = []; lbls = [];
+    zs.sort((a, b) => b.share - a.share).forEach(z => { const y0 = Y(z.hi), y1 = Y(z.lo); if (y0 == null || y1 == null) return; let yc = Math.round(Math.min(y0, y1)) - 9;
+      if (yc < 14) yc = Math.round(Math.max(y0, y1)) + 9; if (used.some(u => Math.abs(u - yc) < 18) || yc > m.height - 20) return; used.push(yc);
+      const buy = z.kind === "buy", tx = `Big Player ${buy ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"} · Ø ${fmt(z.rv, 1)}× Vol.`;
+      const tw = x.measureText(tx).width, c = buy ? "10,132,255" : "191,90,242", bx = Math.max(4, xEnd - tw - 18);
+      lbls.push({ tx, c, bx, yc, w: tw + 16 }); }); }) };
+  let lbls = [];
+  const top = { draw: t => t.useMediaCoordinateSpace(({ context: x }) => { if (!on() || !lbls.length) return; x.font = F1; x.textAlign = "left"; x.textBaseline = "middle";
+    lbls.forEach(l => { x.fillStyle = `rgba(${l.c},.94)`; x.beginPath(); x.roundRect(l.bx, l.yc - 9, l.w, 18, 5); x.fill(); x.fillStyle = "#fff"; x.fillText(l.tx, l.bx + 8, l.yc + .5); }); }) };
+  const views = [{ zOrder: () => "bottom", renderer: () => r }, { zOrder: () => "top", renderer: () => top }];
   return { attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; },
-    detached() { series = chart = null; }, update() { req && req(); }, updateAllViews() {}, paneViews: () => views };
+    detached() { series = chart = null; }, update() { req && req(); }, updateAllViews() {}, paneViews: () => views,
+    info: () => memo && memo.d ? { buy: memo.d.buy, sell: memo.d.sell, nBig: memo.d.nBig } : null };
 }
 function gripPrimitive(get) {
   let chart = null, series = null, req = null;
@@ -9315,7 +9369,7 @@ function buildMain(el, c, r, opts) {
   // Kerzen-Info (oben links) und Messwerkzeug
   const cnt = () => candles.data().length, barAt = i => candles.data()[i], mp = measurePrimitive(barAt, cnt); candles.attachPrimitive(mp); h.mp = mp;
   const vpp = profilePrimitive(barAt, cnt, i => i < T.length ? c.v[i] : (LIVE.map[r.ticker] && LIVE.map[r.ticker].v) || 0, () => !!clGet("vp"),
-    () => h.M && h.M.cls ? h.M.cls.iL : null, i => dateDE(T[Math.min(i, T.length - 1)])); candles.attachPrimitive(vpp);
+    () => h.M && h.M.cls ? h.M.cls.iL : null, i => dateDE(T[Math.min(i, T.length - 1)])); candles.attachPrimitive(vpp); h.vpp = vpp;
   if (getComputedStyle(el).position === "static") el.style.position = "relative";
   const lg = document.createElement("div"); lg.className = "cl-ohlc"; el.appendChild(lg);
   const idxOf = tm => { const k = tkey(tm), d = candles.data(); for (let i = d.length - 1; i >= 0; i--) if (tkey(d[i].time) === k) return i; return -1; };
@@ -9479,6 +9533,8 @@ function cockpitSide(h, r) {
   return `<div class="cf-s"><div class="cf-h">Status</div><span class="st ${k.cls}">${esc(k.t)}</span>${hn.title ? `<p class="cf-t"><b>${esc(hn.title)}</b> ${esc(String(hn.text || "").slice(0, 220))}</p>` : ""}</div>
     <div class="cf-s"><div class="cf-h">Trade-Plan</div>${row("Kaufzone oben", p.entry, "#eceef2")}${row("Stop", p.stop, "#ff453a")}${row("K.-o. Turbo", ko, "#ff9f0a")}
       ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Seitwärtsphase.</p>` : ""}</div>
+    ${(vi => vi && clGet("vp") && (vi.buy.length || vi.sell.length) ? `<div class="cf-s"><div class="cf-h">Big Player · Großvolumen-Zonen</div>${[...vi.buy, ...vi.sell].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:${z.kind === "buy" ? "#0a84ff" : "#bf5af2"}"></i>${z.kind === "buy" ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"}, Ø ${fmt(z.rv, 1)}×</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
+      <p class="muted cf-t">Tage mit mindestens doppeltem Ø-Volumen – solche Mengen handeln meist Fonds und Banken. Kauf-Zonen wirken oft als Unterstützung. Nur zur Orientierung, keine Kairo-Regel.</p></div>` : "")(h.vpp && h.vpp.info())}
     ${M.cls && clGet("fib") ? fibList(M.cls, "#f4b740", "Fibonacci") : ""}${M.big && clGet("big", M.broken) ? fibList(M.big, "#b07cff", "Fibonacci große Welle") : ""}
     ${M.lines.length ? `<div class="cf-s"><div class="cf-h">Unterstützungen & Widerstände</div>${M.lines.map(L => row(`${L.kind === "s" ? "Unterstützung" : "Widerstand"} · ${L.n}×`, L.p, L.kind === "s" ? "#4aa3ff" : "#ff8076")).join("")}</div>` : ""}
     <div class="cf-s"><div class="cf-h">Kairo-Kriterien · ${r.met ?? "–"}/${r.total ?? 11}</div><div class="cf-crit">${crit.map(x => `<span class="${x.ok ? "ok" : "no"}">${x.ok ? "✓" : "✗"} ${esc(shortCrit(x.label))}</span>`).join("")}</div></div>
@@ -9553,6 +9609,7 @@ function ctabBuild(c, r) {
   ctabInd = indCharts(c, r, $("tRsi"), $("tMacd"), $("tMbi")); syncCharts([cfChart.chart, ...ctabInd]);
   cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
   $("cfBar").innerHTML = ctabBarHtml(cfChart); $("cfSide").innerHTML = cockpitSide(cfChart, r);
+  { const hh = cfChart; setTimeout(() => { if (cfChart === hh && $("cfSide") && hh.vpp && hh.vpp.info()) $("cfSide").innerHTML = cockpitSide(hh, hh.r); }, 450); }   // Big-Player-Zonen stehen nach dem ersten Zeichnen fest
   const els = [$("cfMain"), $("tRsi"), $("tMacd"), $("tMbi")];
   ctabRO = new ResizeObserver(() => { const all = [cfChart && cfChart.chart, ...ctabInd]; els.forEach((e, i) => { if (all[i] && e.clientWidth) all[i].applyOptions({ width: e.clientWidth, height: e.clientHeight }); }); });
   els.forEach(e => ctabRO.observe(e));
