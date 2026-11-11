@@ -6525,8 +6525,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.86";
-const APP_NEWS = [["2026.11.86", "Gläserne Aktienauswahl", [
+const APP_VER = "2026.11.87";
+const APP_NEWS = [["2026.11.87", "Eigene Welle wie bei TradingView", [
+  ["Punkte frei ziehen", "Bei der eigenen Welle sitzen jetzt runde Griffe direkt an Tief und Hoch. Frei ziehen – nach links/rechts (Zeit) und oben/unten (Preis). Nahe am Tief bzw. Hoch einer Kerze rastet der Punkt ein; beim Ziehen zeigen blaue Schilder Datum und Preis."]]],
+  ["2026.11.86", "Gläserne Aktienauswahl", [
   ["Auswahl in der Bildschirmmitte", "Die Aktienauswahl öffnet sich jetzt mittig als gläsernes Rad wie bei TradingView: die Aktie in der Mitte ist hervorgehoben, darüber und darunter werden die Zeilen blasser. Wischen, einrasten, antippen."]]],
   ["2026.11.85", "Volumenprofil in Grün/Rot", [
   ["Kauf- und Verkaufsvolumen", "Das Volumenprofil zeigt jetzt grün das Volumen an steigenden und rot an fallenden Tagen – so siehst du, ob auf einem Niveau eher gekauft oder verkauft wurde."]]],
@@ -8547,13 +8549,14 @@ const MEAS = { on: false }, WAVE = { on: false };   // Messen / eigene Welle set
 function ownWave(M, c, r) {
   const o = ((state.myWave || {})[r.ticker]) || null; if (!M.kcls && !M.own) M.kcls = M.cls;
   const iL = o ? c.t.indexOf(o.L) : -1, iH = o ? c.t.indexOf(o.H) : -1;
-  if (iL < 0 || iH <= iL || !(c.h[iH] > c.l[iL])) { M.own = false; M.cls = M.kcls; } else { M.own = true; M.cls = { H: c.h[iH], L: c.l[iL], iL, iH }; }
+  const Lp = o && o.lp > 0 ? o.lp : c.l[iL], Hp = o && o.hp > 0 ? o.hp : c.h[iH];
+  if (iL < 0 || iH <= iL || !(Hp > Lp)) { M.own = false; M.cls = M.kcls; } else { M.own = true; M.cls = { H: Hp, L: Lp, iL, iH }; }
   const last = c.c[c.c.length - 1], w = M.cls;
   if (w) { M.broken = last < (w.H - (w.H - w.L) * .786) * .995;
     M.note = `${M.own ? "Eigene Welle" : "Welle"} ${dateDE(c.t[w.iL])} (${fmt(w.L)}) → ${dateDE(c.t[w.iH])} (${fmt(w.H)})${M.broken ? " – Kurs darunter, die große Welle ist eingeblendet" : ""}`; }
   return M;
 }
-function ownWaveSave(t, L, H) { const m = { ...(state.myWave || {}) }; if (L) m[t] = { L, H }; else delete m[t]; state.myWave = m; save();
+function ownWaveSave(t, L, H, lp, hp) { const m = { ...(state.myWave || {}) }; if (L) m[t] = { L, H, ...(lp > 0 ? { lp: +(+lp).toPrecision(6) } : {}), ...(hp > 0 ? { hp: +(+hp).toPrecision(6) } : {}) }; else delete m[t]; state.myWave = m; save();
   CL_LIVE.forEach(h => { if (h.r.ticker === t && document.body.contains(h.el)) { ownWave(h.M, h.c, h.r); } }); clRefresh(); }
 // Griffe zum Ziehen (Messen: Start/Ende, eigene Welle: Tief/Hoch) – unten im Chart, damit man sie mit dem Finger trifft
 // Volumenprofil (Wunsch 11/2026, wie „VPVR“ bei TradingView): Volumen je Kursniveau über den sichtbaren Zeitraum, rechts am Rand.
@@ -8588,15 +8591,24 @@ function profilePrimitive(barAt, count, volAt, on) {
     detached() { series = chart = null; }, update() { req && req(); }, updateAllViews() {}, paneViews: () => views };
 }
 function gripPrimitive(get) {
-  let chart = null, req = null;
+  let chart = null, series = null, req = null;
+  const F = "600 11.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+  const tag = (x, txt, cx, cy, al) => { x.font = F; const w = x.measureText(txt).width + 14; let bx = al === "r" ? cx - w : cx - w / 2;
+    x.fillStyle = "rgb(10,132,255)"; x.beginPath(); x.roundRect(bx, cy - 10, w, 20, 5); x.fill(); x.fillStyle = "#fff"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(txt, bx + w / 2, cy + .5); };
   const r = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { const gs = get(); if (!gs.length || !chart) return;
     const ts = chart.timeScale(), y = m.height - 34;
     gs.forEach(g => { const cx = ts.logicalToCoordinate(g.i); if (cx == null || cx < -10 || cx > m.width + 10) return;
+      if (g.p != null && series) {                 // Ankerpunkt wie bei TradingView: Ring genau auf Zeit + Preis, frei ziehbar
+        const cy = series.priceToCoordinate(g.p); if (cy == null) return;
+        x.fillStyle = isLight() ? "rgba(255,255,255,.9)" : "rgba(10,12,16,.75)"; x.strokeStyle = "rgb(10,132,255)";
+        x.lineWidth = g.on ? 3.5 : 2.5; x.beginPath(); x.arc(cx, cy, g.on ? 11 : 9, 0, Math.PI * 2); x.fill(); x.stroke();
+        if (g.on) { tag(x, g.d || "", Math.min(m.width - 50, Math.max(50, cx)), m.height - 11); tag(x, fmt(g.p), m.width - 2, Math.min(m.height - 30, Math.max(12, cy)), "r"); }
+        return; }
       x.strokeStyle = g.c; x.lineWidth = 1; x.setLineDash([3, 3]); x.beginPath(); x.moveTo(Math.round(cx) + .5, 0); x.lineTo(Math.round(cx) + .5, m.height); x.stroke(); x.setLineDash([]);
       x.fillStyle = isLight() ? "#fff" : "#16181d"; x.beginPath(); x.roundRect(cx - 13, y - 13, 26, 26, 13); x.fill(); x.lineWidth = g.on ? 2.5 : 1.6; x.stroke();
       x.fillStyle = g.c; x.font = "700 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("↔", cx, y + 1); }); }) };
   const views = [{ zOrder: () => "top", renderer: () => r }];
-  return { attached(p) { chart = p.chart; req = p.requestUpdate; }, detached() { chart = null; }, update() { req && req(); }, updateAllViews() {}, paneViews: () => views };
+  return { attached(p) { chart = p.chart; series = p.series; req = p.requestUpdate; }, detached() { chart = series = null; }, update() { req && req(); }, updateAllViews() {}, paneViews: () => views };
 }
 const tkey = t => typeof t === "string" ? t : t && t.year ? `${t.year}-${String(t.month).padStart(2, "0")}-${String(t.day).padStart(2, "0")}` : typeof t === "number" ? new Date(t * 1000).toISOString().slice(0, 10) : "";
 const volFmt = v => v >= 1e9 ? fmt(v / 1e9, 1) + " Mrd" : v >= 1e6 ? fmt(v / 1e6, 1) + " Mio" : v >= 1e3 ? fmt(v / 1e3, 0) + " Tsd" : fmt(v, 0);
@@ -8664,18 +8676,23 @@ function buildMain(el, c, r, opts) {
   // Griffe: nach dem Setzen lassen sich Start/Ende (Messen) bzw. Tief/Hoch (eigene Welle) verschieben – solange man zieht, steht der Chart still
   const drag = { k: null }, gp = gripPrimitive(() => { const g = [];
     if (MEAS.on && h.mA != null && h.mB != null) g.push({ i: h.mA, c: "rgb(10,132,255)", on: drag.k === "mA" }, { i: h.mB, c: "rgb(10,132,255)", on: drag.k === "mB" });
-    if (WAVE.on && h.M.own && h.M.cls) g.push({ i: h.M.cls.iL, c: "rgb(255,176,32)", on: drag.k === "wL" }, { i: h.M.cls.iH, c: "rgb(255,176,32)", on: drag.k === "wH" });
+    if (WAVE.on && h.M.own && h.M.cls) g.push({ i: h.M.cls.iL, p: h.M.cls.L, d: dayDE(T[h.M.cls.iL]), on: drag.k === "wL" }, { i: h.M.cls.iH, p: h.M.cls.H, d: dayDE(T[h.M.cls.iH]), on: drag.k === "wH" });
     return g; }); candles.attachPrimitive(gp);
   const gripAt = (cx, cy) => { const R = el.getBoundingClientRect(), x = cx - R.left, ts = chart.timeScale(); if (cy - R.top > R.height - 26 || x > ts.width()) return null;
-    let best = null, bd = 22; gp.paneViews && [["mA", MEAS.on && h.mB != null ? h.mA : null], ["mB", MEAS.on && h.mA != null ? h.mB : null],
+    let best = null, bd = 28; gp.paneViews && [["mA", MEAS.on && h.mB != null ? h.mA : null], ["mB", MEAS.on && h.mA != null ? h.mB : null],
       ["wL", WAVE.on && h.M.own ? h.M.cls.iL : null], ["wH", WAVE.on && h.M.own ? h.M.cls.iH : null]].forEach(([k, i]) => {
-      if (i == null) return; const hx = ts.logicalToCoordinate(i); if (hx == null) return; const d = Math.abs(hx - x); if (d < bd) { bd = d; best = k; } });
+      if (i == null) return; const hx = ts.logicalToCoordinate(i); if (hx == null) return; let d = Math.abs(hx - x);
+      if (k[0] === "w") { const hy = candles.priceToCoordinate(k === "wL" ? h.M.cls.L : h.M.cls.H); if (hy == null) return; d = Math.hypot(d, cy - R.top - hy); if (d > 28) return; }
+      if (d < bd) { bd = d; best = k; } });
     return best; };
-  let raf = 0, dragI = null;
-  const dragTo = i => { const k = drag.k; if (!k) return;
+  let raf = 0, dragI = null, dragY = null;
+  const dragTo = (i, y) => { const k = drag.k; if (!k) return;
     if (k === "mA" || k === "mB") { h[k] = i; mp.set(h.mA, h.mB); }
-    else { const w = h.M.cls; let iL = k === "wL" ? i : w.iL, iH = k === "wH" ? i : w.iH; if (iH <= iL || !(c.h[iH] > c.l[iL])) return;
-      h.M.cls = { H: c.h[iH], L: c.l[iL], iL, iH }; h.apply(); }
+    else { const w = h.M.cls, ii = Math.min(i, T.length - 1); let p = y != null ? candles.coordinateToPrice(y) : null; if (p == null) return;
+      // Magnet: nahe am Tief (Startpunkt) bzw. Hoch (Endpunkt) der Kerze rastet der Punkt dort ein
+      const ex = k === "wL" ? c.l[ii] : c.h[ii], ey = candles.priceToCoordinate(ex); if (ey != null && Math.abs(ey - y) < 12) p = ex;
+      const iL = k === "wL" ? ii : w.iL, iH = k === "wH" ? ii : w.iH, L = k === "wL" ? p : w.L, H = k === "wH" ? p : w.H;
+      if (iH <= iL || !(H > L)) return; h.M.cls = { H, L, iL, iH }; h.apply(); }
     gp.update(); h.legend(i); };
   const grab = e => { if (!(MEAS.on || WAVE.on)) return false; const k = gripAt(e.clientX, e.clientY); if (!k) return false;
     drag.k = k; chart.applyOptions({ handleScroll: false, handleScale: false }); el.classList.add("dragging"); gp.update(); return true; };
@@ -8683,10 +8700,10 @@ function buildMain(el, c, r, opts) {
   el.addEventListener("touchstart", e => { const t = e.touches[0]; if (drag.k || (t && (MEAS.on || WAVE.on) && gripAt(t.clientX, t.clientY))) { e.stopPropagation(); if (e.cancelable) e.preventDefault(); } }, { capture: true, passive: false });
   el.addEventListener("mousedown", e => { if (drag.k) e.stopPropagation(); }, true);
   el.addEventListener("pointermove", e => { if (!drag.k) return; e.stopPropagation(); const x = e.clientX - el.getBoundingClientRect().left, lg = chart.timeScale().coordinateToLogical(x); if (lg == null) return;
-    dragI = clampI(lg); if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (dragI != null) dragTo(dragI); }); }, true);
+    dragI = clampI(lg); dragY = e.clientY - el.getBoundingClientRect().top; if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (dragI != null) dragTo(dragI, dragY); }); }, true);
   const dragEnd = e => { if (!drag.k) return; const k = drag.k; if (e) e.stopPropagation(); drag.k = null; drag.t = Date.now();
     chart.applyOptions({ handleScroll: true, handleScale: true }); el.classList.remove("dragging"); gp.update();
-    if (k[0] === "w" && h.M.cls) ownWaveSave(r.ticker, T[h.M.cls.iL], T[h.M.cls.iH]); };
+    if (k[0] === "w" && h.M.cls) { const w = h.M.cls; ownWaveSave(r.ticker, T[w.iL], T[w.iH], w.L !== c.l[w.iL] ? w.L : null, w.H !== c.h[w.iH] ? w.H : null); } };
   el.addEventListener("pointerup", dragEnd, true); el.addEventListener("pointercancel", dragEnd, true);
   h.gripsUpdate = () => gp.update();
   // eigene Welle: angetippte Kerze rastet auf das tiefste Tief bzw. höchste Hoch der Nachbarkerzen (± 3) ein
