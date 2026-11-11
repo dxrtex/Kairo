@@ -77,8 +77,8 @@
   animation: sp-spring .5s cubic-bezier(.3, .7, .3, 1) 1.2s forwards; }
 
 /* 6) Unterzeile + Ladelinie */
-.sp-tag { font: 600 clamp(12px, 3.1vw, 17px)/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-  letter-spacing: .3em; text-transform: uppercase; color: #b7bfcb; padding-left: .3em; opacity: 0; white-space: nowrap; will-change: transform, opacity;
+.sp-tag { font: 500 clamp(12px, 3.1vw, 17px)/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  letter-spacing: .28em; text-transform: uppercase; color: #b7bfcb; padding-left: .28em; opacity: 0; white-space: nowrap; will-change: transform, opacity;
   animation: sp-tag .6s var(--ease) 1.3s forwards; }
 .sp-load { width: calc(var(--T) * 1.4); height: 2px; border-radius: 2px; background: rgba(255, 255, 255, .08); overflow: hidden;
   opacity: 0; transition: opacity .4s ease .35s; }
@@ -139,7 +139,7 @@
 @keyframes sp-load    { to { transform: translateX(250%); } }
 @keyframes sp-draw    { to { stroke-dashoffset: 0; } }
 @keyframes sp-out     { to { opacity: 0; } }
-@keyframes sp-lock    { 0% { opacity: 0; } 40% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes sp-lock    { 0% { opacity: 0; } 40% { opacity: 1; } 72% { opacity: 1; transform: scale(.94); } 100% { opacity: 1; transform: none; } }   /* rastet mit feinem Nachschwingen ein */
 @keyframes sp-pop     { to { opacity: 1; transform: scale(1); } }
 /* Überspringen: sofort zum fertigen Logo, dann normaler Übergang */
 .splash.skip:not(.exit) .sp-stage { transition: opacity .18s; opacity: 0; }
@@ -147,3 +147,25 @@
 /* Ruhiger Stil (Wunsch 09.11.2026): kein Glanz, kein Leuchten – auch in der Ersatz-Animation */
 .sp-glow, .sp-shine { display: none !important; }
 
+
+/* ===== v12: Liquid-Glass-Kachel, helles Intro, Flug ins App-Logo ===== */
+/* K-Kachel als Glas: zwei Lichtkanten (oben links stark, unten rechts schwach), feiner Rand, einmaliger Lichtreflex */
+.sp-tile { box-shadow: inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.55), inset -1.5px -1.5px 0 -.5px rgba(255,255,255,.18), inset 0 0 0 1px rgba(255,255,255,.10),
+  inset 0 calc(var(--T) * .1) calc(var(--T) * .18) calc(var(--T) * -.12) rgba(255,255,255,.22), 0 calc(var(--T) * .22) calc(var(--T) * .6) rgba(0,0,0,.6) !important; }
+.sp-shine { display: block !important; z-index: 4; }
+.sp-shine::before { background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.22) 49%, rgba(200,225,255,.10) 52%, transparent 58%) !important;
+  animation: sp-shine .9s var(--io) 1.02s forwards !important; }
+.splash.short .sp-shine::before { animation: sp-shine .8s var(--io) .12s forwards !important; }
+.splash.reduce .sp-shine { display: none !important; }
+/* Helles Intro für helle Designs */
+.splash.lt .sp-bg { background: #f2f2f7; } .splash.sand .sp-bg { background: #f4efe7; }
+.splash.lt .sp-l { fill: #111317; } .splash.lt .sp-tag { color: #6e6e73; }
+.splash.lt .sp-curve stop[offset=".5"] { stop-color: #3a3a3c; } .splash.lt .sp-curve stop { stop-color: #8e8e93; }
+.splash.lt .sp-tile { box-shadow: inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.45), inset 0 0 0 1px rgba(255,255,255,.08), 0 calc(var(--T) * .16) calc(var(--T) * .4) rgba(0,0,0,.22) !important; }
+/* Flug ins App-Logo: Bühne gleitet und schrumpft auf die Position der Wortmarke, Hintergrund blendet aus, Claim geht zuerst */
+.splash.fly { pointer-events: none; }
+.splash.fly .sp-stage { transition: transform .62s cubic-bezier(.65, 0, .35, 1); }
+.splash.fly .sp-tag, .splash.fly .sp-load { transition: opacity .18s ease; opacity: 0 !important; }
+.splash.fly .sp-bg { transition: opacity .42s ease .2s; opacity: 0; }
+.splash.fly .sp-word, .splash.fly .sp-mark { transition: opacity .2s ease .5s; opacity: 0; }
+.splash.fly .sp-stage { animation: none !important; opacity: 1 !important; }

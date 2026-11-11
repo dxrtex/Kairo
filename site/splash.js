@@ -7,7 +7,7 @@
    0,80 s  Kachel und Klingen des K gleichzeitig – kein Teil schwebt allein
    1,04 s  Zeichen rückt nach links, KAIRO wird Buchstabe für Buchstabe sichtbar
    1,30 s  Claim (ab 1,9 s voll lesbar) „The moment has a method.“
-   Übergang ab ≈ 2,3 s – das fertige Bild steht vorher 0,4 s ruhig (frühestens, wenn die App bereit ist): Logo zoomt sanft weg, die App blendet ein.
+   Übergang ab ≈ 2,3 s – das fertige Bild steht vorher 0,4 s ruhig; dann gleitet das Logo an seinen Platz in der App (frühestens, wenn die App bereit ist): Logo zoomt sanft weg, die App blendet ein.
    Antippen, Klick oder Taste überspringt. „Bewegung reduzieren“: fertiges Logo, sanft ausgeblendet.
    Technik: nur transform/opacity (Grafikkarte), SVG + CSS, kein Video, keine Bibliothek. */
 (function () {
@@ -41,7 +41,7 @@
       <div class="sp-load"><i></i></div>
     </div>`;
   const ANIM_MS = 2300, SHORT_MS = 520, EXIT_MS = 520, TIMEOUT_MS = 5000;
-  const INTRO_V = "11";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
+  const INTRO_V = "12";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
   const mark = () => { try { localStorage.setItem("kairo-intro", INTRO_V); } catch (e) {} };
   const seen = () => { try { return localStorage.getItem("kairo-intro") === INTRO_V; } catch (e) { return false; } };
   let current = null;
@@ -54,6 +54,10 @@
     el.className = "splash"; el.setAttribute("role", "img"); el.setAttribute("aria-label", "Kairo – The moment has a method."); el.innerHTML = LOGO;
     const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) el.classList.add("reduce");
+    // Helles Design → helles Intro (gleiche Erkennung wie der Start-Hintergrund im Kopf von index.html)
+    try { const d = (JSON.parse(localStorage.getItem("reversal-finder-v1") || "{}").design) || "";
+      if (/^(postfach|tone-sand|light|ioslight)$/.test(d) || (d === "auto" && matchMedia("(prefers-color-scheme: light)").matches)) el.classList.add("lt");
+      if (d === "tone-sand") el.classList.add("sand"); } catch (e) {}
     // Volles Intro beim ersten Öffnen und nach einem Update (neue INTRO_V); sonst nur kurz das Logo – keine Wartezeit bei jedem Start
     const short = !reduce && (opts.full === false || (opts.full !== true && seen()));
     if (short) el.classList.add("short");
@@ -85,13 +89,29 @@
     current = handle;
     if (opts.hold) return handle;                                      // Vorschau: Logo bleibt stehen
     Promise.race([Promise.all([animDone, ready]), new Promise(r => setTimeout(r, TIMEOUT_MS))]).then(() => {
-      el.classList.add("exit"); removeEventListener("keydown", ks);
-      setTimeout(() => { el.remove(); if (current === handle) current = null; unboot(); opts.onDone && opts.onDone(); }, reduce ? 280 : EXIT_MS);
+      removeEventListener("keydown", ks);
+      // Übergang: Logo gleitet genau an seinen Platz in der App (Seitenleiste bzw. Kopf) – sonst sanft wegzoomen
+      const flew = !reduce && fly(el);
+      el.classList.add(flew ? "fly" : "exit");
+      setTimeout(() => { el.remove(); if (current === handle) current = null; unboot(); opts.onDone && opts.onDone(); }, reduce ? 280 : flew ? FLY_MS : EXIT_MS);
     });
     if (opts.readyAfter != null) setTimeout(resolveReady, opts.readyAfter);
     return handle;
   }
 
+  const FLY_MS = 680;
+  function fly(el) {
+    try {
+      const tgt = [...document.querySelectorAll(".sb-brand svg.wm, .brand svg.wm")].find(x => { const r = x.getBoundingClientRect(); return r.width > 20 && r.height > 8 && r.top >= -4 && r.top < innerHeight / 2; });
+      const lock = el.querySelector(".sp-lock"), stage = el.querySelector(".sp-stage"); if (!tgt || !lock || !stage) return false;
+      const T = tgt.getBoundingClientRect(), L = lock.getBoundingClientRect(), S = stage.getBoundingClientRect(); if (!L.height) return false;
+      const s = T.height / L.height, lcx = L.left + L.width / 2, lcy = L.top + L.height / 2;
+      stage.style.transformOrigin = `${(lcx - S.left).toFixed(1)}px ${(lcy - S.top).toFixed(1)}px`;
+      void stage.offsetWidth;
+      stage.style.transform = `translateY(-1.5vh) translate(${(T.left + T.width / 2 - lcx).toFixed(1)}px, ${(T.top + T.height / 2 - lcy).toFixed(1)}px) scale(${s.toFixed(4)})`;
+      return true;
+    } catch (e) { return false; }
+  }
   window.KairoSplash = { play, ready() { if (current) current.ready(); } };
   if (document.currentScript && document.currentScript.dataset.autoplay !== undefined && !/nosplash/.test(location.search)) play();
 })();
