@@ -12,7 +12,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 170 | 56% | 0.244 | 0.250 |
 | Ausblick gesenkt | 56 | 57% | 0.245 | 0.250 |
 | Ausblick bestätigt | 23 | 52% | 0.264 | 0.250 |
-| Ausblick angehoben | 127 | 48% | 0.273 | 0.250 |
+| Ausblick angehoben | 127 | 49% | 0.272 | 0.250 |
 | Ausblick keine Meldung | 168 | 52% | 0.249 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
@@ -22,7 +22,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | -0%–30% | 11 | 45% |
 | 30%–40% | 84 | 42% |
 | 40%–50% | 84 | 51% |
-| 50%–60% | 121 | 53% |
+| 50%–60% | 121 | 54% |
 | 60%–70% | 52 | 40% |
 | 70%–100% | 22 | 55% |
 
@@ -34,7 +34,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 9% (11) | 17% (6) | 67% (15) | 44% (41) |
 | im Rahmen (±2 %) | 25% (16) | 0% (2) | 33% (15) | 50% (28) |
 | über Erwartung (+2 bis +10 %) | 39% (23) | 33% (6) | 47% (43) | 48% (48) |
-| deutlich über Erwartung (> +10 %) | 41% (27) | 53% (15) | 62% (91) | 54% (82) |
+| deutlich über Erwartung (> +10 %) | 41% (27) | 53% (15) | 63% (91) | 54% (82) |
 
 ## Vorschläge zur Anpassung
 
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 187 Meldungen: Brier nachgeeicht 0.251 gegen gezeigt 0.258 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 187 Meldungen: Brier nachgeeicht 0.250 gegen gezeigt 0.257 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
