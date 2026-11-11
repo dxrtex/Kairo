@@ -1227,17 +1227,26 @@
   .cl-live { flex: none; align-self: center; } .cl-live:empty { display: none; }
   .chfs-chart { min-width: 0; min-height: 0; position: relative; } .cf-canvas { position: absolute; inset: 0; }
   .cf-pickbar { position: absolute; left: 12px; bottom: 38px; z-index: 5; }
-  .cf-pill { display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 7px; border-radius: 999px; cursor: pointer; font: inherit; color: var(--text);
-    background: rgba(40,42,48,.42); border: 1px solid rgba(255,255,255,.14); box-shadow: 0 8px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);
-    -webkit-backdrop-filter: blur(22px) saturate(170%); backdrop-filter: blur(22px) saturate(170%); touch-action: none; }
+  /* Glas (Wunsch 11/2026, „realistischer“): Unschärfe + Sättigung, lichtbrechende Kante mit Verlauf, Glanzlicht, Tiefenschatten */
+  .cf-pill, .cf-pick { --gl-tint: rgba(28,30,36,.34); --gl-edge: linear-gradient(155deg, rgba(255,255,255,.60), rgba(255,255,255,.10) 32%, rgba(255,255,255,.03) 58%, rgba(255,255,255,.28));
+    isolation: isolate; background: linear-gradient(160deg, rgba(255,255,255,.13), rgba(255,255,255,.035) 45%, rgba(255,255,255,.015)), var(--gl-tint); border: 0;
+    -webkit-backdrop-filter: blur(26px) saturate(210%) contrast(1.06) brightness(1.04); backdrop-filter: blur(26px) saturate(210%) contrast(1.06) brightness(1.04); }
+  .cf-pill::before, .cf-pick::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: var(--gl-edge); pointer-events: none; z-index: 3;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+  .cf-pill::after, .cf-pick::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+    background: radial-gradient(120% 70% at 18% -10%, rgba(255,255,255,.20), transparent 55%), radial-gradient(90% 50% at 100% 110%, rgba(120,170,255,.08), transparent 60%); }
+  .cf-pill > *, .cf-pick > * { position: relative; z-index: 1; }
+  .cf-pill { position: relative; display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 7px; border-radius: 999px; cursor: pointer; font: inherit; color: var(--text);
+    box-shadow: 0 12px 34px rgba(0,0,0,.42), 0 1px 3px rgba(0,0,0,.3); touch-action: none; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; transition: transform .15s ease; }
+  .cf-pill.hold { transform: scale(.96); }
   .cf-av { --h: 210; flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 13px; color: #fff;
     background: linear-gradient(145deg, hsl(var(--h) 70% 58%), hsl(calc(var(--h) + 30) 70% 42%)); box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
   .cf-wh { display: grid; line-height: 1.05; min-width: 64px; } .cf-wh b { font-size: 18px; font-weight: 700; letter-spacing: .01em; }
   .cf-wh small { font-size: 10.5px; font-weight: 600; opacity: .35; height: 11px; overflow: hidden; } .cf-pill em { font-style: normal; font-weight: 600; font-size: 15px; opacity: .85; margin-left: 10px; }
   .cf-pick { position: absolute; left: 50%; top: 50%; z-index: 6; width: min(360px, calc(100% - 32px)); height: min(470px, calc(100% - 40px)); display: flex; flex-direction: column; gap: 8px; padding: 12px 10px 10px;
-    background: linear-gradient(180deg, rgba(74,76,86,.50), rgba(30,32,38,.62)); border: 1px solid rgba(255,255,255,.16); border-radius: 34px;
-    box-shadow: 0 40px 90px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.22), inset 0 -1px 0 rgba(255,255,255,.05);
-    -webkit-backdrop-filter: blur(42px) saturate(190%) brightness(1.05); backdrop-filter: blur(42px) saturate(190%) brightness(1.05);
+    border-radius: 36px; --gl-tint: rgba(26,28,34,.42);
+    box-shadow: 0 50px 110px rgba(0,0,0,.55), 0 18px 40px rgba(0,0,0,.30), 0 0 0 .5px rgba(0,0,0,.35);
+    -webkit-backdrop-filter: blur(38px) saturate(220%) contrast(1.08) brightness(1.06); backdrop-filter: blur(38px) saturate(220%) contrast(1.08) brightness(1.06);
     opacity: 0; transform: translate(-50%, -50%) scale(.94); transition: opacity .2s ease, transform .28s cubic-bezier(.2, .9, .25, 1.15); }
   .cf-pick.show { opacity: 1; transform: translate(-50%, -50%) scale(1); } .cf-pick[hidden] { display: none; }
   .cf-pick input { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.08); color: var(--text); }
@@ -1249,7 +1258,7 @@
   .cfp-l::-webkit-scrollbar { display: none; }
   .cfp-r { width: 100%; height: 60px; display: grid; grid-template-columns: 34px 1fr auto; gap: 14px; align-items: center; text-align: left; padding: 0 16px; border: 0; border-radius: 22px; background: none; color: inherit; font: inherit; cursor: pointer;
     scroll-snap-align: center; transition: opacity .12s linear, transform .12s linear; transform-origin: center; }
-  .cfp-r.on { background: rgba(255,255,255,.14); box-shadow: inset 0 1px 0 rgba(255,255,255,.14); } .cfp-r:hover { background: rgba(255,255,255,.08); }
+  .cfp-r.on, .cfp-r.mid { background: linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,.09)); box-shadow: inset 0 1px 0 rgba(255,255,255,.30), inset 0 -1px 0 rgba(255,255,255,.06), 0 6px 18px rgba(0,0,0,.18); } .cfp-r:hover { background: rgba(255,255,255,.08); }
   .cfp-r .cf-av { width: 34px; height: 34px; font-size: 14px; } .cfp-n { display: grid; min-width: 0; } .cfp-n b { font-size: 21px; font-weight: 600; letter-spacing: .01em; }
   .cfp-n small { font-size: 11.5px; color: rgba(235,235,245,.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -1px; }
   .cfp-r em { font-style: normal; font-size: 13px; font-weight: 600; }
@@ -6525,8 +6534,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.87";
-const APP_NEWS = [["2026.11.87", "Eigene Welle wie bei TradingView", [
+const APP_VER = "2026.11.88";
+const APP_NEWS = [["2026.11.88", "Halten zum Wählen, echteres Glas", [
+  ["Gedrückt halten", "Unten links auf der Aktien-Pille gedrückt halten: das gläserne Rad öffnet sich in der Mitte, mit dem Finger hoch/runter wählen, loslassen – fertig. Kurz antippen öffnet die Liste wie bisher."],
+  ["Glas wie echt", "Pille und Rad mit lichtbrechender Kante, Glanzlicht und stärkerer Tiefe."]]],
+  ["2026.11.87", "Eigene Welle wie bei TradingView", [
   ["Punkte frei ziehen", "Bei der eigenen Welle sitzen jetzt runde Griffe direkt an Tief und Hoch. Frei ziehen – nach links/rechts (Zeit) und oben/unten (Preis). Nahe am Tief bzw. Hoch einer Kerze rastet der Punkt ein; beim Ziehen zeigen blaue Schilder Datum und Preis."]]],
   ["2026.11.86", "Gläserne Aktienauswahl", [
   ["Auswahl in der Bildschirmmitte", "Die Aktienauswahl öffnet sich jetzt mittig als gläsernes Rad wie bei TradingView: die Aktie in der Mitte ist hervorgehoben, darüber und darunter werden die Zeilen blasser. Wischen, einrasten, antippen."]]],
@@ -8880,7 +8892,8 @@ function cfPickOpen(on) {
   el.innerHTML = `<input id="cfPickQ" type="search" placeholder="🔍  Suchen" autocomplete="off">
     <div class="sp-tg cfp-seg">${[["mine", "Meine"], ["dep", "Depot"], ["hits", "Treffer"], ["recent", "Zuletzt"]].map(([v, l]) => `<button class="opt${cfPick.seg === v ? " on" : ""}" data-cfseg="${v}">${l}</button>`).join("")}</div>
     <div class="cfp-l" id="cfPickL">${cfPickRows()}</div>`;
-  el.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => { el.classList.add("show"); const on1 = el.querySelector(".cfp-r.on"), L = $("cfPickL"); if (L) L.style.paddingBlock = Math.max(0, L.clientHeight / 2 - 30) + "px"; requestAnimationFrame(() => { if (on1 && L) { L.style.scrollSnapType = "none"; L.scrollTop = on1.offsetTop - L.clientHeight / 2 + on1.offsetHeight / 2; L.style.scrollSnapType = ""; } cfWheelFx(); }); }));
+  el.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => { el.classList.add("show"); const on1 = el.querySelector(".cfp-r.on"), L = $("cfPickL"); if (L) L.style.paddingBlock = Math.max(0, L.clientHeight / 2 - 30) + "px"; requestAnimationFrame(() => { if (on1 && L) { L.style.scrollSnapType = "none"; L.scrollTop = on1.offsetTop - L.clientHeight / 2 + on1.offsetHeight / 2; L.style.scrollSnapType = cfHold.on ? "none" : ""; }
+    if (cfHold.on && L) cfHold.s0 = L.scrollTop; cfWheelFx(); }); }));
   if (matchMedia("(pointer: fine)").matches) $("cfPickQ").focus();
 }
 async function cockpitGo(t) {
@@ -8895,20 +8908,36 @@ async function cockpitGo(t) {
 let cfFxRaf = 0;
 function cfWheelFx() { cfFxRaf = 0; const L = $("cfPickL"); if (!L) return; const R = L.getBoundingClientRect(), mid = R.top + R.height / 2, half = R.height / 2 || 1;
   L.querySelectorAll(".cfp-r").forEach(b => { const r = b.getBoundingClientRect(), d = Math.min(1, Math.abs(r.top + r.height / 2 - mid) / half);
-    b.style.opacity = (1 - d * .75).toFixed(3); b.style.transform = `scale(${(1 - d * .1).toFixed(3)})`; }); }
+    b.style.opacity = (1 - d * .75).toFixed(3); b.style.transform = `scale(${(1 - d * .1).toFixed(3)})`; b.classList.toggle("mid", !!cfHold.on && d < 30 / half); }); }
 document.addEventListener("scroll", e => { if (e.target && e.target.id === "cfPickL" && !cfFxRaf) cfFxRaf = requestAnimationFrame(cfWheelFx); }, true);
 document.addEventListener("input", e => { if (e.target.id === "cfPickQ") { $("cfPickL").innerHTML = cfPickRows(); $("cfPickL").scrollTop = 0; cfWheelFx(); } });
 // Pille: nach oben/unten wischen (oder Mausrad) = vorige/nächste Aktie – wie das Rad bei TradingView
 let cfSw = null, cfWheelT = 0;
+// Gedrückt halten (Wunsch 11/2026, wie TradingView): Rad öffnet mittig, Finger hoch/runter wählt, Loslassen übernimmt und schließt
+const cfHold = { on: false, timer: 0, y0: 0, s0: null };
+const cfCenterTicker = () => { const L = $("cfPickL"); if (!L) return null; const R = L.getBoundingClientRect(), m = R.top + R.height / 2; let best = null, bd = 1e9;
+  L.querySelectorAll(".cfp-r").forEach(b => { const r = b.getBoundingClientRect(), d = Math.abs(r.top + r.height / 2 - m); if (d < bd) { bd = d; best = b.dataset.cfgo; } }); return best; };
+document.addEventListener("pointerdown", e => { const p = e.target.closest && e.target.closest(".cf-pill"); if (!p || e.button > 0) return;
+  clearTimeout(cfHold.timer); cfHold.on = false; cfHold.y0 = e.clientY; cfHold.s0 = null; try { p.setPointerCapture(e.pointerId); } catch (x) {}
+  cfHold.timer = setTimeout(() => { cfHold.timer = 0; cfHold.on = true; p.classList.add("hold"); cfPickOpen(true); }, 320); });
+document.addEventListener("pointermove", e => {
+  if (cfHold.timer && Math.abs(e.clientY - cfHold.y0) > 12) { clearTimeout(cfHold.timer); cfHold.timer = 0; return; }   // vorher bewegt = Wischen
+  if (!cfHold.on) return; const L = $("cfPickL"); if (!L || cfHold.s0 == null) return;
+  e.preventDefault(); L.scrollTop = cfHold.s0 + (cfHold.y0 - e.clientY) * 1.5; });
+const cfHoldEnd = () => { clearTimeout(cfHold.timer); cfHold.timer = 0; if (!cfHold.on) return; cfHold.on = false; cfPick.holdEnd = Date.now();
+  document.querySelectorAll(".cf-pill.hold").forEach(x => x.classList.remove("hold")); const t = cfCenterTicker(); cfPickOpen(false);
+  if (t && cfChart && t !== cfChart.r.ticker) cockpitGo(t); };
+document.addEventListener("pointerup", cfHoldEnd); document.addEventListener("pointercancel", cfHoldEnd);
+document.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest(".cf-pill")) e.preventDefault(); });
 const cfStep = d => { const b = document.createElement("button"); b.dataset.cfstep = d; b.hidden = true; document.body.appendChild(b); b.click(); b.remove(); };
 document.addEventListener("touchstart", e => { const p = e.target.closest && e.target.closest(".cf-pill"); cfSw = p && e.touches.length === 1 ? { y: e.touches[0].clientY, t: Date.now() } : null; }, { passive: true });
-document.addEventListener("touchend", e => { if (!cfSw) return; const dy = e.changedTouches[0].clientY - cfSw.y; const ok = Math.abs(dy) > 22 && Date.now() - cfSw.t < 700; cfSw = null;
+document.addEventListener("touchend", e => { if (!cfSw) return; if (cfHold.on || Date.now() - (cfPick.holdEnd || 0) < 500) { cfSw = null; return; } const dy = e.changedTouches[0].clientY - cfSw.y; const ok = Math.abs(dy) > 22 && Date.now() - cfSw.t < 700; cfSw = null;
   if (ok) { e.preventDefault(); cfPick.swiped = Date.now(); cfStep(dy < 0 ? 1 : -1); } }, { passive: false });
 document.addEventListener("wheel", e => { if (!(e.target.closest && e.target.closest(".cf-pill"))) return; e.preventDefault(); if (Date.now() - cfWheelT < 350) return; cfWheelT = Date.now(); cfStep(e.deltaY > 0 ? 1 : -1); }, { passive: false });
 document.addEventListener("keydown", e => { const el = $("chfs"); if (!el || el.hidden || e.target.closest("input, textarea, select")) return;
   if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) { e.preventDefault(); cfStep(e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1); } });
 document.addEventListener("click", e => {
-  const pk = e.target.closest("[data-cfpick]"); if (pk) { if (cfPick.swiped && Date.now() - cfPick.swiped < 500) return; const el = $("cfPick"); cfPickOpen(el && el.hidden); return; }
+  const pk = e.target.closest("[data-cfpick]"); if (pk) { if ((cfPick.swiped && Date.now() - cfPick.swiped < 500) || Date.now() - (cfPick.holdEnd || 0) < 500) return; const el = $("cfPick"); cfPickOpen(el && el.hidden); return; }
   const sg = e.target.closest("[data-cfseg]"); if (sg) { cfPick.seg = sg.dataset.cfseg; state.cfSeg = cfPick.seg; save(); const q = $("cfPickQ"); if (q) q.value = "";
     document.querySelectorAll("[data-cfseg]").forEach(b => b.classList.toggle("on", b === sg)); $("cfPickL").innerHTML = cfPickRows(); $("cfPickL").scrollTop = 0; cfWheelFx(); return; }
   const go = e.target.closest("[data-cfgo]"); if (go) { cockpitGo(go.dataset.cfgo); return; }
