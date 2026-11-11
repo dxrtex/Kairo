@@ -6504,8 +6504,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.82";
-const APP_NEWS = [["2026.11.82", "Charts direkt öffnen", [
+const APP_VER = "2026.11.83";
+const APP_NEWS = [["2026.11.83", "Volumenprofil", [
+  ["Volumen je Kursniveau", "Rechts im Chart zeigt das Volumenprofil, auf welchen Kursniveaus im sichtbaren Zeitraum am meisten gehandelt wurde – breite Balken sind oft Unterstützung oder Widerstand. Orange: das meistgehandelte Niveau, blau: die Zone mit 70 % des Volumens. Passt sich beim Zoomen an, abschaltbar über den Chip „Volumenprofil“."]]],
+  ["2026.11.82", "Charts direkt öffnen", [
   ["Aktien-Wähler im Chart", "Unten links im Chart-Vollbild: Kürzel antippen öffnet Suche und Listen (Meine, Depot, Treffer, Zuletzt) – Aktie antippen, Chart wechselt sofort. ‹ › blättert durch die Liste (auf der Tastatur ← →)."],
   ["Chart-Knopf oben", "Das Chart-Symbol oben neben dem Briefing öffnet das Vollbild direkt – ohne Umweg über den Scanner."]]],
   ["2026.11.81", "Eigene Welle und verschiebbare Messung", [
@@ -8378,7 +8380,7 @@ async function openDetail(t) {
 
 // ---------- Haupt-Chart: Fibonacci als Linien, Unterstützungen/Widerstände, EMAs – alles mit Ein/Aus-Schaltern ----------
 // Ein Baustein für Detailseite und Vollbild-Cockpit; Schalter (state.cl) wirken sofort in allen offenen Charts.
-const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1 };   // EMA 100 aus: weniger Linien im Standard
+const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 1 };   // EMA 100 aus: weniger Linien im Standard
 const clGet = (k, auto) => { const v = (state.cl || {})[k]; return v == null ? (k in CL_DEF ? CL_DEF[k] : auto ? 1 : 0) : v; };
 const CL_LIVE = new Set();
 const FIBQ = [[0, "Hoch"], [.382, "38,2 %"], [.5, "50 %"], [.618, "61,8 %"], [.706, "70,6 %", 1], [.786, "78,6 %", 1], [.886, "88,6 %"], [1, "Tief"]];   // betont: Kaufzone Golden Pocket
@@ -8515,6 +8517,34 @@ function ownWave(M, c, r) {
 function ownWaveSave(t, L, H) { const m = { ...(state.myWave || {}) }; if (L) m[t] = { L, H }; else delete m[t]; state.myWave = m; save();
   CL_LIVE.forEach(h => { if (h.r.ticker === t && document.body.contains(h.el)) { ownWave(h.M, h.c, h.r); } }); clRefresh(); }
 // Griffe zum Ziehen (Messen: Start/Ende, eigene Welle: Tief/Hoch) – unten im Chart, damit man sie mit dem Finger trifft
+// Volumenprofil (Wunsch 11/2026, wie „VPVR“ bei TradingView): Volumen je Kursniveau über den sichtbaren Zeitraum, rechts am Rand.
+// Breite Balken = viel gehandelt = oft Unterstützung/Widerstand. Hervorgehoben: meistgehandeltes Niveau (POC) und die 70 % Wertzone.
+function profilePrimitive(barAt, count, volAt, on) {
+  let series = null, chart = null, req = null;
+  const r = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { if (!series || !chart || !on()) return;
+    const vr = chart.timeScale().getVisibleLogicalRange(); if (!vr) return;
+    const i1 = Math.max(0, Math.floor(vr.from)), i2 = Math.min(count() - 1, Math.ceil(vr.to)); if (i2 - i1 < 5) return;
+    const pTop = series.coordinateToPrice(0), pBot = series.coordinateToPrice(m.height); if (pTop == null || pBot == null || !(pTop > pBot)) return;
+    const N = Math.max(24, Math.min(90, Math.round(m.height / 7))), step = (pTop - pBot) / N, bins = new Float64Array(N);
+    for (let i = i1; i <= i2; i++) { const b = barAt(i), v = volAt(i); if (!b || !(v > 0)) continue;
+      const lo = Math.max(b.low, pBot), hi = Math.min(b.high, pTop); if (hi < lo) continue;
+      const a0 = Math.floor((lo - pBot) / step), a1 = Math.min(N - 1, Math.floor((hi - pBot) / step)), share = v / (a1 - a0 + 1);
+      for (let k = Math.max(0, a0); k <= a1; k++) bins[k] += share; }
+    let max = 0, poc = 0, tot = 0; for (let k = 0; k < N; k++) { tot += bins[k]; if (bins[k] > max) { max = bins[k]; poc = k; } } if (!max) return;
+    let lo = poc, hi = poc, acc = bins[poc]; while (acc < tot * .7 && (lo > 0 || hi < N - 1)) { const dn = lo > 0 ? bins[lo - 1] : -1, up = hi < N - 1 ? bins[hi + 1] : -1; if (up >= dn) acc += bins[++hi]; else acc += bins[--lo]; }
+    const W = Math.min(m.width * .24, 260), xr = m.width - 2, light = isLight();
+    for (let k = 0; k < N; k++) { if (!bins[k]) continue; const y0 = series.priceToCoordinate(pBot + (k + 1) * step), y1 = series.priceToCoordinate(pBot + k * step); if (y0 == null || y1 == null) continue;
+      const w = W * bins[k] / max, inVA = k >= lo && k <= hi;
+      x.fillStyle = k === poc ? "rgba(255,159,10,.55)" : inVA ? (light ? "rgba(10,132,255,.28)" : "rgba(100,170,255,.30)") : (light ? "rgba(60,60,67,.14)" : "rgba(200,205,215,.13)");
+      x.fillRect(xr - w, Math.min(y0, y1) + .5, w, Math.max(1, Math.abs(y1 - y0) - 1)); }
+    const yp = series.priceToCoordinate(pBot + (poc + .5) * step);
+    if (yp != null) { x.strokeStyle = "rgba(255,159,10,.75)"; x.lineWidth = 1; x.setLineDash([2, 3]); x.beginPath(); x.moveTo(m.width - W - 8, Math.round(yp) + .5); x.lineTo(m.width, Math.round(yp) + .5); x.stroke(); x.setLineDash([]);
+      x.font = "600 10.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"; x.fillStyle = "rgb(255,159,10)"; x.textAlign = "right"; x.textBaseline = "bottom"; x.textBaseline = "middle"; const tx = `meistgehandelt ${fmt(pBot + (poc + .5) * step)}`, tw = x.measureText(tx).width, lx = m.width - W - 12;
+      x.fillStyle = light ? "rgba(255,255,255,.9)" : "rgba(16,18,22,.85)"; x.fillRect(lx - tw - 6, Math.round(yp) - 8, tw + 10, 16); x.fillStyle = "rgb(255,159,10)"; x.fillText(tx, lx, Math.round(yp)); } }) };
+  const views = [{ zOrder: () => "bottom", renderer: () => r }];
+  return { attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; chart.timeScale().subscribeVisibleLogicalRangeChange(() => req && req()); },
+    detached() { series = chart = null; }, update() { req && req(); }, updateAllViews() {}, paneViews: () => views };
+}
 function gripPrimitive(get) {
   let chart = null, req = null;
   const r = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { const gs = get(); if (!gs.length || !chart) return;
@@ -8577,6 +8607,7 @@ function buildMain(el, c, r, opts) {
   const h = { el, chart, candles, M, r, c };
   // Kerzen-Info (oben links) und Messwerkzeug
   const cnt = () => candles.data().length, barAt = i => candles.data()[i], mp = measurePrimitive(barAt, cnt); candles.attachPrimitive(mp); h.mp = mp;
+  const vpp = profilePrimitive(barAt, cnt, i => i < T.length ? c.v[i] : (LIVE.map[r.ticker] && LIVE.map[r.ticker].v) || 0, () => !!clGet("vp")); candles.attachPrimitive(vpp);
   if (getComputedStyle(el).position === "static") el.style.position = "relative";
   const lg = document.createElement("div"); lg.className = "cl-ohlc"; el.appendChild(lg);
   const idxOf = tm => { const k = tkey(tm), d = candles.data(); for (let i = d.length - 1; i >= 0; i--) if (tkey(d[i].time) === k) return i; return -1; };
@@ -8634,7 +8665,7 @@ function buildMain(el, c, r, opts) {
   h.legendLast = () => { if (!hov) h.legend(-1); };
   h.legend(-1);
   h.apply = () => {
-    EMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); vol.applyOptions({ visible: !!clGet("vol") });
+    EMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); vol.applyOptions({ visible: !!clGet("vol") }); vpp.update();
     pls.forEach(x => candles.removePriceLine(x)); pls = [];
     if (clGet("plan")) [[p.entry, "Kaufzone oben", "#eceef2", 0], [p.stop, "Stop", "#ff453a", 0], [ko, "K.-o. Turbo", "#ff9f0a", 1]]
       .forEach(([pr, t, col, st]) => { if (pr != null) pls.push(candles.createPriceLine({ price: pr, title: t, color: col, lineWidth: 1, lineStyle: st, axisLabelVisible: true })); });
@@ -8673,7 +8704,7 @@ function clBarHtml(h) {
   const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
   return chip("fib", M.own ? "Fibonacci (eigene)" : "Fibonacci", "#f4b740", !!M.cls) + chip("big", "große Welle", "#b07cff", !!M.big, M.broken)
     + chip("sup", `Linien ${ns}↓ ${nr}↑`, "#4aa3ff", M.lines.length > 0) + EMA_DEF.map(([k, col, l]) => chip(k, l, col)).join("")
-    + chip("vol", "Volumen", "#5d6676") + chip("plan", "Kauf/Stop/K.-o.", "#ff453a")
+    + chip("vol", "Volumen", "#5d6676") + chip("vp", "Volumenprofil", "#ff9f0a") + chip("plan", "Kauf/Stop/K.-o.", "#ff453a")
     + `<button class="cl-c cl-m${MEAS.on ? " on" : ""}" data-clm title="Zeitraum messen: Start- und Endkerze antippen">📏 Messen</button>`
     + `<button class="cl-c cl-m${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle: Tief und Hoch antippen, danach mit den Griffen verschieben">✎ ${M.own ? "eigene Welle" : "Welle setzen"}</button>`
     + (M.own ? `<button class="cl-c" data-clwreset title="Zurück zur Welle, die Kairo bestimmt">↺ Kairo-Welle</button>` : "");
