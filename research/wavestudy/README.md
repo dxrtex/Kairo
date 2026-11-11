@@ -21,3 +21,21 @@ die strengere 0,886 bringt keine echte Verbesserung (Dichte beider ≈ Zufall, d
 Über ALLE Wellen liegt der Dichte-Faktor bei ≈ 1,0 – der Golden Pocket allein ist kein Wendepunkt; seinen Wert hat er
 zusammen mit den übrigen Kairo-Kriterien (research/fibstudy: 0,706–0,79 → +0,24 R je Trade).
 Entscheidung: keine Änderung (Jonny entscheidet).
+
+# Große Welle: was tun, wenn sie gebrochen ist? (11.11.2026)
+
+Frage (Rheinmetall/Alibaba 11/2026): Bisher ging Kairo bei gebrochener großer Welle eine Ebene zurück, aber nur zu einer Welle
+mit mindestens 1,2-facher Spanne. Variante: die nächste ältere Welle, die noch NICHT gebrochen ist (erstes Tief mit ≥ 78,6 %
+Korrektur davor, dessen 78,6-%-Linie der Kurs noch nicht unterschritten hat), dann das tiefste Tief derselben Bodenzone
+(tiefere Tiefs bis 10 % darunter). Messung: in welchem Bereich das tatsächliche Wendetief liegt – nur wenn es NACH dem Stichtag kommt.
+1.165 Aktien, 2018–2026, `python -m backend.wavestudy --mode big`, Run 42974157648.
+
+| 426 abweichende Fälle | heute | Variante |
+|---|---|---|
+| Wende im Golden Pocket | 12,0 % | **21,6 %** |
+| Lernjahre bis 2023 / Prüfjahre ab 2024 | 12,0 % / 11,9 % | **23,6 % / 17,9 %** |
+| Dichte-Faktor (1,0 = Zufall) | 0,82 | **1,30** |
+| Kurs hält über 0,886 | 39 % | **55 %** |
+| Welle ganz gebrochen (unter dem Tief) | 31 % | **18 %** |
+
+Ergebnis: Variante in beiden Zeiträumen klar besser → übernommen (Version 2026.11.79, PR #434).
