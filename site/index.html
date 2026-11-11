@@ -1481,6 +1481,17 @@
   /* Glas v5: echte Lichtbrechung (Leinwand .cf-lens), elastisches Antippen, feiner Farbsaum nur, wo das Licht streift */
   .cf-pill > .cf-lens { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; z-index: 0 !important; pointer-events: none; opacity: 0; transition: opacity .25s; filter: saturate(1.15) brightness(1.05); }
   .cf-pill.lensed .cf-lens { opacity: 1; }
+  .cf-pick > .cf-lens { position: absolute !important; inset: 0; width: 100%; height: 100%; border-radius: inherit; z-index: 0 !important; pointer-events: none; opacity: 0; transition: opacity .3s; }
+  .cf-pick.lensed > .cf-lens { opacity: 1; }
+  /* Auswahlfenster im hellen Design: dunkle Schrift ohne Schatten, sichtbare Schalter und Suche */
+  html.lt .cfp-n b, html.lt .cfp-n small, html.lt .cf-pill .cf-wh small { text-shadow: none !important; }
+  html.lt .cfp-n b { color: #111317; } html.lt .cfp-n small { color: rgba(60,60,67,.65) !important; } html.lt .cfp-r em { text-shadow: none; }
+  html.lt .cfp-seg .opt { background: rgba(0,0,0,.06) !important; color: #1c1c1e !important; }
+  html.lt .cfp-seg .opt.on { background: #fff !important; color: #000 !important; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  html.lt .cf-pick input { background: rgba(0,0,0,.05) !important; color: #111 !important; border-color: rgba(0,0,0,.08) !important; } html.lt .cf-pick input::placeholder { color: rgba(60,60,67,.6) !important; }
+  html.lt .cfp-r.on, html.lt .cfp-r.mid { background: rgba(255,255,255,.85) !important; box-shadow: 0 4px 14px rgba(0,0,0,.10), inset 0 0 0 .5px rgba(0,0,0,.06) !important; }
+  .cf-pick.lensed::before { -webkit-backdrop-filter: brightness(1.15) saturate(1.4) !important; backdrop-filter: brightness(1.15) saturate(1.4) !important; }
+
   .cf-pill.lensed { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
   .cf-pill.lensed::before { -webkit-backdrop-filter: brightness(1.18) saturate(1.5) !important; backdrop-filter: brightness(1.18) saturate(1.5) !important; }
   .cf-pill > .cf-glint { position: absolute; inset: 0; border-radius: inherit; z-index: 1; pointer-events: none; opacity: 0; transition: opacity .35s ease;
@@ -6953,7 +6964,7 @@ const APP_VER = "2026.11.105";
 const APP_NEWS = [["2026.11.105", "Liquid Glass – auch im Intro", [
   ["Intro", "Das Logo gleitet am Ende genau an seinen Platz in der App, statt wegzuzoomen. Helle Designs bekommen ein helles Intro. Die K-Kachel ist aus Glas mit Lichtkante und einem Lichtreflex, das Fadenkreuz rastet mit feinem Nachschwingen ein."],
   ["Glas wie bei Apple", "Die Aktienauswahl ist jetzt fast klares Glas: Die Mitte bleibt scharf, der dicke Rand bricht das Licht (heller, kräftiger, wie eine Linse), zwei scharfe Lichtkanten und ein feiner Farbsaum folgen deinem Finger."],
-  ["Echte Lichtbrechung", "Kerzen und Linien hinter der Pille biegen sich am Glasrand wirklich – wie durch eine Linse, mit feinem Farbsaum. Beim Antippen gibt das Glas elastisch nach und federt zurück."]]],
+  ["Echte Lichtbrechung", "Kerzen und Linien hinter der Pille und am Rand des Auswahlfensters biegen sich am Glasrand wirklich – wie durch eine Linse, mit feinem Farbsaum. Beim Antippen gibt das Glas elastisch nach und federt zurück."]]],
   ["2026.11.102", "Intro verfeinert", [
   ["Ruhiger Abschluss", "Das fertige Logo mit dem Claim steht jetzt kurz ruhig da, bevor die App erscheint – vorher war der Claim noch nicht ganz eingeblendet. Kachel und Klingen erscheinen gemeinsam, das Kursstück am Tief leuchtet beim Einrasten blau, Logo und Claim sind etwas größer."]]],
   ["2026.11.101", "Neuer Slogan", [
@@ -9493,12 +9504,13 @@ function cfPickRows() {
 function cfPickOpen(on) {
   const el = $("cfPick"); if (!el) return; if (!on) { el.classList.remove("show"); el.hidden = true; return; }
   if (!cfPick.seg) cfPick.seg = (state.cfSeg && cfList(state.cfSeg).length) ? state.cfSeg : cfList("mine").length ? "mine" : "hits";
-  el.innerHTML = `<input id="cfPickQ" type="search" placeholder="🔍  Suchen" autocomplete="off">
+  el.innerHTML = `<canvas class="cf-lens" aria-hidden="true"></canvas><input id="cfPickQ" type="search" placeholder="🔍  Suchen" autocomplete="off">
     <div class="sp-tg cfp-seg">${[["mine", "Meine"], ["dep", "Depot"], ["hits", "Treffer"], ["recent", "Zuletzt"]].map(([v, l]) => `<button class="opt${cfPick.seg === v ? " on" : ""}" data-cfseg="${v}">${l}</button>`).join("")}</div>
     <div class="cfp-l" id="cfPickL">${cfPickRows()}</div>`;
   el.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => { el.classList.add("show"); const on1 = el.querySelector(".cfp-r.on"), L = $("cfPickL"); if (L) L.style.paddingBlock = Math.max(0, L.clientHeight / 2 - 30) + "px"; requestAnimationFrame(() => { if (on1 && L) { L.style.scrollSnapType = "none"; L.scrollTop = on1.offsetTop - L.clientHeight / 2 + on1.offsetHeight / 2; L.style.scrollSnapType = cfHold.on ? "none" : ""; }
     if (cfHold.on && L) cfHold.s0 = L.scrollTop; cfWheelFx(); }); }));
   if (matchMedia("(pointer: fine)").matches) $("cfPickQ").focus();
+  setTimeout(lensSoon, 320);   // nach dem Aufklappen: Rand mit echter Lichtbrechung
 }
 async function cockpitGo(t) {
   const r = byTicker(t); if (!r) return;
@@ -9519,46 +9531,55 @@ document.addEventListener("pointermove", e => { if (!e.target.closest || !e.targ
 // Echte Lichtbrechung (Glas v5): Der Hintergrund der Pille ist unser eigener Chart – sein Ausschnitt wird in eine Leinwand in der
 // Pille kopiert und am Rand wie durch eine Linse verbogen (Rand zieht Inhalt von außen herein, Mitte leicht vergrößert, am Rand
 // trennen sich Rot/Blau minimal = Farbsaum). Rechnet nur, wenn sich der Chart ändert; geht etwas schief, bleibt das CSS-Glas.
-const LENS = { key: "", mR: null, mG: null, mB: null, off: null, raf: 0, bad: false };
-function lensMap(W, H, pad, dpr) {
-  const n = W * H, mR = new Uint32Array(n), mG = new Uint32Array(n), mB = new Uint32Array(n), rad = H / 2, rim = 10 * dpr, sw = W + 2 * pad, sh = H + 2 * pad, cx = W / 2, cy = H / 2, mag = .955;
+const LENS = { maps: {}, offs: {}, raf: 0, bad: false };
+// Abbildung Ziel-Pixel → Quell-Pixel für eine abgerundete Form (Radius R): Rand zieht Inhalt von außen herein, Mitte leicht vergrößert,
+// am Rand Rot/Blau minimal versetzt (Farbsaum). rimOnly: Mitte bleibt frei (dort wirkt der mattierte CSS-Hintergrund).
+function lensMap(W, H, pad, dpr, R, rimC, rimOnly) {
+  const n = W * H, mR = new Int32Array(n), mG = new Int32Array(n), mB = new Int32Array(n), rim = rimC * dpr, sw = W + 2 * pad, sh = H + 2 * pad, cx = W / 2, cy = H / 2, mag = rimOnly ? 1 : .955;
   const idx = (x, y) => (Math.max(0, Math.min(sh - 1, Math.round(y + pad))) * sw) + Math.max(0, Math.min(sw - 1, Math.round(x + pad)));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const px = x + .5 - cx, py = y + .5 - cy, qx = Math.max(Math.abs(px) - (W / 2 - rad), 0), qy = py, r = Math.hypot(qx, qy), dist = rad - r;
+    const px = x + .5 - cx, py = y + .5 - cy, qx = Math.max(Math.abs(px) - (W / 2 - R), 0), qy = Math.max(Math.abs(py) - (H / 2 - R), 0);
+    let dist, nx, ny;
+    if (qx > 0 && qy > 0 || (qx > 0 || qy > 0) && R > 0 && Math.hypot(qx, qy) > 0) { const r = Math.hypot(qx, qy); dist = R - r; nx = Math.sign(px) * qx / (r || 1); ny = Math.sign(py) * qy / (r || 1); }
+    else { const dx = W / 2 - Math.abs(px), dy = H / 2 - Math.abs(py); if (dx < dy) { dist = dx; nx = Math.sign(px); ny = 0; } else { dist = dy; nx = 0; ny = Math.sign(py); } }
+    const i = y * W + x;
+    if (rimOnly && dist >= rim + 1) { mG[i] = mR[i] = mB[i] = -1; continue; }
     let sx = cx + px * mag, sy = cy + py * mag, ox = 0, oy = 0;
-    if (dist < rim && r > 0) { const t = 1 - Math.max(0, dist) / rim, push = t * t * (pad * .95), nx = (qx > 0 ? Math.sign(px) * qx : 0) / r, ny = qy / r;
-      sx += nx * push; sy += ny * push; ox = nx * t * t * 1.6 * dpr; oy = ny * t * t * 1.6 * dpr; }
-    const i = y * W + x; mG[i] = idx(sx, sy); mR[i] = idx(sx + ox, sy + oy); mB[i] = idx(sx - ox, sy - oy); }
+    if (dist < rim) { const t = 1 - Math.max(0, dist) / rim, push = t * t * (pad * .95); sx += nx * push; sy += ny * push; ox = nx * t * t * 1.6 * dpr; oy = ny * t * t * 1.6 * dpr; }
+    mG[i] = idx(sx, sy); mR[i] = idx(sx + ox, sy + oy); mB[i] = idx(sx - ox, sy - oy); }
   return { mR, mG, mB };
 }
-function lensDraw() {
-  if (LENS.bad) return;
-  const pill = document.querySelector("#cfPill .cf-pill"), cv = pill && pill.querySelector(".cf-lens"), host = $("cfMain");
-  if (!cv || !host) return;
-  const pr = pill.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1), W = Math.round(pr.width * dpr), H = Math.round(pr.height * dpr);
+function lensDrawEl(box, o) {
+  const cv = box && box.querySelector(":scope > .cf-lens"), host = $("cfMain");
+  if (!cv || !host || box.hidden) return;
+  const pr = box.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1), W = Math.round(pr.width * dpr), H = Math.round(pr.height * dpr);
   if (!W || !H) return;
   if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
   const padC = 12, pad = Math.round(padC * dpr), sw = W + 2 * pad, sh = H + 2 * pad;
-  const off = LENS.off || (LENS.off = document.createElement("canvas")); if (off.width !== sw || off.height !== sh) { off.width = sw; off.height = sh; }
+  const off = LENS.offs[o.k] || (LENS.offs[o.k] = document.createElement("canvas")); if (off.width !== sw || off.height !== sh) { off.width = sw; off.height = sh; }
   const oc = off.getContext("2d", { willReadFrequently: true }), bg = getComputedStyle(host.closest(".chfs-chart") || host).backgroundColor;
-  oc.globalCompositeOperation = "source-over"; oc.fillStyle = bg && bg !== "rgba(0, 0, 0, 0)" ? bg : getComputedStyle(document.body).backgroundColor; oc.fillRect(0, 0, sw, sh);
+  oc.fillStyle = bg && bg !== "rgba(0, 0, 0, 0)" ? bg : getComputedStyle(document.body).backgroundColor; oc.fillRect(0, 0, sw, sh);
   const x0 = pr.left - padC, y0 = pr.top - padC, x1 = pr.right + padC, y1 = pr.bottom + padC;
   host.querySelectorAll("canvas").forEach(c => { const r = c.getBoundingClientRect(); if (!r.width || !c.width) return;
     const ix0 = Math.max(x0, r.left), iy0 = Math.max(y0, r.top), ix1 = Math.min(x1, r.right), iy1 = Math.min(y1, r.bottom); if (ix1 <= ix0 || iy1 <= iy0) return;
     const kx = c.width / r.width, ky = c.height / r.height;
     oc.drawImage(c, (ix0 - r.left) * kx, (iy0 - r.top) * ky, (ix1 - ix0) * kx, (iy1 - iy0) * ky, (ix0 - x0) * dpr, (iy0 - y0) * dpr, (ix1 - ix0) * dpr, (iy1 - iy0) * dpr); });
-  const src = oc.getImageData(0, 0, sw, sh).data, key = W + "x" + H + "@" + dpr;
-  if (LENS.key !== key) { Object.assign(LENS, lensMap(W, H, pad, dpr)); LENS.key = key; }
-  const ctx = cv.getContext("2d"), out = ctx.createImageData(W, H), d = out.data, { mR, mG, mB } = LENS;
-  for (let i = 0, j = 0; i < mG.length; i++, j += 4) { d[j] = src[mR[i] * 4]; d[j + 1] = src[mG[i] * 4 + 1]; d[j + 2] = src[mB[i] * 4 + 2]; d[j + 3] = 255; }
+  const src = oc.getImageData(0, 0, sw, sh).data, R = o.R(pr) * dpr, key = o.k + W + "x" + H + "@" + dpr;
+  const mp = LENS.maps[key] || (LENS.maps[key] = lensMap(W, H, pad, dpr, R, o.rim, o.rimOnly));
+  const ctx = cv.getContext("2d"), out = ctx.createImageData(W, H), d = out.data, { mR, mG, mB } = mp;
+  for (let i = 0, j = 0; i < mG.length; i++, j += 4) { const g = mG[i]; if (g < 0) { d[j + 3] = 0; continue; } d[j] = src[mR[i] * 4]; d[j + 1] = src[g * 4 + 1]; d[j + 2] = src[mB[i] * 4 + 2]; d[j + 3] = 255; }
   ctx.putImageData(out, 0, 0);
-  // Lesbarkeit wie bei Apple: Mitte leicht abgedunkelt (hell: aufgehellt), zum Rand hin klarer – die Brechung am Rand bleibt sichtbar
-  const lt = document.documentElement.classList.contains("lt"), g = ctx.createRadialGradient(W / 2, H / 2, H * .2, W / 2, H / 2, W * .62);
-  g.addColorStop(0, lt ? "rgba(255,255,255,.42)" : "rgba(8,10,14,.42)"); g.addColorStop(.7, lt ? "rgba(255,255,255,.22)" : "rgba(8,10,14,.2)"); g.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); pill.classList.add("lensed");
+  if (o.darken) { const lt = document.documentElement.classList.contains("lt"), g = ctx.createRadialGradient(W / 2, H / 2, H * .2, W / 2, H / 2, W * .62);
+    g.addColorStop(0, lt ? "rgba(255,255,255,.42)" : "rgba(8,10,14,.42)"); g.addColorStop(.7, lt ? "rgba(255,255,255,.22)" : "rgba(8,10,14,.2)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.globalCompositeOperation = "source-atop"; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = "source-over"; }
+  box.classList.add("lensed");
+}
+function lensDraw() {
+  lensDrawEl(document.querySelector("#cfPill .cf-pill"), { k: "pill", R: r => r.height / 2, rim: 10, darken: true });
+  const pk = $("cfPick"); if (pk && !pk.hidden && pk.classList.contains("show")) lensDrawEl(pk, { k: "pick", R: () => 36, rim: 12, rimOnly: true });
 }
 const lensSoon = () => { if (LENS.raf || LENS.bad) return; LENS.raf = requestAnimationFrame(() => requestAnimationFrame(() => { LENS.raf = 0;
-  try { lensDraw(); } catch (e) { LENS.bad = true; document.querySelectorAll(".cf-pill").forEach(p => p.classList.remove("lensed")); } })); };
+  try { lensDraw(); } catch (e) { LENS.bad = true; document.querySelectorAll(".lensed").forEach(p => p.classList.remove("lensed")); } })); };
 addEventListener("resize", lensSoon);
 document.addEventListener("pointermove", e => { if (e.target.closest && e.target.closest(".chfs-chart")) lensSoon(); }, { passive: true });
 document.addEventListener("wheel", e => { if (e.target.closest && e.target.closest(".chfs-chart")) lensSoon(); }, { passive: true });
