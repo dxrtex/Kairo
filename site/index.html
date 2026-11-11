@@ -1418,6 +1418,33 @@
     box-shadow: 0 50px 110px rgba(0,0,0,.55), 0 18px 40px rgba(0,0,0,.30), 0 0 0 .5px rgba(0,0,0,.35);
     -webkit-backdrop-filter: blur(38px) saturate(220%) contrast(1.08) brightness(1.06); backdrop-filter: blur(38px) saturate(220%) contrast(1.08) brightness(1.06);
     opacity: 0; transform: translate(-50%, -50%) scale(.94); transition: opacity .2s ease, transform .28s cubic-bezier(.2, .9, .25, 1.15); }
+  /* Glas v3 (Wunsch 11/2026: „echte Spiegelungen, höchste Qualität“) – mehrschichtig wie echtes Glas:
+     1) leichte Unschärfe + kräftige Sättigung (der Chart dahinter bleibt als Form erkennbar = Lichtbrechung)
+     2) Lichtkante: heller Ring, dessen hellste Stelle zur Lichtquelle zeigt (--la), gegenüber eine schwächere Gegenkante
+     3) Spiegelung: weiches Glanzlicht + diagonaler Reflexstreifen, die mit dem Finger/der Maus über den Chart wandern (--lx/--ly)
+     4) Tiefe: innen oben Licht, innen unten Schatten, außen ein weicher Schlagschatten */
+  .cf-pill, .cf-pick { --lx: 28%; --ly: 0%; --la: 200deg;
+    background:
+      radial-gradient(120% 140% at var(--lx) var(--ly), rgba(255,255,255,.20), rgba(255,255,255,.06) 34%, rgba(255,255,255,0) 60%),
+      linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.015) 48%, rgba(0,0,0,.12)),
+      rgba(26,28,34,.16) !important;
+    -webkit-backdrop-filter: blur(7px) saturate(210%) brightness(1.12) contrast(1.08); backdrop-filter: blur(7px) saturate(210%) brightness(1.12) contrast(1.08);
+    box-shadow:
+      inset 0 1px .5px rgba(255,255,255,.55), inset 0 -1px .5px rgba(255,255,255,.14),
+      inset 0 12px 20px -14px rgba(255,255,255,.45), inset 0 -16px 22px -16px rgba(0,0,0,.55),
+      0 22px 44px -8px rgba(0,0,0,.55), 0 3px 8px rgba(0,0,0,.28) !important; }
+  .cf-pill::before, .cf-pick::before { padding: 1.25px;
+    background: conic-gradient(from var(--la), rgba(255,255,255,.95), rgba(255,255,255,.35) 10%, rgba(255,255,255,.06) 24%, rgba(255,255,255,.03) 40%,
+      rgba(255,255,255,.42) 50%, rgba(255,255,255,.06) 62%, rgba(255,255,255,.03) 78%, rgba(255,255,255,.35) 90%, rgba(255,255,255,.95)) !important; }
+  .cf-pill::after, .cf-pick::after {
+    background:
+      radial-gradient(55% 46% at var(--lx) 4%, rgba(255,255,255,.34), rgba(255,255,255,0) 72%),
+      linear-gradient(112deg, rgba(255,255,255,0) calc(var(--lx) - 22%), rgba(255,255,255,.11) calc(var(--lx) - 8%), rgba(255,255,255,0) calc(var(--lx) + 6%)),
+      radial-gradient(80% 60% at 50% 125%, rgba(140,180,255,.10), rgba(255,255,255,0) 70%) !important;
+    mix-blend-mode: screen; }
+  .cf-pick { background-color: rgba(22,24,30,.42) !important; -webkit-backdrop-filter: blur(22px) saturate(210%) brightness(1.08) contrast(1.06); backdrop-filter: blur(22px) saturate(210%) brightness(1.08) contrast(1.06); }
+  html.lt .cf-pill, html.lt .cf-pick { background:
+      radial-gradient(120% 140% at var(--lx) var(--ly), rgba(255,255,255,.75), rgba(255,255,255,.35) 40%, rgba(255,255,255,.18) 70%), rgba(255,255,255,.35) !important; }
   .cf-pick.show { opacity: 1; transform: translate(-50%, -50%) scale(1); } .cf-pick[hidden] { display: none; }
   .cf-pick input { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.08); color: var(--text); }
   .cf-pick input::placeholder { color: rgba(235,235,245,.45); }
@@ -6875,8 +6902,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.99";
-const APP_NEWS = [["2026.11.99", "Neues Intro", [
+const APP_VER = "2026.11.100";
+const APP_NEWS = [["2026.11.100", "Glas mit echter Spiegelung", [
+  ["Glas-Auswahl", "Die Aktienauswahl unten links im Chart ist jetzt aus klarerem Glas: Der Chart scheint durch, eine helle Lichtkante läuft rundherum, und Glanzlicht und Spiegelung wandern mit deinem Finger über den Chart."]]],
+  ["2026.11.99", "Neues Intro", [
   ["Der Moment", "Neues Intro in 1,9 Sekunden: Eine ruhige Kurslinie fällt und wendet, ein Fadenkreuz rastet am Tief ein, daraus wächst die blaue Kerze – der Stamm des K. Dann KAIRO und der Claim „Patience, then precision.“"],
   ["Nur beim ersten Mal", "Das volle Intro läuft beim ersten Öffnen und nach einem Update. Sonst erscheint nur kurz das Logo – ohne Wartezeit. Antippen überspringt; mit „Bewegung reduzieren“ ohne Animation."]]],
   ["2026.11.98", "Trade-Plan schlanker", [
@@ -9421,6 +9450,14 @@ async function cockpitGo(t) {
   state.cfRecent = [t, ...(state.cfRecent || []).filter(x => x !== t)].slice(0, 15); state.cfLast = t; save();
   openCockpit(); return true;
 }
+// Spiegelung im Glas: Lichtquelle folgt Finger/Maus über dem Chart (nur Farbverläufe, keine Neuberechnung des Charts)
+let glRaf = 0, glEv = null;
+document.addEventListener("pointermove", e => { if (!e.target.closest || !e.target.closest(".chfs-chart")) return; glEv = e; if (glRaf) return;
+  glRaf = requestAnimationFrame(() => { glRaf = 0; const ev = glEv; document.querySelectorAll(".cf-pill, .cf-pick:not([hidden])").forEach(el => {
+    const r = el.getBoundingClientRect(); if (!r.width) return; const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const dx = ev.clientX - cx, dy = ev.clientY - cy, ang = Math.atan2(dx, -dy) * 180 / Math.PI;
+    const lx = Math.max(-10, Math.min(110, 50 + dx / Math.max(r.width, 260) * 90)), ly = Math.max(-30, Math.min(60, dy / Math.max(r.height, 200) * 60));
+    el.style.setProperty("--lx", lx.toFixed(1) + "%"); el.style.setProperty("--ly", ly.toFixed(1) + "%"); el.style.setProperty("--la", (ang - 18).toFixed(0) + "deg"); }); }); }, { passive: true });
 // Rad-Effekt: Zeilen weiter weg von der Mitte werden blasser und kleiner (wie die Auswahl bei TradingView/iOS)
 let cfFxRaf = 0;
 function cfWheelFx() { cfFxRaf = 0; const L = $("cfPickL"); if (!L) return; const R = L.getBoundingClientRect(), mid = R.top + R.height / 2, half = R.height / 2 || 1;
