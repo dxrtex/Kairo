@@ -60,25 +60,25 @@ Schnelligkeit: erste Zahlen im Mittel 614 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-69 Fehlprognosen und 357 Vergleichsfälle untersucht.
+69 Fehlprognosen und 363 Vergleichsfälle untersucht.
 
 - Markt: Bei 37% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 21% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
 - Vorlauf (20 Handelstage davor): Fehlprognosen Ø -10.8%, getroffene Ø -4.8%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 32% (22) | 30% | 1.1 |
+| Ausblick | 32% (22) | 29% | 1.1 |
 | Marge | 13% (9) | 7% | 1.8 |
 | Umsatz | 55% (38) | 50% | 1.1 |
-| Nutzer/Kunden | 6% (4) | 1% | 6.9 |
+| Nutzer/Kunden | 6% (4) | 1% | 7.0 |
 | Aufträge | 10% (7) | 6% | 1.8 |
 | Kosten | 4% (3) | 8% | 0.5 |
 | Zölle/Politik | 1% (1) | 1% | 2.6 |
 | KI/Rechenzentren | 12% (8) | 11% | 1.1 |
 | Management | 1% (1) | 3% | 0.4 |
-| Rückkauf/Dividende | 1% (1) | 4% | 0.3 |
+| Rückkauf/Dividende | 1% (1) | 4% | 0.4 |
 | Analysten | 6% (4) | 8% | 0.7 |
-| Sondereffekt | 3% (2) | 1% | 3.4 |
+| Sondereffekt | 3% (2) | 1% | 3.5 |
 | Übernahme | 1% (1) | 5% | 0.3 |
 
 **Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -10.8% gegen -4.8% → „schon eingepreist“ als Merkmal prüfen
