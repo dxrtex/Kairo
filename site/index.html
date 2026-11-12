@@ -7113,8 +7113,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.109";
-const APP_NEWS = [["2026.11.109", "Flüssiger", [
+const APP_VER = "2026.11.110";
+const APP_NEWS = [["2026.11.110", "Eigene Welle bleibt stehen", [
+  ["Tipp daneben beendet nur", "Hast du deine eigene Fibonacci-Welle gezogen, beendet ein Tipp irgendwo anders in den Chart jetzt nur den Welle-Modus – die Welle bleibt stehen, es beginnt keine neue. Anpassen geht über die Griffe; ganz neu zeichnen: „Kairo-Welle“ und dann „Welle“."]]],
+  ["2026.11.109", "Flüssiger", [
   ["Kein Ruckeln mehr beim Scrollen", "Firmenlogos werden jetzt vorab geladen statt erst beim Scrollen – der Scanner scrollt so flüssig wie der Rest der App (60 Bilder pro Sekunde)."],
   ["Schnellere Reiterwechsel", "Der Chart erscheint sofort, RSI/MACD/MBI folgen einen Augenblick später. Der Scanner zeigt zuerst die sichtbaren Zeilen und baut nur noch die Ansicht, die du siehst."],
   ["Weichere Übergänge", "Die gleitenden Markierungen (Seitenleiste, Schalter) laufen auf der Grafikkarte und stocken nicht mehr, während der neue Reiter aufgebaut wird. Im Chart zeichnen Volumenprofil, Kerzen-Info und Glas-Linse nur noch neu, wenn sich wirklich etwas ändert."]]],
@@ -9511,6 +9513,9 @@ function buildMain(el, c, r, opts) {
     const x = e.clientX - el.getBoundingClientRect().left, ts = chart.timeScale(); if (x < 0 || x > ts.width()) return;
     const lgc = ts.coordinateToLogical(x); if (lgc == null) return; let i = clampI(lgc); if (i >= T.length) i = T.length - 1;
     if (WAVE.on) {
+      // Wunsch 12.11.: Steht die eigene Welle schon, beendet ein Tipp daneben nur den Welle-Modus – die Welle bleibt, es beginnt keine neue.
+      // Ändern geht weiter über die Griffe (Tief/Hoch ziehen); ganz neu zeichnen: „Kairo-Welle“ (zurücksetzen) und dann „Welle“.
+      if (h.wA == null && h.M.own) { WAVE.on = false; CL_LIVE.forEach(x => x.measureOff && x.measureOff()); clRefresh(); return; }
       if (h.wA == null) { h.wA = snap(i, true); mp.set(h.wA, h.wA); h.legend(h.wA); return; }
       let a = h.wA, b = snap(i, false); h.wA = null; mp.set(null, null);
       if (b <= a) { const lo = snap(i, true), hi = snap(a, false); if (hi > lo) { a = lo; b = hi; } else { h.legend(i); return; } }
@@ -9562,7 +9567,7 @@ function clBarHtml(h) {
     + chip("sup", `Linien ${ns}↓ ${nr}↑`, "#4aa3ff", M.lines.length > 0) + EMA_DEF.map(([k, col, l]) => chip(k, l, col)).join("")
     + chip("vol", "Volumen", "#5d6676") + chip("vp", "Volumenprofil", "#ff9f0a") + chip("plan", "Kauf/Stop/K.-o.", "#ff453a")
     + `<button class="cl-c cl-m${MEAS.on ? " on" : ""}" data-clm title="Zeitraum messen: Start- und Endkerze antippen">📏 Messen</button>`
-    + `<button class="cl-c cl-m${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle: Tief und Hoch antippen, danach mit den Griffen verschieben">✎ ${M.own ? "eigene Welle" : "Welle setzen"}</button>`
+    + `<button class="cl-c cl-m${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle: Tief und Hoch antippen, danach mit den Griffen verschieben – Tipp daneben beendet">✎ ${M.own ? "eigene Welle" : "Welle setzen"}</button>`
     + (M.own ? `<button class="cl-c" data-clwreset title="Zurück zur Welle, die Kairo bestimmt">↺ Kairo-Welle</button>` : "");
 }
 function clRefresh() {
