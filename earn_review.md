@@ -6,21 +6,21 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 410 | 52% | 0.256 | 0.250 |
+| alle | 410 | 52% | 0.257 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 206 | 56% | 0.244 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 206 | 55% | 0.245 | 0.250 |
 | Ausblick gesenkt | 62 | 60% | 0.240 | 0.250 |
 | Ausblick bestätigt | 27 | 48% | 0.266 | 0.250 |
 | Ausblick angehoben | 141 | 48% | 0.270 | 0.250 |
-| Ausblick keine Meldung | 180 | 53% | 0.249 | 0.250 |
+| Ausblick keine Meldung | 180 | 52% | 0.250 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
 | Kairo sagte | n | tatsächlich gestiegen |
 |---|---|---|
 | -0%–30% | 11 | 45% |
-| 30%–40% | 89 | 43% |
+| 30%–40% | 89 | 44% |
 | 40%–50% | 98 | 50% |
 | 50%–60% | 136 | 53% |
 | 60%–70% | 54 | 43% |
@@ -31,7 +31,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
 | deutlich unter Erwartung (< −10 %) | 40% (20) | 44% (9) | 46% (26) | 38% (47) |
-| unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 72% (18) | 41% (44) |
+| unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 72% (18) | 43% (44) |
 | im Rahmen (±2 %) | 25% (16) | 0% (2) | 33% (15) | 53% (30) |
 | über Erwartung (+2 bis +10 %) | 39% (23) | 29% (7) | 47% (45) | 48% (52) |
 | deutlich über Erwartung (> +10 %) | 39% (28) | 53% (17) | 63% (99) | 55% (84) |
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 205 Meldungen: Brier nachgeeicht 0.251 gegen gezeigt 0.255 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 205 Meldungen: Brier nachgeeicht 0.252 gegen gezeigt 0.256 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
