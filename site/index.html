@@ -2369,6 +2369,9 @@ em.num, .cx-p em, .cx-p span em, i.chgp { font-style: normal; }
 .cx-t h2 { overflow: visible !important; } .cx-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .cx-t h2 > button { flex: none; }
 .nr-n.has-av { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; min-width: 0; } .nr-n.has-av > .cf-av { width: 30px; height: 30px; font-size: 13px; flex: none; }
 .nr-n.has-av > span { display: flex; flex-direction: column; min-width: 0; } .nr-n.has-av > span > b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-more { margin-top: 10px; } .tp-more > summary { cursor: pointer; color: var(--accent); font-size: 14px; font-weight: 600; list-style: none; } .tp-more > summary::-webkit-details-marker { display: none; }
+.mv-r > .cf-av { width: 30px; height: 30px; font-size: 13px; flex: none; margin-right: 2px; }
+.bf-r > .cf-av { width: 30px; height: 30px; font-size: 13px; flex: none; } .bf-r > span { min-width: 0; flex: 1; }
 .hrow > .cf-av { width: 30px; height: 30px; font-size: 13px; flex: none; }
 @media (min-width: 701px) { .nr-t { white-space: normal !important; display: -webkit-box !important; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; } }
 .cx-bar > * { min-height: 28px; display: inline-flex; align-items: center; border-radius: 999px !important; font-size: 13px !important; line-height: 1; margin: 0 !important; }
@@ -2379,6 +2382,21 @@ em.num, .cx-p em, .cx-p span em, i.chgp { font-style: normal; }
 .nw-toast > span { flex: 1; min-width: 0; display: flex; flex-direction: column; } .nw-toast small { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
 .nw-toast b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nw-tx { border: 0; background: none; color: var(--muted); font-size: 15px; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; }
+@media (min-width: 768px) {   /* iPad: Seitenleiste als schwebende Glastafel (iPadOS-Stil) */
+  nav.tabbar { top: calc(env(safe-area-inset-top, 0px) + 10px) !important; bottom: 10px !important; left: 10px !important; width: 222px !important; border-radius: 26px !important; border: 0 !important;
+    padding-top: 16px !important; background: var(--lg-sheen), var(--lg-tab) !important; -webkit-backdrop-filter: blur(30px) saturate(190%) !important; backdrop-filter: blur(30px) saturate(190%) !important;
+    box-shadow: var(--lg-rim), 0 12px 36px rgba(0,0,0,.30) !important; }
+  html.lt nav.tabbar { box-shadow: var(--lg-rim), 0 10px 30px rgba(0,0,0,.08) !important; }
+}
+.cx-chart .chart, .cx-chart .chart-msg { background: none !important; border: 0 !important; box-shadow: none !important; }
+.dep-cols { display: flex; flex-direction: column; } .dep-main { display: contents; } .dep-tr { order: 0; } .dep-side { order: 1; } .dep-pos { order: 2; }
+@media (min-width: 1440px) { .dep-cols:not(.solo) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 18px; align-items: start; }
+  .dep-cols:not(.solo) .dep-main { display: block; min-width: 0; } .dep-side { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 72px); }
+  .dep-side .dck .dck-g { grid-template-columns: 1fr !important; } }
+.set-trade { padding: 4px 0 !important; } .set-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 18px; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid var(--line); }
+.set-row > span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; } .set-row b { font-size: 15px; font-weight: 600; } .set-row small { font-size: 13px; color: var(--muted); }
+.set-row > em { font-style: normal; font-size: 15px; font-weight: 600; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; } button.set-row > em { color: var(--accent); }
 </style>
 <style id="kdlg">
 /* Eigene Dialoge statt Browser-Popups (confirm/alert/prompt) – Glas, Feder, Tastatur */
@@ -2598,7 +2616,7 @@ const GLOSS = {
   exp: ["Erwartung je Trade", "Durchschnittliches Ergebnis aller Trades. Positiv heißt: Die Strategie verdient im Schnitt – auch wenn viele Trades verlieren."],
   sharpe: ["Sharpe", "Rendite im Verhältnis zur Schwankung. Höher ist besser: gleiche Rendite mit weniger Auf und Ab."],
   fear: ["Stimmung / Angst (0–100)", "Fasst sieben Messgrößen zusammen: VIX-Höhe und -Anstieg, kurz- gegen langfristige Angst (VIX ÷ VIX3M), Tech/KI (Nasdaq 100 und Halbleiter vom Hoch), Anteil der gescannten Aktien über der EMA 50, Aktien am 52-Wochen-Tief und den Kreditmarkt. Die Trend-Ampel sagt, wohin der Markt läuft – die Stimmung, wie nervös er ist. Erfahrungswerte, keine getestete Handelsregel."],
-  etfa: ["ETF-Ampel", "Für Extra-Geld neben dem Sparplan: Grün = jetzt investieren (Rücksetzer oder Angst am Markt), Gelb = höchstens 3 Monate abwarten. Die monatliche Sparrate läuft immer."],
+  etfa: ["ETF-Ampel", "Für Extra-Geld neben dem Sparplan: Grün = jetzt investieren (Rücksetzer oder Angst am Markt), Gelb = höchstens 3 Monate abwarten. Die monatliche Sparrate läuft immer. Langzeittest S&P 500 und Welt-ETF 1990–2026: Nach Grün war die Rendite der folgenden 3 Monate höher – in Euro lag Extra-Geld nach Ampel aber 0,1–0,3 % hinter „sofort anlegen“. Sofort anlegen ist also mindestens genauso gut; die Ampel ordnet ein."],
 };
 const TERMS = [[/\bATR\b/, "atr"], [/Seitwärtsphase/, "base"], [/Vormomentum/, "mom"], [/EMA ?20\b/, "ema20x"], [/K\.-o\.-Schwelle|\bK\.-o\./, "ko"],
   [/Profit-Faktor/, "pf"], [/Trefferquote/, "hit"], [/[Mm]ax\. Rückgang|[Gg]rößter Rückgang/, "dd"], [/PRIME\+/, "prime"], [/Papier-Test|Papier-Depot/, "paper"],
@@ -3090,7 +3108,7 @@ const COLS = [
   { k: "chk", l: "Rücksetzer-Check", n: 1, g: r => chkP(r) ?? -1, h: r => chkCell(r) },
   { k: "grade", l: "Stufe", g: r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0, h: r => gradeBadge(r) || `<span class="muted">–</span>` },
   { k: "exchange", l: "Börse", g: r => r.exchange, h: r => esc(r.exchange) },
-  { k: "cap", l: "Market Cap", n: 1, g: r => r.market_cap_usd ?? 0, h: r => fmtCap(r.market_cap_usd) },
+  { k: "cap", l: "Börsenwert", n: 1, g: r => r.market_cap_usd ?? 0, h: r => fmtCap(r.market_cap_usd) },
   { k: "close", l: "Kurs", n: 1, g: r => r.close, h: r => `${fmt(r.close)}${r.live ? ' <span class="live-dot" title="live">●</span>' : ""}` },
   { k: "tgt", l: "Analysten-Ziel", n: 1, g: r => tgtUp(r) ?? -9, h: r => { const t = r.senti && r.senti.tgt, u = tgtUp(r);
     return u == null ? `<span class="muted">–</span>` : `<b class="${u >= 0 ? "up" : "down"}">${u >= 0 ? "+" : ""}${pct(u, 0)}</b><small style="display:block" class="muted">Ø ${fmt(t.m)}${r.senti.an && r.senti.an.n ? ` · ${r.senti.an.n} Anal.` : ""}</small>`; } },
@@ -3431,7 +3449,7 @@ function spDrillHtml(key) {
   const nOwn = all.filter(ownOf).length;
   const wr = all.filter(r => r[nm] != null), up = wr.filter(r => r[nm] > 0).length;
   const li = top.map((r, i) => { const sr = byTicker(r.t), ow = ownOf(r); return `<button class="sp-s${ow ? " own" : ""}" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}>
-      <span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(r.n || r.t)}</b><em>${ow === "dep" ? '<small class="sp-own dep">Depot</small> ' : ow === "wat" ? '<small class="sp-own">★ Watchlist</small> ' : ""}${esc(tkClean ? tkClean(r.t) : r.t)}${rg === "all" && RGN[r.hr || r.r] ? ` · ${RGN[r.hr || r.r]}` : ""} · ${r.mc ? fmtCap(r.mc) : `${fmt(r.c)} ${esc(r.cur || "")}`}${r.mc && capSum ? ` · Gewicht ${pct(r.mc / capSum, 0)}` : ""}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}</em></span>
+      <span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(r.n || r.t)}</b><em>${ow === "dep" ? '<small class="sp-own dep">Depot</small> ' : ow === "wat" ? '<small class="sp-own">★ Watchlist</small> ' : ""}${esc(tkClean ? tkClean(r.t) : r.t)}${rg === "all" && RGN[r.hr || r.r] ? ` · ${RGN[r.hr || r.r]}` : ""} · ${r.mc ? fmtCap(r.mc) : `${fmt(r.c)} ${esc(r.cur || "")}`}${r.mc && capSum ? ` · Gewicht ${pct(r.mc / capSum, 0)}` : ""}${r.m != null && r.m >= 9 && !(sr && sr.passed) ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}</em></span>
       <span class="sp-v ${r[nm] == null ? "" : r[nm] >= 0 ? "up" : "down"}">${r[nm] == null ? "–" : sgnPct(r[nm], 1)}</span></button>`; }).join("");
   return `<h3 style="margin:0 0 4px">${esc(x.n)}</h3>
     <p class="muted" style="margin:0 0 12px;font-size:13px">${esc(x.k)} ${sgnPct(x[k], 1)} ${esc(kn)} · ${wr.length ? `${up} von ${wr.length} Aktien im Plus` : ""}${nOwn ? ` · <b>${nOwn} aus deiner Liste</b>` : ""}</p>
@@ -3521,7 +3539,7 @@ function moversHtml() {
     const l = [...((bj && bj.stocks && bj.stocks[t]) || []), ...((sr0 && sr0.senti && sr0.senti.news) || [])].filter(n => n.t && Date.now() - ms(n.d) < 3 * 864e5).sort((a, b) => ms(b.d) - ms(a.d));
     return l[0] || null; };
   const one = (r, i) => { const sr = byTicker(r.t), rv = !vol && k === "d1" && r.rv != null && r.rv >= 1.5, nw = (k === "d1" || k === "w1") ? why(r.t) : null;
-    return `<button class="sp-s mv-r" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}><span class="sp-i">${i + 1}</span>
+    return `<button class="sp-s mv-r" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}><span class="sp-i">${i + 1}</span>${cfAv(r.t)}
       <span class="sp-sn"><b>${esc(r.n || r.t)}${mine.has(r.t) ? ` <small class="mv-own">●</small>` : ""}</b><em>${esc(tkClean(r.t))} · ${fmt(r.c)} ${esc(r.cur || "")}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}${rv ? ` · <span class="mv-rv">${fmt(r.rv, 1)}× Volumen</span>` : ""}</em>${nw ? `<em class="mv-why">📰 ${esc(String(nw.t).slice(0, 110))}</em>` : ""}</span>
       <span class="sp-v ${r[f] >= 0 ? "up" : "down"}">${vol ? `<b class="mv-rvb">${fmt(r.rv, 1)}×</b>` : ""}${sgnPct(r[f], 1)}</span></button>`; };
   // Volumen: nach Richtung getrennt – steigt der Kurs bei hohem Volumen, kaufen große Anleger (Kaufdruck), fällt er, verkaufen sie
@@ -4087,10 +4105,10 @@ function newsHtml() {
   const usd = v => { const fx = (fxEur && fxEur.USD) || 0.9, e = v * fx; return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
   const known = t => rowOf(t) || byTicker(t);
   const irow = x => { const tag = mine.has(x.t) || (byTicker(x.t) && byTicker(x.t).in_watchlist) ? '<span class="pill dep">Deine</span>' : byTicker(x.t) && byTicker(x.t).passed ? '<span class="pill">Treffer</span>' : "";
-    const meld = x.kind === "meld", q = x.kind === "buy" ? (x.opp == null ? (x.cur === "EUR" ? " · Routine unbekannt" : "") : x.opp ? ' · <b class="up">gezielt</b>' : " · Routine") : "";
+    const meld = x.kind === "meld", q = x.kind === "buy" ? (x.opp == null ? "" : x.opp ? ' · <b class="up">gezielt</b>' : " · Routine") : "";
     const fd = x.fd && x.fd !== x.d ? ` · gemeldet ${dateDE(x.fd)}` : "";
     const own = x.kind === "buy" && x.own != null ? (x.own === "neu" ? " · neue Position" : x.own >= 100 ? " · Anteil mehr als verdoppelt" : x.own >= 1 ? ` · +${fmt(x.own, 0)} % Aktien` : "") : "";
-    return `<a class="bf-r" href="${esc(safeHref(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`))}" target="_blank" rel="noopener"><i class="${meld ? "y" : x.kind === "buy" ? "g" : "r"}"></i><span><b>${esc(x.n || x.t)} ${tag}</b><em>${meld
+    return `<a class="bf-r" href="${esc(safeHref(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`))}" target="_blank" rel="noopener"><i class="${meld ? "y" : x.kind === "buy" ? "g" : "r"}"></i>${x.t ? cfAv(x.t) : ""}<span><b>${esc(x.n || x.t)} ${tag}</b><em>${meld
       ? `${esc(x.who)} · Meldung ${dateDE(x.d)} · ${esc(x.src || "")} (ohne Betrag – Details im Register)`
       : `${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"}${x.sh ? " " + fmt(x.sh, 0) + " Stk." : ""}${x.px ? ` zu ${fmt(x.px)} ${x.cur === "EUR" ? "€" : "$"}` : ""} · ${dateDE(x.d)}${fd}${q}${own}`}</em></span><span class="bf-p ${meld ? "" : x.kind === "buy" ? "up" : "down"}">${meld ? "Meldung" : x.cur === "EUR" ? eurAmt(x.val) : usd(x.val)}</span></a>`; };
   // Alle Listen: neueste zuerst (Datum des Geschäfts), bei gleichem Tag der größere Betrag oben
@@ -4773,9 +4791,13 @@ function depotHtml() {
     <p>Kairo prüft deine Positionen jeden Tag: Stop, EMA 20, Verkaufstag, Termine.</p>
     <p class="es-sub">Oben „Scalable-Export importieren“ oder „+ Position“ · noch nichts gekauft? <a href="#" data-gosec="today">Heute</a> oder <a href="#" data-gosec="game">Übung</a></p></div>`;
   if (state.depFlash) setTimeout(() => { state.depFlash = null; }, 2500);
-  return head + (items.length ? depHeroHtml(groups, items, inGroup) : "") + actions + form + empty + depTradesHtml(items) + depotCheckHtml(items, groups)
+  // iPad quer / Desktop (Pro-Runde 13.11.): Positionen links, Depot-Check rechts daneben; am iPhone Reihenfolge wie bisher
+  const chk = depotCheckHtml(items, groups);
+  return head + (items.length ? depHeroHtml(groups, items, inGroup) : "") + actions + form + empty
+    + `<div class="dep-cols${chk ? "" : " solo"}"><div class="dep-main"><div class="dep-tr">${depTradesHtml(items)}</div><div class="dep-pos">`
     + (groups.length ? `<div class="plan-h" style="margin:4px 2px 8px">Deine Positionen · antippen zum Aufklappen</div>${groups.map(groupHtml).join("")}` : "")
     + (cards.length ? `${groups.length ? `<div class="plan-h" style="margin:18px 2px 8px">Weitere Positionen</div>` : ""}<div class="grid">${cards}</div>` : "")
+    + `</div></div>${chk ? `<aside class="dep-side">${chk}</aside>` : ""}</div>`
     + koListHtml(koItems)
     + `<div class="note" style="margin:16px 2px 0">Dein Depot wird nur auf diesem Gerät gespeichert (nicht im Internet). Kurse vom letzten Scan, Umrechnung in Euro zum Tageskurs${missingFx ? " – für einige Währungen fehlt der Wechselkurs" : ""}. Regeln der Strategie: halten bis Stop, ab Tag 10 Schluss unter der EMA 20 oder spätestens Tag 60 (vor Quartalszahlen früher), kein Gewinnziel, höchstens ${KMAX.maxOpen} Trades. Keine Anlageberatung.</div>`;
 }
@@ -6633,10 +6655,10 @@ function todayModel() {
   const etg = e && e.ok !== false ? etfTiming(e) : null;
   if (etg && etg.lv === "g" && pfCfg().etf > 0 && !etfDoneRecent())
     tasks.push({ k: "etf", cat: "etf", tone: "g", t: "", ttl: "ETF: guter Moment für Extra-Geld", sub: `${pct(etg.dd, 1)} unter dem Hoch · RSI ${fmt(etg.rsi, 0)}${e.vix >= 25 ? ` · VIX ${fmt(e.vix, 1)}` : ""} – Sparrate läuft ohnehin`,
-      act: `<button class="btn sm" data-etfdone>Erledigt ✓</button><button class="btn ghost sm" ${SEC_LINK("etf")}>ETF</button>` });
+      act: `<button class="btn ghost sm" data-etfdone>Erledigt ✓</button><button class="btn ghost sm" ${SEC_LINK("etf")}>ETF</button>` });
   else if (!etg && e && e.ok !== false && ["go2", "rate"].includes(e.lv) && pfCfg().etf > 0 && !etfDoneRecent())   // „Normal“ ist keine Aufgabe – nur Gelegenheit und Raten
     tasks.push({ k: "etf", cat: "etf", tone: e.lv === "rate" ? "y" : "g", t: "", ttl: e.lv === "go2" ? "ETF: Gelegenheit – zusätzlich nachlegen" : "ETF: Extra-Geld in Raten anlegen", sub: e.lv === "rate" ? "unter der 200-Tage-Linie, Kreditmarkt schwach – auf 3 Monate verteilen" : (g => (g > 50 ? `bis zu ${eur(g)} (Lücke zu deinem ETF-Ziel) · ` : ""))((ec => ec.units ? ec.inv * ec.share / 100 - ec.units * e.c : 0)(etfCfg())) + (e.lv === "go2" ? "VIX ≥ 30 – gern in 2–3 Raten über einige Wochen" : (e.why || []).some(w => /3 Monat/.test(w)) ? "3-Monats-Regel – am besten in 3 Raten über 8 Wochen" : `ETF-Ampel grün${(e.why || []).length ? ": " + e.why.join(", ") : ""}`),
-      act: `<button class="btn sm" data-etfdone>Erledigt ✓</button><button class="btn ghost sm" ${SEC_LINK("etf")}>ETF</button>` });
+      act: `<button class="btn ghost sm" data-etfdone>Erledigt ✓</button><button class="btn ghost sm" ${SEC_LINK("etf")}>ETF</button>` });
   // 5) Vorbereiten: Treffer, deren Seitwärtsphase noch kommt (beste Rangplätze, keine Doppelten)
   const seen = new Set(tasks.map(x => x.t)), pos = searchIdx ? kmRank().pos : {};
   data.results.filter(r => r.passed && !isTrend(r) && inTrade(r.region) && !seen.has(r.ticker) && !openT.has(r.ticker) && kSt(r).k === "wait")
@@ -6685,6 +6707,7 @@ function moneyHtml() {
 function startMiniHtml() {
   const h = startHtml(); if (!h) return "";
   const m = h.match(/Erste Schritte · (\d+) von (\d+)/);
+  if (m && +m[1] >= +m[2] - 1 && !state.startShow) return "";   // fast eingerichtet: nicht mehr dauerhaft auf Heute
   return `<details class="pdet hstart"><summary class="psum"><b>Erste Schritte</b><span class="ptag">${m ? `${m[1]} von ${m[2]} erledigt` : ""} · einrichten</span></summary>${h}</details>`;
 }
 document.addEventListener("click", async e => {
@@ -7152,7 +7175,7 @@ function bilanzHtml() {
       <b>${resR(RESEARCH.rNorm)}</b><em>Ø je Trade mit normalen Kosten (Scalable PRIME+), mit Stress-Kosten (doppelter Spread, Schlupf) <b>${resR(RESEARCH.rStress)}</b>.
       Nur etwa ${resR(RESEARCH.vsRandom)} besser als Zufalls-Einstiege mit denselben Regeln – ein kleiner Vorteil, den die Kosten fast ganz aufzehren.
       Als Depot (20 Trades × 0,25 % Risiko): <b>${sgnPct(D.norm, 0)} pro Jahr</b> mit normalen, <b>${sgnPct(D.stress, 1)}</b> mit Stress-Kosten – Welt-ETF im selben Zeitraum ${sgnPct(RESEARCH.acwi, 0)}.</em></div>
-      <div class="bh-r"><div class="mt"><span>Größter Rückgang</span><b class="down" style="white-space:nowrap;font-size:clamp(15px,2vw,19px)">${pct(D.ddNorm, 0)} bis ${pct(D.ddStress, 0)}</b><em>20 × 0,25 % · mit 5 × 1 % Risiko ${pct(RESEARCH.d5.ddNorm, 0)} bis ${pct(RESEARCH.d5.ddStress, 0)}</em></div>
+      <div class="bh-r"><div class="mt"><span>Größter Rückgang</span><b class="down" style="font-size:clamp(15px,2vw,19px);line-height:1.15">${pct(D.ddNorm, 0)}<br>bis ${pct(D.ddStress, 0)}</b><em>20 × 0,25 % · mit 5 × 1 % Risiko ${pct(RESEARCH.d5.ddNorm, 0)} bis ${pct(RESEARCH.d5.ddStress, 0)}</em></div>
         <div class="mt"><span>Entscheidend</span><b>Kosten</b><em>Spread und Ausführung → Kosten-Check im Journal</em></div>
         <div class="mt"><span>Realistisch</span><b>eher weniger</b><em>Pleite-Aktien fehlen im Test</em></div></div></div>`;
   const rules = `<div class="hcard">${hHead("Die Kairo-Regel")}<ol class="rule-steps">${[
@@ -7371,8 +7394,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.115";
-const APP_NEWS = [["2026.11.115", "Kaufen & Depot aufgeräumt", [
+const APP_VER = "2026.11.116";
+const APP_NEWS = [["2026.11.116", "iPad, Einstellungen, Listen", [
+  ["Seitenleiste aus Glas", "Am iPad schwebt die Seitenleiste jetzt als Glastafel – wie in iPadOS."],
+  ["Trading in den Einstellungen", "Ganz oben: Trading-Kapital, langfristige Aktien und die Zahl gleichzeitiger Trades."],
+  ["Logos überall", "Auch bei Insidern und in Gewinner/Verlierer. Dort nur noch Kairo-Werte ab 9/11 markiert."],
+  ["Einstieg aufgeräumt", "Höchstens zwei Hinweise offen, der Rest eingeklappt – die Wahl Aktie oder Hebel bleibt sichtbar."]]],
+  ["2026.11.115", "Kaufen & Depot aufgeräumt", [
   ["Kauf erfassen", "„Gekauft ✓“ fragt deinen echten Kaufkurs ab und legt den Trade direkt im Depot an – unter „Kairo-Trades“ mit Stop, Verkaufstag und „Verkauft …“."],
   ["Kapital klären", "Ohne freies Trading-Kapital zeigt Heute statt „Gekauft“ den Knopf „Kapital klären“. Das Trading-Kapital änderst du jetzt direkt im Depot."],
   ["Langfristig", "Aktien, die du einfach halten willst, markierst du im Depot als „Langfristig“: kein Stop, kein Verkaufstag, und sie binden kein Trading-Kapital mehr."],
@@ -7929,7 +7957,14 @@ function settingsHtml() {
   const groups = Object.entries(CFG_LABELS).filter(([k]) => cfg[k]).map(([k, label]) =>
     `<h4>${label}</h4><div class="table-wrap"><table><tbody>${Object.entries(cfg[k]).map(([p, v]) =>
       `<tr><td>${esc(p)}</td><td class="num">${esc(Array.isArray(v) ? v.join(" – ") : typeof v === "number" ? fmt(v, Number.isInteger(v) ? 0 : 3) : v)}</td></tr>`).join("")}</tbody></table></div>`).join("");
-  return `<div class="section-title"><span>Persönlich</span><span>nur auf diesem Gerät</span></div>
+  const tc = tpCfg(), ltN = (state.lt || []).length;
+  return `<div class="section-title"><span>Trading</span><span>gilt für Heute, Einstieg und Depot</span></div>
+    <div class="card set-trade" style="margin-bottom:18px">
+      <button class="set-row" data-capedit><span><b>Trading-Kapital</b><small>1 % davon ist das Risiko je Trade · frei ${eur(freeCap())}</small></span><em>${eur(tc.depot)} ›</em></button>
+      <button class="set-row" data-gosec="depot"><span><b>Langfristige Aktien</b><small>binden kein Trading-Kapital, kein Stop · im Depot je Aktie umschalten</small></span><em>${ltN} ›</em></button>
+      <div class="set-row"><span><b>Höchstens gleichzeitig</b><small>Regel der Strategie</small></span><em>${tc.maxOpen} Trades</em></div>
+    </div>
+    <div class="section-title"><span>Persönlich</span><span>nur auf diesem Gerät</span></div>
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
       <label class="full">Wie soll Kairo dich nennen?<input id="cfgName" value="${esc(state.name || "")}" placeholder="z. B. Jonny" maxlength="24" autocomplete="given-name"></label></div>
       <div class="note">Erscheint in der Begrüßung oben („Guten Abend, ${esc(state.name || "…")}“). Leer lassen = ohne Namen.</div>
@@ -8255,7 +8290,7 @@ function tvEmbedHtml(sym, title) {             // fester TradingView-Chart (z. B
 function tvChartHtml(t) {
   const src = "https://s.tradingview.com/widgetembed/?" + new URLSearchParams({ symbol: tvSym(t), interval: "D", theme: isLight() ? "light" : "dark", style: "1",
     locale: "de_DE", timezone: "Europe/Berlin", hide_side_toolbar: "1", allow_symbol_change: "0", saveimage: "0", withdateranges: "1", studies: "[]" });
-  return `<details class="hcard tvbox"${state.tvOpen === false ? "" : " open"}><summary class="plan-h">Live-Chart · TradingView</summary>
+  return `<details class="hcard tvbox"${state.tvOpen === true ? " open" : ""}><summary class="plan-h">Live-Chart · TradingView</summary>
     ${/\.DE$/.test(t) ? `<div class="opts seg" style="margin:6px 0">${TV_VENUES.map(([v, l]) => `<button class="opt${(state.tvVenue || "XETR") === v ? " on" : ""}" data-tvvenue="${v}">${l}</button>`).join("")}</div>` : ""}
     <iframe src="${src}" loading="lazy" title="Live-Chart ${esc(t)}" allowtransparency="true" frameborder="0" scrolling="no"></iframe>
     <div class="note" style="margin:6px 0 0">Der eingebettete Chart ist je nach Börse verzögert (XETRA ca. 15 Min.) – bei deutschen Aktien oben gettex oder Tradegate wählen. Maßgeblich für den Plan ist der Live-Kurs oben (Kursdienst/Finnhub); Kerzen, Seitwärtsphase und Stop stammen aus dem Abendscan.</div></details>`;
@@ -8560,7 +8595,9 @@ function tpInner(r, S) {
       <div class="note">Einmal einstellen, gilt für alle Pläne. Empfehlung: 1 % (so getestet). Höchstens ${KMAX.maxOpen} Trades gleichzeitig.</div>
       ${(() => { const fd = feeDrag(cfg.depot); return fd.tone === "green" ? "" : `<div class="tip tone-${fd.tone}" style="margin-top:6px">${esc(fd.t)}</div>`; })()}
       <label class="chk" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="tpPaper" ${paperMode() ? "checked" : ""}> Übungsmodus – neue Trades ohne echtes Geld (zählen getrennt in der Bilanz)</label></details>`;
-  const probs = () => m.problems.map(([t, x]) => `<div class="tip tone-${t === "red" ? "red" : "yellow"}" style="margin-top:10px">${esc(x)}</div>`).join("");
+  // Hinweise (Pro-Runde 13.11.): rote zuerst, höchstens zwei offen – der Rest eingeklappt, damit die Wahl Aktie/Hebel sichtbar bleibt
+  const probs = () => { const ps = m.problems.slice().sort((a, b) => (b[0] === "red") - (a[0] === "red")), tip = ([t, x]) => `<div class="tip tone-${t === "red" ? "red" : "yellow"}" style="margin-top:10px">${esc(x)}</div>`;
+    return ps.slice(0, 2).map(tip).join("") + (ps.length > 2 ? `<details class="tp-more"><summary>${ps.length - 2} weitere Hinweise</summary>${ps.slice(2).map(tip).join("")}</details>` : ""); };
   if (!m.stop || (m.problems.length && m.problems[0][0] === "red" && !m.dist)) return einQ(2, "Aktie oder Hebel?", "Womit willst du kaufen? Das Risiko bis zum Stop ist bei beiden gleich – der Unterschied ist das gebundene Kapital.") + `<div class="hcard ein-card"><div class="tw-stop"><b>Kein Trade-Plan möglich</b></div>` + probs() + adj + `</div>` + acct;
   const sug = m.levs.find(x => x.L === m.sug);
   if (!sug) return einQ(2, "Aktie oder Hebel?", "Womit willst du kaufen? Das Risiko bis zum Stop ist bei beiden gleich – der Unterschied ist das gebundene Kapital.") + `<div class="hcard ein-card">` + probs() + `<div class="tip tone-red" style="margin-top:10px"><b class="t">Kein Kauf möglich</b>Keine Variante passt ins freie Kapital (frei ${eur(m.free)}). Erst eine Position schließen oder das Trading-Kapital anpassen.</div>` + adj + `</div>` + acct;
@@ -9126,7 +9163,7 @@ function paperHtml() {
   const d = PAPER.d;
   const head = `<div class="section-title"><span>Papier-Test</span><span>${Object.keys(PAPER_NAME).filter(k => d && d[k.toLowerCase()]).length || ""} Depots</span></div>
     <div class="note" style="margin:0 2px 10px">Virtuelle Depots handeln jede Strategie automatisch nach ihren Regeln – mit echten Kursen und Kosten wie bei Scalable PRIME+, ohne echtes Geld. Keine Anlageberatung.</div>`;
-  if (!d) return head + `<div class="hcard"><div class="note">${PAPER.err ? "Papier-Daten noch nicht verfügbar – der erste Lauf erscheint nach dem nächsten US-Börsenschluss." : "Lade Papier-Daten …"}</div></div>`;
+  if (!d) return head + (PAPER.err ? `<div class="card empty-st"><div class="es-ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 40h32"/><path d="M12 32l8-9 6 5 10-13"/><path d="M30 15h6v6"/></svg></div><b>Papier-Depots starten bald</b><p>Jede Strategie handelt hier automatisch nach ihren Regeln – mit echten Kursen und Kosten wie bei Scalable, ohne echtes Geld.</p><p class="es-sub">Der erste Lauf erscheint nach dem nächsten US-Börsenschluss.</p></div>` : `<div class="hcard"><div class="note">Lade Papier-Daten …</div></div>`);
   const sm = d.sum || {}, bench = sm.bench || [];
   const order = ["DM", "SP2F", "KAIROS", "KAIRO", "KAIROZ", "KAIROL", "MOM10", "MOM5", "S20", "S19", "S19B", "S19C"].filter(x => x !== "KAIROZ" && x !== "KAIROL" || d[x.toLowerCase()]);
   return head + paperOverview(d, order) + order.map(sid => paperBox(sid, d[sid.toLowerCase()], sm[sid], bench)).join("")
