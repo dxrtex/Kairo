@@ -1,19 +1,19 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhalb 1182 Min., 287 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhalb 1182 Min., 288 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-600 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-12), davon 410 mit aufgezeichneter Prognose.
+601 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-12), davon 411 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 410 | 52% | 0.256 | 0.250 |
+| alle | 411 | 52% | 0.256 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 206 | 56% | 0.244 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 207 | 56% | 0.244 | 0.250 |
 | Ausblick gesenkt | 62 | 60% | 0.240 | 0.250 |
 | Ausblick bestätigt | 27 | 48% | 0.266 | 0.250 |
 | Ausblick angehoben | 141 | 48% | 0.270 | 0.250 |
-| Ausblick keine Meldung | 180 | 53% | 0.249 | 0.250 |
+| Ausblick keine Meldung | 181 | 52% | 0.249 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -22,7 +22,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | -0%–30% | 11 | 45% |
 | 30%–40% | 89 | 43% |
 | 40%–50% | 98 | 50% |
-| 50%–60% | 136 | 53% |
+| 50%–60% | 137 | 53% |
 | 60%–70% | 54 | 43% |
 | 70%–100% | 22 | 55% |
 
@@ -34,7 +34,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 72% (18) | 41% (44) |
 | im Rahmen (±2 %) | 25% (16) | 0% (2) | 33% (15) | 53% (30) |
 | über Erwartung (+2 bis +10 %) | 39% (23) | 29% (7) | 47% (45) | 48% (52) |
-| deutlich über Erwartung (> +10 %) | 39% (28) | 53% (17) | 63% (99) | 55% (84) |
+| deutlich über Erwartung (> +10 %) | 39% (28) | 53% (17) | 63% (99) | 54% (85) |
 
 ## Vorschläge zur Anpassung
 
@@ -56,11 +56,11 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
-- NBIS 2026-11-12: Kairo 53% steigt, Kurs -18.2% · Gewinn +90% · Ausblick gesenkt – „Nebius Lowers Outlook, Addresses Worries Over Financing AI Buildout“
+- NBIS 2026-11-12: Kairo 53% steigt, Kurs -18.6% · Gewinn +90% · Ausblick gesenkt – „Nebius Lowers Outlook, Addresses Worries Over Financing AI Buildout“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-68 Fehlprognosen und 342 Vergleichsfälle untersucht.
+68 Fehlprognosen und 343 Vergleichsfälle untersucht.
 
 - Markt: Bei 36% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 19% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
 - Vorlauf (20 Handelstage davor): Fehlprognosen Ø -10.8%, getroffene Ø -4.8%.
@@ -68,8 +68,8 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
 | Ausblick | 32% (22) | 30% | 1.1 |
-| Marge | 13% (9) | 6% | 2.1 |
-| Umsatz | 56% (38) | 51% | 1.1 |
+| Marge | 13% (9) | 7% | 2.0 |
+| Umsatz | 56% (38) | 50% | 1.1 |
 | Nutzer/Kunden | 6% (4) | 1% | 6.7 |
 | Aufträge | 10% (7) | 6% | 1.8 |
 | Kosten | 4% (3) | 9% | 0.5 |
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 205 Meldungen: Brier nachgeeicht 0.251 gegen gezeigt 0.255 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 206 Meldungen: Brier nachgeeicht 0.251 gegen gezeigt 0.255 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
