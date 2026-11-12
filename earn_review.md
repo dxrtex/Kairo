@@ -1,18 +1,18 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhalb 1184 Min., 284 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhalb 1184 Min., 285 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-598 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-12), davon 408 mit aufgezeichneter Prognose.
+599 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-12), davon 409 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 408 | 52% | 0.256 | 0.250 |
+| alle | 409 | 52% | 0.256 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 204 | 56% | 0.244 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 205 | 56% | 0.244 | 0.250 |
 | Ausblick gesenkt | 62 | 60% | 0.240 | 0.250 |
 | Ausblick bestätigt | 27 | 48% | 0.266 | 0.250 |
-| Ausblick angehoben | 140 | 49% | 0.270 | 0.250 |
+| Ausblick angehoben | 141 | 49% | 0.270 | 0.250 |
 | Ausblick keine Meldung | 179 | 53% | 0.249 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
@@ -22,7 +22,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | -0%–30% | 11 | 45% |
 | 30%–40% | 88 | 43% |
 | 40%–50% | 98 | 50% |
-| 50%–60% | 135 | 53% |
+| 50%–60% | 136 | 54% |
 | 60%–70% | 54 | 43% |
 | 70%–100% | 22 | 55% |
 
@@ -34,7 +34,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 72% (18) | 42% (43) |
 | im Rahmen (±2 %) | 25% (16) | 0% (2) | 33% (15) | 53% (30) |
 | über Erwartung (+2 bis +10 %) | 39% (23) | 29% (7) | 47% (45) | 48% (52) |
-| deutlich über Erwartung (> +10 %) | 39% (28) | 53% (17) | 63% (98) | 55% (84) |
+| deutlich über Erwartung (> +10 %) | 39% (28) | 53% (17) | 64% (99) | 55% (84) |
 
 ## Vorschläge zur Anpassung
 
@@ -60,16 +60,16 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-68 Fehlprognosen und 340 Vergleichsfälle untersucht.
+68 Fehlprognosen und 341 Vergleichsfälle untersucht.
 
 - Markt: Bei 36% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 19% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -10.8%, getroffene Ø -4.7%.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -10.8%, getroffene Ø -4.8%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
 | Ausblick | 32% (22) | 30% | 1.1 |
-| Marge | 13% (9) | 6% | 2.0 |
-| Umsatz | 56% (38) | 51% | 1.1 |
+| Marge | 13% (9) | 6% | 2.1 |
+| Umsatz | 56% (38) | 50% | 1.1 |
 | Nutzer/Kunden | 6% (4) | 1% | 6.7 |
 | Aufträge | 10% (7) | 6% | 1.8 |
 | Kosten | 4% (3) | 9% | 0.5 |
@@ -81,7 +81,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | Sondereffekt | 3% (2) | 1% | 3.3 |
 | Übernahme | 1% (1) | 5% | 0.3 |
 
-**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -10.8% gegen -4.7% → „schon eingepreist“ als Merkmal prüfen
+**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -10.8% gegen -4.8% → „schon eingepreist“ als Merkmal prüfen
 
 Beispiele:
 - ECG 2026-11-03: Kairo 71%, Kurs -29.3% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 204 Meldungen: Brier nachgeeicht 0.250 gegen gezeigt 0.254 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 205 Meldungen: Brier nachgeeicht 0.250 gegen gezeigt 0.254 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
