@@ -2841,7 +2841,7 @@ function card(r) {
     ${agrp("Marktstimmung", sentiHtml(r))}
     ${agrp("Fundament & Wochentrend", fundHtml(r))}
     <div class="actions">
-      <button class="btn" data-open="${esc(r.ticker)}">Details &amp; Chart</button>
+      <button class="btn" data-open="${esc(r.ticker)}">Im Chart öffnen</button>
       <a class="btn ghost" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">TradingView</a>
     </div>
   </article>`;
@@ -2889,7 +2889,6 @@ function cardModalHtml(r) {
     </div>
     <footer class="cx-foot">
       <button class="btn" data-chartgo="${esc(r.ticker)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 5-6"/></svg>Im Chart öffnen</button>
-      <button class="btn ghost" data-open="${esc(r.ticker)}">Details &amp; Analyse</button>
       <a class="btn ghost" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">TradingView</a>
     </footer>
   </article>`;
@@ -3763,7 +3762,7 @@ function hmPreviewHtml(t) {
     <div class="pv-g">${cell("Heute", r.d1)}${cell("1 Woche", r.d5)}${cell("1 Monat", r.m1)}${cell("3 Monate", r.m3)}${cell("seit Jan.", r.ytd)}</div>
     <p style="margin:12px 0 4px;font-size:14px">Kairo: <b>${r.m != null ? r.m + "/11" : "–"}</b>${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}${r.rv != null && r.rv >= 1.5 ? ` · <span class="mv-rv">${fmt(r.rv, 1)}× Volumen</span>` : ""}</p>
     ${r.title ? `<p class="muted" style="margin:0 0 12px;font-size:13px">${esc(r.title)}</p>` : ""}
-    <div class="row-actions pv-act">${sr ? `<button class="btn sm" data-open="${esc(t)}">Details öffnen</button><button class="btn ghost sm" data-card="${esc(t)}">Übersicht</button>` : `<button class="btn sm" data-ein="${esc(t)}">Einstieg planen</button>`}
+    <div class="row-actions pv-act">${sr ? `<button class="btn sm" data-open="${esc(t)}">Im Chart öffnen</button><button class="btn ghost sm" data-card="${esc(t)}">Übersicht</button>` : `<button class="btn sm" data-ein="${esc(t)}">Einstieg planen</button>`}
       <button class="btn ghost sm fav-l${mine || favs().has(t) ? " on" : ""}" data-fav="${esc(t)}" data-favlbl>${favs().has(t) ? "★ Auf der Watchlist" : "☆ Zur Watchlist"}</button>
       ${ind ? `<button class="btn ghost sm" data-spclose data-spdrill2="${esc(r.ig)}">Branche ${esc(ind.n)} ›</button>` : ""}</div>
     ${sr ? "" : `<p class="muted" style="font-size:12.5px;margin:8px 0 0">Nicht im Kairo-Scan – darum ohne Kairo-Detailseite. „Einstieg planen“ zeigt Kurs, Trend und Trade-Plan.</p>`}`;
@@ -7239,7 +7238,8 @@ const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
 const APP_VER = "2026.11.114";
 const APP_NEWS = [["2026.11.114", "Neue Aktien-Übersicht", [
-  ["Mittig, klar, Liquid Glass", "Tippst du im Scanner auf eine Aktie, öffnet sich die Übersicht jetzt in der Mitte – aus Glas, mit Logo, Kurs und Status oben. Links Chart, Kennzahlen und Kriterien, rechts Kairo-Plan, Einschätzung, Marktstimmung und Fundament. Unten fest: „Im Chart öffnen“, „Details & Analyse“ und TradingView. Am iPhone als Blatt von unten."]]],
+  ["Mittig, klar, Liquid Glass", "Tippst du im Scanner auf eine Aktie, öffnet sich die Übersicht jetzt in der Mitte – aus Glas, mit Logo, Kurs und Status oben. Links Chart, Kennzahlen und Kriterien, rechts Kairo-Plan, Einschätzung, Marktstimmung und Fundament. Unten fest: „Im Chart öffnen“ (direkt in den Chart-Reiter) und TradingView. Am iPhone als Blatt von unten."],
+  ["Direkt in den Chart", "„Details & Chart“ (jetzt „Im Chart öffnen“) springt überall sofort in den Chart-Reiter – kein Umweg mehr über die Detailseite und „Groß“."]]],
   ["2026.11.113", "Chart-Suche: jede Aktie", [
   ["Suchleiste im Chart-Reiter", "Ganz oben im Chart-Reiter: Name oder Kürzel eintippen, antippen (oder Enter) – fertig. Aktien aus dem Kairo-Scan öffnen den vollen Kairo-Chart mit Fibonacci, Plan und Kriterien."],
   ["Auch alles außerhalb des Scans", "Alle anderen gescannten Aktien – und über „an allen Börsen weltweit suchen“ jede Aktie – öffnen als Kurschart: Tageskerzen eines Jahres über deinen Kursdienst, dazu EMAs, RSI, MACD, Momentum Bias Index und Unterstützungen, von Kairo selbst berechnet."]]],
@@ -8157,7 +8157,7 @@ function einPlanHtml(r) {
     <div class="hcard ein-stat"><div class="plan-h">Kairo-Signal im Detail</div>${einSteps(r)}${einDataHtml(r)}
       ${warn.length ? `<div class="note" style="margin:8px 0 0">${warn.map(esc).join("<br>")}</div>` : ""}<div class="note" style="margin:8px 0 0">Vola ${pct(r.vola, 0)} · Kairo-Setup ${r.m ?? "–"}/11${r.s === "hit" ? " – alle Kriterien erfüllt" : (r.km || []).length ? " · fehlt: " + (r.km || []).map(k => esc(SHORT[k] || k)).join(", ") : ""}</div></div>
     ${tvChartHtml(r.t)}
-    <div class="row-actions">${res ? `<button class="btn" data-open="${esc(r.t)}">Chart & Details</button>` : ""}<a class="btn ghost" href="${tvUrl(r.t)}" target="_blank" rel="noopener">TradingView</a></div>`;
+    <div class="row-actions">${res ? `<button class="btn" data-open="${esc(r.t)}">Im Chart öffnen</button>` : ""}<a class="btn ghost" href="${tvUrl(r.t)}" target="_blank" rel="noopener">TradingView</a></div>`;
 }
 // ---------- Trade-Plan (Reiter „Einstieg“): Struktur aus dem Scan (backend/tradeplan.py), Größe/Hebel/Kosten auf dem Gerät ----------
 // Regeln und Erwartungen aus der Kurzfrist-Studie (backend/shortswing.py, 5 Jahre, 1.600 Aktien, netto nach Kosten):
@@ -10363,7 +10363,9 @@ document.addEventListener("click", e => {
     state.kinds = KIND_BTNS_ALL.map(x => x[0]).filter(x => set.has(x)); save(); render(); return; }
   const cd = e.target.closest("[data-card]"); if (cd) { e.preventDefault(); openCard(cd.dataset.card); return; }
   if (e.target.closest("[data-closecard]")) { closeCard(); return; }
-  const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); closeCard(); if ($("spm")) $("spm").hidden = true; if (state.fsv) { state.fsv = null; fsvRender(); } openDetail(o.dataset.open); return; }
+  // Wunsch 12.11.: „Details & Chart“ führt direkt in den Chart-Reiter (kein Umweg über die Detailseite und „Groß“); ohne Chart die Detailseite
+  const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); closeCard(); if ($("spm")) $("spm").hidden = true; if (state.fsv) { state.fsv = null; fsvRender(); }
+    const t = o.dataset.open; cockpitGo(t).then(ok => { if (ok === false || ok === undefined && !rowFor(t)) openDetail(t); }); return; }
   const th = e.target.closest("th[data-k]"); if (th) { if (th.dataset.k === state.tableSort) state.tableAsc = !state.tableAsc; else { state.tableSort = th.dataset.k; state.tableAsc = false; }
     const tw = document.querySelector("main .table-wrap"), sx = tw ? tw.scrollLeft : 0, sy = window.scrollY;   // Sortieren: Position in der Tabelle behalten
     render();
