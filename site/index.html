@@ -227,9 +227,9 @@
   .has-ind { position: relative; isolation: isolate; } .has-ind > button { position: relative; z-index: 1; }
   .has-ind > button.on { background: transparent !important; box-shadow: none !important; color: var(--accent-ink, #fff) !important; opacity: 1; }
   .has-ind > button.on small { color: inherit !important; opacity: .75; }
-  .seg-ind { position: absolute; z-index: 0; border-radius: 11px; background: var(--accent); pointer-events: none;
+  .seg-ind { position: absolute; z-index: 0; border-radius: 11px; background: var(--accent); pointer-events: none; transform-origin: 0 0; will-change: transform;
     box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 32%, transparent), inset 0 1px 0 rgba(255,255,255,.18);
-    transition: left .34s cubic-bezier(.3, .9, .25, 1), width .34s cubic-bezier(.3, .9, .25, 1), top .34s ease; }
+    transition: transform .34s cubic-bezier(.3, .9, .25, 1); }
   /* sanftes Einblenden des Inhalts beim Wechsel eines Unterreiters/einer Ansicht (Kopf und Schalter bleiben ruhig) */
   #main.sub-in > *:not(.subnav):not(.vseg):not(.mvtog):not(.section-title) { animation: secin .3s cubic-bezier(.2, .8, .2, 1) both; }
   @media (prefers-reduced-motion: reduce) { #main.sec-in > * { animation: none; } #main.sub-in > * { animation: none !important; } .seg-ind { transition: none; } .btn:active, .opt:active, .kchip:active, .g-idea:active, .bf-r:active { transform: none; } }
@@ -1475,7 +1475,7 @@
   .cf-pill.hold { transform: scale(.96); }
   .cf-av { --h: 210; position: relative; overflow: hidden; flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 13px; color: #fff;
     background: linear-gradient(145deg, hsl(var(--h) 70% 58%), hsl(calc(var(--h) + 30) 70% 42%)); box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
-  .cf-logo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 4px; box-sizing: border-box; background: #fff; opacity: 0; transition: opacity .2s; } .cf-av.lg .cf-logo { opacity: 1; }
+  .cf-logo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 4px; box-sizing: border-box; background: #fff; opacity: 0; } .cf-av.lg .cf-logo { opacity: 1; }
   .cf-wh { display: grid; line-height: 1.05; min-width: 64px; } .cf-wh b { font-size: 18px; font-weight: 700; letter-spacing: .01em; }
   .cf-wh small { font-size: 10.5px; font-weight: 600; opacity: .35; height: 11px; overflow: hidden; } .cf-pill em { font-style: normal; font-weight: 600; font-size: 15px; opacity: .85; margin-left: 10px; }
   .cf-pick { position: absolute; left: 50%; top: 50%; z-index: 6; width: min(360px, calc(100% - 32px)); height: min(470px, calc(100% - 40px)); display: flex; flex-direction: column; gap: 8px; padding: 12px 10px 10px;
@@ -1671,7 +1671,7 @@
   .bx-src { margin-top: 10px; font-size: 12px; color: var(--faint); }
   .bf-opt { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: var(--muted); }
   .tab-ind { position: absolute; left: 0; top: 0; width: 0; height: 0; border-radius: 16px; background: var(--accent-bg); pointer-events: none; z-index: 0; opacity: 0;
-             transition: left .32s cubic-bezier(.32,.72,0,1), top .32s cubic-bezier(.32,.72,0,1), width .32s cubic-bezier(.32,.72,0,1), height .32s cubic-bezier(.32,.72,0,1), opacity .2s; }
+             transform-origin: 0 0; will-change: transform; transition: transform .32s cubic-bezier(.32,.72,0,1), opacity .2s; }
   .tab-ind.on { opacity: 1; }
   @media (prefers-reduced-motion: reduce) { .tab-ind { transition: none; } }
 .etf-live .el-h{display:flex;justify-content:space-between;align-items:center}
@@ -7113,8 +7113,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.108";
-const APP_NEWS = [["2026.11.108", "Intro mit Slogan öfter, Logos für fast alle", [
+const APP_VER = "2026.11.109";
+const APP_NEWS = [["2026.11.109", "Flüssiger", [
+  ["Kein Ruckeln mehr beim Scrollen", "Firmenlogos werden jetzt vorab geladen statt erst beim Scrollen – der Scanner scrollt so flüssig wie der Rest der App (60 Bilder pro Sekunde)."],
+  ["Schnellere Reiterwechsel", "Der Chart erscheint sofort, RSI/MACD/MBI folgen einen Augenblick später. Der Scanner zeigt zuerst die sichtbaren Zeilen und baut nur noch die Ansicht, die du siehst."],
+  ["Weichere Übergänge", "Die gleitenden Markierungen (Seitenleiste, Schalter) laufen auf der Grafikkarte und stocken nicht mehr, während der neue Reiter aufgebaut wird. Im Chart zeichnen Volumenprofil, Kerzen-Info und Glas-Linse nur noch neu, wenn sich wirklich etwas ändert."]]],
+  ["2026.11.108", "Intro mit Slogan öfter, Logos für fast alle", [
   ["Intro häufiger", "Das volle Intro mit „The moment has a method.“ läuft jetzt beim ersten Öffnen jedes Tages und immer, wenn die App länger als 2 Stunden nicht offen war. Nur wer kurz zurückkommt, sieht das kurze Logo."],
   ["Logos für 99 % der Aktien", "Weiße Logos (z. B. UBS) werden dunkel dargestellt und sind jetzt sichtbar. Neue Quelle für Asien, Indien und Europa; Konzern-Töchter (Brookfield, Tata, COSCO) behalten ihr gemeinsames Logo."]]],
   ["2026.11.107", "Liquid Glass für alle Bedienelemente", [
@@ -8857,11 +8861,14 @@ function segInd() {
     let ind = g.querySelector(":scope > .seg-ind"); if (!ind) { ind = document.createElement("span"); ind.className = "seg-ind"; ind.setAttribute("aria-hidden", "true"); g.prepend(ind); }
     g.classList.add("has-ind");
     const key = groupOf(state.sec) + g.classList[0] + k, box = { l: on.offsetLeft, t: on.offsetTop, w: on.offsetWidth, h: on.offsetHeight }, prev = segPrev[key];
-    const place = b => Object.assign(ind.style, { left: b.l + "px", top: b.t + "px", width: b.w + "px", height: b.h + "px" });
-    if (prev && (prev.l !== box.l || prev.w !== box.w)) { ind.style.transition = "none"; place(prev); void ind.offsetWidth; ind.style.transition = ""; }
-    place(box); segPrev[key] = box; });
+    // Flüssig (12.11.): Größe sofort, Bewegung nur über transform (FLIP) – ruckelt nicht, während der Inhalt neu aufgebaut wird
+    const T = b => `translate3d(${b.l}px, ${b.t}px, 0) scale(${b.w / box.w}, ${b.h / box.h})`;
+    Object.assign(ind.style, { left: "0px", top: "0px", width: box.w + "px", height: box.h + "px" });
+    if (prev && (prev.l !== box.l || prev.w !== box.w || prev.t !== box.t)) { ind.style.transition = "none"; ind.style.transform = T(prev); void ind.offsetWidth; ind.style.transition = ""; }
+    ind.style.transform = T(box); segPrev[key] = box; });
 }
 addEventListener("resize", () => { clearTimeout(segInd.t); segInd.t = setTimeout(segInd, 120); });
+{ let narrow = innerWidth <= 700; addEventListener("resize", () => { const n = innerWidth <= 700; if (n !== narrow) { narrow = n; if (data && state.mView === "list") render(); } }); }
 function subIn() { const m = $("main"); if (!m || calm()) return; m.classList.remove("sub-in"); void m.offsetWidth; m.classList.add("sub-in"); clearTimeout(subIn.t); subIn.t = setTimeout(() => m.classList.remove("sub-in"), 500); }
 function render() { wlSeed(); renderMain(); if (state.fsv) fsvRender(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", KFOOT); if (data) appleHead(); clampNotes(); linkTerms(); segInd(); }
 function renderMain() {
@@ -8923,8 +8930,13 @@ function renderMain() {
   requestAnimationFrame(() => { const tw = document.querySelector("main .table-wrap"), h = document.querySelector(".scroll-hint");
     if (tw && h) h.hidden = !(tw.scrollWidth > tw.clientWidth + 8); });
   const mv = state.mView === "list" ? "list" : "table";
+  // Flüssig (12.11.): erst die sichtbaren Zeilen, der Rest im nächsten Moment (ein Reiterwechsel blockiert nicht mehr für die ganze Tabelle)
+  const trOf = r => `<tr class="${r.passed ? "r-hit" : r.fast_hit ? "r-fast" : ""}">${cols.map(c => `<td class="${c.n ? "num" : ""}">${c.h(r)}</td>`).join("")}</tr>`;
+  const SC_FIRST = 24, gen = (renderMain.scGen = (renderMain.scGen || 0) + 1);
+  if (rows.length > SC_FIRST) requestAnimationFrame(() => setTimeout(() => { const tb = $("scTb"); if (!tb || renderMain.scGen !== gen) return;
+    tb.insertAdjacentHTML("beforeend", rows.slice(SC_FIRST).map(trOf).join("")); linkTerms(); }, 0));
   $("main").innerHTML = head + `<div class="mvtog${mv === "list" ? " mv-list" : ""}"><button class="kchip${mv === "table" ? " on" : ""}" data-mview="table">Tabelle</button><button class="kchip${mv === "list" ? " on" : ""}" data-mview="list">Liste</button></div><div class="scroll-hint" hidden>Wischen für mehr Spalten →</div><div class="table-wrap"><table><thead><tr>${cols.map(c => `<th class="${c.n ? "num " : ""}${c.k === col.k ? "sorted" + (state.tableAsc ? " asc" : "") : ""}" data-k="${c.k}">${c.l}${gl(c.k === "dd" ? "" : c.k)}</th>`).join("")}</tr></thead>
-    <tbody>${rows.map(r => `<tr class="${r.passed ? "r-hit" : r.fast_hit ? "r-fast" : ""}">${cols.map(c => `<td class="${c.n ? "num" : ""}">${c.h(r)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` + (isApple() ? "" : mListHtml(rows, col)) + more + extra;
+    <tbody id="scTb">${rows.slice(0, SC_FIRST).map(trOf).join("")}</tbody></table></div>` + (isApple() || !(mv === "list" && innerWidth <= 700) ? "" : mListHtml(rows, col)) + more + extra;   // Liste nur bauen, wenn sie zu sehen ist (spart die Hälfte der Elemente)
   if (isApple()) {
     const tools = `<div class="atools"><div class="aseg"><button data-aview="list" class="${state.aView !== "table" ? "on" : ""}">Liste</button><button data-aview="table" class="${state.aView === "table" ? "on" : ""}">Tabelle</button></div>${aSortHtml(col)}</div>`;
     if (state.aView === "table") { const st = $("main").querySelector(".section-title"); if (st) st.insertAdjacentHTML("afterend", tools); }
@@ -9060,10 +9072,13 @@ function moveTabInd(prev) {
   const vis = cur && cur.offsetParent && getComputedStyle(cur).backgroundColor === "rgba(0, 0, 0, 0)";
   if (!vis) { ind.classList.remove("on"); return; }
   const box = t => ({ l: t.offsetLeft, t: t.offsetTop, w: t.offsetWidth, h: t.offsetHeight });
-  const place = (b, anim) => { if (!anim) ind.style.transition = "none";
-    Object.assign(ind.style, { left: b.l + "px", top: b.t + "px", width: b.w + "px", height: b.h + "px" });
-    if (!anim) { void ind.offsetWidth; ind.style.transition = ""; } };
-  const b = box(cur); clearTimeout(tabIndT);
+  // Flüssig (12.11.): nur transform animieren (läuft auf der Grafikkarte weiter, auch während der neue Reiter aufgebaut wird).
+  // Größe = Ziel-Reiter; Zwischen- und Startformen über scale (FLIP).
+  const b = box(cur), T = x => `translate3d(${x.l}px, ${x.t}px, 0) scale(${x.w / b.w}, ${x.h / b.h})`;
+  const place = (x, anim) => { if (!anim) ind.style.transition = "none"; ind.style.transform = T(x); if (!anim) { void ind.offsetWidth; ind.style.transition = ""; } };
+  const was = ind._b; ind.style.left = "0px"; ind.style.top = "0px"; ind.style.width = b.w + "px"; ind.style.height = b.h + "px";
+  if (was) place(was, false);                                     // sichtbare Ausgangsform halten, obwohl sich die Größe geändert hat
+  ind._b = b; clearTimeout(tabIndT);
   if (prev && prev !== cur && prev.offsetParent && ind.classList.contains("on")) {
     const a = box(prev), l = Math.min(a.l, b.l), t = Math.min(a.t, b.t);
     place({ l, t, w: Math.max(a.l + a.w, b.l + b.w) - l, h: Math.max(a.t + a.h, b.t + b.h) - t }, true);
@@ -9332,12 +9347,20 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
       [yy, yy + hh].forEach(v => { x.beginPath(); x.moveTo(xs, Math.round(v) + .5); x.lineTo(xEnd, Math.round(v) + .5); x.stroke(); }); x.setLineDash([]);
       x.fillStyle = `rgb(${c})`; x.fillRect(xs, yy, 2.5, hh); });
     // 2) feine Balken: grün/rot = Volumen an steigenden/fallenden Tagen, kräftiger in der 70-%-Wertzone, blau = Großvolumen-Käufe
+    // Flüssig (12.11.): die Balken liegen in einem Zwischenbild und werden nur neu gezeichnet, wenn sich Daten, Preisachse oder Größe ändern
+    const dpr = window.devicePixelRatio || 1, ck = `${memo.key}|${Math.round(yA)}|${Math.round(yB)}|${m.width}|${m.height}|${light}|${dpr}`;
+    if (!memo.bc || memo.bck !== ck) {
+      const oc = memo.bc || document.createElement("canvas"); oc.width = Math.ceil(m.width * dpr); oc.height = Math.ceil(m.height * dpr);
+      const xo = oc.getContext("2d"); xo.setTransform(dpr, 0, 0, dpr, 0, 0); xo.clearRect(0, 0, m.width, m.height); memo.bc = oc; memo.bck = ck;
+      drawBars(xo); }
+    x.drawImage(memo.bc, 0, 0, m.width, m.height);
+    function drawBars(x) {
     for (let k = 0; k < D.bins.length; k++) { const v = D.bins[k]; if (!v) continue; const y0 = Y(memo.pLo + (k + 1) * step), y1 = Y(memo.pLo + k * step); if (y0 == null || y1 == null) continue;
       const w = W * v / D.max, wu = w * D.ups[k] / v, inVA = k >= D.lo && k <= D.hi, a = k === D.poc ? .8 : inVA ? .5 : .24;
       const yy = Math.min(y0, y1), hh = Math.abs(y1 - y0), gap = hh >= 3 ? .8 : hh >= 2 ? .5 : 0, h2 = Math.max(.8, hh - gap);
       x.fillStyle = `rgba(48,209,88,${a})`; x.fillRect(xr - w, yy, wu, h2);
       x.fillStyle = `rgba(255,69,58,${a})`; x.fillRect(xr - w + wu, yy, w - wu, h2);
-      const bu = W * D.bigU[k] / D.max; if (bu > .5) { x.fillStyle = `rgba(10,132,255,${inVA ? .95 : .8})`; x.fillRect(xr - bu, yy, bu, h2); } }
+      const bu = W * D.bigU[k] / D.max; if (bu > .5) { x.fillStyle = `rgba(10,132,255,${inVA ? .95 : .8})`; x.fillRect(xr - bu, yy, bu, h2); } } }
     // 3) meistgehandeltes Niveau (POC)
     const yp = Y(memo.pLo + (D.poc + .5) * step);
     if (yp != null) { const wp = W; x.strokeStyle = "rgba(255,159,10,.85)"; x.lineWidth = 1; x.setLineDash([2, 3]); x.beginPath(); x.moveTo(m.width - wp - 8, Math.round(yp) + .5); x.lineTo(m.width, Math.round(yp) + .5); x.stroke(); x.setLineDash([]);
@@ -9428,14 +9451,19 @@ function buildMain(el, c, r, opts) {
   const p = chartPlan(r) || {}, ko = tpKoStock(r.ticker, r.currency || r.cur); let pls = [];
   const h = { el, chart, candles, M, r, c };
   // Kerzen-Info (oben links) und Messwerkzeug
-  const cnt = () => candles.data().length, barAt = i => candles.data()[i], mp = measurePrimitive(barAt, cnt); candles.attachPrimitive(mp); h.mp = mp;
+  // Flüssig (12.11.): candles.data() kopiert jedes Mal alle Kerzen – im Volumenprofil tausendfach je Bild. Kurz zwischenspeichern (neu nach 40 ms / Live-Kurs).
+  let BD = null, bdAt = 0; const bd = () => { const n = performance.now(); if (!BD || n - bdAt > 40) { BD = candles.data(); bdAt = n; } return BD; };
+  h.bdReset = () => { BD = null; };
+  const cnt = () => bd().length, barAt = i => bd()[i], mp = measurePrimitive(barAt, cnt); candles.attachPrimitive(mp); h.mp = mp;
   const vpp = profilePrimitive(barAt, cnt, i => i < T.length ? c.v[i] : (LIVE.map[r.ticker] && LIVE.map[r.ticker].v) || 0, () => !!clGet("vp"),
     () => h.M && h.M.cls ? h.M.cls.iL : null, i => dateDE(T[Math.min(i, T.length - 1)])); candles.attachPrimitive(vpp); h.vpp = vpp;
   if (getComputedStyle(el).position === "static") el.style.position = "relative";
   const lg = document.createElement("div"); lg.className = "cl-ohlc"; el.appendChild(lg);
-  const idxOf = tm => { const k = tkey(tm), d = candles.data(); for (let i = d.length - 1; i >= 0; i--) if (tkey(d[i].time) === k) return i; return -1; };
+  const idxOf = tm => { const k = tkey(tm), d = bd(); for (let i = d.length - 1; i >= 0; i--) if (tkey(d[i].time) === k) return i; return -1; };
   let hov = false;
-  h.legend = i => { const d = candles.data(); if (i == null || i < 0 || !d[i]) i = d.length - 1; const b = d[i]; if (!b) return; const pv = d[i - 1], ch = pv ? b.close / pv.close - 1 : null, v = i < T.length ? c.v[i] : null;
+  let lgKey = "";
+  h.legend = i => { const d = bd(); if (i == null || i < 0 || !d[i]) i = d.length - 1; const b = d[i]; if (!b) return; const pv = d[i - 1], ch = pv ? b.close / pv.close - 1 : null, v = i < T.length ? c.v[i] : null;
+    const key = `${i}|${b.close}|${b.high}|${b.low}`; if (key === lgKey) return; lgKey = key;   // gleiche Kerze → nichts neu schreiben (flüssiges Fadenkreuz)
     lg.innerHTML = `<b>${dayDE(tkey(b.time))}</b><span>E ${fmt(b.open)}</span><span>H ${fmt(b.high)}</span><span>T ${fmt(b.low)}</span><span>S ${fmt(b.close)}</span>${ch != null ? `<em class="${ch >= 0 ? "up" : "down"}">${sgnPct(ch, 2)}</em>` : ""}${v ? `<span class="v">Vol ${volFmt(v)}</span>` : ""}${MEAS.on && (h.mA == null || h.mB != null) ? `<i>${h.mA == null ? "📏 Startkerze antippen" : "📏 Griffe ↔ ziehen · neu: Startkerze antippen"}</i>` : MEAS.on ? `<i>📏 Endkerze antippen</i>` : ""}${WAVE.on ? `<i>${h.wA != null ? "✎ jetzt das Hoch der Welle antippen" : h.M.own ? "✎ Griffe ↔ ziehen · neu: Tief antippen" : "✎ Tief der Welle antippen"}</i>` : ""}`; };
   const clampI = l => Math.max(0, Math.min(cnt() - 1, Math.round(l)));
   chart.subscribeCrosshairMove(pr => { hov = !!pr.time; h.legend(pr.time ? idxOf(pr.time) : -1);
@@ -9515,7 +9543,7 @@ function buildMain(el, c, r, opts) {
   h.live = () => {                                     // Live-Kurs: heutige Kerze fortschreiben (Linien, Fibonacci und Plan bleiben aus dem Scan)
     const q = LIVE.map[r.ticker], lb = bars[bars.length - 1]; if (!q || !(q.c > 0) || !lb) return false;
     const day = liveDay(r.ticker, q.ts); if (!day || day < lb.time) return false;
-    const hi = v => v > 0 ? v : -Infinity, lo = v => v > 0 ? v : Infinity;
+    const hi = v => v > 0 ? v : -Infinity, lo = v => v > 0 ? v : Infinity; h.bdReset();
     candles.update(day === lb.time ? { time: day, open: lb.open, high: Math.max(lb.high, hi(q.h), q.c), low: Math.min(lb.low, lo(q.l), q.c), close: q.c }
       : { time: day, open: q.o > 0 ? q.o : q.pc > 0 ? q.pc : lb.close, high: Math.max(hi(q.h), q.c), low: Math.min(lo(q.l), q.c), close: q.c });
     h.legendLast && h.legendLast(); return true;
@@ -9667,15 +9695,23 @@ function ctabBuild(c, r) {
       ${pane("tRsi", `RSI 14 · SMA 14 · 30/50/70${r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}`, "rsi")}${pane("tMacd", "MACD 12/26/9 · Linie, Signal, Histogramm", "macd")}${pane("tMbi", "Momentum Bias Index · grün/rot · X-Signale", "mbi")}
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside></div>`;
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml;
-  ctabInd = indCharts(c, r, $("tRsi"), $("tMacd"), $("tMbi")); syncCharts([cfChart.chart, ...ctabInd]);
   cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
+  // Flüssig (12.11.): RSI, MACD und MBI erst nach dem ersten Bild bauen – der Reiter erscheint sofort, die Indikatoren folgen im nächsten Moment
+  ctabInd = [];
+  { const hh = cfChart; requestAnimationFrame(() => setTimeout(() => {
+      if (cfChart !== hh || !$("tRsi")) return;
+      ctabInd = indCharts(c, r, $("tRsi"), $("tMacd"), $("tMbi"));
+      const vr = hh.chart.timeScale().getVisibleLogicalRange(); syncCharts([hh.chart, ...ctabInd]);
+      if (vr) ctabInd.forEach(ch => ch.timeScale().setVisibleLogicalRange(vr));
+    }, 0)); }
   $("cfBar").innerHTML = ctabBarHtml(cfChart); $("cfSide").innerHTML = cockpitSide(cfChart, r);
   { const hh = cfChart; setTimeout(() => { if (cfChart === hh && $("cfSide") && hh.vpp && hh.vpp.info()) $("cfSide").innerHTML = cockpitSide(hh, hh.r); }, 450); }   // Big-Player-Zonen stehen nach dem ersten Zeichnen fest
   const els = [$("cfMain"), $("tRsi"), $("tMacd"), $("tMbi")];
   ctabRO = new ResizeObserver(() => { const all = [cfChart && cfChart.chart, ...ctabInd]; els.forEach((e, i) => { if (all[i] && e.clientWidth) all[i].applyOptions({ width: e.clientWidth, height: e.clientHeight }); }); });
   els.forEach(e => ctabRO.observe(e));
   ctabFocus(ctFocus);
-  try { cfChart.chart.subscribeVisibleLogicalRangeChange(lensSoon); cfChart.chart.subscribeCrosshairMove(lensSoon); } catch (e) {}
+  // Fadenkreuz ändert unter der Pille kaum etwas → Linse erst neu, wenn das Fadenkreuz 140 ms ruht (Verschieben/Zoomen weiter sofort)
+  try { cfChart.chart.subscribeVisibleLogicalRangeChange(lensSoon); cfChart.chart.subscribeCrosshairMove(() => { clearTimeout(LENS.xt); LENS.xt = setTimeout(lensSoon, 140); }); } catch (e) {}
   setTimeout(lensSoon, 120); setTimeout(lensSoon, 600);
 }
 // Fokus/Vollbild: ein Fenster (Chart, RSI, MACD oder MBI) füllt den Bildschirm – Werkzeuge bleiben oben, Esc oder ⤡ schließt
@@ -9707,20 +9743,26 @@ const cfAv = t => { const k = tkClean(t), r = byTicker(t) || {}; let h = 0; for 
   return `<i class="cf-av" style="--h:${h}" data-lt="${esc(k)}">${esc(L)}${logoImg(k)}</i>`; };
 // Firmenlogos: zuerst die eigene Sammlung (logos/, beim Scan geladen, liegt auf dem eigenen Server), sonst Financial Modeling Prep; fehlt beides, bleibt der farbige Buchstabe
 const LOGOS = { set: null, p: null };
+try { const a = JSON.parse(localStorage.getItem("kairo-logos-idx") || "null"); if (Array.isArray(a) && a.length > 50) LOGOS.set = new Set(a); } catch (e) {}   // sofort beim Start, ohne Warten
 const logoFile = k => "logos/" + k.replace(/[^A-Za-z0-9._-]/g, "_") + ".png?v=4";   // v = Aufbereitung (tools/fetch_logos.py LOGO_V)
 function logoImg(k) {
   if (state.logos === 0) return "";
   let src;
   if (LOGOS.set && LOGOS.set.has(k)) src = logoFile(k);
   else src = "https://financialmodelingprep.com/image-stock/" + encodeURIComponent(k) + ".png";   // nicht in der Sammlung (z. B. Depot-Werte außerhalb des Scans)
-  return `<img class="cf-logo" src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="if(this.naturalWidth>8)this.parentNode.classList.add('lg');else this.remove()" onerror="this.remove()">`;
+  // Flüssig (12.11.): eigene Logos sofort laden statt „lazy“ – Nachladen beim Scrollen hat jedes Bild blockiert (Messung Scanner: 104 → 17 ms je Bild)
+  const own = LOGOS.set && LOGOS.set.has(k);
+  return `<img class="cf-logo" src="${esc(src)}" alt="" ${own ? 'fetchpriority="low"' : 'loading="lazy"'} decoding="async" referrerpolicy="no-referrer" onload="if(this.naturalWidth>8)this.parentNode.classList.add('lg');else this.remove()" onerror="this.remove()">`;
 }
 function logosLoad() {
   if (LOGOS.p || state.logos === 0) return;
   LOGOS.p = fetch("logos/index.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null).then(a => {
     if (!Array.isArray(a) || a.length < 50) return;               // noch keine Sammlung → beim bisherigen Weg bleiben
-    LOGOS.set = new Set(a);
-    document.querySelectorAll(".cf-av[data-lt]:not(.lg)").forEach(el => { if (!el.querySelector(".cf-logo")) el.insertAdjacentHTML("beforeend", logoImg(el.dataset.lt)); });
+    const had = LOGOS.set; LOGOS.set = new Set(a);
+    try { localStorage.setItem("kairo-logos-idx", JSON.stringify(a)); } catch (e) {}
+    if (had && had.size === a.length) return;                      // unverändert – nichts neu zu zeichnen
+    requestAnimationFrame(() => document.querySelectorAll(".cf-av[data-lt]:not(.lg)").forEach(el => { const k = el.dataset.lt; if (!LOGOS.set.has(k)) return;
+      const old = el.querySelector(".cf-logo"); if (old) old.remove(); el.insertAdjacentHTML("beforeend", logoImg(k)); }));
   }).catch(() => {});
 }
 function cfPillHtml(t) {
