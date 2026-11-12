@@ -7113,8 +7113,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.109";
-const APP_NEWS = [["2026.11.109", "Flüssiger", [
+const APP_VER = "2026.11.110";
+const APP_NEWS = [["2026.11.110", "Wellen im Chart", [
+  ["Tipp daneben beendet nur", "Hast du deine eigene Fibonacci-Welle gezogen, beendet ein Tipp irgendwo anders in den Chart jetzt nur den Welle-Modus – die Welle bleibt stehen, es beginnt keine neue. Anpassen geht über die Griffe; ganz neu zeichnen: „Kairo-Welle“ und dann „Welle“."],
+  ["Normale und große Welle", "In langen, gleichmäßigen Aufwärtstrends (z. B. First Majestic, AMD) setzte Kairo die normale Fibonacci-Welle bis zum Start des ganzen Trends an – viel zu tief. Jetzt ist die normale Welle die jüngere Welle aus dem Scan, die lange wird zur großen Welle. Beide sind wieder standardmäßig zu sehen (Ebenen → Große Welle schaltet sie aus)."],
+  ["Volumenprofil bleibt fest", "Das Profil zählt das Volumen ab dem Tief der Kairo-Welle bis heute. Deine eigene Welle verschiebt es nicht mehr."]]],
+  ["2026.11.109", "Flüssiger", [
   ["Kein Ruckeln mehr beim Scrollen", "Firmenlogos werden jetzt vorab geladen statt erst beim Scrollen – der Scanner scrollt so flüssig wie der Rest der App (60 Bilder pro Sekunde)."],
   ["Schnellere Reiterwechsel", "Der Chart erscheint sofort, RSI/MACD/MBI folgen einen Augenblick später. Der Scanner zeigt zuerst die sichtbaren Zeilen und baut nur noch die Ansicht, die du siehst."],
   ["Weichere Übergänge", "Die gleitenden Markierungen (Seitenleiste, Schalter) laufen auf der Grafikkarte und stocken nicht mehr, während der neue Reiter aufgebaut wird. Im Chart zeichnen Volumenprofil, Kerzen-Info und Glas-Linse nur noch neu, wenn sich wirklich etwas ändert."]]],
@@ -9221,6 +9225,19 @@ function chartModel(c, r) {
         let M = -Infinity; for (let k = j; k <= pick; k++) if (c.h[k] != null && c.h[k] > M) M = c.h[k];
         if (c.l[j] < c.l[pick] * .9 && (M - c.l[j]) / (Hp - c.l[j]) >= .1) break; pick = j; }
       const b2 = mk(pick ?? bigFrom(out.big.iL, 1.2)); if (b2) out.big = b2; }
+    // Normale Welle viel zu lang (Wunsch 12.11., AG/IREN/AMD): Läuft der Aufwärtstrend ohne tiefe Korrektur, wanderte die Suche bis zum
+    // Start des ganzen Trends zurück (AG: 4,14 im Feb. 2024 statt 10,18 im Sep. 2025). Dauert die Welle länger als ein Börsenjahr und liegt
+    // das Tief der Scan-Welle (Impuls ≤ 120 Tage vor dem Hoch, wie in der Strategie) später, ist die Scan-Welle die normale Fibonacci-Welle
+    // und die lange Welle wird zur großen (falls keine eigene große gefunden wurde). Nur die Anzeige im Chart – der Scan rechnet unverändert.
+    { const sL = T.indexOf((fib && fib.L_date) || ""), w = out.cls;
+      if (w && sL > w.iL && w.iH - w.iL > 250) {
+        let p = sL; const Hs = c.h[topSince(sL)];                      // Doppelboden wie oben, aber höchstens 10 % unter dem Scan-Tief (keine Kette nach unten)
+        for (let j = sL - 1; j > w.iL; j--) { const v = c.l[j]; if (v == null || v >= c.l[p] || v < c.l[sL] * .9) continue; let ok = true;
+          for (let k = Math.max(0, j - 10); k <= Math.min(n - 1, j + 10); k++) if (c.l[k] != null && c.l[k] < v) { ok = false; break; } if (!ok) continue;
+          let M = -Infinity; for (let k = j; k <= p; k++) if (c.h[k] != null && c.h[k] > M) M = c.h[k];
+          if ((M - v) / (Hs - v) < .2) p = j; else break; }
+        const w2 = mk(p);
+        if (w2 && w2.H > w2.L * 1.15) { if (!out.big || out.big.iL > w.iL) out.big = w; out.cls = w2; } } }
     if (out.cls) { const w = out.cls; out.broken = last < (w.H - (w.H - w.L) * .786) * .995;
       out.note = `Welle ${dateDE(T[w.iL])} (${fmt(w.L)}) → ${dateDE(T[w.iH])} (${fmt(w.H)})${out.broken ? " – Kurs darunter, die große Welle ist eingeblendet" : ""}`; }
   }
@@ -9456,7 +9473,7 @@ function buildMain(el, c, r, opts) {
   h.bdReset = () => { BD = null; };
   const cnt = () => bd().length, barAt = i => bd()[i], mp = measurePrimitive(barAt, cnt); candles.attachPrimitive(mp); h.mp = mp;
   const vpp = profilePrimitive(barAt, cnt, i => i < T.length ? c.v[i] : (LIVE.map[r.ticker] && LIVE.map[r.ticker].v) || 0, () => !!clGet("vp"),
-    () => h.M && h.M.cls ? h.M.cls.iL : null, i => dateDE(T[Math.min(i, T.length - 1)])); candles.attachPrimitive(vpp); h.vpp = vpp;
+    () => { const w = h.M && (h.M.own ? h.M.kcls : h.M.cls); return w ? w.iL : null; }, i => dateDE(T[Math.min(i, T.length - 1)])); candles.attachPrimitive(vpp); h.vpp = vpp;
   if (getComputedStyle(el).position === "static") el.style.position = "relative";
   const lg = document.createElement("div"); lg.className = "cl-ohlc"; el.appendChild(lg);
   const idxOf = tm => { const k = tkey(tm), d = bd(); for (let i = d.length - 1; i >= 0; i--) if (tkey(d[i].time) === k) return i; return -1; };
@@ -9511,6 +9528,9 @@ function buildMain(el, c, r, opts) {
     const x = e.clientX - el.getBoundingClientRect().left, ts = chart.timeScale(); if (x < 0 || x > ts.width()) return;
     const lgc = ts.coordinateToLogical(x); if (lgc == null) return; let i = clampI(lgc); if (i >= T.length) i = T.length - 1;
     if (WAVE.on) {
+      // Wunsch 12.11.: Steht die eigene Welle schon, beendet ein Tipp daneben nur den Welle-Modus – die Welle bleibt, es beginnt keine neue.
+      // Ändern geht weiter über die Griffe (Tief/Hoch ziehen); ganz neu zeichnen: „Kairo-Welle“ (zurücksetzen) und dann „Welle“.
+      if (h.wA == null && h.M.own) { WAVE.on = false; CL_LIVE.forEach(x => x.measureOff && x.measureOff()); clRefresh(); return; }
       if (h.wA == null) { h.wA = snap(i, true); mp.set(h.wA, h.wA); h.legend(h.wA); return; }
       let a = h.wA, b = snap(i, false); h.wA = null; mp.set(null, null);
       if (b <= a) { const lo = snap(i, true), hi = snap(a, false); if (hi > lo) { a = lo; b = hi; } else { h.legend(i); return; } }
@@ -9532,7 +9552,7 @@ function buildMain(el, c, r, opts) {
       it.segs.push({ i1: w.iL, p1: w.L, i2: w.iH, p2: w.H, c: col }); it.fit.push(lv(.886), lv(.5));
       marks.push({ i: w.iH, t: `H ${fmt(w.H)}`, c: `rgb(${col})`, up: false }, { i: w.iL, t: `L ${fmt(w.L)}`, c: `rgb(${col})`, up: true }); };
     if (M.cls && clGet("fib")) wave(M.cls, "255,176,32");
-    if (M.big && clGet("big", M.broken)) wave(M.big, "176,124,255");
+    if (M.big && clGet("big", true)) wave(M.big, "176,124,255");
     if (clGet("sup")) M.lines.forEach(L => it.lines.push({ p: L.p, from: L.from, c: L.kind === "s" ? "74,163,255" : "255,128,118", w: 1.6, a: .9,
       l: `${L.kind === "s" ? "Unterstützung" : "Widerstand"} · ${L.n}×${L.scan ? " (Kairo)" : ""}`, lr: fmt(L.p) }));
     prim.set(it);
@@ -9550,7 +9570,7 @@ function buildMain(el, c, r, opts) {
   };
   if (LIVE.map[r.ticker]) h.live();
   if (liveOn()) liveQuote(r.ticker).then(q => { if (q) liveChartsPaint(r.ticker); });
-  const w0 = Math.min(M.cls ? M.cls.iL : T.length, clGet("big", M.broken) && M.big ? M.big.iL : T.length, T.length - 130);
+  const w0 = Math.min(M.cls ? M.cls.iL : T.length, clGet("big", true) && M.big ? M.big.iL : T.length, T.length - 130);
   h.vr0 = { from: Math.max(0, w0 - 12), to: T.length + 3 };
   CL_LIVE.add(h); return h;
 }
@@ -9558,11 +9578,11 @@ function buildMain(el, c, r, opts) {
 function clBarHtml(h) {
   const M = h.M, chip = (k, lbl, col, ok = true, auto) => ok ? `<button class="cl-c${clGet(k, auto) ? " on" : ""}" data-cl="${k}"${auto != null ? ` data-auto="${auto ? 1 : 0}"` : ""}><i style="background:${col}"></i>${lbl}</button>` : "";
   const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
-  return chip("fib", M.own ? "Fibonacci (eigene)" : "Fibonacci", "#f4b740", !!M.cls) + chip("big", "große Welle", "#b07cff", !!M.big, M.broken)
+  return chip("fib", M.own ? "Fibonacci (eigene)" : "Fibonacci", "#f4b740", !!M.cls) + chip("big", "große Welle", "#b07cff", !!M.big, true)
     + chip("sup", `Linien ${ns}↓ ${nr}↑`, "#4aa3ff", M.lines.length > 0) + EMA_DEF.map(([k, col, l]) => chip(k, l, col)).join("")
     + chip("vol", "Volumen", "#5d6676") + chip("vp", "Volumenprofil", "#ff9f0a") + chip("plan", "Kauf/Stop/K.-o.", "#ff453a")
     + `<button class="cl-c cl-m${MEAS.on ? " on" : ""}" data-clm title="Zeitraum messen: Start- und Endkerze antippen">📏 Messen</button>`
-    + `<button class="cl-c cl-m${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle: Tief und Hoch antippen, danach mit den Griffen verschieben">✎ ${M.own ? "eigene Welle" : "Welle setzen"}</button>`
+    + `<button class="cl-c cl-m${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle: Tief und Hoch antippen, danach mit den Griffen verschieben – Tipp daneben beendet">✎ ${M.own ? "eigene Welle" : "Welle setzen"}</button>`
     + (M.own ? `<button class="cl-c" data-clwreset title="Zurück zur Welle, die Kairo bestimmt">↺ Kairo-Welle</button>` : "");
 }
 function clRefresh() {
@@ -9624,7 +9644,7 @@ function cockpitSide(h, r) {
       ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Seitwärtsphase.</p>` : ""}</div>
     ${(vi => vi && clGet("vp") && (vi.buy.length || vi.sell.length) ? `<div class="cf-s"><div class="cf-h">Big Player · Großvolumen-Zonen</div>${[...vi.buy, ...vi.sell].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:${z.kind === "buy" ? "#0a84ff" : "#bf5af2"}"></i>${z.kind === "buy" ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"}, Ø ${fmt(z.rv, 1)}×</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
       <p class="muted cf-t">Tage mit mindestens doppeltem Ø-Volumen – solche Mengen handeln meist Fonds und Banken. Kauf-Zonen wirken oft als Unterstützung. Nur zur Orientierung, keine Kairo-Regel.</p></div>` : "")(h.vpp && h.vpp.info())}
-    ${M.cls && clGet("fib") ? fibList(M.cls, "#f4b740", "Fibonacci") : ""}${M.big && clGet("big", M.broken) ? fibList(M.big, "#b07cff", "Fibonacci große Welle") : ""}
+    ${M.cls && clGet("fib") ? fibList(M.cls, "#f4b740", "Fibonacci") : ""}${M.big && clGet("big", true) ? fibList(M.big, "#b07cff", "Fibonacci große Welle") : ""}
     ${M.lines.length ? `<div class="cf-s"><div class="cf-h">Unterstützungen & Widerstände</div>${M.lines.map(L => row(`${L.kind === "s" ? "Unterstützung" : "Widerstand"} · ${L.n}×`, L.p, L.kind === "s" ? "#4aa3ff" : "#ff8076")).join("")}</div>` : ""}
     <div class="cf-s"><div class="cf-h">Kairo-Kriterien · ${r.met ?? "–"}/${r.total ?? 11}</div><div class="cf-crit">${crit.map(x => `<span class="${x.ok ? "ok" : "no"}">${x.ok ? "✓" : "✗"} ${esc(shortCrit(x.label))}</span>`).join("")}</div></div>
     <div class="row-actions"><button class="btn sm" data-ein="${esc(r.ticker)}">Einstieg planen</button><a class="btn ghost sm" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">TradingView</a></div>`;
@@ -9672,11 +9692,11 @@ let ctPop = false, ctFocus = null;
 function ctabBarHtml(h) {
   const M = h.M, sw = (k, lbl, col, ok = true, auto) => ok ? `<button class="ct-row" data-cl="${k}"${auto != null ? ` data-auto="${auto ? 1 : 0}"` : ""} role="switch" aria-checked="${clGet(k, auto) ? "true" : "false"}"><i style="background:${col}"></i><span>${lbl}</span><u class="ct-sw${clGet(k, auto) ? " on" : ""}"></u></button>` : "";
   const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
-  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), "vol", "vp", "plan"], nOn = keys.filter(k => clGet(k, k === "big" ? M.broken : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length)).length;
+  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), "vol", "vp", "plan"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length)).length;
   const grp = (t, body) => body ? `<div class="ct-g"><div class="ct-gh">${t}</div>${body}</div>` : "";
   return `<div class="ct-tl"><div class="ct-seg"><button class="ct-b ct-lay${ctPop ? " on" : ""}" data-ctlayers aria-expanded="${ctPop}" title="Ebenen ein-/ausblenden">${CT_IC.layers}<span>Ebenen</span><small>${nOn}</small></button></div>
       <div class="ct-seg"><button class="ct-b${MEAS.on ? " on" : ""}" data-clm title="Messen: Start- und Endkerze antippen" aria-label="Messen">${CT_IC.ruler}<span class="ct-lbl">Messen</span></button><button class="ct-b${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle setzen" aria-label="Welle setzen">${CT_IC.wave}<span class="ct-lbl">${M.own ? "Eigene Welle" : "Welle"}</span></button>${M.own ? `<button class="ct-b" data-clwreset title="Zurück zur Welle, die Kairo bestimmt" aria-label="Kairo-Welle">${CT_IC.reset}</button>` : ""}</div></div>
-    ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, M.broken))}
+    ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, true))}
       ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.map(([k, col, l]) => sw(k, l, col)).join(""))}
       ${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a"))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
 }
