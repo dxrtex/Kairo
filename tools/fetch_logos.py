@@ -226,7 +226,7 @@ def main() -> None:
     now = time.time()
     # neu versuchen: ohne Logo, und Fehlversuche frühestens nach 7 Tagen erneut
     todo = [t for t in tickers if t not in meta or (meta[t].get("src") and meta[t].get("v") != LOGO_V)
-            or (not meta[t].get("src") and now - meta[t].get("at", 0) > 7 * 86400)]
+            or (not meta[t].get("src") and (meta[t].get("v") != LOGO_V or now - meta[t].get("at", 0) > 7 * 86400))]
     todo = todo[:limit]
     print(f"{len(tickers)} Aktien, {sum(1 for m in meta.values() if m.get('src'))} Logos vorhanden, {len(todo)} zu laden")
     got = Counter()
@@ -236,7 +236,7 @@ def main() -> None:
                 (out / f"{safe(t)}.png").write_bytes(png)
                 meta[t] = {"src": src, "h": h, "at": now, "v": LOGO_V}
             else:
-                meta[t] = {"src": None, "at": now}
+                meta[t] = {"src": None, "at": now, "v": LOGO_V}
             got[src or "–"] += 1
             if i % 250 == 0:
                 print(i, dict(got), flush=True)
