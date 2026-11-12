@@ -1416,6 +1416,25 @@
   /* Chart-Reiter */
   .ct-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 0 12px; }
   .ct-tools { position: relative; } .ct-tl { display: flex; gap: 8px; align-items: center; }
+  /* Chart-Suche (12.11.) */
+  .ct-search { position: relative; margin: 0 0 12px; z-index: 25; }
+  .ct-search > svg { position: absolute; z-index: 2; left: 16px; top: 50%; width: 20px; height: 20px; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .ct-search input { width: 100%; font: inherit; font-size: 17px; padding: 13px 16px 13px 46px; border-radius: 16px; border: 0; color: var(--text);
+    background: var(--lg-sheen, none), var(--lg-bg, var(--surface)); -webkit-backdrop-filter: blur(16px) saturate(185%); backdrop-filter: blur(16px) saturate(185%);
+    box-shadow: inset 0 1px 0 var(--lg-hi, rgba(255,255,255,.1)), inset 0 0 0 .5px var(--lg-ring, var(--line)), 0 6px 20px rgba(0,0,0,.18); }
+  .ct-search input:focus { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent), inset 0 1px 0 var(--lg-hi, rgba(255,255,255,.1)); }
+  .ct-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+  .ct-list { position: absolute; left: 0; right: 0; top: calc(100% + 6px); max-height: min(60vh, 520px); overflow-y: auto; padding: 6px; border-radius: 18px;
+    background: var(--lg-sheen, none), var(--lg-bg2, var(--surface)); -webkit-backdrop-filter: blur(28px) saturate(185%); backdrop-filter: blur(28px) saturate(185%);
+    box-shadow: inset 0 1px 0 var(--lg-hi, rgba(255,255,255,.1)), inset 0 0 0 .5px var(--lg-ring, var(--line)), 0 18px 44px rgba(0,0,0,.35); }
+  .ct-li { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 10px; border: 0; border-radius: 12px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .ct-li:hover, .ct-li:focus-visible { background: rgba(127,127,127,.14); outline: none; } .ct-li > .cf-av { width: 34px; height: 34px; font-size: 14px; }
+  .ct-li > i { width: 34px; height: 34px; display: grid; place-items: center; font-style: normal; font-size: 18px; flex: none; }
+  .ct-li > span { flex: 1; min-width: 0; } .ct-li b { display: block; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ct-li small { display: block; color: var(--muted); font-size: 12.5px; }
+  .ct-li em { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .03em; padding: 3px 8px; border-radius: 6px; color: var(--muted); background: rgba(127,127,127,.14); white-space: nowrap; }
+  .ct-li em.full { color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
+  .ct-li-x b { color: var(--accent); } .ct-li-note { padding: 10px 12px; font-size: 13.5px; color: var(--muted); }
+  .ctab.fs .ct-search { display: none; }
   .ct-seg { display: flex; gap: 2px; padding: 3px; border-radius: 13px; background: rgba(118,118,128,.18); } html.lt .ct-seg, html.lt .ct-rg { background: rgba(118,118,128,.12); }
   .ct-b { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; opacity: .8; transition: background .15s, opacity .15s; }
   .ct-b svg { width: 18px; height: 18px; flex: none; } .ct-b:hover { opacity: 1; background: rgba(127,127,127,.14); }
@@ -7113,8 +7132,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.112";
-const APP_NEWS = [["2026.11.112", "Einstieg: ehrlicher Grund", [
+const APP_VER = "2026.11.113";
+const APP_NEWS = [["2026.11.113", "Chart-Suche: jede Aktie", [
+  ["Suchleiste im Chart-Reiter", "Ganz oben im Chart-Reiter: Name oder Kürzel eintippen, antippen (oder Enter) – fertig. Aktien aus dem Kairo-Scan öffnen den vollen Kairo-Chart mit Fibonacci, Plan und Kriterien."],
+  ["Auch alles außerhalb des Scans", "Alle anderen gescannten Aktien – und über „an allen Börsen weltweit suchen“ jede Aktie – öffnen als Kurschart: Tageskerzen eines Jahres über deinen Kursdienst, dazu EMAs, RSI, MACD, Momentum Bias Index und Unterstützungen, von Kairo selbst berechnet."]]],
+  ["2026.11.112", "Einstieg: ehrlicher Grund", [
   ["Warum keine Aktie direkt?", "Geht „Aktie direkt“ nicht (z. B. Amazon), steht jetzt der Grund dabei: Schon eine Aktie würde bis zum Stop mehr riskieren als dein Risiko je Trade (1 % des Trading-Kapitals) – oder mehr kosten, als frei ist. Der Turbo lässt sich kleiner stückeln."]]],
   ["2026.11.111", "Intro ohne Ruckeln", [
   ["Flüssiges Intro", "Die App baut sich jetzt erst auf, wenn das Logo fertig animiert ist – vorher hat das den Zoom ins Zeichen verschluckt und KAIRO sprang von rechts in die Mitte. Das Intro startet erst, wenn die App eingelesen ist, und die App wird darunter nicht unnötig mitgezeichnet."]]],
@@ -9641,7 +9663,7 @@ document.addEventListener("click", e => {
 });
 // ---------- Chart-Cockpit (Vollbild): großer Chart, alle Schalter, Zeitraum, Plan, Fibonacci-Stufen, Linien, Kriterien ----------
 function cockpitSide(h, r) {
-  const M = h.M, last = r.close, p = chartPlan(r) || {}, ko = tpKoStock(r.ticker, r.currency || r.cur), hn = hintNow(r) || {}, k = kSt(r);
+  const M = h.M, last = r.close, p = r.ext ? {} : chartPlan(r) || {}, ko = r.ext ? null : tpKoStock(r.ticker, r.currency || r.cur), hn = r.ext ? { title: "Nicht im Kairo-Scan", text: "Kurschart aus den Tageskerzen eines Jahres (Kursdienst). EMAs, RSI, MACD, Momentum Bias Index und Unterstützungen rechnet Kairo selbst – die 11 Kairo-Kriterien prüft nur der Abendscan." } : hintNow(r) || {}, k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r);
   const dist = v => v == null || !last ? "" : `<em class="${v >= last ? "up" : "down"}">${sgnPct(v / last - 1, 1)}</em>`;
   const row = (l, v, col) => v == null ? "" : `<div class="cf-r"><span>${col ? `<i style="background:${col}"></i>` : ""}${l}</span><b>${fmt(v)}</b>${dist(v)}</div>`;
   const T0 = window.__lastChart.c.t, fibList = (w, col, ttl) => { const lv = q => w.H - (w.H - w.L) * q;
@@ -9654,7 +9676,7 @@ function cockpitSide(h, r) {
       <p class="muted cf-t">Tage mit mindestens doppeltem Ø-Volumen – solche Mengen handeln meist Fonds und Banken. Kauf-Zonen wirken oft als Unterstützung. Nur zur Orientierung, keine Kairo-Regel.</p></div>` : "")(h.vpp && h.vpp.info())}
     ${M.cls && clGet("fib") ? fibList(M.cls, "#f4b740", "Fibonacci") : ""}${M.big && clGet("big", true) ? fibList(M.big, "#b07cff", "Fibonacci große Welle") : ""}
     ${M.lines.length ? `<div class="cf-s"><div class="cf-h">Unterstützungen & Widerstände</div>${M.lines.map(L => row(`${L.kind === "s" ? "Unterstützung" : "Widerstand"} · ${L.n}×`, L.p, L.kind === "s" ? "#4aa3ff" : "#ff8076")).join("")}</div>` : ""}
-    <div class="cf-s"><div class="cf-h">Kairo-Kriterien · ${r.met ?? "–"}/${r.total ?? 11}</div><div class="cf-crit">${crit.map(x => `<span class="${x.ok ? "ok" : "no"}">${x.ok ? "✓" : "✗"} ${esc(shortCrit(x.label))}</span>`).join("")}</div></div>
+    ${r.ext ? "" : `<div class="cf-s"><div class="cf-h">Kairo-Kriterien · ${r.met ?? "–"}/${r.total ?? 11}</div><div class="cf-crit">${crit.map(x => `<span class="${x.ok ? "ok" : "no"}">${x.ok ? "✓" : "✗"} ${esc(shortCrit(x.label))}</span>`).join("")}</div></div>`}
     <div class="row-actions"><button class="btn sm" data-ein="${esc(r.ticker)}">Einstieg planen</button><a class="btn ghost sm" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">TradingView</a></div>`;
 }
 var cfChart = null, cfRO = null;
@@ -9668,8 +9690,45 @@ function ctabDrop() {
   ctabInd.forEach(ch => { try { ch.remove(); } catch (e) {} }); ctabInd = [];
   if (cfChart && cfChart.tab) { CL_LIVE.delete(cfChart); try { cfChart.chart.remove(); } catch (e) {} cfChart = null; }
 }
+// ---------- Chart-Suche (Wunsch 12.11.: „das Wichtigste überhaupt“): jede Aktie als Chart ----------
+// Aktien mit Chart-Datei aus dem Scan (Treffer, Beobachten, Watchlist) öffnen den vollen Kairo-Chart; alle anderen – auch weltweit –
+// bekommen Tageskerzen eines Jahres über den Kairo-Kursdienst, EMAs, RSI, MACD und Momentum Bias Index rechnet die App selbst.
+const EXTR = {};                                                  // Ticker → Ersatz-Zeile (nur Anzeige, kein Scan-Ergebnis)
+const rowFor = t => byTicker(t) || EXTR[t];
+const emaN = (a, n) => { const k = 2 / (n + 1), o = []; let p = null; a.forEach((x, i) => { p = x == null ? p : p == null ? x : x * k + p * (1 - k); o.push(p); }); return o; };
+const smaN = (a, n) => a.map((_, i) => { if (i < n - 1) return null; let s = 0; for (let k = i - n + 1; k <= i; k++) { if (a[k] == null) return null; s += a[k]; } return s / n; });
+function extIndicators(t, o, h, l, c, v) {
+  const n = c.length, R = Array(n).fill(null); let g = 0, ls = 0;
+  for (let i = 1; i < n; i++) { const ch = c[i] - c[i - 1], up = Math.max(ch, 0), dn = Math.max(-ch, 0);
+    if (i <= 14) { g += up / 14; ls += dn / 14; } else { g = (g * 13 + up) / 14; ls = (ls * 13 + dn) / 14; } if (i >= 14) R[i] = ls ? 100 - 100 / (1 + g / ls) : 100; }
+  const e12 = emaN(c, 12), e26 = emaN(c, 26), macd = c.map((_, i) => e12[i] - e26[i]), sig = emaN(macd, 9);
+  // Momentum Bias Index [AlgoAlpha] wie backend/mbi.py (MPL 2.0): Momentum 10, Bias 5, Glättung HMA 10, Impuls 30, 3 Std.-Abw.
+  const wma = (a, L) => a.map((_, i) => { if (i < L - 1) return null; let s = 0; for (let k = 0; k < L; k++) { const x = a[i - k]; if (x == null) return null; s += (L - k) * x; } return s / (L * (L + 1) / 2); });
+  const hma = (a, L) => { const hf = wma(a, Math.floor(L / 2)), fl = wma(a, L); return wma(a.map((_, i) => hf[i] == null || fl[i] == null ? null : 2 * hf[i] - fl[i]), Math.floor(Math.sqrt(L))); };
+  const rng = emaN(h.map((x, i) => x - l[i]), 10), sc = c.map((x, i) => i >= 10 && rng[i] ? (x - c[i - 10]) / rng[i] * 100 : null);
+  const sumN = (a, L) => a.map((_, i) => { if (i < L - 1) return null; let s = 0; for (let k = i - L + 1; k <= i; k++) { if (a[k] == null) return null; s += a[k]; } return s; });
+  const upS = sumN(sc.map(x => x == null ? null : Math.max(x, 0)), 5), dnS = sumN(sc.map(x => x == null ? null : Math.min(x, 0)), 5);
+  const U = hma(upS, 10).map(x => x == null ? null : Math.max(x, 0)), D = hma(dnS.map(x => x == null ? null : -x), 10).map(x => x == null ? null : Math.max(x, 0));
+  const avg = U.map((x, i) => x == null || D[i] == null ? null : (x + D[i]) / 2), ea = emaN(avg, 30);
+  const sd = avg.map((_, i) => { if (i < 29) return null; const w = avg.slice(i - 29, i + 1); if (w.some(x => x == null)) return null; const m = w.reduce((a, b) => a + b, 0) / 30; return Math.sqrt(w.reduce((a, b) => a + (b - m) ** 2, 0) / 30); });
+  const B = avg.map((_, i) => ea[i] == null || sd[i] == null ? null : ea[i] + sd[i] * 3);
+  const cu = (x, i) => i >= 2 && x[i] != null && x[i - 1] != null && x[i - 2] != null && x[i] < x[i - 1] && x[i - 1] >= x[i - 2];
+  return { t, o, h, l, c, v, e20: emaN(c, 20), e50: emaN(c, 50), e100: emaN(c, 100), e200: emaN(c, 200), rsi: R, rsi_sma: smaN(R, 14), macd, sig, hist: macd.map((x, i) => x - sig[i]),
+    mbi_up: U, mbi_lo: D, mbi_ref: B, gx: D.map((x, i) => !!(cu(D, i) && B[i] != null && x > B[i] && x > U[i])), rx: U.map((x, i) => !!(cu(U, i) && B[i] != null && x > B[i] && x > D[i])) };
+}
+async function extChart(t, y, name) {                             // t = Ticker in der App, y = Yahoo-Symbol für den Kursdienst
+  if (!liveKey("yq")) throw new Error("kursdienst");
+  const j = await (await fetch(`${liveKey("yq")}/?c=${encodeURIComponent(y)}`)).json();
+  if (!j || !j.c || j.c.length < 30) throw new Error(j && j.error || "zu wenig Kursdaten");
+  const T = j.t.map(ms => isoD(new Date(ms))), c = extIndicators(T, j.o, j.h, j.l, j.c, j.v || j.c.map(() => 0));
+  const s0 = (searchIdx || []).find(x => x.t === t) || {}, n = j.c.length;
+  EXTR[t] = { ticker: t, name: name || s0.n || j.name || y, close: j.c[n - 1], currency: j.cur || s0.cur || "", change: j.c[n - 1] / j.c[n - 2] - 1,
+    criteria: [], met: s0.m ?? null, total: 11, zone: null, passed: false, fast_hit: false, ext: true, exch: j.exch || "" };
+  chartCache[t] = Promise.resolve(c);
+  return c;
+}
 const ctabPick = () => { const L = window.__lastChart;
-  return [L && L.r && L.r.ticker, state.cfLast, ...cfList("mine"), ...cfList("hits"), ...(data.results || []).map(r => r.ticker)].find(t => t && byTicker(t)); };
+  return [L && L.r && L.r.ticker, state.cfLast, ...cfList("mine"), ...cfList("hits"), ...(data.results || []).map(r => r.ticker)].find(t => t && rowFor(t)); };
 function ctabRender() {
   const t = ctabPick(), box = $("ctab");
   if (box && box.dataset.t === t && (cfChart && cfChart.tab || box.dataset.busy)) return;      // läuft schon – nicht neu bauen (Zoom bleibt)
@@ -9679,7 +9738,7 @@ function ctabRender() {
   ctabLoad(t);
 }
 async function ctabLoad(t) {
-  const seq = ++ctabSeq, L = window.__lastChart, r = byTicker(t);
+  const seq = ++ctabSeq, L = window.__lastChart, r = rowFor(t);
   let c = L && L.r && L.r.ticker === t ? L.c : null;
   if (!c) try { c = await loadChart(t); } catch (e) { delete chartCache[t]; }
   const el = $("ctab"); if (seq !== ctabSeq || state.sec !== "chart" || !el || el.dataset.t !== t) return;
@@ -9710,10 +9769,11 @@ function ctabBarHtml(h) {
 }
 function ctabBuild(c, r) {
   const el = $("ctab"); if (!el || !window.LightweightCharts) return; ctabDrop(); delete el.dataset.busy;
-  const k = kSt(r), chg = r.change ?? r.d1, off = !!state.cfSideOff;
+  const k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r), chg = r.change ?? r.d1, off = !!state.cfSideOff;
   el.dataset.t = r.ticker; el.classList.toggle("side-off", off); ctPop = false;
   const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="${lbl.split(" ·")[0]} groß">${CT_IC.expand}</button></div><div class="ctab-c" id="${id}"></div></div>`;
-  el.innerHTML = `<div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(r.ticker)} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
+  el.innerHTML = `<div class="ct-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="ctQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="${innerWidth < 640 ? "Chart suchen – jede Aktie" : "Chart suchen – jede Aktie, Name oder Kürzel (z. B. Amazon, UBS, Rheinmetall)"}" aria-label="Chart suchen"><div id="ctList" class="ct-list" hidden></div></div>
+    <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
       <span class="st ${k.cls}">${esc(k.t)}</span><button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
       <div class="ct-right"><div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Welle"]].map(([v, l]) => `<button class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
@@ -9742,6 +9802,46 @@ function ctabBuild(c, r) {
   try { cfChart.chart.subscribeVisibleLogicalRangeChange(lensSoon); cfChart.chart.subscribeCrosshairMove(() => { clearTimeout(LENS.xt); LENS.xt = setTimeout(lensSoon, 140); }); } catch (e) {}
   setTimeout(lensSoon, 120); setTimeout(lensSoon, 600);
 }
+// Chart-Suche: Trefferliste unter dem Suchfeld
+function ctListHtml(q) {
+  if (!searchIdx) { loadSearch(); return `<div class="ct-li-note">Aktienliste lädt …</div>`; }
+  const m = einMatches(q), ext = !!liveKey("yq");
+  const row = r => { const full = !!byTicker(r.t); return `<button class="ct-li" data-ctgo="${esc(r.t)}">${cfAv(r.t)}<span><b>${esc(shortNm(r.n))}</b><small>${esc(r.ext ? r.x : r.t)}${r.c ? ` · ${fmt(r.c)} ${esc(r.cur || "")}` : ""}</small></span><em class="${full ? "full" : ""}">${full ? "Kairo-Chart" : "Kurschart"}</em></button>`; };
+  return `${m.map(row).join("")}${q.length >= 2 ? `<button class="ct-li ct-li-x" data-ctext="${esc(q)}"><i>🌍</i><span><b>„${esc(q)}“ an allen Börsen weltweit suchen</b><small>${ext ? "jede Aktie mit Tageskerzen über deinen Kursdienst" : "braucht den Kairo-Kursdienst (Einstellungen → Live-Kurse)"}</small></span></button>` : ""}
+    ${!m.length && q.length >= 2 ? `<div class="ct-li-note">Nicht unter den ${fmt(searchIdx.length, 0)} gescannten Aktien – weltweit suchen.</div>` : ""}`;
+}
+async function ctOpen(t, y, name) {
+  const l = $("ctList"); if (l) { l.innerHTML = `<div class="ct-li-note">Lade Chart von ${esc(name || tkClean(t))} …</div>`; l.hidden = false; }
+  try {
+    if (!byTicker(t)) await extChart(t, y || t, name);
+    const q = $("ctQ"); if (q) { q.value = ""; q.blur(); } if (l) l.hidden = true;
+    if (await cockpitGo(t) === false && !byTicker(t)) throw new Error("kein Chart");
+  } catch (e) {
+    if (!l) return;
+    l.innerHTML = e.message === "kursdienst" ? `<div class="ct-li-note">Für diese Aktie gibt es noch keinen Kairo-Chart. Mit dem Kairo-Kursdienst (Einstellungen → Live-Kurse) öffnet Kairo jede Aktie als Kurschart.</div>`
+      : `<div class="ct-li-note">Keine Kursdaten für ${esc(name || tkClean(t))}: ${esc(e.message)}</div>`;
+  }
+}
+document.addEventListener("input", e => { if (e.target.id !== "ctQ") return; const l = $("ctList"), q = e.target.value.trim(); if (!l) return;
+  l.hidden = q.length < 2; if (q.length >= 2) l.innerHTML = ctListHtml(q); });
+document.addEventListener("focusin", e => { if (e.target.id === "ctQ" && e.target.value.trim().length >= 2) { const l = $("ctList"); if (l) { l.innerHTML = ctListHtml(e.target.value.trim()); l.hidden = false; } } });
+document.addEventListener("keydown", e => {
+  if (e.target.id !== "ctQ") return;
+  if (e.key === "Escape") { e.target.value = ""; const l = $("ctList"); if (l) l.hidden = true; e.target.blur(); return; }
+  if (e.key === "Enter") { const b = document.querySelector("#ctList [data-ctgo], #ctList [data-ctext]"); if (b) b.click(); }
+});
+document.addEventListener("click", async e => {
+  const g = e.target.closest("[data-ctgo]"); if (g) { const t = g.dataset.ctgo, r = (searchIdx || []).find(x => x.t === t) || {}; ctOpen(t, r.ext ? r.ext.y || r.ext.symbol : t, r.n); return; }
+  const x = e.target.closest("[data-ctext]"), l = $("ctList");
+  if (x && l) { if (!liveKey("yq")) { l.innerHTML = `<div class="ct-li-note">Für die weltweite Suche braucht Kairo den Kursdienst: Einstellungen → Live-Kurse.</div>`; return; }
+    l.innerHTML = `<div class="ct-li-note">Suche an allen Börsen …</div>`;
+    try { const res = (await extSearch(x.dataset.ctext)).filter(r => r.y);
+      l.innerHTML = res.length ? res.slice(0, 10).map(r => `<button class="ct-li" data-ctpick='${esc(JSON.stringify({ y: r.y, n: r.instrument_name }))}'><i>🌍</i><span><b>${esc(r.instrument_name || r.y)}</b><small>${esc(r.y)} · ${esc(r.exchange || "")}</small></span><em>Kurschart</em></button>`).join("") : `<div class="ct-li-note">Nichts gefunden.</div>`;
+    } catch (err) { l.innerHTML = `<div class="ct-li-note">Suche fehlgeschlagen: ${esc(err.message)}</div>`; }
+    return; }
+  const pk = e.target.closest("[data-ctpick]"); if (pk) { const o = JSON.parse(pk.dataset.ctpick); ctOpen("~" + o.y, o.y, o.n); return; }
+  if (!e.target.closest(".ct-search")) { const ll = $("ctList"); if (ll) ll.hidden = true; }
+});
 // Fokus/Vollbild: ein Fenster (Chart, RSI, MACD oder MBI) füllt den Bildschirm – Werkzeuge bleiben oben, Esc oder ⤡ schließt
 function ctabFocus(f) {
   const el = $("ctab"); if (!el) return; ctFocus = f || null;
@@ -9827,7 +9927,7 @@ function cfPickOpen(on) {
   setTimeout(lensSoon, 320);   // nach dem Aufklappen: Rand mit echter Lichtbrechung
 }
 async function cockpitGo(t) {
-  const r = byTicker(t); if (!r) return;
+  const r = rowFor(t); if (!r) return;
   let c = null; try { c = await loadChart(t); } catch (e) { delete chartCache[t]; }
   if (!c || !c.t) { const l = $("cfPickL"); if (l) l.insertAdjacentHTML("afterbegin", `<div class="bf-empty">Für ${esc(tkClean(t))} gibt es noch keinen Chart.</div>`); return false; }
   MEAS.on = WAVE.on = false; window.__lastChart = { c, r };
