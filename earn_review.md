@@ -1,28 +1,28 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhalb 1182 Min., 288 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 614 Min. nach der Meldezeit (90 % innerhalb 1266 Min., 307 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-601 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-12), davon 411 mit aufgezeichneter Prognose.
+622 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-12), davon 432 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 411 | 52% | 0.256 | 0.250 |
+| alle | 432 | 52% | 0.256 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 207 | 56% | 0.244 | 0.250 |
-| Ausblick gesenkt | 62 | 60% | 0.240 | 0.250 |
-| Ausblick bestätigt | 27 | 48% | 0.266 | 0.250 |
-| Ausblick angehoben | 141 | 48% | 0.270 | 0.250 |
-| Ausblick keine Meldung | 181 | 52% | 0.249 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 228 | 55% | 0.245 | 0.250 |
+| Ausblick gesenkt | 63 | 59% | 0.241 | 0.250 |
+| Ausblick bestätigt | 30 | 47% | 0.272 | 0.250 |
+| Ausblick angehoben | 145 | 48% | 0.271 | 0.250 |
+| Ausblick keine Meldung | 194 | 54% | 0.248 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
 | Kairo sagte | n | tatsächlich gestiegen |
 |---|---|---|
 | -0%–30% | 11 | 45% |
-| 30%–40% | 89 | 43% |
-| 40%–50% | 98 | 50% |
-| 50%–60% | 137 | 53% |
+| 30%–40% | 91 | 43% |
+| 40%–50% | 107 | 48% |
+| 50%–60% | 147 | 51% |
 | 60%–70% | 54 | 43% |
 | 70%–100% | 22 | 55% |
 
@@ -30,11 +30,11 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
-| deutlich unter Erwartung (< −10 %) | 40% (20) | 44% (9) | 46% (26) | 38% (47) |
-| unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 72% (18) | 41% (44) |
-| im Rahmen (±2 %) | 25% (16) | 0% (2) | 33% (15) | 53% (30) |
-| über Erwartung (+2 bis +10 %) | 39% (23) | 29% (7) | 47% (45) | 48% (52) |
-| deutlich über Erwartung (> +10 %) | 39% (28) | 53% (17) | 63% (99) | 54% (85) |
+| deutlich unter Erwartung (< −10 %) | 40% (20) | 50% (10) | 46% (26) | 38% (50) |
+| unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 72% (18) | 40% (45) |
+| im Rahmen (±2 %) | 25% (16) | 33% (3) | 33% (15) | 50% (32) |
+| über Erwartung (+2 bis +10 %) | 38% (24) | 25% (8) | 46% (46) | 46% (54) |
+| deutlich über Erwartung (> +10 %) | 39% (28) | 53% (17) | 61% (102) | 54% (90) |
 
 ## Vorschläge zur Anpassung
 
@@ -55,29 +55,29 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 - MTSI 2026-11-05: Kairo 60% steigt, Kurs -18.4% · Gewinn +4% · Ausblick angehoben – „Business Outlook For the fiscal first quarter ending January 1, 2027, MACOM expects revenue to be in the range of $450 million to $460 million.“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
-- CTVA 2026-11-11: Kairo 42% steigt, Kurs -24.3% · Gewinn -40% · Ausblick gesenkt – „Corteva Cuts 2026 Outlook as Brazil Crop Protection Slump Drags Sales Down 9%“
+- CTVA 2026-11-11: Kairo 42% steigt, Kurs -24.3% · Gewinn -40% · Ausblick gesenkt – „Corteva Misses Badly And Cuts 2026 EBITDA Outlook As Brazil Breaks Down, Overshadowing Strong New-Product Growth“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-68 Fehlprognosen und 343 Vergleichsfälle untersucht.
+69 Fehlprognosen und 357 Vergleichsfälle untersucht.
 
-- Markt: Bei 36% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 19% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Markt: Bei 37% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 21% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
 - Vorlauf (20 Handelstage davor): Fehlprognosen Ø -10.8%, getroffene Ø -4.8%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
 | Ausblick | 32% (22) | 30% | 1.1 |
-| Marge | 13% (9) | 7% | 2.0 |
-| Umsatz | 56% (38) | 50% | 1.1 |
-| Nutzer/Kunden | 6% (4) | 1% | 6.7 |
+| Marge | 13% (9) | 7% | 1.8 |
+| Umsatz | 55% (38) | 50% | 1.1 |
+| Nutzer/Kunden | 6% (4) | 1% | 6.9 |
 | Aufträge | 10% (7) | 6% | 1.8 |
-| Kosten | 4% (3) | 9% | 0.5 |
-| Zölle/Politik | 1% (1) | 1% | 2.5 |
-| KI/Rechenzentren | 12% (8) | 11% | 1.0 |
-| Management | 1% (1) | 3% | 0.5 |
+| Kosten | 4% (3) | 8% | 0.5 |
+| Zölle/Politik | 1% (1) | 1% | 2.6 |
+| KI/Rechenzentren | 12% (8) | 11% | 1.1 |
+| Management | 1% (1) | 3% | 0.4 |
 | Rückkauf/Dividende | 1% (1) | 4% | 0.3 |
-| Analysten | 6% (4) | 9% | 0.7 |
+| Analysten | 6% (4) | 8% | 0.7 |
 | Sondereffekt | 3% (2) | 1% | 3.4 |
 | Übernahme | 1% (1) | 5% | 0.3 |
 
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 206 Meldungen: Brier nachgeeicht 0.251 gegen gezeigt 0.255 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 216 Meldungen: Brier nachgeeicht 0.251 gegen gezeigt 0.254 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
