@@ -29,7 +29,7 @@ from PIL import Image
 
 UA = {"User-Agent": "Mozilla/5.0 (Kairo logo fetcher)"}
 SIZE = 96
-LOGO_V = 3          # Version der Aufbereitung – ältere Logos werden einmal neu geladen
+LOGO_V = 4          # Version der Aufbereitung – ältere Logos werden einmal neu geladen
 MIN_SRC = 48
 
 
@@ -216,9 +216,19 @@ def main() -> None:
 
     meta_p = out / "meta.json"
     meta = json.loads(meta_p.read_text()) if meta_p.exists() else {}
-    # Platzhalter-Erkennung: Bilder, die bei vielen Aktien gleich aussehen
-    counts = Counter(m.get("h") for m in meta.values() if m.get("h"))
-    skip = {h for h, c in counts.items() if c >= 4}
+    # Platzhalter-Erkennung: Bilder, die bei vielen Aktien gleich aussehen – außer es sind Firmen derselben Gruppe
+    # (gleiches erstes Namenswort, z. B. Brookfield, Tata, COSCO): die teilen sich wirklich ein Logo
+    def first(t):
+        w = re.findall(r"[A-Za-z0-9]+", (names.get(t) or "").lower())
+        return w[0] if w else t
+
+    def placeholders():
+        grp = {}
+        for t, m in meta.items():
+            if m.get("h"):
+                grp.setdefault(m["h"], []).append(t)
+        return {h for h, ts in grp.items() if len(ts) >= 4 and len({first(t) for t in ts}) > 1}
+    skip = placeholders()
     for t, m in list(meta.items()):
         if m.get("h") in skip:
             (out / f"{safe(t)}.png").unlink(missing_ok=True)
@@ -241,9 +251,9 @@ def main() -> None:
             if i % 250 == 0:
                 print(i, dict(got), flush=True)
     # zweiter Platzhalter-Durchgang über alle
-    counts = Counter(m.get("h") for m in meta.values() if m.get("h"))
+    ph = placeholders()
     for t, m in list(meta.items()):
-        if m.get("h") and counts[m["h"]] >= 4:
+        if m.get("h") in ph:
             (out / f"{safe(t)}.png").unlink(missing_ok=True)
             meta[t] = {"src": None, "at": now}
     have = sorted(t for t, m in meta.items() if m.get("src") and (out / f"{safe(t)}.png").exists())
