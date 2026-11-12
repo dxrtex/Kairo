@@ -2368,7 +2368,7 @@ a { color: var(--accent); text-decoration-color: color-mix(in srgb, var(--accent
 em.num, .cx-p em, .cx-p span em, i.chgp { font-style: normal; }
 .cx-t h2 { overflow: visible !important; } .cx-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .cx-t h2 > button { flex: none; }
 .nr-n.has-av { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; min-width: 0; } .nr-n.has-av > .cf-av { width: 30px; height: 30px; font-size: 13px; flex: none; }
-.nr-n.has-av > span { display: flex; flex-direction: column; min-width: 0; } .nr-n.has-av > span > b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nr-n.has-av > span { display: flex; flex-direction: column; min-width: 0; overflow: hidden; } .nr-n.has-av small { white-space: normal; line-height: 1.5; } .nr-n.has-av > span > b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tp-more { margin-top: 10px; } .tp-more > summary { cursor: pointer; color: var(--accent); font-size: 14px; font-weight: 600; list-style: none; } .tp-more > summary::-webkit-details-marker { display: none; }
 .mv-r > .cf-av { width: 30px; height: 30px; font-size: 13px; flex: none; margin-right: 2px; }
 .bf-r > .cf-av { width: 30px; height: 30px; font-size: 13px; flex: none; } .bf-r > span { min-width: 0; flex: 1; }
@@ -2389,6 +2389,10 @@ em.num, .cx-p em, .cx-p span em, i.chgp { font-style: normal; }
   html.lt nav.tabbar { box-shadow: var(--lg-rim), 0 10px 30px rgba(0,0,0,.08) !important; }
 }
 .cx-chart .chart, .cx-chart .chart-msg { background: none !important; border: 0 !important; box-shadow: none !important; }
+.g-split { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; margin: 14px 0 4px; text-align: left; }
+.g-split > div { background: var(--surface-2, rgba(127,127,127,.08)); border-radius: 14px; padding: 12px; min-width: 0; } .g-split span { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+.g-split b { display: block; font-size: 17px; font-weight: 700; margin-top: 3px; font-variant-numeric: tabular-nums; } .g-split em { display: block; font-style: normal; font-size: 12px; color: var(--muted); margin-top: 2px; }
+@media (max-width: 520px) { .g-split { grid-template-columns: 1fr; } .g-split > div { display: grid; grid-template-columns: 1fr auto; align-items: baseline; } .g-split em { grid-column: 1 / -1; } }
 .dep-cols { display: flex; flex-direction: column; } .dep-main { display: contents; } .dep-tr { order: 0; } .dep-side { order: 1; } .dep-pos { order: 2; }
 @media (min-width: 1440px) { .dep-cols:not(.solo) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 18px; align-items: start; }
   .dep-cols:not(.solo) .dep-main { display: block; min-width: 0; } .dep-side { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 72px); }
@@ -4744,7 +4748,7 @@ function depotHtml() {
   const nLive = list.filter(p => p.t && LIVE.map[p.t]).length;
   const head = `<div class="section-title"><span>Mein Depot</span><span>${koItems.length ? `${koItems.length} ausgeknockt` : ""}</span></div>
     <div class="live-bar">${liveOn() ? `${nLive ? `<span class="live-tag">● ${nLive} von ${list.filter(p => p.t).length} live · aktualisiert alle 60 s</span>` : `<span class="muted">Live-Kurse werden geladen …</span>`}<button class="live-btn" data-liveall="depot">↻ Alle aktualisieren</button>`
-      : `<span class="muted">Kurse vom Abendscan. Für Echtzeit: Einstellungen → Live-Kurse.</span>`}</div>`;
+      : `<span class="muted">Kurse vom Abendscan · <a href="#" data-gosec="settings">Live-Kurse einrichten ›</a></span>`}</div>`;
   const sum = list.length && valued ? `<div class="dep-sum">
       <div class="fig"><span>Depotwert${valued < list.length ? " (ohne Zertifikate)" : ""}</span><b>${fmt(wert)} €</b></div>
       <div class="fig"><span>Einstand</span><b>${fmt(einstand)} €</b></div>
@@ -4826,7 +4830,7 @@ function koListHtml(xs) {
 }
 document.addEventListener("click", async e => {
   const d = e.target.closest("[data-kodel]");
-  if (d) { const l = depotLoad(), p = l[+d.dataset.kodel]; if (!p || !await kConfirm(`${p.d && p.d.under || p.n} ausbuchen? Die Position wird aus dem Depot entfernt.`)) return;
+  if (d) { const l = depotLoad(), p = l[+d.dataset.kodel]; if (!p || !await kConfirm(`${p.d && p.d.under || p.n} ausbuchen? Die Position wird aus dem Depot entfernt.`, "Ausbuchen", true)) return;
     l.splice(+d.dataset.kodel, 1); depotSave(l); render(); return; }
   const k = e.target.closest("[data-kokeep]");
   if (k) { const key = k.dataset.kokeep, out = { ...(state.koOut || {}) }; delete out[key]; state.koOut = out; state.koKeep = { ...(state.koKeep || {}), [key]: 1 }; save(); render(); }
@@ -5376,8 +5380,8 @@ document.addEventListener("click", async e => {
   const jp = e.target.closest("[data-jper]"); if (jp) { state.jPer = jp.dataset.jper; save(); render(); return; }
   if (e.target.closest("[data-impclear]")) { const imp = depotLoad().filter(isImported).length, nTx = txLoad().length;
     if (!imp && !nTx) { await kSay("Es sind keine Scalable-Daten gespeichert."); return; }
-    if (await kConfirm(`Scalable-Daten löschen? ${imp} importierte Positionen und ${nTx} Transaktionen im Journal werden von diesem Gerät entfernt.`)) { importClear(); depotMsg = ""; render(); } return; }
-  if (e.target.closest("[data-jclear]")) { if (await kConfirm("Alle Transaktionen aus dem Journal auf diesem Gerät löschen? Das Depot bleibt. Danach kannst du einen neuen Export hochladen.")) { txSave([]); depotMsg = "Journal gelöscht."; render(); } return; }
+    if (await kConfirm(`Scalable-Daten löschen? ${imp} importierte Positionen und ${nTx} Transaktionen im Journal werden von diesem Gerät entfernt.`, "Löschen", true)) { importClear(); depotMsg = ""; render(); } return; }
+  if (e.target.closest("[data-jclear]")) { if (await kConfirm("Alle Transaktionen aus dem Journal auf diesem Gerät löschen? Das Depot bleibt. Danach kannst du einen neuen Export hochladen.", "Löschen", true)) { txSave([]); depotMsg = "Journal gelöscht."; render(); } return; }
   const b = e.target.closest("[data-cal]");
   if (b) { state[b.dataset.cal] = b.dataset.v; save(); render(); return; }
   const d = e.target.closest("[data-dep]"); if (!d) return;
@@ -5386,13 +5390,13 @@ document.addEventListener("click", async e => {
   if (act === "add") depotEdit = -1;
   else if (act === "edit") depotEdit = i;
   else if (act === "cancel") depotEdit = null;
-  else if (act === "del") { if (await kConfirm(`${list[i].n || list[i].t} aus dem Depot löschen?`)) { list.splice(i, 1); depotSave(list); } }
+  else if (act === "del") { if (await kConfirm(`${list[i].n || list[i].t} aus dem Depot löschen?`, "Löschen", true)) { list.splice(i, 1); depotSave(list); } }
   else if (act === "clearimp") {
     const imp = list.filter(isImported).length, hand = list.length - imp;
     if (hand && imp) {
       const all = await kAsk({ t: "Depot leeren?", s: `Alles löschen (${list.length} Positionen) oder nur den Scalable-Import (${imp}) – deine ${hand} von Hand angelegten bleiben dann.`, ok: "Alles löschen", alt: "Nur Import löschen", danger: true });
       if (all === true) depotSave([]); else if (all === "alt") depotSave(list.filter(p => !isImported(p)));
-    } else if (await kConfirm(`Alle ${list.length} Positionen aus dem Depot löschen? Das Journal bleibt.`)) depotSave([]);
+    } else if (await kConfirm(`Alle ${list.length} Positionen aus dem Depot löschen? Das Journal bleibt.`, "Alles löschen", true)) depotSave([]);
     const left = depotLoad().length; depotMsg = left === list.length ? "" : left ? `${list.length - left} Positionen gelöscht, ${left} von Hand angelegte bleiben.` : "Depot geleert."; }
   else if (act === "save") {
     const r = findStock($("dfStock").value), qty = parseFloat(String($("dfQty").value).replace(",", ".")), price = parseFloat(String($("dfPrice").value).replace(",", "."));
@@ -6120,8 +6124,9 @@ function gameHtml() {
     const old = (() => { try { return !!localStorage.getItem("kairo-game"); } catch (e) { return false; } })();
     const pf = pfCfg();
     return `<div class="section-title"><span>Spiel</span><span>Übungsdepot ${pf.etf} / ${pf.trade}</span></div>
-    <div class="card g-intro"><div class="g-big">100.000 €</div><b>Übe dein ${pf.etf}/${pf.trade}-System ohne echtes Geld.</b><div class="note" style="margin:4px 0 0">Die Aufteilung kommt aus deinem Portfolio-Profil (ETF-Reiter → Aufteilung). Ein gestartetes Übungsdepot behält seine Aufteilung.</div>
-      <p class="note">${eur(G_START * pf.etf / 100)} werden in den SPDR MSCI ACWI IMI (SPYI) investiert${ep ? ` (Kurs ${fmt(ep)} €)` : ""}, ${eur(G_START * pf.trade / 100)} bleiben frei für die Kairo-Strategie. Du handelst Turbos wie bei Scalable: mit WKN, echtem Kaufkurs je Stück und K.-o.-Schwelle. Die App rechnet 1 % Risiko vom Trading-Kapital, prüft Stop, K.-o. und Verkaufstag und vergleicht dein Depot laufend mit „100 % ETF“. 0,99 € je Order, keine Steuern. Alles bleibt auf diesem Gerät.</p>
+    <div class="card g-intro"><div class="g-big">100.000 €</div><b>Übe dein ${pf.etf}/${pf.trade}-System ohne echtes Geld.</b>
+      <div class="g-split"><div><span>Welt-ETF (SPYI)</span><b>${eur(G_START * pf.etf / 100)}</b><em>${ep ? `Kurs ${fmt(ep)} €` : "Kurs lädt …"}</em></div><div><span>Kairo-Trades</span><b>${eur(G_START * pf.trade / 100)}</b><em>1 % Risiko je Trade</em></div><div><span>Kosten</span><b>0,99 €</b><em>je Order, keine Steuern</em></div></div>
+      <p class="note g-why">Turbos wie bei Scalable – mit WKN, echtem Kaufkurs und K.-o.-Schwelle. Kairo prüft Stop, K.-o. und Verkaufstag und vergleicht dein Depot laufend mit „100 % ETF“.</p>
       ${ep ? `<button class="btn" data-g="start">Spiel starten (${pf.etf} / ${pf.trade})</button>` : `<div class="note">ETF-Kurs lädt noch …</div>`}
       ${old ? `<div class="note" style="margin-top:8px">Dein altes Spiel (ohne ETF-Teil) bleibt gespeichert, wird hier aber nicht mehr angezeigt.</div>` : ""}</div>`;
   }
@@ -6231,7 +6236,7 @@ document.addEventListener("click", async e => {
     if (v === null) return; const x = gNum(v); if (x == null || x < 0) return;
     if (early) p.rv = [...(p.rv || []), "vor dem Ausstiegssignal verkauft"];
     gSell(g, p.id, "manuell", x); gTick(g); gSave(g); render(); return; }
-  if (a === "reset") { if (await kConfirm("Spiel wirklich neu starten? Alle Spiel-Positionen und der Verlauf werden gelöscht.")) { localStorage.removeItem(GKEY); state.gSel = ""; save(); render(); } return; }
+  if (a === "reset") { if (await kConfirm("Spiel wirklich neu starten? Alle Spiel-Positionen und der Verlauf werden gelöscht.", "Neu starten", true)) { localStorage.removeItem(GKEY); state.gSel = ""; save(); render(); } return; }
 });
 document.addEventListener("change", e => {
   if (e.target.matches && e.target.matches('[data-g="auto"]')) { const g = gLoad(); if (g) { g.auto = e.target.checked; gSave(g); } }
@@ -6696,7 +6701,7 @@ function moneyHtml() {
   const total = (etfV || 0) + (depV || 0), free = freeCap(), bound = Math.max(0, m.cfg.depot - free);
   if (!total && !m.rows.length && m.pf.trade <= 0) return "";
   const etm = e && e.ok !== false ? etfTiming(e) : null, amp = etm ? ETF_AMP[etm.lv] : e && e.ok !== false ? (ETF_TONE[e.lv] || ETF_TONE.go) : null;
-  moneyStrip = `<button class="mstrip" data-mstrip>${total ? `<span>Vermögen <b>${eur(total)}</b></span>` : ""}${m.pf.trade > 0 || m.rows.length ? `<span>Frei <b>${eur(free)}</b></span><span>Bis Stop <b class="${m.riskNow > 0 ? "down" : ""}">${m.riskNow > 0 ? "−" + eur(m.riskNow) : "0 €"}</b></span>` : ""}<s>›</s></button>`;
+  moneyStrip = `<button class="mstrip" data-mstrip>${total ? `<span>Vermögen <b>${eur(total)}</b></span>` : ""}${m.pf.trade > 0 || m.rows.length ? `<span>Trading frei <b>${eur(free)}</b></span>${m.riskNow > 0 ? `<span>Bis Stop <b class="down">−${eur(m.riskNow)}</b></span>` : ""}` : ""}<s>›</s></button>`;
   return `<div class="hcard money" id="hMoney">${hHead("Dein Geld", SEC_LINK("depot"), "Depot")}
     <div class="mtiles">${total ? `<div class="mt"><span>Vermögen</span><b>${eur(total)}</b><em>${etfV != null ? `ETF ${eur(etfV)}` : ""}${etfV != null && depV != null ? " · " : ""}${depV != null ? `Depot ${eur(depV)}${depPL != null ? ` <span class="${depPL >= 0 ? "up" : "down"}">${sgnPct(depPL, 1)}</span>` : ""}` : ""}</em></div>` : ""}
       ${m.pf.trade > 0 || m.rows.length ? `<div class="mt"><span>Trading frei</span><b>${eur(free)}</b><em>${m.slots} ${m.slots === 1 ? "Platz" : "Plätze"} frei${bound ? ` · ${eur(bound)} gebunden` : ""}${paperMode() ? " · Übung" : ""}</em></div>
@@ -7394,8 +7399,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.116";
-const APP_NEWS = [["2026.11.116", "iPad, Einstellungen, Listen", [
+const APP_VER = "2026.11.117";
+const APP_NEWS = [["2026.11.117", "Feinschliff", [
+  ["Scanner am iPhone", "Startet jetzt in der Listenansicht; die Status-Erklärung ist eingeklappt."],
+  ["Verkauf und Löschen", "„Verkauft“ fragt klar nach dem Aktienkurs; Löschen und Ausbuchen haben rote, eindeutig beschriftete Knöpfe."],
+  ["Übung", "Neuer Start: Aufteilung in ETF, Kairo-Trades und Kosten auf einen Blick."],
+  ["Kleinigkeiten", "News-Zeilen ohne Überlappung, MBI-Achse in ganzen Zahlen, „Bis Stop“ nur bei offenen Trades, Live-Kurse direkt aus dem Depot einrichten."]]],
+  ["2026.11.116", "iPad, Einstellungen, Listen", [
   ["Seitenleiste aus Glas", "Am iPad schwebt die Seitenleiste jetzt als Glastafel – wie in iPadOS."],
   ["Trading in den Einstellungen", "Ganz oben: Trading-Kapital, langfristige Aktien und die Zahl gleichzeitiger Trades."],
   ["Logos überall", "Auch bei Insidern und in Gewinner/Verlierer. Dort nur noch Kairo-Werte ab 9/11 markiert."],
@@ -8885,7 +8895,7 @@ document.addEventListener("click", async e => {                     // Hälfte 1
   const b = e.target.closest("[data-tph1],[data-tph2]"); if (!b) return;
   const l = plansLoad(), p = l.find(x => x.id === (b.dataset.tph1 || b.dataset.tph2)); if (!p) return;
   const r = rowOf(p.t), fx = toEur(1, p.cur || "EUR") || 1, first = !!b.dataset.tph1, all = !first && p.x1 == null;
-  const v = await kPrompt(`${first ? "Hälfte 1" : all ? "Ganze Position" : "Hälfte 2"} von ${p.n} – Verkaufskurs der Aktie in €:`, r ? (r.c * fx).toFixed(2).replace(".", ",") : "");
+  const v = await kAsk({ t: `${p.n} verkauft`, s: `${first ? "Hälfte 1" : all ? "Ganze Position" : "Hälfte 2"} · Kairo trägt das Ergebnis in R ein (Bilanz → Deine Trades).\n\nKurs der Aktie beim Verkauf in €${p.L > 1 ? " – nicht der Turbo-Kurs" : ""}:`, input: "num", val: r ? (r.c * fx).toFixed(2).replace(".", ",") : "", ok: "Verkauf speichern" });
   const x = v == null ? null : parseFloat(String(v).replace(",", ".")) / fx;
   if (!(x > 0)) return;
   const Rx = +((x - p.E) / (p.E - p.stop)).toFixed(3), d = isoD(new Date());
@@ -8900,9 +8910,9 @@ document.addEventListener("click", async e => {
   const b = e.target.closest("[data-tpopen],[data-tpclose],[data-tpdel]"); if (!b) return;
   if (b.dataset.tpopen) { tpOpen(b.dataset.tpopen); return; }
   const l = plansLoad(), i = l.findIndex(p => p.id === (b.dataset.tpclose || b.dataset.tpdel)); if (i < 0) return;
-  if (b.dataset.tpdel) { if (await kConfirm("Trade-Plan löschen?")) { l.splice(i, 1); plansSave(l); render(); } return; }
+  if (b.dataset.tpdel) { if (await kConfirm("Trade-Plan löschen?", "Löschen", true)) { l.splice(i, 1); plansSave(l); render(); } return; }
   const p = l[i], r = rowOf(p.t), fx = toEur(1, p.cur || "EUR") || 1;
-  const v = await kPrompt(`Verkaufskurs der Aktie ${p.n} in €:`, r ? (r.c * fx).toFixed(2).replace(".", ",") : "");
+  const v = await kAsk({ t: `${p.n} verkauft`, s: "Kurs der Aktie beim Verkauf in €:", input: "num", val: r ? (r.c * fx).toFixed(2).replace(".", ",") : "", ok: "Verkauf speichern" });
   const x = v == null ? null : parseFloat(String(v).replace(",", ".")) / fx;
   if (!(x > 0)) return;
   Object.assign(p, { st: "closed", X: x, xd: isoD(new Date()), R: +((x - p.E) / (p.E - p.stop)).toFixed(3) });
@@ -9246,7 +9256,7 @@ function renderMain() {
   const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector", "ins"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
   const bar = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${v === "watch" ? watchCount() : data.results.filter(f).length}</small></button>`).join("")}</div>
     ${cur ? `<div class="vdesc">${esc(cur[4])}</div>` : ""}
-    ${state.view === "hit" ? (l => innerWidth < 640 ? `<details class="st-legend-d"><summary>Was bedeuten die Status?</summary>${l}</details>` : l)(`<div class="st-legend"><span><b class="up">kaufbereit</b> – Kauf zur nächsten Eröffnung</span><span><b>Seitwärtsphase x/10</b> – wartet auf 5 ruhige Tage</span><span><b>verfallen</b> – keine Seitwärtsphase in 10 Tagen</span><span><b>im Depot</b> – läuft schon</span></div>`) : ""}
+    ${state.view === "hit" ? (l => `<details class="st-legend-d"><summary>Was bedeuten die Status?</summary>${l}</details>`)(`<div class="st-legend"><span><b class="up">kaufbereit</b> – Kauf zur nächsten Eröffnung</span><span><b>Seitwärtsphase x/10</b> – wartet auf 5 ruhige Tage</span><span><b>verfallen</b> – keine Seitwärtsphase in 10 Tagen</span><span><b>im Depot</b> – läuft schon</span></div>`) : ""}
     ${state.view === "watch" ? `<div class="wmin" role="group" aria-label="Mindestens erfüllte Kriterien">${[9, 8, 7].map(n => `<button class="kchip${watchMin() === n ? " on" : ""}" data-wmin="${n}" aria-pressed="${watchMin() === n}">ab ${n}/11</button>`).join("")}</div>` : ""}
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
       ${[["", "Alle"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<button class="kchip${String(state.region || "") === v ? " on" : ""}" data-qregion="${v}">${l}</button>`).join("")}
@@ -9272,7 +9282,7 @@ function renderMain() {
   const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss", "chk"].includes(c.k))].filter(c => c.k === "ticker" || !hid.has(c.k));
   requestAnimationFrame(() => { const tw = document.querySelector("main .table-wrap"), h = document.querySelector(".scroll-hint");
     if (tw && h) h.hidden = !(tw.scrollWidth > tw.clientWidth + 8); });
-  const mv = state.mView === "list" ? "list" : "table";
+  const mv = state.mView ? (state.mView === "list" ? "list" : "table") : (innerWidth < 640 ? "list" : "table");   // iPhone: Liste als Standard (Pro-Runde 13.11.)
   // Flüssig (12.11.): erst die sichtbaren Zeilen, der Rest im nächsten Moment (ein Reiterwechsel blockiert nicht mehr für die ganze Tabelle)
   const trOf = r => `<tr class="${r.passed ? "r-hit" : r.fast_hit ? "r-fast" : ""}">${cols.map(c => `<td class="${c.n ? "num" : ""}">${c.h(r)}</td>`).join("")}</tr>`;
   const SC_FIRST = 24, gen = (renderMain.scGen = (renderMain.scGen || 0) + 1);
@@ -10395,10 +10405,11 @@ function indCharts(c, r, eR, eM, eB) {
   macdC.addLineSeries({ color: "#f4b740", lineWidth: 1.5, priceLineVisible: false }).setData(pts("sig"));
 
   const mbiC = LW.createChart(eB, opts(eB));
-  mbiC.addHistogramSeries({ color: "rgba(48,209,88,.75)", priceLineVisible: false, lastValueVisible: false }).setData(pts("mbi_up"));
-  const lo = mbiC.addHistogramSeries({ color: "rgba(255,69,58,.75)", priceLineVisible: false, lastValueVisible: false });
+  const mbiF = { type: "price", precision: 0, minMove: 1 };   // MBI ist ein Index – ganze Zahlen statt „4.000,00“
+  mbiC.addHistogramSeries({ color: "rgba(48,209,88,.75)", priceLineVisible: false, lastValueVisible: false, priceFormat: mbiF }).setData(pts("mbi_up"));
+  const lo = mbiC.addHistogramSeries({ color: "rgba(255,69,58,.75)", priceLineVisible: false, lastValueVisible: false, priceFormat: mbiF });
   lo.setData(pts("mbi_lo"));
-  mbiC.addLineSeries({ color: "#8d96a7", lineWidth: 1, lineStyle: 1, priceLineVisible: false, lastValueVisible: false }).setData(pts("mbi_ref"));
+  mbiC.addLineSeries({ color: "#8d96a7", lineWidth: 1, lineStyle: 1, priceLineVisible: false, lastValueVisible: false, priceFormat: mbiF }).setData(pts("mbi_ref"));
   lo.setMarkers(T.flatMap((t, i) => [
     ...(c.gx[i] ? [{ time: t, position: "aboveBar", color: "#30d158", shape: "circle", text: "X" }] : []),
     ...(c.rx[i] ? [{ time: t, position: "aboveBar", color: "#ff453a", shape: "circle", text: "X" }] : [])]));
@@ -10537,7 +10548,7 @@ document.addEventListener("click", async e => {
   if (wa && wlPending) {
     const f = wa.dataset.wlapply === "replace" ? new Set() : new Set(favs());
     wlPending.out.forEach(x => f.add(x.t));
-    if (wa.dataset.wlapply === "replace" && !await kConfirm(`Watchlist durch ${f.size} Aktien ersetzen?`)) return;
+    if (wa.dataset.wlapply === "replace" && !await kConfirm(`Watchlist durch ${f.size} Aktien ersetzen?`, "Ersetzen", true)) return;
     state.wlSeeded = 1; save(); favSave(f); wlPending = null; render(); return;
   }
   if (e.target.closest("[data-backup]")) {
