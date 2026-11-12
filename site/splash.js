@@ -42,8 +42,19 @@
     </div>`;
   const ANIM_MS = 2300, SHORT_MS = 520, EXIT_MS = 520, TIMEOUT_MS = 5000;
   const INTRO_V = "12";                                   // neue Version → beim nächsten Öffnen wieder das volle Intro
-  const mark = () => { try { localStorage.setItem("kairo-intro", INTRO_V); } catch (e) {} };
-  const seen = () => { try { return localStorage.getItem("kairo-intro") === INTRO_V; } catch (e) { return false; } };
+  // Volles Intro mit Slogan (Wunsch 12.11.): beim ersten Öffnen jedes Tages, nach mehr als 2 Stunden Pause und nach einem Update.
+  // Kurz zurück in die App (unter 2 Stunden, gleicher Tag) → nur kurz das Logo.
+  const GAP_MS = 2 * 3600 * 1000, today = () => new Date().toDateString();
+  const rd = () => { try { const x = JSON.parse(localStorage.getItem("kairo-intro2") || "null"); return x && typeof x === "object" ? x : null; } catch (e) { return null; } };
+  const mark = () => { try { localStorage.setItem("kairo-intro2", JSON.stringify({ v: INTRO_V, d: today(), t: Date.now() })); localStorage.setItem("kairo-intro", INTRO_V); } catch (e) {} };
+  const seen = () => { const x = rd(); return !!x && x.v === INTRO_V && x.d === today() && Date.now() - (+x.t || 0) < GAP_MS; };
+  // auch beim Zurückkehren aus dem Hintergrund zählt die Zeit: zuletzt sichtbar = jetzt
+  let hiddenAt = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") { hiddenAt = Date.now(); const x = rd(); if (x) try { localStorage.setItem("kairo-intro2", JSON.stringify({ ...x, t: hiddenAt })); } catch (e) {} return; }
+    // App lag im Hintergrund (iPad hält sie offen) und kommt nach über 2 Stunden oder am nächsten Tag zurück → volles Intro
+    const x = rd(); if (hiddenAt && !current && !/nosplash/.test(location.search) && (Date.now() - hiddenAt >= GAP_MS || (x && x.d !== today()))) play({ full: true, readyAfter: 0 });
+  });
   let current = null;
   // Nach dem Intro: Start-Schwarz entfernen, damit helle Designs ihre eigene Hintergrundfarbe zeigen
   const unboot = () => { const b = document.getElementById("preboot"); if (b) b.remove(); document.documentElement.style.background = ""; };
@@ -58,7 +69,7 @@
     try { const d = (JSON.parse(localStorage.getItem("reversal-finder-v1") || "{}").design) || "";
       if (/^(postfach|tone-sand|light|ioslight)$/.test(d) || (d === "auto" && matchMedia("(prefers-color-scheme: light)").matches)) el.classList.add("lt");
       if (d === "tone-sand") el.classList.add("sand"); } catch (e) {}
-    // Volles Intro beim ersten Öffnen und nach einem Update (neue INTRO_V); sonst nur kurz das Logo – keine Wartezeit bei jedem Start
+    // Volles Intro: erster Start des Tages, nach 2 Stunden Pause oder nach einem Update (neue INTRO_V); sonst nur kurz das Logo
     const short = !reduce && (opts.full === false || (opts.full !== true && seen()));
     if (short) el.classList.add("short");
     mark();

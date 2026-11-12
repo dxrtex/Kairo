@@ -2,7 +2,9 @@
 
 Läuft in GitHub Actions (logos.yml), nie in der App. Kostenlose Quellen ohne Schlüssel, der Reihe nach:
   1. Financial Modeling Prep  image-stock/<TICKER>.png  (auch mit Heimatbörsen-Varianten, z. B. DEZ.DE → DEZ.F, US-ADR)
-  2. Website der Firma (Yahoo) → Google-Favicon-Dienst in 256 px, danach DuckDuckGo-Icon
+  2. TradingView-Logodatenbank (Symbolsuche → logoid → SVG, in PNG umgerechnet) – auch Asien, Indien, Schweiz
+  3. Website der Firma (Yahoo) → Google-Favicon-Dienst in 256 px, danach DuckDuckGo-Icon
+Weiße/sehr helle Logos (z. B. UBS) werden dunkel eingefärbt – die App zeigt Logos auf weißem Grund.
 Ein Logo wird nur übernommen, wenn es scharf genug ist (≥ 48 px) und kein Platzhalter
 (gleiches Bild bei vielen Aktien). Vorhandene Logos bleiben, neue kommen dazu.
 
@@ -27,7 +29,7 @@ from PIL import Image
 
 UA = {"User-Agent": "Mozilla/5.0 (Kairo logo fetcher)"}
 SIZE = 96
-LOGO_V = 2          # Version der Aufbereitung – ältere Logos werden einmal neu geladen
+LOGO_V = 4          # Version der Aufbereitung – ältere Logos werden einmal neu geladen
 MIN_SRC = 48
 
 
@@ -50,6 +52,12 @@ def get(url: str, timeout: float = 8.0) -> bytes | None:
 
 def normalize(raw: bytes) -> tuple[bytes, str] | None:
     """Bild prüfen, Rand beschneiden, auf SIZE×SIZE (transparent) einpassen. Gibt PNG und Bild-Hash zurück."""
+    if raw[:5] in (b"<svg ", b"<?xml") or b"<svg" in raw[:300]:
+        try:
+            import cairosvg
+            raw = cairosvg.svg2png(bytestring=raw, output_width=256, output_height=256)
+        except Exception:
+            return None
     try:
         im = Image.open(io.BytesIO(raw))
         if getattr(im, "n_frames", 1) > 1:
@@ -82,6 +90,13 @@ def normalize(raw: bytes) -> tuple[bytes, str] | None:
     box = Image.composite(mask, Image.new("L", im.size, 0), alpha).getbbox() or alpha.getbbox()
     if box:
         im = im.crop(box)
+    # weißes/sehr helles Logo auf transparentem Grund (z. B. UBS): dunkel einfärben, Form (Alpha) bleibt
+    vis2 = [p for p in im.resize((32, 32)).getdata() if p[3] > 60]
+    if vis2:
+        light = sum(1 for p in vis2 if 0.299 * p[0] + 0.587 * p[1] + 0.114 * p[2] > 200 and max(p[:3]) - min(p[:3]) < 40)   # weiß/hellgrau, nicht hellgelb
+        if light / len(vis2) > 0.85:
+            a = im.split()[3]
+            im = Image.merge("RGBA", (*Image.new("RGB", im.size, (28, 28, 30)).split(), a))
     w, h = im.size
     s = (SIZE - 8) / max(w, h)
     im = im.resize((max(1, round(w * s)), max(1, round(h * s))), Image.LANCZOS)
@@ -119,17 +134,52 @@ def website(t: str, company: dict) -> str:
         return ""
 
 
-def candidates(t: str, company: dict):
+# Yahoo-Börsenkürzel → TradingView-Börse
+TV_EX = {"SS": "SSE", "SZ": "SZSE", "NS": "NSE", "BO": "BSE", "HK": "HKEX", "T": "TSE", "KS": "KRX", "KQ": "KRX", "VI": "VIE", "TO": "TSX",
+         "V": "TSXV", "DE": "XETR", "F": "FWB", "AX": "ASX", "SW": "SIX", "LS": "EURONEXT", "AS": "EURONEXT", "BR": "EURONEXT", "PA": "EURONEXT",
+         "MI": "MIL", "MC": "BME", "BK": "SET", "JK": "IDX", "WA": "GPW", "HE": "OMXHEX", "ST": "OMXSTO", "CO": "OMXCOP", "OL": "OSL",
+         "L": "LSE", "AT": "ATHEX", "TW": "TWSE", "TWO": "TPEX", "SI": "SGX", "KL": "MYX", "NZ": "NZX", "SA": "BMFBOVESPA", "MX": "BMV", "IS": "BIST", "CN": "CSE"}
+
+
+def tv_logo(t: str, name: str = "") -> str | None:
+    base, _, suf = t.partition(".")
+    code = base.replace("-", ".") if not suf else base
+    if suf == "HK":
+        code = code.lstrip("0") or code
+    ex = TV_EX.get(suf, "") if suf else ""
+    hdr = {**UA, "Origin": "https://www.tradingview.com", "Referer": "https://www.tradingview.com/"}
+    for q in [code]:                       # nur über das Kürzel – eine Namenssuche könnte ein fremdes Logo liefern
+        try:
+            r = requests.get("https://symbol-search.tradingview.com/symbol_search/v3/", headers=hdr, timeout=8,
+                             params={"text": q, "exchange": ex, "lang": "en", "search_type": "stocks", "domain": "production", "hl": "0"})
+            if r.status_code != 200:
+                continue
+            j = r.json()
+            syms = j.get("symbols", j) if isinstance(j, dict) else j
+            for x in syms or []:
+                lid = x.get("logoid") or (x.get("logo") or {}).get("logoid")
+                sym = re.sub(r"<[^>]+>", "", x.get("symbol", ""))
+                if lid and sym.upper().lstrip("0") == code.upper().lstrip("0"):
+                    return f"https://s3-symbol-logo.tradingview.com/{lid}--big.svg"
+        except Exception:
+            continue
+    return None
+
+
+def candidates(t: str, company: dict, name: str = ""):
     for v in variants(t):
         yield "fmp", f"https://financialmodelingprep.com/image-stock/{v}.png"
+    u = tv_logo(t, name)
+    if u:
+        yield "tv", u
     d = domain(website(t, company))
     if d:
         yield "gfav", f"https://www.google.com/s2/favicons?domain={d}&sz=256"
         yield "ddg", f"https://icons.duckduckgo.com/ip3/{d}.ico"
 
 
-def fetch_one(t: str, company: dict, skip_hash: set[str]):
-    for src, url in candidates(t, company):
+def fetch_one(t: str, company: dict, skip_hash: set[str], names: dict | None = None):
+    for src, url in candidates(t, company, (names or {}).get(t, "")):
         raw = get(url)
         if not raw:
             continue
@@ -150,6 +200,7 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     rows = json.loads(search.read_text())["rows"]
     tickers = [r["t"] for r in rows if r.get("t")]
+    names = {r["t"]: r.get("n") or "" for r in rows if r.get("t")}
     extra = Path("data/watchlist.json")
     if extra.exists():
         for k, v in json.loads(extra.read_text()).items():
@@ -165,9 +216,19 @@ def main() -> None:
 
     meta_p = out / "meta.json"
     meta = json.loads(meta_p.read_text()) if meta_p.exists() else {}
-    # Platzhalter-Erkennung: Bilder, die bei vielen Aktien gleich aussehen
-    counts = Counter(m.get("h") for m in meta.values() if m.get("h"))
-    skip = {h for h, c in counts.items() if c >= 4}
+    # Platzhalter-Erkennung: Bilder, die bei vielen Aktien gleich aussehen – außer es sind Firmen derselben Gruppe
+    # (gleiches erstes Namenswort, z. B. Brookfield, Tata, COSCO): die teilen sich wirklich ein Logo
+    def first(t):
+        w = re.findall(r"[A-Za-z0-9]+", (names.get(t) or "").lower())
+        return w[0] if w else t
+
+    def placeholders():
+        grp = {}
+        for t, m in meta.items():
+            if m.get("h"):
+                grp.setdefault(m["h"], []).append(t)
+        return {h for h, ts in grp.items() if len(ts) >= 4 and len({first(t) for t in ts}) > 1}
+    skip = placeholders()
     for t, m in list(meta.items()):
         if m.get("h") in skip:
             (out / f"{safe(t)}.png").unlink(missing_ok=True)
@@ -175,24 +236,24 @@ def main() -> None:
     now = time.time()
     # neu versuchen: ohne Logo, und Fehlversuche frühestens nach 7 Tagen erneut
     todo = [t for t in tickers if t not in meta or (meta[t].get("src") and meta[t].get("v") != LOGO_V)
-            or (not meta[t].get("src") and now - meta[t].get("at", 0) > 7 * 86400)]
+            or (not meta[t].get("src") and (meta[t].get("v") != LOGO_V or now - meta[t].get("at", 0) > 7 * 86400))]
     todo = todo[:limit]
     print(f"{len(tickers)} Aktien, {sum(1 for m in meta.values() if m.get('src'))} Logos vorhanden, {len(todo)} zu laden")
     got = Counter()
     with cf.ThreadPoolExecutor(12) as ex:
-        for i, (t, src, png, h) in enumerate(ex.map(lambda t: fetch_one(t, company, skip), todo)):
+        for i, (t, src, png, h) in enumerate(ex.map(lambda t: fetch_one(t, company, skip, names), todo)):
             if src:
                 (out / f"{safe(t)}.png").write_bytes(png)
                 meta[t] = {"src": src, "h": h, "at": now, "v": LOGO_V}
             else:
-                meta[t] = {"src": None, "at": now}
+                meta[t] = {"src": None, "at": now, "v": LOGO_V}
             got[src or "–"] += 1
             if i % 250 == 0:
                 print(i, dict(got), flush=True)
     # zweiter Platzhalter-Durchgang über alle
-    counts = Counter(m.get("h") for m in meta.values() if m.get("h"))
+    ph = placeholders()
     for t, m in list(meta.items()):
-        if m.get("h") and counts[m["h"]] >= 4:
+        if m.get("h") in ph:
             (out / f"{safe(t)}.png").unlink(missing_ok=True)
             meta[t] = {"src": None, "at": now}
     have = sorted(t for t, m in meta.items() if m.get("src") and (out / f"{safe(t)}.png").exists())
