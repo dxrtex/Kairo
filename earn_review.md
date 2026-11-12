@@ -1,19 +1,19 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhalb 1187 Min., 279 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhalb 1186 Min., 280 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-593 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-11), davon 403 mit aufgezeichneter Prognose.
+594 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-11), davon 404 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 403 | 52% | 0.256 | 0.250 |
+| alle | 404 | 52% | 0.256 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 199 | 56% | 0.244 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 200 | 56% | 0.243 | 0.250 |
 | Ausblick gesenkt | 60 | 60% | 0.241 | 0.250 |
 | Ausblick bestätigt | 27 | 48% | 0.266 | 0.250 |
 | Ausblick angehoben | 137 | 49% | 0.270 | 0.250 |
-| Ausblick keine Meldung | 179 | 53% | 0.249 | 0.250 |
+| Ausblick keine Meldung | 180 | 53% | 0.249 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -21,7 +21,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 |---|---|---|
 | -0%–30% | 11 | 45% |
 | 30%–40% | 87 | 43% |
-| 40%–50% | 95 | 51% |
+| 40%–50% | 96 | 50% |
 | 50%–60% | 134 | 54% |
 | 60%–70% | 54 | 43% |
 | 70%–100% | 22 | 55% |
@@ -31,7 +31,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
 | deutlich unter Erwartung (< −10 %) | 42% (19) | 44% (9) | 46% (26) | 38% (47) |
-| unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 71% (17) | 43% (42) |
+| unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 71% (17) | 42% (43) |
 | im Rahmen (±2 %) | 25% (16) | 0% (2) | 33% (15) | 53% (30) |
 | über Erwartung (+2 bis +10 %) | 39% (23) | 29% (7) | 45% (44) | 48% (52) |
 | deutlich über Erwartung (> +10 %) | 41% (27) | 53% (17) | 63% (97) | 55% (85) |
@@ -60,7 +60,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-68 Fehlprognosen und 335 Vergleichsfälle untersucht.
+68 Fehlprognosen und 336 Vergleichsfälle untersucht.
 
 - Markt: Bei 36% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 19% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
 - Vorlauf (20 Handelstage davor): Fehlprognosen Ø -10.8%, getroffene Ø -4.7%.
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 202 Meldungen: Brier nachgeeicht 0.251 gegen gezeigt 0.254 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 202 Meldungen: Brier nachgeeicht 0.250 gegen gezeigt 0.254 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
