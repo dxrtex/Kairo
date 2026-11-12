@@ -12,8 +12,8 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 200 | 56% | 0.243 | 0.250 |
 | Ausblick gesenkt | 60 | 60% | 0.241 | 0.250 |
 | Ausblick bestätigt | 27 | 48% | 0.266 | 0.250 |
-| Ausblick angehoben | 137 | 49% | 0.270 | 0.250 |
-| Ausblick keine Meldung | 180 | 53% | 0.249 | 0.250 |
+| Ausblick angehoben | 138 | 49% | 0.270 | 0.250 |
+| Ausblick keine Meldung | 179 | 53% | 0.249 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -34,7 +34,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 71% (17) | 42% (43) |
 | im Rahmen (±2 %) | 25% (16) | 0% (2) | 33% (15) | 53% (30) |
 | über Erwartung (+2 bis +10 %) | 39% (23) | 29% (7) | 45% (44) | 48% (52) |
-| deutlich über Erwartung (> +10 %) | 41% (27) | 53% (17) | 63% (97) | 55% (85) |
+| deutlich über Erwartung (> +10 %) | 41% (27) | 53% (17) | 63% (98) | 55% (84) |
 
 ## Vorschläge zur Anpassung
 
