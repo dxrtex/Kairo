@@ -55,7 +55,8 @@
     // App lag im Hintergrund (iPad hält sie offen) und kommt nach über 2 Stunden oder am nächsten Tag zurück → volles Intro
     const x = rd(); if (hiddenAt && !current && !/nosplash/.test(location.search) && (Date.now() - hiddenAt >= GAP_MS || (x && x.d !== today()))) play({ full: true, readyAfter: 0 });
   });
-  let current = null;
+  let current = null, calmP = Promise.resolve();
+  const CALM_MS = 1750;
   // Nach dem Intro: Start-Schwarz entfernen, damit helle Designs ihre eigene Hintergrundfarbe zeigen
   const unboot = () => { const b = document.getElementById("preboot"); if (b) b.remove(); document.documentElement.style.background = ""; };
 
@@ -72,6 +73,13 @@
     // Volles Intro: erster Start des Tages, nach 2 Stunden Pause oder nach einem Update (neue INTRO_V); sonst nur kurz das Logo
     const short = !reduce && (opts.full === false || (opts.full !== true && seen()));
     if (short) el.classList.add("short");
+    // Flüssig (12.11.): bewegter Teil des vollen Intros bis ~1,75 s – so lange wartet die App mit ihrem Aufbau (KairoSplash.idle),
+    // sonst blockiert sie den Hauptthread und das SVG-Logo springt (Zoom ins Zeichen fiel aus, KAIRO rutschte von rechts herein)
+    let calmRes; calmP = new Promise(r => { calmRes = r; });
+    // Start erst, wenn der Browser das App-Programm eingelesen hat (sonst stockt die Kurslinie am Anfang): bis dahin steht das erste Bild
+    const parsing = !short && !reduce && document.readyState === "loading";
+    if (parsing) el.classList.add("pause");
+    if (!reduce) document.documentElement.classList.add("splashing");   // App unter dem Intro nicht zeichnen (nur anordnen) – spart Zeit, nichts stockt
     mark();
     let doneRes; const animDone = new Promise(r => { doneRes = r; });
     const useVideo = !reduce && !short && opts.video === true;          // altes Video-Intro nur noch auf Wunsch (Vorschau)
@@ -89,7 +97,12 @@
       el.appendChild(v);
       const pr = v.play(); if (pr && pr.catch) pr.catch(fallback);
       setTimeout(fallback, 1200);                                       // startet nicht rechtzeitig → Animation
-    } else setTimeout(doneRes, reduce ? 300 : short ? SHORT_MS : ANIM_MS);
+    }
+    const go = () => { el.classList.remove("pause");
+      if (!useVideo) setTimeout(doneRes, reduce ? 300 : short ? SHORT_MS : ANIM_MS);
+      setTimeout(calmRes, short || reduce ? 0 : CALM_MS); };
+    if (parsing) document.addEventListener("DOMContentLoaded", () => requestAnimationFrame(go), { once: true }); else go();
+    animDone.then(calmRes);                                              // übersprungen/fertig → App darf sofort aufbauen
     document.body.appendChild(el);
     const skip = () => { doneRes(); el.classList.add("skip"); };          // Antippen/Taste: sofort weiter, sobald die App bereit ist
     el.addEventListener("pointerdown", skip, { once: true }); const ks = e => { skip(); removeEventListener("keydown", ks); }; addEventListener("keydown", ks);
@@ -102,6 +115,7 @@
     Promise.race([Promise.all([animDone, ready]), new Promise(r => setTimeout(r, TIMEOUT_MS))]).then(() => {
       removeEventListener("keydown", ks);
       // Übergang: Logo gleitet genau an seinen Platz in der App (Seitenleiste bzw. Kopf) – sonst sanft wegzoomen
+      document.documentElement.classList.remove("splashing");
       const flew = !reduce && fly(el);
       el.classList.add(flew ? "fly" : "exit");
       setTimeout(() => { el.remove(); if (current === handle) current = null; unboot(); opts.onDone && opts.onDone(); }, reduce ? 280 : flew ? FLY_MS : EXIT_MS);
@@ -123,6 +137,8 @@
       return true;
     } catch (e) { return false; }
   }
-  window.KairoSplash = { play, ready() { if (current) current.ready(); } };
+  window.KairoSplash = { play, ready() { if (current) current.ready(); },
+    // Promise: erst auflösen, wenn das Intro nicht mehr in Bewegung ist (sofort, wenn kein Intro läuft)
+    idle() { return current ? calmP : Promise.resolve(); } };
   if (document.currentScript && document.currentScript.dataset.autoplay !== undefined && !/nosplash/.test(location.search)) play();
 })();
