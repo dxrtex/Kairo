@@ -279,7 +279,11 @@ async def backup_check(b, url, errs):
             errs.append(f"Backup: Schlüssel {'fehlen trotz' if keys else 'drin ohne'} Haken")
     await pg.evaluate("localStorage.removeItem('kx-td'); localStorage.removeItem('kairo-depot-v1')")
     await pg.set_input_files("#restoreFile", files[True])
-    await pg.wait_for_timeout(2500)
+    for _ in range(4):                                   # eigene Dialoge (Bestätigen, Hinweis) statt Browser-Popups
+        await pg.wait_for_timeout(700)
+        ok = await pg.query_selector('.kd [data-kd="1"]')
+        if ok: await ok.click()
+    await pg.wait_for_timeout(1500)
     got = await pg.evaluate("[localStorage.getItem('kx-td'), localStorage.getItem('kairo-depot-v1')]")
     await pg.goto(f"{url}?nosplash=1&sec=scanner")
     await pg.wait_for_timeout(2500)
