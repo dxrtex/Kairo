@@ -56,7 +56,7 @@ Schnelligkeit: erste Zahlen im Mittel 606 Min. nach der Meldezeit (90 % innerhal
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
-- NBIS 2026-11-12: Kairo 53% steigt, Kurs -18.0% · Gewinn +90% · Ausblick gesenkt – „Nebius Lowers Outlook, Addresses Worries Over Financing AI Buildout“
+- DAVE 2026-11-04: Kairo 53% steigt, Kurs -18.1% · Gewinn -2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
