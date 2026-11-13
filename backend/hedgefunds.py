@@ -52,17 +52,21 @@ FUNDS = [
 ACT_DE = {"neu": "neu gekauft", "auf": "aufgestockt", "ab": "reduziert", "raus": "komplett verkauft", "halt": "unverändert"}
 
 
+LAST = {"err": ""}
+
+
 def _get(url: str, **kw):
-    for i in range(3):
+    for i in range(4):
         try:
             r = requests.get(url, headers=UA, timeout=40, **kw)
             if r.status_code == 200:
                 return r
-            if r.status_code in (403, 404):
+            LAST["err"] = f"HTTP {r.status_code} {url.rsplit('/', 2)[-2:]}"
+            if r.status_code == 404:
                 return None
-        except requests.RequestException:
-            pass
-        time.sleep(1.5 * (i + 1))
+        except requests.RequestException as exc:
+            LAST["err"] = f"{type(exc).__name__} {url}"
+        time.sleep(2.0 * (i + 1))                          # 403/429 (Drosselung): kurz warten und erneut
     return None
 
 
@@ -113,7 +117,10 @@ def holdings(cik: int, acc: str) -> dict[str, dict]:
     r = _get(base + "/index.json")
     if not r:
         return {}
-    files = [x["name"] for x in r.json().get("directory", {}).get("item", []) if x["name"].lower().endswith(".xml")]
+    items = r.json().get("directory", {}).get("item", [])
+    files = [x["name"] for x in items if x["name"].lower().endswith(".xml")]
+    if not files:
+        LAST["err"] = "kein XML im Index: " + ", ".join(x["name"] for x in items[:6])
     files.sort(key=lambda n: (("info" not in n.lower() and "table" not in n.lower()), n.lower() == "primary_doc.xml"))
     for fn in files:
         if fn.lower() == "primary_doc.xml":
@@ -124,7 +131,9 @@ def holdings(cik: int, acc: str) -> dict[str, dict]:
                 h = parse_infotable(x.text)
                 if h:
                     return h
-            except ET.ParseError:
+                LAST["err"] = f"{fn}: kein infoTable (Anfang: {x.text[:120]!r})"
+            except (ET.ParseError, ValueError) as exc:
+                LAST["err"] = f"{fn}: {exc}"
                 continue
     return {}
 
@@ -193,7 +202,7 @@ def name_map() -> dict[str, str]:
     return out
 
 
-def build(sleep: float = .15) -> dict:
+def build(sleep: float = .35) -> dict:
     cache = {}
     if CACHE.exists():
         try:
@@ -210,8 +219,13 @@ def build(sleep: float = .15) -> dict:
         new = holdings(cik, fl[0]["acc"]); time.sleep(sleep)
         old = holdings(cik, fl[1]["acc"]) if len(fl) > 1 else {}; time.sleep(sleep)
         if not new:
-            print(f"{name}: Meldung ohne lesbare Positionen")
+            print(f"{name}: Meldung ohne lesbare Positionen – {LAST['err']}")
             continue
+        for h in (new, old):                               # manche Fonds melden noch in Tausend USD: Ø-Kurs je Aktie < 1 $ → ×1000
+            sh, vl = sum(x["sh"] for x in h.values()), sum(x["val"] for x in h.values())
+            if sh and vl / sh < 1:
+                for x in h.values():
+                    x["val"] *= 1000
         mv = compare(new, old)
         tot = sum(x["val"] for x in new.values())
         top = sorted([m for m in mv if m["a"] != "raus"], key=lambda m: -m["val"])[:25]
