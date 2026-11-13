@@ -337,6 +337,7 @@ def watch_messages(today: str, rows: list[dict] | None = None) -> list[dict]:
                         "url": APP + f"?sec=entry&t={t}", "tag": "kairo-watch"})
     new = {n: [max(v, (old.get(n) or [0])[0]), today] for n, (v, r) in lvl.items() if v}
     state.save("watch_state.json", {**old, **new})
+    out += trendline_messages(today, rows)
     if len(out) > 5:                                   # erste Prüfung bzw. viele auf einmal: eine Sammel-Mitteilung statt Flut
         names = [m["_n"] for m in out]
         out = [{"title": f"👀 Watchlist: {len(out)} Aktien kurz vor oder bei einem Treffer",
@@ -344,6 +345,35 @@ def watch_messages(today: str, rows: list[dict] | None = None) -> list[dict]:
                 "url": APP + "?sec=scanner", "tag": "kairo-watch"}]
     print(f"Watchlist: {len(out)} Mitteilung(en){' (erste Prüfung)' if first else ''}")
     return [{k: v for k, v in m.items() if k != "_n"} for m in out]
+
+
+def trendline_messages(today: str, rows: list[dict]) -> list[dict]:
+    """Watchlist: Mitteilung, wenn der Kurs eine Trendlinie der Auto-Analyse bricht (r["tl"]["brk"] aus backend/autota.py).
+    Je Firma und Richtung höchstens einmal in 10 Tagen (state/tl_state.json). Reine Information, kein Kaufsignal."""
+    from . import state
+    old = {k: d for k, d in state.load("tl_state.json", {}).items() if isinstance(d, str) and d >= _days_ago(today, 10)}
+    out, seen = [], set()
+    for r in rows:
+        tl = r.get("tl") or {}
+        b = tl.get("brk")
+        n = (r.get("name") or r["ticker"])[:28]
+        if not r.get("in_watchlist") or b not in ("up", "down") or (n, b) in seen:
+            continue
+        seen.add((n, b))
+        key = f"{n}|{b}"
+        if key in old:
+            continue
+        old[key] = today
+        ln = tl.get("res" if b == "up" else "sup") or {}
+        lvl = f" bei {_num(ln['now'])}" if ln.get("now") else ""
+        out.append({"_n": n, "title": f"📈 {n}: fallende Trendlinie überwunden" if b == "up" else f"📉 {n}: Trendlinie nach unten gebrochen",
+                    "body": (f"Der Kurs schloss über der fallenden Trendlinie{lvl} ({ln.get('touch', 2)} Berührungen). "
+                             if b == "up" else f"Der Kurs schloss unter der steigenden Trendlinie{lvl} ({ln.get('touch', 2)} Berührungen). ")
+                            + "Info aus der Auto-Analyse – kein Kairo-Signal.",
+                    "url": APP + f"?sec=chart&t={r['ticker']}", "tag": "kairo-tl"})
+    state.save("tl_state.json", old)
+    print(f"Trendlinien: {len(out)} Mitteilung(en)")
+    return out
 
 
 H4_PUSH = False

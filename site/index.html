@@ -2419,6 +2419,13 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .fd-f > summary::-webkit-details-marker { display: none; } .fd-f > summary span { display: flex; flex-direction: column; } .fd-f > summary small { color: var(--muted); font-size: 13px; }
 .fd-f[open] .nr-ch { transform: rotate(90deg); } .fd-b { padding: 0 2px 12px; }
 </style>
+<style id="echip">.echip{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:600;color:#ff9f0a;background:rgba(255,159,10,.14);white-space:nowrap;vertical-align:middle}
+.echip.hot{color:#ff453a;background:rgba(255,69,58,.14)}.wt{white-space:nowrap;font-size:12px;font-weight:600;color:var(--muted)}.wt i{font-style:normal;margin:0 3px 0 1px}
+.ft-d{margin:0 0 10px}.ft-d summary{cursor:pointer;font-weight:600;font-size:14px;padding:4px 0}.ft-r{display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:8px;padding:7px 0;border-top:1px solid var(--line);align-items:center}
+.ft-l{font-size:13px;color:var(--muted)}.ft-cs{display:flex;flex-wrap:wrap;gap:6px}.ft-c{display:inline-flex;gap:5px;align-items:baseline;padding:3px 8px;border-radius:8px;background:var(--surface2,rgba(127,127,127,.1));font-size:12px}
+.ft-c em{font-style:normal;color:var(--muted)}.ft-c small{color:var(--muted)}@media(max-width:520px){.ft-r{grid-template-columns:1fr}}
+.au-q{display:block;margin-top:3px;font-size:11.5px}
+.mtags{display:flex;gap:6px;align-items:center;margin-top:3px}.mtags .echip{margin-left:0}.aitem .an .echip{margin:3px 0 0;align-self:flex-start}</style>
 <style id="kdlg">
 /* Eigene Dialoge statt Browser-Popups (confirm/alert/prompt) – Glas, Feder, Tastatur */
 .kd { position: fixed; inset: 0; z-index: 95; display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -3122,9 +3129,20 @@ const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.
 }), { rootMargin: "200px" }) : null;
 
 // ---------- Tabelle ----------
+// Runde 13.11.: Zahlen-Abzeichen (Quartalszahlen in ≤ 14 Tagen) und Trend Woche/Tag – reine Info, kein Filter, die Kairo-Regel bleibt
+function earnDays(r) { const d = r && r.earnings_date; if (!d) return null; const t = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Berlin" }) + "T12:00:00"), e = new Date(d + "T12:00:00");
+  const n = Math.round((e - t) / 864e5); return n >= 0 && n <= 14 ? n : null; }
+function earnChip(r) { const n = earnDays(r); return n == null ? "" : `<span class="echip${n <= 3 ? " hot" : ""}" title="Quartalszahlen am ${dateDE(r.earnings_date)} – Kurse springen dann oft stark">Zahlen ${n === 0 ? "heute" : n === 1 ? "morgen" : `in ${n} T.`}</span>`; }
+function wtOf(r) { const f = r.flags || {}, c = r.close, w = r.wk || {};
+  const d = c > 0 && f.ema20 && f.ema50 ? (c > f.ema20 && f.ema20 > f.ema50 ? 1 : c < f.ema20 && f.ema20 < f.ema50 ? -1 : 0) : null;
+  const wv = w.tone === "green" ? 1 : w.tone === "red" ? -1 : w.tone ? 0 : null; return { w: wv, d }; }
+function wtHtml(r) { const { w, d } = wtOf(r); if (w == null && d == null) return `<span class="muted">–</span>`;
+  const a = v => v == null ? `<i class="muted">·</i>` : v > 0 ? `<i class="up">▲</i>` : v < 0 ? `<i class="down">▼</i>` : `<i class="muted">◆</i>`;
+  const tx = v => v == null ? "–" : v > 0 ? "aufwärts" : v < 0 ? "abwärts" : "seitwärts";
+  return `<span class="wt" title="Woche: ${tx(w)} · Tag: ${tx(d)} (Kurs zu EMA 20/50). Kairo kauft bewusst Rücksetzer – nur Info.">W${a(w)} T${a(d)}</span>`; }
 const COLS = [
   { k: "ticker", l: "Ticker", g: r => r.ticker, h: r => `<span class="tk">${favBtn(r.ticker)}<a href="#" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${esc(r.ticker)}</a>${wlTag(r)}</span>` },
-  { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm nm-l" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${cfAv(r.ticker)}<span>${esc(r.name || r.ticker)}</span></a>` },
+  { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm nm-l" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${cfAv(r.ticker)}<span>${esc(r.name || r.ticker)}</span></a>${earnChip(r)}` },
   { k: "trend", l: "Prognose", g: r => r.trend ? (r.trend.fc ? r.trend.fc.d : r.trend.slope + (r.trend.d5 ?? 0) / 10) : 0, h: r => trendHtml(r) || "–" },
   { k: "status", l: "Kauf-Status", g: r => r.passed ? kSt(r).lv : -1, h: r => r.passed ? kPill(r, false) : "" },   // nur Treffer: wann kaufen (Treffer/Fast-Treffer steht schon in x/11)   // in „Treffer“ ohne doppeltes „Treffer“
   { k: "chk", l: "Rücksetzer-Check", n: 1, g: r => chkP(r) ?? -1, h: r => chkCell(r) },
@@ -3136,6 +3154,7 @@ const COLS = [
     return u == null ? `<span class="muted">–</span>` : `<b class="${u >= 0 ? "up" : "down"}">${u >= 0 ? "+" : ""}${pct(u, 0)}</b><small style="display:block" class="muted">Ø ${fmt(t.m)}${r.senti.an && r.senti.an.n ? ` · ${r.senti.an.n} Anal.` : ""}</small>`; } },
   { k: "dd", l: "Rückgang", n: 1, g: r => r.drawdown ?? 0, h: r => `<span class="${(r.drawdown ?? 0) >= 0 ? "down" : "up"}">${ddFmt(r.drawdown)}</span>` },
   { k: "zone", l: "Zone", g: r => r.zone_type, h: r => esc(r.zone_type) },
+  { k: "wt", l: "Trend W/T", g: r => { const x = wtOf(r); return (x.w ?? 0) * 2 + (x.d ?? 0); }, h: r => wtHtml(r) },
   { k: "vola", l: "Volatilität", n: 1, g: r => r.volatility ?? -1, h: r => `<span class="${volaCls(r.volatility)}" title="Ø Tagesspanne (ATR) ${pct(r.atr_pct)}">${pct(r.volatility, 0)}</span>` },
   { k: "rsi", l: "RSI", n: 1, g: r => r.rsi, h: r => fmt(r.rsi, 1) },
   { k: "div", l: "Divergenz", g: r => r.divergence || "", h: r => esc(r.divergence || "–") },
@@ -7250,6 +7269,35 @@ function yearBarsSvg() {
     <div class="oleg"><span class="up">■ Stichprobe 1</span><span style="color:var(--accent, #0a84ff)">■ Stichprobe 2</span><span class="muted">* bis Oktober</span></div>`;
 }
 // Deine eigenen abgeschlossenen Trades (Trade-Pläne) gegen die Erwartung der Studie
+// Runde 13.11. (Wunsch „Deine Trades nach Merkmal“): beim Kauf festhalten, was sonst noch für/gegen die Aktie sprach –
+// die Bilanz zeigt später Ø R je Merkmal. Nur Auswertung deiner eigenen Trades, die Kairo-Regel bleibt unverändert.
+const SEC_XL = { "Basic Materials": "XLB", "Communication Services": "XLC", "Consumer Cyclical": "XLY", "Consumer Defensive": "XLP", "Energy": "XLE",
+  "Financial Services": "XLF", "Healthcare": "XLV", "Industrials": "XLI", "Real Estate": "XLRE", "Technology": "XLK", "Utilities": "XLU" };
+async function tradeFeat(t, sec) {
+  const f = {};
+  try { const g = insSig(t); f.ins = g && g.score ? 1 : 0; const v = smView(t); if (v && v.fs) f.sm = v.fs.buy - v.fs.sell > 0 ? 1 : v.fs.buy - v.fs.sell < 0 ? -1 : 0;
+    const row = (data.results || []).find(x => x.ticker === t); if (row) { const w = wtOf(row); if (w.w != null) f.wk = w.w; f.earn = earnDays(row) != null ? 1 : 0; }
+    const xs = anaData && anaData.market && anaData.market.sectors, k = SEC_XL[sec || (row && row.sector) || ""];
+    if (xs && k) { const o = xs.filter(x => x.m3 != null).sort((a, b) => b.m3 - a.m3), i = o.findIndex(x => x.k === k); if (i >= 0) f.sec = i < 3 ? 1 : i >= o.length - 3 ? -1 : 0; }
+    const L = window.__lastChart, c = L && L.r && L.r.ticker === t ? L.c : await Promise.race([loadChart(t), new Promise(z => setTimeout(() => z(null), 4000))]);
+    const A = c && autoTA(c); if (A) { f.au = A.tech.sc >= 1.5 ? 1 : A.tech.sc <= -1.5 ? -1 : 0; const p = A.pats.find(q => q.bull != null); f.pat = p ? (p.bull ? 1 : -1) : 0; }
+  } catch (e) {}
+  return f;
+}
+const FEAT_ROWS = [["ins", "Insider-Käufe (90 Tage)", { 1: "ja", 0: "nein" }], ["sm", "Hedgefonds (13F)", { 1: "kaufen netto", 0: "ausgeglichen", "-1": "verkaufen netto" }],
+  ["au", "Auto-Analyse Trend", { 1: "aufwärts", 0: "gemischt", "-1": "abwärts" }], ["pat", "Chartmuster", { 1: "bullisch", 0: "keins", "-1": "bärisch" }],
+  ["wk", "Wochentrend", { 1: "aufwärts", 0: "seitwärts", "-1": "abwärts" }], ["sec", "Sektor (3 Monate)", { 1: "Top 3", 0: "Mitte", "-1": "letzte 3" }],
+  ["mk", "Marktampel", { weak: "grün · Ausverkauf", mixed: "gelb", strong: "grau · gesund" }], ["earn", "Quartalszahlen ≤ 14 Tage", { 1: "ja", 0: "nein" }]];
+function featHtml(done) {
+  const val = (p, k) => k === "mk" ? p.mk : p.ft ? p.ft[k] : undefined, withF = done.filter(p => p.ft);
+  const rows = FEAT_ROWS.map(([k, l, map]) => { const g = {}; done.forEach(p => { const v = val(p, k); if (v == null || !(String(v) in map)) return; (g[v] = g[v] || []).push(p.R); });
+    const cells = Object.keys(map).filter(v => g[v]).map(v => { const a = g[v], m = a.reduce((x, y) => x + y, 0) / a.length;
+      return `<span class="ft-c"><em>${esc(map[v])}</em><b class="${m >= 0 ? "up" : "down"}">${m >= 0 ? "+" : ""}${fmt(m, 2)} R</b><small>${a.length}×</small></span>`; });
+    return cells.length ? `<div class="ft-r"><span class="ft-l">${l}</span><div class="ft-cs">${cells.join("")}</div></div>` : ""; }).join("");
+  return `<details class="ft-d"${withF.length >= 5 ? " open" : ""}><summary>Nach Merkmal · Ø R je Gruppe</summary>
+    ${rows || `<div class="note" style="margin:6px 0 0">Ab jetzt merkt sich Kairo bei jedem Kauf Insider, Hedgefonds, Auto-Analyse, Wochentrend, Sektor und Zahlen-Termin.</div>`}
+    <div class="note" style="margin:6px 0 0">${withF.length} von ${done.length} Trades mit Merkmalen (erfasst seit 13.11.2026). Erst ab etwa 10 Trades je Gruppe aussagekräftig – vorher ist es Zufall. Nur Auswertung, die Kairo-Regel bleibt.</div></details>`;
+}
 function myTradesHtml() {
   const all = plansLoad().filter(p => p.st === "closed" && p.R != null).sort((a, b) => (b.xd || "") < (a.xd || "") ? -1 : 1);
   const done = all, nP = all.filter(p => p.paper).length, nR = all.length - nP;
@@ -7266,6 +7314,7 @@ function myTradesHtml() {
       <div class="mt"><span>Gewinner</span><b>${pct(win, 0)}</b><em>wenige große tragen</em></div>
       <div class="mt"><span>Summe</span><b class="${sum >= 0 ? "up" : "down"}">${sgnEur(sum)}</b><em>geschätzt</em></div></div>
     <div class="note" style="margin:0 0 8px">${ic} ${txt}.${early ? ` ${early}× vor dem Verkaufstag verkauft, ohne dass der Stop griff – das weicht von den Regeln ab und kostet im Test Rendite.` : ""}</div>
+    ${featHtml(done)}
     <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Aktie</th><th class="num">Kauf → Verkauf</th><th class="num">Tage</th><th>Ergebnis</th></tr></thead><tbody>
       ${done.slice(0, 20).map(p => `<tr><td><b>${esc(p.n)}</b><small>${p.paper ? "Übung · " : ""}${p.h4 === "go" ? "4H · " : ""}${p.L > 1 ? `Turbo ×${p.L}` : "Aktie"}</small></td><td class="num">${dateDE(p.d)}<small>${p.xd ? dateDE(p.xd) : ""}</small></td>
         <td class="num">${p.xd ? bdBetween(new Date(p.d + "T12:00:00"), new Date(p.xd + "T12:00:00")) + 1 : "–"}</td>
@@ -7501,8 +7550,14 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.120";
-const APP_NEWS = [["2026.11.120", "Zahlen-Zentrale", [
+const APP_VER = "2026.11.121";
+const APP_NEWS = [["2026.11.121", "Auto-Analyse ausgebaut", [
+  ["Auto-Analyse immer im Chart", "Trendlinien, Chartmuster und Kursziele sind jetzt standardmäßig eingezeichnet – ausschalten über Ebenen → Auto-Analyse."],
+  ["Wochen-Trendlinien", "Zusätzlich die Trendlinien aus dem Wochenchart (lang gestrichelt) – das größere Bild direkt im Tageschart."],
+  ["Alarm bei Trendlinien-Bruch", "Für Aktien deiner Watchlist kommt eine Mitteilung, wenn der Kurs eine Trendlinie bricht oder eine fallende überwindet."],
+  ["Zahlen und Trend im Scanner", "Abzeichen „Zahlen in 6 T.“ direkt in der Liste und die neue Spalte „Trend W/T“ (Woche und Tag) – nur zur Info."],
+  ["Deine Trades nach Merkmal", "Kairo merkt sich beim Kauf Insider, Hedgefonds, Auto-Analyse, Wochentrend, Sektor und Zahlen-Termin. Die Bilanz zeigt dann Ø R je Merkmal."]]],
+  ["2026.11.120", "Zahlen-Zentrale", [
   ["Quartalszahlen je Aktie", "In der Übersicht und im Chart: nächster Termin, typische Kursbewegung danach, wie oft die Erwartung geschlagen wurde, Erwartung und letztes Ergebnis – „Details“ öffnet die volle Ansicht."],
   ["Im Depot", "„Quartalszahlen deiner Positionen“ zeigt die nächsten 30 Tage mit dem Betrag, um den deine Position an diesem Tag typischerweise schwankt."]]],
   ["2026.11.119", "Smart Money: Insider + Hedgefonds", [
@@ -8947,11 +9002,11 @@ async function tpOpen(t) {
   const lv = alt || sugL;
   if (!lv || lv.stake > m.free + 1e-6 || (lv.L === 1 && !(lv.qty > 0))) { await kSay(`Nicht genug freies Kapital für diesen Trade (frei ${eur(m.free)}).`); return; }
   if (!m.fit.ok && !await kConfirm(`${m.fit.t}.\n\nDieser Trade weicht von der getesteten Regel ab. Trotzdem speichern?`)) return;
-  const l = plansLoad();
+  const ft = await tradeFeat(t, r.sec), l = plansLoad();
   if (l.filter(p => p.st === "open").length >= m.cfg.maxOpen && !await kConfirm(`Schon ${m.cfg.maxOpen} offene Trades – Gesamtrisiko steigt. Trotzdem eröffnen?`)) return;
   l.unshift({ id: Date.now().toString(36), t, n: r.n, cur: r.cur, setup: S.k, h4: m.h4 ? (h4Go(m.h4) ? "go" : m.h4.st) : null, d: isoD(m.d0), scan: String(data.generated).slice(0, 10),
               E: +m.E, stop: (((state.tpT || {})[t] || {}).us > 0 ? ((state.tpT || {})[t]).us / (toEur(1, r.cur || "EUR") || 1) : m.stop), atr: m.atr, L: lv.L, ko: lv.ko, expo: Math.round(lv.expo), stake: Math.round(lv.stake), qty: lv.qty,
-              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, ema: m.ema ? 1 : 0, exit: isoD(m.exit), exit2: isoD(m.exit2), sec: r.sec || null, tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, st: "open", paper: paperMode() });
+              risk: +lv.rEff.toFixed(2), cost: +lv.cost.toFixed(2), hold: m.hold, ema: m.ema ? 1 : 0, exit: isoD(m.exit), exit2: isoD(m.exit2), sec: r.sec || null, tp: m.tp, res: m.res.slice(0, 3), mk: m.mk ? m.mk.k : null, ft, st: "open", paper: paperMode() });
   plansSave(l); render(); window.scrollTo({ top: 0, behavior: "smooth" });
 }
 // 4H-Trades: ab Tag 10 Verkauf, sobald ein Tag unter der EMA 20 schließt (Kurs und EMA vom letzten Scan = Tagesschluss)
@@ -9424,7 +9479,7 @@ function mListHtml(list, col) {
   const big = r => isTrend(r) && !r.passed ? `${r.tr.met}/${r.tr.total}` : `${r.met ?? "–"}/${r.total ?? 11}`;
   return `<div class="mlist"><label class="msort">Sortieren<select id="mSort">${sortable.map(c => `<option value="${c.k}"${c.k === sel ? " selected" : ""}>${esc(c.l)}</option>`).join("")}</select></label>
     ${list.map(r => `<div class="mrow">${favBtn(r.ticker)}${cfAv(r.ticker)}<a href="#" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}"><b>${esc((r.name || r.ticker).slice(0, 30))}</b>
-      <span>${esc(r.ticker)} · ${fmt(r.close)} ${esc(r.currency || "")}${r.market_cap_usd ? ` · ${fmtCap(r.market_cap_usd)}` : ""}${r.senti && r.senti.tgt ? ` · Ziel ${sgnPct(r.senti.tgt.up, 0)}` : ""}</span></a>
+      <span>${esc(r.ticker)} · ${fmt(r.close)} ${esc(r.currency || "")}${r.market_cap_usd ? ` · ${fmtCap(r.market_cap_usd)}` : ""}${r.senti && r.senti.tgt ? ` · Ziel ${sgnPct(r.senti.tgt.up, 0)}` : ""}</span>${earnChip(r) || wtOf(r).w != null ? `<span class="mtags">${earnChip(r)}${wtHtml(r)}</span>` : ""}</a>
       <div class="mr">${pill(r)}<em>${big(r)}</em></div></div>`).join("")}</div>`;
 }
 function aSortHtml(col) {
@@ -9437,7 +9492,7 @@ function aStatus(r) {
 }
 function aListHtml(list) {
   return `<div class="alist">${list.map(r => { const [c, t] = aStatus(r);
-    return `<a href="#" class="aitem" data-card="${esc(r.ticker)}"><span class="an"><b>${esc(r.name || r.ticker)}</b><em><i class="sd ${c}"></i>${esc(r.ticker)} · ${esc(t)}</em></span>
+    return `<a href="#" class="aitem" data-card="${esc(r.ticker)}"><span class="an"><b>${esc(r.name || r.ticker)}</b><em><i class="sd ${c}"></i>${esc(r.ticker)} · ${esc(t)}</em>${earnChip(r)}</span>
       <svg class="spark" data-spark="${esc(r.ticker)}" viewBox="0 0 80 32" preserveAspectRatio="none" aria-hidden="true"></svg>
       <span class="ap"><b>${fmt(r.close)}</b><i class="chgp" data-chg="${esc(r.ticker)}">–</i></span></a>`; }).join("")}</div>`;
 }
@@ -9602,7 +9657,7 @@ async function openDetail(t) {
 
 // ---------- Haupt-Chart: Fibonacci als Linien, Unterstützungen/Widerstände, EMAs – alles mit Ein/Aus-Schaltern ----------
 // Ein Baustein für Detailseite und Vollbild-Cockpit; Schalter (state.cl) wirken sofort in allen offenen Charts.
-const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 1, auto: 0 };   // EMA 100 aus: weniger Linien im Standard
+const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 1, auto: 1 };   // Auto-Analyse seit 13.11. standardmäßig an   // EMA 100 aus: weniger Linien im Standard
 const clGet = (k, auto) => { const v = (state.cl || {})[k]; return v == null ? (k in CL_DEF ? CL_DEF[k] : auto ? 1 : 0) : v; };
 const CL_LIVE = new Set();
 const FIBQ = [[0, "Hoch"], [.382, "38,2 %"], [.5, "50 %"], [.618, "61,8 %"], [.706, "70,6 %", 1], [.786, "78,6 %", 1], [.886, "88,6 %"], [1, "Tief"]];   // betont: Kaufzone Golden Pocket
@@ -9637,6 +9692,28 @@ function autoTA(c) {
   const sup = tl(lows, true), res = tl(highs, false);
   [sup, res].forEach(x => x && out.lines.push({ kind: x.lo ? "sup" : "res", i1: x.a.i, p1: x.a.p, i2: n - 1, p2: x.now, touch: x.touch, dist: x.dist,
     t: x.lo ? "Steigende Trendlinie" : "Fallende Trendlinie" }));
+  // 1b) Wochen-Trendlinien (Runde 13.11., wie TrendSpider „Multi-Timeframe“): dieselbe Suche auf Wochenkerzen über die ganze Historie –
+  // zeigt das größere Bild; gezeichnet im Tageschart ab dem Tag des Wochen-Hochs/-Tiefs
+  { const wb = []; let cur = null;
+    for (let i = 0; i < n; i++) { const d = new Date(c.t[i] + "T12:00:00"), nx = i + 1 < n ? new Date(c.t[i + 1] + "T12:00:00") : null;
+      if (!cur) cur = { h: -Infinity, l: Infinity, ih: i, il: i };
+      if (H[i] != null && H[i] > cur.h) { cur.h = H[i]; cur.ih = i; } if (L[i] != null && L[i] < cur.l) { cur.l = L[i]; cur.il = i; }
+      if (!nx || nx.getDay() < d.getDay() || nx - d > 4 * 864e5) { cur.c = C[i]; cur.i = i; wb.push(cur); cur = null; } }
+    const m = wb.length; let watr = 0; for (let k = Math.max(1, m - 14); k < m; k++) watr += Math.max(wb[k].h - wb[k].l, Math.abs(wb[k].h - wb[k - 1].c), Math.abs(wb[k].l - wb[k - 1].c)); watr /= Math.min(14, Math.max(1, m - 1));
+    const wp = lo => { const o = []; for (let k = 3; k < m - 1; k++) { const v = lo ? wb[k].l : wb[k].h; let ok = true;
+      for (let j = k - 3; j <= Math.min(m - 1, k + 3); j++) if (j !== k && (lo ? wb[j].l < v : wb[j].h > v)) { ok = false; break; } if (ok) o.push({ k, p: v }); } return o; };
+    const wtl = (P, lo) => { let best = null;
+      for (let a = 0; a < P.length; a++) for (let b = a + 1; b < P.length; b++) { const A = P[a], B = P[b]; if (B.k - A.k < 8) continue;
+        const sl = (B.p - A.p) / (B.k - A.k); if (lo ? sl <= 0 : sl >= 0) continue; const at = k => A.p + sl * (k - A.k); let bad = false, touch = 0;
+        for (let k = A.k; k < m - 1; k++) if (lo ? wb[k].c < at(k) - .35 * watr : wb[k].c > at(k) + .35 * watr) { bad = true; break; }
+        if (bad) continue; P.forEach(q => { if (q.k >= A.k && Math.abs(q.p - at(q.k)) <= .5 * watr) touch++; });
+        const now = at(m - 1), dist = (last - now) / last; if (Math.abs(dist) > .15 || touch < 2) continue;
+        const sc = touch * 2 + B.k / m; if (!best || sc > best.sc) best = { A, B, now, touch, sc, dist, lo }; } return best; };
+    if (m >= 40 && watr > 0) { const ws = wtl(wp(true), true), wr = wtl(wp(false), false);
+      const dup = x => out.lines.some(l => !l.wk && (l.kind === "sup") === x.lo && Math.abs(l.p2 - x.now) / last < .02);   // fast gleich wie die Tageslinie: nur eine zeigen
+      [ws, wr].forEach(x => x && !dup(x) && out.lines.push({ kind: x.lo ? "sup" : "res", wk: true, i1: x.lo ? wb[x.A.k].il : wb[x.A.k].ih, p1: x.A.p, i2: n - 1, p2: x.now, touch: x.touch, dist: x.dist,
+        t: x.lo ? "Steigende Wochen-Trendlinie" : "Fallende Wochen-Trendlinie" }));
+      out.wsup = ws; out.wres = wr; out.watr = watr; } }
   // 2) Chartmuster auf den letzten ~150 Kerzen
   const rec = i => i >= n - 150, pk = (i1, i2, lo) => { let b = i1; for (let k = i1; k <= i2; k++) if (lo ? L[k] < L[b] : H[k] > H[b]) b = k; return b; };
   const pat = (k, name, bull, pts, neck, target, st, why) => out.pats.push({ k, name, bull, pts, neck, target, st, why });
@@ -9699,7 +9776,9 @@ function autoTA(c) {
     if (last > hi52) pat("hi", "Neues 52-Wochen-Hoch", true, [], null, null, "heute", `über ${fmt(hi52)}`);
     if (last < lo52) pat("lo", "Neues 52-Wochen-Tief", false, [], null, null, "heute", `unter ${fmt(lo52)}`);
     if (sup && last < sup.now - .3 * atr) pat("tlb", "Trendlinie nach unten gebrochen", false, [], null, null, "heute", `steigende Linie bei ${fmt(sup.now)}`);
-    if (res && last > res.now + .3 * atr) pat("tlu", "Fallende Trendlinie überwunden", true, [], null, null, "heute", `Linie bei ${fmt(res.now)}`); }
+    if (res && last > res.now + .3 * atr) pat("tlu", "Fallende Trendlinie überwunden", true, [], null, null, "heute", `Linie bei ${fmt(res.now)}`);
+    if (out.wsup && last < out.wsup.now - .3 * out.watr) pat("wtlb", "Wochen-Trendlinie nach unten gebrochen", false, [], null, null, "heute", `steigende Wochenlinie bei ${fmt(out.wsup.now)}`);
+    if (out.wres && last > out.wres.now + .3 * out.watr) pat("wtlu", "Fallende Wochen-Trendlinie überwunden", true, [], null, null, "heute", `Wochenlinie bei ${fmt(out.wres.now)}`); }
   // 3) Technik-Check: Trend je Zeitebene, Momentum, Volatilität, Volumen
   const ema = (a, p) => { const k = 2 / (p + 1); let e = null; return a.map(v => (e = e == null ? v : e + k * (v - e))); };
   const wk = []; for (let i = 0; i < n; i++) { const d = new Date(c.t[i] + "T12:00:00"), nx = i + 1 < n ? new Date(c.t[i + 1] + "T12:00:00") : null; if (!nx || nx.getDay() < d.getDay() || nx - d > 4 * 864e5) wk.push(C[i]); }
@@ -10142,7 +10221,7 @@ function buildMain(el, c, r, opts) {
     if (clGet("sup")) M.lines.forEach(L => it.lines.push({ p: L.p, from: L.from, c: L.kind === "s" ? "74,163,255" : "255,128,118", w: 1.6, a: .9,
       l: `${L.kind === "s" ? "Unterstützung" : "Widerstand"} · ${L.n}×${L.scan ? " (Kairo)" : ""}`, lr: fmt(L.p), pri: L.scan ? 2.5 : 1.5 }));
     if (clGet("auto")) { const A = h.A || (h.A = autoTA(c));   // Auto-Analyse: Trendlinien, Muster-Linien, Nackenlinie, Kursziel
-      if (A) { A.lines.forEach(l => it.segs.push({ i1: l.i1, p1: l.p1, i2: l.i2, p2: l.p2, c: l.kind === "sup" ? "90,200,250" : "255,105,180", w: 1.8, a: .95, dash: [] }));
+      if (A) { A.lines.forEach(l => it.segs.push({ i1: l.i1, p1: l.p1, i2: l.i2, p2: l.p2, c: l.kind === "sup" ? "90,200,250" : "255,105,180", w: l.wk ? 2.6 : 1.8, a: l.wk ? .7 : .95, dash: l.wk ? [10, 5] : [] }));
         A.pats.forEach(pt => { const col = pt.bull === false ? "255,105,97" : pt.bull ? "52,211,153" : "200,200,210";
           for (let k = 1; k < pt.pts.length; k++) it.segs.push({ i1: pt.pts[k - 1][0], p1: pt.pts[k - 1][1], i2: pt.pts[k][0], p2: pt.pts[k][1], c: col, w: 1.6, a: .9, dash: [] });
           if (pt.neck) { if (pt.neck.i2 != null) it.segs.push({ i1: pt.neck.i, p1: pt.neck.p, i2: pt.neck.i2, p2: pt.neck.p2, c: col, w: 1.2, a: .9, dash: [4, 3] });
@@ -10227,11 +10306,22 @@ document.addEventListener("click", e => {
 });
 // ---------- Chart-Cockpit (Vollbild): großer Chart, alle Schalter, Zeitraum, Plan, Fibonacci-Stufen, Linien, Kriterien ----------
 // Auto-Analyse-Karte in der Chart-Leiste: Gesamtbild, Trend je Zeitebene, Muster mit Status und Ziel, Trendlinien, Schlüsselmarken
+// Trefferquote je Formation (tools/patstudy.js, 10 Jahre, alle 5 Tage die Auto-Analyse wie in der App): Richtung nach 20 Handelstagen
+// und – bei Mustern mit rechnerischem Ziel – Ziel vor dem Gegenpunkt erreicht. Prüfjahre ab 2024. Wird mit der Studie gefüllt.
+const PAT_STATS = null;
+const patId = p => p.k + (p.st === "bestätigt" || String(p.st).startsWith("Ausbruch") ? "+" : p.st === "in Bildung" ? "~" : "");
+function patStatHtml(p) {
+  const S = PAT_STATS, x = S && S.pats[patId(p)]; if (!x) return "";
+  const L = x.L || {}, P = x.P || {}, n = (L.n || 0) + (P.n || 0); if (n < 30 || p.bull == null) return "";
+  const dir = ((L.dir || 0) * (L.n || 0) + (P.dir || 0) * (P.n || 0)) / n, b = S.base, bu = ((b.L.up * b.L.n) + (b.P.up * b.P.n)) / (b.L.n + b.P.n), base = p.bull ? bu : 1 - bu;
+  const tg = (L.tg || 0) + (P.tg || 0), hit = tg ? ((L.hit || 0) * (L.tg || 0) + (P.hit || 0) * (P.tg || 0)) / tg : null, edge = dir - base;
+  return `<small class="au-q ${edge >= .03 ? "up" : edge <= -.03 ? "down" : "muted"}">Im Test (${fmt(n, 0)}×, 10 Jahre): nach 20 Tagen ${pct(dir, 0)} ${p.bull ? "höher" : "tiefer"} – Zufall ${pct(base, 0)}${hit != null ? ` · Ziel erreicht ${pct(hit, 0)}` : ""}${edge >= .03 ? "" : edge <= -.03 ? " · schlechter als Zufall" : " · kaum besser als Zufall"}</small>`;
+}
 function autoCardHtml(h) {
   const c = window.__lastChart && window.__lastChart.c, A = h.A || (h.A = c ? autoTA(c) : null); if (!A) return "";
   const T = A.tech, arr = v => v > 0 ? `<b class="up">▲ aufwärts</b>` : v < 0 ? `<b class="down">▼ abwärts</b>` : `<b class="muted">◆ seitwärts</b>`, last = c.c[c.c.length - 1];
   const pats = A.pats.map(p => `<div class="au-p ${p.bull === false ? "bear" : p.bull ? "bull" : ""}"><div><b>${esc(p.name)}</b><span class="au-st">${esc(p.st)}</span></div>
-      <small>${esc(p.why)}${p.target ? ` · rechnerisches Ziel ${fmt(p.target)} (${sgnPct(p.target / last - 1, 0)})` : ""}</small></div>`).join("");
+      <small>${esc(p.why)}${p.target ? ` · rechnerisches Ziel ${fmt(p.target)} (${sgnPct(p.target / last - 1, 0)})` : ""}</small>${patStatHtml(p)}</div>`).join("");
   const lns = A.lines.map(l => `<div class="cf-r"><span><i style="background:${l.kind === "sup" ? "#5ac8fa" : "#ff69b4"}"></i>${l.t} · ${l.touch}×</span><b>${fmt(l.p2)}</b><em class="${l.kind === "sup" ? "up" : "down"}">${sgnPct(-l.dist, 1)}</em></div>`).join("");
   return `<div class="cf-s au"><div class="cf-h">Auto-Analyse <button class="au-tg${clGet("auto") ? " on" : ""}" data-cl="auto" aria-pressed="${clGet("auto") ? "true" : "false"}">${clGet("auto") ? "im Chart ✓" : "im Chart zeigen"}</button></div>
     <div class="au-v ${T.verdict[0]}">${esc(T.verdict[1])}</div>
@@ -10887,7 +10977,7 @@ function verCheck() {
 }
 document.addEventListener("click", e => { if (e.target.closest("[data-verreload]")) location.reload(); });
 setTimeout(verCheck, 8000); setInterval(verCheck, 30 * 60e3);
-try { const q = new URLSearchParams(location.search).get("sec"); if (q && SEC_T[q]) { state.sec = q; history.replaceState(null, "", location.pathname + location.hash); } } catch (e) {}
+try { const u = new URLSearchParams(location.search), q = u.get("sec"), tq = u.get("t"); if (q && SEC_T[q]) { state.sec = q; if (q === "chart" && tq) state.cfLast = tq; history.replaceState(null, "", location.pathname + location.hash); } } catch (e) {}   // Push „Trendlinie“: Chart der Aktie
 // Schneller Start: zuletzt geladene Daten sofort zeigen (Gerätespeicher), parallel frisch laden und nur bei neuem Scan neu zeichnen
 let booted = false;
 function boot(d) {
