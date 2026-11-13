@@ -2,18 +2,18 @@
 
 Schnelligkeit: erste Zahlen im Mittel 663 Min. nach der Meldezeit (90 % innerhalb 1266 Min., 320 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-644 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-13), davon 454 mit aufgezeichneter Prognose.
+646 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-13), davon 456 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 454 | 52% | 0.256 | 0.250 |
+| alle | 456 | 52% | 0.256 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
-| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 250 | 55% | 0.246 | 0.250 |
+| Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 252 | 55% | 0.246 | 0.250 |
 | Ausblick gesenkt | 65 | 57% | 0.246 | 0.250 |
 | Ausblick bestätigt | 30 | 47% | 0.272 | 0.250 |
 | Ausblick angehoben | 151 | 48% | 0.271 | 0.250 |
-| Ausblick keine Meldung | 208 | 54% | 0.246 | 0.250 |
+| Ausblick keine Meldung | 210 | 54% | 0.246 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -22,7 +22,7 @@ Schnelligkeit: erste Zahlen im Mittel 663 Min. nach der Meldezeit (90 % innerhal
 | -0%–30% | 11 | 45% |
 | 30%–40% | 93 | 43% |
 | 40%–50% | 120 | 48% |
-| 50%–60% | 154 | 51% |
+| 50%–60% | 156 | 51% |
 | 60%–70% | 54 | 43% |
 | 70%–100% | 22 | 55% |
 
@@ -34,7 +34,7 @@ Schnelligkeit: erste Zahlen im Mittel 663 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 72% (18) | 40% (45) |
 | im Rahmen (±2 %) | 29% (17) | 33% (3) | 38% (16) | 50% (34) |
 | über Erwartung (+2 bis +10 %) | 38% (24) | 25% (8) | 46% (48) | 45% (58) |
-| deutlich über Erwartung (> +10 %) | 39% (28) | 53% (17) | 61% (102) | 55% (94) |
+| deutlich über Erwartung (> +10 %) | 39% (28) | 53% (17) | 61% (102) | 55% (96) |
 
 ## Vorschläge zur Anpassung
 
@@ -60,14 +60,14 @@ Schnelligkeit: erste Zahlen im Mittel 663 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-72 Fehlprognosen und 382 Vergleichsfälle untersucht.
+72 Fehlprognosen und 384 Vergleichsfälle untersucht.
 
 - Markt: Bei 37% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 20% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.2%, getroffene Ø -4.8%.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.2%, getroffene Ø -4.9%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 31% (22) | 29% | 1.1 |
+| Ausblick | 31% (22) | 28% | 1.1 |
 | Marge | 12% (9) | 7% | 1.7 |
 | Umsatz | 57% (41) | 49% | 1.2 |
 | Nutzer/Kunden | 6% (4) | 1% | 7.1 |
@@ -78,10 +78,10 @@ Schnelligkeit: erste Zahlen im Mittel 663 Min. nach der Meldezeit (90 % innerhal
 | Management | 3% (2) | 4% | 0.7 |
 | Rückkauf/Dividende | 1% (1) | 4% | 0.3 |
 | Analysten | 6% (4) | 8% | 0.7 |
-| Sondereffekt | 3% (2) | 1% | 3.5 |
+| Sondereffekt | 3% (2) | 1% | 3.6 |
 | Übernahme | 1% (1) | 5% | 0.3 |
 
-**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -11.2% gegen -4.8% → „schon eingepreist“ als Merkmal prüfen
+**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -11.2% gegen -4.9% → „schon eingepreist“ als Merkmal prüfen
 
 Beispiele:
 - ECG 2026-11-03: Kairo 71%, Kurs -29.3% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 227 Meldungen: Brier nachgeeicht 0.251 gegen gezeigt 0.254 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 228 Meldungen: Brier nachgeeicht 0.252 gegen gezeigt 0.254 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
