@@ -2768,7 +2768,7 @@ const applyDesign = () => {
 applyDesign();
 try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => { if (state.design === "auto") { applyDesign(); render(); } }); } catch (e) {}
 if ("IntersectionObserver" in window) new IntersectionObserver(es => document.body.classList.toggle("scrolled", !es[0].isIntersecting), { rootMargin: "-50px 0px 0px 0px" }).observe(document.getElementById("greet"));
-const save = () => { try { const { tableSort, tableAsc, ...p } = state; localStorage.setItem(PREF, JSON.stringify(p)); } catch (e) {} };
+const save = () => { try { wsTrack(); } catch (e) {} try { const { tableSort, tableAsc, ...p } = state; localStorage.setItem(PREF, JSON.stringify(p)); } catch (e) {} };
 
 // ---------- Begriffe kurz erklärt (ⓘ antippen) ----------
 const GLOSS = {
@@ -2969,6 +2969,7 @@ document.addEventListener("click", e => {
 function favSave(f) {
   favCache = f;
   try { localStorage.setItem(FAV_KEY, JSON.stringify([...f])); } catch (e) {}
+  try { if (wsTrack()) save(); } catch (e) {}
   calBadge(); kxSyncSoon();                       // Watchlist an den Kursdienst – der tägliche Scan prüft genau diese Aktien
 }
 // Bisherige Scalable-Watchlist (data/watchlist.json, im Scan „in_watchlist“) einmalig in die Sterne übernehmen –
@@ -7884,6 +7885,7 @@ async function vaultSave(manual) {
   const yq = liveKey("yq"), pass = liveKey("vp"); if (!yq || !pass) return null;
   const d = vaultData(), c = vaultCount(d), plain = JSON.stringify({ app: "kairo", v: 1, date: new Date().toISOString(), c, data: d });
   const core = Object.fromEntries(Object.entries(d).filter(([k]) => k !== PREF));   // Ansichts-Einstellungen ändern sich ständig – lösen allein keine Sicherung aus
+  core.__ws = state.wsAt || 0;                                   // … Zeichnungen, Alarme und Listen (Geräte-Abgleich) aber schon
   const sig = hex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(core)))));
   if (!manual && sig === state.vaultSig && Date.now() - (state.vaultAt || 0) < 864e5) return { ok: true, same: true };   // unverändert: höchstens einmal am Tag
   const last = state.vaultC || {};                              // Schutz: automatisch nie einen fast leeren Stand über einen vollen legen
@@ -7898,6 +7900,83 @@ async function vaultSave(manual) {
 }
 let vaultT = 0; function vaultSoon() { if (!liveKey("vp")) return; clearTimeout(vaultT); vaultT = setTimeout(() => vaultSave(false), 8000); }
 setInterval(() => { if (liveKey("vp") && document.visibilityState === "visible") vaultSave(false); }, 60e3);   // fängt jede Änderung (auch Journal) ab
+
+// ---------- Geräte-Abgleich (Fahrplan 10, wie TradingView-Konto): Zeichnungen, Alarme, Watchlist und eigene Listen ----------
+// Läuft über die verschlüsselte Sicherung im eigenen Kursdienst (gleiches Passwort auf iPad, iPhone, Mac). Es wird nur
+// ZUSAMMENGEFÜHRT, nie ersetzt: Neues kommt dazu, Geändertes gewinnt nach Zeitstempel, gelöscht wird nur, was auf einem
+// Gerät ausdrücklich gelöscht wurde (Lösch-Vermerk). Depot, Journal und Pläne bleiben je Gerät (Wiederherstellen wie bisher).
+let WS_PREV = null;
+function wsItems() {
+  const m = new Map();
+  Object.entries(state.draws || {}).forEach(([k, L]) => (L || []).forEach(d => d && d.id && m.set("d:" + d.id, [k, d])));
+  (state.alerts || []).forEach(a => a && a.id && m.set("a:" + a.id, [null, a]));
+  (Array.isArray(state.wls) ? state.wls : []).forEach(l => { m.set("l:" + l.id, [null, l]); (l.t || []).forEach(t => m.set("lt:" + l.id + ":" + t, [null, null])); });
+  try { favs().forEach(t => m.set("f:" + t, [null, null])); } catch (e) {}
+  return m;
+}
+const wsBody = o => { if (!o) return ""; if (Array.isArray(o.t) && o.n !== undefined) return JSON.stringify({ n: o.n }); const { u, ...x } = o; return JSON.stringify(x); };
+function wsTrack() {                       // merkt Änderungen (Zeitstempel u) und Löschungen (Vermerk) – gibt true zurück, wenn sich etwas tat
+  const now = Date.now(), cur = wsItems(), cb = new Map([...cur].map(([k, [, o]]) => [k, wsBody(o)]));
+  if (!WS_PREV) { WS_PREV = cb; return false; }
+  let ch = false; const del = state.syncDel = state.syncDel || {};
+  WS_PREV.forEach((b, k) => { if (!cb.has(k)) { del[k] = now; ch = true; } });
+  cb.forEach((b, k) => { if (!WS_PREV.has(k)) { delete del[k]; ch = true; const o = cur.get(k)[1]; if (o) o.u = now; }
+    else if (WS_PREV.get(k) !== b) { ch = true; const o = cur.get(k)[1]; if (o) o.u = now; } });
+  Object.keys(del).forEach(k => { if (now - del[k] > 90 * 864e5) delete del[k]; });   // Vermerke nach 90 Tagen vergessen
+  WS_PREV = cb;
+  if (ch) { state.wsAt = now; vaultSoon(); }
+  return ch;
+}
+function wsMerge(rs, rFav) {               // rs = Einstellungen des anderen Geräts, rFav = seine Watchlist
+  const rDel = rs.syncDel || {}, lDel = state.syncDel || {}, out = { add: 0, upd: 0, del: 0 };
+  const gone = (k, u) => (lDel[k] && lDel[k] >= (u || 0));          // hier gelöscht (nach seiner letzten Änderung)
+  const kill = (k, u) => rDel[k] && rDel[k] >= (u || 0);              // dort gelöscht (nach unserer letzten Änderung)
+  // Zeichnungen
+  const D = JSON.parse(JSON.stringify(state.draws || {})), where = new Map();
+  Object.entries(D).forEach(([tk, L]) => (L || []).forEach((d, i) => where.set(d.id, [tk, i])));
+  Object.entries(rs.draws || {}).forEach(([tk, L]) => (L || []).forEach(d => { if (!d || !d.id) return; const k = "d:" + d.id, w = where.get(d.id);
+    if (!w) { if (!gone(k, d.u)) { (D[tk] = D[tk] || []).push(d); out.add++; } }
+    else if ((d.u || 0) > (D[w[0]][w[1]].u || 0) && wsBody(d) !== wsBody(D[w[0]][w[1]])) { D[w[0]][w[1]] = d; out.upd++; } }));
+  Object.keys(D).forEach(tk => { const n0 = D[tk].length; D[tk] = D[tk].filter(d => !kill("d:" + d.id, d.u)); out.del += n0 - D[tk].length; if (!D[tk].length) delete D[tk]; });
+  // Alarme
+  let A = (state.alerts || []).slice(); const aIds = new Set(A.map(a => a.id));
+  (rs.alerts || []).forEach(a => { if (a && a.id && !aIds.has(a.id) && !gone("a:" + a.id, a.u)) { A.push(a); out.add++; } });
+  const nA = A.length; A = A.filter(a => !kill("a:" + a.id, a.u)); out.del += nA - A.length;
+  // eigene Listen
+  let W = JSON.parse(JSON.stringify(Array.isArray(state.wls) ? state.wls : []));
+  (Array.isArray(rs.wls) ? rs.wls : []).forEach(rl => { let l = W.find(x => x.id === rl.id);
+    if (!l) { if (gone("l:" + rl.id, rl.u)) return; l = { ...rl, t: [] }; W.push(l); out.add++; }
+    else if ((rl.u || 0) > (l.u || 0) && rl.n !== l.n) { l.n = rl.n; l.u = rl.u; out.upd++; }
+    (rl.t || []).forEach(t => { if (!l.t.includes(t) && !gone("lt:" + l.id + ":" + t)) { l.t.push(t); out.add++; } }); });
+  W = W.filter(l => { if (kill("l:" + l.id, l.u)) { out.del++; return false; } const n0 = l.t.length; l.t = l.t.filter(t => !kill("lt:" + l.id + ":" + t)); out.del += n0 - l.t.length; return true; });
+  // Watchlist (Stern)
+  const F = new Set(favs()); (rFav || []).forEach(t => { if (!F.has(t) && !gone("f:" + t)) { F.add(t); out.add++; } });
+  [...F].forEach(t => { if (kill("f:" + t)) { F.delete(t); out.del++; } });
+  if (!out.add && !out.upd && !out.del) return out;
+  Object.entries(rDel).forEach(([k, v]) => { if (!lDel[k] || lDel[k] < v) lDel[k] = v; }); state.syncDel = lDel;   // Vermerke weitergeben
+  state.draws = D; state.alerts = A; state.wls = W; favCache = F;
+  try { localStorage.setItem(FAV_KEY, JSON.stringify([...F])); } catch (e) {}
+  WS_PREV = null; wsTrack(); WS_PREV = new Map([...wsItems()].map(([k, [, o]]) => [k, wsBody(o)]));   // Zusammengeführtes ist kein „neu geändert“
+  state.wsAt = Math.max(state.wsAt || 0, rs.wsAt || 0, Date.now()); save(); kxSyncSoon();
+  return out;
+}
+let wsBusy = false;
+async function wsPull(force) {
+  const pass = liveKey("vp"), yq = liveKey("yq"); if (!pass || !yq || wsBusy || !(window.crypto && crypto.subtle)) return null;
+  wsBusy = true;
+  try { const list = await vaultList(pass), top = list[0]; if (!top) return null;
+    if (!force && (top.at === state.vaultAt || top.at <= (state.wsPullAt || 0))) return null;    // neuester Stand ist unser eigener oder schon gelesen
+    const v = await vaultLoad(pass, top.at), dd = v && v.data || {};
+    let rs = {}, rf = []; try { rs = JSON.parse(dd[PREF] || "{}"); } catch (e) {} try { rf = JSON.parse(dd[FAV_KEY] || "[]"); } catch (e) {}
+    const res = wsMerge(rs, rf); state.wsPullAt = top.at; state.wsPullOk = Date.now(); save();
+    if (res.add || res.upd || res.del) { drToast(`Abgeglichen: ${[res.add && `${res.add} neu`, res.upd && `${res.upd} geändert`, res.del && `${res.del} gelöscht`].filter(Boolean).join(", ")} – vom anderen Gerät`);
+      const L = window.__lastChart; if (state.sec === "chart" && L && L.c && L.r) ctabBuild(L.c, L.r); else render(); }
+    return res;
+  } catch (e) { return null; } finally { wsBusy = false; }
+}
+setTimeout(() => wsPull(), 6000);
+setInterval(() => { if (document.visibilityState === "visible") wsPull(); }, 180e3);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") setTimeout(() => wsPull(), 1500); });
 async function vaultList(pass) {
   const yq = liveKey("yq"); if (!yq) throw new Error("Zuerst die Kursdienst-Adresse eintragen (Einstellungen → Live-Kurse).");
   const { id } = await vaultGet(pass), j = await (await fetch(`${yq}/vault?id=${id}`)).json();
@@ -7944,8 +8023,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.134";
-const APP_NEWS = [["2026.11.134", "Frühere Kairo-Signale im Chart", [
+const APP_VER = "2026.11.135";
+const APP_NEWS = [["2026.11.135", "Geräte-Abgleich", [
+  ["iPad, iPhone, Mac", "Mit demselben Sicherungs-Passwort gleichen sich Zeichnungen, Alarme, Watchlist und eigene Listen automatisch ab (Einstellungen → Automatische Sicherung)."],
+  ["Nichts geht verloren", "Es wird zusammengeführt, nicht ersetzt: Neues kommt dazu, die neuere Änderung gewinnt, gelöscht wird nur, was du auf einem Gerät gelöscht hast."]]],
+  ["2026.11.134", "Frühere Kairo-Signale im Chart", [
   ["Signal-Historie", "Der Chart zeigt die Kairo-Treffer der letzten 2 Jahre: K = Signal, Kauf und das Ergebnis in R – nachgerechnet mit der gültigen Regel."],
   ["Bilanz je Aktie", "In der Kairo-Leiste rechts: Treffer, Trades, Ø R und Gewinner dieser Aktie. Abschaltbar unter Ebenen → Frühere Kairo-Signale. Die Daten kommen wöchentlich."]]],
   ["2026.11.133", "Mehrfach-Charts", [
@@ -8535,6 +8617,7 @@ document.addEventListener("click", async e => {
       const j = await vaultSave(true); if (!(j && j.ok)) { try { localStorage.removeItem("kx-vp"); } catch (er) {} await kSay("Sicherung nicht möglich: " + (state.vaultErr || (j && j.error) || "unbekannt")); }
       render(); return; }
     if (a === "now") { vb.disabled = true; vb.textContent = "Sichere …"; await vaultSave(true); render(); return; }
+    if (a === "pull") { vb.disabled = true; vb.textContent = "Gleiche ab …"; await vaultSave(false); const r = await wsPull(true); if (r && !r.add && !r.upd && !r.del) drToast("Alles auf dem gleichen Stand"); else if (!r) drToast("Abgleich gerade nicht möglich – Kursdienst erreichbar?"); render(); return; }
     if (a === "off") { if (await kConfirm("Automatische Sicherung ausschalten? Die gespeicherten Stände im Kursdienst bleiben erhalten.")) { try { localStorage.removeItem("kx-vp"); } catch (er) {} render(); } return; }
     if (a === "list") { const pw = ($("vaultPass2") || {}).value || "", box = $("vaultList"); box.innerHTML = `<div class="note">Lade …</div>`;
       try { const l = await vaultList(pw);
@@ -8557,7 +8640,8 @@ function vaultHtml() {
     <div class="tgdesc">Depot, Journal, Trade-Pläne, Watchlist und Einstellungen werden nach jeder Änderung verschlüsselt in deinem Kursdienst gesichert. Nur dieses Gerät kennt das Passwort – Cloudflare sieht unlesbaren Text. Bei Verlust des iPads: Kursdienst-Adresse und Passwort eingeben, Stand wählen, fertig.</div>
     ${!yq ? `<div class="note">Braucht deinen Kairo-Kursdienst (Version 8) – Adresse unter Live-Kurse eintragen.</div>` : on
       ? `<div class="vault-st ${state.vaultErr ? "down" : "up"}">${state.vaultErr ? `⚠ ${esc(state.vaultErr)}` : at ? `● aktiv · zuletzt ${at} · ${c.depot || 0} Positionen, ${c.plans || 0} Pläne, ${c.fav || 0} Watchlist` : "● aktiv · erste Sicherung folgt"}</div>
-         <div class="row-actions" style="margin-top:10px"><button class="btn sm" data-vault="now">Jetzt sichern</button><button class="btn ghost sm" data-vault="off">Ausschalten</button></div>`
+         <div class="note" style="margin-top:8px">⇄ <b>Geräte-Abgleich:</b> Mit demselben Passwort auf iPhone und Mac gleichen sich Zeichnungen, Alarme, Watchlist und eigene Listen automatisch ab – zusammengeführt, nichts wird ersetzt.${state.wsPullOk ? ` Zuletzt geprüft ${new Date(state.wsPullOk).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}.` : ""}</div>
+         <div class="row-actions" style="margin-top:10px"><button class="btn sm" data-vault="now">Jetzt sichern</button><button class="btn ghost sm" data-vault="pull">Jetzt abgleichen</button><button class="btn ghost sm" data-vault="off">Ausschalten</button></div>`
       : `<div class="vault-row"><input id="vaultPass" type="password" autocomplete="new-password" placeholder="Sicherungs-Passwort (mind. 10 Zeichen)"><button class="btn sm" data-vault="on">Einschalten</button></div>
          <div class="note">Das Passwort gut aufheben (z. B. im iCloud-Schlüsselbund) – ohne Passwort lässt sich die Sicherung nicht öffnen, auch nicht von Claude.</div>`}
     ${yq ? `<details class="vault-rest"><summary>Aus Sicherung wiederherstellen</summary>
