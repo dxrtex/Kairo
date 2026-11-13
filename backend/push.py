@@ -46,6 +46,21 @@ def messages(dev: dict, prices: dict, today: str, sent: dict) -> list[dict]:
         sent[key] = today
         out.append({"_key": key, "title": title, "body": body, "url": APP + f"?sec={sec}", "tag": "kairo-" + key.split(":")[0]})
 
+    for a in dev.get("a") or []:                       # Alarme an eigenen Linien im Chart (wie TradingView „Kreuzen“)
+        t, df = a.get("t"), prices.get(a.get("t"))
+        if not t or df is None or not len(df):
+            continue
+        lvl = alert_level(a, today)
+        if lvl is None:
+            continue
+        hi, lo, c = float(df["High"].iloc[-1]), float(df["Low"].iloc[-1]), float(df["Close"].iloc[-1])
+        if str(df.index[-1]) < (a.get("at") or ""):
+            continue                                   # Kerze vor dem Setzen des Alarms
+        if (a.get("dir") == "up" and hi >= lvl) or (a.get("dir") == "down" and lo <= lvl):
+            what = {"hl": "Horizontale Linie", "hr": "Horizontaler Strahl", "tl": "Trendlinie"}.get(a.get("k"), "Linie")
+            add(f"al:{a.get('i')}", f"🔔 {(a.get('n') or t)[:28]} kreuzt {_num(lvl)}",
+                f"{what} aus deinem Chart {'nach oben' if a.get('dir') == 'up' else 'nach unten'} gekreuzt · Kurs {_num(c)}. Alarm kommt nur einmal.", f"chart&t={t}")
+
     for p in dev.get("p") or []:                       # offene Trade-Pläne (Einstieg)
         t, df = p.get("t"), prices.get(p.get("t"))
         n, cur = (p.get("n") or t or "")[:28], p.get("cur") or ""
@@ -77,6 +92,22 @@ def messages(dev: dict, prices: dict, today: str, sent: dict) -> list[dict]:
         ext = _hit(df, None, "Low", min) if dr == "long" else _hit(df, None, "High", max)   # Tagestief/-hoch (Review K7)
         _ko(add, (d.get("n") or d["t"])[:28], float(df["Close"].dropna().iloc[-1]), float(d["ko"]), dr, today, "", "depot", ext)
     return out
+
+
+def alert_level(a: dict, today: str) -> float | None:
+    """Preis der Alarm-Linie heute: horizontal = fester Preis; Trendlinie = durch zwei Punkte, fortgeschrieben in Handelstagen."""
+    try:
+        if a.get("k") != "tl":
+            return float(a["p"])
+        import numpy as np
+        d1, d2 = a["d1"], a["d2"]
+        n12 = np.busday_count(d1, d2) if d2 > d1 else -np.busday_count(d2, d1)
+        if not n12:
+            return float(a["p"])
+        n1t = np.busday_count(d1, today)
+        return float(a["p"]) + (float(a["p2"]) - float(a["p"])) * n1t / n12
+    except Exception:
+        return None
 
 
 def ema_exit(df, since: str | None, today: str, span: int = 20, start: int = 10) -> dict | None:
@@ -118,7 +149,7 @@ def _days_ago(today: str, n: int) -> str:
 def prices_for(devs: list[dict]) -> dict:
     """Tageskerzen (inkl. laufendem Handelstag, ~15 Min. verzögert) für alle Basiswerte aus Plänen und Depot."""
     import yfinance as yf
-    ts = sorted({x.get("t") for dev in devs for x in (dev.get("p") or []) + (dev.get("d") or [])
+    ts = sorted({x.get("t") for dev in devs for x in (dev.get("p") or []) + (dev.get("d") or []) + (dev.get("a") or [])
                  if x.get("t") and not str(x.get("t")).startswith("~")})
     if not ts:
         return {}
@@ -147,7 +178,7 @@ def synced(dev: dict) -> dict:
         j = r.json() if r.ok else {}
         if isinstance(j.get("p"), list) and isinstance(j.get("d"), list):
             print(f"Push: Trades vom Kursdienst – {len(j['p'])} offen, {len(j['d'])} im Depot")
-            return {**dev, "p": j["p"], "d": j["d"]}
+            return {**dev, "p": j["p"], "d": j["d"], **({"a": j["a"]} if isinstance(j.get("a"), list) else {})}
         print(f"Push: Kursdienst ohne Trades ({r.status_code}) – Stand aus dem Secret")
     except Exception as exc:
         print(f"Push: Kursdienst nicht erreichbar ({exc!r}) – Stand aus dem Secret")

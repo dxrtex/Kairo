@@ -2460,6 +2460,8 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .dr-t{border:0;border-radius:8px;padding:5px 9px;background:rgba(127,127,127,.14);color:var(--text);font:inherit;font-size:12.5px;cursor:pointer}.dr-t.on{background:var(--accent);color:var(--accent-ink,#fff)}.dr-t.del{color:#ff453a}
 .cf-canvas.drawing,.chfs-chart .drawing{cursor:crosshair}
 @media(max-width:700px){.dr-tb{right:8px;top:40px;max-width:calc(100% - 16px)}.dr-sel{right:8px;top:86px}}
+.dr-toast{position:fixed;left:50%;bottom:110px;transform:translate(-50%,20px);opacity:0;z-index:300;padding:12px 18px;border-radius:14px;font-weight:600;font-size:14px;pointer-events:none;transition:.3s;
+  background:var(--lg-tab);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:var(--lg-rim),0 10px 30px rgba(0,0,0,.35);color:var(--text)}.dr-toast.on{opacity:1;transform:translate(-50%,0)}
 .au-q{display:block;margin-top:3px;font-size:11.5px}
 .mtags{display:flex;gap:6px;align-items:center;margin-top:3px}.mtags .echip{margin-left:0}.aitem .an .echip{margin:3px 0 0;align-self:flex-start}</style>
 <style id="scard">
@@ -7645,7 +7647,7 @@ const syncKey = () => { let k = liveKey("sk"); if (!k) { k = (crypto.randomUUID 
 function syncPayload() {
   const d = depotLive().filter(p => p.t).map(p => p.d && p.d.ko ? { t: p.t, dir: p.d.dir, ko: p.d.ko } : { t: p.t });
   const p = plansLoad().filter(x => x.st === "open" && x.t && !String(x.t).includes(":")).map(x => ({ i: x.id, t: String(x.t).replace(/^~/, ""), n: (x.n || x.t).slice(0, 28), cur: x.cur, d: x.d, sl: x.stop, ko: x.ko || null, tp: x.tp || null, x: x.exit, ...(x.ema ? { e: 1 } : {}) }));
-  return { d, p, ...(state.wlSeeded ? { w: [...favs()].map(t => ({ t, n: String(favName(t)).slice(0, 40) })) } : {}) };
+  return { d, p, a: drAlerts(), ...(state.wlSeeded ? { w: [...favs()].map(t => ({ t, n: String(favName(t)).slice(0, 40) })) } : {}) };
 }
 async function kxSync() {
   const yq = liveKey("yq"); if (!yq) return null;
@@ -7734,8 +7736,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.125";
-const APP_NEWS = [["2026.11.125", "Zeichenwerkzeuge wie TradingView", [
+const APP_VER = "2026.11.126";
+const APP_NEWS = [["2026.11.126", "Chart wie TradingView: Zeiteinheiten, Indikatoren, Alarme", [
+  ["Zeiteinheit 1D / 1W / 1M", "Oben rechts im Chart: Tages-, Wochen- und Monatskerzen. Indikatoren und Auto-Analyse rechnen auf der gewählten Zeiteinheit; die Kairo-Regel bleibt im Tageschart."],
+  ["Mehr Indikatoren", "Unter Ebenen neu: SMA 50, SMA 200 und Bollinger-Bänder (20, 2)."],
+  ["Alarm an Linien", "Horizontale Linie, Strahl oder Trendlinie antippen → „🔔 Alarm hinzufügen“. Kreuzt der Kurs die Linie, meldet sich Kairo – in der App sofort, als Mitteilung auch bei geschlossener App, sobald dein Kursdienst auf Version 9 ist (Einstellungen → Live-Kurse)."]]],
+  ["2026.11.125", "Zeichenwerkzeuge wie TradingView", [
   ["Zeichnen im Chart", "Oben rechts im Chart, Namen und Symbole wie bei TradingView: Trendlinie, Horizontale Linie, Horizontaler Strahl, Fib-Retracement, Rechteck, Long-Position und Short-Position. Bedienung wie bei TradingView: Werkzeug wählen, ziehen oder zwei Punkte antippen; antippen zum Auswählen, an den Griffen ziehen zum Ändern, Fläche ziehen zum Verschieben."],
   ["Fib-Retracement wie TradingView", "Stufen 0 bis 1 mit farbigen Bändern und Preisen, gestrichelte Verbindung, „Linien nach rechts verlängern“, Stufen bis 4,236 und „Umkehren“. Im Magnet-Modus rastet der Punkt genau auf Hoch oder Tief der Kerze ein."],
   ["Auswahl gut sichtbar", "Gewählter Zeitraum, aktives Werkzeug und Umschalter leuchten jetzt in deiner Akzentfarbe – auch im Glas-Look sofort zu erkennen."],
@@ -9863,6 +9869,7 @@ const clGet = (k, auto) => { const v = (state.cl || {})[k]; return v == null ? (
 const CL_LIVE = new Set();
 const FIBQ = [[0, "Hoch"], [.382, "38,2 %"], [.5, "50 %"], [.618, "61,8 %"], [.706, "70,6 %", 1], [.786, "78,6 %", 1], [.886, "88,6 %"], [1, "Tief"]];   // betont: Kaufzone Golden Pocket
 const EMA_DEF = [["e20", "#f4b740", "EMA 20"], ["e50", "#4aa3ff", "EMA 50"], ["e100", "#b07cff", "EMA 100"], ["e200", "#ff8a65", "EMA 200"]];
+const SMA_DEF = [["s50", "#30d158", "SMA 50"], ["s200", "#ff375f", "SMA 200"]];   // Runde 13.11. (wie TradingView): einfache Durchschnitte und Bollinger-Bänder, standardmäßig aus
 // Rechenmodell (nur Anzeige – die Regeln des Scans bleiben unverändert):
 // Welle = vom Hoch rückwärts von Tief zu tieferem Wendepunkt, bis davor eine fast volle Korrektur (≥ 78,6 %) liegt (höchstens
 // doppelte Größe der Scan-Welle). Linien = Wendepunkte (±5 Tage) mit ≥ 2 Berührungen in einem Band von max(0,6 ATR, 1,2 %).
@@ -10327,6 +10334,11 @@ function buildMain(el, c, r, opts) {
   const candles = chart.addCandlestickSeries({ upColor: "#30d158", downColor: "#ff453a", borderVisible: false, wickUpColor: "#30d158", wickDownColor: "#ff453a" });
   const bars = T.map((t, i) => ({ time: t, open: c.o[i], high: c.h[i], low: c.l[i], close: c.c[i] })); candles.setData(bars);
   const ema = {}; EMA_DEF.forEach(([k, col]) => { ema[k] = chart.addLineSeries({ color: col, lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }); ema[k].setData(pts(k)); });
+  { const C0 = c.c, sm = n => smaN(C0, n), m20 = sm(20), sd = C0.map((_, i) => { if (m20[i] == null) return null; let q = 0; for (let k = i - 19; k <= i; k++) q += (C0[k] - m20[i]) ** 2; return Math.sqrt(q / 20); });
+    const ln = (arr, col, w = 1.5, st = 0) => { const s2 = chart.addLineSeries({ color: col, lineWidth: w, lineStyle: st, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: false });
+      s2.setData(T.map((t, i) => arr[i] == null ? null : { time: t, value: arr[i] }).filter(Boolean)); return s2; };
+    ema.s50 = ln(sm(50), SMA_DEF[0][1]); ema.s200 = ln(sm(200), SMA_DEF[1][1]);
+    ema.bb = [ln(m20.map((m, i) => m == null ? null : m + 2 * sd[i]), "rgba(41,98,255,.85)", 1), ln(m20, "rgba(255,109,0,.8)", 1, 2), ln(m20.map((m, i) => m == null ? null : m - 2 * sd[i]), "rgba(41,98,255,.85)", 1)]; }
   const vol = chart.addHistogramSeries({ priceScaleId: "vol", priceFormat: { type: "volume" }, lastValueVisible: false, priceLineVisible: false });
   chart.priceScale("vol").applyOptions({ scaleMargins: { top: .87, bottom: 0 } });
   vol.setData(T.map((t, i) => ({ time: t, value: c.v[i] || 0, color: c.c[i] >= c.o[i] ? "rgba(48,209,88,.22)" : "rgba(255,69,58,.22)" })));
@@ -10407,7 +10419,7 @@ function buildMain(el, c, r, opts) {
   h.legendLast = () => { if (!hov) h.legend(-1); };
   h.legend(-1);
   h.apply = () => {
-    EMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); vol.applyOptions({ visible: !!clGet("vol") }); vpp.update();
+    EMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); SMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); ema.bb.forEach(x => x.applyOptions({ visible: !!clGet("bb") })); vol.applyOptions({ visible: !!clGet("vol") }); vpp.update();
     pls.forEach(x => candles.removePriceLine(x)); pls = [];
     if (clGet("plan")) [[p.entry, "Kaufzone oben", "#eceef2", 0], [p.stop, "Stop", "#ff453a", 0], [ko, "K.-o. Turbo", "#ff9f0a", 1]]
       .forEach(([pr, t, col, st]) => { if (pr != null) pls.push(candles.createPriceLine({ price: pr, title: t, color: col, lineWidth: 1, lineStyle: st, axisLabelVisible: true })); });
@@ -10618,11 +10630,11 @@ function ctabRender() {
 }
 async function ctabLoad(t) {
   const seq = ++ctabSeq, L = window.__lastChart, r = rowFor(t);
-  let c = L && L.r && L.r.ticker === t ? L.c : null;
+  let c = L && L.r && L.r.ticker === t ? L.d || L.c : null;
   if (!c) try { c = await loadChart(t); } catch (e) { delete chartCache[t]; }
   const el = $("ctab"); if (seq !== ctabSeq || state.sec !== "chart" || !el || el.dataset.t !== t) return;
   if (!c || !c.t || !r) { delete el.dataset.busy; el.innerHTML = `<div class="hcard"><div class="note">Für ${esc(tkClean(t))} gibt es noch keinen Chart.</div><button class="btn sm" data-cfquick>Andere Aktie wählen</button></div>`; return; }
-  window.__lastChart = { c, r }; state.cfLast = t; save(); ctabBuild(c, r);
+  const cc = tfAgg(c, state.cfTf); window.__lastChart = { c: cc, r, d: c }; state.cfLast = t; save(); ctabBuild(cc, r);
 }
 // Werkzeugleiste des Chart-Reiters (Wunsch 11/2026: „so wäre eine professionelle App nie aufgebaut“): links Ebenen-Menü
 // (gruppiert, mit Schaltern), daneben Werkzeuge als Symbole, rechts Zeitraum, Vollbild und Kairo-Leiste
@@ -10639,16 +10651,17 @@ let ctPop = false, ctFocus = null;
 function ctabBarHtml(h) {
   const M = h.M, sw = (k, lbl, col, ok = true, auto) => ok ? `<button class="ct-row" data-cl="${k}"${auto != null ? ` data-auto="${auto ? 1 : 0}"` : ""} role="switch" aria-checked="${clGet(k, auto) ? "true" : "false"}"><i style="background:${col}"></i><span>${lbl}</span><u class="ct-sw${clGet(k, auto) ? " on" : ""}"></u></button>` : "";
   const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
-  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), "vol", "vp", "plan", "auto"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length)).length;
+  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), ...SMA_DEF.map(x => x[0]), "bb", "vol", "vp", "plan", "auto"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length)).length;
   const grp = (t, body) => body ? `<div class="ct-g"><div class="ct-gh">${t}</div>${body}</div>` : "";
   return `<div class="ct-tl"><div class="ct-seg"><button class="ct-b ct-lay${ctPop ? " on" : ""}" data-ctlayers aria-expanded="${ctPop}" title="Ebenen ein-/ausblenden">${CT_IC.layers}<span>Ebenen</span><small>${nOn}</small></button></div>
       <div class="ct-seg"><button class="ct-b${MEAS.on ? " on" : ""}" data-clm title="Messen: Start- und Endkerze antippen" aria-label="Messen">${CT_IC.ruler}<span class="ct-lbl">Messen</span></button><button class="ct-b${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle setzen" aria-label="Welle setzen">${CT_IC.wave}<span class="ct-lbl">${M.own ? "Eigene Welle" : "Welle"}</span></button><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button>${M.own ? `<button class="ct-b" data-clwreset title="Zurück zur Welle, die Kairo bestimmt" aria-label="Kairo-Welle">${CT_IC.reset}</button>` : ""}</div></div>
     ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, true))}
-      ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.map(([k, col, l]) => sw(k, l, col)).join(""))}
+      ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.concat(SMA_DEF).map(([k, col, l]) => sw(k, l, col)).join(""))}${grp("Indikatoren", sw("bb", "Bollinger-Bänder (20, 2)", "#2962ff"))}
       ${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa"))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a"))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
 }
 function ctabBuild(c, r) {
   const el = $("ctab"); if (!el || !window.LightweightCharts) return; rpHalt(); ctabDrop(); delete el.dataset.busy;
+  if (c.tf && c.tf !== "D") r = { ...r, zone: null };            // Wochen-/Monatschart: Kairo-Welle und -Zone gehören zum Tageschart
   const k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r), chg = r.change ?? r.d1, off = !!state.cfSideOff;
   el.dataset.t = r.ticker; el.classList.toggle("side-off", off); ctPop = false;
   const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="${lbl.split(" ·")[0]} groß">${CT_IC.expand}</button></div><div class="ctab-c" id="${id}"></div></div>`;
@@ -10656,7 +10669,7 @@ function ctabBuild(c, r) {
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
       <span class="st ${k.cls}">${esc(k.t)}</span><button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
-      <div class="ct-right"><div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Welle"]].map(([v, l]) => `<button class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
+      <div class="ct-right"><div class="ct-rg ct-tf" role="group" aria-label="Zeiteinheit">${[["D", "1D", "Tag"], ["W", "1W", "Woche"], ["M", "1M", "Monat"]].map(([v, l, t]) => `<button class="${(c.tf || "D") === v ? "on" : ""}" data-cftf="${v}" title="Zeiteinheit: ${t}">${l}</button>`).join("")}</div><div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Welle"]].map(([v, l]) => `<button class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
         <button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
     <div class="ctab-grid"><div class="ctab-l">
       <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="dr-tb" id="drTb"></div><div class="dr-sel" id="drSel" hidden></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
@@ -10723,6 +10736,20 @@ function resumeApply() {
     if (R.det && !$("detail").classList.contains("open")) openDetail(R.det).then(() => { if (R.dy) $("detail").scrollTop = R.dy; }).catch(() => {}); };
   setTimeout(go, 500);
 }
+// Zeiteinheit wie TradingView (1D / 1W / 1M): Tageskerzen zu Wochen- bzw. Monatskerzen zusammenfassen (Datum = erster Handelstag),
+// Indikatoren auf der neuen Zeiteinheit neu rechnen. Die Kairo-Regel bleibt im Tageschart – im Wochen-/Monatschart nur Einordnung.
+const TF_F = { D: 1, W: 5, M: 21 };
+function tfAgg(c, tf) {
+  if (!tf || tf === "D") return c; const o = { t: [], o: [], h: [], l: [], c: [], v: [] }; let key = null;
+  const kOf = d => { const x = new Date(d + "T12:00:00"); if (tf === "M") return d.slice(0, 7); const m = new Date(x); m.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return m.toISOString().slice(0, 10); };
+  c.t.forEach((d, i) => { if (c.c[i] == null) return; const k = kOf(String(d).slice(0, 10)), j = o.t.length - 1;
+    if (k !== key) { key = k; o.t.push(d); o.o.push(c.o[i] ?? c.c[i]); o.h.push(c.h[i] ?? c.c[i]); o.l.push(c.l[i] ?? c.c[i]); o.c.push(c.c[i]); o.v.push(c.v ? c.v[i] || 0 : 0); }
+    else { o.h[j] = Math.max(o.h[j], c.h[i] ?? c.c[i]); o.l[j] = Math.min(o.l[j], c.l[i] ?? c.c[i]); o.c[j] = c.c[i]; o.v[j] += c.v ? c.v[i] || 0 : 0; } });
+  const x = extIndicators(o.t, o.o, o.h, o.l, o.c, o.v); x.tf = tf; return x;
+}
+function tfSet(tf) { const L = window.__lastChart; if (!L || !L.r || RP.on) return; const d = L.d || L.c; state.cfTf = tf; save();
+  const cc = tfAgg(d, tf); window.__lastChart = { c: cc, r: L.r, d }; ctabBuild(cc, L.r); }
+document.addEventListener("click", e => { const b = e.target.closest("[data-cftf]"); if (b) tfSet(b.dataset.cftf); });
 // ---------- Zeichenwerkzeuge wie TradingView (Wunsch 13.11.) ----------
 // Trendlinie, horizontale Linie, Strahl, Fibonacci-Retracement (wie TradingView: Stufen 0–1 mit farbigen Bändern, 0 am zweiten Punkt,
 // Beschriftung „0.618 (Preis)“, gestrichelte Verbindung, „Erweitern nach rechts“), Rechteck, Long- und Short-Position (Ziel/Stop-Box,
@@ -10773,9 +10800,9 @@ function drPrimitive(h) {
       if (ax == null || ay == null) return;
       x.save(); x.lineWidth = d.w || 2; x.strokeStyle = `rgb(${col})`; x.setLineDash([]);
       if (d.k === "tl" && bx != null) { let ex = bx, ey = by; if (d.ext && bx !== ax) { ex = bx > ax ? W : 0; ey = ay + (by - ay) * (ex - ax) / (bx - ax); }
-        x.beginPath(); x.moveTo(ax, ay); x.lineTo(ex, ey); x.stroke(); if (sel) { handle(ax, ay); handle(bx, by); } }
-      else if (d.k === "hl") { x.beginPath(); x.moveTo(0, ay); x.lineTo(W, ay); x.stroke(); lbl(fmt(d.a.p), W - 4, ay, col, "right"); if (sel) handle(ax, ay); }
-      else if (d.k === "hr") { x.beginPath(); x.moveTo(ax, ay); x.lineTo(W, ay); x.stroke(); lbl(fmt(d.a.p), W - 4, ay, col, "right"); if (sel) handle(ax, ay); }
+        x.beginPath(); x.moveTo(ax, ay); x.lineTo(ex, ey); x.stroke(); if (d.al && d.al.on) lbl("🔔", bx + 6, by, col, "left", false); if (sel) { handle(ax, ay); handle(bx, by); } }
+      else if (d.k === "hl") { x.beginPath(); x.moveTo(0, ay); x.lineTo(W, ay); x.stroke(); lbl(`${d.al && d.al.on ? "🔔 " : ""}${fmt(d.a.p)}`, W - 4, ay, col, "right"); if (sel) handle(ax, ay); }
+      else if (d.k === "hr") { x.beginPath(); x.moveTo(ax, ay); x.lineTo(W, ay); x.stroke(); lbl(`${d.al && d.al.on ? "🔔 " : ""}${fmt(d.a.p)}`, W - 4, ay, col, "right"); if (sel) handle(ax, ay); }
       else if (d.k === "rect" && bx != null) { x.fillStyle = `rgba(${col},.14)`; x.fillRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay)); x.lineWidth = 1.5; x.strokeRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay));
         if (sel) { handle(ax, ay); handle(bx, by); handle(ax, by); handle(bx, ay); } }
       else if (d.k === "fib" && bx != null) {
@@ -10891,6 +10918,7 @@ function drSelRender(h) {
   const box = $("drSel"); if (!box) return; const d = drList(h).find(x => x.id === DRAW.sel); box.hidden = !d; if (!d) return;
   const name = { tl: "Trendlinie", hl: "Horizontale Linie", hr: "Horizontaler Strahl", fib: "Fib-Retracement", rect: "Rechteck", long: "Long-Position", short: "Short-Position" }[d.k];
   box.innerHTML = `<b>${name}</b>${["long", "short", "fib"].includes(d.k) ? "" : DR_COL.map(c => `<button class="dr-c${(d.c || DR_COL[0]) === c ? " on" : ""}" data-drcol="${c}" style="--c:rgb(${c})" aria-label="Farbe"></button>`).join("")}
+    ${["hl", "hr", "tl"].includes(d.k) ? `<button class="dr-t${d.al && d.al.on ? " on" : ""}" data-dral title="Alarm hinzufügen: Mitteilung, wenn der Kurs die Linie kreuzt">🔔 ${d.al && d.al.on ? "Alarm aktiv" : d.al && d.al.hit ? `ausgelöst ${dateDE(d.al.hit)}` : "Alarm hinzufügen"}</button>` : ""}
     ${d.k === "tl" || d.k === "fib" ? `<button class="dr-t${d.ext ? " on" : ""}" data-drext>${d.k === "fib" ? "Linien nach rechts verlängern" : "Rechts verlängern"}</button>` : ""}${d.k === "fib" ? `<button class="dr-t${d.x2 ? " on" : ""}" data-drx2>Stufen 1,618–4,236</button>` : ""}
     ${d.k === "fib" ? `<button class="dr-t" data-drflip title="Umkehren (0 und 1 tauschen)">Umkehren</button>` : ""}
     <button class="dr-t del" data-drdel aria-label="Entfernen">Entfernen</button>`;
@@ -10906,6 +10934,11 @@ document.addEventListener("click", async e => {
   const L = drList(h), i = L.findIndex(d => d.id === DRAW.sel); if (i < 0) return; const d = { ...L[i] }, put = () => { const n = [...L]; n[i] = d; drSet(h, n); drSelRender(h); };
   const c = t.closest("[data-drcol]"); if (c) { d.c = c.dataset.drcol; put(); return; }
   if (t.closest("[data-drext]")) { d.ext = !d.ext; put(); return; }
+  if (t.closest("[data-dral]")) { if (d.al && d.al.on) d.al = { on: 0 }; else { const lv = drLevelNow(drKey(h), d), px = drPxNow(drKey(h));
+      if (lv == null || px == null) { kSay("Kurs nicht verfügbar – Alarm lässt sich gerade nicht setzen."); return; }
+      d.al = { on: 1, dir: px < lv ? "up" : "down", at: isoD(new Date()) };
+      if (window.Notification && Notification.permission === "default") try { Notification.requestPermission(); } catch (x) {} }
+    put(); try { kxSync(); } catch (x) {} return; }
   if (t.closest("[data-drx2]")) { d.x2 = !d.x2; put(); return; }
   if (t.closest("[data-drflip]")) { const a = d.a; d.a = d.b; d.b = a; put(); return; }
   if (t.closest("[data-drdel]")) { DRAW.sel = null; drSet(h, L.filter((_, k) => k !== i)); drSelRender(h); return; }
@@ -10916,6 +10949,28 @@ document.addEventListener("keydown", e => {
   else if ((e.key === "Delete" || e.key === "Backspace") && DRAW.sel) { e.preventDefault(); const id = DRAW.sel; DRAW.sel = null; drSet(h, drList(h).filter(d => d.id !== id)); drSelRender(h); }
   else if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); const b = document.querySelector("[data-drundo]"); if (b && !b.disabled) b.click(); }
 });
+// Alarme an Linien (wie TradingView „Alarm hinzufügen → Kreuzen“): einmalig. Geprüft in der App (Live-Kurs, jede Minute) und – mit
+// Kursdienst ab Version 9 – auch tagsüber als Mitteilung vom Server (backend/push.py), wenn Kairo geschlossen ist.
+function drPxNow(t) { const q = LIVE.map[t]; if (q && q.c > 0) return q.c; const r = rowFor(t); return r ? (r.close ?? r.c ?? null) : null; }
+function drLevelNow(t, d) {
+  if (d.k !== "tl") return d.a.p; if (!d.b || d.a.d === d.b.d && !(d.b.o || 0)) return d.a.p;
+  const bd = (x, y) => (x <= y ? 1 : -1) * bdBetween(new Date((x <= y ? x : y) + "T12:00:00"), new Date((x <= y ? y : x) + "T12:00:00"));
+  const n12 = bd(d.a.d, d.b.d) + (d.b.o || 0) - (d.a.o || 0), n1t = bd(d.a.d, isoD(new Date())) - (d.a.o || 0); if (!n12) return d.a.p;
+  return d.a.p + (d.b.p - d.a.p) * n1t / n12; }
+function drAlerts() { const o = []; Object.entries(state.draws || {}).forEach(([t, L]) => (L || []).forEach(d => { if (d.al && d.al.on && ["hl", "hr", "tl"].includes(d.k))
+  o.push({ i: d.id, t, n: String((rowFor(t) || {}).n || (rowFor(t) || {}).name || t).slice(0, 28), k: d.k, p: +(+d.a.p).toPrecision(7), ...(d.k === "tl" && d.b ? { d1: d.a.d, p2: +(+d.b.p).toPrecision(7), d2: d.b.d } : {}), dir: d.al.dir, at: d.al.at }); })); return o.slice(0, 200); }
+function drAlertCheck() {
+  let hit = 0; const all = { ...(state.draws || {}) };
+  Object.entries(all).forEach(([t, L]) => { (L || []).forEach(d => { if (!(d.al && d.al.on)) return; const px = drPxNow(t), lv = drLevelNow(t, d); if (px == null || lv == null) return;
+    if ((d.al.dir === "up" && px >= lv) || (d.al.dir === "down" && px <= lv)) { d.al = { on: 0, hit: isoD(new Date()) }; hit++;
+      const nm = String((rowFor(t) || {}).n || (rowFor(t) || {}).name || tkClean(t)), msg = `${nm} kreuzt ${fmt(lv)} (Kurs ${fmt(px)})`;
+      try { navigator.serviceWorker && navigator.serviceWorker.ready.then(reg => reg.showNotification(`🔔 Alarm: ${nm}`, { body: msg, tag: "kairo-al-" + d.id, data: { url: `?sec=chart&t=${t}` } })); } catch (x) {}
+      drToast(`🔔 ${msg}`); } }); });
+  if (hit) { state.draws = all; save(); try { kxSync(); } catch (x) {} if (DRAW.h && document.body.contains(DRAW.h.el)) { DRAW.h.drReq && DRAW.h.drReq(); drSelRender(DRAW.h); } }
+}
+function drToast(tx) { let el = $("drToast"); if (!el) { document.body.insertAdjacentHTML("beforeend", `<div id="drToast" class="dr-toast" role="status"></div>`); el = $("drToast"); }
+  el.textContent = tx; el.classList.add("on"); clearTimeout(drToast.t); drToast.t = setTimeout(() => el.classList.remove("on"), 7000); }
+setInterval(() => { if (document.visibilityState === "visible") drAlertCheck(); }, 60e3);
 // ---------- Chart-Replay (Runde 13.11., wie TradingView „Bar Replay“): den Chart Tag für Tag nachspielen und üben ----------
 // Der Chart zeigt nur die Kerzen bis zum Replay-Tag – Indikatoren (EMA, RSI, MACD, MBI) sind rückwärts gerechnet und damit
 // genau so, wie man sie damals sah. Kairo-Status, Plan und Fibonacci des heutigen Scans sind ausgeblendet (wären Wissen aus der Zukunft).
@@ -10929,12 +10984,12 @@ function rpRow(r, c2) { const n = c2.t.length, last = c2.c[n - 1], prev = c2.c[n
   return { ...r, ticker: r.ticker + "@rp", rp: true, ext: true, zone: null, plan: null, criteria: [], div: null, passed: false, fast_hit: false, close: last, change: prev ? last / prev - 1 : null }; }
 function rpAtr(c, i) { let a = 0, k = 0; for (let j = Math.max(1, i - 13); j <= i; j++) { a += Math.max(c.h[j] - c.l[j], Math.abs(c.h[j] - c.c[j - 1]), Math.abs(c.l[j] - c.c[j - 1])); k++; } return k ? a / k : 0; }
 function rpStart(c, r, i) {
-  rpHalt(); RP.c = c; RP.r = r; RP.i = Math.max(80, Math.min(c.t.length - 2, i)); RP.pos = null; RP.pend = null; RP.sellNext = false; RP.marks = []; RP.on = true;
+  rpHalt(); RP.d = RP.on ? RP.d : (window.__lastChart || {}).d; RP.c = c; RP.r = r; RP.i = Math.max(80, Math.min(c.t.length - 2, i)); RP.pos = null; RP.pend = null; RP.sellNext = false; RP.marks = []; RP.on = true;
   if (!$("rpBar")) { const m = $("cfMain"); if (m) m.parentElement.insertAdjacentHTML("beforebegin", `<div id="rpBar" class="rp-bar"></div>`); }
   $("ctab").classList.add("rp-on"); rpRebuild(false);
 }
 function rpExit() { const c = RP.c, r = RP.r; rpHalt(); const b = $("rpBar"); if (b) b.remove(); const el = $("ctab"); if (el) el.classList.remove("rp-on");
-  if (c && r) { window.__lastChart = { c, r }; ctabBuild(c, r); } }
+  if (c && r) { window.__lastChart = { c, r, d: RP.d || c }; ctabBuild(c, r); } }
 function rpRebuild(keep = true) {
   if (!RP.on || !$("cfMain")) return;
   const c2 = rpSlice(RP.c, RP.i), r2 = rpRow(RP.r, c2), n = c2.t.length;
@@ -11131,7 +11186,7 @@ function cfPillHtml(t) {
   if (!cfPick.seg) cfPick.seg = state.cfSeg || "mine";
   let l = cfList(cfPick.seg); if (!l.includes(t)) l = cfList("hits").includes(t) ? cfList("hits") : l;
   const i = l.indexOf(t), nb = d => i < 0 || l.length < 2 ? "" : tkClean(l[(i + d + l.length) % l.length]);
-  return `<button class="cf-pill" data-cfpick aria-label="Aktie wählen – wischen wechselt"><canvas class="cf-lens" aria-hidden="true"></canvas><i class="cf-glint" aria-hidden="true"></i>${cfAv(t)}<span class="cf-wh"><small>${esc(nb(-1))}</small><b>${esc(tkClean(t))}</b><small>${esc(nb(1))}</small></span><em>1D</em></button>`;
+  return `<button class="cf-pill" data-cfpick aria-label="Aktie wählen – wischen wechselt"><canvas class="cf-lens" aria-hidden="true"></canvas><i class="cf-glint" aria-hidden="true"></i>${cfAv(t)}<span class="cf-wh"><small>${esc(nb(-1))}</small><b>${esc(tkClean(t))}</b><small>${esc(nb(1))}</small></span><em>1${({ W: "W", M: "M" })[state.cfTf] || "D"}</em></button>`;
 }
 function cfList(seg) {
   const res = data.results || [], mine = myTickers(), dep = depotTickers(), ok = t => !!byTicker(t);
@@ -11292,7 +11347,8 @@ document.addEventListener("click", e => {
     if (!sb.classList.contains("ct-b")) sb.textContent = state.cfSideOff ? "◧ Status zeigen" : "◨ Status ausblenden"; else sb.classList.toggle("on", !state.cfSideOff); sb.setAttribute("aria-pressed", state.cfSideOff ? "false" : "true"); return; }
   if (e.target.closest("#chfs [data-ein]")) { closeCockpit(); return; }
   const rg = e.target.closest("[data-cfr]"); if (rg && cfChart) { const n = cfChart.r && window.__lastChart.c.t.length, v = rg.dataset.cfr;
-    cfChart.chart.timeScale().setVisibleLogicalRange(v === "wave" ? cfChart.vr0 : { from: v === "all" ? 0 : n - +v, to: n + 3 });
+    const f = TF_F[(window.__lastChart.c && window.__lastChart.c.tf) || "D"] || 1;
+    cfChart.chart.timeScale().setVisibleLogicalRange(v === "wave" ? cfChart.vr0 : { from: v === "all" ? 0 : n - Math.max(12, Math.round(+v / f)), to: n + 3 });
     document.querySelectorAll("[data-cfr]").forEach(b => b.classList.toggle("on", b === rg)); }
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && $("chfs") && !$("chfs").hidden) closeCockpit(); });
