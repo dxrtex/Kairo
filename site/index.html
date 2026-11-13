@@ -2588,6 +2588,7 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .etf-hero2 .eh-last{margin:0;padding-top:12px;border-top:1px solid var(--line)}
 @media (max-width:640px){.e2-cols{grid-template-columns:1fr}.etf-hero2 .eh-t{font-size:22px}.e2-top{flex-direction:column}}
 .el-tv iframe{background:var(--surface-2);color-scheme:normal}
+.ins-anl{display:flex!important;align-items:center;gap:10px;min-width:0}.ins-anl>.cf-av{flex:none}.ins-ant{display:flex;flex-direction:column;min-width:0}
 .mc-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}.mc-bar>b{font-size:17px;margin-right:auto}.mc-bar .ct-rg button svg{width:18px;height:18px;display:block}
 .mc-g{display:grid;gap:10px;height:calc(100vh - 170px);min-height:420px}.mc-g.mc-1{grid-template-columns:1fr}.mc-g.mc-2{grid-template-columns:1fr 1fr}.mc-g.mc-4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 @media (max-width:700px){.mc-g.mc-2{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.mc-g.mc-4{grid-template-columns:1fr;grid-template-rows:repeat(4,300px);height:auto}}
@@ -4580,7 +4581,7 @@ function newsHtml() {
   // gleiche Firma am gleichen Tag (z. B. 9 Manager von Huhtamäki) als eine Zeile – Antippen zeigt alle Personen
   const gm = new Map(); list.forEach(x => { const k = `${x.t}|${x.d}`; if (!gm.has(k)) gm.set(k, []); gm.get(k).push(x); }); const grpd = [...gm.values()];
   const igrp = g => { const x = g[0], tot = g.reduce((a, y) => a + (inEur(y) || 0), 0), tag = own(x.t) ? ' <span class="pill dep">Deine</span>' : "", top = g.some(y => INS_TOP.test(y.role || ""));
-    return `<button class="bf-r" ${side === "buy" ? `data-insopen="${esc(x.t)}"` : ""}><i class="${side === "buy" ? "g" : "r"}"></i><span><b>${esc(x.n || x.t)}${tag}</b><em>${g.length} Insider ${side === "buy" ? "kaufen" : "verkaufen"} · ${dateDE(x.d)}${top ? ' · <span class="ir-top">Vorstandsspitze</span>' : ""}${g.some(y => y.opp) ? ' · <b class="up">gezielt</b>' : ""} · ${esc(g.slice(0, 3).map(y => String(y.who || "").split(/[ ,]/)[0]).join(", "))}${g.length > 3 ? " …" : ""}</em></span><span class="bf-p ${side === "buy" ? "up" : "down"}">${eurAmt(tot)}</span></button>`; };
+    return `<button class="bf-r" ${side === "buy" ? `data-insopen="${esc(x.t)}"` : ""}><i class="${side === "buy" ? "g" : "r"}"></i>${x.t ? cfAv(x.t) : ""}<span><b>${esc(x.n || x.t)}${tag}</b><em>${g.length} Insider ${side === "buy" ? "kaufen" : "verkaufen"} · ${dateDE(x.d)}${top ? ' · <span class="ir-top">Vorstandsspitze</span>' : ""}${g.some(y => y.opp) ? ' · <b class="up">gezielt</b>' : ""} · ${esc(g.slice(0, 3).map(y => String(y.who || "").split(/[ ,]/)[0]).join(", "))}${g.length > 3 ? " …" : ""}</em></span><span class="bf-p ${side === "buy" ? "up" : "down"}">${eurAmt(tot)}</span></button>`; };
   const f2chip = (k, v, l) => `<button class="opt${String(IF[k] || "") === String(v) ? " on" : ""}" data-insf2="${k}" data-v="${v}">${l}</button>`;
   const f2tog = (k, l) => `<button class="opt${IF[k] ? " on" : ""}" data-insf2="${k}" data-v="${IF[k] ? "" : "1"}">${l}</button>`;
   const cnt = l => l.filter(x => (!x.d || ageD(x.d) <= days)).length;
@@ -4595,7 +4596,7 @@ function newsHtml() {
   const aggL = [...agg.values()].filter(a => (side === "buy" ? a.b.size : a.s.size) > 0)
     .sort((p, q) => side === "buy" ? q.b.size - p.b.size || q.be - p.be : q.s.size - p.s.size || q.se - p.se);
   const aCell = (n, e, c) => `<span class="ins-ac ${n ? c : "muted"}"><b>${n || "–"}</b>${n && e ? `<em>${eurAmt(e)}</em>` : ""}</span>`;
-  const aRow = a => `<button class="ins-ar" data-insagg="${esc(a.t)}"><span class="ins-an"><b>${esc(a.n)}${own(a.t) ? ' <span class="pill dep">Deine</span>' : ""}${(side === "buy" ? a.b.size : a.s.size) >= 3 ? ` <span class="pill ins-cl ${side === "buy" ? "up" : "down"}">${side === "buy" ? "Kauf" : "Verkaufs"}-Cluster</span>` : ""}</b><em>${esc(tkClean(a.t))}</em></span>${aCell(a.b.size, a.be, "up")}${aCell(a.s.size, a.se, "down")}</button>`;
+  const aRow = a => `<button class="ins-ar" data-insagg="${esc(a.t)}"><span class="ins-an ins-anl">${cfAv(a.t)}<span class="ins-ant"><b>${esc(a.n)}${own(a.t) ? ' <span class="pill dep">Deine</span>' : ""}${(side === "buy" ? a.b.size : a.s.size) >= 3 ? ` <span class="pill ins-cl ${side === "buy" ? "up" : "down"}">${side === "buy" ? "Kauf" : "Verkaufs"}-Cluster</span>` : ""}</b><em>${esc(tkClean(a.t))}</em></span></span>${aCell(a.b.size, a.be, "up")}${aCell(a.s.size, a.se, "down")}</button>`;
   const aggHtml = `<div class="ins-at"><div class="ins-ar ins-ah"><span class="ins-an">Aktie</span><span class="ins-ac">Käufer</span><span class="ins-ac">Verkäufer</span></div>
     ${aggL.length ? aggL.slice(0, lim2).map(aRow).join("") : `<div class="bf-empty">Keine Insider-${side === "buy" ? "Käufe" : "Verkäufe"} für diese Filter.</div>`}</div>
     ${aggL.length > lim2 || state.insMore ? `<button class="hlink" data-insmore style="margin-top:8px">${state.insMore ? "weniger zeigen" : `alle ${Math.min(aggL.length, 150)} zeigen`}</button>` : ""}`;
@@ -8089,8 +8090,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.137";
-const APP_NEWS = [["2026.11.137", "Aufgeräumt: Chart, Screener, ETF-Ampel", [
+const APP_VER = "2026.11.138";
+const APP_NEWS = [["2026.11.138", "Insider-Logos überall", [
+  ["Logos in der Insider-Liste", "Auch Zeilen mit mehreren Käufern derselben Firma („3 Insider kaufen“) zeigen jetzt das Firmenlogo."]]],
+  ["2026.11.137", "Aufgeräumt: Chart, Screener, ETF-Ampel", [
   ["Chart wie TradingView", "Zeichenleiste senkrecht am linken Rand mit Werkzeug-Gruppen, oben „Indikatoren“, „Replay“ und „Alarm“. Achsen hängen nicht mehr, das Farbfenster einer Linie schließt mit ✕, und der Chart läuft flüssiger."],
   ["Screener", "Ruhige Filterleiste, weitere Filter und Spalten auf Wunsch, Kairo-Kriterien als Balken."],
   ["ETF-Ampel", "Neue, ruhige Gestaltung mit klarer Statusanzeige, Kennzahl-Kacheln und Rückblick."],
