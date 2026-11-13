@@ -33,3 +33,15 @@ def test_push_once_per_direction(monkeypatch):
     assert len(m) == 1 and "Abc AG" in m[0]["title"] and "10,50" in m[0]["body"] and "sec=chart&t=ABC" in m[0]["url"]
     assert push.trendline_messages("2026-11-14", rows) == []          # gleiche Richtung innerhalb 10 Tagen: nicht nochmal
     assert len(push.trendline_messages("2026-11-30", rows)) == 1      # nach 10 Tagen wieder möglich
+
+
+def test_chart_alarm_level_and_message():
+    a = {"i": "x1", "t": "ABC", "n": "Abc", "k": "tl", "p": 10.0, "d1": "2026-11-02", "p2": 11.0, "d2": "2026-11-09", "dir": "up", "at": "2026-11-09"}
+    assert abs(push.alert_level(a, "2026-11-16") - 12.0) < 1e-9          # 5 Handelstage je 1,0 → eine Woche später 12
+    df = pd.DataFrame({"High": [11.0, 12.5], "Low": [10.0, 11.5], "Close": [10.5, 12.2]}, index=["2026-11-13", "2026-11-16"])
+    sent = {}
+    m = push.messages({"a": [a]}, {"ABC": df}, "2026-11-16", sent)
+    assert len(m) == 1 and "kreuzt" in m[0]["title"] and "sec=chart&t=ABC" in m[0]["url"]
+    assert push.messages({"a": [a]}, {"ABC": df}, "2026-11-16", sent) == []   # nur einmal
+    h = {**a, "i": "x2", "k": "hl", "p": 13.0}
+    assert push.messages({"a": [h]}, {"ABC": df}, "2026-11-16", {}) == []     # Hoch 12,5 erreicht 13 nicht
