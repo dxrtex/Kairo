@@ -28,7 +28,7 @@ from .config import CONFIG, ROOT, as_dict
 from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
-from . import insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
+from . import autota, insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import ASSET_ETF, EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, THEME_ETF, fill_sectors, home_region, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -795,6 +795,13 @@ def main(argv=None) -> int:
             rows[-1]["wk"] = weekly_trend(df)
         except Exception:
             pass
+        if m.get("in_watchlist"):                     # Trendlinien wie in der Auto-Analyse – für den Watchlist-Alarm bei einem Bruch
+            try:
+                tl = autota.trendlines(df)
+                if tl and (tl["sup"] or tl["res"]):
+                    rows[-1]["tl"] = tl
+            except Exception as exc:
+                print(f"{t}: Trendlinien-Fehler {exc!r}")
         search[t] = {**search[t], **search_row(res, m, rows[-1]["hint"]), "detail": 1} if t in search else {**search_row(res, m, rows[-1]["hint"]), "detail": 1}
         with open(SITE / "charts" / f"{t}.json", "w", encoding="utf-8") as f:
             json.dump(_clean(chart_payload(chart_frame(df, chart_long.get(t)))), f, separators=(",", ":"))
