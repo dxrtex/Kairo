@@ -8,7 +8,7 @@ Weiße/sehr helle Logos (z. B. UBS) werden dunkel eingefärbt – die App zeigt 
 Ein Logo wird nur übernommen, wenn es scharf genug ist (≥ 48 px) und kein Platzhalter
 (gleiches Bild bei vielen Aktien). Vorhandene Logos bleiben, neue kommen dazu.
 
-Aufruf: python tools/fetch_logos.py <search.json> <ausgabe-ordner> [--limit N]
+Aufruf: python tools/fetch_logos.py <search.json> <ausgabe-ordner> [--limit N] [--extra insider.json] [--extra funds.json]
 Ergebnis: <ordner>/<TICKER>.png und <ordner>/index.json (Liste der Ticker mit Logo).
 """
 from __future__ import annotations
@@ -201,6 +201,22 @@ def main() -> None:
     rows = json.loads(search.read_text())["rows"]
     tickers = [r["t"] for r in rows if r.get("t")]
     names = {r["t"]: r.get("n") or "" for r in rows if r.get("t")}
+    # Insider-Meldungen und Hedgefonds-Positionen: auch Firmen außerhalb des Scans (kleinere US-Werte) bekommen ein Logo
+    for i, x in enumerate(a):
+        if x != "--extra" or i + 1 >= len(a) or not Path(a[i + 1]).exists():
+            continue
+        try:
+            d = json.loads(Path(a[i + 1]).read_text())
+        except Exception:
+            continue
+        for k in ("buys", "sells"):
+            for r in d.get(k) or []:
+                if r.get("t") and re.fullmatch(r"[A-Z0-9.\-]{1,12}", r["t"]):
+                    tickers.append(r["t"])
+                    names.setdefault(r["t"], r.get("n") or "")
+        for t in (d.get("by") or {}):
+            if re.fullmatch(r"[A-Z0-9.\-]{1,12}", t):
+                tickers.append(t)
     extra = Path("data/watchlist.json")
     if extra.exists():
         for k, v in json.loads(extra.read_text()).items():
