@@ -123,6 +123,9 @@ jobs:
         if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'
         run: |
           if git fetch -q origin kairo-fund 2>/dev/null && git show origin/kairo-fund:fund.json > /tmp/fund.json 2>/dev/null; then mkdir -p site/data && mv /tmp/fund.json site/data/fund.json && ls -la site/data/fund.json; else echo "noch keine Fundamentaldaten"; fi
+      - name: Kairo-Signale je Aktie dazulegen (Branch kairo-sig, fehlt er, zeigt der Chart keine früheren Signale)
+        run: |
+          if git fetch -q origin kairo-sig 2>/dev/null && git show origin/kairo-sig:sighist.json > /tmp/sighist.json 2>/dev/null; then mkdir -p site/data && mv /tmp/sighist.json site/data/sighist.json && ls -la site/data/sighist.json; else echo "noch keine Kairo-Signale"; fi
       - name: Browser für den App-Test installieren (3 Versuche)
         id: browser
         if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'
