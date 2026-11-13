@@ -2628,7 +2628,7 @@ const tgtIn = r => !state.minTgt || (tgtUp(r) ?? -1) >= +state.minTgt;
 const insIn = r => { if (!state.ins) return true; const g = insSig(r.ticker); return !!g && (state.ins === "strong" ? g.score >= 2 : g.buyers >= 1); };
 const volaIn = r => { const b = VOLA[state.vola]; return !b || (r.volatility != null && r.volatility >= b[0] && r.volatility < b[1]); };
 const volaCls = v => v == null ? "muted" : v < .3 ? "up" : v < .5 ? "" : "down";
-const state = { name: "", calView: "month", budget: 400, sec: "scanner", tab: "table", tableKind: "hit", kinds: ["hit", "fast"], calScope: "mine", calKind: "", ...DEFAULTS, tableSort: "score", tableAsc: false };
+const state = { name: "", calView: "month", budget: 400, sec: "scanner", tab: "table", tableKind: "hit", kinds: ["hit", "fast"], calScope: "mine", calKind: "", ...DEFAULTS, tableSort: "met", tableAsc: false };   // Scanner öffnet nach „Erfüllt“ sortiert (Wunsch 13.11.), Score bleibt wählbar
 const PREF = "reversal-finder-v1";
 try { Object.assign(state, JSON.parse(localStorage.getItem(PREF) || "{}")); } catch (e) {}
 if (state.tab === "settings" || state.tab === "filter") state.tab = "cards";
@@ -7717,6 +7717,7 @@ const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
 const APP_VER = "2026.11.124";
 const APP_NEWS = [["2026.11.124", "TradingView-App und neue Such-Karte", [
+  ["Scanner nach „Erfüllt“", "Der Scanner ist beim Öffnen nach erfüllten Kriterien sortiert (bei Gleichstand wie bisher kaufbereit zuerst). Andere Sortierung weiterhin über die Spaltenköpfe."],
   ["Neue Such-Karte", "Die Karte bei der Aktiensuche ist neu: Logo, großer Kurs mit Tagesänderung, 1W/1M/3M/YTD, Kairo-Kriterien als Leiste, Börsenwert, Trend, Abstand zum Hoch, RSI, Schwankung und Zahlen-Termin – dazu Übersicht, Chart, Einstieg und TradingView mit einem Tipp."],
   ["TradingView in der App", "„TradingView“ öffnet auf iPad und iPhone jetzt die TradingView-App mit deinem Konto und deinen Indikatoren. Zurück geht es oben links über „◀ Kairo“ – genau an die Stelle, an der du warst. Einstellbar unter Einstellungen → Trading."]]],
   ["2026.11.123", "Depot-Risiko und Chart-Replay", [
@@ -9614,7 +9615,7 @@ function renderMain() {
     return;
   }
   const col = COLS.find(c => c.k === state.tableSort) || COLS.find(c => c.k === "score");
-  if (state.tableSort !== "score" || state.tableAsc) list.sort((a, b) => { const x = col.g(a), y = col.g(b); const c = typeof x === "string" ? x.localeCompare(y) : x - y; return state.tableAsc ? c : -c; });
+  if (state.tableSort !== "score" || state.tableAsc) list.sort((a, b) => { const x = col.g(a), y = col.g(b); const c = typeof x === "string" ? x.localeCompare(y) : x - y; return (state.tableAsc ? c : -c) || kOrder(a, b); });   // gleich viele erfüllt: wie bisher (kaufbereit/Score zuerst)
   else list.sort(kOrder);          // Standard: „perfekte“ Aktien (Treffer + 4H bestätigt) ganz oben, sonst Score
   const full = list.length, rows = scanAll || full <= SCAN_LIM ? list : list.slice(0, SCAN_LIM);   // lange Listen: erst die besten 60
   if (state.view === "mine") liveKick([...rows.map(r => r.ticker), ...favs()].slice(0, 40), "scanner");   // Watchlist: Kurse live
