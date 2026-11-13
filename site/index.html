@@ -2486,6 +2486,12 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .sc-sft{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;min-width:0}.sc-sft span{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);width:100%}.sc-sft b{font-size:17px}.sc-sft em{font-style:normal;font-size:12.5px;color:var(--muted)}.sc-sft em .fc-g{font-style:normal}.sc-sft small{width:100%;font-size:11.5px;color:var(--muted)}
 .pane-sel{background:transparent;color:var(--text);border:0;font:inherit;font-size:12.5px;font-weight:700;padding:0 2px;cursor:pointer;max-width:190px}.pane-label span{margin-left:6px;color:var(--muted);font-weight:500}
 .ip-g{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;padding:4px 2px}.ip-g label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--muted)}.ip-g input{width:100%;background:rgba(127,127,127,.12);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:5px 7px;font:inherit;font-size:13px}
+.al-box{position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px}.al-box[hidden]{display:none}
+.al-in{width:min(520px,100%);max-height:80vh;overflow:auto;border-radius:20px;padding:16px 18px;background:var(--lg-tab);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);box-shadow:var(--lg-rim),0 20px 50px rgba(0,0,0,.45)}
+.al-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.al-h b{font-size:18px}
+.al-r{display:flex;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}.al-r>span{flex:1;min-width:0;display:flex;flex-direction:column}.al-r small{color:var(--muted);font-size:12.5px}.al-r.off{opacity:.55}.al-r .del{color:#ff453a}
+.al-new{margin-top:12px;padding:12px;border-radius:14px;background:rgba(127,127,127,.1);display:flex;flex-direction:column;gap:6px}.al-new small{color:var(--muted)}
+.al-f{display:flex;flex-wrap:wrap;gap:6px}.al-f select,.al-f input{background:rgba(127,127,127,.14);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:7px 8px;font:inherit;font-size:13.5px}.al-f input{width:110px}
 .au-q{display:block;margin-top:3px;font-size:11.5px}
 .mtags{display:flex;gap:6px;align-items:center;margin-top:3px}.mtags .echip{margin-left:0}.aitem .an .echip{margin:3px 0 0;align-self:flex-start}</style>
 <style id="scard">
@@ -7838,6 +7844,7 @@ const APP_VER = "2026.11.130";
 const APP_NEWS = [["2026.11.130", "Indikator-Bibliothek", [
   ["Indikator-Fenster frei wählbar", "Unter dem Chart lässt sich jedes Fenster umstellen: RSI, MACD, Momentum Bias Index, Stochastik, ATR, OBV oder ADX/DMI."],
   ["Eigene Einstellungen", "Ebenen → Indikator-Einstellungen: Perioden für RSI, Stochastik, ATR, ADX und Bollinger-Bänder."],
+  ["Alarm-Zentrale", "Im Chart „🔔 Alarme“: alle Alarme an einem Ort, dazu neue Kurs-Alarme (steigt über / fällt unter) und RSI-Alarme – ohne etwas zu zeichnen."],
   ["Ichimoku und verankerter VWAP", "Ichimoku-Wolke unter Ebenen → Indikatoren; der verankerte VWAP ist ein neues Zeichenwerkzeug – Startkerze antippen."]]],
   ["2026.11.129", "Fundamental-Check", [
   ["Kairo-Schneeflocke", "Für alle Aktien fünf Achsen wie bei Simply Wall St: Bewertung, Wachstum, Rentabilität, Gesundheit und Dividende – im Chart, in der Übersicht und in der Suche. Dazu KGV gegen die Branche, Margen, Verschuldung, freier Cashflow und Dividende."],
@@ -10786,7 +10793,7 @@ function ctabBarHtml(h) {
   const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), ...SMA_DEF.map(x => x[0]), "bb", "ichi", "vol", "vp", "plan", "auto"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length)).length;
   const grp = (t, body) => body ? `<div class="ct-g"><div class="ct-gh">${t}</div>${body}</div>` : "";
   return `<div class="ct-tl"><div class="ct-seg"><button class="ct-b ct-lay${ctPop ? " on" : ""}" data-ctlayers aria-expanded="${ctPop}" title="Ebenen ein-/ausblenden">${CT_IC.layers}<span>Ebenen</span><small>${nOn}</small></button></div>
-      <div class="ct-seg"><button class="ct-b${MEAS.on ? " on" : ""}" data-clm title="Messen: Start- und Endkerze antippen" aria-label="Messen">${CT_IC.ruler}<span class="ct-lbl">Messen</span></button><button class="ct-b${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle setzen" aria-label="Welle setzen">${CT_IC.wave}<span class="ct-lbl">${M.own ? "Eigene Welle" : "Welle"}</span></button><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button>${M.own ? `<button class="ct-b" data-clwreset title="Zurück zur Welle, die Kairo bestimmt" aria-label="Kairo-Welle">${CT_IC.reset}</button>` : ""}</div></div>
+      <div class="ct-seg"><button class="ct-b${MEAS.on ? " on" : ""}" data-clm title="Messen: Start- und Endkerze antippen" aria-label="Messen">${CT_IC.ruler}<span class="ct-lbl">Messen</span></button><button class="ct-b${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle setzen" aria-label="Welle setzen">${CT_IC.wave}<span class="ct-lbl">${M.own ? "Eigene Welle" : "Welle"}</span></button><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button><button class="ct-b" data-alc title="Alarme: alle Alarme, Kurs- und RSI-Alarm" aria-label="Alarme">🔔<span class="ct-lbl">Alarme</span>${alCount() ? `<small>${alCount()}</small>` : ""}</button>${M.own ? `<button class="ct-b" data-clwreset title="Zurück zur Welle, die Kairo bestimmt" aria-label="Kairo-Welle">${CT_IC.reset}</button>` : ""}</div></div>
     ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, true))}
       ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.concat(SMA_DEF).map(([k, col, l]) => sw(k, l, col)).join(""))}${grp("Indikatoren", sw("bb", `Bollinger-Bänder (${IND_P().bbN}, ${IND_P().bbK})`, "#2962ff") + sw("ichi", "Ichimoku-Wolke", "#30d158"))}${grp("Indikator-Einstellungen", `<div class="ip-g">${[["rsi", "RSI-Periode"], ["stK", "Stochastik %K"], ["stD", "Stochastik %D"], ["atr", "ATR-Periode"], ["adx", "ADX-Periode"], ["bbN", "Bollinger-Periode"], ["bbK", "Bollinger-Faktor"]].map(([k, l]) => `<label><span>${l}</span><input type="number" inputmode="decimal" data-ip="${k}" value="${IND_P()[k]}" step="${k === "bbK" ? ".5" : "1"}"></label>`).join("")}</div>`)}
       ${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa"))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a"))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
@@ -11196,10 +11203,14 @@ function drLevelNow(t, d) {
   const bd = (x, y) => (x <= y ? 1 : -1) * bdBetween(new Date((x <= y ? x : y) + "T12:00:00"), new Date((x <= y ? y : x) + "T12:00:00"));
   const n12 = bd(d.a.d, d.b.d) + (d.b.o || 0) - (d.a.o || 0), n1t = bd(d.a.d, isoD(new Date())) - (d.a.o || 0); if (!n12) return d.a.p;
   return d.a.p + (d.b.p - d.a.p) * n1t / n12; }
-function drAlerts() { const o = []; Object.entries(state.draws || {}).forEach(([t, L]) => (L || []).forEach(d => { if (d.al && d.al.on && ["hl", "hr", "tl"].includes(d.k))
+function alCount() { return drAlerts().length; }
+function drAlerts() { const o = []; (state.alerts || []).forEach(a => { if (a.on) o.push({ i: a.id, t: a.t, n: a.n, k: a.k, p: a.v, op: a.op, dir: a.k === "px" ? (a.op === ">" ? "up" : "down") : undefined, at: a.at }); }); Object.entries(state.draws || {}).forEach(([t, L]) => (L || []).forEach(d => { if (d.al && d.al.on && ["hl", "hr", "tl"].includes(d.k))
   o.push({ i: d.id, t, n: String((rowFor(t) || {}).n || (rowFor(t) || {}).name || t).slice(0, 28), k: d.k, p: +(+d.a.p).toPrecision(7), ...(d.k === "tl" && d.b ? { d1: d.a.d, p2: +(+d.b.p).toPrecision(7), d2: d.b.d } : {}), dir: d.al.dir, at: d.al.at }); })); return o.slice(0, 200); }
 function drAlertCheck() {
   let hit = 0; const all = { ...(state.draws || {}) };
+  (state.alerts || []).forEach(a => { if (!a.on || a.k !== "px") return; const px = drPxNow(a.t); if (px == null) return;
+    if ((a.op === ">" && px >= a.v) || (a.op === "<" && px <= a.v)) { a.on = 0; a.hit = isoD(new Date()); hit++; const msg = `${a.n || tkClean(a.t)} ${a.op === ">" ? "über" : "unter"} ${fmt(a.v)} (Kurs ${fmt(px)})`;
+      try { navigator.serviceWorker && navigator.serviceWorker.ready.then(reg => reg.showNotification(`🔔 Kurs-Alarm`, { body: msg, tag: "kairo-al-" + a.id, data: { url: `?sec=chart&t=${a.t}` } })); } catch (x) {} drToast(`🔔 ${msg}`); } });
   Object.entries(all).forEach(([t, L]) => { (L || []).forEach(d => { if (!(d.al && d.al.on)) return; const px = drPxNow(t), lv = drLevelNow(t, d); if (px == null || lv == null) return;
     if ((d.al.dir === "up" && px >= lv) || (d.al.dir === "down" && px <= lv)) { d.al = { on: 0, hit: isoD(new Date()) }; hit++;
       const nm = String((rowFor(t) || {}).n || (rowFor(t) || {}).name || tkClean(t)), msg = `${nm} kreuzt ${fmt(lv)} (Kurs ${fmt(px)})`;
@@ -11210,6 +11221,36 @@ function drAlertCheck() {
 function drToast(tx) { let el = $("drToast"); if (!el) { document.body.insertAdjacentHTML("beforeend", `<div id="drToast" class="dr-toast" role="status"></div>`); el = $("drToast"); }
   el.textContent = tx; el.classList.add("on"); clearTimeout(drToast.t); drToast.t = setTimeout(() => el.classList.remove("on"), 7000); }
 setInterval(() => { if (document.visibilityState === "visible") drAlertCheck(); }, 60e3);
+// Alarm-Zentrale (wie TradingView „Alarme“): alle Alarme an einem Ort; neue Kurs- und RSI-Alarme ohne Zeichnung
+async function alCenter() {
+  const L = window.__lastChart, t = L && L.r ? String(L.r.ticker).replace(/@rp$/, "") : null, nm = t ? String((rowFor(t) || {}).name || (rowFor(t) || {}).n || tkClean(t)) : "";
+  const px = t ? drPxNow(t) : null, lines = [];
+  Object.entries(state.draws || {}).forEach(([tk, Ls]) => (Ls || []).forEach(d => { if (d.al && (d.al.on || d.al.hit)) lines.push({ kind: "draw", tk: tk.replace(/\|i$/, ""), key: tk, d }); }));
+  (state.alerts || []).forEach(a => lines.push({ kind: "al", tk: a.t, a }));
+  const row = x => { const on = x.kind === "draw" ? x.d.al.on : x.a.on, hit = x.kind === "draw" ? x.d.al.hit : x.a.hit, nn = String((rowFor(x.tk) || {}).name || (rowFor(x.tk) || {}).n || tkClean(x.tk)).slice(0, 26);
+    const what = x.kind === "draw" ? `${{ hl: "Horizontale Linie", hr: "Strahl", tl: "Trendlinie" }[x.d.k]} kreuzt ${fmt(drLevelNow(x.tk, x.d))}` : x.a.k === "px" ? `Kurs ${x.a.op === ">" ? "über" : "unter"} ${fmt(x.a.v)}` : `RSI 14 ${x.a.op === ">" ? "über" : "unter"} ${fmt(x.a.v, 0)}`;
+    return `<div class="al-r ${on ? "" : "off"}"><span><b>${esc(nn)}</b><small>${what}${on ? "" : hit ? ` · ausgelöst ${dateDE(hit)}` : " · aus"}</small></span><button class="hlink" data-algo="${esc(x.tk)}">Chart</button><button class="hlink del" data-aldel="${x.kind}|${esc(x.kind === "draw" ? x.key + "|" + x.d.id : x.a.id)}">Entfernen</button></div>`; };
+  const html = `${lines.length ? lines.map(row).join("") : `<p class="muted" style="margin:4px 0 10px">Noch keine Alarme. Lege unten einen an oder tippe im Chart eine Linie an → „🔔 Alarm hinzufügen“.</p>`}
+    ${t ? `<div class="al-new"><b>Neuer Alarm für ${esc(nm)}</b>${px ? `<small>Kurs jetzt ${fmt(px)}</small>` : ""}
+      <div class="al-f"><select id="alK"><option value="px">Kurs</option><option value="rsi">RSI 14</option></select><select id="alOp"><option value=">">steigt über</option><option value="<">fällt unter</option></select><input id="alV" type="number" inputmode="decimal" step="any" value="${px ? (px * 1.05).toFixed(2) : ""}"><button class="btn sm" data-aladd="${esc(t)}">Anlegen</button></div></div>` : ""}
+    <p class="muted" style="font-size:12px;margin:8px 0 0">Alarme kommen einmal. In der App sofort; bei geschlossener App als Mitteilung, wenn dein Kursdienst Version 9 hat (RSI-Alarme nur so – geprüft mit dem Tagesschluss).</p>`;
+  let box = $("alBox"); if (!box) { document.body.insertAdjacentHTML("beforeend", `<div id="alBox" class="al-box" role="dialog" aria-label="Alarme"><div class="al-in"><div class="al-h"><b>Alarme</b><button class="hlink" data-alx>Schließen</button></div><div id="alBody"></div></div></div>`); box = $("alBox"); }
+  $("alBody").innerHTML = html; box.hidden = false;
+}
+document.addEventListener("click", e => {
+  const t = e.target;
+  if (t.closest("[data-alc]")) { alCenter(); return; }
+  if (t.closest("[data-alx]") || t.id === "alBox") { const b = $("alBox"); if (b) b.hidden = true; return; }
+  const ad = t.closest("[data-aladd]"); if (ad) { const k = $("alK").value, op = $("alOp").value, v = parseFloat(String($("alV").value).replace(",", ".")); if (!(v > 0)) { kSay("Bitte einen Wert eingeben."); return; }
+    const tk = ad.dataset.aladd; state.alerts = [...(state.alerts || []), { id: Date.now().toString(36), t: tk, n: String((rowFor(tk) || {}).name || (rowFor(tk) || {}).n || tkClean(tk)).slice(0, 28), k, op, v, at: isoD(new Date()), on: 1 }]; save();
+    if (window.Notification && Notification.permission === "default") try { Notification.requestPermission(); } catch (x) {}
+    try { kxSync(); } catch (x) {} alCenter(); if (cfChart && $("cfBar")) $("cfBar").innerHTML = ctabBarHtml(cfChart); return; }
+  const dl = t.closest("[data-aldel]"); if (dl) { const [kind, ...rest] = dl.dataset.aldel.split("|");
+    if (kind === "al") state.alerts = (state.alerts || []).filter(a => a.id !== rest[0]);
+    else { const id = rest.pop(), key = rest.join("|"), all = { ...(state.draws || {}) }; all[key] = (all[key] || []).map(d => d.id === id ? { ...d, al: undefined } : d); state.draws = all; }
+    save(); try { kxSync(); } catch (x) {} alCenter(); if (cfChart && $("cfBar")) $("cfBar").innerHTML = ctabBarHtml(cfChart); if (DRAW.h && DRAW.h.drReq) DRAW.h.drReq(); return; }
+  const go = t.closest("[data-algo]"); if (go) { const b = $("alBox"); if (b) b.hidden = true; cockpitGo(go.dataset.algo); }
+});
 // ---------- Chart-Replay (Runde 13.11., wie TradingView „Bar Replay“): den Chart Tag für Tag nachspielen und üben ----------
 // Der Chart zeigt nur die Kerzen bis zum Replay-Tag – Indikatoren (EMA, RSI, MACD, MBI) sind rückwärts gerechnet und damit
 // genau so, wie man sie damals sah. Kairo-Status, Plan und Fibonacci des heutigen Scans sind ausgeblendet (wären Wissen aus der Zukunft).

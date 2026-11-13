@@ -45,3 +45,14 @@ def test_chart_alarm_level_and_message():
     assert push.messages({"a": [a]}, {"ABC": df}, "2026-11-16", sent) == []   # nur einmal
     h = {**a, "i": "x2", "k": "hl", "p": 13.0}
     assert push.messages({"a": [h]}, {"ABC": df}, "2026-11-16", {}) == []     # Hoch 12,5 erreicht 13 nicht
+
+
+def test_rsi_alarm():
+    import numpy as np
+    cl = np.concatenate([np.linspace(100, 60, 40)])
+    df = pd.DataFrame({"High": cl * 1.01, "Low": cl * .99, "Close": cl}, index=[f"2026-10-{i:02d}" if i < 32 else f"2026-11-{i-31:02d}" for i in range(1, 41)])
+    a = {"i": "r1", "t": "X", "n": "X", "k": "rsi", "op": "<", "p": 30, "at": "2026-10-01"}
+    m = push.messages({"a": [a]}, {"X": df}, "2026-11-09", {})
+    assert len(m) == 1 and "RSI" in m[0]["title"]
+    px = {"i": "p1", "t": "X", "n": "X", "k": "px", "p": 62.0, "dir": "down", "at": "2026-10-01"}
+    assert len(push.messages({"a": [px]}, {"X": df}, "2026-11-09", {})) == 1

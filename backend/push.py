@@ -50,6 +50,15 @@ def messages(dev: dict, prices: dict, today: str, sent: dict) -> list[dict]:
         t, df = a.get("t"), prices.get(a.get("t"))
         if not t or df is None or not len(df):
             continue
+        if a.get("k") == "rsi":                        # RSI-Alarm (Tagesschluss, RSI 14 nach Wilder)
+            cl = df["Close"].astype(float)
+            d = cl.diff()
+            up, dn = d.clip(lower=0).ewm(alpha=1 / 14, adjust=False).mean(), (-d.clip(upper=0)).ewm(alpha=1 / 14, adjust=False).mean()
+            rsi = float((100 - 100 / (1 + up / dn)).iloc[-1]) if float(dn.iloc[-1]) else 100.0
+            if str(df.index[-1]) >= (a.get("at") or "") and ((a.get("op") == ">" and rsi > float(a["p"])) or (a.get("op") == "<" and rsi < float(a["p"]))):
+                add(f"al:{a.get('i')}", f"🔔 {(a.get('n') or t)[:28]}: RSI {_num(rsi)}",
+                    f"RSI 14 {'über' if a.get('op') == '>' else 'unter'} {_num(float(a['p']))} (Tagesschluss). Alarm kommt nur einmal.", f"chart&t={t}")
+            continue
         lvl = alert_level(a, today)
         if lvl is None:
             continue
@@ -57,7 +66,7 @@ def messages(dev: dict, prices: dict, today: str, sent: dict) -> list[dict]:
         if str(df.index[-1]) < (a.get("at") or ""):
             continue                                   # Kerze vor dem Setzen des Alarms
         if (a.get("dir") == "up" and hi >= lvl) or (a.get("dir") == "down" and lo <= lvl):
-            what = {"hl": "Horizontale Linie", "hr": "Horizontaler Strahl", "tl": "Trendlinie"}.get(a.get("k"), "Linie")
+            what = {"hl": "Horizontale Linie", "hr": "Horizontaler Strahl", "tl": "Trendlinie", "px": "Kurs-Alarm"}.get(a.get("k"), "Linie")
             add(f"al:{a.get('i')}", f"🔔 {(a.get('n') or t)[:28]} kreuzt {_num(lvl)}",
                 f"{what} aus deinem Chart {'nach oben' if a.get('dir') == 'up' else 'nach unten'} gekreuzt · Kurs {_num(c)}. Alarm kommt nur einmal.", f"chart&t={t}")
 
