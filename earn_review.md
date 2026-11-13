@@ -1,6 +1,6 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhalb 1325 Min., 333 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhalb 1325 Min., 334 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
 664 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-13), davon 474 mit aufgezeichneter Prognose.
 
@@ -60,21 +60,21 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-72 Fehlprognosen und 399 Vergleichsfälle untersucht.
+72 Fehlprognosen und 402 Vergleichsfälle untersucht.
 
 - Markt: Bei 37% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 20% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
 - Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.2%, getroffene Ø -4.8%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 31% (22) | 28% | 1.1 |
-| Marge | 12% (9) | 8% | 1.7 |
+| Ausblick | 31% (22) | 29% | 1.1 |
+| Marge | 12% (9) | 7% | 1.7 |
 | Umsatz | 57% (41) | 49% | 1.2 |
 | Nutzer/Kunden | 6% (4) | 1% | 7.4 |
-| Aufträge | 10% (7) | 6% | 1.8 |
+| Aufträge | 10% (7) | 5% | 1.8 |
 | Kosten | 4% (3) | 8% | 0.5 |
-| Zölle/Politik | 1% (1) | 1% | 1.8 |
-| KI/Rechenzentren | 12% (9) | 12% | 1.1 |
+| Zölle/Politik | 1% (1) | 1% | 1.9 |
+| KI/Rechenzentren | 12% (9) | 11% | 1.1 |
 | Management | 3% (2) | 4% | 0.7 |
 | Rückkauf/Dividende | 1% (1) | 4% | 0.3 |
 | Analysten | 6% (4) | 8% | 0.7 |
