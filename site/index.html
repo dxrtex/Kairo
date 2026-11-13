@@ -2552,6 +2552,18 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .al-f{display:flex;flex-wrap:wrap;gap:6px}.al-f select,.al-f input{background:rgba(127,127,127,.14);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:7px 8px;font:inherit;font-size:13.5px}.al-f input{width:110px}
 .sg-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 10px}.sg-sum div{background:var(--surface-2);border-radius:10px;padding:8px 6px;text-align:center}.sg-sum b{display:block;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}.sg-sum small{font-size:11px;color:var(--muted)}
 .sg-r{display:grid;grid-template-columns:86px 1fr auto;gap:8px;font-size:13px;padding:6px 0;border-top:1px solid var(--line)}.sg-r b{font-variant-numeric:tabular-nums}.sg-n{font-size:11.5px;margin:8px 0 0}
+.scr-pre{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:2px 0 12px;padding-bottom:2px}.scr-pre::-webkit-scrollbar{display:none}.scr-pre .kchip{flex:0 0 auto}
+.scr-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
+.fpill{position:relative;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:10px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--pf-ring);font-size:13.5px;cursor:pointer;color:var(--text);border:0;font-family:inherit}
+.fpill span{color:var(--muted)}.fpill b{font-weight:600;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis}.fpill i{width:7px;height:7px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(45deg) translateY(-2px);margin-left:2px}
+.fpill select{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;font-size:16px}
+.fpill.on{background:color-mix(in srgb,var(--accent) 16%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent)}.fpill.on b{color:var(--accent)}
+.fbtn{font-weight:600}.fbtn small{display:inline-grid;place-items:center;min-width:18px;height:18px;border-radius:9px;background:var(--accent);color:var(--accent-ink,#fff);font-size:11px;padding:0 5px}
+.fbtn.on{background:var(--accent);color:var(--accent-ink,#fff);box-shadow:none}
+.scr-cols{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;padding:12px;border-radius:12px;background:var(--pf-bg);box-shadow:inset 0 0 0 1px var(--pf-ring)}
+.scr-t td.num{font-variant-numeric:tabular-nums}.scr-t td .up,.scr-t td .down{font-weight:500}
+.km{display:inline-flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:58px}.km b{font-size:13.5px}.km i{display:block;width:56px;height:4px;border-radius:3px;background:rgba(127,127,127,.22);overflow:hidden}.km u{display:block;height:100%;background:var(--muted);border-radius:3px}
+.km.hit b{color:var(--up)}.km.hit u{background:var(--up)}.km.fast b{color:var(--gold)}.km.fast u{background:var(--gold)}
 .mc-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}.mc-bar>b{font-size:17px;margin-right:auto}.mc-bar .ct-rg button svg{width:18px;height:18px;display:block}
 .mc-g{display:grid;gap:10px;height:calc(100vh - 170px);min-height:420px}.mc-g.mc-1{grid-template-columns:1fr}.mc-g.mc-2{grid-template-columns:1fr 1fr}.mc-g.mc-4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 @media (max-width:700px){.mc-g.mc-2{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.mc-g.mc-4{grid-template-columns:1fr;grid-template-rows:repeat(4,300px);height:auto}}
@@ -3466,6 +3478,7 @@ function searchHtml() {
 
 // ---------- Screener über alle Aktien (Runde 13.11., wie Finviz): frei filtern und sortieren – unabhängig von der Kairo-Regel ----------
 const SCR_PRE = [["", "Alle"], ["hi52", "Nahe 52-W-Hoch"], ["os", "Überverkauft (RSI < 30)"], ["mom", "Starkes Momentum"], ["pull", "Rücksetzer im Aufwärtstrend"], ["earn", "Zahlen in 14 Tagen"], ["ins", "Insider kaufen"], ["k9", "Kairo ab 9/11"], ["qual", "Qualität günstig"], ["divs", "Dividenden-Stars"], ["grow", "Starkes Wachstum"]];
+const SCR_DEF = ["n", "c", "d1", "m1", "ytd", "hi", "tr", "pe", "sf", "m"];   // Standard-Spalten (Übersicht); weitere über „Spalten“
 const SCR_COLS = [["n", "Aktie"], ["c", "Kurs"], ["d1", "1T"], ["d5", "1W"], ["m1", "1M"], ["m3", "3M"], ["ytd", "YTD"], ["hi", "vom Hoch"], ["rsi", "RSI"], ["tr", "Trend"], ["mc", "Börsenwert"], ["pe", "KGV"], ["dy", "Div."], ["sf", "Flocke"], ["sec", "Sektor"], ["m", "Kairo"]];
 let scrMore = 0;
 function scrVal(r, k) { if (k === "pe" || k === "dy" || k === "sf" || k === "rg2") { const f = fundOf(r.t); if (!f) return null; return k === "pe" ? (f.pe ?? null) : k === "dy" ? (f.dr && f.cp ? f.dr / f.cp : 0) : k === "sf" ? sfSum(f) : f.rg ?? null; }
@@ -3499,6 +3512,12 @@ function screenerHtml() {
   const fd = getJson("fund.json"), F = state.scf || {}, S = state.scs || { k: "mc", asc: false }, secs = [...new Set(searchIdx.map(r => r.sec).filter(Boolean))].sort();
   const list = scrRows().sort((a, b) => { const x = scrVal(a, S.k), y = scrVal(b, S.k); if (x == null) return 1; if (y == null) return -1; const c = typeof x === "string" ? x.localeCompare(y) : x - y; return S.asc ? c : -c; });
   const sel = (k, opts, lbl) => `<label class="scr-f"><span>${lbl}</span><select data-scf="${k}">${opts.map(([v, l]) => `<option value="${v}"${String(F[k] || "") === String(v) ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
+  const pill = (k, opts, lbl) => { const cur = opts.find(([v]) => String(F[k] || "") === String(v)) || opts[0], on = !!(F[k] && F[k] !== "0");
+    return `<label class="fpill${on ? " on" : ""}"><span>${lbl}</span><b>${esc(cur[1])}</b><i aria-hidden="true"></i><select data-scf="${k}" aria-label="${lbl}">${opts.map(([v, l]) => `<option value="${v}"${String(F[k] || "") === String(v) ? " selected" : ""}>${l}</option>`).join("")}</select></label>`; };
+  const COLS_ON = (state.scCols && state.scCols.length ? state.scCols : SCR_DEF), COLS = SCR_COLS.filter(([k]) => k === "n" || (COLS_ON.includes(k) && (fd || !["pe", "dy", "sf"].includes(k))));
+  const nAct = Object.entries(F).filter(([k, v]) => v && v !== "0" && k !== "pfk").length;
+  const R_REG = [["", "alle"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]], R_CAP = [["", "alle"], ["2e9", "ab 2 Mrd. $"], ["1e10", "ab 10 Mrd. $"], ["5e10", "ab 50 Mrd. $"], ["2e11", "ab 200 Mrd. $"]],
+    R_TR = [["", "egal"], ["up", "über EMA 200"], ["down", "unter EMA 200"]], R_PE = [["", "egal"], ["lo", "unter 15"], ["mid", "15–25"], ["hi", "über 25"], ["neg", "Verlust"]], R_DY = [["", "egal"], [".001", "mit Dividende"], [".02", "ab 2 %"], [".04", "ab 4 %"]];
   const pc = v => v == null ? `<span class="muted">–</span>` : `<span class="${v >= 0 ? "up" : "down"}">${sgnPct(v, Math.abs(v) < .1 ? 1 : 0)}</span>`;
   const shown = list.slice(0, 120 + scrMore), inRes = new Set(data.results.map(r => r.ticker));
   const cell = (r, k) => k === "n" ? `<a href="#" class="nm nm-l" data-${inRes.has(r.t) ? "card" : r.detail ? "open" : "ctgo"}="${esc(r.t)}">${cfAv(r.t)}<span>${esc(shortNm(r.n || r.t))}<small>${esc(tkClean(r.t))}</small></span></a>`
@@ -3508,24 +3527,24 @@ function screenerHtml() {
     : k === "pe" ? (v => v == null ? `<span class="muted">–</span>` : v > 0 ? fmt(v, 1) : `<span class="down">Verlust</span>`)(scrVal(r, "pe"))
     : k === "dy" ? (v => v == null ? `<span class="muted">–</span>` : v ? pct(v, 1) : `<span class="muted">–</span>`)(scrVal(r, "dy"))
     : k === "sf" ? (v => v == null ? `<span class="muted">–</span>` : `<b style="color:rgb(${sfCol(v)})">${v}</b><small>/30</small>`)(scrVal(r, "sf"))
-    : k === "mc" ? (r.mc ? fmtCap(r.mc) : "–") : k === "sec" ? `<span class="muted">${esc(r.sec || "–")}</span>` : `<b class="${r.s === "hit" ? "up" : r.s === "fast" ? "gold" : ""}">${r.m ?? "–"}/11</b>`;
+    : k === "mc" ? (r.mc ? fmtCap(r.mc) : "–") : k === "sec" ? `<span class="muted">${esc(r.sec || "–")}</span>`
+    : r.m == null ? `<span class="muted">–</span>` : `<span class="km${r.s === "hit" ? " hit" : r.s === "fast" ? " fast" : ""}"><b>${r.m}/11</b><i><u style="width:${Math.round(r.m / 11 * 100)}%"></u></i></span>`;
   return `<div class="scr">
     <div class="vdesc">Alle ${fmt(searchIdx.length, 0)} geprüften Aktien frei filtern – wie ein klassischer Screener. Unabhängig von der Kairo-Regel: Treffer findest du unter „Treffer“.</div>
-    <div class="kbar scr-pre">${SCR_PRE.map(([k, l]) => `<button class="kchip${(state.scfPre || "") === k ? " on" : ""}" data-scrpre="${k}">${l}</button>`).join("")}</div>
-    <details class="scr-det"${innerWidth > 700 || state.scrFOpen ? " open" : ""}><summary>Filter${(n => n ? ` <small>${n} aktiv</small>` : "")(Object.entries(F).filter(([k, v]) => v && v !== "0" && k !== "pfk").length)}</summary><div class="scr-fs">${sel("reg", [["", "alle"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]], "Region")}${sel("sec", [["", "alle"], ...secs.map(x => [x, x])], "Sektor")}
-      ${sel("cap", [["", "alle"], ["2e9", "ab 2 Mrd. $"], ["1e10", "ab 10 Mrd. $"], ["5e10", "ab 50 Mrd. $"], ["2e11", "ab 200 Mrd. $"]], "Börsenwert")}
-      ${sel("tr", [["", "egal"], ["up", "über EMA 200"], ["down", "unter EMA 200"]], "Trend")}${sel("rsi", [["", "egal"], ["lo", "unter 30"], ["mid", "30–70"], ["hi", "über 70"]], "RSI 14")}
+    <div class="scr-pre" role="group" aria-label="Vorlagen">${SCR_PRE.map(([k, l]) => `<button class="kchip${(state.scfPre || "") === k ? " on" : ""}" data-scrpre="${k}">${l}</button>`).join("")}</div>
+    <div class="scr-bar">${pill("reg", R_REG, "Region")}${pill("sec", [["", "alle"], ...secs.map(x => [x, x])], "Sektor")}${pill("cap", R_CAP, "Börsenwert")}${pill("tr", R_TR, "Trend")}${fd ? pill("pe", R_PE, "KGV") + pill("dy", R_DY, "Dividende") : ""}
+      <button class="fpill fbtn${state.scrFOpen ? " on" : ""}" data-scrfo>Weitere Filter${nAct ? ` <small>${nAct}</small>` : ""}</button><button class="fpill fbtn${state.scrCOpen ? " on" : ""}" data-scrco>Spalten</button>${nAct ? `<button class="hlink" data-scrpre="">Zurücksetzen</button>` : ""}</div>
+    ${state.scrFOpen ? `<div class="scr-fs">${sel("rsi", [["", "egal"], ["lo", "unter 30"], ["mid", "30–70"], ["hi", "über 70"]], "RSI 14")}
       ${sel("hi", [["", "egal"], ["near", "max. −5 %"], ["pull", "−10 bis −30 %"], ["deep", "über −30 %"]], "Vom 52-W-Hoch")}
       ${sel("pfk", [["m3", "3 Monate"], ["m1", "1 Monat"], ["ytd", "seit Jahresanfang"], ["d5", "1 Woche"]], "Wertentwicklung")}${sel("pf", [["", "egal"], [".05", "ab +5 %"], [".1", "ab +10 %"], [".2", "ab +20 %"], [".5", "ab +50 %"]], "Plus")}
       ${sel("pfn", [["", "egal"], [".1", "ab −10 %"], [".2", "ab −20 %"], [".4", "ab −40 %"]], "Minus")}${sel("met", [["", "egal"], ["7", "ab 7/11"], ["9", "ab 9/11"], ["10", "ab 10/11"], ["11", "11/11"]], "Kairo-Kriterien")}
-      ${fd ? sel("pe", [["", "egal"], ["lo", "unter 15"], ["mid", "15–25"], ["hi", "über 25"], ["neg", "Verlust"]], "KGV") + sel("dy", [["", "egal"], [".001", "mit Dividende"], [".02", "ab 2 %"], [".04", "ab 4 %"]], "Dividende")
-        + sel("frg", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Umsatzwachstum") + sel("fpm", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Nettomarge")
+      ${fd ? sel("frg", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Umsatzwachstum") + sel("fpm", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Nettomarge")
         + sel("fde", [["", "egal"], ["50", "unter 0,5"], ["100", "unter 1"]], "Verschuldung") + sel("fsf", [["", "egal"], ["15", "ab 15/30"], ["20", "ab 20/30"], ["24", "ab 24/30"]], "Schneeflocke") : ""}
-      <label class="scr-f scr-c"><input type="checkbox" data-scf="earn" ${F.earn ? "checked" : ""}><span>Zahlen ≤ 14 T.</span></label><label class="scr-f scr-c"><input type="checkbox" data-scf="ins" ${F.ins ? "checked" : ""}><span>Insider kaufen</span></label>
-      <button class="hlink" data-scrpre="">Zurücksetzen</button></div></details>
+      <label class="scr-f scr-c"><input type="checkbox" data-scf="earn" ${F.earn ? "checked" : ""}><span>Zahlen ≤ 14 T.</span></label><label class="scr-f scr-c"><input type="checkbox" data-scf="ins" ${F.ins ? "checked" : ""}><span>Insider kaufen</span></label></div>` : ""}
+    ${state.scrCOpen ? `<div class="scr-cols">${SCR_COLS.filter(([k]) => k !== "n").map(([k, l]) => `<button class="opt${COLS_ON.includes(k) ? " on" : ""}" data-scrcol="${k}">${esc(l)}</button>`).join("")}<button class="hlink" data-scrcol="">Standard</button></div>` : ""}
     <div class="section-title"><span>Ergebnis</span><span>${fmt(list.length, 0)} Aktien</span></div>
-    <div class="table-wrap"><table class="scr-t"><thead><tr>${SCR_COLS.map(([k, l]) => `<th class="${k === "n" || k === "sec" || k === "tr" ? "" : "num "}${S.k === k ? "sorted" + (S.asc ? " asc" : "") : ""}" data-scrs="${k}">${l}</th>`).join("")}</tr></thead>
-      <tbody>${shown.map(r => `<tr>${SCR_COLS.map(([k]) => `<td class="${k === "n" || k === "sec" || k === "tr" ? "" : "num"}">${cell(r, k)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+    <div class="table-wrap"><table class="scr-t"><thead><tr>${COLS.map(([k, l]) => `<th class="${k === "n" || k === "sec" || k === "tr" ? "" : "num "}${S.k === k ? "sorted" + (S.asc ? " asc" : "") : ""}" data-scrs="${k}">${l}</th>`).join("")}</tr></thead>
+      <tbody>${shown.map(r => `<tr>${COLS.map(([k]) => `<td class="${k === "n" || k === "sec" || k === "tr" ? "" : "num"}">${cell(r, k)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
     ${list.length > shown.length ? `<div class="row-actions" style="justify-content:center;margin:12px 0"><button class="btn ghost" data-scrmore>Weitere ${fmt(Math.min(240, list.length - shown.length), 0)} anzeigen</button></div>` : ""}
     <div class="note" style="margin:8px 2px 0">Stand: letzter Scan. Kurse und Kennzahlen aus dem Kairo-Scan (alle Aktien ab 2 Mrd. $ Börsenwert). Keine Anlageberatung.</div></div>`;
 }
@@ -3534,6 +3553,10 @@ document.addEventListener("click", e => {
   const p = e.target.closest("[data-scrpre]"); if (p) { scrPreset(p.dataset.scrpre); return; }
   const h = e.target.closest("th[data-scrs]"); if (h) { const k = h.dataset.scrs, S = state.scs || { k: "mc", asc: false }; state.scs = S.k === k ? { k, asc: !S.asc } : { k, asc: k === "n" || k === "sec" }; save(); render(); return; }
   if (e.target.closest("[data-scrmore]")) { scrMore += 240; render(); }
+  if (e.target.closest("[data-scrfo]")) { state.scrFOpen = !state.scrFOpen; save(); render(); return; }
+  if (e.target.closest("[data-scrco]")) { state.scrCOpen = !state.scrCOpen; save(); render(); return; }
+  const sc = e.target.closest("[data-scrcol]"); if (sc) { const k = sc.dataset.scrcol, cur = (state.scCols && state.scCols.length ? state.scCols : SCR_DEF).slice();
+    state.scCols = !k ? null : cur.includes(k) ? cur.filter(x => x !== k) : SCR_COLS.map(c => c[0]).filter(x => x !== "n" && (cur.includes(x) || x === k)); save(); render(); return; }
 });
 document.addEventListener("change", e => { const f = e.target.closest("[data-scf]"); if (!f) return; const k = f.dataset.scf;
   state.scf = { ...(state.scf || {}), [k]: f.type === "checkbox" ? (f.checked ? 1 : 0) : f.value }; state.scfPre = "-"; scrMore = 0; save(); render(); });
