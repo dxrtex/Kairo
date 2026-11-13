@@ -31,3 +31,12 @@ def test_norm_matches_sec_titles():
     assert norm("APPLE INC") == norm("Apple Inc.")
     assert norm("NVIDIA CORPORATION") == norm("NVIDIA CORP")
     assert norm("ALPHABET INC CL A") == norm("Alphabet Inc.")
+
+
+def test_parse_with_prefixes_and_xsi():
+    x = """<?xml version="1.0" encoding="UTF-8"?>
+<ns1:informationTable xmlns:ns1="http://www.sec.gov/edgar/document/thirteenf/informationtable" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://x y">
+<ns1:infoTable><ns1:nameOfIssuer>APPLE INC</ns1:nameOfIssuer><ns1:cusip>037833100</ns1:cusip><ns1:value>100</ns1:value>
+<ns1:shrsOrPrnAmt><ns1:sshPrnamt>10</ns1:sshPrnamt><ns1:sshPrnamtType>SH</ns1:sshPrnamtType></ns1:shrsOrPrnAmt></ns1:infoTable></ns1:informationTable>"""
+    h = parse_infotable(x)
+    assert h["037833100"]["sh"] == 10
