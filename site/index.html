@@ -2408,6 +2408,9 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .au-p > div { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; } .au-p b { font-size: 14px; } .au-p small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 .au-st { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: rgba(127,127,127,.16); white-space: nowrap; }
 .au-p.bull .au-st { background: rgba(52,211,153,.16); color: #34d399; } .au-p.bear .au-st { background: rgba(255,105,97,.16); color: #ff6961; }
+.em-row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; padding: 9px 0; border-top: 1px solid var(--line); cursor: pointer; }
+.em-row > .cf-av { width: 30px; height: 30px; font-size: 13px; flex: none; } .em-n { flex: 1; min-width: 0; display: flex; flex-direction: column; } .em-n small, .em-r small { color: var(--muted); font-size: 12px; }
+.em-r { text-align: right; display: flex; flex-direction: column; font-variant-numeric: tabular-nums; } .em-dep { margin-top: 12px; }
 .sm-seg { margin: 0 0 12px; } .cx-sm { padding: 14px 16px; } .cx-sm .cf-s { border: 0; padding: 0; margin: 0; } .sm-v { float: right; font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; padding: 2px 9px; border-radius: 999px; background: rgba(127,127,127,.16); }
 .sm-v.up { color: var(--up); background: color-mix(in srgb, var(--up) 15%, transparent); } .sm-v.down { color: #ff6961; background: rgba(255,105,97,.15); }
 .sm-h { font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 2px; }
@@ -3001,7 +3004,7 @@ function cardModalHtml(r) {
         ${kplanHtml(r)}
         ${hint && hint.title ? `<div class="cx-card cx-hint"><div class="cx-sh">Kairo-Einschätzung</div><b>${esc(hint.title)}</b><p>${esc(hint.text || "")}</p></div>` : ""}
         ${(h => h ? `<div class="cx-box">${h}</div>` : "")(sentiHtml(r))}
-        ${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(smCardHtml(r.ticker, true))}
+        ${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(earnMiniHtml(r.ticker))}${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(smCardHtml(r.ticker, true))}
         ${(h => h ? `<div class="cx-box">${h}</div>` : "")(fundHtml(r))}
       </section>
     </div>
@@ -4870,7 +4873,7 @@ function depotHtml() {
     <p class="es-sub">Oben „Scalable-Export importieren“ oder „+ Position“ · noch nichts gekauft? <a href="#" data-gosec="today">Heute</a> oder <a href="#" data-gosec="game">Übung</a></p></div>`;
   if (state.depFlash) setTimeout(() => { state.depFlash = null; }, 2500);
   // iPad quer / Desktop (Pro-Runde 13.11.): Positionen links, Depot-Check rechts daneben; am iPhone Reihenfolge wie bisher
-  const chk = depotCheckHtml(items, groups);
+  const chk = depotCheckHtml(items, groups) + depEarnHtml(groups);
   return head + (items.length ? depHeroHtml(groups, items, inGroup) : "") + actions + form + empty
     + `<div class="dep-cols${chk ? "" : " solo"}"><div class="dep-main"><div class="dep-tr">${depTradesHtml(items)}</div><div class="dep-pos">`
     + (groups.length ? `<div class="plan-h" style="margin:4px 2px 8px">Deine Positionen · antippen zum Aufklappen</div>${groups.map(groupHtml).join("")}` : "")
@@ -5202,6 +5205,31 @@ function depStrat(groups) {
   own.forEach(p => { const d = p.exit2 || p.exit; if (d && (!next || d < next.st.sell)) next = { name: p.n || p.t, st: { sell: d, left: Math.max(0, bdBetween(new Date(), new Date(d + "T12:00:00"), p.t)) } }; });
   const tot = toStop + ownRisk;
   return { cfg, open: open.length, toStop: tot, riskPct: cfg.depot ? tot / cfg.depot : null, noPlan, next };
+}
+// Zahlen-Zentrale kompakt (13.11.): nächster Termin, typische Kursbewegung, Trefferquote, letztes Ergebnis – „Details“ öffnet die volle Ansicht
+function earnMiniHtml(t, valEur) {
+  if (!earnData) { loadEarnings(); return ""; }
+  const rec = earnData[t]; if (!rec) return "";
+  const N = rec.next, L = rec.last, n = N ? daysUntil(N.date) : null, mv = rec.move;
+  const risk = valEur && mv ? ` · bei deiner Position ≈ ±${eur(valEur * mv)}` : "";
+  return `<div class="cf-s em-c"><div class="cf-h">Quartalszahlen <button class="au-tg" data-earnopen="${esc(t)}" data-d="${esc((N || L || {}).date || "")}">Details ›</button></div>
+    ${N && n != null && n >= 0 ? `<div class="cf-r"><span>Nächster Termin</span><b class="${n <= 14 ? "gold" : ""}">${n === 0 ? "heute" : n === 1 ? "morgen" : `in ${n} Tagen`}</b><em class="muted">${dateDE(N.date)}${N.when ? " · " + esc(N.when) : ""}</em></div>` : ""}
+    ${mv ? `<div class="cf-r"><span>Typische Kursbewegung</span><b>±${pct(mv, 1)}</b><em class="muted">am Tag danach${esc(risk)}</em></div>` : ""}
+    ${rec.beat ? `<div class="cf-r"><span>Erwartung geschlagen</span><b>${rec.beat[0]} von ${rec.beat[1]}</b><em class="muted">letzte Quartale</em></div>` : ""}
+    ${N && N.eps_e != null ? `<div class="cf-r"><span>Erwartung Gewinn je Aktie</span><b>${fmt(N.eps_e)}</b>${N.rev_g != null ? `<em class="muted">Umsatz ${sgn(N.rev_g)} zum Vorjahr</em>` : ""}</div>` : ""}
+    ${L && L.view ? `<div class="cf-r"><span>Letzte Zahlen (${dateDE(L.date)})</span><b class="${L.view.tone === "green" ? "up" : L.view.tone === "red" ? "down" : "muted"}">${esc(L.view.lbl)}</b>${L.rx && L.rx.d1 != null ? `<em class="${upDown(L.rx.d1)}">${sgn(L.rx.d1)}</em>` : ""}</div>` : ""}</div>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-earnopen]"); if (b) { e.preventDefault(); openEarn(b.dataset.earnopen, b.dataset.d || undefined); } });
+// Depot: Quartalszahlen deiner Positionen in den nächsten 30 Tagen – mit dem Betrag, der typischerweise schwankt
+function depEarnHtml(groups) {
+  if (!earnData) { loadEarnings(); return ""; }
+  const rows = groups.map(g => { const t = tkClean(g.t), rec = earnData[t] || earnData[g.t]; const N = rec && rec.next; if (!N) return null;
+    const n = daysUntil(N.date); if (n < 0 || n > 30) return null; return { t, name: g.name, n, N, mv: rec.move, val: g.value }; }).filter(Boolean).sort((a, b) => a.n - b.n);
+  if (!rows.length) return "";
+  return `<div class="card jcard em-dep"><div class="jc-h"><b>Quartalszahlen deiner Positionen</b><span>nächste 30 Tage</span></div>
+    ${rows.map(x => `<button class="em-row" data-earnopen="${esc(x.t)}" data-d="${esc(x.N.date)}">${cfAv(x.t)}<span class="em-n"><b>${esc(shortNm(x.name || x.t))}</b><small>${x.n === 0 ? "heute" : x.n === 1 ? "morgen" : `in ${x.n} Tagen`} · ${dateDE(x.N.date)}${x.N.when ? " · " + esc(x.N.when) : ""}</small></span>
+      <span class="em-r">${x.mv ? `<b>±${pct(x.mv, 1)}</b>${x.val ? `<small>≈ ±${eur(x.val * x.mv)}</small>` : ""}` : "<small>–</small>"}</span></button>`).join("")}
+    <div class="note" style="margin:6px 0 0">Typische Bewegung = durchschnittlicher Kurssprung am Tag nach den letzten Zahlen. Kairo-Trades: Zahlen während der Haltedauer waren im Test nicht schlechter – aber Kurslücken sind möglich.</div></div>`;
 }
 // Depot-Kopf (12.11.): großer Depotwert, Gewinn/Verlust, Aufteilung als Balken, vier klare Kennzahlen – wie eine Broker-App
 const DEP_COL = ["#0a84ff", "#30d158", "#ff9f0a", "#bf5af2", "#64d2ff", "#ff375f", "#ffd60a", "#8e8e93"];
@@ -7473,8 +7501,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.119";
-const APP_NEWS = [["2026.11.119", "Smart Money: Insider + Hedgefonds", [
+const APP_VER = "2026.11.120";
+const APP_NEWS = [["2026.11.120", "Zahlen-Zentrale", [
+  ["Quartalszahlen je Aktie", "In der Übersicht und im Chart: nächster Termin, typische Kursbewegung danach, wie oft die Erwartung geschlagen wurde, Erwartung und letztes Ergebnis – „Details“ öffnet die volle Ansicht."],
+  ["Im Depot", "„Quartalszahlen deiner Positionen“ zeigt die nächsten 30 Tage mit dem Betrag, um den deine Position an diesem Tag typischerweise schwankt."]]],
+  ["2026.11.119", "Smart Money: Insider + Hedgefonds", [
   ["Hedgefonds", "Markt → Insider → Hedgefonds: was rund 30 bekannte Fonds (Buffett, Burry, Ackman, Druckenmiller …) im letzten Quartal gekauft und verkauft haben – aus den offiziellen SEC-13F-Meldungen."],
   ["Smart Money je Aktie", "In der Übersicht und im Chart: Insider-Käufe und Fonds-Bewegungen gebündelt, mit Gesamtbild positiv / gemischt / negativ."],
   ["Einordnung", "13F-Daten sind bis zu 45 Tage alt und zeigen nur US-Positionen – Kontext, kein Kaufsignal."]]],
@@ -10222,7 +10253,7 @@ function cockpitSide(h, r) {
     return `<div class="cf-s"><div class="cf-h">${ttl} · ${dateDE(T0[w.iL])} → ${dateDE(T0[w.iH])}</div>${FIBQ.map(([q, l, st]) => row(l, lv(q), st ? col : null)).join("")}</div>`; };
   const crit = r.criteria || [];
   return `<div class="cf-s"><div class="cf-h">Status</div><span class="st ${k.cls}">${esc(k.t)}</span>${hn.title ? `<p class="cf-t"><b>${esc(hn.title)}</b> ${esc(String(hn.text || "").slice(0, 220))}</p>` : ""}</div>
-    ${autoCardHtml(h)}${r.ext ? "" : smCardHtml(r.ticker)}
+    ${autoCardHtml(h)}${r.ext ? "" : earnMiniHtml(r.ticker) + smCardHtml(r.ticker)}
     <div class="cf-s"><div class="cf-h">Trade-Plan</div>${row("Kaufzone oben", p.entry, "#eceef2")}${row("Stop", p.stop, "#ff453a")}${row("K.-o. Turbo", ko, "#ff9f0a")}
       ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Seitwärtsphase.</p>` : ""}</div>
     ${(vi => vi && clGet("vp") && (vi.buy.length || vi.sell.length) ? `<div class="cf-s"><div class="cf-h">Big Player · Großvolumen-Zonen</div>${[...vi.buy, ...vi.sell].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:${z.kind === "buy" ? "#0a84ff" : "#bf5af2"}"></i>${z.kind === "buy" ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"}, Ø ${fmt(z.rv, 1)}×</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
