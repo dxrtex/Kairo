@@ -43,12 +43,12 @@ def strat(df: pd.DataFrame, idx: int, extra: dict | None = None) -> dict:
         return {"res": "wait"} if sm["skip"] == "nofill" and n - 1 < rule["wait"] else {"res": "nobase", "why": sm["skip"]}
     if sm:
         return {"res": {"stop": "stop", "ema": "ema"}.get(sm["x"], "zeit"), "r": round(sm["net"], 3), "days": sm["d"],
-                "e": round(sm["e"] * c0, 4), "sl": round(sm["sl"] * c0, 4)}
+                "e": round(sm["e"] * c0, 4), "sl": round(sm["sl"] * c0, 4), "s": sm.get("s", 0)}
     for h in range(rule["hold"] - 1, 0, -1):       # läuft noch: Stand zum letzten Schluss
         sm = simulate(px, {**rule, "hold": h})
         if sm and "skip" not in sm:
             return {"res": "stop" if sm["x"] == "stop" else "run", "r": round(sm["net"], 3), "days": sm["d"],
-                    "e": round(sm["e"] * c0, 4), "sl": round(sm["sl"] * c0, 4)}
+                    "e": round(sm["e"] * c0, 4), "sl": round(sm["sl"] * c0, 4), "s": sm.get("s", 0)}
     return {"res": "wait"}
 
 

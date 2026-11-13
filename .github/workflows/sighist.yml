@@ -1,0 +1,95 @@
+name: Kairo-Signale je Aktie
+
+# Rechnet wöchentlich für alle Aktien der Scan-Ergebnisse die Kairo-Treffer der letzten 2 Jahre mit dem Ergebnis nach
+# Regel B60 nach (backend/sighist.py) und legt sighist.json im Branch kairo-sig ab. Scan und Watchlist-Scan liefern sie
+# mit der App aus – der Chart zeigt damit vergangene Signale samt R.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 7 * * 0"        # sonntags
+  push:
+    branches: [main]
+    paths: [backend/sighist.py, .github/workflows/sighist.yml]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: sighist
+  cancel-in-progress: false
+
+jobs:
+  tickers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Aktien der letzten veröffentlichten Ergebnisse
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          set -e
+          best=""; bt=""
+          for wf in scan.yml scan_watch.yml; do
+            for id in $(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/$wf/runs?status=success&per_page=5" --jq '.workflow_runs[].id'); do
+              t=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/$id/artifacts" --jq '[.artifacts[]|select(.name=="github-pages" and (.expired|not))][0].created_at // empty')
+              if [ -n "$t" ]; then if [ -z "$bt" ] || [[ "$t" > "$bt" ]]; then best=$id; bt=$t; fi; break; fi
+            done
+          done
+          [ -n "$best" ] || { echo "::error::Kein veröffentlichtes Website-Paket gefunden"; exit 1; }
+          gh run download "$best" -R "$GITHUB_REPOSITORY" -n github-pages -D live
+          mkdir -p s && tar -xf live/artifact.tar -C s --wildcards '*data/results.json'
+          f=$(find s -name results.json | head -1); echo "$f"
+          python3 -c "import json,sys;print('\n'.join(r['ticker'] for r in json.load(open(sys.argv[1]))['results']))" "$f" > tickers.txt
+          wc -l tickers.txt
+      - uses: actions/upload-artifact@v4
+        with: { name: tickers, path: tickers.txt, retention-days: 3 }
+  shard:
+    needs: tickers
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { name: tickers }
+      - run: python -m backend.sighist --shard ${{ matrix.shard }} --shards 16 --tickers tickers.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sig-${{ matrix.shard }}
+          path: sig_part_${{ matrix.shard }}.json
+          retention-days: 7
+  combine:
+    needs: shard
+    if: always() && needs.shard.result != 'skipped'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sig-*
+          merge-multiple: true
+          path: parts
+      - name: Bisherigen Stand laden (Branch kairo-sig)
+        run: |
+          if git fetch -q origin kairo-sig:kairo-sig 2>/dev/null; then git worktree add -q store kairo-sig;
+          else git worktree add -q --orphan -b kairo-sig store; fi
+          ls -la parts store
+      - run: python -m backend.sighist --combine parts --prev store/sighist.json
+      - name: Speichern
+        run: |
+          cp site/data/sighist.json store/sighist.json
+          cd store
+          git add -A
+          git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Kairo-Signale $(date +%F)" || exit 0
+          git push -q origin kairo-sig
