@@ -671,7 +671,7 @@ def main(argv=None) -> int:
     industry_of: dict[str, str] = {}                 # Yahoo-Branche je Aktie → fehlenden Sektor ergänzen
     for t, df in data.items():
         m = meta.get(t, {})
-        info = {"currency": m.get("currency"), "market_cap_usd": m.get("market_cap_usd")}
+        info = {"currency": m.get("currency"), "market_cap_usd": m.get("market_cap_usd"), "watch": bool(m.get("in_watchlist"))}
         try:
             res = evaluate(df, info, ticker=t)
         except Exception as exc:                       # einzelne kaputte Reihen überspringen
@@ -753,7 +753,8 @@ def main(argv=None) -> int:
         i = infos.get(t, {})
         m = meta.get(t, {})
         info = {"currency": m.get("currency") or i.get("currency"), "market_cap_usd": m.get("market_cap_usd"),
-                "market_cap": i.get("market_cap"), "earnings_date": i.get("earnings_date") or m.get("earnings_date")}
+                "market_cap": i.get("market_cap"), "earnings_date": i.get("earnings_date") or m.get("earnings_date"),
+                "watch": bool(m.get("in_watchlist"))}
         try:
             res = evaluate(df, info, ticker=t)        # mit Earnings-Termin neu bewerten
         except Exception as exc:                      # eine kaputte Aktie darf nie den ganzen Scan abbrechen (Review W12)

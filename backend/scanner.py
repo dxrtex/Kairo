@@ -162,8 +162,13 @@ def evaluate(df: pd.DataFrame, info: dict | None = None, cfg: SimpleNamespace = 
     cur = info.get("currency") or "USD"
     fx = FX_USD.get(cur, 1.0)
     cap_usd = info.get("market_cap_usd") or (info.get("market_cap") * fx if info.get("market_cap") else None)
-    add("cap", "Marktkapitalisierung ≥ 2 Mrd. USD", cap_usd is None or cap_usd >= u.min_market_cap_usd,
-        "unbekannt" if cap_usd is None else de(cap_usd / 1e9, 1) + " Mrd. USD", "≥ 2,0 Mrd. USD")
+    # Watchlist (Wunsch 13.11.2026): Aktien, die du bewusst in die Watchlist nimmst, gelten auch unter 2 Mrd. USD –
+    # für alle übrigen bleibt die Grenze. Liquidität, Kurs und Historie gelten weiter für alle.
+    watch = bool(info.get("watch"))
+    cap_ok = cap_usd is None or cap_usd >= u.min_market_cap_usd
+    add("cap", "Marktkapitalisierung ≥ 2 Mrd. USD", cap_ok or watch,
+        ("unbekannt" if cap_usd is None else de(cap_usd / 1e9, 1) + " Mrd. USD") + ("" if cap_ok else " · Watchlist: bewusst aufgenommen" if watch else ""),
+        "≥ 2,0 Mrd. USD (Watchlist ausgenommen)")
     dollar_vol = float(np.mean(v[-u.volume_avg_days:] * c[-u.volume_avg_days:])) * fx
     add("liquidity", "Liquidität (Ø Volumen 20 T. × Kurs)", dollar_vol >= u.min_dollar_volume,
         de(dollar_vol / 1e6, 1) + " Mio. USD", "≥ 5,0 Mio. USD")
