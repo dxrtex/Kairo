@@ -7808,8 +7808,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.127";
-const APP_NEWS = [["2026.11.127", "Vergleichen", [
+const APP_VER = "2026.11.128";
+const APP_NEWS = [["2026.11.128", "Intraday-Charts", [
+  ["5m · 15m · 1h · 4h", "Im Chart jetzt auch Intraday-Kerzen – über deinen Kairo-Kursdienst (Yahoo, ca. 15 Min. verzögert). Dafür den Kursdienst einmal auf Version 9 aktualisieren (Einstellungen → Live-Kurse); Version 9 bringt auch die Push-Alarme an Linien."]]],
+  ["2026.11.127", "Vergleichen", [
   ["Vergleichen", "Im Chart „＋ Vergleichen“: S&P 500, Nasdaq 100, DAX, STOXX 600 oder jede andere Aktie über den Chart legen – ab dem linken Rand gleich gestartet, mit Wertentwicklung im Zeitraum."]]],
   ["2026.11.126", "Chart wie TradingView: Zeiteinheiten, Indikatoren, Alarme", [
   ["Screener über alle Aktien", "Scanner → „Screener“: alle rund 5.850 Aktien frei filtern und sortieren wie bei Finviz – Region, Sektor, Börsenwert, Trend, RSI, Abstand zum Hoch, Wertentwicklung, Kairo-Kriterien, Zahlen-Termin, Insider. Mit Vorlagen wie „Nahe 52-W-Hoch“ oder „Überverkauft“."],
@@ -10368,9 +10370,10 @@ function gripPrimitive(get) {
   const views = [{ zOrder: () => "top", renderer: () => r }];
   return { attached(p) { chart = p.chart; series = p.series; req = p.requestUpdate; }, detached() { chart = series = null; }, update() { req && req(); }, updateAllViews() {}, paneViews: () => views };
 }
-const tkey = t => typeof t === "string" ? t : t && t.year ? `${t.year}-${String(t.month).padStart(2, "0")}-${String(t.day).padStart(2, "0")}` : typeof t === "number" ? new Date(t * 1000).toISOString().slice(0, 10) : "";
+const tkey = t => typeof t === "string" ? t : t && t.year ? `${t.year}-${String(t.month).padStart(2, "0")}-${String(t.day).padStart(2, "0")}` : typeof t === "number" ? new Date(t * 1000).toISOString().slice(0, 16).replace("T", " ") : "";   // Intraday: Datum + Uhrzeit (Börsenzeit)
 const volFmt = v => v >= 1e9 ? fmt(v / 1e9, 1) + " Mrd" : v >= 1e6 ? fmt(v / 1e6, 1) + " Mio" : v >= 1e3 ? fmt(v / 1e3, 0) + " Tsd" : fmt(v, 0);
-const dayDE = k => { const d = new Date(k + "T12:00:00"); return isNaN(d) ? k : `${["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][d.getDay()]} ${dateDE(k)}`; };
+const dayDE = k => { if (/^\d{4}-\d\d-\d\d \d\d:\d\d$/.test(k)) { const d = new Date(k.replace(" ", "T") + ":00Z"); return `${["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][d.getUTCDay()]} ${dateDE(k.slice(0, 10))} ${k.slice(11)}`; }
+  const d = new Date(k + "T12:00:00"); return isNaN(d) ? k : `${["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][d.getDay()]} ${dateDE(k)}`; };
 function measurePrimitive(barAt, count) {
   let series = null, chart = null, req = null, a = null, b = null, g = null;
   const font = "600 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif", font2 = "500 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
@@ -10428,7 +10431,7 @@ function buildMain(el, c, r, opts) {
   h.bdReset = () => { BD = null; };
   const cnt = () => bd().length, barAt = i => bd()[i], mp = measurePrimitive(barAt, cnt); candles.attachPrimitive(mp); h.mp = mp;
   const vpp = profilePrimitive(barAt, cnt, i => i < T.length ? c.v[i] : (LIVE.map[r.ticker] && LIVE.map[r.ticker].v) || 0, () => !!clGet("vp"),
-    () => { const w = h.M && (h.M.own ? h.M.kcls : h.M.cls); return w ? w.iL : null; }, i => dateDE(T[Math.min(i, T.length - 1)])); candles.attachPrimitive(vpp); h.vpp = vpp;
+    () => { const w = h.M && (h.M.own ? h.M.kcls : h.M.cls); return w ? w.iL : null; }, i => { const x = T[Math.min(i, T.length - 1)]; return typeof x === "number" ? dayDE(tkey(x)) : dateDE(x); }); candles.attachPrimitive(vpp); h.vpp = vpp;
   if (getComputedStyle(el).position === "static") el.style.position = "relative";
   const lg = document.createElement("div"); lg.className = "cl-ohlc"; el.appendChild(lg);
   const idxOf = tm => { const k = tkey(tm), d = bd(); for (let i = d.length - 1; i >= 0; i--) if (tkey(d[i].time) === k) return i; return -1; };
@@ -10524,6 +10527,7 @@ function buildMain(el, c, r, opts) {
   };
   h.apply();
   h.live = () => {                                     // Live-Kurs: heutige Kerze fortschreiben (Linien, Fibonacci und Plan bleiben aus dem Scan)
+    if (c.intra || (c.tf && c.tf !== "D")) return false;   // Intraday/Woche/Monat: keine Tageskerze anhängen
     const q = LIVE.map[r.ticker], lb = bars[bars.length - 1]; if (!q || !(q.c > 0) || !lb) return false;
     const day = liveDay(r.ticker, q.ts); if (!day || day < lb.time) return false;
     const hi = v => v > 0 ? v : -Infinity, lo = v => v > 0 ? v : Infinity; h.bdReset();
@@ -10711,7 +10715,8 @@ async function ctabLoad(t) {
   if (!c) try { c = await loadChart(t); } catch (e) { delete chartCache[t]; }
   const el = $("ctab"); if (seq !== ctabSeq || state.sec !== "chart" || !el || el.dataset.t !== t) return;
   if (!c || !c.t || !r) { delete el.dataset.busy; el.innerHTML = `<div class="hcard"><div class="note">Für ${esc(tkClean(t))} gibt es noch keinen Chart.</div><button class="btn sm" data-cfquick>Andere Aktie wählen</button></div>`; return; }
-  const cc = tfAgg(c, state.cfTf); window.__lastChart = { c: cc, r, d: c }; state.cfLast = t; save(); ctabBuild(cc, r);
+  let cc = c; if (TF_INTRA.includes(state.cfTf)) { try { cc = await intraLoad(t, state.cfTf); } catch (e) { cc = c; } if (seq !== ctabSeq || state.sec !== "chart") return; } else cc = tfAgg(c, state.cfTf);
+  window.__lastChart = { c: cc, r, d: c }; state.cfLast = t; save(); ctabBuild(cc, r);
 }
 // Werkzeugleiste des Chart-Reiters (Wunsch 11/2026: „so wäre eine professionelle App nie aufgebaut“): links Ebenen-Menü
 // (gruppiert, mit Schaltern), daneben Werkzeuge als Symbole, rechts Zeitraum, Vollbild und Kairo-Leiste
@@ -10738,7 +10743,7 @@ function ctabBarHtml(h) {
 }
 function ctabBuild(c, r) {
   const el = $("ctab"); if (!el || !window.LightweightCharts) return; rpHalt(); ctabDrop(); delete el.dataset.busy;
-  if (c.tf && c.tf !== "D") r = { ...r, zone: null };            // Wochen-/Monatschart: Kairo-Welle und -Zone gehören zum Tageschart
+  if (c.tf && c.tf !== "D") r = { ...r, zone: null, plan: c.intra ? r.plan : r.plan };            // Wochen-/Monatschart: Kairo-Welle und -Zone gehören zum Tageschart
   const k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r), chg = r.change ?? r.d1, off = !!state.cfSideOff;
   el.dataset.t = r.ticker; el.classList.toggle("side-off", off); ctPop = false;
   const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="${lbl.split(" ·")[0]} groß">${CT_IC.expand}</button></div><div class="ctab-c" id="${id}"></div></div>`;
@@ -10746,7 +10751,7 @@ function ctabBuild(c, r) {
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
       <span class="st ${k.cls}">${esc(k.t)}</span><button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
-      <div class="ct-right"><div class="ct-rg ct-tf" role="group" aria-label="Zeiteinheit">${[["D", "1D", "Tag"], ["W", "1W", "Woche"], ["M", "1M", "Monat"]].map(([v, l, t]) => `<button class="${(c.tf || "D") === v ? "on" : ""}" data-cftf="${v}" title="Zeiteinheit: ${t}">${l}</button>`).join("")}</div><div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Welle"]].map(([v, l]) => `<button class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
+      <div class="ct-right"><div class="ct-rg ct-tf" role="group" aria-label="Zeiteinheit">${[["5m", "5m", "5 Minuten"], ["15m", "15m", "15 Minuten"], ["1h", "1h", "1 Stunde"], ["4h", "4h", "4 Stunden"], ["D", "1D", "Tag"], ["W", "1W", "Woche"], ["M", "1M", "Monat"]].map(([v, l, t]) => `<button class="${(c.tf || "D") === v ? "on" : ""}${TF_INTRA.includes(v) ? " tf-i" : ""}" data-cftf="${v}" title="Zeiteinheit: ${t}${TF_INTRA.includes(v) ? " (über den Kursdienst, ca. 15 Min. verzögert)" : ""}">${l}</button>`).join("")}</div><div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Welle"]].map(([v, l]) => `<button class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
         <button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
     <div class="ctab-grid"><div class="ctab-l">
       <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="cmp" id="cmpBox"><button class="cmp-b" data-cmpopen title="Symbol vergleichen" aria-label="Symbol vergleichen">＋ Vergleichen</button><div class="cmp-pop" id="cmpPop" hidden>${[["^GSPC", "S&P 500"], ["^NDX", "Nasdaq 100"], ["^GDAXI", "DAX"], ["^STOXX", "STOXX 600"]].map(([v, l]) => `<button data-cmp="${v}">${l}</button>`).join("")}<button data-cmp="?">Andere Aktie …</button></div><div class="cmp-chips" id="cmpChips"></div></div><div class="dr-tb" id="drTb"></div><div class="dr-sel" id="drSel" hidden></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
@@ -10754,6 +10759,7 @@ function ctabBuild(c, r) {
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside></div>`;
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
   cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
+  if (c.intra) { cfChart.chart.applyOptions({ timeScale: { timeVisible: true, secondsVisible: false } }); cfChart.live = () => false; const n = c.t.length; cfChart.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 160), to: n + 4 }); }
   if (CMP.t !== r.ticker) { CMP.list = []; CMP.t = r.ticker; } CMP.series = [];
   { const hh = cfChart; let tm = null; if (CMP.list.length) setTimeout(() => cmpDraw(hh), 0); hh.chart.timeScale().subscribeVisibleLogicalRangeChange(() => { if (!CMP.list.length) return; clearTimeout(tm); tm = setTimeout(() => cfChart === hh && cmpDraw(hh), 120); }); }
   // Flüssig (12.11.): RSI, MACD und MBI erst nach dem ersten Bild bauen – der Reiter erscheint sofort, die Indikatoren folgen im nächsten Moment
@@ -10817,7 +10823,25 @@ function resumeApply() {
 }
 // Zeiteinheit wie TradingView (1D / 1W / 1M): Tageskerzen zu Wochen- bzw. Monatskerzen zusammenfassen (Datum = erster Handelstag),
 // Indikatoren auf der neuen Zeiteinheit neu rechnen. Die Kairo-Regel bleibt im Tageschart – im Wochen-/Monatschart nur Einordnung.
-const TF_F = { D: 1, W: 5, M: 21 };
+const TF_F = { D: 1, W: 5, M: 21, "4h": 1 / 2, "1h": 1 / 7, "15m": 1 / 26, "5m": 1 / 78 };
+const TF_INTRA = ["5m", "15m", "1h", "4h"];
+// Intraday (Wunsch 13.11., wie TradingView): Kerzen über den eigenen Kursdienst (Yahoo, ca. 15 Min. verzögert, ab Version 9).
+// Zeit = Börsenzeit (Yahoo-Zeitstempel + Zeitzonen-Versatz). 4h entsteht aus 1h-Kerzen (je Handelstag in Viererblöcken).
+const INTRA = {};
+async function intraLoad(t, tf) {
+  const yq = liveKey("yq"); if (!yq) throw new Error("kursdienst");
+  const key = t + "|" + tf; if (INTRA[key] && Date.now() - INTRA[key].at < 5 * 60e3) return INTRA[key].c;
+  const r0 = rowFor(t) || {}, sym = (r0.ext && (r0.ext.y || r0.ext.symbol)) || t;
+  const j = await (await fetch(`${yq}/?c=${encodeURIComponent(sym)}&i=${tf === "4h" ? "1h" : tf}`)).json();
+  if (!j || !j.c || j.c.length < 30) throw new Error(j && j.error || "zu wenig Kursdaten");
+  if (!j.iv || j.iv === "1d") throw new Error("version");
+  let T = j.t.map(ms => Math.round(ms / 1000) + (j.gmt || 0)), O = j.o, H = j.h, L = j.l, C = j.c, V = j.v || j.c.map(() => 0);
+  if (tf === "4h") { const o = { t: [], o: [], h: [], l: [], c: [], v: [] }; let day = null, k = 0;
+    T.forEach((ts, i) => { const d = Math.floor(ts / 86400); if (d !== day) { day = d; k = 0; } const j2 = o.t.length - 1;
+      if (k % 4 === 0) { o.t.push(ts); o.o.push(O[i]); o.h.push(H[i]); o.l.push(L[i]); o.c.push(C[i]); o.v.push(V[i]); } else { o.h[j2] = Math.max(o.h[j2], H[i]); o.l[j2] = Math.min(o.l[j2], L[i]); o.c[j2] = C[i]; o.v[j2] += V[i]; } k++; });
+    ({ t: T, o: O, h: H, l: L, c: C, v: V } = o); }
+  const c = extIndicators(T, O, H, L, C, V); c.tf = tf; c.intra = 1; INTRA[key] = { c, at: Date.now() }; return c;
+}
 function tfAgg(c, tf) {
   if (!tf || tf === "D") return c; const o = { t: [], o: [], h: [], l: [], c: [], v: [] }; let key = null;
   const kOf = d => { const x = new Date(d + "T12:00:00"); if (tf === "M") return d.slice(0, 7); const m = new Date(x); m.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return m.toISOString().slice(0, 10); };
@@ -10826,8 +10850,11 @@ function tfAgg(c, tf) {
     else { o.h[j] = Math.max(o.h[j], c.h[i] ?? c.c[i]); o.l[j] = Math.min(o.l[j], c.l[i] ?? c.c[i]); o.c[j] = c.c[i]; o.v[j] += c.v ? c.v[i] || 0 : 0; } });
   const x = extIndicators(o.t, o.o, o.h, o.l, o.c, o.v); x.tf = tf; return x;
 }
-function tfSet(tf) { const L = window.__lastChart; if (!L || !L.r || RP.on) return; const d = L.d || L.c; state.cfTf = tf; save();
-  const cc = tfAgg(d, tf); window.__lastChart = { c: cc, r: L.r, d }; ctabBuild(cc, L.r); }
+async function tfSet(tf) { const L = window.__lastChart; if (!L || !L.r || RP.on) return; const d = L.d || L.c;
+  if (TF_INTRA.includes(tf)) { let cc; try { cc = await intraLoad(L.r.ticker, tf); } catch (e) {
+      kSay(e.message === "kursdienst" ? "Intraday-Kerzen kommen über deinen Kairo-Kursdienst – einrichten unter Einstellungen → Live-Kurse." : e.message === "version" ? "Für Intraday-Kerzen bitte den Kursdienst auf Version 9 aktualisieren (Einstellungen → Live-Kurse → Code kopieren und in Cloudflare einfügen)." : `Keine Intraday-Kerzen für ${tkClean(L.r.ticker)}: ${e.message}`); return; }
+    state.cfTf = tf; save(); window.__lastChart = { c: cc, r: L.r, d }; ctabBuild(cc, L.r); return; }
+  state.cfTf = tf; save(); const cc = tfAgg(d, tf); window.__lastChart = { c: cc, r: L.r, d }; ctabBuild(cc, L.r); }
 document.addEventListener("click", e => { const b = e.target.closest("[data-cftf]"); if (b) tfSet(b.dataset.cftf); });
 // ---------- Vergleichen (wie TradingView „Symbol vergleichen“ / Koyfin): Index oder Aktie über den Chart legen ----------
 // Die Vergleichslinie startet am linken Rand des sichtbaren Ausschnitts auf demselben Kurs – so sieht man direkt, wer stärker lief.
@@ -10877,7 +10904,7 @@ const DR_TOOLS = [["tl", "Trendlinie", '<path d="M5 19 19 5"/><circle cx="5" cy=
   ["rect", "Rechteck", '<rect x="4" y="6" width="16" height="12" rx="1"/>'],
   ["long", "Long-Position", '<path d="M4 6h10M4 12h16M4 18h10"/><circle cx="4" cy="12" r="1.4"/><text x="16" y="8.5" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="-apple-system,sans-serif">L</text>'],
   ["short", "Short-Position", '<path d="M4 6h10M4 12h16M4 18h10"/><circle cx="4" cy="12" r="1.4"/><text x="16" y="21" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="-apple-system,sans-serif">S</text>']];
-const drKey = h => h && h.r ? String(h.r.ticker).replace(/@rp$/, "") : "";
+const drKey = h => h && h.r ? String(h.r.ticker).replace(/@rp$/, "") + (h.c && h.c.intra ? "|i" : "") : "";   // Intraday-Zeichnungen getrennt (Zeitachse mit Uhrzeit)
 const drList = h => (state.draws || {})[drKey(h)] || [];
 function drSet(h, list, noHist) {
   const k = drKey(h); if (!k) return;
@@ -11174,7 +11201,7 @@ function rpSideHtml(h) {
 }
 document.addEventListener("click", async e => {
   const t = e.target;
-  if (t.closest("[data-rp]")) { if (RP.on) { rpExit(); return; } const L = window.__lastChart; if (!L || !L.c || L.c.t.length < 200) { kSay("Für Replay braucht der Chart mindestens 200 Handelstage."); return; }
+  if (t.closest("[data-rp]")) { if (RP.on) { rpExit(); return; } const L = window.__lastChart; if (L && L.c && L.c.intra) { kSay("Replay gibt es im Tages-, Wochen- und Monatschart."); return; } if (!L || !L.c || L.c.t.length < 200) { kSay("Für Replay braucht der Chart mindestens 200 Handelstage."); return; }
     rpStart(L.c, L.r, L.c.t.length - 1 - 126); return; }
   if (!RP.on) return;
   const g = t.closest("[data-rpgo]"); if (g) { const k = +g.dataset.rpgo; if (k < 0) { if (!RP.pos && !RP.pend && RP.i > 80) { RP.i--; RP.last = null; rpRebuild(); } } else rpStep(k); return; }
@@ -11297,7 +11324,7 @@ function cfPillHtml(t) {
   if (!cfPick.seg) cfPick.seg = state.cfSeg || "mine";
   let l = cfList(cfPick.seg); if (!l.includes(t)) l = cfList("hits").includes(t) ? cfList("hits") : l;
   const i = l.indexOf(t), nb = d => i < 0 || l.length < 2 ? "" : tkClean(l[(i + d + l.length) % l.length]);
-  return `<button class="cf-pill" data-cfpick aria-label="Aktie wählen – wischen wechselt"><canvas class="cf-lens" aria-hidden="true"></canvas><i class="cf-glint" aria-hidden="true"></i>${cfAv(t)}<span class="cf-wh"><small>${esc(nb(-1))}</small><b>${esc(tkClean(t))}</b><small>${esc(nb(1))}</small></span><em>1${({ W: "W", M: "M" })[state.cfTf] || "D"}</em></button>`;
+  return `<button class="cf-pill" data-cfpick aria-label="Aktie wählen – wischen wechselt"><canvas class="cf-lens" aria-hidden="true"></canvas><i class="cf-glint" aria-hidden="true"></i>${cfAv(t)}<span class="cf-wh"><small>${esc(nb(-1))}</small><b>${esc(tkClean(t))}</b><small>${esc(nb(1))}</small></span><em>${TF_INTRA.includes(state.cfTf) ? state.cfTf : "1" + (({ W: "W", M: "M" })[state.cfTf] || "D")}</em></button>`;
 }
 function cfList(seg) {
   const res = data.results || [], mine = myTickers(), dep = depotTickers(), ok = t => !!byTicker(t);
