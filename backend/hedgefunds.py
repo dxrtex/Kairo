@@ -238,6 +238,15 @@ def build(sleep: float = .35) -> dict:
         print(f"{name}: {sec_name} · {fl[0]['period']} · {len(new)} Positionen · {tot / 1e9:,.1f} Mrd. USD · {len(chg)} Bewegungen")
     # Ticker zuordnen: zuerst über den Firmennamen (SEC-Liste, sofort), OpenFIGI nur für die wichtigsten offenen Fälle
     # (Top-Positionen und große Bewegungen) – die Gratis-Grenze von 25 Anfragen/Minute reicht sonst bei Quant-Fonds nicht
+    # Veraltete Meldungen (Fonds meldet nicht mehr, z. B. Greenlight 2023) nicht mitzählen: höchstens 2 Quartale hinter dem neuesten
+    if funds:
+        newest = max(f["period"] for f in funds)
+        cut = (datetime.fromisoformat(newest) - __import__("datetime").timedelta(days=200)).date().isoformat()
+        old_f = {f["name"] for f in funds if f["period"] < cut}
+        if old_f:
+            print("Veraltet, nicht gezählt: " + ", ".join(sorted(old_f)))
+            funds = [f for f in funds if f["name"] not in old_f]
+            moves_all = [(n, m) for n, m in moves_all if n not in old_f]
     names = name_map()
     print(f"SEC-Namensliste: {len(names)} Werte")
     allm = {m["cusip"]: m["name"] for _, m in moves_all} | {m["cusip"]: m["name"] for f in funds for m in f["top"] + f["moves"]}
