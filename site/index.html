@@ -2474,6 +2474,16 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .cmp-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}.cmp-chips>span{display:inline-flex;gap:5px;align-items:center;padding:4px 8px;border-radius:9px;background:var(--lg-tab);box-shadow:var(--lg-rim)}
 .cmp-chips i{width:10px;height:3px;border-radius:2px;background:var(--c)}.cmp-chips button{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px}.cmp-chips small{color:var(--muted)}
 @media(max-width:700px){.cmp{top:84px;max-width:calc(100% - 20px)}}
+.fc-g,.cf-h .fc-g{display:inline-grid!important;place-items:center;width:26px;height:22px;border-radius:7px;font-weight:800;font-size:13px;margin-left:6px;color:#fff;vertical-align:middle}
+.fc-g.g-A{background:#30d158}.fc-g.g-B{background:#7cc94a}.fc-g.g-C{background:#c9b400}.fc-g.g-D{background:#ff9f0a}.fc-g.g-E{background:#ff6b3d}.fc-g.g-F{background:#ff453a}
+.fc-top{display:flex;gap:14px;align-items:center;flex-wrap:wrap}.fc-top .sf{flex:0 0 auto;color:var(--text)}.fc-ax{flex:1;min-width:150px;display:flex;flex-direction:column;gap:5px}
+.fc-r{display:grid;grid-template-columns:84px 1fr 30px;gap:8px;align-items:center;font-size:12.5px}.fc .fc-r span{color:var(--muted);font-weight:500;font-size:12.5px}.fc .fc-r b{font-size:12.5px}
+.fc .fc-bar{display:block;position:relative;height:6px;border-radius:4px;background:rgba(127,127,127,.18);overflow:hidden}.fc .fc-fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.fc-r b{text-align:right;font-variant-numeric:tabular-nums}.fc-sum{font-size:12.5px;color:var(--muted);margin-top:2px}
+.fc-kv{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;margin:12px 0 4px;border-radius:12px;overflow:hidden;background:var(--line)}
+.fc-kv>div{background:var(--surface);padding:8px 10px;display:flex;flex-direction:column;gap:1px;min-width:0}html.lt .fc-kv>div{background:#fff}.fc-kv span{font-size:11px;color:var(--muted)}.fc-kv b{font-size:14px}.fc-kv small{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-sf{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:14px;background:rgba(127,127,127,.08)}.sc-sf .sf{color:var(--text);flex:0 0 auto}
+.sc-sft{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;min-width:0}.sc-sft span{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);width:100%}.sc-sft b{font-size:17px}.sc-sft em{font-style:normal;font-size:12.5px;color:var(--muted)}.sc-sft em .fc-g{font-style:normal}.sc-sft small{width:100%;font-size:11.5px;color:var(--muted)}
 .au-q{display:block;margin-top:3px;font-size:11.5px}
 .mtags{display:flex;gap:6px;align-items:center;margin-top:3px}.mtags .echip{margin-left:0}.aitem .an .echip{margin:3px 0 0;align-self:flex-start}</style>
 <style id="scard">
@@ -3093,7 +3103,7 @@ function cardModalHtml(r) {
         ${kplanHtml(r)}
         ${hint && hint.title ? `<div class="cx-card cx-hint"><div class="cx-sh">Kairo-Einschätzung</div><b>${esc(hint.title)}</b><p>${esc(hint.text || "")}</p></div>` : ""}
         ${(h => h ? `<div class="cx-box">${h}</div>` : "")(sentiHtml(r))}
-        ${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(earnMiniHtml(r.ticker))}${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(smCardHtml(r.ticker, true))}
+        ${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(earnMiniHtml(r.ticker))}${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(smCardHtml(r.ticker, true))}${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(fundCardHtml(r.ticker, true))}
         ${(h => h ? `<div class="cx-box">${h}</div>` : "")(fundHtml(r))}
       </section>
     </div>
@@ -3304,6 +3314,7 @@ function searchCard(r) {
       <div class="sc-bar" role="img" aria-label="${m} von 11 Kriterien erfüllt">${Array.from({ length: 11 }, (_, k) => `<i class="${k < m ? (m === 11 ? "on hit" : m >= 9 ? "on near" : "on") : ""}"></i>`).join("")}</div></div>
     <div class="sc-fs">${fact("Börsenwert", r.mc ? fmtCap(r.mc) : null)}${fact("Trend", tr && tr[1], tr && tr[0])}${fact("Vom Hoch", dh != null ? sgnPct(dh, 0) : null, dh != null && dh < -.2 ? "down" : "")}
       ${fact("RSI 14", r.rsi != null ? fmt(r.rsi, 0) : null, r.rsi >= 70 ? "down" : r.rsi <= 30 ? "up" : "")}${fact("Schwankung", r.vola != null ? pct(r.vola, 0) : null)}${fact("Quartalszahlen", ed ? (edN === 0 ? "heute" : edN === 1 ? "morgen" : `in ${edN} T.`) : "–", edN != null && edN <= 7 ? "gold" : ed ? "" : "muted")}</div>
+    ${(f => f && f.sf ? (G => `<div class="sc-sf">${sfSvg(f.sf, 66)}<div class="sc-sft"><span>Fundamental-Check</span><b style="color:rgb(${sfCol(sfSum(f))})">${sfSum(f)}/30</b>${G ? `<em>Faktor-Rating <i class="fc-g g-${G.g}">${G.g}</i></em>` : ""}<small>${SF_AX.map(([l], k) => `${l} ${f.sf[k]}`).join(" · ")}</small></div></div>`)(factorGrade(r.t)) : "")(fundOf(r.t))}
     ${r.title ? `<details class="sc-tip"${r.s === "hit" || r.s === "fast" ? " open" : ""}><summary><i class="sc-dot"></i><b>${esc(r.title)}</b></summary><p>${esc(r.text || "")}</p></details>` : ""}
     <div class="sc-act">${r.detail ? `<button class="btn" data-${inRes ? "card" : "open"}="${esc(r.t)}">Übersicht</button>` : ""}
       <button class="btn ghost" data-${inRes ? "chartgo" : "ctgo"}="${esc(r.t)}">Chart</button>
@@ -3326,10 +3337,11 @@ function searchHtml() {
 }
 
 // ---------- Screener über alle Aktien (Runde 13.11., wie Finviz): frei filtern und sortieren – unabhängig von der Kairo-Regel ----------
-const SCR_PRE = [["", "Alle"], ["hi52", "Nahe 52-W-Hoch"], ["os", "Überverkauft (RSI < 30)"], ["mom", "Starkes Momentum"], ["pull", "Rücksetzer im Aufwärtstrend"], ["earn", "Zahlen in 14 Tagen"], ["ins", "Insider kaufen"], ["k9", "Kairo ab 9/11"]];
-const SCR_COLS = [["n", "Aktie"], ["c", "Kurs"], ["d1", "1T"], ["d5", "1W"], ["m1", "1M"], ["m3", "3M"], ["ytd", "YTD"], ["hi", "vom Hoch"], ["rsi", "RSI"], ["tr", "Trend"], ["mc", "Börsenwert"], ["sec", "Sektor"], ["m", "Kairo"]];
+const SCR_PRE = [["", "Alle"], ["hi52", "Nahe 52-W-Hoch"], ["os", "Überverkauft (RSI < 30)"], ["mom", "Starkes Momentum"], ["pull", "Rücksetzer im Aufwärtstrend"], ["earn", "Zahlen in 14 Tagen"], ["ins", "Insider kaufen"], ["k9", "Kairo ab 9/11"], ["qual", "Qualität günstig"], ["divs", "Dividenden-Stars"], ["grow", "Starkes Wachstum"]];
+const SCR_COLS = [["n", "Aktie"], ["c", "Kurs"], ["d1", "1T"], ["d5", "1W"], ["m1", "1M"], ["m3", "3M"], ["ytd", "YTD"], ["hi", "vom Hoch"], ["rsi", "RSI"], ["tr", "Trend"], ["mc", "Börsenwert"], ["pe", "KGV"], ["dy", "Div."], ["sf", "Flocke"], ["sec", "Sektor"], ["m", "Kairo"]];
 let scrMore = 0;
-function scrVal(r, k) { if (k === "hi") return r.H > 0 && r.c > 0 ? r.c / r.H - 1 : null; if (k === "tr") return r.e200 > 0 ? (r.c > r.e200 ? (r.e50 > r.e200 ? 2 : 1) : -1) : null; if (k === "n") return r.n || r.t; return r[k]; }
+function scrVal(r, k) { if (k === "pe" || k === "dy" || k === "sf" || k === "rg2") { const f = fundOf(r.t); if (!f) return null; return k === "pe" ? (f.pe ?? null) : k === "dy" ? (f.dr && f.cp ? f.dr / f.cp : 0) : k === "sf" ? sfSum(f) : f.rg ?? null; }
+  if (k === "hi") return r.H > 0 && r.c > 0 ? r.c / r.H - 1 : null; if (k === "tr") return r.e200 > 0 ? (r.c > r.e200 ? (r.e50 > r.e200 ? 2 : 1) : -1) : null; if (k === "n") return r.n || r.t; return r[k]; }
 function scrRows() {
   const F = state.scf || {}, rows = searchIdx || [];
   return rows.filter(r => { if (!(r.c > 0)) return false;
@@ -3343,14 +3355,20 @@ function scrRows() {
     if (F.met && !((r.m ?? 0) >= +F.met)) return false;
     if (F.earn && !(r.ed && daysUntil(r.ed) >= 0 && daysUntil(r.ed) <= 14)) return false;
     if (F.ins && !(insSig(r.t) && insSig(r.t).score)) return false;
+    if (F.pe || F.dy || F.frg || F.fpm || F.fde || F.fsf) { const f = fundOf(r.t); if (!f) return false; const dy = f.dr && f.cp ? f.dr / f.cp : 0;
+      if (F.pe === "lo" && !(f.pe > 0 && f.pe < 15)) return false; if (F.pe === "mid" && !(f.pe >= 15 && f.pe <= 25)) return false; if (F.pe === "hi" && !(f.pe > 25)) return false; if (F.pe === "neg" && !(f.pe == null || f.pe <= 0)) return false;
+      if (F.dy && !(dy >= +F.dy)) return false; if (F.frg && !((f.rg ?? -9) >= +F.frg)) return false; if (F.fpm && !((f.pm ?? -9) >= +F.fpm)) return false;
+      if (F.fde && !(f.de != null && f.de < +F.fde)) return false; if (F.fsf && !(sfSum(f) >= +F.fsf)) return false; }
     return true; });
 }
 function scrPreset(k) { const b = { reg: (state.scf || {}).reg || "" };
   state.scf = k === "hi52" ? { ...b, hi: "near", tr: "up" } : k === "os" ? { ...b, rsi: "lo" } : k === "mom" ? { ...b, pf: ".2", pfk: "m3", tr: "up" } : k === "pull" ? { ...b, tr: "up", hi: "pull" }
-    : k === "earn" ? { ...b, earn: 1 } : k === "ins" ? { ...b, ins: 1 } : k === "k9" ? { ...b, met: "9" } : b; state.scfPre = k; scrMore = 0; save(); render(); }
+    : k === "earn" ? { ...b, earn: 1 } : k === "ins" ? { ...b, ins: 1 } : k === "k9" ? { ...b, met: "9" }
+    : k === "qual" ? { ...b, fsf: "20", pe: "lo" } : k === "divs" ? { ...b, dy: ".03", fde: "100" } : k === "grow" ? { ...b, frg: ".2", fpm: "0" } : b;
+  if (["qual", "divs", "grow"].includes(k)) state.scs = k === "divs" ? { k: "dy", asc: false } : { k: "sf", asc: false }; state.scfPre = k; scrMore = 0; save(); render(); }
 function screenerHtml() {
   if (!searchIdx) { loadSearch(); return `<div class="note" style="margin:14px 2px">Aktienliste lädt …</div>`; }
-  const F = state.scf || {}, S = state.scs || { k: "mc", asc: false }, secs = [...new Set(searchIdx.map(r => r.sec).filter(Boolean))].sort();
+  const fd = getJson("fund.json"), F = state.scf || {}, S = state.scs || { k: "mc", asc: false }, secs = [...new Set(searchIdx.map(r => r.sec).filter(Boolean))].sort();
   const list = scrRows().sort((a, b) => { const x = scrVal(a, S.k), y = scrVal(b, S.k); if (x == null) return 1; if (y == null) return -1; const c = typeof x === "string" ? x.localeCompare(y) : x - y; return S.asc ? c : -c; });
   const sel = (k, opts, lbl) => `<label class="scr-f"><span>${lbl}</span><select data-scf="${k}">${opts.map(([v, l]) => `<option value="${v}"${String(F[k] || "") === String(v) ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
   const pc = v => v == null ? `<span class="muted">–</span>` : `<span class="${v >= 0 ? "up" : "down"}">${sgnPct(v, Math.abs(v) < .1 ? 1 : 0)}</span>`;
@@ -3359,6 +3377,9 @@ function screenerHtml() {
     : k === "c" ? `${fmt(r.c)} <small class="muted">${esc(r.cur || "")}</small>` : ["d1", "d5", "m1", "m3", "ytd", "hi"].includes(k) ? pc(scrVal(r, k))
     : k === "rsi" ? (r.rsi == null ? "–" : `<span class="${r.rsi < 30 ? "up" : r.rsi > 70 ? "down" : ""}">${fmt(r.rsi, 0)}</span>`)
     : k === "tr" ? (v => v == null ? "–" : v === 2 ? `<span class="up">▲ aufwärts</span>` : v === 1 ? `<span class="muted">über EMA 200</span>` : `<span class="down">▼ abwärts</span>`)(scrVal(r, "tr"))
+    : k === "pe" ? (v => v == null ? `<span class="muted">–</span>` : v > 0 ? fmt(v, 1) : `<span class="down">Verlust</span>`)(scrVal(r, "pe"))
+    : k === "dy" ? (v => v == null ? `<span class="muted">–</span>` : v ? pct(v, 1) : `<span class="muted">–</span>`)(scrVal(r, "dy"))
+    : k === "sf" ? (v => v == null ? `<span class="muted">–</span>` : `<b style="color:rgb(${sfCol(v)})">${v}</b><small>/30</small>`)(scrVal(r, "sf"))
     : k === "mc" ? (r.mc ? fmtCap(r.mc) : "–") : k === "sec" ? `<span class="muted">${esc(r.sec || "–")}</span>` : `<b class="${r.s === "hit" ? "up" : r.s === "fast" ? "gold" : ""}">${r.m ?? "–"}/11</b>`;
   return `<div class="scr">
     <div class="vdesc">Alle ${fmt(searchIdx.length, 0)} geprüften Aktien frei filtern – wie ein klassischer Screener. Unabhängig von der Kairo-Regel: Treffer findest du unter „Treffer“.</div>
@@ -3369,6 +3390,9 @@ function screenerHtml() {
       ${sel("hi", [["", "egal"], ["near", "max. −5 %"], ["pull", "−10 bis −30 %"], ["deep", "über −30 %"]], "Vom 52-W-Hoch")}
       ${sel("pfk", [["m3", "3 Monate"], ["m1", "1 Monat"], ["ytd", "seit Jahresanfang"], ["d5", "1 Woche"]], "Wertentwicklung")}${sel("pf", [["", "egal"], [".05", "ab +5 %"], [".1", "ab +10 %"], [".2", "ab +20 %"], [".5", "ab +50 %"]], "Plus")}
       ${sel("pfn", [["", "egal"], [".1", "ab −10 %"], [".2", "ab −20 %"], [".4", "ab −40 %"]], "Minus")}${sel("met", [["", "egal"], ["7", "ab 7/11"], ["9", "ab 9/11"], ["10", "ab 10/11"], ["11", "11/11"]], "Kairo-Kriterien")}
+      ${fd ? sel("pe", [["", "egal"], ["lo", "unter 15"], ["mid", "15–25"], ["hi", "über 25"], ["neg", "Verlust"]], "KGV") + sel("dy", [["", "egal"], [".001", "mit Dividende"], [".02", "ab 2 %"], [".04", "ab 4 %"]], "Dividende")
+        + sel("frg", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Umsatzwachstum") + sel("fpm", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Nettomarge")
+        + sel("fde", [["", "egal"], ["50", "unter 0,5"], ["100", "unter 1"]], "Verschuldung") + sel("fsf", [["", "egal"], ["15", "ab 15/30"], ["20", "ab 20/30"], ["24", "ab 24/30"]], "Schneeflocke") : ""}
       <label class="scr-f scr-c"><input type="checkbox" data-scf="earn" ${F.earn ? "checked" : ""}><span>Zahlen ≤ 14 T.</span></label><label class="scr-f scr-c"><input type="checkbox" data-scf="ins" ${F.ins ? "checked" : ""}><span>Insider kaufen</span></label>
       <button class="hlink" data-scrpre="">Zurücksetzen</button></div></details>
     <div class="section-title"><span>Ergebnis</span><span>${fmt(list.length, 0)} Aktien</span></div>
@@ -7808,8 +7832,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.128";
-const APP_NEWS = [["2026.11.128", "Intraday-Charts", [
+const APP_VER = "2026.11.129";
+const APP_NEWS = [["2026.11.129", "Fundamental-Check", [
+  ["Kairo-Schneeflocke", "Für alle Aktien fünf Achsen wie bei Simply Wall St: Bewertung, Wachstum, Rentabilität, Gesundheit und Dividende – im Chart, in der Übersicht und in der Suche. Dazu KGV gegen die Branche, Margen, Verschuldung, freier Cashflow und Dividende."],
+  ["Faktor-Rating A–F", "Wie das Quant-Rating bei Seeking Alpha: 60 % Fundamentaldaten, 40 % Momentum. Nur Einordnung – die Kairo-Regel nutzt es nicht."],
+  ["Fundamental-Filter im Screener", "KGV, Dividende, Umsatzwachstum, Nettomarge, Verschuldung und Schneeflocke – mit Vorlagen „Qualität günstig“, „Dividenden-Stars“ und „Starkes Wachstum“."]]],
+  ["2026.11.128", "Intraday-Charts", [
   ["5m · 15m · 1h · 4h", "Im Chart jetzt auch Intraday-Kerzen – über deinen Kairo-Kursdienst (Yahoo, ca. 15 Min. verzögert). Dafür den Kursdienst einmal auf Version 9 aktualisieren (Einstellungen → Live-Kurse); Version 9 bringt auch die Push-Alarme an Linien."]]],
   ["2026.11.127", "Vergleichen", [
   ["Vergleichen", "Im Chart „＋ Vergleichen“: S&P 500, Nasdaq 100, DAX, STOXX 600 oder jede andere Aktie über den Chart legen – ab dem linken Rand gleich gestartet, mit Wertentwicklung im Zeitraum."]]],
@@ -10640,7 +10668,7 @@ function cockpitSide(h, r) {
     return `<div class="cf-s"><div class="cf-h">${ttl} · ${dateDE(T0[w.iL])} → ${dateDE(T0[w.iH])}</div>${FIBQ.map(([q, l, st]) => row(l, lv(q), st ? col : null)).join("")}</div>`; };
   const crit = r.criteria || [];
   return `<div class="cf-s"><div class="cf-h">Status</div><span class="st ${k.cls}">${esc(k.t)}</span>${hn.title ? `<p class="cf-t"><b>${esc(hn.title)}</b> ${esc(String(hn.text || "").slice(0, 220))}</p>` : ""}</div>
-    ${autoCardHtml(h)}${r.ext ? "" : earnMiniHtml(r.ticker) + smCardHtml(r.ticker)}
+    ${autoCardHtml(h)}${r.ext ? "" : earnMiniHtml(r.ticker) + smCardHtml(r.ticker)}${fundCardHtml(String(r.ticker).replace(/@rp$/, ""))}
     <div class="cf-s"><div class="cf-h">Trade-Plan</div>${row("Kaufzone oben", p.entry, "#eceef2")}${row("Stop", p.stop, "#ff453a")}${row("K.-o. Turbo", ko, "#ff9f0a")}
       ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Seitwärtsphase.</p>` : ""}</div>
     ${(vi => vi && clGet("vp") && (vi.buy.length || vi.sell.length) ? `<div class="cf-s"><div class="cf-h">Big Player · Großvolumen-Zonen</div>${[...vi.buy, ...vi.sell].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:${z.kind === "buy" ? "#0a84ff" : "#bf5af2"}"></i>${z.kind === "buy" ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"}, Ø ${fmt(z.rv, 1)}×</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
@@ -10888,6 +10916,48 @@ document.addEventListener("click", async e => {
   if (!e.target.closest("#cmpPop")) { const p = $("cmpPop"); if (p && !p.hidden) p.hidden = true; }
   const x = e.target.closest("[data-cmpx]"); if (x) { CMP.list.splice(+x.dataset.cmpx, 1); cmpDraw(cfChart); }
 });
+// ---------- Fundamental-Check und Kairo-Schneeflocke (Runde 13.11., wie Simply Wall St) ----------
+// fund.json (backend/fundamentals.py, wöchentlich): fünf Achsen je 0–6 aus einfachen Prüfungen gegen die Branche. Reine Einordnung.
+const SF_AX = [["Bewertung", "KGV, KBV und EV/EBITDA günstiger als die Branche, erwartetes KGV niedriger, Analystenziel über 20 % höher"],
+  ["Wachstum", "Umsatz- und Gewinnwachstum über 5 bzw. 15 %, erwartetes KGV fällt, Wachstum über der Branche"],
+  ["Rentabilität", "Nettomarge positiv und über der Branche, Eigenkapitalrendite über 10/20 %, operative Marge > 10 %, Bruttomarge > 40 %"],
+  ["Gesundheit", "Verschuldungsgrad unter 1 bzw. 0,5, Liquidität über 1/1,5, freier Cashflow positiv, mehr Cash als Schulden"],
+  ["Dividende", "Dividende vorhanden, Rendite über 1,5/3 %, Ausschüttungsquote unter 90/60 %, durch Cashflow gedeckt"]];
+const fundOf = t => { const f = getJson("fund.json"); return f && f.by ? f.by[t] || f.by[tkClean(t)] || null : null; };
+const sfSum = f => f && f.sf ? f.sf.reduce((a, b) => a + b, 0) : null;
+const sfCol = n => n >= 22 ? "48,209,88" : n >= 16 ? "159,212,64" : n >= 11 ? "255,214,10" : n >= 6 ? "255,159,10" : "255,69,58";
+function sfSvg(sf, size = 120, labels = false) {
+  const n = sf.reduce((a, b) => a + b, 0), c = size / 2, R = size / 2 - (labels ? 34 : 6), ang = k => -Math.PI / 2 + k * 2 * Math.PI / 5;
+  const pt = (k, v) => [c + Math.cos(ang(k)) * R * v, c + Math.sin(ang(k)) * R * v], poly = vs => vs.map((v, k) => pt(k, v).map(x => x.toFixed(1)).join(",")).join(" ");
+  const grid = [.33, .66, 1].map(f => `<polygon points="${poly([f, f, f, f, f])}" fill="none" stroke="currentColor" stroke-opacity=".14"/>`).join("");
+  const ax = [0, 1, 2, 3, 4].map(k => { const [x, y] = pt(k, 1); return `<line x1="${c}" y1="${c}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="currentColor" stroke-opacity=".12"/>`; }).join("");
+  const lb = labels ? SF_AX.map(([l], k) => { const [x, y] = pt(k, 1.2); return `<text x="${x.toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="middle" font-size="9" fill="currentColor" opacity=".7">${l}</text>`; }).join("") : "";
+  return `<svg class="sf" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Schneeflocke ${n} von 30">${grid}${ax}<polygon points="${poly(sf.map(v => Math.max(.08, v / 6)))}" fill="rgba(${sfCol(n)},.42)" stroke="rgb(${sfCol(n)})" stroke-width="1.6" stroke-linejoin="round"/>${lb}</svg>`;
+}
+// Kairo-Faktor-Rating (wie Seeking Alpha „Quant“): 60 % Schneeflocke, 40 % Momentum (3 Monate) – Einordnung, nicht als Kaufregel getestet
+function factorGrade(t) { const f = fundOf(t); if (!f || !f.sf) return null; const s0 = (searchIdx || []).find(x => x.t === t) || {}, m3 = s0.m3;
+  const mo = m3 == null ? .5 : m3 > .2 ? 1 : m3 > .08 ? .8 : m3 > 0 ? .6 : m3 > -.1 ? .35 : m3 > -.25 ? .15 : 0, q = sfSum(f) / 30 * .6 + mo * .4;
+  return { g: q >= .72 ? "A" : q >= .6 ? "B" : q >= .48 ? "C" : q >= .36 ? "D" : q >= .24 ? "E" : "F", q }; }
+function fundCardHtml(t, compact) {
+  const f = fundOf(t); if (!f) return getJson("fund.json") === undefined ? "" : "";
+  const n = sfSum(f), fd = getJson("fund.json") || {}, med = (fd.med || {})[f.sec || "–"] || fd.all || {}, cur = (rowFor(t) || {}).currency || (rowFor(t) || {}).cur || "";
+  const P = v => v == null ? "–" : pct(v, Math.abs(v) < .1 ? 1 : 0), fx = (v, d = 1) => v == null ? "–" : fmt(v, d), dy = f.dr && f.cp ? f.dr / f.cp : 0, G = factorGrade(t);
+  const cls = (good, bad) => good ? "up" : bad ? "down" : "";
+  const kv = [["KGV", f.pe != null ? (f.pe > 0 ? fx(f.pe) : "Verlust") : "–", med.pe ? `Branche ${fx(med.pe)}` : "", cls(f.pe > 0 && med.pe && f.pe < med.pe, f.pe <= 0 || (med.pe && f.pe > med.pe * 1.5))],
+    ["erw. KGV", f.fpe > 0 ? fx(f.fpe) : "–", f.fpe > 0 && f.pe > 0 ? (f.fpe < f.pe ? "Gewinn soll steigen" : "Gewinn soll fallen") : "", cls(f.fpe > 0 && f.pe > 0 && f.fpe < f.pe, f.fpe > 0 && f.pe > 0 && f.fpe > f.pe)],
+    ["KBV", f.pb > 0 ? fx(f.pb) : "–", med.pb ? `Branche ${fx(med.pb)}` : "", cls(f.pb > 0 && med.pb && f.pb < med.pb, false)],
+    ["Umsatz-Wachstum", P(f.rg), "zum Vorjahr", cls(f.rg > .1, f.rg < 0)], ["Gewinn-Wachstum", P(f.eg), "zum Vorjahr", cls(f.eg > .1, f.eg < 0)],
+    ["Nettomarge", P(f.pm), med.pm != null ? `Branche ${P(med.pm)}` : "", cls(f.pm > (med.pm ?? .1), f.pm < 0)], ["Eigenkapitalrendite", P(f.roe), "", cls(f.roe > .15, f.roe < 0)],
+    ["Verschuldungsgrad", f.de != null ? fx(f.de / 100, 2) : "–", "Schulden/Eigenkapital", cls(f.de != null && f.de < 50, f.de > 150)], ["Liquidität", f.cr != null ? fx(f.cr, 2) : "–", "kurzfr. Vermögen/Schulden", cls(f.cr > 1.5, f.cr != null && f.cr < 1)],
+    ["Freier Cashflow", f.fcf != null ? (Math.abs(f.fcf) >= 1e9 ? `${fmt(f.fcf / 1e9, 1)} Mrd.` : `${fmt(f.fcf / 1e6, 0)} Mio.`) : "–", cur, cls(f.fcf > 0, f.fcf < 0)],
+    ["Dividende", dy ? pct(dy, 1) : "keine", f.pr != null && dy ? `Quote ${pct(f.pr, 0)}` : "", cls(dy > .02 && (f.pr ?? 1) < .7, f.pr > 1)],
+    ["Analystenziel", f.tm && f.cp ? sgnPct(f.tm / f.cp - 1, 0) : "–", f.na ? `${f.na} Analysten` : "", cls(f.tm && f.cp && f.tm > f.cp * 1.15, f.tm && f.cp && f.tm < f.cp)]];
+  return `<div class="cf-s fc"><div class="cf-h">Fundamental-Check${G ? ` <span class="fc-g g-${G.g}" title="Kairo-Faktor-Rating: 60 % Schneeflocke, 40 % Momentum – Einordnung, nicht als Kaufregel getestet">${G.g}</span>` : ""}</div>
+    <div class="fc-top">${sfSvg(f.sf, compact ? 104 : 170, !compact)}<div class="fc-ax">${SF_AX.map(([l, w], k) => `<div class="fc-r" title="${esc(w)}"><span class="fc-l">${l}</span><span class="fc-bar"><span class="fc-fill" style="width:${Math.max(3, f.sf[k] / 6 * 100)}%;background:rgb(${sfCol(f.sf[k] * 5)})"></span></span><b>${f.sf[k]}/6</b></div>`).join("")}
+      <div class="fc-sum">Gesamt <b style="color:rgb(${sfCol(n)})">${n}/30</b></div></div></div>
+    ${compact ? "" : `<div class="fc-kv">${kv.map(([l, v, sub, c]) => `<div><span>${l}</span><b class="${c}">${v}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div>`).join("")}</div>`}
+    <p class="muted cf-t">Stand ${dateDE(fd.generated || "")} · Yahoo-Daten, Branche = ${esc(f.sec || "–")}. Einordnung wie bei Simply Wall St – die Kairo-Regel nutzt das nicht.</p></div>`;
+}
 // ---------- Zeichenwerkzeuge wie TradingView (Wunsch 13.11.) ----------
 // Trendlinie, horizontale Linie, Strahl, Fibonacci-Retracement (wie TradingView: Stufen 0–1 mit farbigen Bändern, 0 am zweiten Punkt,
 // Beschriftung „0.618 (Preis)“, gestrichelte Verbindung, „Erweitern nach rechts“), Rechteck, Long- und Short-Position (Ziel/Stop-Box,
@@ -11741,8 +11811,9 @@ function boot(d) {
     if (gen0 !== d.generated) { searchLoading = anaLoading = calLoading = null; if (searchIdx) loadSearch(); if (anaData) loadAnalysis(); if (calData) loadCalendar(); }
     return; }
   loadCalendar(); setTimeout(maybeBrief, 400); resumeApply();
-  setTimeout(() => ["insider.json", "funds.json"].forEach(f => { if (!(f in jsonData)) { jsonData[f] = undefined;   // Smart Money still vorladen (ohne Neuzeichnen)
-    fetch(`data/${f}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null).then(d => { jsonData[f] = d || null; }); } }), 2500);
+  setTimeout(() => ["insider.json", "funds.json", "fund.json"].forEach(f => { if (!(f in jsonData)) { jsonData[f] = undefined;   // Smart Money und Fundamentaldaten still vorladen (ohne Neuzeichnen)
+    fetch(`data/${f}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null).then(d => { jsonData[f] = d || null;
+      if (f === "fund.json" && d && cfChart && $("cfSide") && state.sec === "chart" && !RP.on) $("cfSide").innerHTML = cockpitSide(cfChart, cfChart.r); }); } }), 2500);
   requestAnimationFrame(() => window.KairoSplash && KairoSplash.ready());   // App steht → Start-Animation darf übergeben
   // Kein Intro (übersprungen, splash.js nicht geladen): Start-Schwarz trotzdem entfernen, sonst bleibt das helle Design schwarz
   const unboot = () => { const pb = document.getElementById("preboot"); if (pb) pb.remove(); document.documentElement.style.background = ""; };
