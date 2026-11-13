@@ -2401,6 +2401,13 @@ em.num, .cx-p em, .cx-p span em, i.chgp { font-style: normal; }
 button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid var(--line); }
 .set-row > span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; } .set-row b { font-size: 15px; font-weight: 600; } .set-row small { font-size: 13px; color: var(--muted); }
 .set-row > em { font-style: normal; font-size: 15px; font-weight: 600; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; } button.set-row > em { color: var(--accent); }
+.au-v { font-size: 17px; font-weight: 700; margin: 2px 0 8px; } .au-v.up { color: var(--up); } .au-v.down { color: var(--down, #ff453a); }
+.au-tg { float: right; border: 0; border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; cursor: pointer; background: rgba(90,200,250,.15); color: #5ac8fa; }
+.au-tg.on { background: #5ac8fa; color: #00131c; } .au-h2 { margin-top: 12px !important; }
+.au-p { border-left: 3px solid rgba(200,200,210,.6); padding: 6px 0 6px 10px; margin: 6px 0; } .au-p.bull { border-color: #34d399; } .au-p.bear { border-color: #ff6961; }
+.au-p > div { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; } .au-p b { font-size: 14px; } .au-p small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.au-st { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: rgba(127,127,127,.16); white-space: nowrap; }
+.au-p.bull .au-st { background: rgba(52,211,153,.16); color: #34d399; } .au-p.bear .au-st { background: rgba(255,105,97,.16); color: #ff6961; }
 </style>
 <style id="kdlg">
 /* Eigene Dialoge statt Browser-Popups (confirm/alert/prompt) – Glas, Feder, Tastatur */
@@ -7399,8 +7406,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.117";
-const APP_NEWS = [["2026.11.117", "Feinschliff", [
+const APP_VER = "2026.11.118";
+const APP_NEWS = [["2026.11.118", "Auto-Analyse im Chart", [
+  ["Automatische Chartanalyse", "Im Chart-Reiter erkennt Kairo selbst Trendlinien und Chartmuster – Doppelboden/-top, Schulter-Kopf-Schulter, Dreiecke, Keile, Flaggen, Ausbrüche – mit Status, Nackenlinie und rechnerischem Ziel."],
+  ["Technik-Check", "Trend kurz, mittel, lang und im Wochenchart, dazu Momentum, MACD, Schwankung und Volumen – als ein Gesamtbild."],
+  ["Im Chart zeigen", "„im Chart zeigen“ in der Karte oder Ebenen → Auto-Analyse blendet Linien und Muster ein. Nur Einordnung – die Kairo-Regel bleibt unverändert."]]],
+  ["2026.11.117", "Feinschliff", [
   ["Scanner am iPhone", "Startet jetzt in der Listenansicht; die Status-Erklärung ist eingeklappt."],
   ["Verkauf und Löschen", "„Verkauft“ fragt klar nach dem Aktienkurs; Löschen und Ausbuchen haben rote, eindeutig beschriftete Knöpfe."],
   ["Übung", "Neuer Start: Aufteilung in ETF, Kairo-Trades und Kosten auf einen Blick."],
@@ -9489,7 +9500,7 @@ async function openDetail(t) {
 
 // ---------- Haupt-Chart: Fibonacci als Linien, Unterstützungen/Widerstände, EMAs – alles mit Ein/Aus-Schaltern ----------
 // Ein Baustein für Detailseite und Vollbild-Cockpit; Schalter (state.cl) wirken sofort in allen offenen Charts.
-const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 1 };   // EMA 100 aus: weniger Linien im Standard
+const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 1, auto: 0 };   // EMA 100 aus: weniger Linien im Standard
 const clGet = (k, auto) => { const v = (state.cl || {})[k]; return v == null ? (k in CL_DEF ? CL_DEF[k] : auto ? 1 : 0) : v; };
 const CL_LIVE = new Set();
 const FIBQ = [[0, "Hoch"], [.382, "38,2 %"], [.5, "50 %"], [.618, "61,8 %"], [.706, "70,6 %", 1], [.786, "78,6 %", 1], [.886, "88,6 %"], [1, "Tief"]];   // betont: Kaufzone Golden Pocket
@@ -9497,6 +9508,124 @@ const EMA_DEF = [["e20", "#f4b740", "EMA 20"], ["e50", "#4aa3ff", "EMA 50"], ["e
 // Rechenmodell (nur Anzeige – die Regeln des Scans bleiben unverändert):
 // Welle = vom Hoch rückwärts von Tief zu tieferem Wendepunkt, bis davor eine fast volle Korrektur (≥ 78,6 %) liegt (höchstens
 // doppelte Größe der Scan-Welle). Linien = Wendepunkte (±5 Tage) mit ≥ 2 Berührungen in einem Band von max(0,6 ATR, 1,2 %).
+// ---------- Auto-Analyse (13.11., wie TrendSpider/Autochartist): Trendlinien, Chartmuster, Technik-Check ----------
+// Rein regelbasiert aus den Tageskerzen (keine Blackbox) und nur zur Information – die Kairo-Regel nutzt nichts davon.
+function autoTA(c) {
+  const n = c.t.length, H = c.h, L = c.l, C = c.c, V = c.v || [], last = C[n - 1];
+  if (n < 80 || !(last > 0)) return null;
+  const from = Math.max(0, n - 260);
+  // Wendepunkte (±W Kerzen höchstes Hoch / tiefstes Tief)
+  const piv = (W, lo) => { const o = []; for (let i = Math.max(from, W); i < n - 2; i++) { const v = lo ? L[i] : H[i]; if (v == null) continue; let ok = true;
+    for (let k = i - W; k <= Math.min(n - 1, i + W); k++) if (k !== i && (lo ? L[k] < v : H[k] > v)) { ok = false; break; } if (ok) o.push({ i, p: v }); } return o; };
+  const lows = piv(5, true), highs = piv(5, false);
+  let atr = 0; for (let i = n - 14; i < n; i++) atr += Math.max(H[i] - L[i], Math.abs(H[i] - C[i - 1]), Math.abs(L[i] - C[i - 1])); atr /= 14;
+  const out = { lines: [], pats: [], tech: null, levels: [] };
+  // 1) Trendlinien: zwei Wendepunkte, kein Schluss dazwischen deutlich jenseits der Linie, möglichst viele Berührungen, bis heute verlängert
+  const tl = (P, lo) => { let best = null;
+    for (let a = 0; a < P.length; a++) for (let b = a + 1; b < P.length; b++) {
+      const A = P[a], B = P[b]; if (B.i - A.i < 10) continue; const m = (B.p - A.p) / (B.i - A.i); if (lo ? m <= 0 : m >= 0) continue;   // Unterstützung steigt, Widerstand fällt
+      const at = i => A.p + m * (i - A.i); let bad = false, touch = 0;
+      for (let i = A.i; i < n; i++) { const x = at(i); if (lo ? C[i] < x - .35 * atr : C[i] > x + .35 * atr) { if (i <= B.i + 2 || i < n - 3) { bad = true; break; } } }
+      if (bad) continue;
+      P.forEach(q => { if (q.i >= A.i && Math.abs(q.p - at(q.i)) <= .5 * atr) touch++; });
+      const now = at(n - 1), dist = (last - now) / last; if (Math.abs(dist) > .12) continue;
+      const sc = touch * 2 + B.i / n;
+      if (!best || sc > best.sc) best = { a: A, b: B, m, now, touch, sc, dist, lo };
+    } return best; };
+  const sup = tl(lows, true), res = tl(highs, false);
+  [sup, res].forEach(x => x && out.lines.push({ kind: x.lo ? "sup" : "res", i1: x.a.i, p1: x.a.p, i2: n - 1, p2: x.now, touch: x.touch, dist: x.dist,
+    t: x.lo ? "Steigende Trendlinie" : "Fallende Trendlinie" }));
+  // 2) Chartmuster auf den letzten ~150 Kerzen
+  const rec = i => i >= n - 150, pk = (i1, i2, lo) => { let b = i1; for (let k = i1; k <= i2; k++) if (lo ? L[k] < L[b] : H[k] > H[b]) b = k; return b; };
+  const pat = (k, name, bull, pts, neck, target, st, why) => out.pats.push({ k, name, bull, pts, neck, target, st, why });
+  // Doppelboden / Doppeltop
+  const dbl = (P, lo) => { for (let b = P.length - 1; b >= 1; b--) { const B = P[b]; if (!rec(B.i)) continue;
+    for (let a = b - 1; a >= 0; a--) { const A = P[a]; if (B.i - A.i < 10 || B.i - A.i > 90) continue;
+      if (Math.abs(A.p - B.p) / A.p > .03) continue;
+      const m = pk(A.i, B.i, !lo), mid = lo ? H[m] : L[m];
+      if (lo ? mid < Math.max(A.p, B.p) * 1.05 : mid > Math.min(A.p, B.p) * .95) continue;
+      if (lo ? mid > Math.min(A.p, B.p) * 1.3 : mid < Math.max(A.p, B.p) * .77) continue;     // Zwischenhoch/-tief höchstens ~30 % entfernt (sonst ist es ein Trend, kein Muster)
+      let deeper = false; for (let k = A.i + 1; k < B.i; k++) if (lo ? L[k] < Math.min(A.p, B.p) * .99 : H[k] > Math.max(A.p, B.p) * 1.01) { deeper = true; break; }
+      if (deeper) continue;
+      if (n - 1 - B.i > 30) return;                                   // zweiter Boden/Gipfel höchstens 30 Kerzen alt
+      const broke = lo ? last < Math.min(A.p, B.p) * .98 : last > Math.max(A.p, B.p) * 1.02; if (broke) return;
+      let bi = -1; for (let i = B.i + 1; i < n; i++) if (lo ? C[i] > mid : C[i] < mid) { bi = i; break; }
+      const done = bi >= 0, h0 = Math.abs(mid - (A.p + B.p) / 2), tgt0 = lo ? mid + h0 : mid - h0;
+      if (done && (n - 1 - bi > 20 || (lo ? last >= tgt0 : last <= tgt0))) return;   // Bestätigung älter als 20 Tage oder Ziel erreicht: erledigt
+      if (done && (lo ? last < mid * .99 : last > mid * 1.01)) return;                 // zurück über/unter die Nackenlinie: Muster gescheitert
+      if (!done && (lo ? last < B.p : last > B.p)) return;
+      pat(lo ? "db" : "dt", lo ? "Doppelboden" : "Doppeltop", lo, [[A.i, A.p], [m, mid], [B.i, B.p]], { i: A.i, p: mid }, lo ? mid + h0 : mid - h0,
+        done ? "bestätigt" : "in Bildung", done ? `Nackenlinie ${fmt(mid)} ${lo ? "überwunden" : "unterschritten"}` : `bestätigt ${lo ? "über" : "unter"} ${fmt(mid)}`);
+      return; } } };
+  dbl(lows, true); dbl(highs, false);
+  // Kopf-Schulter (oben) und umgekehrte Kopf-Schulter (unten)
+  const hs = (P, lo) => { for (let j = P.length - 1; j >= 2; j--) { const R = P[j], Hd = P[j - 1], Lf = P[j - 2]; if (!rec(R.i)) continue;
+    const head = lo ? Hd.p < Math.min(Lf.p, R.p) * .97 : Hd.p > Math.max(Lf.p, R.p) * 1.03, sym = Math.abs(Lf.p - R.p) / Hd.p < .05;
+    if (!head || !sym || R.i - Lf.i > 120) continue;
+    if (n - 1 - R.i > 30) return;
+    const t1 = pk(Lf.i, Hd.i, !lo), t2 = pk(Hd.i, R.i, !lo), n1 = lo ? H[t1] : L[t1], n2 = lo ? H[t2] : L[t2];
+    const nm = (n2 - n1) / (t2 - t1), neckAt = i => n2 + nm * (i - t2), neckNow = neckAt(n - 1);
+    let bi = -1; for (let i = R.i + 1; i < n; i++) if (lo ? C[i] > neckAt(i) : C[i] < neckAt(i)) { bi = i; break; }
+    const done = bi >= 0; if (done && (n - 1 - bi > 20 || (lo ? last < neckNow * .99 : last > neckNow * 1.01))) return;
+    const h0 = Math.abs(Hd.p - (n1 + n2) / 2);
+    pat(lo ? "ihs" : "hs", lo ? "Umgekehrte Schulter-Kopf-Schulter" : "Schulter-Kopf-Schulter", lo, [[Lf.i, Lf.p], [t1, n1], [Hd.i, Hd.p], [t2, n2], [R.i, R.p]],
+      { i: t1, p: n1, i2: n - 1, p2: neckNow }, lo ? neckNow + h0 : neckNow - h0, done ? "bestätigt" : "in Bildung", done ? "Nackenlinie durchbrochen" : `Nackenlinie bei ${fmt(neckNow)}`);
+    return; } };
+  hs(highs, false); hs(lows, true);
+  // Dreiecke und Keile: letzte 3 Hochs und 3 Tiefs der letzten 80 Kerzen
+  { const hh = highs.filter(x => x.i >= n - 80).slice(-3), ll = lows.filter(x => x.i >= n - 80).slice(-3);
+    if (hh.length >= 2 && ll.length >= 2) {
+      const sl = P => (P[P.length - 1].p - P[0].p) / P[0].p / Math.max(1, P[P.length - 1].i - P[0].i) * 20;   // Steigung je 20 Kerzen
+      const sh = sl(hh), sL = sl(ll), flatH = Math.abs(sh) < .01, flatL = Math.abs(sL) < .01, conv = (hh[hh.length - 1].p - ll[ll.length - 1].p) < (hh[0].p - ll[0].p) * .8;
+      let k = null, name = "", bull = null;
+      if (conv && flatH && sL > .01) { k = "asc"; name = "Aufsteigendes Dreieck"; bull = true; }
+      else if (conv && flatL && sh < -.01) { k = "desc"; name = "Absteigendes Dreieck"; bull = false; }
+      else if (conv && sh < -.01 && sL > .01) { k = "sym"; name = "Symmetrisches Dreieck"; bull = null; }
+      else if (conv && sh > .01 && sL > .01) { k = "rw"; name = "Steigender Keil"; bull = false; }
+      else if (conv && sh < -.01 && sL < -.01) { k = "fw"; name = "Fallender Keil"; bull = true; }
+      if (k) { const top = hh[hh.length - 1].p, bot = ll[ll.length - 1].p, out_ = last > top * 1.01 ? "Ausbruch nach oben" : last < bot * .99 ? "Ausbruch nach unten" : "in Bildung";
+        pat(k, name, bull, [...hh.map(x => [x.i, x.p]), ...ll.map(x => [x.i, x.p])].sort((a, b) => a[0] - b[0]), null, null, out_,
+          `obere Linie ${fmt(top)}, untere ${fmt(bot)}`); out.tri = { hh, ll }; } } }
+  // Flagge / Wimpel: starker Anstieg (≥ 15 % in ≤ 15 Kerzen), danach ruhige Konsolidierung, die < 50 % zurückgibt
+  for (let e = n - 4; e >= n - 30 && e > 20; e--) { const s = pk(e - 15, e, true); const up = (H[e] - L[s]) / L[s];
+    if (up < .15 || H[e] < Math.max(...H.slice(e - 15, n))) continue;
+    const lo = Math.min(...L.slice(e, n)), back = (H[e] - lo) / (H[e] - L[s]);
+    if (n - e >= 4 && back < .5 && back > .1) { pat("flag", "Bullische Flagge", true, [[s, L[s]], [e, H[e]], [n - 1, C[n - 1]]], null, last + (H[e] - L[s]), last > H[e] ? "Ausbruch" : "in Bildung", `Anstieg +${Math.round(up * 100)} %, ${Math.round(back * 100)} % zurückgegeben`); }
+    break; }
+  // Ausbrüche
+  { const hi52 = Math.max(...H.slice(Math.max(0, n - 253), n - 1)), lo52 = Math.min(...L.slice(Math.max(0, n - 253), n - 1));
+    if (last > hi52) pat("hi", "Neues 52-Wochen-Hoch", true, [], null, null, "heute", `über ${fmt(hi52)}`);
+    if (last < lo52) pat("lo", "Neues 52-Wochen-Tief", false, [], null, null, "heute", `unter ${fmt(lo52)}`);
+    if (sup && last < sup.now - .3 * atr) pat("tlb", "Trendlinie nach unten gebrochen", false, [], null, null, "heute", `steigende Linie bei ${fmt(sup.now)}`);
+    if (res && last > res.now + .3 * atr) pat("tlu", "Fallende Trendlinie überwunden", true, [], null, null, "heute", `Linie bei ${fmt(res.now)}`); }
+  // 3) Technik-Check: Trend je Zeitebene, Momentum, Volatilität, Volumen
+  const ema = (a, p) => { const k = 2 / (p + 1); let e = null; return a.map(v => (e = e == null ? v : e + k * (v - e))); };
+  const wk = []; for (let i = 0; i < n; i++) { const d = new Date(c.t[i] + "T12:00:00"), nx = i + 1 < n ? new Date(c.t[i + 1] + "T12:00:00") : null; if (!nx || nx.getDay() < d.getDay() || nx - d > 4 * 864e5) wk.push(C[i]); }
+  const w10 = ema(wk, 10), w30 = ema(wk, 30), e20 = c.e20 || ema(C, 20), e50 = c.e50 || ema(C, 50), e200 = c.e200 || ema(C, 200);
+  const tr = (p, e, e5) => p > e && e > e5 ? 1 : p < e && e < e5 ? -1 : 0;
+  const rows = [
+    ["Kurzfristig (EMA 20)", tr(last, e20[n - 1], e20[n - 6])],
+    ["Mittelfristig (EMA 50)", tr(last, e50[n - 1], e50[n - 11])],
+    ["Langfristig (EMA 200)", tr(last, e200[n - 1], e200[n - 21])],
+    ["Wochenchart (EMA 10/30)", wk.length > 30 ? (w10[w10.length - 1] > w30[w30.length - 1] && wk[wk.length - 1] > w10[w10.length - 1] ? 1 : w10[w10.length - 1] < w30[w30.length - 1] && wk[wk.length - 1] < w10[w10.length - 1] ? -1 : 0) : 0]];
+  const rsi = c.rsi ? c.rsi[n - 1] : null, md = c.macd && c.sig ? c.macd[n - 1] - c.sig[n - 1] : null;
+  const atrs = []; for (let i = Math.max(15, n - 253); i < n; i++) atrs.push((H[i] - L[i]) / C[i]); atrs.sort((a, b) => a - b);
+  const volNow = atr / last, volMed = atrs[Math.floor(atrs.length / 2)] || volNow;
+  const vAvg = (a, b) => { let s = 0, k = 0; for (let i = Math.max(0, n - a); i < n - b; i++) if (V[i] != null) { s += V[i]; k++; } return k ? s / k : null; };
+  const v20 = vAvg(20, 0), v60 = vAvg(80, 20);
+  const sc = rows.reduce((a, r) => a + r[1], 0) + (rsi != null ? (rsi > 55 ? .5 : rsi < 45 ? -.5 : 0) : 0) + (md != null ? (md > 0 ? .5 : -.5) : 0);
+  out.tech = { rows, rsi, md, vol: volNow / volMed, volu: v20 && v60 ? v20 / v60 : null, sc,
+    verdict: sc >= 3 ? ["up", "Aufwärtstrend auf allen Ebenen"] : sc >= 1.5 ? ["up", "überwiegend aufwärts"] : sc <= -3 ? ["down", "Abwärtstrend auf allen Ebenen"] : sc <= -1.5 ? ["down", "überwiegend abwärts"] : ["", "gemischt – kein klarer Trend"] };
+  // Schlüsselmarken: 52-Wochen-Hoch/-Tief und nächste Wendepunkte über/unter dem Kurs
+  const gap = Math.max(last * .01, .5 * atr), ab = highs.filter(x => x.p > last + gap).sort((a, b) => a.p - b.p)[0], be = lows.filter(x => x.p < last - gap).sort((a, b) => b.p - a.p)[0];
+  out.levels = [ab && ["Nächster Widerstand", ab.p], be && ["Nächste Unterstützung", be.p]].filter(Boolean);
+  // Aufräumen: jüngstes Muster zuerst; widersprüchliche „in Bildung“-Muster raus (nur das jüngere bleibt); höchstens 3
+  const age = p => p.st === "heute" ? 0 : n - 1 - Math.max(...p.pts.map(x => x[0]));
+  out.pats.sort((a, b) => age(a) - age(b));
+  const keep = []; out.pats.forEach(p => { if (p.st !== "heute" && keep.some(q => q.st !== "heute" && q.bull != null && p.bull != null && q.bull !== p.bull)) return; keep.push(p); });
+  out.pats = keep.slice(0, 3);
+  return out;
+}
 function chartModel(c, r) {
   const T = c.t, n = T.length, fib = r.zone && r.zone.fib, sup = r.zone && r.zone.support, last = c.c[n - 1];
   const hI = fib && r.zone.H_date ? T.indexOf(r.zone.H_date) : -1, out = { cls: null, big: null, broken: false, lines: [], note: "" };
@@ -9616,7 +9745,7 @@ function levelsPrimitive() {
   const font = "600 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
   const bottom = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => {
     g.f.forEach(f => { if (f.y1 == null || f.y2 == null) return; const x0 = Math.max(0, f.x0 ?? 0); x.fillStyle = `rgba(${f.c},${f.a})`; x.fillRect(x0, Math.min(f.y1, f.y2), m.width - x0, Math.abs(f.y2 - f.y1)); });
-    g.s.forEach(s => { if ([s.x1, s.y1, s.x2, s.y2].some(v => v == null)) return; x.save(); x.strokeStyle = `rgba(${s.c},.8)`; x.lineWidth = 1.2; x.setLineDash([5, 4]); x.beginPath(); x.moveTo(s.x1, s.y1); x.lineTo(s.x2, s.y2); x.stroke(); x.restore(); });
+    g.s.forEach(s => { if ([s.x1, s.y1, s.x2, s.y2].some(v => v == null)) return; x.save(); x.strokeStyle = `rgba(${s.c},${s.a ?? .8})`; x.lineWidth = s.w ?? 1.2; x.setLineDash(s.dash || [5, 4]); x.beginPath(); x.moveTo(s.x1, s.y1); x.lineTo(s.x2, s.y2); x.stroke(); x.restore(); });
     g.l.forEach(l => { if (l.y == null) return; const x0 = Math.max(0, l.x0 ?? 0); if (x0 >= m.width) return; x.save(); x.strokeStyle = `rgba(${l.c},${l.a})`; x.lineWidth = l.w; x.setLineDash(l.dash || []);
       x.beginPath(); x.moveTo(x0, Math.round(l.y) + .5); x.lineTo(m.width, Math.round(l.y) + .5); x.stroke(); x.restore(); }); }) };
   const top = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => {
@@ -9636,7 +9765,7 @@ function levelsPrimitive() {
     attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; }, detached() { series = chart = null; },
     updateAllViews() { if (!series || !chart) return; const ts = chart.timeScale(), X = i => i == null ? 0 : ts.logicalToCoordinate(i), Y = v => series.priceToCoordinate(v);
       g = { f: it.fills.map(f => ({ ...f, x0: X(f.from), y1: Y(f.hi), y2: Y(f.lo) })), l: it.lines.map(l => ({ ...l, x0: X(l.from), y: Y(l.p) })),
-        s: it.segs.map(s => ({ c: s.c, x1: X(s.i1), y1: Y(s.p1), x2: X(s.i2), y2: Y(s.p2) })) }; },
+        s: it.segs.map(s => ({ c: s.c, w: s.w, a: s.a, dash: s.dash, x1: X(s.i1), y1: Y(s.p1), x2: X(s.i2), y2: Y(s.p2) })) }; },
     paneViews: () => views,
     autoscaleInfo: () => it.fit.length ? { priceRange: { minValue: Math.min(...it.fit), maxValue: Math.max(...it.fit) } } : null,
   };
@@ -9910,6 +10039,14 @@ function buildMain(el, c, r, opts) {
     if (M.big && clGet("big", true)) wave(M.big, "176,124,255", !!(M.cls && clGet("fib")));
     if (clGet("sup")) M.lines.forEach(L => it.lines.push({ p: L.p, from: L.from, c: L.kind === "s" ? "74,163,255" : "255,128,118", w: 1.6, a: .9,
       l: `${L.kind === "s" ? "Unterstützung" : "Widerstand"} · ${L.n}×${L.scan ? " (Kairo)" : ""}`, lr: fmt(L.p), pri: L.scan ? 2.5 : 1.5 }));
+    if (clGet("auto")) { const A = h.A || (h.A = autoTA(c));   // Auto-Analyse: Trendlinien, Muster-Linien, Nackenlinie, Kursziel
+      if (A) { A.lines.forEach(l => it.segs.push({ i1: l.i1, p1: l.p1, i2: l.i2, p2: l.p2, c: l.kind === "sup" ? "90,200,250" : "255,105,180", w: 1.8, a: .95, dash: [] }));
+        A.pats.forEach(pt => { const col = pt.bull === false ? "255,105,97" : pt.bull ? "52,211,153" : "200,200,210";
+          for (let k = 1; k < pt.pts.length; k++) it.segs.push({ i1: pt.pts[k - 1][0], p1: pt.pts[k - 1][1], i2: pt.pts[k][0], p2: pt.pts[k][1], c: col, w: 1.6, a: .9, dash: [] });
+          if (pt.neck) { if (pt.neck.i2 != null) it.segs.push({ i1: pt.neck.i, p1: pt.neck.p, i2: pt.neck.i2, p2: pt.neck.p2, c: col, w: 1.2, a: .9, dash: [4, 3] });
+            else it.lines.push({ p: pt.neck.p, from: pt.neck.i, c: col, w: 1.2, a: .9, dash: [4, 3], l: `Nackenlinie · ${pt.name}`, pri: 2 }); }
+          if (pt.target != null && pt.target > 0) it.lines.push({ p: pt.target, from: Math.max(0, c.t.length - 25), c: col, w: 1, a: .7, dash: [2, 3], lr: `Ziel ${pt.name.split(" ")[0]} · ${fmt(pt.target)}`, pri: 1.2 });
+          if (pt.pts.length) marks.push({ i: pt.pts[pt.pts.length - 1][0], t: pt.name.replace("Umgekehrte Schulter-Kopf-Schulter", "uSKS").replace("Schulter-Kopf-Schulter", "SKS"), c: `rgb(${col})`, up: pt.bull !== false }); }); } }
     prim.set(it);
     const seen = new Set(); candles.setMarkers(marks.filter(x => { const k = x.i + (x.up ? "u" : "d"); if (seen.has(k)) return false; seen.add(k); return true; })
       .sort((a, b) => a.i - b.i).map(x => ({ time: T[x.i], position: x.up ? "belowBar" : "aboveBar", color: x.c, shape: x.up ? "arrowUp" : "arrowDown", text: x.t })));
@@ -9987,6 +10124,25 @@ document.addEventListener("click", e => {
   const k = b.dataset.cl, cur = clGet(k, b.dataset.auto === "1"); state.cl = { ...(state.cl || {}), [k]: cur ? 0 : 1 }; save(); clRefresh();
 });
 // ---------- Chart-Cockpit (Vollbild): großer Chart, alle Schalter, Zeitraum, Plan, Fibonacci-Stufen, Linien, Kriterien ----------
+// Auto-Analyse-Karte in der Chart-Leiste: Gesamtbild, Trend je Zeitebene, Muster mit Status und Ziel, Trendlinien, Schlüsselmarken
+function autoCardHtml(h) {
+  const c = window.__lastChart && window.__lastChart.c, A = h.A || (h.A = c ? autoTA(c) : null); if (!A) return "";
+  const T = A.tech, arr = v => v > 0 ? `<b class="up">▲ aufwärts</b>` : v < 0 ? `<b class="down">▼ abwärts</b>` : `<b class="muted">◆ seitwärts</b>`, last = c.c[c.c.length - 1];
+  const pats = A.pats.map(p => `<div class="au-p ${p.bull === false ? "bear" : p.bull ? "bull" : ""}"><div><b>${esc(p.name)}</b><span class="au-st">${esc(p.st)}</span></div>
+      <small>${esc(p.why)}${p.target ? ` · rechnerisches Ziel ${fmt(p.target)} (${sgnPct(p.target / last - 1, 0)})` : ""}</small></div>`).join("");
+  const lns = A.lines.map(l => `<div class="cf-r"><span><i style="background:${l.kind === "sup" ? "#5ac8fa" : "#ff69b4"}"></i>${l.t} · ${l.touch}×</span><b>${fmt(l.p2)}</b><em class="${l.kind === "sup" ? "up" : "down"}">${sgnPct(-l.dist, 1)}</em></div>`).join("");
+  return `<div class="cf-s au"><div class="cf-h">Auto-Analyse <button class="au-tg${clGet("auto") ? " on" : ""}" data-cl="auto" aria-pressed="${clGet("auto") ? "true" : "false"}">${clGet("auto") ? "im Chart ✓" : "im Chart zeigen"}</button></div>
+    <div class="au-v ${T.verdict[0]}">${esc(T.verdict[1])}</div>
+    <div class="au-rows">${T.rows.map(([l, v]) => `<div class="cf-r"><span>${l}</span>${arr(v)}</div>`).join("")}
+      ${T.rsi != null ? `<div class="cf-r"><span>Momentum (RSI ${fmt(T.rsi, 0)})</span><b class="${T.rsi > 55 ? "up" : T.rsi < 45 ? "down" : "muted"}">${T.rsi >= 70 ? "überkauft" : T.rsi <= 30 ? "überverkauft" : T.rsi > 55 ? "stark" : T.rsi < 45 ? "schwach" : "neutral"}</b></div>` : ""}
+      ${T.md != null ? `<div class="cf-r"><span>MACD</span><b class="${T.md > 0 ? "up" : "down"}">${T.md > 0 ? "über Signal" : "unter Signal"}</b></div>` : ""}
+      <div class="cf-r"><span>Schwankung</span><b class="${T.vol > 1.3 ? "down" : "muted"}">${T.vol > 1.3 ? "erhöht" : T.vol < .75 ? "ruhig" : "normal"} <small>(${fmt(T.vol, 1)}× üblich)</small></b></div>
+      ${T.volu ? `<div class="cf-r"><span>Volumen 20 Tage</span><b class="muted">${T.volu > 1.25 ? "steigt" : T.volu < .8 ? "fällt" : "normal"} <small>(${fmt(T.volu, 1)}×)</small></b></div>` : ""}</div>
+    ${pats ? `<div class="cf-h au-h2">Chartmuster</div>${pats}` : `<p class="muted cf-t">Derzeit kein klares Chartmuster.</p>`}
+    ${lns ? `<div class="cf-h au-h2">Trendlinien</div>${lns}` : ""}
+    ${A.levels.length ? `<div class="cf-h au-h2">Schlüsselmarken</div>${A.levels.map(([l, v]) => `<div class="cf-r"><span>${l}</span><b>${fmt(v)}</b><em class="${v >= last ? "up" : "down"}">${sgnPct(v / last - 1, 1)}</em></div>`).join("")}` : ""}
+    <p class="muted cf-t">Automatisch aus den Tageskerzen erkannt – Einordnung, kein Kaufsignal. Die Kairo-Regel nutzt diese Muster nicht.</p></div>`;
+}
 function cockpitSide(h, r) {
   const M = h.M, last = r.close, p = r.ext ? {} : chartPlan(r) || {}, ko = r.ext ? null : tpKoStock(r.ticker, r.currency || r.cur), hn = r.ext ? { title: "Nicht im Kairo-Scan", text: "Kurschart aus den Tageskerzen eines Jahres (Kursdienst). EMAs, RSI, MACD, Momentum Bias Index und Unterstützungen rechnet Kairo selbst – die 11 Kairo-Kriterien prüft nur der Abendscan." } : hintNow(r) || {}, k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r);
   const dist = v => v == null || !last ? "" : `<em class="${v >= last ? "up" : "down"}">${sgnPct(v / last - 1, 1)}</em>`;
@@ -9995,6 +10151,7 @@ function cockpitSide(h, r) {
     return `<div class="cf-s"><div class="cf-h">${ttl} · ${dateDE(T0[w.iL])} → ${dateDE(T0[w.iH])}</div>${FIBQ.map(([q, l, st]) => row(l, lv(q), st ? col : null)).join("")}</div>`; };
   const crit = r.criteria || [];
   return `<div class="cf-s"><div class="cf-h">Status</div><span class="st ${k.cls}">${esc(k.t)}</span>${hn.title ? `<p class="cf-t"><b>${esc(hn.title)}</b> ${esc(String(hn.text || "").slice(0, 220))}</p>` : ""}</div>
+    ${autoCardHtml(h)}
     <div class="cf-s"><div class="cf-h">Trade-Plan</div>${row("Kaufzone oben", p.entry, "#eceef2")}${row("Stop", p.stop, "#ff453a")}${row("K.-o. Turbo", ko, "#ff9f0a")}
       ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Seitwärtsphase.</p>` : ""}</div>
     ${(vi => vi && clGet("vp") && (vi.buy.length || vi.sell.length) ? `<div class="cf-s"><div class="cf-h">Big Player · Großvolumen-Zonen</div>${[...vi.buy, ...vi.sell].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:${z.kind === "buy" ? "#0a84ff" : "#bf5af2"}"></i>${z.kind === "buy" ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"}, Ø ${fmt(z.rv, 1)}×</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
@@ -10084,13 +10241,13 @@ let ctPop = false, ctFocus = null;
 function ctabBarHtml(h) {
   const M = h.M, sw = (k, lbl, col, ok = true, auto) => ok ? `<button class="ct-row" data-cl="${k}"${auto != null ? ` data-auto="${auto ? 1 : 0}"` : ""} role="switch" aria-checked="${clGet(k, auto) ? "true" : "false"}"><i style="background:${col}"></i><span>${lbl}</span><u class="ct-sw${clGet(k, auto) ? " on" : ""}"></u></button>` : "";
   const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
-  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), "vol", "vp", "plan"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length)).length;
+  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), "vol", "vp", "plan", "auto"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length)).length;
   const grp = (t, body) => body ? `<div class="ct-g"><div class="ct-gh">${t}</div>${body}</div>` : "";
   return `<div class="ct-tl"><div class="ct-seg"><button class="ct-b ct-lay${ctPop ? " on" : ""}" data-ctlayers aria-expanded="${ctPop}" title="Ebenen ein-/ausblenden">${CT_IC.layers}<span>Ebenen</span><small>${nOn}</small></button></div>
       <div class="ct-seg"><button class="ct-b${MEAS.on ? " on" : ""}" data-clm title="Messen: Start- und Endkerze antippen" aria-label="Messen">${CT_IC.ruler}<span class="ct-lbl">Messen</span></button><button class="ct-b${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle setzen" aria-label="Welle setzen">${CT_IC.wave}<span class="ct-lbl">${M.own ? "Eigene Welle" : "Welle"}</span></button>${M.own ? `<button class="ct-b" data-clwreset title="Zurück zur Welle, die Kairo bestimmt" aria-label="Kairo-Welle">${CT_IC.reset}</button>` : ""}</div></div>
     ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, true))}
       ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.map(([k, col, l]) => sw(k, l, col)).join(""))}
-      ${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a"))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
+      ${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa"))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a"))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
 }
 function ctabBuild(c, r) {
   const el = $("ctab"); if (!el || !window.LightweightCharts) return; ctabDrop(); delete el.dataset.busy;
@@ -10409,7 +10566,8 @@ function indCharts(c, r, eR, eM, eB) {
   macdC.addLineSeries({ color: "#f4b740", lineWidth: 1.5, priceLineVisible: false }).setData(pts("sig"));
 
   const mbiC = LW.createChart(eB, opts(eB));
-  const mbiF = { type: "price", precision: 0, minMove: 1 };   // MBI ist ein Index – ganze Zahlen statt „4.000,00“
+  const mbiF = { type: "price", precision: 0, minMove: 1 };
+  mbiC.applyOptions({ localization: { locale: "de-DE", priceFormatter: v => fmt(v, 0) } });   // MBI ist ein Index – ganze Zahlen statt „4.000,00“
   mbiC.addHistogramSeries({ color: "rgba(48,209,88,.75)", priceLineVisible: false, lastValueVisible: false, priceFormat: mbiF }).setData(pts("mbi_up"));
   const lo = mbiC.addHistogramSeries({ color: "rgba(255,69,58,.75)", priceLineVisible: false, lastValueVisible: false, priceFormat: mbiF });
   lo.setData(pts("mbi_lo"));
