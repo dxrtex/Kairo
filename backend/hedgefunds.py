@@ -172,6 +172,27 @@ def map_cusips(cusips: list[str], cache: dict[str, str | None]) -> dict[str, str
     return cache
 
 
+SUFFIX = re.compile(r"\b(INC|INCORPORATED|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|SA|NV|AG|SE|HLDGS?|HOLDINGS?|GROUP|GRP|THE|CL(ASS)? ?[A-C]|COM|NEW|DEL|ORD|SHS|ADR|SPONSORED|REIT|TR|TRUST|LP|LLC)\b")
+
+
+def norm(name: str) -> str:
+    n = re.sub(r"[^A-Z0-9 ]", " ", str(name).upper().replace("&", " AND "))
+    return re.sub(r"\s+", " ", SUFFIX.sub(" ", n)).strip()
+
+
+def name_map() -> dict[str, str]:
+    """Firmenname (normalisiert) → Ticker aus der SEC-Liste company_tickers.json (eine Anfrage, ~10.000 US-Werte)."""
+    r = _get("https://www.sec.gov/files/company_tickers.json")
+    out: dict[str, str] = {}
+    if not r:
+        return out
+    for x in r.json().values():
+        k = norm(x.get("title", ""))
+        if k and k not in out:                         # erste Zeile = Hauptgattung (SEC-Reihenfolge nach Größe)
+            out[k] = x.get("ticker")
+    return out
+
+
 def build(sleep: float = .15) -> dict:
     cache = {}
     if CACHE.exists():
@@ -198,11 +219,22 @@ def build(sleep: float = .15) -> dict:
                      key=lambda m: -(m["val"] if m["a"] != "raus" else (old.get(m["cusip"], {}).get("val", 0))))[:40]
         funds.append({"name": name, "sec": sec_name, "cik": cik, "period": fl[0]["period"], "filed": fl[0]["filed"],
                       "prev": fl[1]["period"] if len(fl) > 1 else None, "value": round(tot), "n": len(new), "top": top, "moves": chg})
-        moves_all += [(name, m) for m in mv if m["a"] != "halt" or m["w"] >= .01]
+        moves_all += [(name, m) for m in mv if (m["a"] != "halt" or m["w"] >= .01) and (m["w"] >= .0005 or (m["a"] == "raus" and old.get(m["cusip"], {}).get("val", 0) >= .0005 * sum(x["val"] for x in old.values())))]
         print(f"{name}: {sec_name} · {fl[0]['period']} · {len(new)} Positionen · {tot / 1e9:,.1f} Mrd. USD · {len(chg)} Bewegungen")
-    need = list({m["cusip"] for _, m in moves_all} | {m["cusip"] for f in funds for m in f["top"] + f["moves"]})
-    print(f"CUSIPs zuordnen: {len(need)} (Cache {len(cache)})")
-    cache = map_cusips(need, cache)
+    # Ticker zuordnen: zuerst über den Firmennamen (SEC-Liste, sofort), OpenFIGI nur für die wichtigsten offenen Fälle
+    # (Top-Positionen und große Bewegungen) – die Gratis-Grenze von 25 Anfragen/Minute reicht sonst bei Quant-Fonds nicht
+    names = name_map()
+    print(f"SEC-Namensliste: {len(names)} Werte")
+    allm = {m["cusip"]: m["name"] for _, m in moves_all} | {m["cusip"]: m["name"] for f in funds for m in f["top"] + f["moves"]}
+    for cus, nm in allm.items():
+        if cus not in cache or cache[cus] is None:
+            t = names.get(norm(nm))
+            if t:
+                cache[cus] = t
+    key = [m["cusip"] for f in funds for m in f["top"] + f["moves"] if not cache.get(m["cusip"])]
+    key = list(dict.fromkeys(key))[:400]
+    print(f"Zuordnung: {sum(1 for c in allm if cache.get(c))} von {len(allm)} über Namen/Cache, OpenFIGI für {len(key)}")
+    cache = map_cusips(key, cache)
     CACHE.parent.mkdir(parents=True, exist_ok=True)
     CACHE.write_text(json.dumps(cache, separators=(",", ":")), encoding="utf-8")
     for f in funds:
