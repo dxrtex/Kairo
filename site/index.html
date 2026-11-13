@@ -2238,6 +2238,40 @@ html .vseg { background: var(--pf-bg) !important; box-shadow: inset 0 0 0 1px va
 html .seg-ind { background: var(--accent) !important; box-shadow: none !important; }
 html .has-ind > button.on { color: var(--accent-ink, #fff) !important; }
 html .kchip.on, html .opt.on, html.glass .opt.on { background: var(--pf-on) !important; color: var(--pf-on-tx) !important; box-shadow: inset 0 0 0 1px var(--pf-on-ring) !important; border-color: transparent !important; }
+/* Chart-Reiter wie TradingView (13.11. abends): Zeichenleiste senkrecht am linken Rand, Gruppen mit Ausklapp-Menü,
+   Legende und Vergleichen rechts daneben, Ticker-Pille massiv statt Glas */
+html .dr-sel[hidden], html .dr-tb[hidden] { display: none !important; }
+html .dr-x { border: 0; background: transparent; color: var(--muted); font-size: 15px; padding: 2px 6px; cursor: pointer; margin-left: 2px; }
+.dr-gw { position: relative; display: inline-flex; flex: 0 0 auto; }
+.dr-more { position: absolute; right: 1px; bottom: 1px; width: 9px; height: 9px; border: 0; padding: 0; background: transparent; cursor: pointer; }
+.dr-more::after { content: ""; position: absolute; right: 1px; bottom: 1px; border-left: 5px solid transparent; border-bottom: 5px solid var(--muted); }
+.dr-more.on::after { border-bottom-color: var(--accent); }
+.dr-fly { position: absolute; left: calc(100% + 8px); top: -4px; z-index: 20; min-width: 210px; display: flex; flex-direction: column; padding: 6px; border-radius: 12px;
+  background: var(--surface); box-shadow: inset 0 0 0 1px var(--pf-ring), 0 10px 28px rgba(0,0,0,.35); }
+.dr-fly b { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 4px 8px 6px; }
+.dr-fly button { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 14px; padding: 7px 8px; border-radius: 8px; cursor: pointer; text-align: left; }
+.dr-fly button svg { width: 20px; height: 20px; flex: 0 0 20px; } .dr-fly button:hover { background: var(--pf-hover); } .dr-fly button.on { background: var(--accent); color: var(--accent-ink, #fff); }
+@media (min-width: 701px) {
+  html .ctab-chart .dr-tb { left: 8px; right: auto; top: 8px; flex-direction: column; overflow: visible; max-width: none; padding: 3px; gap: 1px; }
+  html .ctab-chart .dr-sep { width: 22px; height: 1px; margin: 4px auto; flex: 0 0 1px; }
+  html .ctab-chart .dr-hint { position: absolute; left: calc(100% + 8px); top: 3px; padding: 8px 12px; border-radius: 10px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--pf-ring), 0 6px 18px rgba(0,0,0,.28); color: var(--text); }
+  html .ctab-chart .cl-ohlc { left: 54px; }
+  html .ctab-chart .cmp { left: 54px; top: 44px; }
+  html .ctab-chart .dr-sel { left: 54px; right: auto; top: auto; bottom: 64px; }
+  html .ctab-chart .dr-fly { left: calc(100% + 10px); }
+}
+@media (max-width: 700px) { .dr-fly { left: 0; top: calc(100% + 6px); } }
+/* Ticker-Pille und Auswahl: massiv, ohne Glas */
+html .cf-pill, html .cf-pick, html.lt .cf-pill { background: var(--surface) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: inset 0 0 0 1px var(--pf-ring), 0 4px 14px rgba(0,0,0,.28) !important; }
+html .cf-pill::before, html .cf-pill::after, html .cf-pick::before, html .cf-pick::after, html .cf-pill > .cf-glint, html .cf-lens { display: none !important; }
+html .cf-pill .cf-wh b, html .cfp-n b, html .cfp-n small { text-shadow: none !important; }
+/* Seitenleiste (13.11. abends): OLED-Schwarz statt Grau, Glas nur als feine Lichtkante – kein Weichzeichner, kein Glanz */
+@media (min-width: 768px) {
+  html:not(.lt) nav.tabbar { background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,0) 38%), #000 !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.07), 0 18px 40px rgba(0,0,0,.6) !important; }
+  html:not(.lt) nav.tabbar .tab:not(.on):hover { background: rgba(255,255,255,.05); }
+  html.lt nav.tabbar { background: #fff !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06), 0 10px 30px rgba(0,0,0,.07) !important; }
+}
 </style>
 </head>
 <body>
@@ -2525,6 +2559,35 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .al-f{display:flex;flex-wrap:wrap;gap:6px}.al-f select,.al-f input{background:rgba(127,127,127,.14);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:7px 8px;font:inherit;font-size:13.5px}.al-f input{width:110px}
 .sg-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 10px}.sg-sum div{background:var(--surface-2);border-radius:10px;padding:8px 6px;text-align:center}.sg-sum b{display:block;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}.sg-sum small{font-size:11px;color:var(--muted)}
 .sg-r{display:grid;grid-template-columns:86px 1fr auto;gap:8px;font-size:13px;padding:6px 0;border-top:1px solid var(--line)}.sg-r b{font-variant-numeric:tabular-nums}.sg-n{font-size:11.5px;margin:8px 0 0}
+.scr-pre{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:2px 0 12px;padding-bottom:2px}.scr-pre::-webkit-scrollbar{display:none}.scr-pre .kchip{flex:0 0 auto}
+.scr-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
+.fpill{position:relative;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:10px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--pf-ring);font-size:13.5px;cursor:pointer;color:var(--text);border:0;font-family:inherit}
+.fpill span{color:var(--muted)}.fpill b{font-weight:600;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis}.fpill i{width:7px;height:7px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(45deg) translateY(-2px);margin-left:2px}
+.fpill select{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;font-size:16px}
+.fpill.on{background:color-mix(in srgb,var(--accent) 16%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent)}.fpill.on b{color:var(--accent)}
+.fbtn{font-weight:600}.fbtn small{display:inline-grid;place-items:center;min-width:18px;height:18px;border-radius:9px;background:var(--accent);color:var(--accent-ink,#fff);font-size:11px;padding:0 5px}
+.fbtn.on{background:var(--accent);color:var(--accent-ink,#fff);box-shadow:none}
+.scr-cols{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;padding:12px;border-radius:12px;background:var(--pf-bg);box-shadow:inset 0 0 0 1px var(--pf-ring)}
+.scr-t td.num{font-variant-numeric:tabular-nums}.scr-t td .up,.scr-t td .down{font-weight:500}
+.km{display:inline-flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:58px}.km b{font-size:13.5px}.km i{display:block;width:56px;height:4px;border-radius:3px;background:rgba(127,127,127,.22);overflow:hidden}.km u{display:block;height:100%;background:var(--muted);border-radius:3px}
+.km.hit b{color:var(--up)}.km.hit u{background:var(--up)}.km.fast b{color:var(--gold)}.km.fast u{background:var(--gold)}
+.etf-hero2{padding:22px!important;display:flex;flex-direction:column;gap:14px}
+.etf-hero2 .eh-t{font-size:26px;margin:4px 0 0;letter-spacing:-.01em}.etf-hero2 .eh-do{margin:0;font-size:14.5px;line-height:1.5;color:var(--muted)}.etf-hero2 .eh-do b{color:var(--text)}
+.e2-top{display:flex;align-items:flex-start;gap:12px;justify-content:space-between}.e2-tt{min-width:0}
+.e2-badge{flex:none;display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:999px;font-weight:700;font-size:14px;color:var(--amp);background:color-mix(in srgb,var(--amp) 14%,transparent)}
+.e2-badge i{width:9px;height:9px;border-radius:50%;background:var(--amp)}
+.e2-scale{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.e2-seg{display:flex;flex-direction:column;gap:6px}.e2-seg u{display:block;height:6px;border-radius:4px;background:rgba(127,127,127,.2)}
+.e2-seg span{font-size:12px;color:var(--muted)}.e2-seg.on u{background:var(--c)}.e2-seg.on span{color:var(--text);font-weight:600}
+.e2-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.e2-f{background:var(--surface-2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.e2-f span{font-size:12px;color:var(--muted)}.e2-f b{font-size:18px;font-variant-numeric:tabular-nums}.e2-f small{font-size:11.5px;color:var(--muted)}
+.e2-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding-top:14px;border-top:1px solid var(--line)}.e2-h{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin-bottom:8px}
+.e2-cols .eh-why{margin:0;gap:7px;font-size:13.5px}
+.e2-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.e2-st{border-radius:10px;padding:8px 10px;background:var(--surface-2);display:flex;flex-direction:column;gap:2px}
+.e2-st span{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}.e2-st span i{width:7px;height:7px;border-radius:50%;background:var(--c)}.e2-st b{font-size:16px;font-variant-numeric:tabular-nums}.e2-st small{font-size:11px;color:var(--muted)}
+.e2-st.on{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c) 60%,transparent)}.e2-src{font-size:11.5px;color:var(--muted);margin-top:6px}
+.etf-hero2 .eh-last{margin:0;padding-top:12px;border-top:1px solid var(--line)}
+@media (max-width:640px){.e2-cols{grid-template-columns:1fr}.etf-hero2 .eh-t{font-size:22px}.e2-top{flex-direction:column}}
+.el-tv iframe{background:var(--surface-2);color-scheme:normal}
 .mc-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}.mc-bar>b{font-size:17px;margin-right:auto}.mc-bar .ct-rg button svg{width:18px;height:18px;display:block}
 .mc-g{display:grid;gap:10px;height:calc(100vh - 170px);min-height:420px}.mc-g.mc-1{grid-template-columns:1fr}.mc-g.mc-2{grid-template-columns:1fr 1fr}.mc-g.mc-4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 @media (max-width:700px){.mc-g.mc-2{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.mc-g.mc-4{grid-template-columns:1fr;grid-template-rows:repeat(4,300px);height:auto}}
@@ -3439,6 +3502,7 @@ function searchHtml() {
 
 // ---------- Screener über alle Aktien (Runde 13.11., wie Finviz): frei filtern und sortieren – unabhängig von der Kairo-Regel ----------
 const SCR_PRE = [["", "Alle"], ["hi52", "Nahe 52-W-Hoch"], ["os", "Überverkauft (RSI < 30)"], ["mom", "Starkes Momentum"], ["pull", "Rücksetzer im Aufwärtstrend"], ["earn", "Zahlen in 14 Tagen"], ["ins", "Insider kaufen"], ["k9", "Kairo ab 9/11"], ["qual", "Qualität günstig"], ["divs", "Dividenden-Stars"], ["grow", "Starkes Wachstum"]];
+const SCR_DEF = ["n", "c", "d1", "m1", "ytd", "hi", "tr", "pe", "sf", "m"];   // Standard-Spalten (Übersicht); weitere über „Spalten“
 const SCR_COLS = [["n", "Aktie"], ["c", "Kurs"], ["d1", "1T"], ["d5", "1W"], ["m1", "1M"], ["m3", "3M"], ["ytd", "YTD"], ["hi", "vom Hoch"], ["rsi", "RSI"], ["tr", "Trend"], ["mc", "Börsenwert"], ["pe", "KGV"], ["dy", "Div."], ["sf", "Flocke"], ["sec", "Sektor"], ["m", "Kairo"]];
 let scrMore = 0;
 function scrVal(r, k) { if (k === "pe" || k === "dy" || k === "sf" || k === "rg2") { const f = fundOf(r.t); if (!f) return null; return k === "pe" ? (f.pe ?? null) : k === "dy" ? (f.dr && f.cp ? f.dr / f.cp : 0) : k === "sf" ? sfSum(f) : f.rg ?? null; }
@@ -3472,6 +3536,12 @@ function screenerHtml() {
   const fd = getJson("fund.json"), F = state.scf || {}, S = state.scs || { k: "mc", asc: false }, secs = [...new Set(searchIdx.map(r => r.sec).filter(Boolean))].sort();
   const list = scrRows().sort((a, b) => { const x = scrVal(a, S.k), y = scrVal(b, S.k); if (x == null) return 1; if (y == null) return -1; const c = typeof x === "string" ? x.localeCompare(y) : x - y; return S.asc ? c : -c; });
   const sel = (k, opts, lbl) => `<label class="scr-f"><span>${lbl}</span><select data-scf="${k}">${opts.map(([v, l]) => `<option value="${v}"${String(F[k] || "") === String(v) ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
+  const pill = (k, opts, lbl) => { const cur = opts.find(([v]) => String(F[k] || "") === String(v)) || opts[0], on = !!(F[k] && F[k] !== "0");
+    return `<label class="fpill${on ? " on" : ""}"><span>${lbl}</span><b>${esc(cur[1])}</b><i aria-hidden="true"></i><select data-scf="${k}" aria-label="${lbl}">${opts.map(([v, l]) => `<option value="${v}"${String(F[k] || "") === String(v) ? " selected" : ""}>${l}</option>`).join("")}</select></label>`; };
+  const COLS_ON = (state.scCols && state.scCols.length ? state.scCols : SCR_DEF), COLS = SCR_COLS.filter(([k]) => k === "n" || (COLS_ON.includes(k) && (fd || !["pe", "dy", "sf"].includes(k))));
+  const nAct = Object.entries(F).filter(([k, v]) => v && v !== "0" && k !== "pfk").length;
+  const R_REG = [["", "alle"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]], R_CAP = [["", "alle"], ["2e9", "ab 2 Mrd. $"], ["1e10", "ab 10 Mrd. $"], ["5e10", "ab 50 Mrd. $"], ["2e11", "ab 200 Mrd. $"]],
+    R_TR = [["", "egal"], ["up", "über EMA 200"], ["down", "unter EMA 200"]], R_PE = [["", "egal"], ["lo", "unter 15"], ["mid", "15–25"], ["hi", "über 25"], ["neg", "Verlust"]], R_DY = [["", "egal"], [".001", "mit Dividende"], [".02", "ab 2 %"], [".04", "ab 4 %"]];
   const pc = v => v == null ? `<span class="muted">–</span>` : `<span class="${v >= 0 ? "up" : "down"}">${sgnPct(v, Math.abs(v) < .1 ? 1 : 0)}</span>`;
   const shown = list.slice(0, 120 + scrMore), inRes = new Set(data.results.map(r => r.ticker));
   const cell = (r, k) => k === "n" ? `<a href="#" class="nm nm-l" data-${inRes.has(r.t) ? "card" : r.detail ? "open" : "ctgo"}="${esc(r.t)}">${cfAv(r.t)}<span>${esc(shortNm(r.n || r.t))}<small>${esc(tkClean(r.t))}</small></span></a>`
@@ -3481,24 +3551,24 @@ function screenerHtml() {
     : k === "pe" ? (v => v == null ? `<span class="muted">–</span>` : v > 0 ? fmt(v, 1) : `<span class="down">Verlust</span>`)(scrVal(r, "pe"))
     : k === "dy" ? (v => v == null ? `<span class="muted">–</span>` : v ? pct(v, 1) : `<span class="muted">–</span>`)(scrVal(r, "dy"))
     : k === "sf" ? (v => v == null ? `<span class="muted">–</span>` : `<b style="color:rgb(${sfCol(v)})">${v}</b><small>/30</small>`)(scrVal(r, "sf"))
-    : k === "mc" ? (r.mc ? fmtCap(r.mc) : "–") : k === "sec" ? `<span class="muted">${esc(r.sec || "–")}</span>` : `<b class="${r.s === "hit" ? "up" : r.s === "fast" ? "gold" : ""}">${r.m ?? "–"}/11</b>`;
+    : k === "mc" ? (r.mc ? fmtCap(r.mc) : "–") : k === "sec" ? `<span class="muted">${esc(r.sec || "–")}</span>`
+    : r.m == null ? `<span class="muted">–</span>` : `<span class="km${r.s === "hit" ? " hit" : r.s === "fast" ? " fast" : ""}"><b>${r.m}/11</b><i><u style="width:${Math.round(r.m / 11 * 100)}%"></u></i></span>`;
   return `<div class="scr">
     <div class="vdesc">Alle ${fmt(searchIdx.length, 0)} geprüften Aktien frei filtern – wie ein klassischer Screener. Unabhängig von der Kairo-Regel: Treffer findest du unter „Treffer“.</div>
-    <div class="kbar scr-pre">${SCR_PRE.map(([k, l]) => `<button class="kchip${(state.scfPre || "") === k ? " on" : ""}" data-scrpre="${k}">${l}</button>`).join("")}</div>
-    <details class="scr-det"${innerWidth > 700 || state.scrFOpen ? " open" : ""}><summary>Filter${(n => n ? ` <small>${n} aktiv</small>` : "")(Object.entries(F).filter(([k, v]) => v && v !== "0" && k !== "pfk").length)}</summary><div class="scr-fs">${sel("reg", [["", "alle"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]], "Region")}${sel("sec", [["", "alle"], ...secs.map(x => [x, x])], "Sektor")}
-      ${sel("cap", [["", "alle"], ["2e9", "ab 2 Mrd. $"], ["1e10", "ab 10 Mrd. $"], ["5e10", "ab 50 Mrd. $"], ["2e11", "ab 200 Mrd. $"]], "Börsenwert")}
-      ${sel("tr", [["", "egal"], ["up", "über EMA 200"], ["down", "unter EMA 200"]], "Trend")}${sel("rsi", [["", "egal"], ["lo", "unter 30"], ["mid", "30–70"], ["hi", "über 70"]], "RSI 14")}
+    <div class="scr-pre" role="group" aria-label="Vorlagen">${SCR_PRE.map(([k, l]) => `<button class="kchip${(state.scfPre || "") === k ? " on" : ""}" data-scrpre="${k}">${l}</button>`).join("")}</div>
+    <div class="scr-bar">${pill("reg", R_REG, "Region")}${pill("sec", [["", "alle"], ...secs.map(x => [x, x])], "Sektor")}${pill("cap", R_CAP, "Börsenwert")}${pill("tr", R_TR, "Trend")}${fd ? pill("pe", R_PE, "KGV") + pill("dy", R_DY, "Dividende") : ""}
+      <button class="fpill fbtn${state.scrFOpen ? " on" : ""}" data-scrfo>Weitere Filter${nAct ? ` <small>${nAct}</small>` : ""}</button><button class="fpill fbtn${state.scrCOpen ? " on" : ""}" data-scrco>Spalten</button>${nAct ? `<button class="hlink" data-scrpre="">Zurücksetzen</button>` : ""}</div>
+    ${state.scrFOpen ? `<div class="scr-fs">${sel("rsi", [["", "egal"], ["lo", "unter 30"], ["mid", "30–70"], ["hi", "über 70"]], "RSI 14")}
       ${sel("hi", [["", "egal"], ["near", "max. −5 %"], ["pull", "−10 bis −30 %"], ["deep", "über −30 %"]], "Vom 52-W-Hoch")}
       ${sel("pfk", [["m3", "3 Monate"], ["m1", "1 Monat"], ["ytd", "seit Jahresanfang"], ["d5", "1 Woche"]], "Wertentwicklung")}${sel("pf", [["", "egal"], [".05", "ab +5 %"], [".1", "ab +10 %"], [".2", "ab +20 %"], [".5", "ab +50 %"]], "Plus")}
       ${sel("pfn", [["", "egal"], [".1", "ab −10 %"], [".2", "ab −20 %"], [".4", "ab −40 %"]], "Minus")}${sel("met", [["", "egal"], ["7", "ab 7/11"], ["9", "ab 9/11"], ["10", "ab 10/11"], ["11", "11/11"]], "Kairo-Kriterien")}
-      ${fd ? sel("pe", [["", "egal"], ["lo", "unter 15"], ["mid", "15–25"], ["hi", "über 25"], ["neg", "Verlust"]], "KGV") + sel("dy", [["", "egal"], [".001", "mit Dividende"], [".02", "ab 2 %"], [".04", "ab 4 %"]], "Dividende")
-        + sel("frg", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Umsatzwachstum") + sel("fpm", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Nettomarge")
+      ${fd ? sel("frg", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Umsatzwachstum") + sel("fpm", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Nettomarge")
         + sel("fde", [["", "egal"], ["50", "unter 0,5"], ["100", "unter 1"]], "Verschuldung") + sel("fsf", [["", "egal"], ["15", "ab 15/30"], ["20", "ab 20/30"], ["24", "ab 24/30"]], "Schneeflocke") : ""}
-      <label class="scr-f scr-c"><input type="checkbox" data-scf="earn" ${F.earn ? "checked" : ""}><span>Zahlen ≤ 14 T.</span></label><label class="scr-f scr-c"><input type="checkbox" data-scf="ins" ${F.ins ? "checked" : ""}><span>Insider kaufen</span></label>
-      <button class="hlink" data-scrpre="">Zurücksetzen</button></div></details>
+      <label class="scr-f scr-c"><input type="checkbox" data-scf="earn" ${F.earn ? "checked" : ""}><span>Zahlen ≤ 14 T.</span></label><label class="scr-f scr-c"><input type="checkbox" data-scf="ins" ${F.ins ? "checked" : ""}><span>Insider kaufen</span></label></div>` : ""}
+    ${state.scrCOpen ? `<div class="scr-cols">${SCR_COLS.filter(([k]) => k !== "n").map(([k, l]) => `<button class="opt${COLS_ON.includes(k) ? " on" : ""}" data-scrcol="${k}">${esc(l)}</button>`).join("")}<button class="hlink" data-scrcol="">Standard</button></div>` : ""}
     <div class="section-title"><span>Ergebnis</span><span>${fmt(list.length, 0)} Aktien</span></div>
-    <div class="table-wrap"><table class="scr-t"><thead><tr>${SCR_COLS.map(([k, l]) => `<th class="${k === "n" || k === "sec" || k === "tr" ? "" : "num "}${S.k === k ? "sorted" + (S.asc ? " asc" : "") : ""}" data-scrs="${k}">${l}</th>`).join("")}</tr></thead>
-      <tbody>${shown.map(r => `<tr>${SCR_COLS.map(([k]) => `<td class="${k === "n" || k === "sec" || k === "tr" ? "" : "num"}">${cell(r, k)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+    <div class="table-wrap"><table class="scr-t"><thead><tr>${COLS.map(([k, l]) => `<th class="${k === "n" || k === "sec" || k === "tr" ? "" : "num "}${S.k === k ? "sorted" + (S.asc ? " asc" : "") : ""}" data-scrs="${k}">${l}</th>`).join("")}</tr></thead>
+      <tbody>${shown.map(r => `<tr>${COLS.map(([k]) => `<td class="${k === "n" || k === "sec" || k === "tr" ? "" : "num"}">${cell(r, k)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
     ${list.length > shown.length ? `<div class="row-actions" style="justify-content:center;margin:12px 0"><button class="btn ghost" data-scrmore>Weitere ${fmt(Math.min(240, list.length - shown.length), 0)} anzeigen</button></div>` : ""}
     <div class="note" style="margin:8px 2px 0">Stand: letzter Scan. Kurse und Kennzahlen aus dem Kairo-Scan (alle Aktien ab 2 Mrd. $ Börsenwert). Keine Anlageberatung.</div></div>`;
 }
@@ -3507,6 +3577,10 @@ document.addEventListener("click", e => {
   const p = e.target.closest("[data-scrpre]"); if (p) { scrPreset(p.dataset.scrpre); return; }
   const h = e.target.closest("th[data-scrs]"); if (h) { const k = h.dataset.scrs, S = state.scs || { k: "mc", asc: false }; state.scs = S.k === k ? { k, asc: !S.asc } : { k, asc: k === "n" || k === "sec" }; save(); render(); return; }
   if (e.target.closest("[data-scrmore]")) { scrMore += 240; render(); }
+  if (e.target.closest("[data-scrfo]")) { state.scrFOpen = !state.scrFOpen; save(); render(); return; }
+  if (e.target.closest("[data-scrco]")) { state.scrCOpen = !state.scrCOpen; save(); render(); return; }
+  const sc = e.target.closest("[data-scrcol]"); if (sc) { const k = sc.dataset.scrcol, cur = (state.scCols && state.scCols.length ? state.scCols : SCR_DEF).slice();
+    state.scCols = !k ? null : cur.includes(k) ? cur.filter(x => x !== k) : SCR_COLS.map(c => c[0]).filter(x => x !== "n" && (cur.includes(x) || x === k)); save(); render(); return; }
 });
 document.addEventListener("change", e => { const f = e.target.closest("[data-scf]"); if (!f) return; const k = f.dataset.scf;
   state.scf = { ...(state.scf || {}), [k]: f.type === "checkbox" ? (f.checked ? 1 : 0) : f.value }; state.scfPre = "-"; scrMore = 0; save(); render(); });
@@ -7485,12 +7559,16 @@ function etfHtml() {
     : tlv === "r" ? `Sparrate läuft · <b>Extra-Geld zurücklegen</b>, bis die Ampel wieder Gelb oder Grün zeigt – der Kurs ist weit gelaufen, kurze Rücksetzer sind jetzt wahrscheinlicher. Spätestens nach 8 Wochen trotzdem in Raten anlegen.`
     : `Sparrate läuft · <b>Extra-Geld in 2–3 Raten</b> anlegen oder auf Grün warten (höchstens 6 Wochen). Grün kommt bei einem Rücksetzer an die EMA 100/200 oder abgekühltem RSI.`;
   const S = tm && tm.stats, stat = S ? `<div class="eh-stat">${["g", "y", "r"].map(k => `<span><i style="background:${ETF_AMP[k][1]}"></i>${ETF_AMP[k][0]}: <b class="${S[k].f60 == null ? "" : S[k].f60 >= 0 ? "up" : "down"}">${S[k].f60 == null ? "–" : sgnPct(S[k].f60, 1)}</b> <small>(${pct(S[k].share, 0)} der Tage)</small></span>`).join("")}<em>Ø Kursänderung 3 Monate danach · SPYI seit ${dateDE(tm.from)}</em></div>` : "";
-  const hero = e ? `<div class="hcard etf-hero">
-      <div class="eh-lights">${lamp("g", "Guter Moment", "#30d158")}${lamp("y", "Normal", "#ffcc00")}${lamp("r", "Überhitzt", "#ff453a")}</div>
-      <div class="eh-main"><span class="eh-k">Einstiegs-Ampel für Extra-Geld · ${esc(e.name)}</span><b class="eh-t">${head}</b><p class="eh-do">${todo}</p>
-        <div class="eh-facts"><span>Kurs <b>${fmt(e.c)} €</b></span><span>${e.dd < .005 ? "<b>am Allzeithoch</b>" : `<b>−${pct(e.dd, 1)}</b> unter dem Hoch`}</span>${tm ? `<span>EMA 100 <b>${fmt(tm.e100)}</b></span><span>EMA 200 <b>${fmt(tm.e200)}</b></span>` : ""}${etfStale(e) ? `<span class="gold">Tageskurs vom ${dateDE(e.date)} – Yahoo liefert verzögert</span>` : `<span class="muted">Stand ${dateDE(e.date)}</span>`}</div>
-        ${tm ? `<ul class="eh-why">${tm.why.map(([k, t]) => `<li class="${k}"><i></i>${esc(t)}</li>`).join("")}</ul>` : ""}${stat}
-        ${(lb => lb ? `<div class="eh-last${c.rate && daysUntil(lb.date) < -40 ? " gold" : ""}">Letzter SPYI-Kauf: <b>${dateDE(lb.date)}</b>${lb.plan ? " (Sparplan)" : ""}${c.rate && daysUntil(lb.date) < -40 ? " – seit über 40 Tagen kein Kauf: Sparplan bei Scalable prüfen" : ""} <small class="muted">· aus deinem Scalable-Export</small></div>` : c.rate ? `<div class="eh-last muted">Ob dein Sparplan läuft, sieht Kairo nach dem nächsten Scalable-Export (Depot → Import).</div>` : "")(etfLastBuy())}</div></div>
+  const AMP = tlv ? ETF_AMP[tlv] : null, ddTxt = e ? (e.dd < .005 ? "am Hoch" : `−${pct(e.dd, 1)}`) : "";
+  const tile = (l, v, sub) => `<div class="e2-f"><span>${l}</span><b>${v}</b>${sub ? `<small>${sub}</small>` : ""}</div>`;
+  const hero = e ? `<div class="hcard etf-hero2"${AMP ? ` style="--amp:${AMP[1]}"` : ""}>
+      <div class="e2-top"><div class="e2-tt"><span class="eh-k">Einstiegs-Ampel für Extra-Geld · ${esc(e.name)}</span><b class="eh-t">${head}</b></div>${AMP ? `<span class="e2-badge"><i></i>${AMP[0]}</span>` : ""}</div>
+      ${tm ? `<div class="e2-scale" role="img" aria-label="Ampel: ${AMP ? AMP[0] : ""}">${["g", "y", "r"].map(k => `<div class="e2-seg${tlv === k ? " on" : ""}" style="--c:${ETF_AMP[k][1]}"><u></u><span>${ETF_AMP[k][0]}</span></div>`).join("")}</div>` : ""}
+      <p class="eh-do">${todo}</p>
+      <div class="e2-facts">${tile("Kurs", `${fmt(e.c)} €`, etfStale(e) ? `<span class="gold">vom ${dateDE(e.date)}</span>` : `Stand ${dateDE(e.date)}`)}${tile("Vom Hoch", ddTxt, "1-Jahres-Hoch")}${tm ? tile("EMA 100", fmt(tm.e100), e.c >= tm.e100 ? "Kurs darüber" : "Kurs darunter") + tile("EMA 200", fmt(tm.e200), e.c >= tm.e200 ? "Kurs darüber" : "Kurs darunter") : ""}</div>
+      ${tm ? `<div class="e2-cols"><div><div class="e2-h">Warum</div><ul class="eh-why">${tm.why.map(([k, t]) => `<li class="${k}"><i></i>${esc(t)}</li>`).join("")}</ul></div>
+        ${S ? `<div><div class="e2-h">Rückblick · Ø 3 Monate danach</div><div class="e2-stats">${["g", "y", "r"].map(k => `<div class="e2-st${tlv === k ? " on" : ""}" style="--c:${ETF_AMP[k][1]}"><span><i></i>${ETF_AMP[k][0]}</span><b class="${S[k].f60 == null ? "" : S[k].f60 >= 0 ? "up" : "down"}">${S[k].f60 == null ? "–" : sgnPct(S[k].f60, 1)}</b><small>${pct(S[k].share, 0)} der Tage</small></div>`).join("")}</div><div class="e2-src">SPYI seit ${dateDE(tm.from)}</div></div>` : ""}</div>` : ""}
+        ${(lb => lb ? `<div class="eh-last${c.rate && daysUntil(lb.date) < -40 ? " gold" : ""}">Letzter SPYI-Kauf: <b>${dateDE(lb.date)}</b>${lb.plan ? " (Sparplan)" : ""}${c.rate && daysUntil(lb.date) < -40 ? " – seit über 40 Tagen kein Kauf: Sparplan bei Scalable prüfen" : ""} <small class="muted">· aus deinem Scalable-Export</small></div>` : c.rate ? `<div class="eh-last muted">Ob dein Sparplan läuft, sieht Kairo nach dem nächsten Scalable-Export (Depot → Import).</div>` : "")(etfLastBuy())}</div>
     ${c.units && c.buy ? etfDevHtml(e, c) : ""}${etfLiveHtml(c)}<div class="hcard">${hHead("Kurs der letzten 3 Jahre · mit 200-Tage-Linie")}${etfLine(e.hist, c.buy)}
       <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ⚠️ Kurs ist ${e.age} Tage alt` : ""}. Gelegentlich mit Scalable vergleichen.</div></div>
 `
@@ -8011,8 +8089,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.136";
-const APP_NEWS = [["2026.11.136", "Grün zurück, Glas bleibt weg", [
+const APP_VER = "2026.11.137";
+const APP_NEWS = [["2026.11.137", "Aufgeräumt: Chart, Screener, ETF-Ampel", [
+  ["Chart wie TradingView", "Zeichenleiste senkrecht am linken Rand mit Werkzeug-Gruppen, oben „Indikatoren“, „Replay“ und „Alarm“. Achsen hängen nicht mehr, das Farbfenster einer Linie schließt mit ✕, und der Chart läuft flüssiger."],
+  ["Screener", "Ruhige Filterleiste, weitere Filter und Spalten auf Wunsch, Kairo-Kriterien als Balken."],
+  ["ETF-Ampel", "Neue, ruhige Gestaltung mit klarer Statusanzeige, Kennzahl-Kacheln und Rückblick."],
+  ["Seitenleiste", "Tiefes Schwarz mit feiner Lichtkante."]]],
+  ["2026.11.136", "Grün zurück, Glas bleibt weg", [
   ["Aktive Auswahl wieder grün", "Seitenleiste, Zeitraum, Reiter, Filter-Chips und Zeichenwerkzeuge zeigen die Auswahl wieder als grüne Fläche – jetzt flach, ohne Glas-Glanz und Leuchten."]]],
   ["2026.11.135", "Geräte-Abgleich", [
   ["iPad, iPhone, Mac", "Mit demselben Sicherungs-Passwort gleichen sich Zeichnungen, Alarme, Watchlist und eigene Listen automatisch ab (Einstellungen → Automatische Sicherung)."],
@@ -10176,7 +10259,7 @@ async function openDetail(t) {
 
 // ---------- Haupt-Chart: Fibonacci als Linien, Unterstützungen/Widerstände, EMAs – alles mit Ein/Aus-Schaltern ----------
 // Ein Baustein für Detailseite und Vollbild-Cockpit; Schalter (state.cl) wirken sofort in allen offenen Charts.
-const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 1, auto: 1, sig: 1 };   // Auto-Analyse seit 13.11. standardmäßig an   // EMA 100 aus: weniger Linien im Standard
+const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 0, auto: 1, sig: 1 };   // 13.11.: Volumenprofil standardmäßig aus (Übersicht)   // Auto-Analyse seit 13.11. standardmäßig an   // EMA 100 aus: weniger Linien im Standard
 const clGet = (k, auto) => { const v = (state.cl || {})[k]; return v == null ? (k in CL_DEF ? CL_DEF[k] : auto ? 1 : 0) : v; };
 const CL_LIVE = new Set();
 const FIBQ = [[0, "Hoch"], [.382, "38,2 %"], [.5, "50 %"], [.618, "61,8 %"], [.706, "70,6 %", 1], [.786, "78,6 %", 1], [.886, "88,6 %"], [1, "Tief"]];   // betont: Kaufzone Golden Pocket
@@ -10802,7 +10885,7 @@ function clBarHtml(h) {
   return chip("fib", M.own ? "Fibonacci (eigene)" : "Fibonacci", "#f4b740", !!M.cls) + chip("big", "große Welle", "#b07cff", !!M.big, true)
     + chip("sup", `Linien ${ns}↓ ${nr}↑`, "#4aa3ff", M.lines.length > 0) + EMA_DEF.map(([k, col, l]) => chip(k, l, col)).join("")
     + chip("vol", "Volumen", "#5d6676") + chip("vp", "Volumenprofil", "#ff9f0a") + chip("plan", "Kauf/Stop/K.-o.", "#ff453a")
-    + `<button class="cl-c cl-m${MEAS.on ? " on" : ""}" data-clm title="Zeitraum messen: Start- und Endkerze antippen">📏 Messen</button>`
+    + `<button class="cl-c cl-m${MEAS.on ? " on" : ""}" data-clm title="Zeitraum messen: Start- und Endkerze antippen">Messen</button>`
     + `<button class="cl-c cl-m${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle: Tief und Hoch antippen, danach mit den Griffen verschieben – Tipp daneben beendet">✎ ${M.own ? "eigene Welle" : "Welle setzen"}</button>`
     + (M.own ? `<button class="cl-c" data-clwreset title="Zurück zur Welle, die Kairo bestimmt">↺ Kairo-Welle</button>` : "");
 }
@@ -11063,6 +11146,8 @@ const CT_IC = {
   reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6L4 8.6"/><path d="M4 4v4.6h4.6"/></svg>',
   expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>',
   shrink: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg>',
+  fx: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4.5c-1.6-.4-2.9.5-3.2 2.2L5 18c-.3 1.7-1.6 2.6-3 2.2"/><path d="M4 10h6"/><path d="m13 11 6 7M19 11l-6 7"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>',
   side: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/></svg>' };
 let ctPop = false, ctFocus = null;
 function ctabBarHtml(h) {
@@ -11070,8 +11155,8 @@ function ctabBarHtml(h) {
   const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
   const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), ...SMA_DEF.map(x => x[0]), "bb", "ichi", "vol", "vp", "plan", "auto", "sig"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length) && (k !== "sig" || sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")))).length;
   const grp = (t, body) => body ? `<div class="ct-g"><div class="ct-gh">${t}</div>${body}</div>` : "";
-  return `<div class="ct-tl"><div class="ct-seg"><button class="ct-b ct-lay${ctPop ? " on" : ""}" data-ctlayers aria-expanded="${ctPop}" title="Ebenen ein-/ausblenden">${CT_IC.layers}<span>Ebenen</span><small>${nOn}</small></button></div>
-      <div class="ct-seg"><button class="ct-b${MEAS.on ? " on" : ""}" data-clm title="Messen: Start- und Endkerze antippen" aria-label="Messen">${CT_IC.ruler}<span class="ct-lbl">Messen</span></button><button class="ct-b${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle setzen" aria-label="Welle setzen">${CT_IC.wave}<span class="ct-lbl">${M.own ? "Eigene Welle" : "Welle"}</span></button><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button><button class="ct-b" data-alc title="Alarme: alle Alarme, Kurs- und RSI-Alarm" aria-label="Alarme">🔔<span class="ct-lbl">Alarme</span>${alCount() ? `<small>${alCount()}</small>` : ""}</button>${M.own ? `<button class="ct-b" data-clwreset title="Zurück zur Welle, die Kairo bestimmt" aria-label="Kairo-Welle">${CT_IC.reset}</button>` : ""}</div></div>
+  return `<div class="ct-tl"><div class="ct-seg"><button class="ct-b ct-lay${ctPop ? " on" : ""}" data-ctlayers aria-expanded="${ctPop}" title="Indikatoren und Ebenen ein-/ausblenden">${CT_IC.fx}<span>Indikatoren</span><small>${nOn}</small></button></div>
+      <div class="ct-seg"><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button><button class="ct-b" data-alc title="Alarme: alle Alarme, Kurs- und RSI-Alarm" aria-label="Alarme">${CT_IC.bell}<span class="ct-lbl">Alarm</span>${alCount() ? `<small>${alCount()}</small>` : ""}</button>${M.own ? `<button class="ct-b" data-clwreset title="Eigene Fibonacci-Welle verwerfen – zurück zur Kairo-Welle" aria-label="Kairo-Welle">${CT_IC.reset}<span class="ct-lbl">Kairo-Welle</span></button>` : ""}</div></div>
     ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, true))}
       ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.concat(SMA_DEF).map(([k, col, l]) => sw(k, l, col)).join(""))}${grp("Indikatoren", sw("bb", `Bollinger-Bänder (${IND_P().bbN}, ${IND_P().bbK})`, "#2962ff") + sw("ichi", "Ichimoku-Wolke", "#30d158"))}${grp("Indikator-Einstellungen", `<div class="ip-g">${[["rsi", "RSI-Periode"], ["stK", "Stochastik %K"], ["stD", "Stochastik %D"], ["atr", "ATR-Periode"], ["adx", "ADX-Periode"], ["bbN", "Bollinger-Periode"], ["bbK", "Bollinger-Faktor"]].map(([k, l]) => `<label><span>${l}</span><input type="number" inputmode="decimal" data-ip="${k}" value="${IND_P()[k]}" step="${k === "bbK" ? ".5" : "1"}"></label>`).join("")}</div>`)}
       ${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa") + sw("sig", `Frühere Kairo-Signale${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")) ? ` · ${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")).length}` : ""}`, "#0a84ff", !!sigOf(h.r && String(h.r.ticker).replace(/@rp$/, ""))))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a"))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
@@ -11086,7 +11171,7 @@ function ctabBuild(c, r) {
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
       <span class="st ${k.cls}">${esc(k.t)}</span><button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
-      <div class="ct-right"><div class="ct-rg ct-tf" role="group" aria-label="Zeiteinheit">${[["5m", "5m", "5 Minuten"], ["15m", "15m", "15 Minuten"], ["1h", "1h", "1 Stunde"], ["4h", "4h", "4 Stunden"], ["D", "1D", "Tag"], ["W", "1W", "Woche"], ["M", "1M", "Monat"]].map(([v, l, t]) => `<button class="${(c.tf || "D") === v ? "on" : ""}${TF_INTRA.includes(v) ? " tf-i" : ""}" data-cftf="${v}" title="Zeiteinheit: ${t}${TF_INTRA.includes(v) ? " (über den Kursdienst, ca. 15 Min. verzögert)" : ""}">${l}</button>`).join("")}</div><div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Welle"]].map(([v, l]) => `<button class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
+      <div class="ct-right"><div class="ct-rg ct-tf" role="group" aria-label="Zeiteinheit">${[["5m", "5m", "5 Minuten"], ["15m", "15m", "15 Minuten"], ["1h", "1h", "1 Stunde"], ["4h", "4h", "4 Stunden"], ["D", "1D", "Tag"], ["W", "1W", "Woche"], ["M", "1M", "Monat"]].map(([v, l, t]) => `<button class="${(c.tf || "D") === v ? "on" : ""}${TF_INTRA.includes(v) ? " tf-i" : ""}" data-cftf="${v}" title="Zeiteinheit: ${t}${TF_INTRA.includes(v) ? " (über den Kursdienst, ca. 15 Min. verzögert)" : ""}">${l}</button>`).join("")}</div><div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Setup"]].map(([v, l]) => `<button title="${v === "wave" ? "Ausschnitt der Kairo-Welle (Setup)" : "Zeitraum"}" class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
         <button class="ct-b ct-mcb" data-mcn="${innerWidth < 700 ? 2 : 4}" title="Mehrfach-Charts: ${innerWidth < 700 ? 2 : 4} Charts nebeneinander" aria-label="Mehrfach-Charts">${MC_IC[innerWidth < 700 ? 2 : 4]}</button><button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
     <div class="ctab-grid"><div class="ctab-l">
       <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="cmp" id="cmpBox"><button class="cmp-b" data-cmpopen title="Symbol vergleichen" aria-label="Symbol vergleichen">＋ Vergleichen</button><div class="cmp-pop" id="cmpPop" hidden>${[["^GSPC", "S&P 500"], ["^NDX", "Nasdaq 100"], ["^GDAXI", "DAX"], ["^STOXX", "STOXX 600"]].map(([v, l]) => `<button data-cmp="${v}">${l}</button>`).join("")}<button data-cmp="?">Andere Aktie …</button></div><div class="cmp-chips" id="cmpChips"></div></div><div class="dr-tb" id="drTb"></div><div class="dr-sel" id="drSel" hidden></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
@@ -11288,6 +11373,8 @@ const DRAW = { tool: null, sel: null, hide: false, hist: {}, h: null, act: null,
 const DR_FIB = [[0, "120,123,134"], [.236, "242,54,69"], [.382, "255,152,0"], [.5, "76,175,80"], [.618, "8,153,129"], [.786, "0,188,212"], [1, "120,123,134"]];
 const DR_FIBX = [[1.618, "41,98,255"], [2.618, "242,54,69"], [3.618, "156,39,176"], [4.236, "233,30,99"]];
 const DR_COL = ["41,98,255", "242,54,69", "8,153,129", "255,152,0", "156,39,176", "236,238,242"];
+// Werkzeug-Gruppen wie bei TradingView (ein Knopf je Gruppe, weitere Werkzeuge im Ausklapp-Menü)
+const DR_GRP = [["lines", "Linien", ["tl", "hr", "hl", "chan", "path"]], ["fib", "Fibonacci", ["fib", "fibx"]], ["shape", "Formen und Text", ["rect", "text"]], ["fc", "Prognose und Messung", ["long", "short", "prng", "avwap"]]];
 const DR_TOOLS = [["tl", "Trendlinie", '<path d="M5 19 19 5"/><circle cx="5" cy="19" r="1.8"/><circle cx="19" cy="5" r="1.8"/>'],
   ["hl", "Horizontale Linie", '<path d="M3 12h18"/><circle cx="12" cy="12" r="1.8"/>'], ["hr", "Horizontaler Strahl", '<path d="M6 12h15"/><circle cx="5" cy="12" r="1.8"/>'],
   ["fib", "Fib-Retracement", '<path d="M3 5h18M3 9.5h18M3 13h18M3 19h18" opacity=".9"/><path d="M5 19 19 5" stroke-dasharray="2 2"/>'],
@@ -11418,7 +11505,7 @@ function drHit(h, px, py) {
       if (px >= x1 - 6 && px <= x2 + 6 && py >= y1 - 6 && py <= y2 + 6) return { d }; } }
   return null; }
 function drLock(h, on) { try { if (on) { if (!h.drOpt) h.drOpt = { s: h.chart.options().handleScroll, z: h.chart.options().handleScale }; h.chart.applyOptions({ handleScroll: false, handleScale: false }); }
-  else if (h.drOpt) { h.chart.applyOptions({ handleScroll: h.drOpt.s, handleScale: h.drOpt.z }); h.drOpt = null; } } catch (e) {} }
+  else { h.chart.applyOptions({ handleScroll: true, handleScale: true }); h.drOpt = null; } } catch (e) {} }   // immer freigeben (vorher konnte ein gesperrter Zustand gespeichert werden → Achsen hingen)
 function drAttach(h) {
   if (!h || !h.candles || h.drOn) return; h.drOn = 1; DRAW.h = h; DRAW.act = null; DRAW.wait = null;
   h.candles.attachPrimitive(drPrimitive(h));
@@ -11489,7 +11576,11 @@ function drTbRender(h) {
   const open = state.drOpen != null ? state.drOpen !== 0 : innerWidth > 700;   // iPhone: eingeklappt (nur der Stift), iPad/Mac: offen
   tb.innerHTML = `<button class="dr-b dr-tog${open ? " on" : ""}" data-drtog title="Zeichenwerkzeuge" aria-label="Zeichenwerkzeuge">${ic('<path d="m14.5 5.5 4 4L8 20H4v-4z"/><path d="m12.5 7.5 4 4"/>')}</button>
     ${open ? `<button class="dr-b${!DRAW.tool ? " on" : ""}" data-drtool="" title="Cursor" aria-label="Cursor">${ic('<path d="M6 3l12 9-6 1-3 6z"/>')}</button>
-    ${DR_TOOLS.map(([k, l, p]) => `<button class="dr-b${DRAW.tool === k ? " on" : ""}" data-drtool="${k}" title="${l}" aria-label="${l}">${ic(p)}</button>`).join("")}
+    ${DR_GRP.map(([g, gl, ks]) => { const cur = ks.includes(DRAW.tool) ? DRAW.tool : (state.drG || {})[g] && ks.includes(state.drG[g]) ? state.drG[g] : ks[0], T = DR_TOOLS.find(x => x[0] === cur);
+      return `<span class="dr-gw"><button class="dr-b${ks.includes(DRAW.tool) ? " on" : ""}" data-drtool="${cur}" title="${T[1]}" aria-label="${T[1]}">${ic(T[2])}</button>${ks.length > 1 ? `<button class="dr-more${DRAW.fly === g ? " on" : ""}" data-drfly="${g}" aria-label="${gl}: weitere Werkzeuge" title="${gl}"></button>` : ""}${DRAW.fly === g ? `<span class="dr-fly" role="menu"><b>${gl}</b>${ks.map(k => { const X = DR_TOOLS.find(x => x[0] === k); return `<button class="${DRAW.tool === k ? "on" : ""}" data-drtool="${k}" data-drg="${g}" role="menuitem">${ic(X[2])}<span>${X[1]}</span></button>`; }).join("")}</span>` : ""}</span>`; }).join("")}
+    <i class="dr-sep"></i>
+    <button class="dr-b${MEAS.on ? " on" : ""}" data-clm title="Messen – Start- und Endkerze antippen" aria-label="Messen">${ic('<path d="M4 16 16 4l4 4L8 20z"/><path d="m8 12 2 2M11 9l2 2M14 6l2 2"/>')}</button>
+    <button class="dr-b${WAVE.on ? " on" : ""}" data-clw title="Fibonacci-Welle von Kairo anpassen" aria-label="Fibonacci-Welle anpassen">${ic('<path d="M4 19 10 6l4 8 2-4 4 9"/><circle cx="10" cy="6" r="1.6"/><circle cx="4" cy="19" r="1.6"/>')}</button>
     <i class="dr-sep"></i>
     <button class="dr-b${state.drMag !== 0 ? " on" : ""}" data-drmag title="Magnet-Modus (rastet an Eröffnung, Hoch, Tief und Schluss ein)" aria-label="Magnet-Modus">${ic('<path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4z"/><path d="M6 8h4M14 8h4"/>')}</button>
     <button class="dr-b${DRAW.hide ? " on" : ""}" data-drhide title="Alle Zeichnungen ausblenden" aria-label="Alle Zeichnungen ausblenden" ${n ? "" : "disabled"}>${ic(DRAW.hide ? '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a15 15 0 0 1-2.6 3.2M6.1 7.6C4 9.2 3 12 3 12s4 6 9 6c1.6 0 3-.4 4.3-1"/>' : '<path d="M3 12s4-6 9-6 9 6 9 6-4 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.6"/>')}</button>
@@ -11505,16 +11596,20 @@ function drSelRender(h) {
     ${["hl", "hr", "tl"].includes(d.k) ? `<button class="dr-t${d.al && d.al.on ? " on" : ""}" data-dral title="Alarm hinzufügen: Mitteilung, wenn der Kurs die Linie kreuzt">🔔 ${d.al && d.al.on ? "Alarm aktiv" : d.al && d.al.hit ? `ausgelöst ${dateDE(d.al.hit)}` : "Alarm hinzufügen"}</button>` : ""}
     ${d.k === "tl" || d.k === "fib" || d.k === "fibx" ? `<button class="dr-t${d.ext ? " on" : ""}" data-drext>${d.k === "fib" ? "Linien nach rechts verlängern" : "Rechts verlängern"}</button>` : ""}${d.k === "fib" ? `<button class="dr-t${d.x2 ? " on" : ""}" data-drx2>Stufen 1,618–4,236</button>` : ""}
     ${d.k === "fib" ? `<button class="dr-t" data-drflip title="Umkehren (0 und 1 tauschen)">Umkehren</button>` : ""}
-    <button class="dr-t del" data-drdel aria-label="Entfernen">Entfernen</button>`;
+    <button class="dr-t del" data-drdel aria-label="Entfernen">Entfernen</button><button class="dr-x" data-drselx aria-label="Schließen" title="Schließen">✕</button>`;
 }
 document.addEventListener("click", async e => {
   const h = DRAW.h; if (!h || !document.body.contains(h.el)) return; const t = e.target;
+  const fl = t.closest("[data-drfly]"); if (fl) { DRAW.fly = DRAW.fly === fl.dataset.drfly ? null : fl.dataset.drfly; drTbRender(h); return; }
+  if (DRAW.fly && !t.closest(".dr-fly")) { DRAW.fly = null; if (!t.closest("[data-drtool]")) drTbRender(h); }
+  const tg = t.closest("[data-drg]"); if (tg) { state.drG = { ...(state.drG || {}), [tg.dataset.drg]: tg.dataset.drtool }; DRAW.fly = null; save(); }
   const tl = t.closest("[data-drtool]"); if (tl) { DRAW.tool = tl.dataset.drtool || null; DRAW.wait = null; DRAW.wait3 = null; DRAW.act = null; drLock(h, false); if (DRAW.tool) { MEAS.on = WAVE.on = false; DRAW.sel = null; drSelRender(h); } drTbRender(h); h.drReq && h.drReq(); return; }
   if (t.closest("[data-drtog]")) { state.drOpen = (state.drOpen != null ? state.drOpen !== 0 : innerWidth > 700) ? 0 : 1; if (!state.drOpen) DRAW.tool = null; save(); drTbRender(h); return; }
   if (t.closest("[data-drmag]")) { state.drMag = state.drMag === 0 ? 1 : 0; save(); drTbRender(h); return; }
   if (t.closest("[data-drhide]")) { DRAW.hide = !DRAW.hide; drTbRender(h); h.drReq && h.drReq(); return; }
   if (t.closest("[data-drundo]")) { const H = DRAW.hist[drKey(h)] || []; if (!H.length) return; const prev = JSON.parse(H.pop()); DRAW.sel = null; drSet(h, prev, true); drSelRender(h); return; }
   if (t.closest("[data-drclear]")) { if (await kConfirm("Alle Zeichnungen dieser Aktie entfernen?", "Entfernen", true)) { DRAW.sel = null; drSet(h, []); drSelRender(h); } return; }
+  if (t.closest("[data-drselx]")) { DRAW.sel = null; drSelRender(h); h.drReq && h.drReq(); return; }
   const L = drList(h), i = L.findIndex(d => d.id === DRAW.sel); if (i < 0) return; const d = { ...L[i] }, put = () => { const n = [...L]; n[i] = d; drSet(h, n); drSelRender(h); };
   const c = t.closest("[data-drcol]"); if (c) { d.c = c.dataset.drcol; put(); return; }
   if (t.closest("[data-drext]")) { d.ext = !d.ext; put(); return; }
@@ -11853,7 +11948,7 @@ document.addEventListener("pointermove", e => { if (!e.target.closest || !e.targ
 // Echte Lichtbrechung (Glas v5): Der Hintergrund der Pille ist unser eigener Chart – sein Ausschnitt wird in eine Leinwand in der
 // Pille kopiert und am Rand wie durch eine Linse verbogen (Rand zieht Inhalt von außen herein, Mitte leicht vergrößert, am Rand
 // trennen sich Rot/Blau minimal = Farbsaum). Rechnet nur, wenn sich der Chart ändert; geht etwas schief, bleibt das CSS-Glas.
-const LENS = { maps: {}, offs: {}, raf: 0, bad: false };
+const LENS = { maps: {}, offs: {}, raf: 0, bad: true };   // 13.11.: Glas-Linse aus – rechnete bei jedem Verschieben Pixel für Pixel (Hänger auf dem iPad)
 // Abbildung Ziel-Pixel → Quell-Pixel für eine abgerundete Form (Radius R): Rand zieht Inhalt von außen herein, Mitte leicht vergrößert,
 // am Rand Rot/Blau minimal versetzt (Farbsaum). rimOnly: Mitte bleibt frei (dort wirkt der mattierte CSS-Hintergrund).
 function lensMap(W, H, pad, dpr, R, rimC, rimOnly) {
