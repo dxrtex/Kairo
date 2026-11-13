@@ -13,7 +13,7 @@ Schnelligkeit: erste Zahlen im Mittel 638 Min. nach der Meldezeit (90 % innerhal
 | Ausblick gesenkt | 65 | 57% | 0.246 | 0.250 |
 | Ausblick bestätigt | 30 | 47% | 0.272 | 0.250 |
 | Ausblick angehoben | 150 | 48% | 0.270 | 0.250 |
-| Ausblick keine Meldung | 209 | 54% | 0.246 | 0.250 |
+| Ausblick keine Meldung | 209 | 54% | 0.247 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -33,7 +33,7 @@ Schnelligkeit: erste Zahlen im Mittel 638 Min. nach der Meldezeit (90 % innerhal
 | deutlich unter Erwartung (< −10 %) | 43% (21) | 50% (10) | 48% (29) | 35% (54) |
 | unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 72% (18) | 40% (45) |
 | im Rahmen (±2 %) | 29% (17) | 33% (3) | 33% (15) | 51% (35) |
-| über Erwartung (+2 bis +10 %) | 38% (24) | 25% (8) | 46% (48) | 45% (58) |
+| über Erwartung (+2 bis +10 %) | 38% (24) | 25% (8) | 46% (48) | 47% (58) |
 | deutlich über Erwartung (> +10 %) | 39% (28) | 53% (17) | 61% (102) | 55% (94) |
 
 ## Vorschläge zur Anpassung
