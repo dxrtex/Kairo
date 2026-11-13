@@ -24,3 +24,10 @@ def test_compare_actions():
     m = {x["cusip"]: x for x in compare(new, old)}
     assert m["A"]["a"] == "auf" and m["B"]["a"] == "ab" and m["N"]["a"] == "neu" and m["X"]["a"] == "raus"
     assert abs(m["A"]["chg"] - .1) < 1e-9 and m["X"]["val"] == 0
+
+
+def test_norm_matches_sec_titles():
+    from backend.hedgefunds import norm
+    assert norm("APPLE INC") == norm("Apple Inc.")
+    assert norm("NVIDIA CORPORATION") == norm("NVIDIA CORP")
+    assert norm("ALPHABET INC CL A") == norm("Alphabet Inc.")
