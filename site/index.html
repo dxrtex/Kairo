@@ -9602,7 +9602,7 @@ async function openDetail(t) {
 
 // ---------- Haupt-Chart: Fibonacci als Linien, Unterstützungen/Widerstände, EMAs – alles mit Ein/Aus-Schaltern ----------
 // Ein Baustein für Detailseite und Vollbild-Cockpit; Schalter (state.cl) wirken sofort in allen offenen Charts.
-const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 1, auto: 0 };   // EMA 100 aus: weniger Linien im Standard
+const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 1, auto: 1 };   // Auto-Analyse seit 13.11. standardmäßig an   // EMA 100 aus: weniger Linien im Standard
 const clGet = (k, auto) => { const v = (state.cl || {})[k]; return v == null ? (k in CL_DEF ? CL_DEF[k] : auto ? 1 : 0) : v; };
 const CL_LIVE = new Set();
 const FIBQ = [[0, "Hoch"], [.382, "38,2 %"], [.5, "50 %"], [.618, "61,8 %"], [.706, "70,6 %", 1], [.786, "78,6 %", 1], [.886, "88,6 %"], [1, "Tief"]];   // betont: Kaufzone Golden Pocket
@@ -9637,6 +9637,28 @@ function autoTA(c) {
   const sup = tl(lows, true), res = tl(highs, false);
   [sup, res].forEach(x => x && out.lines.push({ kind: x.lo ? "sup" : "res", i1: x.a.i, p1: x.a.p, i2: n - 1, p2: x.now, touch: x.touch, dist: x.dist,
     t: x.lo ? "Steigende Trendlinie" : "Fallende Trendlinie" }));
+  // 1b) Wochen-Trendlinien (Runde 13.11., wie TrendSpider „Multi-Timeframe“): dieselbe Suche auf Wochenkerzen über die ganze Historie –
+  // zeigt das größere Bild; gezeichnet im Tageschart ab dem Tag des Wochen-Hochs/-Tiefs
+  { const wb = []; let cur = null;
+    for (let i = 0; i < n; i++) { const d = new Date(c.t[i] + "T12:00:00"), nx = i + 1 < n ? new Date(c.t[i + 1] + "T12:00:00") : null;
+      if (!cur) cur = { h: -Infinity, l: Infinity, ih: i, il: i };
+      if (H[i] != null && H[i] > cur.h) { cur.h = H[i]; cur.ih = i; } if (L[i] != null && L[i] < cur.l) { cur.l = L[i]; cur.il = i; }
+      if (!nx || nx.getDay() < d.getDay() || nx - d > 4 * 864e5) { cur.c = C[i]; cur.i = i; wb.push(cur); cur = null; } }
+    const m = wb.length; let watr = 0; for (let k = Math.max(1, m - 14); k < m; k++) watr += Math.max(wb[k].h - wb[k].l, Math.abs(wb[k].h - wb[k - 1].c), Math.abs(wb[k].l - wb[k - 1].c)); watr /= Math.min(14, Math.max(1, m - 1));
+    const wp = lo => { const o = []; for (let k = 3; k < m - 1; k++) { const v = lo ? wb[k].l : wb[k].h; let ok = true;
+      for (let j = k - 3; j <= Math.min(m - 1, k + 3); j++) if (j !== k && (lo ? wb[j].l < v : wb[j].h > v)) { ok = false; break; } if (ok) o.push({ k, p: v }); } return o; };
+    const wtl = (P, lo) => { let best = null;
+      for (let a = 0; a < P.length; a++) for (let b = a + 1; b < P.length; b++) { const A = P[a], B = P[b]; if (B.k - A.k < 8) continue;
+        const sl = (B.p - A.p) / (B.k - A.k); if (lo ? sl <= 0 : sl >= 0) continue; const at = k => A.p + sl * (k - A.k); let bad = false, touch = 0;
+        for (let k = A.k; k < m - 1; k++) if (lo ? wb[k].c < at(k) - .35 * watr : wb[k].c > at(k) + .35 * watr) { bad = true; break; }
+        if (bad) continue; P.forEach(q => { if (q.k >= A.k && Math.abs(q.p - at(q.k)) <= .5 * watr) touch++; });
+        const now = at(m - 1), dist = (last - now) / last; if (Math.abs(dist) > .15 || touch < 2) continue;
+        const sc = touch * 2 + B.k / m; if (!best || sc > best.sc) best = { A, B, now, touch, sc, dist, lo }; } return best; };
+    if (m >= 40 && watr > 0) { const ws = wtl(wp(true), true), wr = wtl(wp(false), false);
+      const dup = x => out.lines.some(l => !l.wk && (l.kind === "sup") === x.lo && Math.abs(l.p2 - x.now) / last < .02);   // fast gleich wie die Tageslinie: nur eine zeigen
+      [ws, wr].forEach(x => x && !dup(x) && out.lines.push({ kind: x.lo ? "sup" : "res", wk: true, i1: x.lo ? wb[x.A.k].il : wb[x.A.k].ih, p1: x.A.p, i2: n - 1, p2: x.now, touch: x.touch, dist: x.dist,
+        t: x.lo ? "Steigende Wochen-Trendlinie" : "Fallende Wochen-Trendlinie" }));
+      out.wsup = ws; out.wres = wr; out.watr = watr; } }
   // 2) Chartmuster auf den letzten ~150 Kerzen
   const rec = i => i >= n - 150, pk = (i1, i2, lo) => { let b = i1; for (let k = i1; k <= i2; k++) if (lo ? L[k] < L[b] : H[k] > H[b]) b = k; return b; };
   const pat = (k, name, bull, pts, neck, target, st, why) => out.pats.push({ k, name, bull, pts, neck, target, st, why });
@@ -9699,7 +9721,9 @@ function autoTA(c) {
     if (last > hi52) pat("hi", "Neues 52-Wochen-Hoch", true, [], null, null, "heute", `über ${fmt(hi52)}`);
     if (last < lo52) pat("lo", "Neues 52-Wochen-Tief", false, [], null, null, "heute", `unter ${fmt(lo52)}`);
     if (sup && last < sup.now - .3 * atr) pat("tlb", "Trendlinie nach unten gebrochen", false, [], null, null, "heute", `steigende Linie bei ${fmt(sup.now)}`);
-    if (res && last > res.now + .3 * atr) pat("tlu", "Fallende Trendlinie überwunden", true, [], null, null, "heute", `Linie bei ${fmt(res.now)}`); }
+    if (res && last > res.now + .3 * atr) pat("tlu", "Fallende Trendlinie überwunden", true, [], null, null, "heute", `Linie bei ${fmt(res.now)}`);
+    if (out.wsup && last < out.wsup.now - .3 * out.watr) pat("wtlb", "Wochen-Trendlinie nach unten gebrochen", false, [], null, null, "heute", `steigende Wochenlinie bei ${fmt(out.wsup.now)}`);
+    if (out.wres && last > out.wres.now + .3 * out.watr) pat("wtlu", "Fallende Wochen-Trendlinie überwunden", true, [], null, null, "heute", `Wochenlinie bei ${fmt(out.wres.now)}`); }
   // 3) Technik-Check: Trend je Zeitebene, Momentum, Volatilität, Volumen
   const ema = (a, p) => { const k = 2 / (p + 1); let e = null; return a.map(v => (e = e == null ? v : e + k * (v - e))); };
   const wk = []; for (let i = 0; i < n; i++) { const d = new Date(c.t[i] + "T12:00:00"), nx = i + 1 < n ? new Date(c.t[i + 1] + "T12:00:00") : null; if (!nx || nx.getDay() < d.getDay() || nx - d > 4 * 864e5) wk.push(C[i]); }
@@ -10142,7 +10166,7 @@ function buildMain(el, c, r, opts) {
     if (clGet("sup")) M.lines.forEach(L => it.lines.push({ p: L.p, from: L.from, c: L.kind === "s" ? "74,163,255" : "255,128,118", w: 1.6, a: .9,
       l: `${L.kind === "s" ? "Unterstützung" : "Widerstand"} · ${L.n}×${L.scan ? " (Kairo)" : ""}`, lr: fmt(L.p), pri: L.scan ? 2.5 : 1.5 }));
     if (clGet("auto")) { const A = h.A || (h.A = autoTA(c));   // Auto-Analyse: Trendlinien, Muster-Linien, Nackenlinie, Kursziel
-      if (A) { A.lines.forEach(l => it.segs.push({ i1: l.i1, p1: l.p1, i2: l.i2, p2: l.p2, c: l.kind === "sup" ? "90,200,250" : "255,105,180", w: 1.8, a: .95, dash: [] }));
+      if (A) { A.lines.forEach(l => it.segs.push({ i1: l.i1, p1: l.p1, i2: l.i2, p2: l.p2, c: l.kind === "sup" ? "90,200,250" : "255,105,180", w: l.wk ? 2.6 : 1.8, a: l.wk ? .7 : .95, dash: l.wk ? [10, 5] : [] }));
         A.pats.forEach(pt => { const col = pt.bull === false ? "255,105,97" : pt.bull ? "52,211,153" : "200,200,210";
           for (let k = 1; k < pt.pts.length; k++) it.segs.push({ i1: pt.pts[k - 1][0], p1: pt.pts[k - 1][1], i2: pt.pts[k][0], p2: pt.pts[k][1], c: col, w: 1.6, a: .9, dash: [] });
           if (pt.neck) { if (pt.neck.i2 != null) it.segs.push({ i1: pt.neck.i, p1: pt.neck.p, i2: pt.neck.i2, p2: pt.neck.p2, c: col, w: 1.2, a: .9, dash: [4, 3] });

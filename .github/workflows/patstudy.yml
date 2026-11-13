@@ -1,0 +1,69 @@
+name: Studie Chartformationen (Auto-Analyse, 10 Jahre)
+
+# Prüft, wie oft die Formationen der Auto-Analyse (autoTA in site/index.html) danach in ihre Richtung liefen.
+# Ändert nichts an Scan oder App – liefert nur data/patstats.json als Artefakt.
+on:
+  push:
+    branches: ["claude/patstudy"]
+    paths: [".github/workflows/patstudy.yml", "backend/patdata.py", "tools/patstudy.js", "tools/autota_lib.js"]
+  workflow_dispatch:
+    inputs:
+      reuse_run:
+        description: "Kursverläufe aus einem früheren Lauf wiederverwenden (Run-ID) – nur Auswertung neu"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  data:
+    if: ${{ !inputs.reuse_run }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m backend.universe
+      - run: python -m backend.patdata --shard ${{ matrix.shard }} --shards 8 --n 1200 --period 10y
+      - uses: actions/upload-artifact@v4
+        with:
+          name: patpx-${{ matrix.shard }}
+          path: pat_px_${{ matrix.shard }}.json
+          retention-days: 30
+  study:
+    needs: data
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: patpx-*
+          merge-multiple: true
+          path: px
+          run-id: ${{ inputs.reuse_run || github.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: mkdir -p data && node tools/patstudy.js px > data/patstats.json && cat data/patstats.json | head -c 20000
+      - uses: actions/upload-artifact@v4
+        with:
+          name: patstats
+          path: data/patstats.json
+          retention-days: 30
