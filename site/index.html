@@ -9578,8 +9578,12 @@ function chartModel(c, r) {
     // Start des ganzen Trends zurück (AG: 4,14 im Feb. 2024 statt 10,18 im Sep. 2025). Dauert die Welle länger als ein Börsenjahr und liegt
     // das Tief der Scan-Welle (Impuls ≤ 120 Tage vor dem Hoch, wie in der Strategie) später, ist die Scan-Welle die normale Fibonacci-Welle
     // und die lange Welle wird zur großen (falls keine eigene große gefunden wurde). Nur die Anzeige im Chart – der Scan rechnet unverändert.
+    // 13.11. (VRT): Chart und Scan müssen dieselbe Welle zeigen. Liegt das Scan-Tief (Impuls ≤ 120 Tage vor dem Hoch, wie in der
+    // getesteten Regel) später als das Chart-Tief, ist die Scan-Welle die normale Welle – auch bei kürzeren Wellen, wenn zwischen beiden Tiefs ein echter Anstieg lag (≥ 20 % der Wellenhöhe, kein Doppelboden) (vorher erst ab 250 Tagen;
+    // VRT zeigte 109,91 statt des Scan-Tiefs 147,71 und damit eine falsche Kaufzone). Die längere Welle wird zur großen.
     { const sL = T.indexOf((fib && fib.L_date) || ""), w = out.cls;
-      if (w && sL > w.iL && w.iH - w.iL > 250) {
+      const midRise = w && sL > w.iL ? (() => { let M = -Infinity; for (let k = w.iL; k <= sL; k++) if (c.h[k] != null && c.h[k] > M) M = c.h[k]; return (M - w.L) / (w.H - w.L); })() : 0;
+      if (w && sL > w.iL && fib && fib.valid !== false && (w.iH - w.iL > 250 || midRise >= .2)) {   // Doppelboden (kaum Anstieg dazwischen, CRWD/Xiaomi): tieferes Tief bleibt
         let p = sL; const Hs = c.h[topSince(sL)];                      // Doppelboden wie oben, aber höchstens 10 % unter dem Scan-Tief (keine Kette nach unten)
         for (let j = sL - 1; j > w.iL; j--) { const v = c.l[j]; if (v == null || v >= c.l[p] || v < c.l[sL] * .9) continue; let ok = true;
           for (let k = Math.max(0, j - 10); k <= Math.min(n - 1, j + 10); k++) if (c.l[k] != null && c.l[k] < v) { ok = false; break; } if (!ok) continue;
