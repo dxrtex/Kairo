@@ -52,6 +52,8 @@ def merge(live: Path, part: Path) -> dict:
             A["market"] = {**(A.get("market") or {}), **AP["market"]}
         A["generated"] = P["generated"]
         _dump(live / "analysis.json", A)
+    if (part / "bench.json").exists():                 # Index-Verläufe (Depot-Risiko): frisch aus dem Teil-Scan
+        shutil.copyfile(part / "bench.json", live / "bench.json")
     (live / "charts").mkdir(exist_ok=True)
     for f in (part / "charts").glob("*.json"):
         shutil.copyfile(f, live / "charts" / f.name)
