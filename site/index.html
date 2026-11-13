@@ -2408,6 +2408,13 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .au-p > div { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; } .au-p b { font-size: 14px; } .au-p small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 .au-st { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: rgba(127,127,127,.16); white-space: nowrap; }
 .au-p.bull .au-st { background: rgba(52,211,153,.16); color: #34d399; } .au-p.bear .au-st { background: rgba(255,105,97,.16); color: #ff6961; }
+.sm-seg { margin: 0 0 12px; } .cx-sm { padding: 14px 16px; } .cx-sm .cf-s { border: 0; padding: 0; margin: 0; } .sm-v { float: right; font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; padding: 2px 9px; border-radius: 999px; background: rgba(127,127,127,.16); }
+.sm-v.up { color: var(--up); background: color-mix(in srgb, var(--up) 15%, transparent); } .sm-v.down { color: #ff6961; background: rgba(255,105,97,.15); }
+.sm-h { font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 2px; }
+.fd-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; } .fd-grid { margin: 12px 0; }
+.fd-f { border-top: 1px solid var(--line); } .fd-f:first-of-type { border-top: 0; } .fd-f > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 11px 2px; }
+.fd-f > summary::-webkit-details-marker { display: none; } .fd-f > summary span { display: flex; flex-direction: column; } .fd-f > summary small { color: var(--muted); font-size: 13px; }
+.fd-f[open] .nr-ch { transform: rotate(90deg); } .fd-b { padding: 0 2px 12px; }
 </style>
 <style id="kdlg">
 /* Eigene Dialoge statt Browser-Popups (confirm/alert/prompt) – Glas, Feder, Tastatur */
@@ -2994,6 +3001,7 @@ function cardModalHtml(r) {
         ${kplanHtml(r)}
         ${hint && hint.title ? `<div class="cx-card cx-hint"><div class="cx-sh">Kairo-Einschätzung</div><b>${esc(hint.title)}</b><p>${esc(hint.text || "")}</p></div>` : ""}
         ${(h => h ? `<div class="cx-box">${h}</div>` : "")(sentiHtml(r))}
+        ${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(smCardHtml(r.ticker, true))}
         ${(h => h ? `<div class="cx-box">${h}</div>` : "")(fundHtml(r))}
       </section>
     </div>
@@ -3279,7 +3287,7 @@ function insSigHtml(ij) {
 // ---------- Nachrichten: deine Aktien, Markt, Insider-Käufe (SEC) – Scan-Daten + live über Finnhub (Schlüssel nur lokal) ----------
 const NEWS = { gen: null, co: {}, ins: {}, at: 0, busy: false };
 function newsLoad(force) {
-  const files = ["briefing.json", "insider.json"].filter(f => jsonData[f] === undefined);
+  const files = ["briefing.json", "insider.json", "funds.json"].filter(f => jsonData[f] === undefined);
   Promise.all(files.map(f => fetch(`data/${f}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null).then(d => { jsonData[f] = d; })))
     .then(() => { if (files.length && state.sec === "news") render(); });
   const fh = liveKey("fh");
@@ -4221,12 +4229,71 @@ function newsHtml() {
     ${grpd.length > lim2 || state.insMore ? `<button class="hlink" data-insmore style="margin-top:8px">${state.insMore ? "weniger zeigen" : `alle ${Math.min(grpd.length, 150)} zeigen`}</button>` : ""}`}
     ${vw === "agg" ? `<div class="note" style="margin:8px 0 0">Gezählt werden verschiedene Personen je Aktie (mehrere Käufe derselben Person zählen einmal), sortiert nach ${side === "buy" ? "Käufern" : "Verkäufern"}. <b>Cluster</b> = mindestens 3 Insider – das stärkste Signal. Deine Aktien: alle Meldungen der letzten 12 Monate; ganzer Markt: Käufe 90 Tage, Verkäufe nur die größten der letzten Tage. Antippen zeigt die Personen.</div>` : ""}
     <div class="note" style="margin:8px 0 0"${vw === "agg" ? " hidden" : ""}>${list.length} ${side === "buy" ? "Käufe" : "Verkäufe"} · ${days === 365 ? "12 Monate" : days + " Tage"}. <b>gezielt</b> = kein Routine-Kauf (die Person kauft nicht jedes Jahr im selben Monat). Antippen öffnet die Meldung. Ganzer Markt: USA (SEC), Deutschland (BaFin), Großbritannien, Schweden, Schweiz, Norwegen; deine Aktien zusätzlich 12 Monate. Stand ${esc(when)}.</div></div>`;
-  return head + listHtml
+  const smSeg = `<div class="sp-seg sm-seg">${[["ins", "Insider"], ["funds", "Hedgefonds"]].map(([v, l]) => `<button data-smview="${v}" class="${(state.smView || "ins") === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
+  if (state.smView === "funds") return head + smSeg + fundsTabHtml();
+  return head + smSeg + listHtml
     + (rank ? `<details class="hcard ins-more"${state.insRk ? " open" : ""} data-insdet="insRk"><summary>Wo Insider am stärksten kaufen (je Aktie gebündelt)</summary>${rankHtml.replace(/^<div class="hcard ir-card">/, "<div>")}</details>` : "")
     + (covHtml ? covHtml.replace('style="margin:-4px 2px 12px"', 'style="margin:4px 2px 12px"') : "")
     + insGo
     + `<details class="note ins-src" style="margin:4px 2px 12px"><summary>Quellen und Erklärung</summary>` + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften), für schwedische und Schweizer Aktien die Register von Finansinspektionen und SIX${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>` + `</details>`;
 }
+// ---------- Smart Money (13.11., wie TipRanks): Insider (Formular 4) + Hedgefonds (13F) gebündelt – je Aktie und als Übersicht ----------
+const ACT = { neu: ["neu gekauft", "up"], auf: ["aufgestockt", "up"], ab: ["reduziert", "down"], raus: ["komplett verkauft", "down"], halt: ["gehalten", "muted"] };
+const usdAmt = v => v >= 1e9 ? `${fmt(v / 1e9, 1)} Mrd. $` : v >= 1e6 ? `${fmt(v / 1e6, 0)} Mio. $` : `${fmt(v / 1e3, 0)} Tsd. $`;
+const fundsOf = t => { const fj = getJson("funds.json"); if (!fj || !fj.by) return null; const k = tkClean(t); return fj.by[k] || fj.by[k.replace(".", "-")] || null; };
+const fundSum = t => { const fj = getJson("funds.json"); if (!fj || !fj.sum) return null; const k = tkClean(t); return fj.sum[k] || fj.sum[k.replace(".", "-")] || null; };
+// Gesamtbild je Aktie: Insider-Käufe (Stärke 0–3, Verkäufe) und Fonds (kaufen vs. verkaufen) → positiv / gemischt / negativ
+function smView(t) {
+  const g = insSig(t), fs = fundSum(t), ij = getJson("insider.json"), sells = ij && ij.sells ? ij.sells.filter(x => x.t === t && ageDays(x.d) <= 90).length : 0;
+  let sc = 0; const why = [];
+  if (g && g.score) { sc += g.score; why.push(`${g.buyers} Insider kauf${g.buyers > 1 ? "en" : "t"}`); }
+  if (sells >= 2) { sc -= 1; why.push(`${sells} Insider-Verkäufe`); }
+  if (fs) { const d = fs.buy - fs.sell; sc += d >= 3 ? 2 : d >= 1 ? 1 : d <= -3 ? -2 : d <= -1 ? -1 : 0; if (fs.buy || fs.sell) why.push(`${fs.buy} Fonds kaufen, ${fs.sell} verkaufen`); }
+  if (!g && !fs && !sells) return null;
+  return { sc, why, g, fs, sells, tone: sc >= 2 ? ["up", "positiv"] : sc <= -1 ? ["down", "negativ"] : ["", "gemischt"] };
+}
+const ageDays = d => d ? Math.round((Date.now() - new Date(d + "T12:00:00")) / 864e5) : 999;
+function smCardHtml(t, compact) {
+  const v = smView(t); if (!v) return "";
+  const fj = getJson("funds.json"), fl = (fundsOf(t) || []).filter(x => x.a !== "halt" || x.w >= .02).slice(0, compact ? 4 : 8);
+  const ins = v.g && v.g.x ? v.g.x.slice(0, compact ? 2 : 4) : [];
+  return `<div class="cf-s sm-c"><div class="cf-h">Smart Money <span class="sm-v ${v.tone[0]}">${v.tone[1]}</span></div>
+    <p class="cf-t" style="margin-top:0">${esc(v.why.join(" · "))}</p>
+    ${ins.length ? `<div class="sm-h">Insider · 90 Tage</div>${ins.map(x => `<div class="cf-r"><span>${esc(String(x.who || "").slice(0, 26))}${x.role ? ` <small class="muted">${esc(String(x.role).slice(0, 14))}</small>` : ""}${x.opp ? ' <small class="up">gezielt</small>' : ""}</span><b class="up">${x.val ? (x.cur === "EUR" ? usdAmt(x.val).replace("$", "€") : usdAmt(x.val)) : "–"}</b></div>`).join("")}` : ""}
+    ${fl.length ? `<div class="sm-h">Hedgefonds · Quartal ${fj && fj.period ? dateDE(fj.period) : ""}</div>${fl.map(x => `<div class="cf-r"><span>${esc(x.f)}</span><b class="${ACT[x.a][1]}">${ACT[x.a][0]}${x.chg != null && (x.a === "auf" || x.a === "ab") ? ` ${sgnPct(x.chg, 0)}` : ""}</b>${x.w ? `<em class="muted">${pct(x.w, 1)}</em>` : ""}</div>`).join("")}` : ""}
+    <p class="muted cf-t">Insider: Meldungen der letzten 90 Tage. Fonds: 13F-Meldungen sind bis zu 45 Tage alt und zeigen nur US-Positionen. Einordnung, kein Kaufsignal.</p></div>`;
+}
+// Markt → Insider → Hedgefonds: meistgekauft / meistverkauft von den Fonds, dann jeder Fonds mit Top-Positionen und Bewegungen
+function fundsTabHtml() {
+  const fj = getJson("funds.json");
+  if (fj === undefined) return `<div class="hcard"><div class="note">Lade Hedgefonds-Daten …</div></div>`;
+  if (!fj || !fj.funds || !fj.funds.length) return `<div class="card empty-st"><div class="es-ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 38V22l14-10 14 10v16"/><path d="M18 38V28h12v10"/></svg></div><b>Hedgefonds-Daten folgen</b><p>Die Quartalsmeldungen (13F) von rund 30 bekannten Fonds werden wöchentlich bei der SEC gelesen.</p><p class="es-sub">Erscheint nach dem nächsten Wochenlauf.</p></div>`;
+  const mine = myTickers(), onlyMine = !!state.fdMine;
+  const rows = Object.entries(fj.sum || {}).filter(([t]) => !onlyMine || mine.has(t));
+  const nm = t => { const r = byTicker(t); return r ? (r.name || t) : ((fj.by[t] || [])[0] || {}).n || t; };
+  const open = t => byTicker(t) ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`;
+  const line = ([t, s], up) => `<button class="bf-r" ${open(t)}><i class="${up ? "g" : "r"}"></i>${cfAv(t)}<span><b>${esc(String(nm(t)).slice(0, 34))}${mine.has(t) ? ' <span class="pill dep">Deine</span>' : ""}</b>
+      <em>${esc(tkClean(t))} · ${up ? `${s.buy} Fonds kaufen${s.new ? ` (${s.new} neu)` : ""}${s.sell ? ` · ${s.sell} verkaufen` : ""}` : `${s.sell} Fonds verkaufen${s.out ? ` (${s.out} komplett)` : ""}${s.buy ? ` · ${s.buy} kaufen` : ""}`} · ${s.n} halten</em></span>
+      <span class="bf-p ${up ? "up" : "down"}">${up ? "+" : "−"}${up ? s.buy : s.sell}</span></button>`;
+  const lim = state.fdMore ? 40 : 12;
+  const buys = rows.filter(([, s]) => s.buy > s.sell).sort((a, b) => (b[1].buy - b[1].sell) - (a[1].buy - a[1].sell) || b[1].new - a[1].new).slice(0, lim);
+  const sells = rows.filter(([, s]) => s.sell > s.buy).sort((a, b) => (b[1].sell - b[1].buy) - (a[1].sell - a[1].buy) || b[1].out - a[1].out).slice(0, lim);
+  const fund = f => `<details class="fd-f"><summary><span><b>${esc(f.name)}</b><small>${f.n} Positionen · ${usdAmt(f.value)} · Quartal ${dateDE(f.period)}</small></span><i class="nr-ch">›</i></summary>
+      <div class="fd-b"><div class="sm-h">Größte Positionen</div>${f.top.slice(0, 10).map(m => `<div class="cf-r"><span>${m.t ? esc(m.t) + " · " : ""}${esc(String(m.name).slice(0, 28))}</span><b>${pct(m.w, 1)}</b><em class="${ACT[m.a][1]}">${m.a === "halt" ? "" : ACT[m.a][0]}</em></div>`).join("")}
+      ${f.moves.length ? `<div class="sm-h">Größte Bewegungen</div>${f.moves.slice(0, 12).map(m => `<div class="cf-r"><span>${m.t ? esc(m.t) + " · " : ""}${esc(String(m.name).slice(0, 28))}</span><b class="${ACT[m.a][1]}">${ACT[m.a][0]}${m.chg != null && (m.a === "auf" || m.a === "ab") ? ` ${sgnPct(m.chg, 0)}` : ""}</b>${m.val ? `<em class="muted">${usdAmt(m.val)}</em>` : ""}</div>`).join("")}` : ""}</div></details>`;
+  return `<div class="hcard"><div class="fd-top"><b>Hedgefonds · Quartal bis ${fj.period ? dateDE(fj.period) : "–"}</b><button class="opt${onlyMine ? " on" : ""}" data-fdmine>★ nur meine</button></div>
+      <div class="note" style="margin:4px 0 0">${fj.funds.length} bekannte Fonds, gelesen aus den 13F-Meldungen der SEC · Stand ${dateDE(String(fj.generated).slice(0, 10))}</div></div>
+    <div class="hgrid fd-grid"><div class="hcard"><div class="plan-h">Meistgekauft von den Fonds</div><div class="bf-l">${buys.map(x => line(x, true)).join("") || `<div class="bf-empty">Keine Käufe${onlyMine ? " bei deinen Aktien" : ""}.</div>`}</div></div>
+      <div class="hcard"><div class="plan-h">Meistverkauft</div><div class="bf-l">${sells.map(x => line(x, false)).join("") || `<div class="bf-empty">Keine Verkäufe${onlyMine ? " bei deinen Aktien" : ""}.</div>`}</div></div></div>
+    ${rows.length > 24 ? `<button class="hlink" data-fdmore style="margin:4px 2px 12px">${state.fdMore ? "weniger zeigen" : "mehr zeigen"}</button>` : ""}
+    <div class="hcard"><div class="plan-h">Die Fonds</div>${fj.funds.slice().sort((a, b) => b.value - a.value).map(fund).join("")}</div>
+    <div class="note" style="margin:8px 2px 12px">13F: Fonds über 100 Mio. $ melden jedes Quartal ihre US-Aktien – spätestens 45 Tage nach Quartalsende, ohne Leerverkäufe und ohne Nicht-US-Werte. Das zeigt, was große Anleger halten, nicht was sie heute tun. Einordnung, kein Kaufsignal; die Kairo-Regel nutzt diese Daten nicht.</div>`;
+}
+document.addEventListener("click", e => {
+  const v = e.target.closest("[data-smview]"); if (v) { state.smView = v.dataset.smview; save(); render(); return; }
+  if (e.target.closest("[data-fdmine]")) { state.fdMine = !state.fdMine; save(); render(); return; }
+  if (e.target.closest("[data-fdmore]")) { state.fdMore = !state.fdMore; save(); render(); }
+});
 // ---------- Quartalszahlen: Antippen im Kalender → Ergebnis, Ausblick, Kursreaktion, Einschätzung (data/earnings.json) ----------
 // Abendscan (earnings.json) + Prüfdienst tagsüber (earnings_live.json im Branch kairo-earnings, alle 10–30 Min.)
 const EARN_LIVE_URL = REPO.replace("https://github.com/", "https://raw.githubusercontent.com/") + "/kairo-earnings/earnings_live.json";
@@ -6261,7 +6328,7 @@ function getJson(name) {
   if (!(name in jsonData)) {
     jsonData[name] = undefined;
     fetch(`data/${name}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
-      .then(d => { jsonData[name] = d || null; if (["today", "bilanz", "settings", "depot", "etf", "game", "scanner"].includes(state.sec)) render(); });
+      .then(d => { jsonData[name] = d || null; if (["today", "bilanz", "settings", "depot", "etf", "game", "scanner"].includes(state.sec) || (state.sec === "news" && name === "funds.json")) render(); });
   }
   return jsonData[name];
 }
@@ -7406,8 +7473,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.118";
-const APP_NEWS = [["2026.11.118", "Auto-Analyse im Chart", [
+const APP_VER = "2026.11.119";
+const APP_NEWS = [["2026.11.119", "Smart Money: Insider + Hedgefonds", [
+  ["Hedgefonds", "Markt → Insider → Hedgefonds: was rund 30 bekannte Fonds (Buffett, Burry, Ackman, Druckenmiller …) im letzten Quartal gekauft und verkauft haben – aus den offiziellen SEC-13F-Meldungen."],
+  ["Smart Money je Aktie", "In der Übersicht und im Chart: Insider-Käufe und Fonds-Bewegungen gebündelt, mit Gesamtbild positiv / gemischt / negativ."],
+  ["Einordnung", "13F-Daten sind bis zu 45 Tage alt und zeigen nur US-Positionen – Kontext, kein Kaufsignal."]]],
+  ["2026.11.118", "Auto-Analyse im Chart", [
   ["Automatische Chartanalyse", "Im Chart-Reiter erkennt Kairo selbst Trendlinien und Chartmuster – Doppelboden/-top, Schulter-Kopf-Schulter, Dreiecke, Keile, Flaggen, Ausbrüche – mit Status, Nackenlinie und rechnerischem Ziel."],
   ["Technik-Check", "Trend kurz, mittel, lang und im Wochenchart, dazu Momentum, MACD, Schwankung und Volumen – als ein Gesamtbild."],
   ["Im Chart zeigen", "„im Chart zeigen“ in der Karte oder Ebenen → Auto-Analyse blendet Linien und Muster ein. Nur Einordnung – die Kairo-Regel bleibt unverändert."]]],
@@ -10151,7 +10222,7 @@ function cockpitSide(h, r) {
     return `<div class="cf-s"><div class="cf-h">${ttl} · ${dateDE(T0[w.iL])} → ${dateDE(T0[w.iH])}</div>${FIBQ.map(([q, l, st]) => row(l, lv(q), st ? col : null)).join("")}</div>`; };
   const crit = r.criteria || [];
   return `<div class="cf-s"><div class="cf-h">Status</div><span class="st ${k.cls}">${esc(k.t)}</span>${hn.title ? `<p class="cf-t"><b>${esc(hn.title)}</b> ${esc(String(hn.text || "").slice(0, 220))}</p>` : ""}</div>
-    ${autoCardHtml(h)}
+    ${autoCardHtml(h)}${r.ext ? "" : smCardHtml(r.ticker)}
     <div class="cf-s"><div class="cf-h">Trade-Plan</div>${row("Kaufzone oben", p.entry, "#eceef2")}${row("Stop", p.stop, "#ff453a")}${row("K.-o. Turbo", ko, "#ff9f0a")}
       ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Seitwärtsphase.</p>` : ""}</div>
     ${(vi => vi && clGet("vp") && (vi.buy.length || vi.sell.length) ? `<div class="cf-s"><div class="cf-h">Big Player · Großvolumen-Zonen</div>${[...vi.buy, ...vi.sell].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:${z.kind === "buy" ? "#0a84ff" : "#bf5af2"}"></i>${z.kind === "buy" ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"}, Ø ${fmt(z.rv, 1)}×</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
@@ -10795,6 +10866,8 @@ function boot(d) {
     if (gen0 !== d.generated) { searchLoading = anaLoading = calLoading = null; if (searchIdx) loadSearch(); if (anaData) loadAnalysis(); if (calData) loadCalendar(); }
     return; }
   loadCalendar(); setTimeout(maybeBrief, 400);
+  setTimeout(() => ["insider.json", "funds.json"].forEach(f => { if (!(f in jsonData)) { jsonData[f] = undefined;   // Smart Money still vorladen (ohne Neuzeichnen)
+    fetch(`data/${f}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null).then(d => { jsonData[f] = d || null; }); } }), 2500);
   requestAnimationFrame(() => window.KairoSplash && KairoSplash.ready());   // App steht → Start-Animation darf übergeben
   // Kein Intro (übersprungen, splash.js nicht geladen): Start-Schwarz trotzdem entfernen, sonst bleibt das helle Design schwarz
   const unboot = () => { const pb = document.getElementById("preboot"); if (pb) pb.remove(); document.documentElement.style.background = ""; };

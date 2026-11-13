@@ -115,6 +115,10 @@ jobs:
         if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'
         run: |
           if git fetch -q origin kairo-logos 2>/dev/null; then mkdir -p site && git archive origin/kairo-logos logos | tar -x -C site && ls site/logos | wc -l; else echo "noch keine Logos"; fi
+      - name: Hedgefonds dazulegen (Branch kairo-funds, fehlt er, zeigt die App nur Insider)
+        if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'
+        run: |
+          if git fetch -q origin kairo-funds 2>/dev/null && git show origin/kairo-funds:funds.json > /tmp/funds.json 2>/dev/null; then mkdir -p site/data && mv /tmp/funds.json site/data/funds.json && ls -la site/data/funds.json; else echo "noch keine Hedgefonds-Daten"; fi
       - name: Browser für den App-Test installieren (3 Versuche)
         id: browser
         if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'

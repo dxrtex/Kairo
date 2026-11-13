@@ -1,0 +1,46 @@
+name: Hedgefonds (SEC 13F)
+
+# Liest die Quartalsmeldungen (13F-HR) bekannter Hedgefonds bei der SEC, vergleicht sie mit dem Vorquartal und legt
+# funds.json im Branch kairo-funds ab. Scan und Watchlist-Scan liefern die Datei mit der App aus (site/data/funds.json).
+# 13F-Meldungen kommen bis 45 Tage nach Quartalsende – wöchentlich prüfen reicht.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 4 * * 2"        # dienstags früh
+  push:
+    branches: [main]
+    paths: [backend/hedgefunds.py, .github/workflows/funds.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: funds
+  cancel-in-progress: false
+
+jobs:
+  funds:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Bisherigen Stand laden (Branch kairo-funds)
+        run: |
+          if git fetch -q origin kairo-funds:kairo-funds 2>/dev/null; then git worktree add -q store kairo-funds;
+          else git worktree add -q --orphan -b kairo-funds store; fi
+          mkdir -p data; cp store/cusip_map.json data/ 2>/dev/null || true; ls store
+      - name: 13F-Meldungen lesen
+        run: python -m backend.hedgefunds
+        env:
+          SEC_CONTACT: ${{ secrets.SEC_CONTACT }}
+      - name: Speichern
+        run: |
+          cp site/data/funds.json store/funds.json
+          cp data/cusip_map.json store/cusip_map.json
+          cd store
+          git add -A
+          git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Hedgefonds $(date +%F)" || exit 0
+          git push -q origin kairo-funds
