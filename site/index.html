@@ -2273,6 +2273,11 @@ html .cf-pill .cf-wh b, html .cfp-n b, html .cfp-n small { text-shadow: none !im
 }
 /* Indikatorliste: massiv statt Glas (13.11.) */
 html .ct-pop, html.lt .ct-pop { background: var(--surface) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: inset 0 0 0 1px var(--pf-ring), 0 14px 36px rgba(0,0,0,.45) !important; }
+/* Absicherung (13.11.): fällt die gleitende Markierung aus, färbt sich der aktive Reiter der Seitenleiste selbst grün */
+@media (min-width: 768px) {
+  html nav.tabbar .tabs:not(:has(> .tab-ind.on)) > .tab.on { background: var(--accent) !important; color: var(--accent-ink, #fff) !important; border-radius: 10px; }
+  html nav.tabbar .tabs:not(:has(> .tab-ind.on)) > .tab.on svg { color: var(--accent-ink, #fff) !important; }
+}
 </style>
 </head>
 <body>
@@ -8091,8 +8096,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.140";
-const APP_NEWS = [["2026.11.140", "Grüne Markierung und Indikatorliste", [
+const APP_VER = "2026.11.141";
+const APP_NEWS = [["2026.11.141", "Grüne Reiter-Fläche abgesichert", [
+  ["Seitenleiste", "Die grüne Fläche auf dem aktiven Reiter wird in der Seitenleiste jetzt immer gezeigt – mit zusätzlicher Absicherung."]]],
+  ["2026.11.140", "Grüne Markierung und Indikatorliste", [
   ["Seitenleiste", "Die grüne Fläche auf dem aktiven Reiter und ihr Übergang beim Wechseln sind zurück (auf dem iPad hatte ein Antippen sie ausgeblendet)."],
   ["Indikatoren", "Die Liste bleibt offen, während du mehrere Indikatoren ein- und ausschaltest – schließen mit Antippen daneben."]]],
   ["2026.11.139", "Immer das ganze Intro", [
@@ -10201,7 +10208,7 @@ let tabIndT = null;
 function moveTabInd(prev) {
   const ind = document.querySelector(".tab-ind"), cur = document.querySelector(".tab.on");
   if (!ind) return;
-  const vis = cur && cur.offsetParent && (bg => bg === "transparent" || /rgba\([^)]*,\s*0(\.0\d*)?\)$/.test(bg))(getComputedStyle(cur).backgroundColor);   // auch während eines Übergangs (iPad: Antippen löst kurz :hover aus)
+  const vis = cur && cur.offsetParent && (matchMedia("(min-width: 768px)").matches || (bg => bg === "transparent" || /rgba\([^)]*,\s*0(\.0\d*)?\)$/.test(bg))(getComputedStyle(cur).backgroundColor));   // Seitenleiste (iPad/Mac): immer; sonst auch während eines Übergangs (iPad: Antippen löst kurz :hover aus)
   if (!vis) { ind.classList.remove("on"); return; }
   const box = t => ({ l: t.offsetLeft, t: t.offsetTop, w: t.offsetWidth, h: t.offsetHeight });
   // Flüssig (12.11.): nur transform animieren (läuft auf der Grafikkarte weiter, auch während der neue Reiter aufgebaut wird).
