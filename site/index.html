@@ -2462,6 +2462,11 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 @media(max-width:700px){.dr-tb{right:8px;top:40px;max-width:calc(100% - 16px)}.dr-sel{right:8px;top:86px}}
 .dr-toast{position:fixed;left:50%;bottom:110px;transform:translate(-50%,20px);opacity:0;z-index:300;padding:12px 18px;border-radius:14px;font-weight:600;font-size:14px;pointer-events:none;transition:.3s;
   background:var(--lg-tab);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:var(--lg-rim),0 10px 30px rgba(0,0,0,.35);color:var(--text)}.dr-toast.on{opacity:1;transform:translate(-50%,0)}
+.scr-fs{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:4px 0 14px;padding:12px;border-radius:18px;background:var(--lg-tab);box-shadow:var(--lg-rim)}
+.scr-f{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--muted)}.scr-f select{background:rgba(127,127,127,.12);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:7px 9px;font:inherit;font-size:13.5px;min-width:110px}
+.scr-det>summary{cursor:pointer;font-weight:700;font-size:14px;margin:0 2px 8px;list-style:none}.scr-det>summary::-webkit-details-marker{display:none}.scr-det>summary small{color:var(--accent);font-weight:600}
+.scr-c{flex-direction:row;align-items:center;gap:6px;padding:8px 4px;font-size:13px;color:var(--text)}.scr-pre{margin-bottom:8px}
+.scr-t td small{display:block;font-size:11px;color:var(--muted)}.scr-t .nm{display:flex;align-items:center;gap:8px}.scr-t th{cursor:pointer;white-space:nowrap}
 .au-q{display:block;margin-top:3px;font-size:11.5px}
 .mtags{display:flex;gap:6px;align-items:center;margin-top:3px}.mtags .echip{margin-left:0}.aitem .an .echip{margin:3px 0 0;align-self:flex-start}</style>
 <style id="scard">
@@ -3313,6 +3318,66 @@ function searchHtml() {
     <div class="note" style="margin:8px 2px 0">Tage sind Handelstage und grobe Schätzungen aus den Regeln (z. B. bis ein Signal sein Zeitfenster verlässt). Stand: letzter Scan.</div>`;
 }
 
+// ---------- Screener über alle Aktien (Runde 13.11., wie Finviz): frei filtern und sortieren – unabhängig von der Kairo-Regel ----------
+const SCR_PRE = [["", "Alle"], ["hi52", "Nahe 52-W-Hoch"], ["os", "Überverkauft (RSI < 30)"], ["mom", "Starkes Momentum"], ["pull", "Rücksetzer im Aufwärtstrend"], ["earn", "Zahlen in 14 Tagen"], ["ins", "Insider kaufen"], ["k9", "Kairo ab 9/11"]];
+const SCR_COLS = [["n", "Aktie"], ["c", "Kurs"], ["d1", "1T"], ["d5", "1W"], ["m1", "1M"], ["m3", "3M"], ["ytd", "YTD"], ["hi", "vom Hoch"], ["rsi", "RSI"], ["tr", "Trend"], ["mc", "Börsenwert"], ["sec", "Sektor"], ["m", "Kairo"]];
+let scrMore = 0;
+function scrVal(r, k) { if (k === "hi") return r.H > 0 && r.c > 0 ? r.c / r.H - 1 : null; if (k === "tr") return r.e200 > 0 ? (r.c > r.e200 ? (r.e50 > r.e200 ? 2 : 1) : -1) : null; if (k === "n") return r.n || r.t; return r[k]; }
+function scrRows() {
+  const F = state.scf || {}, rows = searchIdx || [];
+  return rows.filter(r => { if (!(r.c > 0)) return false;
+    if (F.reg && r.r !== F.reg) return false; if (F.sec && r.sec !== F.sec) return false;
+    if (F.cap && !(r.mc >= +F.cap)) return false;
+    const hi = scrVal(r, "hi"), tr = scrVal(r, "tr");
+    if (F.tr === "up" && !(tr >= 1)) return false; if (F.tr === "down" && tr !== -1) return false;
+    if (F.rsi === "lo" && !(r.rsi < 30)) return false; if (F.rsi === "mid" && !(r.rsi >= 30 && r.rsi <= 70)) return false; if (F.rsi === "hi" && !(r.rsi > 70)) return false;
+    if (F.hi === "near" && !(hi > -.05)) return false; if (F.hi === "pull" && !(hi <= -.1 && hi >= -.3)) return false; if (F.hi === "deep" && !(hi < -.3)) return false;
+    if (F.pf && !(r[F.pfk || "m3"] >= +F.pf)) return false; if (F.pfn && !(r[F.pfk || "m3"] <= -F.pfn)) return false;
+    if (F.met && !((r.m ?? 0) >= +F.met)) return false;
+    if (F.earn && !(r.ed && daysUntil(r.ed) >= 0 && daysUntil(r.ed) <= 14)) return false;
+    if (F.ins && !(insSig(r.t) && insSig(r.t).score)) return false;
+    return true; });
+}
+function scrPreset(k) { const b = { reg: (state.scf || {}).reg || "" };
+  state.scf = k === "hi52" ? { ...b, hi: "near", tr: "up" } : k === "os" ? { ...b, rsi: "lo" } : k === "mom" ? { ...b, pf: ".2", pfk: "m3", tr: "up" } : k === "pull" ? { ...b, tr: "up", hi: "pull" }
+    : k === "earn" ? { ...b, earn: 1 } : k === "ins" ? { ...b, ins: 1 } : k === "k9" ? { ...b, met: "9" } : b; state.scfPre = k; scrMore = 0; save(); render(); }
+function screenerHtml() {
+  if (!searchIdx) { loadSearch(); return `<div class="note" style="margin:14px 2px">Aktienliste lädt …</div>`; }
+  const F = state.scf || {}, S = state.scs || { k: "mc", asc: false }, secs = [...new Set(searchIdx.map(r => r.sec).filter(Boolean))].sort();
+  const list = scrRows().sort((a, b) => { const x = scrVal(a, S.k), y = scrVal(b, S.k); if (x == null) return 1; if (y == null) return -1; const c = typeof x === "string" ? x.localeCompare(y) : x - y; return S.asc ? c : -c; });
+  const sel = (k, opts, lbl) => `<label class="scr-f"><span>${lbl}</span><select data-scf="${k}">${opts.map(([v, l]) => `<option value="${v}"${String(F[k] || "") === String(v) ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
+  const pc = v => v == null ? `<span class="muted">–</span>` : `<span class="${v >= 0 ? "up" : "down"}">${sgnPct(v, Math.abs(v) < .1 ? 1 : 0)}</span>`;
+  const shown = list.slice(0, 120 + scrMore), inRes = new Set(data.results.map(r => r.ticker));
+  const cell = (r, k) => k === "n" ? `<a href="#" class="nm nm-l" data-${inRes.has(r.t) ? "card" : r.detail ? "open" : "ctgo"}="${esc(r.t)}">${cfAv(r.t)}<span>${esc(shortNm(r.n || r.t))}<small>${esc(tkClean(r.t))}</small></span></a>`
+    : k === "c" ? `${fmt(r.c)} <small class="muted">${esc(r.cur || "")}</small>` : ["d1", "d5", "m1", "m3", "ytd", "hi"].includes(k) ? pc(scrVal(r, k))
+    : k === "rsi" ? (r.rsi == null ? "–" : `<span class="${r.rsi < 30 ? "up" : r.rsi > 70 ? "down" : ""}">${fmt(r.rsi, 0)}</span>`)
+    : k === "tr" ? (v => v == null ? "–" : v === 2 ? `<span class="up">▲ aufwärts</span>` : v === 1 ? `<span class="muted">über EMA 200</span>` : `<span class="down">▼ abwärts</span>`)(scrVal(r, "tr"))
+    : k === "mc" ? (r.mc ? fmtCap(r.mc) : "–") : k === "sec" ? `<span class="muted">${esc(r.sec || "–")}</span>` : `<b class="${r.s === "hit" ? "up" : r.s === "fast" ? "gold" : ""}">${r.m ?? "–"}/11</b>`;
+  return `<div class="scr">
+    <div class="vdesc">Alle ${fmt(searchIdx.length, 0)} geprüften Aktien frei filtern – wie ein klassischer Screener. Unabhängig von der Kairo-Regel: Treffer findest du unter „Treffer“.</div>
+    <div class="kbar scr-pre">${SCR_PRE.map(([k, l]) => `<button class="kchip${(state.scfPre || "") === k ? " on" : ""}" data-scrpre="${k}">${l}</button>`).join("")}</div>
+    <details class="scr-det"${innerWidth > 700 || state.scrFOpen ? " open" : ""}><summary>Filter${(n => n ? ` <small>${n} aktiv</small>` : "")(Object.entries(F).filter(([k, v]) => v && v !== "0" && k !== "pfk").length)}</summary><div class="scr-fs">${sel("reg", [["", "alle"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]], "Region")}${sel("sec", [["", "alle"], ...secs.map(x => [x, x])], "Sektor")}
+      ${sel("cap", [["", "alle"], ["2e9", "ab 2 Mrd. $"], ["1e10", "ab 10 Mrd. $"], ["5e10", "ab 50 Mrd. $"], ["2e11", "ab 200 Mrd. $"]], "Börsenwert")}
+      ${sel("tr", [["", "egal"], ["up", "über EMA 200"], ["down", "unter EMA 200"]], "Trend")}${sel("rsi", [["", "egal"], ["lo", "unter 30"], ["mid", "30–70"], ["hi", "über 70"]], "RSI 14")}
+      ${sel("hi", [["", "egal"], ["near", "max. −5 %"], ["pull", "−10 bis −30 %"], ["deep", "über −30 %"]], "Vom 52-W-Hoch")}
+      ${sel("pfk", [["m3", "3 Monate"], ["m1", "1 Monat"], ["ytd", "seit Jahresanfang"], ["d5", "1 Woche"]], "Wertentwicklung")}${sel("pf", [["", "egal"], [".05", "ab +5 %"], [".1", "ab +10 %"], [".2", "ab +20 %"], [".5", "ab +50 %"]], "Plus")}
+      ${sel("pfn", [["", "egal"], [".1", "ab −10 %"], [".2", "ab −20 %"], [".4", "ab −40 %"]], "Minus")}${sel("met", [["", "egal"], ["7", "ab 7/11"], ["9", "ab 9/11"], ["10", "ab 10/11"], ["11", "11/11"]], "Kairo-Kriterien")}
+      <label class="scr-f scr-c"><input type="checkbox" data-scf="earn" ${F.earn ? "checked" : ""}><span>Zahlen ≤ 14 T.</span></label><label class="scr-f scr-c"><input type="checkbox" data-scf="ins" ${F.ins ? "checked" : ""}><span>Insider kaufen</span></label>
+      <button class="hlink" data-scrpre="">Zurücksetzen</button></div></details>
+    <div class="section-title"><span>Ergebnis</span><span>${fmt(list.length, 0)} Aktien</span></div>
+    <div class="table-wrap"><table class="scr-t"><thead><tr>${SCR_COLS.map(([k, l]) => `<th class="${k === "n" || k === "sec" || k === "tr" ? "" : "num "}${S.k === k ? "sorted" + (S.asc ? " asc" : "") : ""}" data-scrs="${k}">${l}</th>`).join("")}</tr></thead>
+      <tbody>${shown.map(r => `<tr>${SCR_COLS.map(([k]) => `<td class="${k === "n" || k === "sec" || k === "tr" ? "" : "num"}">${cell(r, k)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+    ${list.length > shown.length ? `<div class="row-actions" style="justify-content:center;margin:12px 0"><button class="btn ghost" data-scrmore>Weitere ${fmt(Math.min(240, list.length - shown.length), 0)} anzeigen</button></div>` : ""}
+    <div class="note" style="margin:8px 2px 0">Stand: letzter Scan. Kurse und Kennzahlen aus dem Kairo-Scan (alle Aktien ab 2 Mrd. $ Börsenwert). Keine Anlageberatung.</div></div>`;
+}
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-scron]")) { state.scrOn = true; scrMore = 0; save(); render(); subIn(); return; }
+  const p = e.target.closest("[data-scrpre]"); if (p) { scrPreset(p.dataset.scrpre); return; }
+  const h = e.target.closest("th[data-scrs]"); if (h) { const k = h.dataset.scrs, S = state.scs || { k: "mc", asc: false }; state.scs = S.k === k ? { k, asc: !S.asc } : { k, asc: k === "n" || k === "sec" }; save(); render(); return; }
+  if (e.target.closest("[data-scrmore]")) { scrMore += 240; render(); }
+});
+document.addEventListener("change", e => { const f = e.target.closest("[data-scf]"); if (!f) return; const k = f.dataset.scf;
+  state.scf = { ...(state.scf || {}), [k]: f.type === "checkbox" ? (f.checked ? 1 : 0) : f.value }; state.scfPre = "-"; scrMore = 0; save(); render(); });
 // ---------- Kalender ----------
 let calData = null, calLoading = null;
 function loadCalendar() {
@@ -7738,6 +7803,7 @@ const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
 const APP_VER = "2026.11.126";
 const APP_NEWS = [["2026.11.126", "Chart wie TradingView: Zeiteinheiten, Indikatoren, Alarme", [
+  ["Screener über alle Aktien", "Scanner → „Screener“: alle rund 5.850 Aktien frei filtern und sortieren wie bei Finviz – Region, Sektor, Börsenwert, Trend, RSI, Abstand zum Hoch, Wertentwicklung, Kairo-Kriterien, Zahlen-Termin, Insider. Mit Vorlagen wie „Nahe 52-W-Hoch“ oder „Überverkauft“."],
   ["Zeiteinheit 1D / 1W / 1M", "Oben rechts im Chart: Tages-, Wochen- und Monatskerzen. Indikatoren und Auto-Analyse rechnen auf der gewählten Zeiteinheit; die Kairo-Regel bleibt im Tageschart."],
   ["Mehr Indikatoren", "Unter Ebenen neu: SMA 50, SMA 200 und Bollinger-Bänder (20, 2)."],
   ["Alarm an Linien", "Horizontale Linie, Strahl oder Trendlinie antippen → „🔔 Alarm hinzufügen“. Kreuzt der Kurs die Linie, meldet sich Kairo – in der App sofort, als Mitteilung auch bei geschlossener App, sobald dein Kursdienst auf Version 9 ist (Einstellungen → Live-Kurse)."]]],
@@ -9629,7 +9695,9 @@ function renderMain() {
   if (String(state.minScore || "0") !== "0") { state.minScore = "0"; save(); }   // Score-Filter entfernt (Score nicht belegt, 11/2026)
   const list = selRows(), k = new Set(state.kinds || []);
   const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector", "ins"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
-  const bar = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${v === "watch" ? watchCount() : data.results.filter(f).length}</small></button>`).join("")}</div>
+  const vseg = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v && !state.scrOn ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${v === "watch" ? watchCount() : data.results.filter(f).length}</small></button>`).join("")}<button class="${state.scrOn ? "on" : ""}" data-scron role="tab">Screener<small>${searchIdx ? fmt(searchIdx.length, 0) : "alle"}</small></button></div>`;
+  if (state.scrOn) { $("main").innerHTML = searchHtml() + scanBarHtml() + vseg + screenerHtml(); return; }
+  const bar = `${vseg}
     ${cur ? `<div class="vdesc">${esc(cur[4])}</div>` : ""}
     ${state.view === "hit" ? (l => `<details class="st-legend-d"><summary>Was bedeuten die Status?</summary>${l}</details>`)(`<div class="st-legend"><span><b class="up">kaufbereit</b> – Kauf zur nächsten Eröffnung</span><span><b>Seitwärtsphase x/10</b> – wartet auf 5 ruhige Tage</span><span><b>verfallen</b> – keine Seitwärtsphase in 10 Tagen</span><span><b>im Depot</b> – läuft schon</span></div>`) : ""}
     ${state.view === "watch" ? `<div class="wmin" role="group" aria-label="Mindestens erfüllte Kriterien">${[9, 8, 7].map(n => `<button class="kchip${watchMin() === n ? " on" : ""}" data-wmin="${n}" aria-pressed="${watchMin() === n}">ab ${n}/11</button>`).join("")}</div>` : ""}
@@ -11488,7 +11556,7 @@ document.addEventListener("click", async e => {
   const gk = e.target.closest("[data-gokinds]");
   if (gk) { e.preventDefault(); const v = viewOfKinds(gk.dataset.gokinds.split(",")); state.view = v ? v[0] : null; state.kinds = v ? v[3] : gk.dataset.gokinds.split(","); goSec("scanner"); return; }
   const vb = e.target.closest("[data-view]");
-  if (vb) { const v = VIEWS.find(x => x[0] === vb.dataset.view); if (v) { const ch = state.view !== v[0]; state.view = v[0]; state.kinds = v[3]; save(); render(); if (ch) subIn(); } return; }
+  if (vb) { const v = VIEWS.find(x => x[0] === vb.dataset.view); if (v) { const ch = state.view !== v[0] || state.scrOn; state.scrOn = false; state.view = v[0]; state.kinds = v[3]; save(); render(); if (ch) subIn(); } return; }
   const tf = e.target.closest("[data-tfcopy]");
   if (tf) { const t = tf.dataset.tfcopy; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { tf.textContent = "✓ Kopiert"; }).catch(() => kAsk({ t: "Suchwerte zum Kopieren", input: "text", val: t, ok: "Fertig", cancel: false })); return; }
   const pb = e.target.closest("[data-push]");
