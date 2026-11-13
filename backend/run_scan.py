@@ -510,6 +510,22 @@ def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bo
             "rule": {"window": h4live.WINDOW, "hold": h4live.HOLD, "need": list(h4live.NEED), "ema": h4live.EMA_SPAN, "ema_from": h4live.EMA_FROM}}
 
 
+BENCH = (("^GSPC", "S&P 500"), ("^GDAXI", "DAX"), ("^STOXX", "STOXX Europe 600"), ("^NDX", "Nasdaq 100"))
+
+
+def bench_payload(hist: dict, days: int = 300) -> dict | None:
+    """Schlusskurse der Vergleichsindizes für das Depot-Risiko der App: gemeinsame Datumsachse (US-Handelstage), Lücken mit dem Vortag."""
+    cols = {t: hist[t]["Close"].dropna() for t, _ in BENCH if hist.get(t) is not None and len(hist[t]) > 60}
+    if "^GSPC" not in cols:
+        return None
+    idx = cols["^GSPC"].index[-days:]
+    out = {"t": [d.strftime("%Y-%m-%d") for d in idx], "names": {t: n for t, n in BENCH if t in cols}, "c": {}}
+    for t, s in cols.items():
+        v = s.reindex(s.index.union(idx)).ffill().reindex(idx)
+        out["c"][t] = [None if x != x else round(float(x), 2) for x in v]
+    return out
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tickers", help="nur diese Ticker (kommagetrennt), sonst ganzes Universum")
@@ -895,6 +911,13 @@ def main(argv=None) -> int:
     with open(SITE / "analysis.json", "w", encoding="utf-8") as f:
         json.dump(_clean({"generated": out["generated"], "market": market, "tickers": ana}), f, ensure_ascii=False, separators=(",", ":"))
     print(f"Analyse: {len(ana)} Aktien")
+    try:                                           # Depot-Risiko in der App (Beta, Stresstest): Schlusskurse der Indizes, 1 Jahr+
+        bench = bench_payload(ctx_hist)
+        if bench:
+            with open(SITE / "bench.json", "w", encoding="utf-8") as f:
+                json.dump(bench, f, separators=(",", ":"))
+    except Exception as exc:
+        print(f"Index-Verläufe: Fehler {exc!r}")
     cal = build_calendar(rows, dated)
     try:                                           # Quartalszahlen: Ergebnis, Ausblick, Reaktion – zum Antippen im Kalender
         est_mem = state.load("earn_est.json", {})
