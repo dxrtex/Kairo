@@ -6675,6 +6675,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-tour
 // Automatisch nur einmal am Tag: beim ersten Öffnen des Tages (Wunsch 11/2026) – danach über den Briefing-Knopf
 function maybeBrief() {
   if (!data) return;
+  if (resumeGet(30 * 60e3)) return;               // zurück aus TradingView o. ä. (Wechsel vor < 30 Min.): kein Briefing über der Stelle, an der man war
   if (!state.tourDone && !/nosplash/.test(location.search) || /[?&]tour=1/.test(location.search)) { openTour(); return; }   // erstes Öffnen: Rundgang statt Briefing
   if (maybeNews()) return;
   if (state.briefOff) return;
@@ -7665,8 +7666,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.123";
-const APP_NEWS = [["2026.11.123", "Depot-Risiko und Chart-Replay", [
+const APP_VER = "2026.11.124";
+const APP_NEWS = [["2026.11.124", "TradingView-App", [
+  ["TradingView in der App", "„TradingView“ öffnet auf iPad und iPhone jetzt die TradingView-App mit deinem Konto und deinen Indikatoren. Zurück geht es oben links über „◀ Kairo“ – genau an die Stelle, an der du warst. Einstellbar unter Einstellungen → Trading."]]],
+  ["2026.11.123", "Depot-Risiko und Chart-Replay", [
   ["Depot-Risiko", "Im Depot rechts: wie stark dein Depot schwankt, wie es mit dem Markt mitgeht (Beta), was ein schlechter Tag kostet, was ein Einbruch von −10 %, −20 % oder wie 2020 kosten würde (Turbos mit Hebel), wer das meiste Risiko trägt und welche Positionen fast gleich laufen."],
   ["Chart-Replay", "Im Chart „Replay“: den Chart ab einem früheren Tag Kerze für Kerze nachspielen – ohne Blick in die Zukunft. Kaufen, Stop setzen, nach Kairo-Regel aussteigen lassen und deine Übungs-Bilanz in R sehen. Pfeiltasten und Leertaste steuern."]]],
   ["2026.11.122", "Trefferquote der Chartmuster", [
@@ -8261,6 +8264,9 @@ function settingsHtml() {
       <button class="set-row" data-capedit><span><b>Trading-Kapital</b><small>1 % davon ist das Risiko je Trade · frei ${eur(freeCap())}</small></span><em>${eur(tc.depot)} ›</em></button>
       <button class="set-row" data-gosec="depot"><span><b>Langfristige Aktien</b><small>binden kein Trading-Kapital, kein Stop · im Depot je Aktie umschalten</small></span><em>${ltN} ›</em></button>
       <div class="set-row"><span><b>Höchstens gleichzeitig</b><small>Regel der Strategie</small></span><em>${tc.maxOpen} Trades</em></div>
+      <div class="set-row"><span><b>TradingView öffnen in</b><small>${tvMode() === "app" ? "der TradingView-App (mit deinem Konto und deinen Indikatoren) · zurück oben links über „◀ Kairo“" : "neuem Browser-Fenster"}</small></span>
+        <span class="sp-seg tv-seg">${[["app", "App"], ["web", "Browser"]].map(([v, l]) => `<button class="${tvMode() === v ? "on" : ""}" data-tvmode="${v}">${l}</button>`).join("")}</span></div>
+      ${tvMode() === "app" ? `<button class="set-row" data-tvtest><span><b>TradingView-App testen</b><small>öffnet Apple (AAPL) – kommt stattdessen der Browser, ist die App nicht installiert oder nicht angemeldet</small></span><em>Test ›</em></button>` : ""}
     </div>
     <div class="section-title"><span>Persönlich</span><span>nur auf diesem Gerät</span></div>
     <div class="card" style="margin-bottom:18px"><div class="form" style="margin:0">
@@ -9769,7 +9775,7 @@ async function openDetail(t) {
         <div class="links"><a class="btn" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">In TradingView öffnen</a></div>
       </div>
     </div>`;
-  $("detail").classList.add("open"); document.body.style.overflow = "hidden"; $("detail").scrollTop = 0;
+  $("detail").classList.add("open"); $("detail").dataset.t = t; document.body.style.overflow = "hidden"; $("detail").scrollTop = 0;
   $("closeDetail").onclick = closeDetail;
   history.replaceState(null, "", "#" + encodeURIComponent(t));
   try { drawCharts(await loadChart(t), r); } catch (e) { $("cMain").innerHTML = `<div class="note">Chart konnte nicht geladen werden.</div>`; }
@@ -10601,6 +10607,47 @@ function ctabBuild(c, r) {
   try { cfChart.chart.subscribeVisibleLogicalRangeChange(lensSoon); cfChart.chart.subscribeCrosshairMove(() => { clearTimeout(LENS.xt); LENS.xt = setTimeout(lensSoon, 140); }); } catch (e) {}
   setTimeout(lensSoon, 120); setTimeout(lensSoon, 600);
 }
+// ---------- TradingView in der App öffnen und zurück an dieselbe Stelle (Wunsch 13.11.) ----------
+// Alle TradingView-Links laufen hier durch. Modus „App“: erst die TradingView-App (tradingview://), öffnet die sich nicht innerhalb
+// von 1,5 s, der normale Link (iOS reicht tradingview.com-Links an die App weiter, wenn sie installiert ist – sonst Browser).
+// Zurück: iOS zeigt oben links „◀ Kairo“. Damit Kairo genau dort weitermacht, merkt es sich beim Wechsel Reiter, Scrollposition,
+// offene Aktie und Chart-Ausschnitt; wurde Kairo im Hintergrund beendet, stellt es das beim nächsten Start wieder her.
+const tvMode = () => state.tvMode || (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "app" : "web");
+function tvOpen(href) {
+  resumeSave();
+  if (tvMode() !== "app") { window.open(href, "_blank", "noopener"); return; }
+  const sym = (href.match(/[?&]symbol=([^&]+)/) || [])[1] || "";
+  let gone = false; const onHide = () => { if (document.visibilityState === "hidden") gone = true; };
+  document.addEventListener("visibilitychange", onHide);
+  setTimeout(() => { document.removeEventListener("visibilitychange", onHide); if (!gone && document.visibilityState === "visible") window.location.href = href; }, 1500);
+  window.location.href = "tradingview://chart?symbol=" + sym;
+}
+document.addEventListener("click", e => {
+  const a = e.target.closest('a[href*="tradingview.com/chart"]'); if (!a || e.defaultPrevented) return;
+  e.preventDefault(); tvOpen(a.href);
+}, true);
+document.addEventListener("click", e => {
+  const m = e.target.closest("[data-tvmode]"); if (m) { state.tvMode = m.dataset.tvmode; save(); render(); return; }
+  if (e.target.closest("[data-tvtest]")) tvOpen(tvUrl("AAPL"));
+});
+function resumeSave() {
+  try { const d = $("detail"), open = d && d.classList.contains("open");
+    const vr = state.sec === "chart" && cfChart && !RP.on ? cfChart.chart.timeScale().getVisibleLogicalRange() : null;
+    localStorage.setItem("kairo-resume", JSON.stringify({ at: Date.now(), sec: state.sec, y: Math.round(scrollY), det: open ? d.dataset.t || null : null, dy: open ? d.scrollTop : 0,
+      t: window.__lastChart && window.__lastChart.r ? window.__lastChart.r.ticker.replace(/@rp$/, "") : null, vr: vr ? { from: vr.from, to: vr.to } : null })); } catch (e) {}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") resumeSave(); });
+addEventListener("pagehide", resumeSave);
+function resumeGet(maxMs = 3 * 3600e3) { try { const r = JSON.parse(localStorage.getItem("kairo-resume") || "null"); return r && Date.now() - r.at < maxMs ? r : null; } catch (e) { return null; } }
+// Neustart nach App-Wechsel: Kairo war im Hintergrund beendet → Stelle wiederherstellen (nur, wenn der Wechsel weniger als 3 Std. her ist)
+function resumeApply() {
+  const R = resumeGet(); if (!R || R.sec !== state.sec) return;
+  if (R.sec === "chart" && R.t) state.cfLast = R.t;
+  const go = (k = 0) => { if (R.y) scrollTo(0, R.y);
+    if (R.vr && state.sec === "chart") { if (cfChart && cfChart.chart) { try { cfChart.chart.timeScale().setVisibleLogicalRange(R.vr); } catch (e) {} } else if (k < 10) return setTimeout(() => go(k + 1), 300); }
+    if (R.det && !$("detail").classList.contains("open")) openDetail(R.det).then(() => { if (R.dy) $("detail").scrollTop = R.dy; }).catch(() => {}); };
+  setTimeout(go, 500);
+}
 // ---------- Chart-Replay (Runde 13.11., wie TradingView „Bar Replay“): den Chart Tag für Tag nachspielen und üben ----------
 // Der Chart zeigt nur die Kerzen bis zum Replay-Tag – Indikatoren (EMA, RSI, MACD, MBI) sind rückwärts gerechnet und damit
 // genau so, wie man sie damals sah. Kairo-Status, Plan und Fibonacci des heutigen Scans sind ausgeblendet (wären Wissen aus der Zukunft).
@@ -11231,7 +11278,7 @@ function boot(d) {
   if (!first) {                                   // neuer Scan nach dem Schnellstart: Scan-Dateien im neuen Stand nachladen
     if (gen0 !== d.generated) { searchLoading = anaLoading = calLoading = null; if (searchIdx) loadSearch(); if (anaData) loadAnalysis(); if (calData) loadCalendar(); }
     return; }
-  loadCalendar(); setTimeout(maybeBrief, 400);
+  loadCalendar(); setTimeout(maybeBrief, 400); resumeApply();
   setTimeout(() => ["insider.json", "funds.json"].forEach(f => { if (!(f in jsonData)) { jsonData[f] = undefined;   // Smart Money still vorladen (ohne Neuzeichnen)
     fetch(`data/${f}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null).then(d => { jsonData[f] = d || null; }); } }), 2500);
   requestAnimationFrame(() => window.KairoSplash && KairoSplash.ready());   // App steht → Start-Animation darf übergeben
