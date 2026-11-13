@@ -31,8 +31,8 @@ Schnelligkeit: erste Zahlen im Mittel 614 Min. nach der Meldezeit (90 % innerhal
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
 | deutlich unter Erwartung (< −10 %) | 43% (21) | 50% (10) | 48% (29) | 36% (53) |
-| unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 72% (18) | 39% (46) |
-| im Rahmen (±2 %) | 29% (17) | 33% (3) | 33% (15) | 50% (32) |
+| unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 72% (18) | 40% (45) |
+| im Rahmen (±2 %) | 29% (17) | 33% (3) | 33% (15) | 48% (33) |
 | über Erwartung (+2 bis +10 %) | 38% (24) | 25% (8) | 46% (46) | 45% (56) |
 | deutlich über Erwartung (> +10 %) | 39% (28) | 53% (17) | 61% (102) | 55% (94) |
 
@@ -95,4 +95,4 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 224 Meldungen: Brier nachgeeicht 0.250 gegen gezeigt 0.254 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 224 Meldungen: Brier nachgeeicht 0.251 gegen gezeigt 0.254 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
