@@ -2484,6 +2484,14 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .fc-kv>div{background:var(--surface);padding:8px 10px;display:flex;flex-direction:column;gap:1px;min-width:0}html.lt .fc-kv>div{background:#fff}.fc-kv span{font-size:11px;color:var(--muted)}.fc-kv b{font-size:14px}.fc-kv small{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sc-sf{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:14px;background:rgba(127,127,127,.08)}.sc-sf .sf{color:var(--text);flex:0 0 auto}
 .sc-sft{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;min-width:0}.sc-sft span{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);width:100%}.sc-sft b{font-size:17px}.sc-sft em{font-style:normal;font-size:12.5px;color:var(--muted)}.sc-sft em .fc-g{font-style:normal}.sc-sft small{width:100%;font-size:11.5px;color:var(--muted)}
+.pane-sel{background:transparent;color:var(--text);border:0;font:inherit;font-size:12.5px;font-weight:700;padding:0 2px;cursor:pointer;max-width:190px}.pane-label span{margin-left:6px;color:var(--muted);font-weight:500}
+.ip-g{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;padding:4px 2px}.ip-g label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--muted)}.ip-g input{width:100%;background:rgba(127,127,127,.12);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:5px 7px;font:inherit;font-size:13px}
+.al-box{position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px}.al-box[hidden]{display:none}
+.al-in{width:min(520px,100%);max-height:80vh;overflow:auto;border-radius:20px;padding:16px 18px;background:var(--lg-tab);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);box-shadow:var(--lg-rim),0 20px 50px rgba(0,0,0,.45)}
+.al-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.al-h b{font-size:18px}
+.al-r{display:flex;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}.al-r>span{flex:1;min-width:0;display:flex;flex-direction:column}.al-r small{color:var(--muted);font-size:12.5px}.al-r.off{opacity:.55}.al-r .del{color:#ff453a}
+.al-new{margin-top:12px;padding:12px;border-radius:14px;background:rgba(127,127,127,.1);display:flex;flex-direction:column;gap:6px}.al-new small{color:var(--muted)}
+.al-f{display:flex;flex-wrap:wrap;gap:6px}.al-f select,.al-f input{background:rgba(127,127,127,.14);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:7px 8px;font:inherit;font-size:13.5px}.al-f input{width:110px}
 .au-q{display:block;margin-top:3px;font-size:11.5px}
 .mtags{display:flex;gap:6px;align-items:center;margin-top:3px}.mtags .echip{margin-left:0}.aitem .an .echip{margin:3px 0 0;align-self:flex-start}</style>
 <style id="scard">
@@ -7832,8 +7840,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.129";
-const APP_NEWS = [["2026.11.129", "Fundamental-Check", [
+const APP_VER = "2026.11.130";
+const APP_NEWS = [["2026.11.130", "Indikator-Bibliothek", [
+  ["Indikator-Fenster frei wählbar", "Unter dem Chart lässt sich jedes Fenster umstellen: RSI, MACD, Momentum Bias Index, Stochastik, ATR, OBV oder ADX/DMI."],
+  ["Eigene Einstellungen", "Ebenen → Indikator-Einstellungen: Perioden für RSI, Stochastik, ATR, ADX und Bollinger-Bänder."],
+  ["Alarm-Zentrale", "Im Chart „🔔 Alarme“: alle Alarme an einem Ort, dazu neue Kurs-Alarme (steigt über / fällt unter) und RSI-Alarme – ohne etwas zu zeichnen."],
+  ["Ichimoku und verankerter VWAP", "Ichimoku-Wolke unter Ebenen → Indikatoren; der verankerte VWAP ist ein neues Zeichenwerkzeug – Startkerze antippen."]]],
+  ["2026.11.129", "Fundamental-Check", [
   ["Kairo-Schneeflocke", "Für alle Aktien fünf Achsen wie bei Simply Wall St: Bewertung, Wachstum, Rentabilität, Gesundheit und Dividende – im Chart, in der Übersicht und in der Suche. Dazu KGV gegen die Branche, Margen, Verschuldung, freier Cashflow und Dividende."],
   ["Faktor-Rating A–F", "Wie das Quant-Rating bei Seeking Alpha: 60 % Fundamentaldaten, 40 % Momentum. Nur Einordnung – die Kairo-Regel nutzt es nicht."],
   ["Fundamental-Filter im Screener", "KGV, Dividende, Umsatzwachstum, Nettomarge, Verschuldung und Schneeflocke – mit Vorlagen „Qualität günstig“, „Dividenden-Stars“ und „Starkes Wachstum“."]]],
@@ -10442,11 +10455,27 @@ function buildMain(el, c, r, opts) {
   const candles = chart.addCandlestickSeries({ upColor: "#30d158", downColor: "#ff453a", borderVisible: false, wickUpColor: "#30d158", wickDownColor: "#ff453a" });
   const bars = T.map((t, i) => ({ time: t, open: c.o[i], high: c.h[i], low: c.l[i], close: c.c[i] })); candles.setData(bars);
   const ema = {}; EMA_DEF.forEach(([k, col]) => { ema[k] = chart.addLineSeries({ color: col, lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }); ema[k].setData(pts(k)); });
-  { const C0 = c.c, sm = n => smaN(C0, n), m20 = sm(20), sd = C0.map((_, i) => { if (m20[i] == null) return null; let q = 0; for (let k = i - 19; k <= i; k++) q += (C0[k] - m20[i]) ** 2; return Math.sqrt(q / 20); });
+  { const C0 = c.c, sm = n => smaN(C0, n), BN = IND_P().bbN, BK = IND_P().bbK, m20 = sm(BN), sd = C0.map((_, i) => { if (m20[i] == null) return null; let q = 0; for (let k = i - BN + 1; k <= i; k++) q += (C0[k] - m20[i]) ** 2; return Math.sqrt(q / BN); });
+    const ser2 = arr => T.map((t, i) => arr[i] == null ? null : { time: t, value: arr[i] }).filter(Boolean);
     const ln = (arr, col, w = 1.5, st = 0) => { const s2 = chart.addLineSeries({ color: col, lineWidth: w, lineStyle: st, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: false });
       s2.setData(T.map((t, i) => arr[i] == null ? null : { time: t, value: arr[i] }).filter(Boolean)); return s2; };
     ema.s50 = ln(sm(50), SMA_DEF[0][1]); ema.s200 = ln(sm(200), SMA_DEF[1][1]);
-    ema.bb = [ln(m20.map((m, i) => m == null ? null : m + 2 * sd[i]), "rgba(41,98,255,.85)", 1), ln(m20, "rgba(255,109,0,.8)", 1, 2), ln(m20.map((m, i) => m == null ? null : m - 2 * sd[i]), "rgba(41,98,255,.85)", 1)]; }
+    ema.bb = [ln(m20.map((m, i) => m == null ? null : m + BK * sd[i]), "rgba(41,98,255,.85)", 1), ln(m20, "rgba(255,109,0,.8)", 1, 2), ln(m20.map((m, i) => m == null ? null : m - BK * sd[i]), "rgba(41,98,255,.85)", 1)];
+    ema.ichi = []; ema.ichiP = null;
+    if (clGet("ichi")) {                                // Ichimoku (9/26/52): Wolke 26 Perioden in die Zukunft – nur gebaut, wenn eingeschaltet
+      const n = T.length, mid = (L0, i) => { if (i < L0 - 1) return null; let hi = -Infinity, lo = Infinity; for (let k = i - L0 + 1; k <= i; k++) { hi = Math.max(hi, c.h[k]); lo = Math.min(lo, c.l[k]); } return (hi + lo) / 2; };
+      const ten = T.map((_, i) => mid(9, i)), kij = T.map((_, i) => mid(26, i)), sa = ten.map((x, i) => x == null || kij[i] == null ? null : (x + kij[i]) / 2), sb = T.map((_, i) => mid(52, i));
+      const fut = []; { let last = T[n - 1]; for (let k = 1; k <= 26; k++) { if (typeof last === "number") { last = last + (T[n - 1] - T[n - 2]); } else { const d = new Date(last + "T12:00:00"); do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6); last = isoD(d); } fut.push(last); } }
+      const TT = T.concat(fut), sh = arr => TT.map((t, i) => { const v = arr[i - 26]; return v == null ? null : { time: t, value: v }; }).filter(Boolean);
+      const mk = (data, col, w = 1) => { const s3 = chart.addLineSeries({ color: col, lineWidth: w, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }); s3.setData(data); ema.ichi.push(s3); return s3; };
+      mk(ser2(ten), "#2962ff"); mk(ser2(kij), "#b71c1c"); const A = sh(sa), Bs = sh(sb); const sA = mk(A, "rgba(67,160,71,.9)"), sB = mk(Bs, "rgba(244,67,54,.9)");
+      mk(T.map((t, i) => i + 26 < n ? { time: t, value: c.c[i + 26] } : null).filter(Boolean), "rgba(156,39,176,.7)");
+      const mA = new Map(A.map(x => [x.time, x.value])), mB = new Map(Bs.map(x => [x.time, x.value]));
+      ema.ichiP = { pts: TT.filter(t => mA.has(t) && mB.has(t)).map(t => [t, mA.get(t), mB.get(t)]) };
+      const cloud = { draw: tg => tg.useMediaCoordinateSpace(({ context: x }) => { const ts = chart.timeScale(), Y = v => sA.priceToCoordinate(v), P = ema.ichiP.pts;
+        for (let k = 1; k < P.length; k++) { const x1 = ts.timeToCoordinate(P[k - 1][0]), x2 = ts.timeToCoordinate(P[k][0]); if (x1 == null || x2 == null) continue;
+          const up = P[k][1] >= P[k][2]; x.fillStyle = up ? "rgba(67,160,71,.16)" : "rgba(244,67,54,.16)"; x.beginPath(); x.moveTo(x1, Y(P[k - 1][1])); x.lineTo(x2, Y(P[k][1])); x.lineTo(x2, Y(P[k][2])); x.lineTo(x1, Y(P[k - 1][2])); x.closePath(); x.fill(); } }) };
+      sA.attachPrimitive({ paneViews: () => [{ zOrder: () => "bottom", renderer: () => cloud }], updateAllViews() {} }); } }
   const vol = chart.addHistogramSeries({ priceScaleId: "vol", priceFormat: { type: "volume" }, lastValueVisible: false, priceLineVisible: false });
   chart.priceScale("vol").applyOptions({ scaleMargins: { top: .87, bottom: 0 } });
   vol.setData(T.map((t, i) => ({ time: t, value: c.v[i] || 0, color: c.c[i] >= c.o[i] ? "rgba(48,209,88,.22)" : "rgba(255,69,58,.22)" })));
@@ -10527,7 +10556,7 @@ function buildMain(el, c, r, opts) {
   h.legendLast = () => { if (!hov) h.legend(-1); };
   h.legend(-1);
   h.apply = () => {
-    EMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); SMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); ema.bb.forEach(x => x.applyOptions({ visible: !!clGet("bb") })); vol.applyOptions({ visible: !!clGet("vol") }); vpp.update();
+    EMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); SMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); ema.bb.forEach(x => x.applyOptions({ visible: !!clGet("bb") })); if (!!clGet("ichi") !== !!ema.ichiP && h.tab) setTimeout(indRebuild, 0); vol.applyOptions({ visible: !!clGet("vol") }); vpp.update();
     pls.forEach(x => candles.removePriceLine(x)); pls = [];
     if (clGet("plan")) [[p.entry, "Kaufzone oben", "#eceef2", 0], [p.stop, "Stop", "#ff453a", 0], [ko, "K.-o. Turbo", "#ff9f0a", 1]]
       .forEach(([pr, t, col, st]) => { if (pr != null) pls.push(candles.createPriceLine({ price: pr, title: t, color: col, lineWidth: 1, lineStyle: st, axisLabelVisible: true })); });
@@ -10761,12 +10790,12 @@ let ctPop = false, ctFocus = null;
 function ctabBarHtml(h) {
   const M = h.M, sw = (k, lbl, col, ok = true, auto) => ok ? `<button class="ct-row" data-cl="${k}"${auto != null ? ` data-auto="${auto ? 1 : 0}"` : ""} role="switch" aria-checked="${clGet(k, auto) ? "true" : "false"}"><i style="background:${col}"></i><span>${lbl}</span><u class="ct-sw${clGet(k, auto) ? " on" : ""}"></u></button>` : "";
   const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
-  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), ...SMA_DEF.map(x => x[0]), "bb", "vol", "vp", "plan", "auto"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length)).length;
+  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), ...SMA_DEF.map(x => x[0]), "bb", "ichi", "vol", "vp", "plan", "auto"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length)).length;
   const grp = (t, body) => body ? `<div class="ct-g"><div class="ct-gh">${t}</div>${body}</div>` : "";
   return `<div class="ct-tl"><div class="ct-seg"><button class="ct-b ct-lay${ctPop ? " on" : ""}" data-ctlayers aria-expanded="${ctPop}" title="Ebenen ein-/ausblenden">${CT_IC.layers}<span>Ebenen</span><small>${nOn}</small></button></div>
-      <div class="ct-seg"><button class="ct-b${MEAS.on ? " on" : ""}" data-clm title="Messen: Start- und Endkerze antippen" aria-label="Messen">${CT_IC.ruler}<span class="ct-lbl">Messen</span></button><button class="ct-b${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle setzen" aria-label="Welle setzen">${CT_IC.wave}<span class="ct-lbl">${M.own ? "Eigene Welle" : "Welle"}</span></button><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button>${M.own ? `<button class="ct-b" data-clwreset title="Zurück zur Welle, die Kairo bestimmt" aria-label="Kairo-Welle">${CT_IC.reset}</button>` : ""}</div></div>
+      <div class="ct-seg"><button class="ct-b${MEAS.on ? " on" : ""}" data-clm title="Messen: Start- und Endkerze antippen" aria-label="Messen">${CT_IC.ruler}<span class="ct-lbl">Messen</span></button><button class="ct-b${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle setzen" aria-label="Welle setzen">${CT_IC.wave}<span class="ct-lbl">${M.own ? "Eigene Welle" : "Welle"}</span></button><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button><button class="ct-b" data-alc title="Alarme: alle Alarme, Kurs- und RSI-Alarm" aria-label="Alarme">🔔<span class="ct-lbl">Alarme</span>${alCount() ? `<small>${alCount()}</small>` : ""}</button>${M.own ? `<button class="ct-b" data-clwreset title="Zurück zur Welle, die Kairo bestimmt" aria-label="Kairo-Welle">${CT_IC.reset}</button>` : ""}</div></div>
     ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, true))}
-      ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.concat(SMA_DEF).map(([k, col, l]) => sw(k, l, col)).join(""))}${grp("Indikatoren", sw("bb", "Bollinger-Bänder (20, 2)", "#2962ff"))}
+      ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.concat(SMA_DEF).map(([k, col, l]) => sw(k, l, col)).join(""))}${grp("Indikatoren", sw("bb", `Bollinger-Bänder (${IND_P().bbN}, ${IND_P().bbK})`, "#2962ff") + sw("ichi", "Ichimoku-Wolke", "#30d158"))}${grp("Indikator-Einstellungen", `<div class="ip-g">${[["rsi", "RSI-Periode"], ["stK", "Stochastik %K"], ["stD", "Stochastik %D"], ["atr", "ATR-Periode"], ["adx", "ADX-Periode"], ["bbN", "Bollinger-Periode"], ["bbK", "Bollinger-Faktor"]].map(([k, l]) => `<label><span>${l}</span><input type="number" inputmode="decimal" data-ip="${k}" value="${IND_P()[k]}" step="${k === "bbK" ? ".5" : "1"}"></label>`).join("")}</div>`)}
       ${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa"))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a"))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
 }
 function ctabBuild(c, r) {
@@ -10774,7 +10803,7 @@ function ctabBuild(c, r) {
   if (c.tf && c.tf !== "D") r = { ...r, zone: null, plan: c.intra ? r.plan : r.plan };            // Wochen-/Monatschart: Kairo-Welle und -Zone gehören zum Tageschart
   const k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r), chg = r.change ?? r.d1, off = !!state.cfSideOff;
   el.dataset.t = r.ticker; el.classList.toggle("side-off", off); ctPop = false;
-  const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="${lbl.split(" ·")[0]} groß">${CT_IC.expand}</button></div><div class="ctab-c" id="${id}"></div></div>`;
+  const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="Indikator groß">${CT_IC.expand}</button></div><div class="ctab-c" id="${id}"></div></div>`;
   el.innerHTML = `<div class="ct-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="ctQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="${innerWidth < 640 ? "Chart suchen – jede Aktie" : "Chart suchen – jede Aktie, Name oder Kürzel (z. B. Amazon, UBS, Rheinmetall)"}" aria-label="Chart suchen"><div id="ctList" class="ct-list" hidden></div></div>
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
       <span class="st ${k.cls}">${esc(k.t)}</span><button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
@@ -10783,7 +10812,7 @@ function ctabBuild(c, r) {
         <button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
     <div class="ctab-grid"><div class="ctab-l">
       <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="cmp" id="cmpBox"><button class="cmp-b" data-cmpopen title="Symbol vergleichen" aria-label="Symbol vergleichen">＋ Vergleichen</button><div class="cmp-pop" id="cmpPop" hidden>${[["^GSPC", "S&P 500"], ["^NDX", "Nasdaq 100"], ["^GDAXI", "DAX"], ["^STOXX", "STOXX 600"]].map(([v, l]) => `<button data-cmp="${v}">${l}</button>`).join("")}<button data-cmp="?">Andere Aktie …</button></div><div class="cmp-chips" id="cmpChips"></div></div><div class="dr-tb" id="drTb"></div><div class="dr-sel" id="drSel" hidden></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
-      ${pane("tRsi", `RSI 14 · SMA 14 · 30/50/70${r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}`, "rsi")}${pane("tMacd", "MACD 12/26/9 · Linie, Signal, Histogramm", "macd")}${pane("tMbi", "Momentum Bias Index · grün/rot · X-Signale", "mbi")}
+      ${pane("tRsi", paneLbl(0, r), "rsi")}${pane("tMacd", paneLbl(1, r), "macd")}${pane("tMbi", paneLbl(2, r), "mbi")}
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside></div>`;
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
   cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
@@ -10973,6 +11002,7 @@ const DR_TOOLS = [["tl", "Trendlinie", '<path d="M5 19 19 5"/><circle cx="5" cy=
   ["fib", "Fib-Retracement", '<path d="M3 5h18M3 9.5h18M3 13h18M3 19h18" opacity=".9"/><path d="M5 19 19 5" stroke-dasharray="2 2"/>'],
   ["rect", "Rechteck", '<rect x="4" y="6" width="16" height="12" rx="1"/>'],
   ["long", "Long-Position", '<path d="M4 6h10M4 12h16M4 18h10"/><circle cx="4" cy="12" r="1.4"/><text x="16" y="8.5" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="-apple-system,sans-serif">L</text>'],
+  ["avwap", "Verankerter VWAP", '<path d="M3 18c4-1 5-9 9-9s5 6 9 4"/><path d="M5 21V5" stroke-dasharray="2 2"/><circle cx="5" cy="18" r="1.8"/>'],
   ["short", "Short-Position", '<path d="M4 6h10M4 12h16M4 18h10"/><circle cx="4" cy="12" r="1.4"/><text x="16" y="21" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="-apple-system,sans-serif">S</text>']];
 const drKey = h => h && h.r ? String(h.r.ticker).replace(/@rp$/, "") + (h.c && h.c.intra ? "|i" : "") : "";   // Intraday-Zeichnungen getrennt (Zeitachse mit Uhrzeit)
 const drList = h => (state.draws || {})[drKey(h)] || [];
@@ -10991,6 +11021,9 @@ function drMag(h, li, p, y) {   // Magnet: nächster Wert von E/H/T/S der Kerze,
   if (state.drMag === 0) return p; const c = h.c, i = Math.round(li); if (i < 0 || i >= c.t.length) return p;
   let best = p, bd = 14; [c.o[i], c.h[i], c.l[i], c.c[i]].forEach(v => { if (v == null) return; const yy = h.candles.priceToCoordinate(v); if (yy != null && Math.abs(yy - y) < bd) { bd = Math.abs(yy - y); best = v; } });
   return best; }
+// Verankerter VWAP (wie TradingView „Anchored VWAP“): volumengewichteter Durchschnittskurs ab der gewählten Kerze
+function drVwap(h, d) { const c = h.c, n = c.t.length, i0 = Math.max(0, Math.min(n - 1, Math.round(drIdx(h, d.a)))), o = []; let pv = 0, vv = 0;
+  for (let i = i0; i < n; i++) { const v = (c.v && c.v[i]) || 0, tp = (c.h[i] + c.l[i] + c.c[i]) / 3; if (!(tp > 0)) continue; pv += tp * (v || 1); vv += v || 1; o.push([i, pv / vv]); } return o; }
 function drPrimitive(h) {
   let series = null, chart = null;
   const F = "600 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
@@ -11011,6 +11044,8 @@ function drPrimitive(h) {
         x.beginPath(); x.moveTo(ax, ay); x.lineTo(ex, ey); x.stroke(); if (d.al && d.al.on) lbl("🔔", bx + 6, by, col, "left", false); if (sel) { handle(ax, ay); handle(bx, by); } }
       else if (d.k === "hl") { x.beginPath(); x.moveTo(0, ay); x.lineTo(W, ay); x.stroke(); lbl(`${d.al && d.al.on ? "🔔 " : ""}${fmt(d.a.p)}`, W - 4, ay, col, "right"); if (sel) handle(ax, ay); }
       else if (d.k === "hr") { x.beginPath(); x.moveTo(ax, ay); x.lineTo(W, ay); x.stroke(); lbl(`${d.al && d.al.on ? "🔔 " : ""}${fmt(d.a.p)}`, W - 4, ay, col, "right"); if (sel) handle(ax, ay); }
+      else if (d.k === "avwap") { const V = drVwap(h, d); if (V.length > 1) { x.beginPath(); V.forEach(([i, v], k) => { const px = X(i), py = Y(v); if (px == null || py == null) return; k ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
+          const [li, lv] = V[V.length - 1], lx = X(li), ly = Y(lv); if (lx != null && ly != null) lbl(`VWAP ${fmt(lv)}`, W - 4, ly, col, "right"); if (sel) { const sy = Y(V[0][1]); handle(X(V[0][0]), sy); } } }
       else if (d.k === "rect" && bx != null) { x.fillStyle = `rgba(${col},.14)`; x.fillRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay)); x.lineWidth = 1.5; x.strokeRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay));
         if (sel) { handle(ax, ay); handle(bx, by); handle(ax, by); handle(bx, ay); } }
       else if (d.k === "fib" && bx != null) {
@@ -11041,6 +11076,7 @@ function drGeo(h, d) { const ts = h.chart.timeScale(), X = i => ts.logicalToCoor
   return { ax: X(drIdx(h, d.a)), ay: Y(d.a.p), bx: d.b ? X(drIdx(h, d.b)) : null, by: d.b ? Y(d.b.p) : null, yt: d.t != null ? Y(d.t) : null, ys: d.s != null ? Y(d.s) : null }; }
 function drHandles(h, d) { const g = drGeo(h, d);
   if (d.k === "hl" || d.k === "hr") return [["a", g.ax, g.ay]];
+  if (d.k === "avwap") { const V = drVwap(h, d); return V.length ? [["a", g.ax, h.candles.priceToCoordinate(V[0][1])]] : []; }
   if (d.k === "rect") return [["a", g.ax, g.ay], ["b", g.bx, g.by], ["ab", g.ax, g.by], ["ba", g.bx, g.ay]];
   if (d.k === "long" || d.k === "short") { const xl = Math.min(g.ax, g.bx), xr = Math.max(g.ax, g.bx); return [["a", xl, g.ay], ["w", xr, g.ay], ["t", xl, g.yt], ["s", xl, g.ys]]; }
   return [["a", g.ax, g.ay], ["b", g.bx, g.by]]; }
@@ -11050,6 +11086,7 @@ function drHit(h, px, py) {
   for (let k = L.length - 1; k >= 0; k--) { const d = L[k], g = drGeo(h, d); if (g.ax == null || g.ay == null) continue;
     if (d.k === "tl" && g.bx != null) { let ex = g.bx, ey = g.by; if (d.ext && g.bx !== g.ax) { ex = g.bx > g.ax ? W : 0; ey = g.ay + (g.by - g.ay) * (ex - g.ax) / (g.bx - g.ax); } if (seg(g.ax, g.ay, ex, ey) < 9) return { d }; }
     else if (d.k === "hl" && Math.abs(py - g.ay) < 9) return { d };
+    else if (d.k === "avwap") { const li = Math.round(h.chart.timeScale().coordinateToLogical(px)), V = drVwap(h, d), hit = V.find(([i]) => i === li); if (hit) { const yy = h.candles.priceToCoordinate(hit[1]); if (yy != null && Math.abs(py - yy) < 9) return { d }; } }
     else if (d.k === "hr" && px >= g.ax - 9 && Math.abs(py - g.ay) < 9) return { d };
     else if (g.bx != null) { let x1 = Math.min(g.ax, g.bx), x2 = Math.max(g.ax, g.bx), y1 = Math.min(g.ay, g.by), y2 = Math.max(g.ay, g.by);
       if (d.k === "fib" && d.ext) x2 = W; if (d.k === "long" || d.k === "short") { y1 = Math.min(g.ay, g.yt, g.ys); y2 = Math.max(g.ay, g.yt, g.ys); }
@@ -11072,6 +11109,7 @@ function drAttach(h) {
       if (DRAW.wait) { const t = DRAW.wait; t.b = drAnc(h, q.li, q.p); DRAW.wait = null; DRAW.act = null; drFinish(h, t); return; }
       const k = DRAW.tool, A = drAnc(h, q.li, q.p);
       if (k === "hl" || k === "hr") { drFinish(h, { id: uid(), k, a: A, c: DR_COL[0] }); return; }
+      if (k === "avwap") { drFinish(h, { id: uid(), k, a: A, c: "255,159,10" }); return; }
       if (k === "long" || k === "short") { const c = h.c, i = Math.min(c.t.length - 1, Math.max(14, Math.round(q.li))); let atr = 0; for (let j = i - 13; j <= i; j++) atr += c.h[j] - c.l[j]; atr /= 14;
         const sgn = k === "long" ? 1 : -1, st = q.p - sgn * 1.5 * atr; drFinish(h, { id: uid(), k, a: A, b: drAnc(h, q.li + 25, q.p), s: +st.toPrecision(6), t: +(q.p + sgn * 2 * Math.abs(q.p - st)).toPrecision(6) }); return; }
       const t = { id: uid(), k, a: A, b: { ...A }, c: k === "fib" ? null : DR_COL[0] }; DRAW.act = { mode: "new", temp: t, x0: P.x, y0: P.y }; h.drReq && h.drReq(); return; }
@@ -11119,12 +11157,12 @@ function drTbRender(h) {
     <button class="dr-b${DRAW.hide ? " on" : ""}" data-drhide title="Alle Zeichnungen ausblenden" aria-label="Alle Zeichnungen ausblenden" ${n ? "" : "disabled"}>${ic(DRAW.hide ? '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a15 15 0 0 1-2.6 3.2M6.1 7.6C4 9.2 3 12 3 12s4 6 9 6c1.6 0 3-.4 4.3-1"/>' : '<path d="M3 12s4-6 9-6 9 6 9 6-4 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.6"/>')}</button>
     <button class="dr-b" data-drundo title="Rückgängig" aria-label="Rückgängig" ${(DRAW.hist[drKey(h)] || []).length ? "" : "disabled"}>${ic('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>')}</button>
     <button class="dr-b" data-drclear title="Zeichnungen entfernen" aria-label="Zeichnungen entfernen" ${n ? "" : "disabled"}>${ic('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')}</button>` : ""}
-    ${DRAW.wait ? `<span class="dr-hint">zweiten Punkt antippen</span>` : DRAW.tool ? `<span class="dr-hint">${DR_TOOLS.find(t => t[0] === DRAW.tool)[1]}: ${["hl", "hr", "long", "short"].includes(DRAW.tool) ? "Punkt antippen" : "ziehen oder 2 Punkte antippen"}</span>` : ""}`;
+    ${DRAW.wait ? `<span class="dr-hint">zweiten Punkt antippen</span>` : DRAW.tool ? `<span class="dr-hint">${DR_TOOLS.find(t => t[0] === DRAW.tool)[1]}: ${["hl", "hr", "long", "short", "avwap"].includes(DRAW.tool) ? (DRAW.tool === "avwap" ? "Startkerze antippen" : "Punkt antippen") : "ziehen oder 2 Punkte antippen"}</span>` : ""}`;
   h.el.classList.toggle("drawing", !!DRAW.tool);
 }
 function drSelRender(h) {
   const box = $("drSel"); if (!box) return; const d = drList(h).find(x => x.id === DRAW.sel); box.hidden = !d; if (!d) return;
-  const name = { tl: "Trendlinie", hl: "Horizontale Linie", hr: "Horizontaler Strahl", fib: "Fib-Retracement", rect: "Rechteck", long: "Long-Position", short: "Short-Position" }[d.k];
+  const name = { tl: "Trendlinie", hl: "Horizontale Linie", hr: "Horizontaler Strahl", fib: "Fib-Retracement", rect: "Rechteck", long: "Long-Position", short: "Short-Position", avwap: "Verankerter VWAP" }[d.k];
   box.innerHTML = `<b>${name}</b>${["long", "short", "fib"].includes(d.k) ? "" : DR_COL.map(c => `<button class="dr-c${(d.c || DR_COL[0]) === c ? " on" : ""}" data-drcol="${c}" style="--c:rgb(${c})" aria-label="Farbe"></button>`).join("")}
     ${["hl", "hr", "tl"].includes(d.k) ? `<button class="dr-t${d.al && d.al.on ? " on" : ""}" data-dral title="Alarm hinzufügen: Mitteilung, wenn der Kurs die Linie kreuzt">🔔 ${d.al && d.al.on ? "Alarm aktiv" : d.al && d.al.hit ? `ausgelöst ${dateDE(d.al.hit)}` : "Alarm hinzufügen"}</button>` : ""}
     ${d.k === "tl" || d.k === "fib" ? `<button class="dr-t${d.ext ? " on" : ""}" data-drext>${d.k === "fib" ? "Linien nach rechts verlängern" : "Rechts verlängern"}</button>` : ""}${d.k === "fib" ? `<button class="dr-t${d.x2 ? " on" : ""}" data-drx2>Stufen 1,618–4,236</button>` : ""}
@@ -11165,10 +11203,14 @@ function drLevelNow(t, d) {
   const bd = (x, y) => (x <= y ? 1 : -1) * bdBetween(new Date((x <= y ? x : y) + "T12:00:00"), new Date((x <= y ? y : x) + "T12:00:00"));
   const n12 = bd(d.a.d, d.b.d) + (d.b.o || 0) - (d.a.o || 0), n1t = bd(d.a.d, isoD(new Date())) - (d.a.o || 0); if (!n12) return d.a.p;
   return d.a.p + (d.b.p - d.a.p) * n1t / n12; }
-function drAlerts() { const o = []; Object.entries(state.draws || {}).forEach(([t, L]) => (L || []).forEach(d => { if (d.al && d.al.on && ["hl", "hr", "tl"].includes(d.k))
+function alCount() { return drAlerts().length; }
+function drAlerts() { const o = []; (state.alerts || []).forEach(a => { if (a.on) o.push({ i: a.id, t: a.t, n: a.n, k: a.k, p: a.v, op: a.op, dir: a.k === "px" ? (a.op === ">" ? "up" : "down") : undefined, at: a.at }); }); Object.entries(state.draws || {}).forEach(([t, L]) => (L || []).forEach(d => { if (d.al && d.al.on && ["hl", "hr", "tl"].includes(d.k))
   o.push({ i: d.id, t, n: String((rowFor(t) || {}).n || (rowFor(t) || {}).name || t).slice(0, 28), k: d.k, p: +(+d.a.p).toPrecision(7), ...(d.k === "tl" && d.b ? { d1: d.a.d, p2: +(+d.b.p).toPrecision(7), d2: d.b.d } : {}), dir: d.al.dir, at: d.al.at }); })); return o.slice(0, 200); }
 function drAlertCheck() {
   let hit = 0; const all = { ...(state.draws || {}) };
+  (state.alerts || []).forEach(a => { if (!a.on || a.k !== "px") return; const px = drPxNow(a.t); if (px == null) return;
+    if ((a.op === ">" && px >= a.v) || (a.op === "<" && px <= a.v)) { a.on = 0; a.hit = isoD(new Date()); hit++; const msg = `${a.n || tkClean(a.t)} ${a.op === ">" ? "über" : "unter"} ${fmt(a.v)} (Kurs ${fmt(px)})`;
+      try { navigator.serviceWorker && navigator.serviceWorker.ready.then(reg => reg.showNotification(`🔔 Kurs-Alarm`, { body: msg, tag: "kairo-al-" + a.id, data: { url: `?sec=chart&t=${a.t}` } })); } catch (x) {} drToast(`🔔 ${msg}`); } });
   Object.entries(all).forEach(([t, L]) => { (L || []).forEach(d => { if (!(d.al && d.al.on)) return; const px = drPxNow(t), lv = drLevelNow(t, d); if (px == null || lv == null) return;
     if ((d.al.dir === "up" && px >= lv) || (d.al.dir === "down" && px <= lv)) { d.al = { on: 0, hit: isoD(new Date()) }; hit++;
       const nm = String((rowFor(t) || {}).n || (rowFor(t) || {}).name || tkClean(t)), msg = `${nm} kreuzt ${fmt(lv)} (Kurs ${fmt(px)})`;
@@ -11179,6 +11221,36 @@ function drAlertCheck() {
 function drToast(tx) { let el = $("drToast"); if (!el) { document.body.insertAdjacentHTML("beforeend", `<div id="drToast" class="dr-toast" role="status"></div>`); el = $("drToast"); }
   el.textContent = tx; el.classList.add("on"); clearTimeout(drToast.t); drToast.t = setTimeout(() => el.classList.remove("on"), 7000); }
 setInterval(() => { if (document.visibilityState === "visible") drAlertCheck(); }, 60e3);
+// Alarm-Zentrale (wie TradingView „Alarme“): alle Alarme an einem Ort; neue Kurs- und RSI-Alarme ohne Zeichnung
+async function alCenter() {
+  const L = window.__lastChart, t = L && L.r ? String(L.r.ticker).replace(/@rp$/, "") : null, nm = t ? String((rowFor(t) || {}).name || (rowFor(t) || {}).n || tkClean(t)) : "";
+  const px = t ? drPxNow(t) : null, lines = [];
+  Object.entries(state.draws || {}).forEach(([tk, Ls]) => (Ls || []).forEach(d => { if (d.al && (d.al.on || d.al.hit)) lines.push({ kind: "draw", tk: tk.replace(/\|i$/, ""), key: tk, d }); }));
+  (state.alerts || []).forEach(a => lines.push({ kind: "al", tk: a.t, a }));
+  const row = x => { const on = x.kind === "draw" ? x.d.al.on : x.a.on, hit = x.kind === "draw" ? x.d.al.hit : x.a.hit, nn = String((rowFor(x.tk) || {}).name || (rowFor(x.tk) || {}).n || tkClean(x.tk)).slice(0, 26);
+    const what = x.kind === "draw" ? `${{ hl: "Horizontale Linie", hr: "Strahl", tl: "Trendlinie" }[x.d.k]} kreuzt ${fmt(drLevelNow(x.tk, x.d))}` : x.a.k === "px" ? `Kurs ${x.a.op === ">" ? "über" : "unter"} ${fmt(x.a.v)}` : `RSI 14 ${x.a.op === ">" ? "über" : "unter"} ${fmt(x.a.v, 0)}`;
+    return `<div class="al-r ${on ? "" : "off"}"><span><b>${esc(nn)}</b><small>${what}${on ? "" : hit ? ` · ausgelöst ${dateDE(hit)}` : " · aus"}</small></span><button class="hlink" data-algo="${esc(x.tk)}">Chart</button><button class="hlink del" data-aldel="${x.kind}|${esc(x.kind === "draw" ? x.key + "|" + x.d.id : x.a.id)}">Entfernen</button></div>`; };
+  const html = `${lines.length ? lines.map(row).join("") : `<p class="muted" style="margin:4px 0 10px">Noch keine Alarme. Lege unten einen an oder tippe im Chart eine Linie an → „🔔 Alarm hinzufügen“.</p>`}
+    ${t ? `<div class="al-new"><b>Neuer Alarm für ${esc(nm)}</b>${px ? `<small>Kurs jetzt ${fmt(px)}</small>` : ""}
+      <div class="al-f"><select id="alK"><option value="px">Kurs</option><option value="rsi">RSI 14</option></select><select id="alOp"><option value=">">steigt über</option><option value="<">fällt unter</option></select><input id="alV" type="number" inputmode="decimal" step="any" value="${px ? (px * 1.05).toFixed(2) : ""}"><button class="btn sm" data-aladd="${esc(t)}">Anlegen</button></div></div>` : ""}
+    <p class="muted" style="font-size:12px;margin:8px 0 0">Alarme kommen einmal. In der App sofort; bei geschlossener App als Mitteilung, wenn dein Kursdienst Version 9 hat (RSI-Alarme nur so – geprüft mit dem Tagesschluss).</p>`;
+  let box = $("alBox"); if (!box) { document.body.insertAdjacentHTML("beforeend", `<div id="alBox" class="al-box" role="dialog" aria-label="Alarme"><div class="al-in"><div class="al-h"><b>Alarme</b><button class="hlink" data-alx>Schließen</button></div><div id="alBody"></div></div></div>`); box = $("alBox"); }
+  $("alBody").innerHTML = html; box.hidden = false;
+}
+document.addEventListener("click", e => {
+  const t = e.target;
+  if (t.closest("[data-alc]")) { alCenter(); return; }
+  if (t.closest("[data-alx]") || t.id === "alBox") { const b = $("alBox"); if (b) b.hidden = true; return; }
+  const ad = t.closest("[data-aladd]"); if (ad) { const k = $("alK").value, op = $("alOp").value, v = parseFloat(String($("alV").value).replace(",", ".")); if (!(v > 0)) { kSay("Bitte einen Wert eingeben."); return; }
+    const tk = ad.dataset.aladd; state.alerts = [...(state.alerts || []), { id: Date.now().toString(36), t: tk, n: String((rowFor(tk) || {}).name || (rowFor(tk) || {}).n || tkClean(tk)).slice(0, 28), k, op, v, at: isoD(new Date()), on: 1 }]; save();
+    if (window.Notification && Notification.permission === "default") try { Notification.requestPermission(); } catch (x) {}
+    try { kxSync(); } catch (x) {} alCenter(); if (cfChart && $("cfBar")) $("cfBar").innerHTML = ctabBarHtml(cfChart); return; }
+  const dl = t.closest("[data-aldel]"); if (dl) { const [kind, ...rest] = dl.dataset.aldel.split("|");
+    if (kind === "al") state.alerts = (state.alerts || []).filter(a => a.id !== rest[0]);
+    else { const id = rest.pop(), key = rest.join("|"), all = { ...(state.draws || {}) }; all[key] = (all[key] || []).map(d => d.id === id ? { ...d, al: undefined } : d); state.draws = all; }
+    save(); try { kxSync(); } catch (x) {} alCenter(); if (cfChart && $("cfBar")) $("cfBar").innerHTML = ctabBarHtml(cfChart); if (DRAW.h && DRAW.h.drReq) DRAW.h.drReq(); return; }
+  const go = t.closest("[data-algo]"); if (go) { const b = $("alBox"); if (b) b.hidden = true; cockpitGo(go.dataset.algo); }
+});
 // ---------- Chart-Replay (Runde 13.11., wie TradingView „Bar Replay“): den Chart Tag für Tag nachspielen und üben ----------
 // Der Chart zeigt nur die Kerzen bis zum Replay-Tag – Indikatoren (EMA, RSI, MACD, MBI) sind rückwärts gerechnet und damit
 // genau so, wie man sie damals sah. Kairo-Status, Plan und Fibonacci des heutigen Scans sind ausgeblendet (wären Wissen aus der Zukunft).
@@ -11565,35 +11637,54 @@ const chartOpts = el => ({ width: el.clientWidth, height: el.clientHeight, layou
     grid: { vertLines: { color: LC().g }, horzLines: { color: LC().g } }, rightPriceScale: { borderColor: LC().b },
     timeScale: { borderColor: LC().b }, crosshair: { mode: 0 }, localization: { locale: "de-DE", priceFormatter: v => fmt(v) } });
 // RSI, MACD und Momentum Bias Index als eigene Fenster – für Detailseite und Chart-Reiter
-function indCharts(c, r, eR, eM, eB) {
-  const LW = window.LightweightCharts, opts = chartOpts, T = c.t, pts = (k, f = v => v) => T.map((t, i) => c[k][i] == null ? null : { time: t, value: f(c[k][i]) }).filter(Boolean);
-  const rsiC = LW.createChart(eR, opts(eR));
-  const rs = rsiC.addLineSeries({ color: "#b07cff", lineWidth: 1.5, priceLineVisible: false });
-  rs.setData(pts("rsi"));
-  rsiC.addLineSeries({ color: "#f4b740", lineWidth: 1, priceLineVisible: false, lastValueVisible: false }).setData(pts("rsi_sma"));
-  [30, 50, 70].forEach(v => rs.createPriceLine({ price: v, color: "#5d6676", lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
-  if (r.div && r.div.t1) rsiC.addLineSeries({ color: "#30d158", lineWidth: 2, priceLineVisible: false, lastValueVisible: false })
-    .setData([{ time: r.div.t1, value: r.div.rsi_t1 }, { time: r.div.t2, value: r.div.rsi_t2 }]);
-
-  const macdC = LW.createChart(eM, opts(eM));
-  macdC.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false }).setData(T.map((t, i) => c.hist[i] == null ? null :
-    ({ time: t, value: c.hist[i], color: c.hist[i] >= 0 ? (i && c.hist[i] < c.hist[i - 1] ? "rgba(48,209,88,.5)" : "#30d158") : (i && c.hist[i] > c.hist[i - 1] ? "rgba(255,69,58,.5)" : "#ff453a") })).filter(Boolean));
-  macdC.addLineSeries({ color: "#4aa3ff", lineWidth: 1.5, priceLineVisible: false }).setData(pts("macd"));
-  macdC.addLineSeries({ color: "#f4b740", lineWidth: 1.5, priceLineVisible: false }).setData(pts("sig"));
-
-  const mbiC = LW.createChart(eB, opts(eB));
-  const mbiF = { type: "price", precision: 0, minMove: 1 };
-  mbiC.applyOptions({ localization: { locale: "de-DE", priceFormatter: v => fmt(v, 0) } });   // MBI ist ein Index – ganze Zahlen statt „4.000,00“
-  mbiC.addHistogramSeries({ color: "rgba(48,209,88,.75)", priceLineVisible: false, lastValueVisible: false, priceFormat: mbiF }).setData(pts("mbi_up"));
-  const lo = mbiC.addHistogramSeries({ color: "rgba(255,69,58,.75)", priceLineVisible: false, lastValueVisible: false, priceFormat: mbiF });
-  lo.setData(pts("mbi_lo"));
-  mbiC.addLineSeries({ color: "#8d96a7", lineWidth: 1, lineStyle: 1, priceLineVisible: false, lastValueVisible: false, priceFormat: mbiF }).setData(pts("mbi_ref"));
-  lo.setMarkers(T.flatMap((t, i) => [
-    ...(c.gx[i] ? [{ time: t, position: "aboveBar", color: "#30d158", shape: "circle", text: "X" }] : []),
-    ...(c.rx[i] ? [{ time: t, position: "aboveBar", color: "#ff453a", shape: "circle", text: "X" }] : [])]));
-
-  return [rsiC, macdC, mbiC];
+// Indikator-Fenster (Runde 13.11., wie TradingView): jedes der drei Fenster frei wählbar, Perioden einstellbar (Ebenen → Indikator-Einstellungen)
+const PANE_DEF = ["rsi", "macd", "mbi"];
+const IND_P = () => ({ rsi: 14, stK: 14, stD: 3, atr: 14, adx: 14, bbN: 20, bbK: 2, ...(state.ip || {}) });
+const IND_L = { rsi: "RSI", macd: "MACD", mbi: "Momentum Bias Index", stoch: "Stochastik", atr: "ATR", obv: "OBV (On-Balance-Volumen)", adx: "ADX / DMI" };
+function rsiN(C, n) { const R = Array(C.length).fill(null); let g = 0, l = 0; for (let i = 1; i < C.length; i++) { const ch = C[i] - C[i - 1], up = Math.max(ch, 0), dn = Math.max(-ch, 0);
+  if (i <= n) { g += up / n; l += dn / n; } else { g = (g * (n - 1) + up) / n; l = (l * (n - 1) + dn) / n; } if (i >= n) R[i] = l ? 100 - 100 / (1 + g / l) : 100; } return R; }
+function wilder(a, n) { const o = Array(a.length).fill(null); let s0 = 0, k = 0; for (let i = 0; i < a.length; i++) { if (a[i] == null) continue; k++; if (k <= n) { s0 += a[i]; if (k === n) o[i] = s0 / n; } else o[i] = (o[i - 1] * (n - 1) + a[i]) / n; } return o; }
+function paneLbl(i, r) { const k = (state.panes || PANE_DEF)[i] || PANE_DEF[i], P = IND_P();
+  const sub = { rsi: `${P.rsi} · SMA 14 · 30/50/70${k === "rsi" && P.rsi === 14 && r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}`, macd: "12/26/9", mbi: "grün/rot · X-Signale", stoch: `${P.stK}/${P.stD} · 20/80`, atr: `${P.atr} · in % vom Kurs`, obv: "kumuliert", adx: `${P.adx} · +DI/−DI` }[k];
+  return `<select class="pane-sel" data-panesel="${i}" aria-label="Indikator wählen">${Object.entries(IND_L).map(([v, l]) => `<option value="${v}"${v === k ? " selected" : ""}>${l}</option>`).join("")}</select><span>${sub}</span>`; }
+function indCharts(c, r, eR, eM, eB, fixed) {
+  const LW = window.LightweightCharts, opts = chartOpts, T = c.t, P = IND_P(), n = T.length;
+  const ser = (arr) => T.map((t, i) => arr[i] == null || !isFinite(arr[i]) ? null : { time: t, value: arr[i] }).filter(Boolean);
+  const pts = (k, f = v => v) => T.map((t, i) => c[k][i] == null ? null : { time: t, value: f(c[k][i]) }).filter(Boolean);
+  const line = (ch, arr, col, w = 1.5, extra = {}) => { const s2 = ch.addLineSeries({ color: col, lineWidth: w, priceLineVisible: false, lastValueVisible: true, ...extra }); s2.setData(ser(arr)); return s2; };
+  const B = {
+    rsi: el => { const ch = LW.createChart(el, opts(el)), R = P.rsi === 14 && c.rsi ? c.rsi : rsiN(c.c, P.rsi), rs = line(ch, R, "#b07cff");
+      line(ch, smaN(R, 14), "#f4b740", 1, { lastValueVisible: false }); [30, 50, 70].forEach(v => rs.createPriceLine({ price: v, color: "#5d6676", lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
+      if (P.rsi === 14 && r.div && r.div.t1) ch.addLineSeries({ color: "#30d158", lineWidth: 2, priceLineVisible: false, lastValueVisible: false }).setData([{ time: r.div.t1, value: r.div.rsi_t1 }, { time: r.div.t2, value: r.div.rsi_t2 }]);
+      return ch; },
+    macd: el => { const ch = LW.createChart(el, opts(el));
+      ch.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false }).setData(T.map((t, i) => c.hist[i] == null ? null :
+        ({ time: t, value: c.hist[i], color: c.hist[i] >= 0 ? (i && c.hist[i] < c.hist[i - 1] ? "rgba(48,209,88,.5)" : "#30d158") : (i && c.hist[i] > c.hist[i - 1] ? "rgba(255,69,58,.5)" : "#ff453a") })).filter(Boolean));
+      ch.addLineSeries({ color: "#4aa3ff", lineWidth: 1.5, priceLineVisible: false }).setData(pts("macd")); ch.addLineSeries({ color: "#f4b740", lineWidth: 1.5, priceLineVisible: false }).setData(pts("sig")); return ch; },
+    mbi: el => { const ch = LW.createChart(el, opts(el)), mbiF = { type: "price", precision: 0, minMove: 1 };
+      ch.applyOptions({ localization: { locale: "de-DE", priceFormatter: v => fmt(v, 0) } });   // MBI ist ein Index – ganze Zahlen statt „4.000,00“
+      ch.addHistogramSeries({ color: "rgba(48,209,88,.75)", priceLineVisible: false, lastValueVisible: false, priceFormat: mbiF }).setData(pts("mbi_up"));
+      const lo = ch.addHistogramSeries({ color: "rgba(255,69,58,.75)", priceLineVisible: false, lastValueVisible: false, priceFormat: mbiF }); lo.setData(pts("mbi_lo"));
+      ch.addLineSeries({ color: "#8d96a7", lineWidth: 1, lineStyle: 1, priceLineVisible: false, lastValueVisible: false, priceFormat: mbiF }).setData(pts("mbi_ref"));
+      lo.setMarkers(T.flatMap((t, i) => [...(c.gx[i] ? [{ time: t, position: "aboveBar", color: "#30d158", shape: "circle", text: "X" }] : []), ...(c.rx[i] ? [{ time: t, position: "aboveBar", color: "#ff453a", shape: "circle", text: "X" }] : [])]));
+      return ch; },
+    stoch: el => { const ch = LW.createChart(el, opts(el)), K = c.c.map((x, i) => { if (i < P.stK - 1) return null; let hi = -Infinity, lo = Infinity; for (let k = i - P.stK + 1; k <= i; k++) { hi = Math.max(hi, c.h[k]); lo = Math.min(lo, c.l[k]); } return hi > lo ? (x - lo) / (hi - lo) * 100 : 50; });
+      const Ks = smaN(K, 3), D = smaN(Ks, P.stD), k2 = line(ch, Ks, "#4aa3ff"); line(ch, D, "#ff9f0a", 1.2); [20, 80].forEach(v => k2.createPriceLine({ price: v, color: "#5d6676", lineWidth: 1, lineStyle: 2, axisLabelVisible: false })); return ch; },
+    atr: el => { const ch = LW.createChart(el, opts(el)), tr = c.c.map((x, i) => i ? Math.max(c.h[i] - c.l[i], Math.abs(c.h[i] - c.c[i - 1]), Math.abs(c.l[i] - c.c[i - 1])) : c.h[i] - c.l[i]), A = wilder(tr, P.atr);
+      ch.applyOptions({ localization: { locale: "de-DE", priceFormatter: v => fmt(v, 2) + " %" } }); line(ch, A.map((a, i) => a == null ? null : a / c.c[i] * 100), "#64d2ff"); return ch; },
+    obv: el => { const ch = LW.createChart(el, opts(el)); let o = 0; const O = c.c.map((x, i) => (o += i ? (x > c.c[i - 1] ? 1 : x < c.c[i - 1] ? -1 : 0) * (c.v[i] || 0) : 0));
+      ch.applyOptions({ localization: { locale: "de-DE", priceFormatter: v => volFmt(Math.abs(v)) } }); line(ch, O, "#bf5af2"); line(ch, emaN(O, 20), "#8e8e93", 1, { lastValueVisible: false }); return ch; },
+    adx: el => { const ch = LW.createChart(el, opts(el)), N = P.adx, pdm = [], mdm = [], tr = [];
+      c.c.forEach((x, i) => { if (!i) { pdm.push(null); mdm.push(null); tr.push(null); return; } const up = c.h[i] - c.h[i - 1], dn = c.l[i - 1] - c.l[i];
+        pdm.push(up > dn && up > 0 ? up : 0); mdm.push(dn > up && dn > 0 ? dn : 0); tr.push(Math.max(c.h[i] - c.l[i], Math.abs(c.h[i] - c.c[i - 1]), Math.abs(c.l[i] - c.c[i - 1]))); });
+      const atr = wilder(tr, N), pdi = wilder(pdm, N).map((v, i) => v == null || !atr[i] ? null : v / atr[i] * 100), mdi = wilder(mdm, N).map((v, i) => v == null || !atr[i] ? null : v / atr[i] * 100);
+      const dx = pdi.map((v, i) => v == null || mdi[i] == null || v + mdi[i] === 0 ? null : Math.abs(v - mdi[i]) / (v + mdi[i]) * 100), adx = wilder(dx, N);
+      const a = line(ch, adx, "#eceef2", 1.8); line(ch, pdi, "#30d158", 1.2); line(ch, mdi, "#ff453a", 1.2); a.createPriceLine({ price: 25, color: "#5d6676", lineWidth: 1, lineStyle: 2, axisLabelVisible: false }); return ch; } };
+  return [eR, eM, eB].map((el, i) => { const k = fixed ? PANE_DEF[i] : (state.panes || PANE_DEF)[i] || PANE_DEF[i]; return (B[k] || B[PANE_DEF[i]])(el); });
 }
+document.addEventListener("change", e => { const sl = e.target.closest("[data-panesel]"); if (sl) { const p = [...(state.panes || PANE_DEF)]; p[+sl.dataset.panesel] = sl.value; state.panes = p; save(); indRebuild(); return; }
+  const ip = e.target.closest("[data-ip]"); if (ip) { const v = Math.max(2, Math.min(200, +ip.value || 0)); state.ip = { ...(state.ip || {}), [ip.dataset.ip]: ip.dataset.ip === "bbK" ? Math.max(.5, Math.min(5, +ip.value || 2)) : v }; save(); indRebuild(); } });
+function indRebuild() { if (RP.on) { rpRebuild(); return; } const L = window.__lastChart; if (L && L.c && L.r && state.sec === "chart") ctabBuild(L.c, L.r); }
 // Zeitachsen koppeln: Verschieben/Zoomen in einem Fenster bewegt alle
 function syncCharts(list) { let syncing = false;
   list.forEach(ch => ch.timeScale().subscribeVisibleLogicalRangeChange(range => {
@@ -11609,7 +11700,7 @@ function drawCharts(c, r) {
   if ($("clNote")) $("clNote").textContent = [MB.M.note, MB.M.lines.length ? "Linien: Wendepunkte mit mindestens 2 Berührungen (blau Unterstützung, rot Widerstand)" : ""].filter(Boolean).join(" · ");
   const zw = $("zoneWave"); if (zw) zw.innerHTML = MB.M.cls ? `Chart: ${esc(MB.M.note)} – vom Wellenanfang gemessen; die Scan-Regel misst ihre eigene Welle (oben).<br>` : "";
 
-  const [rsiC, macdC, mbiC] = indCharts(c, r, $("cRsi"), $("cMacd"), $("cMbi"));
+  const [rsiC, macdC, mbiC] = indCharts(c, r, $("cRsi"), $("cMacd"), $("cMbi"), true);
   charts = [main, rsiC, macdC, mbiC]; syncCharts(charts);
   main.timeScale().setVisibleLogicalRange(vr0);   // halbes Jahr – oder so weit zurück, dass die gezeigte Fibonacci-Welle ganz zu sehen ist
   new ResizeObserver(() => charts.forEach((ch, k) => { const el = [$("cMain"), $("cRsi"), $("cMacd"), $("cMbi")][k]; el && ch.applyOptions({ width: el.clientWidth }); })).observe($("detailBody"));
