@@ -119,7 +119,7 @@ export default {
     const q = (url.searchParams.get("q") || "").trim();
     if (q) return json(await search(q), cors);
     const c = (url.searchParams.get("c") || "").trim().toUpperCase();
-    if (c && /^[A-Z0-9.\-^=]{1,20}$/.test(c)) return json(await candles(c), cors);
+    if (c && /^[A-Z0-9.\-^=]{1,20}$/.test(c)) return json(await candles(c, url.searchParams.get("i") || "1d"), cors);
     const syms = (url.searchParams.get("s") || "").split(",").map(x => x.trim().toUpperCase())
       .filter(x => /^[A-Z0-9.\-^=]{1,20}$/.test(x)).slice(0, MAX);
     if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 9). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
@@ -202,20 +202,22 @@ async function search(q) {
   return { quotes: [], error: "Suche gerade nicht erreichbar" };
 }
 
-// Tageskerzen eines Jahres (Yahoo) – nur vollständige Kerzen
-async function candles(sym) {
+// Kerzen (Yahoo) – Tageskerzen eines Jahres; ab Version 9 auch Intraday (i=1h: 6 Monate, 15m: 1 Monat, 5m: 10 Tage, ca. 15 Min. verzögert)
+const IV = { "1d": "1y", "1h": "6mo", "15m": "1mo", "5m": "10d" };
+async function candles(sym, iv = "1d") {
+  if (!IV[iv]) iv = "1d";
   for (const host of ["query1", "query2"]) {
     try {
-      const r = await fetch(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1y`);
+      const r = await fetch(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${iv}&range=${IV[iv]}`);
       if (!r.ok) continue;
       const res = (((await r.json()).chart || {}).result || [])[0];
       const qd = res && res.indicators && res.indicators.quote && res.indicators.quote[0];
       if (!qd || !res.timestamp) continue;
-      const o = [], h = [], l = [], c = [], t = [];
-      res.timestamp.forEach((ts, i) => { if ([qd.open[i], qd.high[i], qd.low[i], qd.close[i]].every(v => v != null && v > 0)) {
-        o.push(qd.open[i]); h.push(qd.high[i]); l.push(qd.low[i]); c.push(qd.close[i]); t.push(ts * 1000); } });
+      const o = [], h = [], l = [], c = [], t = [], v = [];
+      res.timestamp.forEach((ts, i) => { if ([qd.open[i], qd.high[i], qd.low[i], qd.close[i]].every(x => x != null && x > 0)) {
+        o.push(qd.open[i]); h.push(qd.high[i]); l.push(qd.low[i]); c.push(qd.close[i]); t.push(ts * 1000); v.push(qd.volume ? qd.volume[i] || 0 : 0); } });
       const m = res.meta || {};
-      return { symbol: sym, name: m.longName || m.shortName || sym, cur: m.currency || null, exch: m.fullExchangeName || m.exchangeName || "", t, o, h, l, c };
+      return { symbol: sym, name: m.longName || m.shortName || sym, cur: m.currency || null, exch: m.fullExchangeName || m.exchangeName || "", iv, gmt: m.gmtoffset || 0, t, o, h, l, c, v };
     } catch (e) { /* nächster Host */ }
   }
   return { symbol: sym, error: "keine Kerzen" };
