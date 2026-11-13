@@ -70,8 +70,8 @@
     try { const d = (JSON.parse(localStorage.getItem("reversal-finder-v1") || "{}").design) || "";
       if (/^(postfach|tone-sand|light|ioslight)$/.test(d) || (d === "auto" && matchMedia("(prefers-color-scheme: light)").matches)) el.classList.add("lt");
       if (d === "tone-sand") el.classList.add("sand"); } catch (e) {}
-    // Volles Intro: erster Start des Tages, nach 2 Stunden Pause oder nach einem Update (neue INTRO_V); sonst nur kurz das Logo
-    const short = !reduce && (opts.full === false || (opts.full !== true && seen()));
+    // Volles Intro bei jedem Öffnen der App (Wunsch 13.11.); zurück aus dem Hintergrund nach 2 Stunden Pause ebenfalls
+    const short = !reduce && opts.full === false;   // Wunsch 13.11.: immer das ganze Intro (kurze Logo-Variante nur noch in der Vorschau)
     if (short) el.classList.add("short");
     // Flüssig (12.11.): bewegter Teil des vollen Intros bis ~1,75 s – so lange wartet die App mit ihrem Aufbau (KairoSplash.idle),
     // sonst blockiert sie den Hauptthread und das SVG-Logo springt (Zoom ins Zeichen fiel aus, KAIRO rutschte von rechts herein)
