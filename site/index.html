@@ -2200,6 +2200,14 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 }
 </style>
 
+<style id="seg-accent">
+/* Wunsch 13.11.: im Glas-Stil war die aktive Auswahl (Zeitraum, Ebenen-Werkzeug, Umschalter) kaum zu erkennen → Akzentfarbe mit Glasglanz */
+html .ct-rg button.on, html .ct-seg .ct-b.on, html .sp-seg button.on, html.glass .sp-seg button.on, html .aseg button.on, html.lt .ct-rg button.on, html.lt .ct-seg .ct-b.on, html.glass.lt .sp-seg button.on {
+  background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,0) 58%), var(--accent) !important; color: var(--accent-ink, #fff) !important; opacity: 1 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.38), inset 0 0 0 .5px rgba(255,255,255,.18), 0 2px 10px color-mix(in srgb, var(--accent) 45%, transparent) !important; }
+html .ct-seg .ct-b.on svg, html .ct-rg button.on svg { color: inherit; }
+html .ct-seg .ct-b.on small { background: rgba(255,255,255,.28) !important; color: inherit; }
+</style>
 </head>
 <body>
 <!-- Zugangscode: hält zufällige Besucher fern (kein echter Schutz – die Seite ist öffentlich). Nur der SHA-256-Wert steht hier. -->
@@ -2441,6 +2449,17 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .dr-rc b,.dr-rc em{text-align:right;font-variant-numeric:tabular-nums;font-style:normal;font-size:12.5px}.dr-cm summary{cursor:pointer;font-size:13px;font-weight:600;margin:6px 0}
 .dr-mx{display:grid;gap:2px;font-size:10.5px;margin:6px 0}.dr-mh{color:var(--muted);text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.dr-mh.l{text-align:left}
 .dr-s .cf-r small{display:block;font-size:11px}.dr-c{text-align:center;padding:5px 0;border-radius:4px;font-variant-numeric:tabular-nums}
+.dr-tb{position:absolute;top:40px;right:72px;z-index:6;display:flex;align-items:center;gap:2px;padding:4px;border-radius:14px;max-width:calc(100% - 90px);overflow-x:auto;scrollbar-width:none;
+  background:var(--lg-tab);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);box-shadow:var(--lg-rim),0 6px 18px rgba(0,0,0,.28)}
+.dr-tb::-webkit-scrollbar{display:none}.dr-b{flex:0 0 auto;width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:10px;background:transparent;color:var(--text);cursor:pointer}
+.dr-b svg{width:20px;height:20px}.dr-b.on{background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,0) 58%),var(--accent);color:var(--accent-ink,#fff);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 2px 8px color-mix(in srgb,var(--accent) 40%,transparent)}.dr-b:disabled{opacity:.3}.dr-b:not(:disabled):hover{background:rgba(127,127,127,.16)}
+.dr-sep{width:1px;height:22px;background:var(--line);margin:0 3px;flex:0 0 1px}.dr-hint{font-size:12px;color:var(--muted);padding:0 8px;white-space:nowrap}
+.dr-sel{position:absolute;top:88px;right:72px;z-index:6;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 8px;border-radius:12px;max-width:calc(100% - 90px);
+  background:var(--lg-tab);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:var(--lg-rim),0 6px 18px rgba(0,0,0,.28);font-size:13px}
+.dr-sel b{margin-right:4px}.dr-c{width:20px;height:20px;border-radius:50%;border:2px solid transparent;background:var(--c);cursor:pointer;padding:0}.dr-c.on{border-color:var(--text)}
+.dr-t{border:0;border-radius:8px;padding:5px 9px;background:rgba(127,127,127,.14);color:var(--text);font:inherit;font-size:12.5px;cursor:pointer}.dr-t.on{background:var(--accent);color:var(--accent-ink,#fff)}.dr-t.del{color:#ff453a}
+.cf-canvas.drawing,.chfs-chart .drawing{cursor:crosshair}
+@media(max-width:700px){.dr-tb{right:8px;top:40px;max-width:calc(100% - 16px)}.dr-sel{right:8px;top:86px}}
 .au-q{display:block;margin-top:3px;font-size:11.5px}
 .mtags{display:flex;gap:6px;align-items:center;margin-top:3px}.mtags .echip{margin-left:0}.aitem .an .echip{margin:3px 0 0;align-self:flex-start}</style>
 <style id="scard">
@@ -7715,8 +7734,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.124";
-const APP_NEWS = [["2026.11.124", "TradingView-App und neue Such-Karte", [
+const APP_VER = "2026.11.125";
+const APP_NEWS = [["2026.11.125", "Zeichenwerkzeuge wie TradingView", [
+  ["Zeichnen im Chart", "Oben rechts im Chart, Namen und Symbole wie bei TradingView: Trendlinie, Horizontale Linie, Horizontaler Strahl, Fib-Retracement, Rechteck, Long-Position und Short-Position. Bedienung wie bei TradingView: Werkzeug wählen, ziehen oder zwei Punkte antippen; antippen zum Auswählen, an den Griffen ziehen zum Ändern, Fläche ziehen zum Verschieben."],
+  ["Fib-Retracement wie TradingView", "Stufen 0 bis 1 mit farbigen Bändern und Preisen, gestrichelte Verbindung, „Linien nach rechts verlängern“, Stufen bis 4,236 und „Umkehren“. Im Magnet-Modus rastet der Punkt genau auf Hoch oder Tief der Kerze ein."],
+  ["Auswahl gut sichtbar", "Gewählter Zeitraum, aktives Werkzeug und Umschalter leuchten jetzt in deiner Akzentfarbe – auch im Glas-Look sofort zu erkennen."],
+  ["Long-/Short-Position", "Ziel- und Stop-Box mit Prozent, Risiko-/Ertragsverhältnis und der Menge bei deinem Risiko je Trade – Ziel, Stop, Einstieg und Breite einfach ziehen. Rückgängig, „Alle Zeichnungen ausblenden“ und „Zeichnungen entfernen“ in derselben Leiste; alles wird je Aktie gespeichert."]]],
+  ["2026.11.124", "TradingView-App und neue Such-Karte", [
   ["Scanner nach „Erfüllt“", "Der Scanner ist beim Öffnen nach erfüllten Kriterien sortiert (bei Gleichstand wie bisher kaufbereit zuerst). Andere Sortierung weiterhin über die Spaltenköpfe."],
   ["Neue Such-Karte", "Die Karte bei der Aktiensuche ist neu: Logo, großer Kurs mit Tagesänderung, 1W/1M/3M/YTD, Kairo-Kriterien als Leiste, Börsenwert, Trend, Abstand zum Hoch, RSI, Schwankung und Zahlen-Termin – dazu Übersicht, Chart, Einstieg und TradingView mit einem Tipp."],
   ["TradingView in der App", "„TradingView“ öffnet auf iPad und iPhone jetzt die TradingView-App mit deinem Konto und deinen Indikatoren. Zurück geht es oben links über „◀ Kairo“ – genau an die Stelle, an der du warst. Einstellbar unter Einstellungen → Trading."]]],
@@ -10635,10 +10659,10 @@ function ctabBuild(c, r) {
       <div class="ct-right"><div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Welle"]].map(([v, l]) => `<button class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
         <button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
     <div class="ctab-grid"><div class="ctab-l">
-      <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
+      <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="dr-tb" id="drTb"></div><div class="dr-sel" id="drSel" hidden></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
       ${pane("tRsi", `RSI 14 · SMA 14 · 30/50/70${r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}`, "rsi")}${pane("tMacd", "MACD 12/26/9 · Linie, Signal, Histogramm", "macd")}${pane("tMbi", "Momentum Bias Index · grün/rot · X-Signale", "mbi")}
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside></div>`;
-  cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml;
+  cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
   cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
   // Flüssig (12.11.): RSI, MACD und MBI erst nach dem ersten Bild bauen – der Reiter erscheint sofort, die Indikatoren folgen im nächsten Moment
   ctabInd = [];
@@ -10699,6 +10723,199 @@ function resumeApply() {
     if (R.det && !$("detail").classList.contains("open")) openDetail(R.det).then(() => { if (R.dy) $("detail").scrollTop = R.dy; }).catch(() => {}); };
   setTimeout(go, 500);
 }
+// ---------- Zeichenwerkzeuge wie TradingView (Wunsch 13.11.) ----------
+// Trendlinie, horizontale Linie, Strahl, Fibonacci-Retracement (wie TradingView: Stufen 0–1 mit farbigen Bändern, 0 am zweiten Punkt,
+// Beschriftung „0.618 (Preis)“, gestrichelte Verbindung, „Erweitern nach rechts“), Rechteck, Long- und Short-Position (Ziel/Stop-Box,
+// CRV, Stück bei deinem Risiko je Trade). Bedienung wie TradingView: Werkzeug wählen → ziehen (oder zweimal tippen); antippen =
+// auswählen, an den Griffen ziehen = ändern, Fläche ziehen = verschieben; Magnet rastet an Hoch/Tief/Eröffnung/Schluss ein.
+// Gespeichert je Aktie auf diesem Gerät, auch im Replay sichtbar.
+const DRAW = { tool: null, sel: null, hide: false, hist: {}, h: null, act: null, wait: null };
+const DR_FIB = [[0, "120,123,134"], [.236, "242,54,69"], [.382, "255,152,0"], [.5, "76,175,80"], [.618, "8,153,129"], [.786, "0,188,212"], [1, "120,123,134"]];
+const DR_FIBX = [[1.618, "41,98,255"], [2.618, "242,54,69"], [3.618, "156,39,176"], [4.236, "233,30,99"]];
+const DR_COL = ["41,98,255", "242,54,69", "8,153,129", "255,152,0", "156,39,176", "236,238,242"];
+const DR_TOOLS = [["tl", "Trendlinie", '<path d="M5 19 19 5"/><circle cx="5" cy="19" r="1.8"/><circle cx="19" cy="5" r="1.8"/>'],
+  ["hl", "Horizontale Linie", '<path d="M3 12h18"/><circle cx="12" cy="12" r="1.8"/>'], ["hr", "Horizontaler Strahl", '<path d="M6 12h15"/><circle cx="5" cy="12" r="1.8"/>'],
+  ["fib", "Fib-Retracement", '<path d="M3 5h18M3 9.5h18M3 13h18M3 19h18" opacity=".9"/><path d="M5 19 19 5" stroke-dasharray="2 2"/>'],
+  ["rect", "Rechteck", '<rect x="4" y="6" width="16" height="12" rx="1"/>'],
+  ["long", "Long-Position", '<path d="M4 6h10M4 12h16M4 18h10"/><circle cx="4" cy="12" r="1.4"/><text x="16" y="8.5" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="-apple-system,sans-serif">L</text>'],
+  ["short", "Short-Position", '<path d="M4 6h10M4 12h16M4 18h10"/><circle cx="4" cy="12" r="1.4"/><text x="16" y="21" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="-apple-system,sans-serif">S</text>']];
+const drKey = h => h && h.r ? String(h.r.ticker).replace(/@rp$/, "") : "";
+const drList = h => (state.draws || {})[drKey(h)] || [];
+function drSet(h, list, noHist) {
+  const k = drKey(h); if (!k) return;
+  if (!noHist) { const H = DRAW.hist[k] = DRAW.hist[k] || []; H.push(JSON.stringify(drList(h))); if (H.length > 60) H.shift(); }
+  const all = { ...(state.draws || {}) }; if (list.length) all[k] = list; else delete all[k]; state.draws = all; save();
+  if (h.drReq) h.drReq(); drTbRender(h);
+}
+// Ankerpunkte: Datum der Kerze (+ Kerzen nach dem letzten Tag, damit man in die Zukunft zeichnen kann) und Preis
+function drIdx(h, a) { const T = h.c.t, n = T.length; let i = T.indexOf(a.d);
+  if (i < 0) { if (a.d > T[n - 1]) return n - 1 + (a.o || 0) + 1; let lo = 0, hi = n - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (T[m] < a.d) lo = m + 1; else hi = m; } i = lo; }
+  return i + (a.o || 0); }
+function drAnc(h, li, p) { const T = h.c.t, n = T.length, i = Math.round(li); return i <= n - 1 ? { d: T[Math.max(0, i)], o: 0, p } : { d: T[n - 1], o: i - (n - 1), p }; }
+function drMag(h, li, p, y) {   // Magnet: nächster Wert von E/H/T/S der Kerze, wenn höchstens 14 px entfernt
+  if (state.drMag === 0) return p; const c = h.c, i = Math.round(li); if (i < 0 || i >= c.t.length) return p;
+  let best = p, bd = 14; [c.o[i], c.h[i], c.l[i], c.c[i]].forEach(v => { if (v == null) return; const yy = h.candles.priceToCoordinate(v); if (yy != null && Math.abs(yy - y) < bd) { bd = Math.abs(yy - y); best = v; } });
+  return best; }
+function drPrimitive(h) {
+  let series = null, chart = null;
+  const F = "600 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+  const pane = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => {
+    if (DRAW.hide || !series) return;
+    const ts = chart.timeScale(), X = i => ts.logicalToCoordinate(i), Y = v => series.priceToCoordinate(v), W = m.width;
+    const list = drList(h).concat(DRAW.act && DRAW.act.temp ? [DRAW.act.temp] : []);
+    const lbl = (tx, px, py, col, al = "left", bg = true) => { x.font = F; const w = x.measureText(tx).width; const x0 = al === "right" ? px - w - 8 : al === "center" ? px - w / 2 - 4 : px;
+      if (bg) { x.fillStyle = `rgba(${col},.9)`; x.beginPath(); x.roundRect ? x.roundRect(x0, py - 9, w + 8, 18, 4) : x.rect(x0, py - 9, w + 8, 18); x.fill(); x.fillStyle = "#fff"; } else x.fillStyle = `rgb(${col})`;
+      x.textBaseline = "middle"; x.textAlign = "left"; x.fillText(tx, x0 + 4, py); };
+    const handle = (px, py) => { x.beginPath(); x.arc(px, py, 5.5, 0, 7); x.fillStyle = isLight() ? "#fff" : "#16181d"; x.fill(); x.lineWidth = 2; x.strokeStyle = "rgb(41,98,255)"; x.setLineDash([]); x.stroke(); };
+    list.forEach(d => {
+      const col = d.c || (d.k === "fib" ? "120,123,134" : "41,98,255"), sel = DRAW.sel === d.id || (DRAW.act && DRAW.act.temp === d);
+      const ax = X(drIdx(h, d.a)), ay = Y(d.a.p), bx = d.b ? X(drIdx(h, d.b)) : null, by = d.b ? Y(d.b.p) : null;
+      if (ax == null || ay == null) return;
+      x.save(); x.lineWidth = d.w || 2; x.strokeStyle = `rgb(${col})`; x.setLineDash([]);
+      if (d.k === "tl" && bx != null) { let ex = bx, ey = by; if (d.ext && bx !== ax) { ex = bx > ax ? W : 0; ey = ay + (by - ay) * (ex - ax) / (bx - ax); }
+        x.beginPath(); x.moveTo(ax, ay); x.lineTo(ex, ey); x.stroke(); if (sel) { handle(ax, ay); handle(bx, by); } }
+      else if (d.k === "hl") { x.beginPath(); x.moveTo(0, ay); x.lineTo(W, ay); x.stroke(); lbl(fmt(d.a.p), W - 4, ay, col, "right"); if (sel) handle(ax, ay); }
+      else if (d.k === "hr") { x.beginPath(); x.moveTo(ax, ay); x.lineTo(W, ay); x.stroke(); lbl(fmt(d.a.p), W - 4, ay, col, "right"); if (sel) handle(ax, ay); }
+      else if (d.k === "rect" && bx != null) { x.fillStyle = `rgba(${col},.14)`; x.fillRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay)); x.lineWidth = 1.5; x.strokeRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay));
+        if (sel) { handle(ax, ay); handle(bx, by); handle(ax, by); handle(bx, ay); } }
+      else if (d.k === "fib" && bx != null) {
+        const lv = d.x2 ? DR_FIB.concat(DR_FIBX) : DR_FIB, xl = Math.min(ax, bx), xr = d.ext ? W : Math.max(ax, bx), P = q => d.b.p + (d.a.p - d.b.p) * q;
+        for (let k = 0; k < lv.length - 1; k++) { const y1 = Y(P(lv[k][0])), y2 = Y(P(lv[k + 1][0])); if (y1 == null || y2 == null) continue; x.fillStyle = `rgba(${lv[k + 1][1]},.12)`; x.fillRect(xl, Math.min(y1, y2), xr - xl, Math.abs(y2 - y1)); }
+        x.lineWidth = 1.2; lv.forEach(([q, c2]) => { const yy = Y(P(q)); if (yy == null) return; x.strokeStyle = `rgb(${c2})`; x.beginPath(); x.moveTo(xl, yy); x.lineTo(xr, yy); x.stroke();
+          const tx = `${q} (${fmt(P(q))})`; x.font = F; const tw = x.measureText(tx).width;
+          if (xl - tw - 8 > 0) lbl(tx, xl - 6, yy, c2, "right", false); else lbl(tx, xl + 4, yy - 8, c2, "left", false); });
+        x.strokeStyle = "rgba(120,123,134,.9)"; x.lineWidth = 1; x.setLineDash([5, 4]); x.beginPath(); x.moveTo(ax, ay); x.lineTo(bx, by); x.stroke(); x.setLineDash([]);
+        if (sel) { handle(ax, ay); handle(bx, by); } }
+      else if ((d.k === "long" || d.k === "short") && bx != null) {
+        const yt = Y(d.t), ys = Y(d.s), xl = Math.min(ax, bx), xr = Math.max(ax, bx), up = d.k === "long"; if (yt == null || ys == null) { x.restore(); return; }
+        x.fillStyle = "rgba(8,153,129,.22)"; x.fillRect(xl, Math.min(ay, yt), xr - xl, Math.abs(yt - ay)); x.fillStyle = "rgba(242,54,69,.22)"; x.fillRect(xl, Math.min(ay, ys), xr - xl, Math.abs(ys - ay));
+        x.strokeStyle = "rgba(120,123,134,.9)"; x.lineWidth = 1.2; x.beginPath(); x.moveTo(xl, ay); x.lineTo(xr, ay); x.stroke();
+        const e = d.a.p, risk = Math.abs(e - d.s), rew = Math.abs(d.t - e), rr = risk ? rew / risk : 0, cx = (xl + xr) / 2, cur = (h.r && (h.r.currency || h.r.cur)) || "";
+        const cfg = tpCfg(), rEur = toEur(risk, cur) || risk, qty = rEur > 0 ? Math.floor(cfg.depot * cfg.risk / 100 / rEur) : 0;
+        lbl(`Ziel: ${fmt(d.t)} (${sgnPct(d.t / e - 1, 1)})`, cx, up ? Math.min(yt, ay) - 12 : Math.max(yt, ay) + 12, "8,153,129", "center");
+        lbl(`Stop: ${fmt(d.s)} (${sgnPct(d.s / e - 1, 1)})`, cx, up ? Math.max(ys, ay) + 12 : Math.min(ys, ay) - 12, "242,54,69", "center");
+        if (sel || xr - xl > 140) lbl(`Risiko-/Ertragsverhältnis: ${fmt(rr, 2)}${qty ? ` · Menge: ${qty} (${fmt(cfg.risk, 1)} % Risiko)` : ""}`, cx, ay, "120,123,134", "center");
+        if (sel) { handle(xl, ay); handle(xr, ay); handle(xl, yt); handle(xl, ys); } }
+      x.restore(); }); }) };
+  const views = [{ zOrder: () => "top", renderer: () => pane }];
+  return { attached(p) { series = p.series; chart = p.chart; h.drReq = p.requestUpdate; }, detached() { series = chart = null; h.drReq = null; },
+    updateAllViews() {}, paneViews: () => views };
+}
+// Treffer-Test in Pixeln: Griffe zuerst (für die ausgewählte Zeichnung), dann die Zeichnungen selbst (oberste zuletzt gezeichnet = zuerst geprüft)
+function drGeo(h, d) { const ts = h.chart.timeScale(), X = i => ts.logicalToCoordinate(i), Y = v => h.candles.priceToCoordinate(v);
+  return { ax: X(drIdx(h, d.a)), ay: Y(d.a.p), bx: d.b ? X(drIdx(h, d.b)) : null, by: d.b ? Y(d.b.p) : null, yt: d.t != null ? Y(d.t) : null, ys: d.s != null ? Y(d.s) : null }; }
+function drHandles(h, d) { const g = drGeo(h, d);
+  if (d.k === "hl" || d.k === "hr") return [["a", g.ax, g.ay]];
+  if (d.k === "rect") return [["a", g.ax, g.ay], ["b", g.bx, g.by], ["ab", g.ax, g.by], ["ba", g.bx, g.ay]];
+  if (d.k === "long" || d.k === "short") { const xl = Math.min(g.ax, g.bx), xr = Math.max(g.ax, g.bx); return [["a", xl, g.ay], ["w", xr, g.ay], ["t", xl, g.yt], ["s", xl, g.ys]]; }
+  return [["a", g.ax, g.ay], ["b", g.bx, g.by]]; }
+function drHit(h, px, py) {
+  const L = drList(h), W = h.el.clientWidth, seg = (x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1, l = dx * dx + dy * dy; let t = l ? ((px - x1) * dx + (py - y1) * dy) / l : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - x1 - t * dx, py - y1 - t * dy); };
+  const sd = L.find(d => d.id === DRAW.sel); if (sd) { const hh = drHandles(h, sd).find(([, hx, hy]) => hx != null && hy != null && Math.hypot(px - hx, py - hy) < 14); if (hh) return { d: sd, hd: hh[0] }; }
+  for (let k = L.length - 1; k >= 0; k--) { const d = L[k], g = drGeo(h, d); if (g.ax == null || g.ay == null) continue;
+    if (d.k === "tl" && g.bx != null) { let ex = g.bx, ey = g.by; if (d.ext && g.bx !== g.ax) { ex = g.bx > g.ax ? W : 0; ey = g.ay + (g.by - g.ay) * (ex - g.ax) / (g.bx - g.ax); } if (seg(g.ax, g.ay, ex, ey) < 9) return { d }; }
+    else if (d.k === "hl" && Math.abs(py - g.ay) < 9) return { d };
+    else if (d.k === "hr" && px >= g.ax - 9 && Math.abs(py - g.ay) < 9) return { d };
+    else if (g.bx != null) { let x1 = Math.min(g.ax, g.bx), x2 = Math.max(g.ax, g.bx), y1 = Math.min(g.ay, g.by), y2 = Math.max(g.ay, g.by);
+      if (d.k === "fib" && d.ext) x2 = W; if (d.k === "long" || d.k === "short") { y1 = Math.min(g.ay, g.yt, g.ys); y2 = Math.max(g.ay, g.yt, g.ys); }
+      if (px >= x1 - 6 && px <= x2 + 6 && py >= y1 - 6 && py <= y2 + 6) return { d }; } }
+  return null; }
+function drLock(h, on) { try { if (on) { if (!h.drOpt) h.drOpt = { s: h.chart.options().handleScroll, z: h.chart.options().handleScale }; h.chart.applyOptions({ handleScroll: false, handleScale: false }); }
+  else if (h.drOpt) { h.chart.applyOptions({ handleScroll: h.drOpt.s, handleScale: h.drOpt.z }); h.drOpt = null; } } catch (e) {} }
+function drAttach(h) {
+  if (!h || !h.candles || h.drOn) return; h.drOn = 1; DRAW.h = h; DRAW.act = null; DRAW.wait = null;
+  h.candles.attachPrimitive(drPrimitive(h));
+  const el = h.el; el.__drH = h; if (el.__drB) { drTbRender(h); drSelRender(h); return; } el.__drB = 1;   // Replay baut den Chart im selben Element neu: Listener nur einmal
+  const pos = e => { const r = el.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  const at = (x, y, mag = true) => { const h = el.__drH; const li = h.chart.timeScale().coordinateToLogical(x); let p = h.candles.coordinateToPrice(y); if (li == null || p == null) return null; if (mag) p = drMag(h, li, p, y); return { li, p }; };
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const stopAll = e => { if (DRAW.act || DRAW.tool) { e.stopPropagation(); if (e.cancelable && e.type.startsWith("touch")) e.preventDefault(); } };
+  ["mousedown", "mousemove", "mouseup", "touchstart", "touchmove", "touchend", "wheel"].forEach(t => el.addEventListener(t, e => { if (t === "wheel" && !DRAW.act) return; stopAll(e); }, { capture: true, passive: false }));
+  el.addEventListener("pointerdown", e => { const h = el.__drH;
+    if (e.button > 0 || MEAS.on || WAVE.on) return; const P = pos(e), q = at(P.x, P.y);
+    if (DRAW.tool) { if (!q) return; e.stopPropagation(); drLock(h, true); try { el.setPointerCapture(e.pointerId); } catch (x) {}
+      if (DRAW.wait) { const t = DRAW.wait; t.b = drAnc(h, q.li, q.p); DRAW.wait = null; DRAW.act = null; drFinish(h, t); return; }
+      const k = DRAW.tool, A = drAnc(h, q.li, q.p);
+      if (k === "hl" || k === "hr") { drFinish(h, { id: uid(), k, a: A, c: DR_COL[0] }); return; }
+      if (k === "long" || k === "short") { const c = h.c, i = Math.min(c.t.length - 1, Math.max(14, Math.round(q.li))); let atr = 0; for (let j = i - 13; j <= i; j++) atr += c.h[j] - c.l[j]; atr /= 14;
+        const sgn = k === "long" ? 1 : -1, st = q.p - sgn * 1.5 * atr; drFinish(h, { id: uid(), k, a: A, b: drAnc(h, q.li + 25, q.p), s: +st.toPrecision(6), t: +(q.p + sgn * 2 * Math.abs(q.p - st)).toPrecision(6) }); return; }
+      const t = { id: uid(), k, a: A, b: { ...A }, c: k === "fib" ? null : DR_COL[0] }; DRAW.act = { mode: "new", temp: t, x0: P.x, y0: P.y }; h.drReq && h.drReq(); return; }
+    const hit = drHit(h, P.x, P.y);
+    if (!hit) { if (DRAW.sel) { DRAW.sel = null; h.drReq && h.drReq(); drSelRender(h); } return; }
+    e.stopPropagation(); drLock(h, true); try { el.setPointerCapture(e.pointerId); } catch (x) {}
+    DRAW.sel = hit.d.id; DRAW.act = { mode: hit.hd ? "hd" : "mv", hd: hit.hd, id: hit.d.id, q0: at(P.x, P.y, false), orig: JSON.parse(JSON.stringify(hit.d)), moved: false, before: JSON.stringify(drList(h)) };
+    h.drReq && h.drReq(); drSelRender(h);
+  }, true);
+  el.addEventListener("pointermove", e => { const h = el.__drH;
+    const A = DRAW.act; if (!A) return; const P = pos(e);
+    if (A.mode === "new") { const q = at(P.x, P.y); if (!q) return; A.temp.b = drAnc(h, q.li, q.p); h.drReq && h.drReq(); return; }
+    const L = drList(h).map(d => d), i = L.findIndex(d => d.id === A.id); if (i < 0) return; const d = JSON.parse(JSON.stringify(A.orig));
+    if (A.mode === "mv") { const q = at(P.x, P.y, false); if (!q || !A.q0) return; const dl = Math.round(q.li - A.q0.li), dp = q.p - A.q0.p;
+      const sh = a => a && drAnc(h, drIdx(h, a) + dl, a.p + dp); d.a = sh(A.orig.a); if (A.orig.b) d.b = sh(A.orig.b); if (d.s != null) { d.s = A.orig.s + dp; d.t = A.orig.t + dp; } }
+    else { const q = at(P.x, P.y); if (!q) return; const an = drAnc(h, q.li, q.p);
+      if (A.hd === "a") { if (d.k === "long" || d.k === "short") { const dp = q.p - A.orig.a.p; d.a = { ...an }; d.s = A.orig.s + dp; d.t = A.orig.t + dp; } else d.a = an; }
+      else if (A.hd === "b") d.b = an;
+      else if (A.hd === "ab") { d.a = { ...d.a, ...drAnc(h, q.li, d.a.p) }; d.b = { ...d.b, p: q.p }; d.a.p = A.orig.a.p; }
+      else if (A.hd === "ba") { d.b = { ...drAnc(h, q.li, d.b.p) }; d.a = { ...d.a, p: q.p }; }
+      else if (A.hd === "w") d.b = drAnc(h, q.li, d.a.p);
+      else if (A.hd === "t") d.t = q.p; else if (A.hd === "s") d.s = q.p; }
+    A.moved = true; L[i] = d; const all = { ...(state.draws || {}) }; all[drKey(h)] = L; state.draws = all; h.drReq && h.drReq();
+  }, true);
+  const up = e => { const h = el.__drH; const A = DRAW.act; if (!A) return; const P = pos(e);
+    if (A.mode === "new") { if (Math.hypot(P.x - A.x0, P.y - A.y0) < 6) { DRAW.wait = A.temp; DRAW.act = { mode: "wait", temp: A.temp }; drLock(h, false); drTbRender(h); return; } DRAW.act = null; drFinish(h, A.temp); return; }
+    if (A.mode === "wait") return;
+    DRAW.act = null; drLock(h, false);
+    if (A.moved) { const k = drKey(h), H = DRAW.hist[k] = DRAW.hist[k] || []; H.push(A.before); save(); drSelRender(h); } };
+  el.addEventListener("pointerup", up, true); el.addEventListener("pointercancel", up, true);
+  el.addEventListener("pointermove", e => { const h = el.__drH; if (DRAW.wait && DRAW.act && DRAW.act.mode === "wait") { const P = pos(e), q = at(P.x, P.y); if (q) { DRAW.wait.b = drAnc(h, q.li, q.p); h.drReq && h.drReq(); } } });
+  drTbRender(h); drSelRender(h);
+}
+function drFinish(h, d) { DRAW.act = null; DRAW.wait = null; drLock(h, false);
+  if (d.b && d.k !== "long" && d.k !== "short" && drIdx(h, d.a) === drIdx(h, d.b) && d.a.p === d.b.p) { h.drReq && h.drReq(); drTbRender(h); return; }
+  DRAW.sel = d.id; if (!state.drKeep) DRAW.tool = null; drSet(h, [...drList(h), d]); drSelRender(h); }
+function drTbRender(h) {
+  const tb = $("drTb"); if (!tb) return; const n = drList(h).length, ic = (p, sw = 1.7) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+  const open = state.drOpen != null ? state.drOpen !== 0 : innerWidth > 700;   // iPhone: eingeklappt (nur der Stift), iPad/Mac: offen
+  tb.innerHTML = `<button class="dr-b dr-tog${open ? " on" : ""}" data-drtog title="Zeichenwerkzeuge" aria-label="Zeichenwerkzeuge">${ic('<path d="m14.5 5.5 4 4L8 20H4v-4z"/><path d="m12.5 7.5 4 4"/>')}</button>
+    ${open ? `<button class="dr-b${!DRAW.tool ? " on" : ""}" data-drtool="" title="Cursor" aria-label="Cursor">${ic('<path d="M6 3l12 9-6 1-3 6z"/>')}</button>
+    ${DR_TOOLS.map(([k, l, p]) => `<button class="dr-b${DRAW.tool === k ? " on" : ""}" data-drtool="${k}" title="${l}" aria-label="${l}">${ic(p)}</button>`).join("")}
+    <i class="dr-sep"></i>
+    <button class="dr-b${state.drMag !== 0 ? " on" : ""}" data-drmag title="Magnet-Modus (rastet an Eröffnung, Hoch, Tief und Schluss ein)" aria-label="Magnet-Modus">${ic('<path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4z"/><path d="M6 8h4M14 8h4"/>')}</button>
+    <button class="dr-b${DRAW.hide ? " on" : ""}" data-drhide title="Alle Zeichnungen ausblenden" aria-label="Alle Zeichnungen ausblenden" ${n ? "" : "disabled"}>${ic(DRAW.hide ? '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a15 15 0 0 1-2.6 3.2M6.1 7.6C4 9.2 3 12 3 12s4 6 9 6c1.6 0 3-.4 4.3-1"/>' : '<path d="M3 12s4-6 9-6 9 6 9 6-4 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.6"/>')}</button>
+    <button class="dr-b" data-drundo title="Rückgängig" aria-label="Rückgängig" ${(DRAW.hist[drKey(h)] || []).length ? "" : "disabled"}>${ic('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>')}</button>
+    <button class="dr-b" data-drclear title="Zeichnungen entfernen" aria-label="Zeichnungen entfernen" ${n ? "" : "disabled"}>${ic('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')}</button>` : ""}
+    ${DRAW.wait ? `<span class="dr-hint">zweiten Punkt antippen</span>` : DRAW.tool ? `<span class="dr-hint">${DR_TOOLS.find(t => t[0] === DRAW.tool)[1]}: ${["hl", "hr", "long", "short"].includes(DRAW.tool) ? "Punkt antippen" : "ziehen oder 2 Punkte antippen"}</span>` : ""}`;
+  h.el.classList.toggle("drawing", !!DRAW.tool);
+}
+function drSelRender(h) {
+  const box = $("drSel"); if (!box) return; const d = drList(h).find(x => x.id === DRAW.sel); box.hidden = !d; if (!d) return;
+  const name = { tl: "Trendlinie", hl: "Horizontale Linie", hr: "Horizontaler Strahl", fib: "Fib-Retracement", rect: "Rechteck", long: "Long-Position", short: "Short-Position" }[d.k];
+  box.innerHTML = `<b>${name}</b>${["long", "short", "fib"].includes(d.k) ? "" : DR_COL.map(c => `<button class="dr-c${(d.c || DR_COL[0]) === c ? " on" : ""}" data-drcol="${c}" style="--c:rgb(${c})" aria-label="Farbe"></button>`).join("")}
+    ${d.k === "tl" || d.k === "fib" ? `<button class="dr-t${d.ext ? " on" : ""}" data-drext>${d.k === "fib" ? "Linien nach rechts verlängern" : "Rechts verlängern"}</button>` : ""}${d.k === "fib" ? `<button class="dr-t${d.x2 ? " on" : ""}" data-drx2>Stufen 1,618–4,236</button>` : ""}
+    ${d.k === "fib" ? `<button class="dr-t" data-drflip title="Umkehren (0 und 1 tauschen)">Umkehren</button>` : ""}
+    <button class="dr-t del" data-drdel aria-label="Entfernen">Entfernen</button>`;
+}
+document.addEventListener("click", async e => {
+  const h = DRAW.h; if (!h || !document.body.contains(h.el)) return; const t = e.target;
+  const tl = t.closest("[data-drtool]"); if (tl) { DRAW.tool = tl.dataset.drtool || null; DRAW.wait = null; DRAW.act = null; drLock(h, false); if (DRAW.tool) { MEAS.on = WAVE.on = false; DRAW.sel = null; drSelRender(h); } drTbRender(h); h.drReq && h.drReq(); return; }
+  if (t.closest("[data-drtog]")) { state.drOpen = (state.drOpen != null ? state.drOpen !== 0 : innerWidth > 700) ? 0 : 1; if (!state.drOpen) DRAW.tool = null; save(); drTbRender(h); return; }
+  if (t.closest("[data-drmag]")) { state.drMag = state.drMag === 0 ? 1 : 0; save(); drTbRender(h); return; }
+  if (t.closest("[data-drhide]")) { DRAW.hide = !DRAW.hide; drTbRender(h); h.drReq && h.drReq(); return; }
+  if (t.closest("[data-drundo]")) { const H = DRAW.hist[drKey(h)] || []; if (!H.length) return; const prev = JSON.parse(H.pop()); DRAW.sel = null; drSet(h, prev, true); drSelRender(h); return; }
+  if (t.closest("[data-drclear]")) { if (await kConfirm("Alle Zeichnungen dieser Aktie entfernen?", "Entfernen", true)) { DRAW.sel = null; drSet(h, []); drSelRender(h); } return; }
+  const L = drList(h), i = L.findIndex(d => d.id === DRAW.sel); if (i < 0) return; const d = { ...L[i] }, put = () => { const n = [...L]; n[i] = d; drSet(h, n); drSelRender(h); };
+  const c = t.closest("[data-drcol]"); if (c) { d.c = c.dataset.drcol; put(); return; }
+  if (t.closest("[data-drext]")) { d.ext = !d.ext; put(); return; }
+  if (t.closest("[data-drx2]")) { d.x2 = !d.x2; put(); return; }
+  if (t.closest("[data-drflip]")) { const a = d.a; d.a = d.b; d.b = a; put(); return; }
+  if (t.closest("[data-drdel]")) { DRAW.sel = null; drSet(h, L.filter((_, k) => k !== i)); drSelRender(h); return; }
+});
+document.addEventListener("keydown", e => {
+  const h = DRAW.h; if (!h || state.sec !== "chart" || e.target.closest("input, select, textarea")) return;
+  if (e.key === "Escape" && (DRAW.tool || DRAW.wait || DRAW.sel)) { DRAW.tool = null; DRAW.wait = null; DRAW.act = null; DRAW.sel = null; drLock(h, false); drTbRender(h); drSelRender(h); h.drReq && h.drReq(); }
+  else if ((e.key === "Delete" || e.key === "Backspace") && DRAW.sel) { e.preventDefault(); const id = DRAW.sel; DRAW.sel = null; drSet(h, drList(h).filter(d => d.id !== id)); drSelRender(h); }
+  else if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); const b = document.querySelector("[data-drundo]"); if (b && !b.disabled) b.click(); }
+});
 // ---------- Chart-Replay (Runde 13.11., wie TradingView „Bar Replay“): den Chart Tag für Tag nachspielen und üben ----------
 // Der Chart zeigt nur die Kerzen bis zum Replay-Tag – Indikatoren (EMA, RSI, MACD, MBI) sind rückwärts gerechnet und damit
 // genau so, wie man sie damals sah. Kairo-Status, Plan und Fibonacci des heutigen Scans sind ausgeblendet (wären Wissen aus der Zukunft).
@@ -10725,7 +10942,7 @@ function rpRebuild(keep = true) {
   ctabInd.forEach(ch => { try { ch.remove(); } catch (e) {} }); ctabInd = [];
   if (cfChart) { CL_LIVE.delete(cfChart); try { cfChart.chart.remove(); } catch (e) {} }
   window.__lastChart = { c: c2, r: r2 };
-  cfChart = buildMain($("cfMain"), c2, r2, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml;
+  cfChart = buildMain($("cfMain"), c2, r2, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
   if ($("tRsi")) { ctabInd = indCharts(c2, r2, $("tRsi"), $("tMacd"), $("tMbi")); syncCharts([cfChart.chart, ...ctabInd]); }
   const rg = { from: n - span + 6, to: n + 6 }; [cfChart.chart, ...ctabInd].forEach(ch => { try { ch.timeScale().setVisibleLogicalRange(rg); } catch (e) {} });
   const P = RP.pos, cs = cfChart.candles;
