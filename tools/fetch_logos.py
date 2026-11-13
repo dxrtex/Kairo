@@ -217,6 +217,15 @@ def main() -> None:
         for t in (d.get("by") or {}):
             if re.fullmatch(r"[A-Z0-9.\-]{1,12}", t):
                 tickers.append(t)
+        # Insider-Liste in der App: auch Cluster-Signale (signal) und Watchlist-Meldungen (watch, inkl. DE/NL/AU)
+        for t, g in (d.get("signal") or {}).items():
+            if re.fullmatch(r"[A-Z0-9.\-]{1,12}", t):
+                tickers.append(t)
+                names.setdefault(t, (g or {}).get("n") or "")
+        for r in d.get("watch") or []:
+            if isinstance(r, dict) and r.get("t") and re.fullmatch(r"[A-Z0-9.\-]{1,12}", r["t"]):
+                tickers.append(r["t"])
+                names.setdefault(r["t"], r.get("n") or "")
     extra = Path("data/watchlist.json")
     if extra.exists():
         for k, v in json.loads(extra.read_text()).items():
