@@ -2269,9 +2269,10 @@ html .cf-pill .cf-wh b, html .cfp-n b, html .cfp-n small { text-shadow: none !im
 @media (min-width: 768px) {
   html:not(.lt) nav.tabbar { background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,0) 38%), #000 !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
     box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.07), 0 18px 40px rgba(0,0,0,.6) !important; }
-  html:not(.lt) nav.tabbar .tab:not(.on):hover { background: rgba(255,255,255,.05); }
   html.lt nav.tabbar { background: #fff !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06), 0 10px 30px rgba(0,0,0,.07) !important; }
 }
+/* Indikatorliste: massiv statt Glas (13.11.) */
+html .ct-pop, html.lt .ct-pop { background: var(--surface) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: inset 0 0 0 1px var(--pf-ring), 0 14px 36px rgba(0,0,0,.45) !important; }
 </style>
 </head>
 <body>
@@ -8090,8 +8091,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.139";
-const APP_NEWS = [["2026.11.139", "Immer das ganze Intro", [
+const APP_VER = "2026.11.140";
+const APP_NEWS = [["2026.11.140", "Grüne Markierung und Indikatorliste", [
+  ["Seitenleiste", "Die grüne Fläche auf dem aktiven Reiter und ihr Übergang beim Wechseln sind zurück (auf dem iPad hatte ein Antippen sie ausgeblendet)."],
+  ["Indikatoren", "Die Liste bleibt offen, während du mehrere Indikatoren ein- und ausschaltest – schließen mit Antippen daneben."]]],
+  ["2026.11.139", "Immer das ganze Intro", [
   ["Intro", "Kairo zeigt jetzt bei jedem Öffnen das vollständige Intro mit Slogan – nicht mehr nur kurz das Logo. Antippen überspringt es wie bisher."]]],
   ["2026.11.138", "Insider-Logos überall", [
   ["Logos in der Insider-Liste", "Auch Zeilen mit mehreren Käufern derselben Firma („3 Insider kaufen“) zeigen jetzt das Firmenlogo."]]],
@@ -10197,7 +10201,7 @@ let tabIndT = null;
 function moveTabInd(prev) {
   const ind = document.querySelector(".tab-ind"), cur = document.querySelector(".tab.on");
   if (!ind) return;
-  const vis = cur && cur.offsetParent && getComputedStyle(cur).backgroundColor === "rgba(0, 0, 0, 0)";
+  const vis = cur && cur.offsetParent && (bg => bg === "transparent" || /rgba\([^)]*,\s*0(\.0\d*)?\)$/.test(bg))(getComputedStyle(cur).backgroundColor);   // auch während eines Übergangs (iPad: Antippen löst kurz :hover aus)
   if (!vis) { ind.classList.remove("on"); return; }
   const box = t => ({ l: t.offsetLeft, t: t.offsetTop, w: t.offsetWidth, h: t.offsetHeight });
   // Flüssig (12.11.): nur transform animieren (läuft auf der Grafikkarte weiter, auch während der neue Reiter aufgebaut wird).
@@ -10896,7 +10900,7 @@ function clBarHtml(h) {
 }
 function clRefresh() {
   CL_LIVE.forEach(h => { if (!document.body.contains(h.el)) { CL_LIVE.delete(h); return; } h.apply(); });
-  CL_LIVE.forEach(h => { const b = h.bar && document.getElementById(h.bar); if (b) b.innerHTML = (h.barFn || clBarHtml)(h); });
+  CL_LIVE.forEach(h => { const b = h.bar && document.getElementById(h.bar); if (!b) return; const sp = b.querySelector(".ct-pop"), st = sp ? sp.scrollTop : 0; b.innerHTML = (h.barFn || clBarHtml)(h); const np = b.querySelector(".ct-pop"); if (np && st) np.scrollTop = st; });
   if (cfChart && $("cfSide")) $("cfSide").innerHTML = cockpitSide(cfChart, cfChart.r);
   if (typeof lensSoon === "function") lensSoon();
 }
@@ -10927,7 +10931,7 @@ document.addEventListener("click", e => {
   if (!e.target.closest("[data-clm]")) return;
   MEAS.on = !MEAS.on; if (MEAS.on) WAVE.on = false;
   CL_LIVE.forEach(h => { h.measureOff && h.measureOff(); if (MEAS.on) { h.el.classList.add("measuring"); h.legend && h.legend(-1); } });
-  CL_LIVE.forEach(h => { const b = h.bar && document.getElementById(h.bar); if (b) b.innerHTML = (h.barFn || clBarHtml)(h); });
+  CL_LIVE.forEach(h => { const b = h.bar && document.getElementById(h.bar); if (!b) return; const sp = b.querySelector(".ct-pop"), st = sp ? sp.scrollTop : 0; b.innerHTML = (h.barFn || clBarHtml)(h); const np = b.querySelector(".ct-pop"); if (np && st) np.scrollTop = st; });
 });
 document.addEventListener("click", e => {
   const w = e.target.closest("[data-clw]"), wr = e.target.closest("[data-clwreset]"); if (!w && !wr) return;
@@ -11170,7 +11174,7 @@ function ctabBuild(c, r) {
   const el = $("ctab"); if (!el || !window.LightweightCharts) return; rpHalt(); ctabDrop(); delete el.dataset.busy;
   if (c.tf && c.tf !== "D") r = { ...r, zone: null, plan: c.intra ? r.plan : r.plan };            // Wochen-/Monatschart: Kairo-Welle und -Zone gehören zum Tageschart
   const k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r), chg = r.change ?? r.d1, off = !!state.cfSideOff;
-  el.dataset.t = r.ticker; el.classList.toggle("side-off", off); ctPop = false;
+  if (el.dataset.t !== r.ticker) ctPop = false; el.dataset.t = r.ticker; el.classList.toggle("side-off", off);   // gleiche Aktie neu gebaut (z. B. Ichimoku an): Indikatorliste bleibt offen
   const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="Indikator groß">${CT_IC.expand}</button></div><div class="ctab-c" id="${id}"></div></div>`;
   el.innerHTML = `<div class="ct-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="ctQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="${innerWidth < 640 ? "Chart suchen – jede Aktie" : "Chart suchen – jede Aktie, Name oder Kürzel (z. B. Amazon, UBS, Rheinmetall)"}" aria-label="Chart suchen"><div id="ctList" class="ct-list" hidden></div></div>
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
@@ -11862,7 +11866,7 @@ document.addEventListener("click", e => {
     document.querySelectorAll("#ctab .ctab-p [data-ctfocus], #ctab .ct-right [data-ctfocus]").forEach(b => { const p = b.closest(".ctab-p"), k = p ? p.dataset.pane : "main", on = ctFocus === k; b.innerHTML = on ? CT_IC.shrink : CT_IC.expand; b.dataset.ctfocus = on ? "" : k; b.title = on ? "Verkleinern" : "Groß anzeigen"; });
     return; }
   const ly = e.target.closest("[data-ctlayers]"); if (ly && cfChart) { ctPop = !ctPop; $("cfBar").innerHTML = ctabBarHtml(cfChart); return; }
-  if (ctPop && cfChart && !e.target.closest(".ct-pop") && !e.target.closest("[data-ctlayers]")) { ctPop = false; const b = $("cfBar"); if (b) b.innerHTML = ctabBarHtml(cfChart); }
+  if (ctPop && cfChart && e.target.isConnected && !e.target.closest(".ct-pop") && !e.target.closest("[data-ctlayers]")) { /* isConnected: Schalter wurde beim Umschalten neu gezeichnet → kein Klick außerhalb */ ctPop = false; const b = $("cfBar"); if (b) b.innerHTML = ctabBarHtml(cfChart); }
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && ctFocus) ctabFocus(null); });
 function openCockpit() {
