@@ -7728,9 +7728,9 @@ const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
 const APP_VER = "2026.11.125";
 const APP_NEWS = [["2026.11.125", "Zeichenwerkzeuge wie TradingView", [
-  ["Zeichnen im Chart", "Oben rechts im Chart: Trendlinie, horizontale Linie, Strahl, Fibonacci-Retracement, Rechteck, Long- und Short-Position. Bedienung wie bei TradingView: Werkzeug wählen, ziehen oder zwei Punkte antippen; antippen zum Auswählen, an den Griffen ziehen zum Ändern, Fläche ziehen zum Verschieben."],
-  ["Fibonacci wie TradingView", "Stufen 0 bis 1 mit farbigen Bändern und Preisen, gestrichelte Verbindung, „Nach rechts verlängern“, Erweiterungen bis 4,236 und Umdrehen. Mit Magnet rastet der Punkt genau auf Hoch oder Tief der Kerze ein."],
-  ["Long-/Short-Position", "Ziel- und Stop-Box mit CRV, Prozent und der Stückzahl bei deinem Risiko je Trade – Ziel, Stop, Einstieg und Breite einfach ziehen. Rückgängig, Ausblenden und Löschen in derselben Leiste; alles wird je Aktie gespeichert."]]],
+  ["Zeichnen im Chart", "Oben rechts im Chart, Namen und Symbole wie bei TradingView: Trendlinie, Horizontale Linie, Horizontaler Strahl, Fib-Retracement, Rechteck, Long-Position und Short-Position. Bedienung wie bei TradingView: Werkzeug wählen, ziehen oder zwei Punkte antippen; antippen zum Auswählen, an den Griffen ziehen zum Ändern, Fläche ziehen zum Verschieben."],
+  ["Fib-Retracement wie TradingView", "Stufen 0 bis 1 mit farbigen Bändern und Preisen, gestrichelte Verbindung, „Linien nach rechts verlängern“, Stufen bis 4,236 und „Umkehren“. Im Magnet-Modus rastet der Punkt genau auf Hoch oder Tief der Kerze ein."],
+  ["Long-/Short-Position", "Ziel- und Stop-Box mit Prozent, Risiko-/Ertragsverhältnis und der Menge bei deinem Risiko je Trade – Ziel, Stop, Einstieg und Breite einfach ziehen. Rückgängig, „Alle Zeichnungen ausblenden“ und „Zeichnungen entfernen“ in derselben Leiste; alles wird je Aktie gespeichert."]]],
   ["2026.11.124", "TradingView-App und neue Such-Karte", [
   ["Scanner nach „Erfüllt“", "Der Scanner ist beim Öffnen nach erfüllten Kriterien sortiert (bei Gleichstand wie bisher kaufbereit zuerst). Andere Sortierung weiterhin über die Spaltenköpfe."],
   ["Neue Such-Karte", "Die Karte bei der Aktiensuche ist neu: Logo, großer Kurs mit Tagesänderung, 1W/1M/3M/YTD, Kairo-Kriterien als Leiste, Börsenwert, Trend, Abstand zum Hoch, RSI, Schwankung und Zahlen-Termin – dazu Übersicht, Chart, Einstieg und TradingView mit einem Tipp."],
@@ -10726,10 +10726,10 @@ const DR_FIBX = [[1.618, "41,98,255"], [2.618, "242,54,69"], [3.618, "156,39,176
 const DR_COL = ["41,98,255", "242,54,69", "8,153,129", "255,152,0", "156,39,176", "236,238,242"];
 const DR_TOOLS = [["tl", "Trendlinie", '<path d="M5 19 19 5"/><circle cx="5" cy="19" r="1.8"/><circle cx="19" cy="5" r="1.8"/>'],
   ["hl", "Horizontale Linie", '<path d="M3 12h18"/><circle cx="12" cy="12" r="1.8"/>'], ["hr", "Horizontaler Strahl", '<path d="M6 12h15"/><circle cx="5" cy="12" r="1.8"/>'],
-  ["fib", "Fibonacci-Retracement", '<path d="M3 5h18M3 9.5h18M3 13h18M3 19h18" opacity=".9"/><path d="M5 19 19 5" stroke-dasharray="2 2"/>'],
+  ["fib", "Fib-Retracement", '<path d="M3 5h18M3 9.5h18M3 13h18M3 19h18" opacity=".9"/><path d="M5 19 19 5" stroke-dasharray="2 2"/>'],
   ["rect", "Rechteck", '<rect x="4" y="6" width="16" height="12" rx="1"/>'],
-  ["long", "Long-Position", '<rect x="5" y="4" width="14" height="8" rx="1" fill="currentColor" fill-opacity=".18"/><rect x="5" y="12" width="14" height="6" rx="1"/><path d="M5 12h14"/>'],
-  ["short", "Short-Position", '<rect x="5" y="6" width="14" height="6" rx="1"/><rect x="5" y="12" width="14" height="8" rx="1" fill="currentColor" fill-opacity=".18"/><path d="M5 12h14"/>']];
+  ["long", "Long-Position", '<path d="M4 6h10M4 12h16M4 18h10"/><circle cx="4" cy="12" r="1.4"/><text x="16" y="8.5" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="-apple-system,sans-serif">L</text>'],
+  ["short", "Short-Position", '<path d="M4 6h10M4 12h16M4 18h10"/><circle cx="4" cy="12" r="1.4"/><text x="16" y="21" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="-apple-system,sans-serif">S</text>']];
 const drKey = h => h && h.r ? String(h.r.ticker).replace(/@rp$/, "") : "";
 const drList = h => (state.draws || {})[drKey(h)] || [];
 function drSet(h, list, noHist) {
@@ -10783,9 +10783,9 @@ function drPrimitive(h) {
         x.strokeStyle = "rgba(120,123,134,.9)"; x.lineWidth = 1.2; x.beginPath(); x.moveTo(xl, ay); x.lineTo(xr, ay); x.stroke();
         const e = d.a.p, risk = Math.abs(e - d.s), rew = Math.abs(d.t - e), rr = risk ? rew / risk : 0, cx = (xl + xr) / 2, cur = (h.r && (h.r.currency || h.r.cur)) || "";
         const cfg = tpCfg(), rEur = toEur(risk, cur) || risk, qty = rEur > 0 ? Math.floor(cfg.depot * cfg.risk / 100 / rEur) : 0;
-        lbl(`Ziel ${fmt(d.t)} (${sgnPct(d.t / e - 1, 1)}) · ${fmt(rr, 2)} R`, cx, up ? Math.min(yt, ay) - 12 : Math.max(yt, ay) + 12, "8,153,129", "center");
-        lbl(`Stop ${fmt(d.s)} (${sgnPct(d.s / e - 1, 1)})`, cx, up ? Math.max(ys, ay) + 12 : Math.min(ys, ay) - 12, "242,54,69", "center");
-        if (sel || xr - xl > 140) lbl(`${up ? "Long" : "Short"} ${fmt(e)} · CRV ${fmt(rr, 1)}${qty ? ` · ${qty} Stk. bei ${fmt(cfg.risk, 1)} % Risiko` : ""}`, cx, ay, "120,123,134", "center");
+        lbl(`Ziel: ${fmt(d.t)} (${sgnPct(d.t / e - 1, 1)})`, cx, up ? Math.min(yt, ay) - 12 : Math.max(yt, ay) + 12, "8,153,129", "center");
+        lbl(`Stop: ${fmt(d.s)} (${sgnPct(d.s / e - 1, 1)})`, cx, up ? Math.max(ys, ay) + 12 : Math.min(ys, ay) - 12, "242,54,69", "center");
+        if (sel || xr - xl > 140) lbl(`Risiko-/Ertragsverhältnis: ${fmt(rr, 2)}${qty ? ` · Menge: ${qty} (${fmt(cfg.risk, 1)} % Risiko)` : ""}`, cx, ay, "120,123,134", "center");
         if (sel) { handle(xl, ay); handle(xr, ay); handle(xl, yt); handle(xl, ys); } }
       x.restore(); }); }) };
   const views = [{ zOrder: () => "top", renderer: () => pane }];
@@ -10868,23 +10868,23 @@ function drTbRender(h) {
   const tb = $("drTb"); if (!tb) return; const n = drList(h).length, ic = (p, sw = 1.7) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   const open = state.drOpen != null ? state.drOpen !== 0 : innerWidth > 700;   // iPhone: eingeklappt (nur der Stift), iPad/Mac: offen
   tb.innerHTML = `<button class="dr-b dr-tog${open ? " on" : ""}" data-drtog title="Zeichenwerkzeuge" aria-label="Zeichenwerkzeuge">${ic('<path d="m14.5 5.5 4 4L8 20H4v-4z"/><path d="m12.5 7.5 4 4"/>')}</button>
-    ${open ? `<button class="dr-b${!DRAW.tool ? " on" : ""}" data-drtool="" title="Auswählen" aria-label="Auswählen">${ic('<path d="M6 3l12 9-6 1-3 6z"/>')}</button>
+    ${open ? `<button class="dr-b${!DRAW.tool ? " on" : ""}" data-drtool="" title="Cursor" aria-label="Cursor">${ic('<path d="M6 3l12 9-6 1-3 6z"/>')}</button>
     ${DR_TOOLS.map(([k, l, p]) => `<button class="dr-b${DRAW.tool === k ? " on" : ""}" data-drtool="${k}" title="${l}" aria-label="${l}">${ic(p)}</button>`).join("")}
     <i class="dr-sep"></i>
-    <button class="dr-b${state.drMag !== 0 ? " on" : ""}" data-drmag title="Magnet: rastet an Hoch, Tief, Eröffnung und Schluss ein" aria-label="Magnet">${ic('<path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4z"/><path d="M6 8h4M14 8h4"/>')}</button>
-    <button class="dr-b${DRAW.hide ? " on" : ""}" data-drhide title="Zeichnungen aus-/einblenden" aria-label="Zeichnungen ausblenden" ${n ? "" : "disabled"}>${ic(DRAW.hide ? '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a15 15 0 0 1-2.6 3.2M6.1 7.6C4 9.2 3 12 3 12s4 6 9 6c1.6 0 3-.4 4.3-1"/>' : '<path d="M3 12s4-6 9-6 9 6 9 6-4 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.6"/>')}</button>
+    <button class="dr-b${state.drMag !== 0 ? " on" : ""}" data-drmag title="Magnet-Modus (rastet an Eröffnung, Hoch, Tief und Schluss ein)" aria-label="Magnet-Modus">${ic('<path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4z"/><path d="M6 8h4M14 8h4"/>')}</button>
+    <button class="dr-b${DRAW.hide ? " on" : ""}" data-drhide title="Alle Zeichnungen ausblenden" aria-label="Alle Zeichnungen ausblenden" ${n ? "" : "disabled"}>${ic(DRAW.hide ? '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a15 15 0 0 1-2.6 3.2M6.1 7.6C4 9.2 3 12 3 12s4 6 9 6c1.6 0 3-.4 4.3-1"/>' : '<path d="M3 12s4-6 9-6 9 6 9 6-4 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.6"/>')}</button>
     <button class="dr-b" data-drundo title="Rückgängig" aria-label="Rückgängig" ${(DRAW.hist[drKey(h)] || []).length ? "" : "disabled"}>${ic('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>')}</button>
-    <button class="dr-b" data-drclear title="Alle Zeichnungen dieser Aktie löschen" aria-label="Alle löschen" ${n ? "" : "disabled"}>${ic('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')}</button>` : ""}
+    <button class="dr-b" data-drclear title="Zeichnungen entfernen" aria-label="Zeichnungen entfernen" ${n ? "" : "disabled"}>${ic('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')}</button>` : ""}
     ${DRAW.wait ? `<span class="dr-hint">zweiten Punkt antippen</span>` : DRAW.tool ? `<span class="dr-hint">${DR_TOOLS.find(t => t[0] === DRAW.tool)[1]}: ${["hl", "hr", "long", "short"].includes(DRAW.tool) ? "Punkt antippen" : "ziehen oder 2 Punkte antippen"}</span>` : ""}`;
   h.el.classList.toggle("drawing", !!DRAW.tool);
 }
 function drSelRender(h) {
   const box = $("drSel"); if (!box) return; const d = drList(h).find(x => x.id === DRAW.sel); box.hidden = !d; if (!d) return;
-  const name = { tl: "Trendlinie", hl: "Horizontale Linie", hr: "Strahl", fib: "Fibonacci", rect: "Rechteck", long: "Long-Position", short: "Short-Position" }[d.k];
+  const name = { tl: "Trendlinie", hl: "Horizontale Linie", hr: "Horizontaler Strahl", fib: "Fib-Retracement", rect: "Rechteck", long: "Long-Position", short: "Short-Position" }[d.k];
   box.innerHTML = `<b>${name}</b>${["long", "short", "fib"].includes(d.k) ? "" : DR_COL.map(c => `<button class="dr-c${(d.c || DR_COL[0]) === c ? " on" : ""}" data-drcol="${c}" style="--c:rgb(${c})" aria-label="Farbe"></button>`).join("")}
-    ${d.k === "tl" || d.k === "fib" ? `<button class="dr-t${d.ext ? " on" : ""}" data-drext>Nach rechts verlängern</button>` : ""}${d.k === "fib" ? `<button class="dr-t${d.x2 ? " on" : ""}" data-drx2>Erweiterungen 1,618–4,236</button>` : ""}
-    ${d.k === "fib" ? `<button class="dr-t" data-drflip title="Richtung umdrehen (0 und 1 tauschen)">⇅</button>` : ""}
-    <button class="dr-t del" data-drdel aria-label="Löschen">Löschen</button>`;
+    ${d.k === "tl" || d.k === "fib" ? `<button class="dr-t${d.ext ? " on" : ""}" data-drext>${d.k === "fib" ? "Linien nach rechts verlängern" : "Rechts verlängern"}</button>` : ""}${d.k === "fib" ? `<button class="dr-t${d.x2 ? " on" : ""}" data-drx2>Stufen 1,618–4,236</button>` : ""}
+    ${d.k === "fib" ? `<button class="dr-t" data-drflip title="Umkehren (0 und 1 tauschen)">Umkehren</button>` : ""}
+    <button class="dr-t del" data-drdel aria-label="Entfernen">Entfernen</button>`;
 }
 document.addEventListener("click", async e => {
   const h = DRAW.h; if (!h || !document.body.contains(h.el)) return; const t = e.target;
@@ -10893,7 +10893,7 @@ document.addEventListener("click", async e => {
   if (t.closest("[data-drmag]")) { state.drMag = state.drMag === 0 ? 1 : 0; save(); drTbRender(h); return; }
   if (t.closest("[data-drhide]")) { DRAW.hide = !DRAW.hide; drTbRender(h); h.drReq && h.drReq(); return; }
   if (t.closest("[data-drundo]")) { const H = DRAW.hist[drKey(h)] || []; if (!H.length) return; const prev = JSON.parse(H.pop()); DRAW.sel = null; drSet(h, prev, true); drSelRender(h); return; }
-  if (t.closest("[data-drclear]")) { if (await kConfirm("Alle Zeichnungen dieser Aktie löschen?", "Löschen", true)) { DRAW.sel = null; drSet(h, []); drSelRender(h); } return; }
+  if (t.closest("[data-drclear]")) { if (await kConfirm("Alle Zeichnungen dieser Aktie entfernen?", "Entfernen", true)) { DRAW.sel = null; drSet(h, []); drSelRender(h); } return; }
   const L = drList(h), i = L.findIndex(d => d.id === DRAW.sel); if (i < 0) return; const d = { ...L[i] }, put = () => { const n = [...L]; n[i] = d; drSet(h, n); drSelRender(h); };
   const c = t.closest("[data-drcol]"); if (c) { d.c = c.dataset.drcol; put(); return; }
   if (t.closest("[data-drext]")) { d.ext = !d.ext; put(); return; }
