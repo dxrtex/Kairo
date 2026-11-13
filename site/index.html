@@ -2200,13 +2200,56 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 }
 </style>
 
-<style id="seg-accent">
-/* Wunsch 13.11.: im Glas-Stil war die aktive Auswahl (Zeitraum, Ebenen-Werkzeug, Umschalter) kaum zu erkennen → Akzentfarbe mit Glasglanz */
-html .ct-rg button.on, html .ct-seg .ct-b.on, html .sp-seg button.on, html.glass .sp-seg button.on, html .aseg button.on, html.lt .ct-rg button.on, html.lt .ct-seg .ct-b.on, html.glass.lt .sp-seg button.on {
-  background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,0) 58%), var(--accent) !important; color: var(--accent-ink, #fff) !important; opacity: 1 !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.38), inset 0 0 0 .5px rgba(255,255,255,.18), 0 2px 10px color-mix(in srgb, var(--accent) 45%, transparent) !important; }
-html .ct-seg .ct-b.on svg, html .ct-rg button.on svg { color: inherit; }
-html .ct-seg .ct-b.on small { background: rgba(255,255,255,.28) !important; color: inherit; }
+<style id="pro-finish">
+/* Wunsch 13.11. abends: „Glas und das Grün wirken billig“ → ruhige Profi-Optik wie TradingView/Bloomberg/Apple Aktien:
+   flache Bedienleisten ohne Glas-Glanz und Schatten, aktive Auswahl als dezente Tönung mit farbiger Schrift (kein Leuchten),
+   Seitenleiste mit grauen Symbolen und hellgrauer Markierung. Gilt für alle Designs. */
+:root { --pf-bg: rgba(255,255,255,.045); --pf-ring: rgba(255,255,255,.075); --pf-hover: rgba(255,255,255,.07); --pf-on: color-mix(in srgb, var(--accent) 15%, transparent); --pf-on-ring: color-mix(in srgb, var(--accent) 32%, transparent); --pf-on-tx: color-mix(in srgb, var(--accent) 82%, #fff); --pf-sel: rgba(255,255,255,.085); }
+html.lt { --pf-bg: rgba(0,0,0,.035); --pf-ring: rgba(0,0,0,.08); --pf-hover: rgba(0,0,0,.05); --pf-on: color-mix(in srgb, var(--accent) 11%, transparent); --pf-on-ring: color-mix(in srgb, var(--accent) 30%, transparent); --pf-on-tx: color-mix(in srgb, var(--accent) 88%, #000); --pf-sel: rgba(0,0,0,.06); }
+/* Bedienleisten: flach, feine Haarlinie, kleine Radien */
+html .brand .gear, html .ct-seg, html .ct-rg, html .ct-right > .ct-b, html .cl-ohlc, html .subnav, html .sp-seg, html.glass .sp-seg {
+  background: var(--pf-bg) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  box-shadow: inset 0 0 0 1px var(--pf-ring) !important; border: 0 !important; }
+html .ct-seg, html .ct-rg, html .sp-seg, html.glass .sp-seg, html .subnav { border-radius: 10px !important; padding: 3px !important; gap: 2px; }
+html .ct-right > .ct-b { border-radius: 10px !important; }
+html .brand .gear { border-radius: 12px !important; }
+html .cl-ohlc { background: color-mix(in srgb, var(--bg) 82%, transparent) !important; border-radius: 8px !important; }
+html .ct-rg button, html .ct-seg .ct-b, html .sp-seg button, html .subnav button, html .aseg button { border-radius: 7px !important; }
+html .ct-rg button:hover:not(.on), html .ct-seg .ct-b:hover:not(.on), html .ct-right > .ct-b:hover:not(.on) { background: var(--pf-hover) !important; }
+html .ct-b:active, html .ct-rg button:active, html .brand .gear:active { transform: scale(.96); }
+/* aktive Auswahl: Tönung + Akzentschrift, ohne Verlauf und Leuchten */
+html .ct-rg button.on, html .ct-seg .ct-b.on, html .ct-right > .ct-b.on, html .sp-seg button.on, html.glass .sp-seg button.on, html .aseg button.on, html .subnav button.on,
+html.lt .ct-rg button.on, html.lt .ct-seg .ct-b.on, html.glass.lt .sp-seg button.on, html.lt .subnav button.on {
+  background: var(--pf-on) !important; color: var(--pf-on-tx) !important; opacity: 1 !important; box-shadow: inset 0 0 0 1px var(--pf-on-ring) !important; }
+html .ct-seg .ct-b.on svg, html .ct-rg button.on svg, html .ct-right > .ct-b.on svg { color: inherit; }
+html .ct-seg .ct-b.on small { background: color-mix(in srgb, var(--accent) 22%, transparent) !important; color: inherit; }
+html .sp-seg button.ins-buy.on { background: var(--up-bg) !important; color: var(--up) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--up) 30%, transparent) !important; }
+html .sp-seg button.ins-sell.on { background: var(--red-bg) !important; color: var(--red) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 30%, transparent) !important; }
+/* schwebende Leisten über dem Chart (Zeichnen, Auswahl, Vergleichen, Meldungen): massiv statt Glas, feine Kante */
+html .dr-tb, html .dr-sel, html .dr-toast, html .cmp-b, html .cmp-pop, html .wlpop {
+  background: color-mix(in srgb, var(--surface) 96%, transparent) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  box-shadow: inset 0 0 0 1px var(--pf-ring), 0 6px 18px rgba(0,0,0,.28) !important; }
+html.lt .dr-tb, html.lt .dr-sel, html.lt .dr-toast, html.lt .cmp-b, html.lt .cmp-pop, html.lt .wlpop { box-shadow: inset 0 0 0 1px var(--pf-ring), 0 6px 18px rgba(0,0,0,.10) !important; }
+html .dr-tb { border-radius: 10px; padding: 3px; } html .dr-b { border-radius: 7px; width: 32px; height: 32px; }
+html .dr-b.on, html .dr-t.on { background: var(--pf-on) !important; color: var(--pf-on-tx) !important; box-shadow: inset 0 0 0 1px var(--pf-on-ring) !important; }
+html .dr-b:not(:disabled):not(.on):hover { background: var(--pf-hover) !important; }
+html .scr-fs { background: var(--pf-bg) !important; box-shadow: inset 0 0 0 1px var(--pf-ring) !important; border-radius: 12px; }
+/* Umschalter und Filter-Chips (Scanner, Markt …): neutraler Schieber wie iOS, Chips getönt statt vollflächig */
+html .vseg { background: var(--pf-bg) !important; box-shadow: inset 0 0 0 1px var(--pf-ring) !important; border-radius: 12px !important; }
+html .seg-ind { background: var(--surface-3) !important; box-shadow: 0 1px 2px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06) !important; border-radius: 9px !important; }
+html.lt .seg-ind { background: #fff !important; box-shadow: 0 1px 3px rgba(0,0,0,.12), inset 0 0 0 1px rgba(0,0,0,.04) !important; }
+html .has-ind > button.on, html .vseg button.on { color: var(--text) !important; }
+html .has-ind > button.on small, html .vseg button.on small { color: var(--muted) !important; opacity: 1; }
+html .kchip.on, html .opt.on, html.glass .opt.on { background: var(--pf-on) !important; color: var(--pf-on-tx) !important; box-shadow: inset 0 0 0 1px var(--pf-on-ring) !important; border-color: transparent !important; }
+/* Seitenleiste (iPad/Mac): graue Symbole, aktive Zeile hellgrau mit Akzent-Symbol und feinem Balken */
+@media (min-width: 768px) {
+  html.k-side nav.tabbar .tab svg, html nav.tabbar .tab svg { color: var(--muted); }
+  html nav.tabbar .tab.on, html.lt nav.tabbar .tab.on { color: var(--text) !important; font-weight: 600; }
+  html nav.tabbar .tab.on svg { color: var(--accent) !important; }
+  html nav.tabbar .tab-ind { background: var(--pf-sel) !important; box-shadow: none !important; border-radius: 10px !important; }
+  html nav.tabbar .tab-ind::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+  html nav.tabbar .tab.on .badge { color: var(--muted) !important; }
+}
 </style>
 </head>
 <body>
@@ -7892,7 +7935,8 @@ const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 const APP_VER = "2026.11.132";
 const APP_NEWS = [["2026.11.132", "Mehrere Watchlists", [
   ["Eigene Listen", "Unter Scanner → Meine legst du mit „＋ Liste“ eigene Listen an (z. B. Tech, Dividenden) und wechselst oben zwischen ihnen. Der Stern ★ bleibt die Gesamtliste."],
-  ["Zuordnen", "Das Symbol ≡ neben dem Stern (Suche, Übersicht) legt eine Aktie in eine oder mehrere Listen."]]],
+  ["Zuordnen", "Das Symbol ≡ neben dem Stern (Suche, Übersicht) legt eine Aktie in eine oder mehrere Listen."],
+  ["Ruhigere Profi-Optik", "Kein Glas-Glanz und keine leuchtenden Farbflächen mehr: Bedienleisten flach mit feiner Kante, die aktive Auswahl dezent getönt mit farbiger Schrift, die Seitenleiste mit grauen Symbolen – wie bei TradingView."]]],
   ["2026.11.131", "Mehr Zeichenwerkzeuge und Relative Stärke", [
   ["Neue Werkzeuge", "Paralleler Kanal, Fib-Extension (trendbasiert, 3 Punkte), Pfad, Preisbereich (Differenz, Prozent, Kerzen) und Text – wie bei TradingView."],
   ["Relative Stärke", "Als Indikator-Fenster wählbar: Aktie gegen den S&P 500 – steigt die Linie, läuft die Aktie stärker als der Markt."]]],
