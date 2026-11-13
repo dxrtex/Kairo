@@ -88,9 +88,10 @@ def filings(cik: int, k: int = 2) -> tuple[str, list[dict]]:
 
 def parse_infotable(xml_text: str) -> dict[str, dict]:
     """13F-Infotable → {cusip: {name, sh, val}} (nur Aktien, keine Optionen; Werte in USD)."""
-    xml_text = re.sub(r'\sxmlns(:\w+)?="[^"]+"', "", xml_text, count=0)     # Namensräume entfernen
-    xml_text = re.sub(r"<(/?)\w+:", r"<\1", xml_text)
-    root = ET.fromstring(xml_text)
+    root = ET.fromstring(xml_text.encode("utf-8") if isinstance(xml_text, str) else xml_text)
+    for el in root.iter():                                  # Namensräume erst nach dem Lesen entfernen (xsi:… u. Ä. bleiben gültig)
+        if isinstance(el.tag, str) and "}" in el.tag:
+            el.tag = el.tag.split("}", 1)[1]
     out: dict[str, dict] = {}
     for it in root.iter("infoTable"):
         g = lambda tag: (it.findtext(tag) or "").strip()
