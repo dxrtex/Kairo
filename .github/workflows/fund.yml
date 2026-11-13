@@ -1,0 +1,68 @@
+name: Fundamentaldaten (alle Aktien)
+
+# Lädt wöchentlich Bewertung, Wachstum, Margen, Verschuldung und Dividende für alle Aktien des Scans (Yahoo, kostenlos),
+# rechnet die Kairo-Schneeflocke und legt fund.json im Branch kairo-fund ab. Scan und Watchlist-Scan liefern sie mit der App aus.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 * * 0"        # sonntags früh
+  push:
+    branches: [main]
+    paths: [backend/fundamentals.py, .github/workflows/fund.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fund
+  cancel-in-progress: false
+
+jobs:
+  shard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python -m backend.universe
+      - run: python -m backend.fundamentals --shard ${{ matrix.shard }} --shards 8
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fund-${{ matrix.shard }}
+          path: fund_part_${{ matrix.shard }}.json
+          retention-days: 7
+  combine:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: fund-*
+          merge-multiple: true
+          path: parts
+      - name: Bisherigen Stand laden (Branch kairo-fund)
+        run: |
+          if git fetch -q origin kairo-fund:kairo-fund 2>/dev/null; then git worktree add -q store kairo-fund;
+          else git worktree add -q --orphan -b kairo-fund store; fi
+          ls -la parts store
+      - run: python -m backend.fundamentals --combine parts --prev store/fund.json
+      - name: Speichern
+        run: |
+          cp site/data/fund.json store/fund.json
+          cd store
+          git add -A
+          git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Fundamentaldaten $(date +%F)" || exit 0
+          git push -q origin kairo-fund
