@@ -40,3 +40,25 @@ def test_parse_with_prefixes_and_xsi():
 <ns1:shrsOrPrnAmt><ns1:sshPrnamt>10</ns1:sshPrnamt><ns1:sshPrnamtType>SH</ns1:sshPrnamtType></ns1:shrsOrPrnAmt></ns1:infoTable></ns1:informationTable>"""
     h = parse_infotable(x)
     assert h["037833100"]["sh"] == 10
+
+
+def test_quarter_start():
+    from backend.hedgefunds import quarter_start
+    assert quarter_start("2026-09-30") == "2026-07-01" and quarter_start("2026-03-31") == "2026-01-01" and quarter_start("2026-12-31") == "2026-10-01"
+
+
+def test_entry_zone_vwap_and_band():
+    from backend.hedgefunds import entry_zone
+    rows = [("2026-06-30", 50, 50, 50, 1e6)]                          # vor dem Quartal: zählt nicht
+    rows += [(f"2026-07-{d:02d}", 10, 10, 10, 100) for d in range(1, 21)]   # 20 Tage bei 10 mit wenig Volumen
+    rows += [(f"2026-08-{d:02d}", 20, 20, 20, 400) for d in range(1, 21)]   # 20 Tage bei 20 mit vierfachem Volumen
+    rows += [("2026-11-13", 25, 24, 24.5, 1000)]                      # nach dem Quartal: nur aktueller Kurs
+    ez = entry_zone(rows, "2026-07-01", "2026-09-30")
+    assert abs(ez["vw"] - 18) < 1e-9                                # (10·100 + 20·400) / 500 je Tag
+    assert ez["lo"] == 20 and ez["hi"] == 20                        # mittlere Hälfte des Volumens liegt komplett bei 20
+    assert ez["ql"] == 10 and ez["qh"] == 20 and ez["px"] == 24.5 and ez["pxd"] == "2026-11-13"
+
+
+def test_entry_zone_needs_enough_days():
+    from backend.hedgefunds import entry_zone
+    assert entry_zone([(f"2026-07-{d:02d}", 1, 1, 1, 1) for d in range(1, 10)], "2026-07-01", "2026-09-30") is None

@@ -6,7 +6,8 @@ vergleicht sie (neu, aufgestockt, reduziert, verkauft) und schreibt site/data/fu
 
     funds: [{name, cik, period, filed, value, n, top: [...], moves: [...]}]     je Fonds
     by:    {ticker: [{f, a, chg, sh, val, w}]}                                   je Aktie (a = neu/auf/ab/raus/halt)
-    sum:   {ticker: {buy, sell, new, out, n}}                                    Zusammenfassung je Aktie
+    sum:   {ticker: {buy, sell, new, out, n, ez?}}                               Zusammenfassung je Aktie
+    ez = geschätzte Einstiegszone der Käufer im gemeldeten Quartal (siehe entry_zone): {vw, lo, hi, ql, qh, px, pxd}
 
 Wichtig für die Einordnung: 13F-Daten sind bis zu 45 Tage alt, enthalten nur Long-Positionen in US-Werten und keine
 Leerverkäufe – sie zeigen, was große Anleger halten, nicht was sie heute tun. Nur Information, nie Teil der Kairo-Regel.
@@ -218,6 +219,67 @@ def name_map() -> dict[str, str]:
     return out
 
 
+def quarter_start(period: str) -> str:
+    """Erster Tag des Quartals, auf das sich eine 13F-Meldung bezieht (period = Quartalsende, z. B. 2026-09-30 → 2026-07-01)."""
+    d = datetime.fromisoformat(period[:10])
+    return f"{d.year:04d}-{(d.month - 1) // 3 * 3 + 1:02d}-01"
+
+
+def entry_zone(rows: list[tuple[str, float, float, float, float]], start: str, end: str) -> dict | None:
+    """Geschätzter Einstand der Fonds im Quartal. 13F verrät nicht, wann im Quartal gekauft wurde – die beste neutrale
+    Schätzung ist der volumengewichtete Durchschnittskurs (VWAP) des Quartals: dort wurde das meiste Volumen gehandelt.
+    Kaufzone = mittlere Hälfte des Quartalsvolumens (25.–75. Perzentil nach typischem Kurs (H+T+S)/3).
+
+    rows: [(datum, hoch, tief, schluss, volumen)] aufsteigend. Rückgabe: {vw, lo, hi, ql, qh, px, pxd} oder None.
+    """
+    q = [(d, (h + l + c) / 3, v, h, l) for d, h, l, c, v in rows if start <= d <= end and v and v > 0 and c and c > 0]
+    if len(q) < 20:
+        return None
+    tv = sum(x[2] for x in q)
+    vw = sum(x[1] * x[2] for x in q) / tv
+    srt, acc, lo, hi = sorted(q, key=lambda x: x[1]), 0.0, None, None
+    for x in srt:
+        acc += x[2]
+        if lo is None and acc >= .25 * tv:
+            lo = x[1]
+        if hi is None and acc >= .75 * tv:
+            hi = x[1]
+            break
+    last = rows[-1]
+    r = lambda v: round(v, 4 if v < 1 else 2)
+    return {"vw": r(vw), "lo": r(lo), "hi": r(hi), "ql": r(min(x[4] for x in q)), "qh": r(max(x[3] for x in q)), "px": r(last[3]), "pxd": last[0]}
+
+
+def entry_zones(tickers: list[str], period: str) -> dict[str, dict]:
+    """Einstiegszonen für viele Ticker auf einmal über yfinance (kostenlos), in Paketen zu 100."""
+    try:
+        import yfinance as yf
+    except Exception:
+        return {}
+    start, out = quarter_start(period), {}
+    for i in range(0, len(tickers), 100):
+        chunk = tickers[i:i + 100]
+        ysym = {t: t.replace("/", "-").replace(".", "-") for t in chunk}
+        try:
+            df = yf.download(list(ysym.values()), start=start, auto_adjust=False, group_by="ticker", threads=True, progress=False)
+        except Exception as exc:
+            print(f"Einstiegszonen: Download-Fehler {exc!r}")
+            continue
+        for t, y in ysym.items():
+            try:
+                d = df[y] if len(ysym) > 1 else df
+                d = d.dropna(subset=["Close"])
+                rows = [(ix.strftime("%Y-%m-%d"), float(h), float(l), float(c), float(v)) for ix, h, l, c, v in
+                        zip(d.index, d["High"], d["Low"], d["Close"], d["Volume"])]
+            except Exception:
+                continue
+            ez = entry_zone(rows, start, period[:10]) if rows else None
+            if ez:
+                out[t] = ez
+    print(f"Einstiegszonen: {len(out)} von {len(tickers)} Aktien")
+    return out
+
+
 def build(sleep: float = .35) -> dict:
     cache = {}
     if CACHE.exists():
@@ -294,6 +356,11 @@ def build(sleep: float = .35) -> dict:
         summ[t] = {"buy": sum(x["a"] in ("neu", "auf") for x in xs), "sell": sum(x["a"] in ("ab", "raus") for x in xs),
                    "new": sum(x["a"] == "neu" for x in xs), "out": sum(x["a"] == "raus" for x in xs), "n": sum(x["a"] != "raus" for x in xs)}
     periods = sorted({f["period"] for f in funds})
+    # Geschätzte Einstiegszone für Aktien, die Fonds im letzten Quartal gekauft haben (neu/aufgestockt) – die meistgekauften zuerst
+    if periods:
+        buy_t = sorted([t for t, s in summ.items() if s["buy"]], key=lambda t: (-summ[t]["buy"], -summ[t]["new"]))[:900]
+        for t, ez in entry_zones(buy_t, periods[-1]).items():
+            summ[t]["ez"] = ez
     return {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "period": periods[-1] if periods else None,
             "funds": funds, "by": by, "sum": summ}
 
