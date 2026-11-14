@@ -29,7 +29,7 @@ GATES_FORECAST = {"min_cases": 200, "metric": "Brier-Score auf zeitlich spätere
 
 REGISTRY = [
     {"id": "B60", "kind": "regel", "stage": "champion", "since": "2026-10-29",
-     "what": "11/11 → Seitwärtsphase (5 Kerzen ≤ 1,5 ATR, ≤ 10 Tage) → Kauf zur Eröffnung, Stop Basis-Tief − 0,25 ATR, "
+     "what": "11/11 → Konsolidierung (5 Kerzen ≤ 1,5 ATR, ≤ 10 Tage) → Kauf zur Eröffnung, Stop Basis-Tief − 0,25 ATR, "
              "Ausstieg EMA 20 ab Tag 10, spätestens Tag 60", "evidence": "13.241 Trades 2008–26: +0,12 R normal, −0,03 R Stress"},
     {"id": "E2", "kind": "regel", "stage": "schatten", "since": "2026-10-31",
      "what": "wie B60, aber Kauf per Buy-Stop über dem Basishoch (+0,05 ATR)", "evidence": "je Trade in Vorzeit/Asien besser, Depot nicht durchgängig",

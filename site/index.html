@@ -2600,6 +2600,22 @@ html .cm-box { width: min(1180px, 100%) !important; }
 /* Trade erfassen: Abrechnung einlesen */
 .qt-pdf { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; margin: 0 0 10px; border-radius: 12px; border: 1px dashed rgba(127,127,127,.45); cursor: pointer; }
 .qt-pdf b { font-size: 14px; color: var(--accent, #0a84ff); } .qt-pdf small { font-size: 11.5px; color: var(--muted); } .qt-ovi.down { color: var(--down); }
+/* Bearbeitungsleiste wie TradingView (14.11.2026) */
+html .dr-sel { gap: 2px !important; padding: 4px !important; border-radius: 10px !important; flex-wrap: nowrap !important; align-items: center; }
+.ds-grip { display: inline-grid; grid-template-columns: repeat(2, 3px); gap: 2px 2px; padding: 0 5px 0 4px; opacity: .5; cursor: grab; } .ds-grip i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; display: block; }
+.ds-grip::after { content: ""; } .ds-n { font-size: 12px; font-weight: 600; color: var(--muted); padding: 0 6px 0 2px; white-space: nowrap; }
+.ds-sep { width: 1px; height: 22px; background: rgba(127,127,127,.28); margin: 0 3px; display: inline-block; }
+.ds-b { width: 32px; height: 32px; display: inline-grid; place-items: center; border: 0; border-radius: 7px; background: transparent; color: var(--text); cursor: pointer; padding: 0; }
+.ds-b svg { width: 19px; height: 19px; } .ds-b:hover { background: rgba(127,127,127,.16); } .ds-b.on { background: rgba(41,98,255,.18) !important; color: #5b8cff !important; }
+.ds-b.ds-del:hover { color: #ff453a; background: rgba(255,69,58,.12); }
+.ds-col span { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); display: block; }
+.ds-cw { position: relative; display: inline-flex; } .ds-pal { position: absolute; top: calc(100% + 6px); left: -4px; display: flex; gap: 6px; padding: 7px; border-radius: 10px; background: var(--surface, #1c1c1e); box-shadow: 0 8px 24px rgba(0,0,0,.35), inset 0 0 0 1px rgba(127,127,127,.25); z-index: 8; }
+@media (max-width: 700px) { .ds-n { display: none; } }
+/* ETF: Live-Chart im Vollbild */
+.etf-live .el-fs { margin-right: auto; }
+.etf-live.fs { position: fixed; inset: 0; z-index: 400; margin: 0 !important; border-radius: 0 !important; display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 12px) !important; background: var(--bg, #000) !important; }
+.etf-live.fs .el-tv { flex: 1; display: flex; flex-direction: column; min-height: 0; } .etf-live.fs iframe { flex: 1; height: auto !important; min-height: 0; }
+body.etf-fs { overflow: hidden; }
 </style>
 </head>
 <body>
@@ -3199,8 +3215,8 @@ const GLOSS = {
   r: ["R (Risiko-Einheit)", "Ergebnis gemessen am Risiko bis zum Stop: −1 R = Stop erreicht, +2 R = doppelt so viel gewonnen wie riskiert. So sind Trades unabhängig von der Größe vergleichbar."],
   ema: ["EMA 20/50/200", "Gleitende Durchschnitte über 20, 50 und 200 Tage. Über der EMA 200 = langfristiger Aufwärtstrend."],
   fib: ["Fibonacci", "Rücklauf-Niveaus eines Anstiegs (38,2 %, 50 %, 61,8 %, 78,6 %). Kurze Rücksetzer drehen oft vor 50 %, tiefe Korrekturen laufen bis 61,8 % oder weiter."],
-  base: ["Seitwärtsphase (Basis)", "Nach einem Kairo-Treffer 5 Tage, in denen der Kurs eng läuft (Hoch bis Tief höchstens 1,5 ATR). Erst dann wird gekauft – zur nächsten Eröffnung, wenn sie in dieser Spanne liegt. Kommt sie nicht innerhalb von 10 Handelstagen, verfällt der Treffer."],
-  stop: ["Stop (Stop-Loss)", "Kurs, bei dem du verkaufst, um den Verlust zu begrenzen. Kairo: Tief der Seitwärtsphase minus 0,25 ATR. Direkt nach dem Kauf als Stop-Order setzen und nie nach unten verschieben."],
+  base: ["Konsolidierung (Basis)", "Nach einem Kairo-Treffer 5 Tage, in denen der Kurs eng läuft (Hoch bis Tief höchstens 1,5 ATR). Erst dann wird gekauft – zur nächsten Eröffnung, wenn sie in dieser Spanne liegt. Kommt sie nicht innerhalb von 10 Handelstagen, verfällt der Treffer."],
+  stop: ["Stop (Stop-Loss)", "Kurs, bei dem du verkaufst, um den Verlust zu begrenzen. Kairo: Tief der Konsolidierung minus 0,25 ATR. Direkt nach dem Kauf als Stop-Order setzen und nie nach unten verschieben."],
   ema20x: ["Ausstieg EMA 20", "Kairo-Regel: Ab dem 10. Handelstag wird verkauft, sobald ein Tag unter der EMA 20 schließt – zur Eröffnung am nächsten Morgen. Spätestens an Tag 60 wird in jedem Fall verkauft."],
   mom: ["Vormomentum", "Wie stark die Aktie in den Monaten vor dem Treffer gelaufen ist (Monat −6 bis −1). In der Forschung brachten Treffer mit schwächerem Vormomentum in allen drei Testzeiträumen bessere Trades – deshalb stehen sie oben."],
   pf: ["Profit-Faktor", "Summe aller Gewinne geteilt durch die Summe aller Verluste. Über 1 = insgesamt im Plus, über 1,5 = stark."],
@@ -3215,7 +3231,7 @@ const GLOSS = {
   fear: ["Stimmung / Angst (0–100)", "Fasst sieben Messgrößen zusammen: VIX-Höhe und -Anstieg, kurz- gegen langfristige Angst (VIX ÷ VIX3M), Tech/KI (Nasdaq 100 und Halbleiter vom Hoch), Anteil der gescannten Aktien über der EMA 50, Aktien am 52-Wochen-Tief und den Kreditmarkt. Die Trend-Ampel sagt, wohin der Markt läuft – die Stimmung, wie nervös er ist. Erfahrungswerte, keine getestete Handelsregel."],
   etfa: ["ETF-Ampel", "Für Extra-Geld neben dem Sparplan: Grün = jetzt investieren (Rücksetzer oder Angst am Markt), Gelb = höchstens 3 Monate abwarten. Die monatliche Sparrate läuft immer. Langzeittest S&P 500 und Welt-ETF 1990–2026: Nach Grün war die Rendite der folgenden 3 Monate höher – in Euro lag Extra-Geld nach Ampel aber 0,1–0,3 % hinter „sofort anlegen“. Sofort anlegen ist also mindestens genauso gut; die Ampel ordnet ein."],
 };
-const TERMS = [[/\bATR\b/, "atr"], [/Seitwärtsphase/, "base"], [/Vormomentum/, "mom"], [/EMA ?20\b/, "ema20x"], [/K\.-o\.-Schwelle|\bK\.-o\./, "ko"],
+const TERMS = [[/\bATR\b/, "atr"], [/Konsolidierung/, "base"], [/Vormomentum/, "mom"], [/EMA ?20\b/, "ema20x"], [/K\.-o\.-Schwelle|\bK\.-o\./, "ko"],
   [/Profit-Faktor/, "pf"], [/Trefferquote/, "hit"], [/[Mm]ax\. Rückgang|[Gg]rößter Rückgang/, "dd"], [/PRIME\+/, "prime"], [/Papier-Test|Papier-Depot/, "paper"],
   [/Dual Momentum/, "dm"], [/\bCRV\b/, "crv"], [/Stop-Loss/, "stop"], [/\bSpread\b/, "spread"], [/Erwartung je Trade/, "exp"], [/\bHebel\b/, "lev"], [/\bSharpe\b/, "sharpe"], [/ETF-Ampel/, "etfa"]];
 function linkTerms() {
@@ -3311,14 +3327,14 @@ function selRows() {
 // Zweites Setup „Trend-Rücksetzer“ (Rücksetzer im Aufwärtstrend) – erscheint nur, wenn der Scan es liefert
 const isTrend = r => false;                // Trend-Rücksetzer: nicht belegt, aus der App entfernt (10/2026) – Scanner rechnet unverändert
 const trendOn = () => false;
-// ⚡ 4H-Setup: Arbeitsliste – echte Einstiege mit fertiger Seitwärtsphase (4H bestätigt, wartet auf 4H, läuft, verkaufen)
+// ⚡ 4H-Setup: Arbeitsliste – echte Einstiege mit fertiger Konsolidierung (4H bestätigt, wartet auf 4H, läuft, verkaufen)
 const isH4 = r => h4Prio(r) >= 3;
 const KIND_BTNS_ALL = [["fav", "★ Watchlist", r => favs().has(r.ticker)], ["h4", "4H-Setup", isH4], ["hit", "Treffer", r => r.passed], ["fast", "Fast-Treffer", r => r.fast_hit], ["near", "9/11 · kein Treffer", r => !!r.near_hit], ["trend", "Trend-Rücksetzer", isTrend], ["watch", "Watchlist", r => r.in_watchlist]];
 let KIND_BTNS = KIND_BTNS_ALL.filter(x => x[0] !== "trend");
 // Scanner: fünf klare Ansichten statt vieler Knöpfe (eine ist immer aktiv) – [Schlüssel, Name, zählt, Arten für selRows, Erklärung]
 const VIEWS = [
-  ["go", "Einstiege", r => isH4(r), ["h4"], "Treffer mit fertiger Seitwärtsphase – ✓ 4H bestätigt = jetzt einsteigen · … wartet auf 4H · ▶ läuft. Bei Bestätigung kommt eine Mitteilung."],
-  ["hit", "Treffer", r => r.passed, ["hit"], "Alle 11 Kriterien erfüllt. Gekauft wird erst nach der Seitwärtsphase – dann steht im Status „kaufbereit“."],
+  ["go", "Einstiege", r => isH4(r), ["h4"], "Treffer mit fertiger Konsolidierung – ✓ 4H bestätigt = jetzt einsteigen · … wartet auf 4H · ▶ läuft. Bei Bestätigung kommt eine Mitteilung."],
+  ["hit", "Treffer", r => r.passed, ["hit"], "Alle 11 Kriterien erfüllt. Gekauft wird erst nach der Konsolidierung – dann steht im Status „kaufbereit“."],
   ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Aktien, denen nur wenige Kriterien fehlen – ab 9, 8 oder 7 von 11. Nur beobachten, kein Kaufsignal."],
   ["trend", "Trend", r => isTrend(r), ["trend"], "Trend-Rücksetzer – eigene, getrennte Strategie (Rücksetzer im Aufwärtstrend)."],
   ["mine", "Meine", r => r.in_watchlist || favs().has(r.ticker), ["watch", "fav"], "Deine Watchlist (★) – mit Stufe auf dem Weg zum Einstieg."]];
@@ -3580,19 +3596,19 @@ function chips(r) {
 const chkTone = c => c.p >= .55 ? "g" : c.p >= .4 ? "y" : "r";
 const chkLabel = c => c.p >= .55 ? "wahrscheinlich nur Rücksetzer" : c.p >= .4 ? "offen" : "Korrektur-Risiko erhöht";
 // Kairo-Plan: die Antwort zuerst – Status, Kaufzone, Stop, Ausstieg, Kursziel (alle Designs)
-// Eine Quelle für Seitwärtsphase und Stop überall (Heute, Karte, Trade-Plan): zuerst die Seitwärtsphase im 10-Tage-Fenster
+// Eine Quelle für Konsolidierung und Stop überall (Heute, Karte, Trade-Plan): zuerst die Konsolidierung im 10-Tage-Fenster
 // nach dem Treffer (Abend-Prüfung, genau wie getestet), sonst die aktuelle Kursstruktur aus dem Scan
 function kPlan(t) {
   const it = h4Of(t), pl0 = (rowOf(t) || {}).pl || {}, ib = it && it.base && it.base.lo != null ? it.base : null;
-  return ib ? { base: { lo: ib.lo, hi: ib.hi }, stop: ib.sl, src: "Seitwärtsphase nach dem Treffer" } : { base: pl0.base || null, stop: pl0.stop, src: pl0.src };
+  return ib ? { base: { lo: ib.lo, hi: ib.hi }, stop: ib.sl, src: "Konsolidierung nach dem Treffer" } : { base: pl0.base || null, stop: pl0.stop, src: pl0.src };
 }
 function kplanHtml(r) {
   const x = kSt(r), cur = esc(r.currency || ""), tz = tgtZ(r);
   const pl = kPlan(r.ticker);
-  const head = { ready: ["g", "Kaufbereit", "Seitwärtsphase fertig – Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt."],
+  const head = { ready: ["g", "Kaufbereit", "Konsolidierung fertig – Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt."],
     wait: ["y", "Treffer – noch nicht kaufen", `${x.s}. Gekauft wird erst nach 5 ruhigen Tagen.`],
-    late: ["y", "Einstieg vorbei", "Der Kauftag nach der Seitwärtsphase ist schon vorbei – nicht nachkaufen, auf den nächsten Treffer warten."],
-    gone: ["r", "Verfallen", "Innerhalb von 10 Tagen keine Seitwärtsphase – kein Trade."],
+    late: ["y", "Einstieg vorbei", "Der Kauftag nach der Konsolidierung ist schon vorbei – nicht nachkaufen, auf den nächsten Treffer warten."],
+    gone: ["r", "Verfallen", "Innerhalb von 10 Tagen keine Konsolidierung – kein Trade."],
     own: ["b", "Im Depot", "Der Trade läuft – Stop und Ausstieg siehst du im Depot."],
     fast: ["y", "Fast-Treffer – beobachten", `Es fehlt ${esc((r.missing || []).slice(0, 2).map(shortCrit).join(", "))}. Erst als voller Treffer handeln.`],
     near: ["n", "Kein Signal – 9/11", `Es fehlen ${esc((r.missing || []).map(shortCrit).join(", "))}.`],
@@ -3849,7 +3865,7 @@ async function loadChart(t) {
   if (!chartCache[t]) chartCache[t] = fetch(`data/charts/${encodeURIComponent(t)}.json`).then(r => r.json());
   return chartCache[t];
 }
-// Linien im Chart wie die Regel: Kaufzone-Oberkante und Stop der Seitwärtsphase – kein festes Kursziel (Gewinner laufen lassen)
+// Linien im Chart wie die Regel: Kaufzone-Oberkante und Stop der Konsolidierung – kein festes Kursziel (Gewinner laufen lassen)
 const chartPlan = r => { if (!r.passed) return isTrend(r) ? r.tr.plan : null; const kp = kPlan(r.ticker); return kp.stop ? { entry: kp.base ? kp.base.hi : null, stop: kp.stop } : null; };
 function miniSvg(c, r) {
   const nu = state.design === "pro";
@@ -4005,9 +4021,9 @@ function hintNow(r) {
   const h0 = r && r.hint, h = h0 && h0.title ? { ...h0, title: String(h0.title).replace(/\s*·\s*Score\s*\d+/, "") } : h0;   // Score spielt für die Regel keine Rolle → nicht im Titel
   if (!r || !r.passed) return h;
   const k = kSt(r), it = h4Of(r.ticker);
-  if (k.k === "gone") return { tone: "red", title: "Kairo-Treffer verfallen – nicht traden", text: `${it && it.why ? `${it.why[0].toUpperCase() + it.why.slice(1)}. ` : "Innerhalb von 10 Handelstagen keine Seitwärtsphase. "}Laut getesteter Regel ist das Signal damit erledigt – auf den nächsten Treffer warten.` };
+  if (k.k === "gone") return { tone: "red", title: "Kairo-Treffer verfallen – nicht traden", text: `${it && it.why ? `${it.why[0].toUpperCase() + it.why.slice(1)}. ` : "Innerhalb von 10 Handelstagen keine Konsolidierung. "}Laut getesteter Regel ist das Signal damit erledigt – auf den nächsten Treffer warten.` };
   if (k.k === "late") return { tone: "yellow", title: "Einstieg vorbei", text: k.s + "." };
-  if (k.k === "ready") return { tone: "green", title: "Kaufbereit – Kauf zur nächsten Eröffnung", text: "Die Seitwärtsphase ist fertig. Den Trade-Plan (Stop, Stückzahl) zeigt der Reiter Einstieg." };
+  if (k.k === "ready") return { tone: "green", title: "Kaufbereit – Kauf zur nächsten Eröffnung", text: "Die Konsolidierung ist fertig. Den Trade-Plan (Stop, Stückzahl) zeigt der Reiter Einstieg." };
   if (k.k === "own") return { tone: "green", title: "Im Depot", text: "Der Trade läuft – Stop und Verkaufstag stehen im Depot." };
   return h;
 }
@@ -7035,7 +7051,7 @@ document.addEventListener("click", async e => {
     function base(p, r) {
       if (p.d) return `${p.n} (ISIN ${p.isin}): ${p.qty} Stück, Kauf ${p.date || "?"} zu ${fmt(p.price)} €; Basiswert ${p.d.under} aktuell ${r ? fmt(r.c) + " " + r.cur : "?"}, K.-o. ${fmt(p.d.ko)} ${p.d.cur || ""}`;
       return `${p.n} (${p.t}): ${p.qty} Stück, Kauf ${p.date || "?"} zu ${fmt(p.price)} €, aktuell ${r ? fmt(r.c) + " " + r.cur : "?"}`; }
-    const txt = "Mein Depot (Kairo, Stand " + new Date().toLocaleDateString("de-DE") + "). Strategie: nur Kairo-Treffer, Kauf in der Seitwärtsphase, Stop = Basistief − 0,25 ATR, halten 20 Handelstage ohne Gewinnziel, Risiko 1 % je Trade, kleinster passender Hebel, höchstens 5 Trades:\n" + lines.join("\n");
+    const txt = "Mein Depot (Kairo, Stand " + new Date().toLocaleDateString("de-DE") + "). Strategie: nur Kairo-Treffer, Kauf in der Konsolidierung, Stop = Basistief − 0,25 ATR, halten 20 Handelstage ohne Gewinnziel, Risiko 1 % je Trade, kleinster passender Hebel, höchstens 5 Trades:\n" + lines.join("\n");
     (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => { depotMsg = "Kopiert – einfach im Chat mit Claude einfügen."; render(); },
       () => { depotMsg = "Kopieren nicht möglich. Text:<br><pre style='white-space:pre-wrap'>" + esc(txt) + "</pre>"; render(); });
     return;
@@ -7356,7 +7372,7 @@ function jStrategyHtml() {
       <div class="fig"><span>Regeltreue</span><b class="${rule >= 0.8 ? "up" : rule >= 0.6 ? "" : "down"}">${pct(rule, 0)}</b><em>${early ? `${early}× vor dem Ausstiegstag verkauft` : "immer bis Stop/Ausstieg gehalten"}</em></div>
       <div class="fig"><span>Serie</span><b class="${rs[n - 1] > 0 ? "up" : "down"}">${streak} ${rs[n - 1] > 0 ? "Gewinner" : "Verlierer"}</b><em>${rs[n - 1] > 0 ? "" : "Serien von 8–10 Verlierern sind bei 30 % Trefferquote normal"}</em></div>
       <div class="fig"><span>Stops</span><b>${stops}</b><em>${pct(stops / n, 0)} der Trades</em></div></div>
-    <div class="note" style="margin:6px 0 0">${n < 20 ? `Noch ${20 - n} Trades bis zu einer ersten belastbaren Aussage.` : ok ? "Du liegst im Rahmen der Test-Erwartung – weiter so." : "Unter der Test-Erwartung: Prüfe Regeltreue (zu frühe Verkäufe?) und ob du wirklich nur volle Treffer in der Seitwärtsphase nimmst."}${early ? " Zu frühe Verkäufe schneiden die großen Gewinner ab, von denen die Strategie lebt." : ""}</div></div>`;
+    <div class="note" style="margin:6px 0 0">${n < 20 ? `Noch ${20 - n} Trades bis zu einer ersten belastbaren Aussage.` : ok ? "Du liegst im Rahmen der Test-Erwartung – weiter so." : "Unter der Test-Erwartung: Prüfe Regeltreue (zu frühe Verkäufe?) und ob du wirklich nur volle Treffer in der Konsolidierung nimmst."}${early ? " Zu frühe Verkäufe schneiden die großen Gewinner ab, von denen die Strategie lebt." : ""}</div></div>`;
 }
 // Kosten-Check: echte Ausführungskurse (Aktien in €) gegen den Tages-Durchschnittskurs (Hoch+Tief+Schluss)/3. Das ist KEIN Spread:
 // die Abweichung enthält Spread, Zeitpunkt im Tag und Glück/Pech mit der Kursbewegung; sie mittelt sich erst über viele Orders zu einem
@@ -7633,7 +7649,7 @@ function gBuy(g, t, f) {
   p.risk = stop && stop < x.c ? qty * (P0 - gModelAt(p, stop)) + 2 * fee : null;
   // Regeltreue: Abweichungen von der getesteten Strategie beim Kauf festhalten
   const lossU = stop && stop < x.c ? P0 - gModelAt(p, stop) : null, sug = lossU > 0 ? gTotals(g).trade * .01 / lossU : null;
-  p.rv = [su.k !== "Kairo" && "kein Kairo-Treffer", su.k === "Kairo" && !pl.base && "ohne Seitwärtsphase", !stop && "ohne Stop",
+  p.rv = [su.k !== "Kairo" && "kein Kairo-Treffer", su.k === "Kairo" && !pl.base && "ohne Konsolidierung", !stop && "ohne Stop",
           turbo && stop && K0 >= stop && "K.-o. über dem Stop", sug && qty > sug * 1.15 && "mehr als 1 % Risiko",
           g.pos.length >= KMAX.maxOpen && "mehr als 5 Trades"].filter(Boolean);
   if (f.dry) return "";
@@ -7701,7 +7717,7 @@ function gCalc(g, t) {
   else if (turbo && K0 > 0 && stop && K0 >= stop) warn.push("K.-o. liegt über dem Stop – das Produkt wäre vor deinem Stop wertlos. Turbo mit tieferer K.-o.-Schwelle wählen.");
   else if (turbo && K0 > 0 && stop && S && (stop - K0) / S < .02) warn.push("K.-o. sehr knapp unter dem Stop – bei einer Kurslücke droht der Totalverlust.");
   if (!stop) warn.push("Kein Stop aus dem Scan – trag den Stop (Kurs des Basiswerts) selbst ein.");
-  if (!pl.base && su.k === "Kairo") warn.push("Noch keine Seitwärtsphase – laut Strategie erst kaufen, wenn sie da ist (siehe Einstieg).");
+  if (!pl.base && su.k === "Kairo") warn.push("Noch keine Konsolidierung – laut Strategie erst kaufen, wenn sie da ist (siehe Einstieg).");
   if (q && sugQ && q > sugQ * 1.15) warn.push(`Mehr als 1 % Risiko: Bei ${fmt(q, 0)} Stück kostet der Stop ≈ ${eur(q * loss)} statt ${eur(riskEur)}.`);
   if (g.pos.length >= KMAX.maxOpen) warn.push(`Schon ${KMAX.maxOpen} offene Trades – mehr hat die Strategie nie gleichzeitig.`);
   return `<div class="mtiles" style="margin-top:10px">
@@ -7737,8 +7753,8 @@ function gBuyForm(g, t) {
       <label>Stop (${esc(x.cur)}, Basiswert)<input id="gStop" type="number" inputmode="decimal" step="0.01" min="0" value="${esc(f.stop ?? (stop ? stop.toFixed(2) : ""))}"></label>
       <label>Stückzahl<input id="gQty" type="number" inputmode="numeric" step="1" min="1" value="${esc(f.qty ?? "")}"></label></div>
     <div class="g-otype"><span class="jlbl">Ordertyp</span><div class="g-mode">${Object.entries(G_OT).map(([k, l]) => `<button class="opt${(f.otype || "market") === k ? " on" : ""}" data-g="otype" data-v="${k}">${l}</button>`).join("")}</div>
-      ${(f.otype || "market") !== "market" ? `<div class="tp2-cfg" style="margin-top:10px"><label>Auslösen, wenn der Basiswert ${f.otype === "limit" ? "auf oder unter" : "auf oder über"} … (${esc(x.cur)})<input id="gTrig" type="number" inputmode="decimal" step="0.01" min="0" value="${esc(f.trig ?? "")}" placeholder="${f.otype === "limit" ? "z. B. Unterkante der Seitwärtsphase" : "z. B. Oberkante der Seitwärtsphase"}"></label></div>
-      <div class="note" style="margin:6px 0 0">${f.otype === "limit" ? "Limit: kauft erst, wenn der Kurs fällt – du zahlst nicht mehr als geplant." : "Stop-Buy: kauft erst, wenn der Kurs steigt – z. B. beim Ausbruch aus der Seitwärtsphase."} Gilt 10 Handelstage, der Betrag wird so lange reserviert.${pl.base ? ` Seitwärtsphase: ${fmt(pl.base.lo ?? pl.base[0])}–${fmt(pl.base.hi ?? pl.base[1])} ${esc(x.cur)}.` : ""}</div>` : ""}</div>
+      ${(f.otype || "market") !== "market" ? `<div class="tp2-cfg" style="margin-top:10px"><label>Auslösen, wenn der Basiswert ${f.otype === "limit" ? "auf oder unter" : "auf oder über"} … (${esc(x.cur)})<input id="gTrig" type="number" inputmode="decimal" step="0.01" min="0" value="${esc(f.trig ?? "")}" placeholder="${f.otype === "limit" ? "z. B. Unterkante der Konsolidierung" : "z. B. Oberkante der Konsolidierung"}"></label></div>
+      <div class="note" style="margin:6px 0 0">${f.otype === "limit" ? "Limit: kauft erst, wenn der Kurs fällt – du zahlst nicht mehr als geplant." : "Stop-Buy: kauft erst, wenn der Kurs steigt – z. B. beim Ausbruch aus der Konsolidierung."} Gilt 10 Handelstage, der Betrag wird so lange reserviert.${pl.base ? ` Konsolidierung: ${fmt(pl.base.lo ?? pl.base[0])}–${fmt(pl.base.hi ?? pl.base[1])} ${esc(x.cur)}.` : ""}</div>` : ""}</div>
     <div id="gCalc">${gCalc(g, t)}</div>
     <div class="note" style="margin:8px 0">Tipp: Den passenden Turbo findest du im Reiter Einstieg (Turbo-Finder). Bei Scalable stehen Kaufkurs (Brief), K.-o.-Schwelle und WKN im Produktblatt.${turbo ? "" : ` Aktueller Kurs ≈ ${eur2(x.eur)}.`}</div>
     <button class="btn" data-g="review" data-t="${esc(t)}">Order prüfen</button>${state.gMsg ? `<div class="note down">${esc(state.gMsg)}</div>` : ""}</div>`;
@@ -7776,7 +7792,7 @@ function gameHtml() {
       <div class="mt"><span>nach Regeln</span><b class="${ok.length / done.length >= .9 ? "up" : "gold"}">${pct(ok.length / done.length, 0)}</b><em>${ok.length} von ${done.length} Trades</em></div>
       <div class="mt"><span>Ø regelkonform</span><b>${avg(ok) != null ? `${avg(ok) >= 0 ? "+" : ""}${fmt(avg(ok), 2)} R` : "–"}</b></div>
       <div class="mt"><span>Ø mit Abweichung</span><b>${avg(bad) != null ? `${avg(bad) >= 0 ? "+" : ""}${fmt(avg(bad), 2)} R` : "–"}</b></div></div>
-      <div class="note" style="margin:6px 0 0">Nur regelkonforme Trades sagen etwas über die Strategie. Abweichungen (ohne Seitwärtsphase, zu viel Risiko, zu früh verkauft …) testen dein Bauchgefühl.</div></div>` : "";
+      <div class="note" style="margin:6px 0 0">Nur regelkonforme Trades sagen etwas über die Strategie. Abweichungen (ohne Konsolidierung, zu viel Risiko, zu früh verkauft …) testen dein Bauchgefühl.</div></div>` : "";
   const closed = done.slice(0, 20).map(c => `<tr><td><b>${esc(c.n)}</b><small class="muted" style="display:block">${c.kind === "turbo" ? `Turbo${c.wkn ? " " + esc(c.wkn) : ""}` : "Aktie"} · ${dateDE(c.d)} → ${dateDE(c.xd)} · ${esc(c.why)}${(c.rv || []).length ? ` · ${IC.warn} ${esc(c.rv.join(", "))}` : ""}</small></td><td class="num ${c.pnl >= 0 ? "up" : "down"}">${sEur2(c.pnl)}<small style="display:block">${c.R != null ? `${c.R >= 0 ? "+" : ""}${fmt(c.R, 2)} R` : sgnPct(c.ret, 1)}</small></td></tr>`).join("");
   const tst = r => inTrade(r.region), mo6 = r => (r.flags || {}).mom61;   // Rangfolge wie Top-Setups
   const id = data.results.filter(r => r.passed).sort((a, b) => (tst(b) - tst(a)) || ((mo6(a) ?? 9) - (mo6(b) ?? 9))).slice(0, 10), sel = state.gSel;
@@ -7889,7 +7905,7 @@ function getJson(name) {
   return jsonData[name];
 }
 const byTicker = t => data.results.find(r => r.ticker === t);
-// ---------- 4H-Top-Setup (backend/h4live.py): Treffer → Seitwärtsphase → 4H-Bestätigung → Kauf → Verkauf unter der EMA 20 (ab Tag 10, max. 40) ----------
+// ---------- 4H-Top-Setup (backend/h4live.py): Treffer → Konsolidierung → 4H-Bestätigung → Kauf → Verkauf unter der EMA 20 (ab Tag 10, max. 40) ----------
 // Test (h4study.py, Okt. 2026): +0,39 / +0,54 R je Trade statt +0,10 / +0,11 R ohne 4H. Abends kommt h4.json mit dem Scan,
 // tagsüber prüft der Mitteilungsdienst alle 30 Min. nach jeder fertigen 4H-Kerze (h4live.json im Branch kairo-alerts).
 const H4LIVE_URL = REPO.replace("https://github.com/", "https://raw.githubusercontent.com/") + "/kairo-alerts/h4live.json";
@@ -7911,7 +7927,7 @@ function h4Data() {
 // Stufe: 11 = Treffer, 10s = 10/11 nur MBI-Abklingen fehlt (zählt wie Treffer), 10 / 9 = nur zur Auswahl (Info, keine Mitteilung)
 const h4Real = it => !!it && (!it.grp || it.grp === "11" || it.grp === "10s");
 const GRPL = { "11": "11/11", "10s": "10/11 · MBI gelockert", "10": "10/11 · kein Treffer", "9": "9/11 · kein Treffer" };
-// Test (Fast-Treffer mit Seitwärtsphase + 4H, Okt. 2026): je Trade in zwei Stichproben
+// Test (Fast-Treffer mit Konsolidierung + 4H, Okt. 2026): je Trade in zwei Stichproben
 const GRPT = { "10": "−0,01 / +0,24 R", "9": "−0,37 / −0,12 R" };
 // Reihenfolge im Scanner: echte Einstiege (11/11, MBI gelockert) – 4H bestätigt/verkaufen > wartet auf 4H > läuft;
 // danach 10/11 und 9/11 mit 4H-Bestätigung (nur zur Auswahl); alles andere nach Score (stabile Sortierung)
@@ -8044,7 +8060,7 @@ const TOUR = [
     [["Heute", "was heute zu tun ist"], ["ETF", "Sparplan und Ampel"], ["Scanner", "alle Treffer mit Status"],
      ["Einstieg", "Stop, Stückzahl, Hebel"], ["Markt", "Sektoren, Rotation, Insider"], ["Depot", "Positionen, Journal, Stops"]]],
   ["rule", "Die Kairo-Regel", "Eine Regel für jeden Trade – kein Bauchgefühl.",
-    [["1 · Treffer", "alle 11 Kriterien einer Wende erfüllt"], ["2 · Seitwärtsphase", "5 ruhige Tage abwarten, dann kaufen"], ["3 · Stop & Ausstieg", "Stop unter der Seitwärtsphase · ab Tag 10 unter der EMA 20 verkaufen, spätestens Tag 60"]]],
+    [["1 · Treffer", "alle 11 Kriterien einer Wende erfüllt"], ["2 · Konsolidierung", "5 ruhige Tage abwarten, dann kaufen"], ["3 · Stop & Ausstieg", "Stop unter der Konsolidierung · ab Tag 10 unter der EMA 20 verkaufen, spätestens Tag 60"]]],
   ["go", "So fängst du an", "Der Welt-ETF ist dein Fundament – Trading der kleine, ehrlich gemessene Zusatz.",
     [["ETF", "Sparplan – die Ampel sagt, wann Extra-Geld lohnt"], ["Depot", "Scalable-CSV importieren, Stops eintragen"],
      ["Übung", "erst mit Spielgeld traden"], ["Mitteilungen", "Stop, Verkaufstag und Ampel aufs Handy"]]]];
@@ -8085,19 +8101,19 @@ function kSt(r) {
   const t = r.ticker || r.t, it = h4Of(t), pl = (rowOf(t) || {}).pl || {};
   if (plansLoad().some(p => p.st === "open" && p.t === t)) return { k: "own", t: "im Depot", cls: "own", lv: 6, s: "Trade läuft – siehe Depot" };
   if (r.passed) {
-    if (kmReady(t)) return { k: "ready", t: "kaufbereit", cls: "hit", lv: 5, s: "Seitwärtsphase fertig – Kauf zur nächsten Eröffnung" };
-    if (it && it.st === "weg" && !it.base) return { k: "gone", t: "verfallen", cls: "", lv: 1, s: "keine Seitwärtsphase innerhalb von 10 Tagen" };
+    if (kmReady(t)) return { k: "ready", t: "kaufbereit", cls: "hit", lv: 5, s: "Konsolidierung fertig – Kauf zur nächsten Eröffnung" };
+    if (it && it.st === "weg" && !it.base) return { k: "gone", t: "verfallen", cls: "", lv: 1, s: "keine Konsolidierung innerhalb von 10 Tagen" };
     if (kmDone(t)) return { k: "late", t: "Einstieg vorbei", cls: "", lv: 2, s: `Laut Regel war der Kauf am ${dateDE(it.base.ed)} zur Eröffnung – ein späterer Einstieg ist nicht getestet` };
-    if (!it) return { k: "wait", t: "neu", cls: "wait", lv: 4, s: "Treffer von heute – die Seitwärtsphase wird ab morgen geprüft" };
-    if (it && it.st === "basis") return { k: "wait", t: `Seitwärtsphase ${it.day}/10`, cls: "wait", lv: 4, s: `wartet auf die Seitwärtsphase · Tag ${it.day} von 10` };
-    return { k: "wait", t: "wartet", cls: "wait", lv: 4, s: "wartet auf die Seitwärtsphase" };
+    if (!it) return { k: "wait", t: "neu", cls: "wait", lv: 4, s: "Treffer von heute – die Konsolidierung wird ab morgen geprüft" };
+    if (it && it.st === "basis") return { k: "wait", t: `Konsolidierung · Tag ${it.day}/10`, cls: "wait", lv: 4, s: `wartet auf die Konsolidierung · Tag ${it.day} von 10` };
+    return { k: "wait", t: "wartet", cls: "wait", lv: 4, s: "wartet auf die Konsolidierung" };
   }
   const miss = (r.missing || []).map(shortCrit).slice(0, 2).join(", ");
   if (r.fast_hit) return { k: "fast", t: "Fast-Treffer", cls: "fast", lv: 3, s: miss ? `fehlt: ${miss}` : "ein Kriterium fehlt" };
   if (r.near_hit) return { k: "near", t: "9/11", cls: "", lv: 2, s: miss ? `fehlt: ${miss}` : "zwei Kriterien fehlen" };
   return { k: "none", t: `${r.met ?? "–"}/${r.total ?? 11}`, cls: "", lv: 0, s: miss ? `fehlt: ${miss}` : "" };
 }
-// Ruhe (backend/scanner.py calm_days): gilt seit 29.10.2026 am Kauftag (Seitwärtsphase, h4live), nicht mehr am Treffer-Tag.
+// Ruhe (backend/scanner.py calm_days): gilt seit 29.10.2026 am Kauftag (Konsolidierung, h4live), nicht mehr am Treffer-Tag.
 const calmOf = r => ((r && r.flags) || {}).calm || null;
 function calmGate(d) {
   (d && d.results || []).forEach(r => {
@@ -8284,9 +8300,9 @@ function todayModel() {
       if (g.koDist != null && g.koDist < .06) tasks.push({ k: "ko:" + g.t, cat: "sell", tone: "r", t: g.t, ttl: `${g.name} – Knock-out nah`, sub: `Nur noch ${pct(g.koDist, 1)} bis zur K.-o.-Schwelle ${fmt(g.ko)} – Turbo prüfen`, act: `<button class="btn ghost sm" ${SEC_LINK("depot")}>Depot</button>` });
       else if (!g.st && !isLt(g.t) && !planFor([g.t], g.name)) tasks.push({ k: "np:" + g.t, cat: "prep", tone: "", t: g.t, ttl: `${g.name} – Stop festlegen`, sub: "Im Depot, aber ohne Trade-Plan: kein Stop, kein Verkaufstag", act: `<button class="btn ghost sm" data-ein="${esc(g.t)}">Plan anlegen</button>` }); });
   } else if (!anaData) loadAnalysis();
-  // 3) Kaufen: Seitwärtsphase fertig, nur so viele wie Plätze frei, in der Kairo-Rangfolge
+  // 3) Kaufen: Konsolidierung fertig, nur so viele wie Plätze frei, in der Kairo-Rangfolge
   const free = kmSlots(), ready = searchIdx ? kmRank().hits.filter(x => kmTested(x) && kmReady(x.t) && !openT.has(x.t)) : [];
-  ready.slice(0, free).forEach(x => tasks.push({ k: "b:" + x.t, cat: "buy", tone: "g", t: x.t, buy: x, ttl: `${x.n} kaufen`, sub: `Seitwärtsphase fertig${x.mom != null ? ` · Vormomentum ${sgnPct(x.mom, 0)}` : ""}` }));
+  ready.slice(0, free).forEach(x => tasks.push({ k: "b:" + x.t, cat: "buy", tone: "g", t: x.t, buy: x, ttl: `${x.n} kaufen`, sub: `Konsolidierung fertig${x.mom != null ? ` · Vormomentum ${sgnPct(x.mom, 0)}` : ""}` }));
   // 4) ETF-Ampel grün → Extra-Geld investieren (Sparrate läuft ohnehin)
   const e = getJson("etf.json");
   const etg = e && e.ok !== false ? etfTiming(e) : null;
@@ -8296,7 +8312,7 @@ function todayModel() {
   else if (!etg && e && e.ok !== false && ["go2", "rate"].includes(e.lv) && pfCfg().etf > 0 && !etfDoneRecent())   // „Normal“ ist keine Aufgabe – nur Gelegenheit und Raten
     tasks.push({ k: "etf", cat: "etf", tone: e.lv === "rate" ? "y" : "g", t: "", ttl: e.lv === "go2" ? "ETF: Gelegenheit – zusätzlich nachlegen" : "ETF: Extra-Geld in Raten anlegen", sub: e.lv === "rate" ? "unter der 200-Tage-Linie, Kreditmarkt schwach – auf 3 Monate verteilen" : (g => (g > 50 ? `bis zu ${eur(g)} (Lücke zu deinem ETF-Ziel) · ` : ""))((ec => ec.units ? ec.inv * ec.share / 100 - ec.units * e.c : 0)(etfCfg())) + (e.lv === "go2" ? "VIX ≥ 30 – gern in 2–3 Raten über einige Wochen" : (e.why || []).some(w => /3 Monat/.test(w)) ? "3-Monats-Regel – am besten in 3 Raten über 8 Wochen" : `ETF-Ampel grün${(e.why || []).length ? ": " + e.why.join(", ") : ""}`),
       act: `<button class="btn ghost sm" data-etfdone>Erledigt ✓</button><button class="btn ghost sm" ${SEC_LINK("etf")}>ETF</button>` });
-  // 5) Vorbereiten: Treffer, deren Seitwärtsphase noch kommt (beste Rangplätze, keine Doppelten)
+  // 5) Vorbereiten: Treffer, deren Konsolidierung noch kommt (beste Rangplätze, keine Doppelten)
   const seen = new Set(tasks.map(x => x.t)), pos = searchIdx ? kmRank().pos : {};
   data.results.filter(r => r.passed && !isTrend(r) && inTrade(r.region) && !seen.has(r.ticker) && !openT.has(r.ticker) && kSt(r).k === "wait")
     .sort((a, b) => (pos[a.ticker] || 999) - (pos[b.ticker] || 999)).slice(0, 3)
@@ -8314,7 +8330,7 @@ function tasksHtml(M) {
   const head = must.length ? `Heute zu tun · ${mustOpen ? `${mustOpen} offen` : "alles erledigt ✓"}` : "Heute zu tun";
   return `<div class="hcard tasks">${hHead(head)}
     ${must.length > 1 && mustOpen < must.length ? `<div class="tq-prog"><i style="width:${Math.round((must.length - mustOpen) / must.length * 100)}%"></i></div>` : ""}
-    ${!mustOpen ? `<div class="tdo-none"><b>${must.length ? "Alles erledigt ✓" : "Nichts zu tun ✓"}</b><span>${M.running ? `${M.running} ${M.running === 1 ? "Trade läuft" : "Trades laufen"} nach Plan. ` : ""}${M.free ? "Kein Kairo-Treffer mit fertiger Seitwärtsphase." : "Alle Plätze belegt."} Der Sparplan läuft.</span></div>` : ""}
+    ${!mustOpen ? `<div class="tdo-none"><b>${must.length ? "Alles erledigt ✓" : "Nichts zu tun ✓"}</b><span>${M.running ? `${M.running} ${M.running === 1 ? "Trade läuft" : "Trades laufen"} nach Plan. ` : ""}${M.free ? "Kein Kairo-Treffer mit fertiger Konsolidierung." : "Alle Plätze belegt."} Der Sparplan läuft.</span></div>` : ""}
     ${grp("sell", "Verkaufen & absichern")}${grp("buy", `Kaufen · ${M.free} ${M.free === 1 ? "Platz" : "Plätze"} frei`)}
     ${M.more ? `<div class="note" style="margin:4px 0 0">${M.more} weitere kaufbereit – keine Plätze frei (Rangfolge: schwächeres Vormomentum zuerst).</div>` : ""}
     ${grp("etf", "ETF")}
@@ -8603,7 +8619,7 @@ function etfTvHtml() {
   const v = ETF_TV.some(x => x[0] === state.etfVenue) ? state.etfVenue : "GETTEX";
   const src = "https://s.tradingview.com/widgetembed/?" + new URLSearchParams({ symbol: v + ":SPYI", interval: state.etfTvIv || "15", theme: isLight() ? "light" : "dark", style: "1",
     locale: "de_DE", timezone: "Europe/Berlin", hide_side_toolbar: "1", allow_symbol_change: "0", saveimage: "0", withdateranges: "1", studies: "[]" });
-  return `<div class="el-tv"><div class="el-tvbar"><div class="sp-tg">${ETF_TV.map(([k, l]) => `<button class="opt${k === v ? " on" : ""}" data-etfvenue="${k}">${l}</button>`).join("")}</div>
+  return `<div class="el-tv"><div class="el-tvbar"><button class="opt el-fs" data-etffs title="${ETF_FS ? "Verkleinern" : "Groß anzeigen"}">${ETF_FS ? "✕ Schließen" : "⤢ Groß"}</button><div class="sp-tg">${ETF_TV.map(([k, l]) => `<button class="opt${k === v ? " on" : ""}" data-etfvenue="${k}">${l}</button>`).join("")}</div>
       <div class="sp-tg">${[["5", "5 Min"], ["15", "15 Min"], ["60", "1 Std"], ["D", "Tag"]].map(([k, l]) => `<button class="opt${(state.etfTvIv || "15") === k ? " on" : ""}" data-etftviv="${k}">${l}</button>`).join("")}</div></div>
     <iframe src="${src}" loading="lazy" title="Live-Chart SPYI ${esc(v)}" allowtransparency="true" frameborder="0" scrolling="no"></iframe>
     <div class="el-s">Chart: <b>SPDR MSCI ACWI IMI (SPYI) · ISIN IE00B3YLTY66</b> an ${v === "GETTEX" ? "gettex" : v === "XETR" ? "Xetra (ca. 15 Min. verzögert)" : "Tradegate"} · TradingView nennt im Namen die Fondsgesellschaft „State Street“ (SPDR-Anbieter) – es ist dein ETF, nicht die State-Street-Aktie. Bleibt der Chart leer, oben eine andere Börse wählen.</div></div>`;
@@ -8619,12 +8635,14 @@ function etfLivePxHtml(c) {
     <div class="el-m"><b>${fmt(L.p, 3)} €</b>${chg != null ? `<span class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)} heute</span>` : ""}${val ? `<span class="muted">Deine ${fmt(c.units, 0)} Anteile: <b>${eur(val)}</b></span>` : ""}</div>
     <div class="el-s">${L.bid && L.ask ? `Geld ${fmt(L.bid, 3)} · Brief ${fmt(L.ask, 3)} · ` : ""}${t ? `${old ? "letzter Kurs" : "Stand"} ${t.toDateString() === new Date().toDateString() ? hm + " Uhr" : t.toLocaleDateString("de-DE") + " " + hm}` : ""}${old ? " (gettex handelt Mo–Fr 7:30–23 Uhr)" : " · aktualisiert sich jede Minute"}</div>`;
 }
+let ETF_FS = false;   // Live-Chart im Vollbild (Wunsch 14.11.2026)
 function etfLiveHtml(c) {
   etfLiveLoad();
-  return `<div class="hcard etf-live"><div id="etfLivePx">${etfLivePxHtml(c)}</div>${etfTvHtml()}</div>`;
+  return `<div class="hcard etf-live${ETF_FS ? " fs" : ""}"><div id="etfLivePx">${etfLivePxHtml(c)}</div>${etfTvHtml()}</div>`;
 }
 document.addEventListener("click", e => {
   if (e.target.closest("[data-etflive]")) etfLiveLoad(true);
+  if (e.target.closest("[data-etffs]")) { ETF_FS = !ETF_FS; document.body.classList.toggle("etf-fs", ETF_FS); render(); return; }
   const v = e.target.closest("[data-etfvenue]"); if (v) { state.etfVenue = v.dataset.etfvenue; save(); render(); }
   const iv = e.target.closest("[data-etftviv]"); if (iv) { state.etfTvIv = iv.dataset.etftviv; save(); render(); }
 });
@@ -8783,7 +8801,7 @@ function evidCardHtml(r) {
   const lines = [
     ["Regelstatus", `${r.met}/${r.total} Kriterien erfüllt – Treffer nach der Kairo-Regel`],
     ["Handelbarkeit", `${x.t}${tested ? "" : " · Region nicht getestet – nur beobachten"}`],
-    ["Risiko & Kosten", dist ? `Stop ${pct(dist / ref, 1)} unter der Kaufzone${atr ? ` (${fmt(dist / atr, 1)} ATR)` : ""} · Spread ≈ ${fmt(costR, 2)} R je Trade, unter 250 € Orderwert + 0,99 € Gebühr` : "Stop kommt mit der Seitwärtsphase"],
+    ["Risiko & Kosten", dist ? `Stop ${pct(dist / ref, 1)} unter der Kaufzone${atr ? ` (${fmt(dist / atr, 1)} ATR)` : ""} · Spread ≈ ${fmt(costR, 2)} R je Trade, unter 250 € Orderwert + 0,99 € Gebühr` : "Stop kommt mit der Konsolidierung"],
     ["Historische Evidenz", `Kairo-Regel 2008–26: ${resR(RESEARCH.rNorm)} je Trade normal, ${resR(RESEARCH.rStress)} mit Stress-Kosten – nur ${resR(RESEARCH.vsRandom)} besser als Zufall (Stand ${evid("B60").checked})`],
     ["Live-Evidenz", L && (L.mtm_n || L.n) ? `${L.mtm_n ?? L.n} Live-Trades · Ø ${resR(L.mtm_r ?? L.avg_r)}${(L.mtm_n ?? L.n) < 30 ? " – noch zu wenige für ein Urteil" : ""}` : "noch keine abgeschlossenen Live-Trades"]];
   return `<details class="evc"><summary>Einordnung: Signal ≠ Empfehlung</summary><ul class="checks" style="margin:6px 0 0">${lines.map(([l, v]) => `<li><b>${l}:</b> ${esc(v)}</li>`).join("")}</ul>
@@ -8863,7 +8881,7 @@ function myTradesHtml() {
         <td class="num">${p.xd ? bdBetween(new Date(p.d + "T12:00:00"), new Date(p.xd + "T12:00:00")) + 1 : "–"}</td>
         <td class="${p.R >= 0 ? "up" : "down"}"><b>${p.R >= 0 ? "+" : ""}${fmt(p.R, 2)} R</b>${eurOf(p) != null ? ` <small>${sgnEur(eurOf(p))}</small>` : ""}</td></tr>`).join("")}</tbody></table></div></div>`;
 }
-const ST_TXT = { wait: ["wartet auf Seitwärtsphase", "muted"], nobase: ["kein Einstieg", "muted"], run: ["läuft", "gold"], stop: ["Stop", "down"], ema: ["Ausstieg EMA 20", ""], zeit: ["Ausstieg Tag 60", ""] };
+const ST_TXT = { wait: ["wartet auf Konsolidierung", "muted"], nobase: ["kein Einstieg", "muted"], run: ["läuft", "gold"], stop: ["Stop", "down"], ema: ["Ausstieg EMA 20", ""], zeit: ["Ausstieg Tag 60", ""] };
 function bilanzHtml() {
   const b = getJson("bilanz.json");
   const back = "", M = STRAT_BT.main;   // Bilanz liegt unter Depot (Unterreiter) – kein „‹ Heute“ mehr
@@ -8879,8 +8897,8 @@ function bilanzHtml() {
         <div class="mt"><span>Realistisch</span><b>eher weniger</b><em>Pleite-Aktien fehlen im Test</em></div></div></div>`;
   const rules = `<div class="hcard">${hHead("Die Kairo-Regel")}<ol class="rule-steps">${[
       ["Treffer", "alle 11 Kriterien erfüllt – Fast-Treffer und 9/11 nur beobachten"],
-      ["Seitwärtsphase abwarten", "5 enge Tage (Spanne ≤ 1,5 ATR) innerhalb von 10 Handelstagen – dann Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt"],
-      ["Stop setzen", "Tief der Seitwärtsphase − 0,25 ATR, direkt als Stop-Order – nie nach unten verschieben"],
+      ["Konsolidierung abwarten", "5 enge Tage (Spanne ≤ 1,5 ATR) innerhalb von 10 Handelstagen – dann Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt"],
+      ["Stop setzen", "Tief der Konsolidierung − 0,25 ATR, direkt als Stop-Order – nie nach unten verschieben"],
       ["Risiko fest", "1 % je Trade, höchstens 5 gleichzeitig (Kairo-S: 0,25 % bei bis zu 20) – Reihenfolge: USA/Europa, dann schwächeres Vormomentum"],
       ["Ausstieg", "ab Tag 10 bei Schluss unter der EMA 20 zur nächsten Eröffnung, spätestens an Tag 60 – kein festes Kursziel"],
       ["Kosten klein halten", "Orders ab 250 € (PRIME+ gebührenfrei), Aktie statt Turbo, wenn das Kapital reicht"]].map(([l, t], k) => `<li><i>${k + 1}</i><span><b>${l}</b>${t}</span></li>`).join("")}</ol></div>`;
@@ -8917,10 +8935,10 @@ function bilanzHtml() {
       <div class="mt"><span>Beendet Ø</span><b class="${(st.avg_r ?? 0) >= 0 ? "up" : "down"}">${st.avg_r != null ? R(st.avg_r) : "–"}</b><em>${st.stop != null ? pct(st.stop, 0) + " am Stop" : "noch keine"}</em></div>
       <div class="mt"><span>Im Plus</span><b>${st.mtm_win != null ? pct(st.mtm_win, 0) : st.win != null ? pct(st.win, 0) : "–"}</b><em>aller Trades · Forschung ≈ 30–35 %</em></div></div>
       <div class="note" style="margin:0 0 10px">${verdict}</div>`
-      : `<div class="note" style="margin:0 0 10px">Jeder neue Kairo-Treffer wird ab dem Signaltag nach der Kairo-Regel verfolgt: Seitwärtsphase → Kauf → Stop oder Ausstieg (EMA 20 ab Tag 10, spätestens Tag 60). Erste Ergebnisse nach etwa 4–6 Wochen.</div>`}
+      : `<div class="note" style="margin:0 0 10px">Jeder neue Kairo-Treffer wird ab dem Signaltag nach der Kairo-Regel verfolgt: Konsolidierung → Kauf → Stop oder Ausstieg (EMA 20 ab Tag 10, spätestens Tag 60). Erste Ergebnisse nach etwa 4–6 Wochen.</div>`}
     <div class="note" style="margin:0 0 8px">Nur USA und Europa – dort ist die Regel getestet (wie die Papier-Depots).</div>
     ${act.slice(0, 15).map(row).join("")}
-    <div class="note" style="margin:10px 0 0">${nWait} Treffer warten auf die Seitwärtsphase · ${nNo} ohne Einstieg (keine Seitwärtsphase – richtig so). Jeder Treffer zählt, auch ohne freien Platz. Alles öffentlich und unveränderbar: <a href="track/" target="_blank" rel="noopener">Live-Bilanz aller Treffer</a>.</div></div>`;
+    <div class="note" style="margin:10px 0 0">${nWait} Treffer warten auf die Konsolidierung · ${nNo} ohne Einstieg (keine Konsolidierung – richtig so). Jeder Treffer zählt, auch ohne freien Platz. Alles öffentlich und unveränderbar: <a href="track/" target="_blank" rel="noopener">Live-Bilanz aller Treffer</a>.</div></div>`;
   return back + `<div class="section-title"><span>Kairo-Bilanz</span><span>live · Forschung · Regeln</span></div>` + (b ? live + mrShadowHtml(b.shadow) + learnHtml(b.learn) : "") + research + evidTableHtml() + rules + myTradesHtml() + unknown + old;
 }
 // Schattentests (Freigabe 01.11.2026): Herausforderer laufen live ohne Geld mit – nur künftige Signale (backend/mrshadow.py,
@@ -9171,8 +9189,16 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.170";
-const APP_NEWS = [["2026.11.170", "Quartalszahlen-Verlauf und Abrechnung einlesen", [
+const APP_VER = "2026.11.171";
+const APP_NEWS = [["2026.11.171", "Chart wie TradingView, Rückweg zum Scanner", [
+  ["Chart nach oben und unten schieben", "In der Kursfläche lässt sich der Chart jetzt in alle Richtungen ziehen. Mausrad über der Preisachse zoomt den Preis, über der Zeitachse die Zeit. Doppelklick auf die Preisachse stellt zurück."],
+  ["Fadenkreuz beim Zeichnen", "Mit gewähltem Werkzeug erscheint ein Fadenkreuz wie bei TradingView – senkrechte und waagerechte Linie mit Preis und Datum, auch mit der Maus."],
+  ["Fibonacci nur Golden Zone", "Das Fib-Retracement zeigt nur noch 0 · 0,618 · 0,706 · 0,79 · 1 – genau die Zonen, die Kairo nutzt."],
+  ["Bearbeitungsleiste", "Ausgewählte Zeichnungen haben eine schlanke Symbolleiste wie bei TradingView: Farbe, Verlängern, Umkehren, Alarm, Löschen."],
+  ["Zurück zur Übersicht", "Vom Chart bringt „‹ Scanner“ zurück zur Übersicht der Aktie – der Scanner steht an derselben Stelle wie vorher."],
+  ["ETF-Live-Chart groß", "„⤢ Groß“ öffnet den Live-Chart im ETF-Reiter im Vollbild."],
+  ["Konsolidierung", "Die Wartephase nach einem Treffer heißt jetzt Konsolidierung (Fachbegriff) – die Regel bleibt unverändert."]]],
+  ["2026.11.170", "Quartalszahlen-Verlauf und Abrechnung einlesen", [
   ["Gewinn je Aktie", "Die Übersichtskarte zeigt die letzten 8 Quartale: tatsächlicher Gewinn je Aktie gegen die Schätzung – grün geschlagen, rot verfehlt."],
   ["Umsatz & Gewinn", "Umsatz, Gewinn und Nettomarge der letzten Geschäftsjahre als Balken."],
   ["Abrechnung (PDF) einlesen", "In „Trade erfassen“ die Wertpapierabrechnung aus der Scalable-App wählen – Kairo füllt Kauf/Verkauf, Stück, Kurs, Gebühr und Datum aus. Gelesen wird nur auf deinem Gerät, ohne Login."],
@@ -9556,9 +9582,9 @@ const APP_NEWS = [["2026.11.170", "Quartalszahlen-Verlauf und Abrechnung einlese
   ["Branche antippen = die Schwergewichte", "Tippst du einen Sektor oder eine Branche an (z. B. Halbleiter), stehen jetzt die größten Aktien nach Börsenwert oben – Nvidia, TSMC, Broadcom … – mit ihrem Gewicht in der Branche und der Rendite im gewählten Zeitraum. Vorher waren es die Gewinner des Zeitraums."]]],
   ["2026.11.50", "Einstieg: klarer und richtig gerechnet", [
   ["Einsatz stimmt", "Bei „Aktie direkt“ ist der Einsatz jetzt Stückzahl × Kurs (vorher z. B. 624 € statt 593 € bei 2 Stück) – auch das freie Kapital und das Risiko stimmen damit."],
-  ["Kein „traden“ mehr vor der Seitwärtsphase", "Grün „traden“ erscheint nur, wenn der Treffer kaufbereit ist. Vorher steht „noch warten (Tag x/10)“, danach „Einstieg vorbei“ oder „verfallen“. Regelwidriges Speichern fragt nach."],
+  ["Kein „traden“ mehr vor der Konsolidierung", "Grün „traden“ erscheint nur, wenn der Treffer kaufbereit ist. Vorher steht „noch warten (Tag x/10)“, danach „Einstieg vorbei“ oder „verfallen“. Regelwidriges Speichern fragt nach."],
   ["Das Wichtigste oben", "Urteil, Kauf, Stop und Stückzahl stehen direkt unter dem Namen. Erklärungen und Turbo-Rechner sind eingeklappt."],
-  ["Treffer-Liste geordnet", "Kaufbereite Treffer zuerst (in der getesteten Reihenfolge), darunter die, die noch auf ihre Seitwärtsphase warten."],
+  ["Treffer-Liste geordnet", "Kaufbereite Treffer zuerst (in der getesteten Reihenfolge), darunter die, die noch auf ihre Konsolidierung warten."],
   ["Depot: ausgeknockte Turbos verschwinden", "Knock-outs und Ausbuchungen aus dem Scalable-Export zählen als Abgang, Turbos mit Schwelle in HKD & Co. werden erkannt, und die K.-o.-Prüfung rechnet zwischen Euro und Aktienwährung um (z. B. BYD in HKD, Schwelle in €). Einmal den Export neu importieren."],
   ["Depot: „Mein Stop bei Scalable“", "Je Position kannst du den Stop eintragen, den du bei Scalable gesetzt hast. Erreicht der Kurs ihn, steht oben „Stop vermutlich ausgelöst“ – Kairo sieht deine Orders nicht, so fällt ein Verkauf trotzdem auf. Bleibt beim Neu-Import erhalten."]]],
   ["2026.11.49", "Markt aufgeräumt", [
@@ -9632,7 +9658,7 @@ const APP_NEWS = [["2026.11.170", "Quartalszahlen-Verlauf und Abrechnung einlese
   ["Tabelle bleibt stehen", "Tippst du auf eine Spalte (z. B. Analysten-Ziel), wird sortiert – die Tabelle bleibt an derselben Stelle, statt an den Anfang zu springen."],
   ["WL wieder sichtbar", "Die Ticker-Spalte ist breiter – das „WL“ (Scalable-Watchlist) wird auch bei langen Tickern nicht mehr abgeschnitten."]]],
   ["2026.11.26", "Scanner: Kauf-Status statt Status", [
-  ["Nur noch, was zählt", "Die Spalte heißt jetzt „Kauf-Status“ und zeigt nur bei Treffern, wann gekauft wird (kaufbereit, Seitwärtsphase, verfallen, im Depot). Ob Treffer oder Fast-Treffer, siehst du an „Erfüllt x/11“. In „Beobachten“ entfällt die Spalte ganz."]]],
+  ["Nur noch, was zählt", "Die Spalte heißt jetzt „Kauf-Status“ und zeigt nur bei Treffern, wann gekauft wird (kaufbereit, Konsolidierung, verfallen, im Depot). Ob Treffer oder Fast-Treffer, siehst du an „Erfüllt x/11“. In „Beobachten“ entfällt die Spalte ganz."]]],
   ["2026.11.25", "Depot: Knock-outs im Journal, Plan vorausgefüllt", [
   ["Knock-out = realisierter Verlust", "Ausgeknockte Turbos stehen jetzt auch im Journal und in der Bilanz – als Verkauf zu 0 € am Knock-out-Tag (nur wenn der Kauf in deinem Scalable-Export steht und Scalable den Verkauf nicht schon selbst liefert)."],
   ["Plan anlegen mit einem Tipp", "„Plan anlegen“ im Depot übernimmt Kaufdatum und Kaufkurs deiner Position in den Einstieg – nichts mehr abtippen."]]],
@@ -9654,7 +9680,7 @@ const APP_NEWS = [["2026.11.170", "Quartalszahlen-Verlauf und Abrechnung einlese
   ["2026.11.20", "Scanner aufgeräumt", [
   ["Gleiche Zahlen überall", "Oben stehen Treffer, kaufbereit und geprüfte Aktien – passend zu den Reitern Treffer / Beobachten / Meine."],
   ["Schnellfilter Region", "Alle · USA · Europa · Asien direkt über der Liste, alles Weitere unter „Weitere Filter“. Der Score-Filter ist weg – der Score ist nicht belegt."],
-  ["iPhone: Liste statt Tabelle", "Name, Status (kaufbereit, Seitwärtsphase …) und x/11 auf einen Blick, sortierbar – kein seitliches Wischen mehr."],
+  ["iPhone: Liste statt Tabelle", "Name, Status (kaufbereit, Konsolidierung …) und x/11 auf einen Blick, sortierbar – kein seitliches Wischen mehr."],
   ["Ruhiger", "Kein „↻ Live“ mehr in jeder Zeile, Scans starten über „↻ Neu scannen“, kürzere Erklärung."]]],
   ["2026.11.19", "ETF-Reiter aufgeräumt", [
   ["Wie viel investieren?", "Bei grüner Ampel nennt Kairo jetzt den Betrag: bis zu X € – die Lücke zu deinem ETF-Ziel. Auch als Aufgabe auf „Heute“."],
@@ -9666,7 +9692,7 @@ const APP_NEWS = [["2026.11.170", "Quartalszahlen-Verlauf und Abrechnung einlese
   ["Antippen öffnet das Ticket", "In der Reihenfolge der Scalable-Ordermaske: Orderart, Stück, Limit, Kaufzone, Gültig, danach Stop-Loss und Verkauf – mit „Order kopieren“. Der erste Kauf ist schon offen."]]],
   ["2026.11.17", "Heute: Marktampel oben, deine Treffer", [
   ["Marktampel oben", "Trend, Stimmung und Indizes stehen jetzt ganz oben rechts auf „Heute“."],
-  ["Treffer aus deiner Liste", "Neue Karte unten links: alle Aktien aus deiner Watchlist mit 11/11 Kriterien – mit Status (kaufbereit, Seitwärtsphase, im Depot …), kaufbereit zuerst."]]],
+  ["Treffer aus deiner Liste", "Neue Karte unten links: alle Aktien aus deiner Watchlist mit 11/11 Kriterien – mit Status (kaufbereit, Konsolidierung, im Depot …), kaufbereit zuerst."]]],
   ["2026.11.16", "„Heute“ neu: eine Liste, was zu tun ist", [
   ["Aufgaben zum Abhaken", "Verkaufen, Kaufen, ETF, Vorbereiten – in der Reihenfolge der Dringlichkeit. Gekauft wird nur so viel, wie Plätze frei sind, in der Kairo-Rangfolge. Abhaken gilt für heute."],
   ["Kauf-Zettel", "Für jeden Kauf: Stückzahl, Limit (Obergrenze der Kaufzone), Stop-Loss, Risiko und wann die Börse öffnet. „Order kopieren“ für Scalable, „Gekauft ✓“ legt den Trade-Plan mit Stop und Verkaufstag an."],
@@ -9700,7 +9726,7 @@ const APP_NEWS = [["2026.11.170", "Quartalszahlen-Verlauf und Abrechnung einlese
   ["Börsenfeiertage London", "Der Kalender kennt jetzt auch die Feiertage der Londoner Börse; der Kauftag im Trade-Plan richtet sich nach der Börse der Aktie."],
   ["Robuster bei Splits", "Scheitert das Neuladen nach einem Split, behält Kairo die alte Kursreihe und markiert sie als veraltet, statt Lücken zu speichern."]]],
   ["2026.11.10", "Zweite Prüfung umgesetzt", [
-  ["Kaufbereit stimmt", "Kaufbereit ist eine Aktie jetzt genau dann, wenn ihre Seitwärtsphase nach dem Treffer fertig ist – alte 4H-Zustände spielen keine Rolle mehr, und ein Treffer von heute ist nie sofort kaufbereit. Neu: eine Mitteilung, sobald Aktien kaufbereit sind."],
+  ["Kaufbereit stimmt", "Kaufbereit ist eine Aktie jetzt genau dann, wenn ihre Konsolidierung nach dem Treffer fertig ist – alte 4H-Zustände spielen keine Rolle mehr, und ein Treffer von heute ist nie sofort kaufbereit. Neu: eine Mitteilung, sobald Aktien kaufbereit sind."],
   ["Verkaufssignal nur mit Tagesschluss", "„Schluss unter der EMA 20“ prüft Kairo nur noch mit dem fertigen Tagesschluss – nie mit dem Live-Kurs am Mittag – und ab Tag 10 einschließlich."],
   ["Nie mehr als frei", "Trade-Plan und Turbo-Rechner schlagen nie mehr vor, als ins freie Kapital passt (inkl. Kaufgebühr); Übungs-Trades blockieren kein echtes Geld."],
   ["Mitteilungen auf jedem Gerät", "Stop- und Verkaufsalarme kommen auf jedem Gerät an und werden wiederholt, wenn der Versand scheitert."]]],
@@ -9709,7 +9735,7 @@ const APP_NEWS = [["2026.11.170", "Quartalszahlen-Verlauf und Abrechnung einlese
   ["Stückzahl passt ins Kapital", "Kaufkarten und Top-Setups rechnen die Stückzahl wie der Trade-Plan: 1 % Risiko, aber nie mehr Aktien, als ins freie Kapital passen."],
   ["Splits sauber", "Passt Yahoo alte Kurse nach einem Aktiensplit oder einer Dividende an, lädt Kairo die ganze Kursreihe neu – vorher konnte ein Split wie ein Absturz aussehen."]]],
   ["2026.11.08", "Neuer Scanner", [
-  ["Was heute zu tun ist", "Die Treffer-Ansicht zeigt jetzt oben nur, was kaufbereit ist – mit Kaufspanne, Stop, Stückzahl und Ausstieg. Darunter die Treffer, die noch auf ihre Seitwärtsphase warten. Die Status-Spalte ist weg, die Kriterien bleiben bei jeder Aktie sichtbar."],
+  ["Was heute zu tun ist", "Die Treffer-Ansicht zeigt jetzt oben nur, was kaufbereit ist – mit Kaufspanne, Stop, Stückzahl und Ausstieg. Darunter die Treffer, die noch auf ihre Konsolidierung warten. Die Status-Spalte ist weg, die Kriterien bleiben bei jeder Aktie sichtbar."],
   ["Ruhe-Filter wieder raus", "Seit dem 28.10. musste die Konsolidierung am Treffer-Tag ruhig sein – dadurch fielen fast alle Treffer weg. Der saubere Depot-Test (5.000 €, 5 Plätze, 2008–2026) zeigt: Mit Ruhe-Filter wäre das Depot im jüngsten Zeitraum 2022–26 schlechter gewesen (+6,7 % statt +15,3 % pro Jahr). Darum gilt wieder die getestete Regel ohne Ruhe-Filter."],
   ["Rangfolge bestätigt", "Sind mehr Aktien kaufbereit als Plätze frei, zuerst die mit schwächerem Vormomentum – im Depot-Test klar besser als „ruhigere zuerst“ oder „wenigstes Hin und Her zuerst“."]]],
   ["2026.11.07", "Quartalszahlen genauer", [
@@ -9748,8 +9774,8 @@ const APP_NEWS = [["2026.11.170", "Quartalszahlen-Verlauf und Abrechnung einlese
   ["Live-Bilanz", "Dieselbe Firma an zwei Börsen (z. B. Novo Nordisk in den USA und in Kopenhagen) zählt nur noch einmal."],
   ["Unter der Haube", "Alte Turbo-Rechnung entfernt, alle Abläufe auf feste Server-Version umgestellt – damit der tägliche Scan nicht wieder ausfällt."]]],
   ["2026.10.28", "Eine Regel überall", [
-  ["Ein Stop, ein Status", "Heute, Karte, Trade-Plan, Top-Setups und Chart nutzen dieselbe Seitwärtsphase nach dem Treffer – vorher zeigten sie teils verschiedene Stops."],
-  ["Kauftag richtig", "War der Kauftag laut Regel schon (Eröffnung nach der Seitwärtsphase), steht „Einstieg vorbei“ statt „kaufbereit“ – wie in Live-Bilanz und Papier-Depots."],
+  ["Ein Stop, ein Status", "Heute, Karte, Trade-Plan, Top-Setups und Chart nutzen dieselbe Konsolidierung nach dem Treffer – vorher zeigten sie teils verschiedene Stops."],
+  ["Kauftag richtig", "War der Kauftag laut Regel schon (Eröffnung nach der Konsolidierung), steht „Einstieg vorbei“ statt „kaufbereit“ – wie in Live-Bilanz und Papier-Depots."],
   ["Klarere Hinweise", "Treffer-Text erklärt die getestete Regel; Rang zählt nur kaufbereite Treffer; keine festen Kursziele mehr im Chart."]]],
   ["2026.10.27", "Ehrliche Live-Bilanz", [
   ["Insider-Signal", "Gezielte Käufe statt Routine erkannt (3 Jahre Historie), Stärke je Aktie, Mitteilung bei neuen Käufen deiner Aktien, dazu Meldungen aus den Niederlanden (Airbus, ASML) und Australien."],
@@ -10302,25 +10328,25 @@ function tvChartHtml(t) {
   return `<details class="hcard tvbox"${state.tvOpen === true ? " open" : ""}><summary class="plan-h">Live-Chart · TradingView</summary>
     ${/\.DE$/.test(t) ? `<div class="opts seg" style="margin:6px 0">${TV_VENUES.map(([v, l]) => `<button class="opt${(state.tvVenue || "XETR") === v ? " on" : ""}" data-tvvenue="${v}">${l}</button>`).join("")}</div>` : ""}
     <iframe src="${src}" loading="lazy" title="Live-Chart ${esc(t)}" allowtransparency="true" frameborder="0" scrolling="no"></iframe>
-    <div class="note" style="margin:6px 0 0">Der eingebettete Chart ist je nach Börse verzögert (XETRA ca. 15 Min.) – bei deutschen Aktien oben gettex oder Tradegate wählen. Maßgeblich für den Plan ist der Live-Kurs oben (Kursdienst/Finnhub); Kerzen, Seitwärtsphase und Stop stammen aus dem Abendscan.</div></details>`;
+    <div class="note" style="margin:6px 0 0">Der eingebettete Chart ist je nach Börse verzögert (XETRA ca. 15 Min.) – bei deutschen Aktien oben gettex oder Tradegate wählen. Maßgeblich für den Plan ist der Live-Kurs oben (Kursdienst/Finnhub); Kerzen, Konsolidierung und Stop stammen aus dem Abendscan.</div></details>`;
 }
-// Weg zum Einstieg: 1D-Signal → Seitwärtsphase → 4H-Bestätigung → Einstieg (aus Abendscan + 4H-Prüfung alle 30 Min.)
-function einSteps(r) {                           // Weg zum Einstieg nach der Kairo-Regel: Signal → Seitwärtsphase → Kauf zur nächsten Eröffnung
+// Weg zum Einstieg: 1D-Signal → Konsolidierung → 4H-Bestätigung → Einstieg (aus Abendscan + 4H-Prüfung alle 30 Min.)
+function einSteps(r) {                           // Weg zum Einstieg nach der Kairo-Regel: Signal → Konsolidierung → Kauf zur nächsten Eröffnung
   const it = h4Of(r.t), now = h4Now(r.t), st = it && it.st !== "weg" ? it.st : null, based = !!st && st !== "basis";
   const sig = it && h4Real(it) ? (it.soft ? "10/11 ✓" : "11/11 ✓") : r.s === "hit" ? "11/11 ✓" : r.m != null ? `${r.m}/11` : "–";
   const s1 = it && h4Real(it) || r.s === "hit" ? "ok" : r.s === "fast" || r.s === "near" ? "wait" : "no";
   const s2 = st === "basis" ? ["wait", `Tag ${it.day}/10`] : based ? ["ok", "✓"] : it && it.st === "weg" ? ["no", "verfallen"] : now ? [now.b ? "ok" : "no", now.b ? "✓" : "✗"] : ["no", "–"];
   const s3 = s1 === "ok" && (based || (now && now.b && r.s === "hit")) ? ["ok", "kaufbereit"] : ["no", "–"];   // ohne Treffer kein Einstieg
   const b = (it && it.base) || {}, P = v => v == null ? "–" : `${fmt(v)} ${it && it.cur || ""}`.trim();
-  const next = based && s1 !== "ok" ? `Seitwärtsphase fertig – aber kein voller Treffer (${sig}). Kein Kauf, nur Beobachtung.`
-    : based ? `Seitwärtsphase fertig – laut Regel Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt${b.lo != null ? ` (${P(b.lo)}–${P(b.hi)})` : ""}. Stop ${P(b.sl)}.`
-    : st === "basis" ? `Wartet auf die Seitwärtsphase · Tag ${it.day} von 10 – noch ${it.left} Handelstage Zeit für 5 enge Tage.`
+  const next = based && s1 !== "ok" ? `Konsolidierung fertig – aber kein voller Treffer (${sig}). Kein Kauf, nur Beobachtung.`
+    : based ? `Konsolidierung fertig – laut Regel Kauf zur nächsten Eröffnung, wenn sie in der Spanne liegt${b.lo != null ? ` (${P(b.lo)}–${P(b.hi)})` : ""}. Stop ${P(b.sl)}.`
+    : st === "basis" ? `Wartet auf die Konsolidierung · Tag ${it.day} von 10 – noch ${it.left} Handelstage Zeit für 5 enge Tage.`
     : it ? `Verfallen: ${it.why || "Bedingungen nicht erfüllt"}`
-    : r.s === "hit" ? "Treffer – jetzt beginnt die Suche nach der Seitwärtsphase (bis zu 10 Handelstage)."
+    : r.s === "hit" ? "Treffer – jetzt beginnt die Suche nach der Konsolidierung (bis zu 10 Handelstage)."
     : r.s === "fast" || r.s === "near" ? `Noch kein Treffer – es fehlt: ${(r.km || []).map(k => SHORT[k] || k).join(", ") || "–"}. Erst ab 11/11 handeln.` : "";
   if (!it && !["hit", "fast", "near"].includes(r.s)) return "";
   const box = (l, [c, v]) => `<div class="es ${c}"><span>${l}</span><b>${esc(v)}</b></div>`;
-  return `<div class="ein-steps three">${box("1 · Tages-Signal", [s1, sig])}${box("2 · Seitwärtsphase", s2)}${box("3 · Einstieg", s3)}</div>
+  return `<div class="ein-steps three">${box("1 · Tages-Signal", [s1, sig])}${box("2 · Konsolidierung", s2)}${box("3 · Einstieg", s3)}</div>
     ${next ? `<div class="ein-next">${esc(next)}</div>` : ""}`;
 }
 // Datenstand: wann wurden Tageskerzen/Stop, 4H-Stand und Kurs zuletzt aktualisiert?
@@ -10363,7 +10389,7 @@ const TP = { maxAtr: 3, minAtr: 0.5, kob: 1.0, spreadStock: 0.001, spreadTurbo: 
 // Ø netto je Trade in R (Kauf in der Basis, Kairo-Treffer): [alle Marktlagen, schwacher Markt (S&P 500 < EMA 200), gesunder Markt]
 const TP_EXP = { 5: [0.04, null, null], 7: [0.09, 0.38, -0.07], 10: [0.16, 0.52, -0.04], 20: [0.26, 0.67, 0.04] };
 // ---- Kairo-Strategie (Wahrheits-Test, backend/shortswing.py only=truth: 2 × 10 Jahre, je ~3.200 Aktien, echte Kosten) ----
-// Nur volle Kairo-Treffer · Kauf in der Seitwärtsphase · SL = Tief der Seitwärtsphase − 0,25 ATR (Stop-Order) · 20 Handelstage
+// Nur volle Kairo-Treffer · Kauf in der Konsolidierung · SL = Tief der Konsolidierung − 0,25 ATR (Stop-Order) · 20 Handelstage
 // halten, kein TP · Risiko immer 1 % · bis zu 5 Trades · ruhigste zuerst · Hebel: der KLEINSTE, dessen Einsatz noch ins freie
 // Kapital passt (1× = Aktie, sonst 2/3/5/10× mit K.-o. ≥ 1 ATR unter dem SL) – Finanzierung kostet bei 10× rund die Hälfte des Vorteils.
 // Ehrlich gerechnet (Turbo-Kosten, täglicher Depotwert): +11 bis +20 % p. a. je nach Aktien-Stichprobe, Prüfjahre 2024–26 +4 bis +18 %,
@@ -10372,7 +10398,7 @@ const H4X = { hold: 60, from: 10 };   // Kairo-Regel: Ausstieg EMA 20 ab Tag 10,
 const KMAX = { hold: 60, hold2: 60, tpDays: 7, weakMult: 1, maxOpen: 5, perSector: 2 };   // perSector: Klumpenschutz
 const TP_EXIT = { hold: KMAX.hold };
 // ---- TP-Bewertung je Aktie ----
-// Kandidaten: Hoch der Seitwärtsphase, 10-Tage-Hoch, frühere Hochs (Swing), EMA 20/50, Fibonacci – Verkauf 0,1 ATR davor.
+// Kandidaten: Hoch der Konsolidierung, 10-Tage-Hoch, frühere Hochs (Swing), EMA 20/50, Fibonacci – Verkauf 0,1 ATR davor.
 // Chance je Marke: Zufallspfade mit der Schwankung der Aktie (0,95 ATR pro Tag, an den Kairo-Backtest geeicht:
 // 1 R in 5 Tagen ≈ 40 %, 2 R ≈ 16 %) – zählt, ob die Marke vor dem SL erreicht wird. Wahl: höchster erwarteter Gewinn
 // aus dem TP (Chance × Chance/Risiko) unter den realistischen Marken (≥ 30 % Chance, ≥ 1 : 1), sonst ab 0,6 : 1.
@@ -10398,9 +10424,9 @@ function kmRank() {
   const pos = {}; hits.forEach((x, i) => { pos[x.t] = i + 1; });
   return { hits, pos };
 }
-// Kaufbereit = Seitwärtsphase im 10-Tage-Fenster fertig (wie „Heute zu tun“); um die freien Plätze konkurrieren nur diese
-// Abend-Prüfung (h4.json): Seitwärtsphase fertig und Kauf erst morgen (pending) = kaufbereit; Kauftag schon gelaufen (ed, nicht pending) = vorbei
-// Regel B60 (Review 2, K1/W13): kaufbereit = Seitwärtsphase im Tageschart nach dem Treffer fertig, Kauf zur nächsten Eröffnung.
+// Kaufbereit = Konsolidierung im 10-Tage-Fenster fertig (wie „Heute zu tun“); um die freien Plätze konkurrieren nur diese
+// Abend-Prüfung (h4.json): Konsolidierung fertig und Kauf erst morgen (pending) = kaufbereit; Kauftag schon gelaufen (ed, nicht pending) = vorbei
+// Regel B60 (Review 2, K1/W13): kaufbereit = Konsolidierung im Tageschart nach dem Treffer fertig, Kauf zur nächsten Eröffnung.
 // Nur aus der Basis-Prüfung (h4.json „base“) – nie aus alten 4H-Zuständen (go/run/weg) und nie aus der heutigen Kursstruktur.
 const kmDone = t => { const it = h4Of(t), b = it && it.base; return !!(b && b.ed && !b.pending); };
 const kmReady = t => { const it = h4Of(t), b = it && it.base; return !!(b && b.pending && b.lo != null); };
@@ -10411,12 +10437,12 @@ function kmFit(r, mk) {
   if (r.s === "hit") {
     const all = kmRank().hits, hits = all.filter(x => kmReady(x.t)), ri = hits.findIndex(x => x.t === r.t), rk = ri >= 0 ? ri + 1 : null, free = kmSlots();
     const mo = kmMom(r.t), it = h4Of(r.t);
-    // Grün „traden“ nur, wenn die Seitwärtsphase fertig ist – vorher sagt der Plan „warten“ (sonst widerspricht er den Schritten)
+    // Grün „traden“ nur, wenn die Konsolidierung fertig ist – vorher sagt der Plan „warten“ (sonst widerspricht er den Schritten)
     if (h4Data() && !kmReady(r.t)) {
-      const w = it && it.st === "weg" ? ["red", "Kairo-Treffer verfallen – nicht traden", `Innerhalb von 10 Handelstagen keine Seitwärtsphase${it.why ? ` (${it.why})` : ""}. Auf den nächsten Treffer warten.`]
-        : kmDone(r.t) ? ["yellow", "Kairo-Treffer – Einstieg vorbei", "Der Kauftag nach der Seitwärtsphase ist schon vorbei – nicht nachkaufen (später Einstieg ist nicht getestet)."]
-        : ["yellow", `Kairo-Treffer – noch warten${it && it.st === "basis" ? ` (Seitwärtsphase Tag ${it.day}/10)` : ""}`,
-           "Gekauft wird erst, wenn die Seitwärtsphase fertig ist (5 enge Tage) – dann meldet sich Kairo. Der Plan unten ist eine Vorschau mit dem heutigen Kurs."];
+      const w = it && it.st === "weg" ? ["red", "Kairo-Treffer verfallen – nicht traden", `Innerhalb von 10 Handelstagen keine Konsolidierung${it.why ? ` (${it.why})` : ""}. Auf den nächsten Treffer warten.`]
+        : kmDone(r.t) ? ["yellow", "Kairo-Treffer – Einstieg vorbei", "Der Kauftag nach der Konsolidierung ist schon vorbei – nicht nachkaufen (später Einstieg ist nicht getestet)."]
+        : ["yellow", `Kairo-Treffer – noch warten${it && it.st === "basis" ? ` (Konsolidierung Tag ${it.day}/10)` : ""}`,
+           "Gekauft wird erst, wenn die Konsolidierung fertig ist (5 enge Tage) – dann meldet sich Kairo. Der Plan unten ist eine Vorschau mit dem heutigen Kurs."];
       return { ok: false, wait: true, k: "hit", tone: w[0], mult: weak ? KMAX.weakMult : 1, t: w[1], s: w[2] };
     }
     const rank = rk ? ` Rang ${rk} von ${hits.length} kaufbereiten Treffern (Vormomentum ${mo != null ? sgnPct(mo, 0) : "–"}${kmTested(r) ? "" : ", Region nicht getestet"}) – bei mehr Treffern als freien Plätzen zuerst USA/Europa mit schwächerem Vormomentum (Forschung: in allen drei Testzeiträumen bessere Trades; muss sich live bestätigen).` : "";
@@ -10424,7 +10450,7 @@ function kmFit(r, mk) {
       ? { ok: true, k: "hit", tone: "green", mult: KMAX.weakMult, t: "A-Setup – Kairo-Treffer im Ausverkauf: traden",
           s: "Die stärkste Phase der Strategie. Risiko trotzdem nur 1 % – die Verdopplung hielt im Test auf neuen Jahren nicht." + rank }
       : { ok: true, k: "hit", tone: "green", mult: 1, t: "Kairo-Treffer: traden",
-          s: "Setup der Strategie. Kauf in der Seitwärtsphase, Verkauf ab Tag 10 bei Schluss unter der EMA 20 (spätestens Tag 60), 1 % Risiko." + rank };
+          s: "Setup der Strategie. Kauf in der Konsolidierung, Verkauf ab Tag 10 bei Schluss unter der EMA 20 (spätestens Tag 60), 1 % Risiko." + rank };
     if (!free) return { ...fit, tone: "yellow", t: "Kairo-Treffer – aber alle Plätze belegt", s: `Du hast schon ${tpCfg().maxOpen} offene Trades. Erst wenn einer endet (Stop, EMA 20 oder Tag 60), ist wieder Platz.` + rank };
     if (rk && rk > free) return { ...fit, tone: "yellow", t: `Kairo-Treffer – Rang ${rk}, nur ${free} ${free > 1 ? "Plätze" : "Platz"} frei`,
       s: `Vor diesem stehen ${rk - 1} kaufbereite Treffer mit besseren Chancen laut Forschung (schwächeres Vormomentum). Nimm diesen nur, wenn du die davor nicht kaufst.` + rank };
@@ -10487,7 +10513,7 @@ const bdBetween = (a, b, t) => { let k = 0; const x = new Date(a); while (x < b)
 function tp2Calc(r, S, o = {}) {
   const cfg = tpCfg(), pl = r.pl || {}, atr = pl.atr || r.atr || (r.ap || 0) * r.c;
   const trend = S && (S.k === "top" || S.k === "trend");
-  // 4H-Top-Setup: Stop = Basis aus dem Scan (Seitwärtsphase nach dem Treffer, genau wie im Test) statt der heutigen Struktur
+  // 4H-Top-Setup: Stop = Basis aus dem Scan (Konsolidierung nach dem Treffer, genau wie im Test) statt der heutigen Struktur
   const h4 = null, h4b = null;                                // 4H-Bestätigung entfernt (10/2026): eine Regel für alle Kairo-Trades
   const kp = !trend && (r.t || r.ticker) ? kPlan(r.t || r.ticker) : null;
   const stop = h4b ? h4b.sl : kp && kp.stop ? kp.stop : pl.stop;   // für alle Setups gleich (so getestet): Basis-Tief − 0,25 ATR
@@ -10496,7 +10522,7 @@ function tp2Calc(r, S, o = {}) {
   const E = o.entry > 0 ? o.entry : r.c, fx0 = toEur(1, r.cur || "EUR"), fx = fx0 > 0 ? fx0 : 1;
   // Kursmarken: nahe Marken aus dem Scan (Basis-Hoch, EMA 20/50, Fibonacci), sonst die Swing-Widerstände
   const tg = (pl.tg && pl.tg.length ? pl.tg : (pl.res || []).map((x, i) => [`Widerstand ${i + 1}`, x])).filter(x => x[1] > E);
-  const out = { E, stop, atr, src: h4b ? `Basis-Tief ${fmt(h4b.lo * fx)} € − 0,25 ATR (Seitwärtsphase nach dem Treffer)` : src, trend, cfg, fx, cur: r.cur || "", h4, base: h4b ? { lo: h4b.lo, hi: h4b.hi } : plb, tg, res: tg.map(x => x[1]), problems: [] };
+  const out = { E, stop, atr, src: h4b ? `Basis-Tief ${fmt(h4b.lo * fx)} € − 0,25 ATR (Konsolidierung nach dem Treffer)` : src, trend, cfg, fx, cur: r.cur || "", h4, base: h4b ? { lo: h4b.lo, hi: h4b.hi } : plb, tg, res: tg.map(x => x[1]), problems: [] };
   if (!stop || !atr) { out.problems.push(["red", "Keine Kursstruktur für diese Aktie – kein Trade-Plan möglich."]); return out; }
   if (!(fx0 > 0)) { out.problems.push(["red", `Wechselkurs ${r.cur} → € fehlt im letzten Scan – Stückzahl und Euro-Beträge wären falsch. Kein Trade-Plan bis zum nächsten Scan.`]); return out; }
   const risk = E - stop;
@@ -10504,18 +10530,18 @@ function tp2Calc(r, S, o = {}) {
   if (risk <= 0) { out.problems.push(["red", `Kurs liegt schon unter dem Stop ${fmt(stop * fx)} € – Setup gescheitert.`]); return out; }
   if (out.riskAtr > TP.maxAtr) out.problems.push(["red", `Stop ${fmt(out.riskAtr, 1)} ATR entfernt (mehr als ${TP.maxAtr}) – zu weit für diese Strategie. ${plb ? "" : "Auf eine Basis warten."}`]);
   else if (out.riskAtr < TP.minAtr) out.problems.push(["yellow", `Stop nur ${fmt(out.riskAtr, 1)} ATR entfernt – normales Tagesrauschen kann ihn auslösen.`]);
-  if (!plb && !h4b) out.problems.push(["yellow", "Noch keine enge Seitwärtsphase (Basis) – laut Strategie erst kaufen, wenn sie da ist."]);
-  if (!trend && !h4) {                                              // getestete Regel: Seitwärtsphase innerhalb von 10 Handelstagen nach dem Signal
+  if (!plb && !h4b) out.problems.push(["yellow", "Noch keine enge Konsolidierung (Basis) – laut Strategie erst kaufen, wenn sie da ist."]);
+  if (!trend && !h4) {                                              // getestete Regel: Konsolidierung innerhalb von 10 Handelstagen nach dem Signal
     const bj = getJson("bilanz.json"), sg = bj && (bj.signals || []).find(x => x.k === "hit" && x.t === r.t);
     if (sg) { const age = bdBetween(new Date(sg.d + "T12:00:00"), new Date(), r.t), res = (sg.st || {}).res; out.sig = { d: sg.d, age, res };
-      if (res === "nobase" || (!plb && age > 10)) out.problems.push(["red", `Kairo-Signal vom ${dateDE(sg.d)}: innerhalb von 10 Handelstagen keine Seitwärtsphase – laut getesteter Regel ist das Signal verfallen. Kein Trade.`]);
-      else if (!plb && res !== "run") out.problems.push(["yellow", `Kairo-Signal vom ${dateDE(sg.d)} – Tag ${age} von 10: Die Seitwärtsphase muss bis ${dateDE(isoD(addBd(new Date(sg.d + "T12:00:00"), 10)))} kommen, sonst verfällt es.`]);
+      if (res === "nobase" || (!plb && age > 10)) out.problems.push(["red", `Kairo-Signal vom ${dateDE(sg.d)}: innerhalb von 10 Handelstagen keine Konsolidierung – laut getesteter Regel ist das Signal verfallen. Kein Trade.`]);
+      else if (!plb && res !== "run") out.problems.push(["yellow", `Kairo-Signal vom ${dateDE(sg.d)} – Tag ${age} von 10: Die Konsolidierung muss bis ${dateDE(isoD(addBd(new Date(sg.d + "T12:00:00"), 10)))} kommen, sonst verfällt es.`]);
       else if (res === "run" && sg.st.days > 3) out.problems.push(["yellow", `Laut Strategie lief der Einstieg schon vor ${sg.st.days} Handelstagen – ein später Einstieg ist nicht getestet.`]); } }
   if (plb && E > plb.hi + 0.5 * atr) out.problems.push(["yellow", `Kurs schon über der Basis (${fmt(plb.hi * fx)} €) – die Gegenbewegung läuft bereits, der Stop liegt entsprechend weiter weg.`]);
   out.dist = risk / E;
   out.mk = tpMarket();
   out.fit = kmFit(r, out.mk);
-  if (out.fit.wait) out.problems = out.problems.filter(p => !/^Noch keine enge Seitwärtsphase/.test(p[1]));   // steht schon im Urteil
+  if (out.fit.wait) out.problems = out.problems.filter(p => !/^Noch keine enge Konsolidierung/.test(p[1]));   // steht schon im Urteil
   out.riskPct = cfg.risk * out.fit.mult;
   // Klumpenschutz: offene Trades und Depot-Positionen im selben Sektor – höchstens 2 je Sektor
   if (r.sec) {
@@ -10647,7 +10673,7 @@ function tpInner(r, S) {
         <div class="tw-ot"><span>Limit</span><b>${X(m.E)} €</b></div>
         <div class="tw-ot"><span>Stückzahl</span><b>${lv.qty}</b></div>
         <div class="tw-ot tot"><span>Orderwert</span><b>${eur2(lv.qty * m.E * m.fx)}</b></div></div>
-      <p class="tw-why">${m.base ? `Laut Regel zur nächsten Eröffnung kaufen, solange der Kurs in der Seitwärtsphase ${X(m.base.lo)}–${X(m.base.hi)} € liegt.` : "Keine Seitwärtsphase erkannt – laut Regel erst kaufen, wenn sie fertig ist."} ${lv.qty * m.E * m.fx >= 250 ? "Ab 250 € Orderwert bei Scalable PRIME+ gebührenfrei." : `Unter 250 € kostet die Order ${eur2(cfg.fee)}.`}</p>${adj}`
+      <p class="tw-why">${m.base ? `Laut Regel zur nächsten Eröffnung kaufen, solange der Kurs in der Konsolidierung ${X(m.base.lo)}–${X(m.base.hi)} € liegt.` : "Keine Konsolidierung erkannt – laut Regel erst kaufen, wenn sie fertig ist."} ${lv.qty * m.E * m.fx >= 250 ? "Ab 250 € Orderwert bei Scalable PRIME+ gebührenfrei." : `Unter 250 € kostet die Order ${eur2(cfg.fee)}.`}</p>${adj}`
     : `<p class="tw-why" style="margin-top:0">Such einen <b>Turbo Long</b> (Open End) auf ${esc(r.n)} mit <b>K.-o.-Schwelle höchstens ${X(lv.ko)} €</b> – mindestens 1 ATR unter dem Stop, damit eine normale Schwankung ihn nicht ausknockt. Dann WKN oder ISIN eintragen: Kairo holt Kurs und K.-o. und rechnet Stückzahl und Stop am Turbo.</p>
       <div class="row-actions" style="margin:8px 0 4px"><a class="btn ghost sm" href="https://www.onvista.de/suche/?searchValue=${encodeURIComponent((r.n || r.t) + " Turbo Long")}" target="_blank" rel="noopener">Passende Turbos bei onvista</a></div>
       ${tpTurboHtml(r, m, lv)}${adj}`;
@@ -10676,8 +10702,8 @@ function tpCheckHtml(m, lv) {
   const ra = m.riskAtr, items = [];
   items.push(ra > TP.maxAtr ? ok("bad", "Stop zu weit weg", `${fmt(ra, 1)} ATR – mehr als ${TP.maxAtr} ATR passen nicht zur Strategie`)
     : ra < TP.minAtr ? ok("warn", "Stop sehr eng", `${fmt(ra, 1)} ATR – schon normales Tagesrauschen kann ihn auslösen`)
-    : ra < 1 ? ok("warn", "Puffer bis zum Stop eher eng", `${fmt(ra, 1)} ATR – weniger als eine typische Tagesschwankung. Regelgerecht (0,25 ATR unter dem Tief der Seitwärtsphase); dafür ist die Position größer. Ein Kauf am unteren Rand der Spanne gibt mehr Luft.`)
-    : ok("ok", "Puffer bis zum Stop", `${fmt(ra, 1)} ATR = ${fmt(ra, 1)} typische Tagesschwankungen; Stop 0,25 ATR unter dem Tief der Seitwärtsphase (getestete Regel)`));
+    : ra < 1 ? ok("warn", "Puffer bis zum Stop eher eng", `${fmt(ra, 1)} ATR – weniger als eine typische Tagesschwankung. Regelgerecht (0,25 ATR unter dem Tief der Konsolidierung); dafür ist die Position größer. Ein Kauf am unteren Rand der Spanne gibt mehr Luft.`)
+    : ok("ok", "Puffer bis zum Stop", `${fmt(ra, 1)} ATR = ${fmt(ra, 1)} typische Tagesschwankungen; Stop 0,25 ATR unter dem Tief der Konsolidierung (getestete Regel)`));
   items.push(ok("ok", `Risiko ${eur2(lv.rEff)} (${fmt(m.cfg.depot ? 100 * lv.rEff / m.cfg.depot : m.riskPct, 1)} % vom Trading-Kapital)`, "Größe aus dem Abstand zum Stop berechnet – enger Stop = mehr Stück, weiter Stop = weniger"));
   m.problems.filter(([, x]) => !/^Stop (nur )?[\d,]+ ATR/.test(x)).forEach(([t, x]) => { const [h, ...r] = String(x).split(/ – |: /); items.push(ok(t === "red" ? "bad" : "warn", h, r.join(" – "))); });
   return `<ul class="pcheck">${items.join("")}</ul>`;
@@ -10964,7 +10990,7 @@ function einHtml() {
     ${r ? einPlanHtml(r) : `
       ${rdy.length ? `<div class="plan-h" style="margin:14px 2px 6px">Kaufbereit · ${free} ${free === 1 ? "Platz" : "Plätze"} frei</div><div class="ein-hero-l">${rdy.map(einReadyCard).join("")}</div>
         <div class="note" style="margin:4px 2px 0">Reihenfolge wie getestet: zuerst die Treffer, die vorher am stärksten gefallen sind.</div>` : ""}
-      ${wt.length ? `<div class="plan-h" style="margin:14px 2px 6px">Treffer – warten auf die Seitwärtsphase</div><div class="ein-list">${wt.map(x => opt(x, null)).join("")}</div>` : ""}
+      ${wt.length ? `<div class="plan-h" style="margin:14px 2px 6px">Treffer – warten auf die Konsolidierung</div><div class="ein-list">${wt.map(x => opt(x, null)).join("")}</div>` : ""}
       ${!all.length ? `<div class="note" style="margin:14px 2px">Heute keine Kairo-Treffer in deinen Handelsregionen.</div>` : ""}`}
     ${tpPlansHtml()}
     <p class="ein-foot">Turbos verstärken Gewinne, Verluste und Kosten – zum Lernen erst in der <a href="#" data-gosec="game">Übung</a>. Scalable PRIME+: Orders ab 250 € gebührenfrei. Kairo führt keine Orders aus.</p></div>`;
@@ -11036,10 +11062,10 @@ function paperBox(sid, st, sm, bench) {
 function paperCard(sid, st, sm, bench) {
   const name = { S19: "Rückkehr zum Mittelwert (Original)", S19B: "Rückkehr zum Mittelwert · Volumen 2 von 3 Tagen", S19C: "Rückkehr zum Mittelwert · 2,0 Std + Volumen 2 von 3", MOM5: "Momentum Top 5 (monatlich)", MOM10: "Momentum Top 10 (monatlich)", DM: "Dual Momentum (ETF)", SP2F: "S&P 500 2× nur über der 200-Tage-Linie", KAIROZ: "Kairo mit attraktivem Kursziel, halten bis zum Ziel", KAIROL: "Kairo lang (Vergleich ohne Kursziel)", KAIRO: "Kairo · Scanner-Treffer", KAIROS: "Kairo · Scanner-Treffer, schwache Aktien zuerst" }[sid] || "Trendfolge · Ausbruch aus enger Spanne";
   const vr = { S19B: "Variante B: wie das Original, aber das Volumen muss nur an 2 der letzten 3 Tage sinken. ", S19C: "Variante C: Überdehnung schon ab 2,0 Std und Volumen an 2 der letzten 3 Tage sinkend. " }[sid] || "";
-  const rule = sid === "KAIRO" || sid === "KAIROS" ? `Handelt jeden echten Kairo-Treffer (USA und Europa) nach der getesteten Regel: bis zu 10 Tage auf eine Seitwärtsphase warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung innerhalb der Spanne, Stop unter dem Basis-Tief − 0,25 ATR, 1 % Risiko, max. 5 Positionen. Ausstieg: Stop, ab Tag 10 Schluss unter EMA20, spätestens Tag 60 (im Test in allen drei Zeiträumen besser als Tag 40). 2008–2026 je Trade ${resR(RESEARCH.rNorm)} mit PRIME+-Kosten, ${resR(RESEARCH.rStress)} mit Stress-Kosten – nur etwa ${resR(RESEARCH.vsRandom)} besser als Zufall.` + (sid === "KAIROS" ? " Variante S: bei mehreren Einstiegen zuerst Aktien mit dem schwächsten Kursverlauf der letzten Monate (im Test in allen drei Zeiträumen besser; Vorbehalt: kann am Datensatz liegen). Depot-Aufbau wie der beste Test: 20 Positionen × 0,25 % Risiko, 20.000 € virtuell (2008–2026: +6 % p. a. mit normalen Kosten, größter Rückgang −30 %; mit Stress-Kosten −1,2 % p. a. und −52 % – Kosten entscheiden)." : " Bei mehreren Einstiegen zuerst schwächeres Vormomentum (seit 29.10.2026, wie in der App – im Depot-Test besser als „ruhigere zuerst“).") + " Läuft einen Handelstag hinter dem Scan."
+  const rule = sid === "KAIRO" || sid === "KAIROS" ? `Handelt jeden echten Kairo-Treffer (USA und Europa) nach der getesteten Regel: bis zu 10 Tage auf eine Konsolidierung warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung innerhalb der Spanne, Stop unter dem Basis-Tief − 0,25 ATR, 1 % Risiko, max. 5 Positionen. Ausstieg: Stop, ab Tag 10 Schluss unter EMA20, spätestens Tag 60 (im Test in allen drei Zeiträumen besser als Tag 40). 2008–2026 je Trade ${resR(RESEARCH.rNorm)} mit PRIME+-Kosten, ${resR(RESEARCH.rStress)} mit Stress-Kosten – nur etwa ${resR(RESEARCH.vsRandom)} besser als Zufall.` + (sid === "KAIROS" ? " Variante S: bei mehreren Einstiegen zuerst Aktien mit dem schwächsten Kursverlauf der letzten Monate (im Test in allen drei Zeiträumen besser; Vorbehalt: kann am Datensatz liegen). Depot-Aufbau wie der beste Test: 20 Positionen × 0,25 % Risiko, 20.000 € virtuell (2008–2026: +6 % p. a. mit normalen Kosten, größter Rückgang −30 %; mit Stress-Kosten −1,2 % p. a. und −52 % – Kosten entscheiden)." : " Bei mehreren Einstiegen zuerst schwächeres Vormomentum (seit 29.10.2026, wie in der App – im Depot-Test besser als „ruhigere zuerst“).") + " Läuft einen Handelstag hinter dem Scan."
     : sid === "SP2F" ? "Jeden Handelstag: Liegt der S&P 500 zum Schluss über seinem 200-Tage-Durchschnitt, wird am nächsten Morgen der gehebelte ETF gehalten (Xtrackers S&P 500 2x Leveraged, DBPG), sonst Bargeld. Etwa 6 Wechsel im Jahr. Test 1989–2026: in allen drei Zeiträumen besser als der S&P 500 (+13,1 % statt +11,3 % p. a.) mit kleinerem Rückgang (−45 % statt −55 %) – nach den vorab festgelegten Regeln aber knapp nicht bestanden (mit der 100-Tage-Linie schlechter). Nicht im Test: Steuern bei jedem Wechsel und ein Crash an einem einzigen Tag (mit 2× doppelt so stark). Deshalb erst 12 Monate auf Papier."
     : sid === "DM" ? "Am ersten Handelstag jedes Monats: Von SPY (USA), EFA (Industrieländer) und QQQ (Nasdaq 100) wird der ETF mit der besten 12-Monats-Rendite gehalten – aber nur, wenn sie über dem Geldmarkt (BIL) liegt, sonst kurze US-Anleihen (SHY). Ein ETF, etwa 1–4 Wechsel im Jahr. Einzige Strategie, die 2008–2016, 2017–2021 und im finalen Test 2022–2026 nach Kosten besser als der Welt-ETF war (2022–26: +11,6 % statt +9,7 % p. a. unter Stress-Kosten) – aber knapp nicht signifikant besser als Zufall (p = 0,07). Bester Kandidat, kein Beweis."
-    : sid === "KAIROZ" ? "Deine Idee (20.10.2026): Kairo-Treffer mit fertiger Seitwärtsphase (USA/Europa) und attraktivem Analysten-Kursziel am Signaltag – Abstand zum Ziel mindestens 1 × Jahresschwankung (Bank ab ≈ +25–40 %, Risikoaktie ab ≈ +70–100 %), mindestens 3 Analysten. Halten, bis 80 % des Wegs zum Kursziel geschafft sind; Sicherheitsnetz −30 %, spätestens 24 Monate. 20 Plätze à 5 %. Noch nicht getestet – historische Kursziele gibt es nicht kostenlos, deshalb nur dieser Vorwärtstest."
+    : sid === "KAIROZ" ? "Deine Idee (20.10.2026): Kairo-Treffer mit fertiger Konsolidierung (USA/Europa) und attraktivem Analysten-Kursziel am Signaltag – Abstand zum Ziel mindestens 1 × Jahresschwankung (Bank ab ≈ +25–40 %, Risikoaktie ab ≈ +70–100 %), mindestens 3 Analysten. Halten, bis 80 % des Wegs zum Kursziel geschafft sind; Sicherheitsnetz −30 %, spätestens 24 Monate. 20 Plätze à 5 %. Noch nicht getestet – historische Kursziele gibt es nicht kostenlos, deshalb nur dieser Vorwärtstest."
     : sid === "KAIROL" ? "Vergleich zu Kairo-Ziel: dieselben Treffer und Einstiege, aber ohne Kursziel-Filter. Ziel = Einstieg + 80 % einer Jahresschwankung, Sicherheitsnetz −30 %, spätestens 24 Monate. Liegt Kairo-Ziel nach 1–2 Jahren klar vorn, bringen die Analystenziele wirklich etwas."
     : sid === "MOM10" ? "Wie MOM5, aber die 10 stärksten Aktien. Hat 2008–2021 überzeugt (+27,9 % p. a. 2017–2021), ist im finalen Test 2022–2026 aber durchgefallen: +8,3 % statt +9,8 % beim Welt-ETF, Rückgang −57 %, nicht besser als Zufall. Läuft nur noch zum Vergleich weiter."
     : sid === "MOM5" ? "Am ersten Handelstag jedes Monats: die 5 Aktien mit dem stärksten Kursanstieg der letzten 6 Monate (ohne den letzten Monat), geteilt durch ihre Schwankung. Kauf zur Eröffnung, gleich gewichtet; was aus den Top 5 fällt, wird verkauft. Kein Stop. Momentum hat im finalen Test 2022–2026 nicht bestanden – läuft nur noch zum Vergleich."
@@ -11064,7 +11090,7 @@ function paperCard(sid, st, sm, bench) {
     ${pos ? `<div class="hh" style="margin-top:12px"><b>Offene Papier-Positionen</b></div><div class="tscroll"><table class="ptab"><tr><th>Titel</th><th>Kauf</th><th>Einstieg</th><th>Stop</th><th>Stück</th><th></th></tr>${pos}</table></div>` : ""}
     ${(st.top || []).length && mom ? `<div class="hh" style="margin-top:12px"><b>Auswahl seit ${st.rebal ? dateDE(String(st.rebal).slice(0, 10)) : "–"}</b></div><div class="note">${st.top.map(t => `<b>${esc(t)}</b>`).join(" · ")}</div>` : ""}
     ${(st.armed || []).length ? `<div class="hh" style="margin-top:12px"><b>Kauf zur nächsten Eröffnung vorgemerkt</b></div><div class="note">${st.armed.map(q => `<b>${esc(q.t)}</b>${q.lo != null ? ` (Basis ${fmt(q.lo)}–${fmt(q.hi)}, Stop ${fmt(q.stop)})` : ""}`).join(" · ")}</div>` : ""}
-    ${pend.length ? `<div class="hh" style="margin-top:12px"><b>${sid.startsWith("KAIRO") ? "Treffer – warten auf die Seitwärtsphase" : "Warten auf den 4H-Auslöser"}</b></div><div class="note">${pend.slice(0, 40).map(q => `<b>${esc(q.t)}</b> <small class="muted">${q.expiry ? `bis ${dateDE(String(q.expiry).slice(0, 10)).slice(0, 6)}` : `seit ${dateDE(String(q.d || "").slice(0, 10)).slice(0, 6)}`}</small>`).join(" · ")}${pend.length > 40 ? ` · … +${pend.length - 40}` : ""}</div>` : ""}
+    ${pend.length ? `<div class="hh" style="margin-top:12px"><b>${sid.startsWith("KAIRO") ? "Treffer – warten auf die Konsolidierung" : "Warten auf den 4H-Auslöser"}</b></div><div class="note">${pend.slice(0, 40).map(q => `<b>${esc(q.t)}</b> <small class="muted">${q.expiry ? `bis ${dateDE(String(q.expiry).slice(0, 10)).slice(0, 6)}` : `seit ${dateDE(String(q.d || "").slice(0, 10)).slice(0, 6)}`}</small>`).join(" · ")}${pend.length > 40 ? ` · … +${pend.length - 40}` : ""}</div>` : ""}
     ${last ? `<div class="hh" style="margin-top:12px"><b>Letzte Trades</b></div><div class="tscroll"><table class="ptab"><tr><th>Titel</th><th>Kauf</th><th>Verkauf</th><th>Grund</th><th>R</th><th>€</th></tr>${last}</table></div>` : ""}
     <details style="margin-top:10px"><summary class="note">Regeln &amp; Protokoll</summary><div class="note">${esc(rule)}</div>
       <div class="note">${(st.events || []).slice(-15).reverse().map(e => esc(e)).join("<br>")}</div></details></div>`;
@@ -11085,7 +11111,7 @@ function shadowHtml(sh) {
 }
 // ---------- Top-Setups: heutige Kairo-Treffer (USA/Europa), Rangfolge nach Forschung v2.4 (schwaches Vormomentum zuerst) ----------
 // ---------- Scanner v2 (29.10.2026): Treffer nach dem, was heute zu tun ist – kaufbereit · wartet · vorbei ----------
-// Quelle: alle Kairo-Treffer der letzten Tage (h4.json, Abend-Prüfung). Gekauft wird wie getestet, wenn die Seitwärtsphase
+// Quelle: alle Kairo-Treffer der letzten Tage (h4.json, Abend-Prüfung). Gekauft wird wie getestet, wenn die Konsolidierung
 // nach dem Treffer fertig UND ruhig ist (Spanne 5 Tage ≤ 1,5 ATR, Hin und Her 10 Tage ≤ 1,65) – zur nächsten Eröffnung.
 function boardItems() {
   const d = h4Data(), its = ((d && d.items) || []).filter(it => h4Real(it) && (it.st !== "weg" || it.base || it.d >= isoDaysAgo(10)));
@@ -11124,8 +11150,8 @@ function boardCard(it, rank) {
 }
 function boardRow(it) {
   const r = byTicker(it.t), sr = rowOf(it.t) || {}, open = r ? `data-card="${esc(it.t)}"` : `data-ein="${esc(it.t)}"`;
-  const why = it.st === "basis" ? (it.unruhig ? `Seitwärtsphase da, aber noch zu unruhig · Tag ${it.day} von 10` : `wartet auf enge Seitwärtsphase · Tag ${it.day} von 10`)
-    : it.st === "weg" ? `verfallen: ${it.why || "keine Seitwärtsphase"}`
+  const why = it.st === "basis" ? (it.unruhig ? `Konsolidierung da, aber noch zu unruhig · Tag ${it.day} von 10` : `wartet auf enge Konsolidierung · Tag ${it.day} von 10`)
+    : it.st === "weg" ? `verfallen: ${it.why || "keine Konsolidierung"}`
     : it.base && it.base.ed ? `Kauftag war ${dateDE(it.base.ed)} – nicht nachkaufen` : "Kauftag vorbei";
   const dot = it.st === "basis" ? (it.unruhig ? "y" : "b") : "n";
   return `<button class="bd-row" ${open}><i class="sd ${dot}"></i><span class="bd-n"><b>${esc(String(it.n || (r || {}).name || it.t).slice(0, 34))}</b><small>${esc(it.t)} · ${esc(why)}</small>${critLine(it.t)}</span><span class="bd-p">${fmt(sr.c ?? (r || {}).close)}<small>${esc(it.cur || sr.cur || "")}</small></span></button>`;
@@ -11138,14 +11164,14 @@ function boardHtml() {
   const sec = (title, sub, body, cls = "") => `<section class="bd-sec ${cls}"><div class="bd-t"><b>${title}</b><span>${sub}</span></div>${body}</section>`;
   const ready = B.ready.length
     ? B.ready.map((it, i) => boardCard(it, i + 1)).join("") + (B.ready.length > free ? `<div class="note" style="margin:6px 2px 0">${free ? `Nur ${free} Platz${free === 1 ? "" : "e"} frei (höchstens ${c.maxOpen} Trades) – die ersten ${free} zuerst` : `Alle ${c.maxOpen} Plätze belegt – heute kein neuer Kauf`}. Rangfolge: schwächeres Vormomentum zuerst (im Test besser).</div>` : "")
-    : `<div class="bd-empty">Heute ist kein Treffer kaufbereit. Sobald die Seitwärtsphase eines Treffers fertig ist, steht er hier – und du bekommst eine Mitteilung.</div>`;
+    : `<div class="bd-empty">Heute ist kein Treffer kaufbereit. Sobald die Konsolidierung eines Treffers fertig ist, steht er hier – und du bekommst eine Mitteilung.</div>`;
   let html = sec(`${IC.dot("var(--up)")}Kaufbereit`, `${B.ready.length} · Kauf zur nächsten Eröffnung`, ready, "ok");
   if (B.own.length) html += sec("Im Depot", `${B.own.length}`, B.own.map(boardRow).join(""));
-  html += sec(`${IC.dot("var(--gold)")}Wartet auf Seitwärtsphase`, `${B.wait.length} Treffer · bis zu 10 Tage`, B.wait.length ? B.wait.slice(0, 12).map(boardRow).join("") + (B.wait.length > 12 ? `<details class="bd-in"><summary>Alle ${B.wait.length} zeigen</summary>${B.wait.slice(12).map(boardRow).join("")}</details>` : "") : `<div class="bd-empty">Gerade keine.</div>`);
+  html += sec(`${IC.dot("var(--gold)")}Wartet auf Konsolidierung`, `${B.wait.length} Treffer · bis zu 10 Tage`, B.wait.length ? B.wait.slice(0, 12).map(boardRow).join("") + (B.wait.length > 12 ? `<details class="bd-in"><summary>Alle ${B.wait.length} zeigen</summary>${B.wait.slice(12).map(boardRow).join("")}</details>` : "") : `<div class="bd-empty">Gerade keine.</div>`);
   const rest = [...B.late, ...B.gone];
   if (rest.length) html += `<details class="bd-more"><summary>Kauftag vorbei oder verfallen · ${rest.length}</summary>${rest.map(boardRow).join("")}</details>`;
   if (B.asia.length) html += `<details class="bd-more"><summary>Sonstige Börsen · ${B.asia.length} · kein Kaufsignal</summary>${B.asia.map(boardRow).join("")}</details>`;
-  return `<div class="board">${html}<div class="note" style="margin:8px 2px 0">So arbeitet Kairo (getestet 2008–2026): Treffer = alle 11 Kriterien. Danach bis zu 10 Tage warten, bis der Kurs 5 Tage eng seitwärts läuft (Spanne ≤ 1,5 ATR) – dann Kauf zur nächsten Eröffnung, Stop unter der Seitwärtsphase. Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)} (ändern unter Einstellungen). Keine Anlageberatung.</div></div>`;
+  return `<div class="board">${html}<div class="note" style="margin:8px 2px 0">So arbeitet Kairo (getestet 2008–2026): Treffer = alle 11 Kriterien. Danach bis zu 10 Tage warten, bis der Kurs 5 Tage eng seitwärts läuft (Spanne ≤ 1,5 ATR) – dann Kauf zur nächsten Eröffnung, Stop unter der Konsolidierung. Stückzahl für ${fmt(c.risk, 1)} % Risiko von ${eur(c.depot)} (ändern unter Einstellungen). Keine Anlageberatung.</div></div>`;
 }
 function topSetupsHtml() {
   if (!searchIdx) loadSearch();
@@ -11155,7 +11181,7 @@ function topSetupsHtml() {
   const m = r => (r.flags || {}).mom61;
   const list = hits.slice().sort(kOrder).slice(0, 8);
   const rows = list.map((r, k) => {
-    const kp = kPlan(r.ticker), p = { entry: r.close, stop: kp.stop };   // Stop wie überall: Seitwärtsphase nach dem Treffer, sonst Kursstruktur
+    const kp = kPlan(r.ticker), p = { entry: r.close, stop: kp.stop };   // Stop wie überall: Konsolidierung nach dem Treffer, sonst Kursstruktur
     const ps = p.stop ? posSize(p.entry, p.stop, r.currency) : null, qty = ps && ps.qty, val = qty ? ps.val : null, fee = ps ? ps.fee : null;
     return `<tr><td>${k + 1}</td><td><b>${esc(r.ticker)}</b> ${kPill(r)} ${tgtChip(r)}<br><span class="note">${esc(String(r.name || "").slice(0, 24))}</span></td>
       <td>${m(r) == null ? "–" : sgnPct(m(r), 0)}</td><td>${fmt(p.entry)}<br><span class="down">${fmt(p.stop)}</span></td>
@@ -11258,7 +11284,7 @@ function renderMain() {
   if (state.scrOn) { $("main").innerHTML = searchHtml() + scanBarHtml() + vseg + screenerHtml(); return; }
   const bar = `${vseg}
     ${cur ? `<div class="vdesc">${esc(cur[4])}</div>` : ""}
-    ${state.view === "hit" ? (l => `<details class="st-legend-d"><summary>Was bedeuten die Status?</summary>${l}</details>`)(`<div class="st-legend"><span><b class="up">kaufbereit</b> – Kauf zur nächsten Eröffnung</span><span><b>Seitwärtsphase x/10</b> – wartet auf 5 ruhige Tage</span><span><b>verfallen</b> – keine Seitwärtsphase in 10 Tagen</span><span><b>im Depot</b> – läuft schon</span></div>`) : ""}
+    ${state.view === "hit" ? (l => `<details class="st-legend-d"><summary>Was bedeuten die Status?</summary>${l}</details>`)(`<div class="st-legend"><span><b class="up">kaufbereit</b> – Kauf zur nächsten Eröffnung</span><span><b>Konsolidierung x/10</b> – wartet auf 5 ruhige Tage</span><span><b>verfallen</b> – keine Konsolidierung in 10 Tagen</span><span><b>im Depot</b> – läuft schon</span></div>`) : ""}
     ${state.view === "mine" ? wlBarHtml() : ""}
     ${state.view === "watch" ? `<div class="wmin" role="group" aria-label="Mindestens erfüllte Kriterien">${[9, 8, 7].map(n => `<button class="kchip${watchMin() === n ? " on" : ""}" data-wmin="${n}" aria-pressed="${watchMin() === n}">ab ${n}/11</button>`).join("")}</div>` : ""}
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
@@ -11269,7 +11295,7 @@ function renderMain() {
       return ` · <span class="up">● ${n} live${m != null ? `, vor ${m < 1 ? "<1" : m} Min.` : ""}</span>`; })(list.filter(r => r.live).length)}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner Vorteil je Trade (${resR(RESEARCH.rNorm)} mit normalen, ${resR(RESEARCH.rStress)} mit Stress-Kosten, kaum besser als Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
   if (!list.length && $("search").value.trim().length >= 2) { $("main").innerHTML = searchHtml() + bar; return; }
   if (!list.length) {
-    $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.has("h4") ? "Gerade kein Treffer mit fertiger Seitwärtsphase – die 4H-Prüfung beginnt, sobald eine da ist. Wo die Treffer stehen, siehst du unter „Treffer“ in der Status-Spalte." : k.has("fav") && !data.results.some(r => r.in_watchlist) ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
+    $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.has("h4") ? "Gerade kein Treffer mit fertiger Konsolidierung – die 4H-Prüfung beginnt, sobald eine da ist. Wo die Treffer stehen, siehst du unter „Treffer“ in der Status-Spalte." : k.has("fav") && !data.results.some(r => r.in_watchlist) ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
     return;
   }
   const col = COLS.find(c => c.k === state.tableSort) || COLS.find(c => c.k === "score");
@@ -11280,7 +11306,7 @@ function renderMain() {
   if (state.view === "mine") liveKick([...rows.map(r => r.ticker), ...favs()].slice(0, 40), "scanner");   // Watchlist: Kurse live
   const more = rows.length < full ? `<div class="row-actions" style="justify-content:center;margin:12px 0"><button class="btn ghost" data-scanall>Alle ${full} anzeigen</button></div>` : "";
   const onlyHits = k.size === 1 && k.has("hit");
-  const lead = ["ticker", "name", "status", "grade", "met", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)) && !(x === "status" && !list.some(r => r.passed)));   // ohne Treffer in der Liste (z. B. Beobachten): keine Kauf-Status-Spalte   // Status: kaufbereit / Seitwärtsphase x/10 / verfallen
+  const lead = ["ticker", "name", "status", "grade", "met", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)) && !(x === "status" && !list.some(r => r.passed)));   // ohne Treffer in der Liste (z. B. Beobachten): keine Kauf-Status-Spalte   // Status: kaufbereit / Konsolidierung x/10 / verfallen
   const hid = new Set(state.hiddenCols || COLS_HID0);   // ohne eigene Auswahl: schlanke Standard-Tabelle (Design-Prüfung 14.11.)
   if (!(data.stats && data.stats.grade)) hid.add("grade");    // Stufen nur, wenn ein geprüftes Modell aktiv ist
   const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss", "chk"].includes(c.k))].filter(c => c.k !== "ticker" && !hid.has(c.k));   // Kürzel steht unter dem Namen (Design-Prüfung 14.11.)
@@ -12473,7 +12499,7 @@ function cockpitSide(h, r) {
   return `<div class="cf-s"><div class="cf-h">Status</div><span class="st ${k.cls}">${esc(k.t)}</span>${hn.title ? `<p class="cf-t cf-t2"><b>${esc(hn.title)}</b><span>${esc(String(hn.text || ""))}</span></p>` : ""}</div>
     ${autoCardHtml(h)}${sigCardHtml(String(r.ticker).replace(/@rp$/, ""))}${r.ext ? "" : earnMiniHtml(r.ticker) + k8Html(r.ticker) + smCardHtml(r.ticker)}${fundCardHtml(String(r.ticker).replace(/@rp$/, ""))}
     <div class="cf-s"><div class="cf-h">Trade-Plan</div>${row("Kaufzone oben", p.entry, "#eceef2")}${row("Stop", p.stop, "#ff453a")}${row("K.-o. Turbo", ko, "#ff9f0a")}
-      ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Seitwärtsphase.</p>` : ""}</div>
+      ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Konsolidierung.</p>` : ""}</div>
     ${(vi => vi && clGet("vp") && vi.poc ? `<div class="cf-s"><div class="cf-h">Volumenprofil <small class="muted">${state.vpMode === "vis" ? "Bildausschnitt" : `seit ${esc(vi.from)}`}</small></div>
       ${(vi.strong || []).map(z => `<div class="cf-r vp-strong"><span><i style="background:${z.sup ? "#30d158" : "#ff453a"}"></i>${z.sup ? "Starke Unterstützung" : "Starker Widerstand"} · ${esc(z.lbl)}</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist(z.p)}</div>`).join("")}
       ${row("Meistgehandelt (POC)", vi.poc, "#ff9f0a")}<div class="cf-r"><span><i style="background:rgba(255,159,10,.5)"></i>Wertzone 70 %</span><b>${fmt(vi.val)}–${fmt(vi.vah)}</b>${last ? `<em class="${last > vi.vah ? "up" : last < vi.val ? "down" : ""}">${last > vi.vah ? "Kurs darüber" : last < vi.val ? "Kurs darunter" : "Kurs drin"}</em>` : ""}</div>
@@ -12637,6 +12663,7 @@ document.addEventListener("click", e => {
     state.mcBack = state.mc; state.mcBackI = +ob.dataset.mcoi || 0; state.mcBackFs = !!MCH.fs; MCH.fs = false;
     state.mc = 1; state.cfLast = t; window.__lastChart = null; save(); mcDrop(); ctabRender(); return; }
   if (e.target.closest("[data-mcback]")) { mcBackGo(); return; }
+  if (e.target.closest("[data-cxback]")) { cxBackGo(); return; }
 });
 // zurück ins Raster: der groß bearbeitete Chart kommt in sein Feld zurück (auch wenn dort inzwischen eine andere Aktie gewählt wurde)
 function mcBackGo() {
@@ -12730,7 +12757,7 @@ function ctabBuild(c, r) {
   const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="Indikator groß">${CT_IC.expand}</button></div><div class="ctab-c" id="${id}"></div></div>`;
   el.innerHTML = `<div class="ct-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="ctQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="${innerWidth < 640 || innerWidth > 900 ? "Aktie suchen – Name oder Kürzel" : "Chart suchen – jede Aktie, Name oder Kürzel (z. B. Amazon, UBS, Rheinmetall)"}" aria-label="Chart suchen"><div id="ctList" class="ct-list" hidden></div></div>
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
-      <span class="st ${k.cls}">${esc(k.t)}</span>${state.mcBack > 1 ? `<button class="ct-b ct-back" data-mcback title="Zurück zu den ${state.mcBack} Charts" aria-label="Zurück zum Raster">${MC_IC[state.mcBack] || MC_IC[4]}<span>${state.mcBack} Charts</span></button>` : ""}<button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
+      <span class="st ${k.cls}">${esc(k.t)}</span>${CXBACK ? `<button class="ct-b ct-back" data-cxback title="Zurück zur Übersicht von ${esc(tkClean(CXBACK.t))} und an dieselbe Stelle im ${esc(SEC_NAME[CXBACK.sec] || "Reiter")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>${esc(SEC_NAME[CXBACK.sec] || "Zurück")}</span></button>` : ""}${state.mcBack > 1 ? `<button class="ct-b ct-back" data-mcback title="Zurück zu den ${state.mcBack} Charts" aria-label="Zurück zum Raster">${MC_IC[state.mcBack] || MC_IC[4]}<span>${state.mcBack} Charts</span></button>` : ""}<button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
       <div class="ct-right">${ctDdHtml(c.tf || "D")}<div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Setup"]].map(([v, l]) => `<button title="${v === "wave" ? "Ausschnitt der Kairo-Welle (Setup)" : "Zeitraum"}" class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
         <button class="ct-b ct-mcb" data-mcn="${innerWidth < 700 ? 2 : 4}" title="Mehrfach-Charts: ${innerWidth < 700 ? 2 : 4} Charts nebeneinander" aria-label="Mehrfach-Charts">${MC_IC[innerWidth < 700 ? 2 : 4]}</button><button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
@@ -12878,7 +12905,7 @@ const SF_AX = [["Bewertung", "KGV, KBV und EV/EBITDA günstiger als die Branche,
   ["Dividende", "Dividende vorhanden, Rendite über 1,5/3 %, Ausschüttungsquote unter 90/60 %, durch Cashflow gedeckt"]];
 // Frühere Kairo-Signale je Aktie (backend/sighist.py, wöchentlich): Treffer der letzten 2 Jahre, nachgerechnet mit Regel B60
 const sigOf = t => { const f = getJson("sighist.json"); if (!f || !f.by || !t) return null; const v = f.by[t] || f.by[tkClean(t)]; return v && v.length ? v : null; };
-const SIG_RES = { stop: ["Stop", "down"], ema: ["EMA-Ausstieg", ""], zeit: ["Tag 60", ""], run: ["läuft", "up"], wait: ["wartet auf Seitwärtsphase", "muted"], nobase: ["keine Seitwärtsphase – kein Kauf", "muted"] };
+const SIG_RES = { stop: ["Stop", "down"], ema: ["EMA-Ausstieg", ""], zeit: ["Tag 60", ""], run: ["läuft", "up"], wait: ["wartet auf Konsolidierung", "muted"], nobase: ["keine Konsolidierung – kein Kauf", "muted"] };
 function sigCardHtml(t) {
   const S = sigOf(t); if (!S) return "";
   const done = S.filter(g => g.r != null && ["stop", "ema", "zeit"].includes(g.res)), avg = done.length ? done.reduce((a, g) => a + g.r, 0) / done.length : null, win = done.filter(g => g.r > 0).length;
@@ -12887,7 +12914,7 @@ function sigCardHtml(t) {
   return `<div class="cf-s sg"><div class="cf-h">Kairo-Signale hier · 2 Jahre</div>
     <div class="sg-sum"><div><b>${S.length}</b><small>Treffer</small></div><div><b>${done.length}</b><small>Trades</small></div><div><b class="${avg == null ? "" : avg >= 0 ? "up" : "down"}">${avg == null ? "–" : `${avg >= 0 ? "+" : "−"}${fmt(Math.abs(avg), 1)} R`}</b><small>Ø je Trade</small></div><div><b>${done.length ? `${win}/${done.length}` : "–"}</b><small>Gewinner</small></div></div>
     ${S.slice().reverse().slice(0, 6).map(row).join("")}
-    <p class="muted sg-n">Nachgerechnet mit der gültigen Regel (Seitwärtsphase abwarten, Stop, Ausstieg EMA 20 ab Tag 10), netto nach Kosten. Im Chart: K = Signal, Kauf, Ergebnis in R. Wenige Trades je Aktie sagen wenig – die Bilanz über alle Aktien zählt.</p></div>`;
+    <p class="muted sg-n">Nachgerechnet mit der gültigen Regel (Konsolidierung abwarten, Stop, Ausstieg EMA 20 ab Tag 10), netto nach Kosten. Im Chart: K = Signal, Kauf, Ergebnis in R. Wenige Trades je Aktie sagen wenig – die Bilanz über alle Aktien zählt.</p></div>`;
 }
 const fundOf = t => { const f = getJson("fund.json"); return f && f.by ? f.by[t] || f.by[tkClean(t)] || null : null; };
 const sfSum = f => f && f.sf ? f.sf.reduce((a, b) => a + b, 0) : null;
@@ -12973,7 +13000,8 @@ function fundCardHtml(t, compact) {
 const DRAW = { tool: null, sel: null, hide: false, hist: {}, h: null, act: null, wait: null, cur: null };
 let DRAW_TOUCH = matchMedia("(pointer: coarse)").matches;   // zuletzt mit dem Finger bedient → Fadenkreuz-Modus
 addEventListener("pointerdown", e => { DRAW_TOUCH = e.pointerType === "touch"; }, true);
-const DR_FIB = [[0, "120,123,134"], [.236, "242,54,69"], [.382, "255,152,0"], [.5, "76,175,80"], [.618, "8,153,129"], [.786, "0,188,212"], [1, "120,123,134"]];
+// Fib-Retracement nur mit der Golden Zone (Wunsch 14.11.2026): [Stufe, Linienfarbe, Farbe der Fläche darüber]
+const DR_FIB = [[0, "120,123,134"], [.618, "8,153,129", "242,54,69"], [.706, "255,152,0", "120,123,134"], [.79, "242,54,69", "255,152,0"], [1, "120,123,134", "120,123,134"]];
 const DR_FIBX = [[1.618, "41,98,255"], [2.618, "242,54,69"], [3.618, "156,39,176"], [4.236, "233,30,99"]];
 const DR_COL = ["41,98,255", "242,54,69", "8,153,129", "255,152,0", "156,39,176", "236,238,242"];
 // Werkzeug-Gruppen wie bei TradingView (ein Knopf je Gruppe, weitere Werkzeuge im Ausklapp-Menü)
@@ -13018,9 +13046,11 @@ const DR_FX = [[0, "120,123,134"], [.618, "8,153,129"], [1, "41,98,255"], [1.272
 function drCurPrimitive(h) {
   let series = null, chart = null, req = null; const F = "600 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
   const r = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { const C = DRAW.cur; if (!C || !DRAW.tool || DRAW.h !== h || !series) return;
-    const col = "41,98,255"; x.strokeStyle = `rgba(${col},.95)`; x.lineWidth = 1; x.setLineDash([4, 4]);
+    // TradingView-Fadenkreuz: dünne gestrichelte graue Linien über die ganze Fläche, Preis- und Datumsschild dunkel (Wunsch 14.11.2026)
+    const light = isLight(), lc = light ? "rgba(70,74,84,.75)" : "rgba(160,164,175,.85)"; x.strokeStyle = lc; x.lineWidth = 1; x.setLineDash([5, 4]);
     x.beginPath(); x.moveTo(0, Math.round(C.y) + .5); x.lineTo(m.width, Math.round(C.y) + .5); x.moveTo(Math.round(C.x) + .5, 0); x.lineTo(Math.round(C.x) + .5, m.height); x.stroke(); x.setLineDash([]);
-    x.fillStyle = "#fff"; x.strokeStyle = `rgb(${col})`; x.lineWidth = 2.5; x.beginPath(); x.arc(C.x, C.y, 5, 0, Math.PI * 2); x.fill(); x.stroke();
+    if (C.touch) { x.fillStyle = light ? "#fff" : "#131722"; x.strokeStyle = lc; x.lineWidth = 1.5; x.beginPath(); x.arc(C.x, C.y, 4, 0, Math.PI * 2); x.fill(); x.stroke(); }
+    const col = light ? "54,58,69" : "54,58,69";
     const p = series.coordinateToPrice(C.y), li = chart.timeScale().coordinateToLogical(C.x); x.font = F; x.textBaseline = "middle";
     const tag = (tx, cx, cy, al) => { const w = x.measureText(tx).width + 12, bx = al === "r" ? m.width - w - 2 : Math.max(2, Math.min(m.width - w - 2, cx - w / 2));
       x.fillStyle = `rgb(${col})`; x.beginPath(); x.roundRect(bx, cy - 10, w, 20, 4); x.fill(); x.fillStyle = "#fff"; x.textAlign = "center"; x.fillText(tx, bx + w / 2, cy + .5); };
@@ -13071,7 +13101,7 @@ function drPrimitive(h) {
         if (sel) { handle(ax, ay); handle(bx, by); handle(ax, by); handle(bx, ay); } }
       else if (d.k === "fib" && bx != null) {
         const lv = d.x2 ? DR_FIB.concat(DR_FIBX) : DR_FIB, xl = Math.min(ax, bx), xr = d.ext ? W : Math.max(ax, bx), P = q => d.b.p + (d.a.p - d.b.p) * q;
-        for (let k = 0; k < lv.length - 1; k++) { const y1 = Y(P(lv[k][0])), y2 = Y(P(lv[k + 1][0])); if (y1 == null || y2 == null) continue; x.fillStyle = `rgba(${lv[k + 1][1]},.12)`; x.fillRect(xl, Math.min(y1, y2), xr - xl, Math.abs(y2 - y1)); }
+        for (let k = 0; k < lv.length - 1; k++) { const y1 = Y(P(lv[k][0])), y2 = Y(P(lv[k + 1][0])); if (y1 == null || y2 == null) continue; x.fillStyle = `rgba(${lv[k + 1][2] || lv[k + 1][1]},${lv[k + 1][2] === "255,152,0" ? .26 : .14})`; x.fillRect(xl, Math.min(y1, y2), xr - xl, Math.abs(y2 - y1)); }
         x.lineWidth = 1.2; lv.forEach(([q, c2]) => { const yy = Y(P(q)); if (yy == null) return; x.strokeStyle = `rgb(${c2})`; x.beginPath(); x.moveTo(xl, yy); x.lineTo(xr, yy); x.stroke();
           const tx = `${q} (${fmt(P(q))})`; x.font = F; const tw = x.measureText(tx).width;
           if (xl - tw - 8 > 0) lbl(tx, xl - 6, yy, c2, "right", false); else lbl(tx, xl + 4, yy - 8, c2, "left", false); });
@@ -13163,12 +13193,15 @@ function drAttach(h) {
     else if (DRAW.wait && DRAW.act && DRAW.act.mode === "wait") DRAW.wait.b = drAnc(h, q.li, q.p); };
   el.addEventListener("pointerdown", e => { const h = el.__drH;
     if (e.pointerType === "touch" && DRAW.tool && !MEAS.on && !WAVE.on) { e.stopPropagation(); const P = pos(e);
-      if (!DRAW.cur) DRAW.cur = { x: el.clientWidth * .5, y: el.clientHeight * .45 };
+      if (!DRAW.cur || !DRAW.cur.touch) DRAW.cur = { x: el.clientWidth * .5, y: el.clientHeight * .45, touch: 1 };
       TC = { fx: P.x, fy: P.y, cx: DRAW.cur.x, cy: DRAW.cur.y, t: Date.now(), moved: false, id: e.pointerId }; drLock(h, true); try { el.setPointerCapture(e.pointerId); } catch (x) {} return; }
     down(e); }, true);
   el.addEventListener("pointermove", e => { if (!TC || e.pointerId !== TC.id) return; e.stopPropagation(); const h = el.__drH, P = pos(e), dx = P.x - TC.fx, dy = P.y - TC.fy;
     if (Math.hypot(dx, dy) > 6) TC.moved = true;
-    DRAW.cur = { x: Math.max(2, Math.min(el.clientWidth - 60, TC.cx + dx)), y: Math.max(2, Math.min(el.clientHeight - 30, TC.cy + dy)) }; curMove(DRAW.cur); h.drReq && h.drReq(); }, true);
+    DRAW.cur = { x: Math.max(2, Math.min(el.clientWidth - 60, TC.cx + dx)), y: Math.max(2, Math.min(el.clientHeight - 30, TC.cy + dy)), touch: 1 }; curMove(DRAW.cur); h.drReq && h.drReq(); }, true);
+  // Maus: bei gewähltem Werkzeug folgt das Fadenkreuz dem Zeiger (das Chart-eigene Fadenkreuz ist beim Zeichnen stumm)
+  el.addEventListener("pointermove", e => { if (e.pointerType === "touch" || !DRAW.tool || MEAS.on || WAVE.on) return; const h = el.__drH, P = pos(e); DRAW.cur = { x: P.x, y: P.y }; h.drReq && h.drReq(); });
+  el.addEventListener("pointerleave", e => { if (e.pointerType === "touch" || !DRAW.cur || DRAW.cur.touch) return; DRAW.cur = null; const h = el.__drH; h.drReq && h.drReq(); });
   const tcUp = e => { if (!TC || e.pointerId !== TC.id) return false; e.stopPropagation(); const h = el.__drH, tap = e.type === "pointerup" && !TC.moved && Date.now() - TC.t < 450; TC = null;
     if (tap && DRAW.cur) { const P = { ...DRAW.cur }; down(fake, P); if (DRAW.act && DRAW.act.mode === "new") up(fake, P); }
     if (!DRAW.act || !["new", "mv", "hd"].includes(DRAW.act.mode)) drLock(h, false); h.drReq && h.drReq(); drTbRender(h); return true; };
@@ -13226,7 +13259,7 @@ function drTbRender(h) {
     <button class="dr-b" data-drundo title="Rückgängig" aria-label="Rückgängig" ${(DRAW.hist[drKey(h)] || []).length ? "" : "disabled"}>${ic('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>')}</button>
     <button class="dr-b" data-drclear title="Zeichnungen entfernen" aria-label="Zeichnungen entfernen" ${n ? "" : "disabled"}>${ic('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')}</button>
     <span class="dr-gw"><button class="dr-b dr-lsb${DRAW.fly === "ls" ? " on" : ""}" data-drfly="ls" title="Objektliste: alle Zeichnungen dieser Aktie" aria-label="Objektliste" ${n ? "" : "disabled"}>${ic('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3"/><circle cx="4.5" cy="12" r="1.3"/><circle cx="4.5" cy="18" r="1.3"/>')}${n ? `<small>${n}</small>` : ""}</button>${DRAW.fly === "ls" && n ? drLsHtml(h, ic) : ""}</span>` : ""}
-    ${DRAW.cur && DRAW.tool ? `<span class="dr-hint">${DR_TOOLS.find(t => t[0] === DRAW.tool)[1]} · Ziehen bewegt das Fadenkreuz, Tippen setzt ${DRAW.act && DRAW.act.mode === "path" ? "den nächsten Punkt (Ende: am letzten Punkt tippen)" : DRAW.wait3 ? (DRAW.wait3.k === "chan" ? "die Kanalbreite" : "den dritten Punkt") : DRAW.wait ? "den zweiten Punkt" : ["hl", "hr", "long", "short", "avwap", "text"].includes(DRAW.tool) ? "die Linie" : "den ersten Punkt"}</span>`
+    ${DRAW.cur && DRAW.cur.touch && DRAW.tool ? `<span class="dr-hint">${DR_TOOLS.find(t => t[0] === DRAW.tool)[1]} · Ziehen bewegt das Fadenkreuz, Tippen setzt ${DRAW.act && DRAW.act.mode === "path" ? "den nächsten Punkt (Ende: am letzten Punkt tippen)" : DRAW.wait3 ? (DRAW.wait3.k === "chan" ? "die Kanalbreite" : "den dritten Punkt") : DRAW.wait ? "den zweiten Punkt" : ["hl", "hr", "long", "short", "avwap", "text"].includes(DRAW.tool) ? "die Linie" : "den ersten Punkt"}</span>`
       : DRAW.act && DRAW.act.mode === "path" ? `<span class="dr-hint">Punkte antippen · Ende: letzten Punkt erneut antippen</span>` : DRAW.wait3 ? `<span class="dr-hint">${DRAW.wait3.k === "chan" ? "Breite des Kanals antippen" : "dritten Punkt antippen (Start der Erweiterung)"}</span>` : DRAW.wait ? `<span class="dr-hint">zweiten Punkt antippen</span>` : DRAW.tool ? `<span class="dr-hint">${DR_TOOLS.find(t => t[0] === DRAW.tool)[1]}: ${["hl", "hr", "long", "short", "avwap"].includes(DRAW.tool) ? (DRAW.tool === "avwap" ? "Startkerze antippen" : "Punkt antippen") : "ziehen oder 2 Punkte antippen"}</span>` : ""}`;
   h.el.classList.toggle("drawing", !!DRAW.tool);
 }
@@ -13253,19 +13286,22 @@ document.addEventListener("click", e => {
 }, true);
 function drSelRender(h) {
   const box = $("drSel"); if (!box) return; const d = drList(h).find(x => x.id === DRAW.sel); box.hidden = !d; if (!d) return;
-  const name = DR_NAME[d.k];
-  box.innerHTML = `<b>${name}</b>${["long", "short", "fib", "fibx", "prng"].includes(d.k) ? "" : DR_COL.map(c => `<button class="dr-c${(d.c || DR_COL[0]) === c ? " on" : ""}" data-drcol="${c}" style="--c:rgb(${c})" aria-label="Farbe"></button>`).join("")}
-    ${["hl", "hr", "tl"].includes(d.k) ? `<button class="dr-t${d.al && d.al.on ? " on" : ""}" data-dral title="Alarm hinzufügen: Mitteilung, wenn der Kurs die Linie kreuzt">${IC.bell} ${d.al && d.al.on ? "Alarm aktiv" : d.al && d.al.hit ? `ausgelöst ${dateDE(d.al.hit)}` : "Alarm hinzufügen"}</button>` : ""}
-    ${d.k === "tl" || d.k === "fib" || d.k === "fibx" ? `<button class="dr-t${d.ext ? " on" : ""}" data-drext>${d.k === "fib" ? "Linien nach rechts verlängern" : "Rechts verlängern"}</button>` : ""}${d.k === "fib" ? `<button class="dr-t${d.x2 ? " on" : ""}" data-drx2>Stufen 1,618–4,236</button>` : ""}
-    ${d.k === "fib" ? `<button class="dr-t" data-drflip title="Umkehren (0 und 1 tauschen)">Umkehren</button>` : ""}
-    <button class="dr-t del" data-drdel aria-label="Entfernen">Entfernen</button><button class="dr-x" data-drselx aria-label="Schließen" title="Schließen">✕</button>`;
+  const name = DR_NAME[d.k], I = (p, t, attr, on, cls = "") => `<button class="ds-b${on ? " on" : ""}${cls}" ${attr} title="${t}" aria-label="${t}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg></button>`;
+  const colOk = !["long", "short", "fib", "fibx", "prng"].includes(d.k), cur = d.c || DR_COL[0];
+  // Wie TradingView: schmale schwebende Leiste – Griff, Farbe, Werkzeug-Optionen, Alarm, Löschen; Name als Hinweis
+  box.innerHTML = `<span class="ds-grip" title="${name}"><i></i><i></i><i></i></span><span class="ds-n">${name}</span><i class="ds-sep"></i>
+    ${colOk ? `<span class="ds-cw"><button class="ds-b ds-col" data-drcolpop title="Farbe" aria-label="Farbe"><span style="background:rgb(${cur})"></span></button>${DRAW.colPop ? `<span class="ds-pal">${DR_COL.map(c => `<button class="dr-c${cur === c ? " on" : ""}" data-drcol="${c}" style="--c:rgb(${c})" aria-label="Farbe"></button>`).join("")}</span>` : ""}</span>` : ""}
+    ${d.k === "tl" || d.k === "fib" || d.k === "fibx" ? I('<path d="M3 12h13"/><path d="m13 8 4 4-4 4"/><path d="M21 5v14"/>', d.k === "fib" ? "Linien nach rechts verlängern" : "Nach rechts verlängern", "data-drext", d.ext) : ""}
+    ${d.k === "fib" ? I('<path d="M4 6h16M4 10h16M4 14h16"/><path d="M4 19h16" stroke-dasharray="2 2"/>', "Zusatzstufen 1,618–4,236 einblenden", "data-drx2", d.x2) + I('<path d="M7 4v16M7 4 4 7M7 4l3 3"/><path d="M17 20V4M17 20l-3-3M17 20l3-3"/>', "Umkehren (0 und 1 tauschen)", "data-drflip", false) : ""}
+    ${["hl", "hr", "tl"].includes(d.k) ? I('<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21h4"/>', d.al && d.al.on ? "Alarm aktiv – antippen zum Löschen" : d.al && d.al.hit ? `Alarm ausgelöst ${dateDE(d.al.hit)}` : "Alarm hinzufügen", "data-dral", d.al && d.al.on) : ""}
+    <i class="ds-sep"></i>${I('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', "Entfernen", "data-drdel", false, " ds-del")}${I('<path d="M6 6l12 12M18 6 6 18"/>', "Auswahl aufheben", "data-drselx", false)}`;
 }
 document.addEventListener("click", async e => {
   const h = DRAW.h; if (!h || !document.body.contains(h.el)) return; const t = e.target;
   const fl = t.closest("[data-drfly]"); if (fl) { DRAW.fly = DRAW.fly === fl.dataset.drfly ? null : fl.dataset.drfly; if (DRAW.fly === "ls" && DRAW.sel) { DRAW.sel = null; drSelRender(h); h.drReq && h.drReq(); } drTbRender(h); return; }
   if (DRAW.fly && !t.closest(".dr-fly")) { DRAW.fly = null; if (!t.closest("[data-drtool]")) drTbRender(h); }
   const tg = t.closest("[data-drg]"); if (tg) { state.drG = { ...(state.drG || {}), [tg.dataset.drg]: tg.dataset.drtool }; DRAW.fly = null; save(); }
-  const tl = t.closest("[data-drtool]"); if (tl) { DRAW.cur = DRAW_TOUCH && tl.dataset.drtool ? { x: h.el.clientWidth * .5, y: h.el.clientHeight * .45 } : null; DRAW.tool = tl.dataset.drtool || null; DRAW.wait = null; DRAW.wait3 = null; DRAW.act = null; drLock(h, false); if (DRAW.tool) { MEAS.on = WAVE.on = false; DRAW.sel = null; drSelRender(h); } drTbRender(h); h.drReq && h.drReq(); return; }
+  const tl = t.closest("[data-drtool]"); if (tl) { DRAW.cur = DRAW_TOUCH && tl.dataset.drtool ? { x: h.el.clientWidth * .5, y: h.el.clientHeight * .45, touch: 1 } : null; DRAW.tool = tl.dataset.drtool || null; DRAW.wait = null; DRAW.wait3 = null; DRAW.act = null; drLock(h, false); if (DRAW.tool) { MEAS.on = WAVE.on = false; DRAW.sel = null; drSelRender(h); } drTbRender(h); h.drReq && h.drReq(); return; }
   if (t.closest("[data-drtog]")) { state.drOpen = (state.drOpen != null ? state.drOpen !== 0 : innerWidth > 700) ? 0 : 1; if (!state.drOpen) DRAW.tool = null; save(); drTbRender(h); return; }
   if (t.closest("[data-drmag]")) { state.drMag = state.drMag === 0 ? 1 : 0; save(); drTbRender(h); return; }
   if (t.closest("[data-drhide]")) { DRAW.hide = !DRAW.hide; drTbRender(h); h.drReq && h.drReq(); return; }
@@ -13273,7 +13309,8 @@ document.addEventListener("click", async e => {
   if (t.closest("[data-drclear]")) { if (await kConfirm("Alle Zeichnungen dieser Aktie entfernen?", "Entfernen", true)) { DRAW.sel = null; drSet(h, []); drSelRender(h); } return; }
   if (t.closest("[data-drselx]")) { DRAW.sel = null; drSelRender(h); h.drReq && h.drReq(); return; }
   const L = drList(h), i = L.findIndex(d => d.id === DRAW.sel); if (i < 0) return; const d = { ...L[i] }, put = () => { const n = [...L]; n[i] = d; drSet(h, n); drSelRender(h); };
-  const c = t.closest("[data-drcol]"); if (c) { d.c = c.dataset.drcol; put(); return; }
+  if (t.closest("[data-drcolpop]")) { DRAW.colPop = !DRAW.colPop; drSelRender(h); return; }
+  const c = t.closest("[data-drcol]"); if (c) { d.c = c.dataset.drcol; DRAW.colPop = false; put(); return; }
   if (t.closest("[data-drext]")) { d.ext = !d.ext; put(); return; }
   if (t.closest("[data-dral]")) { if (d.al && d.al.on) d.al = { on: 0 }; else { const lv = drLevelNow(drKey(h), d), px = drPxNow(drKey(h));
       if (lv == null || px == null) { kSay("Kurs nicht verfügbar – Alarm lässt sich gerade nicht setzen."); return; }
@@ -13592,6 +13629,22 @@ function cfPickOpen(on) {
   if (matchMedia("(pointer: fine)").matches) $("cfPickQ").focus();
   setTimeout(lensSoon, 320);   // nach dem Aufklappen: Rand mit echter Lichtbrechung
 }
+// Rückweg (Wunsch 14.11.2026): Scanner → Übersicht → Chart → „‹ Übersicht“ bringt zurück in denselben Reiter, an dieselbe
+// Scrollstelle (Seite und Listen), mit Filtern, und öffnet die Übersicht der Aktie wieder.
+let CXBACK = null;
+const SEC_NAME = { scanner: "Scanner", today: "Heute", watch: "Watchlist", entry: "Einstieg", depot: "Depot", news: "Markt", etf: "ETF", journal: "Journal" };
+function cxBackSnap(t) {
+  const keep = [...document.querySelectorAll(".table-wrap, .alist, .md-l, .scan-l, [data-keepscroll]")].map((el, i) => [i, el.scrollTop, el.scrollLeft]).filter(x => x[1] || x[2]);
+  return { t, sec: state.sec, y: Math.round(scrollY), keep };
+}
+function cxBackGo() {
+  const b = CXBACK; if (!b) return; CXBACK = null;
+  if (typeof ctabClose === "function" && document.body.classList.contains("ctab-fs")) try { ctabClose(); } catch (e) {}
+  state.sec = b.sec; syncOpts(); save(); render();
+  const restore = () => { scrollTo(0, b.y); const els = [...document.querySelectorAll(".table-wrap, .alist, .md-l, .scan-l, [data-keepscroll]")];
+    b.keep.forEach(([i, t, l]) => { if (els[i]) { els[i].scrollTop = t; els[i].scrollLeft = l; } }); };
+  restore(); requestAnimationFrame(() => { restore(); if (data.results.some(x => x.ticker === b.t)) openCard(b.t); setTimeout(restore, 120); });
+}
 async function cockpitGo(t) {
   const r = rowFor(t); if (!r) return;
   let c = null; try { c = await loadChart(t); } catch (e) { delete chartCache[t]; }
@@ -13709,7 +13762,7 @@ document.addEventListener("click", e => {
   const sg = e.target.closest("[data-cfseg]"); if (sg) { cfPick.seg = sg.dataset.cfseg; state.cfSeg = cfPick.seg; save(); const q = $("cfPickQ"); if (q) q.value = "";
     document.querySelectorAll("[data-cfseg]").forEach(b => b.classList.toggle("on", b === sg)); $("cfPickL").innerHTML = cfPickRows(); $("cfPickL").scrollTop = 0; cfWheelFx(); return; }
   const go = e.target.closest("[data-cfgo]"); if (go) { cockpitGo(go.dataset.cfgo); return; }
-  const cg = e.target.closest("[data-chartgo]"); if (cg) { closeCard(); if ($("spm")) $("spm").hidden = true; if (state.fsv) { state.fsv = null; fsvRender(); } cockpitGo(cg.dataset.chartgo); return; }
+  const cg = e.target.closest("[data-chartgo]"); if (cg) { if (document.body.classList.contains("card-open") && state.sec !== "chart") CXBACK = cxBackSnap(cg.dataset.chartgo); closeCard(); if ($("spm")) $("spm").hidden = true; if (state.fsv) { state.fsv = null; fsvRender(); } cockpitGo(cg.dataset.chartgo); return; }
   const st = e.target.closest("[data-cfstep]"); if (st && cfChart) { if (!cfPick.seg) cfPick.seg = state.cfSeg || "mine";
     let l = cfList(cfPick.seg); if (!l.length) l = cfList("hits"); if (!l.length) return; const i = l.indexOf(cfChart.r.ticker);
     const d = +st.dataset.cfstep; (async () => { for (let k = 1; k < Math.min(l.length, 25); k++) if (await cockpitGo(l[((i < 0 ? -d : i) + d * k + l.length * 25) % l.length])) return; })(); return; }
@@ -13737,10 +13790,37 @@ const chartOpts = el => ({ width: el.clientWidth, height: el.clientHeight, layou
 // Verschieben im Chart (Wunsch 14.11.2026: „im Kurs zurückscrollen, ohne die Achsen zu verwenden – die Achsen haben sich trotzdem verschoben“):
 // Ziehen in der Kursfläche verschiebt nur die Zeit; die Preisachse bleibt automatisch angepasst (wie TradingView). Wer die Preisachse
 // selbst zieht (rechter Rand), schaltet die Automatik bewusst ab – das bleibt so; Doppelklick auf die Achse stellt sie zurück.
-(() => { const LW = window.LightweightCharts; if (!LW || LW.__kairoPan) return; const make = LW.createChart; LW.__kairoPan = 1;
-  LW.createChart = function (el, o) { const ch = make.call(this, el, o); try { keepAutoScale(ch, typeof el === "string" ? document.getElementById(el) : el); } catch (e) {} return ch; }; })();
-function keepAutoScale(ch, el) {
-  if (!el) return; let on = false, raf = 0;
+// Die Bibliothek ist ein eingefrorenes Modul-Objekt – deshalb eine erweiterbare Kopie mit eigenem createChart (vorher griff der Eingriff nie)
+(() => { const LW = window.LightweightCharts; if (!LW || LW.__kairoPan) return; const make = LW.createChart.bind(LW);
+  window.LightweightCharts = { ...LW, __kairoPan: 1, createChart(el, o) { const ch = make(el, o); try { keepAutoScale(ch, typeof el === "string" ? document.getElementById(el) : el, o); } catch (e) {} return ch; } }; })();
+// Wie TradingView (Wunsch 14.11.2026): In der Kursfläche lässt sich der Chart auch nach oben/unten schieben (die Preisachse folgt
+// weiter automatisch, nur verschoben); Mausrad über der Preisachse zoomt den Preis, über der Zeitachse/Kursfläche die Zeit.
+// Doppelklick auf die Preisachse stellt alles zurück. Umgesetzt über die automatische Skalierung der Kerzen (Verschiebung + Zoom).
+function yPanZoom(ch, el, o) {
+  const Y = { z: 1, s: 0, se: null }; ch.__y = Y;
+  const add = ch.addCandlestickSeries.bind(ch);
+  ch.addCandlestickSeries = (opts = {}) => { const p0 = opts.autoscaleInfoProvider;
+    const se = add({ ...opts, autoscaleInfoProvider: orig => { const r = p0 ? p0(orig) : orig(); if (!r || !r.priceRange || (Y.z === 1 && Y.s === 0)) return r;
+      const lo = r.priceRange.minValue, hi = r.priceRange.maxValue, span = (hi - lo) || Math.abs(hi) * .02 || 1, mid = (lo + hi) / 2 + Y.s * span, half = span / 2 * Y.z;
+      return { ...r, priceRange: { minValue: mid - half, maxValue: mid + half } }; } });
+    if (!Y.se) Y.se = se; return se; };
+  let raf = 0; const bump = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; try { ch.priceScale("right").applyOptions({ autoScale: true }); Y.se && Y.se.applyOptions({}); } catch (e) {} }); };
+  Y.reset = () => { Y.z = 1; Y.s = 0; bump(); };
+  const geo = () => { const r = el.getBoundingClientRect(); let pw = 0, th = 0; try { pw = ch.priceScale("right").width(); th = ch.timeScale().height(); } catch (x) {} return { r, pw, th }; };
+  el.addEventListener("wheel", e => { if (!Y.se) return; const { r, pw, th } = geo();
+    if (e.clientX >= r.right - pw && e.clientY < r.bottom - th) { e.preventDefault(); e.stopPropagation(); Y.z = Math.max(.05, Math.min(25, Y.z * (e.deltaY > 0 ? 1.08 : 1 / 1.08))); bump(); } }, { capture: true, passive: false });
+  el.addEventListener("dblclick", e => { const { r, pw, th } = geo(); if (e.clientX >= r.right - pw && e.clientY < r.bottom - th) Y.reset(); }, true);
+  let P = null;
+  el.addEventListener("pointerdown", e => { if (!Y.se || e.button > 0) { P = null; return; } const { r, pw, th } = geo();
+    const busy = el.classList.contains("drawing") || el.classList.contains("measuring") || el.closest(".drawing") || (typeof DRAW !== "undefined" && (DRAW.act || DRAW.tool)) || (typeof MEAS !== "undefined" && MEAS.on) || (typeof WAVE !== "undefined" && WAVE.on);
+    P = !busy && e.clientX < r.right - pw - 2 && e.clientY < r.bottom - th - 2 ? { x: e.clientX, y: e.clientY, ly: e.clientY, go: false, h: r.height - th, id: e.pointerId } : null; }, true);
+  el.addEventListener("pointermove", e => { if (!P || e.pointerId !== P.id || !(e.buttons || e.pointerType === "touch")) return; const dx = e.clientX - P.x, dy = e.clientY - P.y;
+    if (!P.go && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * .7) P.go = true;
+    if (P.go) { Y.s += (e.clientY - P.ly) / Math.max(60, P.h) * Y.z; bump(); } P.ly = e.clientY; }, true);
+  const end = e => { if (P && e.pointerId === P.id) P = null; }; el.addEventListener("pointerup", end, true); el.addEventListener("pointercancel", end, true);
+}
+function keepAutoScale(ch, el, o) {
+  if (!el || (o && o.handleScroll === false)) return; try { yPanZoom(ch, el, o); } catch (e) {} let on = false, raf = 0;
   const fix = () => { raf = 0; try { ch.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} };
   el.addEventListener("pointerdown", e => { const r = el.getBoundingClientRect(); let pw = 0, th = 0;
     try { pw = ch.priceScale("right").width(); th = ch.timeScale().height(); } catch (x) {}

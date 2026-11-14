@@ -1,7 +1,7 @@
 """ÜBERHOLT als Entscheidungsgrundlage (Review 29.10.2026, K2/K3/W4/W5): Die Depot-Rechnungen hier (_depot, _depot_real)
 rechnen Haltedauer über 7/5 Kalendertage, ohne volle Kapitalbindung und mit uneinheitlichen Kosten. Maßgeblich sind die
 Tests in research/strategy_championship (engine.py: Kassenbuch, Kurslücken, PRIME+-Kosten, eingefrorener Datensatz).
-Live genutzt wird hier nur simulate() mit QRULE (Seitwärtsphase/Einstieg/Stop – Kurslücken korrekt).
+Live genutzt wird hier nur simulate() mit QRULE (Konsolidierung/Einstieg/Stop – Kurslücken korrekt).
 
 Studie Kurzfrist-Reversal (Phase 1b): Lohnt sich die erste Gegenbewegung nach einer Korrektur – und mit welchen Regeln?
 
@@ -111,7 +111,7 @@ def simulate(px: dict, r: dict) -> dict | None:
     start = 0
     mode = r.get("entry", "open")
     if mode == "base":
-        # Kauf IN der Seitwärtsphase (vor dem Ausbruch): sobald ck Tage eng laufen (Spanne ≤ cm × ATR) und die
+        # Kauf IN der Konsolidierung (vor dem Ausbruch): sobald ck Tage eng laufen (Spanne ≤ cm × ATR) und die
         # Invalidierung hält, Kauf zur Eröffnung am Folgetag. lowhalf: nur wenn diese Eröffnung in der unteren Hälfte
         # der Basis liegt (nahe der Unterstützung). Stop = Tief der Basis − Puffer.
         k, m, wait = r.get("ck", 3), r.get("cm", 2.0), r.get("wait", 10)
@@ -137,7 +137,7 @@ def simulate(px: dict, r: dict) -> dict | None:
     elif mode == "cons":
         # „Gummiband mit Bestätigung“: nach dem Signal abwarten, bis der Kurs ck Tage eng seitwärts läuft
         # (Spanne ≤ cm × ATR, kein Bruch der Invalidierung), dann Kauf beim Ausbruch über das Hoch dieser Phase
-        # am Folgetag. Stop = Tief der Seitwärtsphase − Puffer. Jede Entscheidung nur mit Kursen bis zu diesem Tag.
+        # am Folgetag. Stop = Tief der Konsolidierung − Puffer. Jede Entscheidung nur mit Kursen bis zu diesem Tag.
         k, m, wait = r.get("ck", 3), r.get("cm", 2.0), r.get("wait", 10)
         entry = None
         for j in range(min(wait, len(c) - 1)):
@@ -1161,7 +1161,7 @@ def main(argv=None) -> int:
                                         for r, x in res[:5]]}
         print(f"Stufe 5 {k}", f"{time.time() - t0:.0f} s", flush=True)
 
-    # 6) Stufe 4 – Abwarten + Ausbruch aus der Seitwärtsphase (deine manuelle Vorgehensweise, objektiv nachgebildet)
+    # 6) Stufe 4 – Abwarten + Ausbruch aus der Konsolidierung (deine manuelle Vorgehensweise, objektiv nachgebildet)
     report["stage4"] = {}
     for k in ("hit", "fast", "trend", "top", "base"):
         es = sets.get(k) or []
@@ -1197,7 +1197,7 @@ if __name__ == "__main__":
 
 def kairo_series(sets: dict, seeds: int = 9) -> dict:
     """Täglicher Depotwert (3.000 € Start) der aktuellen Kairo-Strategie für den großen Strategie-Vergleich:
-    volle Treffer, Kauf in der Seitwärtsphase, 20 Tage, 1 % Risiko, ruhigste zuerst, 5 Plätze, kleinster passender Hebel.
+    volle Treffer, Kauf in der Konsolidierung, 20 Tage, 1 % Risiko, ruhigste zuerst, 5 Plätze, kleinster passender Hebel.
     Von mehreren Reihenfolgen (gleicher Tag) wird die mit dem mittleren Ergebnis genommen."""
     import datetime as dt
     rows = []

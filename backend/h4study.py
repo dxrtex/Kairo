@@ -6,7 +6,7 @@ Zeitraum ~Okt. 2024 – heute. Alle Trades netto in R (Spread + Gebühren als Ko
 
 Tageschart-Kontext (immer Pflicht):
   H   Kairo-Treffer (alle 11 Kriterien), Einstiegsfenster 10 Tage, Stop = Tief seit Signal − 0,25 ATR
-  HB  Kairo-Treffer + 5-Tage-Seitwärtsphase ≤ 1,5 ATR (= heutige Strategie), Fenster 10 Tage ab fertiger Basis, Basis-Stop
+  HB  Kairo-Treffer + 5-Tage-Konsolidierung ≤ 1,5 ATR (= heutige Strategie), Fenster 10 Tage ab fertiger Basis, Basis-Stop
 4H-Auslöser beim Einstieg (jeweils „zuletzt passiert“ = in den letzten 6 4H-Kerzen, ≈ 3 Tage):
   –    kein 4H-Filter (Vergleich: H = Kauf nach dem Signal, HB = heutige Strategie)
   R35/R40  RSI war ≤ 35 bzw. ≤ 40 und steigt wieder
@@ -283,7 +283,7 @@ def summary(ts: list[dict]) -> dict:
 
 
 def robust(hits: dict, raw: dict) -> dict:
-    """Stufe 3: Hält das beste Setup (Tageschart + Seitwärtsphase + RSI/MACD/MBI + Strukturbruch), wenn man die
+    """Stufe 3: Hält das beste Setup (Tageschart + Konsolidierung + RSI/MACD/MBI + Strukturbruch), wenn man die
     Fenster ändert? Ein echter Effekt darf nicht nur bei genau 6/6 Kerzen funktionieren."""
     global W, L
     out = {}
@@ -313,7 +313,7 @@ def robust(hits: dict, raw: dict) -> dict:
     return out
 
 
-# Ausstiegs-Test (--exits): gleiche Einstiege (Treffer + Seitwärtsphase + 4H RMBS), verschiedene Ausstiege.
+# Ausstiegs-Test (--exits): gleiche Einstiege (Treffer + Konsolidierung + 4H RMBS), verschiedene Ausstiege.
 # T = Verkauf zum Schluss von Tag n · BE = Stop auf Einstand ab +1 R · TR = Nachlauf-Stop (höchstes Hoch − k R) ·
 # EMA = ab Tag 10 raus, wenn der Tagesschluss unter der EMA 20 (Tageschart) liegt · EXT = Tag 20, aber ab +1 R mit
 # Nachlauf-Stop weiterlaufen lassen (höchstens 40 Tage) · TP = Hälfte am Kursziel (+2/+3 R), Rest Tag 20.
@@ -486,7 +486,7 @@ VARIANTS = {   # Kairo live = RMBS (RSI ≤ 40, MACD, MBI, Strukturbruch). Gegen
 
 
 def variants_report(hits: dict, raw: dict) -> int:
-    """Gegenprobe der 4H-Kriterien: jede Variante mit Seitwärtsphase (HB), Verkauf an Tag 20, beide Stichproben und
+    """Gegenprobe der 4H-Kriterien: jede Variante mit Konsolidierung (HB), Verkauf an Tag 20, beide Stichproben und
     beide Zeithälften getrennt. Zählt nur, was überall besser ist – sonst bleibt es bei RMBS."""
     global TRIG, EXITS
     bars = {}
@@ -525,7 +525,7 @@ def variants_report(hits: dict, raw: dict) -> int:
 
 
 def miss_report(hits: dict, raw: dict) -> int:
-    """Gibt es Fast-Treffer (10/11) oder 9/11, die mit sauberem Einstieg (Seitwärtsphase + 4H) so gut sind wie volle Treffer?
+    """Gibt es Fast-Treffer (10/11) oder 9/11, die mit sauberem Einstieg (Konsolidierung + 4H) so gut sind wie volle Treffer?
     Aufteilung nach fehlendem Kriterium, beide Stichproben und zwei Zeithälften getrennt (9/11 aus Stichprobe 1 ist
     beschädigt → nur Stichprobe 2 zählt dort)."""
     bars = {}
@@ -569,7 +569,7 @@ def miss_report(hits: dict, raw: dict) -> int:
 def fine_report(hits: dict, raw: dict) -> int:
     """Sind die Feinregeln im Tageschart zu streng? Fast-Treffer (10/11), denen NUR das MBI bzw. NUR die MACD-Wende fehlt,
     aufgeteilt nach dem Grund (MBI: Rot noch über 70 % der Spitze – wie weit darüber; X älter als 15 Kerzen / fehlt;
-    Spitze nicht über der Linie / neue Spitze. MACD: Alter des letzten Kreuzes). Jeweils mit Seitwärtsphase + 4H wie live,
+    Spitze nicht über der Linie / neue Spitze. MACD: Alter des letzten Kreuzes). Jeweils mit Konsolidierung + 4H wie live,
     beide Stichproben und Zeithälften getrennt. Lohnt eine gelockerte Regel, müssen diese Gruppen so gut sein wie 11/11."""
     bars = {}
     for t, x in raw.items():

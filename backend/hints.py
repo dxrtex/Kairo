@@ -110,10 +110,10 @@ def hint(res: Result, cfg: SimpleNamespace = CONFIG) -> dict:
         return out("gray", "Außerhalb des Suchrasters", "Nicht geprüft: " + "; ".join(f"{c.label} ({c.value})" for c in uni) + ".")
 
     # 2. Treffer
-    if res.passed:                                     # Kairo-Regel (getestet): nicht sofort kaufen, sondern auf die Seitwärtsphase warten
+    if res.passed:                                     # Kairo-Regel (getestet): nicht sofort kaufen, sondern auf die Konsolidierung warten
         txt = ("Alle 11 Kriterien erfüllt – ein Kairo-Treffer. Laut getesteter Regel nicht sofort kaufen: Innerhalb der nächsten "
-               "10 Handelstage auf 5 ruhige Tage warten (Seitwärtsphase, Spanne ≤ 1,5 ATR), dann Kauf zur nächsten Eröffnung, "
-               "Stop unter dem Tief der Seitwärtsphase. ")
+               "10 Handelstage auf 5 ruhige Tage warten (Konsolidierung, Spanne ≤ 1,5 ATR), dann Kauf zur nächsten Eröffnung, "
+               "Stop unter dem Tief der Konsolidierung. ")
         txt += "Fällt der Kurs vorher unter das Tief der letzten 10 Tage, ist der Treffer gescheitert. Den Stand zeigt der Status oben."
         return out("green", f"Kairo-Treffer · Score {res.score}", txt + earn)
 
@@ -147,7 +147,7 @@ def hint(res: Result, cfg: SimpleNamespace = CONFIG) -> dict:
                        "Auf den nächsten Rücksetzer warten.")
         if not f.get("ema20_falling"):
             return out("yellow", "Seitwärts unter den EMAs",
-                       "Kurs liegt unter EMA 20 und 50, die EMA 20 fällt aber nicht mehr – eher Seitwärtsphase als frischer Rücksetzer. "
+                       "Kurs liegt unter EMA 20 und 50, die EMA 20 fällt aber nicht mehr – eher Konsolidierung als frischer Rücksetzer. "
                        + _zone_where(res, cfg))
         return out("gray", "Über der EMA 50",
                    f"Kurs ist unter der EMA 20, aber noch über der EMA 50 ({de(f.get('ema50'))}) – die Korrektur ist noch nicht tief genug.")

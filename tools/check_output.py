@@ -40,7 +40,7 @@ def check(data: Path = DATA) -> list[str]:
         if not rows or len(rows) < 1000:
             errs.append(f"search.json: Suchindex zu klein ({len(rows or [])})")
     if h4 is not None and (not isinstance(h4.get("items"), list) or h4.get("error")):
-        errs.append("h4.json: Liste „items“ fehlt oder Fehler bei der Seitwärtsphasen-Prüfung (Kaufbereit wäre falsch)")
+        errs.append("h4.json: Liste „items“ fehlt oder Fehler bei der Konsolidierungen-Prüfung (Kaufbereit wäre falsch)")
     return errs
 
 

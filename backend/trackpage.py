@@ -11,7 +11,7 @@ from pathlib import Path
 
 REPO = "https://github.com/dxrtex/Kairo"
 REG = {"us": "USA", "europe": "Europa", "asia": "Asien/Pazifik"}
-RES = {"wait": "wartet auf Seitwärtsphase", "nobase": "kein Einstieg", "run": "läuft", "stop": "Stop", "ema": "Ausstieg EMA20",
+RES = {"wait": "wartet auf Konsolidierung", "nobase": "kein Einstieg", "run": "läuft", "stop": "Stop", "ema": "Ausstieg EMA20",
        "zeit": "Ausstieg Tag 60"}
 DONE = ("stop", "ema", "zeit")
 
@@ -44,7 +44,7 @@ def render(sig: list[dict], today: str) -> str:
                      for g, s in ((g, summary(h)) for g, h in groups))
     lst = "\n".join(
         f"<tr><td>{h['d']}</td><td>{html.escape(h['t'])}</td><td>{html.escape(h.get('n') or '')}</td><td>{REG.get(h.get('region'), '–')}</td>"
-        f"<td>{h.get('score') or ''}</td><td>{RES.get((h.get('st60') or {}).get('res'), 'wartet auf Seitwärtsphase')}</td>"
+        f"<td>{h.get('score') or ''}</td><td>{RES.get((h.get('st60') or {}).get('res'), 'wartet auf Konsolidierung')}</td>"
         f"<td>{_f((h.get('st60') or {}).get('r')) + ' R' if (h.get('st60') or {}).get('r') is not None else '–'}</td></tr>"
         for h in hits[:400])
     return f'''<!doctype html>
@@ -65,9 +65,9 @@ th{{color:var(--mut);font-weight:600}}
 
 <h2>Was hier gezählt wird</h2>
 <p>Jeder Treffer des täglichen Kairo-Scanners (Long-Reversal-Setup) wird automatisch nach der aktuellen Regel verfolgt – ohne Auswahl, ohne nachträgliches Löschen:
-nach dem Treffer bis zu 10 Handelstage auf eine Seitwärtsphase warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung in der Spanne,
-Stop = Tief der Seitwärtsphase − 0,25 ATR; Ausstieg ab Tag 10 bei Schluss unter der EMA 20 (zur nächsten Eröffnung), spätestens Tag 60.
-Ergebnis in R (Vielfache des Risikos je Trade), nach Modellkosten. Fällt der Kurs vor dem Einstieg unter das 10-Tage-Tief oder bildet sich keine Seitwärtsphase, zählt der Treffer als „kein Einstieg“.</p>
+nach dem Treffer bis zu 10 Handelstage auf eine Konsolidierung warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung in der Spanne,
+Stop = Tief der Konsolidierung − 0,25 ATR; Ausstieg ab Tag 10 bei Schluss unter der EMA 20 (zur nächsten Eröffnung), spätestens Tag 60.
+Ergebnis in R (Vielfache des Risikos je Trade), nach Modellkosten. Fällt der Kurs vor dem Einstieg unter das 10-Tage-Tief oder bildet sich keine Konsolidierung, zählt der Treffer als „kein Einstieg“.</p>
 <p><b>Erwartung aus dem Backtest 2008–2026</b> (13.241 Trades, Forschung 31.10.2026): Ø +0,12 R je Trade mit Kosten Scalable PRIME+,
 −0,03 R mit Stress-Kosten (doppelter Spread, Schlupf) – nur etwa +0,03 R besser als Zufall, also ein kleiner Vorteil mit vielen Verlierern;
 aussagekräftig erst ab einigen hundert abgeschlossenen Trades.</p>

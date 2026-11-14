@@ -1,7 +1,7 @@
 """Volumen-Test für Kairo-Treffer: Laufen Treffer mit hohem Volumen am Boden („Smart Money“) besser?
 
 Für jeden vollen Treffer der beiden 10-Jahres-Stichproben (kurz-*-Artefakte) Volumen-Merkmale am Signaltag – nur
-Vergangenheit – und das Ergebnis mit den aktuellen Regeln (Kauf in der Seitwärtsphase, Stop, 20 Tage; Aktie, netto, in R).
+Vergangenheit – und das Ergebnis mit den aktuellen Regeln (Kauf in der Konsolidierung, Stop, 20 Tage; Aktie, netto, in R).
 Merkmale werden in Drittel geteilt (Grenzen nur aus Stichprobe 1, Lernjahre bis 2023); ein Merkmal zählt nur, wenn
 es in beiden Stichproben UND in den Prüfjahren 2024–26 in dieselbe Richtung wirkt. Zusätzlich Depot-Rechnung (1 % Risiko,
 5 Plätze, ruhigste zuerst, kleinster Hebel) mit und ohne Filter.
