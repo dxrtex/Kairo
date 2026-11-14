@@ -5072,7 +5072,7 @@ function loadEarnLive(fast) {
 }
 // Ehrliche Statistik statt Bauchgefühl (tools/research/earn_stats.py): 14.936 Quartalsberichte von 580 US-Aktien seit 2019 –
 // wie oft stieg die Aktie am Handelstag nach den Zahlen, je nach Überraschung beim Gewinn
-let earnStats = null, earnReview = null, earnCalib = null, earnGuide = null, earnCrash = null;
+let earnStats = null, earnReview = null, earnCalib = null, earnGuide = null, earnCrash = null, earnModel = null;
 // Gewinn × Ausblick aus 8.518 Quartalsberichten 2023–26 (tools/research/earn_guide.py) – in der Prüfzeit genauer als Gewinn allein
 const loadEarnGuide = () => earnGuide || fetch("earn_guide.json").then(r => r.ok ? r.json() : null).then(d => { earnGuide = d || {}; const b = $("earnBox"); if (b && !b.hidden) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnGuide = {}; });
 // Prognose-Bilanz (tools/earn_review.py, nach jedem Prüflauf): wie oft lag die gezeigte Richtung bisher richtig?
@@ -5127,7 +5127,29 @@ function earnStatHtml(t, sur) {
 const ASIA_UP = [0.439, 0.459, 0.463, 0.508, 0.56];
 const ASIA_SUF = /\.(T|SS|SZ|HK|KS|KQ|TW|TWO|NS|SI|AX|NZ|BK|JK|KL|PS)$/;
 const regionOf = t => (rowOf(t) || {}).r || (!String(t || "").includes(".") ? "us" : ASIA_SUF.test(t) ? "asia" : "europe");
+// Prognose-Modell (backend/earnmodel.py, wöchentlich in tools/earn_review.py geschätzt): Langzeit-Quote Gewinn × Ausblick als
+// Rangfolge + Umsatz-Überraschung, Niveau auf Kairos eigene Meldungen geeicht. Gilt nur, wenn es im rollierenden Test genauer
+// war als die gezeigte Zahl (adopt). Die Sonderregeln (Asien-Quoten, Schlagzeilen-„angehoben“) entfallen dann – sie hatten
+// die Rangfolge verschlechtert (Test 14.11.2026, 669 Meldungen: AUC 0,59 → 0,53).
+const loadEarnModel = () => earnModel || (earnModel = {}, fetch(EARN_LIVE_URL.replace("earnings_live.json", "earn_model.json") + "?v=" + Math.floor(Date.now() / 36e5))
+  .then(r => r.ok ? r.json() : null).then(d => { earnModel = d || {}; const b = $("earnBox"); if (b && !b.hidden && earnModel.adopt) openEarn(b.dataset.t, b.dataset.d); }).catch(() => { earnModel = {}; }));
+const earnConf = p => { const d = Math.abs(p - .5); return d < .04 ? "keine klare Richtung" : d < .1 ? "leichte Tendenz" : "deutliche Tendenz"; };
+function earnOddsM(t, sur, L) {
+  if (!earnModel) loadEarnModel();
+  const M = earnModel, B = (earnStats && earnStats.buckets) || [];
+  if (sur == null || !M || !M.adopt || !Array.isArray(M.w) || (M.f || []).join() !== "const,prior,rev" || !B.length) return null;
+  if (!earnGuide) loadEarnGuide();
+  const bi = B.findIndex(b => sur * 100 >= b.lo && sur * 100 < b.hi); if (bi < 0) return null;
+  const gd = L && L.guide ? L.guide.d : null, gk = gd === -1 ? "gesenkt" : gd === 0 ? "bestätigt" : gd === 1 ? "angehoben" : null;
+  const gp = gk && earnGuide && earnGuide.p ? earnGuide.p[`${bi}|${gk}`] : null;
+  const pr = Math.min(.98, Math.max(.02, gp != null ? gp : B[bi].up1)), rs = L && L.rev_s != null ? L.rev_s : null;
+  const z = M.w[0] + M.w[1] * Math.log(pr / (1 - pr)) + M.w[2] * (rs != null ? Math.tanh(rs / .03) : 0), p = 1 / (1 + Math.exp(-z));
+  const sig = [`Gewinn ${B[bi].name}`, gk ? `Ausblick ${gk}` : null, rs != null ? `Umsatz ${rs >= 0 ? "+" : "−"}${fmt(Math.abs(rs) * 100, 1)} % zur Erwartung` : null].filter(Boolean);
+  return { p, n: M.n || 0, after: true, guideDown: gd === -1, calib: true, model: true, conf: earnConf(p),
+    how: `${earnConf(p)} · ${sig.join(", ")} – Kairo-Modell, geeicht auf ${fmt(M.n || 0, 0)} eigene Meldungen (rollierend geprüft: Brier ${fmt(M.brier_model, 3)} statt ${fmt(M.brier_shown, 3)})` };
+}
 function earnOdds(t, sur, L) {
+  const om = earnOddsM(t, sur, L); if (om) return om;
   const G = L && L.guide, headUp = G && G.d === 1 && G.src !== "Pressemitteilung (SEC)";
   const o = earnOdds0(t, sur, headUp ? { ...L, guide: { ...G, d: null } } : L);
   if (!o) return o;
@@ -5182,7 +5204,7 @@ function earnOdds0(t, sur, L) {
 function earnTopHtml(t, sur, rx, L) {
   if (!earnStats) { loadEarnStats(); return ""; }
   const o = earnOdds(t, sur, L); if (!o) return "";
-  const tone = o.guideDown ? "red" : o.p >= .58 ? "green" : o.p < .45 ? "red" : "yellow", r = data && data.results ? byTicker(t) : null;
+  const tone = o.model ? (o.p >= .56 ? "green" : o.p <= .44 ? "red" : "yellow") : o.guideDown ? "red" : o.p >= .58 ? "green" : o.p < .45 ? "red" : "yellow", r = data && data.results ? byTicker(t) : null;
   const hit = r && r.passed;
   const P = (earnStats.per || {})[t], own = o.after && sur != null && sur > 0 && P && P.beat_up != null && P.n >= 6 && Math.abs(P.beat_up - o.p) >= .2
     ? ` · Achtung: ${t} selbst stieg nach Zahlen über Erwartung nur in ${pct(P.beat_up, 0)} der Fälle (wenige Berichte)` : "";
@@ -8539,8 +8561,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.150";
-const APP_NEWS = [["2026.11.150", "Aufgeräumter und einheitlicher", [
+const APP_VER = "2026.11.151";
+const APP_NEWS = [["2026.11.151", "Ehrlichere Quartalszahlen-Prognose", [
+  ["Neues Prognose-Modell", "Gewinn, Ausblick und Umsatz werden gemeinsam gewichtet und jede Woche an Kairos eigenen Meldungen nachgeeicht – nur übernommen, wenn es nachweislich genauer ist."],
+  ["Klare Einordnung", "Zur Prozentzahl steht jetzt, wie belastbar sie ist: „keine klare Richtung“, „leichte“ oder „deutliche Tendenz“."]]],
+  ["2026.11.150", "Aufgeräumter und einheitlicher", [
   ["Scanner-Tabelle", "Eine Spalte „Aktie“ mit Logo, Name und Kürzel, gleich hohe Zeilen und die wichtigsten Spalten – weitere unter „Spalten“."],
   ["Einheitliche Kopfzeilen", "Jeder Bereich zeigt seine eigene Unterzeile; Markt und Depot behalten ihren Titel in allen Unterreitern."],
   ["Kleinigkeiten", "Mitlaufende Reiterleiste deckt den Inhalt sauber ab, Kalender ohne große Kreise, iPhone-Reiter nicht mehr abgeschnitten."]]],

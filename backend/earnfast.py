@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import secguide
+from . import earnmodel, secguide
 from .config import ROOT
 
 APP = "https://dxrtex.github.io/Kairo/?sec=calendar"
@@ -208,7 +208,7 @@ def guide_stats(out: Path) -> dict:
     return res
 
 
-def result_text(t: str, name: str, last: dict, gst: dict | None = None) -> dict:
+def result_text(t: str, name: str, last: dict, gst: dict | None = None, calib: dict | None = None, model: dict | None = None) -> dict:
     parts = []
     if last.get("eps_s") is not None:
         parts.append(f"Gewinn {_pct(last['eps_s'])} vs. Erwartung")
@@ -218,8 +218,10 @@ def result_text(t: str, name: str, last: dict, gst: dict | None = None) -> dict:
     if g is not None:
         parts.append({1: "Ausblick angehoben", -1: "Ausblick gesenkt", 0: "Ausblick bestätigt"}.get(g, "Ausblick unklar"))
     v = (last.get("view") or {}).get("lbl")
-    p = app_odds(last, gst, t=t)                 # dieselbe Zahl wie oben im Quartalszahlen-Fenster der App
-    if p is not None:
+    p = app_odds(last, gst, calib, t, model)     # dieselbe Zahl wie oben im Quartalszahlen-Fenster der App
+    if p is not None and model and model.get("adopt"):
+        tail = f". Kairo-Prognose erster Handelstag: {round(p * 100)} % steigt ({earnmodel.confidence(p)})."
+    elif p is not None:
         tail = f". Nach solchen Zahlen{' mit diesem Ausblick' if g in (-1, 0, 1) else ''} stieg die Aktie in {round(p * 100)} % der Fälle."
     elif g == -1:
         tail = ". Ausblick gesenkt – der zählt meist mehr als das Quartal."
@@ -313,15 +315,16 @@ def result_pushes(fresh: dict, prev: dict, events: list[dict], out: Path) -> Non
         return
     rel = mine(devs, events)
     gst = guide_stats(out)
+    calib, model = _state(out, "earn_calib.json"), _state(out, "earn_model.json")
     msgs = []
     for t, r in new.items():
         key, fk = f"res|{t}|{r['last']['date']}", f"fp|{t}|{r['last']['date']}"
         if t not in rel:
             continue
         if key not in sent:
-            m = result_text(t, r.get("name") or t, r["last"], gst)
+            m = result_text(t, r.get("name") or t, r["last"], gst, calib, model)
         elif fk in sent and _changed(sent[fk], r["last"]):
-            m = result_text(t, r.get("name") or t, r["last"], gst)
+            m = result_text(t, r.get("name") or t, r["last"], gst, calib, model)
             m["title"] = ("Update – " if (r["last"].get("guide") or {}).get("d") is not None else "Korrektur – ") + m["title"]
         else:
             continue
@@ -333,7 +336,7 @@ def result_pushes(fresh: dict, prev: dict, events: list[dict], out: Path) -> Non
     f.write_text(json.dumps(sent), encoding="utf-8")
 
 
-MODEL = "2026-11-03b Asien-Quoten+Ausblick-Quelle"      # Stand der Prognose-Regel; bei jeder Änderung neu setzen (Auswertung je Stand)
+MODEL = "2026-11-14 Modell Langzeit-Quote+Umsatz"      # Stand der Prognose-Regel; bei jeder Änderung neu setzen (Auswertung je Stand)
 
 
 GKEY = {-1: "gesenkt", 0: "bestätigt", 1: "angehoben"}
@@ -355,11 +358,33 @@ def us_ticker(t: str | None) -> bool:
     return bool(t) and "." not in str(t)
 
 
-def app_odds(last: dict, gst: dict | None = None, calib: dict | None = None, t: str | None = None) -> float | None:
-    """Wie _odds, mit zwei Vorsichtsregeln (Live-Bilanz 27.10.–02.11.2026, 203 Meldungen):
+def _state(out: Path, name: str) -> dict | None:
+    try:
+        return json.loads((out / name).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _site(name: str) -> dict | None:
+    try:
+        return json.loads((ROOT / "site" / name).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def app_odds(last: dict, gst: dict | None = None, calib: dict | None = None, t: str | None = None, model: dict | None = None) -> float | None:
+    """Hat die wöchentliche Bilanz das Prognose-Modell übernommen (earn_model.json, adopt; backend/earnmodel.py), gilt es –
+    Langzeit-Quote Gewinn × Ausblick plus Umsatz-Überraschung, auf Kairos eigene Meldungen geeicht. Die früheren Sonderregeln
+    (Asien-Quoten, Schlagzeilen-„angehoben“ ignorieren) verschlechterten die Rangfolge (AUC 0,59 → 0,53) und entfallen dann.
+    Sonst wie _odds, mit zwei Vorsichtsregeln (Live-Bilanz 27.10.–02.11.2026, 203 Meldungen):
     - Ausblick „angehoben“ nur aus Schlagzeilen zählt nicht (48 % gestiegen statt gezeigter ~60 %); aus der Pressemitteilung schon.
     - Regionen (Test 03.11.2026, 33.968 Berichte, Prüfzeit ab 07/2024): Europa folgt den US-Quoten (59,9 % Treffer),
       Asien bekommt eigene, flachere Quoten (Brier besser, 54 % Treffer)."""
+    if model and model.get("adopt") and last.get("eps_s") is not None:
+        pm = earnmodel.odds(model, _site("earn_stats.json") or {}, _site("earn_guide.json"), last["eps_s"], last.get("rev_s"),
+                            (last.get("guide") or {}).get("d"))
+        if pm is not None:
+            return pm
     G = last.get("guide") or {}
     if G.get("d") == 1 and G.get("src") != SEC_SRC:
         last = {**last, "guide": {**G, "d": None}}
@@ -425,11 +450,8 @@ def archive(recs: dict, out: Path) -> int:
     except Exception:
         arc = {}
     gst = guide_stats(out)
-    try:
-        calib = json.loads((out / "earn_calib.json").read_text(encoding="utf-8"))
-    except Exception:
-        calib = None
-    model = MODEL + (" · nachgeeicht" if calib and calib.get("adopt") else "")
+    calib, mdl = _state(out, "earn_calib.json"), _state(out, "earn_model.json")
+    model = MODEL + (" · Modell" if mdl and mdl.get("adopt") else " · nachgeeicht" if calib and calib.get("adopt") else "")
     for t, r in recs.items():
         L = r.get("last") or {}
         if not L.get("date"):
@@ -441,7 +463,7 @@ def archive(recs: dict, out: Path) -> int:
                "ts": L.get("ts"), "seen": L.get("seen"), "push": L.get("push_at"), "stage": L.get("stage")}
         old = arc.get(k, {})
         if old.get("r1") is None:                  # Prognose nur bis zur Kursreaktion fortschreiben – danach eingefroren
-            row.update(p=app_odds(L, gst, calib, t), v=model)
+            row.update(p=app_odds(L, gst, calib, t, mdl), v=model)
             if row.get("r1") is not None and "p" not in old:
                 row["late"] = 1                    # erst nach der Kursreaktion gesehen: Prognose trotzdem merken (Bilanz zählt sie getrennt)
         arc[k] = {**old, **{a: b for a, b in row.items() if b is not None}}

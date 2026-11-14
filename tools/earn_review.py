@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from backend import earnwhy  # noqa: E402
+from backend import earnmodel, earnwhy  # noqa: E402
 
 GK = {-1: "gesenkt", 0: "bestätigt", 1: "angehoben"}
 MISS = 0.03
@@ -37,7 +37,7 @@ def frame(arc: dict, stats: dict) -> pd.DataFrame:
         t, d = k.split("|", 1)
         b = next((i for i, x in enumerate(B) if x["lo"] <= r["s"] * 100 < x["hi"]), None)
         w = r.get("why") or {}
-        rows.append({"t": t, "d": d, "s": r["s"], "r1": r["r1"], "y": float(r["r1"] > 0), "p": r.get("p"), "v": r.get("v") or "vor Aufzeichnung",
+        rows.append({"t": t, "d": d, "s": r["s"], "rs": r.get("rs"), "gi": r.get("g"), "r1": r["r1"], "y": float(r["r1"] > 0), "p": r.get("p"), "v": r.get("v") or "vor Aufzeichnung",
                      "g": GK.get(r.get("g"), "keine Meldung"), "gt": r.get("gt") or "", "b": b, "bn": B[b]["name"] if b is not None else "?",
                      "why": "why" in r, "tags": w.get("tags") or [], "head": w.get("head") or [], "spy": w.get("spy"), "ex": w.get("ex"),
                      "run20": w.get("run20"), "miss": earnwhy.is_miss(r)})
@@ -126,6 +126,54 @@ def calibrate(D: pd.DataFrame, stats: dict) -> dict:
     return {"adopt": bool(adopt), "p": full, "n": n, "brier_new": b_new, "brier_shown": b_shown, "text": txt}
 
 
+MIN_MODEL = 200           # so viele Meldungen braucht das Modell
+FOLDS = 3                 # Prüfzeiträume (die jüngsten Meldungen, je Zeitraum nur mit älteren geschätzt)
+
+
+def model_fit(D: pd.DataFrame, stats: dict, guide: dict | None) -> dict:
+    """Logistisches Modell (backend/earnmodel.py): Langzeit-Quote Gewinn × Ausblick und Umsatz-Überraschung – rollierend geprüft: Die Meldungen werden
+    nach Datum sortiert; die jüngere Hälfte in FOLDS Zeiträume geteilt; für jeden wird nur mit früheren Tagen geschätzt
+    und gegen die damals gezeigte Zahl verglichen. Übernommen nur, wenn es über alle Zeiträume genauer ist (Brier)."""
+    X = D.sort_values("d").reset_index(drop=True)
+    X = X.assign(x=[earnmodel.features(earnmodel.prior(stats, guide, s, None if pd.isna(g) else int(g)), None if pd.isna(rs) else rs)
+                    for s, rs, g in zip(X["s"], X["rs"], X["gi"])])
+    X = X[X["x"].notna()].reset_index(drop=True)
+    if len(X) < MIN_MODEL:
+        return {"adopt": False, "text": f"Noch nicht: {len(X)} von {MIN_MODEL} nötigen Meldungen."}
+    days = sorted(X["d"].unique())
+    cut0 = days[len(days) // 2]
+    later = [d for d in days if d >= cut0]
+    parts = [later[i * len(later) // FOLDS:(i + 1) * len(later) // FOLDS] for i in range(FOLDS)]
+    pm, ps, yy, rows = [], [], [], []
+    for ds in parts:
+        if not ds:
+            continue
+        tr, te = X[X["d"] < ds[0]], X[X["d"].isin(ds)]
+        w = earnmodel.fit(list(tr["x"]), list(tr["y"]))
+        q = np.array([earnmodel.predict(w, x) for x in te["x"]])
+        m = te["p"].notna().to_numpy()
+        if m.sum():
+            sh = te["p"].astype(float).to_numpy()
+            rows.append({"von": ds[0], "bis": ds[-1], "n": int(m.sum()), "model": float(((q[m] - te["y"].to_numpy()[m]) ** 2).mean()),
+                         "shown": float(((sh[m] - te["y"].to_numpy()[m]) ** 2).mean()),
+                         "hit_model": float(((q[m] > .5) == (te["y"].to_numpy()[m] > .5)).mean()),
+                         "hit_shown": float(((sh[m] > .5) == (te["y"].to_numpy()[m] > .5)).mean())})
+            pm += list(q[m]); ps += list(sh[m]); yy += list(te["y"].to_numpy()[m])
+    if not yy:
+        return {"adopt": False, "text": "Keine geprüften Meldungen mit gezeigter Prognose."}
+    pm, ps, yy = map(np.array, (pm, ps, yy))
+    b_m, b_s = float(((pm - yy) ** 2).mean()), float(((ps - yy) ** 2).mean())
+    better = sum(r["model"] < r["shown"] for r in rows)
+    adopt = b_m < b_s and better >= (len(rows) + 1) // 2
+    w = earnmodel.fit(list(X["x"]), list(X["y"]))
+    txt = (f"Rollierend geprüft an {len(yy)} jüngeren Meldungen ({len(rows)} Zeiträume, je nur mit älteren geschätzt): "
+           f"Brier Modell {b_m:.3f} gegen gezeigt {b_s:.3f}, Richtung {float(((pm > .5) == (yy > .5)).mean()):.0%} gegen "
+           f"{float(((ps > .5) == (yy > .5)).mean()):.0%}, besser in {better} von {len(rows)} Zeiträumen → "
+           + ("**übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell)." if adopt else "nicht übernommen."))
+    return {"adopt": bool(adopt), "f": earnmodel.FEATURES, "w": w, "n": int(len(X)), "since": str(X["d"].min()), "until": str(X["d"].max()),
+            "brier_model": round(b_m, 4), "brier_shown": round(b_s, 4), "folds": rows, "up": round(float(X["y"].mean()), 3), "text": txt}
+
+
 def latency(arc: dict) -> dict:
     """Wie schnell ist Kairo? Minuten von der Meldezeit (Yahoo-Termin; bei US-Firmen meist die Minute der Pressemitteilung)
     bis zur ersten Prüfung mit Zahlen (seen) und bis zur Mitteilung (push). Nur Fälle mit plausiblen Werten (0–24 h)."""
@@ -199,9 +247,25 @@ def review(arc_file: str, stats_file: str, out_dir: str) -> dict:
     p("\n## Automatische Nacheichung (Gewinn × Ausblick)\n")
     p(calib["text"])
     (out / "earn_calib.json").write_text(json.dumps({k: v for k, v in calib.items() if k != "text"}, ensure_ascii=False), encoding="utf-8")
+    try:
+        guide = json.loads((Path(stats_file).parent / "earn_guide.json").read_text(encoding="utf-8"))
+    except Exception:
+        guide = None
+    mdl = model_fit(D, stats, guide)
+    p("\n## Prognose-Modell (Langzeit-Quote + Umsatz, auf eigene Meldungen geeicht)\n")
+    p(mdl["text"])
+    if mdl.get("w"):
+        p("\n| Merkmal | Gewicht |\n|---|---|")
+        for f, v in zip(mdl["f"], mdl["w"]):
+            p(f"| {earnmodel.NAMES[f]} | {v:+.2f} |")
+        if mdl.get("folds"):
+            p("\n| Zeitraum | n | Brier Modell | Brier gezeigt | Richtung Modell | Richtung gezeigt |\n|---|---|---|---|---|---|")
+            for r in mdl["folds"]:
+                p(f"| {r['von']} – {r['bis']} | {r['n']} | {r['model']:.3f} | {r['shown']:.3f} | {r['hit_model']:.0%} | {r['hit_shown']:.0%} |")
+    (out / "earn_model.json").write_text(json.dumps({k: v for k, v in mdl.items() if k != "text"}, ensure_ascii=False), encoding="utf-8")
     (out / "earn_review.md").write_text("\n".join(L), encoding="utf-8")
     res = {"n": S["n"], "hit": S.get("hit"), "brier": S.get("brier"), "since": str(D["d"].min()), "suggest": sugg, "candidates": cand,
-           "calib": calib.get("adopt", False), "lat": lat}
+           "calib": calib.get("adopt", False), "model": mdl.get("adopt", False), "lat": lat}
     (out / "earn_review.json").write_text(json.dumps(res, ensure_ascii=False), encoding="utf-8")
     return res
 
