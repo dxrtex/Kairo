@@ -8643,8 +8643,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.159";
-const APP_NEWS = [["2026.11.159", "Volumenprofil auf Profi-Niveau", [
+const APP_VER = "2026.11.160";
+const APP_NEWS = [["2026.11.160", "Volumenprofil 10/10", [
+  ["Starke Zonen", "Wo viel Volumen und ein Fibonacci-Level oder eine Linie zusammenfallen, markiert Kairo automatisch „Starke Unterstützung“ (grün) bzw. „Starker Widerstand“ (rot) – im Chart und in der Kairo-Leiste."],
+  ["Käufer und Verkäufer genauer", "Grün/Rot und Blau/Lila richten sich jetzt nach der Lage des Schlusskurses in der Kerze statt nur nach Plus oder Minus – mit Stundenkerzen je Stunde."],
+  ["Ruhiger", "Schmaleres Profil, zartere Farben außerhalb der Wertzone, „POC“ am Rand statt mitten in den Kerzen."]]],
+  ["2026.11.159", "Volumenprofil auf Profi-Niveau", [
   ["Genauer", "Mit dem Kursdienst rechnet Kairo das Profil aus Stundenkerzen statt geschätzt aus Tageskerzen."],
   ["Wertzone und POC als Linien", "Ober- und Untergrenze der 70-%-Wertzone und der meistgehandelte Kurs laufen ab dem Profil-Start quer durch den Chart."],
   ["Offene POCs und Lücken", "Monats-Volumengipfel, die der Kurs noch nicht wieder erreicht hat, als feine Linien; dünn gehandelte Zonen in der Kairo-Leiste."],
@@ -11267,11 +11271,25 @@ function vpOpt(h, T, vp) {
   return { sub: i => { load(); const S = VP_SUB[tk]; return S && S.map ? S.map[tkey(T[i])] || null : null; },
     subTag: () => { const S = VP_SUB[tk]; return S && S.map ? "h" + S.n : "d"; },
     month: daily ? i => String(T[i]).slice(0, 7) : null,
+    levels: () => { const M = h.M; if (!M) return []; const out = [], add = (w, tag) => w && FIBQ.forEach(([q, l]) => out.push({ p: w.H - (w.H - w.L) * q, l: tag + l }));
+      if (clGet("fib")) add(M.own ? M.kcls || M.cls : M.cls, ""); if (M.big && clGet("big", true)) add(M.big, "große Welle ");
+      if (clGet("sup")) (M.lines || []).forEach(L => out.push({ p: L.p, l: L.kind === "s" ? `Unterstützung ${L.n}×` : `Widerstand ${L.n}×` })); return out.filter(z => z.p > 0); },
     anchorUser: () => { const d = (state.vpA || {})[tk]; if (!d) return null; const i = T.findIndex(t => tkey(t) >= d); return i < 0 ? null : i; } };
 }
 function vpSideSoon(h) { setTimeout(() => { if (cfChart === h && $("cfSide")) $("cfSide").innerHTML = cockpitSide(h, h.r); }, 120); }
 function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
-  let series = null, chart = null, req = null, memo = null, memoL = null, memoN = null;
+  let series = null, chart = null, req = null, memo = null, memoL = null, memoN = null, memoS = null;
+  const strongZones = (D, pBot, L, lv, px) => { if (!px || !lv.length) return []; const N = D.bins.length, sm = D.bins.map((_, k) => (D.bins[Math.max(0, k - 1)] + D.bins[k] + D.bins[Math.min(N - 1, k + 1)]) / 3);
+    const mx = Math.max(...sm), pk = [];
+    for (let k = 1; k < N - 1; k++) if (sm[k] >= mx * .4 && sm[k] >= sm[k - 1] && sm[k] > sm[k + 1]) { let a = k, b = k; while (a > 0 && sm[a - 1] >= sm[k] * .6) a--; while (b < N - 1 && sm[b + 1] >= sm[k] * .6) b++;
+      pk.push({ p: pBot + (k + .5) * D.step, lo: pBot + a * D.step, hi: pBot + (b + 1) * D.step, s: sm[k] / mx, src: k === D.poc ? "POC" : "Volumen" }); }
+    (L ? L.nodes : []).forEach(z => pk.push({ p: z.p, lo: z.p * .99, hi: z.p * 1.01, s: z.s * .8, src: "Volumen (3 J.)" }));
+    const out = [];
+    pk.forEach(z => { const hit = lv.filter(q => (q.p >= z.lo * .98 && q.p <= z.hi * 1.02) || Math.abs(q.p / z.p - 1) <= .02); if (!hit.length) return;
+      const lo = Math.min(z.lo, ...hit.map(q => q.p)) , hi = Math.max(z.hi, ...hit.map(q => q.p));
+      if (hi / lo - 1 > .12) return;                                                         // zu breit = keine Zone
+      out.push({ lo, hi, p: (lo + hi) / 2, sup: (lo + hi) / 2 < px, s: z.s, lbl: [...new Set(hit.map(q => q.l))].slice(0, 2).join(" + "), src: z.src }); });
+    return out.filter((z, i, a) => !a.slice(0, i).some(y => z.lo <= y.hi && z.hi >= y.lo)).sort((a, b) => Math.abs(a.p - px) - Math.abs(b.p - px)).slice(0, 3); };
   // stärkste Volumen-Knoten unter dem aktuellen Kurs (Gipfel im geglätteten Langzeit-Profil, mind. 35 % des stärksten darunter)
   const lowNodes = (d, pBot, px) => { if (!px) return []; const N = d.bins.length, r = Math.max(1, Math.round(N / 80)), sm = new Float64Array(N); let mx = 0;
     for (let k = 0; k < N; k++) { if (pBot + (k + 1) * d.step >= px * .99) continue; let a = 0; for (let q = -r; q <= r; q++) if (k + q >= 0 && k + q < N) a += d.bins[k + q]; sm[k] = a; mx = Math.max(mx, a); }
@@ -11301,11 +11319,14 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
     for (let i = i1; i <= i2; i++) { const b = barAt(i), v = volAt(i); if (!b || !(v > 0)) continue;
       // Ø-Volumen der 50 Tage davor: Tage mit ≥ 2× davon = Großvolumen (Fonds, Banken, Pensionskassen bewegen solche Mengen)
       let sv = 0, nv = 0; for (let k = Math.max(0, i - 50); k < i; k++) { const z = volAt(k); if (z > 0) { sv += z; nv++; } }
-      const rv = nv >= 20 ? v / (sv / nv) : 0, up = b.close >= b.open, big = rv >= 2;
+      // Käufer-/Verkäuferanteil nach der Lage des Schlusskurses in der Spanne (Schluss am Hoch = Käufer hatten die Oberhand) – die übliche
+      // kostenlose Näherung an echtes Käufer-/Verkäufervolumen; mit Stundenkerzen je Stunde gerechnet
+      const clv = b.high > b.low ? (b.close - b.low) / (b.high - b.low) : (b.close >= b.open ? 1 : 0), rv = nv >= 20 ? v / (sv / nv) : 0, up = clv >= .5, big = rv >= 2;
       const subs = opt.sub ? opt.sub(i) : null, sv2 = subs ? subs.reduce((a, q) => a + (q.v || 0), 0) : 0;
-      if (subs && sv2 > 0) { nSub++; subs.forEach(q => { if (!(q.v > 0) || !(q.high >= q.low)) return; const u2 = q.close >= q.open;   // je Stunde an ihrem eigenen Kurs, auf das Tagesvolumen skaliert
-          spread(q, q.v * v / sv2, pBot, step, N, (k, x) => { bins[k] += x; if (u2) ups[k] += x; if (big) (up ? bigU : bigD)[k] += x; }); }); }
-      else spread(b, v, pBot, step, N, (k, x) => { bins[k] += x; if (up) ups[k] += x; if (big) (up ? bigU : bigD)[k] += x; });
+      if (subs && sv2 > 0) { nSub++; subs.forEach(q => { if (!(q.v > 0) || !(q.high >= q.low)) return;   // je Stunde an ihrem eigenen Kurs, auf das Tagesvolumen skaliert
+          const f2 = q.high > q.low ? (q.close - q.low) / (q.high - q.low) : (q.close >= q.open ? 1 : 0);
+          spread(q, q.v * v / sv2, pBot, step, N, (k, x) => { bins[k] += x; ups[k] += x * f2; if (big) { bigU[k] += x * f2; bigD[k] += x * (1 - f2); } }); }); }
+      else spread(b, v, pBot, step, N, (k, x) => { bins[k] += x; ups[k] += x * clv; if (big) { bigU[k] += x * clv; bigD[k] += x * (1 - clv); } });
       if (big) days.push({ i, tp: (b.high + b.low + b.close) / 3, rv, up, v }); }
     let max = 0, poc = 0, tot = 0; for (let k = 0; k < N; k++) { tot += bins[k]; if (bins[k] > max) { max = bins[k]; poc = k; } }
     let lo = poc, hi = poc, acc = bins[poc]; while (acc < tot * .7 && (lo > 0 || hi < N - 1)) { const dn = lo > 0 ? bins[lo - 1] : -1, upv = hi < N - 1 ? bins[hi + 1] : -1; if (upv >= dn) acc += bins[++hi]; else acc += bins[--lo]; }
@@ -11357,7 +11378,10 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
       if (!memoL || memoL.key !== k2) { const d2 = calc(L1, i2, q0, q1, N2); memoL = { key: k2, from: L1, pLo: q0, d: d2, nodes: lowNodes(d2, q0, lastB && lastB.close) }; } }
     else memoL = null;
     if (opt.month && (!memoN || memoN.key !== `${n}|${lastB && lastB.close}`)) memoN = { key: `${n}|${lastB && lastB.close}`, list: nakedPocs(n, lastB && lastB.close) };
-    const D = memo.d, step = D.step, light = isLight(), W = Math.min(m.width * .24, 260), xr = m.width - 2, Y = p => series.priceToCoordinate(p);
+    const D = memo.d, step = D.step, light = isLight(), W = Math.min(m.width * .18, 220), xr = m.width - 2, Y = p => series.priceToCoordinate(p);
+    // Starke Zonen: dicke Volumen-Zone (oder grauer Langzeit-Knoten) und Fibonacci-Level bzw. Unterstützungslinie höchstens 2 % auseinander
+    const lv0 = opt.levels ? opt.levels() : [], sk = `${memo.key}|${memoL ? memoL.key : ""}|${lv0.map(z => z.p.toFixed(2)).join(",")}`;
+    if (!memoS || memoS.key !== sk) memoS = { key: sk, list: strongZones(D, memo.pLo, memoL, lv0, lastB && lastB.close) };
     // 1) Big-Player-Zonen als ruhige Bänder über den ganzen Chart (hinter den Kerzen)
     const zs = [...D.buy, ...D.sell];
     const ts = chart.timeScale(), xEnd = m.width - W - 4;
@@ -11381,13 +11405,18 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
       for (let k = 0; k < L.bins.length; k++) { const v = L.bins[k]; if (!v) continue; const p0 = memoL.pLo + k * gs, p1 = p0 + gs; if (p1 > memo.pLo && p0 < top) continue;
         const y0 = Y(p1), y1 = Y(p0); if (y0 == null || y1 == null) continue; const yy = Math.min(y0, y1), hh = Math.abs(y1 - y0);
         x.fillRect(xr - W * v / L.max, yy, W * v / L.max, Math.max(.8, hh - (hh >= 3 ? .8 : 0))); } }
+    { const ya = Y(memo.pLo + (D.hi + 1) * step), yb = Y(memo.pLo + D.lo * step); if (ya != null && yb != null) { x.fillStyle = light ? "rgba(255,159,10,.07)" : "rgba(255,159,10,.06)"; x.fillRect(xr - W, Math.min(ya, yb), W, Math.abs(yb - ya)); } }
     for (let k = 0; k < D.bins.length; k++) { const v = D.bins[k]; if (!v) continue; const y0 = Y(memo.pLo + (k + 1) * step), y1 = Y(memo.pLo + k * step); if (y0 == null || y1 == null) continue;
-      const w = W * v / D.max, wu = w * D.ups[k] / v, inVA = k >= D.lo && k <= D.hi, a = k === D.poc ? .8 : inVA ? .5 : .24;
+      const w = W * v / D.max, wu = w * D.ups[k] / v, inVA = k >= D.lo && k <= D.hi, a = k === D.poc ? .75 : inVA ? .42 : .17;
       const yy = Math.min(y0, y1), hh = Math.abs(y1 - y0), gap = hh >= 3 ? .8 : hh >= 2 ? .5 : 0, h2 = Math.max(.8, hh - gap);
       x.fillStyle = `rgba(48,209,88,${a})`; x.fillRect(xr - w, yy, wu, h2);
       x.fillStyle = `rgba(255,69,58,${a})`; x.fillRect(xr - w + wu, yy, w - wu, h2);
       const bu = W * D.bigU[k] / D.max; if (bu > .5) { x.fillStyle = `rgba(10,132,255,${inVA ? .95 : .8})`; x.fillRect(xr - bu, yy, bu, h2); }
       const bd = W * D.bigD[k] / D.max; if (bd > .5) { x.fillStyle = `rgba(191,90,242,${inVA ? .9 : .75})`; x.fillRect(xr - bu - bd, yy, bd, h2); } } }
+    // 2b) Starke Zonen: ruhiges Band über den Chart, kräftige Kante links am Profil
+    memoS.list.forEach(z => { const y0 = Y(z.hi), y1 = Y(z.lo); if (y0 == null || y1 == null) return; const yy = Math.min(y0, y1), hh = Math.max(3, Math.abs(y1 - y0));
+      const c = z.sup ? "48,209,88" : "255,69,58"; x.fillStyle = `rgba(${c},${light ? .10 : .09})`; x.fillRect(0, yy, xEnd, hh);
+      x.fillStyle = `rgba(${c},.85)`; x.fillRect(xEnd - 3, yy, 3, hh); z.yc = yy + hh / 2; });
     // 3) Wertzone (70 %) und meistgehandeltes Niveau (POC) als Linien ab dem Profil-Start – wie VAH/VAL/POC bei TradingView
     const xS = Math.max(0, Math.min(xEnd - 20, ts.logicalToCoordinate(i1) ?? 0)), hl = y => { x.beginPath(); x.moveTo(xS, Math.round(y) + .5); x.lineTo(m.width, Math.round(y) + .5); x.stroke(); };
     x.strokeStyle = light ? "rgba(255,159,10,.55)" : "rgba(255,159,10,.42)"; x.lineWidth = 1; x.setLineDash([1, 3]);
@@ -11400,8 +11429,14 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
     x.setLineDash([]);
     const yp = Y(memo.pLo + (D.poc + .5) * step);
     if (yp != null) { const wp = W; x.strokeStyle = "rgba(255,159,10,.85)"; x.lineWidth = 1; x.setLineDash([2, 3]); x.beginPath(); x.moveTo(xS, Math.round(yp) + .5); x.lineTo(m.width, Math.round(yp) + .5); x.stroke(); x.setLineDash([]);
-      x.font = F1; x.textAlign = "right"; x.textBaseline = "middle"; const tx = `meistgehandelt ${vis ? "im Ausschnitt" : "seit " + dateAt(i1)}${D.nSub ? "" : " · geschätzt"}: ${fmt(memo.pLo + (D.poc + .5) * step)}`, tw = x.measureText(tx).width, lx = m.width - wp - 12;
-      x.fillStyle = light ? "rgba(255,255,255,.92)" : "rgba(16,18,22,.86)"; x.fillRect(lx - tw - 6, Math.round(yp) - 8, tw + 10, 16); x.fillStyle = "rgb(255,159,10)"; x.fillText(tx, lx, Math.round(yp)); }
+      // Schild „POC“ am rechten Rand im Profil (nicht mehr mitten in den Kerzen); Zeitraum und Grundlage stehen in der Kairo-Leiste
+      x.font = F1; x.textAlign = "right"; x.textBaseline = "middle"; const tx = `POC ${fmt(memo.pLo + (D.poc + .5) * step)}`, tw = x.measureText(tx).width, lx = m.width - 6, ly = Math.round(yp) - 10;
+      x.fillStyle = light ? "rgba(255,255,255,.9)" : "rgba(16,18,22,.82)"; x.fillRect(lx - tw - 5, ly - 7, tw + 9, 14); x.fillStyle = "rgb(255,159,10)"; x.fillText(tx, lx, ly); }
+    // kleines Schild je starker Zone links am Profil
+    // links im Chart (rechts stehen schon die Fibonacci-Beschriftungen) – neben der Zeichenleiste
+    x.font = F1; x.textAlign = "left"; x.textBaseline = "middle";
+    memoS.list.forEach(z => { if (z.yc == null) return; const tx = z.sup ? "Starke Unterstützung" : "Starker Widerstand", tw = x.measureText(tx).width, lx = 62;
+      x.fillStyle = light ? "rgba(255,255,255,.9)" : "rgba(16,18,22,.82)"; x.fillRect(lx - 5, z.yc - 7, tw + 10, 14); x.fillStyle = z.sup ? "rgb(48,209,88)" : "rgb(255,69,58)"; x.fillText(tx, lx, z.yc); });
     // 4) keine Textschilder mehr (Wunsch 14.11.2026) – Farbe genügt: blau = Großvolumen-Käufe, lila = -Verkäufe; Details in der Kairo-Leiste
     lbls = []; if (!state.vpLbl) return;
     x.font = F1; const used = [];
@@ -11417,7 +11452,7 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
   return { attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; },
     detached() { series = chart = null; }, update() { req && req(); }, updateAllViews() {}, paneViews: () => views,
     info: () => memo && memo.d ? { poc: memo.pLo + (memo.d.poc + .5) * memo.d.step, vah: memo.pLo + (memo.d.hi + 1) * memo.d.step, val: memo.pLo + memo.d.lo * memo.d.step,
-      lvn: memo.d.lvn, nSub: memo.d.nSub, nDays: memo.d.nDays, from: dateAt(memo.i1), naked: memoN ? memoN.list.map(z => ({ ...z, d: dateAt(z.from) })) : [], buy: memo.d.buy, sell: memo.d.sell, nBig: memo.d.nBig, low: memoL ? memoL.nodes : [], lowFrom: memoL ? dateAt(memoL.from) : null } : null };
+      strong: memoS ? memoS.list : [], lvn: memo.d.lvn, nSub: memo.d.nSub, nDays: memo.d.nDays, from: dateAt(memo.i1), naked: memoN ? memoN.list.map(z => ({ ...z, d: dateAt(z.from) })) : [], buy: memo.d.buy, sell: memo.d.sell, nBig: memo.d.nBig, low: memoL ? memoL.nodes : [], lowFrom: memoL ? dateAt(memoL.from) : null } : null };
 }
 function gripPrimitive(get) {
   let chart = null, series = null, req = null;
@@ -11796,12 +11831,13 @@ function cockpitSide(h, r) {
     <div class="cf-s"><div class="cf-h">Trade-Plan</div>${row("Kaufzone oben", p.entry, "#eceef2")}${row("Stop", p.stop, "#ff453a")}${row("K.-o. Turbo", ko, "#ff9f0a")}
       ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Seitwärtsphase.</p>` : ""}</div>
     ${(vi => vi && clGet("vp") && vi.poc ? `<div class="cf-s"><div class="cf-h">Volumenprofil <small class="muted">${state.vpMode === "vis" ? "Bildausschnitt" : `seit ${esc(vi.from)}`}</small></div>
+      ${(vi.strong || []).map(z => `<div class="cf-r vp-strong"><span><i style="background:${z.sup ? "#30d158" : "#ff453a"}"></i>${z.sup ? "Starke Unterstützung" : "Starker Widerstand"} · ${esc(z.lbl)}</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist(z.p)}</div>`).join("")}
       ${row("Meistgehandelt (POC)", vi.poc, "#ff9f0a")}<div class="cf-r"><span><i style="background:rgba(255,159,10,.5)"></i>Wertzone 70 %</span><b>${fmt(vi.val)}–${fmt(vi.vah)}</b>${last ? `<em class="${last > vi.vah ? "up" : last < vi.val ? "down" : ""}">${last > vi.vah ? "Kurs darüber" : last < vi.val ? "Kurs darunter" : "Kurs drin"}</em>` : ""}</div>
       ${(vi.naked || []).slice().sort((a, b) => b.p - a.p).map(z => `<div class="cf-r"><span><i style="background:#ff9f0a;border-radius:50%"></i>Offener POC ${["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."][+z.m.slice(5, 7) - 1]} ${z.m.slice(0, 4)}</span><b>${fmt(z.p)}</b>${dist(z.p)}</div>`).join("")}
       ${(vi.lvn || []).slice(0, 3).map(z => `<div class="cf-r"><span><i style="background:transparent;border:1px dashed var(--muted)"></i>Volumen-Lücke</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
-      <p class="muted cf-t">${vi.nSub ? `Genau gerechnet aus Stundenkerzen (${vi.nSub} von ${vi.nDays} Tagen)` : `Geschätzt aus Tageskerzen${liveKey("yq") ? " – Stundenkerzen werden geladen" : " – mit dem Kairo-Kursdienst genauer aus Stundenkerzen"}`}. Wertzone = Kursbereich mit 70 % des Volumens; offener POC = meistgehandelter Kurs eines Monats, den der Kurs seitdem nicht wieder erreicht hat (Kurse kehren oft dorthin zurück); Volumen-Lücke = dünn gehandelt, dort läuft der Kurs meist schnell durch.${state.vpMode === "anchor" ? ` <button class="hlink" data-vppick>Startpunkt neu wählen</button>` : ""}</p></div>` : "")(h.vpp && h.vpp.info())}
+      <p class="muted cf-t">${vi.nSub ? `Genau gerechnet aus Stundenkerzen (${vi.nSub} von ${vi.nDays} Tagen)` : `Geschätzt aus Tageskerzen${liveKey("yq") ? " – Stundenkerzen werden geladen" : " – mit dem Kairo-Kursdienst genauer aus Stundenkerzen"}`}. ${(vi.strong || []).length ? "Starke Unterstützung/starker Widerstand = viel Volumen und Fibonacci bzw. Unterstützungs-/Widerstandslinie an derselben Stelle (höchstens 2 % auseinander) – dort lohnt das genaue Hinsehen. " : ""}Grün/Rot = Anteil der Käufer/Verkäufer nach der Lage des Schlusskurses in der Kerze (Näherung, echte Orderdaten gibt es nicht kostenlos). Wertzone = Kursbereich mit 70 % des Volumens; offener POC = meistgehandelter Kurs eines Monats, den der Kurs seitdem nicht wieder erreicht hat (Kurse kehren oft dorthin zurück); Volumen-Lücke = dünn gehandelt, dort läuft der Kurs meist schnell durch.${state.vpMode === "anchor" ? ` <button class="hlink" data-vppick>Startpunkt neu wählen</button>` : ""}</p></div>` : "")(h.vpp && h.vpp.info())}
     ${(vi => vi && clGet("vp") && vi.low && vi.low.length ? `<div class="cf-s"><div class="cf-h">Volumen-Zonen darunter <small class="muted">seit ${esc(vi.lowFrom)} · grau im Profil</small></div>${vi.low.map(z => `<div class="cf-r"><span><i style="background:#8e8e93"></i>viel gehandelt${z.s >= .8 ? " · stärkste" : ""}</span><b>${fmt(z.p)}</b>${dist(z.p)}</div>`).join("")}
-      <p class="muted cf-t">Kursniveaus mit hohem Volumen in den letzten 3 Jahren unter dem aktuellen Kurs – mögliche Unterstützungen, auch wenn die Welle nicht hält.</p></div>` : "")(h.vpp && h.vpp.info())}
+      <p class="muted cf-t">Kursniveaus mit hohem Volumen in den letzten 3 Jahren unter dem aktuellen Kurs – mögliche Unterstützungen, auch wenn die Welle nicht hält. Gezählt in Stück: als die Aktie billiger war, wurden für dasselbe Geld mehr Stück gehandelt – alte, tiefe Zonen wirken dadurch größer.</p></div>` : "")(h.vpp && h.vpp.info())}
     ${(vi => vi && clGet("vp") && (vi.buy.length || vi.sell.length) ? `<div class="cf-s"><div class="cf-h">Großvolumen-Zonen <small class="muted">blau Käufe · lila Verkäufe</small></div>${[...vi.buy, ...vi.sell].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:${z.kind === "buy" ? "#0a84ff" : "#bf5af2"}"></i>${z.kind === "buy" ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"}, Ø ${fmt(z.rv, 1)}×</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
       <p class="muted cf-t">Tage mit mindestens doppeltem Ø-Volumen – solche Mengen handeln meist Fonds und Banken. Kauf-Zonen wirken oft als Unterstützung. Nur zur Orientierung, keine Kairo-Regel.</p></div>` : "")(h.vpp && h.vpp.info())}
     ${M.cls && clGet("fib") ? fibList(M.cls, "#f4b740", "Fibonacci") : ""}${M.big && clGet("big", true) ? fibList(M.big, "#b07cff", "Fibonacci große Welle") : ""}
