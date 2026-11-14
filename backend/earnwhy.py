@@ -61,7 +61,7 @@ def _move_titles(items: list[tuple[str, str, str]], words: list[str]) -> list[st
     out = []
     for title, _, _ in items:
         t = re.sub(r"\s+-\s+[^-]{2,60}$", "", title)
-        if any(w in t.lower() for w in ws) and mv.search(t):
+        if any(re.search(r"(?<![\w-])" + re.escape(w) + r"(?![\w-])", t.lower()) for w in ws) and mv.search(t):   # ganze Wörter: „Alpha“ ≠ „Alphabet“ (14.11.2026)
             out.append(t[:180])
     return out[:8]
 
