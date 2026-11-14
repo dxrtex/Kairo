@@ -1,0 +1,24 @@
+name: Quartalszahlen 2 – handelbare Frage (Forschung)
+on:
+  push:
+    branches: ["claude/earn-pead"]
+    paths: ["tools/research/earn_pead.py", ".github/workflows/earnpead.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt scikit-learn
+      - run: git fetch -q origin kairo-data && git show origin/kairo-data:universe_us.csv > uni.csv
+      - run: python tools/research/earn_pead.py collect uni.csv 900 earn_pead.csv
+      - run: python tools/research/earn_pead.py analyze earn_pead.csv earn_pead.json | tee earn_pead.md
+      - name: Sichern
+        if: always()
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: gh release create "earnpead-${GITHUB_RUN_ID}" earn_pead.json earn_pead.csv earn_pead.md --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Quartalszahlen 2 (Forschung)" --notes "Forschung" || true
