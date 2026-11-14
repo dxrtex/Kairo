@@ -402,6 +402,41 @@ def _from_history(tk, ev: dict, reported: pd.DataFrame, today: pd.Timestamp) -> 
     return pd.DataFrame({"EPS Estimate": [e], "Reported EPS": [a], "Surprise(%)": [None]}, index=pd.DatetimeIndex([ts], name="Earnings Date"))
 
 
+IM_DAYS = 4                 # so viele Tage vor dem Termin wird die vom Optionsmarkt erwartete Bewegung gemessen
+
+
+def implied_move(tk, report_ts: pd.Timestamp, price: float | None) -> float | None:
+    """Vom Optionsmarkt erwartete Bewegung über den Termin (Implied Move): Preis des Straddles am Geld (Call + Put zum
+    Ausübungspreis nächst dem Kurs) im ersten Verfall NACH dem Reaktionstag, geteilt durch den Kurs. Kostenlos aus den
+    Yahoo-Optionsketten. Wird jetzt bei jeder US-Meldung gesammelt, damit es später geprüft werden kann
+    (Forschung tools/research/earn_pead.py: erwartete gegen übliche Bewegung). Nur Information, keine Handelsregel."""
+    if not price or price <= 0:
+        return None
+    try:
+        rts = report_ts.tz_convert("America/New_York") if report_ts.tzinfo else report_ts
+        react = pd.Timestamp(rts.date()) + pd.Timedelta(days=0 if rts.hour < 12 else 1)
+        exps = [e for e in (tk.options or ()) if pd.Timestamp(e) >= react]
+        if not exps or (pd.Timestamp(exps[0]) - react).days > 10:
+            return None
+        ch = tk.option_chain(exps[0])
+
+        def mid(df):
+            df = df.iloc[(df["strike"] - price).abs().argsort()[:1]]
+            if not len(df):
+                return None, None
+            r = df.iloc[0]
+            b, a, lp = _num(r.get("bid")), _num(r.get("ask")), _num(r.get("lastPrice"))
+            return float(r["strike"]), ((b + a) / 2 if b and a and a >= b else lp)
+        kc, c = mid(ch.calls)
+        kp, p = mid(ch.puts)
+        if c is None or p is None or kc != kp:
+            return None
+        im = (c + p) / price
+        return round(im, 4) if 0.005 <= im <= 0.5 else None
+    except Exception:
+        return None
+
+
 def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Timestamp, live: bool = False) -> tuple[dict | None, dict | None]:
     """Ergebnis-Datensatz für eine Aktie und ggf. die gemerkte Erwartung (für den Vergleich nach dem Termin).
     live=True (Prüfdienst tagsüber): nur frisch gemeldete Zahlen (≤ 3 Tage), ohne Vorschau – spart Abfragen."""
@@ -474,6 +509,8 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
             if mem.get("rev") and abs((pd.Timestamp(mem.get("date", "1900-01-01")) - last_day).days) <= 7:
                 res["rev_e"] = mem["rev"]
                 res["rev_s"] = round(rev_a / mem["rev"] - 1, 4)
+        if mem.get("im") and abs((pd.Timestamp(mem.get("date", "1900-01-01")) - last_day).days) <= 7:
+            res["im"] = mem["im"]                          # vom Optionsmarkt erwartete Bewegung, kurz vor dem Termin gemessen
         g = _sec_guidance(tk, t, last)                     # 1. Pressemitteilung bei der SEC (mit SEC_CONTACT)
         if not g:                                          # 2. Schlagzeilen
             items = _rss(f"{_words(ev.get('name') or t, t)[0]} guidance OR outlook OR forecast when:{PAST_DAYS + 1}d")
@@ -509,6 +546,11 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
                                "region": ev.get("region"), "watch": ev.get("watch", False), **({"big": True} if ev.get("big") else {})}
         except Exception:
             pass
+        if "." not in t and 0 <= (nx.tz_convert("UTC").tz_localize(None).normalize() - today).days <= IM_DAYS:
+            im = implied_move(tk, nx, float(close.iloc[-1]) if close is not None and len(close) else None)
+            if im:
+                nxt["im"] = im
+                new_mem = {**(new_mem or {"date": nxt["date"], "name": ev.get("name") or t}), "im": im}
         rec["next"] = nxt
     if "last" not in rec and "next" not in rec:
         return None, new_mem
