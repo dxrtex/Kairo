@@ -8,7 +8,10 @@ bekannt), Ausstieg zum Schluss nach 2 bzw. 5 Handelstagen – marktbereinigt (mi
 Vorab festgelegt (vor dem ersten Lauf, nicht nachträglich verändert):
 - Daten: die N größten US-Aktien (universe_us.csv), Yahoo-Meldetermine mit Gewinn-Erwartung/-Ist seit ~2018, Tageskurse.
 - Ziele: y2x = (Schluss Tag+1 / Eröffnung Tag 0) − SPY dasselbe > 0;  y5x = dasselbe bis Schluss Tag+4.
-  Zum Vergleich: y1 = Schluss Tag 0 > Schluss davor (das heutige App-Ziel).
+  Zum Vergleich: y1 = Schluss Tag 0 > Schluss davor (das heutige App-Ziel; enthält die Lücke, daher zur Eröffnung trivial).
+- Nachtrag nach Lauf 1 (14.11.2026, große Werte: y2x/y5x ohne Signal, AUC 0,51), vor Lauf 2 festgelegt:
+  y0x = Eröffnung → Schluss Tag 0, marktbereinigt (läuft die Lücke am ersten Tag weiter oder dreht sie?), und dieselbe
+  Prüfung für kleinere Werte (Rang 901–2400 nach Börsenwert), wo der Nachlauf laut Forschung am ehesten überlebt.
 - Merkmale (alle zur Eröffnung von Tag 0 bekannt): Gewinn-Überraschung s, Kurslücke gap, Kurslücke relativ zur üblichen
   Reaktion der Aktie (gapz), Übereinstimmung Lücke/Überraschung (agree), Lauf 20 Tage vs. SPY (run20), Schwankung
   20 Tage (vol20), übliche Reaktion (absr), Marktlage (SPY über EMA 50), Umsatzvolumen am Vortag relativ (vpre).
@@ -21,7 +24,7 @@ Vorab festgelegt (vor dem ersten Lauf, nicht nachträglich verändert):
   (p ≥ 55 %) bringen nach 0,15 % Kosten je Trade im Mittel eine positive marktbereinigte Rendite, 95-%-Intervall über null.
   Bei Gleichstand gewinnt M2 (in der App nachrechenbar, weniger Überanpassung).
 
-    python tools/research/earn_pead.py collect <universe_us.csv> <n_max> <out.csv>
+    python tools/research/earn_pead.py collect <universe_us.csv> <n_max> <out.csv> [überspringen]
     python tools/research/earn_pead.py analyze <in.csv> <out.json>
 """
 from __future__ import annotations
@@ -65,10 +68,10 @@ def _reports(tk):
     return tk, out
 
 
-def collect(uni_csv, n_max, out_csv):
+def collect(uni_csv, n_max, out_csv, skip=0):
     import yfinance as yf
     uni = pd.read_csv(uni_csv)
-    uni = uni[~uni["ticker"].astype(str).str.contains(r"\.")].sort_values("market_cap_usd", ascending=False).head(int(n_max))
+    uni = uni[~uni["ticker"].astype(str).str.contains(r"\.")].sort_values("market_cap_usd", ascending=False).iloc[int(skip):int(skip) + int(n_max)]
     tks = list(uni["ticker"])
     spy = yf.download("SPY", period="9y", interval="1d", auto_adjust=True, progress=False)
     spy.columns = [c[0] if isinstance(c, tuple) else c for c in spy.columns]
@@ -105,7 +108,7 @@ def collect(uni_csv, n_max, out_csv):
                 srun = float(sc.loc[dm1] / sc.iloc[si - 21] - 1)
                 vv = v.iloc[i - 21:i - 1].mean()
                 rows.append({"t": tk, "d": str(d0.date()), "s": r["s"], "pre": int(r["pre"]), "gap": gap, "r1": r1,
-                             "oc1": float(c.iloc[i] / o.iloc[i] - 1), "pe2": pe2, "pe5": pe5, "x2": pe2 - sp2, "x5": pe5 - sp5,
+                             "oc1": float(c.iloc[i] / o.iloc[i] - 1), "x0": float(c.iloc[i] / o.iloc[i] - 1) - float(sc.iloc[si] / so.iloc[si] - 1), "pe2": pe2, "pe5": pe5, "x2": pe2 - sp2, "x5": pe5 - sp5,
                              "vol20": float(ret.iloc[i - 20:i].std()), "run20": float(c.iloc[i - 1] / c.iloc[i - 21] - 1) - srun,
                              "absr": float(np.mean(np.abs(hr[-8:]))) if len(hr) >= 3 else np.nan,
                              "absg": float(np.mean(np.abs(hg[-8:]))) if len(hg) >= 3 else np.nan,
@@ -127,7 +130,7 @@ def prep(D):
     D["gapz"] = (D["gap"] / D["absg"].where(D["absg"] > 0.005)).clip(-6, 6)
     D["agree"] = np.sign(D["gap"]) * np.sign(D["s"])
     D["vpre"] = np.log(D["vpre"].clip(0.05, 50))
-    for y, col in (("y1", "r1"), ("y2x", "x2"), ("y5x", "x5")):
+    for y, col in (("y1", "r1"), ("y0x", "x0"), ("y2x", "x2"), ("y5x", "x5")):
         D[y] = (D[col] > 0).astype(int)
     return D.sort_values("dt").reset_index(drop=True)
 
@@ -233,7 +236,7 @@ def analyze(in_csv, out_json):
     print(f"# Quartalszahlen 2 – handelbare Frage (Forschung)\n\n{out['n']} Meldungen, {out['tickers']} US-Aktien, {out['von']} bis {out['bis']}.\n")
     print("Beschreibend: Anteil Lücke in Richtung der Überraschung", round(float((D["agree"] > 0).mean()), 3),
           "· mittlere |Lücke|", round(float(D["gap"].abs().mean()), 4), "· mittlere |Tag 0 nach Eröffnung|", round(float(D["oc1"].abs().mean()), 4))
-    for y, ret, lab in (("y1", "r1", "Tag 1 inkl. Lücke (heutiges App-Ziel)"), ("y2x", "x2", "2 Tage ab Eröffnung, marktbereinigt"), ("y5x", "x5", "5 Tage ab Eröffnung, marktbereinigt")):
+    for y, ret, lab in (("y1", "r1", "Tag 1 inkl. Lücke (heutiges App-Ziel)"), ("y0x", "x0", "Tag 0 ab Eröffnung bis Schluss, marktbereinigt"), ("y2x", "x2", "2 Tage ab Eröffnung, marktbereinigt"), ("y5x", "x5", "5 Tage ab Eröffnung, marktbereinigt")):
         r = run_target(D, y, ret)
         out[y] = r
         print(f"\n## {lab} (n Prüfung {r['n_test']}, Anteil positiv {r['up']:.1%})\n")
@@ -255,6 +258,6 @@ def analyze(in_csv, out_json):
 
 if __name__ == "__main__":
     if sys.argv[1] == "collect":
-        collect(*sys.argv[2:5])
+        collect(*sys.argv[2:6])
     else:
         analyze(sys.argv[2], sys.argv[3])
