@@ -2534,6 +2534,17 @@ html .hcard.mkt .sec-line { gap: 4px 14px; }
 .dr-more::after { content: ""; position: absolute; right: 3px; bottom: 3px; border-style: solid; border-width: 0 0 6px 6px; border-color: transparent transparent currentColor transparent; opacity: .75; }
 /* beim Zeichnen gehört der Finger dem Werkzeug – kein Scrollen der Seite, kein Abbruch der Bewegung */
 .drawing, .drawing * { touch-action: none !important; }
+/* Journal-Tabellen passen in den Bildschirm (Wunsch 14.11.2026): keine Mindestbreite, lange Namen einzeilig gekürzt */
+html .jtrades { min-width: 0 !important; width: 100%; table-layout: auto; }
+html .jtrades td, html .jtrades th { padding: 10px 10px; white-space: nowrap; }
+html .jtrades td:nth-child(2) { white-space: normal; width: 100%; max-width: 0; }
+html .jtrades td:nth-child(2) b, html .jtrades td:nth-child(2) small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html .jtrades th, html .jtrades td { position: static !important; box-shadow: none !important; }
+html .jtx .jtrades td:nth-child(2) { width: auto; max-width: none; white-space: nowrap; }
+html .jtx .jtrades td:nth-child(3) { max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 600px) { html .jtrades td, html .jtrades th { padding: 9px 5px; font-size: 13px; } html .jtx .jtrades { min-width: 620px !important; }
+  html .jopen th:nth-child(6), html .jopen td:nth-child(6), html .jopen th:nth-child(1), html .jopen td:nth-child(1) { display: none; }
+  html .jtrades:not(.jopen):not(.jtx *) th:nth-child(3), html .jtrades:not(.jopen) td:nth-child(3) { display: none; } html .jtx .jtrades td:nth-child(3), html .jtx .jtrades th:nth-child(3) { display: table-cell; } html .jtrades td small { font-size: 11px; } }
 </style>
 </head>
 <body>
@@ -7143,7 +7154,7 @@ function jBarsHtml(rows) {                       // horizontale Balken: Ergebnis
 function jStreaks(ts) { let w = 0, l = 0, cw = 0, cl = 0; ts.slice().sort((a, b) => a.close.localeCompare(b.close)).forEach(t => { if (t.pnl > 0) { cw++; cl = 0; } else { cl++; cw = 0; } w = Math.max(w, cw); l = Math.max(l, cl); }); return [w, l]; }
 function journalHtml() {
   const tx = txLoad();
-  const imp = `<label class="btn${tx.length ? " ghost" : ""}" style="cursor:pointer">${tx.length ? "Neuen Export hochladen (ersetzt den alten)" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="jrCsv" hidden></label>`;
+  const imp = `<label class="btn${tx.length ? " ghost" : ""}" style="cursor:pointer">${tx.length ? "Scalable-Abgleich (CSV)" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="jrCsv" hidden></label>`;
   const head = `<div class="section-title"><span>Journal · deine Trades</span><span>${tx.length ? tx.length + " Transaktionen" : ""}</span></div>`;
   if (!tx.length) return head + `<div class="card jempty"><div class="jicon"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="7" width="26" height="34" rx="4"/><path d="M17 16h14M17 23h14M17 30h8"/></svg></div><b>Dein Trading-Journal</b>
       <p>Scalable-Export einlesen (Web → Transaktionen → Export): Kairo bildet daraus deine Trades, rechnet nach Gebühren und zeigt, ob du die Test-Erwartung erreichst.</p>
@@ -7206,7 +7217,7 @@ function journalHtml() {
     <div class="note" style="margin:8px 2px 0">Trade antippen: Kairo-Bewertung des Einstiegs, Tags und Notiz.</div>
     <div class="card jcard" style="margin-top:14px"><div class="jc-h"><b>Nach Tags</b><span>dein Verhalten in Zahlen</span></div>${jTagStatsHtml(all)}</div>`;
   const openTbl = m.open.length ? `<div class="section-title" style="margin-top:26px"><span>Noch offen</span><span>${m.open.length}</span></div>
-    <div class="table-wrap"><table class="jtrades"><thead><tr><th>Seit</th><th>Wert</th><th>Art</th><th class="num">Stück</th><th class="num">Einsatz</th><th class="num">schon realisiert</th></tr></thead><tbody>
+    <div class="table-wrap"><table class="jtrades jopen"><thead><tr><th>Seit</th><th>Wert</th><th>Art</th><th class="num">Stück</th><th class="num">Einsatz</th><th class="num">schon realisiert</th></tr></thead><tbody>
     ${m.open.map(p => { const c = p.lots.reduce((s2, l) => s2 + l.qty * l.unit, 0); return `<tr><td>${dateDE(p.open)}</td><td><b>${esc(p.under)}</b><small>${esc(p.isin)}</small></td><td><span class="kp" style="--k:${KIND_COL[p.k]}">${p.label}</span></td>
       <td class="num">${fmt(p.qty, p.qty % 1 ? 3 : 0)}</td><td class="num">${eur2(c)}</td><td class="num ${p.sells ? (p.proceeds - p.cost >= 0 ? "up" : "down") : "muted"}">${p.sells ? sEur2(p.proceeds - p.cost) : "–"}</td></tr>`; }).join("")}</tbody></table></div>
     <div class="note" style="margin:8px 2px 0">Offene Positionen zählen erst mit dem Verkauf zum Ergebnis; Teilverkäufe sind oben bereits enthalten. Bewertung der offenen Positionen: Reiter Depot.</div>` : "";
@@ -8873,8 +8884,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.163";
-const APP_NEWS = [["2026.11.163", "Zeichnen wie bei TradingView", [
+const APP_VER = "2026.11.164";
+const APP_NEWS = [["2026.11.164", "Journal kompakt", [
+  ["Tabellen ohne Wischen", "Offene und abgeschlossene Trades passen jetzt in die Breite – lange Namen werden gekürzt statt die Tabelle zu verbreitern."]]],
+  ["2026.11.163", "Zeichnen wie bei TradingView", [
   ["Blaues Fadenkreuz", "Werkzeug wählen – in der Chartmitte erscheint ein blaues Fadenkreuz mit Preis und Datum. Ziehen verschiebt es versetzt zum Finger, Tippen setzt den Punkt. So verdeckt der Finger nie die Stelle."],
   ["Werkzeug-Auswahl", "Lang drücken auf ein Werkzeug (oder das Dreieck) zeigt alle Werkzeuge der Gruppe – z. B. Fib-Retracement und Fib-Extension."]]],
   ["2026.11.162", "Depot wie beim Broker", [
