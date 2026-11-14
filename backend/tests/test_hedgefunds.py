@@ -69,3 +69,11 @@ def test_buy_period_majority_then_newest():
     assert buy_period(["2026-06-30", "2026-06-30", "2026-09-30"]) == "2026-06-30"
     assert buy_period(["2026-06-30", "2026-09-30"]) == "2026-09-30"
     assert buy_period([]) is None
+
+
+def test_cik_candidates_atom_and_html():
+    from backend.hedgefunds import cik_candidates
+    atom = "<entry><content><company-info><cik>0001602119</cik><name>X</name></company-info></content></entry><cik>0000012345</cik>"
+    assert cik_candidates(atom) == [1602119, 12345]
+    html = '<a href="/cgi-bin/browse-edgar?action=getcompany&CIK=0001234567&type=13F">' * 2
+    assert cik_candidates(html) == [1234567]

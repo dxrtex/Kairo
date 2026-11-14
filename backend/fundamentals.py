@@ -30,6 +30,48 @@ FIELDS = {"pe": "trailingPE", "fpe": "forwardPE", "pb": "priceToBook", "ps": "pr
           "exd": "exDividendDate", "eps": "trailingEps", "feps": "forwardEps", "so": "sharesOutstanding"}
 
 
+def _num(v):
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return None
+    return v if v == v and abs(v) != float("inf") else None
+
+
+def eps_history(df) -> list:
+    """Gewinn je Aktie der letzten Quartale aus get_earnings_dates(): [[datum, schätzung, tatsächlich], …] aufsteigend, höchstens 8.
+    Künftige Termine (noch ohne tatsächlichen Wert) fallen weg."""
+    if df is None or getattr(df, "empty", True):
+        return []
+    out = []
+    for ix, r in df.iterrows():
+        a, e = _num(r.get("Reported EPS")), _num(r.get("EPS Estimate"))
+        if a is None:
+            continue
+        out.append([str(ix)[:10], None if e is None else round(e, 4), round(a, 4)])
+    out.sort(key=lambda x: x[0])
+    return out[-8:]
+
+
+def income_history(df) -> list:
+    """Umsatz und Gewinn je Geschäftsjahr aus get_income_stmt(): [[jahr, umsatz, nettogewinn], …] aufsteigend, höchstens 5."""
+    if df is None or getattr(df, "empty", True):
+        return []
+    rows = {str(k).replace(" ", "").lower(): k for k in df.index}
+    rk, nk = rows.get("totalrevenue"), rows.get("netincome") or rows.get("netincomecommonstockholders")
+    if rk is None:
+        return []
+    out = []
+    for col in df.columns:
+        rev = _num(df.at[rk, col])
+        ni = _num(df.at[nk, col]) if nk is not None else None
+        if rev is None:
+            continue
+        out.append([str(col)[:4], round(rev), None if ni is None else round(ni)])
+    out.sort(key=lambda x: x[0])
+    return out[-5:]
+
+
 def fetch(tickers: list[str], pause: float = 0.3, budget_s: float = 5000) -> dict:
     import yfinance as yf
     out, t0 = {}, time.time()
@@ -50,6 +92,20 @@ def fetch(tickers: list[str], pause: float = 0.3, budget_s: float = 5000) -> dic
         row = {k2: info.get(src) for k2, src in FIELDS.items() if isinstance(info.get(src), (int, float)) and info.get(src) == info.get(src)}
         if info.get("sector"):
             row["sec"] = info["sector"]
+        if len(row) >= 3:                              # Verlauf für die Übersichtskarte (14.11.2026): Gewinn je Quartal, Umsatz/Gewinn je Jahr
+            tk = yf.Ticker(t)
+            try:
+                eh = eps_history(tk.get_earnings_dates(limit=12))
+                if eh:
+                    row["eh"] = eh
+            except Exception:
+                pass
+            try:
+                ih = income_history(tk.get_income_stmt())
+                if ih:
+                    row["ih"] = ih
+            except Exception:
+                pass
         if len(row) >= 3:
             out[t] = row
         if k % 100 == 0:
