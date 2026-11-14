@@ -2592,6 +2592,14 @@ html .cm-box { width: min(1180px, 100%) !important; }
 @media (max-width: 860px) { .cx-top { grid-template-columns: minmax(0, 1fr); } .cx-kz { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kz-t:nth-child(5n+1) { border-left: .5px solid var(--lg-ring); } .kz-t:nth-child(-n+5) { border-top: .5px solid var(--lg-ring); } .kz-t:nth-child(odd) { border-left: 0; } .kz-t:nth-child(-n+2) { border-top: 0; }
   .cx-lw { height: 240px; min-height: 220px; } }
+/* Übersichtskarte: Gewinn je Quartal, Umsatz & Gewinn (14.11.2026) */
+.cx-eps svg, .cx-inc svg { display: block; color: var(--text, #fff); margin: 4px 0 2px; }
+.eps-lg { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--muted); } .eps-lg span { display: inline-flex; align-items: center; gap: 5px; }
+.eps-lg i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; } .eps-lg i.a { background: #30d158; } .eps-lg i.e { border: 1.4px solid var(--muted); width: 7px; height: 7px; }
+.eps-lg span.up { color: var(--up); } .eps-lg span.down { color: var(--down); }
+/* Trade erfassen: Abrechnung einlesen */
+.qt-pdf { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; margin: 0 0 10px; border-radius: 12px; border: 1px dashed rgba(127,127,127,.45); cursor: pointer; }
+.qt-pdf b { font-size: 14px; color: var(--accent, #0a84ff); } .qt-pdf small { font-size: 11.5px; color: var(--muted); } .qt-ovi.down { color: var(--down); }
 </style>
 </head>
 <body>
@@ -3677,6 +3685,7 @@ function cardModalHtml(r) {
         ${cxAnaHtml(r)}
         ${cxNewsHtml(r)}
         ${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(earnMiniHtml(r.ticker))}
+        ${cxEpsHtml(r.ticker)}${cxIncHtml(r.ticker, r.currency)}
         ${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(smCardHtml(r.ticker, true))}
         ${(h => h ? `<div class="cx-box cx-sm cx-fund">${h}</div>` : "")(fundCardHtml(r.ticker))}
         <div class="cx-card"><div class="cx-sh">Kairo-Kriterien <span>${r.met ?? "–"} von ${r.total ?? 11}</span></div>
@@ -3748,6 +3757,38 @@ function cxNewsHtml(r) {
     ${ns.map(n => `<a class="nw" href="${esc(safeHref(n.u))}" target="_blank" rel="noopener"><i class="${n.s > 0 ? "pos" : n.s < 0 ? "neg" : ""}"></i><span>${esc(n.t)}<small>${esc(n.p)}${n.d ? " · " + dateDE(n.d) : ""}</small></span></a>`).join("")}
     ${k8 ? `<div class="cx-k8">${k8}</div>` : ""}
     ${ns.length ? `<p class="muted cf-t">Schlagzeilen englisch, grob eingeordnet (<span class="up">●</span> positiv, <span class="down">●</span> negativ) · Yahoo Finance${s.d ? `, ${dateDE(s.d)}` : ""}.</p>` : ""}</div>`;
+}
+// Gewinn je Aktie je Quartal (tatsächlich gegen Schätzung) und Umsatz/Gewinn je Jahr – wie TradingView „Erträge“ / „Erfolgsrechnung“
+// (fund.json eh/ih, wöchentlich aus Yahoo, backend/fundamentals.eps_history/income_history)
+const bigN = v => v == null ? "–" : Math.abs(v) >= 1e9 ? `${fmt(v / 1e9, 1)} Mrd.` : Math.abs(v) >= 1e6 ? `${fmt(v / 1e6, 0)} Mio.` : fmt(v, 0);
+const qLbl = d => { const x = new Date(String(d).slice(0, 10) + "T12:00:00"); x.setDate(x.getDate() - 45); return `Q${Math.floor(x.getMonth() / 3) + 1} ’${String(x.getFullYear()).slice(2)}`; };
+function cxEpsHtml(t) {
+  const eh = ((fundOf(t) || {}).eh || []).filter(x => x[2] != null); if (eh.length < 2) return "";
+  const W = 360, H = 132, pl = 34, pr = 8, top = 10, bot = 24, vs = eh.flatMap(x => [x[1], x[2]]).filter(v => v != null).concat(0);
+  let lo = Math.min(...vs), hi = Math.max(...vs); const pad = (hi - lo) * .12 || 1; lo -= pad; hi += pad;
+  const Y = v => top + (hi - v) / (hi - lo) * (H - top - bot), X = i => pl + (i + .5) * (W - pl - pr) / eh.length;
+  const beat = eh.filter(x => x[1] != null && x[2] >= x[1]).length, cmp = eh.filter(x => x[1] != null).length;
+  const ticks = [hi - pad, (hi + lo) / 2, lo + pad].map(v => `<text x="${pl - 6}" y="${Y(v) + 3.5}" font-size="9.5" text-anchor="end" fill="currentColor" opacity=".55">${fmt(v, 2)}</text><path d="M${pl},${Y(v)}H${W - pr}" stroke="currentColor" stroke-opacity=".08"/>`).join("");
+  const dots = eh.map((x, i) => `${x[1] != null ? `<circle cx="${X(i)}" cy="${Y(x[1])}" r="6.5" fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/>` : ""}
+    <circle cx="${X(i)}" cy="${Y(x[2])}" r="6.5" fill="${x[1] == null ? "#8e8e93" : x[2] >= x[1] ? "#30d158" : "#ff453a"}"/><text x="${X(i)}" y="${H - 7}" font-size="9.5" text-anchor="middle" fill="currentColor" opacity=".6">${qLbl(x[0])}</text>`).join("");
+  const L = eh[eh.length - 1], sp = L[1] ? (L[2] - L[1]) / Math.abs(L[1]) : null;
+  return `<div class="cx-card cx-eps"><div class="cx-sh">Gewinn je Aktie <span>${cmp ? `${beat} von ${cmp} geschlagen` : ""}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Gewinn je Aktie je Quartal">${ticks}${dots}</svg>
+    <div class="eps-lg"><span><i class="a"></i>tatsächlich</span><span><i class="e"></i>Schätzung</span>${sp != null ? `<span class="${sp >= 0 ? "up" : "down"}">zuletzt ${sgnPct(sp, 0)} zur Schätzung</span>` : ""}</div></div>`;
+}
+function cxIncHtml(t, cur) {
+  const ih = ((fundOf(t) || {}).ih || []).filter(x => x[1] > 0); if (ih.length < 2) return "";
+  const W = 360, H = 150, pl = 8, pr = 8, top = 22, bot = 22, mx = Math.max(...ih.map(x => x[1])), mn = Math.min(0, ...ih.map(x => x[2] ?? 0));
+  const Y = v => top + (mx - v) / (mx - mn) * (H - top - bot), slot = (W - pl - pr) / ih.length, bw = Math.min(26, slot * .3);
+  const bars = ih.map((x, i) => { const cx = pl + slot * (i + .5), y0 = Y(0), m = x[2] != null ? x[2] / x[1] : null;
+    return `<rect x="${cx - bw - 1}" y="${Y(x[1])}" width="${bw}" height="${Math.max(1, y0 - Y(x[1]))}" rx="3" fill="#0a84ff"/>
+      ${x[2] != null ? `<rect x="${cx + 1}" y="${Math.min(y0, Y(x[2]))}" width="${bw}" height="${Math.max(1, Math.abs(Y(x[2]) - y0))}" rx="3" fill="${x[2] >= 0 ? "#64d2ff" : "#ff453a"}"/>` : ""}
+      ${m != null ? `<text x="${cx}" y="${Y(x[1]) - 6}" font-size="9.5" text-anchor="middle" fill="${m >= 0 ? "#ff9f0a" : "#ff453a"}">${pct(m, 0)}</text>` : ""}
+      <text x="${cx}" y="${H - 6}" font-size="9.5" text-anchor="middle" fill="currentColor" opacity=".6">${esc(x[0])}</text>`; }).join("");
+  const L = ih[ih.length - 1], P = ih[ih.length - 2], g = P[1] ? L[1] / P[1] - 1 : null;
+  return `<div class="cx-card cx-inc"><div class="cx-sh">Umsatz & Gewinn <span>je Geschäftsjahr</span></div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Umsatz und Gewinn je Jahr"><path d="M${pl},${Y(0)}H${W - pr}" stroke="currentColor" stroke-opacity=".18"/>${bars}</svg>
+    <div class="eps-lg"><span><i style="background:#0a84ff"></i>Umsatz ${bigN(L[1])}</span><span><i style="background:#64d2ff"></i>Gewinn ${bigN(L[2])}</span><span><i style="background:#ff9f0a"></i>Nettomarge</span>${g != null ? `<span class="${g >= 0 ? "up" : "down"}">Umsatz ${sgnPct(g, 0)} zum Vorjahr</span>` : ""}</div></div>`;
 }
 // Live-Chart in der Karte
 async function cxChartMount(t, r) {
@@ -6031,7 +6072,7 @@ function txSameTrade(a, b) {
   const na = normName(a.desc), nb = normName(b.desc); return !!na && !!nb && (na.startsWith(nb.slice(0, 6)) || nb.startsWith(na.slice(0, 6)));
 }
 function qtOpen(pre = {}) {
-  Object.assign(QT, { side: "buy", kind: "stock", t: null, isin: "", desc: "", ov: null }, pre);
+  Object.assign(QT, { side: "buy", kind: "stock", t: null, isin: "", desc: "", ov: null, qty: null, px: null, d: null, fee: null, pdfMsg: null, pdfIsin: "", pdfName: "" }, pre);
   let el = $("qtBox"); if (!el) { document.body.insertAdjacentHTML("beforeend", `<div id="qtBox" class="qt-ov" hidden></div>`); el = $("qtBox"); }
   el.hidden = false; qtDraw(); setTimeout(() => { const q = $(QT.kind === "stock" ? "qtQ" : "qtIsin"); if (q && !QT.t && !QT.isin) q.focus(); }, 60);
 }
@@ -6041,9 +6082,11 @@ function qtPrice() {   // Vorschlag: Live-Kurs in € (Aktie) bzw. Brief/Geld (T
   const r = QT.t ? rowOf(QT.t) : null; return r && r.c > 0 ? toEur(r.c, r.cur) : null;
 }
 function qtDraw() {
-  const el = $("qtBox"); if (!el) return; const held = qtHeld(), px = qtPrice(), r = QT.t ? rowOf(QT.t) : null, fee = state.qtFee ?? 0.99;
+  const el = $("qtBox"); if (!el) return; const held = qtHeld(), px = qtPrice(), r = QT.t ? rowOf(QT.t) : null, fee = QT.fee ?? state.qtFee ?? 0.99;
   const chips = held.slice(0, 12).map(p => `<button class="kchip${(QT.kind === "turbo" ? QT.isin === p.isin : QT.t === p.t) ? " on" : ""}" data-qtheld="${esc(p.isin || p.t || p.n)}">${esc(shortNm(p.d ? (p.d.under + " " + (p.d.dir === "long" ? "Long" : "Short") + " " + fmt(p.d.ko)) : (p.n || p.t)).slice(0, 26))}</button>`).join("");
   el.innerHTML = `<div class="qt" role="dialog" aria-label="Trade erfassen"><div class="qt-h"><b>Trade erfassen</b><button class="qt-x" data-qtclose aria-label="Schließen">✕</button></div>
+    <label class="qt-pdf"><input type="file" accept="application/pdf,.pdf" id="qtPdf" hidden><b>Abrechnung (PDF) einlesen</b><small>Scalable-App → Dokumente → Wertpapierabrechnung teilen/speichern. Kairo liest sie nur auf diesem Gerät.</small></label>
+    ${QT.pdfMsg ? `<div class="qt-ovi ${QT.pdfMsg.ok ? "" : "down"}">${QT.pdfMsg.t}</div>` : ""}
     <div class="qt-seg">${[["buy", "Kauf"], ["sell", "Verkauf"]].map(([v, l]) => `<button class="${QT.side === v ? "on " + v : ""}" data-qtside="${v}">${l}</button>`).join("")}</div>
     <div class="qt-seg sm">${[["stock", "Aktie / ETF"], ["turbo", "Turbo / Optionsschein"]].map(([v, l]) => `<button class="${QT.kind === v ? "on" : ""}" data-qtkind="${v}">${l}</button>`).join("")}</div>
     ${QT.kind === "stock" ? `<label class="qt-f"><span>Aktie</span><input id="qtQ" type="search" autocomplete="off" placeholder="Name oder Kürzel" value="${esc(QT.t ? (r && r.n) || QT.t : "")}"><div id="qtList" class="qt-list" hidden></div></label>`
@@ -6069,6 +6112,54 @@ async function qtLoadOv() {
   const d = it.entityType === "DERIVATIVE" ? ovTurbo(await ovGet(`/derivatives/${it.entityValue}/snapshot`)) : null;
   QT.ov = d && d.ko ? d : { err: "Kein Turbo mit K.-o.-Schwelle gefunden" }; QT.px = null; qtDraw();
 }
+// Wertpapierabrechnung lesen (Scalable Capital Bank und das ältere Baader-Format): Text aus dem PDF (pdf.js, lokal), dann tolerante Muster.
+// Ergebnis füllt nur das Formular – gespeichert wird erst, wenn du auf „Speichern“ tippst.
+const deNum = s => s == null ? null : +String(s).replace(/\s/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".");
+function parseAbrechnung(txt) {
+  const T = String(txt || "").replace(/\u00a0/g, " "), g = (re, i = 1) => { const m = T.match(re); return m ? m[i] : null; };
+  const head = T.slice(0, 1500), iV = head.search(/verkauf/i), iK = head.search(/(?<!ver)kauf(?!kurs|betrag)/i), sell = iV >= 0 && (iK < 0 || iV < iK);
+  const isin = g(/\b([A-Z]{2}[A-Z0-9]{9}\d)\b/);
+  const num = "(\\d{1,3}(?:\\.\\d{3})*(?:,\\d+)?|\\d+(?:,\\d+)?)";
+  const qty = deNum(g(new RegExp(`${num}\\s*(?:STK|Stk\\.?|Stück)(?![a-zß])`, "i")) || g(new RegExp(`(?:STK|Stk\\.?|Stück)\\s*:?\\s*${num}`, "i")));
+  let price = deNum(g(new RegExp(`(?:Ausführungskurs|Kurs)\\s*(?:\\(?EUR\\)?)?\\s*:?\\s*(?:EUR\\s*)?${num}`, "i")));
+  const amount = deNum(g(new RegExp(`Kurswert\\s*(?:EUR)?\\s*:?\\s*-?${num}`, "i")));
+  if (amount && qty && (!price || Math.abs(price * qty - amount) > amount * .05)) price = amount / qty;   // Kurs passt nicht zum Kurswert → aus Kurswert ÷ Stück
+  let fee = 0; for (const m of T.matchAll(new RegExp(`(?:Ordergebühr|Orderentgelt|Provision|Fremdkostenzuschlag|Transaktionsentgelt|Börsengebühr|Handelsplatzentgelt)\\s*(?:EUR)?\\s*:?\\s*-?${num}`, "gi"))) fee += deNum(m[1]) || 0;
+  const dm = g(/(?:Handelstag|Handelsdatum|Schlusstag|Ausführung(?:stag|sdatum)?|Ausgeführt am|Datum)\s*:?\s*(\d{2}\.\d{2}\.\d{4})/i) || g(/(\d{2}\.\d{2}\.\d{4})/);
+  const date = dm ? dm.split(".").reverse().join("-") : null;
+  const turbo = /turbo|knock|optionsschein|mini[- ]?future|open end|faktor/i.test(T) || /^DE000[A-Z]{2}/.test(isin || "") && !/aktie|ETF|fonds/i.test(T.slice(0, 800));
+  let name = null; if (isin) { const lines = T.split(/\n/), k = lines.findIndex(l => l.includes(isin));
+    const cand = [lines[k], lines[k - 1], lines[k + 1]].filter(Boolean).map(l => l.replace(isin, "").replace(/ISIN:?/i, "").replace(/^\s*(STK|Stk\.?|Stück)\s*[\d.,]+\s*/i, "")
+      .replace(/[\d.,]+\s*(STK|Stk\.?|Stück)(?![a-zß]).*$/i, "").replace(/\bWKN\b.*$/i, "").replace(/\d[\d.,]*\s*(EUR|USD)?\s*$/g, "").trim())
+      .filter(l => /[A-Za-zÄÖÜäöü]{3}/.test(l) && !/abrechnung|kurswert|isin|produkt|wertpapier|nominale|bezeichnung|anzahl|handelstag|ausführung/i.test(l));
+    name = cand[0] ? cand[0].slice(0, 60) : null; }
+  return { side: sell ? "sell" : "buy", isin, qty, price: price ? +price.toFixed(4) : null, fee: +fee.toFixed(2), date, name, turbo, amount };
+}
+async function pdfText(file) {
+  const pdfjs = await import("./lib/pdfjs/pdf.min.mjs"); pdfjs.GlobalWorkerOptions.workerSrc = "./lib/pdfjs/pdf.worker.min.mjs";
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise; const out = [];
+  for (let p = 1; p <= Math.min(doc.numPages, 4); p++) {
+    const tc = await (await doc.getPage(p)).getTextContent(), rows = new Map();
+    tc.items.forEach(it => { const y = Math.round(it.transform[5] / 3) * 3; if (!rows.has(y)) rows.set(y, []); rows.get(y).push([it.transform[4], it.str]); });
+    [...rows.entries()].sort((a, b) => b[0] - a[0]).forEach(([, xs]) => out.push(xs.sort((a, b) => a[0] - b[0]).map(x => x[1]).join(" ").replace(/\s+/g, " ").trim()));
+  }
+  return out.filter(Boolean).join("\n");
+}
+async function qtPdfRead(file) {
+  QT.pdfMsg = { ok: true, t: "Lese Abrechnung …" }; qtDraw();
+  let a; try { a = parseAbrechnung(await pdfText(file)); } catch (e) { QT.pdfMsg = { ok: false, t: "Die Datei ließ sich nicht lesen – ist es die PDF-Abrechnung?" }; qtDraw(); return; }
+  if (!a.isin || !a.qty || !a.price) { QT.pdfMsg = { ok: false, t: `Nicht alles erkannt (${[!a.isin && "ISIN", !a.qty && "Stück", !a.price && "Kurs"].filter(Boolean).join(", ")}) – bitte von Hand ergänzen.` }; }
+  Object.assign(QT, { side: a.side, kind: a.turbo ? "turbo" : "stock", qty: a.qty, px: a.price, fee: a.fee, d: a.date || QT.d, pdfIsin: a.isin || "", pdfName: a.name || "" });
+  if (a.turbo) { QT.isin = a.isin || ""; QT.t = null; }
+  else { const pos = depotLoad().find(p => p.isin && p.isin === a.isin && !p.d); let t = pos ? pos.t : null;
+    if (!t && a.name) { if (!searchIdx) await loadSearch(); const m = matchName(a.name); if (m) t = m.t; }
+    if (!t && a.isin && (liveKey("yq") || liveKey("td"))) { try { const q = (await extSearch(a.isin)).find(x => x.symbol); if (q) t = q.symbol; } catch (e) {} }
+    QT.t = t; }
+  const dup = a.isin && a.qty && a.date && txLoad().some(x => txSameTrade(x, { type: a.side === "buy" ? "Buy" : "Sell", qty: a.qty, date: a.date, isin: a.isin, desc: a.name || "" }));
+  if (a.isin && a.qty && a.price) QT.pdfMsg = { ok: !dup, t: dup ? "Dieser Trade ist schon erfasst – Speichern würde ihn doppelt eintragen." : `Gelesen: ${a.side === "buy" ? "Kauf" : "Verkauf"} ${fmt(a.qty, 4)} × ${esc(a.name || a.isin)} zu ${fmt(a.price)} €${a.fee ? ` + ${fmt(a.fee)} € Gebühr` : ""}${a.date ? ` am ${dateDE(a.date)}` : ""}. Bitte prüfen und speichern.${!a.turbo && !QT.t ? " Aktie bitte noch auswählen." : ""}` };
+  qtDraw(); if (a.turbo && a.isin) qtLoadOv();
+}
+document.addEventListener("change", e => { if (e.target.id === "qtPdf" && e.target.files && e.target.files[0]) qtPdfRead(e.target.files[0]); });
 function qtSave() {
   const qty = +$("qtQty").value, price = +$("qtPx").value, fee = Math.max(0, +$("qtFee").value || 0), date = $("qtD").value || isoD(new Date());
   if (!(qty > 0) || !(price > 0)) { drToast("Bitte Stück und Kurs eintragen"); return; }
@@ -6078,7 +6169,7 @@ function qtSave() {
     desc = prev ? prev.desc : `${o.und} ${o.put ? "Short" : "Long"} ${String(o.ko).replace(".", ",")} ${o.ucur || ""} Turbo`.replace(/\s+/g, " "); }
   else { if (!QT.t) { drToast("Bitte eine Aktie wählen"); return; } t = QT.t; const r = rowOf(t) || {};
     const pos = depotLoad().find(p => p.t === t && !p.d && p.isin), prev = pos && txLoad().find(x => x.isin === pos.isin);
-    isin = pos ? pos.isin : ""; desc = prev ? prev.desc : pos ? pos.n : (r.n || t); }
+    isin = pos ? pos.isin : (QT.pdfIsin || ""); desc = prev ? prev.desc : pos ? pos.n : (QT.pdfName || r.n || t); }
   if (QT.side === "sell") { const h = depotLoad().filter(p => isin ? p.isin === isin : p.t === t && !p.d).reduce((a, p) => a + p.qty, 0);
     if (h && qty > h + 1e-9) { drToast(`Du hältst nur ${fmt(h, 4)} Stück`); return; } }
   const now = new Date(), time = now.toTimeString().slice(0, 8);
@@ -9080,8 +9171,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.169";
-const APP_NEWS = [["2026.11.169", "Neue Übersichtskarte", [
+const APP_VER = "2026.11.170";
+const APP_NEWS = [["2026.11.170", "Quartalszahlen-Verlauf und Abrechnung einlesen", [
+  ["Gewinn je Aktie", "Die Übersichtskarte zeigt die letzten 8 Quartale: tatsächlicher Gewinn je Aktie gegen die Schätzung – grün geschlagen, rot verfehlt."],
+  ["Umsatz & Gewinn", "Umsatz, Gewinn und Nettomarge der letzten Geschäftsjahre als Balken."],
+  ["Abrechnung (PDF) einlesen", "In „Trade erfassen“ die Wertpapierabrechnung aus der Scalable-App wählen – Kairo füllt Kauf/Verkauf, Stück, Kurs, Gebühr und Datum aus. Gelesen wird nur auf deinem Gerät, ohne Login."],
+  ["Fonds-Kaufzone lesbar", "Die Beschriftung des Fonds-Kastens im Chart liegt jetzt über den Kerzen."]]],
+  ["2026.11.169", "Neue Übersichtskarte", [
   ["Alles auf einen Blick", "Die Karte einer Aktie zeigt jetzt oben einen Live-Chart mit Kaufzone und Stop, daneben den Kairo-Plan, darunter eine Kennzahlen-Leiste (52 Wochen, KGV, Dividende, Beta, nächste Zahlen, Leerverkauf …)."],
   ["Live-Chart", "Standard 6 Monate Tageskerzen – dort entstehen Kairo-Setups. 1T zeigt 5-Minuten-Kerzen live zur Eröffnung (über den Kursdienst), dazu 1M und 1J. Ist die Börse offen, läuft der Kurs mit."],
   ["Analysten wie bei TradingView", "Empfehlung als Skala und Kursziel als Fächer vom heutigen Kurs bis Min, Ø und Max in 12 Monaten."],
@@ -11936,10 +12032,14 @@ function hfPrimitive(h, bd) {
     x.fillStyle = `rgba(${c},${light ? .10 : .14})`; x.fillRect(xa, yy, xb - xa, hh);
     x.strokeStyle = `rgba(${c},.75)`; x.lineWidth = 1; x.strokeRect(Math.round(xa) + .5, Math.round(yy) + .5, Math.round(xb - xa) - 1, Math.round(hh) - 1);
     if (yv != null) { x.setLineDash([4, 4]); x.strokeStyle = `rgba(${c},.85)`; x.beginPath(); x.moveTo(xa, Math.round(yv) + .5); x.lineTo(m.width, Math.round(yv) + .5); x.stroke(); x.setLineDash([]); }
-    if (xb - xa > 70) { x.font = F; x.textAlign = "left"; x.textBaseline = "bottom"; x.fillStyle = `rgba(${c},${light ? .95 : .9})`; x.fillText(`Fonds ${hfQn(z.qe).split(" ")[0]}`, xa + 4, yy - 2); }
+    lbl = xb - xa > 70 ? { x: xa + 4, y: yy - 3, t: `Fonds ${hfQn(z.qe).split(" ")[0]}`, light } : null;
   }) };
+  let lbl = null;   // Schild über den Kerzen (eigene Ebene „top“), damit es lesbar bleibt
+  const top = { draw: t => t.useMediaCoordinateSpace(({ context: x }) => { if (!lbl || !clGet("hf")) return; x.font = F; x.textAlign = "left"; x.textBaseline = "bottom";
+    const w = x.measureText(lbl.t).width; x.fillStyle = lbl.light ? "rgba(255,255,255,.85)" : "rgba(14,14,18,.78)"; x.fillRect(lbl.x - 3, lbl.y - 13, w + 6, 14);
+    x.fillStyle = "rgb(94,92,230)"; x.fillText(lbl.t, lbl.x, lbl.y); }) };
   return { attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; }, detached() { series = chart = null; }, update() { req && req(); }, updateAllViews() {},
-    paneViews: () => [{ zOrder: () => "bottom", renderer: () => r }] };
+    paneViews: () => [{ zOrder: () => "bottom", renderer: () => r }, { zOrder: () => "top", renderer: () => top }] };
 }
 function gripPrimitive(get) {
   let chart = null, series = null, req = null;

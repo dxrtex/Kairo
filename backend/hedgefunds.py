@@ -102,6 +102,29 @@ def filings(cik: int, k: int = 2) -> tuple[str, list[dict]]:
     return j.get("name", ""), out
 
 
+def cik_candidates(text: str) -> list[int]:
+    """CIKs aus einer EDGAR-Firmensuche (Atom- oder HTML-Antwort), Reihenfolge wie gefunden, ohne Doppelte."""
+    out = []
+    for m in re.finditer(r"<cik>\s*0*(\d+)\s*</cik>|CIK=0*(\d{1,10})", text or "", re.I):
+        c = int(m.group(1) or m.group(2))
+        if c not in out:
+            out.append(c)
+    return out
+
+
+def find_cik(kw: str, tries: int = 6) -> tuple[int, str, list[dict]] | None:
+    """Passt eine hinterlegte CIK nicht (Fonds umbenannt, Nummer verwechselt), über die EDGAR-Firmensuche nach dem Stichwort
+    suchen: erster Treffer, dessen SEC-Name das Stichwort enthält und der 13F-HR meldet."""
+    r = _get("https://www.sec.gov/cgi-bin/browse-edgar", params={"company": kw, "type": "13F-HR", "dateb": "", "owner": "include",
+                                                                  "count": "40", "action": "getcompany", "output": "atom"})
+    for c in cik_candidates(r.text if r is not None else "")[:tries]:
+        name, fl = filings(c)
+        time.sleep(.35)
+        if kw in (name or "").lower() and fl:
+            return c, name, fl
+    return None
+
+
 def parse_infotable(xml_text: str) -> dict[str, dict]:
     """13F-Infotable → {cusip: {name, sh, val}} (nur Aktien, keine Optionen; Werte in USD)."""
     root = ET.fromstring(xml_text.encode("utf-8") if isinstance(xml_text, str) else xml_text)
@@ -302,8 +325,12 @@ def build(sleep: float = .35) -> dict:
         sec_name, fl = filings(cik)
         time.sleep(sleep)
         if kw and kw not in (sec_name or "").lower():
-            print(f"{name}: CIK {cik} gehört zu „{sec_name or '?'}“ – übersprungen")
-            continue
+            hit = find_cik(kw)                             # 14.11.2026: richtige Nummer selbst suchen statt den Fonds zu verlieren
+            if not hit:
+                print(f"{name}: CIK {cik} gehört zu „{sec_name or '?'}“, Suche nach „{kw}“ ohne Treffer – übersprungen")
+                continue
+            print(f"{name}: CIK {cik} gehört zu „{sec_name or '?'}“ – gefunden: CIK {hit[0]} „{hit[1]}“")
+            cik, sec_name, fl = hit
         if len(fl) < 1:
             print(f"{name}: keine 13F-HR-Meldung (CIK {cik})")
             continue
