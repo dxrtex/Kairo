@@ -49,6 +49,21 @@ FUNDS = [
     ("Elliott Investment Management", 1791786), ("Fundsmith (Smith)", 1569205), ("Akre Capital", 1112520),
     ("Gotham Asset Management (Greenblatt)", 1510387), ("Polen Capital", 1034524),
 ]
+# Ergänzt 14.11.2026: weitere bekannte Fonds. Name laut SEC muss das Stichwort enthalten – sonst fällt der Fonds heraus
+# (schützt davor, dass eine falsche CIK still einen fremden Fonds einträgt).
+FUNDS_CHECKED = [
+    ("ARK Invest (Wood)", 1697748, "ark investment"), ("Himalaya Capital (Li Lu)", 1709323, "himalaya"),
+    ("Dalal Street (Pabrai)", 1549575, "dalal"), ("Oaktree Capital (Marks)", 949509, "oaktree"), ("Jana Partners", 1159159, "jana"),
+    ("Starboard Value", 1517137, "starboard"), ("Glenview Capital", 1138995, "glenview"), ("Whale Rock Capital", 1387322, "whale rock"),
+    ("D1 Capital Partners", 1747057, "d1 capital"), ("Durable Capital", 1798849, "durable"), ("Saba Capital", 1510281, "saba"),
+    ("Corvex Management", 1535472, "corvex"), ("Gates Foundation Trust", 1166559, "gates"), ("Norges Bank (Ölfonds)", 1374170, "norges"),
+    ("Dragoneer Investment", 1602119, "dragoneer"), ("Egerton Capital", 1581811, "egerton"), ("Ruane Cunniff (Sequoia Fund)", 1720792, "ruane"),
+    ("Abrams Capital", 1358706, "abrams"), ("Pzena Investment", 1027796, "pzena"), ("Light Street Capital", 1569049, "light street"),
+    ("Tudor Investment (Jones)", 923093, "tudor"), ("Marshall Wace", 1318757, "marshall wace"), ("AQR Capital", 1167557, "aqr"),
+    ("TCI Fund (Hohn)", 1647251, "tci fund"), ("Tweedy Browne", 732905, "tweedy"), ("First Eagle", 1325447, "first eagle"),
+    ("Brave Warrior (Greenberg)", 1553733, "brave warrior"), ("Select Equity", 1540235, "select equity"), ("Holocene Advisors", 1767640, "holocene"),
+    ("Semper Augustus (Bloomstran)", 1115373, "semper augustus"), ("Lansdowne Partners", 1279936, "lansdowne"), ("Man Group", 1637460, "man group"),
+]
 ACT_DE = {"neu": "neu gekauft", "auf": "aufgestockt", "ab": "reduziert", "raus": "komplett verkauft", "halt": "unverändert"}
 
 
@@ -211,9 +226,12 @@ def build(sleep: float = .35) -> dict:
         except Exception:
             cache = {}
     funds, moves_all = [], []
-    for name, cik in FUNDS:
+    for name, cik, kw in [(n, c, None) for n, c in FUNDS] + FUNDS_CHECKED:
         sec_name, fl = filings(cik)
         time.sleep(sleep)
+        if kw and kw not in (sec_name or "").lower():
+            print(f"{name}: CIK {cik} gehört zu „{sec_name or '?'}“ – übersprungen")
+            continue
         if len(fl) < 1:
             print(f"{name}: keine 13F-HR-Meldung (CIK {cik})")
             continue

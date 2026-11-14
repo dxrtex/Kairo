@@ -101,3 +101,33 @@ def test_filing_date_unknown_routine_and_cover():
     assert c["AAPL"]["st"] == "ok" and c["MSFT"]["st"] == "zeitlimit" and c["NVDA"]["st"] == "nicht geprüft"
     assert c["SAP.DE"] == {"st": "ok", "src": "BaFin", "hit": True}
     assert c["NOVO-B.CO"]["st"] == "ok" and c["ASML.AS"]["st"] == "fehler"
+
+
+XML_PLAN = XML.replace("<nonDerivativeTable>", "<aff10b5One>1</aff10b5One><nonDerivativeTable>", 1).replace(
+    "<transactionPricePerShare><value>400.5</value></transactionPricePerShare></transactionAmounts>",
+    "<transactionPricePerShare><value>400.5</value></transactionPricePerShare></transactionAmounts>"
+    "<postTransactionAmounts><sharesOwnedFollowingTransaction><value>11000</value></sharesOwnedFollowingTransaction></postTransactionAmounts>", 1)
+
+
+def test_plan_flag_and_ownership_change():
+    r = parse_form4(XML_PLAN)[0]
+    assert r["plan"] is True and r["after"] == 11000 and r["own"] == 10          # 10.000 → 11.000 Aktien = +10 %
+    assert "plan" not in parse_form4(XML)[0] and "own" not in parse_form4(XML)[0]
+
+
+def test_merge_ownership_over_partial_fills():
+    a = {"t": "X", "who": "A", "kind": "buy", "d": "2026-10-08", "sh": 100, "px": 10.0, "val": 1000, "after": 1100, "own": 10}
+    m = _merge([a, dict(a, sh=100, val=1000, after=1200, own=9)])[0]
+    assert m["after"] == 1200 and m["own"] == 20                                    # 1.000 vorher → 1.200 nachher
+    n = _merge([dict(a, after=100, own="neu"), dict(a, after=200, own=100)])[0]
+    assert n["own"] == "neu"
+
+
+def test_combine_sources_enriches_openinsider():
+    from backend.insider import combine_sources
+    oi = [{"t": "X", "who": "Smith Patrick W", "kind": "sell", "d": "2026-10-08", "val": 5e6}]
+    sec = [{"t": "X", "who": "Smith Patrick W", "kind": "sell", "d": "2026-10-08", "val": 5e6, "plan": True, "after": 900, "own": -10},
+           {"t": "Y", "who": "Doe Jane", "kind": "buy", "d": "2026-10-09", "val": 1e5}]
+    rows, src = combine_sources(sec, oi)
+    assert len(rows) == 2 and rows[0]["plan"] is True and rows[0]["own"] == -10 and "SEC" in src
+    assert combine_sources([], oi)[0] == oi and combine_sources(sec, [])[0] == sec
