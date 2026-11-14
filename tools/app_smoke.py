@@ -162,7 +162,7 @@ async def ui_check(b, url, errs):
         await pg.evaluate("closeCard()")
     # Tagesbriefing heute als gesehen markieren – es öffnet sich sonst verzögert (lädt Daten) und verdeckt die Einstellungen
     await pg.evaluate("state.briefDay = isoD(new Date()); save()")
-    await pg.goto(f"{url}?nosplash=1&sec=settings")
+    await pg.goto(f"{url}?nosplash=1&sec=settings&settab=look")      # Einstellungen sind gegliedert: Gruppe „Darstellung“
     await pg.wait_for_timeout(1500)
     await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.hidden = true)')
     await pg.click('[data-tsize="big"]')
@@ -259,7 +259,7 @@ async def backup_check(b, url, errs):
     pg.on("dialog", lambda d: asyncio.ensure_future(d.accept()))
     await pg.goto(f"{url}?nosplash=1&sec=settings")
     await pg.evaluate("localStorage.setItem('kx-td','TESTKEY'); localStorage.setItem('kairo-depot-v1','[]')")
-    await pg.goto(f"{url}?nosplash=1&sec=settings")
+    await pg.goto(f"{url}?nosplash=1&sec=settings&settab=data")      # Gruppe „Daten & Sicherung“
     await pg.wait_for_timeout(2000)
     await pg.evaluate("document.querySelectorAll('#newsBox, .bmodal, .splash').forEach(x => x.remove())")
     if not await pg.query_selector("#ghKey"):
