@@ -43,9 +43,9 @@ def _frames(tickers: list[str], period: str) -> dict:
 
 
 def build(search_rows: list[dict]) -> dict:
-    from .analysis import ASSET_ETF, EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, SECTOR_ETF, THEME_ETF, market_context
+    from .analysis import ASSET_ETF, EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, SECTOR_ETF, market_context, theme_tickers
     from .run_scan import day_moves
-    etfs = sorted(set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | set(THEME_ETF) | set(EU_SECTOR_ETF) | set(ASSET_ETF) | {t for t, _ in MARKET})   # Indizes: Kacheln + Maßstab
+    etfs = sorted(set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | theme_tickers() | set(EU_SECTOR_ETF) | set(ASSET_ETF) | {t for t, _ in MARKET})   # Indizes: Kacheln + Maßstab
     mkt = market_context(_frames(etfs, "2y"))
     stocks = pick(search_rows)
     rows = {}

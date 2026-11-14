@@ -30,7 +30,7 @@ H = (4, 8, 13)
 
 def load():
     import yfinance as yf
-    tk = sorted(set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | set(THEME_ETF) | {"SPY"})
+    tk = sorted(set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | {k for k in THEME_ETF if not k.startswith("*")} | {"SPY"})   # Körbe (*) haben keine ETF-Historie
     h = yf.download(tk, period="max", interval="1d", auto_adjust=True, progress=False, group_by="ticker", threads=True)
     px, dv = {}, {}
     for t in tk:
