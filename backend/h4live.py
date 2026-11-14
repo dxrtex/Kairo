@@ -1,13 +1,13 @@
-"""HINWEIS (Review 2, 29.10.2026): Für die gültige Kairo-Regel B60 zählt aus dieser Datei nur die Seitwärtsphase (base_state,
+"""HINWEIS (Review 2, 29.10.2026): Für die gültige Kairo-Regel B60 zählt aus dieser Datei nur die Konsolidierung (base_state,
 „base“ in h4.json: pending = kaufbereit, ed = Kauftag). Die 4H-Bestätigung und die 4H-Trades mit Tag 40 sind historische
 Forschung (seit 10/2026 nicht mehr Teil der Regel) und werden nur noch zum Vergleich mitgerechnet.
 
-4H-Top-Setup live: Kairo-Treffer (11/11) → Seitwärtsphase → 4H-Bestätigung → Kauf → Verkauf unter der EMA 20.
+4H-Top-Setup live: Kairo-Treffer (11/11) → Konsolidierung → 4H-Bestätigung → Kauf → Verkauf unter der EMA 20.
 
 Genau die Regeln aus dem 4H-Test (h4study.py, Variante „HB|RMBS|zeit“, Okt. 2026: +0,39 / +0,54 R je Trade gegenüber
 +0,10 / +0,11 R ohne 4H, Depot +14 % / +20 % p. a.):
   1. Kairo-Treffer am Tag d (alle 11 Kriterien, Tageschart).
-  2. Seitwärtsphase wie bisher (shortswing.simulate, QRULE): innerhalb von 10 Tagen 5 Tage eng (Spanne ≤ 1,5 ATR),
+  2. Konsolidierung wie bisher (shortswing.simulate, QRULE): innerhalb von 10 Tagen 5 Tage eng (Spanne ≤ 1,5 ATR),
      Invalidierung hält, nächste Eröffnung innerhalb der Basis. Stop = Basistief − 0,25 ATR.
   3. 4H-Bestätigung frühestens ab der letzten 4H-Kerze des Basistags, spätestens 10 Handelstage nach dem Einstiegstag:
      in derselben 4H-Kerze gleichzeitig RSI zuletzt ≤ 40 und steigend, MACD-Kreuz nach oben, grünes MBI-X (beides in den
@@ -21,7 +21,7 @@ Genau die Regeln aus dem 4H-Test (h4study.py, Variante „HB|RMBS|zeit“, Okt. 
 Nur abgeschlossene 4H-Kerzen zählen – ein Signal mitten in der Kerze kann wieder verschwinden.
 Ausnahme (Okt. 2026, Feinregel-Test): Fast-Treffer, denen nur das Abklingen beim MBI fehlt (frisches grünes X, Rot noch
 über 70 % der Spitze), laufen genauso durchs 4H-Setup – Kennzeichen „soft“, in der Bilanz getrennt gezählt.
-Übrige Fast-Treffer und 9/11 bekommen nur den Setup-Zustand (Seitwärtsphase, 4H-Signale) zur Information – kein Handelssignal.
+Übrige Fast-Treffer und 9/11 bekommen nur den Setup-Zustand (Konsolidierung, 4H-Signale) zur Information – kein Handelssignal.
 """
 
 from __future__ import annotations
@@ -96,7 +96,7 @@ def complete_only(x: pd.DataFrame, now: datetime | None = None) -> pd.DataFrame:
     return x[mask]
 
 
-# ---------------------------------------------------------------- Tageschart: Seitwärtsphase
+# ---------------------------------------------------------------- Tageschart: Konsolidierung
 def _px(df: pd.DataFrame, idx: int) -> dict:
     c0 = float(df["Close"].iloc[idx])
     a = float(_atr(df).iloc[idx]) / c0 if c0 else 0
@@ -107,7 +107,7 @@ def _px(df: pd.DataFrame, idx: int) -> dict:
 
 
 def base_state(px: dict, r: dict = QRULE, today_open: float | None = None) -> dict:
-    """Seitwärtsphase wie shortswing.simulate (entry="base"), aber auch für noch laufende Fälle:
+    """Konsolidierung wie shortswing.simulate (entry="base"), aber auch für noch laufende Fälle:
     basis (wartet, Tag x/10) · weg (gescheitert / keine Basis) · base (Basis fertig; s = Einstiegstag, pending = morgen).
     today_open: Eröffnung des laufenden Tages (tagsüber), prüft eine gestern fertig gewordene Basis."""
     o, h, l = px["o"], px["h"], px["l"]
@@ -138,7 +138,7 @@ def base_state(px: dict, r: dict = QRULE, today_open: float | None = None) -> di
             unruhig = False
             continue
         if r.get("calm") and px.get("calm") is not None and not (j < len(px["calm"]) and px["calm"][j]):
-            unruhig = True                         # Seitwärtsphase da, aber noch zu unruhig → weiter warten
+            unruhig = True                         # Konsolidierung da, aber noch zu unruhig → weiter warten
             continue
         unruhig = False
         if j + 1 < n:
@@ -154,7 +154,7 @@ def base_state(px: dict, r: dict = QRULE, today_open: float | None = None) -> di
             return {"st": "weg", "why": why}
         return {"st": "base", "s": j + 1, "hi": hi, "lo": lo, "sl": lo - buf * atr, "e": oj}
     if n - 1 >= wait or (today_open is not None and n >= wait):
-        return {"st": "weg", "why": "keine Seitwärtsphase in 10 Tagen"}
+        return {"st": "weg", "why": "keine Konsolidierung in 10 Tagen"}
     return {"st": "basis", "day": n, **({"unruhig": True} if unruhig else {})}
 
 
@@ -299,7 +299,7 @@ def _t20(days, o_, l_, c_, i0: int, sl: float, ud: list) -> tuple[float, str] | 
 
 
 def setup_now(df: pd.DataFrame, hx: pd.DataFrame | None) -> dict | None:
-    """Setup-Zustand heute (für Fast-Treffer, 9/11 und frische Treffer): Seitwärtsphase (5 Tage ≤ 1,5 ATR) und
+    """Setup-Zustand heute (für Fast-Treffer, 9/11 und frische Treffer): Konsolidierung (5 Tage ≤ 1,5 ATR) und
     welche 4H-Signale an der letzten abgeschlossenen 4H-Kerze stehen. Nur Information – kein Handelssignal."""
     try:
         df = df.dropna(subset=["High", "Low", "Close"])

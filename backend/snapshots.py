@@ -6,7 +6,7 @@ heute. Darum hält dieser Schritt beim ersten Erkennen eines Signals fest, was d
 - Plan: Einstieg, Stop, Stop-Abstand in % und in ATR; Vormomentum (Rendite Monat −6…−1, wie die Depot-Rangfolge)
 - Marktlage (Regime, Stimmung), Region, Sektor
 - Versionen: Regel (B60), Aufbau dieser Datei (SCHEMA), Programmstand (Commit), Zeitpunkt des Scans
-- Signaltag ≠ Kauftag: „d“ ist der Signaltag (letzte Tageskerze), der Kauf (Seitwärtsphase) folgt später und wird getrennt
+- Signaltag ≠ Kauftag: „d“ ist der Signaltag (letzte Tageskerze), der Kauf (Konsolidierung) folgt später und wird getrennt
   unter „buy“ nachgetragen, das Ergebnis unter „exit“. Der Block „sig“ wird danach NIE wieder verändert.
 - Spät erkannt: Fällt der Scan aus und sieht ein Signal erst Tage später, steht das in „late“ (Handelstage zwischen
   Signaltag und Scan). Alte Signale werden nie mit heutigen Werten nachgefüllt – ohne Momentaufnahme bleibt es ohne.
@@ -158,8 +158,8 @@ def excursion(df: pd.DataFrame | None, d: str, e: float, sl: float, end: str) ->
 
 def track(snaps: dict, sig: list[dict], today: str, data: dict | None = None, market: dict | None = None) -> None:
     """Lebenslauf nach Regel B60 (st60 aus live.py) nachtragen – nur „stage“/„buy“/„exit“, nie den Block „sig“.
-    stage: signal (wartet auf Seitwärtsphase) → gekauft (Seitwärtsphase fertig, Kauf ausgeführt) → beendet
-           bzw. kein_einstieg (keine Seitwärtsphase / gescheitert)."""
+    stage: signal (wartet auf Konsolidierung) → gekauft (Konsolidierung fertig, Kauf ausgeführt) → beendet
+           bzw. kein_einstieg (keine Konsolidierung / gescheitert)."""
     by = {f"{s['t']}|{s['k']}|{s['d']}": s for s in sig}
     tone = ((market or {}).get("regime") or {}).get("tone")
     for key, sn in snaps.items():

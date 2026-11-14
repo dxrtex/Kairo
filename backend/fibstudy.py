@@ -3,7 +3,7 @@
 Grundlage: Signal-Dateien des Bilanz-Backtests (`python -m backend.bilanz --px-base`, mit KAIRO_PX_HOLD=75), die je Signal
 die Fibonacci-Messwerte am Signaltag (f.fib: Retracement, Impuls, in der Zone, Unterstützung) und den Kursverlauf danach
 mitbringen. Jeder Trade wird exakt wie live gespielt (backend/rule.py, Version B60): bis zu 10 Tage auf die
-Seitwärtsphase warten, Kauf zur Eröffnung, Stop = Basis-Tief − 0,25 ATR, ab Tag 10 Ausstieg bei Schluss unter der
+Konsolidierung warten, Kauf zur Eröffnung, Stop = Basis-Tief − 0,25 ATR, ab Tag 10 Ausstieg bei Schluss unter der
 EMA 20 (Verkauf zur nächsten Eröffnung), spätestens Tag 60. Ergebnis netto in R (nach Spread und Gebühr, Aktie ohne Hebel).
 
 Fragen:

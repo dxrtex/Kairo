@@ -1,7 +1,7 @@
 """Die Kairo-Regel an EINER Stelle (Version B60) – Live-Bilanz, Mitteilungen und Tests lesen von hier.
 
 Getestet 2008–2026 (research/strategy_championship, S01-B-Basis, Forschung v2.5):
-Treffer (11/11) → bis zu 10 Handelstage auf eine Seitwärtsphase warten (5 Kerzen, Spanne ≤ 1,5 ATR des Signaltags,
+Treffer (11/11) → bis zu 10 Handelstage auf eine Konsolidierung warten (5 Kerzen, Spanne ≤ 1,5 ATR des Signaltags,
 Tief der 10 Tage bis zum Signal hält) → Kauf zur nächsten Eröffnung innerhalb der Spanne → Stop = Basis-Tief − 0,25 ATR
 (Risiko 0,5–3 ATR) → Ausstieg: Stop, ab Tag 10 Tagesschluss unter der EMA 20 zur nächsten Eröffnung, spätestens Tag 60.
 1 % Risiko je Trade, höchstens 5 gleichzeitig; bei mehr Kandidaten zuerst schwächeres Vormomentum.

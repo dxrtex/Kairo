@@ -436,7 +436,7 @@ GRADE = grade.load()
 
 def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bool, near_all: list[dict] | None = None) -> dict:
     """4H-Top-Setup für die App und die Mitteilungen: Status jedes Kairo-Treffers der letzten Wochen
-    (wartet auf Seitwärtsphase → wartet auf 4H → bestätigt → läuft / verfallen) und Setup-Zustand der Kandidaten.
+    (wartet auf Konsolidierung → wartet auf 4H → bestätigt → läuft / verfallen) und Setup-Zustand der Kandidaten.
     Zur Auswahl laufen auch 10/11 und 9/11 durch dieselbe Prüfung (Stufe grp, keine Mitteilung, getrennt gezählt)."""
     now = datetime.now(timezone.utc)
     nsig = [x for x in state.load("h4near.json", []) if x["d"] >= (pd.Timestamp(today) - timedelta(days=95)).strftime("%Y-%m-%d")]
@@ -463,7 +463,7 @@ def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bo
     daily = data
     if not evening:                                   # tagsüber: laufende Tageskerze weglassen (noch nicht fertig)
         daily = {t: df[df.index.normalize() < pd.Timestamp(today)] for t, df in data.items() if t in {c["t"] for c in cands}}
-    # Stundenkerzen nur, wo die 4H-Bestätigung möglich ist (Seitwärtsphase fertig) – bei vielen Treffern sonst Hunderte Downloads
+    # Stundenkerzen nur, wo die 4H-Bestätigung möglich ist (Konsolidierung fertig) – bei vielen Treffern sonst Hunderte Downloads
     pre = h4live.build(cands, daily, {}, now, intraday=not evening)
     real = lambda it: (it.get("grp") or "11") in h4live.REAL
     need = {it["t"] for it in pre if it["st"] == "4h" and real(it)}
@@ -480,7 +480,7 @@ def h4_block(rows: list[dict], data: dict, search: dict, today: str, evening: bo
         g = it.get("grp") or "11"
         count.setdefault(g, {})[it["st"]] = count.setdefault(g, {}).get(it["st"], 0) + 1
     # 10/11 und 9/11 (nur zur Auswahl): in der App nur, was zählt – wartet auf 4H, bestätigt, läuft, kürzlich beendet
-    # im Scanner sichtbare 10/11 und 9/11: auch „wartet auf Seitwärtsphase“ und „verfallen“ zeigen
+    # im Scanner sichtbare 10/11 und 9/11: auch „wartet auf Konsolidierung“ und „verfallen“ zeigen
     items = [it for it in items if real(it) or it["st"] in ("4h", "go", "run", "sell")
              or (it["st"] in ("basis", "weg") and it["t"] in shown)
              or (it["st"] in ("stop", "zeit", "ema") and ((it.get("trade") or {}).get("xd") or "") >= cut)]
@@ -704,7 +704,7 @@ def main(argv=None) -> int:
     print(f"Kurse geladen: {len(data)}")
 
     results, stats, near = [], {"universe": len(tickers), "loaded": len(data), "errors": 0}, []
-    near_all = []                                    # alle 9/11 (auch ohne Seitwärtsphase) – für die 4H-Prüfung zur Auswahl
+    near_all = []                                    # alle 9/11 (auch ohne Konsolidierung) – für die 4H-Prüfung zur Auswahl
     search = {}
     industry_of: dict[str, str] = {}                 # Yahoo-Branche je Aktie → fehlenden Sektor ergänzen
     for t, df in data.items():
@@ -751,13 +751,13 @@ def main(argv=None) -> int:
             near_all.append({"t": t, "n": (m.get("name") or t)[:40], "d": res.date})
         if res.passed or res.fast_hit or m.get("in_watchlist") or tr_hit:
             results.append((t, df, res))
-        elif res.near_hit:                           # 9/11: nur mit enger Seitwärtsphase (sonst ~900 Aktien) – siehe unten
+        elif res.near_hit:                           # 9/11: nur mit enger Konsolidierung (sonst ~900 Aktien) – siehe unten
             su = h4live.setup_now(df, None)
             if su and su.get("b"):
                 near.append((su.get("br") or 9, t, df, res))
-    near.sort(key=lambda x: x[0])                    # 9/11 mit dem saubersten Setup: engste Seitwärtsphase zuerst, höchstens 250
+    near.sort(key=lambda x: x[0])                    # 9/11 mit dem saubersten Setup: engste Konsolidierung zuerst, höchstens 250
     results += [(t, df, res) for _, t, df, res in near[:NEAR_MAX]]
-    print(f"9/11: {len(near)} mit Seitwärtsphase, {min(len(near), NEAR_MAX)} in der Liste")
+    print(f"9/11: {len(near)} mit Konsolidierung, {min(len(near), NEAR_MAX)} in der Liste")
     # Earnings-Termin, Name und Sektor nur für Treffer/Fast-Treffer abfragen (eine Anfrage je Aktie)
     infos = yf.infos([t for t, _, _ in results])
     # Stammdaten-Cache (Zustands-Branch): blockt Yahoo die Einzelabfragen, gelten die Daten vom letzten erfolgreichen Abruf
@@ -996,7 +996,7 @@ def main(argv=None) -> int:
         except Exception as exc:
             print(f"Live-Bilanz: Fehler {exc!r}")
             bil = {"live": None, "signals": [], "backtest": None}
-        try:                                          # 4H-Top-Setup: Treffer → Seitwärtsphase → 4H-Bestätigung (backend/h4live.py)
+        try:                                          # 4H-Top-Setup: Treffer → Konsolidierung → 4H-Bestätigung (backend/h4live.py)
             h4 = h4_block(rows, data, search, today_iso, evening, near_all)
             print(f"4H-Top-Setup: {len(h4['items'])} Treffer verfolgt – " + ", ".join(f"{k} {v}" for k, v in h4["count"].items()))
         except Exception as exc:

@@ -2,7 +2,7 @@
 2 Jahren einen Kairo-Treffer (11/11), und was hätte die gültige Regel B60 daraus gemacht (Netto-R)?
 
 Nur Aufzeichnung für die Anzeige im Chart – die Regel selbst kommt unverändert aus scanner.evaluate (Treffer) und
-live.strat mit RULE60 (Seitwärtsphase abwarten, Kauf, Stop, Ausstieg EMA 20 ab Tag 10, spätestens Tag 60).
+live.strat mit RULE60 (Konsolidierung abwarten, Kauf, Stop, Ausstieg EMA 20 ab Tag 10, spätestens Tag 60).
 
   python -m backend.sighist --shard k --shards 16 --tickers tickers.txt   → sig_part_k.json
   python -m backend.sighist --combine parts --prev alt/sighist.json        → site/data/sighist.json

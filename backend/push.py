@@ -280,7 +280,7 @@ def _h4_base() -> dict:
 
 
 def ready_messages(today: str, sent: dict, base: dict | None = None) -> list[dict]:
-    """Regel B60: Kairo-Treffer (USA/Europa/Asien), deren Seitwärtsphase fertig ist → Kauf zur nächsten Eröffnung. Eine Sammel-
+    """Regel B60: Kairo-Treffer (USA/Europa/Asien), deren Konsolidierung fertig ist → Kauf zur nächsten Eröffnung. Eine Sammel-
     Mitteilung je Abendscan, geordnet wie in der App (schwächeres Vormomentum zuerst). Review 2: kaufbereit nur aus der Basis."""
     base = base if base is not None else _h4_base()
     tested = lambda it: (it.get("r") or ("us" if "." not in it["t"] or it["t"].endswith(".TO") else "")) in ("us", "europe", "asia")   # Kaufbereit-Mitteilung: wie im Scanner auch Asien (seit 02.11.2026)
@@ -295,7 +295,7 @@ def ready_messages(today: str, sent: dict, base: dict | None = None) -> list[dic
     ready.sort(key=lambda it: it.get("mom") if it.get("mom") is not None else 9)
     names = ", ".join(f"{k + 1}. {(it.get('n') or it['t'])[:22]}" for k, it in enumerate(ready[:6])) + (" …" if len(ready) > 6 else "")
     return [{"_key": key, "title": f"🟢 Kaufbereit: {len(ready)} Kairo-Treffer",
-             "body": f"Seitwärtsphase fertig – Kauf zur nächsten Eröffnung, nur innerhalb der Spanne. {names}. Stop und Stückzahl im Scanner.",
+             "body": f"Konsolidierung fertig – Kauf zur nächsten Eröffnung, nur innerhalb der Spanne. {names}. Stop und Stückzahl im Scanner.",
              "url": APP + "?sec=scanner", "tag": "kairo-ready"}]
 
 
@@ -323,7 +323,7 @@ def h4_messages(items: list[dict], today: str, sent: dict, rk: float | None) -> 
                 if b.get("pending") and it["st"] == "go" else "")
         qty = (f" · bei {rk:.0f} € Risiko ≈ {int(rk / dist)} Aktien" if rk and cur == "EUR" else f" · Risiko je Aktie {_num(dist)} {cur}") + " – Turbo-Stückzahl im Einstieg"
         out.append({"title": f"✅ 4H bestätigt: {n} – Einstieg",
-                    "body": f"{'Fast-Treffer (nur MBI-Abklingen fehlt, getrennt gezählt)' if it.get('soft') else 'Kairo-Treffer'} + Seitwärtsphase + 4H (RSI, MACD, MBI, Strukturbruch). Kauf jetzt bzw. zur nächsten Eröffnung "
+                    "body": f"{'Fast-Treffer (nur MBI-Abklingen fehlt, getrennt gezählt)' if it.get('soft') else 'Kairo-Treffer'} + Konsolidierung + 4H (RSI, MACD, MBI, Strukturbruch). Kauf jetzt bzw. zur nächsten Eröffnung "
                             f"(~{_num(px)} {cur}). Stop {_num(sl)} {cur} ({_pct(dist / px)} Abstand){qty}. Verkauf ab Tag 10 bei Schluss unter der EMA 20, "
                             f"spätestens Tag 40 – Kairo meldet sich.{gate}",
                     "url": APP + f"?sec=entry&t={it['t']}", "tag": "kairo-h4"})
@@ -367,7 +367,7 @@ def watch_messages(today: str, rows: list[dict] | None = None) -> list[dict]:
         t = r["ticker"]
         if v == 2:
             out.append({"_n": n, "title": f"⭐ Treffer aus deiner Watchlist: {n}",
-                        "body": "Alle 11 Kriterien im Tageschart erfüllt. Noch nicht kaufen: erst die Seitwärtsphase abwarten (bis 10 Tage) – "
+                        "body": "Alle 11 Kriterien im Tageschart erfüllt. Noch nicht kaufen: erst die Konsolidierung abwarten (bis 10 Tage) – "
                                 "dann steht die Aktie in der App als „kaufbereit“ (Kauf zur nächsten Eröffnung).",
                         "url": APP + f"?sec=entry&t={t}", "tag": "kairo-watch"})
         else:

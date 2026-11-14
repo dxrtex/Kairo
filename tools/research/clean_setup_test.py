@@ -1,4 +1,4 @@
-"""Saubere Setups messbar machen: Merkmale der Seitwärtsphase bzw. des Abverkaufs am Kauftag vs. Ergebnis (R netto).
+"""Saubere Setups messbar machen: Merkmale der Konsolidierung bzw. des Abverkaufs am Kauftag vs. Ergebnis (R netto).
 
 Vorab festgelegt (28.10.2026): Ein Merkmal besteht, wenn das „sauberste“ Fünftel in Train, Validierung UND Holdout ein
 höheres Ø R hat als die übrigen vier Fünftel und gepoolt (Validierung+Holdout) Permutations-p ≤ 0,05/Anzahl Merkmale.

@@ -2,7 +2,7 @@
 
 10-Jahres-Stichproben (kurz-*-Artefakte): volle Treffer, Fast-Treffer (genau ein Kriterium fehlt, mit Angabe welches)
 und zufällige Vergleichstage mit Anzahl erfüllter Kriterien (≥ 9/11, ≤ 8/11). Alle mit denselben Regeln wie die
-Strategie (Kauf in der 5-Tage-Seitwärtsphase, Stop, 20 Tage), netto in R; Depot wie die Studie (1 % Risiko, 5 Plätze,
+Strategie (Kauf in der 5-Tage-Konsolidierung, Stop, 20 Tage), netto in R; Depot wie die Studie (1 % Risiko, 5 Plätze,
 kleinster Hebel, ruhigste zuerst). Lernjahre bis 2023 und Prüfjahre 2024–26 getrennt.
 
     python -m backend.nearstudy k1 k2

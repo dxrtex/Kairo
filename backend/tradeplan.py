@@ -1,7 +1,7 @@
 """Trade-Plan-Struktur je Aktie (für den Reiter „Einstieg“): Basis, Invalidierung, Stop, Widerstände.
 
 Regeln aus der Kurzfrist-Studie (backend/shortswing.py, 5 Jahre, 1.600 Aktien, netto):
-- Kairo-Reversals: am besten IN einer engen Seitwärtsphase (Basis) kaufen, nicht sofort beim Signal.
+- Kairo-Reversals: am besten IN einer engen Konsolidierung (Basis) kaufen, nicht sofort beim Signal.
   Basis genau wie getestet: Kairo = die letzten 5 Handelstage in einer Spanne von höchstens 1,5 ATR;
   Trend-Rücksetzer = die letzten 3 Handelstage in höchstens 2,5 ATR (keine ungetesteten Ersatz-Basen).
 - Stop = Tief der Basis − 0,25 ATR. Ohne Basis: Tief der letzten 10 Tage − 0,25 ATR (vorläufig, „keine Basis“).

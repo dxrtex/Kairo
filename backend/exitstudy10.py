@@ -1,7 +1,7 @@
 """Ausstieg über 10 Jahre (Tageschart): Tag 20 gegen „unter die EMA schließen“ und Verwandte.
 
 Gegenprobe zum 4H-Ausstiegs-Test (h4study --exits, nur ~3 Jahre): dieselben Kairo-Treffer der beiden 10-Jahres-Stichproben
-(kurz-*-Artefakte), Kauf in der Seitwärtsphase wie live, nur die Ausstiegsregel variiert. Netto je Trade (Aktie) in R,
+(kurz-*-Artefakte), Kauf in der Konsolidierung wie live, nur die Ausstiegsregel variiert. Netto je Trade (Aktie) in R,
 getrennt nach Lernjahren (bis 2023) und Prüfjahren (2024–26), dazu das Depot wie die Strategie (3.000 €, 0,99 € je Order,
 5 Plätze, 1 % Risiko, kleinster passender Hebel, ruhigste zuerst; Median aus 7 Reihenfolgen).
 

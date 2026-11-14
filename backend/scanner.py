@@ -72,7 +72,7 @@ class Result:
     @property
     def mbi_soft(self) -> bool:
         """10/11, nur das Abklingen beim MBI fehlt: grünes X ≤ 15 Kerzen, rote Spitze über der Linie, Rot aber noch über
-        70 % der Spitze (höchstens 100 %). Feinregel-Test Okt. 2026 (h4study --finerules): mit Seitwärtsphase + 4H
+        70 % der Spitze (höchstens 100 %). Feinregel-Test Okt. 2026 (h4study --finerules): mit Konsolidierung + 4H
         ≈ +0,32 / +0,75 R je Trade, so gut wie volle Treffer (+0,39 / +0,53 R) – darf deshalb ins 4H-Setup (getrennt gezählt)."""
         if not self.fast_hit or self.missing[0].key != "mbi":
             return False

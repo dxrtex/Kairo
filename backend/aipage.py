@@ -22,7 +22,7 @@ PAPER = "https://raw.githubusercontent.com/dxrtex/Kairo/paper-data/summary.json"
 REG = {"us": "USA", "europe": "Europa", "asia": "Asien"}
 
 SECTIONS = [
-    ("Heute", "Startseite: „Heute zu tun“ (Kaufkandidaten mit fertiger Seitwärtsphase, Verkaufstage, Stops), Top-Setups, "
+    ("Heute", "Startseite: „Heute zu tun“ (Kaufkandidaten mit fertiger Konsolidierung, Verkaufstage, Stops), Top-Setups, "
               "eigene Aktien, ETF-Ampel, Kairo-Bilanz, Quartalszahlen eigener Aktien."),
     ("ETF", "Kernanlage: Ampel für den SPDR MSCI ACWI IMI (SPYI) – Sparplan läuft immer, die Ampel sagt nur, wann Extra-Geld investiert wird."),
     ("Scanner", "Täglicher Scan von rund 6.000 Aktien (USA, Europa, Asien) nach 11 festen Kriterien; Listen Treffer / Beobachten / Meine; "
@@ -55,18 +55,18 @@ def _pct(v, d=0) -> str:
 
 
 def _status(r: dict, h4: dict) -> str:
-    """Wie die App (kSt, Regel B60): kaufbereit nur aus der Seitwärtsphase (base.pending) – nicht aus alten 4H-Zuständen."""
+    """Wie die App (kSt, Regel B60): kaufbereit nur aus der Konsolidierung (base.pending) – nicht aus alten 4H-Zuständen."""
     it = h4.get(r.get("ticker")) or {}
     st, b = it.get("st"), it.get("base") or {}
     if b.get("pending") and b.get("lo") is not None:
-        return "kaufbereit (Seitwärtsphase fertig)"
+        return "kaufbereit (Konsolidierung fertig)"
     if b.get("ed"):
         return f"Einstieg vorbei (Kauf war am {b.get('ed')})"
     if st == "weg":
         return "verfallen"
     if st == "basis":
-        return f"wartet auf Seitwärtsphase (Tag {it.get('day', '?')} von 10)"
-    return "wartet auf Seitwärtsphase" if it else "neu – Seitwärtsphase wird ab morgen geprüft"
+        return f"wartet auf Konsolidierung (Tag {it.get('day', '?')} von 10)"
+    return "wartet auf Konsolidierung" if it else "neu – Konsolidierung wird ab morgen geprüft"
 
 
 def render(today: str | None = None, paper: list | None = None) -> str:
@@ -75,7 +75,7 @@ def render(today: str | None = None, paper: list | None = None) -> str:
     h4 = {x.get("t"): x for x in ((_load("h4.json") or {}).get("items") or [])}
     spl = {x.get("t"): x.get("pl") or {} for x in ((_load("search.json") or {}).get("rows") or []) if x.get("pl")}
 
-    def stop_of(t):                                   # wie die App: Seitwärtsphase nach dem Treffer, sonst aktuelle Kursstruktur
+    def stop_of(t):                                   # wie die App: Konsolidierung nach dem Treffer, sonst aktuelle Kursstruktur
         b = (h4.get(t) or {}).get("base") or {}
         return b.get("sl") if b.get("lo") is not None else (spl.get(t) or {}).get("stop")
     etf = _load("etf.json") or {}
@@ -107,9 +107,9 @@ Kairo-Trades sind der kleinere, aktive Teil.</p>
 <h2>Die Kairo-Regel (wie getestet)</h2>
 <ol><li>Treffer: alle 11 Kriterien erfüllt (u. a. Rücksetzer ≥ 20 % vom 52-Wochen-Hoch, Fibonacci-Zone 0,618–0,886, RSI-Divergenz,
 MACD dreht, Momentum-Bias-Signal, Liquidität).</li>
-<li>Einstieg: innerhalb von 10 Handelstagen nach dem Treffer bilden 5 Tage eine enge Seitwärtsphase (Spanne ≤ 1,5 ATR) → Kauf zur nächsten Eröffnung;
+<li>Einstieg: innerhalb von 10 Handelstagen nach dem Treffer bilden 5 Tage eine enge Konsolidierung (Spanne ≤ 1,5 ATR) → Kauf zur nächsten Eröffnung;
 fällt der Kurs vorher unter das Tief der 10 Tage, ist der Treffer gescheitert.</li>
-<li>Stop: Tief der Seitwärtsphase − 0,25 ATR; Risiko 0,5–3 ATR; 1 % Risiko je Trade.</li>
+<li>Stop: Tief der Konsolidierung − 0,25 ATR; Risiko 0,5–3 ATR; 1 % Risiko je Trade.</li>
 <li>Ausstieg: Stop, ab Tag 10 Tagesschluss unter der EMA 20 (Verkauf am nächsten Morgen), spätestens Tag 60. Kein festes Kursziel.</li>
 <li>Rangfolge: schwächeres Vormomentum (Rendite Monat −6 … −1) zuerst; getestet nur USA und Europa.</li></ol>
 <p class="m">Forschung 31.10.2026 (13.241 Trades 2008–2026, korrigierte Engine): Ø +0,12 R je Trade mit normalen Kosten (PRIME+), −0,03 R mit

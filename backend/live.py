@@ -22,7 +22,7 @@ DONE = ("stop", "zeit", "ema", "nobase")
 
 
 def strat(df: pd.DataFrame, idx: int, extra: dict | None = None) -> dict:
-    """Ein Kairo-Treffer nach unseren Regeln: Kauf in der Seitwärtsphase (≤ 10 Tage nach dem Signal), Stop = Basistief
+    """Ein Kairo-Treffer nach unseren Regeln: Kauf in der Konsolidierung (≤ 10 Tage nach dem Signal), Stop = Basistief
     − 0,25 ATR, Verkauf am Stop oder zum Schluss von Tag 20. Wie in der 10-Jahres-Studie (shortswing.simulate), netto in R.
     Ergebnis: res = wait (Basis noch offen) · nobase (keine Basis/gescheitert) · run (läuft) · stop · zeit; r = Netto-R."""
     c0 = float(df["Close"].iloc[idx])

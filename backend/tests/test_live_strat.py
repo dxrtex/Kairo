@@ -1,4 +1,4 @@
-"""Live-Bilanz nach der Strategie: Kauf in der Seitwärtsphase, Stop = Basistief − 0,25 ATR, Verkauf an Tag 20."""
+"""Live-Bilanz nach der Strategie: Kauf in der Konsolidierung, Stop = Basistief − 0,25 ATR, Verkauf an Tag 20."""
 
 import numpy as np
 import pandas as pd
