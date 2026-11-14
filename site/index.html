@@ -2477,6 +2477,18 @@ html .hcard.mkt .sec-line { gap: 4px 14px; }
 /* Waagrecht scrollende Chip-Leisten: weicher Rand rechts zeigt „hier geht es weiter“ */
 .scr-pre, .ins-tg { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); padding-right: 28px; }
 @media (min-width: 1100px) { .ins-tg { -webkit-mask-image: none; mask-image: none; padding-right: 0; } }
+/* News: Deine Positionen gesondert oben (Wunsch 14.11.2026) */
+.nr-sec { display: flex; align-items: baseline; gap: 10px; margin: 14px 4px 8px; }
+.nr-sec b { font-size: 15px; font-weight: 700; } .nr-sec span { font-size: 12.5px; color: var(--muted); }
+.nr-list.nr-pin { box-shadow: inset 3px 0 0 var(--pf-on); border-radius: 14px; }
+.nr-depbox > b { display: flex; align-items: baseline; justify-content: space-between; } .nr-depbox > b .hlink { font-size: 13px; font-weight: 600; }
+/* Chart-Cockpit (Wunsch 14.11.2026): Raster im Vollbild, einzelner Chart groß mit Rückweg */
+#mcRoot.mc-fs { position: fixed; inset: 0; z-index: 75; margin: 0; border: 0; border-radius: 0; min-height: 0; cursor: default; display: flex; flex-direction: column; background: var(--bg, #000);
+  padding: calc(env(safe-area-inset-top) + 10px) calc(env(safe-area-inset-right) + 12px) calc(env(safe-area-inset-bottom) + 10px) calc(env(safe-area-inset-left) + 12px); }
+#mcRoot.mc-fs .mc-g { flex: 1; height: auto; min-height: 0; }
+@media (max-width: 700px) { #mcRoot.mc-fs .mc-g { overflow-y: auto; } }
+.ct-back { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; } .ct-back svg { width: 17px; height: 17px; }
+.ctab.fs .ct-back { margin-left: auto; } .ctab.fs .ct-back + .ct-close { margin-left: 8px; }
 </style>
 </head>
 <body>
@@ -4720,6 +4732,18 @@ document.addEventListener("click", e => {
   if (t.closest("[data-spall]")) { state.spAll = !state.spAll; save(); render(); return; }
   const so = t.closest("[data-spopen]"); if (so) { openSpDrill(so.dataset.spopen); return; }
 });
+// Neueste Meldung je Position (Depot + laufende Trades), höchstens 5 – oben im Überblick und in den Marktmeldungen
+function depNewsHtml(row, msOf, nameOf) {
+  const dep = depotTickers(); plansLoad().forEach(p => p.st === "open" && dep.add(p.t)); if (!dep.size) return "";
+  const bj = jsonData["briefing.json"], now = Date.now(), by = {};
+  const add = (t, n) => { if (!n.t || !n.ms || now - n.ms > 3 * 864e5 || !newsRelevant(n) || NEWS_JUNK.test(String(n.t))) return; (by[t] = by[t] || []).push(n); };
+  if (bj && bj.stocks) Object.entries(bj.stocks).forEach(([t, l]) => dep.has(t) && l.forEach(n => add(t, { ...n, nm: nameOf(t), ms: msOf(n.d) })));
+  Object.entries(NEWS.co || {}).forEach(([t, l]) => dep.has(t) && l.forEach(n => add(t, { t: n.headline, u: n.url, p: n.source, ms: n.datetime * 1000, nm: nameOf(t), s: 0 })));
+  (data.results || []).forEach(r => dep.has(r.ticker) && r.senti && r.senti.news && r.senti.news.forEach(n => add(r.ticker, { ...n, nm: r.name || r.ticker, ms: msOf(n.d) })));
+  const top = Object.values(by).map(l => l.sort((a, b) => (!!b.s - !!a.s) || b.ms - a.ms)[0]).sort((a, b) => b.ms - a.ms).slice(0, 5);
+  if (!top.length) return "";
+  return `<div class="bf-s nr-depbox"><b>Deine Positionen <button class="hlink" data-feedmode="mine">alle Meldungen ›</button></b><div class="bf-l">${top.map(row).join("")}</div></div>`;
+}
 function marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf) {
   if (!calData) loadCalendar();
   if (!earnData) loadEarnings();
@@ -4826,9 +4850,9 @@ function newsHtml() {
     const item = n => `<a class="nr-i" href="${esc(safeHref(trU(n)))}" target="_blank" rel="noopener"${n.o ? ` title="${esc(n.o)}"` : ""}>${glyph(n)}<span><b>${tag(n) ? `<u class="nr-tag">${tag(n)}</u>` : ""}${esc(n.t)}</b><em>${esc(n.p || "")}${n.ms ? " · " + esc(ago(n.ms)) : ""}${n.o ? " · übersetzt" : ""}</em></span></a>`;
     const lim = state.newsAll ? 999 : 12;
     let shownN = 0;
-    const grp = ([t, l0]) => { const r = rowOf(t) || {}, sr = byTicker(t), d1 = r.d1, open = (state.newsOpen || {})[t];
+    const grp = ([t, l0], pinned) => { const r = rowOf(t) || {}, sr = byTicker(t), d1 = r.d1, open = (state.newsOpen || {})[t];
       const l = tf ? l0.filter(n => tf === "g" ? n.s > 0 : n.s < 0) : l0; if (!l.length) return "";
-      if (shownN >= lim && !state.newsQ) return ""; shownN++;
+      if (!pinned) { if (shownN >= lim && !state.newsQ) return ""; shownN++; }
       const sc = l0.reduce((a, n) => a + (n.s || 0), 0);
       // Kairo-Einordnung: Schlagzeilen-Tendenz + Analysten + Kursbewegung heute in einem Wort (nur wenn eindeutig)
       const rk = sr && sr.senti && sr.senti.rk, an = rk === "strong_buy" || rk === "buy" ? 1 : rk === "sell" || rk === "underperform" ? -1 : 0;
@@ -4842,14 +4866,18 @@ function newsHtml() {
           <span class="nr-t">${glyph(top)}${hotT.has(t) ? '<u class="nr-tag hot">Wichtig</u>' : tag(top) ? `<u class="nr-tag">${tag(top)}</u>` : ""}${esc(top.t)}<em> · ${esc(ago(top.ms))}</em></span>
           <span class="nr-r">${vw[1] ? `<b class="ng-v ${vw[0]}">${vw[1]}</b>` : ""}${rest.length ? `<small>+${rest.length}</small>` : ""}<i class="nr-ch">›</i></span></button>
         ${open ? `<div class="nr-b">${item(top)}${rest.slice(0, 8).map(item).join("")}<button class="hlink" ${sr ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`} style="margin-top:6px">${esc(nm)} öffnen ›</button></div>` : ""}</div>`; };
-    const listHtml = groups.map(grp).join(""), more = !state.newsQ && groups.length > 12;
+    // Deine Positionen (Depot + laufende Trades) immer gesondert ganz oben – die wichtigsten Meldungen (Wunsch 14.11.2026)
+    const gDep = groups.filter(([t]) => dep.has(t)), gRest = groups.filter(([t]) => !dep.has(t));
+    const depHtml = gDep.map(g => grp(g, true)).join(""), restHtml = gRest.map(g => grp(g)).join("");
+    const listHtml = (depHtml ? `<div class="nr-sec"><b>Deine Positionen</b><span>${gDep.length} mit Meldungen · Depot und laufende Trades</span></div><div class="nr-list nr-pin">${depHtml}</div>` : "")
+      + (restHtml ? `${depHtml ? `<div class="nr-sec"><b>Watchlist & Merkliste</b><span>${gRest.length}</span></div>` : ""}<div class="nr-list">${restHtml}</div>` : ""), more = !state.newsQ && gRest.length > 12;
     const bar = `<div class="nr-bar"><div class="sp-tg">${[["", "Alle"], ["g", "▲ Positiv"], ["r", "▼ Negativ"]].map(([v, l]) => `<button class="opt${tf === v ? " on" : ""}" data-newstone="${v}">${l}</button>`).join("")}</div>
       <div class="ng-search nr-q"><input type="search" id="newsQ" placeholder="Aktie suchen …" value="${esc(state.newsQ || "")}" autocomplete="off"><button type="button" class="search-x" data-clr="newsQ" aria-label="Eingabe löschen"${state.newsQ ? "" : " hidden"}>✕</button></div></div>`;
     return head + (mine.size ? "" : `<p class="muted" style="margin:8px 2px">Lege Aktien in Merkliste, Depot oder Watchlist – dann siehst du hier ihre Meldungen.</p>`)
       + (groups.length ? `${bar}<div class="nr-cap">${groups.length} deiner Aktien mit Meldungen (7 Tage) · Wichtiges zuerst · antippen für alle Meldungen
           <details class="nr-why"><summary>Was heißt Rückenwind / Gegenwind?</summary>Kairo zählt drei Dinge zusammen: die Tendenz der Schlagzeilen der letzten 7 Tage (▲ +1, ▼ −1, höchstens ±2), das Analysten-Urteil (Kaufen +1, Verkaufen −1) und den Kurs heute (ab +2 % +1, ab −2 % −1). Ab +2 steht <b class="up">Rückenwind</b>, ab −2 <b class="down">Gegenwind</b>, dazwischen nichts. Das ist eine Stimmungs-Zusammenfassung – kein Kaufsignal und kein Teil der Kairo-Regel.</details></div>
-        <div class="nr-list">${listHtml || `<p class="muted" style="padding:14px;margin:0">Keine Meldung mit dieser Tendenz.</p>`}</div><p class="muted" id="newsQnone" hidden>Keine deiner Aktien passt zur Suche.</p>
-        ${more ? `<button class="hlink" data-nrall style="margin:10px 4px 0">${state.newsAll ? "weniger zeigen" : `alle ${groups.length} Aktien zeigen`}</button>` : ""}`
+        ${listHtml || `<div class="nr-list"><p class="muted" style="padding:14px;margin:0">Keine Meldung mit dieser Tendenz.</p></div>`}<p class="muted" id="newsQnone" hidden>Keine deiner Aktien passt zur Suche.</p>
+        ${more ? `<button class="hlink" data-nrall style="margin:10px 4px 0">${state.newsAll ? "weniger zeigen" : `alle ${gRest.length} Aktien zeigen`}</button>` : ""}`
         : block("Deine Aktien", [], "Keine neuen Meldungen zu deinen Aktien."));
   }
   if (tab === "feed") {
@@ -4860,7 +4888,7 @@ function newsHtml() {
       .map(e => `<div class="bf-r"><i class="y"></i><span><b>${esc(e.title || "Termin")}</b><em>${daysUntil(e.date) === 0 ? "Heute" : daysUntil(e.date) === 1 ? "Morgen" : dateDE(e.date)}${e.kind === "macro" && macWhen(e) ? " · " + esc(macWhen(e)) : ""}</em></span></div>`);
     if (!calData) loadCalendar();
     const reg = anaData && anaData.market && anaData.market.regime;
-    return head + (reg ? `<div class="bf-mkt" style="margin:8px 2px"><i class="${reg.tone}"></i><span>Marktampel: <b>${esc(reg.label)}</b> · Details im Überblick</span></div>` : "")
+    return head + depNewsHtml(row, msOf, nameOf) + (reg ? `<div class="bf-mkt" style="margin:8px 2px"><i class="${reg.tone}"></i><span>Marktampel: <b>${esc(reg.label)}</b> · Details im Überblick</span></div>` : "")
       + (mac.length ? block("Termine diese Woche (Zinsen, Inflation, Konjunktur, Verfall)", mac, "") : "")
       + block("Marktmeldungen · 3 Tage", pool.map(row), "Keine Marktmeldungen geladen.");
   }
@@ -8610,8 +8638,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.153";
-const APP_NEWS = [["2026.11.153", "Quartalszahlen: was danach passiert", [
+const APP_VER = "2026.11.154";
+const APP_NEWS = [["2026.11.154", "Chart-Cockpit", [
+  ["Mehrfach-Charts im Vollbild", "Alle Charts auf einmal bildschirmfüllend. „Groß öffnen“ zeigt einen Chart mit allen Werkzeugen – beim Verkleinern ist das Raster mit den anderen Charts wieder da."],
+  ["Ruhiges Verschieben", "Ziehen im Chart verschiebt nur die Zeit; die Preisachse passt sich automatisch an und verrutscht nicht mehr."],
+  ["Volumenprofil", "Ohne Beschriftungen – blau sind Großvolumen-Käufe, lila -Verkäufe. Wer zurückscrollt, sieht auch dort das Profil."],
+  ["News", "Meldungen zu deinen Positionen (Depot und laufende Trades) stehen gesondert ganz oben."]]],
+  ["2026.11.153", "Quartalszahlen: was danach passiert", [
   ["Kein Nachlaufen", "Getestet an 55.628 Meldungen: Nach der Eröffnung ist die Richtung der folgenden Tage ein Münzwurf. Kairo rät nach gelaufener Reaktion deshalb nicht mehr zum Hinterherkaufen."],
   ["Optionsmarkt", "Vor US-Terminen zeigt Kairo, welche Bewegung der Optionsmarkt erwartet – im Vergleich zur üblichen Reaktion der Aktie."]]],
   ["2026.11.152", "Ruhiger und übersichtlicher", [
@@ -11240,7 +11273,10 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
   };
   const r = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { if (!series || !chart || !on()) return;
     // fest (Wunsch 11/2026): Zeitraum ab dem Tief der Fibonacci-Welle (sonst 1 Jahr), Preisstufen aus den Kursen – unabhängig vom Bildausschnitt
-    const n = count(); if (n < 10) return; const a0 = anchor(), i1 = Math.max(0, a0 == null ? n - 252 : a0), i2 = n - 1, lastB = barAt(i2);
+    // Wer zurückscrollt, sieht auch dort ein Profil (Wunsch 14.11.2026: „wieso hört das einfach auf?“): Start = Wellen-Tief bzw. 1 Jahr,
+    // reicht der sichtbare Ausschnitt weiter zurück, ab dem ersten sichtbaren Tag. Darunter/darüber wurde im Zeitraum nicht gehandelt.
+    const n = count(); if (n < 10) return; const a0 = anchor(), vr = chart.timeScale().getVisibleLogicalRange(), fv = vr ? Math.max(0, Math.floor(vr.from)) : n;
+    const i1 = Math.max(0, Math.min(a0 == null ? n - 252 : a0, fv < n - 10 ? fv : n)), i2 = n - 1, lastB = barAt(i2);
     let pLo = Infinity, pHi = -Infinity;
     for (let i = i1; i <= i2; i++) { const b = barAt(i); if (b) { pLo = Math.min(pLo, b.low); pHi = Math.max(pHi, b.high); } }
     if (!(pHi > pLo)) return;
@@ -11273,14 +11309,16 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
       const yy = Math.min(y0, y1), hh = Math.abs(y1 - y0), gap = hh >= 3 ? .8 : hh >= 2 ? .5 : 0, h2 = Math.max(.8, hh - gap);
       x.fillStyle = `rgba(48,209,88,${a})`; x.fillRect(xr - w, yy, wu, h2);
       x.fillStyle = `rgba(255,69,58,${a})`; x.fillRect(xr - w + wu, yy, w - wu, h2);
-      const bu = W * D.bigU[k] / D.max; if (bu > .5) { x.fillStyle = `rgba(10,132,255,${inVA ? .95 : .8})`; x.fillRect(xr - bu, yy, bu, h2); } } }
+      const bu = W * D.bigU[k] / D.max; if (bu > .5) { x.fillStyle = `rgba(10,132,255,${inVA ? .95 : .8})`; x.fillRect(xr - bu, yy, bu, h2); }
+      const bd = W * D.bigD[k] / D.max; if (bd > .5) { x.fillStyle = `rgba(191,90,242,${inVA ? .9 : .75})`; x.fillRect(xr - bu - bd, yy, bd, h2); } } }
     // 3) meistgehandeltes Niveau (POC)
     const yp = Y(memo.pLo + (D.poc + .5) * step);
     if (yp != null) { const wp = W; x.strokeStyle = "rgba(255,159,10,.85)"; x.lineWidth = 1; x.setLineDash([2, 3]); x.beginPath(); x.moveTo(m.width - wp - 8, Math.round(yp) + .5); x.lineTo(m.width, Math.round(yp) + .5); x.stroke(); x.setLineDash([]);
       x.font = F1; x.textAlign = "right"; x.textBaseline = "middle"; const tx = `meistgehandelt seit ${dateAt(i1)}: ${fmt(memo.pLo + (D.poc + .5) * step)}`, tw = x.measureText(tx).width, lx = m.width - wp - 12;
       x.fillStyle = light ? "rgba(255,255,255,.92)" : "rgba(16,18,22,.86)"; x.fillRect(lx - tw - 6, Math.round(yp) - 8, tw + 10, 16); x.fillStyle = "rgb(255,159,10)"; x.fillText(tx, lx, Math.round(yp)); }
-    // 4) Beschriftung der Zonen (oben über den Kerzen gezeichnet, rechts an der Zone)
-    x.font = F1; const used = []; lbls = [];
+    // 4) keine Textschilder mehr (Wunsch 14.11.2026) – Farbe genügt: blau = Großvolumen-Käufe, lila = -Verkäufe; Details in der Kairo-Leiste
+    lbls = []; if (!state.vpLbl) return;
+    x.font = F1; const used = [];
     zs.sort((a, b) => b.share - a.share).forEach(z => { const y0 = Y(z.hi), y1 = Y(z.lo); if (y0 == null || y1 == null) return; let yc = Math.round(Math.min(y0, y1)) - 9;
       if (yc < 14) yc = Math.round(Math.max(y0, y1)) + 9; if (used.some(u => Math.abs(u - yc) < 18) || yc > m.height - 20) return; used.push(yc);
       const buy = z.kind === "buy", tx = `Big Player ${buy ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"} · Ø ${fmt(z.rv, 1)}× Vol.`;
@@ -11662,7 +11700,7 @@ function cockpitSide(h, r) {
     ${autoCardHtml(h)}${sigCardHtml(String(r.ticker).replace(/@rp$/, ""))}${r.ext ? "" : earnMiniHtml(r.ticker) + k8Html(r.ticker) + smCardHtml(r.ticker)}${fundCardHtml(String(r.ticker).replace(/@rp$/, ""))}
     <div class="cf-s"><div class="cf-h">Trade-Plan</div>${row("Kaufzone oben", p.entry, "#eceef2")}${row("Stop", p.stop, "#ff453a")}${row("K.-o. Turbo", ko, "#ff9f0a")}
       ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Seitwärtsphase.</p>` : ""}</div>
-    ${(vi => vi && clGet("vp") && (vi.buy.length || vi.sell.length) ? `<div class="cf-s"><div class="cf-h">Big Player · Großvolumen-Zonen</div>${[...vi.buy, ...vi.sell].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:${z.kind === "buy" ? "#0a84ff" : "#bf5af2"}"></i>${z.kind === "buy" ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"}, Ø ${fmt(z.rv, 1)}×</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
+    ${(vi => vi && clGet("vp") && (vi.buy.length || vi.sell.length) ? `<div class="cf-s"><div class="cf-h">Großvolumen-Zonen <small class="muted">blau Käufe · lila Verkäufe</small></div>${[...vi.buy, ...vi.sell].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:${z.kind === "buy" ? "#0a84ff" : "#bf5af2"}"></i>${z.kind === "buy" ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"}, Ø ${fmt(z.rv, 1)}×</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
       <p class="muted cf-t">Tage mit mindestens doppeltem Ø-Volumen – solche Mengen handeln meist Fonds und Banken. Kauf-Zonen wirken oft als Unterstützung. Nur zur Orientierung, keine Kairo-Regel.</p></div>` : "")(h.vpp && h.vpp.info())}
     ${M.cls && clGet("fib") ? fibList(M.cls, "#f4b740", "Fibonacci") : ""}${M.big && clGet("big", true) ? fibList(M.big, "#b07cff", "Fibonacci große Welle") : ""}
     ${M.lines.length ? `<div class="cf-s"><div class="cf-h">Unterstützungen & Widerstände</div>${M.lines.map(L => row(`${L.kind === "s" ? "Unterstützung" : "Widerstand"} · ${L.n}×`, L.p, L.kind === "s" ? "#4aa3ff" : "#ff8076")).join("")}</div>` : ""}
@@ -11676,6 +11714,7 @@ function PHONE() { return matchMedia("(max-width: 700px)").matches; }
 var ctabInd = [], ctabRO = null, ctabSeq = 0;
 function ctabDrop() {
   mcDrop();
+  if (MCH.fs && state.sec !== "chart") { MCH.fs = false; document.documentElement.classList.remove("fs-on"); }
   if (state.sec !== "chart") rpHalt();
   if (ctFocus && state.sec !== "chart") { ctFocus = null; document.documentElement.classList.remove("fs-on"); }
   if (ctabRO) { ctabRO.disconnect(); ctabRO = null; }
@@ -11736,13 +11775,14 @@ function mcTickers(n) {
 function mcDrop() { MCH.seq++; if (MCH.ro) { MCH.ro.disconnect(); MCH.ro = null; } MCH.ch.forEach(x => { try { x.chart.remove(); } catch (e) {} }); MCH.ch = []; }
 function mcRender() {
   mcDrop(); const n = state.mc, ts = mcTickers(n), tf = ["D", "W", "M"].includes(state.mcTf) ? state.mcTf : "D";
-  $("main").innerHTML = `<div class="mc"><div class="mc-bar"><b>Mehrfach-Charts</b>
+  $("main").innerHTML = `<div class="mc${MCH.fs ? " mc-fs" : ""}" id="mcRoot"><div class="mc-bar"><b>Mehrfach-Charts</b>
     <div class="ct-rg" role="group" aria-label="Aufteilung">${[1, 2, 4].map(k => `<button class="${n === k ? "on" : ""}" data-mcn="${k}" title="${k === 1 ? "Ein Chart" : k + " Charts"}" aria-label="${k} Chart${k > 1 ? "s" : ""}">${MC_IC[k]}</button>`).join("")}</div>
     <div class="ct-rg" role="group" aria-label="Zeiteinheit">${[["D", "1D"], ["W", "1W"], ["M", "1M"]].map(([v, l]) => `<button class="${tf === v ? "on" : ""}" data-mctf="${v}">${l}</button>`).join("")}</div>
     <div class="ct-rg" role="group" aria-label="Zeitraum">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["all", "Alle"]].map(([v, l]) => `<button class="${(state.mcR || "126") === v ? "on" : ""}" data-mcr="${v}">${l}</button>`).join("")}</div>
-    <button class="ct-b${state.mcLink === 0 ? "" : " on"}" data-mclink aria-pressed="${state.mcLink !== 0}" title="Zeitachse und Fadenkreuz koppeln">${IC.link} <span class="ct-lbl">Gekoppelt</span></button></div>
-    <div class="mc-g mc-${n}">${ts.map((t, i) => { const r = rowFor(t) || {}; return `<div class="mc-c" data-mci="${i}"><div class="mc-h"><button class="mc-t" data-mcpick="${i}" title="Aktie wechseln">${cfAv(t)}<span><b>${esc(String(r.name || r.n || tkClean(t)).slice(0, 26))}</b><small>${esc(tkClean(t))} ▾</small></span></button><span class="mc-px" id="mcPx${i}"></span><button class="ct-b" data-mcopen="${esc(t)}" title="Groß öffnen mit allen Werkzeugen" aria-label="Groß öffnen">${CT_IC.expand}</button></div><div class="mc-cv" id="mcCv${i}"><div class="note" style="padding:16px">Lade …</div></div></div>`; }).join("")}</div></div>`;
+    <button class="ct-b${state.mcLink === 0 ? "" : " on"}" data-mclink aria-pressed="${state.mcLink !== 0}" title="Zeitachse und Fadenkreuz koppeln">${IC.link} <span class="ct-lbl">Gekoppelt</span></button><button class="ct-b${MCH.fs ? " on" : ""}" data-mcfs title="${MCH.fs ? "Vollbild verlassen (Esc)" : "Alle Charts im Vollbild"}" aria-label="Vollbild">${MCH.fs ? CT_IC.shrink : CT_IC.expand}<span class="ct-lbl">${MCH.fs ? "Schließen" : "Vollbild"}</span></button></div>
+    <div class="mc-g mc-${n}">${ts.map((t, i) => { const r = rowFor(t) || {}; return `<div class="mc-c" data-mci="${i}"><div class="mc-h"><button class="mc-t" data-mcpick="${i}" title="Aktie wechseln">${cfAv(t)}<span><b>${esc(String(r.name || r.n || tkClean(t)).slice(0, 26))}</b><small>${esc(tkClean(t))} ▾</small></span></button><span class="mc-px" id="mcPx${i}"></span><button class="ct-b" data-mcopen="${esc(t)}" data-mcoi="${i}" title="Groß öffnen mit allen Werkzeugen – die anderen Charts bleiben" aria-label="Groß öffnen">${CT_IC.expand}</button></div><div class="mc-cv" id="mcCv${i}"><div class="note" style="padding:16px">Lade …</div></div></div>`; }).join("")}</div></div>`;
   ts.forEach((t, i) => mcLoad(t, i, tf, MCH.seq));
+  document.documentElement.classList.toggle("fs-on", !!MCH.fs);
   MCH.ro = new ResizeObserver(() => MCH.ch.forEach(x => { const el = x.el; if (el.clientWidth) x.chart.applyOptions({ width: el.clientWidth, height: el.clientHeight }); }));
   document.querySelectorAll(".mc-cv").forEach(el => MCH.ro.observe(el));
 }
@@ -11794,12 +11834,25 @@ document.addEventListener("click", e => {
   const pk = e.target.closest("[data-mcpick]"); if (pk) { e.preventDefault(); e.stopImmediatePropagation(); mcPick(pk); return; }
   const st = e.target.closest("[data-mcset]"); if (st && pop) { const i = +pop.dataset.i; state.mcT = mcTickers(4); state.mcT[i] = st.dataset.mcset; if (i === 0) state.cfLast = st.dataset.mcset; pop.hidden = true; save(); mcRender(); return; }
   if (pop && !pop.hidden && !e.target.closest("#mcPop")) pop.hidden = true;
-  const nb = e.target.closest("[data-mcn]"); if (nb) { state.mc = +nb.dataset.mcn; if (state.mc > 1 && !state.mcT && state.cfLast) state.mcT = [state.cfLast]; save(); if (state.sec === "chart") { ctabDrop(); state.mc > 1 ? mcRender() : ctabRender(); } return; }
+  const nb = e.target.closest("[data-mcn]"); if (nb) { state.mc = +nb.dataset.mcn; state.mcBack = state.mcBackI = state.mcBackFs = null; if (state.mc > 1 && !state.mcT && state.cfLast) state.mcT = [state.cfLast]; save(); if (state.sec === "chart") { ctabDrop(); state.mc > 1 ? mcRender() : ctabRender(); } return; }
   const tb = e.target.closest("[data-mctf]"); if (tb) { state.mcTf = tb.dataset.mctf; save(); mcRender(); return; }
   const rb = e.target.closest("[data-mcr]"); if (rb) { state.mcR = rb.dataset.mcr; save(); mcRender(); return; }
   if (e.target.closest("[data-mclink]")) { state.mcLink = state.mcLink === 0 ? 1 : 0; save(); mcRender(); return; }
-  const ob = e.target.closest("[data-mcopen]"); if (ob) { const t = ob.dataset.mcopen; state.mc = 1; state.cfLast = t; window.__lastChart = null; save(); mcDrop(); ctabRender(); return; }
+  if (e.target.closest("[data-mcfs]")) { MCH.fs = !MCH.fs; mcRender(); return; }
+  // Cockpit (Wunsch 14.11.2026): einen Chart groß mit allen Werkzeugen – beim Verkleinern ist das Raster mit den anderen Charts wieder da
+  const ob = e.target.closest("[data-mcopen]"); if (ob) { const t = ob.dataset.mcopen;
+    state.mcBack = state.mc; state.mcBackI = +ob.dataset.mcoi || 0; state.mcBackFs = !!MCH.fs; MCH.fs = false;
+    state.mc = 1; state.cfLast = t; window.__lastChart = null; save(); mcDrop(); ctabRender(); return; }
+  if (e.target.closest("[data-mcback]")) { mcBackGo(); return; }
 });
+// zurück ins Raster: der groß bearbeitete Chart kommt in sein Feld zurück (auch wenn dort inzwischen eine andere Aktie gewählt wurde)
+function mcBackGo() {
+  if (!(state.mcBack > 1)) return; const fs = !!state.mcBackFs, i = state.mcBackI || 0;
+  state.mcT = mcTickers(4); if (state.cfLast) state.mcT[i] = state.cfLast;
+  state.mc = state.mcBack; state.mcBack = state.mcBackI = state.mcBackFs = null; save();
+  if (ctFocus) { ctFocus = null; document.documentElement.classList.remove("fs-on"); }
+  MCH.fs = fs; ctabDrop(); mcRender();
+}
 function ctabRender() {
   if (state.mc > 1) { ctabDrop(); mcRender(); return; }
   const t = ctabPick(), box = $("ctab");
@@ -11817,6 +11870,7 @@ async function ctabLoad(t) {
   if (!c || !c.t || !r) { delete el.dataset.busy; el.innerHTML = `<div class="hcard"><div class="note">Für ${esc(tkClean(t))} gibt es noch keinen Chart.</div><button class="btn sm" data-cfquick>Andere Aktie wählen</button></div>`; return; }
   let cc = c; if (TF_INTRA.includes(state.cfTf)) { try { cc = await intraLoad(t, state.cfTf); } catch (e) { cc = c; } if (seq !== ctabSeq || state.sec !== "chart") return; } else cc = tfAgg(c, state.cfTf);
   window.__lastChart = { c: cc, r, d: c }; state.cfLast = t; save(); ctabBuild(cc, r);
+  if (state.mcBack > 1 && state.mcBackFs && !ctFocus) ctabFocus("main");
 }
 // Werkzeugleiste des Chart-Reiters (Wunsch 11/2026: „so wäre eine professionelle App nie aufgebaut“): links Ebenen-Menü
 // (gruppiert, mit Schaltern), daneben Werkzeuge als Symbole, rechts Zeitraum, Vollbild und Kairo-Leiste
@@ -11883,7 +11937,7 @@ function ctabBuild(c, r) {
   const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="Indikator groß">${CT_IC.expand}</button></div><div class="ctab-c" id="${id}"></div></div>`;
   el.innerHTML = `<div class="ct-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="ctQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="${innerWidth < 640 || innerWidth > 900 ? "Aktie suchen – Name oder Kürzel" : "Chart suchen – jede Aktie, Name oder Kürzel (z. B. Amazon, UBS, Rheinmetall)"}" aria-label="Chart suchen"><div id="ctList" class="ct-list" hidden></div></div>
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
-      <span class="st ${k.cls}">${esc(k.t)}</span><button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
+      <span class="st ${k.cls}">${esc(k.t)}</span>${state.mcBack > 1 ? `<button class="ct-b ct-back" data-mcback title="Zurück zu den ${state.mcBack} Charts" aria-label="Zurück zum Raster">${MC_IC[state.mcBack] || MC_IC[4]}<span>${state.mcBack} Charts</span></button>` : ""}<button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
       <div class="ct-right">${ctDdHtml(c.tf || "D")}<div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Setup"]].map(([v, l]) => `<button title="${v === "wave" ? "Ausschnitt der Kairo-Welle (Setup)" : "Zeitraum"}" class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
         <button class="ct-b ct-mcb" data-mcn="${innerWidth < 700 ? 2 : 4}" title="Mehrfach-Charts: ${innerWidth < 700 ? 2 : 4} Charts nebeneinander" aria-label="Mehrfach-Charts">${MC_IC[innerWidth < 700 ? 2 : 4]}</button><button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
@@ -12622,7 +12676,9 @@ document.addEventListener("click", async e => {
 });
 // Fokus/Vollbild: ein Fenster (Chart, RSI, MACD oder MBI) füllt den Bildschirm – Werkzeuge bleiben oben, Esc oder ⤡ schließt
 function ctabFocus(f) {
-  const el = $("ctab"); if (!el) return; ctFocus = f || null;
+  const el = $("ctab"); if (!el) return;
+  if (!f && ctFocus === "main" && state.mcBack > 1 && state.mcBackFs) { mcBackGo(); return; }
+  ctFocus = f || null;
   el.classList.toggle("fs", !!ctFocus); ["main", "rsi", "macd", "mbi"].forEach(k => el.classList.toggle("fs-" + k, ctFocus === k));
   document.documentElement.classList.toggle("fs-on", !!ctFocus);
   el.querySelectorAll("[data-ctfocus]").forEach(b => { if (b.dataset.ctfocus && b.closest(".ctab-p, .ct-right")) { const on = ctFocus === b.dataset.ctfocus; b.innerHTML = on ? CT_IC.shrink : CT_IC.expand; b.dataset.ctfocus = on ? "" : (b.closest(".ctab-p") ? b.closest(".ctab-p").dataset.pane : "main"); } });
@@ -12635,7 +12691,7 @@ document.addEventListener("click", e => {
   const ly = e.target.closest("[data-ctlayers]"); if (ly && cfChart) { ctPop = !ctPop; $("cfBar").innerHTML = ctabBarHtml(cfChart); return; }
   if (ctPop && cfChart && e.target.isConnected && !e.target.closest(".ct-pop") && !e.target.closest("[data-ctlayers]")) { /* isConnected: Schalter wurde beim Umschalten neu gezeichnet → kein Klick außerhalb */ ctPop = false; const b = $("cfBar"); if (b) b.innerHTML = ctabBarHtml(cfChart); }
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && ctFocus) ctabFocus(null); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && ctFocus) ctabFocus(null); else if (e.key === "Escape" && MCH.fs && $("mcRoot")) { MCH.fs = false; mcRender(); } });
 function openCockpit() {
   if (!window.__lastChart) return; if ($("detail").classList.contains("open")) closeDetail();
   if (state.sec === "chart") ctabRender(); else goSec("chart");
@@ -12844,7 +12900,23 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && $("chfs") 
 const chartOpts = el => ({ width: el.clientWidth, height: el.clientHeight, layout: { background: { color: "transparent" }, textColor: LC().t,
     fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" },
     grid: { vertLines: { color: LC().g }, horzLines: { color: LC().g } }, rightPriceScale: { borderColor: LC().b },
-    timeScale: { borderColor: LC().b }, crosshair: { mode: 0 }, localization: { locale: "de-DE", priceFormatter: v => fmt(v) } });
+    timeScale: { borderColor: LC().b }, crosshair: { mode: 0 }, localization: { locale: "de-DE", priceFormatter: v => fmt(v) },
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false } });
+// Verschieben im Chart (Wunsch 14.11.2026: „im Kurs zurückscrollen, ohne die Achsen zu verwenden – die Achsen haben sich trotzdem verschoben“):
+// Ziehen in der Kursfläche verschiebt nur die Zeit; die Preisachse bleibt automatisch angepasst (wie TradingView). Wer die Preisachse
+// selbst zieht (rechter Rand), schaltet die Automatik bewusst ab – das bleibt so; Doppelklick auf die Achse stellt sie zurück.
+(() => { const LW = window.LightweightCharts; if (!LW || LW.__kairoPan) return; const make = LW.createChart; LW.__kairoPan = 1;
+  LW.createChart = function (el, o) { const ch = make.call(this, el, o); try { keepAutoScale(ch, typeof el === "string" ? document.getElementById(el) : el); } catch (e) {} return ch; }; })();
+function keepAutoScale(ch, el) {
+  if (!el) return; let on = false, raf = 0;
+  const fix = () => { raf = 0; try { ch.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} };
+  el.addEventListener("pointerdown", e => { const r = el.getBoundingClientRect(); let pw = 0, th = 0;
+    try { pw = ch.priceScale("right").width(); th = ch.timeScale().height(); } catch (x) {}
+    on = e.clientX < r.right - pw - 2 && e.clientY < r.bottom - th - 2 && ch.priceScale("right").options().autoScale !== false; }, true);
+  el.addEventListener("pointermove", e => { if (on && e.buttons && !raf) raf = requestAnimationFrame(fix); }, true);
+  const end = () => { if (on) fix(); on = false; };
+  el.addEventListener("pointerup", end, true); el.addEventListener("pointercancel", end, true);
+}
 // RSI, MACD und Momentum Bias Index als eigene Fenster – für Detailseite und Chart-Reiter
 // Indikator-Fenster (Runde 13.11., wie TradingView): jedes der drei Fenster frei wählbar, Perioden einstellbar (Ebenen → Indikator-Einstellungen)
 const PANE_DEF = ["rsi", "macd", "mbi"];
