@@ -2549,6 +2549,16 @@ html .jtx .jtrades td:nth-child(3) { max-width: 0; width: 100%; overflow: hidden
 .lv-rt { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; color: var(--up); }
 .lv-rt i { width: 7px; height: 7px; border-radius: 50%; background: var(--up); animation: lvp 1.4s ease-in-out infinite; } .lv-rt.slow { color: var(--muted); font-weight: 600; }
 @keyframes lvp { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+/* Hedgefonds: Zeitraum, Einstand, Kaufzone (14.11.2026) */
+.hf-span { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0 0; }
+.hf-span div, .hf-ez div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hf-span span, .hf-ez span { font-size: 11.5px; color: var(--muted); } .hf-span b { font-size: 14px; font-variant-numeric: tabular-nums; }
+.hf-ez { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 4px 0 6px; padding: 8px 10px; border-radius: 10px; background: rgba(94,92,230,.10); }
+.hf-ez b { font-size: 13.5px; font-variant-numeric: tabular-nums; } .hf-w { margin: 0 0 8px !important; font-size: 12.5px; }
+.hf-in { white-space: nowrap; } .hf-in.up, .hf-w.up { color: var(--up); } .hf-in.down, .hf-w.down { color: var(--down); }
+.hf-c { display: flex; flex-direction: column; align-items: flex-end; margin-left: auto; padding-right: 8px; font-variant-numeric: tabular-nums; }
+.hf-c small { font-size: 10.5px; color: var(--muted); } .hf-c b { font-size: 13px; } .hf-c em { font-style: normal; font-size: 11.5px; }
+@media (max-width: 600px) { .hf-c { display: none; } }
 </style>
 </head>
 <body>
@@ -4122,7 +4132,8 @@ function spList() {
   const m = spMarket();
   const eu = (state.spReg === "eu" || state.spMode === "eu") && (m.sectors_eu || []).length;     // Europa: nur Sektoren
   const as = !eu && state.spMode === "as" && (m.assets || []).length;          // „Markt-Rad“: Anlageklassen gegen Aktien
-  const th = !as && !eu && state.spMode === "th" && (m.themes || []).length, ind = th || (!as && !eu && state.spMode === "ind" && (m.industries || []).length);
+  // USA (14.11.2026): direkt die Branchen (≈ 70, präziser als 11 Sektoren) – keine Sektor-Ebene mehr davor. Europa hat nur Sektor-ETFs.
+  const th = !as && !eu && state.spMode === "th" && (m.themes || []).length, ind = th || (!as && !eu && (m.industries || []).length);
   return { ind, th, eu, as, xs: (as ? m.assets : eu ? m.sectors_eu : th ? m.themes : ind ? m.industries : m.sectors) || [] };
 }
 function spRanked(xs, k) {
@@ -4139,18 +4150,18 @@ function sectorsHtml() {
   if (!rows.length) return "";
   const mx = Math.max(...rows.map(x => Math.abs(x.v)), 1e-4), neg = rows.some(x => x.v < 0), pos = rows.some(x => x.v > 0);
   const zero = neg && pos ? 50 : neg ? 100 : 0, span = neg && pos ? 50 : 100;
-  const all = !ind || th || state.spAll, show = all ? rows : [...rows.slice(0, 8), ...rows.slice(-4)];
+  const all = !ind || th || state.spAll, show = all ? rows : [...rows.slice(0, 10), ...rows.slice(-5)];
   const hasHist = xs.some(x => (x.rh || []).length > 3), hv = hasHist && state.spView === "hist";
   const hasRrg = xs.some(x => x.rrg), rv = hasRrg && state.spView === "rrg";
   const bar = x => { const w = Math.abs(x.v) / mx * span; return `<i class="${x.v >= 0 ? "up" : "down"}" style="left:${x.v >= 0 ? zero : zero - w}%;width:${Math.max(w, .8)}%"></i>`; };
   const mvH = x => x.mv > 0 ? `<em class="up" title="${x.mv} Plätze besser als ${k === "d1" ? "gestern" : "vor einer Woche"}">▲${x.mv}</em>` : x.mv < 0 ? `<em class="down" title="${-x.mv} Plätze schlechter">▼${-x.mv}</em>` : `<em></em>`;
-  const row = (x, i) => `${!all && i === 8 ? `<div class="sp-gap">⋯</div>` : ""}<button class="sp-r" data-spopen="${esc(x.k)}"><span class="sp-n">${esc(x.n)}${!ind && x.hot ? ' <small class="sp-hot" title="Stärkster Lauf der letzten 4 Wochen – historisch danach eher schwächer">heißgelaufen</small>' : ""}</span><span class="sp-b">${bar(x)}${neg && pos ? `<b style="left:${zero}%"></b>` : ""}</span><span class="sp-v ${x.v >= 0 ? "up" : "down"}">${sgnPct(x.v, 1)}</span>${mvH(x)}</button>`;
+  const row = (x, i) => `${!all && i === 10 ? `<div class="sp-gap">⋯</div>` : ""}<button class="sp-r" data-spopen="${esc(x.k)}"><span class="sp-n">${esc(x.n)}${!ind && x.hot ? ' <small class="sp-hot" title="Stärkster Lauf der letzten 4 Wochen – historisch danach eher schwächer">heißgelaufen</small>' : ""}</span><span class="sp-b">${bar(x)}${neg && pos ? `<b style="left:${zero}%"></b>` : ""}</span><span class="sp-v ${x.v >= 0 ? "up" : "down"}">${sgnPct(x.v, 1)}</span>${mvH(x)}</button>`;
   // Rotation: größte Rangsprünge nach oben/unten im gewählten Zeitraum
   const ups = rows.filter(x => x.mv >= 2).sort((a, b) => b.mv - a.mv).slice(0, 3), dns = rows.filter(x => x.mv <= -2).sort((a, b) => a.mv - b.mv).slice(0, 3);
   const rot = ups.length || dns.length ? `<div class="sp-rot">↻ <b>Rotation</b> ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"}: ${ups.length ? `Geld fließt in <span class="up">${ups.map(x => esc(x.n)).join(", ")}</span>` : ""}${ups.length && dns.length ? " · " : ""}${dns.length ? `raus aus <span class="down">${dns.map(x => esc(x.n)).join(", ")}</span>` : ""}</div>` : "";
   const reg = (m.sectors_eu || []).length ? `<div class="sp-seg sp-reg">${[["us", "USA"], ["eu", "Europa"]].map(([v, l]) => `<button class="${(v === "eu") === !!eu ? "on" : ""}" data-spreg="${v}">${l}</button>`).join("")}</div>` : "";
-  return `<div class="hcard sp-card"><div class="hh sp-hh"><b>Sektoren & Branchen</b>${reg}${fsBtn("sp")}</div>
-    <div class="sp-seg sp-lev">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu && (m.industries || []).length], ["th", "Themen", !eu && (m.themes || []).length], ["as", "Anlagen", !eu && (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? state.spMode === "as" && !eu : v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind && state.spMode !== "as") ? "on" : ""}" data-spmode="${v}"${ok ? "" : ` disabled title="${eu ? "nur für USA" : "kommt mit dem nächsten Abend-Scan"}"`}>${l}</button>`).join("")}</div>
+  return `<div class="hcard sp-card"><div class="hh sp-hh"><b>${eu ? "Sektoren Europa" : "Branchen"}</b>${reg}${fsBtn("sp")}</div>
+    ${eu ? "" : `<div class="sp-seg sp-lev">${[["ind", "Branchen", (m.industries || []).length], ["th", "Themen", (m.themes || []).length], ["as", "Anlagen", (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? state.spMode === "as" : v === "th" ? !!th : !th && state.spMode !== "as") ? "on" : ""}" data-spmode="${v}"${ok ? "" : ` disabled title="kommt mit dem nächsten Abend-Scan"`}>${l}</button>`).join("")}</div>`}
     <div class="sp-seg sp-view">${[["ret", "Rendite", 1], ["rrg", "Rotation", hasRrg], ["hist", "Verlauf", hasHist]].filter(o => o[2]).map(([v, l]) => `<button class="${(v === "hist" ? hv : v === "rrg" ? rv : !hv && !rv) ? "on" : ""}" data-spview="${v}">${l}</button>`).join("")}</div>
     ${hv || rv ? `<div class="sp-tg sp-per sp-dim"><span class="muted">${rv ? "Rotation rechnet mit Wochenwerten" : "Verlauf zeigt den Rang je Woche"} – Zeitraum antippen = Rendite</span>${SP_PER.map(([v, l, n]) => `<button class="opt" data-spper="${v}" data-spret="1" title="${n} – wechselt zu Rendite">${l}</button>`).join("")}</div>` : `<div class="sp-tg sp-per">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}<button class="opt sp-relb${state.spRel ? " on" : ""}" data-sprel title="Rendite minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")}">ggü. Markt</button></div>`}
     ${rv ? spRrgHtml(xs, ind) + (th ? themeTrendHtml(xs) : "") : hv ? spHistHtml(xs, ind) : `${rot}${th ? themeTrendHtml(xs) : hotHtml(ind ? [] : xs)}<div class="sp-list">${show.map(row).join("")}</div>`}
@@ -4579,7 +4590,7 @@ function fsSpHtml() {
   const lvl = as ? "Anlageklassen" : th ? "Themen" : ind ? "Branchen" : "Sektoren";
   const typ = ["improving", "leading", "weakening", "lagging"].filter(q => st[q]).map(q => `<span><i style="background:${RRG_Q[q][1]}"></i>${RRG_Q[q][0]} ≈ ${fmt(st[q].med, 0)} Wo.</span>`).join("");
   const head = `<div class="fs-ctl"><div class="sp-seg">${(m.sectors_eu || []).length ? [["us", "USA"], ["eu", "Europa"]].map(([v, l]) => `<button class="${(v === "eu") === !!eu ? "on" : ""}" data-spreg="${v}">${l}</button>`).join("") : ""}</div>
-    <div class="sp-seg">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu], ["th", "Themen", !eu], ["as", "Markt-Rad", !eu && (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? !!as : v === "th" ? !!th : v === "ind" ? !!ind && !th : !ind && !as) ? "on" : ""}" data-spmode="${v}"${ok ? "" : " disabled"}>${l}</button>`).join("")}</div>
+    ${eu ? "" : `<div class="sp-seg">${[["ind", "Branchen", 1], ["th", "Themen", 1], ["as", "Markt-Rad", (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? !!as : v === "th" ? !!th : !th && !as) ? "on" : ""}" data-spmode="${v}"${ok ? "" : " disabled"}>${l}</button>`).join("")}</div>`}
     <button class="kchip${onlyMine ? " on" : ""}" data-fsmine>★ nur mit meinen Aktien</button></div>`;
   const list = rows.filter(o => o.x.rrg);
   return `${head}
@@ -4625,7 +4636,7 @@ function fsMvHtml() {
     <p class="muted" style="font-size:13px;margin:10px 0 0">${spStamp()} · Volumen = heute gehandelt im Verhältnis zum Schnitt der 20 Tage davor. ★ = Depot/Watchlist. Spaltenkopf antippen sortiert.</p></div>`;
 }
 function fsvHtml() {
-  const k = state.fsv, t = { sp: "Sektoren & Branchen", mv: "Gewinner, Verlierer & Volumen", hm: "Heatmap" }[k];
+  const k = state.fsv, t = { sp: "Branchen", mv: "Gewinner, Verlierer & Volumen", hm: "Heatmap" }[k];
   const body = k === "sp" ? fsSpHtml() : k === "mv" ? fsMvHtml() : k === "hm" ? heatmapHtml(true) : "";
   return `<div class="fs-top"><b>${t || ""}</b><button class="cm-x" data-fsclose aria-label="Schließen">✕</button></div><div class="fs-body">${body}</div>`;
 }
@@ -5075,6 +5086,28 @@ const ACT = { neu: ["neu gekauft", "up"], auf: ["aufgestockt", "up"], ab: ["redu
 const usdAmt = v => v >= 1e9 ? `${fmt(v / 1e9, 1)} Mrd. $` : v >= 1e6 ? `${fmt(v / 1e6, 0)} Mio. $` : `${fmt(v / 1e3, 0)} Tsd. $`;
 const fundsOf = t => { const fj = getJson("funds.json"); if (!fj || !fj.by) return null; const k = tkClean(t); return fj.by[k] || fj.by[k.replace(".", "-")] || null; };
 const fundSum = t => { const fj = getJson("funds.json"); if (!fj || !fj.sum) return null; const k = tkClean(t); return fj.sum[k] || fj.sum[k.replace(".", "-")] || null; };
+// Einstand der Fonds (14.11.2026): 13F sagt nicht, WANN im Quartal gekauft wurde. Beste neutrale Schätzung = volumengewichteter
+// Durchschnittskurs (VWAP) des Quartals; Kaufzone = mittlere Hälfte des Quartalsvolumens (backend/hedgefunds.entry_zone, gleiche Rechnung hier als Ersatz).
+const hfQs = p => { const d = new Date(String(p).slice(0, 10) + "T12:00:00"); return `${d.getFullYear()}-${String(Math.floor(d.getMonth() / 3) * 3 + 1).padStart(2, "0")}-01`; };
+const hfQn = p => { const d = new Date(String(p).slice(0, 10) + "T12:00:00"); return `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()}`; };
+const hfSpan = p => `${dateDE(hfQs(p))} – ${dateDE(String(p).slice(0, 10))}`;
+function ezLocal(c, qs, qe) {
+  if (!c || !c.t || c.intra || (c.tf && c.tf !== "D")) return null; const q = [];
+  c.t.forEach((d, i) => { const k = String(d).slice(0, 10), v = c.v ? c.v[i] : 0; if (k >= qs && k <= qe && v > 0 && c.c[i] > 0) q.push([(c.h[i] + c.l[i] + c.c[i]) / 3, v, c.h[i], c.l[i]]); });
+  if (q.length < 20) return null; const tv = q.reduce((a, x) => a + x[1], 0), vw = q.reduce((a, x) => a + x[0] * x[1], 0) / tv;
+  let acc = 0, lo = null, hi = null; [...q].sort((a, b) => a[0] - b[0]).some(x => { acc += x[1]; if (lo == null && acc >= .25 * tv) lo = x[0]; if (acc >= .75 * tv) { hi = x[0]; return true; } return false; });
+  return { vw, lo, hi, ql: Math.min(...q.map(x => x[3])), qh: Math.max(...q.map(x => x[2])) };
+}
+const hfPx = (t, ez) => (LIVE.map[t] && LIVE.map[t].c) || (byTicker(t) || {}).close || (ez && ez.px) || null;
+// Einordnung des heutigen Kurses zur Kaufzone der Fonds
+function hfWhere(px, ez) {
+  if (!px || !ez || !ez.vw) return null; const d = px / ez.vw - 1;
+  if (px < ez.lo) return { d, k: "down", t: "unter der Kaufzone – die Fonds liegen im Minus" };
+  if (px <= ez.hi * 1.02) return { d, k: "up", t: "in der Kaufzone der Fonds" };
+  return { d, k: "", t: d > .25 ? "weit über dem Einstand der Fonds" : "über dem Einstand der Fonds" };
+}
+const hfZoneOf = (t, c) => { const fj = getJson("funds.json"), fs = fundSum(t); if (!fj || !fj.period || !fs || !fs.buy) return null;
+  const qs = hfQs(fj.period), qe = String(fj.period).slice(0, 10), ez = fs.ez || ezLocal(c, qs, qe); return ez ? { ...ez, qs, qe, fs } : null; };
 // Gesamtbild je Aktie: Insider-Käufe (Stärke 0–3, Verkäufe) und Fonds (kaufen vs. verkaufen) → positiv / gemischt / negativ
 function smView(t) {
   const g = insSig(t), fs = fundSum(t), ij = getJson("insider.json"), sells = ij && ij.sells ? ij.sells.filter(x => x.t === t && ageDays(x.d) <= 90).length : 0;
@@ -5093,11 +5126,17 @@ function smCardHtml(t, compact) {
   return `<div class="cf-s sm-c"><div class="cf-h">Smart Money <span class="sm-v ${v.tone[0]}">${v.tone[1]}</span></div>
     <p class="cf-t" style="margin-top:0">${esc(v.why.join(" · "))}</p>
     ${ins.length ? `<div class="sm-h">Insider · 90 Tage</div>${ins.map(x => `<div class="cf-r"><span>${esc(String(x.who || "").slice(0, 26))}${x.role ? ` <small class="muted">${esc(String(x.role).slice(0, 14))}</small>` : ""}${x.opp ? ' <small class="up">gezielt</small>' : ""}</span><b class="up">${x.val ? (x.cur === "EUR" ? usdAmt(x.val).replace("$", "€") : usdAmt(x.val)) : "–"}</b></div>`).join("")}` : ""}
-    ${fl.length ? `<div class="sm-h">Hedgefonds · Quartal ${fj && fj.period ? dateDE(fj.period) : ""}</div>${fl.map(x => `<div class="cf-r"><span>${esc(x.f)}</span><b class="${ACT[x.a][1]}">${ACT[x.a][0]}${x.chg != null && (x.a === "auf" || x.a === "ab") ? ` ${sgnPct(x.chg, 0)}` : ""}</b>${x.w ? `<em class="muted">${pct(x.w, 1)}</em>` : ""}</div>`).join("")}` : ""}
+    ${fl.length ? `<div class="sm-h">Hedgefonds · ${fj && fj.period ? `${hfQn(fj.period)} <small class="muted">(${hfSpan(fj.period)})</small>` : ""}</div>${hfEzHtml(t)}${fl.map(x => `<div class="cf-r"><span>${esc(x.f)}</span><b class="${ACT[x.a][1]}">${ACT[x.a][0]}${x.chg != null && (x.a === "auf" || x.a === "ab") ? ` ${sgnPct(x.chg, 0)}` : ""}</b>${x.w ? `<em class="muted">${pct(x.w, 1)}</em>` : ""}</div>`).join("")}` : ""}
     ${(l => l.length ? `<div class="sm-h">ARK · letzte 30 Tage</div>${l.slice(0, 3).map(x => `<div class="cf-r"><span>${esc(x.f)} <small class="muted">${dateDE(x.d)}</small></span><b class="${ARK_A[x.a][1]}">${ARK_A[x.a][0]}</b></div>`).join("")}` : "")(arkOf(t))}
     ${(l => l.length ? `<div class="sm-h">Beteiligungen über 5 %</div>${l.slice(0, 3).map(x => `<div class="cf-r"><span>${esc(String(x.f).slice(0, 30))} <small class="muted">${dateDE(x.d)}</small></span><b class="${x.act ? "up" : ""}">${x.act ? "13D aktiv" : "13G"}${x.amend ? " ⁺" : ""}</b></div>`).join("")}` : "")(stakesOf(t))}
     ${smOwnHtml(t)}
-    <p class="muted cf-t">Insider: Meldungen der letzten 90 Tage. Fonds: 13F-Meldungen sind bis zu 45 Tage alt und zeigen nur US-Positionen. Leerverkauf: Börsenmeldung, etwa alle zwei Wochen. Einordnung, kein Kaufsignal.</p></div>`;
+    <p class="muted cf-t">Insider: Meldungen der letzten 90 Tage. Fonds: 13F-Meldungen sind bis zu 45 Tage alt und zeigen nur US-Positionen; wann im Quartal gekauft wurde, steht nicht darin – der Einstand ist der volumengewichtete Durchschnittskurs des Quartals, die Kaufzone die mittlere Hälfte des Quartalsvolumens. Leerverkauf: Börsenmeldung, etwa alle zwei Wochen. Einordnung, kein Kaufsignal.</p></div>`;
+}
+function hfEzHtml(t, c) {
+  const z = hfZoneOf(t, c || (cfChart && String(cfChart.r.ticker).replace(/@rp$/, "") === t ? cfChart.c : null)); if (!z) return "";
+  const w = hfWhere(hfPx(t, z), z);
+  return `<div class="hf-ez"><div><span>geschätzter Einstand</span><b>${fmt(z.vw)}</b></div><div><span>Kaufzone</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b></div>${w ? `<div><span>Kurs heute</span><b class="${w.k}">${sgnPct(w.d, 0)}</b></div>` : ""}</div>
+    ${w ? `<p class="cf-t hf-w ${w.k}">${w.t}${clGet("hf") ? " · Kasten im Chart" : ""}</p>` : ""}`;
 }
 // Eigentümer & Leerverkäufer (14.11.): Short-Quote mit Veränderung zum Vormonat, Tage zum Eindecken, Anteil Institutionen/Insider (fund.json)
 function smOwnHtml(t) {
@@ -5151,17 +5190,29 @@ function fundsTabHtml() {
   const rows = Object.entries(fj.sum || {}).filter(([t]) => !onlyMine || mine.has(t));
   const nm = t => { const r = byTicker(t); return r ? (r.name || t) : ((fj.by[t] || [])[0] || {}).n || t; };
   const open = t => byTicker(t) ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`;
+  const ezTxt = (t, s) => { const w = s.ez && hfWhere(hfPx(t, s.ez), s.ez); return w ? ` · <span class="hf-in ${w.k}">Einstand ~${fmt(s.ez.vw)} · Kurs ${sgnPct(w.d, 0)}${w.k === "up" ? " · in der Kaufzone" : ""}</span>` : ""; };
   const line = ([t, s], up) => `<button class="bf-r" ${open(t)}><i class="${up ? "g" : "r"}"></i>${cfAv(t)}<span><b>${esc(String(nm(t)).slice(0, 34))}${mine.has(t) ? ' <span class="pill dep">Deine</span>' : ""}</b>
-      <em>${esc(tkClean(t))} · ${up ? `${s.buy} Fonds kaufen${s.new ? ` (${s.new} neu)` : ""}${s.sell ? ` · ${s.sell} verkaufen` : ""}` : `${s.sell} Fonds verkaufen${s.out ? ` (${s.out} komplett)` : ""}${s.buy ? ` · ${s.buy} kaufen` : ""}`} · ${s.n} halten</em></span>
+      <em>${esc(tkClean(t))} · ${up ? `${s.buy} Fonds kaufen${s.new ? ` (${s.new} neu)` : ""}${s.sell ? ` · ${s.sell} verkaufen` : ""}` : `${s.sell} Fonds verkaufen${s.out ? ` (${s.out} komplett)` : ""}${s.buy ? ` · ${s.buy} kaufen` : ""}`} · ${s.n} halten${up ? ezTxt(t, s) : ""}</em></span>
       <span class="bf-p ${up ? "up" : "down"}">${up ? "+" : "−"}${up ? s.buy : s.sell}</span></button>`;
+  // Neu eingestiegen: Aktien, die Fonds im Quartal erstmals gekauft haben – mit Namen der Fonds und Lage zum Einstand
+  const newT = rows.filter(([, s]) => s.new > 0).sort((a, b) => b[1].new - a[1].new || b[1].buy - a[1].buy).slice(0, state.fdNewMore ? 40 : 10);
+  const newLine = ([t, s]) => { const fs = (fj.by[t] || []).filter(x => x.a === "neu").map(x => x.f.replace(/\s*\(.*\)/, "")), w = s.ez && hfWhere(hfPx(t, s.ez), s.ez);
+    return `<button class="bf-r hf-new" ${open(t)}>${cfAv(t)}<span><b>${esc(String(nm(t)).slice(0, 34))}${mine.has(t) ? ' <span class="pill dep">Deine</span>' : ""}</b>
+      <em>${esc(tkClean(t))} · ${esc(fs.slice(0, 3).join(", "))}${fs.length > 3 ? ` +${fs.length - 3}` : ""}</em></span>
+      ${s.ez ? `<span class="hf-c"><small>Einstand</small><b>${fmt(s.ez.vw)}</b>${w ? `<em class="${w.k}">${sgnPct(w.d, 0)}</em>` : ""}</span>` : ""}<span class="bf-p up">${s.new} neu</span></button>`; };
   const lim = state.fdMore ? 40 : 12;
   const buys = rows.filter(([, s]) => s.buy > s.sell).sort((a, b) => (b[1].buy - b[1].sell) - (a[1].buy - a[1].sell) || b[1].new - a[1].new).slice(0, lim);
   const sells = rows.filter(([, s]) => s.sell > s.buy).sort((a, b) => (b[1].sell - b[1].buy) - (a[1].sell - a[1].buy) || b[1].out - a[1].out).slice(0, lim);
   const fund = f => `<details class="fd-f"><summary><span><b>${esc(f.name)}</b><small>${f.n} Positionen · ${usdAmt(f.value)} · Quartal ${dateDE(f.period)}</small></span><i class="nr-ch">›</i></summary>
-      <div class="fd-b"><div class="sm-h">Größte Positionen</div>${f.top.slice(0, 10).map(m => `<div class="cf-r"><span>${m.t ? esc(m.t) + " · " : ""}${esc(String(m.name).slice(0, 28))}</span><b>${pct(m.w, 1)}</b><em class="${ACT[m.a][1]}">${m.a === "halt" ? "" : ACT[m.a][0]}</em></div>`).join("")}
+      <div class="fd-b">${(l => l.length ? `<div class="sm-h">Neu im Depot</div>${l.slice(0, 8).map(m => `<div class="cf-r"><span>${m.t ? esc(m.t) + " · " : ""}${esc(String(m.name).slice(0, 28))}</span><b class="up">neu</b>${m.val ? `<em class="muted">${usdAmt(m.val)}</em>` : ""}</div>`).join("")}` : "")(f.moves.filter(m => m.a === "neu"))}
+      <div class="sm-h">Größte Positionen</div>${f.top.slice(0, 10).map(m => `<div class="cf-r"><span>${m.t ? esc(m.t) + " · " : ""}${esc(String(m.name).slice(0, 28))}</span><b>${pct(m.w, 1)}</b><em class="${ACT[m.a][1]}">${m.a === "halt" ? "" : ACT[m.a][0]}</em></div>`).join("")}
       ${f.moves.length ? `<div class="sm-h">Größte Bewegungen</div>${f.moves.slice(0, 12).map(m => `<div class="cf-r"><span>${m.t ? esc(m.t) + " · " : ""}${esc(String(m.name).slice(0, 28))}</span><b class="${ACT[m.a][1]}">${ACT[m.a][0]}${m.chg != null && (m.a === "auf" || m.a === "ab") ? ` ${sgnPct(m.chg, 0)}` : ""}</b>${m.val ? `<em class="muted">${usdAmt(m.val)}</em>` : ""}</div>`).join("")}` : ""}</div></details>`;
-  return `<div class="hcard"><div class="fd-top"><b>Hedgefonds · Quartal bis ${fj.period ? dateDE(fj.period) : "–"}</b><button class="opt${onlyMine ? " on" : ""}" data-fdmine>★ nur meine</button></div>
-      <div class="note" style="margin:4px 0 0">${fj.funds.length} bekannte Fonds, gelesen aus den 13F-Meldungen der SEC · Stand ${dateDE(String(fj.generated).slice(0, 10))}</div></div>
+  const lastFiled = fj.funds.map(f => f.filed).sort().pop();
+  return `<div class="hcard"><div class="fd-top"><b>Hedgefonds · ${fj.period ? hfQn(fj.period) : "–"}</b><button class="opt${onlyMine ? " on" : ""}" data-fdmine>★ nur meine</button></div>
+      ${fj.period ? `<div class="hf-span"><div><span>Gekauft zwischen</span><b>${hfSpan(fj.period)}</b></div><div><span>Gemeldet bis</span><b>${lastFiled ? dateDE(lastFiled) : "–"}</b></div><div><span>Fonds</span><b>${fj.funds.length}</b></div></div>` : ""}
+      <div class="note" style="margin:6px 0 0">Wann genau im Quartal gekauft wurde, verrät die Meldung nicht. Kairo schätzt den Einstand deshalb als volumengewichteten Durchschnittskurs des Quartals; die Kaufzone ist der Bereich, in dem die mittlere Hälfte des Quartalsvolumens gehandelt wurde. Im Chart erscheint sie als Kasten. Stand ${dateDE(String(fj.generated).slice(0, 10))}.</div></div>
+    ${newT.length ? `<div class="hcard"><div class="plan-h">Neu eingestiegen <small class="muted">erstmals gekauft in ${hfQn(fj.period)}</small></div><div class="bf-l">${newT.map(newLine).join("")}</div>
+      ${rows.filter(([, s]) => s.new > 0).length > 10 ? `<button class="hlink" data-fdnewmore style="margin-top:6px">${state.fdNewMore ? "weniger zeigen" : "alle neuen zeigen"}</button>` : ""}</div>` : ""}
     <div class="hgrid fd-grid"><div class="hcard"><div class="plan-h">Meistgekauft von den Fonds</div><div class="bf-l">${buys.map(x => line(x, true)).join("") || `<div class="bf-empty">Keine Käufe${onlyMine ? " bei deinen Aktien" : ""}.</div>`}</div></div>
       <div class="hcard"><div class="plan-h">Meistverkauft</div><div class="bf-l">${sells.map(x => line(x, false)).join("") || `<div class="bf-empty">Keine Verkäufe${onlyMine ? " bei deinen Aktien" : ""}.</div>`}</div></div></div>
     ${rows.length > 24 ? `<button class="hlink" data-fdmore style="margin:4px 2px 12px">${state.fdMore ? "weniger zeigen" : "mehr zeigen"}</button>` : ""}
@@ -5171,7 +5222,8 @@ function fundsTabHtml() {
 document.addEventListener("click", e => {
   const v = e.target.closest("[data-smview]"); if (v) { state.smView = v.dataset.smview; save(); render(); return; }
   if (e.target.closest("[data-fdmine]")) { state.fdMine = !state.fdMine; save(); render(); return; }
-  if (e.target.closest("[data-fdmore]")) { state.fdMore = !state.fdMore; save(); render(); }
+  if (e.target.closest("[data-fdmore]")) { state.fdMore = !state.fdMore; save(); render(); return; }
+  if (e.target.closest("[data-fdnewmore]")) { state.fdNewMore = !state.fdNewMore; save(); render(); }
 });
 // ---------- Quartalszahlen: Antippen im Kalender → Ergebnis, Ausblick, Kursreaktion, Einschätzung (data/earnings.json) ----------
 // Abendscan (earnings.json) + Prüfdienst tagsüber (earnings_live.json im Branch kairo-earnings, alle 10–30 Min.)
@@ -8888,8 +8940,14 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.166";
-const APP_NEWS = [["2026.11.166", "Chart live zur Börseneröffnung", [
+const APP_VER = "2026.11.167";
+const APP_NEWS = [["2026.11.167", "Branchen direkt, Fonds-Einstand im Chart", [
+  ["Branchen statt Sektoren", "Markt zeigt direkt alle Branchen (rund 70) statt erst 11 Sektoren – präziser, wohin das Geld fließt. Top 10 und Schlusslichter auf einen Blick."],
+  ["Hedgefonds: wann und zu welchem Kurs", "Zeitraum des Quartals, geschätzter Einstand (volumengewichteter Durchschnittskurs) und Kaufzone je Aktie – mit Lage des heutigen Kurses."],
+  ["Kaufzone im Chart", "Haben Fonds eine Aktie gekauft, zeigt der Chart ihre Kaufzone als Kasten im Quartal und den Einstand als gestrichelte Linie (Ebenen → Smart Money)."],
+  ["Neu eingestiegen", "Eigene Liste der Aktien, die Fonds erstmals gekauft haben – mit den Namen der Fonds."],
+  ["Volumenprofil: nur Käufe", "Die lila Verkaufs-Zonen sind weg. Blau zeigt, wo große Anleger gekauft haben – das zählt für den Einstieg."]]],
+  ["2026.11.166", "Chart live zur Börseneröffnung", [
   ["Y-Achse wieder ziehbar", "Die Preisachse lässt sich wieder mit dem Finger ziehen – Wischen in der Kursfläche verschiebt trotzdem nur die Zeit."],
   ["Live zur Eröffnung", "Ist die Börse offen, aktualisiert der Chart alle 5 Sekunden. Mit Finnhub-Schlüssel laufen US-Aktien in Echtzeit (jeder Trade) – ideal für 15:30 Uhr."],
   ["Auch Minuten-Charts und Raster", "Die laufende Kerze bewegt sich jetzt auch im 5-Minuten-, 15-Minuten- und Stunden-Chart und in den Mehrfach-Charts."]]],
@@ -11204,7 +11262,7 @@ async function openDetail(t) {
 
 // ---------- Haupt-Chart: Fibonacci als Linien, Unterstützungen/Widerstände, EMAs – alles mit Ein/Aus-Schaltern ----------
 // Ein Baustein für Detailseite und Vollbild-Cockpit; Schalter (state.cl) wirken sofort in allen offenen Charts.
-const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 0, auto: 1, sig: 1 };   // 13.11.: Volumenprofil standardmäßig aus (Übersicht)   // Auto-Analyse seit 13.11. standardmäßig an   // EMA 100 aus: weniger Linien im Standard
+const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 0, auto: 1, sig: 1, hf: 1 };   // hf: Kaufzone der Fonds (14.11.2026)   // 13.11.: Volumenprofil standardmäßig aus (Übersicht)   // Auto-Analyse seit 13.11. standardmäßig an   // EMA 100 aus: weniger Linien im Standard
 const clGet = (k, auto) => { const v = (state.cl || {})[k]; return v == null ? (k in CL_DEF ? CL_DEF[k] : auto ? 1 : 0) : v; };
 const CL_LIVE = new Set();
 const FIBQ = [[0, "Hoch"], [.382, "38,2 %"], [.5, "50 %"], [.618, "61,8 %"], [.706, "70,6 %", 1], [.786, "78,6 %", 1], [.886, "88,6 %"], [1, "Tief"]];   // betont: Kaufzone Golden Pocket
@@ -11645,7 +11703,7 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
     const lv0 = opt.levels ? opt.levels() : [], sk = `${memo.key}|${memoL ? memoL.key : ""}|${lv0.map(z => z.p.toFixed(2)).join(",")}`;
     if (!memoS || memoS.key !== sk) memoS = { key: sk, list: strongZones(D, memo.pLo, memoL, lv0, lastB && lastB.close) };
     // 1) Big-Player-Zonen als ruhige Bänder über den ganzen Chart (hinter den Kerzen)
-    const zs = [...D.buy, ...D.sell];
+    const zs = [...D.buy];   // nur Käufe (14.11.2026): Kairo sucht Einstiege – wichtig ist, wo große Anleger gekauft haben, nicht wo sie verkauft haben
     const ts = chart.timeScale(), xEnd = m.width - W - 4;
     zs.forEach(z => { const y0 = Y(z.hi), y1 = Y(z.lo); if (y0 == null || y1 == null) return; const yy = Math.min(y0, y1), hh = Math.max(2, Math.abs(y1 - y0));
       const c = z.kind === "buy" ? "10,132,255" : "191,90,242", xs = Math.max(0, Math.min(xEnd - 30, ts.logicalToCoordinate(z.first) ?? 0)); z.xs = xs;
@@ -11674,7 +11732,7 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
       x.fillStyle = `rgba(48,209,88,${a})`; x.fillRect(xr - w, yy, wu, h2);
       x.fillStyle = `rgba(255,69,58,${a})`; x.fillRect(xr - w + wu, yy, w - wu, h2);
       const bu = W * D.bigU[k] / D.max; if (bu > .5) { x.fillStyle = `rgba(10,132,255,${inVA ? .95 : .8})`; x.fillRect(xr - bu, yy, bu, h2); }
-      const bd = W * D.bigD[k] / D.max; if (bd > .5) { x.fillStyle = `rgba(191,90,242,${inVA ? .9 : .75})`; x.fillRect(xr - bu - bd, yy, bd, h2); } } }
+ } }
     // 2b) Starke Zonen: ruhiges Band über den Chart, kräftige Kante links am Profil
     memoS.list.forEach(z => { const y0 = Y(z.hi), y1 = Y(z.lo); if (y0 == null || y1 == null) return; const yy = Math.min(y0, y1), hh = Math.max(3, Math.abs(y1 - y0));
       const c = z.sup ? "48,209,88" : "255,69,58"; x.fillStyle = `rgba(${c},${light ? .10 : .09})`; x.fillRect(0, yy, xEnd, hh);
@@ -11699,7 +11757,7 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
     x.font = F1; x.textAlign = "left"; x.textBaseline = "middle";
     memoS.list.forEach(z => { if (z.yc == null) return; const tx = z.sup ? "Starke Unterstützung" : "Starker Widerstand", tw = x.measureText(tx).width, lx = 62;
       x.fillStyle = light ? "rgba(255,255,255,.9)" : "rgba(16,18,22,.82)"; x.fillRect(lx - 5, z.yc - 7, tw + 10, 14); x.fillStyle = z.sup ? "rgb(48,209,88)" : "rgb(255,69,58)"; x.fillText(tx, lx, z.yc); });
-    // 4) keine Textschilder mehr (Wunsch 14.11.2026) – Farbe genügt: blau = Großvolumen-Käufe, lila = -Verkäufe; Details in der Kairo-Leiste
+    // 4) keine Textschilder mehr (Wunsch 14.11.2026) – Farbe genügt: blau = Großvolumen-Käufe; Details in der Kairo-Leiste
     lbls = []; if (!state.vpLbl) return;
     x.font = F1; const used = [];
     zs.sort((a, b) => b.share - a.share).forEach(z => { const y0 = Y(z.hi), y1 = Y(z.lo); if (y0 == null || y1 == null) return; let yc = Math.round(Math.min(y0, y1)) - 9;
@@ -11715,6 +11773,26 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
     detached() { series = chart = null; }, update() { req && req(); }, updateAllViews() {}, paneViews: () => views,
     info: () => memo && memo.d ? { poc: memo.pLo + (memo.d.poc + .5) * memo.d.step, vah: memo.pLo + (memo.d.hi + 1) * memo.d.step, val: memo.pLo + memo.d.lo * memo.d.step,
       strong: memoS ? memoS.list : [], lvn: memo.d.lvn, nSub: memo.d.nSub, nDays: memo.d.nDays, from: dateAt(memo.i1), naked: memoN ? memoN.list.map(z => ({ ...z, d: dateAt(z.from) })) : [], buy: memo.d.buy, sell: memo.d.sell, nBig: memo.d.nBig, low: memoL ? memoL.nodes : [], lowFrom: memoL ? dateAt(memoL.from) : null } : null };
+}
+// Kaufzone der Hedgefonds: ruhiger Kasten über das gemeldete Quartal (mittlere Hälfte des Volumens), gestrichelte Linie beim geschätzten Einstand bis heute
+function hfPrimitive(h, bd) {
+  let chart = null, series = null, req = null, mi = null;
+  const F = "600 10.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+  const r = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => {
+    if (!clGet("hf") || !chart || !series) return; const z = hfZoneOf(String(h.r.ticker).replace(/@rp$/, ""), h.c); if (!z) return;
+    const d = bd(); if (!d.length) return; const key = `${d.length}|${tkey(d[0].time)}|${z.qs}`;
+    if (!mi || mi.key !== key) { let i0 = -1, i1 = -1; for (let i = 0; i < d.length; i++) { const k = tkey(d[i].time).slice(0, 10); if (k >= z.qs && i0 < 0) i0 = i; if (k <= z.qe) i1 = i; } mi = { key, i0, i1 }; }
+    if (mi.i0 < 0 || mi.i1 < mi.i0) return;
+    const ts = chart.timeScale(), c0 = ts.logicalToCoordinate(mi.i0), c1 = ts.logicalToCoordinate(mi.i1), hb = c0 != null && c1 != null && mi.i1 > mi.i0 ? (c1 - c0) / (mi.i1 - mi.i0) / 2 : 3, x0 = c0 == null ? null : c0 - hb, x1 = c1 == null ? null : c1 + hb, ya = series.priceToCoordinate(z.hi), yb = series.priceToCoordinate(z.lo), yv = series.priceToCoordinate(z.vw);
+    if (x0 == null || x1 == null || ya == null || yb == null) return; const light = isLight(), c = "94,92,230";
+    const yy = Math.min(ya, yb), hh = Math.max(2, Math.abs(yb - ya)), xa = Math.max(0, x0), xb = Math.min(m.width, x1); if (xb <= xa) return;
+    x.fillStyle = `rgba(${c},${light ? .10 : .14})`; x.fillRect(xa, yy, xb - xa, hh);
+    x.strokeStyle = `rgba(${c},.75)`; x.lineWidth = 1; x.strokeRect(Math.round(xa) + .5, Math.round(yy) + .5, Math.round(xb - xa) - 1, Math.round(hh) - 1);
+    if (yv != null) { x.setLineDash([4, 4]); x.strokeStyle = `rgba(${c},.85)`; x.beginPath(); x.moveTo(xa, Math.round(yv) + .5); x.lineTo(m.width, Math.round(yv) + .5); x.stroke(); x.setLineDash([]); }
+    if (xb - xa > 70) { x.font = F; x.textAlign = "left"; x.textBaseline = "bottom"; x.fillStyle = `rgba(${c},${light ? .95 : .9})`; x.fillText(`Fonds ${hfQn(z.qe).split(" ")[0]}`, xa + 4, yy - 2); }
+  }) };
+  return { attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; }, detached() { series = chart = null; }, update() { req && req(); }, updateAllViews() {},
+    paneViews: () => [{ zOrder: () => "bottom", renderer: () => r }] };
 }
 function gripPrimitive(get) {
   let chart = null, series = null, req = null;
@@ -11865,6 +11943,7 @@ function buildMain(el, c, r, opts) {
   let BD = null, bdAt = 0; const bd = () => { const n = performance.now(); if (!BD || n - bdAt > 40) { BD = candles.data(); bdAt = n; } return BD; };
   h.bdReset = () => { BD = null; };
   const cnt = () => bd().length, barAt = i => bd()[i], mp = measurePrimitive(barAt, cnt); candles.attachPrimitive(mp); h.mp = mp;
+  h.hfp = hfPrimitive(h, bd); candles.attachPrimitive(h.hfp);
   const vpp = profilePrimitive(barAt, cnt, i => i < T.length ? c.v[i] : (LIVE.map[r.ticker] && LIVE.map[r.ticker].v) || 0, () => !!clGet("vp"),
     () => { const w = h.M && (h.M.own ? h.M.kcls : h.M.cls); return w ? w.iL : null; }, i => { const x = T[Math.min(i, T.length - 1)]; return typeof x === "number" ? dayDE(tkey(x)) : dateDE(x); }, vpOpt(h, T, () => vpp)); candles.attachPrimitive(vpp); h.vpp = vpp;
   // „Ab Punkt“: Tipp in den Chart setzt den Startpunkt des Volumenprofils
@@ -11938,6 +12017,7 @@ function buildMain(el, c, r, opts) {
   h.legendLast = () => { if (!hov) h.legend(-1); };
   h.legend(-1);
   h.apply = () => {
+    h.hfp && h.hfp.update();
     EMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); SMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); ema.bb.forEach(x => x.applyOptions({ visible: !!clGet("bb") })); if (!!clGet("ichi") !== !!ema.ichiP && h.tab) setTimeout(indRebuild, 0); vol.applyOptions({ visible: !!clGet("vol") }); vpp.update();
     pls.forEach(x => candles.removePriceLine(x)); pls = [];
     if (clGet("plan")) [[p.entry, "Kaufzone oben", "#eceef2", 0], [p.stop, "Stop", "#ff453a", 0], [ko, "K.-o. Turbo", "#ff9f0a", 1]]
@@ -11995,7 +12075,7 @@ function clBarHtml(h) {
   const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
   return chip("fib", M.own ? "Fibonacci (eigene)" : "Fibonacci", "#f4b740", !!M.cls) + chip("big", "große Welle", "#b07cff", !!M.big, true)
     + chip("sup", `Linien ${ns}↓ ${nr}↑`, "#4aa3ff", M.lines.length > 0) + EMA_DEF.map(([k, col, l]) => chip(k, l, col)).join("")
-    + chip("vol", "Volumen", "#5d6676") + chip("vp", "Volumenprofil", "#ff9f0a") + chip("plan", "Kauf/Stop/K.-o.", "#ff453a")
+    + chip("vol", "Volumen", "#5d6676") + chip("vp", "Volumenprofil", "#ff9f0a") + chip("hf", "Fonds-Kaufzone", "#5e5ce6", !!hfZoneOf(String(h.r.ticker).replace(/@rp$/, ""), h.c)) + chip("plan", "Kauf/Stop/K.-o.", "#ff453a")
     + `<button class="cl-c cl-m${MEAS.on ? " on" : ""}" data-clm title="Zeitraum messen: Start- und Endkerze antippen">Messen</button>`
     + `<button class="cl-c cl-m${WAVE.on ? " on" : ""}" data-clw title="Eigene Fibonacci-Welle: Tief und Hoch antippen, danach mit den Griffen verschieben – Tipp daneben beendet">✎ ${M.own ? "eigene Welle" : "Welle setzen"}</button>`
     + (M.own ? `<button class="cl-c" data-clwreset title="Zurück zur Welle, die Kairo bestimmt">↺ Kairo-Welle</button>` : "");
@@ -12154,8 +12234,8 @@ function cockpitSide(h, r) {
       <p class="muted cf-t">${vi.nSub ? `Genau gerechnet aus Stundenkerzen (${vi.nSub} von ${vi.nDays} Tagen)` : `Geschätzt aus Tageskerzen${liveKey("yq") ? " – Stundenkerzen werden geladen" : " – mit dem Kairo-Kursdienst genauer aus Stundenkerzen"}`}. ${(vi.strong || []).length ? "Starke Unterstützung/starker Widerstand = viel Volumen und Fibonacci bzw. Unterstützungs-/Widerstandslinie an derselben Stelle (höchstens 2 % auseinander) – dort lohnt das genaue Hinsehen. " : ""}Grün/Rot = Anteil der Käufer/Verkäufer nach der Lage des Schlusskurses in der Kerze (Näherung, echte Orderdaten gibt es nicht kostenlos). Wertzone = Kursbereich mit 70 % des Volumens; offener POC = meistgehandelter Kurs eines Monats, den der Kurs seitdem nicht wieder erreicht hat (Kurse kehren oft dorthin zurück); Volumen-Lücke = dünn gehandelt, dort läuft der Kurs meist schnell durch.${state.vpMode === "anchor" ? ` <button class="hlink" data-vppick>Startpunkt neu wählen</button>` : ""}</p></div>` : "")(h.vpp && h.vpp.info())}
     ${(vi => vi && clGet("vp") && vi.low && vi.low.length ? `<div class="cf-s"><div class="cf-h">Volumen-Zonen darunter <small class="muted">seit ${esc(vi.lowFrom)} · grau im Profil</small></div>${vi.low.map(z => `<div class="cf-r"><span><i style="background:#8e8e93"></i>viel gehandelt${z.s >= .8 ? " · stärkste" : ""}</span><b>${fmt(z.p)}</b>${dist(z.p)}</div>`).join("")}
       <p class="muted cf-t">Kursniveaus mit hohem Volumen in den letzten 3 Jahren unter dem aktuellen Kurs – mögliche Unterstützungen, auch wenn die Welle nicht hält. Gezählt in Stück: als die Aktie billiger war, wurden für dasselbe Geld mehr Stück gehandelt – alte, tiefe Zonen wirken dadurch größer.</p></div>` : "")(h.vpp && h.vpp.info())}
-    ${(vi => vi && clGet("vp") && (vi.buy.length || vi.sell.length) ? `<div class="cf-s"><div class="cf-h">Großvolumen-Zonen <small class="muted">blau Käufe · lila Verkäufe</small></div>${[...vi.buy, ...vi.sell].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:${z.kind === "buy" ? "#0a84ff" : "#bf5af2"}"></i>${z.kind === "buy" ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"}, Ø ${fmt(z.rv, 1)}×</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
-      <p class="muted cf-t">Tage mit mindestens doppeltem Ø-Volumen – solche Mengen handeln meist Fonds und Banken. Kauf-Zonen wirken oft als Unterstützung. Nur zur Orientierung, keine Kairo-Regel.</p></div>` : "")(h.vpp && h.vpp.info())}
+    ${(vi => vi && clGet("vp") && vi.buy.length ? `<div class="cf-s"><div class="cf-h">Hier kauften große Anleger <small class="muted">blau im Chart</small></div>${[...vi.buy].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:#0a84ff"></i>${z.n} ${z.n === 1 ? "Kauftag" : "Kauftage"}, Ø ${fmt(z.rv, 1)}× Volumen</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
+      <p class="muted cf-t">Tage mit mindestens doppeltem Ø-Volumen, an denen die Käufer überwogen – solche Mengen handeln meist Fonds und Banken. Wer dort gekauft hat, verteidigt den Einstand oft: Rücksetzer in diese Zonen werden gern wieder gekauft. Verkaufs-Zonen zeigt Kairo bewusst nicht – für den Einstieg zählt, wo gekauft wurde. Nur zur Orientierung, keine Kairo-Regel.</p></div>` : "")(h.vpp && h.vpp.info())}
     ${M.cls && clGet("fib") ? fibList(M.cls, "#f4b740", "Fibonacci") : ""}${M.big && clGet("big", true) ? fibList(M.big, "#b07cff", "Fibonacci große Welle") : ""}
     ${M.lines.length ? `<div class="cf-s"><div class="cf-h">Unterstützungen & Widerstände</div>${M.lines.map(L => row(`${L.kind === "s" ? "Unterstützung" : "Widerstand"} · ${L.n}×`, L.p, L.kind === "s" ? "#4aa3ff" : "#ff8076")).join("")}</div>` : ""}
     ${r.ext ? "" : `<div class="cf-s"><div class="cf-h">Kairo-Kriterien · ${r.met ?? "–"}/${r.total ?? 11}</div><div class="cf-crit">${crit.map(x => `<span class="${x.ok ? "ok" : "no"}">${x.ok ? "✓" : "✗"} ${esc(shortCrit(x.label))}</span>`).join("")}</div></div>`}
@@ -12360,7 +12440,7 @@ function ctabBarHtml(h) {
       <div class="ct-seg"><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button><button class="ct-b" data-alc title="Alarme: alle Alarme, Kurs- und RSI-Alarm" aria-label="Alarme">${CT_IC.bell}<span class="ct-lbl">Alarm</span>${alCount() ? `<small>${alCount()}</small>` : ""}</button>${M.own ? `<button class="ct-b" data-clwreset title="Eigene Fibonacci-Welle verwerfen – zurück zur Kairo-Welle" aria-label="Kairo-Welle">${CT_IC.reset}<span class="ct-lbl">Kairo-Welle</span></button>` : ""}</div></div>
     ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, true))}
       ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.concat(SMA_DEF).map(([k, col, l]) => sw(k, l, col)).join(""))}${grp("Indikatoren", sw("bb", `Bollinger-Bänder (${IND_P().bbN}, ${IND_P().bbK})`, "#2962ff") + sw("ichi", "Ichimoku-Wolke", "#30d158"))}${grp("Indikator-Einstellungen", `<div class="ip-g">${[["rsi", "RSI-Periode"], ["stK", "Stochastik %K"], ["stD", "Stochastik %D"], ["atr", "ATR-Periode"], ["adx", "ADX-Periode"], ["bbN", "Bollinger-Periode"], ["bbK", "Bollinger-Faktor"]].map(([k, l]) => `<label><span>${l}</span><input type="number" inputmode="decimal" data-ip="${k}" value="${IND_P()[k]}" step="${k === "bbK" ? ".5" : "1"}"></label>`).join("")}</div>`)}
-      ${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa") + sw("sig", `Frühere Kairo-Signale${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")) ? ` · ${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")).length}` : ""}`, "#0a84ff", !!sigOf(h.r && String(h.r.ticker).replace(/@rp$/, ""))))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a") + (clGet("vp") ? `<div class="ct-vpm" role="group" aria-label="Bereich des Volumenprofils">${[["wave", "Welle", "ab dem Wellen-Tief"], ["anchor", "Ab Punkt", "ab einem Tag, den du antippst"], ["vis", "Sichtbar", "nur der Bildausschnitt"]].map(([v, l, t]) => `<button class="${(state.vpMode || "wave") === v ? "on" : ""}" data-vpmode="${v}" title="${t}">${l}</button>`).join("")}</div>` : ""))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
+      ${grp("Smart Money", sw("hf", "Kaufzone der Hedgefonds", "#5e5ce6", !!hfZoneOf(String(h.r.ticker).replace(/@rp$/, ""), h.c)))}${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa") + sw("sig", `Frühere Kairo-Signale${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")) ? ` · ${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")).length}` : ""}`, "#0a84ff", !!sigOf(h.r && String(h.r.ticker).replace(/@rp$/, ""))))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a") + (clGet("vp") ? `<div class="ct-vpm" role="group" aria-label="Bereich des Volumenprofils">${[["wave", "Welle", "ab dem Wellen-Tief"], ["anchor", "Ab Punkt", "ab einem Tag, den du antippst"], ["vis", "Sichtbar", "nur der Bildausschnitt"]].map(([v, l, t]) => `<button class="${(state.vpMode || "wave") === v ? "on" : ""}" data-vpmode="${v}" title="${t}">${l}</button>`).join("")}</div>` : ""))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
 }
 // Zeiteinheit und Chartart als Auswahlmenüs (wie TradingView) – spart in der Werkzeugleiste Platz für den Chart
 const TF_ALL = [["5m", "5m", "5 Minuten"], ["15m", "15m", "15 Minuten"], ["1h", "1h", "1 Stunde"], ["4h", "4h", "4 Stunden"], ["D", "1D", "1 Tag"], ["W", "1W", "1 Woche"], ["M", "1M", "1 Monat"]];
