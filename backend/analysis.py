@@ -21,6 +21,9 @@ from .config import CONFIG
 from .indicators import ema, pivot_highs, pivot_lows
 
 MARKET = (("^GSPC", "S&P 500"), ("^NDX", "Nasdaq 100"), ("^GDAXI", "DAX"), ("^STOXX", "STOXX Europe 600"), ("^N225", "Nikkei 225"), ("^VIX", "VIX"))
+# Weitere Indizes (14.11.2026) für die aufklappbare Index-Zeile der App – nicht Teil der Marktlage-Berechnung
+MARKET += (("^DJI", "Dow Jones"), ("^RUT", "Russell 2000"), ("^STOXX50E", "Euro Stoxx 50"), ("^FTSE", "FTSE 100"),
+           ("^SSMI", "SMI"), ("^FCHI", "CAC 40"), ("^HSI", "Hang Seng"), ("000001.SS", "Shanghai"), ("^KS11", "KOSPI"))
 SECTOR_ETF = {"Technology": "XLK", "Financial Services": "XLF", "Healthcare": "XLV", "Consumer Cyclical": "XLY",
               "Consumer Defensive": "XLP", "Energy": "XLE", "Industrials": "XLI", "Basic Materials": "XLB",
               "Utilities": "XLU", "Real Estate": "XLRE", "Communication Services": "XLC"}
@@ -31,7 +34,17 @@ SECTOR_DE = {"Technology": "Technologie", "Financial Services": "Finanzen", "Hea
 # Branchen-ETFs (US) für die Sektor-Ansicht der App: Kürzel → (deutscher Name, Yahoo-Branchen der Einzelaktien)
 INDUSTRY_ETF = {
     "SOXX": ("Halbleiter", ("Semiconductors", "Semiconductor Equipment & Materials")),
-    "IGV": ("Software", ("Software - Application", "Software - Infrastructure")),
+    "IGV": ("Software & IT-Dienste", ("Software - Application", "Software - Infrastructure", "Information Technology Services")),
+    # Ergänzt 14.11.2026: 39 % der Aktien hatten keine Branche (u. a. Apple, Cisco, Visa, Accenture, Eaton)
+    "XTH": ("Hardware & Elektronik", ("Consumer Electronics", "Computer Hardware", "Electronic Components",
+                                      "Scientific & Technical Instruments", "Electronics & Computer Distribution")),
+    "IGN": ("Netzwerk & Kommunikationstechnik", ("Communication Equipment",)),
+    "IPAY": ("Zahlungen & Kredit", ("Credit Services",)),
+    "GRID": ("Elektrotechnik & Stromnetz", ("Electrical Equipment & Parts",)),
+    "ICLN": ("Erneuerbare Versorger", ("Utilities - Renewable", "Utilities - Independent Power Producers")),
+    "BETZ": ("Glücksspiel & Wetten", ("Gambling",)),
+    "EVX": ("Entsorgung & Umwelt", ("Waste Management", "Pollution & Treatment Controls")),
+    "WOOD": ("Holz & Papier", ("Lumber & Wood Production", "Paper & Paper Products")),
     "FDN": ("Internet", ("Internet Content & Information", "Internet Retail")),
     "IYZ": ("Telekom", ("Telecom Services",)),
     "ESPO": ("Games & Medien", ("Electronic Gaming & Multimedia", "Entertainment")),
@@ -43,7 +56,7 @@ INDUSTRY_ETF = {
     "KRE": ("Regionalbanken", ("Banks - Regional",)),
     "KIE": ("Versicherungen", ("Insurance - Diversified", "Insurance - Life", "Insurance - Property & Casualty",
                                "Insurance - Reinsurance", "Insurance - Specialty", "Insurance Brokers")),
-    "IAI": ("Broker & Börsen", ("Capital Markets", "Financial Data & Stock Exchanges")),
+    "IAI": ("Broker, Börsen & Vermögensverwalter", ("Capital Markets", "Financial Data & Stock Exchanges", "Asset Management")),
     "ITA": ("Luftfahrt & Verteidigung", ("Aerospace & Defense",)),
     "IYT": ("Transport & Logistik", ("Railroads", "Trucking", "Integrated Freight & Logistics", "Marine Shipping")),
     "JETS": ("Airlines", ("Airlines",)),
@@ -61,7 +74,7 @@ INDUSTRY_ETF = {
     "COPX": ("Kupfer", ("Copper",)),
     "PICK": ("Metalle & Bergbau", ("Other Industrial Metals & Mining", "Steel", "Aluminum", "Other Precious Metals & Mining")),
     "XRT": ("Einzelhandel", ("Specialty Retail", "Department Stores", "Discount Stores", "Apparel Retail",
-                             "Home Improvement Retail", "Luxury Goods")),
+                             "Home Improvement Retail", "Luxury Goods", "Footwear & Accessories", "Apparel Manufacturing")),
     "PEJ": ("Freizeit & Reisen", ("Lodging", "Resorts & Casinos", "Travel Services", "Leisure", "Restaurants")),
     "CARZ": ("Autos", ("Auto Manufacturers", "Auto Parts")),
     "PBJ": ("Lebensmittel & Getränke", ("Packaged Foods", "Beverages - Non-Alcoholic", "Beverages - Brewers",
@@ -74,7 +87,9 @@ INDUSTRY_ETF = {
 # „Markt-Rad“: Anlageklassen gegen Aktien (S&P 500) – wohin Geld außerhalb der Aktien fließt. corr = Korrelation der
 # Tagesrenditen mit dem S&P 500 über 3 Monate (−1 = läuft gegenläufig, +1 = läuft mit).
 ASSET_ETF = {"GLD": "Gold", "SLV": "Silber", "TLT": "US-Staatsanleihen (20 J.)", "UUP": "US-Dollar", "USO": "Öl",
-             "DBC": "Rohstoffe", "BTC-USD": "Bitcoin", "EEM": "Schwellenländer-Aktien", "IWM": "US-Nebenwerte"}
+             "DBC": "Rohstoffe", "BTC-USD": "Bitcoin", "EEM": "Schwellenländer-Aktien", "IWM": "US-Nebenwerte",
+             "CPER": "Kupfer", "UNG": "Erdgas", "ETH-USD": "Ethereum", "HYG": "Hochzinsanleihen", "IEF": "US-Staatsanleihen (7–10 J.)",
+             "FXE": "Euro"}
 
 THEME_ETF = {
     "CIBR": ("Cybersecurity", ("CRWD", "PANW", "FTNT", "ZS", "NET", "OKTA", "CHKP", "CYBR", "S", "TENB", "QLYS", "RPD", "AKAM", "GEN", "VRNS")),
@@ -88,7 +103,55 @@ THEME_ETF = {
     "UFO": ("Raumfahrt", ("RKLB", "ASTS", "IRDM", "VSAT", "GSAT", "PL", "LUNR", "SATS", "LMT", "NOC")),
     "SLX": ("Stahl", ("NUE", "STLD", "CLF", "RS", "CMC", "MT", "TX", "VALE", "MT.AS", "TKA.DE", "SZG.DE")),
     "MOO": ("Agrar & Dünger", ("DE", "CTVA", "NTR", "CF", "MOS", "ADM", "ZTS", "TSN", "BG", "AGCO", "CNH", "FMC", "YAR.OL", "BAYN.DE")),
+    # Ergänzt 14.11.2026 (Wunsch: Themen vollständig, z. B. Neoclouds). Wo es einen passenden ETF gibt, zählt dessen Kurs;
+    # Schlüssel mit „*“ sind Kairo-Körbe ohne ETF: gleichgewichteter Index der Hauptwerte (siehe basket_frame).
+    "WGMI": ("Bitcoin-Miner", ("MARA", "RIOT", "CLSK", "CIFR", "HUT", "BTDR", "CORZ", "BITF")),
+    "FAN": ("Windkraft", ("VWS.CO", "ORSTED.CO", "NDX1.DE", "GEV", "ENR.DE", "NEE")),
+    "KWEB": ("China-Internet", ("BABA", "0700.HK", "PDD", "JD", "BIDU", "3690.HK", "1810.HK", "NTES", "TCOM")),
+    "SRVR": ("Rechenzentren & Funkmasten", ("EQIX", "DLR", "AMT", "CCI", "IRM", "SBAC")),
+    "*NEO": ("Neoclouds & KI-Rechenzentren", ("CRWV", "NBIS", "IREN", "APLD", "CIFR", "WULF", "CORZ", "GLXY", "HUT")),
+    "*QNT": ("Quantencomputer", ("IONQ", "RGTI", "QBTS", "QUBT", "ARQQ")),
+    "*OPT": ("KI-Netzwerk & Optik", ("ANET", "CIEN", "COHR", "LITE", "CLS", "CRDO", "ALAB", "AAOI", "FN", "MRVL")),
+    "*MEM": ("Speicherchips", ("MU", "SNDK", "WDC", "STX", "000660.KS", "005930.KS")),
+    "*SEQ": ("Chip-Ausrüster", ("ASML", "AMAT", "LRCX", "KLAC", "8035.T", "ASMI.AS", "BESI.AS", "AIXA.DE", "TER")),
+    "*AISW": ("KI-Software", ("PLTR", "AI", "SOUN", "BBAI", "TEM", "PATH", "NOW", "SNOW")),
+    "*CRY": ("Krypto-Aktien", ("COIN", "MSTR", "HOOD", "CRCL", "GLXY")),
+    "*EDEF": ("Rüstung Europa", ("RHM.DE", "R3NK.DE", "HAG.DE", "LDO.MI", "BA.L", "SAAB-B.ST", "HO.PA", "KOG.OL", "AM.PA")),
+    "*DRN": ("Drohnen & Verteidigungstechnik", ("AVAV", "KTOS", "ONDS", "RCAT", "DRO.AX", "UMAC")),
+    "*EVT": ("Flugtaxis (eVTOL)", ("JOBY", "ACHR", "EH", "EVTL")),
+    "*EV": ("Elektroautos", ("TSLA", "1211.HK", "RIVN", "LCID", "NIO", "XPEV", "LI")),
+    "*GLP": ("Abnehmmittel (GLP-1)", ("LLY", "NOVO-B.CO", "VKTX", "AMGN", "ZEAL.CO")),
+    "*GEN": ("Gen-Editierung", ("CRSP", "NTLA", "BEAM", "EDIT", "PRME")),
+    "*H2": ("Wasserstoff & Brennstoffzellen", ("PLUG", "BE", "BLDP", "NEL.OL", "ITM.L", "FCEL")),
+    "*LUX": ("Luxus", ("MC.PA", "RMS.PA", "KER.PA", "CFR.SW", "RACE", "MONC.MI", "BRBY.L", "TPR")),
 }
+BASKET_MIN = 3                                   # so viele Hauptwerte brauchen Kurse, sonst entfällt der Korb an diesem Tag
+
+
+def basket_frame(hist: dict, members, min_n: int = BASKET_MIN):
+    """Gleichgewichteter Index (Start 100) aus den Tagesrenditen der Hauptwerte – täglich neu gewichtet, damit spät an die
+    Börse gekommene Werte (z. B. CoreWeave 2025) ab ihrem ersten Handelstag mitzählen. Feiertage verschiedener Börsen: Kurs
+    des Vortags. Rückgabe: DataFrame mit Close (wie ein ETF) oder None. Renditen über ±60 % an einem Tag gelten als Datenfehler."""
+    cols = {t: hist[t]["Close"].dropna() for t in members if hist.get(t) is not None and len(hist[t]) > 20}
+    if len(cols) < min_n:
+        return None
+    C = pd.DataFrame(cols).sort_index().ffill()
+    R = C.pct_change(fill_method=None).where(lambda x: x.abs() < .6)
+    n = R.notna().sum(axis=1)
+    r = R.mean(axis=1).where(n >= min_n)
+    r = r[r.notna()]
+    if len(r) < 70:
+        return None
+    return pd.DataFrame({"Close": 100 * (1 + r).cumprod()})
+
+
+def theme_tickers() -> set[str]:
+    """Alles, was für Themen geladen werden muss: echte ETFs plus Hauptwerte der Kairo-Körbe."""
+    out = {k for k in THEME_ETF if not k.startswith("*")}
+    for k, (_, mem) in THEME_ETF.items():
+        if k.startswith("*"):
+            out |= set(mem)
+    return out
 # Europa (11/2026): iShares STOXX Europe 600 Sektor-ETFs (Xetra), Maßstab STOXX 600. „flt“ = welche Aktien aus dem Scan
 # (Region Europa) beim Antippen gezeigt werden – über den Sektor (sec, deutsch) oder den Branchen-ETF (ig) der Aktie.
 EU_SECTOR_ETF = {
@@ -339,12 +402,20 @@ def market_context(hist: dict[str, pd.DataFrame]) -> dict:
         out.setdefault("rrg_stats", {})["sectors_eu"] = rotation(eus, hist, bench="^STOXX")           # ohne „Heißgelaufen“: der Befund ist nur für US-Sektoren getestet
         out["sectors_eu"] = sorted(eus, key=lambda x: -(x["m1"] if x["m1"] is not None else -9))
     ths = []                                          # Themen (Cybersecurity, Cloud, KI …) mit festen Hauptwerten
+    for k0, (_, mem) in THEME_ETF.items():            # Kairo-Körbe ohne ETF: Index aus den Hauptwerten in die Kurstabelle legen
+        if k0.startswith("*") and hist.get(k0) is None:
+            bf = basket_frame(hist, mem)
+            if bf is not None:
+                hist = {**hist, k0: bf}
+            print(f"Thema {THEME_ETF[k0][0]}: {sum(1 for t in mem if hist.get(t) is not None)}/{len(mem)} Hauptwerte mit Kursen"
+                  + ("" if bf is not None else " – zu wenige, Thema entfällt"))
     for etf, (name, mem) in THEME_ETF.items():
         df = hist.get(etf)
         if df is None or len(df) < 70:
             continue
         st = trend_state(df) if len(df) >= 210 else {}
-        ths.append({"k": etf, "n": name, "mem": list(mem), "tone": st.get("tone"), "label": st.get("label"), **perf_row(df)})
+        ths.append({"k": etf, "n": name, "mem": list(mem), "tone": st.get("tone"), "label": st.get("label"), **perf_row(df),
+                    **({"bk": 1} if etf.startswith("*") else {})})
     if ths:
         rank_history(ths, hist)
         out.setdefault("rrg_stats", {})["themes"] = rotation(ths, hist)

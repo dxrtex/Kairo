@@ -2377,6 +2377,12 @@ tr.wl-sec td { padding: 14px 10px 6px !important; font-size: 11.5px; font-weight
 .fv-lg { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-top: 28px; } .fv-lg > span { display: inline-flex !important; align-items: center; } .fv-dot { flex: none; display: inline-block !important; } .fv-dot { display: inline-block; width: 10px; height: 8px; border-radius: 2px; margin-right: 4px; } .fv-dot.u { background: rgba(48,209,88,.6); } .fv-dot.f { background: rgba(255,214,10,.55); } .fv-dot.o { background: rgba(255,69,58,.5); }
 .fv-d { margin-top: 8px; font-size: 13px; } .fv-d summary { cursor: pointer; color: var(--accent); }
 .fv-r { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); } .fv-r span { display: flex; flex-direction: column; } .fv-r small { color: var(--muted); font-size: 11.5px; }
+
+/* Weitere Indizes */
+.mk-more { margin: 8px 0 2px; } .mk-more summary { cursor: pointer; font-size: 12.5px; color: var(--muted); padding: 4px 0; }
+.mk-ml { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0 18px; }
+.mk-mr { display: grid; grid-template-columns: 1fr auto 62px 72px; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.mk-mr span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; } .mk-mr b { font-variant-numeric: tabular-nums; } .mk-mr em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; } .mk-mr small { color: var(--muted); text-align: right; }
 </style>
 </head>
 <body>
@@ -3909,7 +3915,9 @@ function spStamp() {
 function spMarket() {
   const lv = mktLive(), a = (anaData && anaData.market) || {};
   const mix = k => { const base = a[k] || [], live = lv && lv[k] && lv[k].length ? lv[k] : null; if (!live) return base;
-    const by = Object.fromEntries(base.map(x => [x.k, x])); return live.map(x => ({ ...(by[x.k] || {}), ...x, ...(x.rrg ? {} : by[x.k] && by[x.k].rrg ? { rrg: by[x.k].rrg, hot: by[x.k].hot } : {}) })); };
+    const by = Object.fromEntries(base.map(x => [x.k, x])), lk = new Set(live.map(x => x.k));
+    return [...live.map(x => ({ ...(by[x.k] || {}), ...x, ...(x.rrg ? {} : by[x.k] && by[x.k].rrg ? { rrg: by[x.k].rrg, hot: by[x.k].hot } : {}) })),
+      ...base.filter(x => !lk.has(x.k))]; };   // tagsüber fehlende Einträge (z. B. neues Thema, Korb ohne Kurse) mit dem Abendstand behalten
   return { sectors: mix("sectors"), industries: mix("industries"), themes: mix("themes"), sectors_eu: mix("sectors_eu"), assets: mix("assets") };
 }
 function spList() {
@@ -4047,12 +4055,12 @@ function spDrillHtml(key) {
       <span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(r.n || r.t)}</b><em>${ow === "dep" ? '<small class="sp-own dep">Depot</small> ' : ow === "wat" ? '<small class="sp-own">★ Watchlist</small> ' : ""}${esc(tkClean ? tkClean(r.t) : r.t)}${rg === "all" && RGN[r.hr || r.r] ? ` · ${RGN[r.hr || r.r]}` : ""} · ${r.mc ? fmtCap(r.mc) : `${fmt(r.c)} ${esc(r.cur || "")}`}${r.mc && capSum ? ` · Gewicht ${pct(r.mc / capSum, 0)}` : ""}${r.m != null && r.m >= 9 && !(sr && sr.passed) ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}</em></span>
       <span class="sp-v ${r[nm] == null ? "" : r[nm] >= 0 ? "up" : "down"}">${r[nm] == null ? "–" : sgnPct(r[nm], 1)}</span></button>`; }).join("");
   return `<h3 style="margin:0 0 4px">${esc(x.n)}</h3>
-    <p class="muted" style="margin:0 0 12px;font-size:13px">${esc(x.k)} ${sgnPct(x[k], 1)} ${esc(kn)} · ${wr.length ? `${up} von ${wr.length} Aktien im Plus` : ""}${nOwn ? ` · <b>${nOwn} aus deiner Liste</b>` : ""}</p>
+    <p class="muted" style="margin:0 0 12px;font-size:13px">${esc(spKey(x))} ${sgnPct(x[k], 1)} ${esc(kn)} · ${wr.length ? `${up} von ${wr.length} Aktien im Plus` : ""}${nOwn ? ` · <b>${nOwn} aus deiner Liste</b>` : ""}</p>
     <div class="sp-tg" style="margin-bottom:8px">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" data-spkeep="${esc(key)}" title="${n}">${l}</button>`).join("")}</div>
     ${x.mem ? "" : `<div class="sp-seg" style="margin-bottom:10px">${[["all", "Welt"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<button class="${v === rg ? "on" : ""}" data-spdr="${v}" data-spkeep="${esc(key)}">${l}</button>`).join("")}</div>`}
     ${li || `<p class="muted">${searchIdx ? (th ? "Keine der Hauptwerte dieses Themas ist im Kairo-Scan." : ind ? "Für diese Branche sind noch keine Aktien zugeordnet – die Zuordnung kommt mit den nächsten Scans." : "Keine Aktien aus dem Scan in diesem Sektor.") : "Lädt …"}</p>`}
     ${srt.length > 30 ? `<button class="hlink" data-spdrall data-spkeep="${esc(key)}" style="margin-top:6px">${state.spDrAll ? "weniger zeigen" : `alle ${srt.length} zeigen`}</button>` : ""}
-    <div class="note" style="margin:10px 0 0">Die Schwergewichte: größte Aktien nach Börsenwert – sie bewegen ${th ? "das Thema" : ind ? "die Branche" : "den Sektor"} am stärksten. Gewicht = Anteil am Börsenwert aller ${all.length} Aktien ${rg === "all" ? "weltweit" : `in ${RGN[rg]}`} im Scan (ab 2 Mrd. $); Rendite ${esc(kn)}${x.mem ? ` – beim Thema aus den fest hinterlegten Hauptwerten (${x.mem.length}), Kurs des Themas = ETF ${esc(x.k)}` : x.flt ? " – Zuordnung über Sektor bzw. Branche" : ""}. Antippen öffnet die Aktie.</div>`;
+    <div class="note" style="margin:10px 0 0">Die Schwergewichte: größte Aktien nach Börsenwert – sie bewegen ${th ? "das Thema" : ind ? "die Branche" : "den Sektor"} am stärksten. Gewicht = Anteil am Börsenwert aller ${all.length} Aktien ${rg === "all" ? "weltweit" : `in ${RGN[rg]}`} im Scan (ab 2 Mrd. $); Rendite ${esc(kn)}${x.mem ? ` – beim Thema aus den fest hinterlegten Hauptwerten (${x.mem.length}), ${spBk(x) ? "Kurs des Themas = gleichgewichteter Korb dieser Hauptwerte (kein passender ETF)" : `Kurs des Themas = ETF ${esc(x.k)}`}` : x.flt ? " – Zuordnung über Sektor bzw. Branche" : ""}. Antippen öffnet die Aktie.</div>`;
 }
 // Heatmap: größte Aktien je Region, nach Sektor gruppiert, Fläche = Börsenwert, Farbe = Rendite im gewählten Zeitraum
 const HM_REG = [["us", "USA"], ["europe", "Europa"], ["de", "Deutschland"], ["asia", "Asien"], ["all", "Alle"]];
@@ -4388,7 +4396,7 @@ function fsSpHtml() {
       <p class="muted" style="font-size:13px;margin:10px 0 0">Unser 18-Jahre-Test: Sektoren in „Führend“ hatten danach keinen Vorsprung, heißgelaufene liefen eher schlechter; bei Themen hielt Stärke über ~3 Monate eher an. Treffer und ≥ 9/11 zeigen, wo Kairo-Setups gerade entstehen – oft in schwachen, gefallenen Bereichen.</p></div></div>
     <div class="fs-panel"><div class="fs-h">Alle ${rows.length} ${lvl}${as ? "" : " · antippen zeigt die Schwergewichte"}</div>
       <div class="table-wrap fs-tw"><table class="fs-t fs-sp"><thead><tr>${fsSortBtn("n", "Bereich", s)}${fsSortBtn("q", "Feld", s)}${fsSortBtn("wk", "seit Wo.", s, 1)}${SP_PER.map(([v, l]) => fsSortBtn(v, l, s, 1)).join("")}${as ? fsSortBtn("corr", "Korrelation S&P 500", s, 1) : fsSortBtn("hit", "Treffer", s, 1) + fsSortBtn("near", "≥ 9/11", s, 1) + fsSortBtn("own", "★ Meine", s, 1)}</tr></thead>
-      <tbody>${rows.map(o => `<tr${as ? "" : ` data-spopen="${esc(o.x.k)}"`}><td><b>${esc(o.x.n)}</b>${o.x.hot ? ' <small class="sp-hot">heißgelaufen</small>' : ""}<small class="muted fs-k">${esc(o.x.k)}${as ? "" : ` · ${o.n} Aktien`}</small></td><td>${qb((o.x.rrg || {}).q)}</td><td class="num">${o.x.rrg && o.x.rrg.wk != null ? o.x.rrg.wk : "–"}</td>${SP_PER.map(([v]) => `<td class="num">${pc(o.x[v])}</td>`).join("")}${as ? `<td class="num">${o.x.corr == null ? "–" : `<b class="${o.x.corr <= -.3 ? "up" : o.x.corr >= .3 ? "down" : ""}">${fmt(o.x.corr, 2)}</b> <small class="muted">${o.x.corr <= -.3 ? "gegenläufig" : o.x.corr >= .3 ? "läuft mit" : "eigenständig"}</small>`}</td>` : `<td class="num">${o.hit || "–"}</td><td class="num">${o.near || "–"}</td><td class="num">${o.own ? `<b class="gold">${o.own}</b>` : "–"}</td>`}</tr>`).join("")}</tbody></table></div>
+      <tbody>${rows.map(o => `<tr${as ? "" : ` data-spopen="${esc(o.x.k)}"`}><td><b>${esc(o.x.n)}</b>${o.x.hot ? ' <small class="sp-hot">heißgelaufen</small>' : ""}<small class="muted fs-k">${esc(spKey(o.x))}${as ? "" : ` · ${o.n} Aktien`}</small></td><td>${qb((o.x.rrg || {}).q)}</td><td class="num">${o.x.rrg && o.x.rrg.wk != null ? o.x.rrg.wk : "–"}</td>${SP_PER.map(([v]) => `<td class="num">${pc(o.x[v])}</td>`).join("")}${as ? `<td class="num">${o.x.corr == null ? "–" : `<b class="${o.x.corr <= -.3 ? "up" : o.x.corr >= .3 ? "down" : ""}">${fmt(o.x.corr, 2)}</b> <small class="muted">${o.x.corr <= -.3 ? "gegenläufig" : o.x.corr >= .3 ? "läuft mit" : "eigenständig"}</small>`}</td>` : `<td class="num">${o.hit || "–"}</td><td class="num">${o.near || "–"}</td><td class="num">${o.own ? `<b class="gold">${o.own}</b>` : "–"}</td>`}</tr>`).join("")}</tbody></table></div>
       ${as ? `<p class="muted" style="font-size:13px;margin:8px 0 0">Markt-Rad: Wohin fließt Geld außerhalb der Aktien? Gegenläufige Anlagen (negative Korrelation, oft Anleihen oder Gold in Stressphasen) steigen eher, wenn Aktien fallen – laufen sie im Rotationsbild nach „Führend“, suchen Anleger Sicherheit. Korrelation der Tagesrenditen über 3 Monate.</p>` : ""}</div>`;
 }
 const FS_CAP = [[0, "alle Größen"], [10e9, "ab 10 Mrd. $"], [50e9, "ab 50 Mrd. $"], [200e9, "ab 200 Mrd. $"]];
@@ -4493,8 +4501,16 @@ function mktBarHtml() {
   const fear = f ? `<div class="mk-f" title="Stimmung 0–100: VIX, Tech/KI, Marktbreite, Kreditmarkt"><div class="mk-k">Stimmung</div><b class="${f.score >= 65 ? "down" : f.score >= 45 ? "gold" : "up"}">${esc(f.label)} <small>${f.score}</small></b>
       <div class="mk-g"><i style="left:${Math.max(2, Math.min(98, f.score))}%"></i></div><div class="mk-gl"><span>Sorglos</span><span>Panik</span></div></div>` : "";
   return `<div class="hcard mkb"><div class="mk-h"><div class="mk-l"><div class="mk-k">Marktlage</div>${reg ? `<div class="mk-reg t-${tc}"><i></i>${esc(reg.label.charAt(0).toUpperCase() + reg.label.slice(1))}</div>` : ""}${fz ? `<p class="mk-fz">${fz}</p>` : ""}</div>${fear}</div>
-    <div class="mk-is">${tiles}</div>${br}</div>`;
+    <div class="mk-is">${tiles}</div>${moreIdxHtml(m)}${br}</div>`;
 }
+// Weitere Indizes (14.11.): Dow, Russell 2000, Euro Stoxx 50, FTSE, SMI, CAC, Hang Seng, Shanghai, KOSPI – aufklappbar, ruhig
+const IDX_MORE = ["^DJI", "^RUT", "^STOXX50E", "^FTSE", "^SSMI", "^FCHI", "^HSI", "000001.SS", "^KS11"];
+function moreIdxHtml(m) {
+  const xs = IDX_MORE.filter(k => m[k]); if (!xs.length) return "";
+  return `<details class="mk-more"${state.mkMore ? " open" : ""} data-mkmore><summary>Weitere Indizes · ${xs.length}</summary><div class="mk-ml">${xs.map(k => { const x = m[k], up = (x.d1 || 0) >= 0;
+    return `<div class="mk-mr"><span>${esc(x.name)}</span><b>${fmt(x.c, 0)}</b><em class="${up ? "up" : "down"}">${x.d1 != null ? sgnPct(x.d1, 1) : "–"}</em><small>${x.chg1m != null ? `1M ${sgnPct(x.chg1m, 1)}` : ""}</small></div>`; }).join("")}</div></details>`;
+}
+document.addEventListener("toggle", e => { const d = e.target; if (d.matches && d.matches("[data-mkmore]")) { state.mkMore = d.open; save(); } }, true);
 // Insider-Detail: alle Käufe einer Aktie (90 Tage) – Person, Funktion, Datum, Betrag, gezielt/Routine, Anteil, Quelle
 const INS_TOP = /\b(CEO|Chief Executive|CFO|Chief Financial|President|Chairman|Chair|COO|Vorstand|Vorsitz)/i;
 // Je-Aktie-Ansicht: alle Insider einer Aktie im gewählten Zeitraum, Käufer und Verkäufer getrennt
@@ -4534,6 +4550,9 @@ function insDetailHtml(t) {
     <button class="btn" style="margin-top:12px;width:100%" ${sr ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`}>Aktie öffnen</button>
     <div class="note" style="margin:10px 0 0">„Gezielt“ = kein Routinekauf (die Person hat nicht in beiden Vorjahren im selben Monat gekauft) – laut Forschung das aussagekräftigere Signal. „Routine unbekannt“ = für die Quelle gibt es keine Kaufhistorie der Vorjahre (z. B. BaFin, Großbritannien). Beträge grob in Euro umgerechnet.</div>`;
 }
+// Themen ohne ETF (Schlüssel „*…“): gleichgewichteter Kairo-Korb aus den Hauptwerten (backend/analysis.py basket_frame)
+const spBk = x => !!x && (x.bk || String(x.k || "")[0] === "*");
+const spKey = x => spBk(x) ? "Kairo-Korb" : x.k;
 function openSpDrill(key) {
   if (!searchIdx) loadSearch().then(() => { if (!$("spm").hidden) $("spmBody").innerHTML = spDrillHtml(key); });
   $("spmBody").innerHTML = spDrillHtml(key); $("spm").hidden = false; $("spm").dataset.k = key;
@@ -8313,8 +8332,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.145";
-const APP_NEWS = [["2026.11.145", "Watchlist ordnen, Depot-Verlauf, fairer Wert, schneller", [
+const APP_VER = "2026.11.146";
+const APP_NEWS = [["2026.11.146", "Themen, Branchen und Indizes vollständiger", [
+  ["19 neue Themen", "Neoclouds, Quantencomputer, KI-Netzwerk & Optik, Speicherchips, Chip-Ausrüster, KI-Software, Bitcoin-Miner, Krypto-Aktien, Rüstung Europa, Drohnen, Flugtaxis, E-Autos, Abnehmmittel, Gen-Editierung, Wasserstoff, Windkraft, China-Internet, Rechenzentren, Luxus. Ohne passenden ETF rechnet Kairo einen gleichgewichteten Korb der Hauptwerte."],
+  ["Branchen ergänzt", "Vorher hatten 39 % der Aktien keine Branche (z. B. Apple, Cisco, Visa). Neu: Hardware & Elektronik, Netzwerktechnik, Zahlungen & Kredit, Elektrotechnik, Erneuerbare Versorger, Glücksspiel, Entsorgung, Holz & Papier – plus IT-Dienste und Vermögensverwalter."],
+  ["Mehr Indizes und Anlagen", "Dow Jones, Russell 2000, Euro Stoxx 50, FTSE 100, SMI, CAC 40, Hang Seng, Shanghai, KOSPI – dazu Kupfer, Erdgas, Ethereum, Hochzinsanleihen, US-Anleihen 7–10 J. und Euro."]]],
+  ["2026.11.145", "Watchlist ordnen, Depot-Verlauf, fairer Wert, schneller", [
   ["Watchlist ordnen", "Eigene Reihenfolge per Ziehen und Abschnitte wie „Kaufkandidaten“ – auch für jede eigene Liste, abgeglichen zwischen deinen Geräten."],
   ["Depotwert-Verlauf", "Kairo merkt sich jeden Tag Wert und Einstand deines Depots und zeigt den Verlauf (1M, 3M, 1J, alles). Dazu im Depot-Check: was 10 % Währungsschwankung kosten würde."],
   ["Fairer Wert", "Im Chart beim Fundamental-Check: Schätzung aus Branchen-KGV, erwartetem Gewinn, Graham-Zahl und Analystenziel – mit Skala günstig/fair/teuer."],
