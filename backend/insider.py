@@ -55,6 +55,7 @@ def parse_form4(xml_text: str) -> list[dict]:
     if rel is not None:
         title = _t(rel, "officerTitle")
         role = title or ("Direktor" if _t(rel, "isDirector") in ("1", "true") else "Großaktionär (10 %)" if _t(rel, "isTenPercentOwner") in ("1", "true") else "")
+    plan = _t(root, "aff10b5One") in ("1", "true")    # seit 04/2023: Geschäft unter einem vorab festgelegten Plan (Rule 10b5-1)
     out = []
     for tx in root.findall("nonDerivativeTable/nonDerivativeTransaction"):
         code = _t(tx, "transactionCoding/transactionCode")
@@ -67,9 +68,34 @@ def parse_form4(xml_text: str) -> list[dict]:
             continue
         if sh <= 0 or px <= 0:
             continue
+        try:
+            after = float(_t(tx, "postTransactionAmounts/sharesOwnedFollowingTransaction/value") or 0)
+        except ValueError:
+            after = 0
+        before = after - sh if code == "P" else after + sh       # Bestand vorher → Veränderung in % (wie OpenInsider „ΔOwn“)
+        own = ("neu" if code == "P" and before <= 0 else round((after / before - 1) * 100)) if after > 0 and before >= 0 else None
         out.append({"t": sym, "n": name, "who": owner.title(), "role": role, "kind": "buy" if code == "P" else "sell",
-                    "d": _t(tx, "transactionDate/value")[:10], "sh": round(sh), "px": round(px, 2), "val": round(sh * px)})
+                    "d": _t(tx, "transactionDate/value")[:10], "sh": round(sh), "px": round(px, 2), "val": round(sh * px),
+                    **({"own": own, "after": round(after)} if own is not None else {}), **({"plan": True} if plan else {})})
     return out
+
+
+def combine_sources(sec: list[dict], oi: list[dict]) -> tuple[list[dict], str]:
+    """OpenInsider (mehrere Tage, breit) und SEC-Feed (nur die neuesten Meldungen, dafür mit Plan-Kennzeichen 10b5-1 und Bestand)
+    zusammenführen: gleiche Meldung = gleiche Aktie, Person, Tag, Art. SEC-Felder ergänzen die OpenInsider-Zeile."""
+    if not sec:
+        return oi, "OpenInsider (SEC Formular 4)"
+    if not oi:
+        return sec, "SEC EDGAR Formular 4"
+    key = lambda r: (r.get("t"), " ".join(str(r.get("who") or "").lower().replace(",", " ").split()), r.get("d"), r.get("kind"))
+    by = {key(r): r for r in sec}
+    out = []
+    for r in oi:
+        x = by.pop(key(r), None)
+        if x:
+            r = {**r, **{k: x[k] for k in ("plan", "after") if k in x}, **({"own": x["own"]} if "own" not in r and "own" in x else {})}
+        out.append(r)
+    return out + list(by.values()), "OpenInsider + SEC EDGAR (Formular 4)"
 
 
 def _merge(rows: list[dict]) -> list[dict]:
@@ -80,6 +106,13 @@ def _merge(rows: list[dict]) -> list[dict]:
         if k in acc:
             a = acc[k]
             a["val"] += r["val"]; a["sh"] += r["sh"]; a["px"] = round(a["val"] / a["sh"], 2)
+            if a.get("after") is not None and r.get("after") is not None:          # Bestand nach dem letzten Teil-Geschäft
+                a["after"] = max(a["after"], r["after"]) if a["kind"] == "buy" else min(a["after"], r["after"])
+                b = a["after"] - a["sh"] if a["kind"] == "buy" else a["after"] + a["sh"]
+                a["own"] = "neu" if a["kind"] == "buy" and b <= 0 else round((a["after"] / b - 1) * 100) if b > 0 else a.get("own")
+            a["plan"] = a.get("plan") or r.get("plan") or None
+            if not a["plan"]:
+                a.pop("plan", None)
         else:
             acc[k] = dict(r)
     return list(acc.values())
@@ -162,7 +195,7 @@ def routine(rows: list[dict]) -> None:
         if x["kind"] != "buy" or len(x.get("d") or "") < 7:
             continue
         y, m = int(x["d"][:4]), x["d"][5:7]
-        x["opp"] = not all(f"{y - k}-{m}" in months.get(x["who"], ()) for k in (1, 2))
+        x["opp"] = not x.get("plan") and not all(f"{y - k}-{m}" in months.get(x["who"], ()) for k in (1, 2))   # Plan-Kauf (10b5-1) ist nie gezielt
 
 
 def accumulate(hist: list[dict], new: list[dict], days: int = 90, today: str | None = None) -> list[dict]:
@@ -197,7 +230,7 @@ def signal(rows: list[dict], days: int = 90) -> dict:
         o["last"] = max(o["last"], x.get("d") or "")
         o.setdefault("x", []).append({"d": x.get("d"), "who": x.get("who"), "role": x.get("role"), "val": round(x.get("val") or 0),
                                       "cur": x.get("cur") or "USD", "opp": x.get("opp") if "opp" in x else None, "own": ow,
-                                      "src": x.get("src"), "url": x.get("url")})
+                                      "src": x.get("src"), "url": x.get("url"), **({"plan": True} if x.get("plan") else {})})
     res = {}
     for t, o in out.items():
         big = o["opp"] and (o["own"] >= 10 or o["val"] >= 1_000_000)   # nur belegt gezielte Käufe (ohne Historie keine Aussage)
@@ -340,10 +373,7 @@ def fetch(pages: int = 3, budget_s: float = 150, watch: dict[str, str] | None = 
             if errs <= 2:
                 print("Insider: Meldung nicht lesbar", url, repr(exc)[:120])
             continue
-    src = "SEC EDGAR Formular 4"
-    if not rows:                                     # ohne SEC-Kontakt oder bei Sperre: OpenInsider (gleiche Meldungen)
-        rows, src = fetch_openinsider(), "OpenInsider (SEC Formular 4)"
-    rows = _merge(rows)
+    rows, src = combine_sources(_merge(rows), _merge(fetch_openinsider()))
     buys = sorted([r for r in rows if r["kind"] == "buy" and r["val"] >= MIN_BUY], key=lambda r: -r["val"])
     sells = sorted([r for r in rows if r["kind"] == "sell" and r["val"] >= MIN_SELL], key=lambda r: -r["val"])
     out = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "filings": len(seen) or len(rows),

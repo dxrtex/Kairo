@@ -23,7 +23,11 @@ FIELDS = {"pe": "trailingPE", "fpe": "forwardPE", "pb": "priceToBook", "ps": "pr
           "pm": "profitMargins", "om": "operatingMargins", "gm": "grossMargins", "rg": "revenueGrowth", "eg": "earningsGrowth",
           "roe": "returnOnEquity", "roa": "returnOnAssets", "de": "debtToEquity", "cr": "currentRatio", "fcf": "freeCashflow",
           "cash": "totalCash", "debt": "totalDebt", "pr": "payoutRatio", "beta": "beta", "tm": "targetMeanPrice", "cp": "currentPrice",
-          "rm": "recommendationMean", "na": "numberOfAnalystOpinions", "mc": "marketCap", "dr": "dividendRate", "rev": "totalRevenue"}
+          "rm": "recommendationMean", "na": "numberOfAnalystOpinions", "mc": "marketCap", "dr": "dividendRate", "rev": "totalRevenue",
+          # Ergänzt 14.11.2026 (Smart Money / Dividende) – kommt aus demselben Abruf, kostet nichts extra
+          "spf": "shortPercentOfFloat", "sr": "shortRatio", "shs": "sharesShort", "shp": "sharesShortPriorMonth",
+          "hpi": "heldPercentInstitutions", "hpn": "heldPercentInsiders", "dy5": "fiveYearAvgDividendYield",
+          "exd": "exDividendDate", "eps": "trailingEps", "feps": "forwardEps", "so": "sharesOutstanding"}
 
 
 def fetch(tickers: list[str], pause: float = 0.3, budget_s: float = 5000) -> dict:

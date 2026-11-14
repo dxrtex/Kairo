@@ -2383,6 +2383,22 @@ tr.wl-sec td { padding: 14px 10px 6px !important; font-size: 11.5px; font-weight
 .mk-ml { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0 18px; }
 .mk-mr { display: grid; grid-template-columns: 1fr auto 62px 72px; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 .mk-mr span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; } .mk-mr b { font-variant-numeric: tabular-nums; } .mk-mr em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; } .mk-mr small { color: var(--muted); text-align: right; }
+
+/* Großbeteiligungen 13D/13G */
+.st-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; } .st-h p { margin: 2px 0 0; font-size: 13px; }
+.st-r { display: grid; grid-template-columns: minmax(0, 1fr) auto 76px 32px; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.st-a { display: flex; align-items: center; gap: 10px; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; padding: 0; }
+.st-a > span { display: flex; flex-direction: column; min-width: 0; } .st-a b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .st-a em { font-style: normal; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-f { font-size: 12px; padding: 3px 8px; border-radius: 6px; background: rgba(118,118,128,.16); color: var(--muted); white-space: nowrap; } .st-f.act { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
+.st-r time { font-size: 12px; color: var(--muted); text-align: right; } .st-l { color: var(--muted); display: grid; place-items: center; } .st-l .ico { width: 16px; height: 16px; }
+@media (max-width: 640px) { .st-r { grid-template-columns: minmax(0, 1fr) auto 28px; } .st-r time { display: none; } }
+
+.ark-r { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 0; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.ark-r > span { flex: 1; min-width: 0; display: flex; flex-direction: column; } .ark-r > span b { font-size: 14px; } .ark-r em { font-style: normal; font-size: 12px; color: var(--muted); } .ark-r > b { font-size: 13px; white-space: nowrap; }
+
+.trk { margin-top: 14px; } .trk-g { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)); gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); align-items: center; font-size: 13px; }
+.trk-g > span { display: flex; flex-direction: column; min-width: 0; } .trk-g small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trk-hd { font-size: 11.5px; color: var(--muted); padding-top: 2px; }
 </style>
 </head>
 <body>
@@ -3705,9 +3721,11 @@ function searchHtml() {
 // ---------- Screener über alle Aktien (Runde 13.11., wie Finviz): frei filtern und sortieren – unabhängig von der Kairo-Regel ----------
 const SCR_PRE = [["", "Alle"], ["hi52", "Nahe 52-W-Hoch"], ["os", "Überverkauft (RSI < 30)"], ["mom", "Starkes Momentum"], ["pull", "Rücksetzer im Aufwärtstrend"], ["earn", "Zahlen in 14 Tagen"], ["ins", "Insider kaufen"], ["k9", "Kairo ab 9/11"], ["qual", "Qualität günstig"], ["divs", "Dividenden-Stars"], ["grow", "Starkes Wachstum"]];
 const SCR_DEF = ["n", "c", "d1", "m1", "ytd", "hi", "tr", "pe", "sf", "m"];   // Standard-Spalten (Übersicht); weitere über „Spalten“
-const SCR_COLS = [["n", "Aktie"], ["c", "Kurs"], ["d1", "1T"], ["d5", "1W"], ["m1", "1M"], ["m3", "3M"], ["ytd", "YTD"], ["hi", "vom Hoch"], ["rsi", "RSI"], ["tr", "Trend"], ["mc", "Börsenwert"], ["pe", "KGV"], ["dy", "Div."], ["sf", "Flocke"], ["sec", "Sektor"], ["m", "Kairo"]];
+const SCR_COLS = [["n", "Aktie"], ["c", "Kurs"], ["d1", "1T"], ["d5", "1W"], ["m1", "1M"], ["m3", "3M"], ["ytd", "YTD"], ["hi", "vom Hoch"], ["rsi", "RSI"], ["tr", "Trend"], ["mc", "Börsenwert"], ["pe", "KGV"], ["dy", "Div."], ["sf", "Flocke"], ["spf", "Short %"], ["hpi", "Institut. %"], ["fu", "Fonds"], ["sec", "Sektor"], ["m", "Kairo"]];
 let scrMore = 0;
-function scrVal(r, k) { if (k === "pe" || k === "dy" || k === "sf" || k === "rg2") { const f = fundOf(r.t); if (!f) return null; return k === "pe" ? (f.pe ?? null) : k === "dy" ? (f.dr && f.cp ? f.dr / f.cp : 0) : k === "sf" ? sfSum(f) : f.rg ?? null; }
+function scrVal(r, k) { if (k === "spf" || k === "hpi") { const f = fundOf(r.t); return f ? f[k] ?? null : null; }
+  if (k === "fu") { const S = (getJson("funds.json") || {}).sum, x = S && (S[r.t] || S[tkClean(r.t)]); return x ? (x.buy || 0) + (x.new || 0) - (x.sell || 0) - (x.out || 0) : null; }
+  if (k === "pe" || k === "dy" || k === "sf" || k === "rg2") { const f = fundOf(r.t); if (!f) return null; return k === "pe" ? (f.pe ?? null) : k === "dy" ? (f.dr && f.cp ? f.dr / f.cp : 0) : k === "sf" ? sfSum(f) : f.rg ?? null; }
   if (k === "hi") return r.H > 0 && r.c > 0 ? r.c / r.H - 1 : null; if (k === "tr") return r.e200 > 0 ? (r.c > r.e200 ? (r.e50 > r.e200 ? 2 : 1) : -1) : null; if (k === "n") return r.n || r.t; return r[k]; }
 function scrRows() {
   const F = state.scf || {}, rows = searchIdx || [];
@@ -3722,7 +3740,10 @@ function scrRows() {
     if (F.met && !((r.m ?? 0) >= +F.met)) return false;
     if (F.earn && !(r.ed && daysUntil(r.ed) >= 0 && daysUntil(r.ed) <= 14)) return false;
     if (F.ins && !(insSig(r.t) && insSig(r.t).score)) return false;
-    if (F.pe || F.dy || F.frg || F.fpm || F.fde || F.fsf) { const f = fundOf(r.t); if (!f) return false; const dy = f.dr && f.cp ? f.dr / f.cp : 0;
+    if (F.ffu) { const v = scrVal(r, "fu"); if (v == null || (F.ffu === "buy" ? v <= 0 : v >= 0)) return false; }
+    if (F.pe || F.dy || F.frg || F.fpm || F.fde || F.fsf || F.fspf || F.fhpi) { const f = fundOf(r.t); if (!f) return false; const dy = f.dr && f.cp ? f.dr / f.cp : 0;
+      if (F.fspf && (f.spf == null || (F.fspf === "lo" ? f.spf >= .03 : f.spf < +F.fspf))) return false;
+      if (F.fhpi && (f.hpi == null || (F.fhpi === "lo" ? f.hpi >= .2 : f.hpi < +F.fhpi))) return false;
       if (F.pe === "lo" && !(f.pe > 0 && f.pe < 15)) return false; if (F.pe === "mid" && !(f.pe >= 15 && f.pe <= 25)) return false; if (F.pe === "hi" && !(f.pe > 25)) return false; if (F.pe === "neg" && !(f.pe == null || f.pe <= 0)) return false;
       if (F.dy && !(dy >= +F.dy)) return false; if (F.frg && !((f.rg ?? -9) >= +F.frg)) return false; if (F.fpm && !((f.pm ?? -9) >= +F.fpm)) return false;
       if (F.fde && !(f.de != null && f.de < +F.fde)) return false; if (F.fsf && !(sfSum(f) >= +F.fsf)) return false; }
@@ -3753,6 +3774,9 @@ function screenerHtml() {
     : k === "pe" ? (v => v == null ? `<span class="muted">–</span>` : v > 0 ? fmt(v, 1) : `<span class="down">Verlust</span>`)(scrVal(r, "pe"))
     : k === "dy" ? (v => v == null ? `<span class="muted">–</span>` : v ? pct(v, 1) : `<span class="muted">–</span>`)(scrVal(r, "dy"))
     : k === "sf" ? (v => v == null ? `<span class="muted">–</span>` : `<b style="color:rgb(${sfCol(v)})">${v}</b><small>/30</small>`)(scrVal(r, "sf"))
+    : k === "spf" ? (v => v == null ? `<span class="muted">–</span>` : `<span class="${v >= .15 ? "down" : ""}">${pct(v, 1)}</span>`)(scrVal(r, "spf"))
+    : k === "hpi" ? (v => v == null ? `<span class="muted">–</span>` : pct(v, 0))(scrVal(r, "hpi"))
+    : k === "fu" ? (v => v == null ? `<span class="muted">–</span>` : `<span class="${v > 0 ? "up" : v < 0 ? "down" : "muted"}">${v > 0 ? "+" : ""}${v}</span>`)(scrVal(r, "fu"))
     : k === "mc" ? (r.mc ? fmtCap(r.mc) : "–") : k === "sec" ? `<span class="muted">${esc(r.sec || "–")}</span>`
     : r.m == null ? `<span class="muted">–</span>` : `<span class="km${r.s === "hit" ? " hit" : r.s === "fast" ? " fast" : ""}"><b>${r.m}/11</b><i><u style="width:${Math.round(r.m / 11 * 100)}%"></u></i></span>`;
   return `<div class="scr">
@@ -3765,7 +3789,9 @@ function screenerHtml() {
       ${sel("pfk", [["m3", "3 Monate"], ["m1", "1 Monat"], ["ytd", "seit Jahresanfang"], ["d5", "1 Woche"]], "Wertentwicklung")}${sel("pf", [["", "egal"], [".05", "ab +5 %"], [".1", "ab +10 %"], [".2", "ab +20 %"], [".5", "ab +50 %"]], "Plus")}
       ${sel("pfn", [["", "egal"], [".1", "ab −10 %"], [".2", "ab −20 %"], [".4", "ab −40 %"]], "Minus")}${sel("met", [["", "egal"], ["7", "ab 7/11"], ["9", "ab 9/11"], ["10", "ab 10/11"], ["11", "11/11"]], "Kairo-Kriterien")}
       ${fd ? sel("frg", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Umsatzwachstum") + sel("fpm", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Nettomarge")
-        + sel("fde", [["", "egal"], ["50", "unter 0,5"], ["100", "unter 1"]], "Verschuldung") + sel("fsf", [["", "egal"], ["15", "ab 15/30"], ["20", "ab 20/30"], ["24", "ab 24/30"]], "Schneeflocke") : ""}
+        + sel("fde", [["", "egal"], ["50", "unter 0,5"], ["100", "unter 1"]], "Verschuldung") + sel("fsf", [["", "egal"], ["15", "ab 15/30"], ["20", "ab 20/30"], ["24", "ab 24/30"]], "Schneeflocke")
+        + sel("fspf", [["", "egal"], ["lo", "unter 3 %"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Leerverkauf (Short-Quote)") + sel("fhpi", [["", "egal"], [".5", "ab 50 %"], [".8", "ab 80 %"], ["lo", "unter 20 %"]], "Anteil Institutionen")
+        + sel("ffu", [["", "egal"], ["buy", "Top-Fonds kaufen"], ["sell", "Top-Fonds verkaufen"]], "Hedgefonds (13F)") : ""}
       <label class="scr-f scr-c"><input type="checkbox" data-scf="earn" ${F.earn ? "checked" : ""}><span>Zahlen ≤ 14 T.</span></label><label class="scr-f scr-c"><input type="checkbox" data-scf="ins" ${F.ins ? "checked" : ""}><span>Insider kaufen</span></label></div>` : ""}
     ${state.scrCOpen ? `<div class="scr-cols">${SCR_COLS.filter(([k]) => k !== "n").map(([k, l]) => `<button class="opt${COLS_ON.includes(k) ? " on" : ""}" data-scrcol="${k}">${esc(l)}</button>`).join("")}<button class="hlink" data-scrcol="">Standard</button></div>` : ""}
     <div class="section-title"><span>Ergebnis</span><span>${fmt(list.length, 0)} Aktien</span></div>
@@ -4529,6 +4555,30 @@ function insAggHtml(t) {
     ${a.xb.length ? sec(a.xb, "b") : ""}${a.xs.length ? sec(a.xs, "s") : ""}
     <button class="btn" style="margin-top:12px;width:100%" ${sr ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`}>Aktie öffnen</button>`;
 }
+// Trefferquote der Insider dieser Aktie (wie TipRanks): Wie lief der Kurs 1, 3 und 6 Monate nach ihren früheren Käufen?
+// Grundlage: alle Insider-Käufe der letzten 12 Monate (insider.json „watch“) und die Kurse der Aktie (data/charts). Reine Rückschau.
+function insTrackHtml(t) {
+  const ij = getJson("insider.json"), buys = ((ij && ij.watch) || []).filter(x => x.t === t && x.kind === "buy" && x.d);
+  if (buys.length < 2) return "";
+  const c = chartReady[t] || chartCache[t] && chartCache[t].__v;
+  if (!c) { loadChart(t).then(d => { if (chartCache[t]) chartCache[t].__v = d; const el = $("insTrk"); if (el && el.dataset.t === t && d && d.t) el.innerHTML = insTrackHtml(t); }).catch(() => {}); return `<p class="muted" style="font-size:12.5px">Trefferquote wird berechnet …</p>`; }
+  if (!c.t || !c.c) return "";
+  const idx = d => { let lo = 0, hi = c.t.length - 1; if (d > c.t[hi]) return -1; while (lo < hi) { const m = (lo + hi) >> 1; if (c.t[m] < d) lo = m + 1; else hi = m; } return lo; };
+  const H = [21, 63, 126], per = {}, all = H.map(() => []);
+  const seen = new Set();
+  buys.forEach(x => { const k = x.who + x.d; if (seen.has(k)) return; seen.add(k); const i = idx(x.d); if (i < 0) return; const p0 = c.c[i]; if (!(p0 > 0)) return;
+    const o = per[x.who] = per[x.who] || { role: x.role, r: H.map(() => []) };
+    H.forEach((h, j) => { const p = c.c[i + h]; if (p > 0) { const r = p / p0 - 1; o.r[j].push(r); all[j].push(r); } }); });
+  if (!all[0].length) return "";
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null, hit = a => a.length ? a.filter(v => v > 0).length / a.length : null;
+  const cell = a => a.length ? `<b class="${avg(a) >= 0 ? "up" : "down"}">${sgnPct(avg(a), 0)}</b><small>${pct(hit(a), 0)} im Plus · ${a.length}</small>` : `<b class="muted">–</b><small>noch offen</small>`;
+  const ppl = Object.entries(per).filter(([, o]) => o.r[0].length).sort((a, b) => b[1].r[0].length - a[1].r[0].length).slice(0, 6);
+  return `<div class="trk"><div class="sm-h">Trefferquote · Kurs nach früheren Insider-Käufen (12 Monate)</div>
+    <div class="trk-g trk-hd"><span></span><span>1 Monat</span><span>3 Monate</span><span>6 Monate</span></div>
+    <div class="trk-g"><span><b>Alle Käufe</b></span>${all.map(a => `<span>${cell(a)}</span>`).join("")}</div>
+    ${ppl.length > 1 ? ppl.map(([w, o]) => `<div class="trk-g"><span>${esc(String(w).slice(0, 24))}<small>${esc(String(o.role || "").slice(0, 22))}</small></span>${o.r.map(a => `<span>${cell(a)}</span>`).join("")}</div>`).join("") : ""}
+    <p class="muted" style="font-size:12px;margin:6px 0 0">Durchschnittliche Kursveränderung ab Schlusskurs am Kauftag, ohne Dividenden, ohne Vergleich mit dem Markt. Kleine Zahl = wenig aussagekräftig.</p></div>`;
+}
 function insDetailHtml(t) {
   const ij = getJson("insider.json"), g = ij && ij.signal && ij.signal[t];
   if (!g) return `<p class="muted">Keine Insider-Käufe in den letzten 90 Tagen.</p>`;
@@ -4536,7 +4586,7 @@ function insDetailHtml(t) {
   const amt = e => e >= 1e6 ? `${fmt(e / 1e6, 2)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`;
   const xs = g.x || [], sr = byTicker(t), r = rowOf(t) || {};
   const per = {}; xs.forEach(x => { const o = per[x.who] = per[x.who] || { n: 0, e: 0, role: x.role }; o.n++; o.e += toEur(x); });
-  const opp = x => x.opp === true ? `<span class="ins-tag up">gezielt</span>` : x.opp === false ? `<span class="ins-tag">Routine</span>` : `<span class="ins-tag muted" title="Ohne Kaufhistorie der Vorjahre lässt sich nicht prüfen, ob es ein Routinekauf ist">Routine unbekannt</span>`;
+  const opp = x => x.plan ? `<span class="ins-tag" title="Vorab festgelegter Handelsplan (Rule 10b5-1) – sagt wenig über die Einschätzung aus">Plan (10b5-1)</span>` : x.opp === true ? `<span class="ins-tag up">gezielt</span>` : x.opp === false ? `<span class="ins-tag">Routine</span>` : `<span class="ins-tag muted" title="Ohne Kaufhistorie der Vorjahre lässt sich nicht prüfen, ob es ein Routinekauf ist">Routine unbekannt</span>`;
   const own = x => x.own === "neu" ? " · erster Aktienbesitz" : typeof x.own === "number" && x.own > 0 ? ` · +${fmt(Math.min(x.own, 999), 0)} % mehr Aktien` : "";
   const li = xs.map(x => `<div class="ins-x"><div><b>${esc(x.who || "–")}</b>${INS_TOP.test(x.role || "") ? ' <span class="ir-top">Vorstandsspitze</span>' : ""}
       <em>${esc(x.role || "Funktion unbekannt")}</em><em>${dateDE(x.d)} · ${opp(x)}${own(x)}${x.url ? ` · <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.src || "Meldung")}</a>` : x.src ? " · " + esc(x.src) : ""}</em></div>
@@ -4547,6 +4597,7 @@ function insDetailHtml(t) {
     <div class="ins-sum"><div><b>${xs.length}</b><em>Käufe</em></div><div><b>${g.buyers}</b><em>Personen</em></div><div><b>${amt(xs.reduce((a, x) => a + toEur(x), 0))}</b><em>zusammen</em></div><div><b>${xs.filter(x => x.opp === true).length}</b><em>gezielt</em></div></div>
     ${ppl.length > 1 ? `<div class="note" style="margin:0 0 10px">Käufer: ${ppl.map(([w, o]) => `<b>${esc(w)}</b> (${esc(o.role || "–")}) ${o.n}× · ${amt(o.e)}`).join(" · ")}</div>` : ""}
     <div class="ins-xs">${li || `<p class="muted">Einzelkäufe kommen mit dem nächsten Scan.</p>`}</div>
+    <div id="insTrk" data-t="${esc(t)}">${insTrackHtml(t)}</div>
     <button class="btn" style="margin-top:12px;width:100%" ${sr ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`}>Aktie öffnen</button>
     <div class="note" style="margin:10px 0 0">„Gezielt“ = kein Routinekauf (die Person hat nicht in beiden Vorjahren im selben Monat gekauft) – laut Forschung das aussagekräftigere Signal. „Routine unbekannt“ = für die Quelle gibt es keine Kaufhistorie der Vorjahre (z. B. BaFin, Großbritannien). Beträge grob in Euro umgerechnet.</div>`;
 }
@@ -4719,7 +4770,7 @@ function newsHtml() {
   const usd = v => { const fx = (fxEur && fxEur.USD) || 0.9, e = v * fx; return e >= 1e6 ? `${fmt(e / 1e6, 1)} Mio. €` : `${fmt(e / 1e3, 0)} Tsd. €`; };
   const known = t => rowOf(t) || byTicker(t);
   const irow = x => { const tag = mine.has(x.t) || (byTicker(x.t) && byTicker(x.t).in_watchlist) ? '<span class="pill dep">Deine</span>' : byTicker(x.t) && byTicker(x.t).passed ? '<span class="pill">Treffer</span>' : "";
-    const meld = x.kind === "meld", q = x.kind === "buy" ? (x.opp == null ? "" : x.opp ? ' · <b class="up">gezielt</b>' : " · Routine") : "";
+    const meld = x.kind === "meld", q = x.plan ? " · Plan (10b5-1)" : x.kind === "buy" ? (x.opp == null ? "" : x.opp ? ' · <b class="up">gezielt</b>' : " · Routine") : "";
     const fd = x.fd && x.fd !== x.d ? ` · gemeldet ${dateDE(x.fd)}` : "";
     const own = x.kind === "buy" && x.own != null ? (x.own === "neu" ? " · neue Position" : x.own >= 100 ? " · Anteil mehr als verdoppelt" : x.own >= 1 ? ` · +${fmt(x.own, 0)} % Aktien` : "") : "";
     return `<a class="bf-r" href="${esc(safeHref(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`))}" target="_blank" rel="noopener"><i class="${meld ? "y" : x.kind === "buy" ? "g" : "r"}"></i>${x.t ? cfAv(x.t) : ""}<span><b>${esc(x.n || x.t)} ${tag}</b><em>${meld
@@ -4824,8 +4875,9 @@ function newsHtml() {
     ${grpd.length > lim2 || state.insMore ? `<button class="hlink" data-insmore style="margin-top:8px">${state.insMore ? "weniger zeigen" : `alle ${Math.min(grpd.length, 150)} zeigen`}</button>` : ""}`}
     ${vw === "agg" ? `<div class="note" style="margin:8px 0 0">Gezählt werden verschiedene Personen je Aktie (mehrere Käufe derselben Person zählen einmal), sortiert nach ${side === "buy" ? "Käufern" : "Verkäufern"}. <b>Cluster</b> = mindestens 3 Insider – das stärkste Signal. Deine Aktien: alle Meldungen der letzten 12 Monate; ganzer Markt: Käufe 90 Tage, Verkäufe nur die größten der letzten Tage. Antippen zeigt die Personen.</div>` : ""}
     <div class="note" style="margin:8px 0 0"${vw === "agg" ? " hidden" : ""}>${list.length} ${side === "buy" ? "Käufe" : "Verkäufe"} · ${days === 365 ? "12 Monate" : days + " Tage"}. <b>gezielt</b> = kein Routine-Kauf (die Person kauft nicht jedes Jahr im selben Monat). Antippen öffnet die Meldung. Ganzer Markt: USA (SEC), Deutschland (BaFin), Großbritannien, Schweden, Schweiz, Norwegen; deine Aktien zusätzlich 12 Monate. Stand ${esc(when)}.</div></div>`;
-  const smSeg = `<div class="sp-seg sm-seg">${[["ins", "Insider"], ["funds", "Hedgefonds"]].map(([v, l]) => `<button data-smview="${v}" class="${(state.smView || "ins") === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
-  if (state.smView === "funds") return head + smSeg + fundsTabHtml();
+  const smSeg = `<div class="sp-seg sm-seg">${[["ins", "Insider"], ["funds", "Hedgefonds"], ["stakes", "Beteiligungen 5 %+"]].map(([v, l]) => `<button data-smview="${v}" class="${(state.smView || "ins") === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
+  if (state.smView === "funds") return head + smSeg + arkHtml() + fundsTabHtml();
+  if (state.smView === "stakes") return head + smSeg + stakesTabHtml();
   return head + smSeg + listHtml
     + (rank ? `<details class="hcard ins-more"${state.insRk ? " open" : ""} data-insdet="insRk"><summary>Wo Insider am stärksten kaufen (je Aktie gebündelt)</summary>${rankHtml.replace(/^<div class="hcard ir-card">/, "<div>")}</details>` : "")
     + (covHtml ? covHtml.replace('style="margin:-4px 2px 12px"', 'style="margin:4px 2px 12px"') : "")
@@ -4849,16 +4901,62 @@ function smView(t) {
 }
 const ageDays = d => d ? Math.round((Date.now() - new Date(d + "T12:00:00")) / 864e5) : 999;
 function smCardHtml(t, compact) {
-  const v = smView(t); if (!v) return "";
+  const v = smView(t); if (!v) { const o = compact ? "" : smOwnHtml(t); return o ? `<div class="cf-s sm-c"><div class="cf-h">Smart Money</div>${o}</div>` : ""; }
   const fj = getJson("funds.json"), fl = (fundsOf(t) || []).filter(x => x.a !== "halt" || x.w >= .02).slice(0, compact ? 4 : 8);
   const ins = v.g && v.g.x ? v.g.x.slice(0, compact ? 2 : 4) : [];
   return `<div class="cf-s sm-c"><div class="cf-h">Smart Money <span class="sm-v ${v.tone[0]}">${v.tone[1]}</span></div>
     <p class="cf-t" style="margin-top:0">${esc(v.why.join(" · "))}</p>
     ${ins.length ? `<div class="sm-h">Insider · 90 Tage</div>${ins.map(x => `<div class="cf-r"><span>${esc(String(x.who || "").slice(0, 26))}${x.role ? ` <small class="muted">${esc(String(x.role).slice(0, 14))}</small>` : ""}${x.opp ? ' <small class="up">gezielt</small>' : ""}</span><b class="up">${x.val ? (x.cur === "EUR" ? usdAmt(x.val).replace("$", "€") : usdAmt(x.val)) : "–"}</b></div>`).join("")}` : ""}
     ${fl.length ? `<div class="sm-h">Hedgefonds · Quartal ${fj && fj.period ? dateDE(fj.period) : ""}</div>${fl.map(x => `<div class="cf-r"><span>${esc(x.f)}</span><b class="${ACT[x.a][1]}">${ACT[x.a][0]}${x.chg != null && (x.a === "auf" || x.a === "ab") ? ` ${sgnPct(x.chg, 0)}` : ""}</b>${x.w ? `<em class="muted">${pct(x.w, 1)}</em>` : ""}</div>`).join("")}` : ""}
-    <p class="muted cf-t">Insider: Meldungen der letzten 90 Tage. Fonds: 13F-Meldungen sind bis zu 45 Tage alt und zeigen nur US-Positionen. Einordnung, kein Kaufsignal.</p></div>`;
+    ${(l => l.length ? `<div class="sm-h">ARK · letzte 30 Tage</div>${l.slice(0, 3).map(x => `<div class="cf-r"><span>${esc(x.f)} <small class="muted">${dateDE(x.d)}</small></span><b class="${ARK_A[x.a][1]}">${ARK_A[x.a][0]}</b></div>`).join("")}` : "")(arkOf(t))}
+    ${(l => l.length ? `<div class="sm-h">Beteiligungen über 5 %</div>${l.slice(0, 3).map(x => `<div class="cf-r"><span>${esc(String(x.f).slice(0, 30))} <small class="muted">${dateDE(x.d)}</small></span><b class="${x.act ? "up" : ""}">${x.act ? "13D aktiv" : "13G"}${x.amend ? " ⁺" : ""}</b></div>`).join("")}` : "")(stakesOf(t))}
+    ${smOwnHtml(t)}
+    <p class="muted cf-t">Insider: Meldungen der letzten 90 Tage. Fonds: 13F-Meldungen sind bis zu 45 Tage alt und zeigen nur US-Positionen. Leerverkauf: Börsenmeldung, etwa alle zwei Wochen. Einordnung, kein Kaufsignal.</p></div>`;
+}
+// Eigentümer & Leerverkäufer (14.11.): Short-Quote mit Veränderung zum Vormonat, Tage zum Eindecken, Anteil Institutionen/Insider (fund.json)
+function smOwnHtml(t) {
+  const f = fundOf(t); if (!f || (f.spf == null && f.hpi == null && f.hpn == null)) return "";
+  const ch = f.shs > 0 && f.shp > 0 ? f.shs / f.shp - 1 : null, r = [];
+  if (f.spf != null) r.push(["Leerverkauf (Short-Quote)", `<b class="${f.spf >= .15 ? "down" : ""}">${pct(f.spf, 1)}</b>`, `${ch != null ? `${sgnPct(ch, 0)} zum Vormonat` : ""}${f.sr ? `${ch != null ? " · " : ""}${fmt(f.sr, 1)} Tage zum Eindecken` : ""}`]);
+  if (f.hpi != null) r.push(["Institutionen halten", `<b>${pct(f.hpi, 0)}</b>`, "Fonds, Banken, Versicherer"]);
+  if (f.hpn != null) r.push(["Insider halten", `<b class="${f.hpn >= .1 ? "up" : ""}">${pct(f.hpn, 1)}</b>`, f.hpn >= .1 ? "viel Eigentum beim Management" : ""]);
+  const hint = f.spf >= .2 ? "Sehr viele Leerverkäufer – starke Kursausschläge möglich, in beide Richtungen (Short Squeeze)." : f.spf >= .1 ? "Erhöhte Leerverkäufe – der Markt zweifelt an der Aktie." : "";
+  return `<div class="sm-h">Eigentümer & Leerverkäufer</div>${r.map(([l, v, sub]) => `<div class="cf-r"><span>${l}${sub ? ` <small class="muted">${sub}</small>` : ""}</span>${v}</div>`).join("")}${hint ? `<p class="cf-t" style="margin:4px 0 0">${hint}</p>` : ""}`;
 }
 // Markt → Insider → Hedgefonds: meistgekauft / meistverkauft von den Fonds, dann jeder Fonds mit Top-Positionen und Bewegungen
+// Großbeteiligungen über 5 % (SEC 13D/13G, backend/stakes.py): 13D = aktiv (will Einfluss nehmen), 13G = passiv
+const stakesOf = t => ((getJson("insider.json") || {}).stakes || []).filter(x => x.t === t || x.t === tkClean(t));
+function stakesTabHtml() {
+  const ij = getJson("insider.json"), all = (ij && ij.stakes) || [], mine = myTickers(), F = state.stF || "all";
+  if (!all.length) return `<div class="card empty-st"><b>Großbeteiligungen folgen</b><p>Meldungen über 5 % (SEC 13D/13G) kommen mit dem nächsten Abend-Scan. Dafür braucht der Scan eine Kontaktadresse für die SEC (Secret SEC_CONTACT).</p></div>`;
+  const xs = all.filter(x => F === "act" ? x.act : F === "new" ? !x.amend : F === "mine" ? mine.has(x.t) : true).slice(0, state.stMore ? 200 : 40);
+  const open = t => byTicker(t) ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`;
+  const row = x => `<div class="st-r"><button class="st-a" ${open(x.t)}>${cfAv(x.t)}<span><b>${esc(String(x.n || x.t).slice(0, 34))}${mine.has(x.t) ? ' <span class="pill dep">Deine</span>' : ""}</b><em>${esc(x.t)} · ${esc(String(x.f || "").slice(0, 44))}</em></span></button>
+    <span class="st-f ${x.act ? "act" : ""}" title="${x.act ? "13D: aktive Beteiligung – der Anleger will Einfluss nehmen (z. B. Aktivist)" : "13G: passive Beteiligung über 5 %"}">${x.act ? "aktiv" : "passiv"}${x.amend ? " · Änderung" : " · neu"}</span><time>${dateDE(x.d)}</time><a class="st-l" href="${esc(x.url)}" target="_blank" rel="noopener" aria-label="Meldung bei der SEC">${IC.link}</a></div>`;
+  const nAct = all.filter(x => x.act && !x.amend).length;
+  return `<div class="hcard st-card"><div class="st-h"><div><b>Großbeteiligungen über 5 %</b><p class="muted">${all.length} Meldungen in 120 Tagen · ${nAct} neue aktive (13D)</p></div>
+    <div class="sp-tg">${[["all", "Alle"], ["act", "Nur aktiv (13D)"], ["new", "Nur neue"], ["mine", "★ meine"]].map(([v, l]) => `<button class="opt${F === v ? " on" : ""}" data-stf="${v}">${l}</button>`).join("")}</div></div>
+    <div class="st-l0">${xs.length ? xs.map(row).join("") : `<div class="bf-empty">Keine Meldungen für diesen Filter.</div>`}</div>
+    ${all.length > 40 ? `<button class="hlink" data-stmore style="margin-top:8px">${state.stMore ? "weniger zeigen" : "alle zeigen"}</button>` : ""}
+    <div class="note" style="margin:10px 0 0"><b>13D</b> (aktiv): Der Anleger will Einfluss nehmen, etwa ein Aktivist wie Elliott oder Icahn – Meldung innerhalb von 5 Geschäftstagen, oft kursbewegend. <b>13G</b> (passiv): Beteiligung ohne Einflussabsicht. Große Indexanbieter (Vanguard, BlackRock …) sind bei 13G ausgeblendet. Nur US-Firmen. Einordnung, kein Kaufsignal.</div></div>`;
+}
+document.addEventListener("click", e => { const f = e.target.closest("[data-stf]"); if (f) { state.stF = f.dataset.stf; save(); render(); return; }
+  if (e.target.closest("[data-stmore]")) { state.stMore = !state.stMore; save(); render(); } });
+// ARK (Cathie Wood): tägliche Käufe/Verkäufe aus den Bestandslisten – frischer als 13F (backend/ark.py)
+const arkOf = t => ((getJson("insider.json") || {}).ark || []).filter(x => x.t === tkClean(t));
+const arkNm = x => { const r = (searchIdx || []).find(y => y.t === x.t); return r && r.n ? shortNm(r.n) : String(x.n || x.t).toLowerCase().replace(/(^|[\s-])\S/g, m => m.toUpperCase()); };
+const ARK_A = { neu: ["neu gekauft", "up"], auf: ["aufgestockt", "up"], ab: ["reduziert", "down"], raus: ["komplett verkauft", "down"] };
+function arkHtml() {
+  const xs = (getJson("insider.json") || {}).ark || []; if (!xs.length) return "";
+  const days = [...new Set(xs.map(x => x.d))].slice(0, state.arkMore ? 10 : 3), mine = myTickers();
+  const open = t => byTicker(t) ? `data-card="${esc(t)}"` : `data-ein="${esc(t)}"`;
+  return `<div class="hcard ark"><div class="st-h"><div><b>ARK Invest – tägliche Trades</b><p class="muted">Cathie Woods Fonds (ARKK, ARKW, ARKG, ARKQ, ARKF, ARKX) · aus den täglich veröffentlichten Beständen</p></div></div>
+    ${days.map(d => { const l = xs.filter(x => x.d === d), g = {}; l.forEach(x => { const k = x.t + x.a; (g[k] = g[k] || { ...x, fs: [] }).fs.push(x.f); });
+      return `<div class="sm-h">${dateDE(d)}</div>${Object.values(g).sort((a, b) => (b.a === "neu") - (a.a === "neu") || Math.abs(b.sh) - Math.abs(a.sh)).slice(0, 12).map(x => `<button class="ark-r" ${open(x.t)}>${cfAv(x.t)}<span><b>${esc(arkNm(x).slice(0, 30))}${mine.has(x.t) ? ' <span class="pill dep">Deine</span>' : ""}</b><em>${esc(x.t)} · ${esc(x.fs.join(", "))}</em></span><b class="${ARK_A[x.a][1]}">${ARK_A[x.a][0]}${x.chg != null && x.a !== "raus" ? ` ${sgnPct(x.chg, 0)}` : ""}</b></button>`).join("")}`; }).join("")}
+    <button class="hlink" data-arkmore style="margin-top:6px">${state.arkMore ? "weniger Tage" : "mehr Tage zeigen"}</button>
+    <div class="note" style="margin:8px 0 0">Änderungen unter 2 % der Position (Zu- und Abflüsse im ETF) zählen nicht. Kein Kaufsignal – ARK ist ein bekannter, aber sehr schwankungsreicher Anleger.</div></div>`;
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-arkmore]")) { state.arkMore = !state.arkMore; save(); render(); } });
 function fundsTabHtml() {
   const fj = getJson("funds.json");
   if (fj === undefined) return `<div class="hcard"><div class="note">Lade Hedgefonds-Daten …</div></div>`;
@@ -8332,8 +8430,14 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.146";
-const APP_NEWS = [["2026.11.146", "Themen, Branchen und Indizes vollständiger", [
+const APP_VER = "2026.11.147";
+const APP_NEWS = [["2026.11.147", "Smart Money: viel mehr Quellen", [
+  ["Großbeteiligungen über 5 %", "Neu im Insider-Bereich: SEC-Meldungen 13D (aktiv, z. B. Aktivisten) und 13G – frischer als die Quartalsmeldungen der Fonds."],
+  ["ARK täglich", "Was Cathie Woods Fonds gestern gekauft und verkauft haben – aus den täglichen Beständen."],
+  ["Trefferquote je Insider", "Wie lief die Aktie 1, 3 und 6 Monate nach früheren Käufen derselben Person?"],
+  ["Leerverkäufer & Eigentümer", "Short-Quote mit Veränderung, Tage zum Eindecken, Anteil von Institutionen und Insidern – im Chart und als Screener-Filter."],
+  ["Mehr Hedgefonds, Plan-Verkäufe", "Rund 30 weitere bekannte Fonds; Insider-Geschäfte nach festem Plan (10b5-1) werden gekennzeichnet und zählen nicht als gezielt."]]],
+  ["2026.11.146", "Themen, Branchen und Indizes vollständiger", [
   ["19 neue Themen", "Neoclouds, Quantencomputer, KI-Netzwerk & Optik, Speicherchips, Chip-Ausrüster, KI-Software, Bitcoin-Miner, Krypto-Aktien, Rüstung Europa, Drohnen, Flugtaxis, E-Autos, Abnehmmittel, Gen-Editierung, Wasserstoff, Windkraft, China-Internet, Rechenzentren, Luxus. Ohne passenden ETF rechnet Kairo einen gleichgewichteten Korb der Hauptwerte."],
   ["Branchen ergänzt", "Vorher hatten 39 % der Aktien keine Branche (z. B. Apple, Cisco, Visa). Neu: Hardware & Elektronik, Netzwerktechnik, Zahlungen & Kredit, Elektrotechnik, Erneuerbare Versorger, Glücksspiel, Entsorgung, Holz & Papier – plus IT-Dienste und Vermögensverwalter."],
   ["Mehr Indizes und Anlagen", "Dow Jones, Russell 2000, Euro Stoxx 50, FTSE 100, SMI, CAC 40, Hang Seng, Shanghai, KOSPI – dazu Kupfer, Erdgas, Ethereum, Hochzinsanleihen, US-Anleihen 7–10 J. und Euro."]]],

@@ -612,6 +612,21 @@ def main(argv=None) -> int:
             state.save("insider_hist.json", {"rows": hist})
             ins["signal"] = insider.signal(insider.accumulate([], [*ins.get("watch", []), *hist]))   # gleiche Meldung nur einmal zählen
             print(f"Insider-Verlauf: {len(hist)} Käufe in 90 Tagen, Signal für {len(ins['signal'])} Aktien")
+            try:                                     # Großbeteiligungen über 5 % (13D/13G) – über die Abende gesammelt (120 Tage)
+                from . import stakes
+                sh = stakes.accumulate(state.load("stakes_hist.json", {}).get("rows", []), stakes.fetch())
+                state.save("stakes_hist.json", {"rows": sh})
+                ins["stakes"] = sh[:300]
+            except Exception as exc:
+                print(f"13D/13G: Fehler {exc!r}"[:160])
+            try:                                     # ARK: tägliche Käufe/Verkäufe aus den Bestandslisten (30 Tage)
+                from . import ark
+                ark_st, ark_h = ark.update(state.load("ark_prev.json", {}), state.load("ark_hist.json", {}).get("rows", []))
+                state.save("ark_prev.json", ark_st)
+                state.save("ark_hist.json", {"rows": ark_h})
+                ins["ark"] = ark_h[:400]
+            except Exception as exc:
+                print(f"ARK: Fehler {exc!r}"[:160])
         except Exception as exc:
             print(f"Insider: Fehler {exc!r}")
     watch_dates = {}
