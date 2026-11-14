@@ -6,7 +6,7 @@ vergleicht sie (neu, aufgestockt, reduziert, verkauft) und schreibt site/data/fu
 
     funds: [{name, cik, period, filed, value, n, top: [...], moves: [...]}]     je Fonds
     by:    {ticker: [{f, a, chg, sh, val, w}]}                                   je Aktie (a = neu/auf/ab/raus/halt)
-    sum:   {ticker: {buy, sell, new, out, n, ez?}}                               Zusammenfassung je Aktie
+    sum:   {ticker: {buy, sell, new, out, n, p?, ez?}}   p = Quartal der meisten Käufer                               Zusammenfassung je Aktie
     ez = geschätzte Einstiegszone der Käufer im gemeldeten Quartal (siehe entry_zone): {vw, lo, hi, ql, qh, px, pxd}
 
 Wichtig für die Einordnung: 13F-Daten sind bis zu 45 Tage alt, enthalten nur Long-Positionen in US-Werten und keine
@@ -250,6 +250,16 @@ def entry_zone(rows: list[tuple[str, float, float, float, float]], start: str, e
     return {"vw": r(vw), "lo": r(lo), "hi": r(hi), "ql": r(min(x[4] for x in q)), "qh": r(max(x[3] for x in q)), "px": r(last[3]), "pxd": last[0]}
 
 
+def buy_period(ps: list[str]) -> str | None:
+    """Quartal, in dem die meisten Käufer gekauft haben (bei Gleichstand das neuere)."""
+    if not ps:
+        return None
+    cnt: dict[str, int] = {}
+    for p in ps:
+        cnt[p] = cnt.get(p, 0) + 1
+    return max(cnt, key=lambda p: (cnt[p], p))
+
+
 def entry_zones(tickers: list[str], period: str) -> dict[str, dict]:
     """Einstiegszonen für viele Ticker auf einmal über yfinance (kostenlos), in Paketen zu 100."""
     try:
@@ -344,22 +354,27 @@ def build(sleep: float = .35) -> dict:
     for f in funds:
         for m in f["top"] + f["moves"]:
             m["t"] = cache.get(m["cusip"])
+    fper = {f["name"]: f["period"] for f in funds}
     by: dict[str, list] = {}
     for fname, m in moves_all:
         t = cache.get(m["cusip"])
         if not t:
             continue
-        by.setdefault(t, []).append({"f": fname, "n": m["name"].title()[:40], "a": m["a"], "chg": m["chg"], "sh": m["sh"], "val": m["val"], "w": m["w"]})
+        by.setdefault(t, []).append({"f": fname, "n": m["name"].title()[:40], "a": m["a"], "chg": m["chg"], "sh": m["sh"], "val": m["val"], "w": m["w"], "p": fper.get(fname)})
     summ = {}
     for t, xs in by.items():
         xs.sort(key=lambda x: -x["val"])
         summ[t] = {"buy": sum(x["a"] in ("neu", "auf") for x in xs), "sell": sum(x["a"] in ("ab", "raus") for x in xs),
                    "new": sum(x["a"] == "neu" for x in xs), "out": sum(x["a"] == "raus" for x in xs), "n": sum(x["a"] != "raus" for x in xs)}
+        bp = buy_period([x["p"] for x in xs if x["a"] in ("neu", "auf") and x.get("p")])
+        if bp:
+            summ[t]["p"] = bp
     periods = sorted({f["period"] for f in funds})
-    # Geschätzte Einstiegszone für Aktien, die Fonds im letzten Quartal gekauft haben (neu/aufgestockt) – die meistgekauften zuerst
-    if periods:
-        buy_t = sorted([t for t, s in summ.items() if s["buy"]], key=lambda t: (-summ[t]["buy"], -summ[t]["new"]))[:900]
-        for t, ez in entry_zones(buy_t, periods[-1]).items():
+    # Geschätzte Einstiegszone für Aktien, die Fonds gekauft haben (neu/aufgestockt) – die meistgekauften zuerst. Die Fonds melden
+    # nicht alle im selben Takt (Q3 erst bis Mitte November): gerechnet wird im Quartal, in dem die meisten Käufer gekauft haben.
+    buy_t = sorted([t for t, s in summ.items() if s["buy"] and s.get("p")], key=lambda t: (-summ[t]["buy"], -summ[t]["new"]))[:900]
+    for per in sorted({summ[t]["p"] for t in buy_t}):
+        for t, ez in entry_zones([t for t in buy_t if summ[t]["p"] == per], per).items():
             summ[t]["ez"] = ez
     return {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "period": periods[-1] if periods else None,
             "funds": funds, "by": by, "sum": summ}

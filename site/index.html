@@ -2555,7 +2555,7 @@ html .jtx .jtrades td:nth-child(3) { max-width: 0; width: 100%; overflow: hidden
 .hf-span span, .hf-ez span { font-size: 11.5px; color: var(--muted); } .hf-span b { font-size: 14px; font-variant-numeric: tabular-nums; }
 .hf-ez { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 4px 0 6px; padding: 8px 10px; border-radius: 10px; background: rgba(94,92,230,.10); }
 .hf-ez b { font-size: 13.5px; font-variant-numeric: tabular-nums; } .hf-w { margin: 0 0 8px !important; font-size: 12.5px; }
-.hf-in { white-space: nowrap; } .hf-in.up, .hf-w.up { color: var(--up); } .hf-in.down, .hf-w.down { color: var(--down); }
+.hf-due { font-size: 12.5px; margin: 8px 0 0; } .hf-in { white-space: nowrap; } .hf-in.up, .hf-w.up { color: var(--up); } .hf-in.down, .hf-w.down { color: var(--down); }
 .hf-c { display: flex; flex-direction: column; align-items: flex-end; margin-left: auto; padding-right: 8px; font-variant-numeric: tabular-nums; }
 .hf-c small { font-size: 10.5px; color: var(--muted); } .hf-c b { font-size: 13px; } .hf-c em { font-style: normal; font-size: 11.5px; }
 @media (max-width: 600px) { .hf-c { display: none; } }
@@ -5107,7 +5107,7 @@ function hfWhere(px, ez) {
   return { d, k: "", t: d > .25 ? "weit über dem Einstand der Fonds" : "über dem Einstand der Fonds" };
 }
 const hfZoneOf = (t, c) => { const fj = getJson("funds.json"), fs = fundSum(t); if (!fj || !fj.period || !fs || !fs.buy) return null;
-  const qs = hfQs(fj.period), qe = String(fj.period).slice(0, 10), ez = fs.ez || ezLocal(c, qs, qe); return ez ? { ...ez, qs, qe, fs } : null; };
+  const per = fs.p || fj.period, qs = hfQs(per), qe = String(per).slice(0, 10), ez = fs.ez || ezLocal(c, qs, qe); return ez ? { ...ez, qs, qe, fs } : null; };   // fs.p: Quartal der meisten Käufer (Fonds melden nicht alle gleichzeitig)
 // Gesamtbild je Aktie: Insider-Käufe (Stärke 0–3, Verkäufe) und Fonds (kaufen vs. verkaufen) → positiv / gemischt / negativ
 function smView(t) {
   const g = insSig(t), fs = fundSum(t), ij = getJson("insider.json"), sells = ij && ij.sells ? ij.sells.filter(x => x.t === t && ageDays(x.d) <= 90).length : 0;
@@ -5126,7 +5126,7 @@ function smCardHtml(t, compact) {
   return `<div class="cf-s sm-c"><div class="cf-h">Smart Money <span class="sm-v ${v.tone[0]}">${v.tone[1]}</span></div>
     <p class="cf-t" style="margin-top:0">${esc(v.why.join(" · "))}</p>
     ${ins.length ? `<div class="sm-h">Insider · 90 Tage</div>${ins.map(x => `<div class="cf-r"><span>${esc(String(x.who || "").slice(0, 26))}${x.role ? ` <small class="muted">${esc(String(x.role).slice(0, 14))}</small>` : ""}${x.opp ? ' <small class="up">gezielt</small>' : ""}</span><b class="up">${x.val ? (x.cur === "EUR" ? usdAmt(x.val).replace("$", "€") : usdAmt(x.val)) : "–"}</b></div>`).join("")}` : ""}
-    ${fl.length ? `<div class="sm-h">Hedgefonds · ${fj && fj.period ? `${hfQn(fj.period)} <small class="muted">(${hfSpan(fj.period)})</small>` : ""}</div>${hfEzHtml(t)}${fl.map(x => `<div class="cf-r"><span>${esc(x.f)}</span><b class="${ACT[x.a][1]}">${ACT[x.a][0]}${x.chg != null && (x.a === "auf" || x.a === "ab") ? ` ${sgnPct(x.chg, 0)}` : ""}</b>${x.w ? `<em class="muted">${pct(x.w, 1)}</em>` : ""}</div>`).join("")}` : ""}
+    ${fl.length ? `<div class="sm-h">Hedgefonds · ${(p => p ? `${hfQn(p)} <small class="muted">(${hfSpan(p)})</small>` : "")((fundSum(t) || {}).p || (fj && fj.period))}</div>${hfEzHtml(t)}${fl.map(x => `<div class="cf-r"><span>${esc(x.f)}${x.p && x.p !== ((fundSum(t) || {}).p || (fj && fj.period)) ? ` <small class="muted">${hfQn(x.p)}</small>` : ""}</span><b class="${ACT[x.a][1]}">${ACT[x.a][0]}${x.chg != null && (x.a === "auf" || x.a === "ab") ? ` ${sgnPct(x.chg, 0)}` : ""}</b>${x.w ? `<em class="muted">${pct(x.w, 1)}</em>` : ""}</div>`).join("")}` : ""}
     ${(l => l.length ? `<div class="sm-h">ARK · letzte 30 Tage</div>${l.slice(0, 3).map(x => `<div class="cf-r"><span>${esc(x.f)} <small class="muted">${dateDE(x.d)}</small></span><b class="${ARK_A[x.a][1]}">${ARK_A[x.a][0]}</b></div>`).join("")}` : "")(arkOf(t))}
     ${(l => l.length ? `<div class="sm-h">Beteiligungen über 5 %</div>${l.slice(0, 3).map(x => `<div class="cf-r"><span>${esc(String(x.f).slice(0, 30))} <small class="muted">${dateDE(x.d)}</small></span><b class="${x.act ? "up" : ""}">${x.act ? "13D aktiv" : "13G"}${x.amend ? " ⁺" : ""}</b></div>`).join("")}` : "")(stakesOf(t))}
     ${smOwnHtml(t)}
@@ -5198,7 +5198,7 @@ function fundsTabHtml() {
   const newT = rows.filter(([, s]) => s.new > 0).sort((a, b) => b[1].new - a[1].new || b[1].buy - a[1].buy).slice(0, state.fdNewMore ? 40 : 10);
   const newLine = ([t, s]) => { const fs = (fj.by[t] || []).filter(x => x.a === "neu").map(x => x.f.replace(/\s*\(.*\)/, "")), w = s.ez && hfWhere(hfPx(t, s.ez), s.ez);
     return `<button class="bf-r hf-new" ${open(t)}>${cfAv(t)}<span><b>${esc(String(nm(t)).slice(0, 34))}${mine.has(t) ? ' <span class="pill dep">Deine</span>' : ""}</b>
-      <em>${esc(tkClean(t))} · ${esc(fs.slice(0, 3).join(", "))}${fs.length > 3 ? ` +${fs.length - 3}` : ""}</em></span>
+      <em>${esc(tkClean(t))} · ${s.p ? hfQn(s.p) + " · " : ""}${esc(fs.slice(0, 3).join(", "))}${fs.length > 3 ? ` +${fs.length - 3}` : ""}</em></span>
       ${s.ez ? `<span class="hf-c"><small>Einstand</small><b>${fmt(s.ez.vw)}</b>${w ? `<em class="${w.k}">${sgnPct(w.d, 0)}</em>` : ""}</span>` : ""}<span class="bf-p up">${s.new} neu</span></button>`; };
   const lim = state.fdMore ? 40 : 12;
   const buys = rows.filter(([, s]) => s.buy > s.sell).sort((a, b) => (b[1].buy - b[1].sell) - (a[1].buy - a[1].sell) || b[1].new - a[1].new).slice(0, lim);
@@ -5207,11 +5207,13 @@ function fundsTabHtml() {
       <div class="fd-b">${(l => l.length ? `<div class="sm-h">Neu im Depot</div>${l.slice(0, 8).map(m => `<div class="cf-r"><span>${m.t ? esc(m.t) + " · " : ""}${esc(String(m.name).slice(0, 28))}</span><b class="up">neu</b>${m.val ? `<em class="muted">${usdAmt(m.val)}</em>` : ""}</div>`).join("")}` : "")(f.moves.filter(m => m.a === "neu"))}
       <div class="sm-h">Größte Positionen</div>${f.top.slice(0, 10).map(m => `<div class="cf-r"><span>${m.t ? esc(m.t) + " · " : ""}${esc(String(m.name).slice(0, 28))}</span><b>${pct(m.w, 1)}</b><em class="${ACT[m.a][1]}">${m.a === "halt" ? "" : ACT[m.a][0]}</em></div>`).join("")}
       ${f.moves.length ? `<div class="sm-h">Größte Bewegungen</div>${f.moves.slice(0, 12).map(m => `<div class="cf-r"><span>${m.t ? esc(m.t) + " · " : ""}${esc(String(m.name).slice(0, 28))}</span><b class="${ACT[m.a][1]}">${ACT[m.a][0]}${m.chg != null && (m.a === "auf" || m.a === "ab") ? ` ${sgnPct(m.chg, 0)}` : ""}</b>${m.val ? `<em class="muted">${usdAmt(m.val)}</em>` : ""}</div>`).join("")}` : ""}</div></details>`;
-  const lastFiled = fj.funds.map(f => f.filed).sort().pop();
+  const lastFiled = fj.funds.map(f => f.filed).sort().pop(), nNew = fj.funds.filter(f => f.period === fj.period).length, older = fj.funds.filter(f => f.period < fj.period);
+  const due = (() => { const d = new Date(String(fj.period).slice(0, 10) + "T12:00:00"); d.setDate(d.getDate() + 45); return d.toISOString().slice(0, 10); })();
   return `<div class="hcard"><div class="fd-top"><b>Hedgefonds · ${fj.period ? hfQn(fj.period) : "–"}</b><button class="opt${onlyMine ? " on" : ""}" data-fdmine>★ nur meine</button></div>
-      ${fj.period ? `<div class="hf-span"><div><span>Gekauft zwischen</span><b>${hfSpan(fj.period)}</b></div><div><span>Gemeldet bis</span><b>${lastFiled ? dateDE(lastFiled) : "–"}</b></div><div><span>Fonds</span><b>${fj.funds.length}</b></div></div>` : ""}
+      ${fj.period ? `<div class="hf-span"><div><span>Neuestes Quartal</span><b>${hfSpan(fj.period)}</b></div><div><span>Schon gemeldet</span><b>${nNew} von ${fj.funds.length} Fonds</b></div><div><span>Letzte Meldung</span><b>${lastFiled ? dateDE(lastFiled) : "–"}</b></div></div>
+      ${older.length ? `<p class="muted hf-due">${older.length} Fonds zeigen noch ${hfQn(older.map(f => f.period).sort().pop())} – ihre Meldung für ${hfQn(fj.period)} ist bis ${dateDE(due)} fällig. Jede Aktie zeigt den Einstand im Quartal, in dem die meisten ihrer Käufer gekauft haben.</p>` : ""}` : ""}
       <div class="note" style="margin:6px 0 0">Wann genau im Quartal gekauft wurde, verrät die Meldung nicht. Kairo schätzt den Einstand deshalb als volumengewichteten Durchschnittskurs des Quartals; die Kaufzone ist der Bereich, in dem die mittlere Hälfte des Quartalsvolumens gehandelt wurde. Im Chart erscheint sie als Kasten. Stand ${dateDE(String(fj.generated).slice(0, 10))}.</div></div>
-    ${newT.length ? `<div class="hcard"><div class="plan-h">Neu eingestiegen <small class="muted">erstmals gekauft in ${hfQn(fj.period)}</small></div><div class="bf-l">${newT.map(newLine).join("")}</div>
+    ${newT.length ? `<div class="hcard"><div class="plan-h">Neu eingestiegen <small class="muted">erstmals gekauft in der letzten Meldung</small></div><div class="bf-l">${newT.map(newLine).join("")}</div>
       ${rows.filter(([, s]) => s.new > 0).length > 10 ? `<button class="hlink" data-fdnewmore style="margin-top:6px">${state.fdNewMore ? "weniger zeigen" : "alle neuen zeigen"}</button>` : ""}</div>` : ""}
     <div class="hgrid fd-grid"><div class="hcard"><div class="plan-h">Meistgekauft von den Fonds</div><div class="bf-l">${buys.map(x => line(x, true)).join("") || `<div class="bf-empty">Keine Käufe${onlyMine ? " bei deinen Aktien" : ""}.</div>`}</div></div>
       <div class="hcard"><div class="plan-h">Meistverkauft</div><div class="bf-l">${sells.map(x => line(x, false)).join("") || `<div class="bf-empty">Keine Verkäufe${onlyMine ? " bei deinen Aktien" : ""}.</div>`}</div></div></div>
@@ -8940,8 +8942,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.167";
-const APP_NEWS = [["2026.11.167", "Branchen direkt, Fonds-Einstand im Chart", [
+const APP_VER = "2026.11.168";
+const APP_NEWS = [["2026.11.168", "Fonds-Einstand im richtigen Quartal", [
+  ["Quartal je Aktie", "Die Fonds melden nicht alle gleichzeitig (Q3 erst bis Mitte November). Einstand und Kaufzone gelten jetzt für das Quartal, in dem die meisten Käufer einer Aktie gekauft haben."]]],
+  ["2026.11.167", "Branchen direkt, Fonds-Einstand im Chart", [
   ["Branchen statt Sektoren", "Markt zeigt direkt alle Branchen (rund 70) statt erst 11 Sektoren – präziser, wohin das Geld fließt. Top 10 und Schlusslichter auf einen Blick."],
   ["Hedgefonds: wann und zu welchem Kurs", "Zeitraum des Quartals, geschätzter Einstand (volumengewichteter Durchschnittskurs) und Kaufzone je Aktie – mit Lage des heutigen Kurses."],
   ["Kaufzone im Chart", "Haben Fonds eine Aktie gekauft, zeigt der Chart ihre Kaufzone als Kasten im Quartal und den Einstand als gestrichelte Linie (Ebenen → Smart Money)."],

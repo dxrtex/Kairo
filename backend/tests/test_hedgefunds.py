@@ -62,3 +62,10 @@ def test_entry_zone_vwap_and_band():
 def test_entry_zone_needs_enough_days():
     from backend.hedgefunds import entry_zone
     assert entry_zone([(f"2026-07-{d:02d}", 1, 1, 1, 1) for d in range(1, 10)], "2026-07-01", "2026-09-30") is None
+
+
+def test_buy_period_majority_then_newest():
+    from backend.hedgefunds import buy_period
+    assert buy_period(["2026-06-30", "2026-06-30", "2026-09-30"]) == "2026-06-30"
+    assert buy_period(["2026-06-30", "2026-09-30"]) == "2026-09-30"
+    assert buy_period([]) is None
