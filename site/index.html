@@ -2418,6 +2418,28 @@ tr.wl-sec td { padding: 14px 10px 6px !important; font-size: 11.5px; font-weight
 
 .k8-r { display: grid; grid-template-columns: 76px minmax(0, 1fr) 16px; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); color: var(--text); text-decoration: none; font-size: 13px; }
 .k8-r time { color: var(--muted); font-size: 12px; } .k8-r .ico { width: 14px; height: 14px; color: var(--muted); align-self: center; } .k8-r .gold { color: var(--gold); } .k8-r .down { color: var(--red, #ff453a); }
+
+/* Design-Prüfung 14.11.: mitlaufende Reiterleiste deckt den Inhalt darunter sauber ab (vorher schienen Heatmap-Knöpfe durch) */
+html .subnav { z-index: 45; background: var(--surface, #161617) !important; box-shadow: inset 0 0 0 1px var(--pf-ring, rgba(128,128,128,.22)), 0 6px 16px rgba(0,0,0,.28); }
+html.lt .subnav { background: #fff !important; }
+
+.el-tv, .el-tv iframe { background: var(--surface, #161617); color-scheme: dark; } html.lt .el-tv, html.lt .el-tv iframe { background: #fff; color-scheme: light; }
+
+/* Scanner-Tabelle (Design-Prüfung 14.11.): eine Aktien-Spalte (Stern, Logo, Name, Kürzel) statt Kürzel + Name, schlanker, ohne Überbreite */
+main .table-wrap table.sc-t { min-width: 0; }
+main .table-wrap .sc-t th:nth-child(1), main .table-wrap .sc-t td:nth-child(1) { min-width: 230px; max-width: 280px; width: 260px; }
+main .table-wrap .sc-t th:nth-child(2), main .table-wrap .sc-t td:nth-child(2) { position: static; left: auto; box-shadow: none; background: transparent; }
+main .table-wrap .sc-t td:nth-child(1) { box-shadow: 6px 0 8px -6px rgba(0,0,0,.45); }
+.nm2 { display: flex; align-items: center; gap: 6px; min-width: 0; } .nm2 .fav { flex: none; }
+.nm2 .nm > span { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; } .nm2 .nm > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nm2 .nm b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; } .nm2 .nm small { font-size: 11.5px; color: var(--muted); font-weight: 500; }
+
+.hw-row { display: flex; align-items: baseline; gap: 8px; margin: 8px 0 0; font-size: 13px; color: var(--muted); } .hw-row > span { flex: 1; min-width: 0; } .hw-row .hlink { flex: none; white-space: nowrap; }
+
+/* iPhone: Scanner-Reiter ohne Zahlen, damit „Beobachten“ und „Screener“ nicht abgeschnitten werden (Design-Prüfung 14.11.) */
+@media (max-width: 480px) { html .vseg { overflow: hidden; } html .vseg button { flex: 1 1 0; min-width: 0; padding: 8px 2px; font-size: 13.5px; white-space: nowrap; } html .vseg button small { display: none; } }
+/* Kalender: „+2 weitere“ als ruhiger Text statt großer runder Knöpfe */
+@media (min-width: 561px) { html body .mc .more { display: block; width: auto !important; height: auto !important; min-width: 0 !important; border-radius: 4px !important; background: none !important; padding: 2px 4px !important; margin-top: 2px; font-size: 11px !important; font-weight: 600; color: var(--muted) !important; text-align: left; box-shadow: none !important; } }
 </style>
 </head>
 <body>
@@ -3634,7 +3656,7 @@ function wtHtml(r) { const { w, d } = wtOf(r); if (w == null && d == null) retur
   return `<span class="wt" title="Woche: ${tx(w)} · Tag: ${tx(d)} (Kurs zu EMA 20/50). Kairo kauft bewusst Rücksetzer – nur Info.">W${a(w)} T${a(d)}</span>`; }
 const COLS = [
   { k: "ticker", l: "Ticker", g: r => r.ticker, h: r => `<span class="tk">${favBtn(r.ticker)}<a href="#" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${esc(r.ticker)}</a>${wlTag(r)}</span>` },
-  { k: "name", l: "Name", g: r => r.name, h: r => `<a href="#" class="nm nm-l" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${cfAv(r.ticker)}<span>${esc(r.name || r.ticker)}</span></a>${earnChip(r)}` },
+  { k: "name", l: "Aktie", g: r => r.name, h: r => `<span class="nm2">${favBtn(r.ticker)}<a href="#" class="nm nm-l" ${r._lite ? "data-ein" : "data-card"}="${esc(r.ticker)}">${cfAv(r.ticker)}<span><b>${esc(r.name || r.ticker)}</b><small>${esc(tkClean(r.ticker))}${r.in_watchlist ? " · WL" : ""}</small></span></a>${earnChip(r)}</span>` },
   { k: "trend", l: "Prognose", g: r => r.trend ? (r.trend.fc ? r.trend.fc.d : r.trend.slope + (r.trend.d5 ?? 0) / 10) : 0, h: r => trendHtml(r) || "–" },
   { k: "status", l: "Kauf-Status", g: r => r.passed ? kSt(r).lv : -1, h: r => r.passed ? kPill(r, false) : "" },   // nur Treffer: wann kaufen (Treffer/Fast-Treffer steht schon in x/11)   // in „Treffer“ ohne doppeltes „Treffer“
   { k: "chk", l: "Rücksetzer-Check", n: 1, g: r => chkP(r) ?? -1, h: r => chkCell(r) },
@@ -3643,7 +3665,7 @@ const COLS = [
   { k: "cap", l: "Börsenwert", n: 1, g: r => r.market_cap_usd ?? 0, h: r => fmtCap(r.market_cap_usd) },
   { k: "close", l: "Kurs", n: 1, g: r => r.close, h: r => `${fmt(r.close)}${r.live ? ' <span class="live-dot" title="live">●</span>' : ""}` },
   { k: "tgt", l: "Analysten-Ziel", n: 1, g: r => tgtUp(r) ?? -9, h: r => { const t = r.senti && r.senti.tgt, u = tgtUp(r);
-    return u == null ? `<span class="muted">–</span>` : `<b class="${u >= 0 ? "up" : "down"}">${u >= 0 ? "+" : ""}${pct(u, 0)}</b><small style="display:block" class="muted">Ø ${fmt(t.m)}${r.senti.an && r.senti.an.n ? ` · ${r.senti.an.n} Anal.` : ""}</small>`; } },
+    return u == null ? `<span class="muted">–</span>` : `<b class="${u >= 0 ? "up" : "down"}" title="Ø Kursziel ${fmt(t.m)}${r.senti.an && r.senti.an.n ? ` · ${r.senti.an.n} Analysten` : ""}">${u >= 0 ? "+" : ""}${pct(u, 0)}</b>${r.senti.an && r.senti.an.n ? ` <small class="muted">${r.senti.an.n} An.</small>` : ""}`; } },
   { k: "dd", l: "Rückgang", n: 1, g: r => r.drawdown ?? 0, h: r => `<span class="${(r.drawdown ?? 0) >= 0 ? "down" : "up"}">${ddFmt(r.drawdown)}</span>` },
   { k: "zone", l: "Zone", g: r => r.zone_type, h: r => esc(r.zone_type) },
   { k: "wt", l: "Trend W/T", g: r => { const x = wtOf(r); return (x.w ?? 0) * 2 + (x.d ?? 0); }, h: r => wtHtml(r) },
@@ -5353,7 +5375,7 @@ function calendarHtml() {
     const tag = e => { const [icon, cls] = CAL_KIND[e.kind] || ["•", "k-exp"]; const lbl = e.ticker ? (e.name || e.ticker).replace(/,? (Inc|AG|SE|Corp|N\.V|plc)\.?$/i, "") : (e.title || "").replace(/\s*\(.*$/, "").replace(/^[^:]{2,20}:\s*/, "").trim();
       return `<span class="ct ${cls}${e.ticker && dep.has(e.ticker) ? " dep" : ""}"><i>${icon}</i>${esc(lbl)}</span>`; };
     cells += `<button class="mc${inM ? "" : " out"}${iso === todayIso ? " today" : ""}${iso === calDay ? " sel" : ""}${iso < todayIso ? " past" : ""}" data-calday="${iso}">
-      <span class="dn">${d.getDate()}</span>${evSort(evs).slice(0, 3).map(tag).join("")}${evs.length > 3 ? `<span class="more">+${evs.length - 3}</span>` : ""}${evs.length ? `<span class="dots">${evs.slice(0, 4).map(e => `<i class="${(CAL_KIND[e.kind] || [])[1] || ""}"></i>`).join("")}</span>` : ""}</button>`;
+      <span class="dn">${d.getDate()}</span>${evSort(evs).slice(0, 3).map(tag).join("")}${evs.length > 3 ? `<span class="more">+${evs.length - 3} weitere</span>` : ""}${evs.length ? `<span class="dots">${evs.slice(0, 4).map(e => `<i class="${(CAL_KIND[e.kind] || [])[1] || ""}"></i>`).join("")}</span>` : ""}</button>`;
   }
   const mname = first.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
   const sel = calDay && byDay[calDay] ? dayHead(calDay) + `<div class="cal-list">${evSort(byDay[calDay]).map(evRow).join("")}</div>`
@@ -7695,7 +7717,7 @@ function moneyHtml() {
       ${m.pf.trade > 0 || m.rows.length ? `<div class="mt"><span>Trading frei</span><b>${eur(free)}</b><em>${m.slots} ${m.slots === 1 ? "Platz" : "Plätze"} frei${bound ? ` · ${eur(bound)} gebunden` : ""}${paperMode() ? " · Übung" : ""}</em></div>
       <div class="mt"><span>Bis Stop</span><b class="${m.riskNow > 0 ? "down" : ""}">${m.riskNow > 0 ? "−" + eur(m.riskNow) : "0 €"}</b><em>${noStop ? `<span class="gold">${noStop} ohne Stop</span>` : m.cfg.depot ? pct(m.riskNow / m.cfg.depot, 1) + " vom Trading" : ""}</em></div>` : ""}</div>
     ${amp ? `<button class="mline" ${SEC_LINK("etf")}><i style="background:${amp[1]}"></i>ETF-Ampel: ${esc(amp[0])}${etm ? etm.lv === "g" ? " – Extra-Geld jetzt anlegen" : etm.lv === "r" ? " – Extra-Geld zurückhalten" : "" : ""} ›</button>` : ""}
-    ${m.warn.map(w => `<div class="note" style="margin:6px 0 0"><i class="vdot y"></i>${esc(w)}${/^Trading-Kapital/.test(w) ? ` <button class="btn ghost sm" id="etfSync">Angleichen</button>` : ""}</div>`).join("")}</div>`;
+    ${m.warn.map(w => `<div class="hw-row"><i class="vdot y"></i><span>${esc(w)}</span>${/^Trading-Kapital/.test(w) ? `<button class="hlink" id="etfSync">Angleichen ›</button>` : ""}</div>`).join("")}</div>`;
 }
 function startMiniHtml() {
   const h = startHtml(); if (!h) return "";
@@ -7742,11 +7764,11 @@ function k8Html(t) {
 }
 function k8TodayHtml() {
   const L = ((getJson("insider.json") || {}).k8 || []).filter(x => x.w >= 2 && ageDays(x.d) <= 7 && myTickers().has(x.t)).slice(0, 6); if (!L.length) return "";
-  return `<div class="hcard"><div class="mw-h"><span class="mk-k">Wichtige Firmenmeldungen</span><span class="muted" style="font-size:12px">SEC 8-K · 7 Tage</span></div>${L.map(x => `<div class="mw-r"><time>${dateDE(x.d)}</time><span><a href="#" data-ctgo="${esc(x.t)}"><b>${esc(shortNm(x.n))}</b></a><small class="${x.w >= 3 ? "down" : ""}">${esc(k8Txt(x))}</small></span></div>`).join("")}</div>`;
+  return `<div class="hcard">${hHead(`Wichtige Firmenmeldungen · ${L.length}`)}${L.map(x => `<div class="mw-r"><time>${dateDE(x.d)}</time><span><a href="#" data-ctgo="${esc(x.t)}"><b>${esc(shortNm(x.n))}</b></a><small class="${x.w >= 3 ? "down" : ""}">${esc(k8Txt(x))}</small></span></div>`).join("")}</div>`;
 }
 function scrTodayHtml() {
   if (!searchIdx || !scrSv().length) return ""; const L = scrNewAll(); if (!L.length) return "";
-  return `<div class="hcard"><div class="mw-h"><span class="mk-k">Neu in deinen Screens</span></div>${L.map(({ x, n }) => `<div class="mw-r"><time>${esc(x.n)}<small>+${n.length}</small></time><span>${n.slice(0, 5).map(r => `<a href="#" data-ctgo="${esc(r.t)}">${esc(shortNm(r.n || r.t))}</a>`).join(", ")}${n.length > 5 ? ` +${n.length - 5}` : ""} <button class="hlink" data-scrgo="${esc(x.id)}">ansehen ›</button></span></div>`).join("")}</div>`;
+  return `<div class="hcard">${hHead("Neu in deinen Screens")}${L.map(({ x, n }) => `<div class="mw-r"><time>${esc(x.n)}<small>+${n.length}</small></time><span>${n.slice(0, 5).map(r => `<a href="#" data-ctgo="${esc(r.t)}">${esc(shortNm(r.n || r.t))}</a>`).join(", ")}${n.length > 5 ? ` +${n.length - 5}` : ""} <button class="hlink" data-scrgo="${esc(x.id)}">ansehen ›</button></span></div>`).join("")}</div>`;
 }
 document.addEventListener("click", e => { const g = e.target.closest("[data-scrgo]"); if (!g) return; const x = scrSv().find(y => y.id === g.dataset.scrgo); if (!x) return; state.scf = { ...x.f }; state.scrOn = true; save(); goSec("scanner"); });
 function todayHtml() {
@@ -8517,8 +8539,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.149";
-const APP_NEWS = [["2026.11.149", "Screen-Alarme, Firmenmeldungen, Jahresübersicht", [
+const APP_VER = "2026.11.150";
+const APP_NEWS = [["2026.11.150", "Aufgeräumter und einheitlicher", [
+  ["Scanner-Tabelle", "Eine Spalte „Aktie“ mit Logo, Name und Kürzel, gleich hohe Zeilen und die wichtigsten Spalten – weitere unter „Spalten“."],
+  ["Einheitliche Kopfzeilen", "Jeder Bereich zeigt seine eigene Unterzeile; Markt und Depot behalten ihren Titel in allen Unterreitern."],
+  ["Kleinigkeiten", "Mitlaufende Reiterleiste deckt den Inhalt sauber ab, Kalender ohne große Kreise, iPhone-Reiter nicht mehr abgeschnitten."]]],
+  ["2026.11.149", "Screen-Alarme, Firmenmeldungen, Jahresübersicht", [
   ["Screens speichern", "Im Screener „Screen speichern“: Kairo zeigt dir danach, welche Aktien neu hineinfallen – am Screen und unter „Heute“."],
   ["Firmenmeldungen (SEC 8-K)", "Quartalszahlen, Vorstandswechsel, Übernahmen, Bilanzwarnungen deiner US-Aktien – direkt von der Börsenaufsicht, im Chart und unter „Heute“."],
   ["Jahresübersicht", "Im Journal: Gewinne und Verluste je Jahr, getrennt nach Aktien und Turbos/ETFs, Dividenden, Steuern, Freibetrag – grober Überblick für die Steuer."]]],
@@ -10556,9 +10582,9 @@ function renderMain() {
   const more = rows.length < full ? `<div class="row-actions" style="justify-content:center;margin:12px 0"><button class="btn ghost" data-scanall>Alle ${full} anzeigen</button></div>` : "";
   const onlyHits = k.size === 1 && k.has("hit");
   const lead = ["ticker", "name", "status", "grade", "met", "miss"].filter(x => !(onlyHits && ["met", "miss"].includes(x)) && !(x === "status" && !list.some(r => r.passed)));   // ohne Treffer in der Liste (z. B. Beobachten): keine Kauf-Status-Spalte   // Status: kaufbereit / Seitwärtsphase x/10 / verfallen
-  const hid = new Set(state.hiddenCols || []);
+  const hid = new Set(state.hiddenCols || COLS_HID0);   // ohne eigene Auswahl: schlanke Standard-Tabelle (Design-Prüfung 14.11.)
   if (!(data.stats && data.stats.grade)) hid.add("grade");    // Stufen nur, wenn ein geprüftes Modell aktiv ist
-  const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss", "chk"].includes(c.k))].filter(c => c.k === "ticker" || !hid.has(c.k));
+  const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss", "chk"].includes(c.k))].filter(c => c.k !== "ticker" && !hid.has(c.k));   // Kürzel steht unter dem Namen (Design-Prüfung 14.11.)
   requestAnimationFrame(() => { const tw = document.querySelector("main .table-wrap"), h = document.querySelector(".scroll-hint");
     if (tw && h) h.hidden = !(tw.scrollWidth > tw.clientWidth + 8); });
   const mv = state.mView ? (state.mView === "list" ? "list" : "table") : (innerWidth < 640 ? "list" : "table");   // iPhone: Liste als Standard (Pro-Runde 13.11.)
@@ -10567,7 +10593,7 @@ function renderMain() {
   const SC_FIRST = 24, gen = (renderMain.scGen = (renderMain.scGen || 0) + 1);
   if (rows.length > SC_FIRST) requestAnimationFrame(() => setTimeout(() => { const tb = $("scTb"); if (!tb || renderMain.scGen !== gen) return;
     tb.insertAdjacentHTML("beforeend", rows.slice(SC_FIRST).map(trOf).join("")); linkTerms(); }, 0));
-  $("main").innerHTML = head + `<div class="mvtog${mv === "list" ? " mv-list" : ""}"><button class="kchip${mv === "table" ? " on" : ""}" data-mview="table">Tabelle</button><button class="kchip${mv === "list" ? " on" : ""}" data-mview="list">Liste</button></div><div class="scroll-hint" hidden>Wischen für mehr Spalten →</div><div class="table-wrap"><table><thead><tr>${cols.map(c => `<th class="${c.n ? "num " : ""}${c.k === col.k ? "sorted" + (state.tableAsc ? " asc" : "") : ""}" data-k="${c.k}">${c.l}${gl(c.k === "dd" ? "" : c.k)}</th>`).join("")}</tr></thead>
+  $("main").innerHTML = head + `<div class="mvtog${mv === "list" ? " mv-list" : ""}"><button class="kchip${mv === "table" ? " on" : ""}" data-mview="table">Tabelle</button><button class="kchip${mv === "list" ? " on" : ""}" data-mview="list">Liste</button></div><div class="scroll-hint" hidden>Wischen für mehr Spalten →</div><div class="table-wrap"><table class="sc-t"><thead><tr>${cols.map(c => `<th class="${c.n ? "num " : ""}${c.k === col.k ? "sorted" + (state.tableAsc ? " asc" : "") : ""}" data-k="${c.k}">${c.l}${gl(c.k === "dd" ? "" : c.k)}</th>`).join("")}</tr></thead>
     <tbody id="scTb">${rows.slice(0, SC_FIRST).map(trOf).join("")}</tbody></table></div>` + (isApple() || !(mv === "list" && innerWidth <= 700) ? "" : mListHtml(rows, col)) + more + extra;   // Liste nur bauen, wenn sie zu sehen ist (spart die Hälfte der Elemente)
   if (isApple()) {
     const tools = `<div class="atools"><div class="aseg"><button data-aview="list" class="${state.aView !== "table" ? "on" : ""}">Liste</button><button data-aview="table" class="${state.aView === "table" ? "on" : ""}">Tabelle</button></div>${aSortHtml(col)}</div>`;
@@ -10577,6 +10603,9 @@ function renderMain() {
 }
 
 const SCAN_LIM = 60;
+// Standard-Spalten (Design-Prüfung 14.11.): vorher 20 Spalten (2.600 px) – auf dem iPad sah man 5. Jetzt die wichtigsten; alle
+// anderen bleiben unter „Spalten“ wählbar. Wer schon selbst Spalten gewählt hat, behält seine Auswahl (state.hiddenCols).
+const COLS_HID0 = ["exchange", "dd", "zone", "vola", "rsi", "div", "macd", "mbi", "crv", "score"];
 let scanAll = false;
 document.addEventListener("click", e => { if (e.target.closest("[data-cols]")) setTimeout(() => { const c = $("colOpts"); if (c) c.scrollIntoView({ block: "center", behavior: "smooth" }); }, 250); });
 document.addEventListener("click", e => { if (!e.target.closest("[data-qins]")) return; state.ins = state.ins ? "" : "buy"; scanAll = false; save(); render(); });
@@ -10629,7 +10658,7 @@ const presetActive = p => FILTER_KEYS.every(k => String(state[k] ?? "") === Stri
 function sheetExtras() {
   const gg = document.querySelector('.opts[data-key="grade"]'); if (gg) gg.closest(".group").hidden = !(data.stats && data.stats.grade);
   $("presetList").innerHTML = (state.presets || []).map((p, i) => `<button class="opt" data-delpreset="${i}">${esc(p.name)} ✕</button>`).join("") || `<span class="note" style="margin:0">Noch keine Vorlagen.</span>`;
-  const hid = new Set(state.hiddenCols || []);
+  const hid = new Set(state.hiddenCols || COLS_HID0);
   $("colOpts").innerHTML = COLS.filter(c => c.k !== "ticker").map(c => `<button class="opt${hid.has(c.k) ? "" : " on"}" data-col="${c.k}">${esc(c.l)}</button>`).join("");
 }
 // Begrüßungs-Emoji: frei wählbar in den Einstellungen (Standard seit 14.11.: keins)
@@ -10639,9 +10668,18 @@ function greetText() {
   const h = new Date().getHours(), nm = String(state.name || "").trim();
   return esc(h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend") + (nm ? `, <span class="nm">${esc(nm)}</span>` : "") + greetEmoji();
 }
-const SEC_T = { today: "Heute", etf: "ETF", scanner: "Scanner", chart: "Chart", entry: "Einstieg", calendar: "Kalender", news: "Markt", depot: "Depot", journal: "Journal", game: "Übung", paper: "Papier-Test", settings: "Einstellungen", bilanz: "Bilanz" };
+const SEC_T = { today: "Heute", etf: "ETF", scanner: "Scanner", chart: "Chart", entry: "Einstieg", calendar: "Markt", news: "Markt", depot: "Depot", journal: "Depot", game: "Depot", paper: "Depot", settings: "Einstellungen", bilanz: "Depot" };   // Titel = Bereich der Seitenleiste
+// Unterzeile im Kopf je Bereich (Design-Prüfung 14.11.: wurde nur beim Start gesetzt – Scanner zeigte die Zeile von „Heute“)
+function headSub() {
+  if (!data) return "";
+  if (state.sec === "today") return `${todaySubHtml()} ${healthPill()}`;
+  const s = data.stats || {}, when = new Date(data.generated).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const nH = data.results.filter(r => r.passed).length, bd = h4Data() ? boardItems() : null;
+  return `<b>${nH} Treffer</b>${bd ? ` · <b>${bd.ready.length} kaufbereit</b>` : ""} · ${fmt(s.universe, 0)} Aktien geprüft · Scan ${esc(when)} Uhr ${healthPill()}`;
+}
 function appleHead() {
   document.body.dataset.sec = state.sec;
+  if ($("sub") && data && (state.sec === "today" || state.sec === "scanner")) $("sub").innerHTML = headSub();
   const t = (state.sec === "settings" && (SET_GROUPS.find(g => g[0] === state.setTab) || [])[1]) || SEC_T[state.sec] || "Kairo";
   $("greet").innerHTML = state.sec === "today" ? greetText() : esc(t);   // Begrüßung nur auf „Heute“, sonst Name des Bereichs
   if (!isApple()) return;
@@ -10692,7 +10730,7 @@ function renderHead() {
   const s = data.stats || {}, when = new Date(data.generated).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const nH = data.results.filter(r => r.passed).length, nW = data.results.filter(r => !r.passed && (r.fast_hit || r.near_hit)).length;
   const bd = h4Data() ? boardItems() : null;
-  $("sub").innerHTML = state.sec === "today" ? `${todaySubHtml()} ${healthPill()}` : `<b>${nH} Treffer</b>${bd ? ` · <b>${bd.ready.length} kaufbereit</b>` : ""} · ${fmt(s.universe, 0)} Aktien geprüft · Scan ${esc(when)} Uhr ${healthPill()}`;
+  $("sub").innerHTML = headSub();
   const sectors = [...new Set(data.results.map(r => r.sector).filter(Boolean))].sort();
   $("sectorOpts").innerHTML = `<button class="opt" data-v="">alle</button>` + sectors.map(x => `<button class="opt" data-v="${esc(x)}">${esc(x)}</button>`).join("");
 }
@@ -12832,7 +12870,7 @@ document.querySelector(".tabs").addEventListener("click", e => {
 });
 $("sheet").addEventListener("click", async e => {
   const cb = e.target.closest("[data-col]");
-  if (cb) { const h = new Set(state.hiddenCols || []); h.has(cb.dataset.col) ? h.delete(cb.dataset.col) : h.add(cb.dataset.col); state.hiddenCols = [...h]; save(); sheetExtras(); render(); return; }
+  if (cb) { const h = new Set(state.hiddenCols || COLS_HID0); h.has(cb.dataset.col) ? h.delete(cb.dataset.col) : h.add(cb.dataset.col); state.hiddenCols = [...h]; save(); sheetExtras(); render(); return; }
   const dp = e.target.closest("[data-delpreset]");
   if (dp) { state.presets.splice(+dp.dataset.delpreset, 1); save(); sheetExtras(); render(); return; }
   if (e.target.id === "savePreset") { const name = (await kPrompt("Name der Vorlage, z. B. „Große US-Werte“:", "", false) || "").trim().slice(0, 24); if (!name) return;
