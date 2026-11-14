@@ -114,15 +114,16 @@ def cik_candidates(text: str) -> list[int]:
 
 def find_cik(kw: str, tries: int = 6) -> tuple[int, str, list[dict]] | None:
     """Passt eine hinterlegte CIK nicht (Fonds umbenannt, Nummer verwechselt), über die EDGAR-Firmensuche nach dem Stichwort
-    suchen: erster Treffer, dessen SEC-Name das Stichwort enthält und der 13F-HR meldet."""
+    suchen: unter den Treffern, deren SEC-Name das Stichwort enthält und die 13F-HR melden, der mit der neuesten Meldung."""
     r = _get("https://www.sec.gov/cgi-bin/browse-edgar", params={"company": kw, "type": "13F-HR", "dateb": "", "owner": "include",
                                                                   "count": "40", "action": "getcompany", "output": "atom"})
+    best = None
     for c in cik_candidates(r.text if r is not None else "")[:tries]:
         name, fl = filings(c)
         time.sleep(.35)
-        if kw in (name or "").lower() and fl:
-            return c, name, fl
-    return None
+        if kw in (name or "").lower() and fl and (best is None or fl[0]["period"] > best[2][0]["period"]):
+            best = (c, name, fl)                       # mehrere Gesellschaften gleichen Namens: die mit der neuesten Meldung
+    return best
 
 
 def parse_infotable(xml_text: str) -> dict[str, dict]:
