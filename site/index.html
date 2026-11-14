@@ -2602,6 +2602,19 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .ins-anl{display:flex!important;align-items:center;gap:10px;min-width:0}.ins-anl>.cf-av{flex:none}.ins-ant{display:flex;flex-direction:column;min-width:0}
 .ico{width:1.05em;height:1.05em;vertical-align:-.16em;flex:none;display:inline-block}.dotc{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:.08em}
 .cf-t2{display:flex;flex-direction:column;gap:4px;margin:10px 0 0;line-height:1.45}.cf-t2 b{font-size:14px}.cf-t2 span{color:var(--muted);font-size:13px}
+.sg-hub{display:flex;flex-direction:column;background:var(--surface);border-radius:16px;box-shadow:inset 0 0 0 1px var(--pf-ring);overflow:hidden;margin:4px 0 10px}
+.sg-row{display:flex;align-items:center;gap:14px;padding:13px 16px;border:0;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;border-top:1px solid var(--line)}
+.sg-row:first-child{border-top:0}.sg-row:active{background:var(--pf-hover)}
+.sg-ic{flex:none;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}.sg-ic svg{width:19px;height:19px}
+.sg-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}.sg-tx b{font-size:15.5px;font-weight:600}.sg-tx small{font-size:12.5px;color:var(--muted)}
+.sg-row em{font-style:normal;color:var(--muted);font-size:13.5px;white-space:nowrap;max-width:40%;overflow:hidden;text-overflow:ellipsis}
+.sg-ch{width:8px;height:8px;border-right:2px solid var(--faint,#666);border-top:2px solid var(--faint,#666);transform:rotate(45deg);flex:none;margin-left:2px}
+.sg-ver{font-size:12px;color:var(--muted);text-align:center;margin:6px 0 14px}
+.sg-head{display:flex;flex-direction:column;gap:4px;margin:0 0 14px}.sg-head h2{margin:0;font-size:24px}
+.sg-back{align-self:flex-start;border:0;background:none;color:var(--accent);font:inherit;font-size:15px;font-weight:600;padding:2px 0 2px 16px;cursor:pointer;position:relative}
+.sg-back::before{content:"";position:absolute;left:2px;top:50%;width:8px;height:8px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-50%) rotate(45deg)}
+body.sg-sub .sg-head h2{display:none}body:not([data-sec="settings"]).sg-sub .sg-head{display:none}
+@media (max-width:520px){.sg-row em{display:none}}
 .mc-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}.mc-bar>b{font-size:17px;margin-right:auto}.mc-bar .ct-rg button svg{width:18px;height:18px;display:block}
 .mc-g{display:grid;gap:10px;height:calc(100vh - 170px);min-height:420px}.mc-g.mc-1{grid-template-columns:1fr}.mc-g.mc-2{grid-template-columns:1fr 1fr}.mc-g.mc-4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 @media (max-width:700px){.mc-g.mc-2{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.mc-g.mc-4{grid-template-columns:1fr;grid-template-rows:repeat(4,300px);height:auto}}
@@ -2801,6 +2814,8 @@ const tvUrl = t => {
 };
 
 let data = null;
+// Region: „tested“ = USA + Europa (dort ist die Kairo-Regel getestet); sonst eine Region oder alle
+const regIn = r => state.region === "tested" ? r.region === "us" || r.region === "europe" : !state.region || r.region === state.region;
 const DEFAULTS = { ins: "", grade: "", minScore: "0", minCap: "0", maxCap: "0", vola: "", minTgt: "", region: "", zone: "", div: "", sector: "", chk: "", sort: "score" };
 const VOLA = { low: [0, .3], mid: [.3, .5], high: [.5, .8], xhigh: [.8, Infinity] };
 // Analysten: Ø Kursziel und Abstand zum aktuellen Kurs (aus der Marktstimmung)
@@ -2939,7 +2954,7 @@ function rows(kind) {
     && (!+state.minCap || (r.market_cap_usd ?? 0) >= +state.minCap * 1e9)
     && (!+state.maxCap || (r.market_cap_usd ?? Infinity) <= +state.maxCap * 1e9)
     && volaIn(r) && tgtIn(r) && insIn(r)
-    && (!state.region || r.region === state.region)
+    && regIn(r)
     && (!state.zone || r.zone_type.includes(state.zone))
     && (!state.div || r.divergence === state.div)
     && (!state.sector || r.sector === state.sector) && chkIn(r)).sort(SORTS[state.sort]);
@@ -2966,7 +2981,7 @@ function selRows() {
   const light = r => (!q || r.ticker.toLowerCase().includes(q) || (r.name || "").toLowerCase().includes(q))
     && (!+state.minCap || (r.market_cap_usd ?? 0) >= +state.minCap * 1e9) && (!+state.maxCap || (r.market_cap_usd ?? Infinity) <= +state.maxCap * 1e9) && volaIn(r);
   const gOk = r => !r.passed || !state.grade || (r.grade && (state.grade === "A" ? r.grade.g === "A" : r.grade.g !== "C"));
-  const full = r => light(r) && gOk(r) && tgtIn(r) && insIn(r) && (r.score >= +state.minScore || !r.passed) && (!state.region || r.region === state.region)
+  const full = r => light(r) && gOk(r) && tgtIn(r) && insIn(r) && (r.score >= +state.minScore || !r.passed) && regIn(r)
     && (!state.zone || r.zone_type.includes(state.zone)) && (!state.div || r.divergence === state.div) && (!state.sector || r.sector === state.sector) && chkIn(r);
   // Watchlist-Aktien: nur Suche, Börsenwert und Volatilität filtern (wie bisher) – sonst alle Filter
   const fv = favs();
@@ -3114,10 +3129,10 @@ function scoreBoxHtml(r) {
   const gs = r.grade && data.stats && data.stats.grade && data.stats.grade.test[r.grade.g];
   const gradeBox = r.grade ? `<div class="sb-trend"><div class="sb-h" style="margin:0 0 6px">Qualitätsstufe ${gradeBadge(r)}</div>
     ${r.grade.why.length ? `<ul class="fcw">${r.grade.why.map(([sg, x]) => `<li class="${sg > 0 ? "up" : "down"}">${sg > 0 ? "▲" : "▼"} <span>${esc(x)}</span></li>`).join("")}</ul>` : `<div class="note" style="margin:0">Keine der historisch auffälligen Eigenschaften – Durchschnitt.</div>`}
-    ${gs ? `<div class="note" style="margin:6px 0 0">Stufe ${r.grade.g} im Test (ungesehene Daten ab ${dateDE(data.stats.grade.split)}): Ziel 1 vor Stop in ${pct(gs.t1, 0)}, Ø ${gs.avg_r >= 0 ? "+" : ""}${fmt(gs.avg_r, 2)} R je Trade, ${fmt(gs.n, 0)} Signale. Die 11 Kriterien sind unverändert – die Stufe sortiert nur. Achtung: gemessen mit der älteren Ziel-/Stop-Regel, nicht mit B60.</div>` : ""}</div>` : "";
+    ${gs ? `<div class="note" style="margin:6px 0 0">Stufe ${r.grade.g} im Test (ungesehene Daten ab ${dateDE(data.stats.grade.split)}): Ziel 1 vor Stop in ${pct(gs.t1, 0)}, Ø ${gs.avg_r >= 0 ? "+" : ""}${fmt(gs.avg_r, 2)} R je Trade, ${fmt(gs.n, 0)} Signale. Die 11 Kriterien sind unverändert – die Stufe sortiert nur. Achtung: gemessen mit der älteren Ziel-/Stop-Regel, nicht mit der heutigen Regel.</div>` : ""}</div>` : "";
   if (r.passed) {
     const sum = (r.bonuses || []).reduce((s, b) => s + b.points, 0);
-    return `<div class="sb-h">So setzt sich der Score ${r.score} zusammen</div><div class="note" style="margin:0 0 6px">Der Score zählt Zusatzmerkmale. Er ist für die Regel B60 <b>nicht</b> als Qualitätsrangfolge validiert.</div>
+    return `<div class="sb-h">So setzt sich der Score ${r.score} zusammen</div><div class="note" style="margin:0 0 6px">Der Score zählt Zusatzmerkmale. Er ist für die Kairo-Regel <b>nicht</b> als Qualitätsrangfolge validiert.</div>
       <table class="check"><tbody>${(r.bonuses || []).map(b => `<tr><td class="${b.points >= 0 ? "ok" : "no"}">${b.points > 0 ? "+" : ""}${b.points}</td><td>${esc(b.label)}</td></tr>`).join("")}
       <tr><td><b>${sum}</b></td><td><b>Summe${sum > 100 ? " (gedeckelt auf 100)" : ""}</b></td></tr></tbody></table>${gradeBox}${trend}${past}`;
   }
@@ -4459,7 +4474,7 @@ function newsHtml() {
   const live = liveKey("fh"), src = live ? `Scan + live (Finnhub)${NEWS.at ? " · " + new Date(NEWS.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr" : " · lädt …"}` : "aus dem letzten Scan";
   if (tab === "overview") return marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf);
   const head = `<div class="section-title"><span>${tab === "insider" ? "Insider" : "Nachrichten"}</span><span>${esc(src)}</span></div>${seg}
-    ${live ? `<button class="live-btn" data-newsfresh style="margin:0 2px 4px">↻ Aktualisieren</button>` : state.fhTipOff ? "" : `<p class="muted" style="font-size:12.5px;margin:4px 2px">Live-Meldungen mit kostenlosem Finnhub-Schlüssel · <button class="hlink" data-gosec="settings">Einrichten</button> · <button class="hlink" data-fhtipoff>Ausblenden</button></p>`}`;
+    ${live ? `<button class="live-btn" data-newsfresh style="margin:0 2px 4px">↻ Aktualisieren</button>` : state.fhTipOff ? "" : `<p class="muted" style="font-size:12.5px;margin:4px 2px">Live-Meldungen mit kostenlosem Finnhub-Schlüssel · <button class="hlink" data-gosec="settings" data-settab="live">Einrichten</button> · <button class="hlink" data-fhtipoff>Ausblenden</button></p>`}`;
   if (tab === "feed" && feedMine) {
     let pool = bj && bj.stocks ? Object.entries(bj.stocks).filter(([t]) => mine.has(t)).flatMap(([t, l]) => l.map(n => ({ ...n, nm: nameOf(t), tk: t, ms: msOf(n.d) }))) : [];
     Object.entries(NEWS.co).forEach(([t, l]) => l.forEach(n => pool.push({ t: n.headline, u: n.url, p: n.source, ms: n.datetime * 1000, nm: nameOf(t), tk: t, s: 0 })));
@@ -7691,24 +7706,24 @@ const resR = v => `${v >= 0 ? "+" : "−"}${fmt(Math.abs(v), 2)} R`;
 // Kosten, Positionsgröße, Stichprobe, Belastbarkeit und Prüfdatum. „aktuell“ = gültiger Stand; „überholt“ bleibt nur zur
 // Nachvollziehbarkeit sichtbar und wird nirgends mehr als Erwartung verwendet.
 const EVIDENCE = [
-  { id: "B60", st: "aktuell", strat: "Kairo B60 (Mean Reversion)", ver: "B60 · Tag 60 · EMA 20 ab Tag 10", period: "2008 – 10/2026",
+  { id: "B60", st: "aktuell", strat: "Kairo-Regel (Rücksetzer kaufen)", ver: "Ausstieg EMA 20 ab Tag 10, spätestens Tag 60", period: "2008 – 10/2026",
     uni: "USA + Europa, eingefrorenes Universum 16.10.2026 (heutige Aktien – Pleitewerte fehlen)", src: "Forschungsdatensatz v1 (Yahoo, geprüft)",
     cost: "normal: Scalable PRIME+ (0,99 € unter 250 €, Spread je Aktie) · Stress: doppelter Spread, Schlupf, FX-Gebühr",
     size: "je Trade 1 R (ohne Kapitalgrenze); Depot 5 × 1 % bzw. 20 × 0,25 %", cap: "Depot 10.000 / 20.000 €", n: RESEARCH.n,
     res: `${resR(RESEARCH.rNorm)} normal · ${resR(RESEARCH.rStress)} Stress · Depot 20 × 0,25 %: ${sgnPct(RESEARCH.d20.norm, 0)} p. a. normal, ${sgnPct(RESEARCH.d20.stress, 1)} Stress`,
     robust: `klein: nur ${resR(RESEARCH.vsRandom)} besser als Zufalls-Einstiege; nach Stress-Kosten kein Vorteil`, checked: "31.10.2026" },
-  { id: "LEARN", st: "aktuell", strat: "Lern-Test: vorher erkennbare Merkmale", ver: "B60", period: "2008 – 10/2026", uni: "wie B60", src: "research/reversal/learn.py",
+  { id: "LEARN", st: "aktuell", strat: "Lern-Test: vorher erkennbare Merkmale", ver: "Kairo-Regel", period: "2008 – 10/2026", uni: "wie Kairo-Regel", src: "research/reversal/learn.py",
     cost: "Stress", size: "je Trade", cap: "–", n: RESEARCH.n, res: "kein Merkmal schadet beständig (Stop-Abstand, Momentum, Unruhe, Marktlage)",
     robust: "vorab festgelegte Regel, drei Zeiträume + Bootstrap", checked: "01.11.2026" },
-  { id: "CALM", st: "aktuell", strat: "Ruhe-Filter (nur ruhige Setups)", ver: "B60 + Q1", period: "2008 – 10/2026", uni: "wie B60", src: "research/reversal (Ruhe-Test)",
+  { id: "CALM", st: "aktuell", strat: "Ruhe-Filter (nur ruhige Setups)", ver: "Kairo-Regel + Ruhe-Filter", period: "2008 – 10/2026", uni: "wie Kairo-Regel", src: "research/reversal (Ruhe-Test)",
     cost: "Stress", size: "Depot-Raster", cap: "1.000 – 20.000 €", n: null, res: "je Trade besser, im Depot nicht → bleibt aus", robust: "drei Zeiträume", checked: "31.10.2026" },
-  { id: "E2", st: "Forschung", strat: "E2 – Ausbruchs-Einstieg (Buy-Stop über Basishoch)", ver: "E2", period: "2008 – 10/2026 + Vorzeit/Asien", uni: "wie B60",
+  { id: "E2", st: "Forschung", strat: "Ausbruchs-Einstieg (Kauf über dem Basis-Hoch)", ver: "Variante", period: "2008 – 10/2026 + Vorzeit/Asien", uni: "wie Kairo-Regel",
     src: "research/ultimate", cost: "Stress", size: "Depot-Raster", cap: "1.000 – 20.000 €", n: null,
     res: "je Trade in unabhängigen Daten besser, im Depot nicht durchgängig", robust: "nicht bestanden – nur Schattentest", checked: "31.10.2026" },
-  { id: "T20", st: "überholt", strat: "Ältere Turbo-Studie (Verkauf an Tag 20)", ver: "vor B60", period: "2017 – 10/2026", uni: "2 Stichproben à ~3.200 Aktien",
+  { id: "T20", st: "überholt", strat: "Ältere Turbo-Studie (Verkauf an Tag 20)", ver: "vor der heutigen Regel", period: "2017 – 10/2026", uni: "2 Stichproben à ~3.200 Aktien",
     src: "backend/shortswing.py", cost: "Turbo-Finanzierung, Spread, 0,99 €", size: "1 % Risiko, Turbo-Hebel", cap: "3.000 €", n: null,
     res: "≈ +15 % p. a. laut damaliger Rechnung", robust: "überholt – vor der Engine-Korrektur, zu optimistisch", checked: "09/2026" },
-  { id: "SWING", st: "überholt", strat: "Kurzfrist-Studie (Haltedauer 5–20 Tage, Erwartung je Haltedauer)", ver: "vor B60", period: "5 Jahre", uni: "1.600 Aktien",
+  { id: "SWING", st: "überholt", strat: "Kurzfrist-Studie (Haltedauer 5–20 Tage, Erwartung je Haltedauer)", ver: "vor der heutigen Regel", period: "5 Jahre", uni: "1.600 Aktien",
     src: "backend/shortswing.py", cost: "netto", size: "1 R", cap: "–", n: null, res: "+0,04 bis +0,26 R je Haltedauer", robust: "überholt – andere Ausstiegsregel", checked: "10/2026" }];
 const evid = id => EVIDENCE.find(x => x.id === id);
 function evidTableHtml() {
@@ -7726,13 +7741,13 @@ function evidCardHtml(r) {
   const costR = dist > 0 ? (2 * TP.spreadStock * ref) / dist : null;              // Spread Kauf + Verkauf in R (ohne Gebühr)
   const b = getJson("bilanz.json"), L = b && b.live && (b.live.strat60 || null);
   const lines = [
-    ["Regelstatus", `${r.met}/${r.total} Kriterien erfüllt – technischer Treffer nach B60`],
+    ["Regelstatus", `${r.met}/${r.total} Kriterien erfüllt – Treffer nach der Kairo-Regel`],
     ["Handelbarkeit", `${x.t}${tested ? "" : " · Region nicht getestet – nur beobachten"}`],
     ["Risiko & Kosten", dist ? `Stop ${pct(dist / ref, 1)} unter der Kaufzone${atr ? ` (${fmt(dist / atr, 1)} ATR)` : ""} · Spread ≈ ${fmt(costR, 2)} R je Trade, unter 250 € Orderwert + 0,99 € Gebühr` : "Stop kommt mit der Seitwärtsphase"],
-    ["Historische Evidenz", `B60 2008–26: ${resR(RESEARCH.rNorm)} je Trade normal, ${resR(RESEARCH.rStress)} mit Stress-Kosten – nur ${resR(RESEARCH.vsRandom)} besser als Zufall (Stand ${evid("B60").checked})`],
+    ["Historische Evidenz", `Kairo-Regel 2008–26: ${resR(RESEARCH.rNorm)} je Trade normal, ${resR(RESEARCH.rStress)} mit Stress-Kosten – nur ${resR(RESEARCH.vsRandom)} besser als Zufall (Stand ${evid("B60").checked})`],
     ["Live-Evidenz", L && (L.mtm_n || L.n) ? `${L.mtm_n ?? L.n} Live-Trades · Ø ${resR(L.mtm_r ?? L.avg_r)}${(L.mtm_n ?? L.n) < 30 ? " – noch zu wenige für ein Urteil" : ""}` : "noch keine abgeschlossenen Live-Trades"]];
   return `<details class="evc"><summary>Einordnung: Signal ≠ Empfehlung</summary><ul class="checks" style="margin:6px 0 0">${lines.map(([l, v]) => `<li><b>${l}:</b> ${esc(v)}</li>`).join("")}</ul>
-    <div class="note" style="margin:6px 0 0">Der Score und die Reihenfolge sind keine nachgewiesene Qualitätsrangfolge für B60. Bei vollem Depot gilt die getestete Rangfolge: schwächeres Vormomentum zuerst.</div></details>`;
+    <div class="note" style="margin:6px 0 0">Der Score und die Reihenfolge sind keine nachgewiesene Qualitätsrangfolge für die Kairo-Regel. Bei vollem Depot gilt die getestete Rangfolge: schwächeres Vormomentum zuerst.</div></details>`;
 }
 const STRAT_BT = {
   main: { cagr: [.148, .15], test: [.039, .18], mdd: [.352, .50],
@@ -7798,7 +7813,7 @@ function myTradesHtml() {
   const [ic, txt] = rs.length < 30 ? ['<i class="vdot y"></i>', `noch zu früh für ein Urteil (${rs.length}/30 Trades)`] : avg < e - band ? ['<i class="vdot r"></i>', "schwächer als die Studie – Regeln prüfen"] : avg > e + band ? ['<i class="vdot g"></i>', "besser als die Studie"] : ['<i class="vdot g"></i>', "im erwarteten Rahmen"];
   return `<div class="hcard">${hHead("Deine Trades")}
     <div class="mtiles" style="margin:0 0 10px"><div class="mt"><span>Abgeschlossen</span><b>${rs.length}</b><em>${nR} echt · ${nP} Übung · ${open} offen</em></div>
-      <div class="mt"><span>Ø je Trade</span><b class="${avg >= 0 ? "up" : "down"}">${avg >= 0 ? "+" : ""}${fmt(avg, 2)} R</b><em>Forschung B60 ${resR(e)} normal</em></div>
+      <div class="mt"><span>Ø je Trade</span><b class="${avg >= 0 ? "up" : "down"}">${avg >= 0 ? "+" : ""}${fmt(avg, 2)} R</b><em>Forschung ${resR(e)} normal</em></div>
       <div class="mt"><span>Gewinner</span><b>${pct(win, 0)}</b><em>wenige große tragen</em></div>
       <div class="mt"><span>Summe</span><b class="${sum >= 0 ? "up" : "down"}">${sgnEur(sum)}</b><em>geschätzt</em></div></div>
     <div class="note" style="margin:0 0 8px">${ic} ${txt}.${early ? ` ${early}× vor dem Verkaufstag verkauft, ohne dass der Stop griff – das weicht von den Regeln ab und kostet im Test Rendite.` : ""}</div>
@@ -7881,7 +7896,7 @@ function mrShadowHtml(S) {
     ${row("A5 – 3 Verlusttage + Aufwärtstrend", S.A5, "Depot 5 Plätze, Verkauf über der 5-Tage-Linie")}
     ${row("W2 – wie A5 mit Kauf-Limit", S.W2, `Limit 0,5 ATR unter dem Schluss, nur am Folgetag${S.W2 && S.W2.no_fill ? ` · ${S.W2.no_fill}× nicht gefüllt` : ""}`)}
     ${row("ETF-RSI(2) – Sektor-ETFs", S.ETF, "RSI(2) < 10 über der 200-Tage-Linie")}
-    ${row("E2 – B60-Treffer mit Ausbruchs-Einstieg", S.E2 && { ...S.E2, signals: S.E2.n, open: (S.E2.status || {}).open || 0 }, "gleiche Signale wie B60")}
+    ${row("Ausbruchs-Einstieg (gleiche Treffer)", S.E2 && { ...S.E2, signals: S.E2.n, open: (S.E2.status || {}).open || 0 }, "gleiche Signale wie die Kairo-Regel")}
     ${["W2", "A5"].map(k => shadowLearnHtml(k, S[k] && S[k].learn)).join("")}
     ${S.vergleich && S.vergleich.W2 && S.vergleich["CTRL-L"] ? `<div class="note" style="margin:6px 0 0"><b>Gegenprobe:</b> W2-Signale ${S.vergleich.W2.n} beendet, Ø ${S.vergleich.W2.net_normal != null ? sgnPct(S.vergleich.W2.net_normal, 2) : "–"} · Zufallskauf mit gleichem Limit ${S.vergleich["CTRL-L"].n} beendet, Ø ${S.vergleich["CTRL-L"].net_normal != null ? sgnPct(S.vergleich["CTRL-L"].net_normal, 2) : "–"}${S.vergleich.diff_net != null ? ` · Vorsprung ${sgnPct(S.vergleich.diff_net, 2)}` : ""}. Erst ab ~150 beendeten Signalen und 12 Monaten aussagekräftig.</div>` : ""}
     <div class="note" style="margin:6px 0 0">Diese Regeln waren im Backtest mit normalen Kosten stark, mit hohen Kosten schwach. Hier zeigt sich, ob das live hält. Entscheidend sind deine echten Kosten bei Scalable: unter ~0,08 % je Order lohnt A5 – das zeigt der Kosten-Check im Journal. Kein Echtgeld vor deiner Entscheidung.</div></div>`;
@@ -8116,8 +8131,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.142";
-const APP_NEWS = [["2026.11.142", "Aufgeräumt wie eine Profi-Plattform", [
+const APP_VER = "2026.11.143";
+const APP_NEWS = [["2026.11.143", "Einstellungen neu geordnet, klare Namen", [
+  ["Einstellungen", "Eine Übersicht mit sieben Gruppen – Trading, Kursdienst, Mitteilungen, Daten & Sicherung, Darstellung, Hilfe & Begriffe, Datenstatus. Jede Gruppe hat ihre eigene Seite."],
+  ["Klare Namen", "Papier-Depots und Bilanz ohne Forschungs-Kürzel: „Rückkehr zum Mittelwert“ statt S19, „Kairo-Regel“ statt B60. Die Forschungs-Strategien stehen gebündelt in einem eigenen Bereich."],
+  ["USA + Europa", "Neuer Schnellfilter im Scanner: zeigt nur die Regionen, in denen die Kairo-Regel getestet ist."]]],
+  ["2026.11.142", "Aufgeräumt wie eine Profi-Plattform", [
   ["Symbole statt Emojis", "Glocke, Warnung, Papierkorb und Co. sind jetzt einheitliche Linien-Symbole. Die Begrüßung kommt ohne Emoji – wer eins möchte, wählt es in den Einstellungen."],
   ["Klare Hinweise", "Statt widersprüchlicher Sätze steht da, was nicht passt, und ein Knopf „Angleichen“. Fehlende Live-Kurse erscheinen als ruhiger Hinweis statt als Fehlermeldung."],
   ["Kopfzeile ohne Doppelungen", "Chart und Einstellungen stehen in der Seitenleiste – oben bleibt nur das Tagesbriefing."],
@@ -8767,6 +8786,40 @@ function vaultHtml() {
 const CFG_LABELS = { universe: "Universum (2.1)", correction: "Korrektur (2.2)", fib: "Fibonacci – Variante A (2.3)",
   support: "Support – Variante B (2.3)", rsi: "RSI (2.4)", macd: "MACD (2.5)", mbi: "Momentum Bias Index (2.6)",
   risk: "Risiko & Trade-Plan (2.7 / 3)", score: "Score (4)", pivots: "Pivots", history: "Historie" };
+
+// ---------- Einstellungen gegliedert (14.11., wie iOS-Einstellungen): Übersicht mit Gruppen, jede Gruppe eine eigene Seite ----------
+// Die Abschnitte bleiben unverändert (settingsHtml) – hier werden sie nach ihrer Überschrift den Gruppen zugeordnet und ein-/ausgeblendet.
+const SET_GROUPS = [
+  ["trade", "Trading", "Kapital, Risiko, TradingView", ["Trading"], '<path d="M4 19V5M4 19h16"/><path d="m7 14 4-4 3 3 5-6"/>'],
+  ["live", "Kursdienst & Live-Kurse", "Live-Kurse, Intraday, Abgleich", ["Live-Kurse"], '<path d="M3 12h4l3-7 4 14 3-7h4"/>'],
+  ["push", "Mitteilungen", "Stop, Ziele, Alarme aufs Gerät", ["Mitteilungen"], '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>'],
+  ["data", "Daten & Sicherung", "Watchlist, Backup, Geräte-Abgleich", ["Watchlist", "Daten & Backup"], '<ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6M5 12v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-6"/>'],
+  ["look", "Darstellung", "Name, Design, Textgröße", ["Persönlich"], '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M12 3.5a8.5 8.5 0 0 1 0 17"/>'],
+  ["help", "Hilfe & Begriffe", "Begriffe A–Z, Feedback, Forschung", ["Hilfe & Feedback", "Begriffe A–Z", "Forschung & Live-Bilanz"], '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6M12 16.6v.1"/>'],
+  ["status", "Datenstatus", "Scans, Quellen, Parameter", ["Datenstatus"], '<path d="M4 18h16M6 14l3-4 3 2 4-6 2 3"/>']];
+function setGroupify() {
+  const m = $("main"); if (!m) return;
+  const secs = []; let cur = null;
+  [...m.children].forEach(k => {
+    if (k.classList.contains("section-title")) { cur = { t: (k.querySelector("span") || k).textContent.trim(), info: ((k.querySelectorAll("span")[1] || {}).textContent || "").trim(), nodes: [k] }; secs.push(cur); }
+    else if (cur && !k.classList.contains("kfoot")) cur.nodes.push(k);
+  });
+  const gOf = t => (SET_GROUPS.find(g => g[3].some(x => t.startsWith(x))) || SET_GROUPS[SET_GROUPS.length - 1])[0];
+  const tab = SET_GROUPS.some(g => g[0] === state.setTab) ? state.setTab : "";
+  secs.forEach(sc => sc.nodes.forEach(n => { n.style.display = !tab || gOf(sc.t) !== tab ? "none" : ""; }));
+  document.body.classList.toggle("sg-sub", !!tab);
+  const ic = p => `<span class="sg-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg></span>`;
+  if (!tab) {
+    const info = g => { const sc = secs.filter(x => gOf(x.t) === g[0]); const i = sc.map(x => x.info).filter(Boolean)[0]; return i || g[2]; };
+    m.insertAdjacentHTML("afterbegin", `<div class="sg-hub">${SET_GROUPS.map(g => `<button class="sg-row" data-settab="${g[0]}">${ic(g[4])}<span class="sg-tx"><b>${g[1]}</b><small>${esc(g[2])}</small></span><em>${esc(g[0] === "trade" ? eur(tpCfg().depot) : ["live", "push", "data"].includes(g[0]) && info(g) !== g[2] ? info(g).replace(/ – .*/, "") : "")}</em><i class="sg-ch" aria-hidden="true"></i></button>`).join("")}</div>
+      <div class="sg-ver">Kairo ${esc(APP_VER)}</div>`);
+  } else {
+    const g = SET_GROUPS.find(x => x[0] === tab);
+    m.insertAdjacentHTML("afterbegin", `<div class="sg-head"><button class="sg-back" data-settab="">Einstellungen</button><h2>${g[1]}</h2></div>`);
+    secs.filter(sc => gOf(sc.t) === tab).forEach((sc, i) => { if (i === 0 && secs.filter(x => gOf(x.t) === tab).length === 1) sc.nodes[0].style.display = "none"; });   // eine Gruppe = ein Abschnitt: doppelte Überschrift weg
+  }
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-settab]"); if (!b || b.closest("[data-gosec]")) return; state.setTab = b.dataset.settab; save(); render(); window.scrollTo({ top: 0 }); });
 function settingsHtml() {
   const cfg = data.config || {};
   const groups = Object.entries(CFG_LABELS).filter(([k]) => cfg[k]).map(([k, label]) =>
@@ -9824,9 +9877,10 @@ function paperSpark(st, bench) {
     <div class="oleg"><span class="${e[e.length - 1] >= S ? "up" : "down"}">■ Papier-Depot</span><span class="gold">┄ ACWI kaufen &amp; halten (gleicher Start)</span></div>`;
 }
 // Papier-Test: Übersicht aller Depots in einer Tabelle, Details je Depot aufklappbar (Kandidaten zuerst und offen)
-const PAPER_TAG = { KAIROZ: ["Deine Idee · neu", "gold"], KAIROL: ["Vergleich zu Kairo-Ziel", ""], DM: ["Bester Kandidat", "up"], SP2F: ["Kandidat · neu", "gold"], KAIROS: ["Kandidat · Kosten offen", "gold"], KAIRO: ["Referenz", ""], MOM10: ["Vergleich · durchgefallen", "down"],
+const PAPER_TAG = { KAIROZ: ["Deine Idee · neu", "gold"], KAIROL: ["Vergleich ohne Kursziel", ""], DM: ["Bester Kandidat", "up"], SP2F: ["Kandidat · neu", "gold"], KAIROS: ["Kandidat · Kosten offen", "gold"], KAIRO: ["Referenz", ""], MOM10: ["Vergleich · durchgefallen", "down"],
   MOM5: ["Vergleich · durchgefallen", "down"], S20: ["Idee · nicht bestätigt", "down"], S19: ["Idee · nicht bestätigt", "down"], S19B: ["Idee · nicht bestätigt", "down"], S19C: ["Idee · nicht bestätigt", "down"] };
-const PAPER_NAME = { KAIROZ: "Kairo-Ziel · Kursziel, lang halten", KAIROL: "Kairo lang · ohne Kursziel", DM: "Dual Momentum (ETF)", SP2F: "S&P 500 2× mit 200-Tage-Linie", KAIROS: "Kairo-S · 20 × 0,25 %", KAIRO: "Kairo · 5 × 1 %", MOM10: "Momentum Top 10", MOM5: "Momentum Top 5", S20: "S20 Trendfolge", S19: "S19 Mean Reversion", S19B: "S19-B", S19C: "S19-C" };
+// Verständliche Namen (14.11.): keine Forschungs-Kürzel in der Oberfläche
+const PAPER_NAME = { KAIROZ: "Kairo mit Kursziel · lang halten", KAIROL: "Kairo lang · ohne Kursziel", DM: "Dual Momentum (ETF)", SP2F: "S&P 500 2× mit 200-Tage-Linie", KAIROS: "Kairo · 20 Positionen à 0,25 % Risiko", KAIRO: "Kairo · 5 Positionen à 1 % Risiko", MOM10: "Momentum · Top 10", MOM5: "Momentum · Top 5", S20: "Trendfolge · Ausbruch aus enger Spanne", S19: "Rückkehr zum Mittelwert", S19B: "Rückkehr zum Mittelwert · Variante B", S19C: "Rückkehr zum Mittelwert · Variante C" };
 const paperVal = st => { const eq = st && (st.equity || []).slice(-1)[0], v = eq ? eq.eur : st && st.start_cash; return { v, ret: st && v != null ? v / st.start_cash - 1 : null }; };
 function paperOverview(d, order) {
   const row = sid => { const st = d[sid.toLowerCase()], { v, ret } = paperVal(st), [tag, tone] = PAPER_TAG[sid];
@@ -9834,7 +9888,7 @@ function paperOverview(d, order) {
       <span class="pr-r"><b class="${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "–" : sgnPct(ret, 1)}</b><small>${v == null ? "–" : eur(v)} · ${st ? (st.positions || []).length : 0} offen</small></span></div>`; };
   const grp = (t, ids) => `<div class="hsub">${t}</div>${ids.filter(x => order.includes(x)).map(row).join("")}`;
   return `<div class="hcard">${hHead("Alle Papier-Depots")}${grp("Kandidaten für echtes Geld", ["DM", "SP2F", "KAIROS"])}${grp("Referenz", ["KAIRO"])}${d.kairoz ? grp("Deine Idee: Kursziel + lang halten", ["KAIROZ", "KAIROL"]) : ""}
-    <details class="pgrp"><summary class="hsub">Vergleich und Ideen · ${order.filter(x => !["DM", "SP2F", "KAIROS", "KAIRO", "KAIROZ", "KAIROL"].includes(x)).length} Depots ›</summary>${order.filter(x => !["DM", "SP2F", "KAIROS", "KAIRO", "KAIROZ", "KAIROL"].includes(x)).map(row).join("")}</details>
+    <details class="pgrp"><summary class="hsub">Weitere Strategien (Forschung) · ${order.filter(x => !["DM", "SP2F", "KAIROS", "KAIRO", "KAIROZ", "KAIROL"].includes(x)).length} Depots ›</summary>${order.filter(x => !["DM", "SP2F", "KAIROS", "KAIRO", "KAIROZ", "KAIROL"].includes(x)).map(row).join("")}</details>
     <div class="note" style="margin-top:8px">Entscheidung über echtes Geld nach etwa 12 Monaten.</div></div>`;
 }
 function paperBox(sid, st, sm, bench) {
@@ -9842,8 +9896,8 @@ function paperBox(sid, st, sm, bench) {
   return `<details class="pdet"${["DM", "SP2F", "KAIROS"].includes(sid) ? " open" : ""}><summary class="psum"><b>${PAPER_NAME[sid]}</b><span class="ptag ${tone}">${tag}</span><span class="${ret == null ? "" : ret >= 0 ? "up" : "down"}">${ret == null ? "" : sgnPct(ret, 1)}</span></summary>${paperCard(sid, st, sm, bench)}</details>`;
 }
 function paperCard(sid, st, sm, bench) {
-  const name = { S19: "S19 · Hybride Mean Reversion (Original)", S19B: "S19-B · Volumen 2 von 3 Tagen", S19C: "S19-C · 2,0 Std + Volumen 2 von 3", MOM5: "MOM5 · Momentum Top 5 (monatlich)", MOM10: "MOM10 · Momentum Top 10 (monatlich)", DM: "DM · Dual Momentum (ETF)", SP2F: "SP2F · S&P 500 2× nur über der 200-Tage-Linie", KAIROZ: "KAIROZ · Kairo-Ziel (attraktives Kursziel, halten bis zum Ziel)", KAIROL: "KAIROL · Kairo lang (Vergleich ohne Kursziel)", KAIRO: "KAIRO · Scanner-Treffer", KAIROS: "KAIRO-S · Scanner-Treffer, schwache Aktien zuerst" }[sid] || "S20 · Trendfolge / VCP";
-  const vr = { S19B: "Variante B: wie S19, aber das Volumen muss nur an 2 der letzten 3 Tage sinken. ", S19C: "Variante C: Überdehnung schon ab 2,0 Std und Volumen an 2 der letzten 3 Tage sinkend. " }[sid] || "";
+  const name = { S19: "Rückkehr zum Mittelwert (Original)", S19B: "Rückkehr zum Mittelwert · Volumen 2 von 3 Tagen", S19C: "Rückkehr zum Mittelwert · 2,0 Std + Volumen 2 von 3", MOM5: "Momentum Top 5 (monatlich)", MOM10: "Momentum Top 10 (monatlich)", DM: "Dual Momentum (ETF)", SP2F: "S&P 500 2× nur über der 200-Tage-Linie", KAIROZ: "Kairo mit attraktivem Kursziel, halten bis zum Ziel", KAIROL: "Kairo lang (Vergleich ohne Kursziel)", KAIRO: "Kairo · Scanner-Treffer", KAIROS: "Kairo · Scanner-Treffer, schwache Aktien zuerst" }[sid] || "Trendfolge · Ausbruch aus enger Spanne";
+  const vr = { S19B: "Variante B: wie das Original, aber das Volumen muss nur an 2 der letzten 3 Tage sinken. ", S19C: "Variante C: Überdehnung schon ab 2,0 Std und Volumen an 2 der letzten 3 Tage sinkend. " }[sid] || "";
   const rule = sid === "KAIRO" || sid === "KAIROS" ? `Handelt jeden echten Kairo-Treffer (USA und Europa) nach der getesteten Regel: bis zu 10 Tage auf eine Seitwärtsphase warten (5 Kerzen, Spanne ≤ 1,5 ATR), Kauf zur nächsten Eröffnung innerhalb der Spanne, Stop unter dem Basis-Tief − 0,25 ATR, 1 % Risiko, max. 5 Positionen. Ausstieg: Stop, ab Tag 10 Schluss unter EMA20, spätestens Tag 60 (im Test in allen drei Zeiträumen besser als Tag 40). 2008–2026 je Trade ${resR(RESEARCH.rNorm)} mit PRIME+-Kosten, ${resR(RESEARCH.rStress)} mit Stress-Kosten – nur etwa ${resR(RESEARCH.vsRandom)} besser als Zufall.` + (sid === "KAIROS" ? " Variante S: bei mehreren Einstiegen zuerst Aktien mit dem schwächsten Kursverlauf der letzten Monate (im Test in allen drei Zeiträumen besser; Vorbehalt: kann am Datensatz liegen). Depot-Aufbau wie der beste Test: 20 Positionen × 0,25 % Risiko, 20.000 € virtuell (2008–2026: +6 % p. a. mit normalen Kosten, größter Rückgang −30 %; mit Stress-Kosten −1,2 % p. a. und −52 % – Kosten entscheiden)." : " Bei mehreren Einstiegen zuerst schwächeres Vormomentum (seit 29.10.2026, wie in der App – im Depot-Test besser als „ruhigere zuerst“).") + " Läuft einen Handelstag hinter dem Scan."
     : sid === "SP2F" ? "Jeden Handelstag: Liegt der S&P 500 zum Schluss über seinem 200-Tage-Durchschnitt, wird am nächsten Morgen der gehebelte ETF gehalten (Xtrackers S&P 500 2x Leveraged, DBPG), sonst Bargeld. Etwa 6 Wechsel im Jahr. Test 1989–2026: in allen drei Zeiträumen besser als der S&P 500 (+13,1 % statt +11,3 % p. a.) mit kleinerem Rückgang (−45 % statt −55 %) – nach den vorab festgelegten Regeln aber knapp nicht bestanden (mit der 100-Tage-Linie schlechter). Nicht im Test: Steuern bei jedem Wechsel und ein Crash an einem einzigen Tag (mit 2× doppelt so stark). Deshalb erst 12 Monate auf Papier."
     : sid === "DM" ? "Am ersten Handelstag jedes Monats: Von SPY (USA), EFA (Industrieländer) und QQQ (Nasdaq 100) wird der ETF mit der besten 12-Monats-Rendite gehalten – aber nur, wenn sie über dem Geldmarkt (BIL) liegt, sonst kurze US-Anleihen (SHY). Ein ETF, etwa 1–4 Wechsel im Jahr. Einzige Strategie, die 2008–2016, 2017–2021 und im finalen Test 2022–2026 nach Kosten besser als der Welt-ETF war (2022–26: +11,6 % statt +9,7 % p. a. unter Stress-Kosten) – aber knapp nicht signifikant besser als Zufall (p = 0,07). Bester Kandidat, kein Beweis."
@@ -9884,11 +9938,11 @@ function shadowHtml(sh) {
   const crvs = [[null, "alle"], [1, "CRV ≥ 1"], [1.5, "CRV ≥ 1,5"], [2, "CRV ≥ 2"]];
   const block = (mode, title) => `<div class="hh" style="margin-top:10px"><b>${title}</b></div><div class="tscroll"><table class="ptab"><tr><th></th><th>Ziel EMA20</th><th>nach 5 Tagen</th><th>nach 10 Tagen</th></tr>
     ${crvs.map(([c, l]) => `<tr><td>${l}</td>${["ema20", "t5", "t10"].map(e => cell(get("S19", mode, "S19C", c, e))).join("")}</tr>`).join("")}</table></div>`;
-  return `<div class="hcard">${hHead("Schattenbuch · Forschung")}
+  return `<div class="hcard">${hHead("Forschungsprotokoll")}
     <div class="note">Jedes Signal wird hier mit echten 4H-Kerzen weiterverfolgt – auch wenn das Depot es ablehnt (CRV, voll, Cash). So sehen wir später, ob ein anderes Mindest-CRV oder ein anderer Ausstieg besser wäre. Ändert nichts an den Depots. Je Feld: Ø R nach Kosten, Anzahl · Trefferquote. Aussagekräftig erst ab etwa 30 Trades je Feld.</div>
     <div class="note" style="margin-top:6px">Seit ${esc(sh.start || "–")}: ${sh.abgeschlossen} abgeschlossen · ${sh.offen} offen · ${sh.wartend} warten auf Auslöser</div>
-    ${block("4h", "S19-Familie · Kauf nach 4H-Auslöser")}${block("frueh", "S19-Familie · Kauf am nächsten Morgen (ohne Bestätigung)")}
-    <div class="hh" style="margin-top:10px"><b>S20 · Kauf nach 4H-Auslöser</b></div><div class="tscroll"><table class="ptab"><tr><th>Einstand + Nachziehen</th><th>nach 5 Tagen</th><th>nach 10 Tagen</th></tr>
+    ${block("4h", "Rückkehr zum Mittelwert · Kauf nach 4H-Auslöser")}${block("frueh", "Rückkehr zum Mittelwert · Kauf am nächsten Morgen (ohne Bestätigung)")}
+    <div class="hh" style="margin-top:10px"><b>Trendfolge · Kauf nach 4H-Auslöser</b></div><div class="tscroll"><table class="ptab"><tr><th>Einstand + Nachziehen</th><th>nach 5 Tagen</th><th>nach 10 Tagen</th></tr>
     <tr>${["trail", "t5", "t10"].map(e => cell(get("S20", "4h", "S20", null, e))).join("")}</tr></table></div></div>`;
 }
 // ---------- Top-Setups: heutige Kairo-Treffer (USA/Europa), Rangfolge nach Forschung v2.4 (schwaches Vormomentum zuerst) ----------
@@ -9985,7 +10039,7 @@ function paperHtml() {
   const sm = d.sum || {}, bench = sm.bench || [];
   const order = ["DM", "SP2F", "KAIROS", "KAIRO", "KAIROZ", "KAIROL", "MOM10", "MOM5", "S20", "S19", "S19B", "S19C"].filter(x => x !== "KAIROZ" && x !== "KAIROL" || d[x.toLowerCase()]);
   return head + paperOverview(d, order) + order.map(sid => paperBox(sid, d[sid.toLowerCase()], sm[sid], bench)).join("")
-    + `<details class="pdet"><summary class="psum"><b>Schattenbuch S19/S20</b><span class="ptag">Forschung</span></summary>${shadowHtml(sm.shadow)}</details>`
+    + `<details class="pdet"><summary class="psum"><b>Forschungsprotokoll · Rückkehr zum Mittelwert und Trendfolge</b><span class="ptag">Forschung</span></summary>${shadowHtml(sm.shadow)}</details>`
     + `<div class="note" style="margin:6px 2px">Stand: ${esc(sm.ts ? new Date(sm.ts).toLocaleString("de-DE") : "–")}. Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser (so real nachhandelbar). 4H-Kerzen wie TradingView (US: 9:30–13:30 und 13:30–16:00). R nach Gebühren und Spread. Grenzen: Yahoo-Stundenkerzen teils verzögert, Fundamentaldaten wöchentlich von Yahoo.</div>`;
 }
 
@@ -10038,7 +10092,7 @@ function renderMain() {
   const nReady = data.results.filter(r => r.passed && inTrade(r.region) && kSt(r).k === "ready").length;   // Abzeichen = kaufbereite Treffer
   $("wlBadge").hidden = !nReady; $("wlBadge").textContent = nReady; $("wlBadge").title = `${nReady} kaufbereit`;
   document.querySelector(".search").hidden = state.sec !== "scanner";
-  if (state.sec === "settings") { $("main").innerHTML = settingsHtml(); return; }
+  if (state.sec === "settings") { $("main").innerHTML = settingsHtml(); setGroupify(); return; }
   if (state.sec === "today") { $("main").innerHTML = todayHtml(); return; }
   if (state.sec === "bilanz") { $("main").innerHTML = subNavHtml("bilanz") + bilanzHtml(); return; }
   if (state.sec !== "chart") ctabDrop();
@@ -10070,7 +10124,7 @@ function renderMain() {
     ${state.view === "mine" ? wlBarHtml() : ""}
     ${state.view === "watch" ? `<div class="wmin" role="group" aria-label="Mindestens erfüllte Kriterien">${[9, 8, 7].map(n => `<button class="kchip${watchMin() === n ? " on" : ""}" data-wmin="${n}" aria-pressed="${watchMin() === n}">ab ${n}/11</button>`).join("")}</div>` : ""}
     <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
-      ${[["", "Alle"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<button class="kchip${String(state.region || "") === v ? " on" : ""}" data-qregion="${v}">${l}</button>`).join("")}
+      ${[["", "Alle"], ["tested", "USA + Europa"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<button class="kchip${String(state.region || "") === v ? " on" : ""}" data-qregion="${v}"${v === "tested" ? ' title="Hier ist die Kairo-Regel getestet (2008–2026)"' : ""}>${l}</button>`).join("")}
       <button class="kchip filt" data-sub="filter">Weitere Filter${nFilt - (state.region ? 1 : 0) > 0 ? ` <small>${nFilt - (state.region ? 1 : 0)}</small>` : ""}</button><button class="kchip spalten" data-sub="filter" data-cols="1">Spalten</button>${scanMenuHtml()}</div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
   const head = searchHtml() + scanBarHtml() + bar + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"}</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}${(n => { if (!n) return ""; const at = Math.max(...Object.values(LIVE.map).map(v => v.at || 0)), m = at ? Math.max(0, Math.round((Date.now() - at) / 6e4)) : null;
@@ -10174,7 +10228,7 @@ function greetText() {
 const SEC_T = { today: "Heute", etf: "ETF", scanner: "Scanner", chart: "Chart", entry: "Einstieg", calendar: "Kalender", news: "Markt", depot: "Depot", journal: "Journal", game: "Übung", paper: "Papier-Test", settings: "Einstellungen", bilanz: "Bilanz" };
 function appleHead() {
   document.body.dataset.sec = state.sec;
-  const t = SEC_T[state.sec] || "Kairo";
+  const t = (state.sec === "settings" && (SET_GROUPS.find(g => g[0] === state.setTab) || [])[1]) || SEC_T[state.sec] || "Kairo";
   $("greet").innerHTML = state.sec === "today" ? greetText() : esc(t);   // Begrüßung nur auf „Heute“, sonst Name des Bereichs
   if (!isApple()) return;
   $("adate").textContent = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
@@ -10216,7 +10270,7 @@ function sourcesStatus(now = Date.now()) {
 }
 const healthPill = () => { const hs = health(), bad = hs.some(x => x[0] === "r");
   const stale = hs.some(x => x[0] === "r" && /Letzter Scan/.test(x[1]));
-  return bad ? `<button class="hpill y" data-gosec="settings" title="${esc(hs.map(x => x[1]).join(" · "))}">${stale ? "Neuer Scan steht aus" : "Daten unvollständig"} ›</button>` : ""; };   // gelb/grün: nur in den Einstellungen
+  return bad ? `<button class="hpill y" data-gosec="settings" data-settab="status" title="${esc(hs.map(x => x[1]).join(" · "))}">${stale ? "Neuer Scan steht aus" : "Daten unvollständig"} ›</button>` : ""; };   // gelb/grün: nur in den Einstellungen
 function renderHead() {
   const h = new Date().getHours();
   const nm = String(state.name || "").trim();
@@ -12260,7 +12314,7 @@ document.addEventListener("click", async e => {
   const ei = e.target.closest("[data-ein]");
   if (ei) { const r = searchIdx && searchIdx.find(x => x.t === ei.dataset.ein); state.einT = ei.dataset.ein; state.einQ = r ? r.n : ei.dataset.ein; closeCard(); if (state.sec !== "entry") goSec("entry"); else { save(); render(); } window.scrollTo({ top: 0 }); return; }
   const gs = e.target.closest("[data-gosec]");
-  if (gs) { e.preventDefault(); closeCard(); goSec(gs.dataset.gosec); return; }
+  if (gs) { e.preventDefault(); closeCard(); if (gs.dataset.gosec === "settings") state.setTab = gs.dataset.settab || ""; goSec(gs.dataset.gosec); return; }
   const gu = e.target.closest("[data-gosub]");
   if (gu) { goSec(gu.dataset.gosub, !!gu.closest(".subnav")); return; }
   const gk = e.target.closest("[data-gokinds]");
