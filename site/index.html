@@ -2545,6 +2545,10 @@ html .jtx .jtrades td:nth-child(3) { max-width: 0; width: 100%; overflow: hidden
 @media (max-width: 600px) { html .jtrades td, html .jtrades th { padding: 9px 5px; font-size: 13px; } html .jtx .jtrades { min-width: 620px !important; }
   html .jopen th:nth-child(6), html .jopen td:nth-child(6), html .jopen th:nth-child(1), html .jopen td:nth-child(1) { display: none; }
   html .jtrades:not(.jopen):not(.jtx *) th:nth-child(3), html .jtrades:not(.jopen) td:nth-child(3) { display: none; } html .jtx .jtrades td:nth-child(3), html .jtx .jtrades th:nth-child(3) { display: table-cell; } html .jtrades td small { font-size: 11px; } }
+/* Live im Chart */
+.lv-rt { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; color: var(--up); }
+.lv-rt i { width: 7px; height: 7px; border-radius: 50%; background: var(--up); animation: lvp 1.4s ease-in-out infinite; } .lv-rt.slow { color: var(--muted); font-weight: 600; }
+@keyframes lvp { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
 </style>
 </head>
 <body>
@@ -8884,8 +8888,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.165";
-const APP_NEWS = [["2026.11.165", "Heute: deine Treffer zuerst", [
+const APP_VER = "2026.11.166";
+const APP_NEWS = [["2026.11.166", "Chart live zur Börseneröffnung", [
+  ["Y-Achse wieder ziehbar", "Die Preisachse lässt sich wieder mit dem Finger ziehen – Wischen in der Kursfläche verschiebt trotzdem nur die Zeit."],
+  ["Live zur Eröffnung", "Ist die Börse offen, aktualisiert der Chart alle 5 Sekunden. Mit Finnhub-Schlüssel laufen US-Aktien in Echtzeit (jeder Trade) – ideal für 15:30 Uhr."],
+  ["Auch Minuten-Charts und Raster", "Die laufende Kerze bewegt sich jetzt auch im 5-Minuten-, 15-Minuten- und Stunden-Chart und in den Mehrfach-Charts."]]],
+  ["2026.11.165", "Heute: deine Treffer zuerst", [
   ["Treffer aus deiner Liste oben", "Die Kairo-Treffer deiner Watchlist stehen jetzt ganz oben unter Heute, danach die Aufgaben. „Erste Schritte“ rutscht nach unten."]]],
   ["2026.11.164", "Journal kompakt", [
   ["Tabellen ohne Wischen", "Offene und abgeschlossene Trades passen jetzt in die Breite – lange Namen werden gekürzt statt die Tabelle zu verbreitern."]]],
@@ -11963,8 +11971,11 @@ function buildMain(el, c, r, opts) {
   };
   h.apply();
   h.live = () => {                                     // Live-Kurs: heutige Kerze fortschreiben (Linien, Fibonacci und Plan bleiben aus dem Scan)
-    if (c.intra || (c.tf && c.tf !== "D")) return false;   // Intraday/Woche/Monat: keine Tageskerze anhängen
     const q = LIVE.map[r.ticker], lb = bars[bars.length - 1]; if (!q || !(q.c > 0) || !lb) return false;
+    if (c.intra) {                                     // Minuten-/Stundenkerzen (14.11.2026): laufende Kerze live fortschreiben, neue Kerze im neuen Zeitfenster
+      const nb = intraNext(h.liveBar && h.liveBar.time >= lb.time ? h.liveBar : lb, q, c); if (!nb) return false;
+      try { candles.update(nb); h.liveBar = nb; } catch (e) { return false; } h.legendLast && h.legendLast(); return true; }
+    if (c.tf && c.tf !== "D") return false;           // Woche/Monat: keine Tageskerze anhängen
     const day = liveDay(r.ticker, q.ts); if (!day || day < lb.time) return false;
     const hi = v => v > 0 ? v : -Infinity, lo = v => v > 0 ? v : Infinity; h.bdReset();
     candles.update(day === lb.time ? { time: day, open: lb.open, high: Math.max(lb.high, hi(q.h), q.c), low: Math.min(lb.low, lo(q.l), q.c), close: q.c }
@@ -12003,7 +12014,7 @@ function liveDay(t, ts) {                              // Handelstag des Kurses 
   const m = String(t).match(/\.([A-Z]+)$/), tz = m ? LIVE_TZ[m[1]] || "Europe/Berlin" : "America/New_York";
   try { return new Date(ts).toLocaleDateString("sv-SE", { timeZone: tz }); } catch (e) { return ""; }
 }
-const liveChartTag = t => LIVE.map[t] ? liveTag(t) : "";
+const liveChartTag = t => !LIVE.map[t] ? "" : FHWS.on && FHWS.subs.has(t) ? '<span class="lv-rt"><i></i>Echtzeit</span>' : mktOpen(t) && state.sec === "chart" ? liveTag(t) + ' <span class="lv-rt slow">alle 5 s</span>' : liveTag(t);
 function liveChartsPaint(t) {
   CL_LIVE.forEach(h => { if (h.r.ticker === t && document.body.contains(h.el)) h.live(); });
   document.querySelectorAll("[data-livetag]").forEach(x => { if (x.dataset.livetag === t) x.innerHTML = liveChartTag(t); });
@@ -12013,11 +12024,62 @@ function liveChartsPaint(t) {
     px.innerHTML = `${fmt(q.c)} ${esc(cfChart.r.currency || "")}${d != null ? ` · <em class="${d >= 0 ? "up" : "down"}">${sgnPct(d, 2)}</em>` : ""}`;
     if ($("cfSide")) $("cfSide").innerHTML = cockpitSide(cfChart, cfChart.r); }
 }
+// Live im Chart (Wunsch 14.11.2026: „um 15:30 die US-Eröffnung live verfolgen“): bei offener Börse alle 5 s statt alle 30 s;
+// mit Finnhub-Schlüssel US-Aktien in Echtzeit über die Finnhub-Verbindung (jeder Trade, kostenlos). Auch die Mehrfach-Charts laufen mit.
+function mktOpen(t, now = new Date()) {
+  const m = String(t).match(/\.([A-Z]+)$/), us = !m, tz = us ? "America/New_York" : LIVE_TZ[m[1]] || "Europe/Berlin";
+  try { const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(now).map(x => [x.type, x.value]));
+    if (p.weekday === "Sat" || p.weekday === "Sun") return false; const mn = +p.hour * 60 + +p.minute;
+    return us ? mn >= 9 * 60 + 25 && mn <= 16 * 60 + 5 : mn >= 8 * 60 + 55 && mn <= 17 * 60 + 40; } catch (e) { return false; }
+}
+const chartTickers = () => { const ts = new Set(); CL_LIVE.forEach(h => { if (document.body.contains(h.el)) ts.add(h.r.ticker); });
+  if (state.sec === "chart" && $("mcRoot")) MCH.ch.forEach(o => o && ts.add(o.t)); return [...ts].filter(t => t && !String(t).includes("@")); };
+function intraNext(L, q, c) {                        // nächste Live-Kerze im Minuten-/Stundenchart (Zeit = Börsen-Ortszeit wie die geladenen Kerzen)
+  const sec = { "5m": 300, "15m": 900, "1h": 3600, "4h": 14400 }[c.tf] || 300, x = (q.ts || Date.now()) / 1000 + (c.gmt || 0);
+  if (x < L.time) return null; const same = x < L.time + sec, tq = same ? L.time : Math.floor(x / sec) * sec;
+  return same ? { time: L.time, open: L.open, high: Math.max(L.high, q.c), low: Math.min(L.low, q.c), close: q.c } : { time: tq, open: L.close, high: Math.max(L.close, q.c), low: Math.min(L.close, q.c), close: q.c };
+}
+function mcLivePaint(t) {
+  const q = LIVE.map[t]; if (!q || !(q.c > 0)) return;
+  MCH.ch.forEach(o => { if (!o || o.t !== t || !o.cc || !o.cc.t.length) return; const n = o.cc.t.length, lt = o.cc.t[n - 1], day = liveDay(t, q.ts);
+    if (typeof lt === "string" && day && day >= lt && (!o.cc.tf || o.cc.tf === "D")) { const lb = o.lb || { time: lt, open: o.cc.o[n - 1], high: o.cc.h[n - 1], low: o.cc.l[n - 1], close: o.cc.c[n - 1] };
+      const nb = day === lb.time ? { ...lb, high: Math.max(lb.high, q.c), low: Math.min(lb.low, q.c), close: q.c } : { time: day, open: q.pc > 0 ? q.pc : lb.close, high: q.c, low: q.c, close: q.c };
+      try { o.se.update(nb); o.lb = nb; } catch (e) {} }
+    else if (o.cc.intra && typeof lt === "number") { const nb = intraNext(o.lb || { time: lt, open: o.cc.o[n - 1], high: o.cc.h[n - 1], low: o.cc.l[n - 1], close: o.cc.c[n - 1] }, q, o.cc);
+      if (nb) try { o.se.update(nb); o.lb = nb; } catch (e) {} }
+    o.last = q.c; if (q.pc) o.prev = q.pc; o.pxSet(q.c, q.pc || o.prev); });
+}
+const FHWS = { ws: null, subs: new Set(), want: new Set(), paintAt: {}, retry: 0, on: false };
+function fhSym(t) { return String(t).replace("-", "."); }
+function fhSync() {
+  const key = liveKey("fh"), want = new Set(key && document.visibilityState === "visible" ? chartTickers().filter(t => isUS(t) && mktOpen(t)) : []);
+  FHWS.want = want;
+  if (!want.size) { if (FHWS.ws) { try { FHWS.ws.close(); } catch (e) {} FHWS.ws = null; FHWS.subs.clear(); } return; }
+  if (!FHWS.ws || FHWS.ws.readyState > 1) {
+    try { FHWS.ws = new WebSocket(`wss://ws.finnhub.io?token=${encodeURIComponent(key)}`); } catch (e) { FHWS.ws = null; return; }
+    FHWS.subs.clear(); const ws = FHWS.ws;
+    ws.onopen = () => { FHWS.retry = 0; fhSync(); };
+    ws.onclose = () => { if (FHWS.ws === ws) { FHWS.ws = null; FHWS.on = false; } };
+    ws.onmessage = ev => { let j; try { j = JSON.parse(ev.data); } catch (e) { return; } if (j.type !== "trade" || !j.data) return; FHWS.on = true;
+      const last = {}; j.data.forEach(d => { last[d.s] = d; });
+      Object.values(last).forEach(d => { const t = [...FHWS.subs].find(x => fhSym(x) === d.s); if (!t) return; const o = LIVE.map[t] || {};
+        const q = { ...o, c: +d.p, h: Math.max(o.h || 0, +d.p), l: o.l > 0 ? Math.min(o.l, +d.p) : +d.p, ts: d.t || Date.now(), at: Date.now(), src: "Finnhub live" };
+        LIVE.map[t] = q; liveApply(t, q);
+        if (Date.now() - (FHWS.paintAt[t] || 0) > 250) { FHWS.paintAt[t] = Date.now(); liveChartsPaint(t); mcLivePaint(t); } }); };
+    return; }
+  if (FHWS.ws.readyState !== 1) return;
+  want.forEach(t => { if (!FHWS.subs.has(t)) { FHWS.ws.send(JSON.stringify({ type: "subscribe", symbol: fhSym(t) })); FHWS.subs.add(t); } });
+  [...FHWS.subs].forEach(t => { if (!want.has(t)) { FHWS.ws.send(JSON.stringify({ type: "unsubscribe", symbol: fhSym(t) })); FHWS.subs.delete(t); } });
+}
+let liveTickN = 0;
 setInterval(() => {
   if (!liveOn() || document.visibilityState !== "visible") return;
-  const ts = new Set(); CL_LIVE.forEach(h => { if (document.body.contains(h.el)) ts.add(h.r.ticker); });
-  ts.forEach(t => liveQuote(t).then(q => { if (q) liveChartsPaint(t); }));
-}, 30e3);
+  liveTickN++; const ts = chartTickers(), fast = state.sec === "chart" && ts.some(t => mktOpen(t));
+  if (fast) fhSync(); else if (FHWS.ws) fhSync();
+  if (!fast && liveTickN % 6) return;                  // geschlossen: wie bisher alle 30 s
+  ts.forEach(t => { if (FHWS.on && FHWS.subs.has(t)) return;   // kommt schon in Echtzeit
+    liveQuote(t, fast).then(q => { if (q) { liveChartsPaint(t); mcLivePaint(t); } }); });
+}, 5e3);
 document.addEventListener("click", e => {
   if (!e.target.closest("[data-clm]")) return;
   MEAS.on = !MEAS.on; if (MEAS.on) WAVE.on = false;
@@ -13343,7 +13405,7 @@ const chartOpts = el => ({ width: el.clientWidth, height: el.clientHeight, layou
     fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" },
     grid: { vertLines: { color: LC().g }, horzLines: { color: LC().g } }, rightPriceScale: { borderColor: LC().b },
     timeScale: { borderColor: LC().b }, crosshair: { mode: 0 }, localization: { locale: "de-DE", priceFormatter: v => fmt(v) },
-    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false } });
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true } });   // senkrecht an: sonst lässt sich die Preisachse mit dem Finger nicht ziehen (14.11.2026); keepAutoScale hält beim Wischen in der Kursfläche die Achse automatisch
 // Verschieben im Chart (Wunsch 14.11.2026: „im Kurs zurückscrollen, ohne die Achsen zu verwenden – die Achsen haben sich trotzdem verschoben“):
 // Ziehen in der Kursfläche verschiebt nur die Zeit; die Preisachse bleibt automatisch angepasst (wie TradingView). Wer die Preisachse
 // selbst zieht (rechter Rand), schaltet die Automatik bewusst ab – das bleibt so; Doppelklick auf die Achse stellt sie zurück.
