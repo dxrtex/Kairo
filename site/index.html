@@ -8638,8 +8638,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.155";
-const APP_NEWS = [["2026.11.155", "Volumenprofil mit Weitblick", [
+const APP_VER = "2026.11.156";
+const APP_NEWS = [["2026.11.156", "Mehrfach-Charts: Wischen behoben", [
+  ["Kein Hineinzoomen mehr", "Wischen in einem gekoppelten Chart verschiebt alle Charts gleich weit – ohne dass sie bis auf wenige Kerzen heranzoomen. „Gekoppelt“ aus: jeder Chart bewegt sich für sich."]]],
+  ["2026.11.155", "Volumenprofil mit Weitblick", [
   ["Zonen unter dem Wellen-Tief", "Grau im Profil: Volumen der letzten 3 Jahre dort, wo die aktuelle Welle keine Kurse hat. Die Kairo-Leiste nennt die nächsten Volumen-Zonen unter dem Kurs – falls die Welle nicht hält."]]],
   ["2026.11.154", "Chart-Cockpit", [
   ["Mehrfach-Charts im Vollbild", "Alle Charts auf einmal bildschirmfüllend. „Groß öffnen“ zeigt einen Chart mit allen Werkzeugen – beim Verkleinern ist das Raster mit den anderen Charts wieder da."],
@@ -11832,10 +11834,21 @@ async function mcLoad(t, i, tf, seq) {
     MCH.ch.forEach(o => { if (!o || o === me) return; const j = p && p.time ? o.cc.t.indexOf(p.time) : -1;
       try { if (j >= 0 && o.chart.setCrosshairPosition) { o.chart.setCrosshairPosition(o.cc.c[j], p.time, o.se); o.pxSet(o.cc.c[j], j ? o.cc.c[j - 1] : null, dateDE(tkey(p.time))); } else { o.chart.clearCrosshairPosition && o.chart.clearCrosshairPosition(); o.pxSet(o.last, o.prev); } } catch (e) {} });
     MCH.sync = false; });
-  chart.timeScale().subscribeVisibleTimeRangeChange(rg => {
-    if (state.mcLink === 0 || MCH.sync || !rg) return; MCH.sync = true;
-    MCH.ch.forEach(o => { if (o && o !== me) try { o.chart.timeScale().setVisibleRange(rg); } catch (e) {} });
-    MCH.sync = false; });
+  // Zeit-Kopplung (Fehler 14.11.2026: Wischen in einem Chart zoomte alle bis auf 2 Kerzen): früher wurde der Zeitraum hin- und
+  // hergereicht – die Charts gaben ihn zeitversetzt zurück und bei Lücken (andere Börsenfeiertage, Bereich rechts der letzten
+  // Kerze) schrumpfte er jedes Mal. Jetzt führt nur der Chart, den man gerade anfasst; die anderen übernehmen dieselbe Anzahl
+  // Kerzen und denselben Tag am rechten Rand (bzw. denselben Abstand zur letzten Kerze).
+  const lead = () => { MCH.lead = me; };
+  ["pointerdown", "wheel", "touchstart"].forEach(ev => el.addEventListener(ev, lead, { passive: true, capture: true }));
+  chart.timeScale().subscribeVisibleLogicalRangeChange(lr => {
+    if (state.mcLink === 0 || !lr || MCH.lead !== me) return;
+    const n = cc.t.length, w = lr.to - lr.from, rIdx = Math.round(lr.to), frac = lr.to - rIdx;
+    MCH.ch.forEach(o => { if (!o || o === me) return; const m = o.cc.t.length; let to;
+      if (rIdx >= n - 1) to = m - 1 + (lr.to - (n - 1));                    // rechts der letzten Kerze: gleicher Abstand
+      else if (rIdx <= 0) to = lr.to;
+      else { const d = tkey(cc.t[rIdx]); let a = 0, b = m - 1;                   // letzter Tag ≤ d (binäre Suche)
+        while (a < b) { const k = (a + b + 1) >> 1; if (tkey(o.cc.t[k]) <= d) a = k; else b = k - 1; } to = a + frac; }
+      try { o.chart.timeScale().setVisibleLogicalRange({ from: to - w, to }); } catch (e) {} }); });
 }
 // Aktie in einem Feld wechseln: kleine Suche über Watchlist, Treffer und alle Scan-Aktien
 function mcPick(btn) {
