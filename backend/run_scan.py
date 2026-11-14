@@ -619,6 +619,13 @@ def main(argv=None) -> int:
                 ins["stakes"] = sh[:300]
             except Exception as exc:
                 print(f"13D/13G: Fehler {exc!r}"[:160])
+            try:                                     # Wichtige Firmenmeldungen (SEC 8-K) für Watchlist, Merkliste und Depot (60 Tage)
+                from . import filings
+                fl = filings.accumulate(state.load("filings_hist.json", {}).get("rows", []), filings.fetch(set(w_ins)))
+                state.save("filings_hist.json", {"rows": fl})
+                ins["k8"] = fl[:400]
+            except Exception as exc:
+                print(f"8-K: Fehler {exc!r}"[:160])
             try:                                     # ARK: tägliche Käufe/Verkäufe aus den Bestandslisten (30 Tage)
                 from . import ark
                 ark_st, ark_h = ark.update(state.load("ark_prev.json", {}), state.load("ark_hist.json", {}).get("rows", []))
