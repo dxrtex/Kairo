@@ -5244,7 +5244,10 @@ function earnTopHtml(t, sur, rx, L) {
   const P = (earnStats.per || {})[t], own = o.after && sur != null && sur > 0 && P && P.beat_up != null && P.n >= 6 && Math.abs(P.beat_up - o.p) >= .2
     ? ` · Achtung: ${t} selbst stieg nach Zahlen über Erwartung nur in ${pct(P.beat_up, 0)} der Fälle (wenige Berichte)` : "";
   const lead = o.after ? (rx && rx.d1 != null ? "stiegen am Tag danach" : "steigt am Tag danach") : "steigt nach den Zahlen (geschätzt)";
-  const entry = tone === "green"
+  const done = rx && rx.d1 != null;            // Reaktion gelaufen: Test 14.11.2026 (55.628 Meldungen) – danach kein Nachlauf
+  const entry = done
+    ? [hit ? "Reaktion gelaufen – der Kairo-Treffer entscheidet" : "Reaktion gelaufen – kein Nachkaufen", "Nach der Eröffnung ist die Richtung in den folgenden Tagen ein Münzwurf (55.628 Meldungen 2018–2026, große und kleinere US-Aktien). Die Zahlen sind im Kurs – " + (hit ? "Einstieg nur nach dem Kairo-Plan mit Stop." : "allein kein Grund zum Einstieg.")]
+    : tone === "green"
     ? [hit ? "Einstieg vertretbar – Kairo-Treffer mit Rückenwind" : "Rückenwind – aber kein Kairo-Treffer", hit ? "Die Zahlen sprechen eher für steigende Kurse. Trade-Plan (Stop, Ziel) in der Detailansicht beachten." : "Die Zahlen sprechen eher für steigende Kurse. Ein Kaufgrund allein sind sie nicht – Kairo-Setup abwarten."]
     : tone === "red"
       ? ["Eher abwarten", (o.guideDown ? "Das Unternehmen erwartet schwächere Geschäfte – der Markt handelt die Zukunft, nicht das vergangene Quartal. " : "Nach Zahlen dieser Art fiel der Kurs öfter, als er stieg. ") + (hit ? "Der Kairo-Treffer bleibt gültig, aber mit Gegenwind – kleinere Position oder Kurs erst stabilisieren lassen." : "Kein Einstieg nur wegen der Zahlen.")]
@@ -8607,8 +8610,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.152";
-const APP_NEWS = [["2026.11.152", "Ruhiger und übersichtlicher", [
+const APP_VER = "2026.11.153";
+const APP_NEWS = [["2026.11.153", "Quartalszahlen: was danach passiert", [
+  ["Kein Nachlaufen", "Getestet an 55.628 Meldungen: Nach der Eröffnung ist die Richtung der folgenden Tage ein Münzwurf. Kairo rät nach gelaufener Reaktion deshalb nicht mehr zum Hinterherkaufen."],
+  ["Optionsmarkt", "Vor US-Terminen zeigt Kairo, welche Bewegung der Optionsmarkt erwartet – im Vergleich zur üblichen Reaktion der Aktie."]]],
+  ["2026.11.152", "Ruhiger und übersichtlicher", [
   ["Insider & Hedgefonds", "Unterreiter als schlanke Leiste statt einer weiteren grünen Fläche, alle Filter in einer Zeile, Beträge dezent statt grell."],
   ["Heute", "Markt-Karte ohne Kästen in der Karte; auf dem iPad sind beide Spalten gleich lang."],
   ["Kleinigkeiten", "Wischbare Leisten zeigen am Rand, dass es weitergeht; das Filterfenster blitzt nicht mehr unten durch."]]],
