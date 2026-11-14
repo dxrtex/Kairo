@@ -2493,6 +2493,7 @@ html .hcard.mkt .sec-line { gap: 4px 14px; }
 .ct-vpm { display: flex; gap: 4px; margin: 2px 10px 8px 34px; padding: 3px; border-radius: 9px; background: var(--surface-2); }
 .ct-vpm button { flex: 1; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 8px; border-radius: 7px; cursor: pointer; }
 .ct-vpm button.on { background: var(--pf-on); color: var(--pf-on-tx); }
+.ct-vpm button { padding: 5px 4px; }
 </style>
 </head>
 <body>
@@ -8642,8 +8643,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.158";
-const APP_NEWS = [["2026.11.158", "Volumenprofil steht still", [
+const APP_VER = "2026.11.159";
+const APP_NEWS = [["2026.11.159", "Volumenprofil auf Profi-Niveau", [
+  ["Genauer", "Mit dem Kursdienst rechnet Kairo das Profil aus Stundenkerzen statt geschätzt aus Tageskerzen."],
+  ["Wertzone und POC als Linien", "Ober- und Untergrenze der 70-%-Wertzone und der meistgehandelte Kurs laufen ab dem Profil-Start quer durch den Chart."],
+  ["Offene POCs und Lücken", "Monats-Volumengipfel, die der Kurs noch nicht wieder erreicht hat, als feine Linien; dünn gehandelte Zonen in der Kairo-Leiste."],
+  ["Ab Punkt", "Neben „Welle“ und „Sichtbar“: Profil ab einem Tag, den du in den Chart tippst."]]],
+  ["2026.11.158", "Volumenprofil steht still", [
   ["Welle = fest", "Im Modus „Welle“ hängt das Profil nur noch vom Wellen-Tief ab – Zurückscrollen oder Zoomen verändert es nicht mehr. Für den Bildausschnitt gibt es „Sichtbar“."]]],
   ["2026.11.157", "Volumenprofil: Welle oder sichtbarer Bereich", [
   ["Neuer Schalter", "Indikatoren → Volumen: „Welle“ zählt ab dem Wellen-Tief (wie bisher, mit grauem 3-Jahres-Profil darunter), „Sichtbar“ genau den Bildausschnitt – wie das VPVR bei TradingView. Die Kairo-Regel bleibt unberührt."]]],
@@ -11247,13 +11253,40 @@ function ownWaveSave(t, L, H, lp, hp) { const m = { ...(state.myWave || {}) }; i
 // Breite Balken = viel gehandelt = oft Unterstützung/Widerstand. Hervorgehoben: meistgehandeltes Niveau (POC) und die 70 % Wertzone.
 // 12.11.: feine Stufen nach Bildschirmhöhe, Volumen je Tag um den typischen Kurs verteilt, Big-Player-Zonen aus Großvolumen-Tagen
 // (≥ 2× Ø-Volumen der 50 Tage davor – solche Mengen bewegen Fonds und Banken). Reine Anzeige, keine Kaufregel.
-function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
-  let series = null, chart = null, req = null, memo = null, memoL = null;
+// Profi-Stufe (Wunsch 14.11.2026 „so, dass es am besten ist“): Volumen aus Stundenkerzen statt geschätzt aus Tageskerzen (über den
+// Kursdienst, sonst Tageskerzen), Wertzone (70 %) als Linien, offene Monats-POCs (noch nicht wieder erreicht), Volumen-Lücken,
+// Startpunkt per Tipp („Ab Punkt“, wie Anchored VP bei TradingView). Reine Anzeige, keine Kaufregel.
+// Zusatzdaten fürs Volumenprofil: Stundenkerzen (Kursdienst, einmal je Aktie geladen, nur im Tageschart), Monat je Kerze, eigener Startpunkt
+const VP_SUB = {};
+function vpOpt(h, T, vp) {
+  const tk = String(h.r && h.r.ticker || "").replace(/@rp$/, ""), daily = typeof T[0] === "string";
+  const load = () => { if (VP_SUB[tk] || !daily || !liveKey("yq") || String(h.r.ticker).includes("@")) return; VP_SUB[tk] = { map: null };
+    intraLoad(tk, "1h").then(cc => { const map = {}; let first = null;
+      cc.t.forEach((t, k) => { const d = new Date(t * 1000).toISOString().slice(0, 10); first = first || d; (map[d] = map[d] || []).push({ open: cc.o[k], high: cc.h[k], low: cc.l[k], close: cc.c[k], v: cc.v[k] || 0 }); });
+      VP_SUB[tk] = { map, first, n: Object.keys(map).length }; const p = vp(); if (p) p.update(); vpSideSoon(h); }).catch(() => { VP_SUB[tk] = { map: null, err: 1 }; }); };
+  return { sub: i => { load(); const S = VP_SUB[tk]; return S && S.map ? S.map[tkey(T[i])] || null : null; },
+    subTag: () => { const S = VP_SUB[tk]; return S && S.map ? "h" + S.n : "d"; },
+    month: daily ? i => String(T[i]).slice(0, 7) : null,
+    anchorUser: () => { const d = (state.vpA || {})[tk]; if (!d) return null; const i = T.findIndex(t => tkey(t) >= d); return i < 0 ? null : i; } };
+}
+function vpSideSoon(h) { setTimeout(() => { if (cfChart === h && $("cfSide")) $("cfSide").innerHTML = cockpitSide(h, h.r); }, 120); }
+function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
+  let series = null, chart = null, req = null, memo = null, memoL = null, memoN = null;
   // stärkste Volumen-Knoten unter dem aktuellen Kurs (Gipfel im geglätteten Langzeit-Profil, mind. 35 % des stärksten darunter)
   const lowNodes = (d, pBot, px) => { if (!px) return []; const N = d.bins.length, r = Math.max(1, Math.round(N / 80)), sm = new Float64Array(N); let mx = 0;
     for (let k = 0; k < N; k++) { if (pBot + (k + 1) * d.step >= px * .99) continue; let a = 0; for (let q = -r; q <= r; q++) if (k + q >= 0 && k + q < N) a += d.bins[k + q]; sm[k] = a; mx = Math.max(mx, a); }
     const pk = []; for (let k = 1; k < N - 1; k++) if (sm[k] && sm[k] >= mx * .35 && sm[k] >= sm[k - 1] && sm[k] > sm[k + 1]) pk.push({ p: pBot + (k + .5) * d.step, s: sm[k] / mx });
     return pk.sort((a, b) => b.p - a.p).filter((z, i, a) => !a.slice(0, i).some(y => Math.abs(y.p - z.p) / z.p < .04)).slice(0, 3); };
+  // offene POCs: meistgehandelter Kurs je Kalendermonat (3 Jahre), den der Kurs danach nie wieder berührt hat – Kurse kehren oft dorthin zurück
+  const nakedPocs = (n, px) => { if (!px) return []; const out = []; let i = Math.max(0, n - 756);
+    while (i < n - 21) { const mk = opt.month(i); let j = i; while (j + 1 < n && opt.month(j + 1) === mk) j++;
+      let lo = Infinity, hi = -Infinity; for (let k = i; k <= j; k++) { const b = barAt(k); if (b) { lo = Math.min(lo, b.low); hi = Math.max(hi, b.high); } }
+      if (hi > lo) { const NB = 48, st = (hi - lo) / NB, bn = new Float64Array(NB); for (let k = i; k <= j; k++) { const b = barAt(k), v = volAt(k); if (b && v > 0) spread(b, v, lo, st, NB, (q, x) => { bn[q] += x; }); }
+        let pk = 0; for (let q = 1; q < NB; q++) if (bn[q] > bn[pk]) pk = q; const p = lo + (pk + .5) * st; let hit = false;
+        for (let k = j + 1; k < n && !hit; k++) { const b = barAt(k); if (b && b.low <= p && b.high >= p) hit = true; }
+        if (!hit && Math.abs(p / px - 1) < .3) out.push({ p, from: j, m: mk }); }
+      i = j + 1; }
+    return out.sort((a, b) => Math.abs(a.p - px) - Math.abs(b.p - px)).slice(0, 4); };
   const F1 = "600 10.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
   // Volumen eines Tages auf die Preisstufen verteilen: Dreieck um den typischen Kurs (H+L+C)/3 statt gleichmäßig über die Spanne –
   // so liegt das Volumen dort, wo der Tag wirklich gehandelt wurde (genauer als gleichmäßig, solange keine Minutenkerzen vorliegen)
@@ -11264,12 +11297,15 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
     for (let k = a0; k <= a1; k++) { const mid = pBot + (k + .5) * step, x = Math.max(.12, 1 - Math.abs(mid - tp) / half); w.push(x); sw += x; }
     for (let k = a0; k <= a1; k++) add(k, v * w[k - a0] / sw); };
   const calc = (i1, i2, pBot, pTop, N) => {
-    const step = (pTop - pBot) / N, bins = new Float64Array(N), ups = new Float64Array(N), bigU = new Float64Array(N), bigD = new Float64Array(N), days = [];
+    const step = (pTop - pBot) / N, bins = new Float64Array(N), ups = new Float64Array(N), bigU = new Float64Array(N), bigD = new Float64Array(N), days = []; let nSub = 0;
     for (let i = i1; i <= i2; i++) { const b = barAt(i), v = volAt(i); if (!b || !(v > 0)) continue;
       // Ø-Volumen der 50 Tage davor: Tage mit ≥ 2× davon = Großvolumen (Fonds, Banken, Pensionskassen bewegen solche Mengen)
       let sv = 0, nv = 0; for (let k = Math.max(0, i - 50); k < i; k++) { const z = volAt(k); if (z > 0) { sv += z; nv++; } }
       const rv = nv >= 20 ? v / (sv / nv) : 0, up = b.close >= b.open, big = rv >= 2;
-      spread(b, v, pBot, step, N, (k, x) => { bins[k] += x; if (up) ups[k] += x; if (big) (up ? bigU : bigD)[k] += x; });
+      const subs = opt.sub ? opt.sub(i) : null, sv2 = subs ? subs.reduce((a, q) => a + (q.v || 0), 0) : 0;
+      if (subs && sv2 > 0) { nSub++; subs.forEach(q => { if (!(q.v > 0) || !(q.high >= q.low)) return; const u2 = q.close >= q.open;   // je Stunde an ihrem eigenen Kurs, auf das Tagesvolumen skaliert
+          spread(q, q.v * v / sv2, pBot, step, N, (k, x) => { bins[k] += x; if (u2) ups[k] += x; if (big) (up ? bigU : bigD)[k] += x; }); }); }
+      else spread(b, v, pBot, step, N, (k, x) => { bins[k] += x; if (up) ups[k] += x; if (big) (up ? bigU : bigD)[k] += x; });
       if (big) days.push({ i, tp: (b.high + b.low + b.close) / 3, rv, up, v }); }
     let max = 0, poc = 0, tot = 0; for (let k = 0; k < N; k++) { tot += bins[k]; if (bins[k] > max) { max = bins[k]; poc = k; } }
     let lo = poc, hi = poc, acc = bins[poc]; while (acc < tot * .7 && (lo > 0 || hi < N - 1)) { const dn = lo > 0 ? bins[lo - 1] : -1, upv = hi < N - 1 ? bins[hi + 1] : -1; if (upv >= dn) acc += bins[++hi]; else acc += bins[--lo]; }
@@ -11286,7 +11322,12 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
         if (ds.length < 2 && rvA < 3) continue;                  // ein einzelner, nur leicht erhöhter Tag ist keine Zone
         out.push({ k, lo: zLo, hi: zHi, kind, n: ds.length, rv: rvA, first: Math.min(...ds.map(d => d.i)), last: Math.max(...ds.map(d => d.i)), share: sm[k] / mx }); }
       return out; };
-    return { step, bins, ups, bigU, bigD, max, poc, lo, hi, buy: zones(bigU, "buy"), sell: zones(bigD, "sell"), nBig: days.length };
+    // Volumen-Lücken (LVN): dünn gehandelte Stufen zwischen zwei dicken – dort läuft der Kurs meist schnell durch
+    const lvn = []; { const sm = bins.map((_, k) => (bins[Math.max(0, k - 1)] + bins[k] + bins[Math.min(N - 1, k + 1)]) / 3); let k = 1;
+      while (k < N - 1) { if (sm[k] < max * .2) { let a = k; while (k < N - 1 && sm[k] < max * .2) k++; const b = k - 1;
+          const above = Math.max(...Array.from(sm.slice(b + 1))), below = Math.max(0, ...Array.from(sm.slice(0, a)));
+          if (above >= max * .45 && below >= max * .45 && b - a >= 1) lvn.push({ lo: pBot + a * step, hi: pBot + (b + 1) * step }); } k++; } }
+    return { step, bins, ups, bigU, bigD, max, poc, lo, hi, buy: zones(bigU, "buy"), sell: zones(bigD, "sell"), nBig: days.length, lvn, nSub, nDays: i2 - i1 + 1 };
   };
   const r = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { if (!series || !chart || !on()) return;
     // fest (Wunsch 11/2026): Zeitraum ab dem Tief der Fibonacci-Welle (sonst 1 Jahr), Preisstufen aus den Kursen – unabhängig vom Bildausschnitt
@@ -11296,7 +11337,8 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
     // Schalter (Wunsch 14.11.2026): „Welle“ = fester Abschnitt ab dem Wellen-Tief (Standard) · „sichtbar“ = genau der Bildausschnitt (wie VPVR bei TradingView)
     const vis = state.vpMode === "vis", lv = vr ? Math.min(n - 1, Math.floor(vr.to)) : n - 1;
     // „Welle“ hängt nur vom Wellen-Tief ab – nicht davon, wie weit man zurückscrollt (Korrektur 14.11.2026; ältere Kurse zeigt das graue Profil)
-    const i1 = vis ? Math.min(fv, Math.max(0, lv - 5)) : Math.max(0, a0 == null ? n - 252 : a0), i2 = vis ? Math.max(i1 + 1, lv) : n - 1, lastB = barAt(i2);
+    const ua = state.vpMode === "anchor" && opt.anchorUser ? opt.anchorUser() : null;
+    const i1 = vis ? Math.min(fv, Math.max(0, lv - 5)) : ua != null ? Math.max(0, Math.min(n - 2, ua)) : Math.max(0, a0 == null ? n - 252 : a0), i2 = vis ? Math.max(i1 + 1, lv) : n - 1, lastB = barAt(i2);
     let pLo = Infinity, pHi = -Infinity;
     for (let i = i1; i <= i2; i++) { const b = barAt(i); if (b) { pLo = Math.min(pLo, b.low); pHi = Math.max(pHi, b.high); } }
     if (!(pHi > pLo)) return;
@@ -11304,7 +11346,7 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
     // feste Zeilenzahl (wie „Number of Rows“ bei TradingView): früher hing sie an der Bildhöhe in Pixeln – beim Verschieben passte sich
     // die Preisachse an, die Zeilen änderten sich und das Profil samt „meistgehandelt“ wackelte
     const ROWS = 120, N = ROWS;
-    const key = `${i1}|${i2}|${n}|${N}|${lastB && lastB.close}|${lastB && lastB.high}|${lastB && lastB.low}|${lastB && volAt(i2)}`;
+    const key = `${opt.subTag ? opt.subTag() : ""}|${i1}|${i2}|${n}|${N}|${lastB && lastB.close}|${lastB && lastB.high}|${lastB && lastB.low}|${lastB && volAt(i2)}`;
     if (!memo || memo.key !== key) memo = { key, i1, n, pLo, pHi, d: calc(i1, i2, pLo, pHi, N) };
     // Langzeit-Profil (Wunsch 14.11.2026: „was, wenn die Welle falsch gezogen war und der Kurs weiter fällt?“): 3 Jahre Volumen –
     // grau dort, wo das Wellen-Profil keine Kurse hat. So bleiben ältere Volumen-Zonen unter dem Wellen-Tief sichtbar.
@@ -11314,6 +11356,7 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
       const k2 = `${L1}|${n}|${N2}|${lastB && lastB.close}`;
       if (!memoL || memoL.key !== k2) { const d2 = calc(L1, i2, q0, q1, N2); memoL = { key: k2, from: L1, pLo: q0, d: d2, nodes: lowNodes(d2, q0, lastB && lastB.close) }; } }
     else memoL = null;
+    if (opt.month && (!memoN || memoN.key !== `${n}|${lastB && lastB.close}`)) memoN = { key: `${n}|${lastB && lastB.close}`, list: nakedPocs(n, lastB && lastB.close) };
     const D = memo.d, step = D.step, light = isLight(), W = Math.min(m.width * .24, 260), xr = m.width - 2, Y = p => series.priceToCoordinate(p);
     // 1) Big-Player-Zonen als ruhige Bänder über den ganzen Chart (hinter den Kerzen)
     const zs = [...D.buy, ...D.sell];
@@ -11345,10 +11388,19 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
       x.fillStyle = `rgba(255,69,58,${a})`; x.fillRect(xr - w + wu, yy, w - wu, h2);
       const bu = W * D.bigU[k] / D.max; if (bu > .5) { x.fillStyle = `rgba(10,132,255,${inVA ? .95 : .8})`; x.fillRect(xr - bu, yy, bu, h2); }
       const bd = W * D.bigD[k] / D.max; if (bd > .5) { x.fillStyle = `rgba(191,90,242,${inVA ? .9 : .75})`; x.fillRect(xr - bu - bd, yy, bd, h2); } } }
-    // 3) meistgehandeltes Niveau (POC)
+    // 3) Wertzone (70 %) und meistgehandeltes Niveau (POC) als Linien ab dem Profil-Start – wie VAH/VAL/POC bei TradingView
+    const xS = Math.max(0, Math.min(xEnd - 20, ts.logicalToCoordinate(i1) ?? 0)), hl = y => { x.beginPath(); x.moveTo(xS, Math.round(y) + .5); x.lineTo(m.width, Math.round(y) + .5); x.stroke(); };
+    x.strokeStyle = light ? "rgba(255,159,10,.55)" : "rgba(255,159,10,.42)"; x.lineWidth = 1; x.setLineDash([1, 3]);
+    [memo.pLo + (D.hi + 1) * step, memo.pLo + D.lo * step].forEach(p => { const y = Y(p); if (y != null) hl(y); });
+    if (ua != null && !vis) { const xa = ts.logicalToCoordinate(i1); if (xa != null) { x.strokeStyle = "rgba(255,159,10,.7)"; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(Math.round(xa) + .5, 0); x.lineTo(Math.round(xa) + .5, m.height); x.stroke(); } }
+    // offene Monats-POCs: dünne Linie ab Monatsende bis zum Profil, Punkt am Anfang
+    if (memoN && memoN.list.length) { x.setLineDash([2, 4]); x.strokeStyle = light ? "rgba(255,159,10,.6)" : "rgba(255,159,10,.5)"; x.fillStyle = "rgb(255,159,10)";
+      memoN.list.forEach(z => { const y = Y(z.p), x0 = ts.logicalToCoordinate(z.from); if (y == null || x0 == null || x0 > xEnd) return; const xx = Math.max(0, x0);
+        x.beginPath(); x.moveTo(xx, Math.round(y) + .5); x.lineTo(xEnd, Math.round(y) + .5); x.stroke(); if (x0 >= 0) { x.beginPath(); x.arc(x0, y, 2.5, 0, Math.PI * 2); x.fill(); } }); }
+    x.setLineDash([]);
     const yp = Y(memo.pLo + (D.poc + .5) * step);
-    if (yp != null) { const wp = W; x.strokeStyle = "rgba(255,159,10,.85)"; x.lineWidth = 1; x.setLineDash([2, 3]); x.beginPath(); x.moveTo(m.width - wp - 8, Math.round(yp) + .5); x.lineTo(m.width, Math.round(yp) + .5); x.stroke(); x.setLineDash([]);
-      x.font = F1; x.textAlign = "right"; x.textBaseline = "middle"; const tx = `meistgehandelt ${vis ? "im Ausschnitt" : "seit " + dateAt(i1)}: ${fmt(memo.pLo + (D.poc + .5) * step)}`, tw = x.measureText(tx).width, lx = m.width - wp - 12;
+    if (yp != null) { const wp = W; x.strokeStyle = "rgba(255,159,10,.85)"; x.lineWidth = 1; x.setLineDash([2, 3]); x.beginPath(); x.moveTo(xS, Math.round(yp) + .5); x.lineTo(m.width, Math.round(yp) + .5); x.stroke(); x.setLineDash([]);
+      x.font = F1; x.textAlign = "right"; x.textBaseline = "middle"; const tx = `meistgehandelt ${vis ? "im Ausschnitt" : "seit " + dateAt(i1)}${D.nSub ? "" : " · geschätzt"}: ${fmt(memo.pLo + (D.poc + .5) * step)}`, tw = x.measureText(tx).width, lx = m.width - wp - 12;
       x.fillStyle = light ? "rgba(255,255,255,.92)" : "rgba(16,18,22,.86)"; x.fillRect(lx - tw - 6, Math.round(yp) - 8, tw + 10, 16); x.fillStyle = "rgb(255,159,10)"; x.fillText(tx, lx, Math.round(yp)); }
     // 4) keine Textschilder mehr (Wunsch 14.11.2026) – Farbe genügt: blau = Großvolumen-Käufe, lila = -Verkäufe; Details in der Kairo-Leiste
     lbls = []; if (!state.vpLbl) return;
@@ -11364,7 +11416,8 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt) {
   const views = [{ zOrder: () => "bottom", renderer: () => r }, { zOrder: () => "top", renderer: () => top }];
   return { attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; },
     detached() { series = chart = null; }, update() { req && req(); }, updateAllViews() {}, paneViews: () => views,
-    info: () => memo && memo.d ? { buy: memo.d.buy, sell: memo.d.sell, nBig: memo.d.nBig, low: memoL ? memoL.nodes : [], lowFrom: memoL ? dateAt(memoL.from) : null } : null };
+    info: () => memo && memo.d ? { poc: memo.pLo + (memo.d.poc + .5) * memo.d.step, vah: memo.pLo + (memo.d.hi + 1) * memo.d.step, val: memo.pLo + memo.d.lo * memo.d.step,
+      lvn: memo.d.lvn, nSub: memo.d.nSub, nDays: memo.d.nDays, from: dateAt(memo.i1), naked: memoN ? memoN.list.map(z => ({ ...z, d: dateAt(z.from) })) : [], buy: memo.d.buy, sell: memo.d.sell, nBig: memo.d.nBig, low: memoL ? memoL.nodes : [], lowFrom: memoL ? dateAt(memoL.from) : null } : null };
 }
 function gripPrimitive(get) {
   let chart = null, series = null, req = null;
@@ -11516,7 +11569,11 @@ function buildMain(el, c, r, opts) {
   h.bdReset = () => { BD = null; };
   const cnt = () => bd().length, barAt = i => bd()[i], mp = measurePrimitive(barAt, cnt); candles.attachPrimitive(mp); h.mp = mp;
   const vpp = profilePrimitive(barAt, cnt, i => i < T.length ? c.v[i] : (LIVE.map[r.ticker] && LIVE.map[r.ticker].v) || 0, () => !!clGet("vp"),
-    () => { const w = h.M && (h.M.own ? h.M.kcls : h.M.cls); return w ? w.iL : null; }, i => { const x = T[Math.min(i, T.length - 1)]; return typeof x === "number" ? dayDE(tkey(x)) : dateDE(x); }); candles.attachPrimitive(vpp); h.vpp = vpp;
+    () => { const w = h.M && (h.M.own ? h.M.kcls : h.M.cls); return w ? w.iL : null; }, i => { const x = T[Math.min(i, T.length - 1)]; return typeof x === "number" ? dayDE(tkey(x)) : dateDE(x); }, vpOpt(h, T, () => vpp)); candles.attachPrimitive(vpp); h.vpp = vpp;
+  // „Ab Punkt“: Tipp in den Chart setzt den Startpunkt des Volumenprofils
+  chart.subscribeClick(p => { if (state.vpMode !== "anchor" || !state.vpPick || !clGet("vp") || !p) return; const tk = String(r.ticker).replace(/@rp$/, "");
+    let i = p.logical != null ? Math.round(p.logical) : p.time != null ? T.findIndex(t => tkey(t) === tkey(p.time)) : -1; if (i < 0) return; i = Math.min(i, T.length - 2);
+    state.vpA = { ...(state.vpA || {}), [tk]: tkey(T[i]) }; state.vpPick = false; save(); vpp.update(); drToast(`Volumenprofil ab ${dateDE(tkey(T[i]))}`); vpSideSoon(h); });
   if (getComputedStyle(el).position === "static") el.style.position = "relative";
   const lg = document.createElement("div"); lg.className = "cl-ohlc"; el.appendChild(lg);
   const idxOf = tm => { const k = tkey(tm), d = bd(); for (let i = d.length - 1; i >= 0; i--) if (tkey(d[i].time) === k) return i; return -1; };
@@ -11686,7 +11743,10 @@ document.addEventListener("click", e => {
   clRefresh();
 });
 document.addEventListener("click", e => {
-  const vm = e.target.closest("[data-vpmode]"); if (vm) { state.vpMode = vm.dataset.vpmode; save(); clRefresh(); return; }
+  const vm = e.target.closest("[data-vpmode]"); if (vm) { state.vpMode = vm.dataset.vpmode;
+    if (state.vpMode === "anchor") { state.vpPick = true; ctPop = false; drToast("Tippe in den Chart auf den Tag, ab dem das Volumenprofil zählen soll"); } else state.vpPick = false;
+    save(); clRefresh(); return; }
+  if (e.target.closest("[data-vppick]")) { state.vpMode = "anchor"; state.vpPick = true; save(); drToast("Tippe in den Chart auf den neuen Starttag"); clRefresh(); return; }
   const b = e.target.closest("[data-cl]"); if (!b) return;
   const k = b.dataset.cl, cur = clGet(k, b.dataset.auto === "1"); state.cl = { ...(state.cl || {}), [k]: cur ? 0 : 1 }; save(); clRefresh();
 });
@@ -11735,6 +11795,11 @@ function cockpitSide(h, r) {
     ${autoCardHtml(h)}${sigCardHtml(String(r.ticker).replace(/@rp$/, ""))}${r.ext ? "" : earnMiniHtml(r.ticker) + k8Html(r.ticker) + smCardHtml(r.ticker)}${fundCardHtml(String(r.ticker).replace(/@rp$/, ""))}
     <div class="cf-s"><div class="cf-h">Trade-Plan</div>${row("Kaufzone oben", p.entry, "#eceef2")}${row("Stop", p.stop, "#ff453a")}${row("K.-o. Turbo", ko, "#ff9f0a")}
       ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Seitwärtsphase.</p>` : ""}</div>
+    ${(vi => vi && clGet("vp") && vi.poc ? `<div class="cf-s"><div class="cf-h">Volumenprofil <small class="muted">${state.vpMode === "vis" ? "Bildausschnitt" : `seit ${esc(vi.from)}`}</small></div>
+      ${row("Meistgehandelt (POC)", vi.poc, "#ff9f0a")}<div class="cf-r"><span><i style="background:rgba(255,159,10,.5)"></i>Wertzone 70 %</span><b>${fmt(vi.val)}–${fmt(vi.vah)}</b>${last ? `<em class="${last > vi.vah ? "up" : last < vi.val ? "down" : ""}">${last > vi.vah ? "Kurs darüber" : last < vi.val ? "Kurs darunter" : "Kurs drin"}</em>` : ""}</div>
+      ${(vi.naked || []).slice().sort((a, b) => b.p - a.p).map(z => `<div class="cf-r"><span><i style="background:#ff9f0a;border-radius:50%"></i>Offener POC ${["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."][+z.m.slice(5, 7) - 1]} ${z.m.slice(0, 4)}</span><b>${fmt(z.p)}</b>${dist(z.p)}</div>`).join("")}
+      ${(vi.lvn || []).slice(0, 3).map(z => `<div class="cf-r"><span><i style="background:transparent;border:1px dashed var(--muted)"></i>Volumen-Lücke</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
+      <p class="muted cf-t">${vi.nSub ? `Genau gerechnet aus Stundenkerzen (${vi.nSub} von ${vi.nDays} Tagen)` : `Geschätzt aus Tageskerzen${liveKey("yq") ? " – Stundenkerzen werden geladen" : " – mit dem Kairo-Kursdienst genauer aus Stundenkerzen"}`}. Wertzone = Kursbereich mit 70 % des Volumens; offener POC = meistgehandelter Kurs eines Monats, den der Kurs seitdem nicht wieder erreicht hat (Kurse kehren oft dorthin zurück); Volumen-Lücke = dünn gehandelt, dort läuft der Kurs meist schnell durch.${state.vpMode === "anchor" ? ` <button class="hlink" data-vppick>Startpunkt neu wählen</button>` : ""}</p></div>` : "")(h.vpp && h.vpp.info())}
     ${(vi => vi && clGet("vp") && vi.low && vi.low.length ? `<div class="cf-s"><div class="cf-h">Volumen-Zonen darunter <small class="muted">seit ${esc(vi.lowFrom)} · grau im Profil</small></div>${vi.low.map(z => `<div class="cf-r"><span><i style="background:#8e8e93"></i>viel gehandelt${z.s >= .8 ? " · stärkste" : ""}</span><b>${fmt(z.p)}</b>${dist(z.p)}</div>`).join("")}
       <p class="muted cf-t">Kursniveaus mit hohem Volumen in den letzten 3 Jahren unter dem aktuellen Kurs – mögliche Unterstützungen, auch wenn die Welle nicht hält.</p></div>` : "")(h.vpp && h.vpp.info())}
     ${(vi => vi && clGet("vp") && (vi.buy.length || vi.sell.length) ? `<div class="cf-s"><div class="cf-h">Großvolumen-Zonen <small class="muted">blau Käufe · lila Verkäufe</small></div>${[...vi.buy, ...vi.sell].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:${z.kind === "buy" ? "#0a84ff" : "#bf5af2"}"></i>${z.kind === "buy" ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"}, Ø ${fmt(z.rv, 1)}×</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
@@ -11943,7 +12008,7 @@ function ctabBarHtml(h) {
       <div class="ct-seg"><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button><button class="ct-b" data-alc title="Alarme: alle Alarme, Kurs- und RSI-Alarm" aria-label="Alarme">${CT_IC.bell}<span class="ct-lbl">Alarm</span>${alCount() ? `<small>${alCount()}</small>` : ""}</button>${M.own ? `<button class="ct-b" data-clwreset title="Eigene Fibonacci-Welle verwerfen – zurück zur Kairo-Welle" aria-label="Kairo-Welle">${CT_IC.reset}<span class="ct-lbl">Kairo-Welle</span></button>` : ""}</div></div>
     ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, true))}
       ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.concat(SMA_DEF).map(([k, col, l]) => sw(k, l, col)).join(""))}${grp("Indikatoren", sw("bb", `Bollinger-Bänder (${IND_P().bbN}, ${IND_P().bbK})`, "#2962ff") + sw("ichi", "Ichimoku-Wolke", "#30d158"))}${grp("Indikator-Einstellungen", `<div class="ip-g">${[["rsi", "RSI-Periode"], ["stK", "Stochastik %K"], ["stD", "Stochastik %D"], ["atr", "ATR-Periode"], ["adx", "ADX-Periode"], ["bbN", "Bollinger-Periode"], ["bbK", "Bollinger-Faktor"]].map(([k, l]) => `<label><span>${l}</span><input type="number" inputmode="decimal" data-ip="${k}" value="${IND_P()[k]}" step="${k === "bbK" ? ".5" : "1"}"></label>`).join("")}</div>`)}
-      ${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa") + sw("sig", `Frühere Kairo-Signale${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")) ? ` · ${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")).length}` : ""}`, "#0a84ff", !!sigOf(h.r && String(h.r.ticker).replace(/@rp$/, ""))))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a") + (clGet("vp") ? `<div class="ct-vpm" role="group" aria-label="Bereich des Volumenprofils">${[["wave", "Welle", "ab dem Wellen-Tief"], ["vis", "Sichtbar", "nur der Bildausschnitt"]].map(([v, l, t]) => `<button class="${(state.vpMode || "wave") === v ? "on" : ""}" data-vpmode="${v}" title="${t}">${l}</button>`).join("")}</div>` : ""))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
+      ${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa") + sw("sig", `Frühere Kairo-Signale${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")) ? ` · ${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")).length}` : ""}`, "#0a84ff", !!sigOf(h.r && String(h.r.ticker).replace(/@rp$/, ""))))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a") + (clGet("vp") ? `<div class="ct-vpm" role="group" aria-label="Bereich des Volumenprofils">${[["wave", "Welle", "ab dem Wellen-Tief"], ["anchor", "Ab Punkt", "ab einem Tag, den du antippst"], ["vis", "Sichtbar", "nur der Bildausschnitt"]].map(([v, l, t]) => `<button class="${(state.vpMode || "wave") === v ? "on" : ""}" data-vpmode="${v}" title="${t}">${l}</button>`).join("")}</div>` : ""))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
 }
 // Zeiteinheit und Chartart als Auswahlmenüs (wie TradingView) – spart in der Werkzeugleiste Platz für den Chart
 const TF_ALL = [["5m", "5m", "5 Minuten"], ["15m", "15m", "15 Minuten"], ["1h", "1h", "1 Stunde"], ["4h", "4h", "4 Stunden"], ["D", "1D", "1 Tag"], ["W", "1W", "1 Woche"], ["M", "1M", "1 Monat"]];
