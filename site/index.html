@@ -5352,7 +5352,8 @@ function earnHtml(t, d) {
         ${cell("Erwartung Gewinn je Aktie", N.eps_e == null ? "–" : `${fmt(N.eps_e)} ${cur}`.trim(), "")}
         ${cell("Erwartung Umsatz", bigNum(N.rev_e, cur), N.rev_g != null ? `zum Vorjahr ${sgn(N.rev_g)}${N.rev_n ? ` · ${N.rev_n} Analysten` : ""}` : "")}
         ${cell("Bisher", rec.beat ? `${rec.beat[0]} von ${rec.beat[1]}` : "–", "Quartale über der Gewinn-Erwartung")}
-        ${cell("Typische Bewegung", rec.move ? `±${pct(rec.move, 1)}` : "–", "am Tag nach den Zahlen (Ø der letzten Quartale)")}
+        ${N.im ? cell("Optionsmarkt erwartet", `±${pct(N.im, 1)}`, rec.move ? `üblich ±${pct(rec.move, 1)} – ${N.im > rec.move * 1.3 ? "mehr Unruhe als sonst" : N.im < rec.move * .75 ? "ruhiger als sonst" : "etwa wie sonst"}` : "bis zum ersten Optionsverfall nach dem Termin")
+          : cell("Typische Bewegung", rec.move ? `±${pct(rec.move, 1)}` : "–", "am Tag nach den Zahlen (Ø der letzten Quartale)")}
       </div>${earnStatHtml(t, null)}${foot}`;
   }
   return head + `<p class="muted" style="margin:14px 0">${daysUntil(d || "2100-01-01") > 0 ? "Für diesen Termin liefert Yahoo noch keine Erwartungen – sie erscheinen meist in den Wochen davor." : "Für diese Aktie liefert Yahoo keine Quartalsdaten."}</p>${foot}`;

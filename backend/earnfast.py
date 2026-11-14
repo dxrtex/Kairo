@@ -460,7 +460,7 @@ def archive(recs: dict, out: Path) -> int:
         G = L.get("guide") or {}
         row = {"s": L.get("eps_s"), "rs": L.get("rev_s"), "rg": L.get("revg"), "ra": L.get("reva"),
                "g": G.get("d"), "gs": G.get("src"), "gt": (G.get("t") or "")[:160] or None, "r1": (L.get("rx") or {}).get("d1"),
-               "ts": L.get("ts"), "seen": L.get("seen"), "push": L.get("push_at"), "stage": L.get("stage")}
+               "im": L.get("im"), "ts": L.get("ts"), "seen": L.get("seen"), "push": L.get("push_at"), "stage": L.get("stage")}
         old = arc.get(k, {})
         if old.get("r1") is None:                  # Prognose nur bis zur Kursreaktion fortschreiben – danach eingefroren
             row.update(p=app_odds(L, gst, calib, t, mdl), v=model)
