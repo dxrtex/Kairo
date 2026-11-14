@@ -2493,6 +2493,42 @@ html .hcard.mkt .sec-line { gap: 4px 14px; }
 .ct-vpm button { flex: 1; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 8px; border-radius: 7px; cursor: pointer; }
 .ct-vpm button.on { background: var(--pf-on); color: var(--pf-on-tx); }
 .ct-vpm button { padding: 5px 4px; }
+/* Depotwert live (wie Scalable) */
+.dlv { margin: 14px 0 6px; }
+.dlv-h { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.dlv-v { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .dlv-v span { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.dlv-v b { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dlv-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--surface-2); }
+.dlv-seg button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 8px; cursor: pointer; }
+.dlv-seg button.on { background: var(--pf-on); color: var(--pf-on-tx); }
+.dlv-c { height: 210px; position: relative; } @media (max-width: 600px) { .dlv-c { height: 170px; } }
+.dlv-n { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+/* Trade erfassen */
+.qt-ov { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; padding: 0; }
+.qt-ov[hidden] { display: none; }
+@media (min-width: 700px) { .qt-ov { align-items: center; padding: 20px; } }
+.qt { width: 100%; max-width: 520px; max-height: 92dvh; overflow-y: auto; background: var(--surface); border-radius: 22px 22px 0 0; padding: 16px 18px calc(18px + env(safe-area-inset-bottom)); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+@media (min-width: 700px) { .qt { border-radius: 20px; } }
+.qt-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; } .qt-h b { font-size: 18px; }
+.qt-x { border: 0; background: var(--surface-2); color: var(--muted); width: 30px; height: 30px; border-radius: 50%; font-size: 14px; cursor: pointer; }
+.qt-seg { display: flex; gap: 3px; padding: 3px; border-radius: 12px; background: var(--surface-2); margin-bottom: 10px; }
+.qt-seg button { flex: 1; border: 0; background: none; color: var(--muted); font: inherit; font-weight: 600; font-size: 14.5px; padding: 8px; border-radius: 9px; cursor: pointer; }
+.qt-seg.sm button { font-size: 13px; padding: 6px; }
+.qt-seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.18); }
+.qt-seg button.on.buy { background: var(--up); color: #fff; } .qt-seg button.on.sell { background: var(--red); color: #fff; }
+.qt-f { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; position: relative; } .qt-f > span { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.qt-f input { font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 11px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); width: 100%; min-width: 0; }
+.qt-row { display: flex; gap: 8px; } .qt-row input { flex: 1; }
+.qt-g { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.qt-list { position: absolute; left: 0; right: 0; top: 100%; z-index: 5; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); max-height: 260px; overflow-y: auto; }
+.qt-list[hidden] { display: none; }
+.qt-list button { display: flex; justify-content: space-between; gap: 10px; width: 100%; border: 0; background: none; color: var(--text); font: inherit; padding: 9px 12px; text-align: left; cursor: pointer; }
+.qt-list button:hover { background: var(--surface-2); } .qt-list small { color: var(--muted); flex: none; }
+.qt-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -2px 0 12px; } .qt-chips > span { font-size: 12px; color: var(--muted); width: 100%; }
+.qt-ovi { font-size: 13.5px; margin: -4px 0 10px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+.qt-sum { font-size: 14px; margin: 2px 0 10px; min-height: 18px; }
+.qt-go { width: 100%; padding: 12px; font-size: 16px; } .qt-go.buy { background: var(--up) !important; color: #fff !important; } .qt-go.sell { background: var(--red) !important; color: #fff !important; }
+.qt-t { font-size: 12px; margin: 10px 0 0; }
 </style>
 </head>
 <body>
@@ -5682,6 +5718,188 @@ function depHistHtml() {
     <div class="dh-x"><span>${dateDE(a.d)}</span><span class="dh-lg"><i class="l"></i>Wert <i class="e"></i>Einstand</span><span>${dateDE(z.d)}</span></div>${depBenchHtml(a, z)}</div>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-dephr]"); if (!b) return; state.depHr = b.dataset.dephr; save(); const c = document.querySelector(".dh"); if (c) c.outerHTML = depHistHtml(); });
+
+// ---------- Depotwert live (Wunsch 14.11.2026, wie Scalable): Verlauf 1T · 1W · 1M · 1J · Max deiner heutigen Positionen ----------
+// 1T/1W aus 5-Minuten- bzw. Stundenkerzen (Kairo-Kursdienst), länger aus Tageskerzen. Turbos über den Basiswert bewertet,
+// ETFs und Positionen ohne Kursdaten mit ihrem aktuellen Wert. Letzter Punkt = Live-Kurs.
+const DLV = { cache: {}, chart: null, seq: 0, timer: 0 };
+const DLV_R = [["1d", "1T"], ["1w", "1W"], ["1m", "1M"], ["1y", "1J"], ["max", "Max"]];
+function dlvPositions() {
+  return depotLive().map(p => {
+    const r = p.t ? rowOf(p.t) : null, cur = r ? r.cur : null, base = { qty: p.qty, date: p.date || "", cost: p.price * p.qty, n: p.n };
+    if (p.etf) { const px = etfPx(p) || p.price; return { ...base, t: null, f: () => px }; }
+    if (!p.t || !r) return { ...base, t: null, f: () => p.price };
+    if (p.d) { const tm = turboModel(p, { cur, c: r.c }, entryEval(needChart(p.t), p.date)); return { ...base, t: p.t, f: tm ? tm.val : () => p.price }; }
+    return { ...base, t: p.t, f: x => toEur(x, cur) || 0 };
+  });
+}
+async function dlvSeries(rng) {
+  const P = dlvPositions(), tks = [...new Set(P.filter(x => x.t).map(x => x.t))], now = Math.floor(Date.now() / 1000);
+  if (!P.length) return { err: "leer" };
+  const liveNow = t => { const r = rowOf(t); return r && r.c > 0 ? r.c : null; };
+  if (rng === "1d" || rng === "1w") {
+    if (!liveKey("yq")) return { err: "kd" };
+    const S = {};
+    await Promise.all(tks.map(async t => { try { const c = await intraLoad(t, rng === "1d" ? "5m" : "1h"); S[t] = { t: c.t.map(x => x - (c.gmt || 0)), c: c.c }; } catch (e) {} }));
+    const all = [...new Set(Object.values(S).flatMap(x => x.t))].sort((a, b) => a - b); if (!all.length) return { err: "daten" };
+    const last = all[all.length - 1], dayOf = ts => new Date(ts * 1000).toLocaleDateString("de-DE", { timeZone: "Europe/Berlin" });
+    const from = rng === "1d" ? all.find(ts => dayOf(ts) === dayOf(last)) : last - 7 * 86400;
+    const grid = all.filter(ts => ts >= from);
+    const px = (t, ts) => { const x = S[t]; if (!x) return liveNow(t); let i = x.t.length - 1; while (i >= 0 && x.t[i] > ts) i--; return i >= 0 ? x.c[i] : x.c[0]; };
+    const val = ts => P.reduce((a, q) => a + q.qty * (q.t ? (q.f(px(q.t, ts)) || 0) : q.f()), 0);
+    const pts = grid.map(ts => ({ time: ts, value: val(ts) }));
+    if (now - last < 6 * 3600 && tks.some(liveNow)) pts.push({ time: Math.max(last + 60, now), value: P.reduce((a, q) => a + q.qty * (q.t ? (q.f(liveNow(q.t) ?? px(q.t, now)) || 0) : q.f()), 0) });
+    const v0 = val(from - 1);
+    return { pts, v0, chg: pts[pts.length - 1].value - v0, intra: true, from };
+  }
+  const C = {}; await Promise.all(tks.map(async t => { try { C[t] = await loadChart(t); } catch (e) {} }));
+  const dates = [...new Set(Object.values(C).flatMap(c => (c && c.t) || []).map(String))].sort();
+  const first = P.reduce((a, q) => q.date && q.date < a ? q.date : a, "9999");
+  const cut = rng === "1m" ? isoD(new Date(Date.now() - 31 * 864e5)) : rng === "1y" ? isoD(new Date(Date.now() - 366 * 864e5)) : first;
+  const grid = dates.filter(d => d >= cut); if (grid.length < 2) return { err: "daten" };
+  const px = (t, d) => { const c = C[t]; if (!c || !c.t) return liveNow(t); let i = c.t.length - 1; while (i >= 0 && String(c.t[i]) > d) i--; return i >= 0 ? c.c[i] : null; };
+  const pv = (q, d) => q.t ? q.qty * (q.f(px(q.t, d)) || 0) : q.qty * q.f();
+  const pts = grid.map(d => ({ time: d, value: P.reduce((a, q) => a + (!q.date || q.date <= d ? pv(q, d) : 0), 0) }));
+  const lv = P.reduce((a, q) => a + (q.t && liveNow(q.t) ? q.qty * (q.f(liveNow(q.t)) || 0) : pv(q, grid[grid.length - 1])), 0);
+  pts[pts.length - 1] = { ...pts[pts.length - 1], value: lv };
+  // Veränderung ohne Käufe: je Position Endwert minus Startwert (bzw. Einstand, wenn erst im Zeitraum gekauft)
+  const chg = P.reduce((a, q) => a + (q.t && liveNow(q.t) ? q.qty * (q.f(liveNow(q.t)) || 0) : pv(q, grid[grid.length - 1])) - (q.date && q.date > grid[0] ? q.cost : pv(q, grid[0])), 0);
+  const v0 = pts[pts.length - 1].value - chg;
+  return { pts, v0, chg, intra: false, from: grid[0] };
+}
+function dlvHtml() {
+  const kd = !!liveKey("yq"), rng = state.dlvR || (kd ? "1d" : "1m");
+  return `<div class="dlv" id="dlv" data-r="${rng}"><div class="dlv-h"><div class="dlv-v"><span id="dlvL">${DLV_R.find(x => x[0] === rng)[1] === "1T" ? "Heute" : "Im Zeitraum"}</span><b id="dlvC" class="muted">…</b></div>
+    <div class="dlv-seg" role="group" aria-label="Zeitraum">${DLV_R.map(([v, l]) => `<button class="${rng === v ? "on" : ""}" data-dlvr="${v}">${l}</button>`).join("")}</div></div>
+    <div class="dlv-c" id="dlvCv"></div><div class="dlv-n" id="dlvN"></div></div>`;
+}
+async function dlvMount() {
+  const box = $("dlvCv"); if (!box) return; const seq = ++DLV.seq, kd = !!liveKey("yq"), rng = state.dlvR || (kd ? "1d" : "1m");
+  const ck = rng + "|" + depotLive().map(p => (p.isin || p.t) + p.qty).join(","), c0 = DLV.cache[ck];
+  const res = c0 && Date.now() - c0.at < (rng === "1d" ? 60e3 : 10 * 60e3) ? c0.res : await dlvSeries(rng).catch(() => ({ err: "daten" }));
+  if (seq !== DLV.seq || !$("dlvCv")) return; DLV.cache[ck] = { res, at: Date.now() };
+  const N = $("dlvN"), C = $("dlvC");
+  if (res.err) { box.innerHTML = ""; C.textContent = "–";
+    N.innerHTML = res.err === "kd" ? `Intraday-Verlauf (1T, 1W) kommt über deinen Kairo-Kursdienst – <button class="hlink" data-gosec="settings" data-settab="live">einrichten</button>. 1M, 1J und Max gehen schon jetzt.` : "Für diesen Zeitraum fehlen noch Kursdaten."; return; }
+  const up = res.chg >= 0, col = up ? "#30d158" : "#ff453a", LW = window.LightweightCharts, off = -new Date().getTimezoneOffset() * 60;
+  const fmtChg = (v, b) => `${v >= 0 ? "+" : "−"}${eur(Math.abs(v))} (${b > 0 ? sgnPct(v / b, 2) : "–"})`;
+  C.className = up ? "up" : "down"; C.textContent = fmtChg(res.chg, res.v0);
+  N.textContent = res.intra ? `${rng === "1d" ? "5-Minuten" : "Stunden"}-Kurse · letzter Punkt live · Turbos über den Basiswert bewertet` : `Tageskurse deiner heutigen Positionen ab Kaufdatum · Veränderung ohne Käufe gerechnet`;
+  if (DLV.chart) { try { DLV.chart.remove(); } catch (e) {} DLV.chart = null; }
+  box.innerHTML = "";
+  const ch = LW.createChart(box, { ...chartOpts(box), height: box.clientHeight || 200, handleScroll: false, handleScale: false, rightPriceScale: { borderVisible: false, scaleMargins: { top: .12, bottom: .08 } },
+    timeScale: { borderVisible: false, timeVisible: res.intra, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true }, grid: { vertLines: { visible: false }, horzLines: { color: LC().g } }, crosshair: { mode: 0 } });
+  const se = ch.addAreaSeries({ lineColor: col, topColor: up ? "rgba(48,209,88,.28)" : "rgba(255,69,58,.24)", bottomColor: "rgba(0,0,0,0)", lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
+    priceFormat: { type: "custom", formatter: v => eur(v) } });
+  se.setData(res.pts.map(p => ({ time: res.intra ? p.time + off : p.time, value: p.value })));
+  if (res.v0 > 0) se.createPriceLine({ price: res.v0, color: "rgba(142,142,147,.7)", lineStyle: 2, lineWidth: 1, axisLabelVisible: false, title: "" });
+  ch.timeScale().fitContent(); DLV.chart = ch;
+  ch.subscribeCrosshairMove(p => { const L = $("dlvL"); if (!L) return; const v = p && p.time ? p.seriesData.get(se) : null;
+    if (v) { L.textContent = res.intra ? new Date((p.time - off) * 1000).toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : dateDE(tkey(p.time)); C.textContent = `${eur(v.value)} · ${fmtChg(v.value - res.v0, res.v0)}`; }
+    else { L.textContent = rng === "1d" ? "Heute" : "Im Zeitraum"; C.textContent = fmtChg(res.chg, res.v0); } });
+  clearInterval(DLV.timer); if (rng === "1d" && kd) DLV.timer = setInterval(() => { if (state.sec === "depot" && $("dlvCv") && !document.hidden) dlvMount(); else clearInterval(DLV.timer); }, 60e3);
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-dlvr]"); if (!b) return; state.dlvR = b.dataset.dlvr; save();
+  document.querySelectorAll("[data-dlvr]").forEach(x => x.classList.toggle("on", x === b)); dlvMount(); });
+
+// ---------- Trade erfassen (Wunsch 14.11.2026: nicht nach jedem Kauf die CSV exportieren) ----------
+// Kauf oder Verkauf in wenigen Sekunden: Aktie aus der Suche oder Turbo per ISIN (onvista liefert Basiswert, K.-o., Geld/Brief).
+// Landet als Transaktion im Journal und sofort im Bestand (gleiche Rechnung wie der Scalable-Import). Ein späterer Scalable-Export
+// gleicht ab: gleiche Trades werden nicht doppelt gezählt, neuere eigene Einträge bleiben.
+const QT = { side: "buy", kind: "stock", t: null, isin: "", desc: "", ov: null };
+function txRows(list) {
+  return [["date", "time", "status", "description", "assettype", "type", "isin", "shares", "price"],
+    ...list.map(t => [t.date, t.time || "", t.status || "Executed", t.desc, t.asset || "Security", t.type, t.isin || "", t.qty, t.price])];
+}
+function txSameTrade(a, b) {
+  const dir = t => TX_OUT.test(String(t.type).toLowerCase()) ? -1 : 1;
+  if (dir(a) !== dir(b) || Math.abs(a.qty - b.qty) > Math.max(1e-6, a.qty * .005)) return false;
+  if (Math.abs(Date.parse(a.date) - Date.parse(b.date)) > 4 * 864e5) return false;
+  if (a.isin && b.isin) return a.isin === b.isin;
+  const na = normName(a.desc), nb = normName(b.desc); return !!na && !!nb && (na.startsWith(nb.slice(0, 6)) || nb.startsWith(na.slice(0, 6)));
+}
+function qtOpen(pre = {}) {
+  Object.assign(QT, { side: "buy", kind: "stock", t: null, isin: "", desc: "", ov: null }, pre);
+  let el = $("qtBox"); if (!el) { document.body.insertAdjacentHTML("beforeend", `<div id="qtBox" class="qt-ov" hidden></div>`); el = $("qtBox"); }
+  el.hidden = false; qtDraw(); setTimeout(() => { const q = $(QT.kind === "stock" ? "qtQ" : "qtIsin"); if (q && !QT.t && !QT.isin) q.focus(); }, 60);
+}
+function qtHeld() { return depotLive().filter(p => QT.kind === "turbo" ? !!p.d : !p.d); }
+function qtPrice() {   // Vorschlag: Live-Kurs in € (Aktie) bzw. Brief/Geld (Turbo, onvista)
+  if (QT.kind === "turbo" && QT.ov) return QT.side === "buy" ? QT.ov.ask || QT.ov.bid : QT.ov.bid || QT.ov.ask;
+  const r = QT.t ? rowOf(QT.t) : null; return r && r.c > 0 ? toEur(r.c, r.cur) : null;
+}
+function qtDraw() {
+  const el = $("qtBox"); if (!el) return; const held = qtHeld(), px = qtPrice(), r = QT.t ? rowOf(QT.t) : null, fee = state.qtFee ?? 0.99;
+  const chips = held.slice(0, 12).map(p => `<button class="kchip${(QT.kind === "turbo" ? QT.isin === p.isin : QT.t === p.t) ? " on" : ""}" data-qtheld="${esc(p.isin || p.t || p.n)}">${esc(shortNm(p.d ? (p.d.under + " " + (p.d.dir === "long" ? "Long" : "Short") + " " + fmt(p.d.ko)) : (p.n || p.t)).slice(0, 26))}</button>`).join("");
+  el.innerHTML = `<div class="qt" role="dialog" aria-label="Trade erfassen"><div class="qt-h"><b>Trade erfassen</b><button class="qt-x" data-qtclose aria-label="Schließen">✕</button></div>
+    <div class="qt-seg">${[["buy", "Kauf"], ["sell", "Verkauf"]].map(([v, l]) => `<button class="${QT.side === v ? "on " + v : ""}" data-qtside="${v}">${l}</button>`).join("")}</div>
+    <div class="qt-seg sm">${[["stock", "Aktie / ETF"], ["turbo", "Turbo / Optionsschein"]].map(([v, l]) => `<button class="${QT.kind === v ? "on" : ""}" data-qtkind="${v}">${l}</button>`).join("")}</div>
+    ${QT.kind === "stock" ? `<label class="qt-f"><span>Aktie</span><input id="qtQ" type="search" autocomplete="off" placeholder="Name oder Kürzel" value="${esc(QT.t ? (r && r.n) || QT.t : "")}"><div id="qtList" class="qt-list" hidden></div></label>`
+      : `<label class="qt-f"><span>ISIN oder WKN des Turbos</span><div class="qt-row"><input id="qtIsin" autocomplete="off" placeholder="z. B. DE000HT1ABC2" value="${esc(QT.isin)}"><button class="btn ghost sm" data-qtov>Laden</button></div></label>
+        ${QT.ov ? `<div class="qt-ovi">${QT.ov.err ? `<span class="down">${esc(QT.ov.err)}</span>` : `<b>${esc(QT.ov.und)} ${QT.ov.put ? "Short" : "Long"}</b> · K.-o. ${fmt(QT.ov.ko)} ${esc(QT.ov.ucur || "")}${QT.ov.bid ? ` · Geld ${fmt(QT.ov.bid)} € / Brief ${fmt(QT.ov.ask)} €` : ""}`}</div>` : ""}`}
+    ${chips ? `<div class="qt-chips"><span>${QT.side === "sell" ? "Aus deinem Depot" : "Nachkaufen"}</span>${chips}</div>` : ""}
+    <div class="qt-g"><label class="qt-f"><span>Stück</span><input id="qtQty" type="number" inputmode="decimal" min="0" step="any" value="${QT.qty ?? ""}"></label>
+      <label class="qt-f"><span>Kurs je Stück (€)</span><input id="qtPx" type="number" inputmode="decimal" min="0" step="any" value="${QT.px ?? (px ? +px.toFixed(4) : "")}"></label>
+      <label class="qt-f"><span>Gebühr (€)</span><input id="qtFee" type="number" inputmode="decimal" min="0" step="any" value="${fee}"></label>
+      <label class="qt-f"><span>Datum</span><input id="qtD" type="date" value="${QT.d || isoD(new Date())}"></label></div>
+    <div class="qt-sum" id="qtSum"></div>
+    <button class="btn qt-go ${QT.side}" data-qtsave>${QT.side === "buy" ? "Kauf speichern" : "Verkauf speichern"}</button>
+    <p class="muted qt-t">Landet sofort im Bestand und im Journal. Ein späterer Scalable-Export gleicht nur noch ab – nichts wird doppelt gezählt.</p></div>`;
+  qtSum();
+}
+function qtSum() { const q = +($("qtQty") || {}).value || 0, p = +($("qtPx") || {}).value || 0, f = +($("qtFee") || {}).value || 0, s = $("qtSum"); if (!s) return;
+  s.innerHTML = q && p ? `${QT.side === "buy" ? "Zahlst" : "Bekommst"} <b>${eur(QT.side === "buy" ? q * p + f : q * p - f)}</b> inkl. Gebühr` : ""; }
+async function qtLoadOv() {
+  const v = String(($("qtIsin") || {}).value || "").trim().toUpperCase(); if (!v) return; QT.isin = v; QT.ov = { err: "lädt …" }; qtDraw();
+  const q = await ovGet(`/instruments/query?searchValue=${encodeURIComponent(v)}&limit=1`), it = ((q || {}).list || [])[0];
+  if (!it) { QT.ov = { err: "Nicht gefunden – ISIN prüfen" }; qtDraw(); return; }
+  if (it.isin) QT.isin = it.isin;
+  const d = it.entityType === "DERIVATIVE" ? ovTurbo(await ovGet(`/derivatives/${it.entityValue}/snapshot`)) : null;
+  QT.ov = d && d.ko ? d : { err: "Kein Turbo mit K.-o.-Schwelle gefunden" }; QT.px = null; qtDraw();
+}
+function qtSave() {
+  const qty = +$("qtQty").value, price = +$("qtPx").value, fee = Math.max(0, +$("qtFee").value || 0), date = $("qtD").value || isoD(new Date());
+  if (!(qty > 0) || !(price > 0)) { drToast("Bitte Stück und Kurs eintragen"); return; }
+  let desc = "", isin = "", t = null;
+  if (QT.kind === "turbo") { const o = QT.ov; if (!o || o.err) { drToast("Bitte zuerst den Turbo per ISIN laden"); return; }
+    isin = QT.isin; const prev = txLoad().find(x => x.isin === isin);
+    desc = prev ? prev.desc : `${o.und} ${o.put ? "Short" : "Long"} ${String(o.ko).replace(".", ",")} ${o.ucur || ""} Turbo`.replace(/\s+/g, " "); }
+  else { if (!QT.t) { drToast("Bitte eine Aktie wählen"); return; } t = QT.t; const r = rowOf(t) || {};
+    const pos = depotLoad().find(p => p.t === t && !p.d && p.isin), prev = pos && txLoad().find(x => x.isin === pos.isin);
+    isin = pos ? pos.isin : ""; desc = prev ? prev.desc : pos ? pos.n : (r.n || t); }
+  if (QT.side === "sell") { const h = depotLoad().filter(p => isin ? p.isin === isin : p.t === t && !p.d).reduce((a, p) => a + p.qty, 0);
+    if (h && qty > h + 1e-9) { drToast(`Du hältst nur ${fmt(h, 4)} Stück`); return; } }
+  const now = new Date(), time = now.toTimeString().slice(0, 8);
+  const tx = { date, time, status: "Executed", ref: "", desc, asset: "Security", type: QT.side === "buy" ? "Buy" : "Sell", isin, qty, price,
+    amount: QT.side === "buy" ? -(qty * price) : qty * price, fee, tax: 0, cur: "EUR", src: "quick", t, id: `q|${Date.now()}` };
+  const list = txLoad(); list.push(tx); list.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)); txSave(list);
+  state.qtFee = fee; save();
+  importRows(txRows(txLoad()));                                    // Bestand neu aus allen Transaktionen – wie beim Import
+  depotMsg = `<b>${QT.side === "buy" ? "Kauf" : "Verkauf"} erfasst</b> – ${fmt(qty, 4)} × ${esc(desc)} zu ${fmt(price)} € · steht im Bestand und im Journal.`;
+  $("qtBox").hidden = true; DLV.cache = {}; render();
+}
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-qt]")) { const b = e.target.closest("[data-qt]"); qtOpen(b.dataset.qt ? { t: b.dataset.qt } : {}); return; }
+  if (!e.target.closest("#qtBox")) return;
+  if (e.target.closest("[data-qtclose]") || e.target.id === "qtBox") { $("qtBox").hidden = true; return; }
+  const keep = () => { QT.qty = ($("qtQty") || {}).value || null; QT.px = ($("qtPx") || {}).value || null; QT.d = ($("qtD") || {}).value || null; };
+  const sd = e.target.closest("[data-qtside]"); if (sd) { keep(); QT.side = sd.dataset.qtside; QT.px = null; qtDraw(); return; }
+  const kd = e.target.closest("[data-qtkind]"); if (kd) { QT.kind = kd.dataset.qtkind; QT.t = null; QT.isin = ""; QT.ov = null; QT.px = null; qtDraw(); return; }
+  const hd = e.target.closest("[data-qtheld]"); if (hd) { const k = hd.dataset.qtheld, p = qtHeld().find(x => (x.isin || x.t || x.n) === k); if (!p) return; keep(); QT.px = null;
+    if (p.d) { QT.isin = p.isin || ""; if (QT.isin) { $("qtIsin") && ($("qtIsin").value = QT.isin); qtLoadOv(); } else { QT.ov = { und: p.d.under, put: p.d.dir !== "long", ko: p.d.ko, ucur: p.d.cur }; qtDraw(); } }
+    else { QT.t = p.t; if (QT.side === "sell") QT.qty = p.qty; qtDraw(); } return; }
+  if (e.target.closest("[data-qtov]")) { qtLoadOv(); return; }
+  const pk = e.target.closest("[data-qtpick]"); if (pk) { QT.t = pk.dataset.qtpick; QT.px = null; keep(); qtDraw(); return; }
+  if (e.target.closest("[data-qtsave]")) { qtSave(); return; }
+});
+document.addEventListener("input", e => {
+  if (!e.target.closest || !e.target.closest("#qtBox")) return;
+  if (["qtQty", "qtPx", "qtFee"].includes(e.target.id)) { qtSum(); return; }
+  if (e.target.id === "qtQ") { const q = e.target.value.trim().toLowerCase(), L = $("qtList"); if (!L) return;
+    const hits = q.length < 1 ? [] : (searchIdx || []).filter(r => r.t.toLowerCase().startsWith(q) || String(r.n || "").toLowerCase().includes(q)).slice(0, 8);
+    L.hidden = !hits.length; L.innerHTML = hits.map(r => `<button data-qtpick="${esc(r.t)}"><b>${esc(String(r.n || r.t).slice(0, 34))}</b><small>${esc(tkClean(r.t))}${r.c ? " · " + fmt(r.c) + " " + esc(r.cur || "") : ""}</small></button>`).join(""); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("qtBox") && !$("qtBox").hidden) $("qtBox").hidden = true; });
 function depotHtml() {
   const list = depotLoad();
   if (!searchIdx) { loadSearch(); return `<div class="section-title"><span>Depot</span><span>lädt Kurse …</span></div>`; }
@@ -5718,12 +5936,13 @@ function depotHtml() {
     : list.length ? `<div class="dep-sum"><div class="fig"><span>Eingesetzt gesamt</span><b>${fmt(invested)} €</b></div><div class="fig"><span>Positionen</span><b>${list.length}</b></div></div>` : "";
   const form = depotEdit != null ? depotFormHtml(depotEdit >= 0 ? list[depotEdit] : null) : "";
   const actions = `<div class="dep-act">
-      <button class="btn sm dep-b1" data-dep="add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Position hinzufügen</button>
-      <label class="btn ghost sm dep-b2" style="cursor:pointer" title="Ein neuer Export ersetzt den alten Import vollständig (Depot und Journal). Von Hand angelegte Positionen bleiben."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>${list.some(isImported) ? "Scalable-Export aktualisieren" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="depCsv" hidden></label>
+      <button class="btn sm dep-b1" data-qt=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Trade erfassen</button>
+      <label class="btn ghost sm dep-b2" style="cursor:pointer" title="Gelegentlicher Abgleich mit Scalable. In Kairo erfasste Trades, die der Export noch nicht enthält, bleiben erhalten."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>${list.some(isImported) ? "Scalable-Abgleich" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="depCsv" hidden></label>
       ${list.length ? `<details class="dep-more"><summary class="btn ghost sm">…</summary><div class="dep-more-p">
+        <button class="btn ghost sm" data-dep="add">Position von Hand anlegen</button>
         <button class="btn ghost sm" data-dep="claude">Für Claude kopieren</button>
         <button class="btn ghost sm danger" data-dep="clearimp">Depot leeren …</button>
-        <div class="muted" style="font-size:12px">Ein neuer Scalable-Export ersetzt den alten Import vollständig (Depot und Journal). Von Hand angelegte Positionen bleiben.</div></div></details>` : ""}</div>
+        <div class="muted" style="font-size:12px">Trades erfasst du mit „Trade erfassen“. Ein Scalable-Export ist nur noch ein gelegentlicher Abgleich: Er liest Depot und Journal neu ein, in Kairo erfasste neuere Trades bleiben, gleiche werden nicht doppelt gezählt.</div></div></details>` : ""}</div>
     ${depotMsg ? `<div class="tip tone-gray" style="margin-bottom:14px">${depotMsg}</div>` : ""}`;
   if (!anaData) loadAnalysis();
   const groups = anaData ? groupPositions(items) : [];
@@ -5757,7 +5976,7 @@ function depotHtml() {
     <p class="es-sub">Oben „Scalable-Export importieren“ oder „+ Position“ · noch nichts gekauft? <a href="#" data-gosec="today">Heute</a> oder <a href="#" data-gosec="game">Übung</a></p></div>`;
   if (state.depFlash) setTimeout(() => { state.depFlash = null; }, 2500);
   // iPad quer / Desktop (Pro-Runde 13.11.): Positionen links, Depot-Check rechts daneben; am iPhone Reihenfolge wie bisher
-  const chk = (items.length ? depHistHtml() : "") + depRiskHtml(items, groups) + depotCheckHtml(items, groups) + depEarnHtml(groups);
+  const chk = depRiskHtml(items, groups) + depotCheckHtml(items, groups) + depEarnHtml(groups);
   return head + (items.length ? depHeroHtml(groups, items, inGroup) : "") + actions + form + empty
     + `<div class="dep-cols${chk ? "" : " solo"}"><div class="dep-main"><div class="dep-tr">${depTradesHtml(items)}</div><div class="dep-pos">`
     + (groups.length ? `<div class="plan-h" style="margin:4px 2px 8px">Deine Positionen · antippen zum Aufklappen</div>${groups.map(groupHtml).join("")}` : "")
@@ -6216,6 +6435,7 @@ function depEarnHtml(groups) {
 // Depot-Kopf (12.11.): großer Depotwert, Gewinn/Verlust, Aufteilung als Balken, vier klare Kennzahlen – wie eine Broker-App
 const DEP_COL = ["#0a84ff", "#30d158", "#ff9f0a", "#bf5af2", "#64d2ff", "#ff375f", "#ffd60a", "#8e8e93"];
 function depHeroHtml(groups, items, inGroup) {
+  requestAnimationFrame(() => dlvMount());
   const seg = [];
   groups.forEach(g => seg.push({ n: g.name, v: g.known ? g.value : g.invested, inv: g.invested, known: g.known }));
   items.filter(x => !inGroup.has(x.i)).forEach(x => seg.push({ n: x.p.d ? (x.p.d.under || x.p.n) : (x.p.n || (x.r && x.r.n) || x.p.t), v: x.val != null ? x.val : x.cost, inv: x.cost, known: x.val != null, etf: !!x.p.etf }));
@@ -6233,6 +6453,7 @@ function depHeroHtml(groups, items, inGroup) {
     <div class="dh-top"><div class="dh-main"><span class="dh-l">Depotwert${kn.length < seg.length ? " · teils geschätzt" : ""}</span><b class="dh-v">${eur(tot)}</b>
       ${kn.length ? `<span class="dh-chg ${gv >= 0 ? "up" : "down"}"><i>${gv >= 0 ? "▲" : "▼"}</i>${sgnEur(gv)} · ${sgnPct(gp, 1)} <small>seit Kauf</small></span>` : ""}</div>
       <div class="dh-side"><div><span>Investiert</span><b>${eur(inv)}</b></div><div><span>Positionen</span><b>${seg.length}</b></div>${etfV ? `<div><span>davon ETF</span><b>${pct(etfV / (tot || 1), 0)}</b></div>` : ""}</div></div>
+    ${dlvHtml()}
     ${bar}
     <div class="dh-ks">
       ${k4("Offene Trades", `${z.open}<small> / ${cfg.maxOpen}</small>`, `<span class="dh-dots">${dots}</span>${z.open < cfg.maxOpen ? `${cfg.maxOpen - z.open} frei` : "alle belegt"}`, z.open > cfg.maxOpen ? "down" : "")}
@@ -6562,8 +6783,13 @@ document.addEventListener("change", async e => {
     const has = rx => head.some(h => rx.test(h));            // erst prüfen, dann löschen – eine falsche Datei ändert nichts
     if (rows.length < 2 || !has(/date|datum/) || !has(/type|typ|transaktion|art/) || !has(/shares|stück|stueck|anzahl|quantity|menge/) || !has(/price|kurs|preis/))
       throw new Error("kein Scalable-Transaktions-Export erkannt – nichts geändert");
-    const old = importClear(), nTx = txImport(rows), msg = importRows(rows);   // neuer Export ersetzt den alten vollständig
-    depotMsg = `<b>Neuer Export übernommen</b> – der alte Import wurde ersetzt${old.n || old.nTx ? ` (${old.n} Positionen, ${old.nTx} Transaktionen entfernt)` : ""}. Depot: ${msg} Journal: ${nTx} Transaktionen.`; }
+    // Abgleich (14.11.2026): in Kairo erfasste Trades, die der Export (noch) nicht enthält, bleiben; gleiche werden nicht doppelt gezählt
+    const quick = txLoad().filter(t => t.src === "quick");
+    const old = importClear(), nTx = txImport(rows), csv = txLoad(), keepQ = quick.filter(q => !csv.some(c => txSameTrade(c, q)));
+    if (keepQ.length) txSave(csv.concat(keepQ).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)));
+    const msg = importRows(txRows(txLoad()));
+    depotMsg = `<b>Scalable-Abgleich fertig</b>${old.n || old.nTx ? ` – ${old.n} Positionen und ${old.nTx} Transaktionen neu eingelesen` : ""}. Depot: ${msg} Journal: ${nTx} Transaktionen`
+      + (quick.length ? ` · ${quick.length - keepQ.length} in Kairo erfasste Trades im Export gefunden${keepQ.length ? `, ${keepQ.length} neuere behalten` : ""}` : "") + "."; }
   catch (err) { depotMsg = "Datei konnte nicht gelesen werden (" + esc(err.message || err) + ")."; }
   e.target.value = ""; render();
 });
@@ -8642,8 +8868,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.161";
-const APP_NEWS = [["2026.11.161", "News aufgeräumt", [
+const APP_VER = "2026.11.162";
+const APP_NEWS = [["2026.11.162", "Depot wie beim Broker", [
+  ["Depotwert-Verlauf", "1T, 1W, 1M, 1J, Max – intraday über deinen Kursdienst, mit Live-Punkt und Fadenkreuz. Turbos werden über den Basiswert bewertet."],
+  ["Trade erfassen", "Kauf oder Verkauf in wenigen Sekunden: Aktie aus der Suche, Turbo per ISIN (Basiswert, K.-o., Geld/Brief kommen automatisch). Steht sofort im Bestand und im Journal."],
+  ["CSV nur noch zum Abgleich", "Ein Scalable-Export ist nicht mehr nach jedem Kauf nötig. Er gleicht ab – in Kairo erfasste Trades werden nicht doppelt gezählt, neuere bleiben."]]],
+  ["2026.11.161", "News aufgeräumt", [
   ["Deine Positionen", "Der zusätzliche farbige Streifen am Rand ist weg – die Überschrift trennt den Abschnitt, links bleibt nur Rückenwind/Gegenwind."]]],
   ["2026.11.160", "Volumenprofil 10/10", [
   ["Starke Zonen", "Wo viel Volumen und ein Fibonacci-Level oder eine Linie zusammenfallen, markiert Kairo automatisch „Starke Unterstützung“ (grün) bzw. „Starker Widerstand“ (rot) – im Chart und in der Kairo-Leiste."],
@@ -12178,7 +12408,7 @@ async function intraLoad(t, tf) {
     T.forEach((ts, i) => { const d = Math.floor(ts / 86400); if (d !== day) { day = d; k = 0; } const j2 = o.t.length - 1;
       if (k % 4 === 0) { o.t.push(ts); o.o.push(O[i]); o.h.push(H[i]); o.l.push(L[i]); o.c.push(C[i]); o.v.push(V[i]); } else { o.h[j2] = Math.max(o.h[j2], H[i]); o.l[j2] = Math.min(o.l[j2], L[i]); o.c[j2] = C[i]; o.v[j2] += V[i]; } k++; });
     ({ t: T, o: O, h: H, l: L, c: C, v: V } = o); }
-  const c = extIndicators(T, O, H, L, C, V); c.tf = tf; c.intra = 1; INTRA[key] = { c, at: Date.now() }; return c;
+  const c = extIndicators(T, O, H, L, C, V); c.tf = tf; c.intra = 1; c.gmt = j.gmt || 0; INTRA[key] = { c, at: Date.now() }; return c;
 }
 function tfAgg(c, tf) {
   if (!tf || tf === "D") return c; const o = { t: [], o: [], h: [], l: [], c: [], v: [] }; let key = null;
