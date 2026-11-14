@@ -40,17 +40,23 @@ GUIDE_DOWN = re.compile(
 ANALYST = re.compile(r"\b(price target|target price|kursziel|rating|stock forecast|price forecast|price prediction|prognose für die aktie|upgrades?|downgrades?|upgraded|downgraded|analysts? (see|expect)|"
                      r"(raises|lifts|cuts|lowers|trims|boosts|slash(es|ed)?)\b[^|]{0,30}\btargets?\b|"
                      r"(raises|lifts|cuts|lowers|trims)\b[^|]{0,30}\b(profit |earnings |eps )?estimates?\b|wall street|"
-                     r"fitch|moody'?s|s&p global ratings|dbrs|affirms\b[^|]{0,40}\brating|\bat '?[ab]{1,3}[+-]?'?)", re.I)
+                     r"fitch|moody'?s|s&p global ratings|dbrs|affirms\b[^|]{0,40}\brating|\bat '?[ab]{1,3}[+-]?'?|"
+                     r"\bs&p\b[^|]{0,20}\boutlook|\boutlook\s+(to\s+)?(positive|negative|stable)\b|credit (boost|rating))", re.I)
 # Markt-/Konjunktur-Ausblick ist kein Ausblick der Firma (HSBC 27.10.2026: „cuts UK growth forecast“, UBS: „raises Brent outlook“)
 MACRO = re.compile(r"\b(gdp|economic|economy|brent|inflation|interest[- ]rates?|rates?|markets?|equities|budget|industry|sector|"
                    r"currency|zloty|dollar|euro|yen|yuan|rupee|franc|sterling|"
-                   r"(uk|u\.s\.|us|global|world|china|chinese|euro(zone|pe)?|german|japan|india)\s+growth)\s+(forecast|outlook|view)\b", re.I)
+                   r"(uk|u\.s\.|us|global|world|china|chinese|euro(zone|pe)?|german|japan|india)\s+growth)\s+(forecast|outlook|view)\b"
+                   # Rohstoffe/Förderung (14.11.2026: „USDA cuts Ukraine wheat export forecast“, „Alaska's oil … production increase forecast“)
+                   r"|\b(wheat|corn|soy\w*|crops?|harvest|grain|export|import)\s+(\w+\s+)?(forecast|outlook)\b"   # Metalle/Öl bleiben: Förderer nennen so ihren Ausblick
+                   # Produktname, Marktberichte (14.11.2026: „Microsoft confirms Outlook outage“, „Tokyo market open: … raises guidance“)
+                   r"|\boutlook\s+(outage|app|e-?mail|mail|users|service|down)\b|\bmicrosoft outlook\b"
+                   r"|\bmarket (open|close|wrap|movers)\b|\bnikkei average\b|\bstocks to watch\b", re.I)
 # Wörter, die als Firmenname allein zu viele fremde Treffer bringen (United Spirits ↔ United Airlines, Tata Consumer ↔ Tata Capital)
 GENERIC = {"united", "international", "american", "general", "first", "national", "global", "bank", "royal", "great", "new", "china",
            "tata", "bajaj", "hero", "star", "green", "nomura", "indian", "india", "japan", "advanced", "applied", "digital", "capital",
            "federal", "western", "eastern", "southern", "northern", "pacific", "atlantic", "energy", "delivery", "public", "community",
            "citizens", "regional", "stock", "home", "union", "mitsubishi", "sumitomo", "hitachi", "toyota", "samsung", "hyundai", "lg",
-           "adani", "reliance", "mahindra", "state"}
+           "adani", "reliance", "mahindra", "state", "asia", "asian", "europe", "european", "credit", "sea", "oil", "vital"}
 # Ausgaben-/Investitionspläne sind kein Umsatz- oder Gewinnausblick (Meta 21.10.2026: „Boosts … Spending Outlook“ → Kurs −7 %)
 SPEND = re.compile(r"\b(spend\w*|capex|capital (expenditures?|spending)|expenses?|costs?|investments?|invest\w*|ausgaben|investitionen|kosten)\b", re.I)
 # Sondereffekte: Gewinn durch Einmalposten verzerrt (Steuer, Abschreibung, Rückstellung)

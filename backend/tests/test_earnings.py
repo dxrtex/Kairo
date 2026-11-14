@@ -215,3 +215,25 @@ def test_guidance_kuerzel_nur_gross_und_waehrung():
     assert E.guidance([("Bayer Ups Guidance After Pharmaceuticals Unit Outperforms - X", "u", RSS_DATE)], E._words("United Parcel Service, Inc.", "UPS")) is None
     assert E.guidance([("UPS raises outlook as parcel volumes recover - X", "u", RSS_DATE)], E._words("United Parcel Service, Inc.", "UPS"))["d"] == 1
     assert E.guidance([("UBS raises zloty forecast as currency faces mounting pressure - X", "u", RSS_DATE)], E._words("UBS Group AG", "UBS")) is None
+
+
+def test_guidance_echte_fehltreffer_november_2026():
+    """Wöchentliche Prüfung 14.11.2026: Rohstoff-/Förderprognosen, Produktname „Outlook“, Rating-Ausblick, Marktbericht und
+    fremde Firma mit Allerweltswort im Titel galten als Ausblick der Firma. Echte Treffer müssen erkannt bleiben."""
+    W = E._words
+    wrong = [("USDA cuts Ukraine wheat export forecast – impact on Black Sea prices", W("Sea Limited", "SE")),
+             ("Microsoft confirms Outlook outage affecting users worldwide", W("Orsted A/S", "OR")),
+             ("Saab stock gets credit boost as S&P turns outlook positive - ad-hoc-news.de", W("Credit Saison Co., Ltd.", "8253.T")),
+             ("Tokyo market open: Nikkei Average rebounds sharply; Nihon Micronics raises guidance and increases dividend", W("Mitsubishi HC Capital Inc.", "8593.T")),
+             ("Is AMETEK (AME) Undervalued After Raised Guidance And Stronger Asia Revenue?", W("Asia Vital Components Co., Ltd.", "3017.TW")),
+             ("Alaska’s oil comeback gains momentum with 13% production increase forecast", W("Oil India Limited", "OIL.NS"))]
+    for title, words in wrong:
+        assert E.guidance([(title, "u", RSS_DATE)], words) is None, title
+    right = [("Nebius Lowers Outlook, Addresses Worries Over Financing AI Buildout", W("Nebius Group N.V.", "NBIS"), -1),
+             ("Olympus raises outlook on stronger GI endoscope sales", W("Olympus Corporation", "7733.T"), 1),
+             ("Vestas narrows 2026 outlook after quarterly profit misses estimates", W("Vestas Wind Systems A/S", "VWS.CO"), None),
+             ("Sumitomo Rubber cuts earnings forecast as costs mount", W("Sumitomo Rubber Industries, Ltd.", "5110.T"), -1),
+             ("Bilfinger bestätigt Prognose für 2026", W("Bilfinger SE", "GBF.DE"), 0)]
+    for title, words, d in right:
+        g = E.guidance([(title, "u", RSS_DATE)], words)
+        assert (g and g["d"]) == d if d is not None else True, title

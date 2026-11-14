@@ -56,3 +56,10 @@ def test_kandidaten_und_nacheichung(tmp_path):
     earnfast.archive({"X": {"last": {"date": "2026-11-01", "eps_s": 0.2, "guide": {"d": -1}}}}, tmp_path)
     a = json.loads((tmp_path / "earn_archive.json").read_text())["X|2026-11-01"]
     assert a["p"] == cal["p"]["4|gesenkt"] and a["v"].endswith("nachgeeicht")
+
+
+def test_move_titles_nur_ganze_woerter():
+    """14.11.2026: Bei der Alpha Bank (ALPHA.AT) zählten Schlagzeilen über Alphabet als Grund der Kursbewegung."""
+    from backend.earnwhy import _move_titles
+    items = [("Alphabet Earnings: Why Google Stock Is Falling - Barron's", "u", ""), ("Alpha Bank shares jump after results - Reuters", "u", "")]
+    assert _move_titles(items, ["Alpha", "ALPHA"]) == ["Alpha Bank shares jump after results"]
