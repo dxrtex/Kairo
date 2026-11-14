@@ -2440,6 +2440,43 @@ main .table-wrap .sc-t td:nth-child(1) { box-shadow: 6px 0 8px -6px rgba(0,0,0,.
 @media (max-width: 480px) { html .vseg { overflow: hidden; } html .vseg button { flex: 1 1 0; min-width: 0; padding: 8px 2px; font-size: 13.5px; white-space: nowrap; } html .vseg button small { display: none; } }
 /* Kalender: „+2 weitere“ als ruhiger Text statt großer runder Knöpfe */
 @media (min-width: 561px) { html body .mc .more { display: block; width: auto !important; height: auto !important; min-width: 0 !important; border-radius: 4px !important; background: none !important; padding: 2px 4px !important; margin-top: 2px; font-size: 11px !important; font-weight: 600; color: var(--muted) !important; text-align: left; box-shadow: none !important; } }
+
+/* Design Runde 2 (v152): Insider – zweite Ebene als schlanke Unterreiter statt dritter grüner Leiste, Filter in einer Zeile */
+.sm-tabs { display: flex; gap: 22px; margin: 2px 2px 14px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.sm-tabs::-webkit-scrollbar { display: none; }
+.sm-tabs button { flex: none; background: none; border: 0; padding: 9px 0 10px; font: inherit; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; box-shadow: inset 0 -2px 0 transparent; transition: color .15s, box-shadow .15s; }
+.sm-tabs button:hover { color: var(--text); }
+.sm-tabs button.on { color: var(--text); box-shadow: inset 0 -2px 0 var(--pf-on); }
+.ins-hd { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.ins-hd .ins-side { flex: 1; margin: 0; max-width: 360px; }
+.ins-hd .ins-side button { padding: 7px 10px; font-size: 13.5px; }
+.ins-vw { display: inline-flex; margin: 0 0 0 auto !important; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; flex: none; }
+.ins-vw button { background: none; border: 0; padding: 6px 11px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.ins-vw button + button { border-left: 1px solid var(--line); }
+.ins-vw button.on { background: var(--surface-2); color: var(--text); }
+.ins-f { margin-bottom: 8px !important; }
+.ins-tg { align-items: center; gap: 6px; }
+.ins-chip { flex: none; appearance: none; -webkit-appearance: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--text); background: var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238e8e93' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center; border: 1px solid var(--line); border-radius: 999px; padding: 6px 28px 6px 12px; cursor: pointer; }
+.ins-chip.set { border-color: color-mix(in srgb, var(--pf-on) 55%, transparent); color: var(--pf-on); }
+.ins-div { flex: none; width: 1px; height: 18px; background: var(--line); margin: 0 2px; }
+@media (max-width: 600px) { .ins-hd .ins-side { max-width: none; } .ins-vw button { padding: 6px 9px; } .sm-tabs { gap: 18px; } }
+.ins-hd .ins-side { min-width: 0; }
+html .ins-l .bf-p.up, html .ins-l .bf-p.down { background: var(--up-bg) !important; color: var(--up) !important; box-shadow: none !important; font-variant-numeric: tabular-nums; }
+html .ins-l .bf-p.down { background: var(--red-bg) !important; color: var(--red) !important; }
+.ins-l .bf-r > span:not(.bf-p) { min-width: 0; flex: 1; }
+.ins-l .bf-r > span:not(.bf-p) > b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-l .bf-r > span:not(.bf-p) > em { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 600px) { .ins-hd { gap: 8px; } .ins-hd .ins-side button { padding: 7px 6px; font-size: 13px; } .ins-vw button { font-size: 12px; padding: 6px 8px; } }
+/* Heute → Markt: flach statt Box in Box – Abschnitte durch feine Linien getrennt */
+html .hcard.mkt .regime, html .hcard.mkt .sec-line, html .hcard.mkt .fear { background: none !important; box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; padding: 12px 0 !important; border-top: 1px solid var(--line) !important; }
+html .hcard.mkt .hh + .regime { border-top: 0 !important; padding-top: 4px !important; }
+html .hcard.mkt .sec-line { gap: 4px 14px; }
+/* Ausgeblendete Unterseite (Filter & Export) nie zwischen den Inhalten sichtbar – auch nicht bei Größenänderung des Fensters */
+.sheet { visibility: hidden; transition: transform .25s ease, visibility 0s linear .25s; }
+.filters-open .sheet { visibility: visible; transition: transform .25s ease, visibility 0s; }
+/* Waagrecht scrollende Chip-Leisten: weicher Rand rechts zeigt „hier geht es weiter“ */
+.scr-pre, .ins-tg { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); padding-right: 28px; }
+@media (min-width: 1100px) { .ins-tg { -webkit-mask-image: none; mask-image: none; padding-right: 0; } }
 </style>
 </head>
 <body>
@@ -4928,17 +4965,15 @@ function newsHtml() {
   const aggHtml = `<div class="ins-at"><div class="ins-ar ins-ah"><span class="ins-an">Aktie</span><span class="ins-ac">Käufer</span><span class="ins-ac">Verkäufer</span></div>
     ${aggL.length ? aggL.slice(0, lim2).map(aRow).join("") : `<div class="bf-empty">Keine Insider-${side === "buy" ? "Käufe" : "Verkäufe"} für diese Filter.</div>`}</div>
     ${aggL.length > lim2 || state.insMore ? `<button class="hlink" data-insmore style="margin-top:8px">${state.insMore ? "weniger zeigen" : `alle ${Math.min(aggL.length, 150)} zeigen`}</button>` : ""}`;
-  const listHtml = `<div class="hcard ins-card"><div class="sp-seg ins-side">${[["buy", "Käufe", cnt(B)], ["sell", "Verkäufe", cnt(S)]].map(([v, l, n]) => `<button data-insside="${v}" class="ins-${v}${side === v ? " on" : ""}">${l} <small>${n}</small></button>`).join("")}</div>
-    <div class="ins-f"><div class="ins-sel"><select data-insf2sel="days">${[[30, "30 Tage"], [60, "60 Tage"], [90, "90 Tage"], [365, "12 Monate"]].map(([v, l]) => `<option value="${v}"${days === v ? " selected" : ""}>${l}</option>`).join("")}</select>
-        <select data-insf2sel="c">${[["", "alle Regionen"], ["us", "USA"], ["de", "Deutschland"], ["eu", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<option value="${v}"${(IF.c || "") === v ? " selected" : ""}>${l}</option>`).join("")}</select></div>
-      <div class="sp-tg ins-tg">${f2tog("mine", "★ nur meine")}${f2tog("top", "Vorstandsspitze")}${side === "buy" ? f2tog("opp", "nur gezielt") : ""}${f2tog("big", "ab 1 Mio. €")}
-        ${vw === "list" ? `<span class="ins-sort">${[["new", "Neueste"], ["amt", "Betrag"]].map(([v, l]) => `<button class="opt${(state.insSort || "new") === v ? " on" : ""}" data-inssort="${v}">${l}</button>`).join("")}</span>` : ""}</div>
-      <div class="sp-tg ins-vw">${[["list", "Einzelne Meldungen"], ["agg", "Je Aktie gezählt"]].map(([v, l]) => `<button class="opt${vw === v ? " on" : ""}" data-insview="${v}">${l}</button>`).join("")}</div></div>
+  const listHtml = `<div class="hcard ins-card"><div class="ins-hd"><div class="sp-seg ins-side">${[["buy", "Käufe", cnt(B)], ["sell", "Verkäufe", cnt(S)]].map(([v, l, n]) => `<button data-insside="${v}" class="ins-${v}${side === v ? " on" : ""}">${l} <small>${n}</small></button>`).join("")}</div>
+      <div class="ins-vw" role="group" aria-label="Ansicht">${[["list", "Liste"], ["agg", "Je Aktie"]].map(([v, l]) => `<button class="${vw === v ? "on" : ""}" data-insview="${v}">${l}</button>`).join("")}</div></div>
+    <div class="ins-f"><div class="sp-tg ins-tg"><select class="ins-chip${days !== 90 ? " set" : ""}" data-insf2sel="days" aria-label="Zeitraum">${[[30, "30 Tage"], [60, "60 Tage"], [90, "90 Tage"], [365, "12 Monate"]].map(([v, l]) => `<option value="${v}"${days === v ? " selected" : ""}>${l}</option>`).join("")}</select><select class="ins-chip${IF.c ? " set" : ""}" data-insf2sel="c" aria-label="Region">${[["", "alle Regionen"], ["us", "USA"], ["de", "Deutschland"], ["eu", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<option value="${v}"${(IF.c || "") === v ? " selected" : ""}>${l}</option>`).join("")}</select><i class="ins-div"></i>${f2tog("mine", "★ nur meine")}${f2tog("top", "Vorstandsspitze")}${side === "buy" ? f2tog("opp", "nur gezielt") : ""}${f2tog("big", "ab 1 Mio. €")}
+        ${vw === "list" ? `<span class="ins-sort">${[["new", "Neueste"], ["amt", "Betrag"]].map(([v, l]) => `<button class="opt${(state.insSort || "new") === v ? " on" : ""}" data-inssort="${v}">${l}</button>`).join("")}</span>` : ""}</div></div>
     ${vw === "agg" ? aggHtml : `<div class="bf-l ins-l">${list.length ? grpd.slice(0, lim2).map(g => g.length > 1 ? igrp(g) : irow(g[0])).join("") : `<div class="bf-empty">Keine Insider-${side === "buy" ? "Käufe" : "Verkäufe"} für diese Filter.</div>`}</div>
     ${grpd.length > lim2 || state.insMore ? `<button class="hlink" data-insmore style="margin-top:8px">${state.insMore ? "weniger zeigen" : `alle ${Math.min(grpd.length, 150)} zeigen`}</button>` : ""}`}
     ${vw === "agg" ? `<div class="note" style="margin:8px 0 0">Gezählt werden verschiedene Personen je Aktie (mehrere Käufe derselben Person zählen einmal), sortiert nach ${side === "buy" ? "Käufern" : "Verkäufern"}. <b>Cluster</b> = mindestens 3 Insider – das stärkste Signal. Deine Aktien: alle Meldungen der letzten 12 Monate; ganzer Markt: Käufe 90 Tage, Verkäufe nur die größten der letzten Tage. Antippen zeigt die Personen.</div>` : ""}
     <div class="note" style="margin:8px 0 0"${vw === "agg" ? " hidden" : ""}>${list.length} ${side === "buy" ? "Käufe" : "Verkäufe"} · ${days === 365 ? "12 Monate" : days + " Tage"}. <b>gezielt</b> = kein Routine-Kauf (die Person kauft nicht jedes Jahr im selben Monat). Antippen öffnet die Meldung. Ganzer Markt: USA (SEC), Deutschland (BaFin), Großbritannien, Schweden, Schweiz, Norwegen; deine Aktien zusätzlich 12 Monate. Stand ${esc(when)}.</div></div>`;
-  const smSeg = `<div class="sp-seg sm-seg">${[["ins", "Insider"], ["funds", "Hedgefonds"], ["stakes", "Beteiligungen 5 %+"]].map(([v, l]) => `<button data-smview="${v}" class="${(state.smView || "ins") === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
+  const smSeg = `<div class="sm-tabs" role="tablist">${[["ins", "Insider"], ["funds", "Hedgefonds"], ["stakes", "Beteiligungen 5 %+"]].map(([v, l]) => `<button role="tab" data-smview="${v}" class="${(state.smView || "ins") === v ? "on" : ""}" aria-selected="${(state.smView || "ins") === v}">${l}</button>`).join("")}</div>`;
   if (state.smView === "funds") return head + smSeg + arkHtml() + fundsTabHtml();
   if (state.smView === "stakes") return head + smSeg + stakesTabHtml();
   return head + smSeg + listHtml
@@ -7793,9 +7828,19 @@ function scrTodayHtml() {
   return `<div class="hcard">${hHead("Neu in deinen Screens")}${L.map(({ x, n }) => `<div class="mw-r"><time>${esc(x.n)}<small>+${n.length}</small></time><span>${n.slice(0, 5).map(r => `<a href="#" data-ctgo="${esc(r.t)}">${esc(shortNm(r.n || r.t))}</a>`).join(", ")}${n.length > 5 ? ` +${n.length - 5}` : ""} <button class="hlink" data-scrgo="${esc(x.id)}">ansehen ›</button></span></div>`).join("")}</div>`;
 }
 document.addEventListener("click", e => { const g = e.target.closest("[data-scrgo]"); if (!g) return; const x = scrSv().find(y => y.id === g.dataset.scrgo); if (!x) return; state.scf = { ...x.f }; state.scrOn = true; save(); goSec("scanner"); });
+// iPad/Mac: beide Spalten von „Heute“ etwa gleich lang – untere Karten der längeren Spalte wandern nach unten in die kürzere
+function balanceToday() {
+  const g = document.querySelector(".tgrid"); if (!g || g.dataset.bal) return; g.dataset.bal = 1;
+  const [L, R] = g.querySelectorAll(":scope > .hcol"); if (!L || !R || getComputedStyle(g).gridTemplateColumns.split(" ").length < 2) return;
+  for (let i = 0; i < 3; i++) {
+    const c = R.lastElementChild, d = R.offsetHeight - L.offsetHeight; if (!c || R.children.length < 2 || c.offsetHeight + 14 > d) break;
+    L.appendChild(c);
+  }
+}
 function todayHtml() {
   const M = todayModel(); moneyStrip = "";
   const right = `${marketHtml()}${moneyHtml()}${soonHtml()}`;   // Marktampel oben als volle Karte (Wunsch 11/2026)
+  requestAnimationFrame(balanceToday);
   return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${tasksHtml(M)}${startMiniHtml()}${myHitsHtml()}${k8TodayHtml()}${scrTodayHtml()}${changesHtml()}</div>
     <div class="hcol">${right}</div></div>`;
 }
@@ -8561,8 +8606,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.151";
-const APP_NEWS = [["2026.11.151", "Ehrlichere Quartalszahlen-Prognose", [
+const APP_VER = "2026.11.152";
+const APP_NEWS = [["2026.11.152", "Ruhiger und übersichtlicher", [
+  ["Insider & Hedgefonds", "Unterreiter als schlanke Leiste statt einer weiteren grünen Fläche, alle Filter in einer Zeile, Beträge dezent statt grell."],
+  ["Heute", "Markt-Karte ohne Kästen in der Karte; auf dem iPad sind beide Spalten gleich lang."],
+  ["Kleinigkeiten", "Wischbare Leisten zeigen am Rand, dass es weitergeht; das Filterfenster blitzt nicht mehr unten durch."]]],
+  ["2026.11.151", "Ehrlichere Quartalszahlen-Prognose", [
   ["Neues Prognose-Modell", "Gewinn, Ausblick und Umsatz werden gemeinsam gewichtet und jede Woche an Kairos eigenen Meldungen nachgeeicht – nur übernommen, wenn es nachweislich genauer ist."],
   ["Klare Einordnung", "Zur Prozentzahl steht jetzt, wie belastbar sie ist: „keine klare Richtung“, „leichte“ oder „deutliche Tendenz“."]]],
   ["2026.11.150", "Aufgeräumter und einheitlicher", [
