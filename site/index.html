@@ -2529,6 +2529,11 @@ html .hcard.mkt .sec-line { gap: 4px 14px; }
 .qt-sum { font-size: 14px; margin: 2px 0 10px; min-height: 18px; }
 .qt-go { width: 100%; padding: 12px; font-size: 16px; } .qt-go.buy { background: var(--up) !important; color: #fff !important; } .qt-go.sell { background: var(--red) !important; color: #fff !important; }
 .qt-t { font-size: 12px; margin: 10px 0 0; }
+/* Zeichenwerkzeuge: Pfeil zur Werkzeug-Auswahl größer und sichtbar (Fib-Retracement / Extension usw.) */
+.dr-more { width: 14px !important; height: 14px !important; right: -1px !important; bottom: -1px !important; }
+.dr-more::after { content: ""; position: absolute; right: 3px; bottom: 3px; border-style: solid; border-width: 0 0 6px 6px; border-color: transparent transparent currentColor transparent; opacity: .75; }
+/* beim Zeichnen gehört der Finger dem Werkzeug – kein Scrollen der Seite, kein Abbruch der Bewegung */
+.drawing, .drawing * { touch-action: none !important; }
 </style>
 </head>
 <body>
@@ -8868,8 +8873,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.162";
-const APP_NEWS = [["2026.11.162", "Depot wie beim Broker", [
+const APP_VER = "2026.11.163";
+const APP_NEWS = [["2026.11.163", "Zeichnen wie bei TradingView", [
+  ["Blaues Fadenkreuz", "Werkzeug wählen – in der Chartmitte erscheint ein blaues Fadenkreuz mit Preis und Datum. Ziehen verschiebt es versetzt zum Finger, Tippen setzt den Punkt. So verdeckt der Finger nie die Stelle."],
+  ["Werkzeug-Auswahl", "Lang drücken auf ein Werkzeug (oder das Dreieck) zeigt alle Werkzeuge der Gruppe – z. B. Fib-Retracement und Fib-Extension."]]],
+  ["2026.11.162", "Depot wie beim Broker", [
   ["Depotwert-Verlauf", "1T, 1W, 1M, 1J, Max – intraday über deinen Kursdienst, mit Live-Punkt und Fadenkreuz. Turbos werden über den Basiswert bewertet."],
   ["Trade erfassen", "Kauf oder Verkauf in wenigen Sekunden: Aktie aus der Suche, Turbo per ISIN (Basiswert, K.-o., Geld/Brief kommen automatisch). Steht sofort im Bestand und im Journal."],
   ["CSV nur noch zum Abgleich", "Ein Scalable-Export ist nicht mehr nach jedem Kauf nötig. Er gleicht ab – in Kairo erfasste Trades werden nicht doppelt gezählt, neuere bleiben."]]],
@@ -12557,7 +12565,9 @@ function fundCardHtml(t, compact) {
 // CRV, Stück bei deinem Risiko je Trade). Bedienung wie TradingView: Werkzeug wählen → ziehen (oder zweimal tippen); antippen =
 // auswählen, an den Griffen ziehen = ändern, Fläche ziehen = verschieben; Magnet rastet an Hoch/Tief/Eröffnung/Schluss ein.
 // Gespeichert je Aktie auf diesem Gerät, auch im Replay sichtbar.
-const DRAW = { tool: null, sel: null, hide: false, hist: {}, h: null, act: null, wait: null };
+const DRAW = { tool: null, sel: null, hide: false, hist: {}, h: null, act: null, wait: null, cur: null };
+let DRAW_TOUCH = matchMedia("(pointer: coarse)").matches;   // zuletzt mit dem Finger bedient → Fadenkreuz-Modus
+addEventListener("pointerdown", e => { DRAW_TOUCH = e.pointerType === "touch"; }, true);
 const DR_FIB = [[0, "120,123,134"], [.236, "242,54,69"], [.382, "255,152,0"], [.5, "76,175,80"], [.618, "8,153,129"], [.786, "0,188,212"], [1, "120,123,134"]];
 const DR_FIBX = [[1.618, "41,98,255"], [2.618, "242,54,69"], [3.618, "156,39,176"], [4.236, "233,30,99"]];
 const DR_COL = ["41,98,255", "242,54,69", "8,153,129", "255,152,0", "156,39,176", "236,238,242"];
@@ -12599,6 +12609,20 @@ function drVwap(h, d) { const c = h.c, n = c.t.length, i0 = Math.max(0, Math.min
 function drSet3(h, d, q) { if (d.k === "chan") { const ia = drIdx(h, d.a), ib = drIdx(h, d.b), t = ib !== ia ? (q.li - ia) / (ib - ia) : 0; d.off = +(q.p - (d.a.p + (d.b.p - d.a.p) * t)).toPrecision(6); }
   else if (d.k === "fibx") d.c3 = drAnc(h, q.li, q.p); }
 const DR_FX = [[0, "120,123,134"], [.618, "8,153,129"], [1, "41,98,255"], [1.272, "255,152,0"], [1.618, "242,54,69"], [2.618, "156,39,176"]];
+// blaues Fadenkreuz beim Zeichnen mit dem Finger (wie TradingView): gestrichelte Linien, Punkt, Preis- und Datumsschild
+function drCurPrimitive(h) {
+  let series = null, chart = null, req = null; const F = "600 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+  const r = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => { const C = DRAW.cur; if (!C || !DRAW.tool || DRAW.h !== h || !series) return;
+    const col = "41,98,255"; x.strokeStyle = `rgba(${col},.95)`; x.lineWidth = 1; x.setLineDash([4, 4]);
+    x.beginPath(); x.moveTo(0, Math.round(C.y) + .5); x.lineTo(m.width, Math.round(C.y) + .5); x.moveTo(Math.round(C.x) + .5, 0); x.lineTo(Math.round(C.x) + .5, m.height); x.stroke(); x.setLineDash([]);
+    x.fillStyle = "#fff"; x.strokeStyle = `rgb(${col})`; x.lineWidth = 2.5; x.beginPath(); x.arc(C.x, C.y, 5, 0, Math.PI * 2); x.fill(); x.stroke();
+    const p = series.coordinateToPrice(C.y), li = chart.timeScale().coordinateToLogical(C.x); x.font = F; x.textBaseline = "middle";
+    const tag = (tx, cx, cy, al) => { const w = x.measureText(tx).width + 12, bx = al === "r" ? m.width - w - 2 : Math.max(2, Math.min(m.width - w - 2, cx - w / 2));
+      x.fillStyle = `rgb(${col})`; x.beginPath(); x.roundRect(bx, cy - 10, w, 20, 4); x.fill(); x.fillStyle = "#fff"; x.textAlign = "center"; x.fillText(tx, bx + w / 2, cy + .5); };
+    if (p != null) tag(fmt(p), 0, C.y, "r");
+    if (li != null) { const T = h.c.t, i = Math.round(li), d = i >= 0 && i < T.length ? T[i] : null; if (d != null) tag(typeof d === "number" ? dayDE(tkey(d)) : dateDE(d), C.x, m.height - 12); } }) };
+  return { attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; }, detached() { series = chart = null; }, updateAllViews() {}, paneViews: () => [{ zOrder: () => "top", renderer: () => r }] };
+}
 function drPrimitive(h) {
   let series = null, chart = null;
   const F = "600 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
@@ -12696,15 +12720,15 @@ function drLock(h, on) { try { if (on) { if (!h.drOpt) h.drOpt = { s: h.chart.op
   else { h.chart.applyOptions({ handleScroll: true, handleScale: true }); h.drOpt = null; } } catch (e) {} }   // immer freigeben (vorher konnte ein gesperrter Zustand gespeichert werden → Achsen hingen)
 function drAttach(h) {
   if (!h || !h.candles || h.drOn) return; h.drOn = 1; DRAW.h = h; DRAW.act = null; DRAW.wait = null;
-  h.candles.attachPrimitive(drPrimitive(h));
+  h.candles.attachPrimitive(drPrimitive(h)); h.candles.attachPrimitive(drCurPrimitive(h));
   const el = h.el; el.__drH = h; if (el.__drB) { drTbRender(h); drSelRender(h); return; } el.__drB = 1;   // Replay baut den Chart im selben Element neu: Listener nur einmal
   const pos = e => { const r = el.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   const at = (x, y, mag = true) => { const h = el.__drH; const li = h.chart.timeScale().coordinateToLogical(x); let p = h.candles.coordinateToPrice(y); if (li == null || p == null) return null; if (mag) p = drMag(h, li, p, y); return { li, p }; };
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
   const stopAll = e => { if (DRAW.act || DRAW.tool) { e.stopPropagation(); if (e.cancelable && e.type.startsWith("touch")) e.preventDefault(); } };
   ["mousedown", "mousemove", "mouseup", "touchstart", "touchmove", "touchend", "wheel"].forEach(t => el.addEventListener(t, e => { if (t === "wheel" && !DRAW.act) return; stopAll(e); }, { capture: true, passive: false }));
-  el.addEventListener("pointerdown", e => { const h = el.__drH;
-    if (e.button > 0 || MEAS.on || WAVE.on) return; const P = pos(e), q = at(P.x, P.y);
+  const down = (e, P0) => { const h = el.__drH;
+    if (e.button > 0 || MEAS.on || WAVE.on) return; const P = P0 || pos(e), q = at(P.x, P.y);
     if (DRAW.tool) { if (!q) return; e.stopPropagation(); drLock(h, true); try { el.setPointerCapture(e.pointerId); } catch (x) {}
       if (DRAW.wait) { const t = DRAW.wait; t.b = drAnc(h, q.li, q.p); DRAW.wait = null; if (["chan", "fibx"].includes(t.k)) { DRAW.wait3 = t; DRAW.act = { mode: "w3", temp: t }; drLock(h, false); drTbRender(h); return; } DRAW.act = null; drFinish(h, t); return; }
       const k = DRAW.tool, A = drAnc(h, q.li, q.p);
@@ -12725,9 +12749,26 @@ function drAttach(h) {
     e.stopPropagation(); drLock(h, true); try { el.setPointerCapture(e.pointerId); } catch (x) {}
     DRAW.sel = hit.d.id; DRAW.act = { mode: hit.hd ? "hd" : "mv", hd: hit.hd, id: hit.d.id, q0: at(P.x, P.y, false), orig: JSON.parse(JSON.stringify(hit.d)), moved: false, before: JSON.stringify(drList(h)) };
     h.drReq && h.drReq(); drSelRender(h);
-  }, true);
+  };
+  // Touch wie TradingView (Wunsch 14.11.2026): Werkzeug gewählt → blaues Fadenkreuz in der Chartmitte. Ziehen verschiebt das
+  // Fadenkreuz versetzt zum Finger (der Finger verdeckt den Punkt nicht), Tippen setzt den Punkt an der Fadenkreuz-Position.
+  let TC = null; const fake = { button: 0, pointerId: null, stopPropagation() {}, preventDefault() {} };
+  const curMove = P => { const h = el.__drH, q = at(P.x, P.y); if (!q) return;
+    if (DRAW.wait3 && DRAW.act && DRAW.act.mode === "w3") drSet3(h, DRAW.wait3, q);
+    else if (DRAW.wait && DRAW.act && DRAW.act.mode === "wait") DRAW.wait.b = drAnc(h, q.li, q.p); };
+  el.addEventListener("pointerdown", e => { const h = el.__drH;
+    if (e.pointerType === "touch" && DRAW.tool && !MEAS.on && !WAVE.on) { e.stopPropagation(); const P = pos(e);
+      if (!DRAW.cur) DRAW.cur = { x: el.clientWidth * .5, y: el.clientHeight * .45 };
+      TC = { fx: P.x, fy: P.y, cx: DRAW.cur.x, cy: DRAW.cur.y, t: Date.now(), moved: false, id: e.pointerId }; drLock(h, true); try { el.setPointerCapture(e.pointerId); } catch (x) {} return; }
+    down(e); }, true);
+  el.addEventListener("pointermove", e => { if (!TC || e.pointerId !== TC.id) return; e.stopPropagation(); const h = el.__drH, P = pos(e), dx = P.x - TC.fx, dy = P.y - TC.fy;
+    if (Math.hypot(dx, dy) > 6) TC.moved = true;
+    DRAW.cur = { x: Math.max(2, Math.min(el.clientWidth - 60, TC.cx + dx)), y: Math.max(2, Math.min(el.clientHeight - 30, TC.cy + dy)) }; curMove(DRAW.cur); h.drReq && h.drReq(); }, true);
+  const tcUp = e => { if (!TC || e.pointerId !== TC.id) return false; e.stopPropagation(); const h = el.__drH, tap = e.type === "pointerup" && !TC.moved && Date.now() - TC.t < 450; TC = null;
+    if (tap && DRAW.cur) { const P = { ...DRAW.cur }; down(fake, P); if (DRAW.act && DRAW.act.mode === "new") up(fake, P); }
+    if (!DRAW.act || !["new", "mv", "hd"].includes(DRAW.act.mode)) drLock(h, false); h.drReq && h.drReq(); drTbRender(h); return true; };
   el.addEventListener("pointermove", e => { const h = el.__drH;
-    const A = DRAW.act; if (!A) return; const P = pos(e);
+    const A = DRAW.act; if (!A || TC) return; const P = pos(e);
     if (A.mode === "new") { const q = at(P.x, P.y); if (!q) return; A.temp.b = drAnc(h, q.li, q.p); h.drReq && h.drReq(); return; }
     const L = drList(h).map(d => d), i = L.findIndex(d => d.id === A.id); if (i < 0) return; const d = JSON.parse(JSON.stringify(A.orig));
     if (A.mode === "mv") { const q = at(P.x, P.y, false); if (!q || !A.q0) return; const dl = Math.round(q.li - A.q0.li), dp = q.p - A.q0.p;
@@ -12743,7 +12784,7 @@ function drAttach(h) {
       else if (/^p\d+$/.test(A.hd)) { d.pts = d.pts.map((x, k) => k === +A.hd.slice(1) ? an : x); d.a = d.pts[0]; } }
     A.moved = true; L[i] = d; const all = { ...(state.draws || {}) }; all[drKey(h)] = L; state.draws = all; h.drReq && h.drReq();
   }, true);
-  const up = e => { const h = el.__drH; const A = DRAW.act; if (!A) return; const P = pos(e);
+  const up = (e, P0) => { const h = el.__drH; const A = DRAW.act; if (!A) return; const P = P0 || pos(e);
     if (A.mode === "new") { if (Math.hypot(P.x - A.x0, P.y - A.y0) < 6) { DRAW.wait = A.temp; DRAW.act = { mode: "wait", temp: A.temp }; drLock(h, false); drTbRender(h); return; }
       if (["chan", "fibx"].includes(A.temp.k)) { DRAW.wait3 = A.temp; DRAW.act = { mode: "w3", temp: A.temp }; drLock(h, false); drTbRender(h); return; }
       DRAW.act = null; drFinish(h, A.temp); return; }
@@ -12751,12 +12792,17 @@ function drAttach(h) {
     if (A.mode === "wait") return;
     DRAW.act = null; drLock(h, false);
     if (A.moved) { const k = drKey(h), H = DRAW.hist[k] = DRAW.hist[k] || []; H.push(A.before); save(); drSelRender(h); } };
-  el.addEventListener("pointerup", up, true); el.addEventListener("pointercancel", up, true);
-  el.addEventListener("pointermove", e => { const h = el.__drH; if (DRAW.wait3 && DRAW.act && DRAW.act.mode === "w3") { const P = pos(e), q = at(P.x, P.y); if (q) { drSet3(h, DRAW.wait3, q); h.drReq && h.drReq(); } return; }
+  el.addEventListener("pointerup", e => { if (!tcUp(e)) up(e); }, true); el.addEventListener("pointercancel", e => { if (!tcUp(e)) up(e); }, true);
+  el.addEventListener("pointermove", e => { const h = el.__drH; if (DRAW.cur && e.pointerType === "touch") return; if (DRAW.wait3 && DRAW.act && DRAW.act.mode === "w3") { const P = pos(e), q = at(P.x, P.y); if (q) { drSet3(h, DRAW.wait3, q); h.drReq && h.drReq(); } return; }
     if (DRAW.wait && DRAW.act && DRAW.act.mode === "wait") { const P = pos(e), q = at(P.x, P.y); if (q) { DRAW.wait.b = drAnc(h, q.li, q.p); h.drReq && h.drReq(); } } });
   drTbRender(h); drSelRender(h);
 }
-function drFinish(h, d) { DRAW.act = null; DRAW.wait = null; DRAW.wait3 = null; drLock(h, false);
+(() => { let lp = null, fired = false;
+  document.addEventListener("pointerdown", e => { const b = e.target.closest && e.target.closest(".dr-gw > [data-drtool]"); if (!b) return; const fl = b.parentElement.querySelector("[data-drfly]"); if (!fl) return;
+    fired = false; clearTimeout(lp); lp = setTimeout(() => { fired = true; DRAW.fly = fl.dataset.drfly; if (DRAW.h) drTbRender(DRAW.h); }, 450); }, true);
+  ["pointerup", "pointercancel", "pointerleave"].forEach(t => document.addEventListener(t, () => clearTimeout(lp), true));
+  document.addEventListener("click", e => { if (fired && e.target.closest && e.target.closest(".dr-gw > [data-drtool]")) { fired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true); })();
+function drFinish(h, d) { DRAW.act = null; DRAW.wait = null; DRAW.wait3 = null; drLock(h, false); if (!state.drKeep) DRAW.cur = null;
   if (d.b && !["long", "short", "chan", "fibx"].includes(d.k) && drIdx(h, d.a) === drIdx(h, d.b) && d.a.p === d.b.p) { h.drReq && h.drReq(); drTbRender(h); return; }
   DRAW.sel = d.id; if (!state.drKeep) DRAW.tool = null; drSet(h, [...drList(h), d]); drSelRender(h); }
 function drTbRender(h) {
@@ -12775,7 +12821,8 @@ function drTbRender(h) {
     <button class="dr-b" data-drundo title="Rückgängig" aria-label="Rückgängig" ${(DRAW.hist[drKey(h)] || []).length ? "" : "disabled"}>${ic('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>')}</button>
     <button class="dr-b" data-drclear title="Zeichnungen entfernen" aria-label="Zeichnungen entfernen" ${n ? "" : "disabled"}>${ic('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')}</button>
     <span class="dr-gw"><button class="dr-b dr-lsb${DRAW.fly === "ls" ? " on" : ""}" data-drfly="ls" title="Objektliste: alle Zeichnungen dieser Aktie" aria-label="Objektliste" ${n ? "" : "disabled"}>${ic('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3"/><circle cx="4.5" cy="12" r="1.3"/><circle cx="4.5" cy="18" r="1.3"/>')}${n ? `<small>${n}</small>` : ""}</button>${DRAW.fly === "ls" && n ? drLsHtml(h, ic) : ""}</span>` : ""}
-    ${DRAW.act && DRAW.act.mode === "path" ? `<span class="dr-hint">Punkte antippen · Ende: letzten Punkt erneut antippen</span>` : DRAW.wait3 ? `<span class="dr-hint">${DRAW.wait3.k === "chan" ? "Breite des Kanals antippen" : "dritten Punkt antippen (Start der Erweiterung)"}</span>` : DRAW.wait ? `<span class="dr-hint">zweiten Punkt antippen</span>` : DRAW.tool ? `<span class="dr-hint">${DR_TOOLS.find(t => t[0] === DRAW.tool)[1]}: ${["hl", "hr", "long", "short", "avwap"].includes(DRAW.tool) ? (DRAW.tool === "avwap" ? "Startkerze antippen" : "Punkt antippen") : "ziehen oder 2 Punkte antippen"}</span>` : ""}`;
+    ${DRAW.cur && DRAW.tool ? `<span class="dr-hint">${DR_TOOLS.find(t => t[0] === DRAW.tool)[1]} · Ziehen bewegt das Fadenkreuz, Tippen setzt ${DRAW.act && DRAW.act.mode === "path" ? "den nächsten Punkt (Ende: am letzten Punkt tippen)" : DRAW.wait3 ? (DRAW.wait3.k === "chan" ? "die Kanalbreite" : "den dritten Punkt") : DRAW.wait ? "den zweiten Punkt" : ["hl", "hr", "long", "short", "avwap", "text"].includes(DRAW.tool) ? "die Linie" : "den ersten Punkt"}</span>`
+      : DRAW.act && DRAW.act.mode === "path" ? `<span class="dr-hint">Punkte antippen · Ende: letzten Punkt erneut antippen</span>` : DRAW.wait3 ? `<span class="dr-hint">${DRAW.wait3.k === "chan" ? "Breite des Kanals antippen" : "dritten Punkt antippen (Start der Erweiterung)"}</span>` : DRAW.wait ? `<span class="dr-hint">zweiten Punkt antippen</span>` : DRAW.tool ? `<span class="dr-hint">${DR_TOOLS.find(t => t[0] === DRAW.tool)[1]}: ${["hl", "hr", "long", "short", "avwap"].includes(DRAW.tool) ? (DRAW.tool === "avwap" ? "Startkerze antippen" : "Punkt antippen") : "ziehen oder 2 Punkte antippen"}</span>` : ""}`;
   h.el.classList.toggle("drawing", !!DRAW.tool);
 }
 // Objektliste (wie TradingView „Objektbaum“): jede Zeichnung mit Name und Lage – antippen wählt sie aus, Auge blendet sie aus
@@ -12813,7 +12860,7 @@ document.addEventListener("click", async e => {
   const fl = t.closest("[data-drfly]"); if (fl) { DRAW.fly = DRAW.fly === fl.dataset.drfly ? null : fl.dataset.drfly; if (DRAW.fly === "ls" && DRAW.sel) { DRAW.sel = null; drSelRender(h); h.drReq && h.drReq(); } drTbRender(h); return; }
   if (DRAW.fly && !t.closest(".dr-fly")) { DRAW.fly = null; if (!t.closest("[data-drtool]")) drTbRender(h); }
   const tg = t.closest("[data-drg]"); if (tg) { state.drG = { ...(state.drG || {}), [tg.dataset.drg]: tg.dataset.drtool }; DRAW.fly = null; save(); }
-  const tl = t.closest("[data-drtool]"); if (tl) { DRAW.tool = tl.dataset.drtool || null; DRAW.wait = null; DRAW.wait3 = null; DRAW.act = null; drLock(h, false); if (DRAW.tool) { MEAS.on = WAVE.on = false; DRAW.sel = null; drSelRender(h); } drTbRender(h); h.drReq && h.drReq(); return; }
+  const tl = t.closest("[data-drtool]"); if (tl) { DRAW.cur = DRAW_TOUCH && tl.dataset.drtool ? { x: h.el.clientWidth * .5, y: h.el.clientHeight * .45 } : null; DRAW.tool = tl.dataset.drtool || null; DRAW.wait = null; DRAW.wait3 = null; DRAW.act = null; drLock(h, false); if (DRAW.tool) { MEAS.on = WAVE.on = false; DRAW.sel = null; drSelRender(h); } drTbRender(h); h.drReq && h.drReq(); return; }
   if (t.closest("[data-drtog]")) { state.drOpen = (state.drOpen != null ? state.drOpen !== 0 : innerWidth > 700) ? 0 : 1; if (!state.drOpen) DRAW.tool = null; save(); drTbRender(h); return; }
   if (t.closest("[data-drmag]")) { state.drMag = state.drMag === 0 ? 1 : 0; save(); drTbRender(h); return; }
   if (t.closest("[data-drhide]")) { DRAW.hide = !DRAW.hide; drTbRender(h); h.drReq && h.drReq(); return; }
