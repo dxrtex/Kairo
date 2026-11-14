@@ -2408,6 +2408,16 @@ tr.wl-sec td { padding: 14px 10px 6px !important; font-size: 11.5px; font-weight
 .dv-kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; } .dv-kv span { display: block; font-size: 11.5px; color: var(--muted); } .dv-kv b { font-size: 15px; } .fv .dv-kv small { display: block; font-size: 11.5px; line-height: 1.35; color: var(--muted); font-weight: 400; } .fv .dv-kv small.up { color: var(--up, #30d158); } .fv .dv-kv small.down { color: var(--red, #ff453a); }
 
 .cf-r.sm-o { grid-template-columns: minmax(0, 1fr) auto; } .cf-r.sm-o > span { display: flex; flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; color: var(--text); } .cf-r.sm-o > span small { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+
+.jyear { margin: 14px 0; } .jy-t { width: 100%; min-width: 0; border-collapse: collapse; font-size: 13px; } .jy-w { overflow-x: auto; } .jy-t th:first-child, .jy-t td:first-child { width: 52px; } .jy-t th { font-size: 11.5px; color: var(--muted); font-weight: 600; text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.jy-t th { white-space: nowrap; } .jy-t td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; } .jy-t .num { text-align: right; font-variant-numeric: tabular-nums; } .jy-t small { display: block; font-size: 11px; color: var(--muted); }
+
+.scr-sv { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 2px 10px; } .scr-nw { color: var(--accent); font-weight: 700; }
+.kchip.on .scr-nw { color: inherit; } .scr-nl { flex-basis: 100%; font-size: 13px; color: var(--muted); padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.scr-nl b { color: var(--text); } .scr-nl a { color: var(--text); }
+
+.k8-r { display: grid; grid-template-columns: 76px minmax(0, 1fr) 16px; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); color: var(--text); text-decoration: none; font-size: 13px; }
+.k8-r time { color: var(--muted); font-size: 12px; } .k8-r .ico { width: 14px; height: 14px; color: var(--muted); align-self: center; } .k8-r .gold { color: var(--gold); } .k8-r .down { color: var(--red, #ff453a); }
 </style>
 </head>
 <body>
@@ -3736,8 +3746,29 @@ function scrVal(r, k) { if (k === "spf" || k === "hpi") { const f = fundOf(r.t);
   if (k === "fu") { const S = (getJson("funds.json") || {}).sum, x = S && (S[r.t] || S[tkClean(r.t)]); return x ? (x.buy || 0) + (x.new || 0) - (x.sell || 0) - (x.out || 0) : null; }
   if (k === "pe" || k === "dy" || k === "sf" || k === "rg2") { const f = fundOf(r.t); if (!f) return null; return k === "pe" ? (f.pe ?? null) : k === "dy" ? (f.dr && f.cp ? f.dr / f.cp : 0) : k === "sf" ? sfSum(f) : f.rg ?? null; }
   if (k === "hi") return r.H > 0 && r.c > 0 ? r.c / r.H - 1 : null; if (k === "tr") return r.e200 > 0 ? (r.c > r.e200 ? (r.e50 > r.e200 ? 2 : 1) : -1) : null; if (k === "n") return r.n || r.t; return r[k]; }
-function scrRows() {
-  const F = state.scf || {}, rows = searchIdx || [];
+// Gespeicherte Screens mit „Neu dabei“ (wie Finviz/TradingView Screener-Alarm): Kairo merkt sich je Screen, welche Aktien schon
+// drin waren. Kommt nach einem Scan eine neue dazu, zeigt der Screen-Chip die Zahl, „Heute“ listet sie. Auf dem Gerät gespeichert.
+const scrSv = () => (state.scrSv = Array.isArray(state.scrSv) ? state.scrSv : []);
+const scrKey = f => JSON.stringify(Object.fromEntries(Object.entries(f || {}).filter(([k, v]) => v && v !== "0").sort()));
+function scrNew(sv) { if (!searchIdx) return []; const seen = new Set(sv.seen || []); return scrRows(sv.f).filter(r => !seen.has(r.t)); }
+function scrSavedHtml(nAct) {
+  const L = scrSv(), F = state.scf || {}, cur = L.find(x => scrKey(x.f) === scrKey(F));
+  if (!L.length && !nAct) return "";
+  return `<div class="scr-sv">${L.map(x => { const n = scrNew(x).length; return `<button class="kchip${cur && cur.id === x.id ? " on" : ""}" data-scrsv="${esc(x.id)}" title="Screen laden">${esc(x.n)}${n ? ` <small class="scr-nw">+${n} neu</small>` : ""}</button>`; }).join("")}
+    ${nAct && !cur ? `<button class="kchip wl-new" data-scrsave>＋ Screen speichern</button>` : ""}${cur ? `<button class="kchip wl-ed" data-scrsvdel="${esc(cur.id)}" title="Gespeicherten Screen löschen" aria-label="Screen löschen">${IC.trash}</button>` : ""}
+    ${cur && scrNew(cur).length ? `<div class="scr-nl"><b>Neu dabei seit dem letzten Ansehen:</b> ${scrNew(cur).slice(0, 12).map(r => `<a href="#" data-ctgo="${esc(r.t)}">${esc(shortNm(r.n || r.t))}</a>`).join(", ")} <button class="hlink" data-scrseen="${esc(cur.id)}">als gesehen markieren</button></div>` : ""}</div>`;
+}
+function scrNewAll() { return scrSv().map(x => ({ x, n: scrNew(x) })).filter(o => o.n.length); }
+document.addEventListener("click", async e => {
+  const t = e.target;
+  if (t.closest("[data-scrsave]")) { const n = String(await kAsk({ t: "Screen speichern", s: "Kairo zeigt dir künftig, welche Aktien neu in diesen Screen fallen.", input: "text", val: "", ph: "z. B. Qualität günstig", ok: "Speichern" }) || "").trim().slice(0, 30); if (!n) return;
+    scrSv().push({ id: "s" + Date.now().toString(36), n, f: { ...(state.scf || {}) }, seen: scrRows().map(r => r.t), at: isoD(new Date()) }); save(); render(); return; }
+  const sv = t.closest("[data-scrsv]"); if (sv) { const x = scrSv().find(y => y.id === sv.dataset.scrsv); if (!x) return; state.scf = { ...x.f }; save(); render(); return; }
+  const sn = t.closest("[data-scrseen]"); if (sn) { const x = scrSv().find(y => y.id === sn.dataset.scrseen); if (x) { x.seen = scrRows(x.f).map(r => r.t); save(); render(); } return; }
+  const sd = t.closest("[data-scrsvdel]"); if (sd) { if (!(await kConfirm("Gespeicherten Screen löschen?", "Löschen", true))) return; state.scrSv = scrSv().filter(y => y.id !== sd.dataset.scrsvdel); save(); render(); }
+});
+function scrRows(F0) {
+  const F = F0 || state.scf || {}, rows = searchIdx || [];
   return rows.filter(r => { if (!(r.c > 0)) return false;
     if (F.reg && r.r !== F.reg) return false; if (F.sec && r.sec !== F.sec) return false;
     if (F.cap && !(r.mc >= +F.cap)) return false;
@@ -3803,6 +3834,7 @@ function screenerHtml() {
         + sel("ffu", [["", "egal"], ["buy", "Top-Fonds kaufen"], ["sell", "Top-Fonds verkaufen"]], "Hedgefonds (13F)") : ""}
       <label class="scr-f scr-c"><input type="checkbox" data-scf="earn" ${F.earn ? "checked" : ""}><span>Zahlen ≤ 14 T.</span></label><label class="scr-f scr-c"><input type="checkbox" data-scf="ins" ${F.ins ? "checked" : ""}><span>Insider kaufen</span></label></div>` : ""}
     ${state.scrCOpen ? `<div class="scr-cols">${SCR_COLS.filter(([k]) => k !== "n").map(([k, l]) => `<button class="opt${COLS_ON.includes(k) ? " on" : ""}" data-scrcol="${k}">${esc(l)}</button>`).join("")}<button class="hlink" data-scrcol="">Standard</button></div>` : ""}
+    ${scrSavedHtml(nAct)}
     <div class="section-title"><span>Ergebnis</span><span>${fmt(list.length, 0)} Aktien</span></div>
     <div class="table-wrap"><table class="scr-t"><thead><tr>${COLS.map(([k, l]) => `<th class="${k === "n" || k === "sec" || k === "tr" ? "" : "num "}${S.k === k ? "sorted" + (S.asc ? " asc" : "") : ""}" data-scrs="${k}">${l}</th>`).join("")}</tr></thead>
       <tbody>${shown.map(r => `<tr>${COLS.map(([k]) => `<td class="${k === "n" || k === "sec" || k === "tr" ? "" : "num"}">${cell(r, k)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
@@ -6479,16 +6511,17 @@ function journalModel(tx) {
   const ok = tx.filter(t => /executed|ausgeführt/i.test(t.status) || !t.status);
   const pos = {}, trades = [], events = [];
   let fees = 0, taxes = 0, divs = 0, interest = 0, deposits = 0, withdrawals = 0;
+  const yr = {}, Y = d => (yr[String(d || "").slice(0, 4)] = yr[String(d || "").slice(0, 4)] || { gs: 0, ls: 0, go: 0, lo: 0, div: 0, tax: 0, fee: 0 });   // Jahresübersicht (Steuer-Überblick)
   ok.forEach(t => {
     const type = t.type.toLowerCase();
-    if (/distribution|dividend|ausschüttung/.test(type)) { divs += t.amount - Math.max(0, t.tax); taxes += Math.max(0, t.tax); return; }
-    if (/interest|zins/.test(type)) { interest += t.amount - Math.max(0, t.tax); taxes += Math.max(0, t.tax); return; }
+    if (/distribution|dividend|ausschüttung/.test(type)) { divs += t.amount - Math.max(0, t.tax); taxes += Math.max(0, t.tax); Y(t.date).div += t.amount; Y(t.date).tax += Math.max(0, t.tax); return; }
+    if (/interest|zins/.test(type)) { interest += t.amount - Math.max(0, t.tax); taxes += Math.max(0, t.tax); Y(t.date).div += t.amount; Y(t.date).tax += Math.max(0, t.tax); return; }
     if (/deposit|einzahlung/.test(type)) { deposits += Math.abs(t.amount); return; }
     if (/withdraw|auszahlung/.test(type)) { withdrawals += Math.abs(t.amount); return; }
     if (/^tax|steuer/.test(type)) return;   // Steuer-Verrechnung (Rückerstattung/Nachbuchung) – nicht Teil des Trading-Ergebnisses
     const sell = TX_OUT.test(type), buy = /buy|kauf|savings|spar/.test(type) && !sell;   // Ausbuchung (Knock-out, Fälligkeit) = Abgang
     if ((!buy && !sell) || !t.qty) return;
-    fees += t.fee; taxes += t.tax;
+    fees += t.fee; taxes += t.tax; Y(t.date).fee += t.fee; Y(t.date).tax += t.tax;
     const key = t.isin || t.desc;
     let p = pos[key];
     if (buy) {
@@ -6516,6 +6549,7 @@ function journalModel(tx) {
     p.qty -= sold; p.cost += cost; p.proceeds += proceeds; p.fees += t.fee; p.sells++;
     p.closeParts.push({ date: t.date, pnl });
     events.push({ date: t.date, pnl, key: p.key });
+    { const o = Y(t.date), st = p.k === "stock"; if (pnl >= 0) o[st ? "gs" : "go"] += pnl; else o[st ? "ls" : "lo"] += pnl; }   // Aktien-Topf getrennt (Verluste nur mit Aktiengewinnen verrechenbar)
     if (p.qty <= 1e-9) {
       trades.push({ ...p, close: t.date, pnl: p.proceeds - p.cost, ret: p.cost ? (p.proceeds - p.cost) / p.cost : 0,
         days: Math.max(0, Math.round((new Date(t.date) - new Date(p.open)) / 864e5)), holdW: daysW / sold });
@@ -6526,7 +6560,20 @@ function journalModel(tx) {
   const partial = open.filter(p => p.sells).map(p => ({ ...p, pnl: p.proceeds - p.cost }));
   trades.sort((a, b) => b.close.localeCompare(a.close));
   const realized = events.reduce((s, e) => s + e.pnl, 0);
-  return { trades, open, partial, events: events.sort((a, b) => a.date.localeCompare(b.date)), realized, fees, taxes, divs, interest, deposits, withdrawals, n: ok.length };
+  return { trades, open, partial, events: events.sort((a, b) => a.date.localeCompare(b.date)), realized, fees, taxes, divs, interest, deposits, withdrawals, n: ok.length, yr };
+}
+// Jahresübersicht wie ein Steuer-Dashboard (Parqet): je Kalenderjahr Gewinne/Verluste getrennt nach Aktien-Topf und sonstigem Topf
+// (Turbos, ETFs), Dividenden & Zinsen, gezahlte Steuern, Gebühren. Grober Überblick – keine Steuerberatung; Scalable rechnet selbst ab.
+function jYearHtml(m) {
+  const ys = Object.entries(m.yr || {}).filter(([y, o]) => /^\d{4}$/.test(y) && (o.gs || o.ls || o.go || o.lo || o.div || o.tax)).sort((a, b) => b[0].localeCompare(a[0]));
+  if (!ys.length) return "";
+  const e = v => v ? sEur2(v) : "–", cls = v => v > 0 ? "up" : v < 0 ? "down" : "muted";
+  const rows = ys.map(([y, o]) => { const aktien = o.gs + o.ls, sonst = o.go + o.lo, sum = aktien + sonst + o.div;
+    return `<tr><td><b>${y}</b></td><td class="num ${cls(aktien)}">${e(aktien)}${o.ls ? `<small>Verluste ${e(o.ls)}</small>` : ""}</td><td class="num ${cls(sonst)}">${e(sonst)}${o.lo ? `<small>Verluste ${e(o.lo)}</small>` : ""}</td>
+      <td class="num ${cls(o.div)}">${e(o.div)}</td><td class="num"><b class="${cls(sum)}">${e(sum)}</b>${sum > 0 ? `<small>${sum > 1000 ? `${e(sum - 1000)} über Freibetrag` : "im Freibetrag"}</small>` : ""}</td><td class="num">${o.tax ? eur2(o.tax) : "–"}${o.fee ? `<small>Gebühren ${eur2(o.fee)}</small>` : ""}</td></tr>`; }).join("");
+  return `<div class="card jyear"><div class="jc-h"><b>Jahresübersicht</b><span>für die Steuer · grob</span></div>
+    <div class="jy-w"><table class="jy-t"><thead><tr><th>Jahr</th><th class="num">Aktien</th><th class="num">Turbos & ETFs</th><th class="num">Dividenden</th><th class="num">Summe</th><th class="num">Steuern</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="muted" style="margin:8px 0 0;font-size:12px">Aktien-Verluste lassen sich nur mit Aktien-Gewinnen verrechnen, deshalb getrennt. Pauschbetrag 1.000 € (Ledige; Verheiratete 2.000 €). Brutto vor Teilfreistellung bei ETFs. Nur Trades aus deinem Export – keine Steuerberatung.</p></div>`;
 }
 function jStats(ts) {
   const w = ts.filter(t => t.pnl > 0), l = ts.filter(t => t.pnl <= 0);
@@ -6847,7 +6894,7 @@ function journalHtml() {
   const brk = `<div class="jgrid"><div class="card jpro"><div class="jc-h"><b>Nach Art</b><span></span></div>${jBarsHtml(Object.entries(byK2).map(([k, v]) => [KN[k], jStats(v)]).sort((x, y) => y[1].pnl - x[1].pnl))}</div>
       <div class="card jpro"><div class="jc-h"><b>Nach Basiswert</b><span>Top 8</span></div>${jBarsHtml(Object.entries(byU2).map(([k, v]) => [k, jStats(v)]).sort((x, y) => Math.abs(y[1].pnl) - Math.abs(x[1].pnl)).slice(0, 8))}</div></div>`;
   const strat = plansLoad().some(p => p.st === "closed") ? jStrategyHtml() : "";
-  return head + perBar + over + stats + (ins ? `<div class="jins">${ins}</div>` : "") + heat + brk + strat + tradesTbl + openTbl + jCostHtml(tx)
+  return head + perBar + over + stats + (ins ? `<div class="jins">${ins}</div>` : "") + heat + brk + strat + jYearHtml(m) + tradesTbl + openTbl + jCostHtml(tx)
     + `<div class="row-actions" style="margin:22px 0 12px">${imp}<button class="btn ghost" data-jclear>Journal löschen</button></div>${depotMsg ? `<div class="tip tone-gray" style="margin-bottom:14px">${depotMsg}</div>` : ""}`
     + txTbl + `<div class="note" style="margin:16px 2px 0">Berechnung: Käufe und Verkäufe je Wertpapier nach FIFO zugeordnet, ein Trade läuft von der Eröffnung bis der Bestand wieder 0 ist. Ergebnis = Verkaufserlös − Kaufpreis, jeweils inklusive Ordergebühren, vor Steuern. Alles bleibt nur auf diesem Gerät gespeichert.</div>`;
 }
@@ -7684,10 +7731,28 @@ function myHitsHtml() {
       + (list.length > 8 ? `<button class="hlink" style="margin:8px 0 0" data-gokinds="fav,watch">Alle ${list.length} ansehen ›</button>` : "")
       : `<div class="note" style="margin:0">Heute hat keine Aktie aus deiner Watchlist alle 11 Kriterien.</div>`}</div>`;
 }
+// „Heute“: neue Aktien in gespeicherten Screens (kompakt, eine Zeile je Screen)
+// Wichtige Firmenmeldungen (SEC 8-K, backend/filings.py): je Aktie im Chart, wichtige der letzten 7 Tage unter „Heute“
+const k8Of = t => ((getJson("insider.json") || {}).k8 || []).filter(x => x.t === tkClean(t));
+const k8Txt = x => x.items.filter(i => i[2] > 0 || x.items.length === 1).map(i => i[1]).join(" · ") || x.items.map(i => i[1]).join(" · ");
+function k8Html(t) {
+  const L = k8Of(t).slice(0, 5); if (!L.length) return "";
+  return `<div class="cf-s k8"><div class="cf-h">Firmenmeldungen <small class="muted">SEC 8-K</small></div>${L.map(x => `<a class="k8-r" href="${esc(x.url)}" target="_blank" rel="noopener"><time>${dateDE(x.d)}</time><span class="${x.w >= 3 ? "down" : x.w >= 2 ? "gold" : ""}">${esc(k8Txt(x))}</span>${IC.link}</a>`).join("")}
+    <p class="muted cf-t">Pflichtmeldungen an die US-Börsenaufsicht, meist schneller als Presseartikel. Antippen öffnet die Meldung.</p></div>`;
+}
+function k8TodayHtml() {
+  const L = ((getJson("insider.json") || {}).k8 || []).filter(x => x.w >= 2 && ageDays(x.d) <= 7 && myTickers().has(x.t)).slice(0, 6); if (!L.length) return "";
+  return `<div class="hcard"><div class="mw-h"><span class="mk-k">Wichtige Firmenmeldungen</span><span class="muted" style="font-size:12px">SEC 8-K · 7 Tage</span></div>${L.map(x => `<div class="mw-r"><time>${dateDE(x.d)}</time><span><a href="#" data-ctgo="${esc(x.t)}"><b>${esc(shortNm(x.n))}</b></a><small class="${x.w >= 3 ? "down" : ""}">${esc(k8Txt(x))}</small></span></div>`).join("")}</div>`;
+}
+function scrTodayHtml() {
+  if (!searchIdx || !scrSv().length) return ""; const L = scrNewAll(); if (!L.length) return "";
+  return `<div class="hcard"><div class="mw-h"><span class="mk-k">Neu in deinen Screens</span></div>${L.map(({ x, n }) => `<div class="mw-r"><time>${esc(x.n)}<small>+${n.length}</small></time><span>${n.slice(0, 5).map(r => `<a href="#" data-ctgo="${esc(r.t)}">${esc(shortNm(r.n || r.t))}</a>`).join(", ")}${n.length > 5 ? ` +${n.length - 5}` : ""} <button class="hlink" data-scrgo="${esc(x.id)}">ansehen ›</button></span></div>`).join("")}</div>`;
+}
+document.addEventListener("click", e => { const g = e.target.closest("[data-scrgo]"); if (!g) return; const x = scrSv().find(y => y.id === g.dataset.scrgo); if (!x) return; state.scf = { ...x.f }; state.scrOn = true; save(); goSec("scanner"); });
 function todayHtml() {
   const M = todayModel(); moneyStrip = "";
   const right = `${marketHtml()}${moneyHtml()}${soonHtml()}`;   // Marktampel oben als volle Karte (Wunsch 11/2026)
-  return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${tasksHtml(M)}${startMiniHtml()}${myHitsHtml()}${changesHtml()}</div>
+  return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${tasksHtml(M)}${startMiniHtml()}${myHitsHtml()}${k8TodayHtml()}${scrTodayHtml()}${changesHtml()}</div>
     <div class="hcol">${right}</div></div>`;
 }
 
@@ -8452,8 +8517,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.148";
-const APP_NEWS = [["2026.11.148", "Depot gegen Index, Dividenden-Check", [
+const APP_VER = "2026.11.149";
+const APP_NEWS = [["2026.11.149", "Screen-Alarme, Firmenmeldungen, Jahresübersicht", [
+  ["Screens speichern", "Im Screener „Screen speichern“: Kairo zeigt dir danach, welche Aktien neu hineinfallen – am Screen und unter „Heute“."],
+  ["Firmenmeldungen (SEC 8-K)", "Quartalszahlen, Vorstandswechsel, Übernahmen, Bilanzwarnungen deiner US-Aktien – direkt von der Börsenaufsicht, im Chart und unter „Heute“."],
+  ["Jahresübersicht", "Im Journal: Gewinne und Verluste je Jahr, getrennt nach Aktien und Turbos/ETFs, Dividenden, Steuern, Freibetrag – grober Überblick für die Steuer."]]],
+  ["2026.11.148", "Depot gegen Index, Dividenden-Check", [
   ["Depot gegen Index", "Im Depotwert-Verlauf: deine Gewinn-Veränderung im Zeitraum neben S&P 500, DAX und STOXX 600."],
   ["Dividenden-Check", "Im Chart beim Fundamental-Check: Sicherheit A–F, Rendite gegen den 5-Jahres-Schnitt, nächster Ex-Tag."],
   ["Korrekturen", "Fundamental-Check und Smart Money erscheinen im Chart sofort, auch wenn die Daten erst nachladen. Rote Markierungen (wichtige Termine) wieder sichtbar."]]],
@@ -11471,7 +11540,7 @@ function cockpitSide(h, r) {
     return `<div class="cf-s"><div class="cf-h">${ttl} · ${dateDE(T0[w.iL])} → ${dateDE(T0[w.iH])}</div>${FIBQ.map(([q, l, st]) => row(l, lv(q), st ? col : null)).join("")}</div>`; };
   const crit = r.criteria || [];
   return `<div class="cf-s"><div class="cf-h">Status</div><span class="st ${k.cls}">${esc(k.t)}</span>${hn.title ? `<p class="cf-t cf-t2"><b>${esc(hn.title)}</b><span>${esc(String(hn.text || ""))}</span></p>` : ""}</div>
-    ${autoCardHtml(h)}${sigCardHtml(String(r.ticker).replace(/@rp$/, ""))}${r.ext ? "" : earnMiniHtml(r.ticker) + smCardHtml(r.ticker)}${fundCardHtml(String(r.ticker).replace(/@rp$/, ""))}
+    ${autoCardHtml(h)}${sigCardHtml(String(r.ticker).replace(/@rp$/, ""))}${r.ext ? "" : earnMiniHtml(r.ticker) + k8Html(r.ticker) + smCardHtml(r.ticker)}${fundCardHtml(String(r.ticker).replace(/@rp$/, ""))}
     <div class="cf-s"><div class="cf-h">Trade-Plan</div>${row("Kaufzone oben", p.entry, "#eceef2")}${row("Stop", p.stop, "#ff453a")}${row("K.-o. Turbo", ko, "#ff9f0a")}
       ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Seitwärtsphase.</p>` : ""}</div>
     ${(vi => vi && clGet("vp") && (vi.buy.length || vi.sell.length) ? `<div class="cf-s"><div class="cf-h">Big Player · Großvolumen-Zonen</div>${[...vi.buy, ...vi.sell].sort((a, b) => b.hi - a.hi).map(z => `<div class="cf-r"><span><i style="background:${z.kind === "buy" ? "#0a84ff" : "#bf5af2"}"></i>${z.kind === "buy" ? "Kauf" : "Verkauf"} · ${z.n} ${z.n === 1 ? "Tag" : "Tage"}, Ø ${fmt(z.rv, 1)}×</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist((z.lo + z.hi) / 2)}</div>`).join("")}
