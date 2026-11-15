@@ -1,5 +1,5 @@
-// Kairo-Kursdienst (Version 9) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
-//   ?s=SAP.DE,AAPL      Kurse (Yahoo Finance, je nach Börse leicht verzögert)
+// Kairo-Kursdienst (Version 10) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
+//   ?s=SAP.DE,AAPL      Kurse (Yahoo Finance, je nach Börse leicht verzögert); ab Version 10 mit vor-/nachbörslichem Kurs (x, xt)
 //   ?q=Rheinmetall      Aktiensuche an allen Börsen
 //   ?c=RHM.DE           Tageskerzen (1 Jahr) – damit plant Kairo auch Aktien außerhalb des Scans
 //   /trades?key=…       offene Trades, Depot, Watchlist und Chart-Alarme (ab Version 9) für Scan und Mitteilungen (GET lesen, POST speichern) – braucht den KV-Speicher „KAIRO“
@@ -122,7 +122,7 @@ export default {
     if (c && /^[A-Z0-9.\-^=]{1,20}$/.test(c)) return json(await candles(c, url.searchParams.get("i") || "1d"), cors);
     const syms = (url.searchParams.get("s") || "").split(",").map(x => x.trim().toUpperCase())
       .filter(x => /^[A-Z0-9.\-^=]{1,20}$/.test(x)).slice(0, MAX);
-    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 9). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
+    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 10). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
     const diag = url.searchParams.has("debug") ? [] : null;
     const out = await quotes(syms, ctx, diag);
     return json(diag ? { ...out, _diag: diag } : out, cors);
@@ -141,12 +141,12 @@ async function quotes(syms, ctx, diag) {
     for (const host of ["query1", "query2"]) {                                 // 1) spark
       if (!todo().length) break;
       try {
-        const r = await fetch(`https://${host}.finance.yahoo.com/v7/finance/spark?symbols=${todo().map(encodeURIComponent).join(",")}&range=1d&interval=5m`);
+        const r = await fetch(`https://${host}.finance.yahoo.com/v7/finance/spark?symbols=${todo().map(encodeURIComponent).join(",")}&range=1d&interval=5m&includePrePost=true`);
         log("spark " + host, r.status);
         if (!r.ok) continue;
         for (const x of ((await r.json()).spark || {}).result || []) {
-          const meta = x && x.response && x.response[0] && x.response[0].meta;
-          if (meta && meta.regularMarketPrice > 0) out[String(x.symbol).toUpperCase()] = pack(meta);
+          const res = x && x.response && x.response[0], meta = res && res.meta;
+          if (meta && meta.regularMarketPrice > 0) out[String(x.symbol).toUpperCase()] = { ...pack(meta), ...extOf(res) };
         }
       } catch (e) { log("spark " + host, "Fehler " + e); }
     }
@@ -183,8 +183,10 @@ async function crumbQuotes(syms, out, log) {
     log("quote", r.status);
     if (!r.ok) return;
     for (const q of ((await r.json()).quoteResponse || {}).result || []) {
-      if (q.regularMarketPrice > 0) out[String(q.symbol).toUpperCase()] = { c: q.regularMarketPrice, pc: q.regularMarketPreviousClose ?? null,
-        h: q.regularMarketDayHigh ?? null, l: q.regularMarketDayLow ?? null, t: (q.regularMarketTime || 0) * 1000, cur: q.currency || null };
+      if (q.regularMarketPrice > 0) { const xp = q.postMarketPrice || q.preMarketPrice, xt = (q.postMarketPrice ? q.postMarketTime : q.preMarketTime) || 0;
+        out[String(q.symbol).toUpperCase()] = { c: q.regularMarketPrice, pc: q.regularMarketPreviousClose ?? null,
+        h: q.regularMarketDayHigh ?? null, l: q.regularMarketDayLow ?? null, t: (q.regularMarketTime || 0) * 1000, cur: q.currency || null,
+        ...(xp > 0 && xt > (q.regularMarketTime || 0) ? { x: xp, xt: xt * 1000 } : {}) }; }
     }
   } catch (e) { log("quote", "Fehler " + e); }
 }
@@ -278,6 +280,12 @@ async function vault(request, env, url, cors) {
 }
 
 const key = s => new Request("https://kairo-kurse.cache/" + s);
+// Vor-/nachbörslicher Kurs (ab Version 10): letzte 5-Minuten-Kerze aus der Spark-Abfrage mit includePrePost, falls sie nach dem Schluss liegt
+function extOf(res) {
+  try { const ts = res.timestamp || [], cl = ((res.indicators || {}).quote || [{}])[0].close || [], rt = res.meta.regularMarketTime || 0;
+    for (let i = ts.length - 1; i >= 0; i--) if (cl[i] > 0) return ts[i] > rt + 60 ? { x: cl[i], xt: ts[i] * 1000 } : {};
+  } catch (e) {} return {};
+}
 const pack = m => ({ c: m.regularMarketPrice, pc: m.chartPreviousClose ?? m.previousClose ?? null, h: m.regularMarketDayHigh ?? null,
                      l: m.regularMarketDayLow ?? null, t: (m.regularMarketTime || 0) * 1000, cur: m.currency || null });
 
