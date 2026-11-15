@@ -3784,13 +3784,15 @@ function cxAnaPaint(box, c, r) {
     <text x="2" y="${H - 1}" font-size="10" fill="currentColor" opacity=".55">vor 1 Jahr</text><text x="${xp}" y="${H - 1}" font-size="10" text-anchor="${xe - xp > 90 ? "middle" : "end"}" fill="currentColor" opacity=".55">heute</text>${xe - xp > 90 ? `<text x="${xe}" y="${H - 1}" font-size="10" text-anchor="end" fill="currentColor" opacity=".55">in 12 Mon.</text>` : ""}</svg>`;
 }
 function cxNewsHtml(r) {
-  const s = r.senti || {}, ns = (s.news || []).slice(0, 6), k8 = typeof k8Html === "function" ? k8Html(r.ticker) : "";
+  // Deutsche Schlagzeilen zuerst (Google News, Abendscan für Watchlist und Depot – briefing.json), danach Yahoo englisch
+  const bj = getJson("briefing.json"), de = ((bj && bj.stocks && (bj.stocks[r.ticker] || bj.stocks[tkClean(r.ticker)])) || []).slice(0, 4).map(n => ({ ...n, d: String(n.d || "").slice(0, 10), de: 1 }));
+  const s = r.senti || {}, ns = [...de, ...(s.news || []).filter(n => !de.some(x => x.t === n.t))].slice(0, 7), k8 = typeof k8Html === "function" ? k8Html(r.ticker) : "";
   if (!ns.length && !k8) return "";
   const [vl, vc] = VV[s.v] || VV.mix;
   return `<div class="cx-card cx-news"><div class="cx-sh">News <span class="vv ${vc}">${vl}</span></div>
     ${ns.map(n => `<a class="nw" href="${esc(safeHref(n.u))}" target="_blank" rel="noopener"><i class="${n.s > 0 ? "pos" : n.s < 0 ? "neg" : ""}"></i><span>${esc(n.t)}<small>${esc(n.p)}${n.d ? " · " + dateDE(n.d) : ""}</small></span></a>`).join("")}
     ${k8 ? `<div class="cx-k8">${k8}</div>` : ""}
-    ${ns.length ? `<p class="muted cf-t">Schlagzeilen englisch, grob eingeordnet (<span class="up">●</span> positiv, <span class="down">●</span> negativ) · Yahoo Finance${s.d ? `, ${dateDE(s.d)}` : ""}.</p>` : ""}</div>`;
+    ${ns.length ? `<p class="muted cf-t">${de.length ? "Deutsche Meldungen: Google News (letzte 36 Std.) · " : ""}${ns.some(n => !n.de) ? `englische: Yahoo Finance${s.d ? ` (${dateDE(s.d)})` : ""} · ` : ""}grob eingeordnet (<span class="up">●</span> positiv, <span class="down">●</span> negativ).</p>` : ""}</div>`;
 }
 // Gewinn je Aktie je Quartal (tatsächlich gegen Schätzung) und Umsatz/Gewinn je Jahr – wie TradingView „Erträge“ / „Erfolgsrechnung“
 // (fund.json eh/ih, wöchentlich aus Yahoo, backend/fundamentals.eps_history/income_history)
@@ -9207,8 +9209,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.176";
-const APP_NEWS = [["2026.11.176", "Selbstprüfung, Intraday-Linien, Watchlist im Chart", [
+const APP_VER = "2026.11.177";
+const APP_NEWS = [["2026.11.177", "Deutsche News in der Übersicht", [
+  ["Deutsche Schlagzeilen zuerst", "Für Aktien aus Watchlist und Depot zeigt die Übersichtskarte jetzt zuerst deutsche Meldungen (Google News, letzte 36 Stunden), danach die englischen."]]],
+  ["2026.11.176", "Selbstprüfung, Intraday-Linien, Watchlist im Chart", [
   ["Selbstprüfung", "Einstellungen → Selbstprüfung: Ein Knopf prüft Scan-Daten, Kursdienst (Version, Kurse, Minuten- und Index-Kerzen), Finnhub, gettex, Mitteilungen, Datensicherung und Speicher – grün, gelb oder rot mit Hinweis, was zu tun ist."],
   ["Intraday-Linien", "In 5m/15m/1h: Vortag Hoch/Tief/Schluss, Eröffnungsspanne der ersten 15 Minuten und Tages-VWAP – abschaltbar unter Indikatoren → Intraday."],
   ["Watchlist im Chart", "Neuer Knopf in der Chart-Leiste: deine Merkliste mit Live-Kurs und Tagesveränderung rechts im Chart – antippen oder ↑/↓ wechselt die Aktie."],
