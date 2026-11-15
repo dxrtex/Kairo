@@ -9193,8 +9193,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.174";
-const APP_NEWS = [["2026.11.174", "Index-Suche", [
+const APP_VER = "2026.11.175";
+const APP_NEWS = [["2026.11.175", "STOXX 600 im Chart", [
+  ["STOXX 600 öffnet", "Yahoo liefert beim STOXX 600 oft nur Schlusskurse – Kairo nimmt dann den Verlauf aus den eigenen Scan-Daten. Mit dem Kursdienst Version 10 kommen auch die Kerzen vollständig."]]],
+  ["2026.11.174", "Index-Suche", [
   ["Indizes leichter finden", "Die Suche prüft jetzt jedes Wort einzeln – „euro stoxx 600“, „stoxx 600“ oder „600 europa“ finden den STOXX Europe 600."]]],
   ["2026.11.173", "Live länger und deutsche Aktien in Echtzeit", [
   ["Deutsche Aktien live über gettex", "Aktien in Euro (Deutschland, Frankreich, Niederlande …) laufen im Chart mit dem Echtzeit-Kurs von gettex – nicht mehr 15 Minuten verzögert, und von 8 bis 22 Uhr."],
@@ -12615,10 +12617,21 @@ function extIndicators(t, o, h, l, c, v) {
   return { t, o, h, l, c, v, e20: emaN(c, 20), e50: emaN(c, 50), e100: emaN(c, 100), e200: emaN(c, 200), rsi: R, rsi_sma: smaN(R, 14), macd, sig, hist: macd.map((x, i) => x - sig[i]),
     mbi_up: U, mbi_lo: D, mbi_ref: B, gx: D.map((x, i) => !!(cu(D, i) && B[i] != null && x > B[i] && x > U[i])), rx: U.map((x, i) => !!(cu(U, i) && B[i] != null && x > B[i] && x > D[i])) };
 }
+// Ersatz für Indizes aus den Scan-Daten (bench.json: S&P 500, Nasdaq 100, DAX, STOXX 600 – Tagesschlusskurse), falls der Kursdienst
+// für einen Index keine Kerzen liefert (Yahoo gibt z. B. bei ^STOXX oft nur Schlusskurse; Kursdienst ab Version 10 füllt sie selbst)
+async function benchCandles(y) {
+  try { const B = RISK.bench !== undefined && RISK.bench ? RISK.bench : await scanFetch("bench.json").then(r => r.ok ? r.json() : null).catch(() => null);
+    if (B && RISK.bench === undefined) RISK.bench = B; const C = B && B.c && B.c[y]; if (!C) return null;
+    const t = [], c = []; B.t.forEach((d, i) => { if (C[i] != null && C[i] > 0) { t.push(Date.parse(d + "T12:00:00Z")); c.push(C[i]); } });
+    const o = c.map((x, i) => i ? c[i - 1] : x);   // nur Schlusskurse: Eröffnung = Vortagesschluss, damit echte Kerzen entstehen
+    return t.length >= 30 ? { t, o, h: c.map((x, i) => Math.max(x, o[i])), l: c.map((x, i) => Math.min(x, o[i])), c, v: c.map(() => 0), cur: "", exch: "Index", name: (B.names || {})[y] || y } : null; } catch (e) { return null; }
+}
 async function extChart(t, y, name) {                             // t = Ticker in der App, y = Yahoo-Symbol für den Kursdienst
-  if (!liveKey("yq")) throw new Error("kursdienst");
-  const j = await (await fetch(`${liveKey("yq")}/?c=${encodeURIComponent(y)}`)).json();
-  if (!j || !j.c || j.c.length < 30) throw new Error(j && j.error || "zu wenig Kursdaten");
+  const isIdx = String(y).startsWith("^");
+  if (!liveKey("yq") && !isIdx) throw new Error("kursdienst");
+  let j = liveKey("yq") ? await fetch(`${liveKey("yq")}/?c=${encodeURIComponent(y)}`).then(r => r.json()).catch(() => null) : null;
+  if ((!j || !j.c || j.c.length < 30) && isIdx) j = await benchCandles(y) || j;
+  if (!j || !j.c || j.c.length < 30) throw new Error(j && j.error || (liveKey("yq") ? "zu wenig Kursdaten" : "kursdienst"));
   const T = j.t.map(ms => isoD(new Date(ms))), c = extIndicators(T, j.o, j.h, j.l, j.c, j.v || j.c.map(() => 0));
   const s0 = (searchIdx || []).find(x => x.t === t) || {}, n = j.c.length;
   const ix = IDX.find(x => x.y === y);
@@ -12636,7 +12649,7 @@ const MC_IC = { 2: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
   1: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="16" rx="2.5"/></svg>' };
 function mcTickers(n) {
   const L = Array.isArray(state.mcT) ? state.mcT.slice(0, 4) : [], base = state.cfLast || ctabPick();
-  const ok = t => t && (rowFor(t) || (String(t).startsWith("~") && liveKey("yq")));   // ~XYZ = Index/weltweit gesucht: Kurse lädt mcLoad über den Kursdienst
+  const ok = t => t && (rowFor(t) || String(t).startsWith("~^") || (String(t).startsWith("~") && liveKey("yq")));   // ~XYZ = Index/weltweit gesucht: Kurse lädt mcLoad über den Kursdienst
   if (!ok(L[0])) L[0] = base;
   const pool = [...favs(), ...(data.results || []).filter(r => r.passed).map(r => r.ticker), ...(data.results || []).map(r => r.ticker)];
   for (let i = 1; i < n; i++) if (!ok(L[i])) L[i] = pool.find(t => rowFor(t) && !L.slice(0, i).includes(t));
@@ -12659,6 +12672,7 @@ function mcRender() {
 async function mcLoad(t, i, tf, seq) {
   let c; try { c = String(t).startsWith("~") && !EXTR[t] ? await extChart(t, t.slice(1), (IDX.find(x => "~" + x.y === t) || {}).n) : await loadChart(t); } catch (e) { delete chartCache[t]; }
   const el = $("mcCv" + i); if (seq !== MCH.seq || !el) return;
+  if (c && EXTR[t]) { const hb = document.querySelector(`[data-mci="${i}"] .mc-t b`); if (hb) hb.textContent = String(EXTR[t].name).slice(0, 26); }
   if (!c || !c.t) { el.innerHTML = `<div class="note" style="padding:16px">Für ${esc(tkClean(t))} gibt es noch keinen Chart.</div><button class="btn ghost sm" style="margin:0 16px" data-mcpick="${i}">Andere Aktie wählen</button>`; return; }
   const cc = tfAgg(c, tf), LW = window.LightweightCharts; el.innerHTML = "";
   const chart = LW.createChart(el, { ...chartOpts(el), crosshair: { mode: 0 } });
@@ -13625,7 +13639,6 @@ document.addEventListener("click", async e => {
     return; }
   const pk = e.target.closest("[data-ctpick]"); if (pk) { const o = JSON.parse(pk.dataset.ctpick); ctOpen("~" + o.y, o.y, o.n); return; }
   const ixb = e.target.closest("[data-ctidx]"); if (ixb) { const x = IDX.find(z => z.y === ixb.dataset.ctidx); if (!x) return;
-    if (!liveKey("yq")) { const ll = $("ctList"); if (ll) ll.innerHTML = `<div class="ct-li-note">Indizes kommen über deinen Kairo-Kursdienst – einrichten unter Einstellungen → Live-Kurse.</div>`; return; }
     ctOpen("~" + x.y, x.y, x.n); return; }
   if (!e.target.closest(".ct-search") && !e.target.closest("#ctList")) { const ll = $("ctList"); if (ll) ll.hidden = true; }
 });

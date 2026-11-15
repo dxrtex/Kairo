@@ -216,8 +216,11 @@ async function candles(sym, iv = "1d") {
       const qd = res && res.indicators && res.indicators.quote && res.indicators.quote[0];
       if (!qd || !res.timestamp) continue;
       const o = [], h = [], l = [], c = [], t = [], v = [];
-      res.timestamp.forEach((ts, i) => { if ([qd.open[i], qd.high[i], qd.low[i], qd.close[i]].every(x => x != null && x > 0)) {
-        o.push(qd.open[i]); h.push(qd.high[i]); l.push(qd.low[i]); c.push(qd.close[i]); t.push(ts * 1000); v.push(qd.volume ? qd.volume[i] || 0 : 0); } });
+      // Manche Indizes (z. B. ^STOXX) liefern nur Schlusskurse – fehlende Eröffnung/Hoch/Tief dann mit dem Schluss füllen (ab Version 10)
+      const ok = x => x != null && x > 0;
+      res.timestamp.forEach((ts, i) => { const cl = qd.close[i]; if (!ok(cl)) return; const op = ok(qd.open[i]) ? qd.open[i] : c.length ? c[c.length - 1] : cl;   // ohne Eröffnung: Vortagesschluss
+        o.push(op); h.push(ok(qd.high[i]) ? Math.max(qd.high[i], op, cl) : Math.max(op, cl)); l.push(ok(qd.low[i]) ? Math.min(qd.low[i], op, cl) : Math.min(op, cl));
+        c.push(cl); t.push(ts * 1000); v.push(qd.volume ? qd.volume[i] || 0 : 0); });
       const m = res.meta || {};
       return { symbol: sym, name: m.longName || m.shortName || sym, cur: m.currency || null, exch: m.fullExchangeName || m.exchangeName || "", iv, gmt: m.gmtoffset || 0, t, o, h, l, c, v };
     } catch (e) { /* nächster Host */ }
