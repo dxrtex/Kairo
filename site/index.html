@@ -3188,6 +3188,9 @@ function scanMenuHtml() {                        // Scans starten (GitHub): selt
 }
 const nf = (d = 2) => (nf.c || (nf.c = {}))[d] || (nf.c[d] = new Intl.NumberFormat("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d }));   // einmal anlegen, dann wiederverwenden
 const fmt = (v, d = 2) => v == null || isNaN(v) ? "–" : nf(d).format(v);
+// Schnelle Variante für die Chart-Achsen (15.11.2026): die Bibliothek formatiert beim Verschieben zigtausend Preise – Intl war dabei der größte eigene Posten
+const fmtFast = v => { if (v == null || isNaN(v)) return "–"; const s = Math.abs(v).toFixed(2), k = s.indexOf("."); let i = s.slice(0, k);
+  if (i.length > 3) i = i.replace(/\B(?=(\d{3})+(?!\d))/g, "."); return (v < 0 && +s ? "-" : "") + i + "," + s.slice(k + 1); };
 const pct = (v, d = 1) => v == null ? "–" : fmt(100 * v, d) + " %";
 const fmtCap = v => v == null ? "unbekannt" : v >= 1e12 ? fmt(v / 1e12, 1) + " Bio. $" : fmt(v / 1e9, v >= 1e10 ? 0 : 1) + " Mrd. $";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -9261,8 +9264,8 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.182";
-const APP_NEWS = [["2026.11.182", "Indikatoren im Vollbild", ["Im Vollbild des Charts lassen sich RSI, MACD und MBI oben rechts einzeln oder zusammen unter dem Chart einblenden – wie bei TradingView. Das ✕ am Fenster blendet es wieder aus; die Auswahl bleibt gespeichert. Nur das unterste Fenster zeigt die Zeitachse."]], ["2026.11.181", "Schnellwahl mit Schwung, Y-Zoom bleibt, Watchlist sortiert", ["Schnellwahl am Aktien-Schild: gedrückt halten, schnell wischen und loslassen – die Liste rollt mit Schwung weiter und bleibt offen; dann die Aktie antippen. Ruhig loslassen übernimmt wie bisher.", "Preisachse selbst gezoomt: Verschieben des Charts setzt den Zoom nicht mehr zurück (Doppeltipp auf die Achse stellt die Automatik wieder her).", "Watchlist im Chart: Kairo-Treffer zuerst (nach Score), dann Fast-Treffer 10/11 und 9/11, dann der Rest – mit Überschriften."]], ["2026.11.180", "Zeichnungs-Leiste verschiebbar", ["Die Leiste einer ausgewählten Zeichnung (z. B. Fib-Retracement) lässt sich an den Punkten links greifen und verschieben – wie bei TradingView. Die Position bleibt gespeichert; standardmäßig steht sie oben rechts statt über dem Aktien-Schild."]], ["2026.11.179", "KI-Chartanalyse 2.0, ruhige Achsen, schnellerer Zoom", ["KI-Chartanalyse neu: Gesamturteil von −100 bis +100, Zusammenfassung in Worten, bullisches und bärisches Szenario mit Auslöser, Ziel, Abbruch und Chance/Risiko.", "Neu erkannt: Unterstützungs- und Widerstandszonen (Stärke 1–5), Marktstruktur und Strukturbrüche, Kerzenmuster mit eigener Trefferquote auf der Aktie, Rechteck, Kanal, Tasse mit Henkel, Dreifachboden/-top, bärische Flagge, RSI-Divergenzen, automatische Fibonacci, Konfluenz und Monatschart.", "Achsen ruhig: Kurs-, RSI-, MACD- und MBI-Fenster sind exakt gleich breit und laufen im selben Bild mit – nichts rüttelt mehr.", "Zwei-Finger-Zoom deutlich schneller, auch wenn der erste Finger schon gewischt hat.", "Zeichnungen reagieren beim Touch erst nach direktem Antippen – ein Finger auf der Fibonacci beim Zoomen verschiebt sie nicht mehr."]], ["2026.11.178", "Fibonacci ziehen ohne Chart-Verschieben", ["Zieht man die Grenzen einer Fibonacci oder einer anderen Zeichnung nach oben oder unten, bleibt der Chart jetzt stehen."]], ["2026.11.177", "Deutsche News in der Übersicht", [
+const APP_VER = "2026.11.183";
+const APP_NEWS = [["2026.11.183", "Zoom nur auf der Zeitachse, flüssigerer Chart", ["Zwei-Finger-Zoom verändert nur noch die Zeitachse – die Preisachse bleibt stehen (wie TradingView). Doppeltipp auf die Preisachse schaltet die automatische Anpassung wieder ein.", "Flüssiger: beim Wischen deutlich weniger Rechenarbeit je Bild (Nachbarfenster, Glas-Licht, Fonds-Kasten, Achsen-Beschriftung)."]], ["2026.11.182", "Indikatoren im Vollbild", ["Im Vollbild des Charts lassen sich RSI, MACD und MBI oben rechts einzeln oder zusammen unter dem Chart einblenden – wie bei TradingView. Das ✕ am Fenster blendet es wieder aus; die Auswahl bleibt gespeichert. Nur das unterste Fenster zeigt die Zeitachse."]], ["2026.11.181", "Schnellwahl mit Schwung, Y-Zoom bleibt, Watchlist sortiert", ["Schnellwahl am Aktien-Schild: gedrückt halten, schnell wischen und loslassen – die Liste rollt mit Schwung weiter und bleibt offen; dann die Aktie antippen. Ruhig loslassen übernimmt wie bisher.", "Preisachse selbst gezoomt: Verschieben des Charts setzt den Zoom nicht mehr zurück (Doppeltipp auf die Achse stellt die Automatik wieder her).", "Watchlist im Chart: Kairo-Treffer zuerst (nach Score), dann Fast-Treffer 10/11 und 9/11, dann der Rest – mit Überschriften."]], ["2026.11.180", "Zeichnungs-Leiste verschiebbar", ["Die Leiste einer ausgewählten Zeichnung (z. B. Fib-Retracement) lässt sich an den Punkten links greifen und verschieben – wie bei TradingView. Die Position bleibt gespeichert; standardmäßig steht sie oben rechts statt über dem Aktien-Schild."]], ["2026.11.179", "KI-Chartanalyse 2.0, ruhige Achsen, schnellerer Zoom", ["KI-Chartanalyse neu: Gesamturteil von −100 bis +100, Zusammenfassung in Worten, bullisches und bärisches Szenario mit Auslöser, Ziel, Abbruch und Chance/Risiko.", "Neu erkannt: Unterstützungs- und Widerstandszonen (Stärke 1–5), Marktstruktur und Strukturbrüche, Kerzenmuster mit eigener Trefferquote auf der Aktie, Rechteck, Kanal, Tasse mit Henkel, Dreifachboden/-top, bärische Flagge, RSI-Divergenzen, automatische Fibonacci, Konfluenz und Monatschart.", "Achsen ruhig: Kurs-, RSI-, MACD- und MBI-Fenster sind exakt gleich breit und laufen im selben Bild mit – nichts rüttelt mehr.", "Zwei-Finger-Zoom deutlich schneller, auch wenn der erste Finger schon gewischt hat.", "Zeichnungen reagieren beim Touch erst nach direktem Antippen – ein Finger auf der Fibonacci beim Zoomen verschiebt sie nicht mehr."]], ["2026.11.178", "Fibonacci ziehen ohne Chart-Verschieben", ["Zieht man die Grenzen einer Fibonacci oder einer anderen Zeichnung nach oben oder unten, bleibt der Chart jetzt stehen."]], ["2026.11.177", "Deutsche News in der Übersicht", [
   ["Deutsche Schlagzeilen zuerst", "Für Aktien aus Watchlist und Depot zeigt die Übersichtskarte jetzt zuerst deutsche Meldungen (Google News, letzte 36 Stunden), danach die englischen."]]],
   ["2026.11.176", "Selbstprüfung, Intraday-Linien, Watchlist im Chart", [
   ["Selbstprüfung", "Einstellungen → Selbstprüfung: Ein Knopf prüft Scan-Daten, Kursdienst (Version, Kurse, Minuten- und Index-Kerzen), Finnhub, gettex, Mitteilungen, Datensicherung und Speicher – grün, gelb oder rot mit Hinweis, was zu tun ist."],
@@ -12443,10 +12446,12 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
 }
 // Kaufzone der Hedgefonds: ruhiger Kasten über das gemeldete Quartal (mittlere Hälfte des Volumens), gestrichelte Linie beim geschätzten Einstand bis heute
 function hfPrimitive(h, bd) {
-  let chart = null, series = null, req = null, mi = null;
+  let chart = null, series = null, req = null, mi = null, zc = null;
   const F = "600 10.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
   const r = { draw: t => t.useMediaCoordinateSpace(({ context: x, mediaSize: m }) => {
-    if (!clGet("hf") || !chart || !series) return; const z = hfZoneOf(String(h.r.ticker).replace(/@rp$/, ""), h.c); if (!z) return;
+    if (!clGet("hf") || !chart || !series) return; const tk = String(h.r.ticker).replace(/@rp$/, ""), fj = getJson("funds.json");
+    if (!zc || zc.c !== h.c || zc.t !== tk || zc.fj !== fj) zc = { c: h.c, t: tk, fj, z: hfZoneOf(tk, h.c) };   // einmal rechnen statt in jedem Bild (15.11.2026)
+    const z = zc.z; if (!z) return;
     const d = bd(); if (!d.length) return; const key = `${d.length}|${tkey(d[0].time)}|${z.qs}`;
     if (!mi || mi.key !== key) { let i0 = -1, i1 = -1; for (let i = 0; i < d.length; i++) { const k = tkey(d[i].time).slice(0, 10); if (k >= z.qs && i0 < 0) i0 = i; if (k <= z.qe) i1 = i; } mi = { key, i0, i1 }; }
     if (mi.i0 < 0 || mi.i1 < mi.i0) return;
@@ -14237,7 +14242,7 @@ async function cockpitGo(t) {
 }
 // Spiegelung im Glas: Lichtquelle folgt Finger/Maus über dem Chart (nur Farbverläufe, keine Neuberechnung des Charts)
 let glRaf = 0, glEv = null;
-document.addEventListener("pointermove", e => { if (!e.target.closest || !e.target.closest(".chfs-chart")) return; glEv = e; if (glRaf) return;
+document.addEventListener("pointermove", e => { if (e.pointerType === "touch" || !e.target.closest || !e.target.closest(".chfs-chart")) return; glEv = e; if (glRaf) return;   // nur Maus: beim Wischen mit dem Finger kostete das jedes Bild eine Neuberechnung des Glases (15.11.2026)
   glRaf = requestAnimationFrame(() => { glRaf = 0; const ev = glEv; document.querySelectorAll(".cf-pill, .cf-pick:not([hidden])").forEach(el => {
     const r = el.getBoundingClientRect(); if (!r.width) return; const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     const dx = ev.clientX - cx, dy = ev.clientY - cy, ang = Math.atan2(dx, -dy) * 180 / Math.PI;
@@ -14380,7 +14385,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && $("chfs") 
 const chartOpts = el => ({ width: el.clientWidth, height: el.clientHeight, layout: { background: { color: "transparent" }, textColor: LC().t,
     fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" },
     grid: { vertLines: { color: LC().g }, horzLines: { color: LC().g } }, rightPriceScale: { borderColor: LC().b },
-    timeScale: { borderColor: LC().b }, crosshair: { mode: 0 }, localization: { locale: "de-DE", priceFormatter: v => fmt(v) },
+    timeScale: { borderColor: LC().b }, crosshair: { mode: 0 }, localization: { locale: "de-DE", priceFormatter: fmtFast },
     handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true } });   // senkrecht an: sonst lässt sich die Preisachse mit dem Finger nicht ziehen (14.11.2026); keepAutoScale hält beim Wischen in der Kursfläche die Achse automatisch
 // Verschieben im Chart (Wunsch 14.11.2026: „im Kurs zurückscrollen, ohne die Achsen zu verwenden – die Achsen haben sich trotzdem verschoben“):
 // Ziehen in der Kursfläche verschiebt nur die Zeit; die Preisachse bleibt automatisch angepasst (wie TradingView). Wer die Preisachse
@@ -14427,9 +14432,14 @@ function yPanZoom(ch, el, o) {
   const end = e => { TN.delete(e.pointerId); if (P && e.pointerId === P.id) P = null; }; el.addEventListener("pointerup", end, true); el.addEventListener("pointercancel", end, true);
 }
 function keepAutoScale(ch, el, o) {
-  if (!el || (o && o.handleScroll === false)) return; try { yPanZoom(ch, el, o); } catch (e) {} let on = false, raf = 0;
-  const fix = () => { raf = 0; try { ch.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} };
-  el.addEventListener("pointerdown", e => { const r = el.getBoundingClientRect(); let pw = 0, th = 0;
+  if (!el || (o && o.handleScroll === false)) return; try { yPanZoom(ch, el, o); } catch (e) {} let on = false, raf = 0; const TF = new Set();
+  const fix = () => { raf = 0; if (!on) return; try { ch.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} };
+  // Zwei Finger (Wunsch 15.11.2026, wie TradingView): Zoomen verändert nur die Zeitachse – die Preisachse bleibt, wie sie gerade ist
+  // (Automatik aus, Doppeltipp auf die Preisachse schaltet sie wieder ein).
+  el.addEventListener("pointerdown", e => { if (e.pointerType !== "touch") return; TF.add(e.pointerId); if (TF.size < 2) return; on = false;
+    try { const ps = ch.priceScale("right"); if (ps.options().autoScale !== false) ps.applyOptions({ autoScale: false }); } catch (x) {} }, true);
+  const tfEnd = e => TF.delete(e.pointerId); el.addEventListener("pointerup", tfEnd, true); el.addEventListener("pointercancel", tfEnd, true);
+  el.addEventListener("pointerdown", e => { if (TF.size > 1) return; const r = el.getBoundingClientRect(); let pw = 0, th = 0;
     try { pw = ch.priceScale("right").width(); th = ch.timeScale().height(); } catch (x) {}
     on = e.clientX < r.right - pw - 2 && e.clientY < r.bottom - th - 2 && ch.priceScale("right").options().autoScale !== false; }, true);
   el.addEventListener("pointermove", e => { if (on && e.buttons && !raf) raf = requestAnimationFrame(fix); }, true);
@@ -14497,7 +14507,12 @@ function syncCharts(list) { let syncing = false; try { axGrow(list); } catch (e)
   // folgten deshalb immer ein Bild zu spät (RSI/MACD „schwammen“ hinterher). Direkt nach jeder Eingabe abfragen → Meldung sofort.
   // (Die Bibliothek hört beim Ziehen am Dokument – deshalb am window, das als Letztes an der Reihe ist.)
   list.forEach(ch => SYNC_NOW.add(ch));
-  if (!SYNC_NOW.on) { SYNC_NOW.on = 1; const now = () => SYNC_NOW.forEach(ch => { try { if (!ch.chartElement().isConnected) { SYNC_NOW.delete(ch); return; } ch.timeScale().getVisibleLogicalRange(); } catch (e) { SYNC_NOW.delete(ch); } });
+  // Flüssiger (15.11.2026): nur den Chart abfragen, den man gerade anfasst – vorher wurden bei jeder Bewegung alle vier abgefragt
+  // und schoben sich gegenseitig neue Zeiträume zu (doppelte Arbeit je Bild).
+  if (!SYNC_NOW.on) { SYNC_NOW.on = 1; let cur = null;
+    const pick = e => { cur = null; const t = e.target; if (!t || !t.closest) return; SYNC_NOW.forEach(ch => { try { const el = ch.chartElement(); if (!el.isConnected) { SYNC_NOW.delete(ch); return; } if (el.contains(t)) cur = ch; } catch (x) { SYNC_NOW.delete(ch); } }); };
+    ["pointerdown", "touchstart", "wheel"].forEach(ev => addEventListener(ev, pick, { passive: true, capture: true }));
+    const now = () => { if (!cur) return; try { cur.timeScale().getVisibleLogicalRange(); } catch (e) { cur = null; } };
     ["mousemove", "touchmove", "wheel", "pointermove"].forEach(ev => addEventListener(ev, now, { passive: true })); }
   list.forEach(ch => ch.timeScale().subscribeVisibleLogicalRangeChange(range => {
     if (syncing || !range) return; syncing = true; list.forEach(o => o !== ch && o.timeScale().setVisibleLogicalRange(range)); syncing = false; })); }
