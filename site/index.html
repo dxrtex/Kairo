@@ -2663,6 +2663,14 @@ body.etf-fs { overflow: hidden; }
   .ki-bos { display: block; font-size: 12px; margin-top: 3px; } .ki-bos.up { color: var(--up, #30d158); } .ki-bos.down { color: var(--down, #ff453a); }
   .ki-z > span { display: block; } .ki-z > span > i { display: inline-block; vertical-align: middle; margin-right: 6px; } .ki-z > span small { display: block; font-size: 11px; padding-left: 16px; }
   .ki-dots { font-size: 8px; letter-spacing: 1px; color: #ffd60a; } .ki-dots i { color: rgba(127,127,127,.35); width: auto; height: auto; background: none; font-style: normal; }
+
+  /* Auswahl-Leiste verschiebbar (15.11.2026): Standard oben rechts, eigene Position per Griff */
+  html .dr-sel.ds-pl { left: auto; right: 12px; top: 52px; bottom: auto; }
+  html .ctab-chart .dr-sel.ds-pl { left: auto; right: 12px; top: 52px; bottom: auto; }
+  html .dr-sel.ds-pl[style*="left"] { right: auto !important; bottom: auto !important; }
+  html .dr-sel .ds-grip, html .dr-sel .ds-n { touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+  html .dr-sel .ds-grip { padding: 8px 6px 8px 5px; opacity: .7; }
+  html .dr-sel.ds-drag { opacity: .92; } html .dr-sel.ds-drag .ds-grip, html .dr-sel.ds-drag .ds-n { cursor: grabbing; }
 </style>
 </head>
 <body>
@@ -9239,8 +9247,8 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.179";
-const APP_NEWS = [["2026.11.179", "KI-Chartanalyse 2.0, ruhige Achsen, schnellerer Zoom", ["KI-Chartanalyse neu: Gesamturteil von −100 bis +100, Zusammenfassung in Worten, bullisches und bärisches Szenario mit Auslöser, Ziel, Abbruch und Chance/Risiko.", "Neu erkannt: Unterstützungs- und Widerstandszonen (Stärke 1–5), Marktstruktur und Strukturbrüche, Kerzenmuster mit eigener Trefferquote auf der Aktie, Rechteck, Kanal, Tasse mit Henkel, Dreifachboden/-top, bärische Flagge, RSI-Divergenzen, automatische Fibonacci, Konfluenz und Monatschart.", "Achsen ruhig: Kurs-, RSI-, MACD- und MBI-Fenster sind exakt gleich breit und laufen im selben Bild mit – nichts rüttelt mehr.", "Zwei-Finger-Zoom deutlich schneller, auch wenn der erste Finger schon gewischt hat.", "Zeichnungen reagieren beim Touch erst nach direktem Antippen – ein Finger auf der Fibonacci beim Zoomen verschiebt sie nicht mehr."]], ["2026.11.178", "Fibonacci ziehen ohne Chart-Verschieben", ["Zieht man die Grenzen einer Fibonacci oder einer anderen Zeichnung nach oben oder unten, bleibt der Chart jetzt stehen."]], ["2026.11.177", "Deutsche News in der Übersicht", [
+const APP_VER = "2026.11.180";
+const APP_NEWS = [["2026.11.180", "Zeichnungs-Leiste verschiebbar", ["Die Leiste einer ausgewählten Zeichnung (z. B. Fib-Retracement) lässt sich an den Punkten links greifen und verschieben – wie bei TradingView. Die Position bleibt gespeichert; standardmäßig steht sie oben rechts statt über dem Aktien-Schild."]], ["2026.11.179", "KI-Chartanalyse 2.0, ruhige Achsen, schnellerer Zoom", ["KI-Chartanalyse neu: Gesamturteil von −100 bis +100, Zusammenfassung in Worten, bullisches und bärisches Szenario mit Auslöser, Ziel, Abbruch und Chance/Risiko.", "Neu erkannt: Unterstützungs- und Widerstandszonen (Stärke 1–5), Marktstruktur und Strukturbrüche, Kerzenmuster mit eigener Trefferquote auf der Aktie, Rechteck, Kanal, Tasse mit Henkel, Dreifachboden/-top, bärische Flagge, RSI-Divergenzen, automatische Fibonacci, Konfluenz und Monatschart.", "Achsen ruhig: Kurs-, RSI-, MACD- und MBI-Fenster sind exakt gleich breit und laufen im selben Bild mit – nichts rüttelt mehr.", "Zwei-Finger-Zoom deutlich schneller, auch wenn der erste Finger schon gewischt hat.", "Zeichnungen reagieren beim Touch erst nach direktem Antippen – ein Finger auf der Fibonacci beim Zoomen verschiebt sie nicht mehr."]], ["2026.11.178", "Fibonacci ziehen ohne Chart-Verschieben", ["Zieht man die Grenzen einer Fibonacci oder einer anderen Zeichnung nach oben oder unten, bleibt der Chart jetzt stehen."]], ["2026.11.177", "Deutsche News in der Übersicht", [
   ["Deutsche Schlagzeilen zuerst", "Für Aktien aus Watchlist und Depot zeigt die Übersichtskarte jetzt zuerst deutsche Meldungen (Google News, letzte 36 Stunden), danach die englischen."]]],
   ["2026.11.176", "Selbstprüfung, Intraday-Linien, Watchlist im Chart", [
   ["Selbstprüfung", "Einstellungen → Selbstprüfung: Ein Knopf prüft Scan-Daten, Kursdienst (Version, Kurse, Minuten- und Index-Kerzen), Finnhub, gettex, Mitteilungen, Datensicherung und Speicher – grün, gelb oder rot mit Hinweis, was zu tun ist."],
@@ -13771,7 +13779,25 @@ function drSelRender(h) {
     ${d.k === "fib" ? I('<path d="M4 6h16M4 10h16M4 14h16"/><path d="M4 19h16" stroke-dasharray="2 2"/>', "Zusatzstufen 1,618–4,236 einblenden", "data-drx2", d.x2) + I('<path d="M7 4v16M7 4 4 7M7 4l3 3"/><path d="M17 20V4M17 20l-3-3M17 20l3-3"/>', "Umkehren (0 und 1 tauschen)", "data-drflip", false) : ""}
     ${["hl", "hr", "tl"].includes(d.k) ? I('<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21h4"/>', d.al && d.al.on ? "Alarm aktiv – antippen zum Löschen" : d.al && d.al.hit ? `Alarm ausgelöst ${dateDE(d.al.hit)}` : "Alarm hinzufügen", "data-dral", d.al && d.al.on) : ""}
     <i class="ds-sep"></i>${I('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', "Entfernen", "data-drdel", false, " ds-del")}${I('<path d="M6 6l12 12M18 6 6 18"/>', "Auswahl aufheben", "data-drselx", false)}`;
+  dsPlace(box);
 }
+// Leiste verschieben (Wunsch 15.11.2026, wie TradingView): Griffpunkte links gedrückt halten und ziehen. Position (Anteil der
+// Chartfläche) bleibt gespeichert; ohne eigene Position steht sie oben rechts – nicht mehr über dem Aktien-Schild unten links.
+function dsPlace(box) { const par = box.offsetParent || box.parentElement; if (!par) return; const P = state.dsPos;
+  box.classList.add("ds-pl");
+  if (!P) { box.style.left = box.style.top = ""; return; }
+  const W = par.clientWidth, Hh = par.clientHeight, bw = box.offsetWidth || 300, bh = box.offsetHeight || 40;
+  box.style.left = Math.max(4, Math.min(W - bw - 4, P.x * W)) + "px"; box.style.top = Math.max(4, Math.min(Hh - bh - 4, P.y * Hh)) + "px"; }
+(() => { let D = null;
+  document.addEventListener("pointerdown", e => { const g = e.target.closest && e.target.closest(".dr-sel .ds-grip, .dr-sel .ds-n"); if (!g) return;
+    const box = g.closest(".dr-sel"), par = box.offsetParent || box.parentElement; if (!par) return; e.preventDefault(); e.stopPropagation();
+    const r = box.getBoundingClientRect(); D = { box, par, dx: e.clientX - r.left, dy: e.clientY - r.top, id: e.pointerId }; box.classList.add("ds-drag");
+    try { g.setPointerCapture(e.pointerId); } catch (x) {} }, true);
+  document.addEventListener("pointermove", e => { if (!D || e.pointerId !== D.id) return; e.preventDefault(); const pr = D.par.getBoundingClientRect();
+    const bw = D.box.offsetWidth, bh = D.box.offsetHeight, x = Math.max(4, Math.min(pr.width - bw - 4, e.clientX - D.dx - pr.left)), y = Math.max(4, Math.min(pr.height - bh - 4, e.clientY - D.dy - pr.top));
+    state.dsPos = { x: x / pr.width, y: y / pr.height }; dsPlace(D.box); }, true);
+  const end = e => { if (!D || e.pointerId !== D.id) return; D.box.classList.remove("ds-drag"); D = null; save(); };
+  document.addEventListener("pointerup", end, true); document.addEventListener("pointercancel", end, true); })();
 document.addEventListener("click", async e => {
   const h = DRAW.h; if (!h || !document.body.contains(h.el)) return; const t = e.target;
   const fl = t.closest("[data-drfly]"); if (fl) { DRAW.fly = DRAW.fly === fl.dataset.drfly ? null : fl.dataset.drfly; if (DRAW.fly === "ls" && DRAW.sel) { DRAW.sel = null; drSelRender(h); h.drReq && h.drReq(); } drTbRender(h); return; }
