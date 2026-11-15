@@ -2620,6 +2620,20 @@ body.etf-fs { overflow: hidden; }
 .ct-li-h { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 10px 4px; }
 .ct-ix { width: 34px; height: 34px; border-radius: 50%; display: inline-grid; place-items: center; background: rgba(10,132,255,.14); color: #0a84ff; flex: none; } .ct-ix svg { width: 18px; height: 18px; }
 .lv-ext { margin-left: 6px; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: rgba(255,159,10,.16); color: #ff9f0a; }
+/* Selbstprüfung */
+.diag-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; } .diag-h > span { font-size: 13.5px; color: var(--muted); }
+.diag-l { margin-top: 10px; display: grid; gap: 0; } .diag-r { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: start; padding: 9px 0; border-top: .5px solid var(--line); }
+.diag-r i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 12px; color: #fff; margin-top: 1px; }
+.diag-r.ok i { background: #30d158; } .diag-r.warn i { background: #ff9f0a; } .diag-r.bad i { background: #ff453a; } .diag-r.off i { background: rgba(127,127,127,.4); }
+.diag-r b { font-size: 14px; } .diag-r small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; } .diag-r em { font-style: normal; font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+/* Watchlist im Chart */
+.ctab-grid { position: relative; } .ct-wl { position: absolute; top: 0; right: 0; bottom: 0; width: 248px; z-index: 7; display: flex; flex-direction: column; border-radius: 16px; background: var(--surface, #1c1c1e); box-shadow: -8px 0 28px rgba(0,0,0,.28), inset 0 0 0 .5px var(--lg-ring, rgba(127,127,127,.3)); overflow: hidden; }
+.ct-wl[hidden] { display: none; } .ct-wl-h { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: .5px solid var(--line); } .ct-wl-x { border: 0; background: none; color: var(--muted); font-size: 15px; cursor: pointer; }
+.ct-wl-l { overflow-y: auto; flex: 1; } .ct-wl-r { width: 100%; display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; padding: 8px 12px; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; border-bottom: .5px solid var(--line); }
+.ct-wl-r:hover { background: rgba(127,127,127,.1); } .ct-wl-r.on { background: rgba(10,132,255,.14); } .ct-wl-r .av, .ct-wl-r img { width: 26px; height: 26px; }
+.ct-wl-r span b, .ct-wl-r em b { display: block; font-size: 13px; } .ct-wl-r small { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ct-wl-r em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; } .ct-wl-r em small.up { color: var(--up); } .ct-wl-r em small.down { color: var(--down); }
+@media (max-width: 700px) { .ct-wl { width: 210px; } }
 </style>
 </head>
 <body>
@@ -9193,8 +9207,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.175";
-const APP_NEWS = [["2026.11.175", "STOXX 600 im Chart", [
+const APP_VER = "2026.11.176";
+const APP_NEWS = [["2026.11.176", "Selbstprüfung, Intraday-Linien, Watchlist im Chart", [
+  ["Selbstprüfung", "Einstellungen → Selbstprüfung: Ein Knopf prüft Scan-Daten, Kursdienst (Version, Kurse, Minuten- und Index-Kerzen), Finnhub, gettex, Mitteilungen, Datensicherung und Speicher – grün, gelb oder rot mit Hinweis, was zu tun ist."],
+  ["Intraday-Linien", "In 5m/15m/1h: Vortag Hoch/Tief/Schluss, Eröffnungsspanne der ersten 15 Minuten und Tages-VWAP – abschaltbar unter Indikatoren → Intraday."],
+  ["Watchlist im Chart", "Neuer Knopf in der Chart-Leiste: deine Merkliste mit Live-Kurs und Tagesveränderung rechts im Chart – antippen oder ↑/↓ wechselt die Aktie."],
+  ["Nächtlicher Test", "Kairo testet sich jede Nacht selbst mit den echten Daten. Fällt dabei etwas auf, kommt eine Mitteilung aufs iPad."]]],
+  ["2026.11.175", "STOXX 600 im Chart", [
   ["STOXX 600 öffnet", "Yahoo liefert beim STOXX 600 oft nur Schlusskurse – Kairo nimmt dann den Verlauf aus den eigenen Scan-Daten. Mit dem Kursdienst Version 10 kommen auch die Kerzen vollständig."]]],
   ["2026.11.174", "Index-Suche", [
   ["Indizes leichter finden", "Die Suche prüft jetzt jedes Wort einzeln – „euro stoxx 600“, „stoxx 600“ oder „600 europa“ finden den STOXX Europe 600."]]],
@@ -9970,6 +9989,7 @@ const CFG_LABELS = { universe: "Universum (2.1)", correction: "Korrektur (2.2)",
 // ---------- Einstellungen gegliedert (14.11., wie iOS-Einstellungen): Übersicht mit Gruppen, jede Gruppe eine eigene Seite ----------
 // Die Abschnitte bleiben unverändert (settingsHtml) – hier werden sie nach ihrer Überschrift den Gruppen zugeordnet und ein-/ausgeblendet.
 const SET_GROUPS = [
+  ["check", "Selbstprüfung", "alle Datenquellen auf einen Blick prüfen", ["Selbstprüfung"], '<path d="M12 3l7.5 3v5.5c0 4.4-3.1 8.2-7.5 9.5-4.4-1.3-7.5-5.1-7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.4-4.6"/>'],
   ["trade", "Trading", "Kapital, Risiko, TradingView", ["Trading"], '<path d="M4 19V5M4 19h16"/><path d="m7 14 4-4 3 3 5-6"/>'],
   ["live", "Kursdienst & Live-Kurse", "Live-Kurse, Intraday, Abgleich", ["Live-Kurse"], '<path d="M3 12h4l3-7 4 14 3-7h4"/>'],
   ["push", "Mitteilungen", "Stop, Ziele, Alarme aufs Gerät", ["Mitteilungen"], '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>'],
@@ -10000,13 +10020,76 @@ function setGroupify() {
   }
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-settab]"); if (!b || b.closest("[data-gosec]")) return; state.setTab = b.dataset.settab; save(); render(); window.scrollTo({ top: 0 }); });
+// Selbstprüfung (Qualität 10/10, 15.11.2026): prüft auf Knopfdruck jede Datenquelle live – grün/gelb/rot mit Hinweis, was zu tun ist
+let DIAG = null;
+function diagHtml() {
+  const rows = DIAG && DIAG.rows;
+  const ic = { ok: "✓", warn: "!", bad: "✕", off: "–" };
+  return `<div class="diag-h"><span>${DIAG ? (DIAG.busy ? "Prüfe …" : `Geprüft ${new Date(DIAG.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr · ${rows.filter(r => r[0] === "ok").length} von ${rows.filter(r => r[0] !== "off").length} in Ordnung`) : "Prüft Scan-Daten, Kursdienst, Live-Kurse, onvista, Mitteilungen und Datensicherung."}</span>
+    <button class="btn sm" data-diag ${DIAG && DIAG.busy ? "disabled" : ""}>${DIAG ? "Erneut prüfen" : "Jetzt prüfen"}</button></div>
+    ${rows ? `<div class="diag-l">${rows.map(([st, l, v, hint]) => `<div class="diag-r ${st}"><i>${ic[st]}</i><span><b>${esc(l)}</b>${hint ? `<small>${hint}</small>` : ""}</span><em>${v}</em></div>`).join("")}</div>` : ""}`;
+}
+async function diagRun() {
+  DIAG = { busy: true, rows: DIAG && DIAG.rows || [], at: Date.now() }; const box = $("diagBox"); if (box) box.innerHTML = diagHtml();
+  const R = [], tmo = (p, ms = 12000) => Promise.race([p, new Promise((_, rj) => setTimeout(() => rj(new Error("Zeitüberschreitung")), ms))]);
+  const js = async u => { const r = await tmo(fetch(u, { cache: "no-store" })); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); };
+  // Scan-Daten
+  const g = data && data.generated ? new Date(data.generated) : null, ageH = g ? (Date.now() - g) / 36e5 : null, we = [0, 6].includes(new Date().getDay());
+  R.push([!g ? "bad" : ageH < (we ? 60 : 30) ? "ok" : ageH < 80 ? "warn" : "bad", "Scan-Daten", g ? `${dateDE(isoD(g))} ${g.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}` : "fehlen",
+    !g ? "Die App hat keine Scan-Daten geladen." : ageH < (we ? 60 : 30) ? "" : "Der Abendscan ist überfällig – unter GitHub → Actions „Täglicher Scan“ nachsehen."]);
+  for (const [fn, l] of [["fund.json", "Fundamentaldaten"], ["funds.json", "Hedgefonds"], ["insider.json", "Insider"], ["earnings.json", "Quartalszahlen"]]) {
+    try { const j = await js(`data/${fn}`), d = j.generated ? new Date(String(j.generated).length <= 10 ? j.generated + "T12:00:00" : j.generated) : null, days = d ? (Date.now() - d) / 864e5 : null;
+      R.push([days == null ? "ok" : days < (fn === "fund.json" || fn === "funds.json" ? 9 : 3) ? "ok" : "warn", l, d ? dateDE(isoD(d)) : "da", days != null && days >= (fn === "fund.json" || fn === "funds.json" ? 9 : 3) ? "Älter als üblich – der zugehörige Lauf auf GitHub ist evtl. fehlgeschlagen." : ""]); }
+    catch (e) { R.push(["warn", l, "nicht geladen", esc(e.message)]); } }
+  // Kursdienst
+  const yq = liveKey("yq");
+  if (!yq) R.push(["off", "Kursdienst", "nicht eingerichtet", "Ohne Kursdienst: keine Minutenkerzen, keine Indizes außer S&P/Nasdaq/DAX/STOXX, keine weltweite Suche. Einrichten unter Live-Kurse."]);
+  else {
+    try { const j = await js(`${yq}/`), v = +((String(j.info || "").match(/Version (\d+)/) || [])[1] || 0);
+      R.push([v >= 10 ? "ok" : v ? "warn" : "bad", "Kursdienst", v ? "Version " + v : "antwortet", v >= 10 ? "" : v ? "Version 10 bereitstellen: vor-/nachbörsliche Kurse und vollständige Index-Kerzen (Cloudflare → Worker → Edit code → kursdienst.js einfügen → Deploy)." : "Version nicht erkennbar."]);
+      if (j.kv === false) R.push(["warn", "Kursdienst-Speicher (KAIRO)", "fehlt", "Für Mitteilungen zu Trades und die Datensicherung den KV-Speicher „KAIRO“ in Cloudflare verbinden."]); }
+    catch (e) { R.push(["bad", "Kursdienst", "keine Antwort", `${esc(e.message)} – Adresse unter Live-Kurse prüfen.`]); }
+    try { const j = await js(`${yq}/?s=AAPL,SAP.DE`), a = j.AAPL, b = j["SAP.DE"];
+      R.push([a && a.c > 0 && b && b.c > 0 ? "ok" : a && a.c > 0 ? "warn" : "bad", "Kurse über den Kursdienst", a && a.c > 0 ? `AAPL ${fmt(a.c)} · SAP ${b && b.c > 0 ? fmt(b.c) : "–"}` : "keine", a && a.c > 0 ? "" : "Yahoo antwortet dem Kursdienst nicht – später erneut prüfen."]); }
+    catch (e) { R.push(["bad", "Kurse über den Kursdienst", "Fehler", esc(e.message)]); }
+    try { const j = await js(`${yq}/?c=AAPL&i=5m`); R.push([j && j.iv && j.iv !== "1d" && (j.c || []).length > 30 ? "ok" : "warn", "Minutenkerzen (5m)", j && j.c ? `${j.c.length} Kerzen` : "keine", j && j.iv && j.iv !== "1d" ? "" : "Braucht Kursdienst ab Version 9."]); }
+    catch (e) { R.push(["warn", "Minutenkerzen (5m)", "Fehler", esc(e.message)]); }
+    try { const j = await js(`${yq}/?c=%5ESTOXX`); R.push([(j.c || []).length > 30 ? "ok" : "warn", "Index-Kerzen (STOXX 600)", (j.c || []).length ? `${j.c.length} Tage` : "keine", (j.c || []).length > 30 ? "" : "Kairo nutzt ersatzweise die Scan-Daten (nur Tageskerzen). Mit Kursdienst Version 10 vollständig."]); }
+    catch (e) { R.push(["warn", "Index-Kerzen (STOXX 600)", "Fehler", esc(e.message)]); }
+  }
+  // Finnhub
+  const fh = liveKey("fh");
+  if (!fh) R.push(["off", "Finnhub (US-Echtzeit)", "kein Schlüssel", "Ohne Finnhub laufen US-Aktien alle 5 Sekunden statt in Echtzeit."]);
+  else { try { const j = await js(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${encodeURIComponent(fh)}`); R.push([j && j.c > 0 ? "ok" : "bad", "Finnhub (US-Echtzeit)", j && j.c > 0 ? `AAPL ${fmt(j.c)}` : "keine Daten", j && j.c > 0 ? "" : "Schlüssel prüfen (Einstellungen → Live-Kurse)."]); }
+    catch (e) { R.push(["bad", "Finnhub (US-Echtzeit)", "Fehler", `${esc(e.message)} – Schlüssel ungültig oder Tageslimit erreicht.`]); } }
+  // onvista / gettex
+  try { const sn = await tmo(ovGet(`/instruments/FUND/ISIN:${SPYI_ISIN}/snapshot`)), L = ((sn || {}).quoteList || {}).list || [], q = L.find(m => m.market && (/gettex/i.test(m.market.name || "") || ["GAT", "TRO"].includes(m.market.codeExchange)));
+    R.push([q && +q.last > 0 ? "ok" : "warn", "gettex-Kurse (onvista)", q && +q.last > 0 ? `SPYI ${fmt(+q.last, 3)} €` : "keine", q && +q.last > 0 ? "" : "onvista antwortet nicht – ETF-Live-Kurs, Turbos und deutsche Echtzeit-Kurse fehlen solange."]); }
+  catch (e) { R.push(["warn", "gettex-Kurse (onvista)", "Fehler", esc(e.message)]); }
+  // Mitteilungen
+  let sub = null; try { const reg = await tmo(navigator.serviceWorker.ready, 4000); sub = await reg.pushManager.getSubscription(); } catch (e) {}
+  const perm = typeof Notification !== "undefined" ? Notification.permission : "nicht unterstützt";
+  R.push([sub && perm === "granted" ? "ok" : perm === "denied" ? "bad" : "warn", "Mitteilungen", sub && perm === "granted" ? "aktiv" : perm === "denied" ? "blockiert" : "aus",
+    sub && perm === "granted" ? "" : perm === "denied" ? "In den iPad-Einstellungen → Mitteilungen → Kairo erlauben." : "Unten unter Mitteilungen aktivieren (App vom Home-Bildschirm öffnen)."]);
+  // Datensicherung
+  const va = state.vaultAt ? (Date.now() - state.vaultAt) / 864e5 : null;
+  R.push([!liveKey("vp") ? "off" : state.vaultErr ? "bad" : va != null && va < 3 ? "ok" : "warn", "Datensicherung", !liveKey("vp") ? "nicht eingerichtet" : state.vaultErr ? "Fehler" : va != null ? `vor ${va < 1 ? "heute" : Math.round(va) + " Tagen"}` : "noch keine",
+    state.vaultErr ? esc(state.vaultErr) : !liveKey("vp") ? "Sicherungs-Passwort setzen, damit Depot und Journal nicht verloren gehen." : va != null && va < 3 ? "" : "Seit mehreren Tagen keine Sicherung."]);
+  // Speicher
+  let used = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); used += (k.length + (localStorage.getItem(k) || "").length) * 2; } } catch (e) {}
+  R.push([used < 4e6 ? "ok" : "warn", "Speicher auf dem Gerät", `${fmt(used / 1e6, 1)} MB`, used < 4e6 ? "" : "Nah am Limit des Browsers (≈ 5 MB) – alte Zeichnungen oder Watchlists aufräumen."]);
+  DIAG = { busy: false, rows: R, at: Date.now() }; const b2 = $("diagBox"); if (b2) b2.innerHTML = diagHtml();
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-diag]")) diagRun(); });
 function settingsHtml() {
   const cfg = data.config || {};
   const groups = Object.entries(CFG_LABELS).filter(([k]) => cfg[k]).map(([k, label]) =>
     `<h4>${label}</h4><div class="table-wrap"><table><tbody>${Object.entries(cfg[k]).map(([p, v]) =>
       `<tr><td>${esc(p)}</td><td class="num">${esc(Array.isArray(v) ? v.join(" – ") : typeof v === "number" ? fmt(v, Number.isInteger(v) ? 0 : 3) : v)}</td></tr>`).join("")}</tbody></table></div>`).join("");
   const tc = tpCfg(), ltN = (state.lt || []).length;
-  return `<div class="section-title"><span>Trading</span><span>gilt für Heute, Einstieg und Depot</span></div>
+  return `<div class="section-title"><span>Selbstprüfung</span><span>alle Datenquellen auf einen Blick</span></div>
+    <div class="card diag" id="diagBox" style="margin-bottom:18px">${diagHtml()}</div>
+    <div class="section-title"><span>Trading</span><span>gilt für Heute, Einstieg und Depot</span></div>
     <div class="card set-trade" style="margin-bottom:18px">
       <button class="set-row" data-capedit><span><b>Trading-Kapital</b><small>1 % davon ist das Risiko je Trade · frei ${eur(freeCap())}</small></span><em>${eur(tc.depot)} ›</em></button>
       <button class="set-row" data-gosec="depot"><span><b>Langfristige Aktien</b><small>binden kein Trading-Kapital, kein Stop · im Depot je Aktie umschalten</small></span><em>${ltN} ›</em></button>
@@ -11571,7 +11654,7 @@ async function openDetail(t) {
 
 // ---------- Haupt-Chart: Fibonacci als Linien, Unterstützungen/Widerstände, EMAs – alles mit Ein/Aus-Schaltern ----------
 // Ein Baustein für Detailseite und Vollbild-Cockpit; Schalter (state.cl) wirken sofort in allen offenen Charts.
-const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 0, auto: 1, sig: 1, hf: 1 };   // hf: Kaufzone der Fonds (14.11.2026)   // 13.11.: Volumenprofil standardmäßig aus (Übersicht)   // Auto-Analyse seit 13.11. standardmäßig an   // EMA 100 aus: weniger Linien im Standard
+const CL_DEF = { fib: 1, sup: 1, e20: 1, e50: 1, e100: 0, e200: 1, vol: 1, plan: 1, vp: 0, auto: 1, sig: 1, hf: 1, idl: 1 };   // idl: Intraday-Linien (15.11.2026)   // hf: Kaufzone der Fonds (14.11.2026)   // 13.11.: Volumenprofil standardmäßig aus (Übersicht)   // Auto-Analyse seit 13.11. standardmäßig an   // EMA 100 aus: weniger Linien im Standard
 const clGet = (k, auto) => { const v = (state.cl || {})[k]; return v == null ? (k in CL_DEF ? CL_DEF[k] : auto ? 1 : 0) : v; };
 const CL_LIVE = new Set();
 const FIBQ = [[0, "Hoch"], [.382, "38,2 %"], [.5, "50 %"], [.618, "61,8 %"], [.706, "70,6 %", 1], [.786, "78,6 %", 1], [.886, "88,6 %"], [1, "Tief"]];   // betont: Kaufzone Golden Pocket
@@ -12257,6 +12340,20 @@ function buildMain(el, c, r, opts) {
   h.bdReset = () => { BD = null; };
   const cnt = () => bd().length, barAt = i => bd()[i], mp = measurePrimitive(barAt, cnt); candles.attachPrimitive(mp); h.mp = mp;
   h.hfp = hfPrimitive(h, bd); candles.attachPrimitive(h.hfp);
+  // Intraday-Linien wie bei Daytradern üblich: Vortag Hoch/Tief/Schluss, Eröffnungsspanne der ersten 15 Minuten, Tages-VWAP
+  h.idl = []; if (c.intra && T.length > 5) { try {
+    const dk = i => String(tkey(T[i])).slice(0, 10), n = T.length, today = dk(n - 1); let i0 = n - 1; while (i0 > 0 && dk(i0 - 1) === today) i0--;
+    let p0 = i0 - 1; const pday = p0 >= 0 ? dk(p0) : null; while (p0 > 0 && dk(p0 - 1) === pday) p0--;
+    const span = (val, col, st, title) => { if (val == null || !isFinite(val)) return; const se = chart.addLineSeries({ color: col, lineWidth: 1, lineStyle: st, priceLineVisible: false, lastValueVisible: true, title, crosshairMarkerVisible: false, autoscaleInfoProvider: () => null });
+      se.setData(T.slice(i0).map(t => ({ time: t, value: val }))); h.idl.push(se); };
+    if (pday) { let H = -Infinity, L = Infinity; for (let i = p0; i < i0; i++) { H = Math.max(H, c.h[i]); L = Math.min(L, c.l[i]); }
+      span(H, "rgba(142,142,147,.9)", 2, "Vortag H"); span(L, "rgba(142,142,147,.9)", 2, "Vortag T"); span(c.c[i0 - 1], "rgba(142,142,147,.65)", 1, "Vortag S"); }
+    const orN = { "5m": 3, "15m": 1 }[c.tf] || 0;
+    if (orN && n - i0 >= orN) { let H = -Infinity, L = Infinity; for (let i = i0; i < i0 + orN; i++) { H = Math.max(H, c.h[i]); L = Math.min(L, c.l[i]); }
+      span(H, "rgba(100,210,255,.9)", 3, "Eröff. H"); span(L, "rgba(100,210,255,.9)", 3, "Eröff. T"); }
+    let pv = 0, vv = 0; const vw = []; for (let i = i0; i < n; i++) { const v = c.v[i] || 0; pv += (c.h[i] + c.l[i] + c.c[i]) / 3 * v; vv += v; if (vv > 0) vw.push({ time: T[i], value: pv / vv }); }
+    if (vw.length && vv > 0) { const se = chart.addLineSeries({ color: "#bf5af2", lineWidth: 1.5, priceLineVisible: false, lastValueVisible: true, title: "VWAP", crosshairMarkerVisible: false, autoscaleInfoProvider: () => null }); se.setData(vw); h.idl.push(se); }
+  } catch (e) {} }
   const vpp = profilePrimitive(barAt, cnt, i => i < T.length ? c.v[i] : (LIVE.map[r.ticker] && LIVE.map[r.ticker].v) || 0, () => !!clGet("vp"),
     () => { const w = h.M && (h.M.own ? h.M.kcls : h.M.cls); return w ? w.iL : null; }, i => { const x = T[Math.min(i, T.length - 1)]; return typeof x === "number" ? dayDE(tkey(x)) : dateDE(x); }, vpOpt(h, T, () => vpp)); candles.attachPrimitive(vpp); h.vpp = vpp;
   // „Ab Punkt“: Tipp in den Chart setzt den Startpunkt des Volumenprofils
@@ -12330,7 +12427,7 @@ function buildMain(el, c, r, opts) {
   h.legendLast = () => { if (!hov) h.legend(-1); };
   h.legend(-1);
   h.apply = () => {
-    h.hfp && h.hfp.update();
+    h.hfp && h.hfp.update(); (h.idl || []).forEach(x => x.applyOptions({ visible: !!clGet("idl") }));
     EMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); SMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); ema.bb.forEach(x => x.applyOptions({ visible: !!clGet("bb") })); if (!!clGet("ichi") !== !!ema.ichiP && h.tab) setTimeout(indRebuild, 0); vol.applyOptions({ visible: !!clGet("vol") }); vpp.update();
     pls.forEach(x => candles.removePriceLine(x)); pls = [];
     if (clGet("plan")) [[p.entry, "Kaufzone oben", "#eceef2", 0], [p.stop, "Stop", "#ff453a", 0], [ko, "K.-o. Turbo", "#ff9f0a", 1]]
@@ -12792,7 +12889,7 @@ function ctabBarHtml(h) {
       <div class="ct-seg"><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button><button class="ct-b" data-alc title="Alarme: alle Alarme, Kurs- und RSI-Alarm" aria-label="Alarme">${CT_IC.bell}<span class="ct-lbl">Alarm</span>${alCount() ? `<small>${alCount()}</small>` : ""}</button>${M.own ? `<button class="ct-b" data-clwreset title="Eigene Fibonacci-Welle verwerfen – zurück zur Kairo-Welle" aria-label="Kairo-Welle">${CT_IC.reset}<span class="ct-lbl">Kairo-Welle</span></button>` : ""}</div></div>
     ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, true))}
       ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.concat(SMA_DEF).map(([k, col, l]) => sw(k, l, col)).join(""))}${grp("Indikatoren", sw("bb", `Bollinger-Bänder (${IND_P().bbN}, ${IND_P().bbK})`, "#2962ff") + sw("ichi", "Ichimoku-Wolke", "#30d158"))}${grp("Indikator-Einstellungen", `<div class="ip-g">${[["rsi", "RSI-Periode"], ["stK", "Stochastik %K"], ["stD", "Stochastik %D"], ["atr", "ATR-Periode"], ["adx", "ADX-Periode"], ["bbN", "Bollinger-Periode"], ["bbK", "Bollinger-Faktor"]].map(([k, l]) => `<label><span>${l}</span><input type="number" inputmode="decimal" data-ip="${k}" value="${IND_P()[k]}" step="${k === "bbK" ? ".5" : "1"}"></label>`).join("")}</div>`)}
-      ${grp("Smart Money", sw("hf", "Kaufzone der Hedgefonds", "#5e5ce6", !!hfZoneOf(String(h.r.ticker).replace(/@rp$/, ""), h.c)))}${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa") + sw("sig", `Frühere Kairo-Signale${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")) ? ` · ${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")).length}` : ""}`, "#0a84ff", !!sigOf(h.r && String(h.r.ticker).replace(/@rp$/, ""))))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a") + (clGet("vp") ? `<div class="ct-vpm" role="group" aria-label="Bereich des Volumenprofils">${[["wave", "Welle", "ab dem Wellen-Tief"], ["anchor", "Ab Punkt", "ab einem Tag, den du antippst"], ["vis", "Sichtbar", "nur der Bildausschnitt"]].map(([v, l, t]) => `<button class="${(state.vpMode || "wave") === v ? "on" : ""}" data-vpmode="${v}" title="${t}">${l}</button>`).join("")}</div>` : ""))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
+      ${h.c && h.c.intra ? grp("Intraday", sw("idl", "Vortag H/T/S · Eröffnungsspanne · VWAP", "#bf5af2")) : ""}${grp("Smart Money", sw("hf", "Kaufzone der Hedgefonds", "#5e5ce6", !!hfZoneOf(String(h.r.ticker).replace(/@rp$/, ""), h.c)))}${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa") + sw("sig", `Frühere Kairo-Signale${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")) ? ` · ${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")).length}` : ""}`, "#0a84ff", !!sigOf(h.r && String(h.r.ticker).replace(/@rp$/, ""))))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a") + (clGet("vp") ? `<div class="ct-vpm" role="group" aria-label="Bereich des Volumenprofils">${[["wave", "Welle", "ab dem Wellen-Tief"], ["anchor", "Ab Punkt", "ab einem Tag, den du antippst"], ["vis", "Sichtbar", "nur der Bildausschnitt"]].map(([v, l, t]) => `<button class="${(state.vpMode || "wave") === v ? "on" : ""}" data-vpmode="${v}" title="${t}">${l}</button>`).join("")}</div>` : ""))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
 }
 // Zeiteinheit und Chartart als Auswahlmenüs (wie TradingView) – spart in der Werkzeugleiste Platz für den Chart
 const TF_ALL = [["5m", "5m", "5 Minuten"], ["15m", "15m", "15 Minuten"], ["1h", "1h", "1 Stunde"], ["4h", "4h", "4 Stunden"], ["D", "1D", "1 Tag"], ["W", "1W", "1 Woche"], ["M", "1M", "1 Monat"]];
@@ -12837,11 +12934,11 @@ function ctabBuild(c, r) {
       <span class="st ${k.cls}">${esc(k.t)}</span>${CXBACK ? `<button class="ct-b ct-back" data-cxback title="Zurück zur Übersicht von ${esc(tkClean(CXBACK.t))} und an dieselbe Stelle im ${esc(SEC_NAME[CXBACK.sec] || "Reiter")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>${esc(SEC_NAME[CXBACK.sec] || "Zurück")}</span></button>` : ""}${state.mcBack > 1 ? `<button class="ct-b ct-back" data-mcback title="Zurück zu den ${state.mcBack} Charts" aria-label="Zurück zum Raster">${MC_IC[state.mcBack] || MC_IC[4]}<span>${state.mcBack} Charts</span></button>` : ""}<button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
       <div class="ct-right">${ctDdHtml(c.tf || "D")}<div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Setup"]].map(([v, l]) => `<button title="${v === "wave" ? "Ausschnitt der Kairo-Welle (Setup)" : "Zeitraum"}" class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
-        <button class="ct-b ct-mcb" data-mcn="${innerWidth < 700 ? 2 : 4}" title="Mehrfach-Charts: ${innerWidth < 700 ? 2 : 4} Charts nebeneinander" aria-label="Mehrfach-Charts">${MC_IC[innerWidth < 700 ? 2 : 4]}</button><button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
+        <button class="ct-b${state.ctWl ? " on" : ""}" data-ctwl title="Watchlist im Chart (Pfeiltasten ↑ ↓ wechseln)" aria-label="Watchlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg></button><button class="ct-b ct-mcb" data-mcn="${innerWidth < 700 ? 2 : 4}" title="Mehrfach-Charts: ${innerWidth < 700 ? 2 : 4} Charts nebeneinander" aria-label="Mehrfach-Charts">${MC_IC[innerWidth < 700 ? 2 : 4]}</button><button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
     <div class="ctab-grid"><div class="ctab-l">
       <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="cmp" id="cmpBox"><button class="cmp-b" data-cmpopen title="Symbol vergleichen" aria-label="Symbol vergleichen">＋ Vergleichen</button><div class="cmp-pop" id="cmpPop" hidden>${[["^GSPC", "S&P 500"], ["^NDX", "Nasdaq 100"], ["^GDAXI", "DAX"], ["^STOXX", "STOXX 600"]].map(([v, l]) => `<button data-cmp="${v}">${l}</button>`).join("")}<button data-cmp="?">Andere Aktie …</button></div><div class="cmp-chips" id="cmpChips"></div></div><div class="dr-tb" id="drTb"></div><div class="dr-sel" id="drSel" hidden></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
       ${pane("tRsi", paneLbl(0, r), "rsi")}${pane("tMacd", paneLbl(1, r), "macd")}${pane("tMbi", paneLbl(2, r), "mbi")}
-    </div><aside class="chfs-side ctab-side" id="cfSide"></aside></div>`;
+    </div><aside class="chfs-side ctab-side" id="cfSide"></aside><div class="ct-wl" id="ctWl"${state.ctWl ? "" : " hidden"}>${ctWlHtml(r.ticker)}</div></div>`;
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
   cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
   if (c.intra) { cfChart.chart.applyOptions({ timeScale: { timeVisible: true, secondsVisible: false } }); cfChart.live = () => false; const n = c.t.length; cfChart.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 160), to: n + 4 }); }
@@ -13728,6 +13825,26 @@ function cfPickOpen(on) {
   if (matchMedia("(pointer: fine)").matches) $("cfPickQ").focus();
   setTimeout(lensSoon, 320);   // nach dem Aufklappen: Rand mit echter Lichtbrechung
 }
+// Watchlist-Leiste im Chart (wie TradingView rechts): Merkliste mit Live-Kurs und Tagesveränderung, antippen oder ↑/↓ wechselt die Aktie
+const ctWlList = () => { const fv = [...favs()].filter(t => rowFor(t) || rowOf(t)); const pool = fv.length ? fv : (data.results || []).filter(r => r.passed).map(r => r.ticker); return pool.slice(0, 60); };
+function ctWlHtml(cur) {
+  const L = ctWlList();
+  return `<div class="ct-wl-h"><b>${favs().size ? "Watchlist" : "Treffer"}</b><button class="ct-wl-x" data-ctwl aria-label="Schließen">✕</button></div><div class="ct-wl-l">${L.map(t => { const r = rowOf(t) || {}, R = rowFor(t) || {}, q = LIVE.map[t];
+    const px = q && q.c ? q.c : r.c ?? R.close, d = q && q.pc ? q.c / q.pc - 1 : r.d1 ?? R.change;
+    return `<button class="ct-wl-r${t === cur ? " on" : ""}" data-ctwlgo="${esc(t)}">${cfAv(t)}<span><b>${esc(tkClean(t))}</b><small>${esc(shortNm(R.name || r.n || t).slice(0, 18))}</small></span><em><b>${px != null ? fmt(px) : "–"}</b><small class="${d >= 0 ? "up" : "down"}">${d != null ? sgnPct(d, 2) : ""}</small></em></button>`; }).join("") || `<p class="muted" style="padding:10px">Mit ★ Aktien merken – sie stehen dann hier.</p>`}</div>`;
+}
+const ctWlPaint = () => { const el = $("ctWl"); if (el && !el.hidden && cfChart) { const st = (el.querySelector(".ct-wl-l") || {}).scrollTop || 0; el.innerHTML = ctWlHtml(cfChart.r.ticker); const l = el.querySelector(".ct-wl-l"); if (l) l.scrollTop = st; } };
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-ctwl]")) { state.ctWl = state.ctWl ? 0 : 1; save(); const el = $("ctWl"); if (el) { el.hidden = !state.ctWl; ctWlPaint(); if (state.ctWl) liveMany(ctWlList()).then(ctWlPaint); }
+    document.querySelectorAll(".ct-b[data-ctwl]").forEach(b => b.classList.toggle("on", !!state.ctWl)); return; }
+  const g = e.target.closest("[data-ctwlgo]"); if (g) { cockpitGo(g.dataset.ctwlgo); }
+});
+document.addEventListener("keydown", e => {
+  if (state.sec !== "chart" || !state.ctWl || RP.on || e.target.closest("input, select, textarea") || !["ArrowUp", "ArrowDown"].includes(e.key) || !cfChart) return;
+  const L = ctWlList(), i = L.indexOf(cfChart.r.ticker), j = i < 0 ? 0 : Math.max(0, Math.min(L.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)));
+  if (L[j] && L[j] !== cfChart.r.ticker) { e.preventDefault(); cockpitGo(L[j]); }
+});
+setInterval(() => { if (state.sec === "chart" && state.ctWl && document.visibilityState === "visible" && liveOn()) liveMany(ctWlList()).then(ctWlPaint); }, 30e3);
 // Rückweg (Wunsch 14.11.2026): Scanner → Übersicht → Chart → „‹ Übersicht“ bringt zurück in denselben Reiter, an dieselbe
 // Scrollstelle (Seite und Listen), mit Filtern, und öffnet die Übersicht der Aktie wieder.
 let CXBACK = null;

@@ -1,0 +1,31 @@
+name: Nächtlicher Selbsttest
+
+# Kairo testet sich jede Nacht selbst: der aktuelle Stand von main mit den veröffentlichten, echten Daten im Browser
+# (alle Reiter auf iPad- und Handy-Größe, Übersichtskarten, Spiel-Kauf – siehe tools/app_smoke.py).
+# Schlägt der Test fehl, schickt „Ausfall-Warnung“ (watchdog.yml) eine Mitteilung aufs iPad.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 4 * * *"        # jede Nacht, nach Abendscan und Wochenläufen
+
+permissions:
+  contents: read
+
+concurrency:
+  group: selftest
+  cancel-in-progress: true
+
+jobs:
+  selftest:
+    runs-on: ubuntu-24.04   # Playwright 1.55 läuft nicht auf ubuntu-26.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: App-Test im Browser mit den echten Daten
+        run: |
+          pip install -q playwright==1.55.0
+          python -m playwright install --with-deps chromium > /dev/null || python -m playwright install chromium > /dev/null
+          python tools/app_smoke.py --fetch
