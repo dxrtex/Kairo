@@ -96,3 +96,19 @@ Beispiele:
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
 Geprüft an den jüngeren 240 Meldungen: Brier nachgeeicht 0.250 gegen gezeigt 0.252 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+
+## Prognose-Modell (Langzeit-Quote + Umsatz, auf eigene Meldungen geeicht)
+
+Rollierend geprüft an 289 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.249 gegen gezeigt 0.252, Richtung 56% gegen 53%, besser in 2 von 3 Zeiträumen → **übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell).
+
+| Merkmal | Gewicht |
+|---|---|
+| Grundwert (Marktlage) | -0.16 |
+| Langzeit-Quote Gewinn × Ausblick | +0.46 |
+| Umsatz-Überraschung | +0.33 |
+
+| Zeitraum | n | Brier Modell | Brier gezeigt | Richtung Modell | Richtung gezeigt |
+|---|---|---|---|---|---|
+| 2026-11-05 – 2026-11-07 | 117 | 0.248 | 0.259 | 54% | 50% |
+| 2026-11-08 – 2026-11-10 | 86 | 0.253 | 0.248 | 53% | 57% |
+| 2026-11-11 – 2026-11-13 | 86 | 0.245 | 0.248 | 60% | 53% |
