@@ -9209,8 +9209,8 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.177";
-const APP_NEWS = [["2026.11.177", "Deutsche News in der Übersicht", [
+const APP_VER = "2026.11.178";
+const APP_NEWS = [["2026.11.178", "Fibonacci ziehen ohne Chart-Verschieben", ["Zieht man die Grenzen einer Fibonacci oder einer anderen Zeichnung nach oben oder unten, bleibt der Chart jetzt stehen."]], ["2026.11.177", "Deutsche News in der Übersicht", [
   ["Deutsche Schlagzeilen zuerst", "Für Aktien aus Watchlist und Depot zeigt die Übersichtskarte jetzt zuerst deutsche Meldungen (Google News, letzte 36 Stunden), danach die englischen."]]],
   ["2026.11.176", "Selbstprüfung, Intraday-Linien, Watchlist im Chart", [
   ["Selbstprüfung", "Einstellungen → Selbstprüfung: Ein Knopf prüft Scan-Daten, Kursdienst (Version, Kurse, Minuten- und Index-Kerzen), Finnhub, gettex, Mitteilungen, Datensicherung und Speicher – grün, gelb oder rot mit Hinweis, was zu tun ist."],
@@ -14034,7 +14034,9 @@ function yPanZoom(ch, el, o) {
   el.addEventListener("pointerdown", e => { if (!Y.se || e.button > 0) { P = null; return; } const { r, pw, th } = geo();
     const busy = el.classList.contains("drawing") || el.classList.contains("measuring") || el.closest(".drawing") || (typeof DRAW !== "undefined" && (DRAW.act || DRAW.tool)) || (typeof MEAS !== "undefined" && MEAS.on) || (typeof WAVE !== "undefined" && WAVE.on);
     P = !busy && e.clientX < r.right - pw - 2 && e.clientY < r.bottom - th - 2 ? { x: e.clientX, y: e.clientY, ly: e.clientY, go: false, h: r.height - th, id: e.pointerId } : null; }, true);
-  el.addEventListener("pointermove", e => { if (!P || e.pointerId !== P.id || !(e.buttons || e.pointerType === "touch")) return; const dx = e.clientX - P.x, dy = e.clientY - P.y;
+  el.addEventListener("pointermove", e => { if (!P || e.pointerId !== P.id || !(e.buttons || e.pointerType === "touch")) return;
+    if ((typeof DRAW !== "undefined" && (DRAW.act || DRAW.tool)) || (typeof MEAS !== "undefined" && MEAS.on) || (typeof WAVE !== "undefined" && WAVE.on)) { P = null; return; }   // Zeichnung wird gezogen (Fib-Griff, Linie): Chart bleibt stehen (Meldung 15.11.2026)
+    const dx = e.clientX - P.x, dy = e.clientY - P.y;
     if (!P.go && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * .7) P.go = true;
     if (P.go) { Y.s += (e.clientY - P.ly) / Math.max(60, P.h) * Y.z; bump(); } P.ly = e.clientY; }, true);
   const end = e => { if (P && e.pointerId === P.id) P = null; }; el.addEventListener("pointerup", end, true); el.addEventListener("pointercancel", end, true);
