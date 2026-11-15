@@ -2619,6 +2619,7 @@ body.etf-fs { overflow: hidden; }
 /* Chart-Suche: Indizes */
 .ct-li-h { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 10px 4px; }
 .ct-ix { width: 34px; height: 34px; border-radius: 50%; display: inline-grid; place-items: center; background: rgba(10,132,255,.14); color: #0a84ff; flex: none; } .ct-ix svg { width: 18px; height: 18px; }
+.lv-ext { margin-left: 6px; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: rgba(255,159,10,.16); color: #ff9f0a; }
 </style>
 </head>
 <body>
@@ -3839,7 +3840,7 @@ function cxLivePaint(t) {
   const q = LIVE.map[t], c = CXL.c, n = c.t.length; if (!q || !(q.c > 0) || !n) return;
   const L = CXL.lb || { time: c.t[n - 1], open: c.o[n - 1], high: c.h[n - 1], low: c.l[n - 1], close: c.c[n - 1] }; let nb = null;
   if (c.intra) nb = intraNext(L, q, c);
-  else { const day = liveDay(t, q.ts); if (day && day >= L.time) nb = day === L.time ? { ...L, high: Math.max(L.high, q.c), low: Math.min(L.low, q.c), close: q.c } : { time: day, open: q.pc > 0 ? q.pc : L.close, high: q.c, low: q.c, close: q.c }; }
+  else if (!q.ext) { const day = liveDay(t, q.ts); if (day && day >= L.time) nb = day === L.time ? { ...L, high: Math.max(L.high, q.c), low: Math.min(L.low, q.c), close: q.c } : { time: day, open: q.pc > 0 ? q.pc : L.close, high: q.c, low: q.c, close: q.c }; }
   if (nb) try { CXL.se.update(nb); CXL.lb = nb; } catch (e) {}
 }
 // 52-Wochen-Spanne und Analysten-Fächer brauchen die Tageskerzen
@@ -9192,8 +9193,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.172";
-const APP_NEWS = [["2026.11.172", "Indizes im Chart", [
+const APP_VER = "2026.11.173";
+const APP_NEWS = [["2026.11.173", "Live länger und deutsche Aktien in Echtzeit", [
+  ["Deutsche Aktien live über gettex", "Aktien in Euro (Deutschland, Frankreich, Niederlande …) laufen im Chart mit dem Echtzeit-Kurs von gettex – nicht mehr 15 Minuten verzögert, und von 8 bis 22 Uhr."],
+  ["US vor- und nachbörslich", "US-Aktien laufen von 10:00 bis 2:00 Uhr deutscher Zeit mit (vorbörslich ab 4 Uhr New York, nachbörslich bis 20 Uhr). Im Chart-Kopf steht dann „vorbörslich“ bzw. „nachbörslich“. Die Tageskerze bleibt beim Schlusskurs, wie bei TradingView."],
+  ["Kursdienst Version 10", "Für vor-/nachbörsliche Kurse ohne Finnhub den Kursdienst neu bereitstellen (Einstellungen → Live-Kurse). Mit Finnhub-Schlüssel läuft es auch ohne."]]],
+  ["2026.11.172", "Indizes im Chart", [
   ["Indizes suchen", "In der Chart-Suche stehen jetzt die bekannten Indizes: Nasdaq 100, Nasdaq Composite, S&P 500, Dow Jones, Russell 2000, VIX, DAX, MDAX, TecDAX, STOXX 600, Euro STOXX 50, FTSE, CAC, SMI, Nikkei. Suchfeld antippen zeigt alle."],
   ["Live und im Raster", "Indizes öffnen als eigener Chart, auch in den Mehrfach-Charts, und laufen bei offener Börse alle 5 Sekunden mit (über den Kursdienst)."],
   ["Weltweit gesuchte Aktien live", "Aktien aus der weltweiten Suche bekommen jetzt ebenfalls Live-Kurse und Minutenkerzen."]]],
@@ -10175,11 +10180,30 @@ function tdSymbol(t) {
                ST: "OMX", CO: "OMXC", HE: "OMXH", OL: "OSE", TO: "TSX", HK: "HKEX", T: "JPX", AX: "ASX", NS: "NSE", KS: "KRX", SI: "SGX" }[m[2]];
   return ex ? { symbol: m[2] === "HK" ? m[1].replace(/^0+/, "") : m[1], exchange: ex } : null;
 }
+const GTX = { map: null, miss: {} };
+function gtxMap() { if (!GTX.map) { try { GTX.map = JSON.parse(localStorage.getItem("kairo-gtx") || "{}"); } catch (e) { GTX.map = {}; } } return GTX.map; }
+async function gtxIsin(t) {
+  const M = gtxMap(); if (M[t] !== undefined) return M[t]; if (GTX.miss[t] && Date.now() - GTX.miss[t] < 6 * 36e5) return null;
+  const r = rowFor(t) || rowOf(t) || {}, nm = r.name || r.n || ""; if (!nm) return null;
+  const q = await ovGet(`/instruments/query?searchValue=${encodeURIComponent(nm)}&limit=8`), L = ((q || {}).list || []).filter(x => x.entityType === "STOCK" && x.isin);
+  const a = normName(nm), it = L.find(x => { const b = normName(x.name || ""); return a && b && (b.startsWith(a.slice(0, 6)) || a.startsWith(b.slice(0, 6))); });
+  if (!it) { GTX.miss[t] = Date.now(); return null; }
+  M[t] = it.isin; try { localStorage.setItem("kairo-gtx", JSON.stringify(M)); } catch (e) {} return it.isin;
+}
+async function gtxQuote(t) {
+  const isin = await gtxIsin(t); if (!isin) return null;
+  const sn = await ovGet(`/instruments/STOCK/ISIN:${isin}/snapshot`), L = ((sn || {}).quoteList || {}).list || [];
+  const q = L.find(m => m.market && (/gettex/i.test(m.market.name || "") || ["GAT", "TRO"].includes(m.market.codeExchange)));
+  if (!q || !(+q.last > 0) || (q.isoCurrency && q.isoCurrency !== "EUR")) return null;
+  const ph = livePhase(t), ts = Date.parse(q.datetimeLast || "") || Date.now();
+  return { c: +q.last, pc: +q.previousLast || null, ts, src: "gettex", ext: ph === "pre" || ph === "post" ? ph : null, ...(ph === "rth" ? { h: +q.high || null, l: +q.low || null } : {}) };
+}
 async function liveFetch(t) {
   const fh = liveKey("fh"), td = liveKey("td"), xr = rowOf(t) || EXTR[t], ext = xr && xr.ext;
+  if (livePhase(t) && gtxStock(t)) { try { const g = await gtxQuote(t); if (g) return g; } catch (e) {} }
   if (ext && ext.y && liveKey("yq")) {                        // über den Kursdienst gefunden: Kurs mit dem Yahoo-Kürzel
     const j = await (await fetch(`${liveKey("yq")}/?s=${encodeURIComponent(ext.y)}`)).json(), q = j && j[ext.y.toUpperCase()];
-    return q && q.c > 0 ? { c: +q.c, pc: q.pc != null ? +q.pc : null, h: q.h, l: q.l, ts: q.t || Date.now(), src: "Kursdienst" } : null;
+    return q && q.c > 0 ? kdQuote(t, q) : null;
   }
   if (ext) {
     if (fh && /^(NASDAQ|NYSE|AMEX|NYSE ARCA|BATS|CBOE)/i.test(ext.exchange)) { const j = await (await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ext.symbol)}&token=${encodeURIComponent(fh)}`)).json();
@@ -10188,14 +10212,14 @@ async function liveFetch(t) {
       if (c > 0) return { c, pc: parseFloat(j.previous_close) || null, h: parseFloat(j.high), l: parseFloat(j.low), ts: (j.timestamp || 0) * 1000 || Date.now(), src: "Twelve Data" }; }
     return null;
   }
-  if (isUS(t) && fh) {
+  if (isUS(t) && fh && !(liveKey("yq") && ["pre", "post"].includes(livePhase(t)))) {   // vor-/nachbörslich: Kursdienst kennt den erweiterten Kurs, Finnhub-Abfrage nur den Schluss
     const j = await (await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t.replace("-", "."))}&token=${encodeURIComponent(fh)}`)).json();
     if (j && j.c > 0) return { c: +j.c, o: +j.o || null, pc: +j.pc || null, h: +j.h, l: +j.l, ts: (j.t || 0) * 1000 || Date.now(), src: "Finnhub" };
   }
   const yq = liveKey("yq");
   if (yq) {                                                    // eigener Kursdienst (Yahoo über Cloudflare): alle Börsen des Scans
     const j = await (await fetch(`${yq}/?s=${encodeURIComponent(t)}`)).json(), q = j && j[t.toUpperCase()];
-    if (q && q.c > 0) return { c: +q.c, pc: q.pc != null ? +q.pc : null, h: q.h, l: q.l, ts: q.t || Date.now(), src: "Kursdienst" };
+    if (q && q.c > 0) return kdQuote(t, q);
   }
   const sy = td && tdSymbol(t);
   if (sy) {
@@ -10204,6 +10228,11 @@ async function liveFetch(t) {
     if (c > 0) return { c, pc: parseFloat(j.previous_close) || null, h: parseFloat(j.high), l: parseFloat(j.low), ts: (j.timestamp || 0) * 1000 || Date.now(), src: "Twelve Data" };
   }
   return null;
+}
+// Kursdienst-Kurs → Live-Objekt; außerhalb der Börsenzeit der vor-/nachbörsliche Kurs (x), falls der Kursdienst ihn liefert (ab Version 10)
+function kdQuote(t, q) {
+  const ph = livePhase(t), xo = (ph === "pre" || ph === "post") && q.x > 0 && q.xt > (q.t || 0);
+  return xo ? { c: +q.x, pc: q.pc != null ? +q.pc : null, rc: +q.c, ts: q.xt, src: "Kursdienst", ext: ph } : { c: +q.c, pc: q.pc != null ? +q.pc : null, h: q.h, l: q.l, ts: q.t || Date.now(), src: "Kursdienst", ext: null };
 }
 async function liveQuote(t, force) {
   const o = LIVE.map[t];
@@ -12336,6 +12365,7 @@ function buildMain(el, c, r, opts) {
       const nb = intraNext(h.liveBar && h.liveBar.time >= lb.time ? h.liveBar : lb, q, c); if (!nb) return false;
       try { candles.update(nb); h.liveBar = nb; } catch (e) { return false; } h.legendLast && h.legendLast(); return true; }
     if (c.tf && c.tf !== "D") return false;           // Woche/Monat: keine Tageskerze anhängen
+    if (q.ext) return false;                          // vor-/nachbörslich: Tageskerze bleibt beim Schlusskurs, der Kurs steht oben im Kopf
     const day = liveDay(r.ticker, q.ts); if (!day || day < lb.time) return false;
     const hi = v => v > 0 ? v : -Infinity, lo = v => v > 0 ? v : Infinity; h.bdReset();
     candles.update(day === lb.time ? { time: day, open: lb.open, high: Math.max(lb.high, hi(q.h), q.c), low: Math.min(lb.low, lo(q.l), q.c), close: q.c }
@@ -12374,7 +12404,10 @@ function liveDay(t, ts) {                              // Handelstag des Kurses 
   const m = String(t).match(/\.([A-Z]+)$/), tz = m ? LIVE_TZ[m[1]] || "Europe/Berlin" : "America/New_York";
   try { return new Date(ts).toLocaleDateString("sv-SE", { timeZone: tz }); } catch (e) { return ""; }
 }
-const liveChartTag = t => !LIVE.map[t] ? "" : FHWS.on && FHWS.subs.has(t) ? '<span class="lv-rt"><i></i>Echtzeit</span>' : mktOpen(t) && (state.sec === "chart" || document.body.classList.contains("card-open")) ? liveTag(t) + ' <span class="lv-rt slow">alle 5 s</span>' : liveTag(t);
+const liveChartTag = t => { const q = LIVE.map[t]; if (!q) return ""; const x = q.ext === "pre" ? '<span class="lv-ext">vorbörslich</span>' : q.ext === "post" ? '<span class="lv-ext">nachbörslich</span>' : "";
+  if (FHWS.on && FHWS.subs.has(t)) return '<span class="lv-rt"><i></i>Echtzeit</span>' + x;
+  if (q.src === "gettex") return '<span class="lv-rt"><i></i>gettex Echtzeit</span>' + x;
+  return livePhase(t) && (state.sec === "chart" || document.body.classList.contains("card-open")) ? liveTag(t) + ' <span class="lv-rt slow">alle 5 s</span>' + x : liveTag(t); };
 function liveChartsPaint(t) {
   CL_LIVE.forEach(h => { if (h.r.ticker === t && document.body.contains(h.el)) h.live(); });
   document.querySelectorAll("[data-livetag]").forEach(x => { if (x.dataset.livetag === t) x.innerHTML = liveChartTag(t); });
@@ -12387,6 +12420,21 @@ function liveChartsPaint(t) {
 // Live im Chart (Wunsch 14.11.2026: „um 15:30 die US-Eröffnung live verfolgen“): bei offener Börse alle 5 s statt alle 30 s;
 // mit Finnhub-Schlüssel US-Aktien in Echtzeit über die Finnhub-Verbindung (jeder Trade, kostenlos). Auch die Mehrfach-Charts laufen mit.
 const IDX_EU = new Set(["^GDAXI", "^STOXX", "^STOXX50E", "^FTSE", "^FCHI", "^SSMI", "^MDAXI", "^TECDAX"]);
+// Euro-Aktie (nicht US, Kurs in EUR) → laufender Kurs von gettex über onvista: Echtzeit, Handel 8–22 Uhr (Wunsch 15.11.2026)
+const gtxStock = t => { const sy = String(t); if (/^[~^]?\^/.test(sy) || sy.startsWith("^") || isUS(sy.replace(/^~/, ""))) return false; const r = rowFor(t) || rowOf(t) || {}; return (r.currency || r.cur) === "EUR"; };
+function clockIn(tz, now) { const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(now).map(x => [x.type, x.value]));
+  return { we: p.weekday === "Sat" || p.weekday === "Sun", mn: +p.hour * 60 + +p.minute }; }
+// Phase: "rth" reguläre Börsenzeit, "pre"/"post" außerhalb (US vor-/nachbörslich, Euro-Aktien auf gettex), null = kein Handel
+function livePhase(t, now = new Date()) {
+  const sy = String(t).replace(/^~/, "");
+  try {
+    if (!sy.startsWith("^") && isUS(sy)) { const c = clockIn("America/New_York", now); if (c.we) return null;
+      return c.mn >= 570 && c.mn < 960 ? "rth" : c.mn >= 240 && c.mn < 570 ? "pre" : c.mn >= 960 && c.mn < 1200 ? "post" : null; }
+    if (gtxStock(t)) { const c = clockIn("Europe/Berlin", now); if (c.we) return null;
+      return c.mn >= 540 && c.mn < 1050 ? "rth" : c.mn >= 480 && c.mn < 540 ? "pre" : c.mn >= 1050 && c.mn < 1320 ? "post" : null; }
+  } catch (e) { return null; }
+  return mktOpen(t, now) ? "rth" : null;
+}
 function mktOpen(t, now = new Date()) {
   const sy = String(t).replace(/^~/, ""); if (sy === "^N225") return (() => { try { const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Tokyo", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(now).map(x => [x.type, x.value])); const mn = +p.hour * 60 + +p.minute; return !/Sat|Sun/.test(p.weekday) && mn >= 540 && mn <= 930; } catch (e) { return false; } })();
   const m = IDX_EU.has(sy) ? [0, "DE"] : sy.match(/\.([A-Z]+)$/), us = !m, tz = us ? "America/New_York" : LIVE_TZ[m[1]] || "Europe/Berlin";
@@ -12405,7 +12453,7 @@ function intraNext(L, q, c) {                        // nächste Live-Kerze im M
 function mcLivePaint(t) {
   const q = LIVE.map[t]; if (!q || !(q.c > 0)) return;
   MCH.ch.forEach(o => { if (!o || o.t !== t || !o.cc || !o.cc.t.length) return; const n = o.cc.t.length, lt = o.cc.t[n - 1], day = liveDay(t, q.ts);
-    if (typeof lt === "string" && day && day >= lt && (!o.cc.tf || o.cc.tf === "D")) { const lb = o.lb || { time: lt, open: o.cc.o[n - 1], high: o.cc.h[n - 1], low: o.cc.l[n - 1], close: o.cc.c[n - 1] };
+    if (typeof lt === "string" && day && day >= lt && (!o.cc.tf || o.cc.tf === "D") && !q.ext) { const lb = o.lb || { time: lt, open: o.cc.o[n - 1], high: o.cc.h[n - 1], low: o.cc.l[n - 1], close: o.cc.c[n - 1] };
       const nb = day === lb.time ? { ...lb, high: Math.max(lb.high, q.c), low: Math.min(lb.low, q.c), close: q.c } : { time: day, open: q.pc > 0 ? q.pc : lb.close, high: q.c, low: q.c, close: q.c };
       try { o.se.update(nb); o.lb = nb; } catch (e) {} }
     else if (o.cc.intra && typeof lt === "number") { const nb = intraNext(o.lb || { time: lt, open: o.cc.o[n - 1], high: o.cc.h[n - 1], low: o.cc.l[n - 1], close: o.cc.c[n - 1] }, q, o.cc);
@@ -12415,7 +12463,7 @@ function mcLivePaint(t) {
 const FHWS = { ws: null, subs: new Set(), want: new Set(), paintAt: {}, retry: 0, on: false };
 function fhSym(t) { return String(t).replace("-", "."); }
 function fhSync() {
-  const key = liveKey("fh"), want = new Set(key && document.visibilityState === "visible" ? chartTickers().filter(t => isUS(t) && !/^[~^]/.test(t) && mktOpen(t)) : []);
+  const key = liveKey("fh"), want = new Set(key && document.visibilityState === "visible" ? chartTickers().filter(t => isUS(t) && !/^[~^]/.test(t) && livePhase(t)) : []);
   FHWS.want = want;
   if (!want.size) { if (FHWS.ws) { try { FHWS.ws.close(); } catch (e) {} FHWS.ws = null; FHWS.subs.clear(); } return; }
   if (!FHWS.ws || FHWS.ws.readyState > 1) {
@@ -12426,7 +12474,8 @@ function fhSync() {
     ws.onmessage = ev => { let j; try { j = JSON.parse(ev.data); } catch (e) { return; } if (j.type !== "trade" || !j.data) return; FHWS.on = true;
       const last = {}; j.data.forEach(d => { last[d.s] = d; });
       Object.values(last).forEach(d => { const t = [...FHWS.subs].find(x => fhSym(x) === d.s); if (!t) return; const o = LIVE.map[t] || {};
-        const q = { ...o, c: +d.p, h: Math.max(o.h || 0, +d.p), l: o.l > 0 ? Math.min(o.l, +d.p) : +d.p, ts: d.t || Date.now(), at: Date.now(), src: "Finnhub live" };
+        const ph = livePhase(t), xo = ph === "pre" || ph === "post";
+        const q = xo ? { ...o, c: +d.p, ts: d.t || Date.now(), at: Date.now(), src: "Finnhub live", ext: ph } : { ...o, c: +d.p, h: Math.max(o.h || 0, +d.p), l: o.l > 0 ? Math.min(o.l, +d.p) : +d.p, ts: d.t || Date.now(), at: Date.now(), src: "Finnhub live", ext: null };
         LIVE.map[t] = q; liveApply(t, q);
         if (Date.now() - (FHWS.paintAt[t] || 0) > 250) { FHWS.paintAt[t] = Date.now(); liveChartsPaint(t); mcLivePaint(t); cxLivePaint(t); } }); };
     return; }
@@ -12437,7 +12486,7 @@ function fhSync() {
 let liveTickN = 0;
 setInterval(() => {
   if (!liveOn() || document.visibilityState !== "visible") return;
-  liveTickN++; const ts = chartTickers(), fast = (state.sec === "chart" || document.body.classList.contains("card-open")) && ts.some(t => mktOpen(t));
+  liveTickN++; const ts = chartTickers(), fast = (state.sec === "chart" || document.body.classList.contains("card-open")) && ts.some(t => livePhase(t));
   if (fast) fhSync(); else if (FHWS.ws) fhSync();
   if (!fast && liveTickN % 6) return;                  // geschlossen: wie bisher alle 30 s
   ts.forEach(t => { if (FHWS.on && FHWS.subs.has(t)) return;   // kommt schon in Echtzeit
