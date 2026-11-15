@@ -2671,6 +2671,10 @@ body.etf-fs { overflow: hidden; }
   html .dr-sel .ds-grip, html .dr-sel .ds-n { touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
   html .dr-sel .ds-grip { padding: 8px 6px 8px 5px; opacity: .7; }
   html .dr-sel.ds-drag { opacity: .92; } html .dr-sel.ds-drag .ds-grip, html .dr-sel.ds-drag .ds-n { cursor: grabbing; }
+
+  /* Watchlist im Chart nach Kairo-Status gruppiert (15.11.2026) */
+  .ct-wl-g { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 10px 10px 4px; }
+  .ct-wl-r.hit span b { color: var(--accent, #30d158); }
 </style>
 </head>
 <body>
@@ -9247,8 +9251,8 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.180";
-const APP_NEWS = [["2026.11.180", "Zeichnungs-Leiste verschiebbar", ["Die Leiste einer ausgewählten Zeichnung (z. B. Fib-Retracement) lässt sich an den Punkten links greifen und verschieben – wie bei TradingView. Die Position bleibt gespeichert; standardmäßig steht sie oben rechts statt über dem Aktien-Schild."]], ["2026.11.179", "KI-Chartanalyse 2.0, ruhige Achsen, schnellerer Zoom", ["KI-Chartanalyse neu: Gesamturteil von −100 bis +100, Zusammenfassung in Worten, bullisches und bärisches Szenario mit Auslöser, Ziel, Abbruch und Chance/Risiko.", "Neu erkannt: Unterstützungs- und Widerstandszonen (Stärke 1–5), Marktstruktur und Strukturbrüche, Kerzenmuster mit eigener Trefferquote auf der Aktie, Rechteck, Kanal, Tasse mit Henkel, Dreifachboden/-top, bärische Flagge, RSI-Divergenzen, automatische Fibonacci, Konfluenz und Monatschart.", "Achsen ruhig: Kurs-, RSI-, MACD- und MBI-Fenster sind exakt gleich breit und laufen im selben Bild mit – nichts rüttelt mehr.", "Zwei-Finger-Zoom deutlich schneller, auch wenn der erste Finger schon gewischt hat.", "Zeichnungen reagieren beim Touch erst nach direktem Antippen – ein Finger auf der Fibonacci beim Zoomen verschiebt sie nicht mehr."]], ["2026.11.178", "Fibonacci ziehen ohne Chart-Verschieben", ["Zieht man die Grenzen einer Fibonacci oder einer anderen Zeichnung nach oben oder unten, bleibt der Chart jetzt stehen."]], ["2026.11.177", "Deutsche News in der Übersicht", [
+const APP_VER = "2026.11.181";
+const APP_NEWS = [["2026.11.181", "Schnellwahl mit Schwung, Y-Zoom bleibt, Watchlist sortiert", ["Schnellwahl am Aktien-Schild: gedrückt halten, schnell wischen und loslassen – die Liste rollt mit Schwung weiter und bleibt offen; dann die Aktie antippen. Ruhig loslassen übernimmt wie bisher.", "Preisachse selbst gezoomt: Verschieben des Charts setzt den Zoom nicht mehr zurück (Doppeltipp auf die Achse stellt die Automatik wieder her).", "Watchlist im Chart: Kairo-Treffer zuerst (nach Score), dann Fast-Treffer 10/11 und 9/11, dann der Rest – mit Überschriften."]], ["2026.11.180", "Zeichnungs-Leiste verschiebbar", ["Die Leiste einer ausgewählten Zeichnung (z. B. Fib-Retracement) lässt sich an den Punkten links greifen und verschieben – wie bei TradingView. Die Position bleibt gespeichert; standardmäßig steht sie oben rechts statt über dem Aktien-Schild."]], ["2026.11.179", "KI-Chartanalyse 2.0, ruhige Achsen, schnellerer Zoom", ["KI-Chartanalyse neu: Gesamturteil von −100 bis +100, Zusammenfassung in Worten, bullisches und bärisches Szenario mit Auslöser, Ziel, Abbruch und Chance/Risiko.", "Neu erkannt: Unterstützungs- und Widerstandszonen (Stärke 1–5), Marktstruktur und Strukturbrüche, Kerzenmuster mit eigener Trefferquote auf der Aktie, Rechteck, Kanal, Tasse mit Henkel, Dreifachboden/-top, bärische Flagge, RSI-Divergenzen, automatische Fibonacci, Konfluenz und Monatschart.", "Achsen ruhig: Kurs-, RSI-, MACD- und MBI-Fenster sind exakt gleich breit und laufen im selben Bild mit – nichts rüttelt mehr.", "Zwei-Finger-Zoom deutlich schneller, auch wenn der erste Finger schon gewischt hat.", "Zeichnungen reagieren beim Touch erst nach direktem Antippen – ein Finger auf der Fibonacci beim Zoomen verschiebt sie nicht mehr."]], ["2026.11.178", "Fibonacci ziehen ohne Chart-Verschieben", ["Zieht man die Grenzen einer Fibonacci oder einer anderen Zeichnung nach oben oder unten, bleibt der Chart jetzt stehen."]], ["2026.11.177", "Deutsche News in der Übersicht", [
   ["Deutsche Schlagzeilen zuerst", "Für Aktien aus Watchlist und Depot zeigt die Übersichtskarte jetzt zuerst deutsche Meldungen (Google News, letzte 36 Stunden), danach die englischen."]]],
   ["2026.11.176", "Selbstprüfung, Intraday-Linien, Watchlist im Chart", [
   ["Selbstprüfung", "Einstellungen → Selbstprüfung: Ein Knopf prüft Scan-Daten, Kursdienst (Version, Kurse, Minuten- und Index-Kerzen), Finnhub, gettex, Mitteilungen, Datensicherung und Speicher – grün, gelb oder rot mit Hinweis, was zu tun ist."],
@@ -14154,12 +14158,16 @@ function cfPickOpen(on) {
   setTimeout(lensSoon, 320);   // nach dem Aufklappen: Rand mit echter Lichtbrechung
 }
 // Watchlist-Leiste im Chart (wie TradingView rechts): Merkliste mit Live-Kurs und Tagesveränderung, antippen oder ↑/↓ wechselt die Aktie
-const ctWlList = () => { const fv = [...favs()].filter(t => rowFor(t) || rowOf(t)); const pool = fv.length ? fv : (data.results || []).filter(r => r.passed).map(r => r.ticker); return pool.slice(0, 60); };
+// Sortierung (Wunsch 15.11.2026): erst Kairo-Treffer (nach Score), dann 10/11, dann 9/11, dann der Rest in Merklisten-Reihenfolge
+const ctWlRank = t => { const r = byTicker(t); return !r ? 3 : r.passed ? 0 : r.fast_hit ? 1 : r.near_hit ? 2 : 3; };
+const ctWlList = () => { const fv = [...favs()].filter(t => rowFor(t) || rowOf(t)); const pool = fv.length ? fv : (data.results || []).filter(r => r.passed).map(r => r.ticker);
+  return pool.map((t, i) => ({ t, i, g: ctWlRank(t), s: (byTicker(t) || {}).score || 0 })).sort((a, b) => a.g - b.g || (a.g === 0 ? b.s - a.s : 0) || a.i - b.i).slice(0, 60).map(x => x.t); };
+const CT_WL_G = ["Kairo-Treffer", "Fast Treffer · 10/11", "Fast Treffer · 9/11", "Weitere"];
 function ctWlHtml(cur) {
   const L = ctWlList();
-  return `<div class="ct-wl-h"><b>${favs().size ? "Watchlist" : "Treffer"}</b><button class="ct-wl-x" data-ctwl aria-label="Schließen">✕</button></div><div class="ct-wl-l">${L.map(t => { const r = rowOf(t) || {}, R = rowFor(t) || {}, q = LIVE.map[t];
+  return `<div class="ct-wl-h"><b>${favs().size ? "Watchlist" : "Treffer"}</b><button class="ct-wl-x" data-ctwl aria-label="Schließen">✕</button></div><div class="ct-wl-l">${L.map((t, k) => { const r = rowOf(t) || {}, R = rowFor(t) || {}, q = LIVE.map[t], g = ctWlRank(t), gh = !k || ctWlRank(L[k - 1]) !== g ? `<div class="ct-wl-g">${CT_WL_G[g]}</div>` : "";
     const px = q && q.c ? q.c : r.c ?? R.close, d = q && q.pc ? q.c / q.pc - 1 : r.d1 ?? R.change;
-    return `<button class="ct-wl-r${t === cur ? " on" : ""}" data-ctwlgo="${esc(t)}">${cfAv(t)}<span><b>${esc(tkClean(t))}</b><small>${esc(shortNm(R.name || r.n || t).slice(0, 18))}</small></span><em><b>${px != null ? fmt(px) : "–"}</b><small class="${d >= 0 ? "up" : "down"}">${d != null ? sgnPct(d, 2) : ""}</small></em></button>`; }).join("") || `<p class="muted" style="padding:10px">Mit ★ Aktien merken – sie stehen dann hier.</p>`}</div>`;
+    return `${gh}<button class="ct-wl-r${t === cur ? " on" : ""}${g === 0 ? " hit" : ""}" data-ctwlgo="${esc(t)}">${cfAv(t)}<span><b>${esc(tkClean(t))}</b><small>${esc(shortNm(R.name || r.n || t).slice(0, 18))}</small></span><em><b>${px != null ? fmt(px) : "–"}</b><small class="${d >= 0 ? "up" : "down"}">${d != null ? sgnPct(d, 2) : ""}</small></em></button>`; }).join("") || `<p class="muted" style="padding:10px">Mit ★ Aktien merken – sie stehen dann hier.</p>`}</div>`;
 }
 const ctWlPaint = () => { const el = $("ctWl"); if (el && !el.hidden && cfChart) { const st = (el.querySelector(".ct-wl-l") || {}).scrollTop || 0; el.innerHTML = ctWlHtml(cfChart.r.ticker); const l = el.querySelector(".ct-wl-l"); if (l) l.scrollTop = st; } };
 document.addEventListener("click", e => {
@@ -14285,10 +14293,24 @@ document.addEventListener("pointerdown", e => { const p = e.target.closest && e.
 document.addEventListener("pointermove", e => {
   if (cfHold.timer && Math.abs(e.clientY - cfHold.y0) > 12) { clearTimeout(cfHold.timer); cfHold.timer = 0; return; }   // vorher bewegt = Wischen
   if (!cfHold.on) return; const L = $("cfPickL"); if (!L || cfHold.s0 == null) return;
-  e.preventDefault(); L.scrollTop = cfHold.s0 + (cfHold.y0 - e.clientY) * 1.5; });
-const cfHoldEnd = () => { clearTimeout(cfHold.timer); cfHold.timer = 0; if (!cfHold.on) return; cfHold.on = false; cfPick.holdEnd = Date.now();
-  document.querySelectorAll(".cf-pill.hold").forEach(x => x.classList.remove("hold")); const t = cfCenterTicker(); cfPickOpen(false);
+  e.preventDefault(); L.scrollTop = cfHold.s0 + (cfHold.y0 - e.clientY) * 1.5;
+  const now = performance.now(); (cfHold.mv = cfHold.mv || []).push([now, e.clientY]); while (cfHold.mv.length > 3 && now - cfHold.mv[0][0] > 120) cfHold.mv.shift(); });
+// Schwung wie TradingView (Wunsch 15.11.2026): Wird beim Loslassen schnell gewischt, bleibt die Auswahl offen und die Liste rollt mit
+// Schwung weiter (Finger hoch = weiter nach unten in der Liste); dann eine Aktie antippen. Ruhiges Loslassen übernimmt wie bisher.
+let cfFling = 0;
+const cfHoldEnd = e => { clearTimeout(cfHold.timer); cfHold.timer = 0; if (!cfHold.on) return; cfHold.on = false; cfPick.holdEnd = Date.now();
+  document.querySelectorAll(".cf-pill.hold").forEach(x => x.classList.remove("hold"));
+  const mv = cfHold.mv || [], L = $("cfPickL"); cfHold.mv = [];
+  if (e && e.type === "pointerup" && mv.length >= 2 && L) { const now = performance.now(), a = mv[0], b = mv[mv.length - 1], dt = Math.max(1, b[0] - a[0]), v = (a[1] - b[1]) / dt * 1.5;   // px Liste je ms
+    if (now - b[0] < 120 && Math.abs(v) > .5) { cancelAnimationFrame(cfFling); let vel = v, t0 = now;
+      L.style.scrollSnapType = "none"; let pos = L.scrollTop;
+      const step = t => { const d = Math.max(0, Math.min(40, t - t0)); t0 = Math.max(t0, t); const max = L.scrollHeight - L.clientHeight; pos = Math.max(0, Math.min(max, pos + vel * d)); L.scrollTop = pos; vel *= Math.pow(.9975, d);
+        if (Math.abs(vel) > .03 && pos > 0 && pos < max && document.body.contains(L)) cfFling = requestAnimationFrame(step);
+        else { cfFling = 0; L.style.scrollSnapType = ""; } };
+      cfFling = requestAnimationFrame(step); return; } }
+  const t = cfCenterTicker(); cfPickOpen(false);
   if (t && cfChart && t !== cfChart.r.ticker) cockpitGo(t); };
+document.addEventListener("pointerdown", e => { if (cfFling && e.target.closest && e.target.closest("#cfPickL")) { cancelAnimationFrame(cfFling); cfFling = 0; const L = $("cfPickL"); if (L) L.style.scrollSnapType = ""; } }, true);
 document.addEventListener("pointerup", cfHoldEnd); document.addEventListener("pointercancel", cfHoldEnd);
 document.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest(".cf-pill")) e.preventDefault(); });
 // Antippen irgendwo außerhalb (auch im Chart, der Klicks selbst verarbeitet) schließt die Aktienauswahl
@@ -14365,7 +14387,8 @@ function yPanZoom(ch, el, o) {
   let P = null; const TN = new Set();
   el.addEventListener("pointerdown", e => { if (e.pointerType === "touch") { TN.add(e.pointerId); if (TN.size > 1) { P = null; return; } }   // zwei Finger: Zoomen, nicht schieben
     if (!Y.se || e.button > 0) { P = null; return; } const { r, pw, th } = geo();
-    const busy = el.classList.contains("drawing") || el.classList.contains("measuring") || el.closest(".drawing") || (typeof DRAW !== "undefined" && (DRAW.act || DRAW.tool)) || (typeof MEAS !== "undefined" && MEAS.on) || (typeof WAVE !== "undefined" && WAVE.on);
+    let man = false; try { man = ch.priceScale("right").options().autoScale === false; } catch (x) {}   // Preisachse selbst gezoomt/gezogen: Verschieben darf die Automatik nicht zurückholen (DroneShield, 15.11.2026)
+    const busy = man || el.classList.contains("drawing") || el.classList.contains("measuring") || el.closest(".drawing") || (typeof DRAW !== "undefined" && (DRAW.act || DRAW.tool)) || (typeof MEAS !== "undefined" && MEAS.on) || (typeof WAVE !== "undefined" && WAVE.on);
     P = !busy && e.clientX < r.right - pw - 2 && e.clientY < r.bottom - th - 2 ? { x: e.clientX, y: e.clientY, ly: e.clientY, go: false, h: r.height - th, id: e.pointerId } : null; }, true);
   el.addEventListener("pointermove", e => { if (!P || e.pointerId !== P.id || !(e.buttons || e.pointerType === "touch")) return;
     if ((typeof DRAW !== "undefined" && (DRAW.act || DRAW.tool)) || (typeof MEAS !== "undefined" && MEAS.on) || (typeof WAVE !== "undefined" && WAVE.on)) { P = null; return; }   // Zeichnung wird gezogen (Fib-Griff, Linie): Chart bleibt stehen (Meldung 15.11.2026)
