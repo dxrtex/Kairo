@@ -22,7 +22,7 @@ from pathlib import Path
 SITE = Path(__file__).resolve().parents[1] / "site"
 LIVE = "https://dxrtex.github.io/Kairo/data/"
 FILES = ["results.json", "search.json", "analysis.json", "alerts.json", "bilanz.json", "changes.json", "calendar.json",
-         "etf.json", "briefing.json", "insider.json", "h4.json", "earnings.json"]
+         "etf.json", "briefing.json", "insider.json", "h4.json", "earnings.json", "fund.json", "funds.json", "bench.json"]
 SECS = ["today", "etf", "scanner", "chart", "entry", "calendar", "news", "depot", "journal", "game", "paper", "bilanz", "settings"]
 
 
