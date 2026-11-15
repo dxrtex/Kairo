@@ -9193,8 +9193,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.173";
-const APP_NEWS = [["2026.11.173", "Live länger und deutsche Aktien in Echtzeit", [
+const APP_VER = "2026.11.174";
+const APP_NEWS = [["2026.11.174", "Index-Suche", [
+  ["Indizes leichter finden", "Die Suche prüft jetzt jedes Wort einzeln – „euro stoxx 600“, „stoxx 600“ oder „600 europa“ finden den STOXX Europe 600."]]],
+  ["2026.11.173", "Live länger und deutsche Aktien in Echtzeit", [
   ["Deutsche Aktien live über gettex", "Aktien in Euro (Deutschland, Frankreich, Niederlande …) laufen im Chart mit dem Echtzeit-Kurs von gettex – nicht mehr 15 Minuten verzögert, und von 8 bis 22 Uhr."],
   ["US vor- und nachbörslich", "US-Aktien laufen von 10:00 bis 2:00 Uhr deutscher Zeit mit (vorbörslich ab 4 Uhr New York, nachbörslich bis 20 Uhr). Im Chart-Kopf steht dann „vorbörslich“ bzw. „nachbörslich“. Die Tageskerze bleibt beim Schlusskurs, wie bei TradingView."],
   ["Kursdienst Version 10", "Für vor-/nachbörsliche Kurse ohne Finnhub den Kursdienst neu bereitstellen (Einstellungen → Live-Kurse). Mit Finnhub-Schlüssel läuft es auch ohne."]]],
@@ -13570,12 +13572,17 @@ const IDX = [
   { y: "^GSPC", n: "S&P 500", k: "s&p 500 sp500 spx s&p500 sandp us500" }, { y: "^DJI", n: "Dow Jones", k: "dow jones dji us30" },
   { y: "^RUT", n: "Russell 2000", k: "russell 2000 rut small caps" }, { y: "^VIX", n: "VIX (Volatilität)", k: "vix volatilität angst" },
   { y: "^GDAXI", n: "DAX", k: "dax deutschland de40 germany" }, { y: "^MDAXI", n: "MDAX", k: "mdax" }, { y: "^TECDAX", n: "TecDAX", k: "tecdax" },
-  { y: "^STOXX", n: "STOXX Europe 600", k: "stoxx 600 europe europa sxxp" }, { y: "^STOXX50E", n: "Euro STOXX 50", k: "euro stoxx 50 eurostoxx sx5e eu50" },
+  { y: "^STOXX", n: "STOXX Europe 600", k: "stoxx 600 europe europa euro stoxx600 sxxp" }, { y: "^STOXX50E", n: "Euro STOXX 50", k: "euro stoxx 50 eurostoxx sx5e eu50" },
   { y: "^FTSE", n: "FTSE 100", k: "ftse 100 london uk" }, { y: "^FCHI", n: "CAC 40", k: "cac 40 frankreich paris" }, { y: "^SSMI", n: "SMI", k: "smi schweiz" },
   { y: "^N225", n: "Nikkei 225", k: "nikkei 225 japan" }];
 const IDX_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg>';
-function idxMatches(q) { const s = String(q || "").toLowerCase().trim(); if (!s) return IDX;
-  return IDX.filter(x => (x.n + " " + x.k + " " + x.y).toLowerCase().includes(s) || (s.length >= 3 && ["index", "indizes", "indices", "indexe"].some(w => w.startsWith(s)))); }
+// Wortsuche (15.11.2026): jedes eingegebene Wort muss vorkommen, Reihenfolge egal – „euro stoxx 600“ findet STOXX Europe 600
+function idxMatches(q) { const s = String(q || "").toLowerCase().replace(/[^a-z0-9äöü&^ ]/g, " ").trim(); if (!s) return IDX;
+  if (s.length >= 3 && ["index", "indizes", "indices", "indexe"].some(w => w.startsWith(s))) return IDX;
+  const toks = s.split(/\s+/).filter(w => w && !["index", "indizes", "der", "die", "das"].includes(w));
+  const hay = x => (x.n + " " + x.k + " " + x.y).toLowerCase();
+  return IDX.filter(x => toks.length && toks.every(w => hay(x).includes(w)))
+    .sort((a, b) => (b.n.toLowerCase().startsWith(toks[0]) - a.n.toLowerCase().startsWith(toks[0]))); }
 const idxRow = x => { const L = LIVE.map["~" + x.y]; return `<button class="ct-li ct-li-idx" data-ctidx="${esc(x.y)}"><i class="ct-ix">${IDX_IC}</i><span><b>${esc(x.n)}</b><small>Index · ${esc(x.y.replace("^", ""))}${L && L.c ? ` · ${fmt(L.c)}` : ""}</small></span><em>Index</em></button>`; };
 // Chart-Suche: Trefferliste unter dem Suchfeld
 function ctListHtml(q) {
