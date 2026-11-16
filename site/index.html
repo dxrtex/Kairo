@@ -962,6 +962,9 @@
   .ng-v { font-size: 13px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); } .ng-v.g { color: var(--up); background: color-mix(in srgb, var(--up) 15%, transparent); } .ng-v.r { color: var(--red); background: color-mix(in srgb, var(--red) 15%, transparent); }
   .ng-tf { margin: 4px 2px 10px; }
   .nr-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 2px 8px; } .nr-q { flex: 1; min-width: 180px; max-width: 360px; } .nr-q input { margin: 0 !important; padding: 8px 12px !important; }
+  .nr-tb { display: flex; align-items: center; gap: 10px; margin: 2px 2px 6px; flex-wrap: wrap; } .nr-tb .nr-seg { flex: none; margin: 0; } .nr-tb .nr-q { flex: 1 1 180px; max-width: none; min-width: 140px; margin: 0; }
+  .nr-tb .nr-tone { flex: none; padding: 0 4px; } .nr-ic { flex: none; width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; } .nr-ic:hover { color: var(--text); }
+  .nr-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0 4px; font-size: 12px; color: var(--muted); margin: 0 4px 10px; } .nr-meta .gl { margin-left: 4px; } .nr-set { margin-left: auto; font-size: 12px; font-weight: 500; } .nr-meta:empty { display: none; } .nr-live { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--up, #30d158); margin-right: 5px; }
   .nr-cap { font-size: 13px; color: var(--muted); margin: 0 4px 8px; } .nr-why { margin-top: 4px; line-height: 1.45; } .nr-why > summary { color: var(--accent); cursor: pointer; }
   .nr-list { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
   .nr { border-top: 1px solid var(--line); } .nr:first-child { border-top: 0; } .nr[hidden] { display: none; }
@@ -2201,6 +2204,20 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 </style>
 
 <style id="pro-finish">
+.el-tvbar { justify-content: flex-start !important; align-items: center; } .el-tvbar > .sp-tg + .sp-tg { margin-left: auto; }
+
+/* Scanner-Kopf: eine ruhige Leiste (16.11.2026) */
+.sc-tb { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin: 6px 2px 10px; min-height: 36px; }
+.sc-tb .kchip.pre { padding: 6px 12px; }
+.sc-tb-r { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.sc-btn { height: 34px; min-width: 34px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; list-style: none; }
+.sc-btn:hover { background: var(--surface-2, #1c1c1e); } .sc-btn.on { border-color: var(--accent); color: var(--accent); }
+.sc-btn small { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; }
+.scanmenu > summary.sc-btn { font-size: 16px; padding: 0 10px; } .sc-tb .scanmenu { margin-left: 0; }
+.sc-cnt { font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 0 4px; white-space: nowrap; } .sc-cnt .gl { margin-left: 2px; }
+.sc-tb .sp-dd select, .nr-tb .sp-dd select { width: auto !important; min-width: 0 !important; max-width: none; height: auto; border: 0 !important; box-shadow: none !important; }
+@media (max-width: 700px) { .sc-btn.spalten, .sc-cnt .sc-n { display: none; } .sc-tb { gap: 8px 10px; } }
+
 /* Wunsch 13.11. abends: Grün + Glas wirkte billig → Glas raus (flache Leisten ohne Glanz, Unschärfe und Leuchten).
    Korrektur desselben Abends: die grünen Flächen der aktiven Auswahl BLEIBEN – vollflächig in der Akzentfarbe, nur flach. */
 :root { --pf-bg: rgba(255,255,255,.045); --pf-ring: rgba(255,255,255,.075); --pf-hover: rgba(255,255,255,.07); --pf-on: var(--accent); --pf-on-ring: transparent; --pf-on-tx: var(--accent-ink, #fff); --pf-sel: rgba(255,255,255,.085); }
@@ -3310,7 +3327,7 @@ function scanMenuHtml() {                        // Scans starten (GitHub): selt
   const run = SCAN.run, active = run && run.status !== "completed";
   const g = data && data.generated ? new Date(data.generated) : null, full = data && data.full_at ? new Date(data.full_at) : null;
   const dt = x => x.toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-  return `<details class="scanmenu"><summary class="kchip">${active ? "Scan läuft …" : "↻ Neu scannen"}</summary><div class="scanmenu-p">
+  return `<details class="scanmenu"><summary class="sc-btn${active ? " on" : ""}" title="Neu scannen" aria-label="Neu scannen">${active ? "Scan läuft …" : "↻"}</summary><div class="scanmenu-p">
     <div class="muted" style="font-size:13px;margin-bottom:8px">${full && !isNaN(full) ? `Alle Aktien: ${dt(full)}<br>` : ""}${g && !isNaN(g) ? `Watchlist: ${dt(g)}` : ""}</div>
     <button class="btn ghost sm" data-scanstart="watch"${active ? " disabled" : ""}>Watchlist scannen <small>· ca. 5–10 Min.</small></button>
     <button class="btn ghost sm" data-scanstart="all"${active ? " disabled" : ""}>Alle Aktien scannen <small>· ca. 45–60 Min.</small></button></div></details>`;
@@ -3400,6 +3417,7 @@ const save = () => { try { wsTrack(); } catch (e) {} try { const { tableSort, ta
 
 // ---------- Begriffe kurz erklärt (ⓘ antippen) ----------
 const GLOSS = {
+  wind: ["Rückenwind / Gegenwind", "Kairo zählt drei Dinge zusammen: die Tendenz der Schlagzeilen der letzten 7 Tage (▲ +1, ▼ −1, höchstens ±2), das Analysten-Urteil (Kaufen +1, Verkaufen −1) und den Kurs heute (ab +2 % +1, ab −2 % −1). Ab +2 steht Rückenwind, ab −2 Gegenwind, dazwischen nichts. Eine Stimmungs-Zusammenfassung – kein Kaufsignal und kein Teil der Kairo-Regel."],
   score: ["Score", "Kairo-Bewertung 0–100 für Treffer: je näher am idealen Einstieg (Zone, Divergenz, MACD-Wende, CRV), desto höher. Für die Rangfolge nutzt Kairo inzwischen das Vormomentum – der Score war in der Forschung kein belegtes Merkmal."],
   crv: ["CRV (Chance-Risiko)", "Möglicher Gewinn bis zum Ziel geteilt durch das Risiko bis zum Stop. CRV 3 heißt: 3 € Chance je 1 € Risiko."],
   vola: ["Volatilität", "Wie stark die Aktie schwankt: Schwankung der Tagesrenditen der letzten 30 Tage, aufs Jahr hochgerechnet. Über 50 % = sehr unruhig – mit Hebel besonders riskant."],
@@ -3540,6 +3558,8 @@ const VIEWS = [
   ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Aktien, denen nur wenige Kriterien fehlen – ab 9, 8 oder 7 von 11. Nur beobachten, kein Kaufsignal."],
   ["trend", "Trend", r => isTrend(r), ["trend"], "Trend-Rücksetzer – eigene, getrennte Strategie (Rücksetzer im Aufwärtstrend)."],
   ["mine", "Meine", r => r.in_watchlist || favs().has(r.ticker), ["watch", "fav"], "Deine Watchlist (★) – mit Stufe auf dem Weg zum Einstieg."]];
+// Erklärung je Ansicht als ⓘ statt Textzeile (Wunsch 16.11.2026 „unübersichtlich“)
+VIEWS.forEach(v => { GLOSS["v_" + v[0]] = [v[1], v[4] + (v[0] === "hit" ? " Status: kaufbereit = Kauf zur nächsten Eröffnung · Konsolidierung x/10 = wartet auf 5 ruhige Tage · verfallen = keine Konsolidierung in 10 Tagen · im Depot = läuft schon." : "")]; });
 const viewOfKinds = ks => { const k = new Set(ks); return VIEWS.find(v => v[3].length === k.size && v[3].every(x => k.has(x)))
   || VIEWS.find(v => v[3].some(x => k.has(x))) || null; };
 // ---------- Watchlist (Stern): auf dem Gerät und über den Kursdienst für den täglichen Scan ----------
@@ -5099,6 +5119,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-fsmine]")) { state.fsMine = !state.fsMine; save(); fsvRender(); return; }
   const fm = e.target.closest("[data-fsmv]"); if (fm) { const F = { ...(state.fsMv || {}) }; F[fm.dataset.fsmv] = !F[fm.dataset.fsmv]; state.fsMv = F; save(); fsvRender(); return; }
 });
+document.addEventListener("change", e => { const s = e.target.closest("[data-newstonesel]"); if (!s) return; state.newsTone = s.value; save(); render(); });
 document.addEventListener("change", e => { const s = e.target.closest("[data-insf2sel]"); if (!s) return; state.insF2 = { ...(state.insF2 || {}), [s.dataset.insf2sel]: s.value }; state.insMore = false; save(); render(); });
 document.addEventListener("change", e => { const s = e.target.closest("[data-fsmvsel]"); if (!s) return; const F = { ...(state.fsMv || {}) }; F[s.dataset.fsmvsel] = s.dataset.fsmvsel === "cap" ? +s.value : s.value; state.fsMv = F; save(); fsvRender(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && state.fsv) { state.fsv = null; fsvRender(); } });
@@ -5329,11 +5350,14 @@ function newsHtml() {
   const block = (title, rows, empty) => `<div class="bf-s"><b>${title}</b><div class="bf-l">${rows.length ? rows.join("") : `<div class="bf-empty" style="padding:12px 14px">${empty}</div>`}</div></div>`;
   const msOf = d => { const t = Date.parse(d); return isNaN(t) ? null : t; };
   const dedup = l => { const s = new Set(); return l.filter(n => { const k = String(n.t).toLowerCase().slice(0, 70); if (s.has(k)) return false; s.add(k); return true; }); };
-  const seg = tab === "feed" ? `<div class="sp-tg" style="margin:2px 2px 8px">${[["mine", "Meine Aktien"], ["market", "Markt"]].map(([v, l]) => `<button class="opt${(v === "mine") === feedMine ? " on" : ""}" data-feedmode="${v}">${l}</button>`).join("")}</div>` : "";
-  const live = liveKey("fh"), src = live ? `Scan + live (Finnhub)${NEWS.at ? " · " + new Date(NEWS.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr" : " · lädt …"}` : "aus dem letzten Scan";
+  const live = liveKey("fh");
   if (tab === "overview") return marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf);
-  const head = `<div class="section-title"><span>${tab === "insider" ? "Insider" : "Nachrichten"}</span><span>${esc(src)}</span></div>${seg}
-    ${live ? `<button class="live-btn" data-newsfresh style="margin:0 2px 4px">↻ Aktualisieren</button>` : state.fhTipOff ? "" : `<p class="muted" style="font-size:12.5px;margin:4px 2px">Live-Meldungen mit kostenlosem Finnhub-Schlüssel · <button class="hlink" data-gosec="settings" data-settab="live">Einrichten</button> · <button class="hlink" data-fhtipoff>Ausblenden</button></p>`}`;
+  // Kopf (Wunsch 16.11.2026 „Unübersichtlich“): eine Werkzeugleiste – Bereich · Suche · Tendenz · ↻ – und darunter eine leise Infozeile
+  const liveAt = live && NEWS.at ? new Date(NEWS.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
+  const meta = (extra, info = "") => { const bits = [extra, live ? `<span class="nr-live"></span>Live${liveAt ? " · " + liveAt + " Uhr" : " · lädt …"}` : ""].filter(Boolean);
+    return `<div class="nr-meta"><span>${bits.join(" · ")}</span>${info}${!live && !state.fhTipOff ? `<button class="hlink nr-set" data-gosec="settings" data-settab="live">Live einrichten</button>` : ""}</div>`; };
+  const tbar = (mid = "") => `<div class="nr-tb">${tab === "feed" ? `<div class="sp-tg nr-seg">${[["mine", "Meine Aktien"], ["market", "Markt"]].map(([v, l]) => `<button class="opt${(v === "mine") === feedMine ? " on" : ""}" data-feedmode="${v}">${l}</button>`).join("")}</div>` : ""}${mid}${live ? `<button class="nr-ic" data-newsfresh aria-label="Aktualisieren" title="Aktualisieren">↻</button>` : !mid && !state.fhTipOff ? `<button class="hlink nr-set" data-gosec="settings" data-settab="live">Live einrichten</button>` : ""}</div>`;
+  const head = tbar() + (live ? meta("") : "");
   if (tab === "feed" && feedMine) {
     let pool = bj && bj.stocks ? Object.entries(bj.stocks).filter(([t]) => mine.has(t)).flatMap(([t, l]) => l.map(n => ({ ...n, nm: nameOf(t), tk: t, ms: msOf(n.d) }))) : [];
     Object.entries(NEWS.co).forEach(([t, l]) => l.forEach(n => pool.push({ t: n.headline, u: n.url, p: n.source, ms: n.datetime * 1000, nm: nameOf(t), tk: t, s: 0 })));
@@ -5382,11 +5406,10 @@ function newsHtml() {
     const depHtml = gDep.map(g => grp(g, true)).join(""), restHtml = gRest.map(g => grp(g)).join("");
     const listHtml = (depHtml ? `<div class="nr-sec"><b>Deine Positionen</b><span>${gDep.length} mit Meldungen · Depot und laufende Trades</span></div><div class="nr-list nr-pin">${depHtml}</div>` : "")
       + (restHtml ? `${depHtml ? `<div class="nr-sec"><b>Watchlist & Merkliste</b><span>${gRest.length}</span></div>` : ""}<div class="nr-list">${restHtml}</div>` : ""), more = !state.newsQ && gRest.length > 12;
-    const bar = `<div class="nr-bar"><div class="sp-tg">${[["", "Alle"], ["g", "▲ Positiv"], ["r", "▼ Negativ"]].map(([v, l]) => `<button class="opt${tf === v ? " on" : ""}" data-newstone="${v}">${l}</button>`).join("")}</div>
-      <div class="ng-search nr-q"><input type="search" id="newsQ" placeholder="Aktie suchen …" value="${esc(state.newsQ || "")}" autocomplete="off"><button type="button" class="search-x" data-clr="newsQ" aria-label="Eingabe löschen"${state.newsQ ? "" : " hidden"}>✕</button></div></div>`;
-    return head + (mine.size ? "" : `<p class="muted" style="margin:8px 2px">Lege Aktien in Merkliste, Depot oder Watchlist – dann siehst du hier ihre Meldungen.</p>`)
-      + (groups.length ? `${bar}<div class="nr-cap">${groups.length} deiner Aktien mit Meldungen (7 Tage) · Wichtiges zuerst · antippen für alle Meldungen
-          <details class="nr-why"><summary>Was heißt Rückenwind / Gegenwind?</summary>Kairo zählt drei Dinge zusammen: die Tendenz der Schlagzeilen der letzten 7 Tage (▲ +1, ▼ −1, höchstens ±2), das Analysten-Urteil (Kaufen +1, Verkaufen −1) und den Kurs heute (ab +2 % +1, ab −2 % −1). Ab +2 steht <b class="up">Rückenwind</b>, ab −2 <b class="down">Gegenwind</b>, dazwischen nichts. Das ist eine Stimmungs-Zusammenfassung – kein Kaufsignal und kein Teil der Kairo-Regel.</details></div>
+    const bar = tbar(`<div class="ng-search nr-q"><input type="search" id="newsQ" placeholder="Aktie suchen …" value="${esc(state.newsQ || "")}" autocomplete="off"><button type="button" class="search-x" data-clr="newsQ" aria-label="Eingabe löschen"${state.newsQ ? "" : " hidden"}>✕</button></div>
+      <label class="sp-dd nr-tone"><select data-newstonesel aria-label="Tendenz">${[["", "Alle Meldungen"], ["g", "▲ Positiv"], ["r", "▼ Negativ"]].map(([v, l]) => `<option value="${v}"${tf === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`);
+    return (groups.length ? "" : head) + (mine.size ? "" : `<p class="muted" style="margin:8px 2px">Lege Aktien in Merkliste, Depot oder Watchlist – dann siehst du hier ihre Meldungen.</p>`)
+      + (groups.length ? `${bar}${meta(`${groups.length} Aktien mit Meldungen · 7 Tage`, gl("wind"))}
         ${listHtml || `<div class="nr-list"><p class="muted" style="padding:14px;margin:0">Keine Meldung mit dieser Tendenz.</p></div>`}<p class="muted" id="newsQnone" hidden>Keine deiner Aktien passt zur Suche.</p>
         ${more ? `<button class="hlink" data-nrall style="margin:10px 4px 0">${state.newsAll ? "weniger zeigen" : `alle ${gRest.length} Aktien zeigen`}</button>` : ""}`
         : block("Deine Aktien", [], "Keine neuen Meldungen zu deinen Aktien."));
@@ -8866,8 +8889,8 @@ function etfTvHtml() {
   const v = ETF_TV.some(x => x[0] === state.etfVenue) ? state.etfVenue : "GETTEX";
   const src = "https://s.tradingview.com/widgetembed/?" + new URLSearchParams({ symbol: v + ":SPYI", interval: state.etfTvIv || "15", theme: isLight() ? "light" : "dark", style: "1",
     locale: "de_DE", timezone: "Europe/Berlin", hide_side_toolbar: "1", allow_symbol_change: "0", saveimage: "0", withdateranges: "1", studies: "[]" });
-  return `<div class="el-tv"><div class="el-tvbar"><button class="opt el-fs" data-etffs title="${ETF_FS ? "Verkleinern" : "Groß anzeigen"}">${ETF_FS ? "✕ Schließen" : "⤢ Groß"}</button><div class="sp-tg">${ETF_TV.map(([k, l]) => `<button class="opt${k === v ? " on" : ""}" data-etfvenue="${k}">${l}</button>`).join("")}</div>
-      <div class="sp-tg">${[["5", "5 Min"], ["15", "15 Min"], ["60", "1 Std"], ["D", "Tag"]].map(([k, l]) => `<button class="opt${(state.etfTvIv || "15") === k ? " on" : ""}" data-etftviv="${k}">${l}</button>`).join("")}</div></div>
+  return `<div class="el-tv"><div class="el-tvbar"><div class="sp-tg">${ETF_TV.map(([k, l]) => `<button class="opt${k === v ? " on" : ""}" data-etfvenue="${k}">${l}</button>`).join("")}</div>
+      <div class="sp-tg">${[["5", "5 Min"], ["15", "15 Min"], ["60", "1 Std"], ["D", "Tag"]].map(([k, l]) => `<button class="opt${(state.etfTvIv || "15") === k ? " on" : ""}" data-etftviv="${k}">${l}</button>`).join("")}</div><button class="nr-ic el-fs2" data-etffs aria-label="${ETF_FS ? "Verkleinern" : "Groß anzeigen"}" title="${ETF_FS ? "Verkleinern" : "Groß anzeigen"}">${ETF_FS ? "✕" : "⤢"}</button></div>
     <iframe src="${src}" loading="lazy" title="Live-Chart SPYI ${esc(v)}" allowtransparency="true" frameborder="0" scrolling="no"></iframe>
     <div class="el-s">Chart: <b>SPDR MSCI ACWI IMI (SPYI) · ISIN IE00B3YLTY66</b> an ${v === "GETTEX" ? "gettex" : v === "XETR" ? "Xetra (ca. 15 Min. verzögert)" : "Tradegate"} · TradingView nennt im Namen die Fondsgesellschaft „State Street“ (SPDR-Anbieter) – es ist dein ETF, nicht die State-Street-Aktie. Bleibt der Chart leer, oben eine andere Börse wählen.</div></div>`;
 }
@@ -8909,12 +8932,12 @@ function etfHtml() {
   const AMP = tlv ? ETF_AMP[tlv] : null, ddTxt = e ? (e.dd < .005 ? "am Hoch" : `−${pct(e.dd, 1)}`) : "";
   const tile = (l, v, sub) => `<div class="e2-f"><span>${l}</span><b>${v}</b>${sub ? `<small>${sub}</small>` : ""}</div>`;
   const hero = e ? `<div class="hcard etf-hero2"${AMP ? ` style="--amp:${AMP[1]}"` : ""}>
-      <div class="e2-top"><div class="e2-tt"><span class="eh-k">Einstiegs-Ampel für Extra-Geld · ${esc(e.name)}</span><b class="eh-t">${head}</b></div>${AMP ? `<span class="e2-badge"><i></i>${AMP[0]}</span>` : ""}</div>
+      <div class="e2-top"><div class="e2-tt"><span class="eh-k">Einstiegs-Ampel · ${esc(e.name)}</span><b class="eh-t">${head}</b></div></div>
       ${tm ? `<div class="e2-scale" role="img" aria-label="Ampel: ${AMP ? AMP[0] : ""}">${["g", "y", "r"].map(k => `<div class="e2-seg${tlv === k ? " on" : ""}" style="--c:${ETF_AMP[k][1]}"><u></u><span>${ETF_AMP[k][0]}</span></div>`).join("")}</div>` : ""}
       <p class="eh-do">${todo}</p>
-      <div class="e2-facts">${tile("Kurs", `${fmt(e.c)} €`, etfStale(e) ? `<span class="gold">vom ${dateDE(e.date)}</span>` : `Stand ${dateDE(e.date)}`)}${tile("Vom Hoch", ddTxt, "1-Jahres-Hoch")}${tm ? tile("EMA 100", fmt(tm.e100), e.c >= tm.e100 ? "Kurs darüber" : "Kurs darunter") + tile("EMA 200", fmt(tm.e200), e.c >= tm.e200 ? "Kurs darüber" : "Kurs darunter") : ""}</div>
+      <div class="e2-facts">${tile("Kurs", `${fmt(e.c)} €`, etfStale(e) ? `<span class="gold">vom ${dateDE(e.date)}</span>` : "Schlusskurs")}${tile("Vom Hoch", ddTxt, "1-Jahres-Hoch")}${tm ? [["EMA 100", tm.e100], ["EMA 200", tm.e200]].map(([l, v]) => tile(l, fmt(v), v ? `<span class="${e.c >= v ? "up" : "down"}">${sgnPct(e.c / v - 1, 1)}</span> ${e.c >= v ? "darüber" : "darunter"}` : "")).join("") : ""}</div>
       ${tm ? `<div class="e2-cols"><div><div class="e2-h">Warum</div><ul class="eh-why">${tm.why.map(([k, t]) => `<li class="${k}"><i></i>${esc(t)}</li>`).join("")}</ul></div>
-        ${S ? `<div><div class="e2-h">Rückblick · Ø 3 Monate danach</div><div class="e2-stats">${["g", "y", "r"].map(k => `<div class="e2-st${tlv === k ? " on" : ""}" style="--c:${ETF_AMP[k][1]}"><span><i></i>${ETF_AMP[k][0]}</span><b class="${S[k].f60 == null ? "" : S[k].f60 >= 0 ? "up" : "down"}">${S[k].f60 == null ? "–" : sgnPct(S[k].f60, 1)}</b><small>${pct(S[k].share, 0)} der Tage</small></div>`).join("")}</div><div class="e2-src">SPYI seit ${dateDE(tm.from)}</div></div>` : ""}</div>` : ""}
+        ${S ? `<div><div class="e2-h">Rückblick · Ø 3 Monate danach</div><div class="e2-stats">${["g", "y", "r"].map(k => `<div class="e2-st${tlv === k ? " on" : ""}" style="--c:${ETF_AMP[k][1]}"><span><i></i>${ETF_AMP[k][0]}</span><b class="${S[k].f60 == null ? "" : S[k].f60 >= 0 ? "up" : "down"}">${S[k].f60 == null ? "–" : sgnPct(S[k].f60, 1)}</b><small>${pct(S[k].share, 0)} der Tage</small></div>`).join("")}</div><div class="e2-src">SPYI seit ${dateDE(tm.from)}${(Date.now() - Date.parse(tm.from)) / 31557600000 < 3 ? " · kurze Historie, Werte schwanken noch" : ""}</div></div>` : ""}</div>` : ""}
         ${(lb => lb ? `<div class="eh-last${c.rate && daysUntil(lb.date) < -40 ? " gold" : ""}">Letzter SPYI-Kauf: <b>${dateDE(lb.date)}</b>${lb.plan ? " (Sparplan)" : ""}${c.rate && daysUntil(lb.date) < -40 ? " – seit über 40 Tagen kein Kauf: Sparplan bei Scalable prüfen" : ""} <small class="muted">· aus deinem Scalable-Export</small></div>` : c.rate ? `<div class="eh-last muted">Ob dein Sparplan läuft, sieht Kairo nach dem nächsten Scalable-Export (Depot → Import).</div>` : "")(etfLastBuy())}</div>
     ${c.units && c.buy ? etfDevHtml(e, c) : ""}${etfLiveHtml(c)}<div class="hcard">${hHead("Kurs der letzten 3 Jahre · mit 200-Tage-Linie")}${etfLine(e.hist, c.buy)}
       <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ${IC.warn} Kurs ist ${e.age} Tage alt` : ""}. Gelegentlich mit Scalable vergleichen.</div></div>
@@ -9436,8 +9459,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.200";
-const APP_NEWS = [["2026.11.200", "Chart-Leiste neu: das Wichtigste auf einen Blick", [
+const APP_VER = "2026.11.201";
+const APP_NEWS = [["2026.11.201", "Ruhigere Kopfbereiche in News, Scanner und ETF", [
+  ["News", "Eine Leiste statt vier Zeilen: Meine Aktien / Markt, Suche, Tendenz als Auswahl und ↻. Darunter eine leise Infozeile; Rückenwind/Gegenwind erklärt das ⓘ."],
+  ["Scanner", "Region als Auswahl statt fünf Knöpfen, Filter mit Zähler, Spalten und ↻ rechts. Die Erklärung der Ansicht und der Status steckt im ⓘ neben der Anzahl."],
+  ["ETF", "Doppelte Status-Pille und doppeltes Datum entfernt, EMA-Kacheln zeigen den Abstand in %, Rückblick mit Hinweis auf die kurze Historie, Vollbild als Symbol."]]],
+ ["2026.11.200", "Chart-Leiste neu: das Wichtigste auf einen Blick", [
   ["Überblick oben", "Kairo-Urteil (z. B. 10/11) mit Satz, was fehlt, der Trade-Plan als Raster (Kauf, Stop, Ziel, Chance/Risiko), Quartalszahlen-Hinweis und die Knöpfe Einstieg planen und TradingView."],
   ["Alles Weitere eingeklappt", "Kriterien, Heute, Chart-Kontext, Quartalszahlen, Smart Money, Fundamental, frühere Signale, Firmenmeldungen und Linien als ruhige Zeilen mit Kennzahl rechts – ein Tipp klappt auf, Kairo merkt sich die Wahl."],
   ["Nachrichten-Punkte entfernt", "Die N-Punkte im Chart sind wieder weg; der Grund einer Bewegung steht unter „Heute“ in der Leiste."]]],
@@ -11673,17 +11700,16 @@ function renderMain() {
   const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector", "ins"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
   const vseg = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v && !state.scrOn ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${v === "watch" ? watchCount() : data.results.filter(f).length}</small></button>`).join("")}<button class="${state.scrOn ? "on" : ""}" data-scron role="tab">Screener<small>${searchIdx ? fmt(searchIdx.length, 0) : "alle"}</small></button></div>`;
   if (state.scrOn) { $("main").innerHTML = searchHtml() + scanBarHtml() + vseg + screenerHtml(); return; }
+  const nMore = nFilt - (state.region ? 1 : 0);
   const bar = `${vseg}
-    ${cur ? `<div class="vdesc">${esc(cur[4])}</div>` : ""}
-    ${state.view === "hit" ? (l => `<details class="st-legend-d"><summary>Was bedeuten die Status?</summary>${l}</details>`)(`<div class="st-legend"><span><b class="up">kaufbereit</b> – Kauf zur nächsten Eröffnung</span><span><b>Konsolidierung x/10</b> – wartet auf 5 ruhige Tage</span><span><b>verfallen</b> – keine Konsolidierung in 10 Tagen</span><span><b>im Depot</b> – läuft schon</span></div>`) : ""}
     ${state.view === "mine" ? wlBarHtml() : ""}
-    ${state.view === "watch" ? `<div class="wmin" role="group" aria-label="Mindestens erfüllte Kriterien">${[9, 8, 7].map(n => `<button class="kchip${watchMin() === n ? " on" : ""}" data-wmin="${n}" aria-pressed="${watchMin() === n}">ab ${n}/11</button>`).join("")}</div>` : ""}
-    <div class="kbar">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
-      ${[["", "Alle"], ["tested", "USA + Europa"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<button class="kchip${String(state.region || "") === v ? " on" : ""}" data-qregion="${v}"${v === "tested" ? ' title="Hier ist die Kairo-Regel getestet (2008–2026)"' : ""}>${l}</button>`).join("")}
-      <button class="kchip filt" data-sub="filter">Weitere Filter${nFilt - (state.region ? 1 : 0) > 0 ? ` <small>${nFilt - (state.region ? 1 : 0)}</small>` : ""}</button><button class="kchip spalten" data-sub="filter" data-cols="1">Spalten</button>${scanMenuHtml()}</div>`;
+    <div class="sc-tb">${(state.presets || []).map((p, i) => `<button class="kchip pre${presetActive(p) ? " on" : ""}" data-preset="${i}">${esc(p.name)}</button>`).join("")}
+      <label class="sp-dd"><span>Region</span><select data-qregionsel>${[["", "Alle"], ["tested", "USA + Europa"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<option value="${v}"${String(state.region || "") === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+      ${state.view === "watch" ? `<label class="sp-dd"><span>Erfüllt</span><select data-wminsel>${[9, 8, 7].map(n => `<option value="${n}"${watchMin() === n ? " selected" : ""}>ab ${n}/11</option>`).join("")}</select></label>` : ""}
+      <!--SCCNT--><span class="sc-tb-r"><button class="sc-btn${nMore > 0 ? " on" : ""}" data-sub="filter">Filter${nMore > 0 ? ` <small>${nMore}</small>` : ""}</button><button class="sc-btn spalten" data-sub="filter" data-cols="1">Spalten</button>${scanMenuHtml()}</span></div>`;
   const extra = k.has("fav") ? favExtraHtml() : "";
-  const head = searchHtml() + scanBarHtml() + bar + `<div class="section-title"><span>${cur ? cur[1] : [...k].map(x => ({ fav: "Merkliste", h4: "Einstiege", hit: "Treffer", soft: "MBI gelockert", fast: "Fast-Treffer", near: "9/11", trend: "Trend-Rücksetzer", watch: "Watchlist" })[x]).join(" + ") || "–"}</span><span>${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}${(n => { if (!n) return ""; const at = Math.max(...Object.values(LIVE.map).map(v => v.at || 0)), m = at ? Math.max(0, Math.round((Date.now() - at) / 6e4)) : null;
-      return ` · <span class="up">● ${n} live${m != null ? `, vor ${m < 1 ? "<1" : m} Min.` : ""}</span>`; })(list.filter(r => r.live).length)}</span></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner Vorteil je Trade (${resR(RESEARCH.rNorm)} mit normalen, ${resR(RESEARCH.rStress)} mit Stress-Kosten, kaum besser als Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
+  const head = searchHtml() + scanBarHtml() + bar.replace("<!--SCCNT-->", `<span class="sc-cnt"><span class="sc-n">${list.length} ${list.length === 1 ? "Aktie" : "Aktien"}${(n => { if (!n) return ""; const at = Math.max(...Object.values(LIVE.map).map(v => v.at || 0)), m = at ? Math.max(0, Math.round((Date.now() - at) / 6e4)) : null;
+      return ` · <span class="up">● ${n} live${m != null ? `, vor ${m < 1 ? "<1" : m} Min.` : ""}</span>`; })(list.filter(r => r.live).length)}</span>${cur ? gl("v_" + cur[0]) : ""}</span>`) + `<div class="sc-anchor"></div>` + (state.statusSeen === 2 ? "" : `<div class="note" style="margin:0 2px 10px">Kleiner Vorteil je Trade (${resR(RESEARCH.rNorm)} mit normalen, ${resR(RESEARCH.rStress)} mit Stress-Kosten, kaum besser als Zufall) – Details in der <a href="#" data-gosec="bilanz">Bilanz</a>. Keine Anlageberatung. <a href="#" data-statusok>Ausblenden</a></div>`);
   if (!list.length && $("search").value.trim().length >= 2) { $("main").innerHTML = searchHtml() + bar; return; }
   if (!list.length) {
     $("main").innerHTML = head + (extra || `<div class="empty">${!k.size ? "Wähle oben Merkliste, Treffer, Fast-Treffer oder Watchlist." : k.has("h4") ? "Gerade kein Treffer mit fertiger Konsolidierung – die 4H-Prüfung beginnt, sobald eine da ist. Wo die Treffer stehen, siehst du unter „Treffer“ in der Status-Spalte." : k.has("fav") && !data.results.some(r => r.in_watchlist) ? "Deine Merkliste ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – in der Tabelle, in der Übersicht oder in der Suche." : `Keine Aktie mit dieser Auswahl${nFilt ? " und diesen Filtern" : ""}.`}</div>`);
@@ -11713,7 +11739,7 @@ function renderMain() {
     <tbody id="scTb">${rows.slice(0, SC_FIRST).map(trOf).join("")}</tbody></table></div>` + (isApple() || !(mv === "list" && innerWidth <= 700) ? "" : mListHtml(rows, col)) + more + extra;   // Liste nur bauen, wenn sie zu sehen ist (spart die Hälfte der Elemente)
   if (isApple()) {
     const tools = `<div class="atools"><div class="aseg"><button data-aview="list" class="${state.aView !== "table" ? "on" : ""}">Liste</button><button data-aview="table" class="${state.aView === "table" ? "on" : ""}">Tabelle</button></div>${aSortHtml(col)}</div>`;
-    if (state.aView === "table") { const st = $("main").querySelector(".section-title"); if (st) st.insertAdjacentHTML("afterend", tools); }
+    if (state.aView === "table") { const st = $("main").querySelector(".sc-anchor, .section-title"); if (st) st.insertAdjacentHTML("afterend", tools); }
     else { $("main").innerHTML = head + tools + aListHtml(rows) + more + extra; observeSparks(); }
   }
 }
@@ -11725,6 +11751,7 @@ const COLS_HID0 = ["exchange", "dd", "zone", "vola", "rsi", "div", "macd", "mbi"
 let scanAll = false;
 document.addEventListener("click", e => { if (e.target.closest("[data-cols]")) setTimeout(() => { const c = $("colOpts"); if (c) c.scrollIntoView({ block: "center", behavior: "smooth" }); }, 250); });
 document.addEventListener("click", e => { if (!e.target.closest("[data-qins]")) return; state.ins = state.ins ? "" : "buy"; scanAll = false; save(); render(); });
+document.addEventListener("change", e => { const q = e.target.closest("[data-qregionsel]"); if (q) { state.region = q.value; scanAll = false; save(); render(); return; } const w = e.target.closest("[data-wminsel]"); if (w) { state.watchMin = +w.value; scanAll = false; save(); render(); } });
 document.addEventListener("click", e => { const q = e.target.closest("[data-qregion]"); if (!q) return; state.region = q.dataset.qregion; scanAll = false; save(); render(); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-mview]"); if (!b) return; const ch = state.mView !== b.dataset.mview; state.mView = b.dataset.mview; save(); render(); if (ch) subIn(); });
 document.addEventListener("click", e => { if (e.target.closest("[data-scanall]")) { scanAll = true; render(); } else if (e.target.closest("[data-view]")) scanAll = false; });
