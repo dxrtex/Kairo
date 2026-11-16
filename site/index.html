@@ -2780,6 +2780,9 @@ body.etf-fs { overflow: hidden; }
 .cx-r > div { display: flex; align-items: baseline; gap: 8px; font-size: 13px; } .cx-r i { width: 8px; height: 8px; border-radius: 2px; flex: none; align-self: center; }
 .cx-r span { flex: 1; min-width: 0; color: var(--text); } .cx-r b { font-variant-numeric: tabular-nums; white-space: nowrap; } .cx-r em { font-style: normal; font-size: 12px; min-width: 48px; text-align: right; white-space: nowrap; }
 .cx-r small { display: block; margin: 2px 0 0 16px; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+.kc-earn { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0 4px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+.kc-earn i { font-style: normal; flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; background: var(--accent-bg); color: var(--accent); }
+.kc-earn b { display: block; font-size: 13px; } .kc-earn small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
 </style>
 </head>
 <body>
@@ -9384,12 +9387,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.196";
-const APP_NEWS = [["2026.11.196", "Eine Kairo-Karte, klarer Chart-Kontext", [
+const APP_VER = "2026.11.197";
+const APP_NEWS = [["2026.11.197", "Quartalszahlen in der Kairo-Karte", ["Stehen Quartalszahlen in den nächsten 10 Tagen an, zeigt die Kairo-Karte das jetzt als eigene Zeile – mit dem Ergebnis von Kairos Test: Kurslücke möglich, aber kein Grund, den Einstieg zu verschieben.", "Die Bezeichnung „KI-Analyse“ ist weg: Es ist Regelrechnung, keine KI – die Karte heißt „Chart-Kontext“."]],
+  ["2026.11.196", "Eine Kairo-Karte, klarer Chart-Kontext", [
   ["Kairo-Karte", "Status, alle 11 Kairo-Kriterien und der Hinweis zum Abwärtstrend stehen jetzt in einer Karte ganz oben – statt Status, Kriterien-Liste und KI-Urteil an drei Stellen. Auch Aktien außerhalb des Scans bekommen alle 11 Kriterien samt Plan (Kauf, Stop, Ziel, Chance/Risiko), berechnet wie im Scan."],
-  ["Chart-Kontext", "Die frühere KI-Karte zeigt nur noch, was der Chart zusätzlich verrät: nächster Widerstand und nächste Unterstützung, Konfluenz und ob der Kairo-Stop durch eine Zone geschützt ist. Trend-Wert und Chartmuster stehen eingeklappt unter „Klassische Signale“."]]],
-  ["2026.11.195", "KI-Analyse denkt jetzt wie Kairo", [
-  ["Kairo-Sicht", "Die KI-Chartanalyse liest einen Rücksetzer jetzt mit Kairos eigener Regel statt wie ein Trendfolger: Rücksetzer ≥ 12 %, Kaufzone erreicht, Wende-Signale (Abflachung, RSI-Divergenz, RSI 28–48, MACD unter 0 und dreht, MBI) – bei Scan-Aktien exakt die Scan-Werte, sonst dieselbe Rechnung aus dem Chart."],
+  ["Chart-Kontext", "Die frühere Analyse-Karte zeigt nur noch, was der Chart zusätzlich verrät: nächster Widerstand und nächste Unterstützung, Konfluenz und ob der Kairo-Stop durch eine Zone geschützt ist. Trend-Wert und Chartmuster stehen eingeklappt unter „Klassische Signale“."]]],
+  ["2026.11.195", "Chartanalyse denkt jetzt wie Kairo", [
+  ["Kairo-Sicht", "Die Chartanalyse liest einen Rücksetzer jetzt mit Kairos eigener Regel statt wie ein Trendfolger: Rücksetzer ≥ 12 %, Kaufzone erreicht, Wende-Signale (Abflachung, RSI-Divergenz, RSI 28–48, MACD unter 0 und dreht, MBI) – bei Scan-Aktien exakt die Scan-Werte, sonst dieselbe Rechnung aus dem Chart."],
   ["Kein falsches Rot mehr", "Ein Kairo-Treffer wie GOOGL (11/11) stand bisher als „Stark bärisch −74“ da. Jetzt steht oben das Kairo-Urteil; der Trend-Wert bleibt als kleine Zeile mit der Einordnung, dass ein Abwärtstrend für Kairo Voraussetzung ist."],
   ["Plan statt Szenario", "In der Kairo-Lage zeigt die Karte den Kairo-Plan (Kauf, Ziele, Stop, Chance/Risiko) und was unter dem Stop passiert – statt eines allgemeinen Bärisch-Szenarios."]]],
   ["2026.11.193", "Warum bewegt sich die Aktie? · Börsengänge", [
@@ -13366,9 +13370,12 @@ function kairoCardHtml(h, r, k, hn) {
   const cnt = KV && !/\d+\/\d+/.test(lbl) ? `<b class="kc-n">${KV.met}/${KV.tot}</b>` : "";
   const H = r.ext ? { title: KV ? "Nicht im Kairo-Scan – aus dem Chart geprüft" : hn.title, text: KV ? kairoViewText(KV).replace(/^Kairo-Sicht: /, "") : hn.text } : hn;
   const P = r.ext && KV && KV.plan && KV.plan.stop ? KV.plan : null;
+  // Quartalszahlen in den nächsten 10 Tagen: eigene Zeile (Kairo-Test 28.10.2026: Kauf kurz vor Zahlen nicht schlechter – nur Kurslücke möglich)
+  const ed = (KV && KV.row && KV.row.earnings_date) || ((calData || []).find(e => e.kind === "earnings" && e.ticker === r.ticker && daysUntil(e.date) >= 0) || {}).date, dn = ed ? daysUntil(String(ed).slice(0, 10)) : null;
+  const earn = dn != null && dn >= 0 && dn <= 10 ? `<div class="kc-earn"><i>Q</i><span><b>Quartalszahlen ${dn === 0 ? "heute" : dn === 1 ? "morgen" : `in ${dn} Tagen`} · ${dateDE(String(ed).slice(0, 10))}</b><small>Kurslücke möglich – laut Kairo-Test kein Grund, den Einstieg zu verschieben.</small></span></div>` : "";
   return `<div class="cf-s kc"><div class="cf-h">Kairo <span class="st ${cls}">${esc(lbl)}</span>${cnt}</div>
     ${H.title ? `<p class="cf-t cf-t2"><b>${esc(H.title)}</b><span>${esc(String(H.text || ""))}</span></p>` : ""}
-    ${chips ? `<div class="kv-cs kc-cs">${chips}</div>` : ""}
+    ${chips ? `<div class="kv-cs kc-cs">${chips}</div>` : ""}${earn}
     ${KV && KV.ctx ? `<small class="kv-note">Der Abwärtstrend gehört zum Kairo-Setup – entscheidend sind Kaufzone und Wende-Signale${chart ? "" : " (Werte aus dem Abendscan)"}.</small>` : ""}
     ${P ? `<div class="cf-r"><span>Kauf über</span><b>${fmt(P.buy_stop)}</b></div><div class="cf-r"><span>Stop</span><b>${fmt(P.stop)}</b><em class="down">${sgnPct(P.stop / P.entry - 1, 1)}</em></div>
       <div class="cf-r"><span>Ziel (Swing-Hoch)</span><b>${fmt(P.target2)}</b><em class="up">${sgnPct(P.target2 / P.entry - 1, 1)}</em></div><div class="cf-r"><span>Chance/Risiko</span><b class="${P.crv >= 2 ? "up" : "down"}">${fmt(P.crv, 1)} : 1</b></div>` : ""}</div>`;
