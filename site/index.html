@@ -2773,6 +2773,13 @@ body.etf-fs { overflow: hidden; }
 .kv-r, .kv-tr { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; font-size: 12.5px; padding: 4px 0; } .kv-r span, .kv-tr span { color: var(--muted); }
 .kv-r small { color: var(--muted); font-weight: 500; } .kv-tr { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 8px; }
 .kv-note { display: block; font-size: 11.5px; color: var(--muted); line-height: 1.4; margin: 2px 0 10px; } .kv-none { font-size: 12px; color: var(--muted); margin: -2px 0 10px; line-height: 1.4; }
+.kc .cf-h { display: flex; align-items: center; gap: 8px; } .kc .cf-h .st { margin: 0; } .kc-n { margin-left: auto; font-size: 13px; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; color: var(--text); }
+.kc-cs { margin: 10px 0 4px; } .kv-c.bonus { background: rgba(10,132,255,.14); color: var(--accent); }
+.kc .cf-h .st { text-transform: none; letter-spacing: 0; font-size: 12px; }
+.cx-r { padding: 7px 0; border-top: 1px solid var(--line); } .cx-r:first-of-type { border-top: 0; }
+.cx-r > div { display: flex; align-items: baseline; gap: 8px; font-size: 13px; } .cx-r i { width: 8px; height: 8px; border-radius: 2px; flex: none; align-self: center; }
+.cx-r span { flex: 1; min-width: 0; color: var(--text); } .cx-r b { font-variant-numeric: tabular-nums; white-space: nowrap; } .cx-r em { font-style: normal; font-size: 12px; min-width: 48px; text-align: right; white-space: nowrap; }
+.cx-r small { display: block; margin: 2px 0 0 16px; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
 </style>
 </head>
 <body>
@@ -9377,8 +9384,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.195";
-const APP_NEWS = [["2026.11.195", "KI-Analyse denkt jetzt wie Kairo", [
+const APP_VER = "2026.11.196";
+const APP_NEWS = [["2026.11.196", "Eine Kairo-Karte, klarer Chart-Kontext", [
+  ["Kairo-Karte", "Status, alle 11 Kairo-Kriterien und der Hinweis zum Abwärtstrend stehen jetzt in einer Karte ganz oben – statt Status, Kriterien-Liste und KI-Urteil an drei Stellen. Auch Aktien außerhalb des Scans bekommen alle 11 Kriterien samt Plan (Kauf, Stop, Ziel, Chance/Risiko), berechnet wie im Scan."],
+  ["Chart-Kontext", "Die frühere KI-Karte zeigt nur noch, was der Chart zusätzlich verrät: nächster Widerstand und nächste Unterstützung, Konfluenz und ob der Kairo-Stop durch eine Zone geschützt ist. Trend-Wert und Chartmuster stehen eingeklappt unter „Klassische Signale“."]]],
+  ["2026.11.195", "KI-Analyse denkt jetzt wie Kairo", [
   ["Kairo-Sicht", "Die KI-Chartanalyse liest einen Rücksetzer jetzt mit Kairos eigener Regel statt wie ein Trendfolger: Rücksetzer ≥ 12 %, Kaufzone erreicht, Wende-Signale (Abflachung, RSI-Divergenz, RSI 28–48, MACD unter 0 und dreht, MBI) – bei Scan-Aktien exakt die Scan-Werte, sonst dieselbe Rechnung aus dem Chart."],
   ["Kein falsches Rot mehr", "Ein Kairo-Treffer wie GOOGL (11/11) stand bisher als „Stark bärisch −74“ da. Jetzt steht oben das Kairo-Urteil; der Trend-Wert bleibt als kleine Zeile mit der Einordnung, dass ein Abwärtstrend für Kairo Voraussetzung ist."],
   ["Plan statt Szenario", "In der Kairo-Lage zeigt die Karte den Kairo-Plan (Kauf, Ziele, Stop, Chance/Risiko) und was unter dem Stop passiert – statt eines allgemeinen Bärisch-Szenarios."]]],
@@ -13073,7 +13083,7 @@ function kairoCritChart(c) {
   // Zone A: Fibonacci vom tiefsten Pivot-Low (120 T. vor H) zum Swing-High
   let za = null; if (Hi != null) { const lb = pl.filter(i => Hi - 120 <= i && i < Hi); if (lb.length) { const Li = lb.reduce((a, b) => L[b] < L[a] ? b : a); const Lv = L[Li], imp = (Hv - Lv) / Lv, lvl = x => Hv - x * (Hv - Lv);
       const rl = Math.min(...L.slice(n - 3)), inZ = (a, b) => (lvl(b) <= close && close <= lvl(a)) || (lvl(b) <= rl && rl <= lvl(a));
-      za = { ok: imp >= .15 && inZ(.706, .79) && close >= lvl(.886), band: [lvl(.886), lvl(.706)], retr: (Hv - Math.min(close, rl)) / (Hv - Lv) }; } }
+      za = { ok: imp >= .15 && inZ(.706, .79) && close >= lvl(.886), band: [lvl(.886), lvl(.706)], retr: (Hv - Math.min(close, rl)) / (Hv - Lv), L: Lv, l886: lvl(.886), l382: lvl(.382) }; } }
   // Zone B: Mehrfachboden – Cluster früherer Pivots (± 3 %, ≥ 2 Berührungen, ältester ≥ 15 T., Kurs −5 … +3 %)
   let zb = null; { const st = Math.max(0, n - 250), pts = [...pl.filter(i => i >= st && i <= n - 6).map(i => [i, L[i]]), ...ph.filter(i => i >= st && i <= n - 6).map(i => [i, H[i]])]; let best = null;
     pts.forEach(([, p]) => { const m = pts.filter(([, x]) => Math.abs(x / p - 1) <= .03); if (m.length < 2 || n - 1 - Math.min(...m.map(q => q[0])) < 15) return;
@@ -13106,6 +13116,14 @@ function kairoCritChart(c) {
       const pk = c.mbi_lo[ix - 1] || 0, above = pk > (c.mbi_ref[ix - 1] || 0), fading = (c.mbi_lo[n - 1] || 0) <= .7 * pk || (c.mbi_up[n - 1] || 0) > (c.mbi_lo[n - 1] || 0);
       const newPk = Math.max(...c.mbi_lo.slice(ix).map(v => v || 0)) > pk; if (above && fading && !newPk) { xo = true; break; } }
     ok.mbi = xo; }
+  // Trade-Plan und Chance/Risiko (scanner.py 3.): Stop unter 0,886 (bzw. 1 % unter L, wenn zu nah) oder 2 % unter dem Mehrfachboden, mind. 1 ATR
+  const stops = []; if (za && za.ok) stops.push(close - za.l886 < 1.5 * a14 ? za.L * .99 : za.l886); if (zb) stops.push(zb.band[0] * .98);
+  if (stops.length && Hv) { const stop = Math.min(Math.min(...stops), close - a14), t1c = [e50 && e50[n - 1], za ? za.l382 : null].filter(x => x && x > close);
+    info.plan = { entry: close, buy_stop: Math.max(...H.slice(n - 3)), stop, target1: t1c.length ? Math.min(...t1c) : null, target2: Hv, crv: close > stop ? (Hv - close) / (close - stop) : null }; }
+  ok.crv = !!(info.plan && info.plan.crv != null && info.plan.crv >= 2);
+  // Volumen-Climax (Bonus): höchstes 20-T.-Volumen mit langer unterer Lunte in der Zone
+  const V = c.v || []; if (V.length === n && bands.length) { let j = n - 20; for (let i = n - 20; i < n; i++) if ((V[i] || 0) > (V[j] || 0)) j = i;
+    const rj = H[j] - L[j]; info.climax = rj > 0 && Math.min(O[j], C[j]) - L[j] >= .5 * rj && bands.some(([lo, hi]) => lo * .99 <= L[j] && L[j] <= hi * 1.01); }
   return { ok, info };
 }
 function kairoView(t, c, A) {
@@ -13118,7 +13136,7 @@ function kairoView(t, c, A) {
     const z = row.zone || {}; dd = row.drawdown != null ? -Math.abs(row.drawdown) : null; hiD = z.H_date || null;
     if (dd == null && z.H) dd = last / z.H - 1;
   } else if (daily) {                                                     // gleiche Rechnung wie der Scan, aus dem Chart
-    const K2 = kairoCritChart(c); Object.assign(ok, K2.ok); dd = K2.info.dd; hiD = K2.info.hiD; var brokenC = K2.info.broken;
+    const K2 = kairoCritChart(c); Object.assign(ok, K2.ok); dd = K2.info.dd; hiD = K2.info.hiD; var brokenC = K2.info.broken, planC = K2.info.plan || null, climaxC = !!K2.info.climax;
   } else return null;
   const pull = ["drawdown", "no_crash", "structure", "zone"], turn = KV_TURN.filter(([k]) => k in ok), turnOk = turn.filter(([k]) => ok[k]);
   const met = src === "scan" ? row.met : Object.values(ok).filter(Boolean).length, tot = src === "scan" ? row.total || 11 : Object.keys(ok).length;
@@ -13130,7 +13148,8 @@ function kairoView(t, c, A) {
     : broken ? { k: "broken", cls: "down", l: "Unter die Zone gefallen" }
     : !ok.zone ? { k: "fall", cls: "gold", l: "Fällt Richtung Zone" }
     : { k: "zone", cls: "gold", l: turnOk.length >= turn.length - 1 ? "Wende fast komplett" : "In der Zone – Wende offen" };
-  return { src, ok, dd, hiD, met, tot, turn, turnOk, ph, st, row, ctx: !!ok.drawdown, climax: !!(row && row.flags && row.flags.volume_climax), daily };
+  const plan = src === "scan" ? row.plan || null : planC;
+  return { src, ok, dd, hiD, met, tot, turn, turnOk, ph, st, row, plan, ctx: !!ok.drawdown, climax: src === "scan" ? !!(row.flags && row.flags.volume_climax) : climaxC, daily };
 }
 function kairoViewText(KV) {
   if (!KV) return "";
@@ -13144,16 +13163,6 @@ function kairoViewText(KV) {
   if (KV.ph.k === "hit") return `Kairo-Sicht: Kairo-Treffer – alle Kriterien erfüllt, ${dd}. ${KV.st ? KV.st.s.charAt(0).toUpperCase() + KV.st.s.slice(1) + "." : ""} Der Abwärtstrend gehört hier zum Setup und ist kein Warnsignal.${sell}`;
   if (KV.ph.k === "fall") return `Kairo-Sicht: Rücksetzer ${dd}, aber noch nicht in der Kaufzone – abwarten, bis der Kurs eine Unterstützung erreicht.${sell}`;
   return `Kairo-Sicht: Rücksetzer ${dd} in die Kaufzone – genau die Lage, die Kairo sucht. Wende-Signale ${KV.turnOk.length} von ${KV.turn.length}: ${sig}.${sell} Der Abwärtstrend ist hier Voraussetzung, kein Warnsignal; entscheidend ist, ob der Verkaufsdruck ausläuft.`;
-}
-function kairoViewHtml(KV) {
-  if (!KV) return "";
-  const chip = (on, l) => `<span class="kv-c${on ? " on" : ""}">${on ? "✓" : "○"} ${esc(l)}</span>`, yes = (on, a, b) => `<b class="${on ? "up" : "muted"}">${on ? "✓ " + a : b}</b>`;
-  return `<div class="kv-top"><div class="kv-g ${KV.ph.cls}"><b>${KV.met}/${KV.tot}</b><span>${esc(KV.ph.l)}</span></div>
-    <div class="kv-m"><div class="kv-h">Kairo-Sicht <small>${KV.src === "scan" ? "aus dem Scan" : "aus dem Chart"}</small></div>
-      <div class="kv-r"><span>Rücksetzer</span>${yes(KV.ok.drawdown, KV.dd != null ? sgnPct(KV.dd, 0) : "ja", KV.dd != null ? sgnPct(KV.dd, 0) + " (ab −12 %)" : "nein")}</div>
-      <div class="kv-r"><span>Kaufzone</span>${yes(KV.ok.zone, "erreicht", KV.ph.k === "broken" ? "unterschritten" : "noch nicht")}</div>
-      <div class="kv-r"><span>Wende-Signale</span><b class="${KV.turnOk.length >= KV.turn.length - 1 ? "up" : KV.turnOk.length >= 3 ? "gold" : "muted"}">${KV.turnOk.length} von ${KV.turn.length}</b></div></div></div>
-    <div class="kv-cs">${KV.turn.map(([k, l]) => chip(KV.ok[k], l)).join("")}${KV.climax ? chip(true, "Volumen-Climax") : ""}</div>`;
 }
 function autoCardHtml(h) {
   const c = window.__lastChart && window.__lastChart.c, A = h.A || (h.A = c ? autoTA(c) : null); if (!A) return "";
@@ -13172,30 +13181,25 @@ function autoCardHtml(h) {
       <div class="ki-sr"><span>Auslöser</span><b>${up ? "über" : "unter"} ${fmt(S.trig)}</b></div><div class="ki-sr"><span>Ziel</span><b>${fmt(S.tgt)} <small>${sgnPct(S.tgt / last - 1, 1)}</small></b></div>
       <div class="ki-sr"><span>${up ? "Ungültig unter" : "Entschärft über"}</span><b>${fmt(S.inv)}</b></div><div class="ki-sr"><span>Chance/Risiko</span><b class="${S.rr >= 2 ? "up" : S.rr < 1 ? "down" : ""}">${fmt(S.rr, 1)} : 1</b></div><small>${esc(S.why)}</small></div>` : "";
   const mtf = [...T.rows, ...(A.mon != null ? [["Monatschart (EMA 10)", A.mon]] : [])];
-  // Kairo-Sicht (16.11.2026): in einer Rücksetzer-Lage zählt Kairos Regel, nicht die Trendfolger-Brille
+  // Chart-Kontext (16.11.2026): Kairo-Urteil steht in der Kairo-Karte oben – hier nur, was der Chart zusätzlich zeigt:
+  // nächste Zonen, Konfluenz und ob der Kairo-Stop durch eine Unterstützung geschützt ist. Trend & Muster eingeklappt.
   const L0 = window.__lastChart || {}, dC = c.intra || (c.tf && c.tf !== "D") ? L0.d || null : c;
-  const KV = h.r ? kairoView(h.r.ticker, dC || c, dC === c ? A : null) : null, ctx = !!(KV && KV.ctx);
-  const plan = ctx && KV.row && KV.row.plan && KV.row.plan.stop ? KV.row.plan : null;
-  // In der Kairo-Lage nur Kairo-Einordnung + Lage zu Unterstützung/Widerstand – Trend, Muster und Plan stehen schon in Kasten und Karten
-  const txt = ctx ? [kairoViewText(KV), ...(A.text || []).filter(x => /^(Der Kurs|Nächste)/.test(x))] : (A.text || []).slice();
-  const zB = plan ? (A.zones || []).filter(z => z.hi < plan.stop).sort((a, b) => b.hi - a.hi)[0] : null;
-  const stopCard = plan ? `<div class="ki-s bear"><div class="ki-sh">▼ Unter dem Kairo-Stop</div>
-      <div class="ki-sr"><span>Stop</span><b>unter ${fmt(plan.stop)}</b></div><div class="ki-sr"><span>Abstand</span><b>${sgnPct(plan.stop / last - 1, 1)}</b></div>
-      ${zB ? `<div class="ki-sr"><span>Nächste Unterstützung</span><b>${fmt(zB.lo)}–${fmt(zB.hi)}</b></div>` : ""}<small>Dann ist das Setup ungültig – Kairo verkauft am Stop, kein Nachkaufen.</small></div>` : "";
-  const planCard = plan ? `<div class="ki-s bull"><div class="ki-sh">▲ Kairo-Plan</div>
-      <div class="ki-sr"><span>Kauf</span><b>${plan.buy_stop ? `über ${fmt(plan.buy_stop)}` : fmt(plan.entry)}</b></div><div class="ki-sr"><span>Ziel 1 · Ziel 2</span><b>${fmt(plan.target1)} · ${fmt(plan.target2)}</b></div>
-      <div class="ki-sr"><span>Stop</span><b>${fmt(plan.stop)} <small>${sgnPct(plan.stop / last - 1, 1)}</small></b></div><div class="ki-sr"><span>Chance/Risiko</span><b class="${plan.crv >= 2 ? "up" : "down"}">${fmt(plan.crv, 1)} : 1</b></div>
-      <small>${KV.row.passed ? esc(KV.st ? KV.st.s : "Kairo-Treffer") : "Plan gilt erst, wenn alle Kriterien erfüllt sind"}</small></div>` : "";
-  const trendLine = K ? `<div class="kv-tr"><span>Trendfolger-Sicht</span><b class="${K.cls}">${K.score > 0 ? "+" : ""}${K.score} · ${K.lbl}</b></div>
-      ${K.score <= -20 ? `<small class="kv-note">Für einen Kairo-Rücksetzer normal: Kairo kauft gegen den kurzfristigen Abwärtstrend, wenn Kaufzone und Wende-Signale passen. Rot heißt hier nicht „nicht kaufen“.</small>` : ""}` : "";
-  return `<div class="cf-s au ki"><div class="cf-h">KI-Chartanalyse <button class="au-tg${clGet("auto") ? " on" : ""}" data-cl="auto" aria-pressed="${clGet("auto") ? "true" : "false"}">${clGet("auto") ? "im Chart ✓" : "im Chart zeigen"}</button></div>
-    ${ctx ? kairoViewHtml(KV) + trendLine : `${K ? `<div class="ki-top"><div class="ki-g ${K.cls}"><b>${K.score > 0 ? "+" : ""}${K.score}</b><span>${K.lbl}</span></div>
-      <div class="ki-m"><div class="ki-bar"><i style="left:${(K.score + 100) / 2}%"></i></div><div class="ki-bl"><span>bärisch</span><span>neutral</span><span>bullisch</span></div><small>Übereinstimmung der Signale: <b>${K.conf}</b></small></div></div>` : `<div class="au-v ${T.verdict[0]}">${esc(T.verdict[1])}</div>`}${KV ? `<p class="kv-none">${esc(kairoViewText(KV))}</p>` : ""}`}
-    ${txt.length ? `<p class="ki-tx">${txt.map(esc).join(" ")}</p>` : ""}
-    ${plan || (A.scen && (A.scen.bull || A.scen.bear)) ? `<div class="ki-sc">${plan ? planCard + stopCard : scen(A.scen.bull, true) + scen(A.scen.bear, false)}</div>` : ""}
+  const KV = h.r ? kairoView(h.r.ticker, dC || c, dC === c ? A : null) : null, plan = KV && KV.ctx && KV.plan && KV.plan.stop ? KV.plan : null;
+  const Z = A.zones || [], inZ = Z.find(z => z.lo <= last && last <= z.hi), sup = Z.filter(z => z.hi < last).sort((a, b) => b.hi - a.hi)[0], res = Z.filter(z => z.lo > last).sort((a, b) => a.lo - b.lo)[0];
+  const cx = (col, l, v, d, sub) => `<div class="cx-r"><div><i style="background:${col}"></i><span>${l}</span><b>${v}</b>${d}</div>${sub ? `<small>${sub}</small>` : ""}</div>`;
+  const zr = (z, l, col) => z ? cx(col, l, `${fmt(z.lo)}–${fmt(z.hi)}`, z === inZ ? `<em class="muted">hier</em>` : dist(z.mid), `${dots(z.s)} ${z.touch}× getestet${z.flip ? " · Rollentausch" : ""}`) : "";
+  let stopTxt = ""; if (plan) { const below = Z.filter(z => z.hi < last).sort((a, b) => b.hi - a.hi), under = below.find(z => z.lo <= plan.stop && plan.stop <= z.hi), prot = below.find(z => z.lo > plan.stop);
+    const nxt = below.find(z => z.hi < plan.stop);
+    stopTxt = under ? `Liegt mitten in der Zone ${fmt(under.lo)}–${fmt(under.hi)} – ein kurzer Ausrutscher nach unten kann ihn auslösen.` : prot ? `Liegt unter der Zone ${fmt(prot.lo)}–${fmt(prot.hi)} (${prot.touch}× getestet) – durch sie geschützt.`
+      : nxt ? `Liegt über der nächsten Unterstützung ${fmt(nxt.lo)}–${fmt(nxt.hi)} – ein Rücksetzer in diese Zone löst ihn aus.` : `Keine Unterstützungszone in der Nähe – rein rechnerischer Stop.`; }
+  const any = inZ || sup || res || (A.conf && A.conf.length) || plan;
+  return `<div class="cf-s au ki"><div class="cf-h">Chart-Kontext <button class="au-tg${clGet("auto") ? " on" : ""}" data-cl="auto" aria-pressed="${clGet("auto") ? "true" : "false"}">${clGet("auto") ? "im Chart ✓" : "im Chart zeigen"}</button></div>
+    ${any ? `${zr(res, "Widerstand", "#ff6961")}${zr(inZ, "Kurs in der Zone", "#a0aabe")}${zr(sup, "Unterstützung", "#34c759")}
+      ${(A.conf || []).map(q => cx("#ffd60a", "Konfluenz", fmt(q.p), dist(q.p), esc(q.src.join(" + ")))).join("")}
+      ${plan ? cx("#ff453a", "Kairo-Stop", fmt(plan.stop), dist(plan.stop), esc(stopTxt)) : ""}` : `<p class="muted cf-t">Keine ausgeprägten Zonen in der Nähe des Kurses.</p>`}
     ${clGet("auto") ? `<div class="ki-cs">${chip("auz", "Zonen")}${chip("auk", "Kerzen")}${chip("aus", "Struktur")}</div>` : ""}
-    <details class="ki-more" data-kimore${state.kiMore ? " open" : ""}><summary><span>Details</span><small>Faktoren · Zeitebenen · Zonen · Muster</small></summary>
-    ${K ? `<div class="cf-h au-h2">Trendfolger-Sicht – woraus sich der Trend-Wert ergibt</div>${K.parts.map(q => `<div class="ki-f"><span>${esc(q.t)}<small>${esc(q.why || "")}</small></span><b class="${q.v > 0 ? "up" : q.v < 0 ? "down" : "muted"}">${q.v > 0 ? "+" : ""}${q.v}</b></div>`).join("")}` : ""}
+    <details class="ki-more" data-kimore${state.kiMore ? " open" : ""}><summary><span>Klassische Signale</span><small>Trend · Zeitebenen · Muster – für Kairo ohne Gewicht</small></summary>
+    ${K ? `<div class="kv-tr"><span>Trend-Wert (Trendfolger)</span><b class="${K.cls}">${K.score > 0 ? "+" : ""}${K.score} · ${K.lbl}</b></div><small class="kv-note">Ein Abwärtstrend ist für einen Kairo-Rücksetzer Voraussetzung – Rot heißt hier nicht „nicht kaufen“.</small><div class="cf-h au-h2">Woraus sich der Trend-Wert ergibt</div>${K.parts.map(q => `<div class="ki-f"><span>${esc(q.t)}<small>${esc(q.why || "")}</small></span><b class="${q.v > 0 ? "up" : q.v < 0 ? "down" : "muted"}">${q.v > 0 ? "+" : ""}${q.v}</b></div>`).join("")}` : ""}
     <div class="cf-h au-h2">Zeitebenen</div><div class="au-rows">${mtf.map(([l, v]) => `<div class="cf-r"><span>${l}</span>${arr(v)}</div>`).join("")}
       ${T.rsi != null ? `<div class="cf-r"><span>Momentum (RSI ${fmt(T.rsi, 0)})</span><b class="${T.rsi > 55 ? "up" : T.rsi < 45 ? "down" : "muted"}">${T.rsi >= 70 ? "überkauft" : T.rsi <= 30 ? "überverkauft" : T.rsi > 55 ? "stark" : T.rsi < 45 ? "schwach" : "neutral"}</b></div>` : ""}
       ${T.md != null ? `<div class="cf-r"><span>MACD</span><b class="${T.md > 0 ? "up" : "down"}">${T.md > 0 ? "über Signal" : "unter Signal"}</b></div>` : ""}
@@ -13349,6 +13353,26 @@ function whyKick(h) {                                // beim Öffnen eines Chart
   whyLoad(t, () => { whyPaint(); try { h.apply && h.apply(); } catch (e) {} });
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-whyday]"); if (!b) return; e.preventDefault(); whySel = b.dataset.whyday || null; whyPaint(); });
+// Kairo-Karte (16.11.2026): Status, alle 11 Kriterien und – außerhalb des Scans – der Plan in einem Block. Ersetzt Status-Block,
+// Kriterien-Liste und die Kairo-Sicht der KI-Karte, damit jede Information nur einmal dasteht.
+const KC_ITEMS = [["drawdown", "Rücksetzer ≥ 12 %"], ["no_crash", "kein Crash"], ["structure", "unter EMA 20/50"], ["zone", "Kaufzone"], ["flattening", "Abflachung"], ["rsi_div", "RSI-Divergenz"],
+  ["rsi_range", "RSI 28–48"], ["macd_below0", "MACD unter 0"], ["macd_turn", "MACD dreht"], ["mbi", "MBI-Wende"], ["crv", "Chance/Risiko ≥ 2"]];
+function kairoCardHtml(h, r, k, hn) {
+  const L0 = window.__lastChart || {}, c = L0.d && L0.c && (L0.c.intra || (L0.c.tf && L0.c.tf !== "D")) ? L0.d : L0.c;
+  const KV = c ? kairoView(r.ticker, c, null) : null, chart = !KV || KV.src === "chart";
+  const chips = KV ? KC_ITEMS.filter(([x]) => x in KV.ok).map(([x, l]) => `<span class="kv-c${KV.ok[x] ? " on" : ""}">${KV.ok[x] ? "✓" : "○"} ${esc(x === "drawdown" && KV.dd != null ? `Rücksetzer ${sgnPct(KV.dd, 0)}` : l)}</span>`).join("")
+    + (KV.climax ? `<span class="kv-c on bonus">+ Volumen-Climax</span>` : "") : "";
+  const lbl = r.ext && KV ? KV.ph.l : k.t, cls = r.ext && KV ? ({ up: "hit", gold: "wait", down: "", "": "" })[KV.ph.cls] : k.cls;
+  const cnt = KV && !/\d+\/\d+/.test(lbl) ? `<b class="kc-n">${KV.met}/${KV.tot}</b>` : "";
+  const H = r.ext ? { title: KV ? "Nicht im Kairo-Scan – aus dem Chart geprüft" : hn.title, text: KV ? kairoViewText(KV).replace(/^Kairo-Sicht: /, "") : hn.text } : hn;
+  const P = r.ext && KV && KV.plan && KV.plan.stop ? KV.plan : null;
+  return `<div class="cf-s kc"><div class="cf-h">Kairo <span class="st ${cls}">${esc(lbl)}</span>${cnt}</div>
+    ${H.title ? `<p class="cf-t cf-t2"><b>${esc(H.title)}</b><span>${esc(String(H.text || ""))}</span></p>` : ""}
+    ${chips ? `<div class="kv-cs kc-cs">${chips}</div>` : ""}
+    ${KV && KV.ctx ? `<small class="kv-note">Der Abwärtstrend gehört zum Kairo-Setup – entscheidend sind Kaufzone und Wende-Signale${chart ? "" : " (Werte aus dem Abendscan)"}.</small>` : ""}
+    ${P ? `<div class="cf-r"><span>Kauf über</span><b>${fmt(P.buy_stop)}</b></div><div class="cf-r"><span>Stop</span><b>${fmt(P.stop)}</b><em class="down">${sgnPct(P.stop / P.entry - 1, 1)}</em></div>
+      <div class="cf-r"><span>Ziel (Swing-Hoch)</span><b>${fmt(P.target2)}</b><em class="up">${sgnPct(P.target2 / P.entry - 1, 1)}</em></div><div class="cf-r"><span>Chance/Risiko</span><b class="${P.crv >= 2 ? "up" : "down"}">${fmt(P.crv, 1)} : 1</b></div>` : ""}</div>`;
+}
 function cockpitSide(h, r) {
   if (RP.on && r && r.rp) return rpSideHtml(h);                    // Replay: keine Infos von heute (Status, Plan, Kriterien) – nur, was man damals sehen konnte
   const M = h.M, last = r.close, p = r.ext ? {} : chartPlan(r) || {}, ko = r.ext ? null : tpKoStock(r.ticker, r.currency || r.cur), hn = r.ext ? { title: "Nicht im Kairo-Scan", text: "Kurschart aus den Tageskerzen eines Jahres (Kursdienst). EMAs, RSI, MACD, Momentum Bias Index und Unterstützungen rechnet Kairo selbst – die 11 Kairo-Kriterien prüft nur der Abendscan." } : hintNow(r) || {}, k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r);
@@ -13357,7 +13381,7 @@ function cockpitSide(h, r) {
   const T0 = window.__lastChart.c.t, fibList = (w, col, ttl) => { const lv = q => w.H - (w.H - w.L) * q;
     return `<div class="cf-s"><div class="cf-h">${ttl} · ${dateDE(T0[w.iL])} → ${dateDE(T0[w.iH])}</div>${FIBQ.map(([q, l, st]) => row(l, lv(q), st ? col : null)).join("")}</div>`; };
   const crit = r.criteria || [];
-  return `<div class="cf-s"><div class="cf-h">Status</div><span class="st ${k.cls}">${esc(k.t)}</span>${hn.title ? `<p class="cf-t cf-t2"><b>${esc(hn.title)}</b><span>${esc(String(hn.text || ""))}</span></p>` : ""}</div>
+  return `${kairoCardHtml(h, r, k, hn)}
     <div class="why-slot">${whyHtml()}</div>${autoCardHtml(h)}${sigCardHtml(String(r.ticker).replace(/@rp$/, ""))}${r.ext ? "" : earnMiniHtml(r.ticker) + k8Html(r.ticker) + smCardHtml(r.ticker)}${fundCardHtml(String(r.ticker).replace(/@rp$/, ""))}
     <div class="cf-s"><div class="cf-h">Trade-Plan</div>${row("Kaufzone oben", p.entry, "#eceef2")}${row("Stop", p.stop, "#ff453a")}${row("K.-o. Turbo", ko, "#ff9f0a")}
       ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Konsolidierung.</p>` : ""}</div>
@@ -13373,7 +13397,6 @@ function cockpitSide(h, r) {
       <p class="muted cf-t">Tage mit mindestens doppeltem Ø-Volumen, an denen die Käufer überwogen – solche Mengen handeln meist Fonds und Banken. Wer dort gekauft hat, verteidigt den Einstand oft: Rücksetzer in diese Zonen werden gern wieder gekauft. Verkaufs-Zonen zeigt Kairo bewusst nicht – für den Einstieg zählt, wo gekauft wurde. Nur zur Orientierung, keine Kairo-Regel.</p></div>` : "")(h.vpp && h.vpp.info())}
     ${M.cls && clGet("fib") ? fibList(M.cls, "#f4b740", "Fibonacci") : ""}${M.big && clGet("big", true) ? fibList(M.big, "#b07cff", "Fibonacci große Welle") : ""}
     ${M.lines.length ? `<div class="cf-s"><div class="cf-h">Unterstützungen & Widerstände</div>${M.lines.map(L => row(`${L.kind === "s" ? "Unterstützung" : "Widerstand"} · ${L.n}×`, L.p, L.kind === "s" ? "#4aa3ff" : "#ff8076")).join("")}</div>` : ""}
-    ${r.ext ? "" : `<div class="cf-s"><div class="cf-h">Kairo-Kriterien · ${r.met ?? "–"}/${r.total ?? 11}</div><div class="cf-crit">${crit.map(x => `<span class="${x.ok ? "ok" : "no"}">${x.ok ? "✓" : "✗"} ${esc(shortCrit(x.label))}</span>`).join("")}</div></div>`}
     <div class="row-actions"><button class="btn sm" data-ein="${esc(r.ticker)}">Einstieg planen</button><a class="btn ghost sm" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">TradingView</a></div>`;
 }
 var cfChart = null, cfRO = null;
