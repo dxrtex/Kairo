@@ -2204,6 +2204,19 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 </style>
 
 <style id="pro-finish">
+/* Screener wie TradingView/Koyfin (16.11.2026) */
+.scr-tb { margin-top: 10px; }
+.scr-chip { height: 30px; display: inline-flex; align-items: center; gap: 4px; padding: 0 6px 0 11px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.scr-chip span { color: var(--muted); font-weight: 500; } .scr-chip i { font-style: normal; color: var(--muted); font-size: 15px; width: 18px; text-align: center; } .scr-chip:hover i { color: var(--text); }
+.scr-rs { font-size: 12.5px; }
+.scr-pn { border: 1px solid var(--line); border-radius: 14px; background: var(--surface, #111); padding: 12px 14px 14px; margin: 0 2px 12px; }
+.scr-pn-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; } .scr-pn-h > b { font-size: 14px; }
+.scr-pn-a { margin-left: auto; display: inline-flex; align-items: center; gap: 12px; } .scr-pn-a .hlink { font-size: 12.5px; }
+.scr-pn-t { margin: 0; flex-wrap: wrap; } .scr-pn-t small { font-size: 11px; color: var(--accent); margin-left: 3px; } .scr-pn-t .on small { color: inherit; }
+.scr-pn-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 14px; } .scr-pn-g .scr-f { margin: 0; } .scr-pn-g .scr-f select { width: 100%; }
+.scr-pn .scr-cols { margin: 0; }
+@media (max-width: 640px) { .scr-pn-t { overflow-x: auto; flex-wrap: nowrap; width: 100%; } .scr-pn-a { margin-left: 0; width: 100%; justify-content: space-between; } }
+
 .el-tvbar { justify-content: flex-start !important; align-items: center; } .el-tvbar > .sp-tg + .sp-tg { margin-left: auto; }
 
 /* Scanner-Kopf: eine ruhige Leiste (16.11.2026) */
@@ -3417,6 +3430,7 @@ const save = () => { try { wsTrack(); } catch (e) {} try { const { tableSort, ta
 
 // ---------- Begriffe kurz erklärt (ⓘ antippen) ----------
 const GLOSS = {
+  scr: ["Screener", "Alle geprüften Aktien frei filtern – wie ein klassischer Screener, unabhängig von der Kairo-Regel (Treffer stehen unter „Treffer“). Kurse und Kennzahlen aus dem letzten Scan, alle Aktien ab 2 Mrd. $ Börsenwert. Mit ☆ speicherst du einen Screen: Kairo zeigt dann, welche Aktien neu hineinfallen."],
   wind: ["Rückenwind / Gegenwind", "Kairo zählt drei Dinge zusammen: die Tendenz der Schlagzeilen der letzten 7 Tage (▲ +1, ▼ −1, höchstens ±2), das Analysten-Urteil (Kaufen +1, Verkaufen −1) und den Kurs heute (ab +2 % +1, ab −2 % −1). Ab +2 steht Rückenwind, ab −2 Gegenwind, dazwischen nichts. Eine Stimmungs-Zusammenfassung – kein Kaufsignal und kein Teil der Kairo-Regel."],
   score: ["Score", "Kairo-Bewertung 0–100 für Treffer: je näher am idealen Einstieg (Zone, Divergenz, MACD-Wende, CRV), desto höher. Für die Rangfolge nutzt Kairo inzwischen das Vormomentum – der Score war in der Forschung kein belegtes Merkmal."],
   crv: ["CRV (Chance-Risiko)", "Möglicher Gewinn bis zum Ziel geteilt durch das Risiko bis zum Stop. CRV 3 heißt: 3 € Chance je 1 € Risiko."],
@@ -4311,13 +4325,6 @@ function scrVal(r, k) { if (k === "spf" || k === "hpi") { const f = fundOf(r.t);
 const scrSv = () => (state.scrSv = Array.isArray(state.scrSv) ? state.scrSv : []);
 const scrKey = f => JSON.stringify(Object.fromEntries(Object.entries(f || {}).filter(([k, v]) => v && v !== "0").sort()));
 function scrNew(sv) { if (!searchIdx) return []; const seen = new Set(sv.seen || []); return scrRows(sv.f).filter(r => !seen.has(r.t)); }
-function scrSavedHtml(nAct) {
-  const L = scrSv(), F = state.scf || {}, cur = L.find(x => scrKey(x.f) === scrKey(F));
-  if (!L.length && !nAct) return "";
-  return `<div class="scr-sv">${L.map(x => { const n = scrNew(x).length; return `<button class="kchip${cur && cur.id === x.id ? " on" : ""}" data-scrsv="${esc(x.id)}" title="Screen laden">${esc(x.n)}${n ? ` <small class="scr-nw">+${n} neu</small>` : ""}</button>`; }).join("")}
-    ${nAct && !cur ? `<button class="kchip wl-new" data-scrsave>＋ Screen speichern</button>` : ""}${cur ? `<button class="kchip wl-ed" data-scrsvdel="${esc(cur.id)}" title="Gespeicherten Screen löschen" aria-label="Screen löschen">${IC.trash}</button>` : ""}
-    ${cur && scrNew(cur).length ? `<div class="scr-nl"><b>Neu dabei seit dem letzten Ansehen:</b> ${scrNew(cur).slice(0, 12).map(r => `<a href="#" data-ctgo="${esc(r.t)}">${esc(shortNm(r.n || r.t))}</a>`).join(", ")} <button class="hlink" data-scrseen="${esc(cur.id)}">als gesehen markieren</button></div>` : ""}</div>`;
-}
 function scrNewAll() { return scrSv().map(x => ({ x, n: scrNew(x) })).filter(o => o.n.length); }
 document.addEventListener("click", async e => {
   const t = e.target;
@@ -4359,8 +4366,6 @@ function screenerHtml() {
   const fd = getJson("fund.json"), F = state.scf || {}, S = state.scs || { k: "mc", asc: false }, secs = [...new Set(searchIdx.map(r => r.sec).filter(Boolean))].sort();
   const list = scrRows().sort((a, b) => { const x = scrVal(a, S.k), y = scrVal(b, S.k); if (x == null) return 1; if (y == null) return -1; const c = typeof x === "string" ? x.localeCompare(y) : x - y; return S.asc ? c : -c; });
   const sel = (k, opts, lbl) => `<label class="scr-f"><span>${lbl}</span><select data-scf="${k}">${opts.map(([v, l]) => `<option value="${v}"${String(F[k] || "") === String(v) ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
-  const pill = (k, opts, lbl) => { const cur = opts.find(([v]) => String(F[k] || "") === String(v)) || opts[0], on = !!(F[k] && F[k] !== "0");
-    return `<label class="fpill${on ? " on" : ""}"><span>${lbl}</span><b>${esc(cur[1])}</b><i aria-hidden="true"></i><select data-scf="${k}" aria-label="${lbl}">${opts.map(([v, l]) => `<option value="${v}"${String(F[k] || "") === String(v) ? " selected" : ""}>${l}</option>`).join("")}</select></label>`; };
   const COLS_ON = (state.scCols && state.scCols.length ? state.scCols : SCR_DEF), COLS = SCR_COLS.filter(([k]) => k === "n" || (COLS_ON.includes(k) && (fd || !["pe", "dy", "sf"].includes(k))));
   const nAct = Object.entries(F).filter(([k, v]) => v && v !== "0" && k !== "pfk").length;
   const R_REG = [["", "alle"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]], R_CAP = [["", "alle"], ["2e9", "ab 2 Mrd. $"], ["1e10", "ab 10 Mrd. $"], ["5e10", "ab 50 Mrd. $"], ["2e11", "ab 200 Mrd. $"]],
@@ -4379,23 +4384,36 @@ function screenerHtml() {
     : k === "fu" ? (v => v == null ? `<span class="muted">–</span>` : `<span class="${v > 0 ? "up" : v < 0 ? "down" : "muted"}">${v > 0 ? "+" : ""}${v}</span>`)(scrVal(r, "fu"))
     : k === "mc" ? (r.mc ? fmtCap(r.mc) : "–") : k === "sec" ? `<span class="muted">${esc(r.sec || "–")}</span>`
     : r.m == null ? `<span class="muted">–</span>` : `<span class="km${r.s === "hit" ? " hit" : r.s === "fast" ? " fast" : ""}"><b>${r.m}/11</b><i><u style="width:${Math.round(r.m / 11 * 100)}%"></u></i></span>`;
+  // Kopf wie bei TradingView/Koyfin (16.11.2026 „geht es professioneller?“): eine Leiste – Vorlage ▾, aktive Filter als Chips mit ×,
+  // „+ Filter“ öffnet ein Fenster mit Reitern (Allgemein · Kurs & Technik · Fundamental · Kairo & Smart Money), rechts Anzahl und Spalten.
+  const FD = [["Allgemein", [["reg", "Region", R_REG], ["sec", "Sektor", [["", "alle"], ...secs.map(x => [x, x])]], ["cap", "Börsenwert", R_CAP]]],
+    ["Kurs & Technik", [["tr", "Trend", R_TR], ["rsi", "RSI 14", [["", "egal"], ["lo", "unter 30"], ["mid", "30–70"], ["hi", "über 70"]]],
+      ["hi", "Vom 52-W-Hoch", [["", "egal"], ["near", "max. −5 %"], ["pull", "−10 bis −30 %"], ["deep", "über −30 %"]]],
+      ["pfk", "Zeitraum für Plus/Minus", [["m3", "3 Monate"], ["m1", "1 Monat"], ["ytd", "seit Jahresanfang"], ["d5", "1 Woche"]]],
+      ["pf", "Plus", [["", "egal"], [".05", "ab +5 %"], [".1", "ab +10 %"], [".2", "ab +20 %"], [".5", "ab +50 %"]]], ["pfn", "Minus", [["", "egal"], [".1", "ab −10 %"], [".2", "ab −20 %"], [".4", "ab −40 %"]]]]],
+    ...(fd ? [["Fundamental", [["pe", "KGV", R_PE], ["dy", "Dividende", R_DY], ["frg", "Umsatzwachstum", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]]],
+      ["fpm", "Nettomarge", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]]], ["fde", "Verschuldung", [["", "egal"], ["50", "unter 0,5"], ["100", "unter 1"]]],
+      ["fsf", "Schneeflocke", [["", "egal"], ["15", "ab 15/30"], ["20", "ab 20/30"], ["24", "ab 24/30"]]]]]] : []),
+    ["Kairo & Smart Money", [["met", "Kairo-Kriterien", [["", "egal"], ["7", "ab 7/11"], ["9", "ab 9/11"], ["10", "ab 10/11"], ["11", "11/11"]]],
+      ["earn", "Quartalszahlen", [["", "egal"], ["1", "in den nächsten 14 Tagen"]]], ["ins", "Insider", [["", "egal"], ["1", "kaufen (90 Tage)"]]],
+      ...(fd ? [["fspf", "Leerverkauf (Short-Quote)", [["", "egal"], ["lo", "unter 3 %"], [".1", "ab 10 %"], [".2", "ab 20 %"]]], ["fhpi", "Anteil Institutionen", [["", "egal"], [".5", "ab 50 %"], [".8", "ab 80 %"], ["lo", "unter 20 %"]]],
+        ["ffu", "Hedgefonds (13F)", [["", "egal"], ["buy", "Top-Fonds kaufen"], ["sell", "Top-Fonds verkaufen"]]]] : [])]]];
+  const fdef = Object.fromEntries(FD.flatMap(([, l]) => l.map(d => [d[0], d])));
+  const PK = { m3: "3M", m1: "1M", ytd: "YTD", d5: "1W" };
+  const act = Object.entries(F).filter(([k, v]) => v && v !== "0" && k !== "pfk" && fdef[k]).map(([k, v]) => { const [, l, o] = fdef[k], ol = (o.find(([x]) => String(x) === String(v)) || [, v])[1];
+    return `<button class="scr-chip" data-scfx="${k}" aria-label="Filter ${esc(l)} entfernen"><span>${esc(l)}${k === "pf" || k === "pfn" ? " " + PK[F.pfk || "m3"] : ""}:</span> ${esc(ol)}<i>×</i></button>`; });
+  const svL = scrSv(), svCur = svL.find(x => scrKey(x.f) === scrKey(F)), preV = svCur ? "sv:" + svCur.id : SCR_PRE.some(([k]) => k === (state.scfPre || "")) ? state.scfPre || "" : "-";
+  const preSel = `<label class="sp-dd"><span>Vorlage</span><select data-scrpresel aria-label="Vorlage">${preV === "-" ? `<option value="-" selected>Eigene Auswahl</option>` : ""}${SCR_PRE.map(([k, l]) => `<option value="${k}"${preV === k ? " selected" : ""}>${l}</option>`).join("")}${svL.length ? `<optgroup label="Meine Screens">${svL.map(x => { const n = scrNew(x).length; return `<option value="sv:${esc(x.id)}"${preV === "sv:" + x.id ? " selected" : ""}>${esc(x.n)}${n ? ` (+${n} neu)` : ""}</option>`; }).join("")}</optgroup>` : ""}</select></label>`;
+  const ft = FD.some(([g]) => g === state.scrFT) ? state.scrFT : FD[0][0], fCnt = g => FD.find(x => x[0] === g)[1].filter(([k]) => k !== "pfk" && F[k] && F[k] !== "0").length;
+  const panel = state.scrFOpen ? `<div class="scr-pn"><div class="scr-pn-h"><div class="sp-seg scr-pn-t">${FD.map(([g]) => `<button class="${g === ft ? "on" : ""}" data-scrft="${esc(g)}">${esc(g)}${fCnt(g) ? ` <small>${fCnt(g)}</small>` : ""}</button>`).join("")}</div>
+      <span class="scr-pn-a">${nAct ? `<button class="hlink" data-scrpre="">Alle zurücksetzen</button>` : ""}<button class="sc-btn" data-scrfo>Fertig</button></span></div>
+    <div class="scr-pn-g">${FD.find(x => x[0] === ft)[1].map(([k, l, o]) => sel(k, o, l)).join("")}</div></div>` : "";
+  const colsPn = state.scrCOpen ? `<div class="scr-pn"><div class="scr-pn-h"><b>Spalten</b><span class="scr-pn-a"><button class="hlink" data-scrcol="">Standard</button><button class="sc-btn" data-scrco>Fertig</button></span></div><div class="scr-cols">${SCR_COLS.filter(([k]) => k !== "n").map(([k, l]) => `<button class="opt${COLS_ON.includes(k) ? " on" : ""}" data-scrcol="${k}">${esc(l)}</button>`).join("")}</div></div>` : "";
+  const nl = svCur && scrNew(svCur).length ? `<div class="scr-nl"><b>Neu dabei seit dem letzten Ansehen:</b> ${scrNew(svCur).slice(0, 12).map(r => `<a href="#" data-ctgo="${esc(r.t)}">${esc(shortNm(r.n || r.t))}</a>`).join(", ")} <button class="hlink" data-scrseen="${esc(svCur.id)}">als gesehen markieren</button></div>` : "";
   return `<div class="scr">
-    <div class="vdesc">Alle ${fmt(searchIdx.length, 0)} geprüften Aktien frei filtern – wie ein klassischer Screener. Unabhängig von der Kairo-Regel: Treffer findest du unter „Treffer“.</div>
-    <div class="scr-pre" role="group" aria-label="Vorlagen">${SCR_PRE.map(([k, l]) => `<button class="kchip${(state.scfPre || "") === k ? " on" : ""}" data-scrpre="${k}">${l}</button>`).join("")}</div>
-    <div class="scr-bar">${pill("reg", R_REG, "Region")}${pill("sec", [["", "alle"], ...secs.map(x => [x, x])], "Sektor")}${pill("cap", R_CAP, "Börsenwert")}${pill("tr", R_TR, "Trend")}${fd ? pill("pe", R_PE, "KGV") + pill("dy", R_DY, "Dividende") : ""}
-      <button class="fpill fbtn${state.scrFOpen ? " on" : ""}" data-scrfo>Weitere Filter${nAct ? ` <small>${nAct}</small>` : ""}</button><button class="fpill fbtn${state.scrCOpen ? " on" : ""}" data-scrco>Spalten</button>${nAct ? `<button class="hlink" data-scrpre="">Zurücksetzen</button>` : ""}</div>
-    ${state.scrFOpen ? `<div class="scr-fs">${sel("rsi", [["", "egal"], ["lo", "unter 30"], ["mid", "30–70"], ["hi", "über 70"]], "RSI 14")}
-      ${sel("hi", [["", "egal"], ["near", "max. −5 %"], ["pull", "−10 bis −30 %"], ["deep", "über −30 %"]], "Vom 52-W-Hoch")}
-      ${sel("pfk", [["m3", "3 Monate"], ["m1", "1 Monat"], ["ytd", "seit Jahresanfang"], ["d5", "1 Woche"]], "Wertentwicklung")}${sel("pf", [["", "egal"], [".05", "ab +5 %"], [".1", "ab +10 %"], [".2", "ab +20 %"], [".5", "ab +50 %"]], "Plus")}
-      ${sel("pfn", [["", "egal"], [".1", "ab −10 %"], [".2", "ab −20 %"], [".4", "ab −40 %"]], "Minus")}${sel("met", [["", "egal"], ["7", "ab 7/11"], ["9", "ab 9/11"], ["10", "ab 10/11"], ["11", "11/11"]], "Kairo-Kriterien")}
-      ${fd ? sel("frg", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Umsatzwachstum") + sel("fpm", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Nettomarge")
-        + sel("fde", [["", "egal"], ["50", "unter 0,5"], ["100", "unter 1"]], "Verschuldung") + sel("fsf", [["", "egal"], ["15", "ab 15/30"], ["20", "ab 20/30"], ["24", "ab 24/30"]], "Schneeflocke")
-        + sel("fspf", [["", "egal"], ["lo", "unter 3 %"], [".1", "ab 10 %"], [".2", "ab 20 %"]], "Leerverkauf (Short-Quote)") + sel("fhpi", [["", "egal"], [".5", "ab 50 %"], [".8", "ab 80 %"], ["lo", "unter 20 %"]], "Anteil Institutionen")
-        + sel("ffu", [["", "egal"], ["buy", "Top-Fonds kaufen"], ["sell", "Top-Fonds verkaufen"]], "Hedgefonds (13F)") : ""}
-      <label class="scr-f scr-c"><input type="checkbox" data-scf="earn" ${F.earn ? "checked" : ""}><span>Zahlen ≤ 14 T.</span></label><label class="scr-f scr-c"><input type="checkbox" data-scf="ins" ${F.ins ? "checked" : ""}><span>Insider kaufen</span></label></div>` : ""}
-    ${state.scrCOpen ? `<div class="scr-cols">${SCR_COLS.filter(([k]) => k !== "n").map(([k, l]) => `<button class="opt${COLS_ON.includes(k) ? " on" : ""}" data-scrcol="${k}">${esc(l)}</button>`).join("")}<button class="hlink" data-scrcol="">Standard</button></div>` : ""}
-    ${scrSavedHtml(nAct)}
-    <div class="section-title"><span>Ergebnis</span><span>${fmt(list.length, 0)} Aktien</span></div>
+    <div class="sc-tb scr-tb">${preSel}${act.join("")}<button class="sc-btn${state.scrFOpen ? " on" : ""}" data-scrfo>＋ Filter</button>${nAct > 1 ? `<button class="hlink scr-rs" data-scrpre="">Zurücksetzen</button>` : ""}
+      <span class="sc-tb-r"><span class="sc-cnt"><span class="sc-n">${fmt(list.length, 0)} Aktien</span>${gl("scr")}</span>${nAct && !svCur ? `<button class="sc-btn" data-scrsave title="Screen speichern" aria-label="Screen speichern">☆</button>` : ""}${svCur ? `<button class="sc-btn" data-scrsvdel="${esc(svCur.id)}" title="Gespeicherten Screen löschen" aria-label="Screen löschen">${IC.trash}</button>` : ""}<button class="sc-btn spalten${state.scrCOpen ? " on" : ""}" data-scrco>Spalten</button></span></div>
+    ${panel}${colsPn}${nl}
     <div class="table-wrap"><table class="scr-t"><thead><tr>${COLS.map(([k, l]) => `<th class="${k === "n" || k === "sec" || k === "tr" ? "" : "num "}${S.k === k ? "sorted" + (S.asc ? " asc" : "") : ""}" data-scrs="${k}">${l}</th>`).join("")}</tr></thead>
       <tbody>${shown.map(r => `<tr>${COLS.map(([k]) => `<td class="${k === "n" || k === "sec" || k === "tr" ? "" : "num"}">${cell(r, k)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
     ${list.length > shown.length ? `<div class="row-actions" style="justify-content:center;margin:12px 0"><button class="btn ghost" data-scrmore>Weitere ${fmt(Math.min(240, list.length - shown.length), 0)} anzeigen</button></div>` : ""}
@@ -4406,11 +4424,16 @@ document.addEventListener("click", e => {
   const p = e.target.closest("[data-scrpre]"); if (p) { scrPreset(p.dataset.scrpre); return; }
   const h = e.target.closest("th[data-scrs]"); if (h) { const k = h.dataset.scrs, S = state.scs || { k: "mc", asc: false }; state.scs = S.k === k ? { k, asc: !S.asc } : { k, asc: k === "n" || k === "sec" }; save(); render(); return; }
   if (e.target.closest("[data-scrmore]")) { scrMore += 240; render(); }
-  if (e.target.closest("[data-scrfo]")) { state.scrFOpen = !state.scrFOpen; save(); render(); return; }
-  if (e.target.closest("[data-scrco]")) { state.scrCOpen = !state.scrCOpen; save(); render(); return; }
+  if (e.target.closest("[data-scrfo]")) { state.scrFOpen = !state.scrFOpen; if (state.scrFOpen) state.scrCOpen = false; save(); render(); return; }
+  if (e.target.closest("[data-scrco]")) { state.scrCOpen = !state.scrCOpen; if (state.scrCOpen) state.scrFOpen = false; save(); render(); return; }
+  const ftb = e.target.closest("[data-scrft]"); if (ftb) { state.scrFT = ftb.dataset.scrft; save(); render(); return; }
+  const fx = e.target.closest("[data-scfx]"); if (fx) { const F = { ...(state.scf || {}) }; delete F[fx.dataset.scfx]; state.scf = F; state.scfPre = "-"; scrMore = 0; save(); render(); return; }
   const sc = e.target.closest("[data-scrcol]"); if (sc) { const k = sc.dataset.scrcol, cur = (state.scCols && state.scCols.length ? state.scCols : SCR_DEF).slice();
     state.scCols = !k ? null : cur.includes(k) ? cur.filter(x => x !== k) : SCR_COLS.map(c => c[0]).filter(x => x !== "n" && (cur.includes(x) || x === k)); save(); render(); return; }
 });
+document.addEventListener("change", e => { const s = e.target.closest("[data-scrpresel]"); if (!s) return; const v = s.value;
+  if (v.startsWith("sv:")) { const x = scrSv().find(y => y.id === v.slice(3)); if (x) { state.scf = { ...x.f }; state.scfPre = "-"; save(); render(); } return; }
+  if (v !== "-") scrPreset(v); });
 document.addEventListener("change", e => { const f = e.target.closest("[data-scf]"); if (!f) return; const k = f.dataset.scf;
   state.scf = { ...(state.scf || {}), [k]: f.type === "checkbox" ? (f.checked ? 1 : 0) : f.value }; state.scfPre = "-"; scrMore = 0; save(); render(); });
 // ---------- Kalender ----------
@@ -9471,8 +9494,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.202";
-const APP_NEWS = [["2026.11.202", "Nur noch Sektoren und Branchen", [
+const APP_VER = "2026.11.203";
+const APP_NEWS = [["2026.11.203", "Screener wie bei den Profi-Tools", [
+  ["Eine Leiste", "Vorlage ▾ (inkl. deiner gespeicherten Screens), aktive Filter als Chips mit ×, „＋ Filter“, rechts Anzahl, ☆ Speichern und Spalten."],
+  ["Filterfenster mit Reitern", "Allgemein · Kurs & Technik · Fundamental · Kairo & Smart Money – mit Zähler je Reiter. Kein dauerhaft offenes Feld-Raster mehr."]]],
+ ["2026.11.202", "Nur noch Sektoren und Branchen", [
   ["Themen sind Branchen", "Neoclouds, Quantencomputer, Speicherchips, Chip-Ausrüster, KI-Software, Cybersecurity, Cloud, Kernkraft, Raumfahrt, Rüstung Europa, Drohnen, GLP-1 und alle weiteren früheren Themen stehen jetzt unter „Branchen“ – jeweils mit ihrem Sektor."],
   ["Sektor-Auswahl", "Unter „Branchen“ wählst du oben „Sektor ▾“, z. B. Technologie – dann siehst du nur dessen Branchen."]]],
  ["2026.11.201", "Ruhigere Kopfbereiche in News, Scanner und ETF", [
