@@ -2783,6 +2783,16 @@ body.etf-fs { overflow: hidden; }
 .kc-earn { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0 4px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
 .kc-earn i { font-style: normal; flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; background: var(--accent-bg); color: var(--accent); }
 .kc-earn b { display: block; font-size: 13px; } .kc-earn small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+.sp-lev4 { margin: 0 0 8px; } .sp-lev4 button { font-size: 13px; padding: 7px 4px; }
+.sp-cx { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 2px 10px; }
+.sp-dd { display: inline-flex; align-items: baseline; gap: 5px; font-size: 12.5px; } .sp-dd > span { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.sp-dd select { appearance: none; -webkit-appearance: none; border: 0; background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238e8e93' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 0 center; color: var(--text); font: inherit; font-weight: 600; padding: 2px 15px 2px 0; cursor: pointer; }
+.sp-dd0 b { font-weight: 600; color: var(--text); }
+.sp-rel { margin-left: auto; border: 0; border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 600; background: var(--surface-2); color: var(--muted); cursor: pointer; } .sp-rel.on { background: var(--accent); color: var(--accent-ink); }
+.sp-card .sp-r { grid-template-columns: 38px minmax(0, 1.15fr) minmax(70px, 1fr) 54px 28px; padding: 5px 4px; }
+.sp-k { font-size: 10.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.sp-card .sp-n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .sp-card .sp-n small { font-size: 10.5px; color: var(--muted); margin-left: 5px; }
+@media (max-width: 560px) { .sp-card .sp-r { grid-template-columns: 32px minmax(0, 1.5fr) minmax(40px, .8fr) 48px 24px; gap: 6px; } .sp-card .sp-n small { display: none; } }
 </style>
 </head>
 <body>
@@ -4521,12 +4531,11 @@ function spMarket() {
   return { sectors: mix("sectors"), industries: mix("industries"), themes: mix("themes"), sectors_eu: mix("sectors_eu"), assets: mix("assets") };
 }
 function spList() {
-  const m = spMarket();
-  const eu = (state.spReg === "eu" || state.spMode === "eu") && (m.sectors_eu || []).length;     // Europa: nur Sektoren
-  const as = !eu && state.spMode === "as" && (m.assets || []).length;          // „Markt-Rad“: Anlageklassen gegen Aktien
-  // USA (14.11.2026): direkt die Branchen (≈ 70, präziser als 11 Sektoren) – keine Sektor-Ebene mehr davor. Europa hat nur Sektor-ETFs.
-  const th = !as && !eu && state.spMode === "th" && (m.themes || []).length, ind = th || (!as && !eu && (m.industries || []).length);
-  return { ind, th, eu, as, xs: (as ? m.assets : eu ? m.sectors_eu : th ? m.themes : ind ? m.industries : m.sectors) || [] };
+  // 16.11.2026: erste Ebene wie bei Profi-Tools – Sektoren | Branchen | Themen | Anlagen (Sektoren jetzt auch für die USA); Europa hat nur Sektoren
+  const m = spMarket(), eu = state.spReg === "eu" && (m.sectors_eu || []).length, mode = eu ? "sec" : state.spMode === "eu" ? "ind" : state.spMode || "ind";
+  const as = !eu && mode === "as" && (m.assets || []).length, th = !as && !eu && mode === "th" && (m.themes || []).length;
+  const sec = !!eu || (!as && !th && mode === "sec" && (m.sectors || []).length), ind = th || (!as && !sec && (m.industries || []).length);
+  return { ind, th, eu, as, sec, xs: (as ? m.assets : eu ? m.sectors_eu : th ? m.themes : ind ? m.industries : m.sectors) || [] };
 }
 function spRanked(xs, k) {
   const val = (x, prev) => { const v = prev ? x.p && x.p[k] : x[k]; return v == null ? -Infinity : v; };
@@ -4534,30 +4543,40 @@ function spRanked(xs, k) {
   const vs = xs.map(x => x[k]).filter(v => v != null), avg = state.spRel && vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : 0;
   return now.map((x, i) => ({ ...x, v: x[k] == null ? null : x[k] - avg, rk: i + 1, mv: x.p && x.p[k] != null ? was.indexOf(x) - i : 0 }));
 }
+const SP_PARENT = { SOXX: "Technologie", IGV: "Technologie", XTH: "Technologie", IGN: "Technologie", TAN: "Technologie", IPAY: "Finanzen", KBE: "Finanzen", KRE: "Finanzen", KIE: "Finanzen", IAI: "Finanzen",
+  GRID: "Industrie", EVX: "Industrie", ITA: "Industrie", IYT: "Industrie", JETS: "Industrie", PAVE: "Industrie", ICLN: "Versorger", PHO: "Versorger", BETZ: "Zyklischer Konsum", ITB: "Zyklischer Konsum",
+  XRT: "Zyklischer Konsum", PEJ: "Zyklischer Konsum", CARZ: "Zyklischer Konsum", WOOD: "Rohstoffe", GDX: "Rohstoffe", SIL: "Rohstoffe", COPX: "Rohstoffe", PICK: "Rohstoffe", FDN: "Kommunikation",
+  IYZ: "Kommunikation", ESPO: "Kommunikation", XBI: "Gesundheit", PPH: "Gesundheit", IHI: "Gesundheit", IHF: "Gesundheit", XOP: "Energie", OIH: "Energie", CRAK: "Energie", AMLP: "Energie", URA: "Energie",
+  PBJ: "Basiskonsum", VNQ: "Immobilien" };
+const spTk = k => /^[A-Z0-9]{2,5}(\.[A-Z]{1,2})?$/.test(String(k || "")) ? String(k).replace(/\.DE$/, "") : "Korb";
 function sectorsHtml() {
   const lv = mktLive(), a = (anaData && anaData.market) || {};
   const m = spMarket();
   if (!m.sectors.length) return "";
-  const [k, kl, kn] = spPer(), { ind, th, eu, xs } = spList(), rows = spRanked(xs, k).filter(x => x.v != null);
+  const [k, kl, kn] = spPer(), { ind, th, eu, as, sec, xs } = spList(), rows = spRanked(xs, k).filter(x => x.v != null);
   if (!rows.length) return "";
   const mx = Math.max(...rows.map(x => Math.abs(x.v)), 1e-4), neg = rows.some(x => x.v < 0), pos = rows.some(x => x.v > 0);
   const zero = neg && pos ? 50 : neg ? 100 : 0, span = neg && pos ? 50 : 100;
-  const all = !ind || th || state.spAll, show = all ? rows : [...rows.slice(0, 10), ...rows.slice(-5)];
+  const show = rows;                                   // durchgehend sortierte Liste (wie Profi-Tools) – keine Lücke „⋯“ mehr
   const hasHist = xs.some(x => (x.rh || []).length > 3), hv = hasHist && state.spView === "hist";
   const hasRrg = xs.some(x => x.rrg), rv = hasRrg && state.spView === "rrg";
   const bar = x => { const w = Math.abs(x.v) / mx * span; return `<i class="${x.v >= 0 ? "up" : "down"}" style="left:${x.v >= 0 ? zero : zero - w}%;width:${Math.max(w, .8)}%"></i>`; };
   const mvH = x => x.mv > 0 ? `<em class="up" title="${x.mv} Plätze besser als ${k === "d1" ? "gestern" : "vor einer Woche"}">▲${x.mv}</em>` : x.mv < 0 ? `<em class="down" title="${-x.mv} Plätze schlechter">▼${-x.mv}</em>` : `<em></em>`;
-  const row = (x, i) => `${!all && i === 10 ? `<div class="sp-gap">⋯</div>` : ""}<button class="sp-r" data-spopen="${esc(x.k)}"><span class="sp-n">${esc(x.n)}${!ind && x.hot ? ' <small class="sp-hot" title="Stärkster Lauf der letzten 4 Wochen – historisch danach eher schwächer">heißgelaufen</small>' : ""}</span><span class="sp-b">${bar(x)}${neg && pos ? `<b style="left:${zero}%"></b>` : ""}</span><span class="sp-v ${x.v >= 0 ? "up" : "down"}">${sgnPct(x.v, 1)}</span>${mvH(x)}</button>`;
+  const row = (x, i) => `<button class="sp-r" data-spopen="${esc(x.k)}"><span class="sp-k">${esc(spTk(x.k))}</span><span class="sp-n">${esc(x.n)}${ind && !th && SP_PARENT[x.k] ? `<small>${esc(SP_PARENT[x.k])}</small>` : ""}${!ind && x.hot ? ' <small class="sp-hot" title="Stärkster Lauf der letzten 4 Wochen – historisch danach eher schwächer">heißgelaufen</small>' : ""}</span><span class="sp-b">${bar(x)}${neg && pos ? `<b style="left:${zero}%"></b>` : ""}</span><span class="sp-v ${x.v >= 0 ? "up" : "down"}">${sgnPct(x.v, 1)}</span>${mvH(x)}</button>`;
   // Rotation: größte Rangsprünge nach oben/unten im gewählten Zeitraum
   const ups = rows.filter(x => x.mv >= 2).sort((a, b) => b.mv - a.mv).slice(0, 3), dns = rows.filter(x => x.mv <= -2).sort((a, b) => a.mv - b.mv).slice(0, 3);
   const rot = ups.length || dns.length ? `<div class="sp-rot">↻ <b>Rotation</b> ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"}: ${ups.length ? `Geld fließt in <span class="up">${ups.map(x => esc(x.n)).join(", ")}</span>` : ""}${ups.length && dns.length ? " · " : ""}${dns.length ? `raus aus <span class="down">${dns.map(x => esc(x.n)).join(", ")}</span>` : ""}</div>` : "";
-  const reg = (m.sectors_eu || []).length ? `<div class="sp-seg sp-reg">${[["us", "USA"], ["eu", "Europa"]].map(([v, l]) => `<button class="${(v === "eu") === !!eu ? "on" : ""}" data-spreg="${v}">${l}</button>`).join("")}</div>` : "";
-  return `<div class="hcard sp-card"><div class="hh sp-hh"><b>${eu ? "Sektoren Europa" : "Branchen"}</b>${reg}${fsBtn("sp")}</div>
-    <div class="sp-ctl">${eu ? "" : `<div class="sp-seg sp-lev">${[["ind", "Branchen", (m.industries || []).length], ["th", "Themen", (m.themes || []).length], ["as", "Anlagen", (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? state.spMode === "as" : v === "th" ? !!th : !th && state.spMode !== "as") ? "on" : ""}" data-spmode="${v}"${ok ? "" : ` disabled title="kommt mit dem nächsten Abend-Scan"`}>${l}</button>`).join("")}</div>`}<select class="sp-vsel" data-spviewsel aria-label="Ansicht">${[["ret", "Rendite", 1], ["rrg", "Rotation", hasRrg], ["hist", "Verlauf", hasHist]].filter(o => o[2]).map(([v, l]) => `<option value="${v}"${(v === "hist" ? hv : v === "rrg" ? rv : !hv && !rv) ? " selected" : ""}>${l}</option>`).join("")}</select></div>
-    ${hv || rv ? `<div class="sp-tg sp-per sp-dim"><span class="muted">${rv ? "Rotation rechnet mit Wochenwerten" : "Verlauf zeigt den Rang je Woche"} – Zeitraum antippen = Rendite</span>${SP_PER.map(([v, l, n]) => `<button class="opt" data-spper="${v}" data-spret="1" title="${n} – wechselt zu Rendite">${l}</button>`).join("")}</div>` : `<div class="sp-tg sp-per">${SP_PER.map(([v, l, n]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${n}">${l}</button>`).join("")}<button class="opt sp-relb${state.spRel ? " on" : ""}" data-sprel title="Rendite minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")}">ggü. Markt</button></div>`}
+  const hasEu = (m.sectors_eu || []).length, lvl = [["sec", "Sektoren", (m.sectors || []).length], ["ind", "Branchen", (m.industries || []).length], ["th", "Themen", (m.themes || []).length], ["as", "Anlagen", (m.assets || []).length]];
+  const cur = sec ? "sec" : as ? "as" : th ? "th" : "ind", what = sec ? "Sektoren" : as ? "Anlagen" : th ? "Themen" : "Branchen";
+  const sel = (attr, opts, v, lbl) => `<label class="sp-dd"><span>${lbl}</span><select ${attr} aria-label="${lbl}">${opts.map(([o, l]) => `<option value="${o}"${o === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
+  return `<div class="hcard sp-card"><div class="hh sp-hh"><b>Sektoren &amp; Branchen</b>${fsBtn("sp")}</div>
+    <div class="sp-seg sp-lev4">${lvl.map(([v, l, ok]) => `<button class="${v === cur ? "on" : ""}" data-spmode="${v}"${ok && (!eu || v === "sec") ? "" : ` disabled title="${eu ? "in Europa nur Sektoren" : "kommt mit dem nächsten Abend-Scan"}"`}>${l}</button>`).join("")}</div>
+    <div class="sp-cx">${hasEu && !as ? sel("data-spregsel", [["us", "USA"], ["eu", "Europa"]], eu ? "eu" : "us", "Region") : `<span class="sp-dd sp-dd0"><span>Region</span><b>${as ? "weltweit" : "USA"}</b></span>`}
+      ${hv || rv ? `<span class="sp-dd sp-dd0"><span>Zeitraum</span><b>Wochen</b></span>` : sel("data-sppersel", SP_PER.map(([v, , n]) => [v, n.charAt(0).toUpperCase() + n.slice(1)]), k, "Zeitraum")}
+      ${sel("data-spviewsel", [["ret", "Rendite", 1], ["rrg", "Rotation", hasRrg], ["hist", "Verlauf", hasHist]].filter(o => o[2]).map(o => [o[0], o[1]]), hv ? "hist" : rv ? "rrg" : "ret", "Ansicht")}
+      ${hv || rv ? "" : `<button class="sp-rel${state.spRel ? " on" : ""}" data-sprel aria-pressed="${state.spRel ? "true" : "false"}" title="Rendite minus Durchschnitt aller ${what}">ggü. Markt</button>`}</div>
     ${rv ? spRrgHtml(xs, ind) + (th ? themeTrendHtml(xs) : "") : hv ? spHistHtml(xs, ind) : `${rot}${th ? themeTrendHtml(xs) : hotHtml(ind ? [] : xs)}<div class="sp-list">${show.map(row).join("")}</div>`}
-    ${ind && !th && !rv ? `<button class="hlink" data-spall style="margin-top:6px">${all ? "weniger zeigen" : `alle ${rows.length} Branchen zeigen`}</button>` : ""}
-    <div class="note" style="margin:8px 0 0">${rv ? (eu ? "Europa: iShares-STOXX-Europe-600-Sektor-ETFs (Xetra) gegenüber dem STOXX 600, Wochenwerte." : `US-${(th ? "Themen" : ind ? "Branchen" : "Sektor")}-ETFs gegenüber dem S&P 500, Wochenwerte.`) : `${eu ? "Europa: STOXX-Europe-600-Sektor" : "US-" + (th ? "Themen" : ind ? "Branchen" : "Sektor")}-ETFs, Rendite ${esc(kn)}${state.spRel ? ` minus Durchschnitt aller ${(th ? "Themen" : ind ? "Branchen" : "Sektoren")} (> 0 = besser als der Markt)` : ""}. ▲▼ = Plätze gewonnen/verloren ${k === "d1" ? "ggü. gestern" : "ggü. vor einer Woche"}. Antippen zeigt die stärksten Aktien aus deinem Scan.`}</div></div>`;
+    <div class="note sp-src" style="margin:8px 0 0">${eu ? "STOXX-Europe-600-Sektor-ETFs (Xetra)" : as ? "Anlage-ETFs" : `US-${what}-ETFs${th ? " bzw. Körbe" : ""}`}${rv ? " gegenüber dem " + (eu ? "STOXX 600" : "S&P 500") + ", Wochenwerte" : state.spRel ? " · Rendite minus Durchschnitt" : ""} · ▲▼ Plätze ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"} · antippen zeigt die stärksten Aktien</div></div>`;
 }
 // „Heißgelaufen“: die 2 Sektoren mit der höchsten Mehrrendite über 4 Wochen (backend/analysis.py rotation). Backtest 2008–2026
 // (tools/research/rotation.py): solche Sektoren lagen seit 2016 in den folgenden 13 Wochen im Schnitt ~1 % hinter dem Markt.
@@ -4981,7 +5000,7 @@ function fsSpHtml() {
   const lvl = as ? "Anlageklassen" : th ? "Themen" : ind ? "Branchen" : "Sektoren";
   const typ = ["improving", "leading", "weakening", "lagging"].filter(q => st[q]).map(q => `<span><i style="background:${RRG_Q[q][1]}"></i>${RRG_Q[q][0]} ≈ ${fmt(st[q].med, 0)} Wo.</span>`).join("");
   const head = `<div class="fs-ctl"><div class="sp-seg">${(m.sectors_eu || []).length ? [["us", "USA"], ["eu", "Europa"]].map(([v, l]) => `<button class="${(v === "eu") === !!eu ? "on" : ""}" data-spreg="${v}">${l}</button>`).join("") : ""}</div>
-    ${eu ? "" : `<div class="sp-seg">${[["ind", "Branchen", 1], ["th", "Themen", 1], ["as", "Markt-Rad", (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? !!as : v === "th" ? !!th : !th && !as) ? "on" : ""}" data-spmode="${v}"${ok ? "" : " disabled"}>${l}</button>`).join("")}</div>`}
+    <div class="sp-seg">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu], ["th", "Themen", !eu], ["as", "Anlagen", !eu && (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? !!as : v === "th" ? !!th : v === "sec" ? !ind && !th && !as : !!ind && !th) ? "on" : ""}" data-spmode="${v}"${ok ? "" : " disabled"}>${l}</button>`).join("")}</div>
     <button class="kchip${onlyMine ? " on" : ""}" data-fsmine>★ nur mit meinen Aktien</button></div>`;
   const list = rows.filter(o => o.x.rrg);
   return `${head}
@@ -5027,7 +5046,7 @@ function fsMvHtml() {
     <p class="muted" style="font-size:13px;margin:10px 0 0">${spStamp()} · Volumen = heute gehandelt im Verhältnis zum Schnitt der 20 Tage davor. ★ = Depot/Watchlist. Spaltenkopf antippen sortiert.</p></div>`;
 }
 function fsvHtml() {
-  const k = state.fsv, t = { sp: "Branchen", mv: "Gewinner, Verlierer & Volumen", hm: "Heatmap" }[k];
+  const k = state.fsv, t = { sp: "Sektoren & Branchen", mv: "Gewinner, Verlierer & Volumen", hm: "Heatmap" }[k];
   const body = k === "sp" ? fsSpHtml() : k === "mv" ? fsMvHtml() : k === "hm" ? heatmapHtml(true) : "";
   return `<div class="fs-top"><b>${t || ""}</b><button class="cm-x" data-fsclose aria-label="Schließen">✕</button></div><div class="fs-body">${body}</div>`;
 }
@@ -9387,8 +9406,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.197";
-const APP_NEWS = [["2026.11.197", "Quartalszahlen in der Kairo-Karte", ["Stehen Quartalszahlen in den nächsten 10 Tagen an, zeigt die Kairo-Karte das jetzt als eigene Zeile – mit dem Ergebnis von Kairos Test: Kurslücke möglich, aber kein Grund, den Einstieg zu verschieben.", "Die Bezeichnung „KI-Analyse“ ist weg: Es ist Regelrechnung, keine KI – die Karte heißt „Chart-Kontext“."]],
+const APP_VER = "2026.11.198";
+const APP_NEWS = [["2026.11.198", "Sektoren & Branchen neu geordnet", [
+  ["Klare Ebenen", "Oben eine Leiste Sektoren | Branchen | Themen | Anlagen – die 11 US-Sektoren sind wieder da (Technologie, Gesundheit, Energie …)."],
+  ["Eine Kontextzeile", "Region, Zeitraum und Ansicht als kleine Auswahl in einer Zeile statt zweier Knopfreihen; „ggü. Markt“ rechts daneben."],
+  ["Wie bei Profi-Tools", "Jede Zeile zeigt das ETF-Kürzel (XLE, SOXX, ITA …), Branchen zusätzlich ihren Sektor; die Liste läuft durchgehend sortiert ohne Lücke."]]],
+  ["2026.11.197", "Quartalszahlen in der Kairo-Karte", ["Stehen Quartalszahlen in den nächsten 10 Tagen an, zeigt die Kairo-Karte das jetzt als eigene Zeile – mit dem Ergebnis von Kairos Test: Kurslücke möglich, aber kein Grund, den Einstieg zu verschieben.", "Die Bezeichnung „KI-Analyse“ ist weg: Es ist Regelrechnung, keine KI – die Karte heißt „Chart-Kontext“."]],
   ["2026.11.196", "Eine Kairo-Karte, klarer Chart-Kontext", [
   ["Kairo-Karte", "Status, alle 11 Kairo-Kriterien und der Hinweis zum Abwärtstrend stehen jetzt in einer Karte ganz oben – statt Status, Kriterien-Liste und KI-Urteil an drei Stellen. Auch Aktien außerhalb des Scans bekommen alle 11 Kriterien samt Plan (Kauf, Stop, Ziel, Chance/Risiko), berechnet wie im Scan."],
   ["Chart-Kontext", "Die frühere Analyse-Karte zeigt nur noch, was der Chart zusätzlich verrät: nächster Widerstand und nächste Unterstützung, Konfluenz und ob der Kairo-Stop durch eine Zone geschützt ist. Trend-Wert und Chartmuster stehen eingeklappt unter „Klassische Signale“."]]],
@@ -10578,7 +10601,10 @@ function liveKick(ts, sec) {                                  // veraltete Kurse
   const st = liveOn() ? liveStale([...new Set(ts.filter(Boolean))]) : [];
   if (st.length) liveMany(st).then(n => { if (n && state.sec === sec) render(); });
 }
-document.addEventListener("change", e => { if (e.target.matches && e.target.matches("[data-spviewsel]")) { state.spView = e.target.value; save(); render(); } });   // Branchen: Ansicht als kompakte Auswahl (16.11.2026)
+document.addEventListener("change", e => { if (e.target.matches && e.target.matches("[data-spviewsel]")) { state.spView = e.target.value; save(); render(); } });
+document.addEventListener("change", e => { const t = e.target; if (!t.matches) return;   // Sektoren-Karte: Region und Zeitraum als Auswahl (16.11.2026)
+  if (t.matches("[data-spregsel]")) { state.spReg = t.value; if (t.value === "eu") state.spMode = "sec"; save(); render(); }
+  else if (t.matches("[data-sppersel]")) { state.spPer = t.value; save(); render(); } });   // Branchen: Ansicht als kompakte Auswahl (16.11.2026)
 document.addEventListener("toggle", e => { if (e.target.matches && e.target.matches("[data-kimore]") && !!state.kiMore !== e.target.open) { state.kiMore = e.target.open ? 1 : 0; save(); } }, true);   // KI-Karte: Details offen/zu merken (16.11.2026)
 document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("hmore")) { state.hMore = e.target.open ? 1 : 0; save(); } }, true);
 document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("tvbox")) { state.tvOpen = e.target.open; save(); } }, true);
