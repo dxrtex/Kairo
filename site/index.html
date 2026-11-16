@@ -4572,11 +4572,16 @@ function spMarket() {
   return { sectors: mix("sectors"), industries: mix("industries"), themes: mix("themes"), sectors_eu: mix("sectors_eu"), assets: mix("assets") };
 }
 function spList() {
-  // 16.11.2026: erste Ebene wie bei Profi-Tools – Sektoren | Branchen | Themen | Anlagen (Sektoren jetzt auch für die USA); Europa hat nur Sektoren
-  const m = spMarket(), eu = state.spReg === "eu" && (m.sectors_eu || []).length, mode = eu ? "sec" : state.spMode === "eu" ? "ind" : state.spMode || "ind";
-  const as = !eu && mode === "as" && (m.assets || []).length, th = !as && !eu && mode === "th" && (m.themes || []).length;
-  const sec = !!eu || (!as && !th && mode === "sec" && (m.sectors || []).length), ind = th || (!as && !sec && (m.industries || []).length);
-  return { ind, th, eu, as, sec, xs: (as ? m.assets : eu ? m.sectors_eu : th ? m.themes : ind ? m.industries : m.sectors) || [] };
+  // Erste Ebene wie bei Profi-Tools – Sektoren | Branchen | Anlagen (Sektoren auch für die USA); Europa hat nur Sektoren
+  // 16.11.2026 (Wunsch „nur Sektoren und Branchen“): die früheren Themen (Neoclouds, Quanten, Speicherchips …) sind jetzt Branchen
+  // mit ihrem Sektor; doppelte (gleicher ETF) zählen einmal. Ebene „th“ gibt es nicht mehr, gespeicherte Wahl → Branchen.
+  const m = spMarket(), eu = state.spReg === "eu" && (m.sectors_eu || []).length, mode = eu ? "sec" : ["eu", "th"].includes(state.spMode) ? "ind" : state.spMode || "ind", th = false;
+  const as = !eu && mode === "as" && (m.assets || []).length;
+  const allInd = (() => { const l = m.industries || [], ks = new Set(l.map(x => x.k)); return [...l, ...(m.themes || []).filter(x => !ks.has(x.k))]; })();
+  const sec = !!eu || (!as && mode === "sec" && (m.sectors || []).length), ind = !as && !sec && allInd.length > 0;
+  let xs = (as ? m.assets : eu ? m.sectors_eu : ind ? allInd : m.sectors) || [];
+  if (ind && state.spPar) { const f = xs.filter(x => SP_PARENT[x.k] === state.spPar); if (f.length) xs = f; }
+  return { ind, th, eu, as, sec, xs };
 }
 function spRanked(xs, k) {
   const val = (x, prev) => { const v = prev ? x.p && x.p[k] : x[k]; return v == null ? -Infinity : v; };
@@ -4588,7 +4593,13 @@ const SP_PARENT = { SOXX: "Technologie", IGV: "Technologie", XTH: "Technologie",
   GRID: "Industrie", EVX: "Industrie", ITA: "Industrie", IYT: "Industrie", JETS: "Industrie", PAVE: "Industrie", ICLN: "Versorger", PHO: "Versorger", BETZ: "Zyklischer Konsum", ITB: "Zyklischer Konsum",
   XRT: "Zyklischer Konsum", PEJ: "Zyklischer Konsum", CARZ: "Zyklischer Konsum", WOOD: "Rohstoffe", GDX: "Rohstoffe", SIL: "Rohstoffe", COPX: "Rohstoffe", PICK: "Rohstoffe", FDN: "Kommunikation",
   IYZ: "Kommunikation", ESPO: "Kommunikation", XBI: "Gesundheit", PPH: "Gesundheit", IHI: "Gesundheit", IHF: "Gesundheit", XOP: "Energie", OIH: "Energie", CRAK: "Energie", AMLP: "Energie", URA: "Energie",
-  PBJ: "Basiskonsum", VNQ: "Immobilien" };
+  PBJ: "Basiskonsum", VNQ: "Immobilien",
+  // frühere Themen (16.11.2026) – je Branche der Sektor, in dem ihre Hauptwerte überwiegend stehen
+  CIBR: "Technologie", SKYY: "Technologie", BOTZ: "Technologie", "*NEO": "Technologie", "*QNT": "Technologie", "*OPT": "Technologie",
+  "*MEM": "Technologie", "*SEQ": "Technologie", "*AISW": "Technologie", SRVR: "Immobilien", WGMI: "Finanzen", "*CRY": "Finanzen",
+  NLR: "Energie", FAN: "Versorger", "*H2": "Industrie", UFO: "Industrie", "*EDEF": "Industrie", "*DRN": "Industrie", "*EVT": "Industrie",
+  LIT: "Rohstoffe", REMX: "Rohstoffe", SLX: "Rohstoffe", MOO: "Rohstoffe", KWEB: "Kommunikation", "*EV": "Zyklischer Konsum",
+  "*LUX": "Zyklischer Konsum", "*GLP": "Gesundheit", "*GEN": "Gesundheit" };
 const spTk = k => /^[A-Z0-9]{2,5}(\.[A-Z]{1,2})?$/.test(String(k || "")) ? String(k).replace(/\.DE$/, "") : "Korb";
 function sectorsHtml() {
   const lv = mktLive(), a = (anaData && anaData.market) || {};
@@ -4603,21 +4614,22 @@ function sectorsHtml() {
   const hasRrg = xs.some(x => x.rrg), rv = hasRrg && state.spView === "rrg";
   const bar = x => { const w = Math.abs(x.v) / mx * span; return `<i class="${x.v >= 0 ? "up" : "down"}" style="left:${x.v >= 0 ? zero : zero - w}%;width:${Math.max(w, .8)}%"></i>`; };
   const mvH = x => x.mv > 0 ? `<em class="up" title="${x.mv} Plätze besser als ${k === "d1" ? "gestern" : "vor einer Woche"}">▲${x.mv}</em>` : x.mv < 0 ? `<em class="down" title="${-x.mv} Plätze schlechter">▼${-x.mv}</em>` : `<em></em>`;
-  const row = (x, i) => `<button class="sp-r" data-spopen="${esc(x.k)}"><span class="sp-k">${esc(spTk(x.k))}</span><span class="sp-n">${esc(x.n)}${ind && !th && SP_PARENT[x.k] ? `<small>${esc(SP_PARENT[x.k])}</small>` : ""}${!ind && x.hot ? ' <small class="sp-hot" title="Stärkster Lauf der letzten 4 Wochen – historisch danach eher schwächer">heißgelaufen</small>' : ""}</span><span class="sp-b">${bar(x)}${neg && pos ? `<b style="left:${zero}%"></b>` : ""}</span><span class="sp-v ${x.v >= 0 ? "up" : "down"}">${sgnPct(x.v, 1)}</span>${mvH(x)}</button>`;
+  const row = (x, i) => `<button class="sp-r" data-spopen="${esc(x.k)}"><span class="sp-k">${esc(spTk(x.k))}</span><span class="sp-n">${esc(x.n)}${ind && !state.spPar && SP_PARENT[x.k] ? `<small>${esc(SP_PARENT[x.k])}</small>` : ""}${!ind && x.hot ? ' <small class="sp-hot" title="Stärkster Lauf der letzten 4 Wochen – historisch danach eher schwächer">heißgelaufen</small>' : ""}</span><span class="sp-b">${bar(x)}${neg && pos ? `<b style="left:${zero}%"></b>` : ""}</span><span class="sp-v ${x.v >= 0 ? "up" : "down"}">${sgnPct(x.v, 1)}</span>${mvH(x)}</button>`;
   // Rotation: größte Rangsprünge nach oben/unten im gewählten Zeitraum
   const ups = rows.filter(x => x.mv >= 2).sort((a, b) => b.mv - a.mv).slice(0, 3), dns = rows.filter(x => x.mv <= -2).sort((a, b) => a.mv - b.mv).slice(0, 3);
   const rot = ups.length || dns.length ? `<div class="sp-rot">↻ <b>Rotation</b> ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"}: ${ups.length ? `Geld fließt in <span class="up">${ups.map(x => esc(x.n)).join(", ")}</span>` : ""}${ups.length && dns.length ? " · " : ""}${dns.length ? `raus aus <span class="down">${dns.map(x => esc(x.n)).join(", ")}</span>` : ""}</div>` : "";
-  const hasEu = (m.sectors_eu || []).length, lvl = [["sec", "Sektoren", (m.sectors || []).length], ["ind", "Branchen", (m.industries || []).length], ["th", "Themen", (m.themes || []).length], ["as", "Anlagen", (m.assets || []).length]];
+  const hasEu = (m.sectors_eu || []).length, lvl = [["sec", "Sektoren", (m.sectors || []).length], ["ind", "Branchen", (m.industries || []).length + (m.themes || []).length], ["as", "Anlagen", (m.assets || []).length]];
   const cur = sec ? "sec" : as ? "as" : th ? "th" : "ind", what = sec ? "Sektoren" : as ? "Anlagen" : th ? "Themen" : "Branchen";
   const sel = (attr, opts, v, lbl) => `<label class="sp-dd"><span>${lbl}</span><select ${attr} aria-label="${lbl}">${opts.map(([o, l]) => `<option value="${o}"${o === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
   return `<div class="hcard sp-card"><div class="hh sp-hh"><b>Sektoren &amp; Branchen</b>${fsBtn("sp")}</div>
     <div class="sp-seg sp-lev4">${lvl.map(([v, l, ok]) => `<button class="${v === cur ? "on" : ""}" data-spmode="${v}"${ok && (!eu || v === "sec") ? "" : ` disabled title="${eu ? "in Europa nur Sektoren" : "kommt mit dem nächsten Abend-Scan"}"`}>${l}</button>`).join("")}</div>
     <div class="sp-cx">${hasEu && !as ? sel("data-spregsel", [["us", "USA"], ["eu", "Europa"]], eu ? "eu" : "us", "Region") : `<span class="sp-dd sp-dd0"><span>Region</span><b>${as ? "weltweit" : "USA"}</b></span>`}
+      ${ind ? sel("data-sppar", [["", "Alle"], ...[...new Set(Object.values(SP_PARENT))].sort((a, b) => a.localeCompare(b, "de")).map(v => [v, v])], state.spPar || "", "Sektor") : ""}
       ${hv || rv ? `<span class="sp-dd sp-dd0"><span>Zeitraum</span><b>Wochen</b></span>` : sel("data-sppersel", SP_PER.map(([v, , n]) => [v, n.charAt(0).toUpperCase() + n.slice(1)]), k, "Zeitraum")}
       ${sel("data-spviewsel", [["ret", "Rendite", 1], ["rrg", "Rotation", hasRrg], ["hist", "Verlauf", hasHist]].filter(o => o[2]).map(o => [o[0], o[1]]), hv ? "hist" : rv ? "rrg" : "ret", "Ansicht")}
       ${hv || rv ? "" : `<button class="sp-rel${state.spRel ? " on" : ""}" data-sprel aria-pressed="${state.spRel ? "true" : "false"}" title="Rendite minus Durchschnitt aller ${what}">ggü. Markt</button>`}</div>
     ${rv ? spRrgHtml(xs, ind) + (th ? themeTrendHtml(xs) : "") : hv ? spHistHtml(xs, ind) : `${rot}${th ? themeTrendHtml(xs) : hotHtml(ind ? [] : xs)}<div class="sp-list">${show.map(row).join("")}</div>`}
-    <div class="note sp-src" style="margin:8px 0 0">${eu ? "STOXX-Europe-600-Sektor-ETFs (Xetra)" : as ? "Anlage-ETFs" : `US-${what}-ETFs${th ? " bzw. Körbe" : ""}`}${rv ? " gegenüber dem " + (eu ? "STOXX 600" : "S&P 500") + ", Wochenwerte" : state.spRel ? " · Rendite minus Durchschnitt" : ""} · ▲▼ Plätze ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"} · antippen zeigt die stärksten Aktien</div></div>`;
+    <div class="note sp-src" style="margin:8px 0 0">${eu ? "STOXX-Europe-600-Sektor-ETFs (Xetra)" : as ? "Anlage-ETFs" : `US-${what}-ETFs${ind ? " bzw. Kairo-Körbe (z. B. Neoclouds)" : ""}`}${rv ? " gegenüber dem " + (eu ? "STOXX 600" : "S&P 500") + ", Wochenwerte" : state.spRel ? " · Rendite minus Durchschnitt" : ""} · ▲▼ Plätze ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"} · antippen zeigt die stärksten Aktien</div></div>`;
 }
 // „Heißgelaufen“: die 2 Sektoren mit der höchsten Mehrrendite über 4 Wochen (backend/analysis.py rotation). Backtest 2008–2026
 // (tools/research/rotation.py): solche Sektoren lagen seit 2016 in den folgenden 13 Wochen im Schnitt ~1 % hinter dem Markt.
@@ -5050,7 +5062,7 @@ function fsSpHtml() {
   const lvl = as ? "Anlageklassen" : th ? "Themen" : ind ? "Branchen" : "Sektoren";
   const typ = ["improving", "leading", "weakening", "lagging"].filter(q => st[q]).map(q => `<span><i style="background:${RRG_Q[q][1]}"></i>${RRG_Q[q][0]} ≈ ${fmt(st[q].med, 0)} Wo.</span>`).join("");
   const head = `<div class="fs-ctl"><div class="sp-seg">${(m.sectors_eu || []).length ? [["us", "USA"], ["eu", "Europa"]].map(([v, l]) => `<button class="${(v === "eu") === !!eu ? "on" : ""}" data-spreg="${v}">${l}</button>`).join("") : ""}</div>
-    <div class="sp-seg">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu], ["th", "Themen", !eu], ["as", "Anlagen", !eu && (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? !!as : v === "th" ? !!th : v === "sec" ? !ind && !th && !as : !!ind && !th) ? "on" : ""}" data-spmode="${v}"${ok ? "" : " disabled"}>${l}</button>`).join("")}</div>
+    <div class="sp-seg">${[["sec", "Sektoren", 1], ["ind", "Branchen", !eu], ["as", "Anlagen", !eu && (m.assets || []).length]].map(([v, l, ok]) => `<button class="${(v === "as" ? !!as : v === "sec" ? !ind && !as : !!ind) ? "on" : ""}" data-spmode="${v}"${ok ? "" : " disabled"}>${l}</button>`).join("")}</div>
     <button class="kchip${onlyMine ? " on" : ""}" data-fsmine>★ nur mit meinen Aktien</button></div>`;
   const list = rows.filter(o => o.x.rrg);
   return `${head}
@@ -9459,8 +9471,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.201";
-const APP_NEWS = [["2026.11.201", "Ruhigere Kopfbereiche in News, Scanner und ETF", [
+const APP_VER = "2026.11.202";
+const APP_NEWS = [["2026.11.202", "Nur noch Sektoren und Branchen", [
+  ["Themen sind Branchen", "Neoclouds, Quantencomputer, Speicherchips, Chip-Ausrüster, KI-Software, Cybersecurity, Cloud, Kernkraft, Raumfahrt, Rüstung Europa, Drohnen, GLP-1 und alle weiteren früheren Themen stehen jetzt unter „Branchen“ – jeweils mit ihrem Sektor."],
+  ["Sektor-Auswahl", "Unter „Branchen“ wählst du oben „Sektor ▾“, z. B. Technologie – dann siehst du nur dessen Branchen."]]],
+ ["2026.11.201", "Ruhigere Kopfbereiche in News, Scanner und ETF", [
   ["News", "Eine Leiste statt vier Zeilen: Meine Aktien / Markt, Suche, Tendenz als Auswahl und ↻. Darunter eine leise Infozeile; Rückenwind/Gegenwind erklärt das ⓘ."],
   ["Scanner", "Region als Auswahl statt fünf Knöpfen, Filter mit Zähler, Spalten und ↻ rechts. Die Erklärung der Ansicht und der Status steckt im ⓘ neben der Anzahl."],
   ["ETF", "Doppelte Status-Pille und doppeltes Datum entfernt, EMA-Kacheln zeigen den Abstand in %, Rückblick mit Hinweis auf die kurze Historie, Vollbild als Symbol."]]],
@@ -10665,6 +10680,7 @@ function liveKick(ts, sec) {                                  // veraltete Kurse
   const st = liveOn() ? liveStale([...new Set(ts.filter(Boolean))]) : [];
   if (st.length) liveMany(st).then(n => { if (n && state.sec === sec) render(); });
 }
+document.addEventListener("change", e => { if (e.target.matches && e.target.matches("[data-sppar]")) { state.spPar = e.target.value; save(); render(); } });
 document.addEventListener("change", e => { if (e.target.matches && e.target.matches("[data-spviewsel]")) { state.spView = e.target.value; save(); render(); } });
 document.addEventListener("change", e => { const t = e.target; if (!t.matches) return;   // Sektoren-Karte: Region und Zeitraum als Auswahl (16.11.2026)
   if (t.matches("[data-spregsel]")) { state.spReg = t.value; if (t.value === "eu") state.spMode = "sec"; save(); render(); }
