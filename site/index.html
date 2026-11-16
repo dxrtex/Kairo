@@ -9377,11 +9377,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.194";
-const APP_NEWS = [["2026.11.194", "KI-Analyse denkt jetzt wie Kairo", [
+const APP_VER = "2026.11.195";
+const APP_NEWS = [["2026.11.195", "KI-Analyse denkt jetzt wie Kairo", [
   ["Kairo-Sicht", "Die KI-Chartanalyse liest einen Rücksetzer jetzt mit Kairos eigener Regel statt wie ein Trendfolger: Rücksetzer ≥ 12 %, Kaufzone erreicht, Wende-Signale (Abflachung, RSI-Divergenz, RSI 28–48, MACD unter 0 und dreht, MBI) – bei Scan-Aktien exakt die Scan-Werte, sonst dieselbe Rechnung aus dem Chart."],
   ["Kein falsches Rot mehr", "Ein Kairo-Treffer wie GOOGL (11/11) stand bisher als „Stark bärisch −74“ da. Jetzt steht oben das Kairo-Urteil; der Trend-Wert bleibt als kleine Zeile mit der Einordnung, dass ein Abwärtstrend für Kairo Voraussetzung ist."],
-  ["Verkaufsvolumen", "Neu: ob das Volumen an roten Tagen nachlässt oder noch steigt."],
   ["Plan statt Szenario", "In der Kairo-Lage zeigt die Karte den Kairo-Plan (Kauf, Ziele, Stop, Chance/Risiko) und was unter dem Stop passiert – statt eines allgemeinen Bärisch-Szenarios."]]],
   ["2026.11.193", "Warum bewegt sich die Aktie? · Börsengänge", [
   ["Warum bewegt sich die Aktie?", "Neue Karte in der Chart-Leiste: Tagesbewegung im Vergleich zu Index und Branche, erkannter Auslöser (Quartalszahlen, Analysten, Prognose, Kapitalmaßnahme, Übernahme, Behörden …) und die passenden Schlagzeilen – zugeordnet zum Handelstag, an dem sie wirken. Ohne eigene Meldung sagt Kairo, ob Markt oder Branche die Aktie mitziehen."],
@@ -13121,9 +13120,6 @@ function kairoView(t, c, A) {
   } else if (daily) {                                                     // gleiche Rechnung wie der Scan, aus dem Chart
     const K2 = kairoCritChart(c); Object.assign(ok, K2.ok); dd = K2.info.dd; hiD = K2.info.hiD; var brokenC = K2.info.broken;
   } else return null;
-  // Verkaufsdruck (Beobachtung, kein Kairo-Kriterium): Volumen an roten Tagen der letzten 5 Kerzen gegenüber dem Abverkauf davor
-  let sell = null; if (V.length === n) { const red = (a, b) => { let s = 0, k = 0; for (let i = a; i < b; i++) if (C[i] < C[i - 1] && V[i] > 0) { s += V[i]; k++; } return k ? s / k : null; };
-    const now = red(n - 5, n), pre = red(n - 25, n - 5); if (now != null && pre) sell = now / pre; else if (now == null && pre) sell = 0; }
   const pull = ["drawdown", "no_crash", "structure", "zone"], turn = KV_TURN.filter(([k]) => k in ok), turnOk = turn.filter(([k]) => ok[k]);
   const met = src === "scan" ? row.met : Object.values(ok).filter(Boolean).length, tot = src === "scan" ? row.total || 11 : Object.keys(ok).length;
   const st = row ? kSt(row) : null, broken = src === "scan" ? !ok.zone && row.zone && row.zone.fib && row.zone.fib.retracement > .886 && !(row.zone.support || {}).ok : !ok.zone && !!brokenC;
@@ -13134,12 +13130,12 @@ function kairoView(t, c, A) {
     : broken ? { k: "broken", cls: "down", l: "Unter die Zone gefallen" }
     : !ok.zone ? { k: "fall", cls: "gold", l: "Fällt Richtung Zone" }
     : { k: "zone", cls: "gold", l: turnOk.length >= turn.length - 1 ? "Wende fast komplett" : "In der Zone – Wende offen" };
-  return { src, ok, dd, hiD, met, tot, turn, turnOk, sell, ph, st, row, ctx: !!ok.drawdown, climax: !!(row && row.flags && row.flags.volume_climax), daily };
+  return { src, ok, dd, hiD, met, tot, turn, turnOk, ph, st, row, ctx: !!ok.drawdown, climax: !!(row && row.flags && row.flags.volume_climax), daily };
 }
 function kairoViewText(KV) {
   if (!KV) return "";
   const dd = KV.dd != null ? `${sgnPct(KV.dd, 0)} vom Hoch${KV.hiD ? ` (${dateDE(String(KV.hiD).slice(0, 10))})` : ""}` : "";
-  const sell = KV.sell == null ? "" : KV.sell < .8 ? " Das Verkaufsvolumen nimmt ab." : KV.sell > 1.25 ? " Das Verkaufsvolumen steigt noch – der Abverkauf läuft." : "";
+  const sell = "";
   const sig = KV.turnOk.length ? KV.turnOk.map(x => x[1]).join(", ") : "noch keins";
   if (KV.ph.k === "none") return `Kairo-Sicht: kein Rücksetzer (${dd || "nah am Hoch"}) – Kairo kauft erst nach mindestens 12 % Rückgang in eine Unterstützungszone.`;
   if (KV.ph.k === "crash") return `Kairo-Sicht: Crash statt geordnetem Rücksetzer (${dd}, ein Tag mit über 25 % Verlust) – solche Fälle meidet Kairo.`;
@@ -13152,13 +13148,12 @@ function kairoViewText(KV) {
 function kairoViewHtml(KV) {
   if (!KV) return "";
   const chip = (on, l) => `<span class="kv-c${on ? " on" : ""}">${on ? "✓" : "○"} ${esc(l)}</span>`, yes = (on, a, b) => `<b class="${on ? "up" : "muted"}">${on ? "✓ " + a : b}</b>`;
-  const sell = KV.sell == null ? "" : `<div class="kv-r"><span>Verkaufsvolumen <small>rote Tage, letzte 5 vs. 20 davor</small></span><b class="${KV.sell < .8 ? "up" : KV.sell > 1.25 ? "down" : "muted"}">${KV.sell < .8 ? "nimmt ab" : KV.sell > 1.25 ? "steigt noch" : "unverändert"} <small>${KV.sell ? fmt(KV.sell, 1) + "×" : "–"}</small></b></div>`;
   return `<div class="kv-top"><div class="kv-g ${KV.ph.cls}"><b>${KV.met}/${KV.tot}</b><span>${esc(KV.ph.l)}</span></div>
     <div class="kv-m"><div class="kv-h">Kairo-Sicht <small>${KV.src === "scan" ? "aus dem Scan" : "aus dem Chart"}</small></div>
       <div class="kv-r"><span>Rücksetzer</span>${yes(KV.ok.drawdown, KV.dd != null ? sgnPct(KV.dd, 0) : "ja", KV.dd != null ? sgnPct(KV.dd, 0) + " (ab −12 %)" : "nein")}</div>
       <div class="kv-r"><span>Kaufzone</span>${yes(KV.ok.zone, "erreicht", KV.ph.k === "broken" ? "unterschritten" : "noch nicht")}</div>
       <div class="kv-r"><span>Wende-Signale</span><b class="${KV.turnOk.length >= KV.turn.length - 1 ? "up" : KV.turnOk.length >= 3 ? "gold" : "muted"}">${KV.turnOk.length} von ${KV.turn.length}</b></div></div></div>
-    <div class="kv-cs">${KV.turn.map(([k, l]) => chip(KV.ok[k], l)).join("")}${KV.climax ? chip(true, "Volumen-Climax") : ""}</div>${sell}`;
+    <div class="kv-cs">${KV.turn.map(([k, l]) => chip(KV.ok[k], l)).join("")}${KV.climax ? chip(true, "Volumen-Climax") : ""}</div>`;
 }
 function autoCardHtml(h) {
   const c = window.__lastChart && window.__lastChart.c, A = h.A || (h.A = c ? autoTA(c) : null); if (!A) return "";
