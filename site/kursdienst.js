@@ -1,7 +1,8 @@
-// Kairo-Kursdienst (Version 10) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
+// Kairo-Kursdienst (Version 11) – kleiner Cloudflare Worker (kostenlos) für die Kairo-App.
 //   ?s=SAP.DE,AAPL      Kurse (Yahoo Finance, je nach Börse leicht verzögert); ab Version 10 mit vor-/nachbörslichem Kurs (x, xt)
 //   ?q=Rheinmetall      Aktiensuche an allen Börsen
-//   ?c=RHM.DE           Tageskerzen (1 Jahr) – damit plant Kairo auch Aktien außerhalb des Scans
+//   ?c=RHM.DE           Tageskerzen (1 Jahr) – damit plant Kairo auch Aktien außerhalb des Scans; &i=1h/15m/5m Intraday (ab Version 9)
+//   ?n=Nordex&t=NDX1.DE  Schlagzeilen der letzten 10 Tage (Google News, deutsch + englisch) für „Warum bewegt sich die Aktie?“ (ab Version 11)
 //   /trades?key=…       offene Trades, Depot, Watchlist und Chart-Alarme (ab Version 9) für Scan und Mitteilungen (GET lesen, POST speichern) – braucht den KV-Speicher „KAIRO“
 //   /vault              verschlüsselte Datensicherung der App (ab Version 8): Depot, Journal, Pläne, Watchlist – nur das iPad kann sie lesen
 //   /earn               Quartalszahlen, die gerade offiziell bei der SEC gemeldet wurden (ab Version 6; v7: eine 6-K beendet die Suche nicht)
@@ -9,6 +10,10 @@
 
 const ALLOW = ["https://dxrtex.github.io"];          // nur die Kairo-App darf den Dienst im Browser nutzen
 const MAX = 25;                                       // höchstens so viele Aktien je Abruf
+// Ab Version 11: Yahoo lehnt Abrufe ohne Browser-Kennung von Cloudflare-Servern gelegentlich ab (vor allem Intraday-Kerzen) –
+// deshalb melden sich alle Yahoo-Abrufe wie ein normaler Browser.
+const UA = { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15", "Accept": "application/json,text/plain,*/*" };
+const yfetch = (u, o = {}) => fetch(u, { ...o, headers: { ...UA, ...(o.headers || {}) } });
 
 // Wecker (ab Version 5, optional): GitHub startet geplante Läufe oft Stunden zu spät – Cloudflare nicht.
 // Einrichtung: Settings → Variables and Secrets → Secret „GH_TOKEN“ (GitHub-Schlüssel mit Actions: Read and write),
@@ -116,13 +121,15 @@ export default {
     if (url.pathname.replace(/\/+$/, "") === "/trades") return trades(request, env, url, cors);
     if (url.pathname.replace(/\/+$/, "") === "/vault") return vault(request, env, url, cors);
     if (url.pathname.replace(/\/+$/, "") === "/earn") return json({ ok: true, hits: env && env.KAIRO ? Object.values(JSON.parse((await env.KAIRO.get("e8k")) || "{}")) : [] }, cors);
+    const nq = (url.searchParams.get("n") || "").trim();
+    if (nq && nq.length <= 60) return json(await news(nq, url.searchParams.get("t") || ""), cors);
     const q = (url.searchParams.get("q") || "").trim();
     if (q) return json(await search(q), cors);
     const c = (url.searchParams.get("c") || "").trim().toUpperCase();
     if (c && /^[A-Z0-9.\-^=]{1,20}$/.test(c)) return json(await candles(c, url.searchParams.get("i") || "1d"), cors);
     const syms = (url.searchParams.get("s") || "").split(",").map(x => x.trim().toUpperCase())
       .filter(x => /^[A-Z0-9.\-^=]{1,20}$/.test(x)).slice(0, MAX);
-    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 10). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
+    if (!syms.length) return json({ ok: true, info: "Kairo-Kursdienst läuft (Version 11). Abruf: ?s=SAP.DE,AAPL", kv: !!(env && env.KAIRO) }, cors);
     const diag = url.searchParams.has("debug") ? [] : null;
     const out = await quotes(syms, ctx, diag);
     return json(diag ? { ...out, _diag: diag } : out, cors);
@@ -141,7 +148,7 @@ async function quotes(syms, ctx, diag) {
     for (const host of ["query1", "query2"]) {                                 // 1) spark
       if (!todo().length) break;
       try {
-        const r = await fetch(`https://${host}.finance.yahoo.com/v7/finance/spark?symbols=${todo().map(encodeURIComponent).join(",")}&range=1d&interval=5m&includePrePost=true`);
+        const r = await yfetch(`https://${host}.finance.yahoo.com/v7/finance/spark?symbols=${todo().map(encodeURIComponent).join(",")}&range=1d&interval=5m&includePrePost=true`);
         log("spark " + host, r.status);
         if (!r.ok) continue;
         for (const x of ((await r.json()).spark || {}).result || []) {
@@ -153,7 +160,7 @@ async function quotes(syms, ctx, diag) {
     for (const s of todo()) {                                                 // 2) chart
       for (const host of ["query1", "query2"]) {
         try {
-          const r = await fetch(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?interval=1d&range=5d`);
+          const r = await yfetch(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?interval=1d&range=5d`);
           log("chart " + host, r.status);
           if (!r.ok) continue;
           const meta = ((((await r.json()).chart || {}).result || [])[0] || {}).meta;
@@ -179,7 +186,7 @@ async function crumbQuotes(syms, out, log) {
     const crumb = cr.ok ? (await cr.text()).trim() : "";
     log("crumb", cr.status);
     if (!crumb) return;
-    const r = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms.map(encodeURIComponent).join(",")}&crumb=${encodeURIComponent(crumb)}`, { headers: { ...UA, cookie } });
+    const r = await yfetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms.map(encodeURIComponent).join(",")}&crumb=${encodeURIComponent(crumb)}`, { headers: { ...UA, cookie } });
     log("quote", r.status);
     if (!r.ok) return;
     for (const q of ((await r.json()).quoteResponse || {}).result || []) {
@@ -195,7 +202,7 @@ async function crumbQuotes(syms, out, log) {
 async function search(q) {
   for (const host of ["query1", "query2"]) {
     try {
-      const r = await fetch(`https://${host}.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=15&newsCount=0&listsCount=0`);
+      const r = await yfetch(`https://${host}.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=15&newsCount=0&listsCount=0`);
       if (!r.ok) continue;
       const l = ((await r.json()).quotes || []).filter(x => x.symbol && (x.quoteType === "EQUITY" || x.typeDisp === "Equity"));
       return { quotes: l.map(x => ({ symbol: x.symbol, name: x.longname || x.shortname || x.symbol, exch: x.exchDisp || x.exchange || "", sector: x.sectorDisp || x.sector || "" })) };
@@ -204,13 +211,38 @@ async function search(q) {
   return { quotes: [], error: "Suche gerade nicht erreichbar" };
 }
 
+// Schlagzeilen (ab Version 11): Google News RSS, deutsch und englisch, letzte 10 Tage – für „Warum bewegt sich die Aktie?“.
+// Antwort: { items: [{ t: Titel, p: Quelle, u: Link, d: ISO-Zeit, de: 1 bei deutsch }] }
+const unx = s => String(s || "").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
+async function news(name, tk) {
+  const qs = [[`"${name}" Aktie when:10d`, "de", "DE", "DE:de"], [`"${name}" stock when:10d`, "en-US", "US", "US:en"]];
+  const out = [], seen = new Set();
+  for (const [q, hl, gl, ceid] of qs) {
+    try {
+      const r = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${hl}&gl=${gl}&ceid=${ceid}`, { headers: UA });
+      if (!r.ok) continue;
+      const xml = await r.text();
+      for (const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+        const it = m[1], g = k => unx((it.match(new RegExp(`<${k}[^>]*>([\\s\\S]*?)<\\/${k}>`)) || [])[1]);
+        let t = g("title"); const p = g("source"), d = new Date(g("pubDate")), u = g("link");
+        if (p && t.endsWith(" - " + p)) t = t.slice(0, -(p.length + 3));
+        const k = t.toLowerCase().replace(/[^a-z0-9äöü]/g, "").slice(0, 48);
+        if (!t || isNaN(d) || seen.has(k)) continue; seen.add(k);
+        out.push({ t, p, u, d: d.toISOString(), ...(hl === "de" ? { de: 1 } : {}) });
+      }
+    } catch (e) { /* nächste Sprache */ }
+  }
+  out.sort((a, b) => (a.d < b.d ? 1 : -1));
+  return { name, t: tk, items: out.slice(0, 60) };
+}
+
 // Kerzen (Yahoo) – Tageskerzen eines Jahres; ab Version 9 auch Intraday (i=1h: 6 Monate, 15m: 1 Monat, 5m: 10 Tage, ca. 15 Min. verzögert)
 const IV = { "1d": "1y", "1h": "6mo", "15m": "1mo", "5m": "10d" };
 async function candles(sym, iv = "1d") {
   if (!IV[iv]) iv = "1d";
   for (const host of ["query1", "query2"]) {
     try {
-      const r = await fetch(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${iv}&range=${IV[iv]}`);
+      const r = await yfetch(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${iv}&range=${IV[iv]}`);
       if (!r.ok) continue;
       const res = (((await r.json()).chart || {}).result || [])[0];
       const qd = res && res.indicators && res.indicators.quote && res.indicators.quote[0];

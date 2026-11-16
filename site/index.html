@@ -2751,6 +2751,18 @@ body.etf-fs { overflow: hidden; }
 .hm-t.mine { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.6); } .hm-t.hit { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--gold) 80%, transparent); }
 .cf-t2.clamp { -webkit-line-clamp: 3; } .cf-t2.clamp b { display: block; margin-bottom: 4px; } .cf-t2.clamp span { display: inline; }
 #sub b { color: var(--text); font-weight: 600; } .sub-dot { font-style: normal; font-size: .8em; margin-right: 1px; }
+.k-ipo { background: rgba(191,90,242,.16); color: #bf5af2; font-size: 10px !important; letter-spacing: -.02em; } .ct.k-ipo { color: #bf5af2; } .mc .dots i.k-ipo, .mlegend i.k-ipo { background: #bf5af2; }
+.ipo-open { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; margin: 0 0 10px; border-radius: 14px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.ipo-open .k { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; } .ipo-open b { display: block; font-size: 14.5px; } .ipo-open span:not(.k) { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; line-height: 1.4; }
+.why .cf-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; } .why .cf-h small { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--muted); font-size: 12px; }
+.why-x { font-size: 12px !important; padding: 0 !important; margin: 0 0 0 4px !important; min-height: 0 !important; }
+.why-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 2px 0 6px; } .why-top b { font-size: 22px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.why-top span { color: var(--muted); font-size: 12.5px; } .why-top em { font-style: normal; font-size: 11.5px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: var(--surface-2); margin-left: auto; }
+.why-v { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: var(--text); }
+.why-n { display: block; padding: 9px 0; border-top: 1px solid var(--line); color: var(--text); text-decoration: none; } .why-n b { display: block; font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.why-n small { display: block; margin-top: 3px; color: var(--muted); font-size: 11.5px; } .why-n small i { font-style: normal; color: var(--accent); }
+.why-f { display: block; margin-top: 8px; color: var(--muted); font-size: 11.5px; } .why-f i { font-style: normal; font-size: 9px; }
+.why-ah { margin: 10px 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--gold); }
 </style>
 </head>
 <body>
@@ -4331,10 +4343,33 @@ document.addEventListener("click", e => {
 document.addEventListener("change", e => { const f = e.target.closest("[data-scf]"); if (!f) return; const k = f.dataset.scf;
   state.scf = { ...(state.scf || {}), [k]: f.type === "checkbox" ? (f.checked ? 1 : 0) : f.value }; state.scfPre = "-"; scrMore = 0; save(); render(); });
 // ---------- Kalender ----------
-let calData = null, calLoading = null;
+let calData = null, calLoading = null, calIpoOpen = [];
+// Börsengänge live (16.11.2026): mit Finnhub-Schlüssel zusätzlich der Finnhub-IPO-Kalender (−7 bis +35 Tage) – ergänzt den Abend-Scan
+// (Nasdaq-IPO-Kalender), damit kurzfristig angesetzte Börsengänge sofort erscheinen. Gleiche Firma = ein Eintrag.
+let ipoLiveAt = 0;
+function ipoLive() {
+  const fh = liveKey("fh"); if (!fh || !calData || Date.now() - ipoLiveAt < 30 * 60e3) return; ipoLiveAt = Date.now();
+  const d0 = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10), d1 = new Date(Date.now() + 35 * 864e5).toISOString().slice(0, 10);
+  fetch(`https://finnhub.io/api/v1/calendar/ipo?${new URLSearchParams({ from: d0, to: d1, token: fh })}`).then(r => r.ok ? r.json() : null).then(j => {
+    const l = (j && j.ipoCalendar) || []; if (!l.length || !calData) return;
+    const key = n => normName(String(n || "")).replace(/\b(inc|corp|corporation|ltd|plc|pbc|holdings?|group|co)\b/g, "").replace(/[^a-z0-9]/g, "").slice(0, 14);
+    const have = new Set(calData.filter(e => e.kind === "ipo").map(e => key(e.name)));
+    let add = 0;
+    l.forEach(x => { if (!x.name || !x.date || x.status === "withdrawn" || have.has(key(x.name))) return; have.add(key(x.name));
+      const pr = String(x.price || "").split("-").map(Number).filter(v => v > 0), val = x.totalSharesValue || (pr.length && x.numberOfShares ? x.numberOfShares * pr.reduce((a, b) => a + b, 0) / pr.length : null);
+      calData.push({ kind: "ipo", date: x.date, name: x.name, sym: x.symbol || null, ex: /nasdaq/i.test(x.exchange || "") ? "Nasdaq" : /nyse/i.test(x.exchange || "") ? "NYSE" : x.exchange || null,
+        price: x.price || null, val, status: x.status === "priced" ? "priced" : "expected", region: "us", big: !!(val && val >= 5e8), live: 1, title: `Börsengang: ${x.name}${x.symbol ? ` (${x.symbol})` : ""}` }); add++; });
+    calIpoOpen = calIpoOpen.filter(e => !have.has(key(e.name)));
+    if (add) { calData.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0); if (["calendar", "today", "news"].includes(state.sec)) render(); }
+  }).catch(() => {});
+}
+const ipoVal = v => !v ? "" : v >= 1e9 ? `${fmt(v / 1e9, 1)} Mrd. $` : `${fmt(v / 1e6, 0)} Mio. $`;
+const ipoPx = p => { const v = String(p || "").split(/\s*-\s*/).map(Number).filter(x => x > 0); return v.length ? v.map(x => fmt(x, x % 1 ? 2 : 0)).join("–") + " $ je Aktie" : ""; };
+const ipoInfo = e => [e.ex, ipoPx(e.price), e.val ? `Volumen ${ipoVal(e.val)}` : "",
+  e.status === "priced" ? "gepreist · Erstnotiz" : e.status === "open" ? "Termin offen" : "Preisfestsetzung · Erstnotiz meist am nächsten Handelstag", e.note || ""].filter(Boolean).join(" · ");
 function loadCalendar() {
   if (!calLoading) calLoading = scanFetch("calendar.json").then(r => r.json())
-    .then(d => { const seen = new Set(); calData = (d.events || []).filter(e => { const k = [e.date, normName(e.name || e.ticker || e.title || ""), e.kind].join("|"); if (seen.has(k)) return false; seen.add(k); return true; }); calBadge(); if (calData.some(e => e.kind === "macro" && /Fed-Zinsentscheid/.test(e.title || "") && daysUntil(e.date) <= 0 && daysUntil(e.date) >= -1)) loadMacroLive(); if (["calendar", "today"].includes(state.sec)) render(); })
+    .then(d => { calIpoOpen = d.ipo_open || []; const seen = new Set(); calData = (d.events || []).filter(e => { const k = [e.date, normName(e.name || e.ticker || e.title || ""), e.kind].join("|"); if (seen.has(k)) return false; seen.add(k); return true; }); calBadge(); if (calData.some(e => e.kind === "macro" && /Fed-Zinsentscheid/.test(e.title || "") && daysUntil(e.date) <= 0 && daysUntil(e.date) >= -1)) loadMacroLive(); if (["calendar", "today"].includes(state.sec)) render(); })
     .catch(() => { calData = []; if (state.sec === "calendar") render(); });
   return calLoading;
 }
@@ -4343,7 +4378,7 @@ const depotTickers = () => new Set(depotLive().map(p => p.t));
 // Wirklich marktbewegende Termine für US/EU-Aktien: Zinsentscheide Fed/EZB, US-Inflation, US-Arbeitsmarktbericht, großer Verfall.
 // Alles andere (Stimmungsindizes, Reden, Feiertage, kleinere Länder) nur unter „Alle Termine“.
 const CAL_KEY = /^(USA|Eurozone): (Fed-Zinsentscheid|Fed-Pressekonferenz|EZB-Zinsentscheid|Inflation \(CPI\)|PCE-Inflation|Arbeitsmarktbericht)/;
-const calKey = e => e.kind === "expiry" || (e.kind === "macro" && CAL_KEY.test(e.title || ""));
+const calKey = e => e.kind === "expiry" || (e.kind === "ipo" && e.big) || (e.kind === "macro" && CAL_KEY.test(e.title || ""));
 function calRelevant(e) {   // wichtig: Schlüsseltermine, Quartalszahlen der Schwergewichte, alles zu Watchlist/Depot/Merkliste
   if (!e.ticker) return calKey(e);
   if (e.big) return e.kind === "earnings" || e.watch || depotTickers().has(e.ticker) || favs().has(e.ticker);
@@ -4355,7 +4390,7 @@ function calBadge() {
   $("calBadge").hidden = !n; $("calBadge").textContent = n;
 }
 const CAL_KIND = { earnings: ["Q", "k-earn", "Quartalszahlen"], exdiv: ["Div", "k-div", "Ex-Dividende"], dividend: ["Div", "k-div", "Dividendenzahlung"],
-                   macro: ["%", "k-macro", "Wirtschaft & Zinsen"], expiry: ["V", "k-exp", "Großer Verfall"] };
+                   macro: ["%", "k-macro", "Wirtschaft & Zinsen"], expiry: ["V", "k-exp", "Großer Verfall"], ipo: ["IPO", "k-ipo", "Börsengang"] };
 const REG_DE = { us: "USA", europe: "Europa", asia: "Asien", all: "weltweit" };
 // Fed-Zinsentscheid live (backend/fedlive.py → macro_live.json im Branch kairo-earnings, an Fed-Tagen alle 5 Min. geprüft)
 const MACRO_LIVE_URL = REPO.replace("https://github.com/", "https://raw.githubusercontent.com/") + "/kairo-earnings/macro_live.json";
@@ -4383,6 +4418,7 @@ const macWhen = (e, noTime) => [fedRes(e) ? "✓ " + fedRes(e).head : "", e.time
 // gelernten SEC-Meldezeit bzw. Yahoo („ca.“), Dividenden ganztägig. Ohne Uhrzeit ans Ende des Tages.
 function evTime(e) {
   if (e.kind === "macro" || e.kind === "expiry") return e.time ? { m: +e.time.slice(0, 2) * 60 + +e.time.slice(3, 5), lbl: e.time, ca: false } : { m: -1, lbl: "ganzt.", ca: false };
+  if (e.kind === "ipo") return { m: -1, lbl: "", ca: false };
   if (e.kind !== "earnings") return { m: -1, lbl: "ganzt.", ca: false };
   const er = earnData && earnData[e.ticker], L = er && er.last && er.last.date === e.date ? er.last : null;
   const sec = secHits[e.ticker] && secHits[e.ticker].date === e.date ? secHits[e.ticker].at : null;
@@ -5155,12 +5191,12 @@ function marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf) {
   if (!earnData) loadEarnings();
   const mine = myTickers();
   // Heute & morgen wichtig: eine Zeile (Zinsen/Inflation/Verfall + Quartalszahlen deiner Aktien), Details im Kalender
-  const ev = (calData || []).filter(e => { const d = daysUntil(e.date); return d >= 0 && d <= 1 && ((e.kind === "macro" && (calKey(e) || e.imp === "high")) || e.kind === "expiry" || (e.kind === "earnings" && mine.has(e.ticker))); })
+  const ev = (calData || []).filter(e => { const d = daysUntil(e.date); return d >= 0 && d <= 1 && ((e.kind === "macro" && (calKey(e) || e.imp === "high")) || e.kind === "expiry" || (e.kind === "ipo" && e.big) || (e.kind === "earnings" && mine.has(e.ticker))); })
     .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
   // kompakt je Tag: Termine als kurze Chips, Quartalszahlen zusammengefasst („Zahlen: AST SpaceMobile, Rocket Lab …“)
   // ruhige Liste wie im Briefing (11/2026): Tag + Uhrzeit links, Termin rechts; Quartalszahlen je Tag zusammengefasst
   const rowsW = [0, 1].flatMap(d => { const l = ev.filter(e => daysUntil(e.date) === d); if (!l.length) return [];
-    const mac = l.filter(e => e.kind !== "earnings").slice(0, 3).map(e => `<div class="mw-r"><time>${d ? "Morgen" : "Heute"}${e.time ? `<small>${esc(e.time)}</small>` : ""}</time><span>${esc(e.title || "Termin")}${e.imp === "high" ? ` <em>wichtig</em>` : ""}${e.why ? `<small>${esc(e.why)}</small>` : ""}</span></div>`);
+    const mac = l.filter(e => e.kind !== "earnings").slice(0, 3).map(e => `<div class="mw-r"><time>${d ? "Morgen" : "Heute"}${e.time ? `<small>${esc(e.time)}</small>` : ""}</time><span>${esc(e.title || "Termin")}${e.imp === "high" ? ` <em>wichtig</em>` : ""}${e.why ? `<small>${esc(e.why)}</small>` : e.kind === "ipo" ? `<small>${esc(ipoInfo(e))}</small>` : ""}</span></div>`);
     const er = l.filter(e => e.kind === "earnings"), en = er.slice(0, 4).map(e => esc(shortNm(e.name || e.ticker))).join(", ") + (er.length > 4 ? ` +${er.length - 4}` : "");
     return [...mac, ...(er.length ? [`<div class="mw-r"><time>${d ? "Morgen" : "Heute"}</time><span>Quartalszahlen<small>${en}</small></span></div>`] : [])]; });
   const wichtig = `<div class="hcard mw"><div class="hh mw-h"><b>Heute &amp; morgen wichtig</b><button class="hlink" data-gosub="calendar">Kalender ›</button></div>${rowsW.length ? `<div class="mw-l">${rowsW.join("")}</div>` : `<div class="mw-e">Keine großen Termine heute und morgen.</div>`}</div>`;
@@ -5290,12 +5326,12 @@ function newsHtml() {
     let pool = (bj && bj.market || []).map(n => ({ ...n, s: 0, ms: msOf(n.d) }));
     (NEWS.gen || []).forEach(n => pool.push({ t: n.headline, u: n.url, p: n.source, ms: n.datetime * 1000, s: 0 }));
     pool = dedup(pool.filter(n => n.t && n.ms && now - n.ms < 3 * 864e5).sort((a, b) => b.ms - a.ms)).slice(0, 40);
-    const mac = (calData || []).filter(e => (e.kind === "macro" || e.kind === "expiry") && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 7)
-      .map(e => `<div class="bf-r"><i class="y"></i><span><b>${esc(e.title || "Termin")}</b><em>${daysUntil(e.date) === 0 ? "Heute" : daysUntil(e.date) === 1 ? "Morgen" : dateDE(e.date)}${e.kind === "macro" && macWhen(e) ? " · " + esc(macWhen(e)) : ""}</em></span></div>`);
+    const mac = (calData || []).filter(e => (e.kind === "macro" || e.kind === "expiry" || (e.kind === "ipo" && e.big)) && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 7)
+      .map(e => `<div class="bf-r"><i class="y"></i><span><b>${esc(e.title || "Termin")}</b><em>${daysUntil(e.date) === 0 ? "Heute" : daysUntil(e.date) === 1 ? "Morgen" : dateDE(e.date)}${e.kind === "macro" && macWhen(e) ? " · " + esc(macWhen(e)) : e.kind === "ipo" ? " · " + esc(ipoInfo(e)) : ""}</em></span></div>`);
     if (!calData) loadCalendar();
     const reg = anaData && anaData.market && anaData.market.regime;
     return head + depNewsHtml(row, msOf, nameOf) + (reg ? `<div class="bf-mkt" style="margin:8px 2px"><i class="${reg.tone}"></i><span>Marktampel: <b>${esc(reg.label)}</b> · Details im Überblick</span></div>` : "")
-      + (mac.length ? block("Termine diese Woche (Zinsen, Inflation, Konjunktur, Verfall)", mac, "") : "")
+      + (mac.length ? block("Termine diese Woche (Zinsen, Inflation, Konjunktur, Verfall, Börsengänge)", mac, "") : "")
       + block("Marktmeldungen · 3 Tage", pool.map(row), "Keine Marktmeldungen geladen.");
   }
   // Insider: offizielle SEC-Meldungen (Formular 4) aus dem Scan + live je Aktie (Finnhub)
@@ -5855,14 +5891,16 @@ function calendarHtml() {
   if (!calData) return `<div class="section-title"><span>Kalender</span><span>lädt …</span></div>`;
   const dep = depotTickers();
   const watchByRegion = reg => data.results.filter(r => (r.in_watchlist || dep.has(r.ticker) || favs().has(r.ticker)) && (reg === "all" || r.region === reg)).length;
-  const kinds = { "": () => true, earnings: e => e.kind === "earnings", div: e => e.kind === "exdiv" || e.kind === "dividend", macro: e => e.kind === "macro" || e.kind === "expiry" };
+  const kinds = { "": () => true, earnings: e => e.kind === "earnings", div: e => e.kind === "exdiv" || e.kind === "dividend", macro: e => e.kind === "macro" || e.kind === "expiry", ipo: e => e.kind === "ipo" };
+  ipoLive();
   const month = state.calView !== "list";
   const all = calData.filter(e => (state.calScope === "all" || calRelevant(e)) && kinds[state.calKind || ""](e));
   const list = all.filter(e => daysUntil(e.date) >= 0 || (e.done && daysUntil(e.date) >= -7));
   const seg = (key, opts) => `<div class="opts seg">${opts.map(([v, l]) => `<button class="opt${(state[key] || "") === v ? " on" : ""}" data-cal="${key}" data-v="${v}">${l}</button>`).join("")}</div>`;
   const head = `<div class="section-title"><span>${state.calScope === "all" ? "Alle Termine" : "Nur wichtige Termine"}</span><span>${list.length} Termine</span></div>
     <div class="cal-top"><div class="vtog">${[["month", "Monat"], ["list", "Liste"]].map(([v, l]) => `<button class="${(month ? "month" : "list") === v ? "on" : ""}" data-cal="calView" data-v="${v}">${v === "month" ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M9.5 10v10M14.5 10v10"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>'}${l}</button>`).join("")}</div>${seg("calScope", [["mine", "Nur wichtige"], ["all", "Alle Termine"]])}</div>`
-    + seg("calKind", [["", "Alle"], ["earnings", "Quartalszahlen"], ["div", "Dividenden"], ["macro", "Wirtschaft & Zinsen"]]);
+    + seg("calKind", [["", "Alle"], ["earnings", "Quartalszahlen"], ["div", "Dividenden"], ["macro", "Wirtschaft & Zinsen"], ["ipo", "Börsengänge"]])
+    + ((state.calKind || "") === "" || state.calKind === "ipo" ? calIpoOpen.map(e => `<div class="ipo-open"><span class="k k-ipo">IPO</span><div><b>${esc(e.name)} · Börsengang angekündigt</b><span>${esc(ipoInfo(e))}</span></div></div>`).join("") : "");
   const nowM = (() => { const p = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }); return +p.slice(0, 2) * 60 + +p.slice(3, 5); })();
   const todayIsoB = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
   const nextKey = (() => { const l = evSort(all.filter(e => e.date === todayIsoB)).find(e => { const t = evTime(e); return t.m >= nowM && t.m < 1500; }); return l ? (l.ticker || l.title) + "|" + l.date : ""; })();
@@ -5872,8 +5910,8 @@ function calendarHtml() {
     const [icon, cls] = CAL_KIND[e.kind] || ["•", "k-exp", ""];
     if (!e.ticker) {
       const reg = e.region || "all", n2 = watchByRegion(reg);
-      const info = e.kind === "macro" ? macWhen(e, true) : "";
-      return `<div class="ev">${tcell(e)}<span class="k ${cls}"${e.imp === "high" ? ' style="outline:2px solid var(--red, #ff453a);outline-offset:1px"' : ""}>${icon}</span><div class="b"><b>${esc(e.title)}</b><span>${info ? esc(info) + "<br>" : ""}${e.kind === "macro" && reg !== "all" ? `${REG_DE[reg] || reg} – ${n2} deiner Aktien dort, bewegt aber oft alle Börsen` : "betrifft den ganzen Markt"}</span></div></div>`;
+      const info = e.kind === "macro" ? macWhen(e, true) : e.kind === "ipo" ? ipoInfo(e) : "";
+      return `<div class="ev">${tcell(e)}<span class="k ${cls}"${e.imp === "high" ? ' style="outline:2px solid var(--red, #ff453a);outline-offset:1px"' : ""}>${icon}</span><div class="b"><b>${esc(e.title)}</b><span>${e.kind === "ipo" ? esc(info) : `${info ? esc(info) + "<br>" : ""}${e.kind === "macro" && reg !== "all" ? `${REG_DE[reg] || reg} – ${n2} deiner Aktien dort, bewegt aber oft alle Börsen` : "betrifft den ganzen Markt"}`}</span></div></div>`;
     }
     const inRes = data.results.some(r => r.ticker === e.ticker);
     const enx = e.kind === "earnings" && earnData && earnData[e.ticker] && earnData[e.ticker].next, etm = enx && enx.date === e.date ? earnTime(enx, e.ticker) : "";
@@ -5888,7 +5926,7 @@ function calendarHtml() {
     const n = daysUntil(d), when = n === 0 ? "heute" : n === 1 ? "morgen" : n === -1 ? "gestern" : n < 0 ? `vor ${-n} Tagen` : `in ${n} Tagen`;
     return `<div class="cal-day"><b>${new Date(d + "T12:00:00").toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}</b><span>${when}</span></div>`;
   };
-  const foot = `<div class="note" style="margin:16px 2px 0">Quartalszahlen und Dividenden: Yahoo Finance (Watchlist-, Depot- und Treffer-Aktien, sofern im Scan). Zinsentscheide, Inflation, Arbeitsmarkt, BIP, Stimmungsindizes, Reden der Notenbank-Chefs und Feiertage weltweit: Wirtschaftskalender (Forex Factory, jeweils 2 Wochen voraus) plus offizielle Termine von Fed, EZB, BoE, BLS und BEA für die nächsten Monate. Dazu die Quartalszahlen der Markt-Schwergewichte (Nvidia, Apple, TSMC, ASML …). Rot umrandet = sehr wichtig. Keine Gewähr – vor wichtigen Entscheidungen bitte gegenprüfen.</div>`;
+  const foot = `<div class="note" style="margin:16px 2px 0">Börsengänge: Nasdaq-IPO-Kalender (Nasdaq und NYSE)${liveKey("fh") ? ", live ergänzt über Finnhub" : ""}; angekündigte ohne festen Termin von Hand. Quartalszahlen und Dividenden: Yahoo Finance (Watchlist-, Depot- und Treffer-Aktien, sofern im Scan). Zinsentscheide, Inflation, Arbeitsmarkt, BIP, Stimmungsindizes, Reden der Notenbank-Chefs und Feiertage weltweit: Wirtschaftskalender (Forex Factory, jeweils 2 Wochen voraus) plus offizielle Termine von Fed, EZB, BoE, BLS und BEA für die nächsten Monate. Dazu die Quartalszahlen der Markt-Schwergewichte (Nvidia, Apple, TSMC, ASML …). Rot umrandet = sehr wichtig. Keine Gewähr – vor wichtigen Entscheidungen bitte gegenprüfen.</div>`;
   const byDay = {};
   if (!month) {
     if (!list.length) return head + `<div class="empty">Keine Termine in den nächsten Wochen.</div>`;
@@ -6790,7 +6828,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-earn
 const RISK = { ser: {}, res: null, sig: "", busy: false, bench: undefined };
 function riskBench() {
   if (RISK.bench !== undefined) return RISK.bench; RISK.bench = null;
-  scanFetch("bench.json").then(r => r.ok ? r.json() : null).catch(() => null).then(d => { RISK.bench = d || false; if (state.sec === "depot") riskKick(); });
+  scanFetch("bench.json").then(r => r.ok ? r.json() : null).catch(() => null).then(d => { RISK.bench = d || false; if (state.sec === "depot") riskKick(); if (state.sec === "chart" && typeof whyPaint === "function") whyPaint(); });
   return null;
 }
 function riskPositions(items, groups) {
@@ -9329,8 +9367,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.192";
-const APP_NEWS = [["2026.11.192", "RSI datumsgleich, Minus in Rot", ["Kurs, RSI, MACD und MBI sind jetzt nach Datum gekoppelt statt nach Kerzen-Nummer – sie stehen auch dann exakt übereinander, wenn einem Fenster eine Kerze fehlt (z. B. Echtzeit-Kerze oder Vergleich).", "Watchlist im Chart: Minus-Prozente rot statt weiß (auch bei Quartalszahlen und Fonds-Zone)."]],
+const APP_VER = "2026.11.193";
+const APP_NEWS = [["2026.11.193", "Warum bewegt sich die Aktie? · Börsengänge", [
+  ["Warum bewegt sich die Aktie?", "Neue Karte in der Chart-Leiste: Tagesbewegung im Vergleich zu Index und Branche, erkannter Auslöser (Quartalszahlen, Analysten, Prognose, Kapitalmaßnahme, Übernahme, Behörden …) und die passenden Schlagzeilen – zugeordnet zum Handelstag, an dem sie wirken. Ohne eigene Meldung sagt Kairo, ob Markt oder Branche die Aktie mitziehen."],
+  ["Nachrichten-Punkte im Chart", "Grüne und rote Punkte markieren starke Tage mit Nachricht – antippen zeigt in der Leiste den Grund dieses Tages (Ebene „Nachrichten“ unter Indikatoren)."],
+  ["Börsengänge im Kalender", "Neue Rubrik „Börsengänge“: Termine aus dem Nasdaq-IPO-Kalender (Nasdaq und NYSE) mit Preisspanne und Volumen, große Börsengänge auch unter „Nur wichtige Termine“, auf „Heute“ und im Briefing. Angekündigte ohne festen Termin (z. B. Anthropic) stehen oben im Kalender. Mit Finnhub-Schlüssel kommen neue Termine sofort."],
+  ["Kursdienst Version 11", "Nachrichten für jede Aktie (auch Europa) und stabilere Stundenkerzen – einmal neu in Cloudflare einfügen (Einstellungen → Live-Kurse)."]]],
+  ["2026.11.192", "RSI datumsgleich, Minus in Rot", ["Kurs, RSI, MACD und MBI sind jetzt nach Datum gekoppelt statt nach Kerzen-Nummer – sie stehen auch dann exakt übereinander, wenn einem Fenster eine Kerze fehlt (z. B. Echtzeit-Kerze oder Vergleich).", "Watchlist im Chart: Minus-Prozente rot statt weiß (auch bei Quartalszahlen und Fonds-Zone)."]],
   ["2026.11.191", "Feinschliff Optik", ["Einheitliche Bedienung: Umschalter sind Segment-Leisten, Filter und Zeiträume Pillen – auch bei Gewinner/Verlierer.", "Heatmap ruhiger: Beschriftung und Rahmen erst bei größeren Kacheln.", "Chart frei: Zeichenleiste startet eingeklappt (Stift oben links), Status-Text kurz mit „mehr“.", "Markt: Datenstand nur noch einmal (unter der Heatmap), Kartentitel einheitlich.", "Heute: ruhigere Kopfzeile, nur die Börsen-Punkte farbig."]],
   ["2026.11.190", "Ruhiger und übersichtlicher", ["Chart startet ruhig: Kerzen, EMA 20/50 und dein Kairo-Plan – Fibonacci, Linien, KI-Analyse und Treffer sind einen Tipp entfernt. Deine eigenen Schalter bleiben.", "KI-Chartanalyse kompakt: Urteil, Text und Szenarien sofort, alles Weitere unter „Details“.", "Lange Erklärtexte auf zwei Zeilen gekürzt – „mehr“ klappt sie auf.", "Branchen: Ebene und Ansicht in einer Zeile."]],
   ["2026.11.189", "iPhone-Feinschliff", ["Einstieg und Heute: Aktiennamen ganz lesbar, Status darunter statt abgeschnittener Namen.", "Chart-Vollbild: Knopfreihe bricht sauber um statt rechts abgeschnitten zu werden.", "Dein Geld: Ampel-Punkt steht in der Zeile, nicht mehr allein darüber."]], ["2026.11.188", "Design-Feinschliff", ["Gewinner/Verlierer: saubere Zeilen (Rang, Logo, Name, Prozent rechts).", "Bilanz: Kennzahlen in voller Breite statt gequetscht.", "Chart: linke Beschriftungen nicht mehr unter der Zeichenleiste.", "Depot und Markt: Abstand zwischen Titel und Reiterleiste.", "Heller Modus: Heatmap heller und frischer, Plan-Fläche ohne Braunstich.", "Kalender: Merklisten-Stern dezent im Namen."]], ["2026.11.187", "Fadenkreuz wegtippen", ["Steht das Fadenkreuz im Chart (nach langem Drücken), verschwindet es mit einem kurzen Tipp irgendwo in den Chart – wie bei TradingView."]], ["2026.11.186", "Übersichtskarte in OLED-Schwarz", ["Im dunklen Modus ist die Übersichtskarte jetzt tiefschwarz statt grau – ohne Glas-Unschärfe, mit feinen Linien um Chart und Kennzahlen."]], ["2026.11.185", "Preisachse bleibt beim Verschieben stehen", ["Wischen verändert nur noch die Zeit – auch mit einem Finger waagerecht bleibt die Höhe des Charts, wie bei TradingView. Senkrecht wischen verschiebt den Chart nach oben/unten.", "Neuer Knopf „Auto“ unten rechts passt die Höhe wieder an; ebenso jeder Zeitraum-Knopf (3M, 6M …) und Doppeltipp auf die Preisachse."]], ["2026.11.184", "Fensterhöhe im Vollbild einstellbar", ["Im Vollbild lässt sich die Höhe von RSI, MACD und MBI an der kleinen Linie über dem Fenster ziehen – nach oben mehr Indikator, nach unten mehr Kurs. Doppeltipp auf die Linie setzt zurück; die Höhe bleibt gespeichert."]], ["2026.11.183", "Zoom nur auf der Zeitachse, flüssigerer Chart", ["Zwei-Finger-Zoom verändert nur noch die Zeitachse – die Preisachse bleibt stehen (wie TradingView). Doppeltipp auf die Preisachse schaltet die automatische Anpassung wieder ein.", "Flüssiger: beim Wischen deutlich weniger Rechenarbeit je Bild (Nachbarfenster, Glas-Licht, Fonds-Kasten, Achsen-Beschriftung)."]], ["2026.11.182", "Indikatoren im Vollbild", ["Im Vollbild des Charts lassen sich RSI, MACD und MBI oben rechts einzeln oder zusammen unter dem Chart einblenden – wie bei TradingView. Das ✕ am Fenster blendet es wieder aus; die Auswahl bleibt gespeichert. Nur das unterste Fenster zeigt die Zeitachse."]], ["2026.11.181", "Schnellwahl mit Schwung, Y-Zoom bleibt, Watchlist sortiert", ["Schnellwahl am Aktien-Schild: gedrückt halten, schnell wischen und loslassen – die Liste rollt mit Schwung weiter und bleibt offen; dann die Aktie antippen. Ruhig loslassen übernimmt wie bisher.", "Preisachse selbst gezoomt: Verschieben des Charts setzt den Zoom nicht mehr zurück (Doppeltipp auf die Achse stellt die Automatik wieder her).", "Watchlist im Chart: Kairo-Treffer zuerst (nach Score), dann Fast-Treffer 10/11 und 9/11, dann der Rest – mit Überschriften."]], ["2026.11.180", "Zeichnungs-Leiste verschiebbar", ["Die Leiste einer ausgewählten Zeichnung (z. B. Fib-Retracement) lässt sich an den Punkten links greifen und verschieben – wie bei TradingView. Die Position bleibt gespeichert; standardmäßig steht sie oben rechts statt über dem Aktien-Schild."]], ["2026.11.179", "KI-Chartanalyse 2.0, ruhige Achsen, schnellerer Zoom", ["KI-Chartanalyse neu: Gesamturteil von −100 bis +100, Zusammenfassung in Worten, bullisches und bärisches Szenario mit Auslöser, Ziel, Abbruch und Chance/Risiko.", "Neu erkannt: Unterstützungs- und Widerstandszonen (Stärke 1–5), Marktstruktur und Strukturbrüche, Kerzenmuster mit eigener Trefferquote auf der Aktie, Rechteck, Kanal, Tasse mit Henkel, Dreifachboden/-top, bärische Flagge, RSI-Divergenzen, automatische Fibonacci, Konfluenz und Monatschart.", "Achsen ruhig: Kurs-, RSI-, MACD- und MBI-Fenster sind exakt gleich breit und laufen im selben Bild mit – nichts rüttelt mehr.", "Zwei-Finger-Zoom deutlich schneller, auch wenn der erste Finger schon gewischt hat.", "Zeichnungen reagieren beim Touch erst nach direktem Antippen – ein Finger auf der Fibonacci beim Zoomen verschiebt sie nicht mehr."]], ["2026.11.178", "Fibonacci ziehen ohne Chart-Verschieben", ["Zieht man die Grenzen einer Fibonacci oder einer anderen Zeichnung nach oben oder unten, bleibt der Chart jetzt stehen."]], ["2026.11.177", "Deutsche News in der Übersicht", [
@@ -10173,14 +10216,16 @@ async function diagRun() {
   if (!yq) R.push(["off", "Kursdienst", "nicht eingerichtet", "Ohne Kursdienst: keine Minutenkerzen, keine Indizes außer S&P/Nasdaq/DAX/STOXX, keine weltweite Suche. Einrichten unter Live-Kurse."]);
   else {
     try { const j = await js(`${yq}/`), v = +((String(j.info || "").match(/Version (\d+)/) || [])[1] || 0);
-      R.push([v >= 10 ? "ok" : v ? "warn" : "bad", "Kursdienst", v ? "Version " + v : "antwortet", v >= 10 ? "" : v ? "Version 10 bereitstellen: vor-/nachbörsliche Kurse und vollständige Index-Kerzen (Cloudflare → Worker → Edit code → kursdienst.js einfügen → Deploy)." : "Version nicht erkennbar."]);
+      R.push([v >= 11 ? "ok" : v ? "warn" : "bad", "Kursdienst", v ? "Version " + v : "antwortet", v >= 11 ? "" : v ? "Version 11 bereitstellen: Nachrichten für „Warum bewegt sich die Aktie?“ (auch Europa), stabilere Stundenkerzen, vor-/nachbörsliche Kurse (Cloudflare → Worker → Edit code → kursdienst.js einfügen → Deploy)." : "Version nicht erkennbar."]);
       if (j.kv === false) R.push(["warn", "Kursdienst-Speicher (KAIRO)", "fehlt", "Für Mitteilungen zu Trades und die Datensicherung den KV-Speicher „KAIRO“ in Cloudflare verbinden."]); }
     catch (e) { R.push(["bad", "Kursdienst", "keine Antwort", `${esc(e.message)} – Adresse unter Live-Kurse prüfen.`]); }
     try { const j = await js(`${yq}/?s=AAPL,SAP.DE`), a = j.AAPL, b = j["SAP.DE"];
       R.push([a && a.c > 0 && b && b.c > 0 ? "ok" : a && a.c > 0 ? "warn" : "bad", "Kurse über den Kursdienst", a && a.c > 0 ? `AAPL ${fmt(a.c)} · SAP ${b && b.c > 0 ? fmt(b.c) : "–"}` : "keine", a && a.c > 0 ? "" : "Yahoo antwortet dem Kursdienst nicht – später erneut prüfen."]); }
     catch (e) { R.push(["bad", "Kurse über den Kursdienst", "Fehler", esc(e.message)]); }
-    try { const j = await js(`${yq}/?c=AAPL&i=5m`); R.push([j && j.iv && j.iv !== "1d" && (j.c || []).length > 30 ? "ok" : "warn", "Minutenkerzen (5m)", j && j.c ? `${j.c.length} Kerzen` : "keine", j && j.iv && j.iv !== "1d" ? "" : "Braucht Kursdienst ab Version 9."]); }
+    try { const j = await js(`${yq}/?c=AAPL&i=5m`); R.push([j && j.iv && j.iv !== "1d" && (j.c || []).length > 30 ? "ok" : "warn", "Minutenkerzen (5m)", j && j.c ? `${j.c.length} Kerzen` : "keine", j && j.iv && j.iv !== "1d" && (j.c || []).length > 30 ? "" : j && j.error ? `Yahoo liefert dem Kursdienst gerade keine Minutenkerzen (${esc(j.error)}) – Kursdienst Version 11 meldet sich wie ein Browser und behebt das meist.` : "Braucht Kursdienst ab Version 9."]); }
     catch (e) { R.push(["warn", "Minutenkerzen (5m)", "Fehler", esc(e.message)]); }
+    try { const j = await js(`${yq}/?n=Apple&t=AAPL`); R.push([j && (j.items || []).length ? "ok" : "warn", "Nachrichten je Aktie", j && j.items ? `${j.items.length} Meldungen (Apple, 10 Tage)` : "keine", j && j.items ? "" : "Für „Warum bewegt sich die Aktie?“ bei allen Aktien (auch Europa): Kursdienst Version 11 bereitstellen."]); }
+    catch (e) { R.push(["warn", "Nachrichten je Aktie", "Fehler", esc(e.message)]); }
     try { const j = await js(`${yq}/?c=%5ESTOXX`); R.push([(j.c || []).length > 30 ? "ok" : "warn", "Index-Kerzen (STOXX 600)", (j.c || []).length ? `${j.c.length} Tage` : "keine", (j.c || []).length > 30 ? "" : "Kairo nutzt ersatzweise die Scan-Daten (nur Tageskerzen). Mit Kursdienst Version 10 vollständig."]); }
     catch (e) { R.push(["warn", "Index-Kerzen (STOXX 600)", "Fehler", esc(e.message)]); }
   }
@@ -11785,7 +11830,7 @@ async function openDetail(t) {
 
 // ---------- Haupt-Chart: Fibonacci als Linien, Unterstützungen/Widerstände, EMAs – alles mit Ein/Aus-Schaltern ----------
 // Ein Baustein für Detailseite und Vollbild-Cockpit; Schalter (state.cl) wirken sofort in allen offenen Charts.
-const CL_DEF = { fib: 0, big: 0, sup: 0, e20: 1, e50: 1, e100: 0, e200: 0, vol: 1, plan: 1, vp: 0, auto: 0, sig: 0, hf: 0, idl: 1, auz: 1, auk: 1, aus: 0 };   // 16.11.2026 ruhiger Standard (wie TradingView): Kerzen, EMA 20/50, Kairo-Plan – alles andere einen Tipp entfernt; selbst gesetzte Schalter (state.cl) bleiben unangetastet   // auz/auk/aus: KI-Analyse – Zonen, Kerzenmuster, Marktstruktur (15.11.2026)   // idl: Intraday-Linien (15.11.2026)   // hf: Kaufzone der Fonds (14.11.2026)   // 13.11.: Volumenprofil standardmäßig aus (Übersicht)   // Auto-Analyse seit 13.11. standardmäßig an   // EMA 100 aus: weniger Linien im Standard
+const CL_DEF = { news: 1, fib: 0, big: 0, sup: 0, e20: 1, e50: 1, e100: 0, e200: 0, vol: 1, plan: 1, vp: 0, auto: 0, sig: 0, hf: 0, idl: 1, auz: 1, auk: 1, aus: 0 };   // 16.11.2026 ruhiger Standard (wie TradingView): Kerzen, EMA 20/50, Kairo-Plan – alles andere einen Tipp entfernt; selbst gesetzte Schalter (state.cl) bleiben unangetastet   // auz/auk/aus: KI-Analyse – Zonen, Kerzenmuster, Marktstruktur (15.11.2026)   // idl: Intraday-Linien (15.11.2026)   // hf: Kaufzone der Fonds (14.11.2026)   // 13.11.: Volumenprofil standardmäßig aus (Übersicht)   // Auto-Analyse seit 13.11. standardmäßig an   // EMA 100 aus: weniger Linien im Standard
 const clGet = (k, auto) => { const v = (state.cl || {})[k]; return v == null ? (k in CL_DEF ? CL_DEF[k] : auto ? 1 : 0) : v; };
 const CL_LIVE = new Set();
 const FIBQ = [[0, "Hoch"], [.382, "38,2 %"], [.5, "50 %"], [.618, "61,8 %"], [.706, "70,6 %", 1], [.786, "78,6 %", 1], [.886, "88,6 %"], [1, "Tief"]];   // betont: Kaufzone Golden Pocket
@@ -12816,9 +12861,10 @@ function buildMain(el, c, r, opts) {
         if (i >= 0) marks.push({ i, t: "K", c: "#0a84ff", up: true });
         if (b >= 0 && b !== i) marks.push({ i: b, t: "Kauf", c: "#0a84ff", up: true });
         if (x >= 0 && g.r != null && ["stop", "ema", "zeit"].includes(g.res)) marks.push({ i: x, t: `${g.r >= 0 ? "+" : "−"}${fmt(Math.abs(g.r), 1)} R`, c: g.r >= 0 ? "#30d158" : "#ff453a", up: false }); }); }
+    try { marks.push(...whyMarks(h)); } catch (e) {}   // Nachrichten-Punkte an starken Tagen (16.11.2026)
     prim.set(it);
-    const seen = new Set(); candles.setMarkers(marks.filter(x => { const k = x.i + (x.up ? "u" : "d"); if (seen.has(k)) return false; seen.add(k); return true; })
-      .sort((a, b) => a.i - b.i).map(x => ({ time: T[x.i], position: x.up ? "belowBar" : "aboveBar", color: x.c, shape: x.up ? "arrowUp" : "arrowDown", text: x.t })));
+    const seen = new Set(); candles.setMarkers(marks.filter(x => { const k = x.i + (x.news ? "n" : "") + (x.up ? "u" : "d"); if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a, b) => a.i - b.i).map(x => ({ time: T[x.i], position: x.pos || (x.up ? "belowBar" : "aboveBar"), color: x.c, shape: x.sh || (x.up ? "arrowUp" : "arrowDown"), text: x.t })));
   };
   h.apply();
   h.live = () => {                                     // Live-Kurs: heutige Kerze fortschreiben (Linien, Fibonacci und Plan bleiben aus dem Scan)
@@ -13030,6 +13076,144 @@ function autoCardHtml(h) {
     ${A.fib ? `<div class="cf-h au-h2">Automatische Fibonacci · ${A.fib.up ? "Aufwärtsbewegung" : "Abwärtsbewegung"} ${dateDE(c.t[A.fib.iA])} → ${dateDE(c.t[A.fib.iB])}</div>${A.fib.lv.map(v => `<div class="cf-r"><span>${fmt(v.q * 100, 1)} %</span><b>${fmt(v.p)}</b>${dist(v.p)}</div>`).join("")}` : ""}
     <p class="muted cf-t">Regelbasiert aus den Kerzen dieses Charts erkannt (nachprüfbar, keine Blackbox) – Einordnung, kein Kaufsignal; die Kairo-Regel nutzt nichts davon. Kairo hat die Formationen an 1.142 Aktien über 10 Jahre geprüft: die meisten liegen nach 20 Tagen nur knapp über Zufall. Die Quote steht deshalb direkt am Muster.</p></details></div>`;
 }
+// ---------- „Warum bewegt sich die Aktie?“ (Wunsch 16.11.2026) ----------
+// Vorbild: Robinhood/Yahoo „Why is it moving“, Benzinga „WIIM“, TradingView-Nachrichtenpunkte am Chart, Bloomberg-Kursbewegung mit
+// Ursache. Kairo ordnet jede Schlagzeile dem Handelstag zu, an dem sie wirkt (nach Börsenschluss → nächster Handelstag), vergleicht
+// die Bewegung mit Index und Branche und erkennt den Auslöser (Zahlen, Analysten, Prognose, Kapitalmaßnahme, Deal, Behörden …).
+// Quellen: Nachrichten aus dem Scan (Yahoo, Google News deutsch), live Finnhub (US, 1 Jahr, mit Schlüssel), Kursdienst ab Version 11
+// (Google News für jede Aktie, auch Europa). Nur Anzeige – die Kairo-Regel nutzt nichts davon.
+const WHY = {};
+const WHY_CAT = [
+  ["earn", "Quartalszahlen", /earnings|quarterly results|results|\bQ[1-4]\b|Quartal|Zahlen|revenue|Umsatz|\bEPS\b|\bbeats?\b|\bmiss(es|ed)?\b/i],
+  ["analyst", "Analysten-Urteil", /upgrade|downgrade|price target|target (cut|raised|lowered|hike)|Kursziel|hochgestuft|abgestuft|herabgestuft|rating|initiat|overweight|underweight|outperform|underperform|Kaufempfehlung|Verkaufsempfehlung|analyst/i],
+  ["guide", "Prognose", /guidance|outlook|forecast|Prognose|Ausblick|\bwarns?\b|Gewinnwarnung|profit warning/i],
+  ["cap", "Kapitalmaßnahme", /offering|Kapitalerhöhung|convertible|Wandelanleihe|private placement|Platzierung|dilut|buyback|Aktienrückkauf|repurchase|stock split|Aktiensplit/i],
+  ["deal", "Übernahme / Deal", /acqui|merger|Übernahme|takeover|buyout|\bbid\b|Fusion|contract|Auftrag|partnership|Partnerschaft|agreement|\bdeal\b|Großauftrag/i],
+  ["reg", "Behörden / Recht", /\bFDA\b|approval|Zulassung|lawsuit|Klage|probe|investigation|subpoena|Ermittlung|antitrust|Kartell|tariff|Zölle?|export (ban|curb|control)|sanction|\bSEC\b/i],
+  ["mgmt", "Management", /\bCEO\b|\bCFO\b|resigns?|steps down|Rücktritt|Chefwechsel|appoint/i],
+  ["short", "Leerverkäufer", /short[- ]seller|short report|Leerverkäufer/i],
+  ["ins", "Insider", /insider|director (buys|sells)|Directors' Dealings|kauft Aktien|verkauft Aktien/i]];
+const whyTz = t => { const m = String(t).match(/\.([A-Z]+)$/); return m ? LIVE_TZ[m[1]] || "Europe/Berlin" : "America/New_York"; };
+const whyCloseM = t => !/\.[A-Z]+$/.test(t) ? 960 : /\.(T|HK|KS|KQ|AX|SS|SZ|TW|NS|SI)$/.test(t) ? 900 : 1050;
+function whyLoad(t, done) {
+  t = String(t).replace(/@rp$/, ""); const W = WHY[t] || (WHY[t] = { at: 0, fh: [], kd: [], busy: 0 });
+  if (W.busy || Date.now() - W.at < 10 * 60e3) return; W.busy = 1;
+  const jobs = [], fh = liveKey("fh"), yq = liveKey("yq"), r0 = rowFor(t) || {}, nm = shortNm(r0.name || (byTicker(t) || {}).name || "");
+  if (jsonData["briefing.json"] === undefined) jobs.push(fetch("data/briefing.json", { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null).then(d => { jsonData["briefing.json"] = d; }));
+  if (fh && isUS(t)) { const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 370 * 864e5).toISOString().slice(0, 10);
+    jobs.push(fetch(`https://finnhub.io/api/v1/company-news?${new URLSearchParams({ symbol: t.replace("-", "."), from, to, token: fh })}`).then(r => r.ok ? r.json() : null).catch(() => null)
+      .then(j => { if (Array.isArray(j)) W.fh = j.filter(n => n.headline && n.datetime).map(n => ({ ms: n.datetime * 1000, t: n.headline, p: n.source, u: n.url, x: n.summary || "" })); })); }
+  if (yq && nm) jobs.push(fetch(`${yq}/?n=${encodeURIComponent(nm)}&t=${encodeURIComponent(t)}`).then(r => r.ok ? r.json() : null).catch(() => null)
+      .then(j => { if (j && Array.isArray(j.items)) W.kd = j.items.filter(n => n.t && n.d).map(n => ({ ms: Date.parse(n.d), t: n.t, p: n.p, u: n.u, de: n.de })); }));
+  Promise.all(jobs).finally(() => { W.busy = 0; W.at = Date.now(); W.cache = null; done && done(); });
+}
+function whyItems(t) {
+  t = String(t).replace(/@rp$/, ""); const W = WHY[t] || {}; if (W.cache) return W.cache;
+  const bj = jsonData["briefing.json"], sr = byTicker(t), out = [...(W.fh || []), ...(W.kd || [])];
+  ((bj && bj.stocks && bj.stocks[t]) || []).forEach(n => out.push({ ms: Date.parse(n.d), t: n.t, p: n.p, u: n.u, de: 1 }));
+  ((sr && sr.senti && sr.senti.news) || []).forEach(n => out.push({ ms: Date.parse(String(n.d).length <= 10 ? n.d + "T12:00:00Z" : n.d), t: n.t, p: n.p, u: n.u, dOnly: String(n.d).length <= 10 ? n.d : null }));
+  const seen = new Set(), key = s => String(s || "").toLowerCase().replace(/[^a-z0-9äöü]/g, "").slice(0, 48);
+  return (W.cache = out.filter(n => n.t && n.ms > 0 && !seen.has(key(n.t)) && seen.add(key(n.t))).sort((a, b) => b.ms - a.ms));
+}
+// Handelstage der Aktie (Tageskerzen, dazu heute live) mit Tagesbewegung; Index je Schlagzeile = Handelstag, an dem sie wirkt
+function whySessions(t, d) {
+  const T = d.t.map(x => String(x).slice(0, 10)), C = d.c, S = T.map((x, i) => ({ d: x, r: i && C[i] > 0 && C[i - 1] > 0 ? C[i] / C[i - 1] - 1 : null }));
+  const q = LIVE.map[t]; if (q && q.c > 0 && q.pc > 0 && !q.ext) { const ld = liveDay(t, q.ts || Date.now()); if (ld && ld > T[T.length - 1]) S.push({ d: ld, r: q.c / q.pc - 1, live: 1 }); }
+  return S;
+}
+function whyIdx(t, n, S) {
+  const tz = whyTz(t); let d = n.dOnly, hm = 0;
+  if (!d) try { d = new Date(n.ms).toLocaleDateString("sv-SE", { timeZone: tz }); const p = new Date(n.ms).toLocaleTimeString("de-DE", { timeZone: tz, hour: "2-digit", minute: "2-digit" }); hm = +p.slice(0, 2) * 60 + +p.slice(3, 5); } catch (e) { return -1; }
+  let lo = 0, hi = S.length; while (lo < hi) { const m = (lo + hi) >> 1; if (S[m].d < d) lo = m + 1; else hi = m; }
+  if (lo < S.length && S[lo].d === d && !n.dOnly && hm >= whyCloseM(t)) lo++;   // nach Börsenschluss → wirkt am nächsten Handelstag
+  return lo < S.length ? lo : S.length;               // nach dem letzten Handelstag → „seit Börsenschluss“
+}
+const whyCat = s => { for (const [k, l, re] of WHY_CAT) if (re.test(s)) return [k, l]; return null; };
+// Schlagzeilen je Handelstag (nur Tage mit Kursbewegung): { i → [Schlagzeilen sortiert nach Bezug] }
+function whyByDay(t, S) {
+  const nm = normName(shortNm((rowFor(t) || {}).name || (byTicker(t) || {}).name || "")).split(" ")[0] || "", tk = tkClean(t).toLowerCase(), by = {};
+  whyItems(t).forEach(n => { const i = whyIdx(t, n, S); if (i < 0) return; const s = String(n.t), sl = s.toLowerCase();
+    const sc = (whyCat(s) ? 3 : 0) + (nm.length > 2 && sl.includes(nm) ? 2 : 0) + (new RegExp(`\\b${tk.replace(/[^a-z0-9]/g, "")}\\b`).test(sl) ? 1 : 0) + (/stock|shares|aktie|soars?|plunges?|jumps?|falls?|slides?|tumbles?|surges?|rallies|sinks?|bricht ein|steigt|fällt|springt/i.test(s) ? 1 : 0);
+    (by[i] = by[i] || []).push({ ...n, sc }); });
+  Object.values(by).forEach(l => l.sort((a, b) => b.sc - a.sc || b.ms - a.ms));
+  return by;
+}
+// Bewegung des Index und der Branche am selben Tag (Index aus bench.json, Branche aus dem letzten Scan)
+function whyBench(t, d) {
+  const us = isUS(t), sym = us ? "^GSPC" : /\.DE$/.test(t) ? "^GDAXI" : "^STOXX", nm = us ? "S&P 500" : sym === "^GDAXI" ? "DAX" : "STOXX 600";
+  const B = riskBench(); let r = null;
+  if (B && B.t && B.c && B.c[sym]) { const i = B.t.indexOf(d); if (i > 0 && B.c[sym][i] > 0 && B.c[sym][i - 1] > 0) r = B.c[sym][i] / B.c[sym][i - 1] - 1; }
+  if (r == null) { const lv = mktLive(), x = lv && lv.idx && lv.idx[sym]; if (x && x.d1 != null && String(lv.generated || "").slice(0, 10) === d) r = x.d1; }
+  return { nm, r };
+}
+function whySector(t, d) {
+  const sr = byTicker(t), sec = sr && sr.senti && sr.senti.sec; if (!sec) return null;
+  const lv = mktLive(), fromL = (m, ok) => { if (!m || !ok) return null; const x = [...(m.sectors || []), ...(m.industries || []), ...(m.sectors_eu || [])].find(s => s.k === sec.etf); return x && x.d1 != null ? { nm: sec.n || x.n, r: x.d1 } : null; };
+  return fromL(lv, lv && String(lv.generated || "").slice(0, 10) === d) || fromL(anaData && anaData.market, String(sr.date || "").slice(0, 10) === d);
+}
+// Einordnung eines Tages: starke Bewegung? Auslöser? Markt oder Aktie selbst?
+function whyDay(t, S, i, by) {
+  const s = S[i]; if (!s || s.r == null) return null;
+  const hist = S.slice(Math.max(1, i - 60), i).map(x => Math.abs(x.r || 0)).sort((a, b) => a - b), typ = hist.length ? hist[Math.floor(hist.length / 2)] : .015;
+  const big = Math.abs(s.r) >= Math.max(.03, 2.4 * typ), ns = (by[i] || []).slice(0, 4), b = whyBench(t, s.d), sec = whySector(t, s.d);
+  const er = earnData && earnData[t], ed = new Set([er && er.last && er.last.date, ...(calData || []).filter(e => e.kind === "earnings" && e.ticker === t).map(e => e.date)].filter(Boolean));
+  const earnDay = ed.has(s.d) || !!(S[i - 1] && ed.has(S[i - 1].d));
+  // „Quartalszahlen“ nur, wenn die Aktie selbst um diesen Tag Zahlen hatte (Schlagzeilen nennen oft die Zahlen anderer Firmen)
+  const cats = {}; ns.forEach(n => { const c = whyCat(n.t + " " + (n.x || "")); if (c && (c[0] !== "earn" || earnDay)) cats[c[0]] = (cats[c[0]] || 0) + n.sc; });
+  const top = !big ? null : earnDay ? ["earn", "Quartalszahlen"] : Object.keys(cats).length ? WHY_CAT.find(c => c[0] === Object.entries(cats).sort((a, b) => b[1] - a[1])[0][0]) : null;
+  const rel = b.r != null ? s.r - b.r : null, withMkt = b.r != null && Math.abs(b.r) >= .012 && Math.sign(b.r) === Math.sign(s.r) && Math.abs(rel) < Math.max(.015, Math.abs(b.r));
+  const withSec = sec && Math.abs(sec.r) >= .015 && Math.sign(sec.r) === Math.sign(s.r) && Math.abs(s.r - sec.r) < Math.max(.015, Math.abs(sec.r));
+  const cause = top ? top[1] : withSec ? `Branche ${sec.nm}` : withMkt ? "Gesamtmarkt" : ns.length ? "Nachrichtenlage" : null;
+  return { ...s, i, big, typ, ns, b, sec, top, cause, withMkt, withSec, rel, earnDay };
+}
+function whyCtx(h) {
+  const L = window.__lastChart; if (!L || !L.r) return null; const t = String(L.r.ticker).replace(/@rp$/, ""), d = L.d || L.c; if (!d || !d.t || d.intra) return null;
+  const S = whySessions(t, d); return { t, S, by: whyByDay(t, S) };
+}
+// Tage mit starker Bewegung und Nachricht → Punkte im Chart (TradingView-Stil); Index auf die Kerzen des angezeigten Charts
+function whyMarks(h) {
+  if (!clGet("news") || !h || !h.c || h.c.intra || (h.c.tf && h.c.tf !== "D") || RP.on) return [];
+  const t = String(h.r.ticker).replace(/@rp$/, ""), S = whySessions(t, h.c), by = whyByDay(t, S), T = h.c.t.map(x => String(x).slice(0, 10)), out = [];
+  Object.keys(by).forEach(k => { const i = +k, D = whyDay(t, S, i, by); if (!D || !D.big || !D.ns.length) return; const j = T.indexOf(S[i].d); if (j < 0) return;
+    out.push({ i: j, t: "N", c: D.r >= 0 ? "#30d158" : "#ff453a", up: D.r >= 0, sh: "circle", pos: D.r >= 0 ? "aboveBar" : "belowBar", news: 1 }); });
+  return out.slice(-40);
+}
+let whySel = null, whyFor = "";                                   // gewählter Tag (Datum) – null = letzter Handelstag
+function whyHtml() {
+  const X = whyCtx(); if (!X) return "";
+  const { t, S, by } = X; let i = whySel ? S.findIndex(s => s.d === whySel) : -1; if (i < 0) i = S.length - 1;
+  const D = whyDay(t, S, i, by); if (!D) return "";
+  const live = D.live || i === S.length - 1, when = D.live ? "heute" : new Date(D.d + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+  const hm = n => n.dOnly ? "" : new Date(n.ms).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const ctx = [D.b.r != null ? `${D.b.nm} ${sgnPct(D.b.r, 1)}` : "", D.sec ? `${D.sec.nm} ${sgnPct(D.sec.r, 1)}` : ""].filter(Boolean);
+  const verdict = !D.big ? (D.withSec ? `Im üblichen Rahmen – die Branche <b>${esc(D.sec.nm)}</b> ${D.sec.r < 0 ? "fällt" : "steigt"} ähnlich.` : D.withMkt ? `Im üblichen Rahmen – bewegt sich mit dem Gesamtmarkt.` : `Im üblichen Rahmen – rund ±${fmt(D.typ * 100, 1)} % am Tag sind bei dieser Aktie normal.`)
+    : D.top ? `Auslöser: <b>${esc(D.top[1])}</b>${D.withMkt ? " – dazu ein schwacher Gesamtmarkt".replace("schwacher", D.b.r > 0 ? "starker" : "schwacher") : ""}`
+    : D.withSec ? `Keine eigene Meldung – die ganze Branche <b>${esc(D.sec.nm)}</b> ${D.r < 0 ? "fällt" : "steigt"} mit.`
+    : D.withMkt ? `Keine eigene Meldung – die Aktie ${D.r < 0 ? "fällt" : "steigt"} mit dem <b>Gesamtmarkt</b>.`
+    : D.ns.length ? `Kein eindeutiger Auslöser – die Meldungen des Tages:` : `Keine Meldung gefunden – oft Gewinnmitnahmen, Umschichtung oder Nachrichten, die Kairo nicht erreicht.`;
+  const tag = n => { const c = whyCat(n.t); return c && (c[0] !== "earn" || D.earnDay) ? ` · <i>${esc(c[1])}</i>` : ""; };
+  const more = (by[i] || []).length - D.ns.length, after = i === S.length - 1 ? (by[S.length] || []).slice(0, 3) : [];
+  return `<div class="cf-s why"><div class="cf-h">Warum ${D.r < 0 ? "fällt" : "steigt"} ${esc(tkClean(t))}?<small>${esc(when)}${whySel ? ` · <button class="hlink why-x" data-whyday="">zum letzten Tag</button>` : ""}</small></div>
+    <div class="why-top"><b class="${D.r >= 0 ? "up" : "down"}">${sgnPct(D.r, 2)}</b>${ctx.length ? `<span>${ctx.map(esc).join(" · ")}</span>` : ""}${D.big ? `<em class="${D.r >= 0 ? "up" : "down"}">${fmt(Math.abs(D.r) / Math.max(D.typ, .003), 1)}× üblich</em>` : ""}</div>
+    <p class="why-v">${verdict}</p>
+    ${D.ns.map(n => `<a class="why-n" href="${esc(safeHref(n.u))}" target="_blank" rel="noopener"><b>${esc(n.t)}</b><small>${esc(n.p || "")}${hm(n) ? " · " + hm(n) : ""}${tag(n)}</small></a>`).join("")}
+    ${more > 0 ? `<small class="muted">+ ${more} weitere Meldungen an diesem Tag</small>` : ""}
+    ${after.length ? `<div class="why-ah">Seit Börsenschluss – wirkt am nächsten Handelstag</div>${after.map(n => `<a class="why-n" href="${esc(safeHref(n.u))}" target="_blank" rel="noopener"><b>${esc(n.t)}</b><small>${esc(n.p || "")}${hm(n) ? " · " + hm(n) : ""}${tag(n)}</small></a>`).join("")}` : ""}
+    ${clGet("news") ? `<small class="why-f">Punkte <i class="up">●</i><i class="down">●</i> im Chart = starke Tage mit Nachricht – antippen zeigt den Grund.</small>` : ""}</div>`;
+}
+function whyClickAttach(h) {                         // Punkt im Chart antippen → Karte zeigt den Grund dieses Tages
+  if (!h || !h.chart || h.__whyC) return; h.__whyC = 1;
+  h.chart.subscribeClick(p => { if (!p || p.time == null || (typeof DRAW !== "undefined" && DRAW.tool) || MEAS.on || WAVE.on || !clGet("news")) return;
+    const d = String(p.time).slice(0, 10), T = h.c && h.c.t ? h.c.t.map(x => String(x).slice(0, 10)) : [], j = T.indexOf(d); if (j < 0) return;
+    if (!whyMarks(h).some(m => m.i === j)) return; whySel = d; whyPaint();
+    const el = document.querySelector("#cfSide .why-slot"); if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); });
+}
+function whyPaint() { document.querySelectorAll(".why-slot").forEach(el => { el.innerHTML = whyHtml(); }); }
+function whyKick(h) {                                // beim Öffnen eines Charts: Nachrichten laden, danach Karte und Punkte neu zeichnen
+  if (!h || !h.r) return; const t = String(h.r.ticker).replace(/@rp$/, ""); riskBench();
+  whyLoad(t, () => { whyPaint(); try { h.apply && h.apply(); } catch (e) {} });
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-whyday]"); if (!b) return; e.preventDefault(); whySel = b.dataset.whyday || null; whyPaint(); });
 function cockpitSide(h, r) {
   if (RP.on && r && r.rp) return rpSideHtml(h);                    // Replay: keine Infos von heute (Status, Plan, Kriterien) – nur, was man damals sehen konnte
   const M = h.M, last = r.close, p = r.ext ? {} : chartPlan(r) || {}, ko = r.ext ? null : tpKoStock(r.ticker, r.currency || r.cur), hn = r.ext ? { title: "Nicht im Kairo-Scan", text: "Kurschart aus den Tageskerzen eines Jahres (Kursdienst). EMAs, RSI, MACD, Momentum Bias Index und Unterstützungen rechnet Kairo selbst – die 11 Kairo-Kriterien prüft nur der Abendscan." } : hintNow(r) || {}, k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r);
@@ -13039,7 +13223,7 @@ function cockpitSide(h, r) {
     return `<div class="cf-s"><div class="cf-h">${ttl} · ${dateDE(T0[w.iL])} → ${dateDE(T0[w.iH])}</div>${FIBQ.map(([q, l, st]) => row(l, lv(q), st ? col : null)).join("")}</div>`; };
   const crit = r.criteria || [];
   return `<div class="cf-s"><div class="cf-h">Status</div><span class="st ${k.cls}">${esc(k.t)}</span>${hn.title ? `<p class="cf-t cf-t2"><b>${esc(hn.title)}</b><span>${esc(String(hn.text || ""))}</span></p>` : ""}</div>
-    ${autoCardHtml(h)}${sigCardHtml(String(r.ticker).replace(/@rp$/, ""))}${r.ext ? "" : earnMiniHtml(r.ticker) + k8Html(r.ticker) + smCardHtml(r.ticker)}${fundCardHtml(String(r.ticker).replace(/@rp$/, ""))}
+    <div class="why-slot">${whyHtml()}</div>${autoCardHtml(h)}${sigCardHtml(String(r.ticker).replace(/@rp$/, ""))}${r.ext ? "" : earnMiniHtml(r.ticker) + k8Html(r.ticker) + smCardHtml(r.ticker)}${fundCardHtml(String(r.ticker).replace(/@rp$/, ""))}
     <div class="cf-s"><div class="cf-h">Trade-Plan</div>${row("Kaufzone oben", p.entry, "#eceef2")}${row("Stop", p.stop, "#ff453a")}${row("K.-o. Turbo", ko, "#ff9f0a")}
       ${p.entry && p.stop ? `<div class="cf-r"><span>Risiko bis Stop</span><b>${pct((p.entry - p.stop) / p.entry, 1)}</b></div>` : ""}${!p.entry && !p.stop ? `<p class="muted cf-t">Plan entsteht mit der Konsolidierung.</p>` : ""}</div>
     ${(vi => vi && clGet("vp") && vi.poc ? `<div class="cf-s"><div class="cf-h">Volumenprofil <small class="muted">${state.vpMode === "vis" ? "Bildausschnitt" : `seit ${esc(vi.from)}`}</small></div>
@@ -13266,13 +13450,13 @@ let ctPop = false, ctFocus = null;
 function ctabBarHtml(h) {
   const M = h.M, sw = (k, lbl, col, ok = true, auto) => ok ? `<button class="ct-row" data-cl="${k}"${auto != null ? ` data-auto="${auto ? 1 : 0}"` : ""} role="switch" aria-checked="${clGet(k, auto) ? "true" : "false"}"><i style="background:${col}"></i><span>${lbl}</span><u class="ct-sw${clGet(k, auto) ? " on" : ""}"></u></button>` : "";
   const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
-  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), ...SMA_DEF.map(x => x[0]), "bb", "ichi", "vol", "vp", "plan", "auto", "sig"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length) && (k !== "sig" || sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")))).length;
+  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), ...SMA_DEF.map(x => x[0]), "bb", "ichi", "vol", "vp", "plan", "auto", "sig", "news"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length) && (k !== "sig" || sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")))).length;
   const grp = (t, body) => body ? `<div class="ct-g"><div class="ct-gh">${t}</div>${body}</div>` : "";
   return `<div class="ct-tl"><div class="ct-seg"><button class="ct-b ct-lay${ctPop ? " on" : ""}" data-ctlayers aria-expanded="${ctPop}" title="Indikatoren und Ebenen ein-/ausblenden">${CT_IC.fx}<span>Indikatoren</span><small>${nOn}</small></button></div>
       <div class="ct-seg"><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button><button class="ct-b" data-alc title="Alarme: alle Alarme, Kurs- und RSI-Alarm" aria-label="Alarme">${CT_IC.bell}<span class="ct-lbl">Alarm</span>${alCount() ? `<small>${alCount()}</small>` : ""}</button>${M.own ? `<button class="ct-b" data-clwreset title="Eigene Fibonacci-Welle verwerfen – zurück zur Kairo-Welle" aria-label="Kairo-Welle">${CT_IC.reset}<span class="ct-lbl">Kairo-Welle</span></button>` : ""}</div></div>
     ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, true))}
       ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.concat(SMA_DEF).map(([k, col, l]) => sw(k, l, col)).join(""))}${grp("Indikatoren", sw("bb", `Bollinger-Bänder (${IND_P().bbN}, ${IND_P().bbK})`, "#2962ff") + sw("ichi", "Ichimoku-Wolke", "#30d158"))}${grp("Indikator-Einstellungen", `<div class="ip-g">${[["rsi", "RSI-Periode"], ["stK", "Stochastik %K"], ["stD", "Stochastik %D"], ["atr", "ATR-Periode"], ["adx", "ADX-Periode"], ["bbN", "Bollinger-Periode"], ["bbK", "Bollinger-Faktor"]].map(([k, l]) => `<label><span>${l}</span><input type="number" inputmode="decimal" data-ip="${k}" value="${IND_P()[k]}" step="${k === "bbK" ? ".5" : "1"}"></label>`).join("")}</div>`)}
-      ${h.c && h.c.intra ? grp("Intraday", sw("idl", "Vortag H/T/S · Eröffnungsspanne · VWAP", "#bf5af2")) : ""}${grp("Smart Money", sw("hf", "Kaufzone der Hedgefonds", "#5e5ce6", !!hfZoneOf(String(h.r.ticker).replace(/@rp$/, ""), h.c)))}${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa") + sw("sig", `Frühere Kairo-Signale${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")) ? ` · ${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")).length}` : ""}`, "#0a84ff", !!sigOf(h.r && String(h.r.ticker).replace(/@rp$/, ""))))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a") + (clGet("vp") ? `<div class="ct-vpm" role="group" aria-label="Bereich des Volumenprofils">${[["wave", "Welle", "ab dem Wellen-Tief"], ["anchor", "Ab Punkt", "ab einem Tag, den du antippst"], ["vis", "Sichtbar", "nur der Bildausschnitt"]].map(([v, l, t]) => `<button class="${(state.vpMode || "wave") === v ? "on" : ""}" data-vpmode="${v}" title="${t}">${l}</button>`).join("")}</div>` : ""))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
+      ${h.c && h.c.intra ? grp("Intraday", sw("idl", "Vortag H/T/S · Eröffnungsspanne · VWAP", "#bf5af2")) : ""}${grp("Nachrichten", sw("news", "Starke Tage mit Nachricht (Punkte)", "#8e8e93"))}${grp("Smart Money", sw("hf", "Kaufzone der Hedgefonds", "#5e5ce6", !!hfZoneOf(String(h.r.ticker).replace(/@rp$/, ""), h.c)))}${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa") + sw("sig", `Frühere Kairo-Signale${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")) ? ` · ${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")).length}` : ""}`, "#0a84ff", !!sigOf(h.r && String(h.r.ticker).replace(/@rp$/, ""))))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#ff9f0a") + (clGet("vp") ? `<div class="ct-vpm" role="group" aria-label="Bereich des Volumenprofils">${[["wave", "Welle", "ab dem Wellen-Tief"], ["anchor", "Ab Punkt", "ab einem Tag, den du antippst"], ["vis", "Sichtbar", "nur der Bildausschnitt"]].map(([v, l, t]) => `<button class="${(state.vpMode || "wave") === v ? "on" : ""}" data-vpmode="${v}" title="${t}">${l}</button>`).join("")}</div>` : ""))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
 }
 // Zeiteinheit und Chartart als Auswahlmenüs (wie TradingView) – spart in der Werkzeugleiste Platz für den Chart
 const TF_ALL = [["5m", "5m", "5 Minuten"], ["15m", "15m", "15 Minuten"], ["1h", "1h", "1 Stunde"], ["4h", "4h", "4 Stunden"], ["D", "1D", "1 Tag"], ["W", "1W", "1 Woche"], ["M", "1M", "1 Monat"]];
@@ -13323,6 +13507,7 @@ function ctabBuild(c, r) {
       ${pane("tRsi", paneLbl(0, r), "rsi")}${pane("tMacd", paneLbl(1, r), "macd")}${pane("tMbi", paneLbl(2, r), "mbi")}
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside><div class="ct-wl" id="ctWl"${state.ctWl ? "" : " hidden"}>${ctWlHtml(r.ticker)}</div></div>`;
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
+  if (whyFor !== String(r.ticker)) { whySel = null; whyFor = String(r.ticker); } whyKick(cfChart); whyClickAttach(cfChart);
   cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
   if (c.intra) { cfChart.chart.applyOptions({ timeScale: { timeVisible: true, secondsVisible: false } }); cfChart.live = () => false; const n = c.t.length; cfChart.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 160), to: n + 4 }); }
   if (CMP.t !== r.ticker) { CMP.list = []; CMP.t = r.ticker; } CMP.series = [];
@@ -13417,7 +13602,7 @@ function tfAgg(c, tf) {
 }
 async function tfSet(tf) { const L = window.__lastChart; if (!L || !L.r || RP.on) return; const d = L.d || L.c;
   if (TF_INTRA.includes(tf)) { let cc; try { cc = await intraLoad(L.r.ticker, tf); } catch (e) {
-      kSay(e.message === "kursdienst" ? "Intraday-Kerzen kommen über deinen Kairo-Kursdienst – einrichten unter Einstellungen → Live-Kurse." : e.message === "version" ? "Für Intraday-Kerzen bitte den Kursdienst auf Version 9 aktualisieren (Einstellungen → Live-Kurse → Code kopieren und in Cloudflare einfügen)." : `Keine Intraday-Kerzen für ${tkClean(L.r.ticker)}: ${e.message}`); return; }
+      kSay(e.message === "kursdienst" ? "Intraday-Kerzen kommen über deinen Kairo-Kursdienst – einrichten unter Einstellungen → Live-Kurse." : e.message === "version" ? "Für Intraday-Kerzen bitte den Kursdienst auf Version 9 aktualisieren (Einstellungen → Live-Kurse → Code kopieren und in Cloudflare einfügen)." : `Keine Intraday-Kerzen für ${tkClean(L.r.ticker)}: ${e.message}${/keine Kerzen|zu wenig/.test(e.message) ? " – Yahoo blockt den Kursdienst gerade. Kursdienst Version 11 (Einstellungen → Live-Kurse) meldet sich wie ein Browser und behebt das meist." : ""}`); return; }
     state.cfTf = tf; save(); window.__lastChart = { c: cc, r: L.r, d }; ctabBuild(cc, L.r); return; }
   state.cfTf = tf; save(); const cc = tfAgg(d, tf); window.__lastChart = { c: cc, r: L.r, d }; ctabBuild(cc, L.r); }
 document.addEventListener("click", e => { const b = e.target.closest("[data-cftf]"); if (b) tfSet(b.dataset.cftf); });
@@ -14647,7 +14832,7 @@ function drawCharts(c, r) {
   if (!window.LightweightCharts) return;
   const LW = window.LightweightCharts, opts = chartOpts;
   const T = c.t, pts = (k, f = v => v) => T.map((t, i) => c[k][i] == null ? null : { time: t, value: f(c[k][i]) }).filter(Boolean);
-  const MB = buildMain($("cMain"), c, r, opts), main = MB.chart;   // Hauptchart: Linien, Fibonacci, Unterstützungen, Schalter
+  const MB = buildMain($("cMain"), c, r, opts), main = MB.chart; whyKick(MB);   // Hauptchart: Linien, Fibonacci, Unterstützungen, Schalter
   const vr0 = MB.vr0; MB.bar = "clBar";
   window.__lastChart = { c, r };                     // für das Vollbild-Cockpit
   if ($("clBar")) $("clBar").innerHTML = clBarHtml(MB);
