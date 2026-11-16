@@ -2763,6 +2763,16 @@ body.etf-fs { overflow: hidden; }
 .why-n small { display: block; margin-top: 3px; color: var(--muted); font-size: 11.5px; } .why-n small i { font-style: normal; color: var(--accent); }
 .why-f { display: block; margin-top: 8px; color: var(--muted); font-size: 11.5px; } .why-f i { font-style: normal; font-size: 9px; }
 .why-ah { margin: 10px 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--gold); }
+.kv-top { display: flex; gap: 14px; align-items: center; margin: 4px 0 8px; }
+.kv-g { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 84px; max-width: 110px; padding: 8px 6px; border-radius: 14px; background: rgba(127,127,127,.12); text-align: center; }
+.kv-g b { font-size: 24px; line-height: 1; font-variant-numeric: tabular-nums; } .kv-g span { font-size: 11px; font-weight: 700; margin-top: 4px; line-height: 1.2; }
+.kv-g.up { background: rgba(48,209,88,.14); color: var(--up, #30d158); } .kv-g.down { background: rgba(255,69,58,.14); color: var(--red, #ff453a); } .kv-g.gold { background: var(--gold-bg, rgba(255,214,10,.14)); color: var(--gold, #ffd60a); }
+.kv-m { flex: 1; min-width: 0; } .kv-h { font-size: 12.5px; font-weight: 700; margin-bottom: 6px; } .kv-h small { font-weight: 500; color: var(--muted); margin-left: 4px; }
+.kv-cs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 6px; } .kv-m .kv-r { padding: 1px 0; } .kv-r span small { display: block; font-size: 10.5px; } .kv-c { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: rgba(127,127,127,.12); color: var(--muted); white-space: nowrap; }
+.kv-c.on { background: rgba(48,209,88,.14); color: var(--up, #30d158); font-weight: 600; }
+.kv-r, .kv-tr { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; font-size: 12.5px; padding: 4px 0; } .kv-r span, .kv-tr span { color: var(--muted); }
+.kv-r small { color: var(--muted); font-weight: 500; } .kv-tr { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 8px; }
+.kv-note { display: block; font-size: 11.5px; color: var(--muted); line-height: 1.4; margin: 2px 0 10px; } .kv-none { font-size: 12px; color: var(--muted); margin: -2px 0 10px; line-height: 1.4; }
 </style>
 </head>
 <body>
@@ -9367,8 +9377,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.193";
-const APP_NEWS = [["2026.11.193", "Warum bewegt sich die Aktie? · Börsengänge", [
+const APP_VER = "2026.11.194";
+const APP_NEWS = [["2026.11.194", "KI-Analyse denkt jetzt wie Kairo", [
+  ["Kairo-Sicht", "Die KI-Chartanalyse liest einen Rücksetzer jetzt mit Kairos eigener Regel statt wie ein Trendfolger: Rücksetzer ≥ 12 %, Kaufzone erreicht, Wende-Signale (Abflachung, RSI-Divergenz, RSI 28–48, MACD unter 0 und dreht, MBI) – bei Scan-Aktien exakt die Scan-Werte, sonst dieselbe Rechnung aus dem Chart."],
+  ["Kein falsches Rot mehr", "Ein Kairo-Treffer wie GOOGL (11/11) stand bisher als „Stark bärisch −74“ da. Jetzt steht oben das Kairo-Urteil; der Trend-Wert bleibt als kleine Zeile mit der Einordnung, dass ein Abwärtstrend für Kairo Voraussetzung ist."],
+  ["Verkaufsvolumen", "Neu: ob das Volumen an roten Tagen nachlässt oder noch steigt."],
+  ["Plan statt Szenario", "In der Kairo-Lage zeigt die Karte den Kairo-Plan (Kauf, Ziele, Stop, Chance/Risiko) und was unter dem Stop passiert – statt eines allgemeinen Bärisch-Szenarios."]]],
+  ["2026.11.193", "Warum bewegt sich die Aktie? · Börsengänge", [
   ["Warum bewegt sich die Aktie?", "Neue Karte in der Chart-Leiste: Tagesbewegung im Vergleich zu Index und Branche, erkannter Auslöser (Quartalszahlen, Analysten, Prognose, Kapitalmaßnahme, Übernahme, Behörden …) und die passenden Schlagzeilen – zugeordnet zum Handelstag, an dem sie wirken. Ohne eigene Meldung sagt Kairo, ob Markt oder Branche die Aktie mitziehen."],
   ["Nachrichten-Punkte im Chart", "Grüne und rote Punkte markieren starke Tage mit Nachricht – antippen zeigt in der Leiste den Grund dieses Tages (Ebene „Nachrichten“ unter Indikatoren)."],
   ["Börsengänge im Kalender", "Neue Rubrik „Börsengänge“: Termine aus dem Nasdaq-IPO-Kalender (Nasdaq und NYSE) mit Preisspanne und Volumen, große Börsengänge auch unter „Nur wichtige Termine“, auf „Heute“ und im Briefing. Angekündigte ohne festen Termin (z. B. Anthropic) stehen oben im Kalender. Mit Finnhub-Schlüssel kommen neue Termine sofort."],
@@ -13036,6 +13051,115 @@ function patStatHtml(p) {
   const tg = (L.tg || 0) + (P.tg || 0), hit = tg ? ((L.hit || 0) * (L.tg || 0) + (P.hit || 0) * (P.tg || 0)) / tg : null, edge = dir - base;
   return `<small class="au-q ${edge >= .03 ? "up" : edge <= -.03 ? "down" : "muted"}">Im Test (${fmt(n, 0)}×, 10 Jahre): nach 20 Tagen ${pct(dir, 0)} ${p.bull ? "höher" : "tiefer"} – Zufall ${pct(base, 0)}${hit != null ? ` · Ziel erreicht ${pct(hit, 0)}` : ""}${edge >= .03 ? " · etwas besser als Zufall" : edge <= -.03 ? " · schlechter als Zufall" : edge > .005 ? " · kaum besser als Zufall" : " · nicht besser als Zufall"}</small>`;
 }
+// ---------- Kairo-Sicht der KI-Analyse (Wunsch 16.11.2026: „die KI-Analyse muss mit unserer Strategie kompatibel sein“) ----------
+// Ein klassischer Trendfolger nennt jede stark gefallene Aktie „bärisch“ – genau solche Rücksetzer kauft Kairo aber, wenn sie in der
+// Kaufzone ankommen und der Verkaufsdruck ausläuft. Die Kairo-Sicht liest den Chart deshalb mit Kairos eigenen 11 Kriterien:
+// Scan-Aktien mit den Werten aus dem Scan (exakt die Regel), andere Aktien mit derselben Rechnung aus dem Chart (Näherung).
+// Nur Anzeige – die Kairo-Regel selbst bleibt unverändert.
+const KV_TURN = [["flattening", "Abflachung"], ["rsi_div", "RSI-Divergenz"], ["rsi_range", "RSI 28–48"], ["macd_below0", "MACD unter 0"], ["macd_turn", "MACD dreht"], ["mbi", "MBI: Verkaufsdruck läuft aus"]];
+// Kairo-Kriterien aus dem Chart – 1:1 nach backend/scanner.py und config.yaml (Pivots, Swing-High, Fib-Zone 0,706–0,79 bis 0,886,
+// Mehrfachboden ± 3 %, Abflachung mit Lunten, RSI-Divergenz, MACD-Wende mit Fehlsignal, MBI-X). Für Aktien ohne Scan-Zeile.
+function kairoCritChart(c) {
+  const n = c.t.length, C = c.c, H = c.h || C, L = c.l || C, O = c.o || C, ok = {}, info = {};
+  const piv = (v, len, lower, tol = 0) => { const out = []; for (let i = len; i < n; i++) { const x = v[i]; if (x == null) continue; let lm = Infinity, lmax = -Infinity, bad = false;
+      for (let k = i - len; k < i; k++) { if (v[k] == null) { bad = true; break; } lm = Math.min(lm, v[k]); lmax = Math.max(lmax, v[k]); } if (bad) continue;
+      let rOk = true; for (let k = i + 1; k <= Math.min(n - 1, i + len); k++) if (v[k] != null && (lower ? v[k] < x : v[k] > x)) { rOk = false; break; }
+      const lOk = lower ? (tol > 0 ? x <= lm * (1 + tol) : x < lm) : x > lmax; if (lOk && rOk) out.push(i); } return out; };
+  const ph = piv(H, 5, false), pl = piv(L, 5, true), close = C[n - 1];
+  const cand = ph.filter(i => n - 1 - i >= 20 && n - 1 - i <= 180); let Hi = null; cand.forEach(i => { if (Hi == null || H[i] > H[Hi]) Hi = i; });
+  const Hv = Hi != null ? H[Hi] : null, dd = Hv ? (Hv - close) / Hv : null; info.dd = dd != null ? -dd : null; info.hiD = Hi != null ? c.t[Hi] : null;
+  ok.drawdown = dd != null && dd >= .12;
+  let worst = 0; for (let i = n - 10; i < n; i++) worst = Math.min(worst, C[i] / C[i - 1] - 1); ok.no_crash = worst > -.25;
+  const e20 = c.e20, e50 = c.e50; ok.structure = !!(e20 && e50 && close < e20[n - 1] && close < e50[n - 1] && e20[n - 1] < e20[n - 6]);
+  // Zone A: Fibonacci vom tiefsten Pivot-Low (120 T. vor H) zum Swing-High
+  let za = null; if (Hi != null) { const lb = pl.filter(i => Hi - 120 <= i && i < Hi); if (lb.length) { const Li = lb.reduce((a, b) => L[b] < L[a] ? b : a); const Lv = L[Li], imp = (Hv - Lv) / Lv, lvl = x => Hv - x * (Hv - Lv);
+      const rl = Math.min(...L.slice(n - 3)), inZ = (a, b) => (lvl(b) <= close && close <= lvl(a)) || (lvl(b) <= rl && rl <= lvl(a));
+      za = { ok: imp >= .15 && inZ(.706, .79) && close >= lvl(.886), band: [lvl(.886), lvl(.706)], retr: (Hv - Math.min(close, rl)) / (Hv - Lv) }; } }
+  // Zone B: Mehrfachboden – Cluster früherer Pivots (± 3 %, ≥ 2 Berührungen, ältester ≥ 15 T., Kurs −5 … +3 %)
+  let zb = null; { const st = Math.max(0, n - 250), pts = [...pl.filter(i => i >= st && i <= n - 6).map(i => [i, L[i]]), ...ph.filter(i => i >= st && i <= n - 6).map(i => [i, H[i]])]; let best = null;
+    pts.forEach(([, p]) => { const m = pts.filter(([, x]) => Math.abs(x / p - 1) <= .03); if (m.length < 2 || n - 1 - Math.min(...m.map(q => q[0])) < 15) return;
+      const ctr = m.reduce((s, q) => s + q[1], 0) / m.length, near = ctr * .95 <= close && close <= ctr * 1.03; let broken = false; for (let i = n - 5; i < n; i++) if (C[i] < ctr * .93) broken = true;
+      if (!near || broken) return; const key = [m.length, -Math.abs(close / ctr - 1)]; if (!best || key[0] > best.key[0] || (key[0] === best.key[0] && key[1] > best.key[1])) best = { key, ctr, m }; });
+    if (best) zb = { ok: true, band: [best.ctr * .97, best.ctr * 1.03], touches: best.m.length }; }
+  ok.zone = !!((za && za.ok) || zb); info.broken = !!(za && !za.ok && za.retr > .886 && !zb);
+  // Abflachung: Spanne < 1,5 × ATR(14) × √10 oder ≥ 2 lange untere Lunten in der Zone
+  let a14 = null; for (let i = 1; i < n; i++) { const tr = Math.max(H[i] - L[i], Math.abs(H[i] - C[i - 1]), Math.abs(L[i] - C[i - 1])); a14 = a14 == null ? tr : (a14 * 13 + tr) / 14; }
+  const span = Math.max(...H.slice(n - 10)) - Math.min(...L.slice(n - 10)), lim = 1.5 * a14 * Math.sqrt(10), bands = [za && za.ok ? za.band : null, zb ? zb.band : null].filter(Boolean);
+  let wicks = 0; for (let i = n - 10; i < n; i++) { const rg = H[i] - L[i], wk = Math.min(O[i], C[i]) - L[i]; if (rg > 0 && wk >= .5 * rg && bands.some(([lo, hi]) => lo * .99 <= L[i] && L[i] <= hi * 1.01)) wicks++; }
+  ok.flattening = span < lim || wicks >= 2;
+  // RSI-Divergenz (Pivot-Tiefs je 2 Kerzen, Doppelboden ≤ 0,5 %, 60 T.; T2 ≤ 10 T. alt, T1 2–60 T. davor, ≥ 3 RSI-Punkte)
+  const R = c.rsi || []; { const rp = piv(L, 2, true, .005).filter(i => n - 1 - i <= 60), rec = rp.filter(i => n - 1 - i <= 10); let dv = null;
+    outer: for (const t2 of rec.slice().reverse()) for (const t1 of rp.filter(i => t2 - i >= 2 && t2 - i <= 60).reverse()) {
+      if (R[t1] == null || R[t2] == null) continue;
+      if (L[t2] <= L[t1] * 1.01 && R[t2] >= R[t1] + 3) { dv = "klassisch"; break outer; }
+      if (!dv && L[t2] > L[t1] * 1.01 && R[t2] <= R[t1] - 3) dv = "versteckt"; }
+    ok.rsi_div = !!dv; }
+  ok.rsi_range = R[n - 1] != null && R[n - 1] >= 28 && R[n - 1] <= 48;
+  // MACD
+  const M = c.macd, S = c.sig, Hs = c.hist;
+  if (M && S && Hs) { ok.macd_below0 = M[n - 1] < 0 && S[n - 1] < 0; let ca = null; for (let i = n - 1; i >= 1; i--) if (Hs[i - 1] <= 0 && Hs[i] > 0) { ca = n - 1 - i; break; }
+    const aOk = ca != null && ca <= 7; let rising = true; for (let j = 1; j <= 4; j++) if (!(Hs[n - j] > Hs[n - j - 1])) rising = false;
+    const tr = Math.min(...Hs.slice(n - 30).filter(v => v != null)), ratio = tr < 0 ? Math.abs(Hs[n - 1]) / Math.abs(tr) : null, bOk = Hs[n - 1] < 0 && rising && ratio != null && ratio <= .25;
+    let fail = ca != null && ca <= 10 && Hs[n - 1] < 0; if (fail) for (let j = 1; j <= 3; j++) if (!(Hs[n - j] < Hs[n - j - 1])) fail = false;
+    ok.macd_turn = (aOk || bOk) && !fail; }
+  // MBI: grünes X ≤ 15 Kerzen, rote Spitze über der Linie, seitdem rot ≤ 70 % der Spitze (oder grün), keine neue höhere Spitze
+  if (c.gx && c.mbi_lo && c.mbi_up && c.mbi_ref) { let xo = false; for (let ix = n - 1; ix >= Math.max(2, n - 15); ix--) { if (!c.gx[ix]) continue;
+      const pk = c.mbi_lo[ix - 1] || 0, above = pk > (c.mbi_ref[ix - 1] || 0), fading = (c.mbi_lo[n - 1] || 0) <= .7 * pk || (c.mbi_up[n - 1] || 0) > (c.mbi_lo[n - 1] || 0);
+      const newPk = Math.max(...c.mbi_lo.slice(ix).map(v => v || 0)) > pk; if (above && fading && !newPk) { xo = true; break; } }
+    ok.mbi = xo; }
+  return { ok, info };
+}
+function kairoView(t, c, A) {
+  t = String(t || "").replace(/@rp$/, ""); if (!c || !c.t || c.t.length < 60) return null;
+  const daily = typeof c.t[0] === "string" && (!c.tf || c.tf === "D") && !c.intra, row = RP.on ? null : byTicker(t);
+  const n = c.t.length, C = c.c, H = c.h || C, L = c.l || C, V = c.v || [], last = C[n - 1], ok = {};
+  let src = "chart", dd = null, hiD = null;
+  if (row && row.criteria && row.criteria.length) {                       // exakt die Scan-Regel
+    src = "scan"; row.criteria.forEach(x => { ok[x.key] = !!x.ok; });
+    const z = row.zone || {}; dd = row.drawdown != null ? -Math.abs(row.drawdown) : null; hiD = z.H_date || null;
+    if (dd == null && z.H) dd = last / z.H - 1;
+  } else if (daily) {                                                     // gleiche Rechnung wie der Scan, aus dem Chart
+    const K2 = kairoCritChart(c); Object.assign(ok, K2.ok); dd = K2.info.dd; hiD = K2.info.hiD; var brokenC = K2.info.broken;
+  } else return null;
+  // Verkaufsdruck (Beobachtung, kein Kairo-Kriterium): Volumen an roten Tagen der letzten 5 Kerzen gegenüber dem Abverkauf davor
+  let sell = null; if (V.length === n) { const red = (a, b) => { let s = 0, k = 0; for (let i = a; i < b; i++) if (C[i] < C[i - 1] && V[i] > 0) { s += V[i]; k++; } return k ? s / k : null; };
+    const now = red(n - 5, n), pre = red(n - 25, n - 5); if (now != null && pre) sell = now / pre; else if (now == null && pre) sell = 0; }
+  const pull = ["drawdown", "no_crash", "structure", "zone"], turn = KV_TURN.filter(([k]) => k in ok), turnOk = turn.filter(([k]) => ok[k]);
+  const met = src === "scan" ? row.met : Object.values(ok).filter(Boolean).length, tot = src === "scan" ? row.total || 11 : Object.keys(ok).length;
+  const st = row ? kSt(row) : null, broken = src === "scan" ? !ok.zone && row.zone && row.zone.fib && row.zone.fib.retracement > .886 && !(row.zone.support || {}).ok : !ok.zone && !!brokenC;
+  const ph = !ok.drawdown ? { k: "none", cls: "", l: "Kein Rücksetzer" }
+    : ok.no_crash === false ? { k: "crash", cls: "down", l: "Crash statt Rücksetzer" }
+    : row && row.passed ? { k: "hit", cls: "up", l: st && st.k === "ready" ? "Kaufbereit" : "Kairo-Treffer" }
+    : src === "chart" && met === tot ? { k: "hit", cls: "up", l: "Setup komplett" }
+    : broken ? { k: "broken", cls: "down", l: "Unter die Zone gefallen" }
+    : !ok.zone ? { k: "fall", cls: "gold", l: "Fällt Richtung Zone" }
+    : { k: "zone", cls: "gold", l: turnOk.length >= turn.length - 1 ? "Wende fast komplett" : "In der Zone – Wende offen" };
+  return { src, ok, dd, hiD, met, tot, turn, turnOk, sell, ph, st, row, ctx: !!ok.drawdown, climax: !!(row && row.flags && row.flags.volume_climax), daily };
+}
+function kairoViewText(KV) {
+  if (!KV) return "";
+  const dd = KV.dd != null ? `${sgnPct(KV.dd, 0)} vom Hoch${KV.hiD ? ` (${dateDE(String(KV.hiD).slice(0, 10))})` : ""}` : "";
+  const sell = KV.sell == null ? "" : KV.sell < .8 ? " Das Verkaufsvolumen nimmt ab." : KV.sell > 1.25 ? " Das Verkaufsvolumen steigt noch – der Abverkauf läuft." : "";
+  const sig = KV.turnOk.length ? KV.turnOk.map(x => x[1]).join(", ") : "noch keins";
+  if (KV.ph.k === "none") return `Kairo-Sicht: kein Rücksetzer (${dd || "nah am Hoch"}) – Kairo kauft erst nach mindestens 12 % Rückgang in eine Unterstützungszone.`;
+  if (KV.ph.k === "crash") return `Kairo-Sicht: Crash statt geordnetem Rücksetzer (${dd}, ein Tag mit über 25 % Verlust) – solche Fälle meidet Kairo.`;
+  if (KV.ph.k === "broken") return `Kairo-Sicht: Der Kurs ist unter die Kaufzone gefallen (${dd}) – das Setup ist vorerst gebrochen.`;
+  if (KV.ph.k === "hit" && KV.src === "chart") return `Kairo-Sicht: alle ${KV.tot} Chart-Kriterien der Kairo-Regel erfüllt (${dd}) – Chance/Risiko prüft der Einstieg-Planer. Der Abwärtstrend gehört hier zum Setup und ist kein Warnsignal.${sell}`;
+  if (KV.ph.k === "hit") return `Kairo-Sicht: Kairo-Treffer – alle Kriterien erfüllt, ${dd}. ${KV.st ? KV.st.s.charAt(0).toUpperCase() + KV.st.s.slice(1) + "." : ""} Der Abwärtstrend gehört hier zum Setup und ist kein Warnsignal.${sell}`;
+  if (KV.ph.k === "fall") return `Kairo-Sicht: Rücksetzer ${dd}, aber noch nicht in der Kaufzone – abwarten, bis der Kurs eine Unterstützung erreicht.${sell}`;
+  return `Kairo-Sicht: Rücksetzer ${dd} in die Kaufzone – genau die Lage, die Kairo sucht. Wende-Signale ${KV.turnOk.length} von ${KV.turn.length}: ${sig}.${sell} Der Abwärtstrend ist hier Voraussetzung, kein Warnsignal; entscheidend ist, ob der Verkaufsdruck ausläuft.`;
+}
+function kairoViewHtml(KV) {
+  if (!KV) return "";
+  const chip = (on, l) => `<span class="kv-c${on ? " on" : ""}">${on ? "✓" : "○"} ${esc(l)}</span>`, yes = (on, a, b) => `<b class="${on ? "up" : "muted"}">${on ? "✓ " + a : b}</b>`;
+  const sell = KV.sell == null ? "" : `<div class="kv-r"><span>Verkaufsvolumen <small>rote Tage, letzte 5 vs. 20 davor</small></span><b class="${KV.sell < .8 ? "up" : KV.sell > 1.25 ? "down" : "muted"}">${KV.sell < .8 ? "nimmt ab" : KV.sell > 1.25 ? "steigt noch" : "unverändert"} <small>${KV.sell ? fmt(KV.sell, 1) + "×" : "–"}</small></b></div>`;
+  return `<div class="kv-top"><div class="kv-g ${KV.ph.cls}"><b>${KV.met}/${KV.tot}</b><span>${esc(KV.ph.l)}</span></div>
+    <div class="kv-m"><div class="kv-h">Kairo-Sicht <small>${KV.src === "scan" ? "aus dem Scan" : "aus dem Chart"}</small></div>
+      <div class="kv-r"><span>Rücksetzer</span>${yes(KV.ok.drawdown, KV.dd != null ? sgnPct(KV.dd, 0) : "ja", KV.dd != null ? sgnPct(KV.dd, 0) + " (ab −12 %)" : "nein")}</div>
+      <div class="kv-r"><span>Kaufzone</span>${yes(KV.ok.zone, "erreicht", KV.ph.k === "broken" ? "unterschritten" : "noch nicht")}</div>
+      <div class="kv-r"><span>Wende-Signale</span><b class="${KV.turnOk.length >= KV.turn.length - 1 ? "up" : KV.turnOk.length >= 3 ? "gold" : "muted"}">${KV.turnOk.length} von ${KV.turn.length}</b></div></div></div>
+    <div class="kv-cs">${KV.turn.map(([k, l]) => chip(KV.ok[k], l)).join("")}${KV.climax ? chip(true, "Volumen-Climax") : ""}</div>${sell}`;
+}
 function autoCardHtml(h) {
   const c = window.__lastChart && window.__lastChart.c, A = h.A || (h.A = c ? autoTA(c) : null); if (!A) return "";
   const T = A.tech, arr = v => v > 0 ? `<b class="up">▲ aufwärts</b>` : v < 0 ? `<b class="down">▼ abwärts</b>` : `<b class="muted">◆ seitwärts</b>`, last = c.c[c.c.length - 1];
@@ -13049,18 +13173,34 @@ function autoCardHtml(h) {
   const lns = A.lines.map(l => `<div class="cf-r"><span><i style="background:${l.kind === "sup" ? "#5ac8fa" : "#ff69b4"}"></i>${l.t} · ${l.touch}×</span><b>${fmt(l.p2)}</b><em class="${l.kind === "sup" ? "up" : "down"}">${sgnPct(-l.dist, 1)}</em></div>`).join("");
   const dots = s => `<span class="ki-dots">${"●".repeat(s)}<i>${"●".repeat(5 - s)}</i></span>`;
   const zon = (A.zones || []).map(z => `<div class="cf-r ki-z"><span><i style="background:${z.kind === "res" ? "#ff6961" : z.kind === "sup" ? "#34c759" : "#a0aabe"}"></i>${z.kind === "res" ? "Widerstand" : z.kind === "sup" ? "Unterstützung" : "Kurs in der Zone"}<small>${dots(z.s)} ${z.touch}× getestet${z.flip ? " · Rollentausch" : ""}</small></span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>${dist(z.mid)}</div>`).join("");
-  const scen = (S, up) => S ? `<div class="ki-s ${up ? "bull" : "bear"}"><div class="ki-sh">${up ? "▲ Bullisches Szenario" : "▼ Bärisches Szenario"}</div>
+  const scen = (S, up) => S ? `<div class="ki-s ${up ? "bull" : "bear"}"><div class="ki-sh">${up ? "▲ Bullisches Szenario" : ctx ? "▼ Wenn die Zone bricht" : "▼ Bärisches Szenario"}</div>
       <div class="ki-sr"><span>Auslöser</span><b>${up ? "über" : "unter"} ${fmt(S.trig)}</b></div><div class="ki-sr"><span>Ziel</span><b>${fmt(S.tgt)} <small>${sgnPct(S.tgt / last - 1, 1)}</small></b></div>
       <div class="ki-sr"><span>${up ? "Ungültig unter" : "Entschärft über"}</span><b>${fmt(S.inv)}</b></div><div class="ki-sr"><span>Chance/Risiko</span><b class="${S.rr >= 2 ? "up" : S.rr < 1 ? "down" : ""}">${fmt(S.rr, 1)} : 1</b></div><small>${esc(S.why)}</small></div>` : "";
   const mtf = [...T.rows, ...(A.mon != null ? [["Monatschart (EMA 10)", A.mon]] : [])];
+  // Kairo-Sicht (16.11.2026): in einer Rücksetzer-Lage zählt Kairos Regel, nicht die Trendfolger-Brille
+  const L0 = window.__lastChart || {}, dC = c.intra || (c.tf && c.tf !== "D") ? L0.d || null : c;
+  const KV = h.r ? kairoView(h.r.ticker, dC || c, dC === c ? A : null) : null, ctx = !!(KV && KV.ctx);
+  const plan = ctx && KV.row && KV.row.plan && KV.row.plan.stop ? KV.row.plan : null;
+  // In der Kairo-Lage nur Kairo-Einordnung + Lage zu Unterstützung/Widerstand – Trend, Muster und Plan stehen schon in Kasten und Karten
+  const txt = ctx ? [kairoViewText(KV), ...(A.text || []).filter(x => /^(Der Kurs|Nächste)/.test(x))] : (A.text || []).slice();
+  const zB = plan ? (A.zones || []).filter(z => z.hi < plan.stop).sort((a, b) => b.hi - a.hi)[0] : null;
+  const stopCard = plan ? `<div class="ki-s bear"><div class="ki-sh">▼ Unter dem Kairo-Stop</div>
+      <div class="ki-sr"><span>Stop</span><b>unter ${fmt(plan.stop)}</b></div><div class="ki-sr"><span>Abstand</span><b>${sgnPct(plan.stop / last - 1, 1)}</b></div>
+      ${zB ? `<div class="ki-sr"><span>Nächste Unterstützung</span><b>${fmt(zB.lo)}–${fmt(zB.hi)}</b></div>` : ""}<small>Dann ist das Setup ungültig – Kairo verkauft am Stop, kein Nachkaufen.</small></div>` : "";
+  const planCard = plan ? `<div class="ki-s bull"><div class="ki-sh">▲ Kairo-Plan</div>
+      <div class="ki-sr"><span>Kauf</span><b>${plan.buy_stop ? `über ${fmt(plan.buy_stop)}` : fmt(plan.entry)}</b></div><div class="ki-sr"><span>Ziel 1 · Ziel 2</span><b>${fmt(plan.target1)} · ${fmt(plan.target2)}</b></div>
+      <div class="ki-sr"><span>Stop</span><b>${fmt(plan.stop)} <small>${sgnPct(plan.stop / last - 1, 1)}</small></b></div><div class="ki-sr"><span>Chance/Risiko</span><b class="${plan.crv >= 2 ? "up" : "down"}">${fmt(plan.crv, 1)} : 1</b></div>
+      <small>${KV.row.passed ? esc(KV.st ? KV.st.s : "Kairo-Treffer") : "Plan gilt erst, wenn alle Kriterien erfüllt sind"}</small></div>` : "";
+  const trendLine = K ? `<div class="kv-tr"><span>Trendfolger-Sicht</span><b class="${K.cls}">${K.score > 0 ? "+" : ""}${K.score} · ${K.lbl}</b></div>
+      ${K.score <= -20 ? `<small class="kv-note">Für einen Kairo-Rücksetzer normal: Kairo kauft gegen den kurzfristigen Abwärtstrend, wenn Kaufzone und Wende-Signale passen. Rot heißt hier nicht „nicht kaufen“.</small>` : ""}` : "";
   return `<div class="cf-s au ki"><div class="cf-h">KI-Chartanalyse <button class="au-tg${clGet("auto") ? " on" : ""}" data-cl="auto" aria-pressed="${clGet("auto") ? "true" : "false"}">${clGet("auto") ? "im Chart ✓" : "im Chart zeigen"}</button></div>
-    ${K ? `<div class="ki-top"><div class="ki-g ${K.cls}"><b>${K.score > 0 ? "+" : ""}${K.score}</b><span>${K.lbl}</span></div>
-      <div class="ki-m"><div class="ki-bar"><i style="left:${(K.score + 100) / 2}%"></i></div><div class="ki-bl"><span>bärisch</span><span>neutral</span><span>bullisch</span></div><small>Übereinstimmung der Signale: <b>${K.conf}</b></small></div></div>` : `<div class="au-v ${T.verdict[0]}">${esc(T.verdict[1])}</div>`}
-    ${A.text ? `<p class="ki-tx">${A.text.map(esc).join(" ")}</p>` : ""}
-    ${A.scen && (A.scen.bull || A.scen.bear) ? `<div class="ki-sc">${scen(A.scen.bull, true)}${scen(A.scen.bear, false)}</div>` : ""}
+    ${ctx ? kairoViewHtml(KV) + trendLine : `${K ? `<div class="ki-top"><div class="ki-g ${K.cls}"><b>${K.score > 0 ? "+" : ""}${K.score}</b><span>${K.lbl}</span></div>
+      <div class="ki-m"><div class="ki-bar"><i style="left:${(K.score + 100) / 2}%"></i></div><div class="ki-bl"><span>bärisch</span><span>neutral</span><span>bullisch</span></div><small>Übereinstimmung der Signale: <b>${K.conf}</b></small></div></div>` : `<div class="au-v ${T.verdict[0]}">${esc(T.verdict[1])}</div>`}${KV ? `<p class="kv-none">${esc(kairoViewText(KV))}</p>` : ""}`}
+    ${txt.length ? `<p class="ki-tx">${txt.map(esc).join(" ")}</p>` : ""}
+    ${plan || (A.scen && (A.scen.bull || A.scen.bear)) ? `<div class="ki-sc">${plan ? planCard + stopCard : scen(A.scen.bull, true) + scen(A.scen.bear, false)}</div>` : ""}
     ${clGet("auto") ? `<div class="ki-cs">${chip("auz", "Zonen")}${chip("auk", "Kerzen")}${chip("aus", "Struktur")}</div>` : ""}
     <details class="ki-more" data-kimore${state.kiMore ? " open" : ""}><summary><span>Details</span><small>Faktoren · Zeitebenen · Zonen · Muster</small></summary>
-    ${K ? `<div class="cf-h au-h2">Woraus sich das Urteil ergibt</div>${K.parts.map(q => `<div class="ki-f"><span>${esc(q.t)}<small>${esc(q.why || "")}</small></span><b class="${q.v > 0 ? "up" : q.v < 0 ? "down" : "muted"}">${q.v > 0 ? "+" : ""}${q.v}</b></div>`).join("")}` : ""}
+    ${K ? `<div class="cf-h au-h2">Trendfolger-Sicht – woraus sich der Trend-Wert ergibt</div>${K.parts.map(q => `<div class="ki-f"><span>${esc(q.t)}<small>${esc(q.why || "")}</small></span><b class="${q.v > 0 ? "up" : q.v < 0 ? "down" : "muted"}">${q.v > 0 ? "+" : ""}${q.v}</b></div>`).join("")}` : ""}
     <div class="cf-h au-h2">Zeitebenen</div><div class="au-rows">${mtf.map(([l, v]) => `<div class="cf-r"><span>${l}</span>${arr(v)}</div>`).join("")}
       ${T.rsi != null ? `<div class="cf-r"><span>Momentum (RSI ${fmt(T.rsi, 0)})</span><b class="${T.rsi > 55 ? "up" : T.rsi < 45 ? "down" : "muted"}">${T.rsi >= 70 ? "überkauft" : T.rsi <= 30 ? "überverkauft" : T.rsi > 55 ? "stark" : T.rsi < 45 ? "schwach" : "neutral"}</b></div>` : ""}
       ${T.md != null ? `<div class="cf-r"><span>MACD</span><b class="${T.md > 0 ? "up" : "down"}">${T.md > 0 ? "über Signal" : "unter Signal"}</b></div>` : ""}
