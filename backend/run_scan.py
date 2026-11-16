@@ -903,6 +903,12 @@ def main(argv=None) -> int:
         json.dump(_clean({"generated": out["generated"], "fx_eur": fx,     # NaN → null: sonst kann der Browser die Datei nicht lesen
                           "rows": sorted(search.values(), key=lambda r: r["n"].lower())}),
                   f, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    try:                                              # Index-Mitglieder für die Heatmap (16.11.2026)
+        from .indices import build as build_indices
+        with open(SITE / "indices.json", "w", encoding="utf-8") as f:
+            json.dump(build_indices({t: r.get("n") or t for t, r in search.items()}), f, ensure_ascii=False, separators=(",", ":"))
+    except Exception as exc:
+        print(f"Indizes: {exc}")
     # Termine: Einzelabfrage (.info) zuerst, sonst aus dem Screener (Universum-Liste)
     dated = {}
     for r in rows:
