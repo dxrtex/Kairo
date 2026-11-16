@@ -28,6 +28,7 @@ from .config import CONFIG, ROOT, as_dict
 from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
+from .ipos import fetch_ipos
 from . import autota, insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import ASSET_ETF, EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, theme_tickers, fill_sectors, home_region, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
@@ -315,8 +316,15 @@ def build_calendar(rows: list[dict], infos: dict) -> dict:
             events.append({"ticker": t, "name": name, "region": reg, "watch": False, "big": True, "kind": "earnings", "date": d})
     for d in big_expiry_dates(today):
         events.append({"kind": "expiry", "date": d, "title": "Großer Verfall (Optionen & Futures)", "region": "all"})
+    try:                                           # Börsengänge (16.11.2026): Nasdaq-IPO-Kalender + Handeinträge (data/ipo_events.json)
+        ipos = fetch_ipos(today.date(), ROOT)
+    except Exception as exc:
+        print(f"IPO-Kalender: {exc}"); ipos = []
+    events += [e for e in ipos if e.get("date")]
+    print(f"Börsengänge: {sum(1 for e in ipos if e.get('date'))} mit Termin, {sum(1 for e in ipos if not e.get('date'))} angekündigt")
     events.sort(key=lambda e: (e["date"], e["kind"], e.get("name", "")))
-    return {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "events": _clean(events)}
+    return {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "events": _clean(events),
+            "ipo_open": _clean([e for e in ipos if not e.get("date")])}
 
 
 def fx_to_eur(currencies: set[str]) -> dict[str, float]:
