@@ -24,13 +24,14 @@ UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit
 # key, Anzeige, Quelle, Yahoo-Endung für nackte Kürzel, (min., max.) Mitglieder in der Tabelle, Mindestanteil im Kairo-Scan
 INDICES = [
     ("sp500", "S&P 500", "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", "", (480, 520), .9),
-    ("ndx", "Nasdaq 100", "https://en.wikipedia.org/wiki/Nasdaq-100", "", (95, 110), .9),
+    # Nasdaq 100 und Nikkei 225 (17.11.2026): die englischen Artikel führen keine Bestandteil-Tabelle mehr – deutsche Wikipedia
+    ("ndx", "Nasdaq 100", "https://de.wikipedia.org/wiki/NASDAQ-100", "", (95, 110), .9),
     ("dax", "DAX 40", "https://en.wikipedia.org/wiki/DAX", ".DE", (38, 42), .85),
     ("sx5e", "Euro Stoxx 50", "https://en.wikipedia.org/wiki/EURO_STOXX_50", None, (48, 52), .8),
-    ("n225", "Nikkei 225", "https://en.wikipedia.org/wiki/Nikkei_225", ".T", (215, 235), .7),
+    ("n225", "Nikkei 225", "https://de.wikipedia.org/wiki/Nikkei_225", ".T", (215, 235), .7),
 ]
 TICK_COL = re.compile(r"^(ticker|symbol|code|ticker symbol)$", re.I)
-NAME_COL = re.compile(r"^(company|security|name|constituent|company name)$", re.I)
+NAME_COL = re.compile(r"^(company|security|name|constituent|company name|unternehmen)(\s*\(.*\))?$", re.I)   # auch „Name (A–Z)“
 EX_SUFFIX = {"xetra": ".DE", "frankfurt": ".DE", "fwb": ".DE", "euronext paris": ".PA", "paris": ".PA", "euronext amsterdam": ".AS",
              "amsterdam": ".AS", "euronext brussels": ".BR", "brussels": ".BR", "borsa italiana": ".MI", "milan": ".MI",
              "bme": ".MC", "madrid": ".MC", "helsinki": ".HE", "euronext dublin": ".IR", "dublin": ".IR", "lisbon": ".LS"}
@@ -65,6 +66,7 @@ def candidates(raw: str, suffix: str | None) -> list[str]:
     s = str(raw or "").strip().upper().replace(" ", " ")
     if not s or s == "NAN":
         return []
+    s = re.sub(r"^(\d+)\.0$", r"\1", s)              # Nikkei-Codes kommen als Zahl („9983.0“)
     out: list[str] = []
     m = re.match(r"^([A-Z .]+):\s*([A-Z0-9.\-]+)$", s)
     if m:

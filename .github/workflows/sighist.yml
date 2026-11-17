@@ -28,13 +28,11 @@ jobs:
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           set -e
-          best=""; bt=""
-          for wf in scan.yml scan_watch.yml; do
-            for id in $(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/$wf/runs?status=success&per_page=5" --jq '.workflow_runs[].id'); do
-              t=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/$id/artifacts" --jq '[.artifacts[]|select(.name=="github-pages" and (.expired|not))][0].created_at // empty')
-              if [ -n "$t" ]; then if [ -z "$bt" ] || [[ "$t" > "$bt" ]]; then best=$id; bt=$t; fi; break; fi
-            done
-          done
+          # Jüngstes Website-Paket direkt über die Artefakt-Liste (17.11.2026): vorher wurden nur die letzten 5 Läufe je Workflow
+          # angesehen – nach 6 übersprungenen Nachhol-Läufen fiel der echte Abend-Scan heraus und der Watchlist-Scan baute auf einem
+          # älteren Stand auf (Abend-Scan überschrieben). Nur scan.yml und scan_watch.yml laden ein github-pages-Paket hoch.
+          read -r best bt <<< "$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=github-pages&per_page=30" \
+            --jq '[.artifacts[] | select((.expired|not) and .workflow_run.head_branch=="main")] | sort_by(.created_at) | last | "\(.workflow_run.id // "") \(.created_at // "")"')"
           [ -n "$best" ] || { echo "::error::Kein veröffentlichtes Website-Paket gefunden"; exit 1; }
           gh run download "$best" -R "$GITHUB_REPOSITORY" -n github-pages -D live
           mkdir -p s && tar -xf live/artifact.tar -C s --wildcards '*data/results.json'

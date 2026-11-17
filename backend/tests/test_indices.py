@@ -13,6 +13,13 @@ def test_candidates():
     assert indices.candidates("7203", ".T")[0] == "7203.T"
     assert indices.candidates("MC.PA", None)[0] == "MC.PA"
     assert indices.candidates(float("nan"), "") == []
+    assert indices.candidates(9983.0, ".T")[0] == "9983.T"
+
+
+def test_name_col_variants():
+    t = pd.DataFrame({"Symbol": ["XX1"], "Name (A–Z)": ["Apple"]})
+    got, _ = indices.resolve(t, "", UNI)
+    assert got == ["AAPL"]
 
 
 def test_pick_and_resolve():
