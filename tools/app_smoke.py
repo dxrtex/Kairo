@@ -67,7 +67,7 @@ async def tour_check(b, url, errs):
         errs.append("Rundgang: erscheint nicht")
     else:
         for _ in range(3):
-            await pg.click(".tour-act .btn:not(.ghost)", timeout=5000)
+            await pg.click(".tour-act .tour-next", timeout=5000)
             await pg.wait_for_timeout(300)
         if await pg.query_selector("#tour"):
             errs.append("Rundgang: lässt sich nicht schließen")
