@@ -38,14 +38,15 @@ jobs:
           except Exception as e:
               print("Pages indices.json fehlt/kaputt:", e)
           from backend import indices as I
-          for key, name, url, suf, (lo, hi), share in I.INDICES:
+          for url in ["https://en.wikipedia.org/wiki/Nasdaq-100", "https://en.wikipedia.org/wiki/List_of_Nasdaq-100_companies",
+                      "https://en.wikipedia.org/wiki/Nikkei_225", "https://ja.wikipedia.org/wiki/%E6%97%A5%E7%B5%8C%E5%B9%B3%E5%9D%87%E6%A0%AA%E4%BE%A1",
+                      "https://de.wikipedia.org/wiki/Nikkei_225"]:
               try:
-                  ts = I._tables(url); t = I.pick_table(ts, lo, hi)
-                  print(name, "Tabellen:", len(ts), "gewählt:", None if t is None else (len(t), list(t.columns)[:6], t.iloc[0].tolist()[:3]))
-                  if t is None:
-                      for x in ts[:12]: print("   ", len(x), [str(c) for c in x.columns][:6])
+                  ts = I._tables(url); print("==", url, len(ts))
+                  for k, x in enumerate(ts):
+                      if len(x) >= 20: print("  ", k, len(x), [str(c) for c in x.columns][:7], [str(v)[:20] for v in x.iloc[0].tolist()[:4]])
               except Exception as e:
-                  print(name, "FEHLER", repr(e)[:300])
+                  print("==", url, "FEHLER", repr(e)[:200])
           PY
           exit 1
       - run: python -m pytest -q backend/tests research/strategy_championship/tests
