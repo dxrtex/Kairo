@@ -2204,6 +2204,19 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 </style>
 
 <style id="pro-finish">
+/* Heatmap-Schalter (17.11.2026): Auswahl-Chip + Segment-Leiste + Vergrößern als Symbol – gleiche Höhe, ruhige Flächen */
+.hm-cx { display: flex !important; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 0 12px !important; }
+.hm-pick { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 14px; border-radius: 10px; background: var(--surface-2, #2c2c2e); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; }
+.hm-pick:hover { background: color-mix(in srgb, var(--surface-2, #2c2c2e) 85%, #fff); }
+.hm-pick svg { width: 12px; height: 12px; color: var(--muted); flex: none; }
+.hm-pick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; -webkit-appearance: none; appearance: none; border: 0; }
+.hm-seg { display: inline-flex; gap: 2px; padding: 2px; height: 34px; border-radius: 10px; background: rgba(118,118,128,.20); }
+.hm-seg button { min-width: 42px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.hm-seg button.on { background: #48484d; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+html.lt .hm-seg button.on { background: #fff; } html.lt .hm-seg { background: rgba(118,118,128,.12); }
+.fs-btn.fs-ic { width: 34px; height: 34px; padding: 0; display: inline-grid; place-items: center; border-radius: 10px; border: 0 !important; background: var(--surface-2, #2c2c2e); color: var(--muted); }
+.fs-btn.fs-ic:hover { color: var(--text); } .fs-btn.fs-ic svg { width: 16px; height: 16px; }
+@media (max-width: 560px) { .hm-seg button { min-width: 0; padding: 0 9px; } }
 .g-reset { color: var(--red, #ff453a) !important; font-size: 14px; } input[type="checkbox"] { accent-color: var(--accent, #0a84ff); }
 /* Insider-Tage (17.11.2026): Überschrift bündig mit den Zeilen (gleicher Innenabstand), ohne Zählung am Rand */
 .ins-day { padding: 22px 12px 8px; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .01em; }
@@ -4992,9 +5005,11 @@ const HM_IDX = [["i:sp500", "S&P 500"], ["i:ndx", "Nasdaq 100"], ["i:dax", "DAX 
 const hmIdxOf = reg => { if (!String(reg).startsWith("i:")) return null; const I = getJson("indices.json"); return I && I.idx ? I.idx[reg.slice(2)] || null : null; };
 const hmReg = () => { const r = state.hmReg; if (r && (!String(r).startsWith("i:") || hmIdxOf(r))) return r; if (!r && hmIdxOf("i:sp500")) return "i:sp500"; return r && String(r).startsWith("i:") ? "us" : r || "us"; };
 const hmName = reg => (HM_IDX.find(x => x[0] === reg) || HM_REG.find(x => x[0] === reg) || [0, "USA"])[1];
-const hmSel = reg => { const I = getJson("indices.json"), ix = HM_IDX.filter(([v]) => hmIdxOf(v));
-  return `<label class="sp-dd"><span>Index</span><select data-hmsel aria-label="Index oder Region">${ix.length ? `<optgroup label="Indizes">${ix.map(([v, l]) => `<option value="${v}"${v === reg ? " selected" : ""}>${l}</option>`).join("")}</optgroup>` : `<optgroup label="Indizes"><option disabled>S&amp;P 500, Nasdaq, DAX … kommen mit dem nächsten Abend-Scan</option></optgroup>`}<optgroup label="Größte Werte je Region">${HM_REG.map(([v, l]) => `<option value="${v}"${v === reg ? " selected" : ""}>${l === "Alle" ? "Alle Regionen" : l}</option>`).join("")}</optgroup></select></label>`; };
-const hmPerSel = k => `<label class="sp-dd"><span>Zeitraum</span><select data-sppersel aria-label="Zeitraum">${SP_PER.map(([v, , n]) => `<option value="${v}"${v === k ? " selected" : ""}>${n.charAt(0).toUpperCase() + n.slice(1)}</option>`).join("")}</select></label>`;
+// Schalter (17.11.2026, wie Profi-Tools): Index als Auswahl-Chip mit Namen (natives Menü darunter), Zeitraum als Segment-Leiste
+const HM_CHEV = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const hmSel = reg => { const ix = HM_IDX.filter(([v]) => hmIdxOf(v)), cur = reg === "all" ? "Alle Regionen" : hmName(reg);
+  return `<label class="hm-pick"><span>${esc(cur)}</span>${HM_CHEV}<select data-hmsel aria-label="Index oder Region">${ix.length ? `<optgroup label="Indizes">${ix.map(([v, l]) => `<option value="${v}"${v === reg ? " selected" : ""}>${l}</option>`).join("")}</optgroup>` : `<optgroup label="Indizes"><option disabled>S&amp;P 500, Nasdaq, DAX … kommen mit dem nächsten Abend-Scan</option></optgroup>`}<optgroup label="Größte Werte je Region">${HM_REG.map(([v, l]) => `<option value="${v}"${v === reg ? " selected" : ""}>${l === "Alle" ? "Alle Regionen" : l}</option>`).join("")}</optgroup></select></label>`; };
+const hmPerSel = k => `<div class="hm-seg" role="group" aria-label="Zeitraum">${SP_PER.map(([v, l, n]) => `<button class="${v === k ? "on" : ""}" data-spper="${v}" title="${n.charAt(0).toUpperCase() + n.slice(1)}" aria-pressed="${v === k}">${l}</button>`).join("")}</div>`;
 const SP_IDX = { d1: "d1", w1: "d5", m1: "m1", m3: "m3", ytd: "ytd" };
 const SP_CLAMP = { d1: .03, w1: .06, m1: .12, m3: .2, ytd: .3 };
 // Ohne illiquide Zweitlistings (z. B. HP in Wien, 3M in Frankfurt) – die doppeln Firmen und verzerren Tagesbewegung/Volumen
@@ -5291,7 +5306,8 @@ function zmTo(el, s, cx, cy) {                       // auf Faktor s zoomen, Pun
   });
 })();
 // ---------- Vollbild-Ansichten (Markt): Heatmap, Sektoren & Branchen mit Rotation, Gewinner/Verlierer – groß, mit Filtern ----------
-const fsBtn = k => `<button class="fs-btn" data-fsv="${k}" aria-label="Groß anzeigen" title="Groß anzeigen">⤢ Groß</button>`;
+const FS_IC = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 2.5h4v4M6.5 13.5h-4v-4M13.5 2.5L9 7M2.5 13.5L7 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const fsBtn = k => `<button class="fs-btn fs-ic" data-fsv="${k}" aria-label="Groß anzeigen" title="Groß anzeigen">${FS_IC}</button>`;
 const RRG_GROUP = () => { const { ind, th, eu, as } = spList(); return as ? "assets" : eu ? "sectors_eu" : th ? "themes" : ind ? "industries" : "sectors"; };
 // Aktien je Bereich (einmal je Aufbau indiziert): Branche (ig), Sektor (sec), Europa-Filter (flt), Thema (mem)
 function spMemberIdx() {
