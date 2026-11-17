@@ -9772,8 +9772,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.217";
-const APP_NEWS = [["2026.11.217", "Vorbörslich im Chart", [
+const APP_VER = "2026.11.218";
+const APP_NEWS = [["2026.11.218", "Long/Short-Werkzeug wie TradingView", [
+  ["Mehr Zahlen im Werkzeug", "Ziel und Stop zeigen Kurs, Abstand, Prozent und den Betrag in € für deine Menge. In der Mitte: offener Gewinn/Verlust zum aktuellen Kurs, Menge (aus Trading-Kapital und Risiko je Trade) und Chance/Risiko."]]],
+  ["2026.11.217", "Vorbörslich im Chart", [
   ["Vor- und nachbörslicher Kurs", "Bei US-Aktien steht vor 15:30 Uhr der vorbörsliche Kurs als gepunktete orange Linie mit Schild an der Preisachse – inklusive Abstand zum Schlusskurs, wie bei TradingView. Nach Börsenschluss hellblau für nachbörslich. Die Tageskerze bleibt beim Schlusskurs."],
   ["Scanner scrollt wie vorher", "Die Tabelle scrollt wieder nur seitlich, nach unten scrollt die Seite – kein gleichzeitiges Wischen in beide Richtungen mehr."]]],
   ["2026.11.216", "Volumenprofil deutlicher", [
@@ -14333,7 +14335,7 @@ function drPrimitive(h) {
     if (DRAW.hide || !series) return;
     const ts = chart.timeScale(), X = i => ts.logicalToCoordinate(i), Y = v => series.priceToCoordinate(v), W = m.width;
     const list = drList(h).filter(d => !d.hid).concat(DRAW.act && DRAW.act.temp ? [DRAW.act.temp] : []);
-    const lbl = (tx, px, py, col, al = "left", bg = true) => { x.font = F; const w = x.measureText(tx).width; const x0 = al === "right" ? px - w - 8 : al === "center" ? px - w / 2 - 4 : px;
+    const lbl = (tx, px, py, col, al = "left", bg = true) => { x.font = F; const w = x.measureText(tx).width; const x0 = Math.max(2, Math.min(W - w - 10, al === "right" ? px - w - 8 : al === "center" ? px - w / 2 - 4 : px));   // nie über den Rand
       if (bg) { x.fillStyle = `rgba(${col},.9)`; x.beginPath(); x.roundRect ? x.roundRect(x0, py - 9, w + 8, 18, 4) : x.rect(x0, py - 9, w + 8, 18); x.fill(); x.fillStyle = "#fff"; } else x.fillStyle = `rgb(${col})`;
       x.textBaseline = "middle"; x.textAlign = "left"; x.fillText(tx, x0 + 4, py); };
     const handle = (px, py) => { x.beginPath(); x.arc(px, py, 5.5, 0, 7); x.fillStyle = isLight() ? "#fff" : "#16181d"; x.fill(); x.lineWidth = 2; x.strokeStyle = "rgb(41,98,255)"; x.setLineDash([]); x.stroke(); };
@@ -14381,9 +14383,15 @@ function drPrimitive(h) {
         x.strokeStyle = "rgba(120,123,134,.9)"; x.lineWidth = 1.2; x.beginPath(); x.moveTo(xl, ay); x.lineTo(xr, ay); x.stroke();
         const e = d.a.p, risk = Math.abs(e - d.s), rew = Math.abs(d.t - e), rr = risk ? rew / risk : 0, cx = (xl + xr) / 2, cur = (h.r && (h.r.currency || h.r.cur)) || "";
         const cfg = tpCfg(), rEur = toEur(risk, cur) || risk, qty = rEur > 0 ? Math.floor(cfg.depot * cfg.risk / 100 / rEur) : 0;
-        lbl(`Ziel: ${fmt(d.t)} (${sgnPct(d.t / e - 1, 1)})`, cx, up ? Math.min(yt, ay) - 12 : Math.max(yt, ay) + 12, "8,153,129", "center");
-        lbl(`Stop: ${fmt(d.s)} (${sgnPct(d.s / e - 1, 1)})`, cx, up ? Math.max(ys, ay) + 12 : Math.min(ys, ay) - 12, "242,54,69", "center");
-        if (sel || xr - xl > 140) lbl(`Risiko-/Ertragsverhältnis: ${fmt(rr, 2)}${qty ? ` · Menge: ${qty} (${fmt(cfg.risk, 1)} % Risiko)` : ""}`, cx, ay, "120,123,134", "center");
+        // Beschriftung wie bei TradingView (Wunsch 17.11.2026): Abstand, Prozent und Betrag in € an Ziel und Stop, in der Mitte offener G&V, Menge und Chance/Risiko
+        const fxE = v => { const z = toEur(v, cur); return isFinite(z) ? z : cur === "EUR" || !cur ? v : null; }, amt = v => { const z = fxE(v); return z == null ? `${fmt(v)} ${cur}` : sgnEur(z); };
+        const q0 = LIVE.map[h.r && h.r.ticker], cN = h.c && h.c.c, px0 = q0 && q0.c > 0 ? q0.c : cN && cN.length ? cN[cN.length - 1] : null, pnl = px0 != null && qty ? (px0 - e) * (up ? 1 : -1) * qty : null;
+        lbl(`Ziel: ${fmt(d.t)} · ${fmt(rew)} (${pct(rew / e, 2)})${qty ? ` · Betrag: ${amt(rew * qty)}` : ""}`, cx, up ? Math.min(yt, ay) - 12 : Math.max(yt, ay) + 12, "8,153,129", "center");
+        lbl(`Stop: ${fmt(d.s)} · ${fmt(risk)} (${pct(risk / e, 2)})${qty ? ` · Betrag: ${amt(-risk * qty)}` : ""}`, cx, up ? Math.max(ys, ay) + 12 : Math.min(ys, ay) - 12, "242,54,69", "center");
+        if (sel || xr - xl > 140) { const l1 = `${pnl != null ? `Offener G&V: ${amt(pnl)} · ` : ""}${qty ? `Menge: ${qty}` : ""}`.replace(/ · $/, ""), l2 = `Chance/Risiko: ${fmt(rr, 2)}${qty ? ` · ${fmt(cfg.risk, 1)} % Risiko` : ""}`;
+          x.font = F; const bw = Math.max(x.measureText(l1).width, x.measureText(l2).width) + 12, bh = l1 ? 34 : 18, by0 = ay - bh / 2, cx = Math.max(bw / 2 + 2, Math.min(W - bw / 2 - 2, (xl + xr) / 2));
+          x.fillStyle = pnl == null || pnl >= 0 ? "rgba(8,153,129,.92)" : "rgba(242,54,69,.92)"; x.beginPath(); x.roundRect ? x.roundRect(cx - bw / 2, by0, bw, bh, 4) : x.rect(cx - bw / 2, by0, bw, bh); x.fill();
+          x.fillStyle = "#fff"; x.textBaseline = "middle"; x.textAlign = "center"; if (l1) { x.fillText(l1, cx, by0 + 9.5); x.fillText(l2, cx, by0 + 25); } else x.fillText(l2, cx, ay); x.textAlign = "left"; }
         if (sel) { handle(xl, ay); handle(xr, ay); handle(xl, yt); handle(xl, ys); } }
       x.restore(); }); }) };
   const views = [{ zOrder: () => "top", renderer: () => pane }];
