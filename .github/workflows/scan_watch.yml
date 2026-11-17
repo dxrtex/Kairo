@@ -4,6 +4,11 @@ name: Watchlist-Scan
 # Ändert keinen Zustand: keine Live-Bilanz, keine Mitteilungen, keine neuen Signale (backend/run_scan.py --partial).
 on:
   workflow_dispatch:
+    inputs:
+      base:
+        description: "Optional: Lauf-Nummer (run id), deren Website-Paket als Grundlage dient – leer = jüngstes Paket"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -38,13 +43,12 @@ jobs:
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           set -e
-          best=""; bt=""
-          for wf in scan.yml scan_watch.yml; do
-            for id in $(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/$wf/runs?status=success&per_page=5" --jq '.workflow_runs[].id'); do
-              t=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/$id/artifacts" --jq '[.artifacts[]|select(.name=="github-pages" and (.expired|not))][0].created_at // empty')
-              if [ -n "$t" ]; then if [ -z "$bt" ] || [[ "$t" > "$bt" ]]; then best=$id; bt=$t; fi; break; fi
-            done
-          done
+          # Jüngstes Website-Paket direkt über die Artefakt-Liste (17.11.2026): vorher wurden nur die letzten 5 Läufe je Workflow
+          # angesehen – nach 6 übersprungenen Nachhol-Läufen fiel der echte Abend-Scan heraus und der Watchlist-Scan baute auf einem
+          # älteren Stand auf (Abend-Scan überschrieben). Nur scan.yml und scan_watch.yml laden ein github-pages-Paket hoch.
+          read -r best bt <<< "$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=github-pages&per_page=30" \
+            --jq '[.artifacts[] | select((.expired|not) and .workflow_run.head_branch=="main")] | sort_by(.created_at) | last | "\(.workflow_run.id // "") \(.created_at // "")"')"
+          if [ -n "${{ inputs.base }}" ]; then best="${{ inputs.base }}"; bt="von Hand gewählt"; fi
           if [ -z "$best" ]; then echo "::error::Kein veröffentlichtes Website-Paket gefunden – bitte einmal den großen Scan starten"; exit 1; fi
           echo "Basis: Lauf $best ($bt)"
           gh run download "$best" -n github-pages -D live
