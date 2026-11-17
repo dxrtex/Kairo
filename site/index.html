@@ -2239,13 +2239,15 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 /* Scanner-Kopf: eine ruhige Leiste (16.11.2026) */
 .sc-tb { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin: 6px 2px 10px; min-height: 36px; }
 .sc-tb .kchip.pre { padding: 6px 12px; }
+.cal-tb { margin: 4px 2px 12px; } .cal-tb .vtog { flex: none; }
+@media (max-width: 700px) { .cal-tb .vtog button { padding: 6px 10px; font-size: 13px; } .cal-tb { gap: 8px 12px; } }
 .sc-tb-r { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
 .sc-btn { height: 34px; min-width: 34px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; list-style: none; }
 .sc-btn:hover { background: var(--surface-2, #1c1c1e); } .sc-btn.on { border-color: var(--accent); color: var(--accent); }
 .sc-btn small { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; }
 .scanmenu > summary.sc-btn { font-size: 16px; padding: 0 10px; } .sc-tb .scanmenu { margin-left: 0; }
 .sc-cnt { font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 0 4px; white-space: nowrap; } .sc-cnt .gl { margin-left: 2px; }
-.sc-tb .sp-dd select, .nr-tb .sp-dd select { width: auto !important; min-width: 0 !important; max-width: none; height: auto; border: 0 !important; box-shadow: none !important; }
+.sc-tb .sp-dd select, .nr-tb .sp-dd select, .cal-tb .sp-dd select { width: auto !important; min-width: 0 !important; max-width: none; height: auto; border: 0 !important; box-shadow: none !important; }
 @media (max-width: 700px) { .sc-btn.spalten, .sc-cnt .sc-n { display: none; } .sc-tb { gap: 8px 10px; } }
 
 /* Wunsch 13.11. abends: Grün + Glas wirkte billig → Glas raus (flache Leisten ohne Glanz, Unschärfe und Leuchten).
@@ -3447,6 +3449,7 @@ const save = () => { try { wsTrack(); } catch (e) {} try { const { tableSort, ta
 
 // ---------- Begriffe kurz erklärt (ⓘ antippen) ----------
 const GLOSS = {
+  cal: ["Kalender", "„Nur wichtige“ zeigt Quartalszahlen deiner Aktien (Depot, Watchlist, Merkliste, Treffer), wichtige Wirtschaftstermine, den Verfall und große Börsengänge. „Alle“ zeigt jeden Termin aus dem Scan. Q = Quartalszahlen, Div = Dividende, % = Wirtschaftsdaten."],
   scr: ["Screener", "Alle geprüften Aktien frei filtern – wie ein klassischer Screener, unabhängig von der Kairo-Regel (Treffer stehen unter „Treffer“). Kurse und Kennzahlen aus dem letzten Scan, alle Aktien ab 2 Mrd. $ Börsenwert. Mit ☆ speicherst du einen Screen: Kairo zeigt dann, welche Aktien neu hineinfallen."],
   wind: ["Rückenwind / Gegenwind", "Kairo zählt drei Dinge zusammen: die Tendenz der Schlagzeilen der letzten 7 Tage (▲ +1, ▼ −1, höchstens ±2), das Analysten-Urteil (Kaufen +1, Verkaufen −1) und den Kurs heute (ab +2 % +1, ab −2 % −1). Ab +2 steht Rückenwind, ab −2 Gegenwind, dazwischen nichts. Eine Stimmungs-Zusammenfassung – kein Kaufsignal und kein Teil der Kairo-Regel."],
   score: ["Score", "Kairo-Bewertung 0–100 für Treffer: je näher am idealen Einstieg (Zone, Divergenz, MACD-Wende, CRV), desto höher. Für die Rangfolge nutzt Kairo inzwischen das Vormomentum – der Score war in der Forschung kein belegtes Merkmal."],
@@ -5171,6 +5174,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-fsmine]")) { state.fsMine = !state.fsMine; save(); fsvRender(); return; }
   const fm = e.target.closest("[data-fsmv]"); if (fm) { const F = { ...(state.fsMv || {}) }; F[fm.dataset.fsmv] = !F[fm.dataset.fsmv]; state.fsMv = F; save(); fsvRender(); return; }
 });
+document.addEventListener("change", e => { const c = e.target.closest("[data-calsel]"); if (!c) return; state[c.dataset.calsel] = c.value; save(); render(); });
 document.addEventListener("change", e => { const s = e.target.closest("[data-newstonesel]"); if (!s) return; state.newsTone = s.value; save(); render(); });
 document.addEventListener("change", e => { const s = e.target.closest("[data-insf2sel]"); if (!s) return; state.insF2 = { ...(state.insF2 || {}), [s.dataset.insf2sel]: s.value }; state.insMore = false; save(); render(); });
 document.addEventListener("change", e => { const s = e.target.closest("[data-fsmvsel]"); if (!s) return; const F = { ...(state.fsMv || {}) }; F[s.dataset.fsmvsel] = s.dataset.fsmvsel === "cap" ? +s.value : s.value; state.fsMv = F; save(); fsvRender(); });
@@ -6041,9 +6045,12 @@ function calendarHtml() {
   const all = calData.filter(e => (state.calScope === "all" || calRelevant(e)) && kinds[state.calKind || ""](e));
   const list = all.filter(e => daysUntil(e.date) >= 0 || (e.done && daysUntil(e.date) >= -7));
   const seg = (key, opts) => `<div class="opts seg">${opts.map(([v, l]) => `<button class="opt${(state[key] || "") === v ? " on" : ""}" data-cal="${key}" data-v="${v}">${l}</button>`).join("")}</div>`;
-  const head = `<div class="section-title"><span>${state.calScope === "all" ? "Alle Termine" : "Nur wichtige Termine"}</span><span>${list.length} Termine</span></div>
-    <div class="cal-top"><div class="vtog">${[["month", "Monat"], ["list", "Liste"]].map(([v, l]) => `<button class="${(month ? "month" : "list") === v ? "on" : ""}" data-cal="calView" data-v="${v}">${v === "month" ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M9.5 10v10M14.5 10v10"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>'}${l}</button>`).join("")}</div>${seg("calScope", [["mine", "Nur wichtige"], ["all", "Alle Termine"]])}</div>`
-    + seg("calKind", [["", "Alle"], ["earnings", "Quartalszahlen"], ["div", "Dividenden"], ["macro", "Wirtschaft & Zinsen"], ["ipo", "Börsengänge"]])
+  // Kopf (16.11.2026 „unprofessionell“): eine Leiste – Ansicht · Art ▾ · Umfang ▾ · Anzahl – statt Titel, zwei Umschalter und fünf Pillen
+  const csel = (key, opts, lbl) => `<label class="sp-dd"><span>${lbl}</span><select data-calsel="${key}" aria-label="${lbl}">${opts.map(([v, l]) => `<option value="${v}"${(state[key] || "") === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
+  const head = `<div class="sc-tb cal-tb"><div class="vtog">${[["month", "Monat"], ["list", "Liste"]].map(([v, l]) => `<button class="${(month ? "month" : "list") === v ? "on" : ""}" data-cal="calView" data-v="${v}">${v === "month" ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M9.5 10v10M14.5 10v10"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>'}${l}</button>`).join("")}</div>
+      ${csel("calKind", [["", "Alle"], ["earnings", "Quartalszahlen"], ["div", "Dividenden"], ["macro", "Wirtschaft & Zinsen"], ["ipo", "Börsengänge"]], "Art")}
+      ${csel("calScope", [["mine", "Nur wichtige"], ["all", "Alle"]], "Termine")}
+      <span class="sc-tb-r"><span class="sc-cnt"><span class="sc-n">${fmt(list.length, 0)} Termine</span>${gl("cal")}</span></span></div>`
     + ((state.calKind || "") === "" || state.calKind === "ipo" ? calIpoOpen.map(e => `<div class="ipo-open"><span class="k k-ipo">IPO</span><div><b>${esc(e.name)} · Börsengang angekündigt</b><span>${esc(ipoInfo(e))}</span></div></div>`).join("") : "");
   const nowM = (() => { const p = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }); return +p.slice(0, 2) * 60 + +p.slice(3, 5); })();
   const todayIsoB = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
@@ -9511,8 +9518,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.204";
-const APP_NEWS = [["2026.11.204", "Chart-Suche wie bei TradingView", [
+const APP_VER = "2026.11.205";
+const APP_NEWS = [["2026.11.205", "Kalender mit ruhiger Leiste", [
+  ["Eine Zeile", "Monat/Liste, „Art ▾“ (Quartalszahlen, Dividenden, Wirtschaft, Börsengänge) und „Termine ▾“ (nur wichtige/alle) in einer Leiste, rechts die Anzahl mit ⓘ – statt Titel, zwei Umschaltern und fünf großen Pillen."]]],
+ ["2026.11.204", "Chart-Suche wie bei TradingView", [
   ["Kompaktes Symbolfeld", "Gleiche Höhe wie die Werkzeugleiste, feine Linie statt Glas, Trefferliste in Schwarz. Mit Tastatur: „/“ springt direkt ins Feld."]]],
  ["2026.11.203", "Screener wie bei den Profi-Tools", [
   ["Eine Leiste", "Vorlage ▾ (inkl. deiner gespeicherten Screens), aktive Filter als Chips mit ×, „＋ Filter“, rechts Anzahl, ☆ Speichern und Spalten."],
