@@ -29,17 +29,27 @@ INDICES = [
     ("dax", "DAX 40", "https://en.wikipedia.org/wiki/DAX", ".DE", (38, 42), .85),
     ("sx5e", "Euro Stoxx 50", "https://en.wikipedia.org/wiki/EURO_STOXX_50", None, (48, 52), .8),
     ("n225", "Nikkei 225", "https://de.wikipedia.org/wiki/Nikkei_225", ".T", (215, 235), .7),
+    # Dow Jones: die Wikipedia-Tabellen haben nur Firmennamen (ohne Kürzel) – Zuordnung über den Namen, nur US-Aktien
+    ("dji", "Dow Jones", "https://de.wikipedia.org/wiki/Dow_Jones_Industrial_Average", "", (29, 31), .8),
+    # weitere Indizes (17.11.2026, Tabellen per Testlauf geprüft): Nebenwerte Deutschland, Großbritannien, Frankreich, Schweiz, Hongkong
+    ("mdax", "MDAX", "https://en.wikipedia.org/wiki/MDAX", ".DE", (48, 54), .75),
+    ("tecdax", "TecDAX", "https://de.wikipedia.org/wiki/TecDAX", ".DE", (28, 32), .75),
+    ("ukx", "FTSE 100", "https://en.wikipedia.org/wiki/FTSE_100_Index", ".L", (95, 105), .75),
+    ("cac", "CAC 40", "https://en.wikipedia.org/wiki/CAC_40", ".PA", (38, 42), .8),
+    ("smi", "SMI", "https://en.wikipedia.org/wiki/Swiss_Market_Index", ".SW", (18, 22), .75),
+    ("hsi", "Hang Seng", "https://en.wikipedia.org/wiki/Hang_Seng_Index", ".HK", (70, 100), .7),
 ]
+NAME_ONLY = {"dji"}                       # Indizes, deren Tabelle nur Namen hat
 TICK_COL = re.compile(r"^(ticker|symbol|code|ticker symbol)$", re.I)
 NAME_COL = re.compile(r"^(company|security|name|constituent|company name|unternehmen)(\s*\(.*\))?$", re.I)   # auch „Name (A–Z)“
 EX_SUFFIX = {"xetra": ".DE", "frankfurt": ".DE", "fwb": ".DE", "euronext paris": ".PA", "paris": ".PA", "euronext amsterdam": ".AS",
              "amsterdam": ".AS", "euronext brussels": ".BR", "brussels": ".BR", "borsa italiana": ".MI", "milan": ".MI",
-             "bme": ".MC", "madrid": ".MC", "helsinki": ".HE", "euronext dublin": ".IR", "dublin": ".IR", "lisbon": ".LS"}
+             "bme": ".MC", "madrid": ".MC", "helsinki": ".HE", "euronext dublin": ".IR", "dublin": ".IR", "lisbon": ".LS", "sehk": ".HK"}
 
 
 def norm_name(s: str) -> str:
     s = str(s or "").lower()
-    s = re.sub(r"\b(inc|corp|corporation|co|company|ag|se|sa|nv|n\.v|plc|ltd|limited|holdings?|group|the|class [a-z]|spa|s\.p\.a|kgaa|& co)\b", " ", s)
+    s = re.sub(r"\b(inc|incorporated|corp|corporation|co|com|company|ag|se|sa|nv|n\.v|plc|ltd|limited|holdings?|group|the|class [a-z]|spa|s\.p\.a|kgaa|& co)\b", " ", s)
     return re.sub(r"[^a-z0-9]", "", s)[:18]
 
 
@@ -48,12 +58,13 @@ def _tables(url: str) -> list[pd.DataFrame]:
     return pd.read_html(io.StringIO(html))
 
 
-def pick_table(tables: list[pd.DataFrame], lo: int, hi: int) -> pd.DataFrame | None:
-    """Die Bestandteil-Tabelle: hat eine Ticker-Spalte und passende Zeilenzahl (bei mehreren: die mit den meisten Zeilen)."""
+def pick_table(tables: list[pd.DataFrame], lo: int, hi: int, by_name: bool = False) -> pd.DataFrame | None:
+    """Die Bestandteil-Tabelle: hat eine Ticker-Spalte (bzw. nur Namen) und passende Zeilenzahl (bei mehreren: die mit den meisten Zeilen)."""
     best = None
+    col_ok = (lambda c: NAME_COL.match(c)) if by_name else (lambda c: TICK_COL.match(c))
     for t in tables:
-        cols = [str(c[-1] if isinstance(c, tuple) else c).strip() for c in t.columns]
-        if not any(TICK_COL.match(c) for c in cols) or not lo <= len(t) <= hi:
+        cols = [re.sub(r"\[.*?\]", "", str(c[-1] if isinstance(c, tuple) else c)).strip() for c in t.columns]   # „Symbol[9]“ → Symbol
+        if not any(col_ok(c) for c in cols) or not lo <= len(t) <= hi:
             continue
         t = t.copy(); t.columns = cols
         if best is None or len(t) > len(best):
@@ -67,6 +78,9 @@ def candidates(raw: str, suffix: str | None) -> list[str]:
     if not s or s == "NAN":
         return []
     s = re.sub(r"^(\d+)\.0$", r"\1", s)              # Nikkei-Codes kommen als Zahl („9983.0“)
+    if suffix == ".HK" or s.startswith("SEHK"):     # Hongkong: „SEHK: 5“ → 0005.HK (vierstellig)
+        m = re.search(r"(\d+)$", s)
+        return [m.group(1).zfill(4) + ".HK"] if m else []
     out: list[str] = []
     m = re.match(r"^([A-Z .]+):\s*([A-Z0-9.\-]+)$", s)
     if m:
@@ -77,6 +91,9 @@ def candidates(raw: str, suffix: str | None) -> list[str]:
         s = sym
     if suffix == "":                       # USA: Punkt in Klassen-Aktien → Bindestrich
         out += [s.replace(".", "-"), s]
+    elif suffix == ".L":                   # London: Klassen mit Punkt („BT.A“) → Bindestrich, „RR.“ → RR
+        b = s.rstrip(".")
+        out += [b + ".L" if not b.endswith(".L") else b, b.replace(".", "-") + ".L", s]
     elif suffix:
         out += [s if s.endswith(suffix) else s.split(".")[0] + suffix, s]
     else:                                  # Euro Stoxx: Kürzel meist schon mit Börsen-Endung
@@ -90,16 +107,21 @@ def candidates(raw: str, suffix: str | None) -> list[str]:
 
 def resolve(table: pd.DataFrame, suffix: str | None, universe: dict[str, str]) -> tuple[list[str], int]:
     """Tabelle → Ticker aus dem Kairo-Scan (Kürzel, sonst Firmenname). universe: Ticker → Name."""
-    tcol = next(c for c in table.columns if TICK_COL.match(c))
+    tcol = next((c for c in table.columns if TICK_COL.match(c)), None)
     ncol = next((c for c in table.columns if NAME_COL.match(c)), None)
     by_name: dict[str, str] = {}
+    us_only = suffix == ""
     for t, n in universe.items():
-        by_name.setdefault(norm_name(n), t)
+        if not (us_only and tcol is None and "." in t):
+            by_name.setdefault(norm_name(n), t)
     got: list[str] = []
     for _, row in table.iterrows():
-        hit = next((c for c in candidates(row[tcol], suffix) if c in universe), None)
+        hit = next((c for c in candidates(row[tcol], suffix) if c in universe), None) if tcol is not None else None
         if not hit and ncol is not None:
-            hit = by_name.get(norm_name(row[ncol]))
+            nn = norm_name(row[ncol])
+            hit = by_name.get(nn)
+            if not hit and tcol is None and len(nn) >= 5:        # nur Namen: „Amazon“ ↔ „Amazon.com“, „UnitedHealth“ ↔ „UnitedHealth Group“
+                hit = next((t for k, t in by_name.items() if k.startswith(nn) or nn.startswith(k) and len(k) >= 5), None)
         if hit and hit not in got:
             got.append(hit)
     return got, len(table)
@@ -116,7 +138,7 @@ def build(universe: dict[str, str], fetch=_tables, previous=_previous) -> dict:
     out, prev, log = {}, None, []
     for key, name, url, suffix, (lo, hi), share in INDICES:
         try:
-            tab = pick_table(fetch(url), lo, hi)
+            tab = pick_table(fetch(url), lo, hi, by_name=key in NAME_ONLY)
             if tab is None:
                 raise ValueError("keine passende Tabelle")
             got, total = resolve(tab, suffix, universe)

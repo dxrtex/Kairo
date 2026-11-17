@@ -54,3 +54,25 @@ def test_too_few_matches_rejected():
     sp = pd.DataFrame({"Symbol": [f"Q{i}" for i in range(500)], "Security": [f"Firma {i}" for i in range(500)]})
     out = indices.build(UNI, fetch=lambda u: [sp] if "S%26P" in u else [], previous=lambda: {})
     assert "sp500" not in out["idx"]
+
+
+def test_candidates_more_markets():
+    assert indices.candidates("SEHK:\xa05", ".HK") == ["0005.HK"]
+    assert indices.candidates("SEHK: 388", ".HK") == ["0388.HK"]
+    assert "BT-A.L" in indices.candidates("BT.A", ".L") and indices.candidates("III", ".L")[0] == "III.L"
+    assert indices.candidates("AC.PA", ".PA")[0] == "AC.PA"
+    assert indices.candidates("NOVN", ".SW")[0] == "NOVN.SW"
+
+
+def test_footnote_in_column():
+    import pandas as pd
+    t = pd.DataFrame({"Symbol[9]": ["AIXA", "BC8"] * 15, "Name": ["Aixtron SE", "Bechtle AG"] * 15})
+    assert indices.pick_table([t], 28, 32) is not None
+
+
+def test_name_only_table():
+    uni = {"GS": "The Goldman Sachs Group, Inc.", "AMZN": "Amazon.com, Inc.", "UNH": "UnitedHealth Group Incorporated", "MSFT": "Microsoft Corporation", "GS.DE": "Goldman Sachs Group Inc"}
+    t = pd.DataFrame({"Name": ["Goldman Sachs", "Amazon", "UnitedHealth", "Microsoft"] * 8, "Branche": ["x"] * 32})
+    tab = indices.pick_table([t], 30, 34, by_name=True)
+    got, total = indices.resolve(tab, "", uni)
+    assert set(got) == {"GS", "AMZN", "UNH", "MSFT"}
