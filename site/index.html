@@ -2204,6 +2204,9 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 </style>
 
 <style id="pro-finish">
+/* Chart-Flächen fangen jede Berührung selbst (keine Seitenbewegung dazwischen) */
+.ctab .ctab-chart, .ctab .ctab-c, .ctab .cf-canvas { touch-action: none; }
+
 /* ===== Depot Runde 2 (17.11.2026) ===== */
 .dh-sub .dh-dot { font-style: normal; margin: 0 4px; opacity: .6; }
 .pos-hd { flex-wrap: wrap; row-gap: 8px; } .pos-hd .pos-sort { margin-left: auto; font-size: 12.5px; } .pos-hd .pos-sort select { width: auto !important; }
@@ -5021,6 +5024,11 @@ document.addEventListener("wheel", e => {
   if (t && t.wheel(e)) e.preventDefault(); }, { capture: true, passive: false });
 document.addEventListener("touchmove", e => {                                            // zwei Finger außerhalb einer Zoom-Fläche: Seite nicht vergrößern
   if (ZG.open() && e.touches && e.touches.length > 1 && !(e.target.closest && e.target.closest(".hmc, .zm, .chfs-chart"))) e.preventDefault(); }, { capture: true, passive: false });
+// Charts außerhalb des Vollbilds (17.11.2026 „springt wie wild“): Zwei Finger im Chart bewegten zusätzlich die ganze Seite (Scrollen,
+// Seiten-Zoom) – der Chart sprang. Über einem Chart gehört jede Geste nur dem Chart; außerhalb scrollt die Seite wie gewohnt.
+const CH_SEL = ".ctab-chart, .ctab-c, .chfs-chart, .lwc, .dlv-c, .cf-canvas";
+document.addEventListener("touchmove", e => { const t = e.target; if (e.cancelable && e.touches && e.touches.length > 1 && t.closest && t.closest(CH_SEL)) e.preventDefault(); }, { capture: true, passive: false });
+["gesturestart", "gesturechange"].forEach(type => document.addEventListener(type, e => { const t = e.target; if (t && t.closest && t.closest(CH_SEL)) e.preventDefault(); }, { capture: true, passive: false }));
 let HMC = null;
 function hmcMix(v, lim) { const t = Math.max(-1, Math.min(1, (v || 0) / lim)), p = .18 + .72 * Math.abs(t), c = t >= 0 ? [48, 209, 88] : [255, 69, 58], b = isLight() ? [163, 168, 176] : [35, 38, 44];
   return `rgb(${c.map((x, i) => Math.round(b[i] + (x - b[i]) * p)).join(",")})`; }
@@ -9654,8 +9662,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.211";
-const APP_NEWS = [["2026.11.211", "Depot: Heute, Realisiert, Sortieren", [
+const APP_VER = "2026.11.212";
+const APP_NEWS = [["2026.11.212", "Chart ruhig auch außerhalb des Vollbilds", [
+  ["Kein Springen mehr", "Zwei Finger im Chart bewegen nur noch den Chart – vorher scrollte bzw. zoomte Safari gleichzeitig die ganze Seite. Die Seite scrollst du außerhalb des Charts."],
+  ["Nicht ins Leere", "Die Zeitachse lässt sich nur noch so weit schieben, dass höchstens ein Drittel des Bildes rechts frei bleibt."]]],
+ ["2026.11.211", "Depot: Heute, Realisiert, Sortieren", [
   ["Heute", "Unter dem Depotwert steht die Tagesveränderung des ganzen Depots, in der Liste eine Spalte „Heute“ je Position – Turbos über den Hebel gerechnet."],
   ["Realisiert", "Rechts oben: realisierter Gewinn/Verlust des Jahres inkl. Ausschüttungen (aus deinem Journal)."],
   ["Positionen", "Sortieren nach Wert, Gewinn, Heute oder Name; „Trade erfassen“ und „Abgleich“ stehen klein im Kopf der Liste. Der ETF klappt wie die Aktien auf."],
@@ -14002,6 +14013,12 @@ function ctabBuild(c, r) {
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside><div class="ct-wl" id="ctWl"${state.ctWl ? "" : " hidden"}>${ctWlHtml(r.ticker)}</div></div>`;
   ctFsSearch();
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
+  // Nicht ins Leere schieben (17.11.2026): rechts höchstens ein Drittel des Bildes frei, links nicht weiter als die ersten Kerzen – wie TradingView
+  { const hh = cfChart, N = c.t.length; let busy = false;
+    hh.chart.timeScale().subscribeVisibleLogicalRangeChange(rg => { if (busy || !rg || cfChart !== hh) return; const w = rg.to - rg.from, maxR = (N - 1) + Math.max(8, w * .33), minL = -Math.max(8, w * .33);
+      let d = 0; if (rg.to > maxR) d = Math.min(0, Math.max(maxR - rg.to, minL - rg.from)); else if (rg.from < minL) d = Math.max(0, Math.min(minL - rg.from, maxR - rg.to));   // nie hin und her: Verschiebung bleibt in beiden Grenzen
+      if (Math.abs(d) < .5) return;
+      busy = true; try { hh.chart.timeScale().setVisibleLogicalRange({ from: rg.from + d, to: rg.to + d }); } catch (e) {} busy = false; }); }
   if (whyFor !== String(r.ticker)) { whySel = null; whyFor = String(r.ticker); } whyKick(cfChart);
   cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
   if (c.intra) { cfChart.chart.applyOptions({ timeScale: { timeVisible: true, secondsVisible: false } }); cfChart.live = () => false; const n = c.t.length; cfChart.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 160), to: n + 4 }); }
