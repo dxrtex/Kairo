@@ -2207,14 +2207,10 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 .g-reset { color: var(--red, #ff453a) !important; font-size: 14px; } input[type="checkbox"] { accent-color: var(--accent, #0a84ff); }
 .ins-day { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 2px 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--line, #8883); }
 .ins-day:first-child { padding-top: 4px; } .ins-day em { font-style: normal; font-weight: 500; text-transform: none; letter-spacing: 0; }
-/* Scanner/Screener (17.11.2026): Tabelle scrollt in sich – Spaltenköpfe bleiben stehen wie bei TradingView, rechts ein weicher Rand als Hinweis auf weitere Spalten */
+/* Scanner (17.11.2026): weicher rechter Rand, solange weitere Spalten folgen – Tabelle scrollt wie zuvor nur seitlich, die Seite nach unten */
 @media (min-width: 701px) {
-  main .table-wrap:has(> table.sc-t), main .table-wrap:has(> table.scr-t) { max-height: calc(100dvh - 150px); overflow: auto; position: relative; }
-  main .table-wrap > table.sc-t thead th, main .table-wrap > table.scr-t thead th { position: sticky; top: 0; z-index: 3; background: var(--surface, #161617); box-shadow: inset 0 -1px 0 var(--line, #8883); }
-  main .table-wrap > table.sc-t thead th:first-child { z-index: 4; }
-  main .table-wrap > table.sc-t thead th:nth-child(2) { position: sticky !important; left: auto !important; background: var(--surface, #161617) !important; }
-  main .table-wrap > table.scr-t thead th:first-child { left: 0; z-index: 4; }
   main .table-wrap.more-r:has(> table.sc-t) { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), rgba(0,0,0,.25)); mask-image: linear-gradient(to right, #000 calc(100% - 36px), rgba(0,0,0,.25)); }
+}
 }
 /* Heute · Dein Geld (17.11.2026): Zeilen wie im Broker statt drei enger Kacheln */
 .mrows { margin: 2px 0 6px; } .mrows .mr { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line, #8883); }
@@ -9776,8 +9772,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.216";
-const APP_NEWS = [["2026.11.216", "Volumenprofil deutlicher", [
+const APP_VER = "2026.11.217";
+const APP_NEWS = [["2026.11.217", "Vorbörslich im Chart", [
+  ["Vor- und nachbörslicher Kurs", "Bei US-Aktien steht vor 15:30 Uhr der vorbörsliche Kurs als gepunktete orange Linie mit Schild an der Preisachse – inklusive Abstand zum Schlusskurs, wie bei TradingView. Nach Börsenschluss hellblau für nachbörslich. Die Tageskerze bleibt beim Schlusskurs."],
+  ["Scanner scrollt wie vorher", "Die Tabelle scrollt wieder nur seitlich, nach unten scrollt die Seite – kein gleichzeitiges Wischen in beide Richtungen mehr."]]],
+  ["2026.11.216", "Volumenprofil deutlicher", [
   ["Besser lesbar", "Breitere und dickere Balken (70 Preisstufen), mehr Kontrast im Hauptbereich und am meistgehandelten Kurs – weiter nur Volumen, keine Zonen."]]],
   ["2026.11.215", "Restpunkte", [
   ["Scanner und Screener", "Die Spaltenköpfe bleiben beim Scrollen stehen, rechts zeigt ein weicher Rand, dass weitere Spalten folgen."],
@@ -13241,7 +13240,14 @@ function buildMain(el, c, r, opts) {
       const nb = intraNext(h.liveBar && h.liveBar.time >= lb.time ? h.liveBar : lb, q, c); if (!nb) return false;
       try { candles.update(nb); h.liveBar = nb; } catch (e) { return false; } h.legendLast && h.legendLast(); return true; }
     if (c.tf && c.tf !== "D") return false;           // Woche/Monat: keine Tageskerze anhängen
-    if (q.ext) return false;                          // vor-/nachbörslich: Tageskerze bleibt beim Schlusskurs, der Kurs steht oben im Kopf
+    // vor-/nachbörslich (Wunsch 17.11.2026, wie TradingView): Tageskerze bleibt beim Schlusskurs, der Kurs steht als
+    // gepunktete Linie mit Schild an der Preisachse – orange vorbörslich, hellblau nachbörslich, mit Abstand zum Schlusskurs
+    { const ref = q.rc > 0 ? q.rc : lb.close, on = !!q.ext && ref > 0;
+      if (!on) { if (h.extLine) { try { candles.removePriceLine(h.extLine); } catch (e) {} h.extLine = null; } }
+      else { const o = { price: q.c, color: q.ext === "pre" ? "#ff9f0a" : "#64d2ff", lineWidth: 1, lineStyle: 1, axisLabelVisible: true,
+          title: `${q.ext === "pre" ? "vorbörslich" : "nachbörslich"} ${sgnPct(q.c / ref - 1, 1)}` };
+        try { if (h.extLine) h.extLine.applyOptions(o); else h.extLine = candles.createPriceLine(o); } catch (e) {} } }
+    if (q.ext) return false;
     const day = liveDay(r.ticker, q.ts); if (!day || day < lb.time) return false;
     const hi = v => v > 0 ? v : -Infinity, lo = v => v > 0 ? v : Infinity; h.bdReset();
     candles.update(day === lb.time ? { time: day, open: lb.open, high: Math.max(lb.high, hi(q.h), q.c), low: Math.min(lb.low, lo(q.l), q.c), close: q.c }
