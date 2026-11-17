@@ -9776,8 +9776,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.215";
-const APP_NEWS = [["2026.11.215", "Restpunkte", [
+const APP_VER = "2026.11.216";
+const APP_NEWS = [["2026.11.216", "Volumenprofil deutlicher", [
+  ["Besser lesbar", "Breitere und dickere Balken (70 Preisstufen), mehr Kontrast im Hauptbereich und am meistgehandelten Kurs – weiter nur Volumen, keine Zonen."]]],
+  ["2026.11.215", "Restpunkte", [
   ["Scanner und Screener", "Die Spaltenköpfe bleiben beim Scrollen stehen, rechts zeigt ein weicher Rand, dass weitere Spalten folgen."],
   ["Insider", "Die Liste ist nach Tagen gegliedert: Heute, Gestern, Datum."],
   ["Kleinigkeiten", "Kein „+−0,0 %“ mehr, Übung: „Spiel neu starten“ als dezenter roter Link, „1 Wert“ statt „1 Werte“."]]],
@@ -12898,7 +12900,7 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
     for (let i = i1; i <= i2; i++) { const b = barAt(i); if (b) { pLo = Math.min(pLo, b.low); pHi = Math.max(pHi, b.high); } }
     if (!(pHi > pLo)) return;
     const yA = series.priceToCoordinate(pHi), yB = series.priceToCoordinate(pLo); if (yA == null || yB == null) return;
-    const N = 120;   // feste Zeilenzahl (wie „Number of Rows“ bei TradingView) – das Profil wackelt beim Verschieben nicht
+    const N = 70;   // feste Zeilenzahl (17.11.2026: 70 statt 120 – dickere, besser lesbare Balken) (wie „Number of Rows“ bei TradingView) – das Profil wackelt beim Verschieben nicht
     const key = `${opt.subTag ? opt.subTag() : ""}|${i1}|${i2}|${n}|${N}|${lastB && lastB.close}|${lastB && lastB.high}|${lastB && lastB.low}|${lastB && volAt(i2)}`;
     if (!memo || memo.key !== key) memo = { key, i1, n, pLo, pHi, d: calc(i1, i2, pLo, pHi, N) };
     // Volumen älterer Kurse (bis 3 Jahre) über/unter dem Zeitraum: dieselben Balken, nur blasser – so endet das Profil nicht abrupt
@@ -12907,7 +12909,7 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
       const N2 = Math.max(40, Math.min(600, Math.round(N * (q1 - q0) / (pHi - pLo)))), k2 = `${L1}|${n}|${N2}|${lastB && lastB.close}`;
       if (!memoL || memoL.key !== k2) memoL = { key: k2, from: L1, pLo: q0, d: calc(L1, i2, q0, q1, N2) }; }
     else memoL = null;
-    const D = memo.d, step = D.step, light = isLight(), W = Math.min(m.width * .18, 220), xr = m.width - 2, Y = p => series.priceToCoordinate(p);
+    const D = memo.d, step = D.step, light = isLight(), W = Math.min(m.width * .27, 320), xr = m.width - 2, Y = p => series.priceToCoordinate(p);
     // die Balken liegen in einem Zwischenbild und werden nur neu gezeichnet, wenn sich Daten, Preisachse oder Größe ändern
     const dpr = window.devicePixelRatio || 1, ck = `${memo.key}|${memoL ? memoL.key : ""}|${Math.round(yA)}|${Math.round(yB)}|${m.width}|${m.height}|${light}|${dpr}`;
     if (!memo.bc || memo.bck !== ck) {
@@ -12918,9 +12920,9 @@ function profilePrimitive(barAt, count, volAt, on, anchor, dateAt, opt = {}) {
       const col = light ? "60,72,96" : "150,164,190", row = (p0, p1, w, a) => { const y0 = Y(p1), y1 = Y(p0); if (y0 == null || y1 == null) return;
         const yy = Math.min(y0, y1), hh = Math.abs(y1 - y0), gap = hh >= 3 ? .8 : hh >= 2 ? .5 : 0; x.fillStyle = `rgba(${col},${a})`; x.fillRect(xr - w, yy, w, Math.max(.8, hh - gap)); };
       if (memoL) { const L = memoL.d, top = memo.pLo + D.bins.length * step;
-        for (let k = 0; k < L.bins.length; k++) { const v = L.bins[k], p0 = memoL.pLo + k * L.step, p1 = p0 + L.step; if (!v || (p1 > memo.pLo && p0 < top)) continue; row(p0, p1, W * v / L.max, light ? .16 : .13); } }
+        for (let k = 0; k < L.bins.length; k++) { const v = L.bins[k], p0 = memoL.pLo + k * L.step, p1 = p0 + L.step; if (!v || (p1 > memo.pLo && p0 < top)) continue; row(p0, p1, W * v / L.max, light ? .2 : .18); } }
       for (let k = 0; k < D.bins.length; k++) { const v = D.bins[k]; if (!v) continue;
-        row(memo.pLo + k * step, memo.pLo + (k + 1) * step, W * v / D.max, k === D.poc ? (light ? .7 : .62) : k >= D.lo && k <= D.hi ? (light ? .36 : .32) : (light ? .17 : .15)); } }
+        row(memo.pLo + k * step, memo.pLo + (k + 1) * step, W * v / D.max, k === D.poc ? (light ? .85 : .82) : k >= D.lo && k <= D.hi ? (light ? .5 : .46) : (light ? .24 : .22)); } }
   }) };
   const views = [{ zOrder: () => "bottom", renderer: () => r }];
   return { attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; },
