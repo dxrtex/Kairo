@@ -2204,6 +2204,17 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 </style>
 
 <style id="pro-finish">
+.hm-cxl { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; } .hm-live { height: 34px; border-radius: 10px; } .hm-live button { font-size: 13px; padding: 0 12px; }
+.hm-tv { height: 520px; border-radius: 12px; overflow: hidden; background: var(--bg, #000); } .hm-tv.fs { height: calc(100dvh - 210px); }
+@media (max-width: 700px) { .hm-tv { height: 420px; } }
+/* TradingView im Chart-Reiter (17.11.2026) */
+.ct-mode { display: inline-flex; gap: 2px; padding: 2px; height: 32px; border-radius: 9px; background: rgba(118,118,128,.20); flex: none; }
+.ct-mode button { border: 0; border-radius: 7px; padding: 0 11px; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.ct-mode button.on { background: #48484d; color: var(--text); } html.lt .ct-mode button.on { background: #fff; }
+.ctab-tv { display: none; }
+.ctab.tv-on .ctab-tv { display: block; height: calc(100dvh - 190px); min-height: 460px; border-radius: 14px; overflow: hidden; background: var(--bg, #000); border: 1px solid var(--line, #8883); }
+.ctab.tv-on .ctab-chart, .ctab.tv-on .ctab-p, .ctab.tv-on .ct-bar { display: none !important; }
+@media (max-width: 700px) { .ctab.tv-on .ctab-tv { height: 70vh; min-height: 380px; margin: 0 -4px; } }
 /* Heatmap-Schalter (17.11.2026): Auswahl-Chip + Segment-Leiste + Vergrößern als Symbol – gleiche Höhe, ruhige Flächen */
 .hm-cx { display: flex !important; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 0 12px !important; }
 .hm-pick { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 14px; border-radius: 10px; background: var(--surface-2, #2c2c2e); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; }
@@ -5037,11 +5048,24 @@ function squarify(items, x, y, w, h) {   // items: [{v, ...}] → [{...item, x, 
   }
   return out;
 }
+// Live-Heatmap von TradingView (17.11.2026): offizielles Widget, Kurse während des Handels. Unterstützt laut Test: S&P 500, Nasdaq 100,
+// Dow Jones, DAX, MDAX, TecDAX, alle US- bzw. alle deutschen Aktien.
+const HM_TV = { "i:sp500": "SPX500", "i:ndx": "NASDAQ100", "i:dji": "DJDJI", "i:dax": "DAX", "i:mdax": "MDAX", "i:tecdax": "TECDAX", us: "AllUSA", de: "AllDE" };
+const HM_TV_COL = { d1: "change", w1: "Perf.W", m1: "Perf.1M", m3: "Perf.3M", ytd: "Perf.YTD" };
+function hmTvMount(reg, k) {
+  const box = $("hmTv"); if (!box) return; const lt = isLight();
+  tvWidget(box, "stock-heatmap", { dataSource: HM_TV[reg] || "SPX500", grouping: "sector", blockSize: "market_cap_basic", blockColor: HM_TV_COL[k] || "change", locale: "de_DE",
+    symbolUrl: "", colorTheme: lt ? "light" : "dark", hasTopBar: true, isDataSetEnabled: true, isZoomEnabled: true, hasSymbolTooltip: true, isMonoSize: false, width: "100%", height: "100%" });
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-hmlive]"); if (!b) return; state.hmLive = b.dataset.hmlive === "1"; save(); render(); });
 function heatmapHtml(fs) {
   if (!searchIdx) { loadSearch(); return ""; }
   const [k, kl, kn] = spPer(), f = SP_IDX[k], reg = hmReg(), phone = innerWidth < 640, IX = hmIdxOf(reg);
   const xs = hmRows(reg).filter(r => r.mc > 0 && r[f] != null).sort((a, b) => b.mc - a.mc).slice(0, IX ? 600 : fs ? (phone ? 400 : 800) : phone ? 100 : 220);
-  const regBar = `<div class="sp-cx hm-cx">${hmSel(reg)}${hmPerSel(k)}</div>`, perBar = "";
+  const regBar = `<div class="sp-cx hm-cx"><div class="hm-cxl">${hmSel(reg)}<div class="ct-mode hm-live" role="group" aria-label="Datenquelle"><button class="${state.hmLive ? "" : "on"}" data-hmlive="0" title="Kairo-Heatmap aus dem Abend-Scan, mit Kairo-Treffern und deinen Aktien">Kairo</button><button class="${state.hmLive ? "on" : ""}" data-hmlive="1" title="Live-Heatmap von TradingView – Kurse während des Handels">Live</button></div></div>${hmPerSel(k)}</div>`, perBar = "";
+  if (state.hmLive) { setTimeout(() => hmTvMount(reg, k), 0);
+    return `<div class="hcard hm-card${fs ? " fs-hm" : ""}">${fs ? "" : hHead("Heatmap").replace(/<\/div>$/, fsBtn("hm") + "</div>")}${regBar}<div class="hm-tv${fs ? " fs" : ""}" id="hmTv"></div>
+      <div class="note" style="margin:8px 0 0">Live von TradingView: Fläche = Börsenwert, Farbe = Veränderung im gewählten Zeitraum. ${HM_TV[reg] ? "" : "Für diesen Index gibt es keine Live-Heatmap – gezeigt wird der S&amp;P 500; oben in der Karte lassen sich weitere US- und deutsche Indizes wählen. "}Antippen zeigt Details bei TradingView.</div></div>`; }
   if (xs.length < 5) return `<div class="hcard">${fs ? "" : hHead("Heatmap")}${regBar}<p class="muted">Für diese Auswahl gibt es noch keine Daten – sie kommen mit dem nächsten Abend-Scan.</p></div>`;
   // 16.11.2026 ruhiger: Kürzel erst ab ~38×22 px, Prozent ab ~56×38 px, Rahmen (Treffer/eigene) erst ab mittlerer Kachelgröße und feiner
   const W = 100, H = fs ? Math.max(55, Math.round(100 * (innerHeight - 260) / (innerWidth - 40))) : phone ? 150 : 60, cw = fs ? innerWidth - 40 : Math.min(innerWidth, 1400) - (phone ? 40 : innerWidth >= 900 ? 300 : 70), px = cw / W;
@@ -9790,8 +9814,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.221";
-const APP_NEWS = [["2026.11.221", "Chart: mehr Platz nach rechts", [
+const APP_VER = "2026.11.222";
+const APP_NEWS = [["2026.11.222", "TradingView live in Kairo", [
+  ["Chart: Kairo oder TradingView", "Oben im Chart-Reiter umschalten: TradingView zeigt live laufende Kerzen ab 1 Minute, über 100 Indikatoren und alle Zeichenwerkzeuge. Deutsche Aktien über gettex in Echtzeit, US-Aktien über Cboe. Die Kairo-Leiste rechts bleibt."],
+  ["Heatmap live", "In der Heatmap „Live“ wählen: Kurse während des Handels von TradingView – S&P 500, Nasdaq 100, Dow Jones, DAX, MDAX, TecDAX, alle US- oder deutschen Aktien, mit Zeitraum und Gruppierung."]]],
+  ["2026.11.221", "Chart: mehr Platz nach rechts", [
   ["Mehr Puffer", "Die Zeitachse lässt sich wie bei TradingView weit nach rechts schieben – bis etwa 85 % des Bildes frei sind (mindestens 40 Tage). Platz für Zeichnungen, Long/Short-Werkzeug und Ziele in der Zukunft."]]],
   ["2026.11.220", "Heatmap: mehr Indizes, neue Schalter", [
   ["Mehr Indizes", "Neben S&P 500, DAX und Euro Stoxx 50 jetzt auch Nasdaq 100, Dow Jones, MDAX, TecDAX, FTSE 100, CAC 40, SMI, Nikkei 225 und Hang Seng – nach Regionen gruppiert. Sie erscheinen mit dem nächsten Abend-Scan."],
@@ -14036,6 +14063,28 @@ document.addEventListener("click", e => {
   if (e.target.isConnected && !e.target.closest(".ct-dd")) ctDdOpen(null);
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && document.querySelector(".ct-dd.open")) ctDdOpen(null); });
+// TradingView im Chart-Reiter (Wunsch 17.11.2026 nach Vergleich mit Fluere): das offizielle, kostenlose „Advanced Chart“-Widget –
+// live laufende Kerzen ab 1 Minute, über 100 Indikatoren, alle Zeichenwerkzeuge. Umschalter „Kairo | TradingView“; der Kairo-Chart
+// (Plan, Fibonacci, Volumenprofil, Kairo-Analyse) bleibt im Hintergrund aufgebaut, die Kairo-Leiste rechts bleibt sichtbar.
+function tvWidget(box, kind, cfg) {
+  if (!box) return; box.innerHTML = ""; const w = document.createElement("div"); w.className = "tradingview-widget-container"; w.style.cssText = "height:100%;width:100%";
+  const inner = document.createElement("div"); inner.className = "tradingview-widget-container__widget"; inner.style.cssText = "height:100%;width:100%"; w.appendChild(inner);
+  const sc = document.createElement("script"); sc.type = "text/javascript"; sc.async = true; sc.src = `https://s3.tradingview.com/external-embedding/embed-widget-${kind}.js`;
+  sc.textContent = JSON.stringify(cfg); w.appendChild(sc); box.appendChild(w);
+}
+function ctTvMount(t) {
+  const box = $("ctTv"); if (!box || box.dataset.t === t + "|" + isLight()) return; box.dataset.t = t + "|" + isLight();
+  const lt = isLight();
+  // US-Aktien ohne Börsen-Präfix → TradingView nimmt Cboe One (kostenlos in Echtzeit, wie bei Fluere); deutsche Aktien standardmäßig über gettex
+  let sym = /\.DE$/.test(t) && !state.tvVenue ? `GETTEX:${t.replace(/\.DE$/, "")}` : tvSym(t);
+  if (/^(NASDAQ|NYSE|AMEX|NYSEARCA|NYSEAMERICAN):/.test(sym)) sym = "BATS:" + sym.split(":")[1];
+  tvWidget(box, "advanced-chart", { autosize: true, symbol: sym, interval: state.ctTvIv || "D", timezone: "Europe/Berlin", theme: lt ? "light" : "dark", style: "1", locale: "de_DE",
+    backgroundColor: lt ? "#ffffff" : "#000000", gridColor: lt ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)", allow_symbol_change: true, hide_side_toolbar: false,
+    withdateranges: true, details: false, hotlist: false, calendar: false, save_image: false, support_host: "https://www.tradingview.com" });
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-cttv]"); if (!b) return; state.ctTv = b.dataset.cttv === "1"; save();
+  const el = $("ctab"); if (!el) return; el.classList.toggle("tv-on", state.ctTv); el.querySelectorAll("[data-cttv]").forEach(x => x.classList.toggle("on", x === b));
+  if (state.ctTv && el.dataset.t) ctTvMount(el.dataset.t); });
 function ctabBuild(c, r) {
   const el = $("ctab"); if (!el || !window.LightweightCharts) return; rpHalt(); ctabDrop(); delete el.dataset.busy;
   if (c.tf && c.tf !== "D") r = { ...r, zone: null, plan: c.intra ? r.plan : r.plan };            // Wochen-/Monatschart: Kairo-Welle und -Zone gehören zum Tageschart
@@ -14044,15 +14093,16 @@ function ctabBuild(c, r) {
   const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-rsz" data-rsz="${f}" title="Ziehen: Höhe ändern · Doppeltipp: zurücksetzen" aria-hidden="true"><i></i></div><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="Indikator groß">${CT_IC.expand}</button><button class="ct-x ct-fsx" data-fsind="${f}" title="Unter dem Chart ausblenden" aria-label="Indikator schließen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ctab-c" id="${id}"></div></div>`;
   el.innerHTML = `<div class="ct-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="ctQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="${innerWidth > 900 ? "Symbol suchen" : innerWidth < 640 ? "Aktie suchen – Name oder Kürzel" : "Chart suchen – jede Aktie, Name oder Kürzel (z. B. Amazon, UBS, Rheinmetall)"}" aria-label="Chart suchen">${matchMedia("(pointer: fine)").matches ? `<kbd class="ct-kbd" aria-hidden="true">/</kbd>` : ""}<div id="ctList" class="ct-list" hidden></div></div>
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
+      <div class="ct-mode" role="group" aria-label="Chart-Art"><button class="${state.ctTv ? "" : "on"}" data-cttv="0" title="Kairo-Chart mit Plan, Fibonacci, Volumenprofil und Kairo-Analyse">Kairo</button><button class="${state.ctTv ? "on" : ""}" data-cttv="1" title="TradingView-Chart: live, alle Indikatoren und Zeichenwerkzeuge, 1 Min bis Monat">TradingView</button></div>
       <span class="st ${k.cls}">${esc(k.t)}</span>${CXBACK ? `<button class="ct-b ct-back" data-cxback title="Zurück zur Übersicht von ${esc(tkClean(CXBACK.t))} und an dieselbe Stelle im ${esc(SEC_NAME[CXBACK.sec] || "Reiter")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>${esc(SEC_NAME[CXBACK.sec] || "Zurück")}</span></button>` : ""}${state.mcBack > 1 ? `<button class="ct-b ct-back" data-mcback title="Zurück zu den ${state.mcBack} Charts" aria-label="Zurück zum Raster">${MC_IC[state.mcBack] || MC_IC[4]}<span>${state.mcBack} Charts</span></button>` : ""}<button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
       <div class="ct-right">${ctDdHtml(c.tf || "D")}<div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Setup"]].map(([v, l]) => `<button title="${v === "wave" ? "Ausschnitt der Kairo-Welle (Setup)" : "Zeitraum"}" class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
         <button class="ct-b${state.ctWl ? " on" : ""}" data-ctwl title="Watchlist im Chart (Pfeiltasten ↑ ↓ wechseln)" aria-label="Watchlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg></button><button class="ct-b ct-mcb" data-mcn="${innerWidth < 700 ? 2 : 4}" title="Mehrfach-Charts: ${innerWidth < 700 ? 2 : 4} Charts nebeneinander" aria-label="Mehrfach-Charts">${MC_IC[innerWidth < 700 ? 2 : 4]}</button>${ctFsiHtml()}<button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
-    <div class="ctab-grid"><div class="ctab-l">
+    <div class="ctab-grid"><div class="ctab-l"><div class="ctab-tv" id="ctTv"></div>
       <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="cmp" id="cmpBox"><button class="cmp-b" data-cmpopen title="Symbol vergleichen" aria-label="Symbol vergleichen">＋ Vergleichen</button><div class="cmp-pop" id="cmpPop" hidden>${[["^GSPC", "S&P 500"], ["^NDX", "Nasdaq 100"], ["^GDAXI", "DAX"], ["^STOXX", "STOXX 600"]].map(([v, l]) => `<button data-cmp="${v}">${l}</button>`).join("")}<button data-cmp="?">Andere Aktie …</button></div><div class="cmp-chips" id="cmpChips"></div></div><div class="dr-tb" id="drTb"></div><div class="dr-sel" id="drSel" hidden></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
       ${pane("tRsi", paneLbl(0, r), "rsi")}${pane("tMacd", paneLbl(1, r), "macd")}${pane("tMbi", paneLbl(2, r), "mbi")}
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside><div class="ct-wl" id="ctWl"${state.ctWl ? "" : " hidden"}>${ctWlHtml(r.ticker)}</div></div>`;
-  ctFsSearch();
+  ctFsSearch(); el.classList.toggle("tv-on", !!state.ctTv); if (state.ctTv) ctTvMount(r.ticker);
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
   // Nicht ins Leere schieben: rechts viel Platz wie bei TradingView (Wunsch 17.11.2026 abends: „mehr Puffer“) – bis etwa 85 % des Bildes frei,
   // mindestens 40 Kerzen; ein Rest der Kerzen bleibt immer sichtbar. Links nicht weiter als die ersten Kerzen.
