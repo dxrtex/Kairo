@@ -2204,6 +2204,18 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 </style>
 
 <style id="pro-finish">
+.g-reset { color: var(--red, #ff453a) !important; font-size: 14px; } input[type="checkbox"] { accent-color: var(--accent, #0a84ff); }
+.ins-day { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 2px 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--line, #8883); }
+.ins-day:first-child { padding-top: 4px; } .ins-day em { font-style: normal; font-weight: 500; text-transform: none; letter-spacing: 0; }
+/* Scanner/Screener (17.11.2026): Tabelle scrollt in sich – Spaltenköpfe bleiben stehen wie bei TradingView, rechts ein weicher Rand als Hinweis auf weitere Spalten */
+@media (min-width: 701px) {
+  main .table-wrap:has(> table.sc-t), main .table-wrap:has(> table.scr-t) { max-height: calc(100dvh - 150px); overflow: auto; position: relative; }
+  main .table-wrap > table.sc-t thead th, main .table-wrap > table.scr-t thead th { position: sticky; top: 0; z-index: 3; background: var(--surface, #161617); box-shadow: inset 0 -1px 0 var(--line, #8883); }
+  main .table-wrap > table.sc-t thead th:first-child { z-index: 4; }
+  main .table-wrap > table.sc-t thead th:nth-child(2) { position: sticky !important; left: auto !important; background: var(--surface, #161617) !important; }
+  main .table-wrap > table.scr-t thead th:first-child { left: 0; z-index: 4; }
+  main .table-wrap.more-r:has(> table.sc-t) { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), rgba(0,0,0,.25)); mask-image: linear-gradient(to right, #000 calc(100% - 36px), rgba(0,0,0,.25)); }
+}
 /* Heute · Dein Geld (17.11.2026): Zeilen wie im Broker statt drei enger Kacheln */
 .mrows { margin: 2px 0 6px; } .mrows .mr { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line, #8883); }
 .mrows .mr:last-child { border-bottom: 0; } .mrows .mr > span { display: flex; flex-direction: column; font-size: 14px; color: var(--text); min-width: 0; }
@@ -5792,7 +5804,7 @@ function newsHtml() {
       <div class="ins-vw" role="group" aria-label="Ansicht">${[["list", "Liste"], ["agg", "Je Aktie"]].map(([v, l]) => `<button class="${vw === v ? "on" : ""}" data-insview="${v}">${l}</button>`).join("")}</div></div>
     <div class="ins-f"><div class="sp-tg ins-tg"><select class="ins-chip${days !== 90 ? " set" : ""}" data-insf2sel="days" aria-label="Zeitraum">${[[30, "30 Tage"], [60, "60 Tage"], [90, "90 Tage"], [365, "12 Monate"]].map(([v, l]) => `<option value="${v}"${days === v ? " selected" : ""}>${l}</option>`).join("")}</select><select class="ins-chip${IF.c ? " set" : ""}" data-insf2sel="c" aria-label="Region">${[["", "alle Regionen"], ["us", "USA"], ["de", "Deutschland"], ["eu", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<option value="${v}"${(IF.c || "") === v ? " selected" : ""}>${l}</option>`).join("")}</select><i class="ins-div"></i>${f2tog("mine", "★ nur meine")}${f2tog("top", "Vorstandsspitze")}${side === "buy" ? f2tog("opp", "nur gezielt") : ""}${f2tog("big", "ab 1 Mio. €")}
         ${vw === "list" ? `<span class="ins-sort">${[["new", "Neueste"], ["amt", "Betrag"]].map(([v, l]) => `<button class="opt${(state.insSort || "new") === v ? " on" : ""}" data-inssort="${v}">${l}</button>`).join("")}</span>` : ""}</div></div>
-    ${vw === "agg" ? aggHtml : `<div class="bf-l ins-l">${list.length ? grpd.slice(0, lim2).map(g => g.length > 1 ? igrp(g) : irow(g[0])).join("") : `<div class="bf-empty">Keine Insider-${side === "buy" ? "Käufe" : "Verkäufe"} für diese Filter.</div>`}</div>
+    ${vw === "agg" ? aggHtml : `<div class="bf-l ins-l">${list.length ? insDayRows(grpd.slice(0, lim2), (state.insSort || "new") === "new", g => g.length > 1 ? igrp(g) : irow(g[0])) : `<div class="bf-empty">Keine Insider-${side === "buy" ? "Käufe" : "Verkäufe"} für diese Filter.</div>`}</div>
     ${grpd.length > lim2 || state.insMore ? `<button class="hlink" data-insmore style="margin-top:8px">${state.insMore ? "weniger zeigen" : `alle ${Math.min(grpd.length, 150)} zeigen`}</button>` : ""}`}
     ${vw === "agg" ? `<div class="note" style="margin:8px 0 0">Gezählt werden verschiedene Personen je Aktie (mehrere Käufe derselben Person zählen einmal), sortiert nach ${side === "buy" ? "Käufern" : "Verkäufern"}. <b>Cluster</b> = mindestens 3 Insider – das stärkste Signal. Deine Aktien: alle Meldungen der letzten 12 Monate; ganzer Markt: Käufe 90 Tage, Verkäufe nur die größten der letzten Tage. Antippen zeigt die Personen.</div>` : ""}
     <div class="note" style="margin:8px 0 0"${vw === "agg" ? " hidden" : ""}>${list.length} ${side === "buy" ? "Käufe" : "Verkäufe"} · ${days === 365 ? "12 Monate" : days + " Tage"}. <b>gezielt</b> = kein Routine-Kauf (die Person kauft nicht jedes Jahr im selben Monat). Antippen öffnet die Meldung. Ganzer Markt: USA (SEC), Deutschland (BaFin), Großbritannien, Schweden, Schweiz, Norwegen; deine Aktien zusätzlich 12 Monate. Stand ${esc(when)}.</div></div>`;
@@ -5804,6 +5816,16 @@ function newsHtml() {
     + (covHtml ? covHtml.replace('style="margin:-4px 2px 12px"', 'style="margin:4px 2px 12px"') : "")
     + insGo
     + `<details class="note ins-src" style="margin:4px 2px 12px"><summary>Quellen und Erklärung</summary>` + `<p class="muted" style="font-size:13px;margin:6px 2px">Käufe von Vorständen und Aufsichtsräten mit eigenem Geld sind das stärkere Signal – verkauft wird aus vielen Gründen (Steuern, Optionen), gekauft nur aus einem. Quellen: offizielle US-Meldungen (SEC, Formular 4) für deutsche Aktien die BaFin (Eigengeschäfte von Führungskräften), für schwedische und Schweizer Aktien die Register von Finansinspektionen und SIX${ij && ij.source && ij.source !== "SEC EDGAR Formular 4" ? " über " + esc(ij.source.split(" (")[0]) : ""}${when ? " · Stand " + esc(when) : ""}. Politiker-Geschäfte gibt es nicht als freie, verlässliche Quelle.</p>` + `</details>`;
+}
+// Insider-Liste nach Tagen gegliedert (17.11.2026), wie ein Nachrichten-Feed: Heute · Gestern · Mo., 10.11.
+function insDayRows(gs, byDay, row) {
+  if (!byDay) return gs.map(row).join(""); let cur = null, out = "";
+  const t0 = isoOf(new Date()), y = new Date(); y.setDate(y.getDate() - 1); const t1 = isoOf(y);
+  gs.forEach(g => { const d = String(g[0].d || "").slice(0, 10);
+    if (d !== cur) { cur = d; const lbl = !d ? "ohne Datum" : d === t0 ? "Heute" : d === t1 ? "Gestern" : new Date(d + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "numeric" });
+      out += `<div class="ins-day"><span>${lbl}</span><em>${gs.filter(x => String(x[0].d || "").slice(0, 10) === d).length}</em></div>`; }
+    out += row(g); });
+  return out;
 }
 // ---------- Smart Money (13.11., wie TipRanks): Insider (Formular 4) + Hedgefonds (13F) gebündelt – je Aktie und als Übersicht ----------
 const ACT = { neu: ["neu gekauft", "up"], auf: ["aufgestockt", "up"], ab: ["reduziert", "down"], raus: ["komplett verkauft", "down"], halt: ["gehalten", "muted"] };
@@ -6971,7 +6993,7 @@ function posModel(p, r, a) {
 }
 // ---------- Depot: Übersicht je Basiswert (aufklappbar) – Stand, Hebel, Trade-Plan (Stop · EMA 20 · Tag 60) ----------
 const depOpen = new Set();   // aufgeklappte Gruppen (bleiben beim Neuzeichnen offen)
-const sgnPct = (v, d = 0) => v == null ? "–" : (v >= 0 ? "+" : "") + pct(v, d);
+const sgnPct = (v, d = 0) => { if (v == null) return "–"; const r = Math.round(100 * v * 10 ** d) / 10 ** d; return r === 0 ? pct(0, d) : (r > 0 ? "+" : "") + pct(v, d); };   // −0,0 % / +−0,0 % vermeiden
 const eur = v => v == null ? "–" : `${fmt(v, 0)} €`;
 const sgnEur = v => v == null ? "–" : `${v >= 0 ? "+" : "−"}${fmt(Math.abs(v), 0)} €`;
 // Gleiche Firma an anderer Börse? → Notierung nehmen, für die es eine Analyse gibt (z. B. IFX.DE statt IFNNY)
@@ -8370,7 +8392,7 @@ function gameHtml() {
     <div class="jper g-tabs">${[["depot", "Depot"], ["trade", "Handeln"], ["orders", "Aufträge"]].map(([v, l]) => `<button class="${tab === v ? "on" : ""}" data-g="tab" data-v="${v}">${l}</button>`).join("")}</div>
     ${state.gToast ? `<div class="tip tone-green" style="margin:0 0 12px"><b class="t">✓ ${esc(state.gToast)}</b>Spielgeld – keine echte Order.</div>` : ""}`;
   const ep2 = gEtfPx() || g.etf.px0 || 0, etfPerf = g.etf.px0 ? ep2 / g.etf.px0 - 1 : 0;
-  const holdRow = (nm, sub, val, chg, chgPct, extra = "") => `<div class="g-hold"${extra}><span class="g-h-n"><b>${nm}</b><small>${sub}</small></span><span class="g-h-v"><b>${val}</b><small class="${chg >= 0 ? "up" : "down"}">${sEur2(chg)} · ${sgnPct(chgPct, 1)}</small></span></div>`;
+  const holdRow = (nm, sub, val, chg, chgPct, extra = "") => `<div class="g-hold"${extra}><span class="g-h-n"><b>${nm}</b><small>${sub}</small></span><span class="g-h-v"><b>${val}</b><small class="${Math.abs(chg) < .005 ? "muted" : chg > 0 ? "up" : "down"}">${sEur2(chg)} · ${sgnPct(chgPct, 1)}</small></span></div>`;
   const posRows = g.pos.map(p => { const val = gVal(p), pnl = val - p.cost, open = state.gOpenPos === p.id;
     const x = gPx(p.t), rr = rowOf(p.t) || {}, lv = LIVE.map[p.t];
     return holdRow(esc(p.n), `${p.kind === "turbo" ? `Turbo Long${p.wkn ? " " + esc(p.wkn) : ""}` : "Aktie"} · ${fmt(p.qty, 0)} Stk. · ${fmt(x.c)} ${esc(p.cur)}${rr.d1 != null ? ` <i class="${rr.d1 >= 0 ? "up" : "down"}">${sgnPct(rr.d1, 1)}</i>` : ""}${lv ? ` <span class="live-tag">● ${liveTime(p.t)}</span>` : ""}`, eur2(val), pnl, val / p.cost - 1, ` data-g="open" data-id="${p.id}" role="button"`)
@@ -8379,7 +8401,7 @@ function gameHtml() {
           const cost0 = g.etf.units * (g.etf.px0 || 0) + G_FEE, mine = T.total - tax(Math.max(0, T.etf - cost0) * .7 + (T.trade - g.tcap)), only = T.etfOnly - tax(Math.max(0, T.etfOnly - G_START) * .7);
           return `<div class="note" style="margin:8px 0 0">Nach Steuern, wenn heute alles verkauft würde (grob: 26,4 % inkl. Soli, 1.000 € Freibetrag, 30 % Teilfreistellung beim ETF): Dein Depot <b>${eur2(mine)}</b> · 100 % ETF <b>${eur2(only)}</b>. Trading-Gewinne werden in Wirklichkeit jedes Jahr besteuert, ETF-Gewinne erst beim Verkauf – das bremst den Trading-Teil zusätzlich.</div>`; })() : ""}
       ${T.etfOnly ? `<div class="note" style="margin:8px 0 0">${T.total >= T.etfOnly ? `<i class="vdot g"></i>Dein ${Math.round((g.share ?? .7) * 100)}/${100 - Math.round((g.share ?? .7) * 100)}-Depot liegt vor „100 % ETF“` : `<i class="vdot r"></i>„100 % ETF“ liegt vorn`} (${sEur2(T.total - T.etfOnly)}). ${done.length < 30 ? `Aussagekräftig erst ab ~30–50 Trades (jetzt ${done.length}).` : ""}</div>` : ""}</div>`;
-  const depot = `<div class="card jpro"><div class="jc-h"><b>Positionen</b><span>${g.pos.length + 1} Werte</span></div>
+  const depot = `<div class="card jpro"><div class="jc-h"><b>Positionen</b><span>${g.pos.length + 1} ${g.pos.length ? "Werte" : "Wert"}</span></div>
       ${holdRow("SPDR MSCI ACWI IMI", `ETF · ${fmt(g.etf.units, 0)} Anteile · ${ep2 ? fmt(ep2) + " €" : "Kurs fehlt"}`, eur2(T.etf), T.etf - g.etf.units * (g.etf.px0 || 0), etfPerf)}
       ${posRows}
       <div class="g-hold"><span class="g-h-n"><b>Verfügbar (Trading)</b><small>von ${eur2(g.tcap)} Trading-Kapital${gResv(g) ? ` · ${eur2(gResv(g))} für offene Orders reserviert` : ""}</small></span><span class="g-h-v"><b>${eur2(g.cash)}</b></span></div></div>
@@ -8404,7 +8426,7 @@ function gameHtml() {
     + (tab === "trade" ? trade : tab === "orders" ? ordList : depot) + `
     <div class="card" style="margin-top:18px"><label class="g-opt"><input type="checkbox" data-g="auto"${g.auto ? " checked" : ""}> Regeln automatisch befolgen – Stop wie eine Stop-Order (auch untertags über die Tagestiefs), ab Tag 10 Verkauf bei Schluss unter der EMA 20, spätestens Tag ${KMAX.hold}</label>
       <div class="note">Turbo-Wert zwischendurch geschätzt: Kaufkurs × (Basiswert − K.-o.) ÷ (Basiswert beim Kauf − K.-o.), K.-o. steigt mit ~3,5 % p. a. Finanzierung. Mit „Kurs eintragen“ übernimmst du den echten Geldkurs aus Scalable; beim Verkauf trägst du den tatsächlichen Verkaufskurs ein. K.-o. wird über die Tagestiefs erkannt. 0,99 € je Order, keine Steuern. Spielgeld – keine Anlageberatung.</div>
-      <div class="row-actions" style="margin-top:10px"><button class="btn ghost" data-g="reset">Spiel neu starten</button></div></div>`;
+      <div class="row-actions" style="margin-top:10px;justify-content:center"><button class="hlink g-reset" data-g="reset">Spiel neu starten</button></div></div>`;
 }
 const gNum = v => { const x = parseFloat(String(v ?? "").replace(",", ".")); return isFinite(x) ? x : null; };
 document.addEventListener("click", async e => {
@@ -9754,8 +9776,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.214";
-const APP_NEWS = [["2026.11.214", "Volumenprofil pur, Bilanz und Papier neu", [
+const APP_VER = "2026.11.215";
+const APP_NEWS = [["2026.11.215", "Restpunkte", [
+  ["Scanner und Screener", "Die Spaltenköpfe bleiben beim Scrollen stehen, rechts zeigt ein weicher Rand, dass weitere Spalten folgen."],
+  ["Insider", "Die Liste ist nach Tagen gegliedert: Heute, Gestern, Datum."],
+  ["Kleinigkeiten", "Kein „+−0,0 %“ mehr, Übung: „Spiel neu starten“ als dezenter roter Link, „1 Wert“ statt „1 Werte“."]]],
+  ["2026.11.214", "Volumenprofil pur, Bilanz und Papier neu", [
   ["Volumenprofil wie in Profi-Apps", "Nur noch das Volumen je Kursniveau als ruhige Balken am rechten Rand – breite Balken = viel gehandelt. Keine eingezeichneten Zonen, Linien oder Schilder mehr; kräftiger in dem Bereich mit 70 % des Volumens."],
   ["Bilanz", "Ruhige Kopfkarte mit dem Kern: Ø je Trade, mit Stress-Kosten, als Depot, Welt-ETF, größter Rückgang. Hintergrund und Forschungsstände darunter."],
   ["Papier", "Zeile in der Übersicht antippen öffnet das Depot; offenes Depot als eine Karte, Kurve mit Werten und Datum, Tabellen vollständig."],
@@ -12072,7 +12098,9 @@ function renderMain() {
   if (!(data.stats && data.stats.grade)) hid.add("grade");    // Stufen nur, wenn ein geprüftes Modell aktiv ist
   const cols = [...lead.map(x => COLS.find(c => c.k === x)), ...COLS.filter(c => !["ticker", "name", "grade", "status", "met", "trend", "miss", "chk"].includes(c.k))].filter(c => c.k !== "ticker" && !hid.has(c.k));   // Kürzel steht unter dem Namen (Design-Prüfung 14.11.)
   requestAnimationFrame(() => { const tw = document.querySelector("main .table-wrap"), h = document.querySelector(".scroll-hint");
-    if (tw && h) h.hidden = !(tw.scrollWidth > tw.clientWidth + 8); });
+    if (tw && h) h.hidden = !(tw.scrollWidth > tw.clientWidth + 8);
+    // weicher rechter Rand, solange rechts noch Spalten folgen (17.11.2026)
+    if (tw && !tw.dataset.mr) { tw.dataset.mr = 1; const f = () => tw.classList.toggle("more-r", tw.scrollLeft + tw.clientWidth < tw.scrollWidth - 8); f(); tw.addEventListener("scroll", f, { passive: true }); } });
   const mv = state.mView ? (state.mView === "list" ? "list" : "table") : (innerWidth < 640 ? "list" : "table");   // iPhone: Liste als Standard (Pro-Runde 13.11.)
   // Flüssig (12.11.): erst die sichtbaren Zeilen, der Rest im nächsten Moment (ein Reiterwechsel blockiert nicht mehr für die ganze Tabelle)
   const trOf = r => wlSecRow(r, cols.length) + `<tr class="${r.passed ? "r-hit" : r.fast_hit ? "r-fast" : ""}">${cols.map(c => `<td class="${c.n ? "num" : ""}">${c.h(r)}</td>`).join("")}</tr>`;
