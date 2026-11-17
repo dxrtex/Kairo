@@ -61,28 +61,28 @@ Schnelligkeit: erste Zahlen im Mittel 666 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-73 Fehlprognosen und 422 Vergleichsfälle untersucht.
+72 Fehlprognosen und 423 Vergleichsfälle untersucht.
 
-- Markt: Bei 36% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 21% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.3%, getroffene Ø -4.8%.
+- Markt: Bei 37% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 20% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.2%, getroffene Ø -4.8%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 30% (22) | 28% | 1.1 |
-| Marge | 12% (9) | 8% | 1.6 |
-| Umsatz | 56% (41) | 47% | 1.2 |
-| Nutzer/Kunden | 5% (4) | 1% | 7.7 |
-| Aufträge | 10% (7) | 5% | 1.8 |
+| Ausblick | 31% (22) | 28% | 1.1 |
+| Marge | 12% (9) | 8% | 1.7 |
+| Umsatz | 57% (41) | 47% | 1.2 |
+| Nutzer/Kunden | 6% (4) | 1% | 7.8 |
+| Aufträge | 10% (7) | 5% | 1.9 |
 | Kosten | 4% (3) | 8% | 0.5 |
-| Zölle/Politik | 1% (1) | 1% | 1.9 |
+| Zölle/Politik | 1% (1) | 1% | 2.0 |
 | KI/Rechenzentren | 12% (9) | 11% | 1.1 |
 | Management | 3% (2) | 4% | 0.8 |
 | Rückkauf/Dividende | 1% (1) | 5% | 0.3 |
-| Analysten | 5% (4) | 8% | 0.7 |
+| Analysten | 6% (4) | 8% | 0.7 |
 | Sondereffekt | 3% (2) | 1% | 2.9 |
 | Übernahme | 1% (1) | 5% | 0.3 |
 
-**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -11.3% gegen -4.8% → „schon eingepreist“ als Merkmal prüfen
+**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -11.2% gegen -4.8% → „schon eingepreist“ als Merkmal prüfen
 
 Beispiele:
 - ECG 2026-11-03: Kairo 71%, Kurs -29.3% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
