@@ -2204,6 +2204,40 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 </style>
 
 <style id="pro-finish">
+/* Gewinner/Verlierer als Tabelle in voller Breite (17.11.2026, wie „Top Movers“) */
+.mv-c { display: none; }
+@media (min-width: 900px) {
+  .mv-card .mv-r { grid-template-columns: 26px 30px minmax(0, 1fr) 120px 90px 110px 80px !important; }
+  .mv-card .mv-c { display: block; text-align: right; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; padding: 1px 4px; }
+  .mv-card .mv-px { color: var(--text); } .mv-card .mv-px small { color: var(--muted); font-size: 11px; }
+  .mv-card .mv-head { display: grid; grid-template-columns: 26px 30px minmax(0, 1fr) 120px 90px 110px 80px; gap: 10px; padding: 4px 4px 6px; font-size: 11px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+  .mv-card .mv-head span { text-align: right; } .mv-card .mv-head span:nth-child(3) { text-align: left; }
+}
+.mv-head { display: none; }
+/* Firmen-News unter dem Chart (17.11.2026) */
+.ct-news { margin-top: 12px; border: 1px solid var(--line, #8883); border-radius: 14px; padding: 10px 14px 6px; background: var(--card, #111); }
+.ct-nh { font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.ct-ni { display: flex; align-items: baseline; gap: 14px; padding: 8px 0; border-top: 1px solid var(--line, #8883); color: var(--text); text-decoration: none; font-size: 14px; }
+.ct-ni:first-of-type { border-top: 0; } .ct-ni span { flex: 1; min-width: 0; } .ct-ni em { font-style: normal; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.ct-ni:hover span { color: var(--accent, #0a84ff); }
+@media (max-width: 700px) { .ct-ni { flex-direction: column; gap: 2px; } }
+/* Live-Blinken (17.11.2026) */
+@keyframes lpxUp { 0% { background: rgba(48,209,88,.45); } 100% { background: transparent; } }
+@keyframes lpxDn { 0% { background: rgba(255,69,58,.45); } 100% { background: transparent; } }
+.lpx-up { animation: lpxUp 1.2s ease-out; border-radius: 4px; } .lpx-dn { animation: lpxDn 1.2s ease-out; border-radius: 4px; }
+/* Sektoren wie ein Profi-Terminal (17.11.2026): volle Breite, ruhige Zeilen, Balken um die Nulllinie, Kurs, Prozent */
+.sp-card .sp-sub { font-size: 12px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin: 6px 4px 4px; padding-bottom: 6px; border-bottom: 1px solid var(--line, #8883); }
+.sp-card .sp-sub .sp-live { color: var(--up); text-transform: none; letter-spacing: 0; }
+.sp-card .sp-list2 { gap: 0; }
+.sp-card .sp-list2 .sp-r { grid-template-columns: 52px minmax(0, 200px) minmax(80px, 1fr) 78px 70px 30px !important; padding: 9px 6px; border-radius: 0; border-bottom: 1px solid var(--line, #8883); }
+.sp-card .sp-list2 .sp-r:last-child { border-bottom: 0; } .sp-card .sp-list2 .sp-r:hover { background: rgba(255,255,255,.03); }
+.sp-card .sp-list2 .sp-k { font-weight: 650; font-size: 13px; color: var(--text); } .sp-card .sp-list2 .sp-n { font-size: 14px; color: var(--text); }
+.sp-card .sp-list2 .sp-b { height: 12px; background: rgba(118,118,128,.12); border-radius: 3px; } .sp-card .sp-list2 .sp-b i { border-radius: 2px; opacity: .85; }
+.sp-px { text-align: right; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; padding: 1px 4px; }
+.sp-card .sp-list2 .sp-v { font-size: 13.5px; }
+.sp-card .sp-after { margin-top: 10px; } .sp-card .sp-after .sp-rot, .sp-card .sp-after > div { font-size: 12.5px; }
+.sp-perw { margin-left: auto; }
+@media (max-width: 700px) { .sp-card .sp-list2 .sp-r { grid-template-columns: 40px minmax(0, 1.4fr) minmax(40px, 1fr) 58px 24px !important; } .sp-card .sp-list2 .sp-px { display: none; } .sp-perw { margin-left: 0; } }
 .hm-cxl { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; } .hm-live { height: 34px; border-radius: 10px; } .hm-live button { font-size: 13px; padding: 0 12px; }
 .hm-tv { height: 520px; border-radius: 12px; overflow: hidden; background: var(--bg, #000); } .hm-tv.fs { height: calc(100dvh - 210px); }
 @media (max-width: 700px) { .hm-tv { height: 420px; } }
@@ -4467,7 +4501,7 @@ const COLS = [
   { k: "grade", l: "Stufe", g: r => r.grade ? { A: 3, B: 2, C: 1 }[r.grade.g] : 0, h: r => gradeBadge(r) || `<span class="muted">–</span>` },
   { k: "exchange", l: "Börse", g: r => r.exchange, h: r => esc(r.exchange) },
   { k: "cap", l: "Börsenwert", n: 1, g: r => r.market_cap_usd ?? 0, h: r => fmtCap(r.market_cap_usd) },
-  { k: "close", l: "Kurs", n: 1, g: r => r.close, h: r => `${fmt(r.close)}${r.live ? ' <span class="live-dot" title="live">●</span>' : ""}` },
+  { k: "close", l: "Kurs", n: 1, g: r => r.close, h: r => `<span data-lpx="px:${esc(r.ticker)}" data-v="${r.close}">${fmt(r.close)}</span>${r.live ? ' <span class="live-dot" title="live">●</span>' : ""}` },
   { k: "tgt", l: "Analysten-Ziel", n: 1, g: r => tgtUp(r) ?? -9, h: r => { const t = r.senti && r.senti.tgt, u = tgtUp(r);
     return u == null ? `<span class="muted">–</span>` : `<b class="${u >= 0 ? "up" : "down"}" title="Ø Kursziel ${fmt(t.m)}${r.senti.an && r.senti.an.n ? ` · ${r.senti.an.n} Analysten` : ""}">${u >= 0 ? "+" : ""}${pct(u, 0)}</b>${r.senti.an && r.senti.an.n ? ` <small class="muted">${r.senti.an.n} An.</small>` : ""}`; } },
   { k: "dd", l: "Rückgang", n: 1, g: r => r.drawdown ?? 0, h: r => `<span class="${(r.drawdown ?? 0) >= 0 ? "down" : "up"}">${ddFmt(r.drawdown)}</span>` },
@@ -4880,7 +4914,11 @@ function sectorsHtml() {
   const lv = mktLive(), a = (anaData && anaData.market) || {};
   const m = spMarket();
   if (!m.sectors.length) return "";
-  const [k, kl, kn] = spPer(), { ind, th, eu, as, sec, xs } = spList(), rows = spRanked(xs, k).filter(x => x.v != null);
+  const [k, kl, kn] = spPer(), { ind, th, eu, as, sec, xs: xs0 } = spList();
+  // Live (17.11.2026): mit Kursdienst laufen Kurs und Tagesveränderung der ETFs live mit (US-Sektoren und -Branchen)
+  const xs = xs0.map(x => { const q = !eu && LIVE.map[x.k]; return q && q.c > 0 ? { ...x, px: q.c, ...(q.pc > 0 ? { d1: q.c / q.pc - 1 } : {}) } : x; });
+  if (liveOn() && !eu && !as && state.sec === "news") setTimeout(() => liveMany(xs0.map(x => x.k).filter(t => /^[A-Z]{2,5}$/.test(t))).then(n => { if (n && state.sec === "news") render(); }), 0);
+  const rows = spRanked(xs, k).filter(x => x.v != null);
   if (!rows.length) return "";
   const mx = Math.max(...rows.map(x => Math.abs(x.v)), 1e-4), neg = rows.some(x => x.v < 0), pos = rows.some(x => x.v > 0);
   const zero = neg && pos ? 50 : neg ? 100 : 0, span = neg && pos ? 50 : 100;
@@ -4889,7 +4927,7 @@ function sectorsHtml() {
   const hasRrg = xs.some(x => x.rrg), rv = hasRrg && state.spView === "rrg";
   const bar = x => { const w = Math.abs(x.v) / mx * span; return `<i class="${x.v >= 0 ? "up" : "down"}" style="left:${x.v >= 0 ? zero : zero - w}%;width:${Math.max(w, .8)}%"></i>`; };
   const mvH = x => x.mv > 0 ? `<em class="up" title="${x.mv} Plätze besser als ${k === "d1" ? "gestern" : "vor einer Woche"}">▲${x.mv}</em>` : x.mv < 0 ? `<em class="down" title="${-x.mv} Plätze schlechter">▼${-x.mv}</em>` : `<em></em>`;
-  const row = (x, i) => `<button class="sp-r" data-spopen="${esc(x.k)}"><span class="sp-k">${esc(spTk(x.k))}</span><span class="sp-n">${esc(x.n)}${ind && !state.spPar && SP_PARENT[x.k] ? `<small>${esc(SP_PARENT[x.k])}</small>` : ""}${!ind && x.hot ? ' <small class="sp-hot" title="Stärkster Lauf der letzten 4 Wochen – historisch danach eher schwächer">heißgelaufen</small>' : ""}</span><span class="sp-b">${bar(x)}${neg && pos ? `<b style="left:${zero}%"></b>` : ""}</span><span class="sp-v ${x.v >= 0 ? "up" : "down"}">${sgnPct(x.v, 1)}</span>${mvH(x)}</button>`;
+  const row = (x, i) => `<button class="sp-r" data-spopen="${esc(x.k)}"><span class="sp-k">${esc(spTk(x.k))}</span><span class="sp-n">${esc(x.n)}${ind && !state.spPar && SP_PARENT[x.k] ? `<small>${esc(SP_PARENT[x.k])}</small>` : ""}${!ind && x.hot ? ' <small class="sp-hot" title="Stärkster Lauf der letzten 4 Wochen – historisch danach eher schwächer">heißgelaufen</small>' : ""}</span><span class="sp-b">${bar(x)}${neg && pos ? `<b style="left:${zero}%"></b>` : ""}</span><span class="sp-px"${x.px ? ` data-lpx="sp:${esc(x.k)}" data-v="${x.px}"` : ""}>${x.px ? fmt(x.px) : ""}</span><span class="sp-v ${x.v >= 0 ? "up" : "down"}">${sgnPct(x.v, 2)}</span>${mvH(x)}</button>`;
   // Rotation: größte Rangsprünge nach oben/unten im gewählten Zeitraum
   const ups = rows.filter(x => x.mv >= 2).sort((a, b) => b.mv - a.mv).slice(0, 3), dns = rows.filter(x => x.mv <= -2).sort((a, b) => a.mv - b.mv).slice(0, 3);
   const rot = ups.length || dns.length ? `<div class="sp-rot">↻ <b>Rotation</b> ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"}: ${ups.length ? `Geld fließt in <span class="up">${ups.map(x => esc(x.n)).join(", ")}</span>` : ""}${ups.length && dns.length ? " · " : ""}${dns.length ? `raus aus <span class="down">${dns.map(x => esc(x.n)).join(", ")}</span>` : ""}</div>` : "";
@@ -4900,10 +4938,10 @@ function sectorsHtml() {
     <div class="sp-seg sp-lev4">${lvl.map(([v, l, ok]) => `<button class="${v === cur ? "on" : ""}" data-spmode="${v}"${ok && (!eu || v === "sec") ? "" : ` disabled title="${eu ? "in Europa nur Sektoren" : "kommt mit dem nächsten Abend-Scan"}"`}>${l}</button>`).join("")}</div>
     <div class="sp-cx">${hasEu && !as ? sel("data-spregsel", [["us", "USA"], ["eu", "Europa"]], eu ? "eu" : "us", "Region") : `<span class="sp-dd sp-dd0"><span>Region</span><b>${as ? "weltweit" : "USA"}</b></span>`}
       ${ind ? sel("data-sppar", [["", "Alle"], ...[...new Set(Object.values(SP_PARENT))].sort((a, b) => a.localeCompare(b, "de")).map(v => [v, v])], state.spPar || "", "Sektor") : ""}
-      ${hv || rv ? `<span class="sp-dd sp-dd0"><span>Zeitraum</span><b>Wochen</b></span>` : sel("data-sppersel", SP_PER.map(([v, , n]) => [v, n.charAt(0).toUpperCase() + n.slice(1)]), k, "Zeitraum")}
+      ${hv || rv ? `<span class="sp-dd sp-dd0"><span>Zeitraum</span><b>Wochen</b></span>` : `<span class="sp-perw">${hmPerSel(k)}</span>`}
       ${sel("data-spviewsel", [["ret", "Rendite", 1], ["rrg", "Rotation", hasRrg], ["hist", "Verlauf", hasHist]].filter(o => o[2]).map(o => [o[0], o[1]]), hv ? "hist" : rv ? "rrg" : "ret", "Ansicht")}
       ${hv || rv ? "" : `<button class="sp-rel${state.spRel ? " on" : ""}" data-sprel aria-pressed="${state.spRel ? "true" : "false"}" title="Rendite minus Durchschnitt aller ${what}">ggü. Markt</button>`}</div>
-    ${rv ? spRrgHtml(xs, ind) + (th ? themeTrendHtml(xs) : "") : hv ? spHistHtml(xs, ind) : `${rot}${th ? themeTrendHtml(xs) : hotHtml(ind ? [] : xs)}<div class="sp-list">${show.map(row).join("")}</div>`}
+    ${rv ? spRrgHtml(xs, ind) + (th ? themeTrendHtml(xs) : "") : hv ? spHistHtml(xs, ind) : `<div class="sp-sub">${eu ? "Europa" : "US"}-${what} · ${esc(kn)}${xs.some(x => x.px) ? ' · <b class="sp-live">● live</b>' : ""}</div><div class="sp-list sp-list2">${show.map(row).join("")}</div><div class="sp-after">${rot}${th ? themeTrendHtml(xs) : hotHtml(ind ? [] : xs)}</div>`}
     <div class="note sp-src" style="margin:8px 0 0">${eu ? "STOXX-Europe-600-Sektor-ETFs (Xetra)" : as ? "Anlage-ETFs" : `US-${what}-ETFs${ind ? " bzw. Kairo-Körbe (z. B. Neoclouds)" : ""}`}${rv ? " gegenüber dem " + (eu ? "STOXX 600" : "S&P 500") + ", Wochenwerte" : state.spRel ? " · Rendite minus Durchschnitt" : ""} · ▲▼ Plätze ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"} · antippen zeigt die stärksten Aktien</div></div>`;
 }
 // „Heißgelaufen“: die 2 Sektoren mit der höchsten Mehrrendite über 4 Wochen (backend/analysis.py rotation). Backtest 2008–2026
@@ -5117,7 +5155,8 @@ function moversHtml() {
   const one = (r, i) => { const sr = byTicker(r.t), rv = !vol && k === "d1" && r.rv != null && r.rv >= 1.5, nw = (k === "d1" || k === "w1") ? why(r.t) : null;
     return `<button class="sp-s mv-r" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}><span class="sp-i">${i + 1}</span>${cfAv(r.t)}
       <span class="sp-sn"><b>${esc(r.n || r.t)}${mine.has(r.t) ? ` <small class="mv-own">●</small>` : ""}</b><em>${esc(tkClean(r.t))} · ${fmt(r.c)} ${esc(r.cur || "")}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}${rv ? ` · <span class="mv-rv">${fmt(r.rv, 1)}× Volumen</span>` : ""}</em>${nw ? `<em class="mv-why">${IC.news} ${esc(String(nw.t).slice(0, 110))}</em>` : ""}</span>
-      <span class="sp-v ${r[f] >= 0 ? "up" : "down"}">${vol ? `<b class="mv-rvb">${fmt(r.rv, 1)}×</b>` : ""}${sgnPct(r[f], 1)}</span></button>`; };
+      <span class="mv-c mv-px" data-lpx="mv:${esc(r.t)}" data-v="${r.c}">${fmt(r.c)} <small>${esc(r.cur || "")}</small></span><span class="mv-c">${r.rv != null ? fmt(r.rv, 1) + "×" : "–"}</span><span class="mv-c">${r.mc ? fmtCap(r.mc) : "–"}</span>
+      <span class="sp-v ${r[f] >= 0 ? "up" : "down"}">${vol ? `<b class="mv-rvb">${fmt(r.rv, 1)}×</b>` : ""}${sgnPct(r[f], 2)}</span></button>`; };
   // Volumen: nach Richtung getrennt – steigt der Kurs bei hohem Volumen, kaufen große Anleger (Kaufdruck), fällt er, verkaufen sie
   const vUp = vol ? all.filter(r => r.d1 >= .005) : [], vDn = vol ? all.filter(r => r.d1 <= -.005) : [], vLim = state.mvMore ? 15 : 5;
   const vSec = (l, cls, ttl) => l.length ? `<div class="mv-vh ${cls}">${ttl} <small>${l.length}</small></div>${l.slice(0, vLim).map(one).join("")}` : "";
@@ -5126,6 +5165,7 @@ function moversHtml() {
   return `<div class="hcard mv-card">${hHead(vol ? "Ungewöhnliches Volumen" : down ? "Verlierer" : "Gewinner").replace(/<\/div>$/, fsBtn("mv") + "</div>")}
     <div class="sp-seg">${[["up", "Gewinner"], ["down", "Verlierer"], ["vol", "Volumen"]].map(([v, l]) => `<button class="${(state.mvSide || "up") === v ? "on" : ""}" data-mvside="${v}">${l}</button>`).join("")}</div>
     <div class="sp-tg mv-flt"><button class="opt${own ? " on" : ""}" data-mvmine title="nur Depot und Watchlist">★ Meine</button><button class="opt${near ? " on" : ""}" data-mvnear title="nur Aktien mit mindestens 9 von 11 Kairo-Kriterien">≥ 9/11</button><span class="mv-ctx">${esc(hmName(reg))} · ${esc(kn)}</span></div>
+    ${vol ? "" : `<div class="mv-head"><span></span><span></span><span>Aktie</span><span>Kurs</span><span>rel. Volumen</span><span>Börsenwert</span><span>${esc(kn)}</span></div>`}
     ${li || `<p class="muted">${vol ? `Heute keine Aktie mit ≥ ${MV_RV}× Volumen in dieser Auswahl${live ? " (bis jetzt)" : ""}.` : near ? "Keine Aktie mit ≥ 9/11 in dieser Auswahl." : "Keine Daten für diese Auswahl."}</p>`}
     ${more ? `<button class="hlink" data-mvmore style="margin-top:6px">${state.mvMore ? "weniger zeigen" : vol ? "mehr zeigen" : `mehr zeigen (${Math.min(all.length, 30)})`}</button>` : ""}
     <div class="note" style="margin:8px 0 0">${live ? "Tagsüber nur die größten Werte je Region. " : ""}${vol ? `Heute mindestens ${MV_RV}× so viel gehandelt wie im Schnitt der 20 Tage davor – oft steigen große Anleger ein (Kurs steigt) oder aus (Kurs fällt), etwa nach Zahlen, Übernahme-Gerüchten oder Analystenurteilen. ${live ? "Tagsüber zählt das Volumen bis jetzt – der Wert steigt bis Handelsschluss noch. " : ""}` : down ? "Starke Rücksetzer sind oft die Kandidaten von morgen – x/11 zeigt, wie nah eine Aktie an einem Kairo-Treffer ist." : "Zum Beobachten, nicht zum Hinterherkaufen: Kairo kauft Rücksetzer, keine Kurssprünge."} ● = in deinem Depot oder auf der Watchlist.${k === "d1" ? " „× Volumen“ = Handel ggü. dem 20-Tage-Schnitt – hohes Volumen heißt meist echte Nachricht." : ""}</div></div>`;
@@ -5601,7 +5641,7 @@ function marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf) {
     const er = l.filter(e => e.kind === "earnings"), en = er.slice(0, 4).map(e => esc(shortNm(e.name || e.ticker))).join(", ") + (er.length > 4 ? ` +${er.length - 4}` : "");
     return [...mac, ...(er.length ? [`<div class="mw-r"><time>${d ? "Morgen" : "Heute"}</time><span>Quartalszahlen<small>${en}</small></span></div>`] : [])]; });
   const wichtig = `<div class="hcard mw"><div class="hh mw-h"><b>Heute &amp; morgen wichtig</b><button class="hlink" data-gosub="calendar">Kalender ›</button></div>${rowsW.length ? `<div class="mw-l">${rowsW.join("")}</div>` : `<div class="mw-e">Keine großen Termine heute und morgen.</div>`}</div>`;
-  return `${wichtig}${mktBarHtml()}${heatmapHtml()}<div class="mo2"><div>${sectorsHtml()}</div><div>${moversHtml()}</div></div>`;
+  return `${wichtig}${mktBarHtml()}${heatmapHtml()}${sectorsHtml()}${moversHtml()}`;   // 17.11.2026: Sektoren und Gewinner in voller Breite (wie Profi-Terminals)
 }
 // „Wichtig“ = Wirkung statt nur Stimmung: Stimmung, Thema (Zahlen, Ausblick, Analysten, Übernahme, Zulassung, Klage,
 // Vorstand), Kursbewegung der Aktie heute, Qualität der Quelle, Depot-Position; Werbe-/Meinungstexte zählen nicht.
@@ -5654,7 +5694,9 @@ function newsHtml() {
   newsLoad();
   const tab = newsTabOf(), feedMine = (state.newsTab === "market" ? "market" : state.feedMode || "mine") === "mine", mine = myTickers(), now = Date.now(), bj = jsonData["briefing.json"], ij = jsonData["insider.json"];
   const nameOf = t => { const s = rowOf(t), r = byTicker(t); return (r && r.name) || (s && s.n) || t; };
-  const ago = ms => { if (!ms) return ""; const h = Math.max(0, Math.round((now - ms) / 36e5)); return h < 1 ? "gerade eben" : h < 24 ? `vor ${h} Std.` : h < 72 ? `vor ${Math.round(h / 24)} Tg.` : new Date(ms).toLocaleDateString("de-DE"); };
+  // Uhrzeit wie im Terminal (17.11.2026): heute „15:31“, sonst „11. Nov., 15:31“; Meldungen ohne Uhrzeit nur mit Datum
+  const ago = ms => { if (!ms) return ""; const d = new Date(ms), noT = d.getHours() === 0 && d.getMinutes() === 0, hm = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+    dd = d.toLocaleDateString("de-DE", { day: "numeric", month: "short" }); return d.toDateString() === new Date().toDateString() ? (noT ? "heute" : hm) : noT ? dd : `${dd}, ${hm}`; };
   const trU = n => n.o && /^https?:/.test(n.u || "") ? `https://translate.google.com/translate?sl=auto&tl=de&u=${encodeURIComponent(n.u)}` : n.u;
   // Farbe = Tendenz der Schlagzeile (grün positiv, rot negativ, grau neutral) – auf einen Blick unterscheidbar
   const row = n => `<a class="bf-r nw${n.s > 0 ? " nw-g" : n.s < 0 ? " nw-r" : ""}" href="${esc(safeHref(trU(n)))}" target="_blank" rel="noopener"${n.o ? ` title="${esc(n.o)}"` : ""}><i class="${n.s > 0 ? "g" : n.s < 0 ? "r" : "n"}"></i><span><b>${esc(n.t)}</b><em>${n.s > 0 ? '<u class="nw-t g">▲ positiv</u>' : n.s < 0 ? '<u class="nw-t r">▼ negativ</u>' : ""}${n.nm ? esc(n.nm) + " · " : ""}${esc(n.p || "")}${n.ms ? " · " + esc(ago(n.ms)) : ""}${n.o ? " · übersetzt" : ""}</em></span></a>`;
@@ -9237,6 +9279,7 @@ async function etfLiveLoad(force) {
   else if (state.sec === "etf") render();
 }
 setInterval(() => { if (state.sec === "etf" && !document.hidden) etfLiveLoad(); }, 60e3);
+setInterval(() => { if (state.sec === "news" && newsTabOf() === "overview" && !document.hidden && liveOn()) { const m = spMarket(), ts = [...(m.sectors || []), ...(m.industries || [])].map(x => x.k).filter(t => /^[A-Z]{2,5}$/.test(t)); liveMany(ts).then(n => { if (n) render(); }); } }, 60e3);
 // Live-Chart: TradingView an gettex (umschaltbar), darüber der Live-Kurs von onvista
 const ETF_TV = [["GETTEX", "gettex"], ["XETR", "Xetra"], ["TRADEGATE", "Tradegate"]];
 function etfTvHtml() {
@@ -9814,8 +9857,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.222";
-const APP_NEWS = [["2026.11.222", "TradingView live in Kairo", [
+const APP_VER = "2026.11.223";
+const APP_NEWS = [["2026.11.223", "Terminal-Ansichten", [
+  ["Sektoren wie im Terminal", "Volle Breite, ruhige Zeilen: Kürzel, Name, Balken um die Nulllinie, Kurs und Veränderung; Zeitraum als Leiste. Mit Kursdienst laufen Kurs und Tagesveränderung live mit."],
+  ["Live-Kurse blinken", "Ändert sich ein Kurs, leuchtet das Feld kurz grün oder rot auf – in Scanner, Sektoren und Gewinner/Verlierer."],
+  ["Gewinner/Verlierer als Tabelle", "Kurs, relatives Volumen, Börsenwert und Veränderung in eigenen Spalten."],
+  ["News mit Uhrzeit, Firmen-News unter dem Chart", "Meldungen zeigen Uhrzeit und Datum; im Chart-Reiter stehen die neuesten Unternehmensnews direkt unter dem Chart."]]],
+  ["2026.11.222", "TradingView live in Kairo", [
   ["Chart: Kairo oder TradingView", "Oben im Chart-Reiter umschalten: TradingView zeigt live laufende Kerzen ab 1 Minute, über 100 Indikatoren und alle Zeichenwerkzeuge. Deutsche Aktien über gettex in Echtzeit, US-Aktien über Cboe. Die Kairo-Leiste rechts bleibt."],
   ["Heatmap live", "In der Heatmap „Live“ wählen: Kurse während des Handels von TradingView – S&P 500, Nasdaq 100, Dow Jones, DAX, MDAX, TecDAX, alle US- oder deutschen Aktien, mit Zeitraum und Gruppierung."]]],
   ["2026.11.221", "Chart: mehr Platz nach rechts", [
@@ -12074,6 +12122,12 @@ document.addEventListener("click", e => { const r = e.target.closest("[data-ppop
   d.open = true; d.scrollIntoView({ behavior: "smooth", block: "start" }); });
 document.addEventListener("toggle", e => { const d = e.target; if (!d.id || !d.id.startsWith("pp-")) return; const sid = d.id.slice(3), o = new Set(state.ppOpen || []);
   d.open ? o.add(sid) : o.delete(sid); state.ppOpen = [...o]; save(); }, true);
+// Live-Kurse blinken kurz grün/rot, wenn sie sich ändern (17.11.2026, wie ein Quote-Monitor): Zellen mit data-lpx="Schlüssel" data-v="Wert"
+const LPX = {};
+function lpxFlash() { document.querySelectorAll("[data-lpx]").forEach(el => { const k = el.dataset.lpx, v = +el.dataset.v; if (!(v > 0)) return; const o = LPX[k];
+  if (o != null && o !== v) { el.classList.remove("lpx-up", "lpx-dn"); void el.offsetWidth; el.classList.add(v > o ? "lpx-up" : "lpx-dn"); }
+  LPX[k] = v; }); }
+{ let t = 0; new MutationObserver(() => { clearTimeout(t); t = setTimeout(lpxFlash, 40); }).observe(document.body, { childList: true, subtree: true }); }
 document.addEventListener("click", e => { const b = e.target.closest("[data-notemore]"); if (!b) return;
   const n = b.previousElementSibling; if (!n) return; const open = n.classList.toggle("clamp"); b.textContent = open ? "mehr" : "weniger"; });
 const segPrev = {};
@@ -14085,6 +14139,18 @@ function ctTvMount(t) {
 document.addEventListener("click", e => { const b = e.target.closest("[data-cttv]"); if (!b) return; state.ctTv = b.dataset.cttv === "1"; save();
   const el = $("ctab"); if (!el) return; el.classList.toggle("tv-on", state.ctTv); el.querySelectorAll("[data-cttv]").forEach(x => x.classList.toggle("on", x === b));
   if (state.ctTv && el.dataset.t) ctTvMount(el.dataset.t); });
+// Firmen-News direkt unter dem Chart (17.11.2026, wie bei Fluere): deutsche Schlagzeilen zuerst, dann Yahoo und – mit Finnhub – die neuesten mit Uhrzeit
+function ctNewsHtml(r) {
+  const bj = getJson("briefing.json"), t = r.ticker, fhN = (NEWS.co && NEWS.co[t]) || [];
+  const de = ((bj && bj.stocks && (bj.stocks[t] || bj.stocks[tkClean(t)])) || []).map(n => ({ t: n.t, u: n.u, p: n.p, ms: Date.parse(n.d) || 0, s: n.s }));
+  const ya = ((r.senti || {}).news || []).map(n => ({ t: n.t, u: n.u, p: n.p, ms: Date.parse(n.d) || 0, s: n.s }));
+  const fh = fhN.map(n => ({ t: n.headline, u: n.url, p: n.source, ms: (n.datetime || 0) * 1000 }));
+  const seen = new Set(), all = [...de, ...fh, ...ya].filter(n => n.t && !seen.has(n.t) && seen.add(n.t)).sort((a, b) => b.ms - a.ms).slice(0, 8);
+  if (!all.length) return "";
+  const tm = ms => { if (!ms) return ""; const d = new Date(ms), noT = d.getHours() === 0 && d.getMinutes() === 0, hm = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }), dd = d.toLocaleDateString("de-DE", { day: "numeric", month: "short" });
+    return d.toDateString() === new Date().toDateString() ? (noT ? "heute" : hm) : noT ? dd : `${dd}, ${hm}`; };
+  return `<div class="ct-news"><div class="ct-nh">Unternehmensnews</div>${all.map(n => `<a class="ct-ni" href="${esc(safeHref(n.u))}" target="_blank" rel="noopener"><span>${esc(n.t)}</span><em>${esc(n.p || "")}${n.ms ? " · " + tm(n.ms) : ""}</em></a>`).join("")}</div>`;
+}
 function ctabBuild(c, r) {
   const el = $("ctab"); if (!el || !window.LightweightCharts) return; rpHalt(); ctabDrop(); delete el.dataset.busy;
   if (c.tf && c.tf !== "D") r = { ...r, zone: null, plan: c.intra ? r.plan : r.plan };            // Wochen-/Monatschart: Kairo-Welle und -Zone gehören zum Tageschart
@@ -14101,6 +14167,7 @@ function ctabBuild(c, r) {
     <div class="ctab-grid"><div class="ctab-l"><div class="ctab-tv" id="ctTv"></div>
       <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="cmp" id="cmpBox"><button class="cmp-b" data-cmpopen title="Symbol vergleichen" aria-label="Symbol vergleichen">＋ Vergleichen</button><div class="cmp-pop" id="cmpPop" hidden>${[["^GSPC", "S&P 500"], ["^NDX", "Nasdaq 100"], ["^GDAXI", "DAX"], ["^STOXX", "STOXX 600"]].map(([v, l]) => `<button data-cmp="${v}">${l}</button>`).join("")}<button data-cmp="?">Andere Aktie …</button></div><div class="cmp-chips" id="cmpChips"></div></div><div class="dr-tb" id="drTb"></div><div class="dr-sel" id="drSel" hidden></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
       ${pane("tRsi", paneLbl(0, r), "rsi")}${pane("tMacd", paneLbl(1, r), "macd")}${pane("tMbi", paneLbl(2, r), "mbi")}
+      ${ctNewsHtml(r)}
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside><div class="ct-wl" id="ctWl"${state.ctWl ? "" : " hidden"}>${ctWlHtml(r.ticker)}</div></div>`;
   ctFsSearch(); el.classList.toggle("tv-on", !!state.ctTv); if (state.ctTv) ctTvMount(r.ticker);
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
