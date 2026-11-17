@@ -37,11 +37,9 @@ jobs:
               d = json.load(open("idx.json")); print("Pages indices.json:", d.get("generated"), {k: (v["n"], len(v["t"]), v.get("total")) for k, v in d.get("idx", {}).items()})
           except Exception as e:
               print("Pages indices.json fehlt/kaputt:", e)
-          from backend import indices as I
-          for url in ["https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average", "https://de.wikipedia.org/wiki/Dow_Jones_Industrial_Average"]:
-              ts = I._tables(url); print("==", url, len(ts))
-              for k, x in enumerate(ts):
-                  if 20 <= len(x) <= 40: print("  ", k, len(x), [str(c) for c in x.columns][:7], [str(v)[:16] for v in x.iloc[0].tolist()[:4]])
+          import urllib.request
+          for f in ["results.json"]:
+              d = json.loads(urllib.request.urlopen("https://dxrtex.github.io/Kairo/data/" + f).read()); print(f, "generated", d.get("generated"))
           PY
           exit 1
       - run: python -m pytest -q backend/tests research/strategy_championship/tests
