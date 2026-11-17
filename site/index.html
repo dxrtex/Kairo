@@ -9518,8 +9518,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.205";
-const APP_NEWS = [["2026.11.205", "Kalender mit ruhiger Leiste", [
+const APP_VER = "2026.11.206";
+const APP_NEWS = [["2026.11.206", "Preisachse bleibt beim Zeit-Zoom stehen", [
+  ["Zeitachse ziehen", "Ziehst du unten an der Zeitachse (größer/kleiner) oder zoomst mit Mausrad/Trackpad, bleibt die Preisachse jetzt stehen – wie beim Wischen und Zwei-Finger-Zoom. Zurück zur automatischen Höhe: „Auto“ unten rechts, Doppeltipp auf die Preisachse oder ein Zeitraum-Knopf."]]],
+ ["2026.11.205", "Kalender mit ruhiger Leiste", [
   ["Eine Zeile", "Monat/Liste, „Art ▾“ (Quartalszahlen, Dividenden, Wirtschaft, Börsengänge) und „Termine ▾“ (nur wichtige/alle) in einer Leiste, rechts die Anzahl mit ⓘ – statt Titel, zwei Umschaltern und fünf großen Pillen."]]],
  ["2026.11.204", "Chart-Suche wie bei TradingView", [
   ["Kompaktes Symbolfeld", "Gleiche Höhe wie die Werkzeugleiste, feine Linie statt Glas, Trefferliste in Schwarz. Mit Tastatur: „/“ springt direkt ins Feld."]]],
@@ -15058,7 +15060,12 @@ function keepAutoScale(ch, el, o) {
   el.addEventListener("pointerdown", e => { if (e.pointerType === "touch") { TF.add(e.pointerId); if (TF.size > 1) { D = null; freeze(); return; } }
     if (e.button > 0) { D = null; return; } const r = el.getBoundingClientRect(); let pw = 0, th = 0;
     try { pw = ch.priceScale("right").width(); th = ch.timeScale().height(); } catch (x) {}
+    // Zeitachse ziehen (Zoom der Zeit, Meldung 17.11.2026 „Y-Achse bewegt sich mit“): sofort einfrieren – die Höhe bleibt stehen
+    if (e.clientX < r.right - pw - 2 && e.clientY >= r.bottom - th - 2) { D = null; freeze(); return; }
     D = e.clientX < r.right - pw - 2 && e.clientY < r.bottom - th - 2 ? { x: e.clientX, y: e.clientY, id: e.pointerId } : null; }, true);
+  // Mausrad / Trackpad über Kursfläche oder Zeitachse zoomt bzw. verschiebt die Zeit: ebenfalls einfrieren (über der Preisachse zoomt yPanZoom den Preis)
+  el.addEventListener("wheel", e => { const r = el.getBoundingClientRect(); let pw = 0; try { pw = ch.priceScale("right").width(); } catch (x) {}
+    if (e.clientX < r.right - pw - 2) freeze(); }, { capture: true, passive: true });
   el.addEventListener("pointermove", e => { if (!D || e.pointerId !== D.id || !(e.buttons || e.pointerType === "touch")) return;
     if (Math.abs(e.clientX - D.x) + Math.abs(e.clientY - D.y) > 4) { D = null; freeze(); } }, true);
   const end = e => { TF.delete(e.pointerId); D = null; setTimeout(() => autoBtnSync(ch), 60); };
