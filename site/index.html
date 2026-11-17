@@ -2204,6 +2204,23 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 </style>
 
 <style id="pro-finish">
+/* Chart-Suche wie TradingView (16.11.2026 „minderwertig“): kompaktes Symbolfeld in Werkzeugleisten-Höhe, Haarlinie statt Glas */
+@media (min-width: 901px) {
+  .ctab:not(.fs) { grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) !important; }
+  .ctab:not(.fs) > .ct-search { align-self: center; }
+  .ctab:not(.fs) > .ct-search input { height: 38px; padding: 0 34px 0 36px !important; font-size: 14px !important; font-weight: 500; border-radius: 10px !important;
+    background: var(--surface-2, #111) !important; border: 1px solid var(--line) !important; box-shadow: none !important; -webkit-backdrop-filter: none; backdrop-filter: none; transition: border-color .15s, background .15s; }
+  .ctab:not(.fs) > .ct-search input:hover { border-color: color-mix(in srgb, var(--text) 22%, transparent) !important; }
+  .ctab:not(.fs) > .ct-search input:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent) !important; }
+  .ctab:not(.fs) > .ct-search input::placeholder { color: var(--muted); }
+  .ctab:not(.fs) > .ct-search > svg { left: 12px !important; width: 16px !important; height: 16px !important; }
+  .ctab .ct-back { height: 38px; padding: 0 10px; font-size: 14px; }
+}
+.ctab .ct-list { background: var(--surface, #0d0d0d) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; border: 1px solid var(--line) !important; border-radius: 12px !important; box-shadow: 0 16px 40px rgba(0,0,0,.55) !important; margin-top: 6px; }
+.ct-kbd { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); min-width: 20px; height: 20px; padding: 0 5px; border-radius: 5px; border: 1px solid var(--line); color: var(--muted); font: 600 11px/18px ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; pointer-events: none; }
+.ct-search input:focus ~ .ct-kbd, .ct-search input:not(:placeholder-shown) ~ .ct-kbd { display: none; }
+@media (max-width: 900px) { .ct-kbd { display: none; } }
+
 /* Screener wie TradingView/Koyfin (16.11.2026) */
 .scr-tb { margin-top: 10px; }
 .scr-chip { height: 30px; display: inline-flex; align-items: center; gap: 4px; padding: 0 6px 0 11px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
@@ -9494,8 +9511,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.203";
-const APP_NEWS = [["2026.11.203", "Screener wie bei den Profi-Tools", [
+const APP_VER = "2026.11.204";
+const APP_NEWS = [["2026.11.204", "Chart-Suche wie bei TradingView", [
+  ["Kompaktes Symbolfeld", "Gleiche Höhe wie die Werkzeugleiste, feine Linie statt Glas, Trefferliste in Schwarz. Mit Tastatur: „/“ springt direkt ins Feld."]]],
+ ["2026.11.203", "Screener wie bei den Profi-Tools", [
   ["Eine Leiste", "Vorlage ▾ (inkl. deiner gespeicherten Screens), aktive Filter als Chips mit ×, „＋ Filter“, rechts Anzahl, ☆ Speichern und Spalten."],
   ["Filterfenster mit Reitern", "Allgemein · Kurs & Technik · Fundamental · Kairo & Smart Money – mit Zähler je Reiter. Kein dauerhaft offenes Feld-Raster mehr."]]],
  ["2026.11.202", "Nur noch Sektoren und Branchen", [
@@ -13808,7 +13827,7 @@ function ctabBuild(c, r) {
   const k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r), chg = r.change ?? r.d1, off = !!state.cfSideOff;
   if (el.dataset.t !== r.ticker) ctPop = false; el.dataset.t = r.ticker; el.classList.toggle("side-off", off);   // gleiche Aktie neu gebaut (z. B. Ichimoku an): Indikatorliste bleibt offen
   const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-rsz" data-rsz="${f}" title="Ziehen: Höhe ändern · Doppeltipp: zurücksetzen" aria-hidden="true"><i></i></div><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="Indikator groß">${CT_IC.expand}</button><button class="ct-x ct-fsx" data-fsind="${f}" title="Unter dem Chart ausblenden" aria-label="Indikator schließen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ctab-c" id="${id}"></div></div>`;
-  el.innerHTML = `<div class="ct-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="ctQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="${innerWidth < 640 || innerWidth > 900 ? "Aktie suchen – Name oder Kürzel" : "Chart suchen – jede Aktie, Name oder Kürzel (z. B. Amazon, UBS, Rheinmetall)"}" aria-label="Chart suchen"><div id="ctList" class="ct-list" hidden></div></div>
+  el.innerHTML = `<div class="ct-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="ctQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="${innerWidth > 900 ? "Symbol suchen" : innerWidth < 640 ? "Aktie suchen – Name oder Kürzel" : "Chart suchen – jede Aktie, Name oder Kürzel (z. B. Amazon, UBS, Rheinmetall)"}" aria-label="Chart suchen">${matchMedia("(pointer: fine)").matches ? `<kbd class="ct-kbd" aria-hidden="true">/</kbd>` : ""}<div id="ctList" class="ct-list" hidden></div></div>
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
       <span class="st ${k.cls}">${esc(k.t)}</span>${CXBACK ? `<button class="ct-b ct-back" data-cxback title="Zurück zur Übersicht von ${esc(tkClean(CXBACK.t))} und an dieselbe Stelle im ${esc(SEC_NAME[CXBACK.sec] || "Reiter")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>${esc(SEC_NAME[CXBACK.sec] || "Zurück")}</span></button>` : ""}${state.mcBack > 1 ? `<button class="ct-b ct-back" data-mcback title="Zurück zu den ${state.mcBack} Charts" aria-label="Zurück zum Raster">${MC_IC[state.mcBack] || MC_IC[4]}<span>${state.mcBack} Charts</span></button>` : ""}<button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
@@ -15311,6 +15330,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") { closeDetai
   if (e.metaKey || e.ctrlKey || e.altKey || /input|textarea|select/i.test((e.target.tagName || "")) || e.target.isContentEditable || document.getElementById("gate")) return;
   const k = { "1": "today", "2": "etf", "3": "scanner", "4": "entry", "5": "news", "6": "depot" }[e.key];
   if (k) { e.preventDefault(); closeCard(); goSec(k); return; }
+  if (e.key === "/" && state.sec === "chart" && $("ctQ")) { e.preventDefault(); $("ctQ").focus(); return; }
   if (e.key === "/") { e.preventDefault(); if (state.sec !== "scanner") goSec("scanner"); setTimeout(() => { const s = $("search"); if (s) s.focus(); }, 50); } });
 
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").then(pushInit).catch(() => {});
