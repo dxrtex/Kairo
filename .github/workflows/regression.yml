@@ -28,6 +28,26 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements-dev.txt
+      - name: DIAG Indizes
+        run: |
+          curl -sS https://dxrtex.github.io/Kairo/data/indices.json -o idx.json -w "HTTP %{http_code}\n" || true
+          python - <<'PY'
+          import json
+          try:
+              d = json.load(open("idx.json")); print("Pages indices.json:", d.get("generated"), {k: (v["n"], len(v["t"]), v.get("total")) for k, v in d.get("idx", {}).items()})
+          except Exception as e:
+              print("Pages indices.json fehlt/kaputt:", e)
+          from backend import indices as I
+          for key, name, url, suf, (lo, hi), share in I.INDICES:
+              try:
+                  ts = I._tables(url); t = I.pick_table(ts, lo, hi)
+                  print(name, "Tabellen:", len(ts), "gewählt:", None if t is None else (len(t), list(t.columns)[:6], t.iloc[0].tolist()[:3]))
+                  if t is None:
+                      for x in ts[:12]: print("   ", len(x), [str(c) for c in x.columns][:6])
+              except Exception as e:
+                  print(name, "FEHLER", repr(e)[:300])
+          PY
+          exit 1
       - run: python -m pytest -q backend/tests research/strategy_championship/tests
       - name: Turbo-Rechner (Stop-Loss am Turbo)
         run: node tools/turbo_unit.mjs
