@@ -2205,8 +2205,9 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 
 <style id="pro-finish">
 .g-reset { color: var(--red, #ff453a) !important; font-size: 14px; } input[type="checkbox"] { accent-color: var(--accent, #0a84ff); }
-.ins-day { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 2px 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--line, #8883); }
-.ins-day:first-child { padding-top: 4px; } .ins-day em { font-style: normal; font-weight: 500; text-transform: none; letter-spacing: 0; }
+/* Insider-Tage (17.11.2026): Überschrift bündig mit den Zeilen (gleicher Innenabstand), ohne Zählung am Rand */
+.ins-day { padding: 22px 12px 8px; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .01em; }
+.ins-day:first-child { padding-top: 12px; }
 /* Scanner (17.11.2026): weicher rechter Rand, solange weitere Spalten folgen – Tabelle scrollt wie zuvor nur seitlich, die Seite nach unten */
 @media (min-width: 701px) {
   main .table-wrap.more-r:has(> table.sc-t) { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), rgba(0,0,0,.25)); mask-image: linear-gradient(to right, #000 calc(100% - 36px), rgba(0,0,0,.25)); }
@@ -5818,9 +5819,9 @@ function insDayRows(gs, byDay, row) {
   if (!byDay) return gs.map(row).join(""); let cur = null, out = "";
   const t0 = isoOf(new Date()), y = new Date(); y.setDate(y.getDate() - 1); const t1 = isoOf(y);
   gs.forEach(g => { const d = String(g[0].d || "").slice(0, 10);
-    if (d !== cur) { cur = d; const lbl = !d ? "ohne Datum" : d === t0 ? "Heute" : d === t1 ? "Gestern" : new Date(d + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "numeric" });
-      out += `<div class="ins-day"><span>${lbl}</span><em>${gs.filter(x => String(x[0].d || "").slice(0, 10) === d).length}</em></div>`; }
-    out += row(g); });
+    if (d !== cur) { cur = d; const lbl = !d ? "ohne Datum" : d === t0 ? "Heute" : d === t1 ? "Gestern" : new Date(d + "T12:00:00").toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
+      out += `<div class="ins-day">${lbl}</div>`; }
+    out += d ? row(g).replace(` · ${dateDE(d)}`, "") : row(g); });   // Datum steht schon in der Überschrift
   return out;
 }
 // ---------- Smart Money (13.11., wie TipRanks): Insider (Formular 4) + Hedgefonds (13F) gebündelt – je Aktie und als Übersicht ----------
@@ -9772,8 +9773,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.218";
-const APP_NEWS = [["2026.11.218", "Long/Short-Werkzeug wie TradingView", [
+const APP_VER = "2026.11.219";
+const APP_NEWS = [["2026.11.219", "Insider-Liste aufgeräumt", [
+  ["Tage sauber gegliedert", "Tagesüberschrift bündig mit den Zeilen und mit Luft nach oben, keine Zahl mehr am rechten Rand, das Datum steht nicht mehr doppelt in jeder Zeile."]]],
+  ["2026.11.218", "Long/Short-Werkzeug wie TradingView", [
   ["Mehr Zahlen im Werkzeug", "Ziel und Stop zeigen Kurs, Abstand, Prozent und den Betrag in € für deine Menge. In der Mitte: offener Gewinn/Verlust zum aktuellen Kurs, Menge (aus Trading-Kapital und Risiko je Trade) und Chance/Risiko."]]],
   ["2026.11.217", "Vorbörslich im Chart", [
   ["Vor- und nachbörslicher Kurs", "Bei US-Aktien steht vor 15:30 Uhr der vorbörsliche Kurs als gepunktete orange Linie mit Schild an der Preisachse – inklusive Abstand zum Schlusskurs, wie bei TradingView. Nach Börsenschluss hellblau für nachbörslich. Die Tageskerze bleibt beim Schlusskurs."],
