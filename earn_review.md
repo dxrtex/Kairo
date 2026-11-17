@@ -2,28 +2,28 @@
 
 Schnelligkeit: erste Zahlen im Mittel 666 Min. nach der Meldezeit (90 % innerhalb 1325 Min., 353 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-686 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-16), davon 496 mit aufgezeichneter Prognose.
+688 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-16), davon 498 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 496 | 52% | 0.255 | 0.250 |
+| alle | 498 | 52% | 0.255 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 275 | 55% | 0.245 | 0.250 |
-| Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 17 | 41% | 0.250 | 0.250 |
+| Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 19 | 37% | 0.257 | 0.250 |
 | Ausblick gesenkt | 69 | 55% | 0.247 | 0.250 |
 | Ausblick bestätigt | 30 | 47% | 0.272 | 0.250 |
 | Ausblick angehoben | 162 | 48% | 0.270 | 0.250 |
-| Ausblick keine Meldung | 235 | 54% | 0.245 | 0.250 |
+| Ausblick keine Meldung | 237 | 54% | 0.246 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
 | Kairo sagte | n | tatsächlich gestiegen |
 |---|---|---|
 | -0%–30% | 11 | 45% |
-| 30%–40% | 97 | 42% |
+| 30%–40% | 98 | 43% |
 | 40%–50% | 142 | 47% |
-| 50%–60% | 170 | 50% |
+| 50%–60% | 171 | 50% |
 | 60%–70% | 54 | 43% |
 | 70%–100% | 22 | 55% |
 
@@ -32,10 +32,10 @@ Schnelligkeit: erste Zahlen im Mittel 666 Min. nach der Meldezeit (90 % innerhal
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
 | deutlich unter Erwartung (< −10 %) | 46% (24) | 50% (10) | 44% (32) | 37% (65) |
-| unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 74% (19) | 38% (47) |
+| unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 74% (19) | 40% (48) |
 | im Rahmen (±2 %) | 29% (17) | 33% (3) | 38% (16) | 49% (37) |
 | über Erwartung (+2 bis +10 %) | 38% (24) | 25% (8) | 46% (52) | 44% (59) |
-| deutlich über Erwartung (> +10 %) | 38% (29) | 53% (17) | 60% (105) | 55% (104) |
+| deutlich über Erwartung (> +10 %) | 38% (29) | 53% (17) | 60% (105) | 54% (105) |
 
 ## Vorschläge zur Anpassung
 
@@ -61,28 +61,28 @@ Schnelligkeit: erste Zahlen im Mittel 666 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-72 Fehlprognosen und 424 Vergleichsfälle untersucht.
+72 Fehlprognosen und 426 Vergleichsfälle untersucht.
 
 - Markt: Bei 37% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 20% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.2%, getroffene Ø -4.8%.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.2%, getroffene Ø -5.0%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 31% (22) | 28% | 1.1 |
+| Ausblick | 31% (22) | 27% | 1.1 |
 | Marge | 12% (9) | 8% | 1.7 |
 | Umsatz | 57% (41) | 47% | 1.2 |
 | Nutzer/Kunden | 6% (4) | 1% | 7.9 |
-| Aufträge | 10% (7) | 5% | 1.9 |
+| Aufträge | 10% (7) | 5% | 1.8 |
 | Kosten | 4% (3) | 8% | 0.5 |
 | Zölle/Politik | 1% (1) | 1% | 2.0 |
 | KI/Rechenzentren | 12% (9) | 11% | 1.1 |
 | Management | 3% (2) | 4% | 0.8 |
 | Rückkauf/Dividende | 1% (1) | 5% | 0.3 |
 | Analysten | 6% (4) | 8% | 0.7 |
-| Sondereffekt | 3% (2) | 1% | 2.9 |
+| Sondereffekt | 3% (2) | 1% | 3.0 |
 | Übernahme | 1% (1) | 5% | 0.3 |
 
-**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -11.2% gegen -4.8% → „schon eingepreist“ als Merkmal prüfen
+**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -11.2% gegen -5.0% → „schon eingepreist“ als Merkmal prüfen
 
 Beispiele:
 - ECG 2026-11-03: Kairo 71%, Kurs -29.3% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
@@ -96,20 +96,20 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 248 Meldungen: Brier nachgeeicht 0.251 gegen gezeigt 0.248 → nicht übernommen (nicht genauer).
+Geprüft an den jüngeren 249 Meldungen: Brier nachgeeicht 0.252 gegen gezeigt 0.248 → nicht übernommen (nicht genauer).
 
 ## Prognose-Modell (Langzeit-Quote + Umsatz, auf eigene Meldungen geeicht)
 
-Rollierend geprüft an 212 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.247 gegen gezeigt 0.249, Richtung 55% gegen 55%, besser in 2 von 3 Zeiträumen → **übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell).
+Rollierend geprüft an 214 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.247 gegen gezeigt 0.249, Richtung 55% gegen 54%, besser in 2 von 3 Zeiträumen → **übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell).
 
 | Merkmal | Gewicht |
 |---|---|
 | Grundwert (Marktlage) | -0.17 |
-| Langzeit-Quote Gewinn × Ausblick | +0.45 |
+| Langzeit-Quote Gewinn × Ausblick | +0.44 |
 | Umsatz-Überraschung | +0.30 |
 
 | Zeitraum | n | Brier Modell | Brier gezeigt | Richtung Modell | Richtung gezeigt |
 |---|---|---|---|---|---|
 | 2026-11-06 – 2026-11-08 | 32 | 0.254 | 0.254 | 56% | 59% |
 | 2026-11-09 – 2026-11-11 | 115 | 0.248 | 0.250 | 53% | 55% |
-| 2026-11-12 – 2026-11-16 | 65 | 0.241 | 0.244 | 58% | 52% |
+| 2026-11-12 – 2026-11-16 | 67 | 0.243 | 0.246 | 57% | 51% |
