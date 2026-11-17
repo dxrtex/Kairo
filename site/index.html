@@ -2267,14 +2267,14 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 
 /* Chart-Suche auch im Vollbild (Wunsch 17.11.2026): mittig in der Kopfzeile, gleiches kompaktes Symbolfeld */
 @media (min-width: 901px) {
-  .ctab.fs > .ct-search { display: block !important; position: absolute; z-index: 30; top: calc(env(safe-area-inset-top) + 18px); left: 50%; transform: translateX(-50%); width: clamp(220px, 26vw, 320px); margin: 0; }
-  .ctab.fs > .ct-search input { height: 38px; padding: 0 34px 0 36px !important; font-size: 14px !important; font-weight: 500; border-radius: 10px !important;
+  .ctab.fs .ctab-top > .ct-search { display: block !important; position: relative; z-index: 30; flex: none; width: clamp(220px, 24vw, 300px); margin: 0 0 0 auto; }
+  .ctab.fs .ct-search input { height: 38px; padding: 0 34px 0 36px !important; font-size: 14px !important; font-weight: 500; border-radius: 10px !important;
     background: var(--surface-2, #111) !important; border: 1px solid var(--line) !important; box-shadow: none !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .ctab.fs > .ct-search input:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent) !important; }
-  .ctab.fs > .ct-search > svg { left: 12px !important; width: 16px !important; height: 16px !important; }
+  .ctab.fs .ct-search input:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent) !important; }
+  .ctab.fs .ct-search > svg { left: 12px !important; width: 16px !important; height: 16px !important; }
   .ctab.fs .ct-list { background: var(--surface, #0d0d0d) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; border: 1px solid var(--line) !important; border-radius: 12px !important; box-shadow: 0 16px 40px rgba(0,0,0,.55) !important; margin-top: 6px; }
-  .ctab.fs .ctab-top .chfs-tt { max-width: calc(50% - 180px); }
-  .ctab.fs .ctab-top > .st { margin-left: auto; } .ctab.fs .ctab-top > .st ~ .ct-back, .ctab.fs .ctab-top > .st ~ .ct-close { margin-left: 8px !important; }
+  .ctab.fs .ctab-top .chfs-tt { min-width: 0; }
+  .ctab.fs .ctab-top > .ct-search ~ .st, .ctab.fs .ctab-top > .ct-search ~ .ct-back, .ctab.fs .ctab-top > .ct-search ~ .ct-close { margin-left: 4px !important; }
 }
 
 /* Chart-Suche wie TradingView (16.11.2026 „minderwertig“): kompaktes Symbolfeld in Werkzeugleisten-Höhe, Haarlinie statt Glas */
@@ -9600,8 +9600,9 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.209";
-const APP_NEWS = [["2026.11.209", "Depot im Stil einer Broker-App", [
+const APP_VER = "2026.11.210";
+const APP_NEWS = [["2026.11.210", "Vollbild-Suche rechts", [["Suche im Vollbild", "Das Suchfeld steht jetzt rechts in der Kopfzeile, direkt neben Status und „Schließen“."]]],
+ ["2026.11.209", "Depot im Stil einer Broker-App", [
   ["Ruhiger Kopf", "Depotwert groß, darunter eine Zeile Gewinn/Verlust seit Kauf; der Live-Stand steht klein daneben. Kein Abschnittstitel und keine Extra-Leiste mehr."],
   ["Klarer Chart", "Feine Linie ohne Raster und ohne Logo, Achse in ganzen Euro, Zeitraum (1T bis Max) als ruhige Leiste unter dem Chart."],
   ["Positionsliste", "Alle Positionen inklusive ETF in einer Liste mit Spalten Wert, Gewinn/Verlust und Haltedauer – am iPhone links Name, rechts Wert und Ergebnis. Antippen zeigt wie bisher Chart und Trade-Plan."],
@@ -13940,6 +13941,7 @@ function ctabBuild(c, r) {
       <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="cmp" id="cmpBox"><button class="cmp-b" data-cmpopen title="Symbol vergleichen" aria-label="Symbol vergleichen">＋ Vergleichen</button><div class="cmp-pop" id="cmpPop" hidden>${[["^GSPC", "S&P 500"], ["^NDX", "Nasdaq 100"], ["^GDAXI", "DAX"], ["^STOXX", "STOXX 600"]].map(([v, l]) => `<button data-cmp="${v}">${l}</button>`).join("")}<button data-cmp="?">Andere Aktie …</button></div><div class="cmp-chips" id="cmpChips"></div></div><div class="dr-tb" id="drTb"></div><div class="dr-sel" id="drSel" hidden></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
       ${pane("tRsi", paneLbl(0, r), "rsi")}${pane("tMacd", paneLbl(1, r), "macd")}${pane("tMbi", paneLbl(2, r), "mbi")}
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside><div class="ct-wl" id="ctWl"${state.ctWl ? "" : " hidden"}>${ctWlHtml(r.ticker)}</div></div>`;
+  ctFsSearch();
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
   if (whyFor !== String(r.ticker)) { whySel = null; whyFor = String(r.ticker); } whyKick(cfChart);
   cfChart.chart.timeScale().setVisibleLogicalRange(cfChart.vr0);
@@ -14813,11 +14815,15 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-fsin
     const h = Math.max(80, Math.min(R.room, R.h0 - (e.clientY - R.y0))); R.p.style.height = Math.round(h) + "px"; R.h = h; }, true);
   const end = e => { if (!R || e.pointerId !== R.id) return; R.p.classList.remove("rsz-on"); if (R.h) { state.fsH = { ...(state.fsH || {}), [R.k]: +(R.h / innerHeight).toFixed(4) }; save(); } R = null; };
   document.addEventListener("pointerup", end, true); document.addEventListener("pointercancel", end, true); })();
+// Vollbild (17.11.2026): Suchfeld in die Kopfzeile rechts neben Titel → direkt vor Status und „Schließen“; sonst wieder ganz oben
+function ctFsSearch() { const el = $("ctab"), q = el && el.querySelector(".ct-search"), top = el && el.querySelector(".ctab-top"); if (!q || !top) return;
+  if (el.classList.contains("fs")) { if (q.parentNode !== top) top.insertBefore(q, top.querySelector(":scope > .st") || top.querySelector(":scope > .ct-close") || null); }
+  else if (q.parentNode !== el) el.insertBefore(q, el.firstChild); }
 function ctabFocus(f) {
   const el = $("ctab"); if (!el) return;
   if (!f && ctFocus === "main" && state.mcBack > 1 && state.mcBackFs) { mcBackGo(); return; }
   ctFocus = f || null;
-  el.classList.toggle("fs", !!ctFocus); ["main", "rsi", "macd", "mbi"].forEach(k => el.classList.toggle("fs-" + k, ctFocus === k)); ctFsiApply();
+  el.classList.toggle("fs", !!ctFocus); ["main", "rsi", "macd", "mbi"].forEach(k => el.classList.toggle("fs-" + k, ctFocus === k)); ctFsiApply(); ctFsSearch();
   document.documentElement.classList.toggle("fs-on", !!ctFocus);
   el.querySelectorAll("[data-ctfocus]").forEach(b => { if (b.dataset.ctfocus && b.closest(".ctab-p, .ct-right")) { const on = ctFocus === b.dataset.ctfocus; b.innerHTML = on ? CT_IC.shrink : CT_IC.expand; b.dataset.ctfocus = on ? "" : (b.closest(".ctab-p") ? b.closest(".ctab-p").dataset.pane : "main"); } });
 }
