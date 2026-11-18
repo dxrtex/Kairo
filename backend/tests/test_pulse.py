@@ -68,3 +68,12 @@ def test_weekly_skips_factors():
     df = pd.DataFrame({"Close": range(1, 31)}, index=idx)
     w = weekly({"GC=F": df, "SPY": df})
     assert "GC=F" in w and "SPY" not in w and w["GC=F"][-1] == [idx[-1].strftime("%Y-%m-%d"), 30.0]
+
+
+def test_quakes_sorted_by_magnitude():
+    from backend.pulse import quakes
+    f = [{"properties": {"mag": 4.6, "place": "near A", "time": 1763424000000, "url": "u1"}, "geometry": {"coordinates": [121.5, 24.0, 10]}},
+         {"properties": {"mag": 6.1, "place": "near B", "time": 1763424000000, "url": "u2"}, "geometry": {"coordinates": [140.0, 36.0, 30]}},
+         {"properties": {"mag": None}, "geometry": {"coordinates": [0, 0]}}]
+    q = quakes(f)
+    assert [x[1][:4] for x in q] == ["M6.1", "M4.6"] and q[0][:4] == ["quake", "M6.1 · near B", 140.0, 36.0] and len(q[0]) == 6
