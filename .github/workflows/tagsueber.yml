@@ -5,6 +5,7 @@ name: Tagsüber (Mitteilungen + Markt, alle 30 Minuten)
 #   0. Quartalszahlen: stößt earnings.yml an – in den Meldezeiten alle 10 Min. (04–08, 10–15, 19–24 UTC), sonst alle 30 Min.
 #   1. Mitteilungen: Stop, Kursziel, Verkaufstag, K.-o. und 4H-Bestätigung (backend/push.py, 06:00–22:00 UTC)
 #   2. Markt: Sektoren, Branchen, Heatmap, Gewinner/Verlierer (backend/mktlive.py, 07:00–21:15 UTC, nur Anzeige)
+#   2b. Puls: Reddit-Trends, Polymarket, Zinsen/Devisen/Rohstoffe, Weltbank-Länderdaten (backend/pulse.py, nur Anzeige)
 #   3. Abend-Scan: stößt scan.yml um 22:30 Berlin an (einmal je Handelstag) – pünktlicher als der GitHub-Zeitplan
 # Zustand im Branch kairo-alerts. Nach gut 5 Std. startet sich der Job selbst neu (Jobs dürfen höchstens 6 Std. laufen);
 # drei Anstöße per Zeitplan fangen Ausfälle auf. Öffentliches Repository → keine Minuten-Kosten.
@@ -67,6 +68,7 @@ jobs:
               if [ "$now" -ge 700 ] && [ "$now" -lt 2115 ]; then
                 echo "::group::Markt $(date -u +%H:%M)"; timeout 8m python -m backend.mktlive 2>&1 | grep -v -i warning | grep -v "^See \|^  " || true; echo "::endgroup::"
               fi
+              echo "::group::Puls $(date -u +%H:%M)"; timeout 6m python -m backend.pulse --out state 2>&1 | grep -v -i warning || true; echo "::endgroup::"
               ( cd state && git add -A && git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Tagsüber $(date -u +%F-%H%M)" \
                 && for i in 1 2 3; do git pull -q --rebase origin kairo-alerts && git push -q origin kairo-alerts && break; sleep 5; done ) || true
             fi
