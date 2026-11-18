@@ -27,7 +27,9 @@ FIELDS = {"pe": "trailingPE", "fpe": "forwardPE", "pb": "priceToBook", "ps": "pr
           # Ergänzt 14.11.2026 (Smart Money / Dividende) – kommt aus demselben Abruf, kostet nichts extra
           "spf": "shortPercentOfFloat", "sr": "shortRatio", "shs": "sharesShort", "shp": "sharesShortPriorMonth",
           "hpi": "heldPercentInstitutions", "hpn": "heldPercentInsiders", "dy5": "fiveYearAvgDividendYield",
-          "exd": "exDividendDate", "eps": "trailingEps", "feps": "forwardEps", "so": "sharesOutstanding"}
+          "exd": "exDividendDate", "eps": "trailingEps", "feps": "forwardEps", "so": "sharesOutstanding",
+          # Ergänzt 18.11.2026 (Screener wie im Profi-Terminal): PEG, operativer Cashflow (→ KCV), Rendite 52 Wochen
+          "peg": "trailingPegRatio", "ocf": "operatingCashflow", "w52": "52WeekChange"}
 
 
 def _num(v):
@@ -51,6 +53,47 @@ def eps_history(df) -> list:
         out.append([str(ix)[:10], None if e is None else round(e, 4), round(a, 4)])
     out.sort(key=lambda x: x[0])
     return out[-8:]
+
+
+def quarter_revenue(df) -> list:
+    """Umsatz je Quartal aus quarterly_income_stmt: [[quartalsende, umsatz], …] aufsteigend, höchstens 8."""
+    if df is None or getattr(df, "empty", True):
+        return []
+    rows = {str(k).replace(" ", "").lower(): k for k in df.index}
+    rk = rows.get("totalrevenue") or rows.get("operatingrevenue")
+    if rk is None:
+        return []
+    out = [[str(c)[:10], round(_num(df.at[rk, c]))] for c in df.columns if _num(df.at[rk, c]) is not None]
+    out.sort(key=lambda x: x[0])
+    return out[-8:]
+
+
+def updowns(df, n: int = 10) -> list:
+    """Hoch-/Abstufungen der Analysten (upgrades_downgrades): [[datum, bank, von, nach, aktion, kursziel], …] neueste zuerst."""
+    if df is None or getattr(df, "empty", True):
+        return []
+    out = []
+    for ix, r in df.sort_index(ascending=False).head(n).iterrows():
+        pt = _num(r.get("currentPriceTarget"))
+        out.append([str(ix)[:10], str(r.get("Firm") or "")[:40], str(r.get("FromGrade") or ""), str(r.get("ToGrade") or ""),
+                    str(r.get("Action") or ""), round(pt, 2) if pt else None])
+    return out
+
+
+def short_desc(text: str | None, limit: int = 340) -> str:
+    """Erste ein bis zwei Sätze der Firmenbeschreibung (Yahoo), höchstens ~340 Zeichen."""
+    t = " ".join(str(text or "").split())
+    if not t:
+        return ""
+    parts, out = t.split(". "), ""
+    for p in parts:
+        nxt = (out + ". " if out else "") + p.rstrip(".")
+        if len(nxt) > limit and out:
+            break
+        out = nxt
+        if len(out) >= limit * .55:
+            break
+    return (out[:limit].rstrip() + ".") if out else ""
 
 
 def income_history(df) -> list:
@@ -92,6 +135,11 @@ def fetch(tickers: list[str], pause: float = 0.3, budget_s: float = 5000) -> dic
         row = {k2: info.get(src) for k2, src in FIELDS.items() if isinstance(info.get(src), (int, float)) and info.get(src) == info.get(src)}
         if info.get("sector"):
             row["sec"] = info["sector"]
+        if info.get("industry"):
+            row["ind"] = str(info["industry"])[:60]
+        d = short_desc(info.get("longBusinessSummary"))
+        if d:
+            row["_d"] = d
         if len(row) >= 3:                              # Verlauf für die Übersichtskarte (14.11.2026): Gewinn je Quartal, Umsatz/Gewinn je Jahr
             tk = yf.Ticker(t)
             try:
@@ -106,6 +154,19 @@ def fetch(tickers: list[str], pause: float = 0.3, budget_s: float = 5000) -> dic
                     row["ih"] = ih
             except Exception:
                 pass
+            try:
+                qh = quarter_revenue(tk.quarterly_income_stmt)
+                if qh:
+                    row["qh"] = qh
+            except Exception:
+                pass
+            if (row.get("mc") or 0) >= 5e9:            # Hoch-/Abstufungen nur für größere Werte (dort gibt es sie)
+                try:
+                    ud = updowns(tk.upgrades_downgrades)
+                    if ud:
+                        row["ud"] = ud
+                except Exception:
+                    pass
         if len(row) >= 3:
             out[t] = row
         if k % 100 == 0:
@@ -142,14 +203,23 @@ def score(r: dict, med: dict, allmed: dict) -> list[int]:
 
 
 def combine(parts: list[Path], prev: Path | None) -> dict:
-    raw = {}
+    """Zusammenführen; Firmenbeschreibungen (_d) gehen getrennt nach desc.json (nur im Chart nachgeladen)."""
+    raw, desc = {}, {}
+    if prev and prev.exists() and (prev.parent / "desc.json").exists():
+        try:
+            desc = json.loads((prev.parent / "desc.json").read_text())
+        except Exception:
+            desc = {}
     if prev and prev.exists():                         # Fehlversuche: alten Stand behalten
         try:
             raw = {t: {k: v for k, v in r.items() if k not in ("sf",)} for t, r in json.loads(prev.read_text()).get("by", {}).items()}
         except Exception:
             raw = {}
     for p in parts:
-        raw.update(json.loads(p.read_text()))
+        for t, r in json.loads(p.read_text()).items():
+            if r.get("_d"):
+                desc[t] = r.pop("_d")
+            raw[t] = r
     secs = {}
     for r in raw.values():
         secs.setdefault(r.get("sec") or "–", []).append(r)
@@ -162,7 +232,7 @@ def combine(parts: list[Path], prev: Path | None) -> dict:
         rr = {k: (round(v, 4) if isinstance(v, float) else v) for k, v in r.items()}
         rr["sf"] = score(r, med.get(r.get("sec") or "–"), allmed)
         by[t] = rr
-    return {"generated": time.strftime("%Y-%m-%d"), "n": len(by), "med": med, "all": allmed, "by": by}
+    return {"generated": time.strftime("%Y-%m-%d"), "n": len(by), "med": med, "all": allmed, "by": by, "_desc": desc}
 
 
 def main(argv=None) -> int:
@@ -176,7 +246,9 @@ def main(argv=None) -> int:
         res = combine(sorted(Path(a.combine).glob("fund_part_*.json")), Path(a.prev) if a.prev else None)
         out = ROOT / "site" / "data"
         out.mkdir(parents=True, exist_ok=True)
+        desc = res.pop("_desc", {})
         (out / "fund.json").write_text(json.dumps(res, separators=(",", ":"), allow_nan=False))
+        (out / "desc.json").write_text(json.dumps(desc, separators=(",", ":"), ensure_ascii=False))
         print(f"Fundamentaldaten: {res['n']} Aktien")
         return 0
     from .universe import load as load_universe

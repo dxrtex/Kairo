@@ -52,7 +52,7 @@ def build(search_rows: list[dict]) -> dict:
     for t, df in _frames(stocks, "1y").items():
         m = day_moves(df)
         if m.get("d1") is not None:
-            rows[t] = {k: m.get(k) for k in ("d1", "d5", "m1", "m3", "ytd", "rv")} | {"c": round(float(df["Close"].iloc[-1]), 4)}
+            rows[t] = {k: m.get(k) for k in ("d1", "d5", "m1", "m3", "ytd", "rv", "vd")} | {"c": round(float(df["Close"].iloc[-1]), 4)}
     return {"generated": datetime.now(timezone.utc).isoformat(timespec="minutes"),
             "sectors": mkt.get("sectors", []), "industries": mkt.get("industries", []), "themes": mkt.get("themes", []), "sectors_eu": mkt.get("sectors_eu", []), "assets": mkt.get("assets", []),
             "idx": {t: mkt[t] for t, _ in MARKET if t in mkt}, "rows": rows}
