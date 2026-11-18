@@ -15282,9 +15282,9 @@ function coValSeries(t, k) {
   const lv = LIVE.map[t]; if (out.length && lv && lv.c > 0) { const st = steps[steps.length - 1]; if (st[1] > 0) out.push([new Date().toISOString().slice(0, 10), lv.c / st[1]]); }
   return out.length >= 40 ? out : null;
 }
-// Über viele Jahre (18.11.2026, wie „Decades of data“): Monatskurse (fund pm, 12 J.) ÷ Gewinn bzw. Umsatz je Aktie des letzten veröffentlichten Geschäftsjahres
+// Über viele Jahre (18.11.2026, wie „Decades of data“): Monatskurse (fund pxm, 12 J.) ÷ Gewinn bzw. Umsatz je Aktie des letzten veröffentlichten Geschäftsjahres
 function coValLong(t, k) {
-  const f = fundD(t) || {}, F = finOf(t), pm = f.pm, cur = ((CO[t] || {}).r || rowFor(t) || {}).currency; if (!pm || !pm.c || !F || !F.y || (F.cur && cur && F.cur !== cur)) return null;
+  const f = fundD(t) || {}, F = finOf(t), pm = f.pxm, cur = ((CO[t] || {}).r || rowFor(t) || {}).currency; if (!pm || !pm.c || !F || !F.y || (F.cur && cur && F.cur !== cur)) return null;
   const fye = F.fye || "12-31", yrs = F.y.map((y, i) => { const end = new Date(`${y}-${fye}T12:00:00`), pub = new Date(end.getTime() + 75 * 864e5).toISOString().slice(0, 10), sh = F.ni && F.eps && F.eps[i] ? F.ni[i] / F.eps[i] : f.so;
     return [pub, k === "pe" ? F.eps && F.eps[i] : F.rev && F.rev[i] && sh > 0 ? F.rev[i] / sh : null]; }).filter(x => x[1] > 0);
   if (yrs.length < 3) return null; const [y0, m0] = pm.m0.split("-").map(Number), out = [];
