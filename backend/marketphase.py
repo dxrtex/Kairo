@@ -20,7 +20,7 @@ def _weekly(s: pd.Series) -> pd.Series:
     return s.resample("W-FRI").last().dropna()
 
 
-def market_phase(df: pd.DataFrame | None, vix: pd.DataFrame | None = None, keep: int = 52) -> dict | None:
+def market_phase(df: pd.DataFrame | None, vix: pd.DataFrame | None = None, keep: int = 52, confirm_n: int = 2) -> dict | None:
     """Tageskurse eines Index (Spalte Close) → {k, label, tone, since, weeks, why, hist: [[wochenende, k], …]}."""
     if df is None or "Close" not in df or len(df) < 230:
         return None
@@ -56,7 +56,7 @@ def market_phase(df: pd.DataFrame | None, vix: pd.DataFrame | None = None, keep:
         if state is None:
             state, since = r, i
         elif r != state:
-            confirm = (i >= 1 and raw[i - 1] == r) or (r == "bear" and float(dd.iloc[i]) <= -0.20)
+            confirm = confirm_n <= 1 or (i >= 1 and raw[i - 1] == r) or (r == "bear" and float(dd.iloc[i]) <= -0.20)
             if confirm:
                 state, since = r, (i - 1 if raw[i - 1] == r else i)
         hist.append([w.index[i].strftime("%Y-%m-%d"), state])

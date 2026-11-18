@@ -88,11 +88,11 @@ def old_regime(h, t="^GSPC"):
     return pd.Series(np.where(good, 3, np.where(bad, 0, 2)), index=c.index, dtype=float)
 
 
-def weekly_phase(h, t="^GSPC"):
+def weekly_phase(h, t="^GSPC", cn=2):
     out = {}
     c = h[t]
     m = {"bull": 3, "neutral": 2, "corr": 1, "bear": 0}
-    p = market_phase(c, h["^VIX"] if t in ("^GSPC", "^NDX") else None, keep=100000)
+    p = market_phase(c, h["^VIX"] if t in ("^GSPC", "^NDX") else None, keep=100000, confirm_n=cn)
     if not p:
         return None
     s = pd.Series({pd.Timestamp(d): m[k] for d, k in p["hist"]}).sort_index()
@@ -109,9 +109,18 @@ def main():
         wp = weekly_phase(h, t)
         if wp is not None:
             evaluate("Wochen-Phase 18.11.", wp, c)
-        for name, p in [("neu Standard", {}), ("neu up_n=1", {"up_n": 1}), ("neu up_n=10", {"up_n": 10}), ("neu buf 1 %", {"buf": .01}),
-                        ("neu ohne Verteilungstage", {"use_dist": False}), ("neu ohne VIX", {"use_vix": False}), ("neu ohne Kredit", {"use_credit": False}),
-                        ("neu dd_p -4 %", {"dd_p": -0.04}), ("neu dd_p -7 %", {"dd_p": -0.07}), ("neu vix_p 20", {"vix_p": 20.0}), ("neu vix_p 25", {"vix_p": 25.0})]:
+            w1 = weekly_phase(h, t, 1)
+            evaluate("Wochen-Phase ohne Bestätigung", w1, c)
+            R = ML.raw_levels(h[t], h["^VIX"], h.get("^VIX3M"), cr)
+            for nm, dl in [("Tag roh", R["lv"]), ("Tag geglättet 5", ML.smooth(R["lv"], 5))]:
+                for wn, ww in [("W2", wp), ("W1", w1)]:
+                    j = pd.concat([ww, dl], axis=1).dropna()
+                    a_, d_ = j.iloc[:, 0], j.iloc[:, 1]
+                    c1 = a_.where(a_ < 3, np.where(d_ >= 3, 3, 2))
+                    evaluate(f"Kombi {wn} + {nm}: Grün nur ohne Tagesdruck", pd.Series(c1, index=j.index), c)
+                    c2 = pd.Series(np.where(a_ < 3, a_, np.where(d_ >= 3, 3, np.where(d_ == 2, 2, 1))), index=j.index)
+                    evaluate(f"Kombi {wn} + {nm}: Tageskorrektur → Orange", c2, c)
+        for name, p in [("neu Standard", {})]:
             us = True
             R = ML.raw_levels(h[t], h["^VIX"] if us else None, h.get("^VIX3M") if us else None, cr if us else None, p)
             lv = ML.smooth(R["lv"], {**ML.P, **p}["up_n"])
