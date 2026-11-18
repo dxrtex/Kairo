@@ -2405,7 +2405,7 @@ table.dcf-g { min-width: 0; width: auto; } .dcf-g td, .dcf-g th { text-align: ri
 .qm-tb { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; font-size: 13px; }
 .qm-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px; } .qm-t { display: grid; grid-template-columns: 1fr auto; gap: 1px 6px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .qm-t.up { background: rgba(48,209,88,var(--a)); } .qm-t.down { background: rgba(255,69,58,var(--a)); } .qm-k { font-weight: 700; font-size: 13.5px; } .qm-n { grid-column: 1 / -1; grid-row: 2; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.qm-t b { grid-column: 1; grid-row: 3; font-size: 16px; font-variant-numeric: tabular-nums; margin-top: 3px; } .qm-t em { grid-column: 2; grid-row: 3; align-self: end; font-style: normal; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.qm-t b { grid-column: 1 / -1; grid-row: 3; font-size: 16px; font-variant-numeric: tabular-nums; margin-top: 3px; white-space: nowrap; } .qm-t em { grid-column: 2; grid-row: 1; align-self: center; font-style: normal; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; } .qm-k { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qm-more { margin-top: 8px; padding: 0; } .qm-t.up em { color: var(--up); } .qm-t.down em { color: var(--red); } @media (max-width: 560px) { .qm-g { grid-template-columns: repeat(2, 1fr); } }
 .mx-t { cursor: pointer; } .mx-t.on { border-color: var(--accent, #0a84ff) !important; box-shadow: inset 0 0 0 1px var(--accent, #0a84ff); }
 .mx-big { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; } .mx-bh { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 8px; } .mx-bh b { font-size: 16px; } .mx-bh .hlink { margin-left: auto; }
@@ -3462,6 +3462,8 @@ html.lt { --lg-tab: rgba(255,255,255,.84); --lg-rim: inset 0 1px 0 rgba(255,255,
 .subnav button.on { box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 1px 3px rgba(0,0,0,.25) !important; }
 .subnav { background: var(--lg-sheen), var(--lg-tab) !important; -webkit-backdrop-filter: blur(24px) saturate(190%); backdrop-filter: blur(24px) saturate(190%); box-shadow: var(--lg-rim), 0 8px 24px rgba(0,0,0,.28) !important; }
 html.lt .subnav { box-shadow: var(--lg-rim), 0 8px 22px rgba(0,0,0,.08) !important; }
+html .subnav.stuck { box-shadow: var(--lg-rim), 0 8px 24px rgba(0,0,0,.28), 0 calc(-1 * (env(safe-area-inset-top, 0px) + 12px)) 0 12px var(--bg) !important; }
+html.lt .subnav.stuck { box-shadow: var(--lg-rim), 0 8px 22px rgba(0,0,0,.08), 0 calc(-1 * (env(safe-area-inset-top, 0px) + 12px)) 0 12px var(--bg) !important; }
 html .sheet, html .bm-box, html .cm-box, .kd-box { box-shadow: var(--lg-rim), 0 30px 80px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.22) !important; }
 html.lt .sheet, html.lt .bm-box, html.lt .cm-box, html.lt .kd-box { box-shadow: var(--lg-rim), 0 26px 64px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.07) !important; }
 .brand .gear { box-shadow: var(--lg-rim), 0 4px 14px rgba(0,0,0,.25) !important; }
@@ -5333,12 +5335,14 @@ function heatmapHtml(fs) {
   // z = Zoomfaktor (Vollbild): Beschriftung nach der echten Größe auf dem Schirm – beim Hineinzoomen bekommen auch kleine Firmen Namen
   const draw = z => { let tiles = "", labels = ""; const zp = px * z;
     lay.forEach(({ S, T: ts }) => {
+      const lab = S.w * zp > 60 && S.h * zp > 40;
       ts.forEach(T => {
-        const r = T.r, wpx = T.w * zp, hpx = T.h * zp, sr = byTicker(r.t), big = wpx > 56 && hpx > 38, mid = wpx > 38 && hpx > 22, nm = fs && z > 1.01 && wpx > 90 && hpx > 54;
+        const top = lab && Math.abs(T.y - S.y) < 1e-6, pad = top ? 15 : 0;
+        const r = T.r, wpx = T.w * zp, hpx = T.h * zp - pad, sr = byTicker(r.t), big = wpx > 56 && hpx > 38, mid = wpx > 38 && hpx > 22, nm = fs && z > 1.01 && wpx > 90 && hpx > 54;
         const cls = wpx < 30 || hpx < 24 ? "" : (sr && sr.passed ? " hit" : "") + (mine.has(r.t) ? " mine" : "");
-        tiles += `<button class="hm-t${cls}" style="left:${pc(T.x, W)};top:${pc(T.y, H)};width:${pc(T.w, W)};height:${pc(T.h, H)};background:${col(r[f])}" data-hmpv="${esc(r.t)}" title="${esc(r.n || r.t)} ${sgnPct(r[f], 1)}">${mid ? `<b style="font-size:${Math.max(9, Math.min(fs ? 22 : 16, wpx / 5))}px">${esc(tkClean(r.t).replace(/\.[A-Z]+$/, ""))}</b>` : ""}${nm ? `<small>${esc(String(r.n || "").slice(0, Math.floor(wpx / 6.5)))}</small>` : ""}${big ? `<em${fs ? ` style="font-size:${Math.max(10.5, Math.min(15, wpx / 7))}px"` : ""}>${sgnPct(r[f], 1)}</em>` : ""}</button>`;
+        tiles += `<button class="hm-t${cls}" style="left:${pc(T.x, W)};top:${pc(T.y, H)};width:${pc(T.w, W)};height:${pc(T.h, H)};background:${col(r[f])}${pad ? `;padding-top:${pad}px` : ""}" data-hmpv="${esc(r.t)}" title="${esc(r.n || r.t)} ${sgnPct(r[f], 1)}">${mid ? `<b style="font-size:${Math.max(9, Math.min(fs ? 22 : 16, wpx / 5))}px">${esc(tkClean(r.t).replace(/\.[A-Z]+$/, ""))}</b>` : ""}${nm ? `<small>${esc(String(r.n || "").slice(0, Math.floor(wpx / 6.5)))}</small>` : ""}${big ? `<em${fs ? ` style="font-size:${Math.max(10.5, Math.min(15, wpx / 7))}px"` : ""}>${sgnPct(r[f], 1)}</em>` : ""}</button>`;
       });
-      if (S.w * zp > 60 && S.h * zp > 40) labels += `<span class="hm-s"${fs ? ` data-zmrect="${(S.x / W).toFixed(4)},${(S.y / H).toFixed(4)},${(S.w / W).toFixed(4)},${(S.h / H).toFixed(4)}" title="auf ${esc(S.n)} zoomen"` : ""} style="left:${pc(S.x, W)};top:${pc(S.y, H)};max-width:${pc(S.w, W)}">${esc(S.n)}</span>`;
+      if (lab) labels += `<span class="hm-s"${fs ? ` data-zmrect="${(S.x / W).toFixed(4)},${(S.y / H).toFixed(4)},${(S.w / W).toFixed(4)},${(S.h / H).toFixed(4)}" title="auf ${esc(S.n)} zoomen"` : ""} style="left:${pc(S.x, W)};top:${pc(S.y, H)};max-width:${pc(S.w, W)}">${esc(S.n)}</span>`;
     });
     return `<div class="hm"${fs ? "" : ` style="aspect-ratio:${W}/${H}"`}>${tiles}${labels}</div>`; };
   if (fs) {   // Vollbild: Daten für die Zeichenfläche (Canvas) – Zoom ohne DOM-Umbau
@@ -5867,6 +5871,9 @@ function qmHtml() {
     <div class="qm-g">${L.slice(0, state.qmAll ? 120 : 24).map(x => `<button class="qm-t ${x.d1 == null ? "" : x.d1 >= 0 ? "up" : "down"}" data-ctgo="${esc(x.t)}" style="--a:${x.d1 == null ? 0 : Math.min(.32, Math.abs(x.d1) * 6 + .04).toFixed(2)}">
       <span class="qm-k">${esc(tkClean(x.t))}</span><span class="qm-n">${esc(shortNm(x.n))}</span><b data-lpx="qm:${esc(x.t)}" data-v="${x.c}">${fmt(x.c, x.c >= 1000 ? 0 : 2)}</b><em>${x.d1 == null ? "–" : sgnPct(x.d1, 2)}</em></button>`).join("")}</div>${L.length > 24 ? `<button class="hlink qm-more" data-qmall>${state.qmAll ? "weniger zeigen" : `alle ${L.length} zeigen`}</button>` : ""}</div>`;
 }
+// Reiterleiste klebt oben: Fläche darüber abdecken, sonst scheint der Inhalt zwischen Statusleiste und Leiste durch (18.11.2026)
+(() => { let q = 0; const f = () => { q = 0; document.querySelectorAll(".subnav").forEach(n => { const t = parseFloat(getComputedStyle(n).top) || 0; n.classList.toggle("stuck", n.getBoundingClientRect().top <= t + 1); }); };
+  const g = () => { if (!q) q = requestAnimationFrame(f); }; document.addEventListener("scroll", g, { passive: true, capture: true }); window.addEventListener("resize", g); })();
 document.addEventListener("click", e => { if (e.target.closest("[data-qmall]")) { state.qmAll = !state.qmAll; render(); return; } const b = e.target.closest("[data-qms]"); if (!b) return; state.qmSort = b.dataset.qms; save(); render(); });
 function marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf) {
   if (!calData) loadCalendar();
@@ -10157,6 +10164,7 @@ const APP_NEWS = [["2026.11.235", "Marktphase, Live-News, TradingView-Vollbild",
   ["ETF-Ampel bleibt kurzfristig", "Sie bewertet bewusst nur den Kaufmoment der nächsten Tage – jetzt auch so beschriftet."],
   ["Live-News unter dem Chart", "Beim Öffnen einer Aktie holt Kairo sofort die neuesten Schlagzeilen (Kursdienst, für US-Aktien auch Finnhub), danach alle 3 Minuten; ↻ lädt sofort. Neue Meldungen sind markiert, große Tagesbewegungen ohne Meldung werden ausdrücklich genannt."],
   ["TradingView im Vollbild", "Neuer Knopf neben „Kairo | TradingView“."],
+  ["Markt aufgeräumt", "Kursmonitor: Prozent steht neben dem Kürzel und bricht nicht mehr um. Beim Scrollen scheint über der Reiterleiste nichts mehr durch. Heatmap: Firmennamen überdecken die Sektor-Beschriftung nicht mehr."],
   ["Antippen ohne Leerlauf", "Aktien in Markt, Heatmap, Lieferketten, Insider oder Kursmonitor zeigen sofort „Lade Chart …“ – und wenn es nicht geht, warum und was hilft."]]],
  ["2026.11.234", "Feinschliff nach der Gesamtprüfung", [
   ["iPhone: Markt-Reiter", "Die Reiterleiste ist jetzt wischbar statt abgeschnitten („Über…“, „Kalen…“); der aktive Reiter bleibt sichtbar."],
