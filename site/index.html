@@ -1644,7 +1644,7 @@
   .bf-k { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   .bf-h { font-size: 28px; font-weight: 800; letter-spacing: -.02em; margin: 2px 0 4px; padding-right: 40px; }
   .bf-mkt { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); margin-bottom: 6px; } .bf-mkt i { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); flex: none; }
-  .bf-mkt i.green { background: var(--up); } .bf-mkt i.red { background: var(--red); } .bf-mkt i.yellow { background: var(--gold); }
+  .bf-mkt i.green { background: var(--up); } .bf-mkt i.red { background: var(--red); } .bf-mkt i.yellow { background: var(--gold); } .bf-mkt i.orange { background: #ff9f0a; }
   .bf-s { margin-top: 16px; } .bf-s > b { display: block; font-size: 13px; font-weight: 700; color: var(--muted); margin: 0 2px 6px; }
   .bf-l { background: var(--surface-2); border-radius: 14px; overflow: hidden; }
   .bf-r { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; text-decoration: none; }
@@ -2394,6 +2394,13 @@ table.dcf-g { min-width: 0; width: auto; } .dcf-g td, .dcf-g th { text-align: ri
 .mk-since { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 4px; } .mk-ph { margin: 6px 0 8px; font-size: 14px; color: var(--muted); line-height: 1.45; } .mk-ph .mk-dax { display: block; margin-top: 3px; }
 .mk-reg.t-orng i { background: #ff9f0a; box-shadow: 0 0 10px #ff9f0a; } .orng { color: #ff9f0a; }
 .ph-bar { display: flex; gap: 2px; height: 8px; margin: 2px 0 2px; max-width: 420px; } .ph-bar i { flex: 1; border-radius: 2px; opacity: .85; } .ph-bl { display: flex; justify-content: space-between; max-width: 420px; font-size: 11px; color: var(--muted); }
+.lt-bar { gap: 0; border-radius: 3px; overflow: hidden; } .lt-bar i { border-radius: 0; opacity: .9; }
+.lt-ix { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 10px; font-size: 12.5px; color: var(--muted); } .lt-ix span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.lt-ix i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; } .lt-ix b { color: var(--text); font-weight: 600; }
+.regime .lt-ix { margin: 6px 0 0; font-size: 12px; gap: 3px 12px; } .regime .lt-ix i { flex: none; width: 7px; height: 7px; margin: 0; box-shadow: none; } .regime .lt-ix span { font-size: 12px; }
+.eh-mk { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--muted); margin: 8px 0 4px; line-height: 1.45; } .eh-mk i { flex: 0 0 8px; height: 8px; border-radius: 50%; margin-top: 5px; } .eh-mk b { color: var(--text); font-weight: 600; } .eh-mk.diff { padding: 9px 11px; border-radius: 10px; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+.lt-why { list-style: none; padding: 0; margin: 4px 0 8px; } .lt-why li { padding: 3px 0 3px 20px; position: relative; font-size: 13px; }
+.lt-why li::before { position: absolute; left: 0; top: 3px; font-weight: 700; } .lt-why li.ok::before { content: "✓"; color: var(--up); } .lt-why li.no::before { content: "✗"; color: var(--red); }
 .mk-why { margin-top: 6px; font-size: 13px; } .mk-why summary { color: var(--accent, #0a84ff); cursor: pointer; list-style: none; } .mk-why summary::-webkit-details-marker { display: none; } .mk-why ul { margin: 6px 0 4px; padding-left: 18px; color: var(--text); } .mk-why p { margin: 0; font-size: 12px; }
 .mk-fz.mk-fz2 { margin-top: 10px; font-size: 13.5px; }
 .ktoast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 9500; max-width: min(560px, calc(100vw - 32px)); padding: 12px 16px; border-radius: 14px;
@@ -5742,24 +5749,32 @@ function mktBarHtml() {
   const fz = mktFazit(m, adv), tc = reg ? { green: "up", red: "down" }[reg.tone] || "gold" : "";
   const fear = f ? `<div class="mk-f" title="Stimmung 0–100: VIX, Tech/KI, Marktbreite, Kreditmarkt"><div class="mk-k">Stimmung</div><b class="${f.score >= 65 ? "down" : f.score >= 45 ? "gold" : "up"}">${esc(f.label)} <small>${f.score}</small></b>
       <div class="mk-g"><i style="left:${Math.max(2, Math.min(98, f.score))}%"></i></div><div class="mk-gl"><span>Sorglos</span><span>Panik</span></div></div>` : "";
-  const PHs = m.phase || {}, pu = PHs["^GSPC"], pd = PHs["^GDAXI"], dayLbl = reg ? reg.label.charAt(0).toUpperCase() + reg.label.slice(1) : "";
-  const lage = pu ? `<div class="mk-k">Marktphase · mittelfristig (Wochen)</div><div class="mk-reg t-${PH_TC[pu.tone] || ""}"><i></i>${esc(pu.label)} <small class="mk-since">USA seit ${phWk(pu.weeks)}</small></div>
-      <p class="mk-ph">${esc(phaseText(pu.k))}${pd ? ` <span class="mk-dax">DAX: <b class="${PH_TC[pd.tone] || ""}">${esc(pd.label)}</b> seit ${phWk(pd.weeks)}</span>` : ""}</p>${phBar(pu)}
-      <details class="mk-why"><summary>Woraus sich die Phase ergibt</summary><ul>${pu.why.map(w => `<li>S&P 500 ${esc(w)}</li>`).join("")}</ul><p class="muted">Wochenkurse; eine neue Phase gilt erst nach zwei Wochen (bei −20 % sofort). Reine Einordnung – die Kairo-Regel bleibt unverändert.</p></details>
+  const LT = m.light || {}, pu = LT.all, dayLbl = reg ? reg.label.charAt(0).toUpperCase() + reg.label.slice(1) : "";
+  const lage = pu ? `<div class="mk-k">Marktampel · für Swing-Trades (Wochen bis Monate)</div><div class="mk-reg t-${PH_TC[pu.tone] || ""}"><i></i>${esc(pu.label)} <small class="mk-since">seit ${ltSince(pu)}</small></div>
+      <p class="mk-ph">${esc(pu.do)}</p>${ltIdx(LT)}${ltBar(pu)}
+      <details class="mk-why"><summary>Woraus sich die Ampel ergibt</summary>${ltWhy(pu)}</details>
 `
     : `<div class="mk-k">Marktlage</div>${reg ? `<div class="mk-reg t-${tc}"><i></i>${esc(dayLbl)}</div>` : ""}`;
-  const fz2 = pu && fz ? `<p class="mk-fz mk-fz2">${dayLbl ? `<b class="${tc}">Tageslage ${esc(dayLbl.toLowerCase())}</b> · ` : ""}${fz.replace(/^Heute:\s*/, "heute ")}</p>` : fz ? `<p class="mk-fz">${fz}</p>` : "";
+  const fz2 = pu && fz ? `<p class="mk-fz mk-fz2">${fz}</p>` : fz ? `<p class="mk-fz">${fz}</p>` : "";
   return `<div class="hcard mkb"><div class="mk-h"><div class="mk-l">${lage}${fz2}</div>${fear}</div>
     <div class="mk-is">${tiles}</div>${moreIdxHtml(m)}${br}</div>`;
 }
-// Marktphase (18.11.2026, Wunsch: Swing-Trader brauchen die Lage über Wochen, nicht über einen Tag): backend/marketphase.py aus Wochenkursen,
-// neue Phase erst nach zwei Wochen bestätigt. Die Tageslage (S&P 500 über EMA 50, VIX < 20) bleibt als kleine Zusatzzeile.
+// Marktampel (19.11.2026): backend/marketlight.py – Wochentrend (40-Wochen-Linie, Abstand zum Hoch, VIX) bestimmt die Stufe,
+// kurzfristiger Druck (50-Tage-Linie, Verteilungstage, VIX-Kurve, Kreditmarkt) stuft Grün auf Gelb ab. Gesamt = schwächere von S&P 500 / Nasdaq 100.
+// Grundlage Backtest tools/research/ampel_study.py (ab 1993). Reine Einordnung – die Kairo-Regel nutzt sie nicht.
 const PH_TC = { green: "up", yellow: "gold", orange: "orng", red: "down" };
-const phWk = n => n === 1 ? "1 Woche" : `${n} Wochen`;
-function phBar(p) { const C = { bull: "#30d158", neutral: "#ffd60a", corr: "#ff9f0a", bear: "#ff453a" }, h = (p && p.hist) || []; if (h.length < 8) return "";
-  return `<div class="ph-bar" title="Marktphase der letzten ${h.length} Wochen">${h.map(([d, k]) => `<i style="background:${C[k]}" title="${esc(dateDE(d))}: ${({ bull: "Aufwärtstrend", neutral: "Seitwärts", corr: "Korrektur", bear: "Abwärtstrend" })[k]}"></i>`).join("")}</div><div class="ph-bl"><span>vor ${h.length} Wochen</span><span>jetzt</span></div>`; }
-function phaseText(k) { return ({ bull: "Gute Zeit für Swing-Trades: Der Markt steigt seit Wochen, Rücksetzer werden meist gekauft.", neutral: "Übergang ohne klare Richtung – Einstiege selektiv, Ziele eher früher sichern.",
-  corr: "Der Markt korrigiert – weniger und kleinere Positionen, Stops konsequent.", bear: "Abwärtstrend – Long-Einstiege scheitern häufiger. Kapital schützen, abwarten." })[k] || ""; }
+const ltReg = m => m ? (m.light && m.light.all ? { tone: m.light.all.tone, label: m.light.all.label } : m.regime) : null;   // Marktampel, sonst alte Tageslage
+const LT_C = ["#ff453a", "#ff9f0a", "#ffd60a", "#30d158"], LT_N = ["Abwärtstrend", "Korrektur", "Unter Druck", "Aufwärtstrend"];
+const ltSince = p => `${dateDE(p.since)} (${p.days === 1 ? "1 Handelstag" : `${p.days} Handelstage`})`;
+function ltIdx(LT) { const N = [["^GSPC", "S&P 500"], ["^NDX", "Nasdaq 100"], ["URTH", "MSCI World"], ["^GDAXI", "DAX"]].filter(([k]) => LT[k]);
+  return N.length ? `<div class="lt-ix">${N.map(([k, n]) => `<span><i style="background:${LT_C[LT[k].lv]}"></i>${n} <b>${esc(LT[k].label)}</b></span>`).join("")}</div>` : ""; }
+function ltBar(p) { const h = (p && p.hist) || []; if (h.length < 20) return "";
+  const n = h.length, mo = Math.round(n / 21);
+  return `<div class="ph-bar lt-bar" title="Marktampel der letzten ${mo} Monate">${h.map(([d, k]) => `<i style="background:${LT_C[k]}" title="${esc(dateDE(d))}: ${LT_N[k]}"></i>`).join("")}</div><div class="ph-bl"><span>vor ${mo} Monaten</span><span>heute</span></div>`; }
+function ltWhy(p) { const src = p.src === "^NDX" ? "Nasdaq 100" : "S&P 500";
+  return `<p class="muted" style="margin:6px 0 4px">Maßgeblich ist der schwächere der beiden US-Indizes – gerade: <b>${src}</b>.</p><ul class="lt-why">${(p.why || []).map(([ok, t]) => `<li class="${ok ? "ok" : "no"}">${esc(t)}</li>`).join("")}</ul>
+    <p class="muted">So entsteht die Farbe: Der <b>Wochentrend</b> (Kurs gegen die 40-Wochen-Linie ≈ 200-Tage-Linie, Abstand zum Jahreshoch, VIX) entscheidet über Aufwärtstrend, Seitwärts, Korrektur oder Abwärtstrend – ein Wechsel gilt erst nach zwei Wochen, bei −20 % sofort. Ist der Wochentrend aufwärts, aber kurzfristig Druck da (unter der 50-Tage-Linie, ≥ 5 % unter dem Hoch, viele Verteilungstage, VIX ≥ 22 oder invertiert, Kreditmarkt nervös), steht die Ampel auf <b>Gelb</b>; zurück auf Grün erst nach 5 ruhigen Tagen.</p>
+    <p class="muted">Backtest seit 1993: Im Abwärtstrend brachte der Nasdaq 100 in den folgenden drei Monaten im Schnitt nur +0,6 %, in den schlimmsten 5 % der Fälle −21 % binnen eines Monats. In gelben Phasen waren die Erträge im Schnitt nicht schlechter, die Rückschläge aber deutlich größer – darum dort kleinere Positionen. Reine Einordnung, die Kairo-Regel bleibt unverändert.</p>`; }
 // Weitere Indizes (14.11.): Dow, Russell 2000, Euro Stoxx 50, FTSE, SMI, CAC, Hang Seng, Shanghai, KOSPI – aufklappbar, ruhig
 const IDX_MORE = ["^DJI", "^RUT", "^STOXX50E", "^FTSE", "^SSMI", "^FCHI", "^HSI", "000001.SS", "^KS11"];
 function moreIdxHtml(m) {
@@ -6026,7 +6041,7 @@ function newsHtml() {
     const mac = (calData || []).filter(e => (e.kind === "macro" || e.kind === "expiry" || (e.kind === "ipo" && e.big)) && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 7)
       .map(e => `<div class="bf-r"><i class="y"></i><span><b>${esc(e.title || "Termin")}</b><em>${daysUntil(e.date) === 0 ? "Heute" : daysUntil(e.date) === 1 ? "Morgen" : dateDE(e.date)}${e.kind === "macro" && macWhen(e) ? " · " + esc(macWhen(e)) : e.kind === "ipo" ? " · " + esc(ipoInfo(e)) : ""}</em></span></div>`);
     if (!calData) loadCalendar();
-    const reg = anaData && anaData.market && anaData.market.regime;
+    const reg = ltReg(anaData && anaData.market);
     return head + depNewsHtml(row, msOf, nameOf) + (reg ? `<div class="bf-mkt" style="margin:8px 2px"><i class="${reg.tone}"></i><span>Marktampel: <b>${esc(reg.label)}</b> · Details im Überblick</span></div>` : "")
       + (mac.length ? block("Termine diese Woche (Zinsen, Inflation, Konjunktur, Verfall, Börsengänge)", mac, "") : "")
       + block("Marktmeldungen · 3 Tage", pool.map(row), "Keine Marktmeldungen geladen.");
@@ -8907,7 +8922,7 @@ const H4F = [["R40", "RSI"], ["M", "MACD"], ["B", "MBI"], ["S", "Bruch"]];
 const h4Go = it => it && (it.st === "go" || (it.st === "run" && ((it.trade || {}).day || 99) <= 1));
 // ---------- Tagesbriefing: das Wichtigste seit dem letzten Scan, als Fenster beim Öffnen ----------
 function briefHtml() {
-  const mine = myTickers(), ch = jsonData["changes.json"], m = anaData && anaData.market, reg = m && m.regime;
+  const mine = myTickers(), ch = jsonData["changes.json"], m = anaData && anaData.market, reg = ltReg(m);
   const when = new Date(data.generated).toLocaleString("de-DE", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const h = new Date().getHours(), nm = String(state.name || "").trim();
   const sec = (t, body) => body ? `<div class="bf-s"><b>${t}</b><div class="bf-l">${body}</div></div>` : "";
@@ -9096,7 +9111,7 @@ function marketHtml() {
   const reg = m.regime, ids = ["^GSPC", "^NDX", "^GDAXI", "^STOXX", "^VIX"].filter(k => m[k]);
   const tone = { green: "up", red: "down", yellow: "" };
   return `<div class="hcard mkt">${hHead("Markt")}
-    ${(m.phase || {})["^GSPC"] ? (p => `<div class="regime tone-${p.tone}" data-gosec="news" data-newstab="overview" role="button" tabindex="0"><i></i><div><b>Marktphase: ${esc(p.label)} <small class="muted">seit ${phWk(p.weeks)}</small></b><span>${esc(phaseText(p.k))}${reg ? ` Heute: ${esc(reg.label)}.` : ""}</span></div></div>`)(m.phase["^GSPC"])
+    ${(m.light || {}).all ? (p => `<div class="regime tone-${p.tone}" data-gosec="news" data-newstab="overview" role="button" tabindex="0"><i></i><div><b>Marktampel: ${esc(p.label)} <small class="muted">seit ${dateDE(p.since)}</small></b><span>${esc(p.do)}</span>${ltIdx(m.light)}</div></div>`)(m.light.all)
       : reg ? `<div class="regime tone-${reg.tone}"><i></i><div><b>Trend: ${esc(reg.label)}</b><span>${reg.tone === "green" ? "Rückenwind für Long-Setups – S&P 500 über der EMA 50, VIX ruhig." : reg.tone === "red" ? "Gegenwind – Reversal-Einstiege scheitern häufiger. Kleiner positionieren." : "Gemischtes Umfeld – Einstiege selektiv."}</span></div></div>` : ""}
     ${state.sec === "today" ? secLineHtml() : ""}${fearHtml(m.fear)}
     <div class="mtiles"${state.sec === "today" ? " hidden" : ""}>${ids.map(k => { const x = m[k]; return `<div class="mt"><span>${esc(x.name)}</span><b>${fmt(x.c, k === "^VIX" ? 1 : 0)}</b>
@@ -9471,6 +9486,10 @@ function etfLine(h, buy) {
 // Überhitzung – gerechnet aus den Tageskursen des ETF (etf.json hist). Grün = guter Moment, Gelb = normal, Rot = heiß gelaufen.
 // Test SPYI 11/2024–11/2026 (scratch etft.py): nach Grün Ø +7,8 % in 3 Monaten, nach Gelb +2,5 %, nach Rot +1,6 %. Kurzer Zeitraum,
 // langfristig schlägt sofort anlegen jedes Warten – die Sparrate läuft deshalb immer, die Ampel gilt nur für Extra-Geld.
+// Nachkauf-Ampel vs. Marktampel (19.11.2026, Rückfrage: „Welt-ETF stark gesunken und die App zeigt Grün?“): zwei Fragen, zwei Antworten.
+function etfVsMarket(tlv) { const L = anaData && anaData.market && anaData.market.light && anaData.market.light.all; if (!L) return "";
+  const diff = tlv === "g" && L.lv <= 2;
+  return `<p class="eh-mk${diff ? " diff" : ""}"><i style="background:${LT_C[L.lv]}"></i><span>${diff ? `Kein Widerspruch: Grün heißt hier <b>günstiger Nachkaufmoment nach einem Rücksetzer</b> – für Geld, das Jahre liegen bleibt, waren solche Tage historisch gute Kaufzeitpunkte. Für <b>Swing-Trades</b> (Wochen bis Monate) gilt die Marktampel – gerade <b>${esc(L.label)}</b>.` : `Für Swing-Trades (Wochen bis Monate) gilt die Marktampel – gerade <b>${esc(L.label)}</b>.`}</span></p>`; }
 const ETF_AMP = { g: ["Guter Moment", "var(--up)"], y: ["Normal", "#f5b800"], r: ["Überhitzt", "#ff453a"] };
 let etfTimC = null;
 function etfTiming(e) {
@@ -9630,9 +9649,9 @@ function etfHtml() {
   const AMP = tlv ? ETF_AMP[tlv] : null, ddTxt = e ? (e.dd < .005 ? "am Hoch" : `−${pct(e.dd, 1)}`) : "";
   const tile = (l, v, sub) => `<div class="e2-f"><span>${l}</span><b>${v}</b>${sub ? `<small>${sub}</small>` : ""}</div>`;
   const hero = e ? `<div class="hcard etf-hero2"${AMP ? ` style="--amp:${AMP[1]}"` : ""}>
-      <div class="e2-top"><div class="e2-tt"><span class="eh-k">Einstiegs-Ampel · kurzfristig (Tage) · ${esc(e.name)}</span><b class="eh-t">${head}</b></div></div>
+      <div class="e2-top"><div class="e2-tt"><span class="eh-k">Nachkauf-Ampel · Extra-Geld im Welt-ETF (Anlage auf Jahre) · ${esc(e.name)}</span><b class="eh-t">${head}</b></div></div>
       ${tm ? `<div class="e2-scale" role="img" aria-label="Ampel: ${AMP ? AMP[0] : ""}">${["g", "y", "r"].map(k => `<div class="e2-seg${tlv === k ? " on" : ""}" style="--c:${ETF_AMP[k][1]}"><u></u><span>${ETF_AMP[k][0]}</span></div>`).join("")}</div>` : ""}
-      <p class="eh-do">${todo}</p>
+      <p class="eh-do">${todo}</p>${etfVsMarket(tlv)}
       <div class="e2-facts">${tile("Kurs", `${fmt(e.c)} €`, etfStale(e) ? `<span class="gold">vom ${dateDE(e.date)}</span>` : "Schlusskurs")}${tile("Vom Hoch", ddTxt, "1-Jahres-Hoch")}${tm ? [["EMA 100", tm.e100], ["EMA 200", tm.e200]].map(([l, v]) => tile(l, fmt(v), v ? `<span class="${e.c >= v ? "up" : "down"}">${sgnPct(e.c / v - 1, 1)}</span> ${e.c >= v ? "darüber" : "darunter"}` : "")).join("") : ""}</div>
       ${tm ? `<div class="e2-cols"><div><div class="e2-h">Warum</div><ul class="eh-why">${tm.why.map(([k, t]) => `<li class="${k}"><i></i>${esc(t)}</li>`).join("")}</ul></div>
         ${S ? `<div><div class="e2-h">Rückblick · Ø 3 Monate danach</div><div class="e2-stats">${["g", "y", "r"].map(k => `<div class="e2-st${tlv === k ? " on" : ""}" style="--c:${ETF_AMP[k][1]}"><span><i></i>${ETF_AMP[k][0]}</span><b class="${S[k].f60 == null ? "" : S[k].f60 >= 0 ? "up" : "down"}">${S[k].f60 == null ? "–" : sgnPct(S[k].f60, 1)}</b><small>${pct(S[k].share, 0)} der Tage</small></div>`).join("")}</div><div class="e2-src">SPYI seit ${dateDE(tm.from)}${(Date.now() - Date.parse(tm.from)) / 31557600000 < 3 ? " · kurze Historie, Werte schwanken noch" : ""}</div></div>` : ""}</div>` : ""}
@@ -9816,7 +9835,7 @@ async function tradeFeat(t, sec) {
 const FEAT_ROWS = [["ins", "Insider-Käufe (90 Tage)", { 1: "ja", 0: "nein" }], ["sm", "Hedgefonds (13F)", { 1: "kaufen netto", 0: "ausgeglichen", "-1": "verkaufen netto" }],
   ["au", "Auto-Analyse Trend", { 1: "aufwärts", 0: "gemischt", "-1": "abwärts" }], ["pat", "Chartmuster", { 1: "bullisch", 0: "keins", "-1": "bärisch" }],
   ["wk", "Wochentrend", { 1: "aufwärts", 0: "seitwärts", "-1": "abwärts" }], ["sec", "Sektor (3 Monate)", { 1: "Top 3", 0: "Mitte", "-1": "letzte 3" }],
-  ["mk", "Marktampel", { weak: "grün · Ausverkauf", mixed: "gelb", strong: "grau · gesund" }], ["earn", "Quartalszahlen ≤ 14 Tage", { 1: "ja", 0: "nein" }]];
+  ["mk", "Markt beim Einstieg", { weak: "Ausverkauf", mixed: "angeschlagen", strong: "gesund" }], ["earn", "Quartalszahlen ≤ 14 Tage", { 1: "ja", 0: "nein" }]];
 function featHtml(done) {
   const val = (p, k) => k === "mk" ? p.mk : p.ft ? p.ft[k] : undefined, withF = done.filter(p => p.ft);
   const rows = FEAT_ROWS.map(([k, l, map]) => { const g = {}; done.forEach(p => { const v = val(p, k); if (v == null || !(String(v) in map)) return; (g[v] = g[v] || []).push(p.R); });
@@ -10158,8 +10177,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.235";
-const APP_NEWS = [["2026.11.235", "Marktphase, Live-News, TradingView-Vollbild", [
+const APP_VER = "2026.11.236";
+const APP_NEWS = [["2026.11.236", "Neue Marktampel für Swing-Trades", [
+  ["Marktampel neu – mit Backtest seit 1993", "Der Wochentrend von S&P 500 und Nasdaq 100 bestimmt die Farbe (Aufwärtstrend, Unter Druck, Korrektur, Abwärtstrend); kurzfristiger Druck (unter der 50-Tage-Linie, Verteilungstage, VIX-Kurve, Kreditmarkt) stuft Grün auf Gelb ab. Maßgeblich ist der schwächere der beiden US-Indizes, dazu MSCI World und DAX einzeln. Mit Verlauf über drei Monate, Begründung und klarer Handlungsempfehlung."],
+  ["Nachkauf-Ampel klar abgegrenzt", "Die ETF-Ampel bewertet Extra-Geld für den Welt-ETF über Jahre – Grün nach einem Rücksetzer ist dort Absicht. Für Swing-Trades verweist sie jetzt auf die Marktampel."]]],
+ ["2026.11.235", "Marktphase, Live-News, TradingView-Vollbild", [
   ["Marktphase statt Tagesampel", "Heute und Markt zeigen jetzt die mittelfristige Marktphase (Aufwärtstrend, Seitwärts, Korrektur, Abwärtstrend) aus Wochenkursen – sie springt nicht täglich um, eine neue Phase gilt erst nach zwei Wochen. Mit „seit X Wochen“, Verlauf über ein Jahr und DAX daneben. Die Tageslage steht klein darunter."],
   ["ETF-Ampel bleibt kurzfristig", "Sie bewertet bewusst nur den Kaufmoment der nächsten Tage – jetzt auch so beschriftet."],
   ["Live-News unter dem Chart", "Beim Öffnen einer Aktie holt Kairo sofort die neuesten Schlagzeilen (Kursdienst, für US-Aktien auch Finnhub), danach alle 3 Minuten; ↻ lädt sofort. Neue Meldungen sind markiert, große Tagesbewegungen ohne Meldung werden ausdrücklich genannt."],
@@ -11740,7 +11762,7 @@ const tpCfg = () => ({ depot: +state.tpDepot > 0 ? +state.tpDepot : 3000, risk: 
 function tpMarket() {
   const m = anaData && anaData.market, s = m && m["^GSPC"], v = m && m["^VIX"] ? m["^VIX"].c : null;
   if (!s) return null;
-  if (!s.above200 || (v != null && v >= 25)) return { k: "weak", tone: "green", t: "grün · Ausverkauf – stärkste Phase",
+  if (!s.above200 || (v != null && v >= 25)) return { k: "weak", tone: "green", t: "Ausverkauf – für Reversals die stärkste Phase",
     s: `S&P 500 ${s.above200 ? "über" : "unter"} EMA 200${v != null ? `, VIX ${fmt(v, 0)}` : ""}.` };
   if (!s.above50 || (v != null && v >= 20)) return { k: "mixed", tone: "yellow", t: "gelb · angeschlagen – normales Risiko",
     s: `S&P 500 ${s.above50 ? "über" : "unter"} EMA 50${v != null ? `, VIX ${fmt(v, 0)}` : ""}.` };
