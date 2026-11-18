@@ -1,0 +1,71 @@
+name: Finanzen über Jahre (SEC)
+
+# Lädt wöchentlich die Jahreszahlen (Umsatz, Gewinne, Free Cashflow, Bilanz) aller US-Aktien aus den SEC-Finanzdaten
+# (kostenlos) und legt fin.json im Branch kairo-fin ab. Scan und Watchlist-Scan liefern sie mit der App aus.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 6 * * 0"        # sonntags früh
+  push:
+    branches: [main, claude/fluere-4]
+    paths: [backend/finhist.py, .github/workflows/finhist.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: finhist
+  cancel-in-progress: false
+
+jobs:
+  shard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 2           # SEC: höchstens 10 Abrufe je Sekunde – zwei Teile gleichzeitig bleiben darunter
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python -m backend.finhist --shard ${{ matrix.shard }} --shards 4
+        env:
+          SEC_CONTACT: ${{ secrets.SEC_CONTACT }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fin-${{ matrix.shard }}
+          path: fin_part_${{ matrix.shard }}.json
+          retention-days: 7
+  combine:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: fin-*
+          merge-multiple: true
+          path: parts
+      - name: Bisherigen Stand laden (Branch kairo-fin)
+        run: |
+          if git fetch -q origin kairo-fin:kairo-fin 2>/dev/null; then git worktree add -q store kairo-fin;
+          else git worktree add -q --orphan -b kairo-fin store; fi
+          ls -la parts store
+      - run: python -m backend.finhist --combine parts --prev store/fin.json
+      - name: Stichprobe
+        run: python -c "import json;d=json.load(open('site/data/fin.json'))['by'];[print(t, d[t]) for t in ('AAPL','NVDA','MSFT') if t in d]"
+      - name: Speichern
+        run: |
+          cp site/data/fin.json store/fin.json
+          cd store
+          git add -A
+          git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Finanzen $(date +%F)" || exit 0
+          git push -q origin kairo-fin
