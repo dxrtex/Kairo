@@ -215,7 +215,10 @@ def day_moves(df) -> dict:
             v = df["Volume"].dropna()
             base = float(v.iloc[-21:-1].mean()) if len(v) > 21 else 0
             rv = round(float(v.iloc[-1]) / base, 2) if base > 0 else None
-        return {"d1": r(1), "d5": r(5), "m1": r(21), "m3": r(63), "ytd": ytd, "rv": rv,   # Zeiträume für Sektoren/Heatmap
+            vd = round(float(v.iloc[-1]) * float(c.iloc[-1])) if len(v) and float(v.iloc[-1]) > 0 else None   # Umsatz heute in Währung (Top-Beweger)
+        else:
+            vd = None
+        return {"d1": r(1), "d5": r(5), "m1": r(21), "m3": r(63), "ytd": ytd, "rv": rv, "vd": vd,   # Zeiträume für Sektoren/Heatmap
                 "lw": [[str(i.date()), round(float(r["Low"]), 4), round(float(r["High"]), 4)] for i, r in tail.iterrows()]}
     except Exception:
         return {}

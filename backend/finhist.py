@@ -93,13 +93,46 @@ def parse(facts: dict) -> dict | None:
     return out
 
 
+FORMS = {"10-K", "10-Q", "8-K", "20-F", "6-K", "40-F", "S-1", "DEF 14A", "10-K/A", "10-Q/A", "SC 13D", "SC 13G"}
+ITEMS_8K = {"1.01": "Wesentlicher Vertrag", "2.01": "Kauf/Verkauf", "2.02": "Quartalszahlen", "2.05": "Restrukturierung", "5.02": "Vorstand",
+            "5.07": "Hauptversammlung", "7.01": "Mitteilung", "8.01": "Sonstiges", "1.05": "Cyber-Vorfall", "3.02": "Aktienausgabe"}
+
+
+def filings(sub: dict, n: int = 15) -> list:
+    """Letzte Meldungen bei der SEC: [[datum, formular, beschreibung, url], …] neueste zuerst."""
+    r = (sub or {}).get("filings", {}).get("recent", {})
+    cik = str(sub.get("cik") or "").lstrip("0")
+    out = []
+    for i, f in enumerate(r.get("form", [])):
+        if f not in FORMS:
+            continue
+        acc = str(r["accessionNumber"][i]).replace("-", "")
+        doc = (r.get("primaryDocument") or [""] * (i + 1))[i]
+        items = str((r.get("items") or [""] * (i + 1))[i] or "")
+        d = ", ".join(ITEMS_8K[x] for x in items.split(",") if x.strip() in ITEMS_8K) if f == "8-K" else ""
+        out.append([r["filingDate"][i], f, d or str((r.get("primaryDocDescription") or [""] * (i + 1))[i] or "")[:60],
+                    f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc}/{doc}"])
+        if len(out) >= n:
+            break
+    return out
+
+
 def fetch(cik: int) -> dict | None:
     import requests
     try:
         r = requests.get(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{int(cik):010d}.json", headers=_sec_ua(), timeout=40)
         if r.status_code != 200:
             return None
-        return parse(r.json().get("facts", {}).get("us-gaap", {}))
+        out = parse(r.json().get("facts", {}).get("us-gaap", {}))
+        try:                                       # dazu die letzten Meldungen (10-K, 10-Q, 8-K …) mit Link
+            time.sleep(0.12)
+            s = requests.get(f"https://data.sec.gov/submissions/CIK{int(cik):010d}.json", headers=_sec_ua(), timeout=30)
+            fl = filings(s.json()) if s.status_code == 200 else []
+            if fl:
+                out = {**(out or {}), "fl": fl}
+        except Exception:
+            pass
+        return out
     except Exception as exc:
         print(f"Finanzen {cik}: {exc!r}")
         return None

@@ -44,3 +44,13 @@ def test_parse_merges_tag_switch():
          "RevenueFromContractWithCustomerExcludingAssessedTax": {"units": {"USD": [_dur(y, 2e9) for y in range(2018, 2026)]}}}
     p = parse(f)
     assert p["y"][-1] == "2025" and p["rev"][-1] == 2e9 and len(p["y"]) == 6
+
+
+def test_filings_list():
+    from backend.finhist import filings
+    sub = {"cik": "0000320193", "filings": {"recent": {"form": ["4", "8-K", "10-Q"], "accessionNumber": ["a", "0000320193-26-000001", "0000320193-26-000002"],
+           "filingDate": ["2026-11-01", "2026-10-30", "2026-08-01"], "primaryDocument": ["x.xml", "a8k.htm", "q.htm"], "items": ["", "2.02,9.01", ""],
+           "primaryDocDescription": ["", "8-K", "10-Q"]}}}
+    fl = filings(sub)
+    assert [f[1] for f in fl] == ["8-K", "10-Q"]
+    assert fl[0][2] == "Quartalszahlen" and fl[0][3].endswith("/320193/000032019326000001/a8k.htm")
