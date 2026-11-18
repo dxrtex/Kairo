@@ -37,3 +37,13 @@ def test_worldbank_valid_filter():
     wb = worldbank({"g": [{"country": {"id": "EU", "value": "European Union"}, "countryiso3code": "EUU", "value": 1, "date": "2025"},
                           {"country": {"id": "FR", "value": "France"}, "countryiso3code": "FRA", "value": 0.8, "date": "2025"}]}, {"FR": "Europe & Central Asia"})
     assert list(wb) == ["FR"] and wb["FR"]["r"] == "Europe & Central Asia"
+
+
+def test_poly_skips_placeholders_and_old_worldbank():
+    ev = [{"title": "Next CEO of NVIDIA?", "slug": "c", "volume24hr": 1, "markets": [{"groupItemTitle": "Candidate T", "outcomes": "[\"Yes\",\"No\"]", "outcomePrices": "[\"0.5\",\"0.5\"]"}]},
+          {"title": "Fed cut?", "slug": "f", "volume24hr": 1, "markets": [{"groupItemTitle": "A", "outcomes": "[\"Yes\",\"No\"]", "outcomePrices": "[\"0.5\",\"0.5\"]"}, {"groupItemTitle": "B", "outcomes": "[\"Yes\",\"No\"]", "outcomePrices": "[\"0.4\",\"0.6\"]"}]}]
+    p = poly(ev)
+    assert [x["q"] for x in p] == ["Fed cut?"] and p[0]["o"] == [["B", 0.4]]
+    wb = worldbank({"d": [{"country": {"id": "DE", "value": "Germany"}, "countryiso3code": "DEU", "value": 20.8, "date": "1990"}],
+                    "g": [{"country": {"id": "DE", "value": "Germany"}, "countryiso3code": "DEU", "value": 0.2, "date": "2025"}]})
+    assert "d" not in wb["DE"] and wb["DE"]["g"] == 0.2

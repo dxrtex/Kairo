@@ -56,6 +56,8 @@ def poly(events: list, n: int = 24) -> list:
                 names, prices = json.loads(m.get("outcomes") or "[]"), [float(p) for p in json.loads(m.get("outcomePrices") or "[]")]
             except (ValueError, TypeError):
                 continue
+            if len(prices) == 2 and prices[0] == prices[1] == 0.5:
+                continue                                   # noch nie gehandelt (Platzhalter wie „Candidate T“)
             if len(mk) == 1 and len(names) == len(prices):
                 opts = [[str(a), round(b, 3)] for a, b in zip(names, prices)]
             elif prices:                                   # mehrere Märkte (z. B. „Wie viele Zinssenkungen?“): Ja-Preis je Teilmarkt
@@ -98,6 +100,8 @@ def worldbank(series: dict, valid: dict | None = None) -> dict:
                 continue
             if valid is not None and iso not in valid:
                 continue
+            if str(x.get("date") or "0")[:4].isdigit() and int(str(x.get("date"))[:4]) < int(time.strftime("%Y")) - 6:
+                continue                                   # uralte Werte (z. B. Staatsschulden 1990) weglassen
             o = out.setdefault(iso, {"n": (x.get("country") or {}).get("value", iso), **({"r": valid[iso]} if valid else {})})
             if k not in o:
                 o[k] = round(float(x["value"]), 2)
