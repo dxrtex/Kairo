@@ -2367,6 +2367,7 @@ table.dcf-g { min-width: 0; width: auto; } .dcf-g td, .dcf-g th { text-align: ri
 .co-note-in:focus { outline: none; border-color: var(--accent, #0a84ff); } .co-seg button.has::after { content: ""; display: inline-block; width: 5px; height: 5px; margin-left: 5px; border-radius: 50%; background: var(--accent, #0a84ff); vertical-align: 2px; }
 .search > .cmd-b { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 2; margin: 0 !important; } .search:has(.search-x:not([hidden])) > .cmd-b { display: none; } .search > input { padding-right: 64px !important; }
 .cmd-b { flex: none; height: 28px; margin-right: 8px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; } .cmd-b kbd { font: inherit; }
+.cx-det { display: contents; }
 .cmdk { position: fixed; inset: 0; z-index: 9000; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; } .cmdk-back { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
 .cmdk-box { position: relative; width: min(640px, 100%); border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 24px 80px rgba(0,0,0,.55); overflow: hidden; }
 .cmdk-in { display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--line); } .cmdk-in svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
@@ -4344,7 +4345,7 @@ function cardModalHtml(r) {
         ${cxAnaHtml(r)}
         ${cxNewsHtml(r)}
         ${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(earnMiniHtml(r.ticker))}
-        ${cxEpsHtml(r.ticker)}${cxIncHtml(r.ticker, r.currency)}
+        <div class="cx-det" data-cxdet="${esc(r.ticker)}" data-cur="${esc(r.currency || "")}">${cxEpsHtml(r.ticker)}${cxIncHtml(r.ticker, r.currency)}</div>
         ${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(smCardHtml(r.ticker, true))}
         ${(h => h ? `<div class="cx-box cx-sm cx-fund">${h}</div>` : "")(fundCardHtml(r.ticker))}
         <div class="cx-card"><div class="cx-sh">Kairo-Kriterien <span>${r.met ?? "–"} von ${r.total ?? 11}</span></div>
@@ -4424,7 +4425,7 @@ function cxNewsHtml(r) {
 const bigN = v => v == null ? "–" : Math.abs(v) >= 1e9 ? `${fmt(v / 1e9, 1)} Mrd.` : Math.abs(v) >= 1e6 ? `${fmt(v / 1e6, 0)} Mio.` : fmt(v, 0);
 const qLbl = d => { const x = new Date(String(d).slice(0, 10) + "T12:00:00"); x.setDate(x.getDate() - 45); return `Q${Math.floor(x.getMonth() / 3) + 1} ’${String(x.getFullYear()).slice(2)}`; };
 function cxEpsHtml(t) {
-  const eh = ((fundOf(t) || {}).eh || []).filter(x => x[2] != null); if (eh.length < 2) return "";
+  const eh = ((fundD(t) || {}).eh || []).filter(x => x[2] != null); if (eh.length < 2) return "";
   const W = 360, H = 132, pl = 34, pr = 8, top = 10, bot = 24, vs = eh.flatMap(x => [x[1], x[2]]).filter(v => v != null).concat(0);
   let lo = Math.min(...vs), hi = Math.max(...vs); const pad = (hi - lo) * .12 || 1; lo -= pad; hi += pad;
   const Y = v => top + (hi - v) / (hi - lo) * (H - top - bot), X = i => pl + (i + .5) * (W - pl - pr) / eh.length;
@@ -4438,7 +4439,7 @@ function cxEpsHtml(t) {
     <div class="eps-lg"><span><i class="a"></i>tatsächlich</span><span><i class="e"></i>Schätzung</span>${sp != null ? `<span class="${sp >= 0 ? "up" : "down"}">zuletzt ${sgnPct(sp, 0)} zur Schätzung</span>` : ""}</div></div>`;
 }
 function cxIncHtml(t, cur) {
-  const ih = ((fundOf(t) || {}).ih || []).filter(x => x[1] > 0); if (ih.length < 2) return "";
+  const ih = ((fundD(t) || {}).ih || []).filter(x => x[1] > 0); if (ih.length < 2) return "";
   const W = 360, H = 150, pl = 8, pr = 8, top = 22, bot = 22, mx = Math.max(...ih.map(x => x[1])), mn = Math.min(0, ...ih.map(x => x[2] ?? 0));
   const Y = v => top + (mx - v) / (mx - mn) * (H - top - bot), slot = (W - pl - pr) / ih.length, bw = Math.min(26, slot * .3);
   const bars = ih.map((x, i) => { const cx = pl + slot * (i + .5), y0 = Y(0), m = x[2] != null ? x[2] / x[1] : null;
@@ -8773,10 +8774,12 @@ function getJson(name) {
   if (!(name in jsonData)) {
     jsonData[name] = undefined;
     fetch(`data/${name}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
-      .then(d => { jsonData[name] = d || null; if (["today", "bilanz", "settings", "depot", "etf", "game", "scanner"].includes(state.sec) || (state.sec === "news" && ["funds.json", "insider.json", "indices.json"].includes(name))) render();
+      .then(d => { jsonData[name] = d || null; if (d && name.startsWith("co/")) cxDetPaint();
+        if (name.startsWith("co/") ? false : ["today", "bilanz", "settings", "depot", "etf", "game", "scanner"].includes(state.sec) || (state.sec === "news" && ["funds.json", "insider.json", "indices.json"].includes(name))) render();
         // Chart: Seitenleiste (Fundamental-Check, fairer Wert, Smart Money, Signale) nachziehen, ohne den Chart neu zu bauen (Fehler 14.11.)
-        else if (["fin.json", "desc.json", "fund.json"].includes(name) && d && $("ctCo")) coPaint($("ctCo").dataset.t);
-        else if (state.sec === "chart" && d && ["fund.json", "insider.json", "funds.json", "sighist.json"].includes(name) && cfChart && $("cfSide") && !RP.on) { const y = $("cfSide").scrollTop; $("cfSide").innerHTML = cockpitSide(cfChart, cfChart.r); $("cfSide").scrollTop = y; } });
+        else if ((["fin.json", "desc.json", "fund.json"].includes(name) || name.startsWith("co/")) && d && $("ctCo")) { coPaint($("ctCo").dataset.t);
+          if (name.startsWith("co/") && state.sec === "chart" && cfChart && $("cfSide") && !RP.on) { const y = $("cfSide").scrollTop; $("cfSide").innerHTML = cockpitSide(cfChart, cfChart.r); $("cfSide").scrollTop = y; } }
+        else if (state.sec === "chart" && d && (["fund.json", "insider.json", "funds.json", "sighist.json"].includes(name) || name.startsWith("co/")) && cfChart && $("cfSide") && !RP.on) { const y = $("cfSide").scrollTop; $("cfSide").innerHTML = cockpitSide(cfChart, cfChart.r); $("cfSide").scrollTop = y; } });
   }
   return jsonData[name];
 }
@@ -10070,8 +10073,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.231";
-const APP_NEWS = [["2026.11.231", "Feinschliff helles Design und iPad", [
+const APP_VER = "2026.11.232";
+const APP_NEWS = [["2026.11.232", "Schneller laden", [
+  ["Weniger Daten beim Start", "Die Kennzahlen für Screener und Schneeflocke sind nur noch halb so groß (3 statt 5,7 MB). Quartale, Analysten-Einstufungen und SEC-Finanzen kommen erst, wenn du eine Aktie öffnest – etwa 50 KB statt 4,5 MB."]]],
+ ["2026.11.231", "Feinschliff helles Design und iPad", [
   ["Helles Design", "Unternehmensbereich, Befehlsleiste und Ländertabelle haben im hellen Design jetzt den richtigen hellen Hintergrund."],
   ["iPad hochkant", "Der Chart ragt nicht mehr über den Bildschirmrand; die Reiter unter dem Chart lassen sich seitlich wischen."],
   ["Befehlsleiste", "Der ⌘K-Knopf sitzt jetzt im Suchfeld; exakte Kürzel stehen in der Trefferliste oben."]]],
@@ -14490,7 +14495,8 @@ const CO_F = [["salesPerShare", "Umsatz je Aktie", "n"], ["eps", "Gewinn je Akti
 // Absolute Zahlen aus den SEC-Jahresberichten (fin.json, wöchentlich) – wie im Profi-Terminal; Farbe = Veränderung zum Vorjahr
 const FIN_R = [["rev", "Umsatz"], ["gp", "Bruttogewinn"], ["oi", "Operatives Ergebnis"], ["ni", "Nettogewinn"], ["nm", "Nettomarge", "p"], ["eps", "Gewinn je Aktie", "e"],
   ["fcf", "Free Cashflow"], ["cash", "Cash"], ["debt", "Langfr. Schulden", "", 1], ["eq", "Eigenkapital"]];
-const finOf = t => { const f = getJson("fin.json"); return f && f.by ? f.by[t] || f.by[tkClean(t)] || f.by[String(t).replace("-", ".")] || null : null; };
+const finOf = t => { const fd = getJson("fund.json"); if (!fd) return null; if (fd.det) return (detOf(t) || {}).fin || null;   // neue Form: in den Detaildateien
+  const f = getJson("fin.json"); return f && f.by ? f.by[t] || f.by[tkClean(t)] || f.by[String(t).replace("-", ".")] || null : null; };
 function coFinHtml(F) {
   const n = innerWidth < 600 ? 4 : 6, yrs = F.y.slice(-n), off = F.y.length - yrs.length;
   const col = k => k === "nm" ? (F.rev && F.ni ? F.rev.map((r, i) => r && F.ni[i] != null ? F.ni[i] / r : null) : null) : F[k];
@@ -14522,7 +14528,7 @@ function coFHtml(ser) {
 }
 // Gewinne vs. Schätzungen: hohler Punkt = Schätzung, voller Punkt = Ergebnis (grün übertroffen, rot verfehlt)
 function coQHtml(t) {
-  const o = CO[t] || {}, ed = earnData && (earnData[t] || earnData[tkClean(t)]), fd = fundOf(t) || {};
+  const o = CO[t] || {}, ed = earnData && (earnData[t] || earnData[tkClean(t)]), fd = fundD(t) || {};
   let L = fd.eh && fd.eh.length >= 2 ? fd.eh.map(([d, e, a]) => ({ d, e, a })) : ed && ed.q8 ? ed.q8.map(([d, e, a]) => ({ d, e, a })) : [];
   if (L.length < 4 && o.ern && o.ern.length) L = o.ern.filter(x => x.actual != null).map(x => ({ d: x.period, e: x.estimate, a: x.actual })).sort((a, b) => a.d.localeCompare(b.d)).slice(-8);
   if (L.length < 2) return "";
@@ -14555,12 +14561,12 @@ const UD_DE = g => ({ "Buy": "Kaufen", "Strong Buy": "Starker Kauf", "Outperform
   "Hold": "Halten", "Neutral": "Neutral", "Equal-Weight": "Neutral", "Market Perform": "Neutral", "Sector Perform": "Neutral", "Peer Perform": "Neutral", "In-Line": "Neutral",
   "Sell": "Verkaufen", "Underperform": "Untergewichten", "Underweight": "Untergewichten", "Reduce": "Reduzieren" })[g] || g;
 function coUdHtml(t) {
-  const U = (fundOf(t) || {}).ud || []; if (!U.length) return "";
+  const U = (fundD(t) || {}).ud || []; if (!U.length) return "";
   return `<div class="co-sub">Letzte Einstufungen</div><div class="tscroll"><table class="ptab co-ud"><thead><tr><th>Datum</th><th>Bank</th><th>Aktion</th><th>Einstufung</th><th>Kursziel</th></tr></thead><tbody>${U.map(([d, firm, fr, to, a, pt]) => { const [al, ac] = UD_ACT[a] || [a, ""];
     return `<tr><td>${esc(dateDE(d))}</td><td>${esc(firm)}</td><td class="${ac}">${esc(al)}</td><td>${fr && fr !== to ? `<span class="muted">${esc(UD_DE(fr))} →</span> ` : ""}<b class="${ac}">${esc(UD_DE(to))}</b></td><td>${pt ? fmt(pt, 2) : "–"}</td></tr>`; }).join("")}</tbody></table></div>`;
 }
 function coAHtml(t) {
-  const o = CO[t] || {}, L = o.rec || [], fd = fundOf(t) || {}, r0 = o.r || byTicker(t) || {}, s = r0.senti || {}, tg = s.tgt || (fd.tm ? { m: fd.tm } : null);
+  const o = CO[t] || {}, L = o.rec || [], fd = fundD(t) || {}, r0 = o.r || byTicker(t) || {}, s = r0.senti || {}, tg = s.tgt || (fd.tm ? { m: fd.tm } : null);
   const fan = tg && tg.m && o.cc ? `<div class="an-fan co-fan" data-cxana></div>` : "";
   if (!L.length) { if (!tg && !fd.rm && !(fd.ud || []).length) return "";
     const [lbl, cls] = fd.rm ? SCR_RM(fd.rm) : ["", ""], px = (LIVE.map[t] && LIVE.map[t].c) || fd.cp, up = tg && tg.m && px ? tg.m / px - 1 : null;
@@ -14860,7 +14866,7 @@ document.addEventListener("click", e => { const a = e.target.closest("[data-scg]
   const b = e.target.closest("[data-sck]"); if (b) { state.scK = b.dataset.sck; save(); render(); } });
 // KGV/KUV täglich (wie „Valuation history“ im Profi-Terminal): Kurs ÷ Gewinn der letzten 4 Quartale bzw. Börsenwert ÷ Umsatz der letzten 4 Quartale
 function coValSeries(t, k) {
-  const o = CO[t] || {}, c = o.cc, f = fundOf(t) || {}; if (!c || !c.t || !c.c) return null;
+  const o = CO[t] || {}, c = o.cc, f = fundD(t) || {}; if (!c || !c.t || !c.c) return null;
   let steps = [];                                      // [ab Datum, Nenner]
   if (k === "pe") { const E = (f.eh || []).filter(x => x[2] != null); for (let i = 3; i < E.length; i++) steps.push([E[i][0], E[i - 3][2] + E[i - 2][2] + E[i - 1][2] + E[i][2]]); }
   if (k === "ps") { const Q = f.qh || [], sh = f.so; if (!sh) return null; for (let i = 3; i < Q.length; i++) { const d = new Date(new Date(Q[i][0] + "T12:00:00").getTime() + 40 * 864e5).toISOString().slice(0, 10); steps.push([d, (Q[i - 3][1] + Q[i - 2][1] + Q[i - 1][1] + Q[i][1]) / sh]); } }
@@ -15085,6 +15091,13 @@ function sigCardHtml(t) {
     <p class="muted sg-n">Nachgerechnet mit der gültigen Regel (Konsolidierung abwarten, Stop, Ausstieg EMA 20 ab Tag 10), netto nach Kosten. Im Chart: K = Signal, Kauf, Ergebnis in R. Wenige Trades je Aktie sagen wenig – die Bilanz über alle Aktien zählt.</p></div>`;
 }
 const fundOf = t => { const f = getJson("fund.json"); return f && f.by ? f.by[t] || f.by[tkClean(t)] || null : null; };
+// Tempo (18.11.2026, backend/splitdetail.py): fund.json ist schlank; Quartale (eh, qh), Jahre (ih), Einstufungen (ud) und SEC-Finanzen (fin)
+// liegen in 128 kleinen Dateien data/co/NNN.json und kommen erst beim Öffnen einer Aktie. detB muss zu splitdetail.bucket passen.
+const detB = t => { let h = 0; for (const c of String(t).toUpperCase().replace(/[.\-~]/g, "")) h = (h * 31 + c.codePointAt(0)) >>> 0; return String(h % (getJson("fund.json") || {}).det || 0).padStart(3, "0"); };
+function detOf(t) { const fd = getJson("fund.json"); if (!fd || !fd.det || !t) return null;
+  const b = getJson(`co/${detB(t)}.json`); return b && b.by ? b.by[t] || b.by[tkClean(t)] || b.by[String(t).replace("-", ".")] || null : null; }
+const cxDetPaint = () => document.querySelectorAll("[data-cxdet]").forEach(el => { el.innerHTML = cxEpsHtml(el.dataset.cxdet) + cxIncHtml(el.dataset.cxdet, el.dataset.cur); });   // Karte: Quartale nachziehen
+const fundD = t => { const f = fundOf(t), d = detOf(t); return f && d ? Object.assign(f, d) : f || d || null; };   // Kennzahlen + Details einer Aktie
 const sfSum = f => f && f.sf ? f.sf.reduce((a, b) => a + b, 0) : null;
 const sfCol = n => n >= 22 ? "48,209,88" : n >= 16 ? "159,212,64" : n >= 11 ? "255,214,10" : n >= 6 ? "255,159,10" : "255,69,58";
 function sfSvg(sf, size = 120, labels = false) {

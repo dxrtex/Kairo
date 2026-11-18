@@ -45,6 +45,24 @@ def fetch() -> None:
                 pass
     except Exception as exc:
         print(f"Charts: {exc!r}")
+    try:                                               # Tempo-Aufteilung wie im Scan: alte Form (fin.json) aufteilen, neue Form → Detaildateien laden
+        import json
+        sys.path.insert(0, str(SITE.parent))
+        from backend import splitdetail
+        d = SITE / "data"
+        if (d / "fin.json").exists():
+            splitdetail.main([str(d)])
+        else:
+            (d / "co").mkdir(parents=True, exist_ok=True)
+            res = json.loads((d / "results.json").read_text()).get("results", [])
+            for t in [r["ticker"] for r in res if r.get("passed")][:2] + ["MSFT", "NVDA"]:
+                f = f"co/{splitdetail.bucket(t):03d}.json"
+                try:
+                    (d / f).write_bytes(urllib.request.urlopen(LIVE + f, timeout=60).read())
+                except Exception as exc:
+                    print(f"Laden {f}: {exc!r}")
+    except Exception as exc:
+        print(f"Detaildateien: {exc!r}")
 
 
 def serve() -> int:
