@@ -481,6 +481,13 @@ def one(t: str, ev: dict, close: pd.Series | None, est_mem: dict, today: pd.Time
     beats = [(e, a) for e, a in beats if e is not None and a is not None]
     if len(beats) >= 4:
         rec["beat"] = [sum(a > e for e, a in beats), len(beats)]
+    q8 = []                                                # letzte 8 Quartale: Datum, Schätzung, Ergebnis (Ansicht „Gewinne vs. Schätzungen“)
+    for ts, r in reported.head(8).iterrows():
+        e, a = _num(r[est_col]), _num(r[rep_col])
+        if a is not None:
+            q8.append([str(ts.date()), None if e is None else round(e, 4), round(a, 4)])
+    if len(q8) >= 2:
+        rec["q8"] = q8[::-1]
     last = reported.index[0] if len(reported) else None
     last_day = (last.tz_convert("UTC").tz_localize(None).normalize() if last is not None else None)
     if last is not None and today - last_day <= pd.Timedelta(days=PAST_DAYS):
