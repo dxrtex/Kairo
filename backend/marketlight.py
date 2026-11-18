@@ -22,8 +22,8 @@ import pandas as pd
 LV = {3: ("bull", "Aufwärtstrend", "green"), 2: ("press", "Unter Druck", "yellow"), 1: ("corr", "Korrektur", "orange"), 0: ("bear", "Abwärtstrend", "red")}
 DO = {3: "Rückenwind – Swing-Trades mit normaler Positionsgröße.",
       2: "Trend intakt, aber kurzfristig Stress: nur die besten Setups, kleinere Positionen, Stops konsequent.",
-      1: "Korrektur: höchstens halbe Positionsgröße und nur sehr starke Aktien – oder abwarten.",
-      0: "Abwärtstrend: keine neuen Swing-Trades. Historisch kaum Ertrag bei großen Rückschlägen – Kapital schützen."}
+      1: "Höchstens halbe Positionsgröße und nur sehr starke Aktien – oder abwarten.",
+      0: "Keine neuen Swing-Trades. Historisch kaum Ertrag bei großen Rückschlägen – Kapital schützen."}
 WK = {"bull": 3, "neutral": 2, "corr": 1, "bear": 0}
 P = dict(up_n=5, buf=0.0, dd_p=-0.05, dd_c=-0.10, dd_b=-0.20, dist_n=5, vix_p=22.0, vix_c=30.0, use_dist=True, use_vix=True, use_credit=True)
 
