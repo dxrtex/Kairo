@@ -42,3 +42,12 @@ def test_split_uses_yahoo_table_only_without_sec():
     slim, det = sd.split(fund, {"by": {"MSFT": {"y": ["2025"]}}})
     assert "fa" not in slim["by"]["SAP.DE"] and det[sd.bucket("SAP.DE")]["SAP.DE"] == {"fin": {"y": ["2025"], "src": "yahoo"}}
     assert det[sd.bucket("MSFT")]["MSFT"] == {"fin": {"y": ["2025"]}}
+
+
+def test_monthly_keeps_12_years_with_4_digits():
+    import pandas as pd
+    from backend.fundamentals import monthly
+    idx = pd.date_range("2010-01-01", periods=200, freq="MS")
+    m = monthly(pd.DataFrame({"Close": [123.456789 + i for i in range(200)]}, index=idx))
+    assert len(m["c"]) == 144 and m["m0"] == idx[-144].strftime("%Y-%m") and m["c"][-1] == 322.5
+    assert monthly(pd.DataFrame({"Close": [1.0] * 5}, index=idx[:5])) is None

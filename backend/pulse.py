@@ -2,7 +2,9 @@
   · social:  meistdiskutierte Aktien auf Reddit (ApeWisdom, kostenlos) mit Veränderung zu gestern
   · poly:    Wahrscheinlichkeiten aus Vorhersagemärkten (Polymarket, kostenlos) zu Zinsen, Konjunktur, Märkten
   · mk:      Zinsen, Dollar, Devisen, Rohstoffe, Bitcoin, VIX (Yahoo) – Kurs, Tagesveränderung, 1 Jahr Schlusskurse
-  · macro:   Länderdaten der Weltbank (217 Länder): Wachstum, Inflation, Arbeitslosigkeit, Staatsschulden … (einmal je Woche)
+  · mkw:     5 Jahre Wochenkurse derselben Werte (Chart je Kachel) · Faktor-ETFs (fac) für die Faktor-Analyse je Aktie
+  · ev:      offene Naturereignisse von NASA EONET (Brände aus Satellitendaten, Stürme, Vulkane, Fluten) für die Weltkarte
+  · macro:   Länderdaten der Weltbank (217 Länder): Wachstum, Inflation, Arbeitslosigkeit, Staatsschulden, Handel, Rüstung … (einmal je Woche)
 Schreibt state/pulse.json (alle 30 Min. aus tagsueber.yml) und state/macro.json (Branch kairo-alerts).
 
     python -m backend.pulse [--out state]
@@ -20,12 +22,20 @@ UA = {"User-Agent": "Mozilla/5.0 (Kairo; +https://github.com)"}
 MK = [("^IRX", "US-Zins 3 Monate", "rate"), ("^FVX", "US-Zins 5 Jahre", "rate"), ("^TNX", "US-Zins 10 Jahre", "rate"), ("^TYX", "US-Zins 30 Jahre", "rate"),
       ("DX-Y.NYB", "Dollar-Index", "fx"), ("EURUSD=X", "EUR/USD", "fx"), ("EURGBP=X", "EUR/GBP", "fx"), ("USDJPY=X", "USD/JPY", "fx"), ("EURCHF=X", "EUR/CHF", "fx"),
       ("GC=F", "Gold", "com"), ("SI=F", "Silber", "com"), ("CL=F", "Öl WTI", "com"), ("BZ=F", "Öl Brent", "com"), ("NG=F", "Erdgas", "com"), ("HG=F", "Kupfer", "com"),
-      ("ZW=F", "Weizen", "com"), ("BTC-USD", "Bitcoin", "crypto"), ("ETH-USD", "Ethereum", "crypto"), ("^VIX", "VIX", "vol")]
+      ("ZW=F", "Weizen", "com"), ("BTC-USD", "Bitcoin", "crypto"), ("ETH-USD", "Ethereum", "crypto"), ("^VIX", "VIX", "vol"),
+      # Faktoren für die Faktor-Analyse je Aktie (18.11.2026, wie „Factor exposure“ im Profi-Terminal) – keine Kacheln in der App
+      ("SPY", "Markt (S&P 500)", "fac"), ("IWM", "Nebenwerte", "fac"), ("IVE", "Value", "fac"), ("IVW", "Wachstum", "fac"),
+      ("MTUM", "Momentum", "fac"), ("QUAL", "Qualität", "fac"), ("USMV", "Niedrige Schwankung", "fac")]
 
 POLY_RX = re.compile(r"\b(fed|fomc|rate|rates|interest|inflation|cpi|recession|gdp|unemployment|jobs|payroll|tariff|s&p|nasdaq|dow|stock|bitcoin|btc|"
                      r"ethereum|oil|treasury|yield|ecb|bank of|powell|shutdown|debt|china|trade|nvidia|apple|tesla|ipo|earnings|market cap|gold)\b", re.I)
 
-WB = {"g": "NY.GDP.MKTP.KD.ZG", "i": "FP.CPI.TOTL.ZG", "u": "SL.UEM.TOTL.ZS", "d": "GC.DOD.TOTL.GD.ZS", "ca": "BN.CAB.XOKA.GD.ZS", "gdp": "NY.GDP.MKTP.CD", "pc": "NY.GDP.PCAP.CD"}
+WB = {"g": "NY.GDP.MKTP.KD.ZG", "i": "FP.CPI.TOTL.ZG", "u": "SL.UEM.TOTL.ZS", "d": "GC.DOD.TOTL.GD.ZS", "ca": "BN.CAB.XOKA.GD.ZS", "gdp": "NY.GDP.MKTP.CD", "pc": "NY.GDP.PCAP.CD",
+      # Handel und Rüstung für die Weltkarte (18.11.2026): Exporte/Importe in % des BIP, Handelsbilanz in $, Militärausgaben in % des BIP und in $
+      "ex": "NE.EXP.GNFS.ZS", "im": "NE.IMP.GNFS.ZS", "tb": "BN.GSR.GNFS.CD", "mil": "MS.MIL.XPND.GD.ZS", "milc": "MS.MIL.XPND.CD"}
+WB_V = 2                                               # Fassung der Länderdaten – neue Kennzahlen erzwingen einen frischen Abruf
+
+EONET_CAT = {"wildfires": "fire", "severeStorms": "storm", "volcanoes": "volcano", "floods": "flood", "seaLakeIce": "ice", "earthquakes": "quake"}
 
 
 def social(rows: list) -> list:
@@ -89,6 +99,43 @@ def market(hist) -> dict:
     return out
 
 
+def weekly(hist) -> dict:
+    """Wochen-Schlusskurse über 5 Jahre (für den Devisen-/Rohstoff-Chart): {sym: [[datum, kurs], …]}."""
+    out = {}
+    for sym, name, kind in MK:
+        if kind == "fac":
+            continue
+        try:
+            c = hist[sym]["Close"].dropna()
+        except Exception:
+            continue
+        if len(c) >= 20:
+            out[sym] = [[d.strftime("%Y-%m-%d"), round(float(v), 4)] for d, v in c.items()]
+    return out
+
+
+def eonet(events: list, n: int = 500) -> list:
+    """NASA EONET (kostenlos, ohne Schlüssel): offene Naturereignisse → [[art, titel, länge, breite, datum, quelle], …] neueste zuerst.
+    Brände kommen aus Satelliten-Meldungen (u. a. MODIS/VIIRS), Stürme aus den Wetterdiensten."""
+    out = []
+    for e in events or []:
+        cats = [c.get("id") for c in e.get("categories") or []]
+        kind = next((EONET_CAT[c] for c in cats if c in EONET_CAT), None)
+        geo = [g for g in (e.get("geometry") or []) if g.get("type") == "Point" and len(g.get("coordinates") or []) == 2]
+        if not kind or not geo:
+            continue
+        g = max(geo, key=lambda x: str(x.get("date") or ""))
+        lon, lat = g["coordinates"]
+        try:
+            lon, lat = round(float(lon), 2), round(float(lat), 2)
+        except (TypeError, ValueError):
+            continue
+        src = ((e.get("sources") or [{}])[0] or {}).get("url") or e.get("link") or ""
+        out.append([kind, str(e.get("title") or "")[:90], lon, lat, str(g.get("date") or "")[:10], str(src)[:200]])
+    out.sort(key=lambda x: x[4], reverse=True)
+    return out[:n]
+
+
 def worldbank(series: dict, valid: dict | None = None) -> dict:
     """Weltbank-Antworten je Kennzahl → {iso2: {n, g, i, u, d, ca, gdp, pc, y, r}} (jeweils jüngster Wert).
     valid: {iso2: region} der echten Länder (ohne Sammelgruppen wie „Euroraum“ oder „Welt“)."""
@@ -133,6 +180,17 @@ def fetch_all(out_dir: Path, macro_days: int = 7) -> dict:
         res["mk"] = market({s: df[s] for s in syms if s in df.columns.get_level_values(0)})
     except Exception as exc:
         print(f"Marktdaten: {exc!r}")
+    try:                                               # 5 Jahre Wochenkurse für den Chart je Kachel
+        syms = [m[0] for m in MK if m[2] != "fac"]
+        dw = yf.download(syms, period="5y", interval="1wk", group_by="ticker", auto_adjust=False, progress=False, threads=True)
+        res["mkw"] = weekly({s: dw[s] for s in syms if s in dw.columns.get_level_values(0)})
+    except Exception as exc:
+        print(f"Wochenkurse: {exc!r}")
+    try:
+        r = requests.get("https://eonet.gsfc.nasa.gov/api/v3/events", params={"status": "open", "days": 20, "limit": 800}, headers=UA, timeout=40)
+        res["ev"] = eonet(r.json().get("events"))
+    except Exception as exc:
+        print(f"NASA EONET: {exc!r}")
     mpath = out_dir / "macro.json"
     old = json.loads(mpath.read_text()) if mpath.exists() else {}
     if old.get("c"):                                   # gespeicherten Stand nachträglich bereinigen: Werte älter als 6 Jahre raus
@@ -143,7 +201,7 @@ def fetch_all(out_dir: Path, macro_days: int = 7) -> dict:
                     o.pop(k); o["y"].pop(k); changed = True
         if changed:
             mpath.write_text(json.dumps(old, ensure_ascii=False, separators=(",", ":")))
-    if not old.get("generated") or time.time() - time.mktime(time.strptime(old["generated"][:10], "%Y-%m-%d")) > macro_days * 86400:
+    if old.get("v") != WB_V or not old.get("generated") or time.time() - time.mktime(time.strptime(old["generated"][:10], "%Y-%m-%d")) > macro_days * 86400:
         try:
             ser, valid = {}, {}
             cr = requests.get("https://api.worldbank.org/v2/country", params={"format": "json", "per_page": 400}, headers=UA, timeout=40).json()
@@ -156,7 +214,7 @@ def fetch_all(out_dir: Path, macro_days: int = 7) -> dict:
                 ser[k] = j[1] if isinstance(j, list) and len(j) > 1 else []
             c = worldbank(ser, valid or None)
             if len(c) > 100:
-                mpath.write_text(json.dumps({"generated": time.strftime("%Y-%m-%d"), "c": c}, ensure_ascii=False, separators=(",", ":")))
+                mpath.write_text(json.dumps({"generated": time.strftime("%Y-%m-%d"), "v": WB_V, "c": c}, ensure_ascii=False, separators=(",", ":")))
                 print(f"Weltbank: {len(c)} Länder")
         except Exception as exc:
             print(f"Weltbank: {exc!r}")
@@ -171,7 +229,7 @@ def main(argv=None) -> int:
     out.mkdir(parents=True, exist_ok=True)
     res = fetch_all(out)
     prev = json.loads((out / "pulse.json").read_text()) if (out / "pulse.json").exists() else {}
-    for k in ("social", "poly", "mk"):                   # Ausfall einer Quelle: letzten Stand behalten
+    for k in ("social", "poly", "mk", "mkw", "ev"):      # Ausfall einer Quelle: letzten Stand behalten
         if not res.get(k) and prev.get(k):
             res[k] = prev[k]
     (out / "pulse.json").write_text(json.dumps(res, ensure_ascii=False, separators=(",", ":")))

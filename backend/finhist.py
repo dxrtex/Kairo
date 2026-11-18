@@ -1,5 +1,5 @@
 """Finanzen über mehrere Jahre (18.11.2026, wie im Profi-Terminal): Umsatz, Bruttogewinn, operatives Ergebnis, Nettogewinn,
-Gewinn je Aktie, Free Cashflow, Cash, Schulden und Eigenkapital der letzten Geschäftsjahre – absolute Zahlen aus den
+Gewinn je Aktie, Free Cashflow, Cash, Schulden und Eigenkapital der letzten 12 Geschäftsjahre – absolute Zahlen aus den
 SEC-Finanzdaten (companyfacts, kostenlos, nur US-Aktien). Nur Anzeige in der App, die Kairo-Regel nutzt sie nicht.
 
     python -m backend.finhist --shard 0 --shards 4      # Teil laden → fin_part_0.json
@@ -15,7 +15,7 @@ from pathlib import Path
 from .config import ROOT
 from .earnfast import _sec_ua, ciks
 
-YEARS = 6
+YEARS = 12                                         # 18.11.2026: 12 statt 6 Jahre (Bewertungsverlauf über viele Jahre)
 # Kennzahl → mögliche XBRL-Tags (erster mit Werten gewinnt); "i" = Stichtagswert (Bilanz), sonst Jahreswert
 METRICS = {
     "rev": ("Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "RevenueFromContractWithCustomerIncludingAssessedTax"),
