@@ -2218,6 +2218,10 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 .ct-co { margin-top: 12px; border: 1px solid var(--line, #8883); border-radius: 14px; padding: 12px 14px; background: var(--surface); }
 .co-hd { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; } .co-hd .ct-nh { margin: 0; }
 .co-seg { height: 30px; max-width: 100%; overflow-x: auto; scrollbar-width: none; } .co-seg::-webkit-scrollbar { display: none; } .co-seg button { flex: none; } .co-seg button { min-width: 0; font-size: 12.5px; padding: 0 10px; }
+.co-tabs { display: flex; gap: 2px; margin: -2px 0 12px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; } .co-tabs::-webkit-scrollbar { display: none; }
+.co-tabs button { flex: none; position: relative; height: 34px; padding: 0 12px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+.co-tabs button:hover { color: var(--text); } .co-tabs button.on { color: var(--text); font-weight: 600; } .co-tabs button.on::before { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--accent, #0a84ff); }
+.co-tabs button.has::after { content: ""; display: inline-block; width: 5px; height: 5px; margin-left: 5px; border-radius: 50%; background: var(--accent, #0a84ff); vertical-align: 2px; }
 .co-body { font-variant-numeric: tabular-nums; } .co-note { margin-top: 8px; font-size: 12px; color: var(--muted); } .co-empty { padding: 10px 0; color: var(--muted); font-size: 13px; }
 .co-k { columns: 210px; column-gap: 28px; } .co-kg { break-inside: avoid; margin-bottom: 10px; }
 .co-kh { font-size: 12px; color: var(--muted); font-weight: 600; padding: 4px 0 2px; } .co-kr { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
@@ -3299,7 +3303,7 @@ details.sb[open] > summary::after { transform: rotate(45deg); } details.sb[open]
 
   <div class="search">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-    <input type="search" id="search" placeholder="Aktie suchen – Name oder Ticker (alle Aktien)" autocomplete="off">
+    <input type="search" id="search" placeholder="Aktie suchen – Name, Ticker oder Befehl wie /ma" autocomplete="off">
     <button type="button" id="searchX" class="search-x" aria-label="Suche löschen" hidden>✕</button>
     <button type="button" class="cmd-b" data-cmdopen title="Befehlsleiste (⌘K oder /)" aria-label="Befehlsleiste öffnen"><kbd>⌘K</kbd></button>
   </div>
@@ -10074,7 +10078,10 @@ function pushHtml() {
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
 const APP_VER = "2026.11.232";
-const APP_NEWS = [["2026.11.232", "Schneller laden", [
+const APP_NEWS = [["2026.11.232", "Schneller laden, Finanzen weltweit, Unternehmen aufgeräumt", [
+  ["Finanzen für Europa und Asien", "Unter dem Chart → Zahlen → Finanzen: Umsatz, Gewinn, Free Cashflow, Cash, Schulden und Eigenkapital über die letzten Jahre jetzt auch für SAP, ASML, Nestlé, Toyota & Co. – in der Berichtswährung des Unternehmens."],
+  ["Drei Gruppen statt zehn Reiter", "Unternehmen ist jetzt in Überblick, Zahlen und Werkzeuge geordnet; jede Gruppe merkt sich den zuletzt gewählten Reiter."],
+  ["Befehle im Suchfeld", "„/ma“ oder „F NVDA“ direkt ins normale Suchfeld tippen öffnet die Befehlsleiste."],
   ["Weniger Daten beim Start", "Die Kennzahlen für Screener und Schneeflocke sind nur noch halb so groß (3 statt 5,7 MB). Quartale, Analysten-Einstufungen und SEC-Finanzen kommen erst, wenn du eine Aktie öffnest – etwa 50 KB statt 4,5 MB."]]],
  ["2026.11.231", "Feinschliff helles Design und iPad", [
   ["Helles Design", "Unternehmensbereich, Befehlsleiste und Ländertabelle haben im hellen Design jetzt den richtigen hellen Hintergrund."],
@@ -14415,6 +14422,8 @@ function ctNewsHtml(r) {
 // Quellen: Finnhub (kostenloser Schlüssel, nur US-Aktien) – ohne Schlüssel Quartale aus earnings.json und Insider aus insider.json. Nur Anzeige.
 const CO = {};
 const CO_TABS = [["k", "Kennzahlen"], ["f", "Finanzen"], ["q", "Quartale"], ["a", "Analysten"], ["i", "Insider"], ["p", "Konkurrenz"], ["d", "DCF"], ["o", "Optionen"], ["m", "Meldungen"], ["n", "Notiz"]];
+// Drei Gruppen statt zehn Reiter nebeneinander (18.11.2026): oben die Gruppe, darunter ihre Reiter
+const CO_GRP = [["u", "Überblick", ["k", "a", "p", "m"]], ["z", "Zahlen", ["f", "q", "i"]], ["w", "Werkzeuge", ["d", "o", "n"]]];
 const FL_DE = { "10-K": "Jahresbericht", "10-Q": "Quartalsbericht", "8-K": "Ad-hoc", "20-F": "Jahresbericht", "6-K": "Mitteilung", "40-F": "Jahresbericht", "S-1": "Börsengang", "DEF 14A": "Hauptversammlung", "SC 13D": "Beteiligung 5 %+", "SC 13G": "Beteiligung 5 %+" };
 function coMHtml(t) {
   const F = isUS(t) ? finOf(t) : null; if (!F || !F.fl || !F.fl.length) return "";
@@ -14609,13 +14618,19 @@ function ctCoInner(t) {
   const cur = avail.find(([k]) => k === state.coTab) ? state.coTab : avail[0][0];
   const hint = !fh && us && !o.peers ? `<div class="co-note">Konkurrenz und Empfehlungen je Monat kommen mit dem kostenlosen Finnhub-Schlüssel (Einstellungen → Live-Kurse).</div>` : "";
   const ds = descOf(t), ind = fd && fd.ind, hist = (cur === "k" || cur === "f") ? coHistHtml(t) : "";
-  return `<div class="co-hd"><div class="ct-nh">Unternehmen${ind ? ` <span class="co-ind">${esc(ind)}</span>` : ""}</div><div class="hm-seg co-seg" role="tablist">${avail.map(([k, l]) => `<button role="tab" class="${k === cur ? "on" : ""}${k === "n" && noteOf(t) ? " has" : ""}" data-cotab="${k}">${l}</button>`).join("")}</div></div>
+  const has = k => avail.some(a => a[0] === k), grps = CO_GRP.filter(g => g[2].some(has)), g0 = grps.find(g => g[2].includes(cur)) || grps[0];
+  return `<div class="co-hd"><div class="ct-nh">Unternehmen${ind ? ` <span class="co-ind">${esc(ind)}</span>` : ""}</div><div class="hm-seg co-seg" role="tablist">${grps.map(([g, l]) => `<button role="tab" class="${g === g0[0] ? "on" : ""}" data-cogrp="${g}">${l}</button>`).join("")}</div></div>
+    <div class="co-tabs" role="tablist">${avail.filter(([k]) => g0[2].includes(k)).map(([k, l]) => `<button role="tab" class="${k === cur ? "on" : ""}${k === "n" && noteOf(t) ? " has" : ""}" data-cotab="${k}">${l}</button>`).join("")}</div>
     ${ds ? `<p class="co-desc" data-codesc>${esc(ds)}</p>` : ""}<div class="co-body">${parts[cur]}${hist}</div>${hint}`;
 }
 function ctCoHtml(r) { const t = r.ticker; return `<div class="ct-co" id="ctCo" data-t="${esc(t)}">${ctCoInner(t)}</div>`; }
 document.addEventListener("click", e => { const h = e.target.closest("[data-cohist]"); if (h && h.closest("#ctCo")) { const k = h.dataset.cohist; state.coHist = !k || state.coHist === k ? "" : k; const c = h.closest("#ctCo"); c.innerHTML = ctCoInner(c.dataset.t); coEnd(c); coFan(c);
     const hb = c.querySelector(".co-hist"); if (hb && state.coHist) hb.scrollIntoView({ block: "nearest", behavior: "smooth" }); return; }
-  const b = e.target.closest("[data-cotab]"); if (!b) return; state.coTab = b.dataset.cotab; state.coHist = ""; save(); const c = b.closest("#ctCo"); if (c) { c.innerHTML = ctCoInner(c.dataset.t); coEnd(c); coFan(c); } });
+  const gb = e.target.closest("[data-cogrp]"); if (gb && gb.closest("#ctCo")) { const g = CO_GRP.find(x => x[0] === gb.dataset.cogrp), last = (state.coLast || {})[g[0]];
+    const c = gb.closest("#ctCo"); state.coTab = g[2].includes(last) ? last : g[2][0]; state.coHist = ""; save(); c.innerHTML = ctCoInner(c.dataset.t);
+    if (!c.querySelector(`[data-cotab="${state.coTab}"].on`)) { const f = c.querySelector(".co-tabs [data-cotab]"); if (f) { state.coTab = f.dataset.cotab; c.innerHTML = ctCoInner(c.dataset.t); } }
+    coEnd(c); coFan(c); return; }
+  const b = e.target.closest("[data-cotab]"); if (!b) return; state.coTab = b.dataset.cotab; { const g = CO_GRP.find(x => x[2].includes(state.coTab)); if (g) state.coLast = { ...(state.coLast || {}), [g[0]]: state.coTab }; } state.coHist = ""; save(); const c = b.closest("#ctCo"); if (c) { c.innerHTML = ctCoInner(c.dataset.t); coEnd(c); coFan(c); } });
 document.addEventListener("click", e => { const d = e.target.closest("[data-codesc]"); if (d) d.classList.toggle("open"); });
 function coFan(box) { const o = CO[box.dataset.t]; if (o && o.cc && box.querySelector("[data-cxana]")) try { cxAnaPaint(box, o.cc, o.r || byTicker(box.dataset.t) || { ticker: box.dataset.t }); } catch (e) {} }
 // ---------- Markt-Puls (18.11.2026, wie im Profi-Terminal): Reddit-Trends, Vorhersagemärkte, Zinsen/Devisen/Rohstoffe, Länderdaten ----------
@@ -14712,7 +14727,7 @@ function cmdItems(q) {
   if (Q.length >= 1 && !m) tick(Q).forEach(r => out.push({ l: `${shortNm(r.n || r.t)}`, k: tkClean(r.t), sub: "Chart", t: r.t, run: () => ctOpen(r.t, r.ext ? r.ext.y || r.ext.symbol : r.t, r.n) }));
   return out.slice(0, 12);
 }
-function cmdOpen() {
+function cmdOpen(q0 = "") {
   if ($("cmdk")) return; loadSearch(); const d = document.createElement("div"); d.id = "cmdk"; d.className = "cmdk"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", "Befehlsleiste");
   d.innerHTML = `<div class="cmdk-back" data-cmdx></div><div class="cmdk-box"><div class="cmdk-in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="cmdQ" autocomplete="off" spellcheck="false" placeholder="Ticker, Befehl oder z. B. „F NVDA“ für Finanzen"><kbd>esc</kbd></div><div class="cmdk-l" id="cmdL"></div>
     <div class="cmdk-f"><span><kbd>↑</kbd><kbd>↓</kbd> wählen</span><span><kbd>↵</kbd> öffnen</span><span><b>O F Q A I M N</b> + Ticker: Kennzahlen, Finanzen, Quartale, Analysten, Insider, Meldungen, Notiz</span></div></div>`;
@@ -14724,7 +14739,8 @@ function cmdOpen() {
   $("cmdQ").addEventListener("keydown", e => { if (e.key === "ArrowDown") { e.preventDefault(); sel = Math.min(items.length - 1, sel + 1); paint(); } else if (e.key === "ArrowUp") { e.preventDefault(); sel = Math.max(0, sel - 1); paint(); }
     else if (e.key === "Enter") { e.preventDefault(); go(sel); } else if (e.key === "Escape") { e.preventDefault(); close(); } });
   d.addEventListener("click", e => { if (e.target.closest("[data-cmdx]")) { close(); return; } const b = e.target.closest("[data-cmdi]"); if (b) go(+b.dataset.cmdi); });
-  paint(); setTimeout(() => $("cmdQ").focus(), 20);
+  if (q0) { $("cmdQ").value = q0; $("cmdQ").focus(); }   // sofort: sonst gehen die nächsten Tasten verloren
+  paint(); setTimeout(() => { const q = $("cmdQ"); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }, 20);
 }
 document.addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) { e.preventDefault(); cmdOpen(); } }, true);
 document.addEventListener("click", e => { if (e.target.closest("[data-cmdopen]")) cmdOpen(); });
@@ -16340,7 +16356,9 @@ $("sheet").addEventListener("click", async e => {
 $("done").onclick = () => document.body.classList.remove("filters-open");
 $("backdrop").onclick = () => document.body.classList.remove("filters-open");
 $("reset").onclick = () => { Object.assign(state, DEFAULTS); syncOpts(); save(); render(); };
-$("search").addEventListener("input", () => { $("searchX").hidden = !$("search").value; if ($("search").value.trim().length >= 2) loadSearch(); render(); });
+$("search").addEventListener("input", () => { const v = $("search").value;   // Befehle auch im normalen Suchfeld: „/ma“, „F NVDA“ → Befehlsleiste
+  if (/^\//.test(v) || /^[OFQAIPMN] [A-Za-z0-9]/.test(v)) { $("search").value = ""; $("searchX").hidden = true; cmdOpen(v); render(); return; }
+  $("searchX").hidden = !$("search").value; if ($("search").value.trim().length >= 2) loadSearch(); render(); });
 $("searchX").addEventListener("click", () => { const i = $("search"); i.value = ""; $("searchX").hidden = true; render(); i.focus(); });   // ganzer Suchtext mit einem Tipp weg
 function goSec(sec, sub) {
   if (SUBNAV[groupOf(sec)]) state.lastSub = { ...(state.lastSub || {}), [groupOf(sec)]: sec };
