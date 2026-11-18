@@ -22,7 +22,8 @@ from pathlib import Path
 SITE = Path(__file__).resolve().parents[1] / "site"
 LIVE = "https://dxrtex.github.io/Kairo/data/"
 FILES = ["results.json", "search.json", "analysis.json", "alerts.json", "bilanz.json", "changes.json", "calendar.json",
-         "etf.json", "briefing.json", "insider.json", "h4.json", "earnings.json", "fund.json", "funds.json", "bench.json"]
+         "etf.json", "briefing.json", "insider.json", "h4.json", "earnings.json", "fund.json", "funds.json", "bench.json",
+         "fin.json", "desc.json"]
 SECS = ["today", "etf", "scanner", "chart", "entry", "calendar", "news", "depot", "journal", "game", "paper", "bilanz", "settings"]
 
 
@@ -33,6 +34,17 @@ def fetch() -> None:
             (SITE / "data" / f).write_bytes(urllib.request.urlopen(LIVE + f, timeout=60).read())
         except Exception as exc:
             print(f"Laden {f}: {exc!r}")
+    try:                                               # Kursdaten für den Chart-Test (Unternehmen unter dem Chart)
+        import json
+        (SITE / "data" / "charts").mkdir(parents=True, exist_ok=True)
+        res = json.loads((SITE / "data" / "results.json").read_text()).get("results", [])
+        for t in [r["ticker"] for r in res if r.get("passed")][:2] + ["MSFT", "NVDA"]:
+            try:
+                (SITE / "data" / "charts" / f"{t}.json").write_bytes(urllib.request.urlopen(LIVE + f"charts/{t}.json", timeout=60).read())
+            except Exception:
+                pass
+    except Exception as exc:
+        print(f"Charts: {exc!r}")
 
 
 def serve() -> int:
@@ -294,6 +306,85 @@ async def backup_check(b, url, errs):
     await ctx.close()
 
 
+async def terminal_check(b, url, errs):
+    """Terminal-Funktionen (11/2026) auf iPad und Handy, dunkel und hell: Unternehmen-Reiter unter dem Chart, Verlauf je Kennzahl,
+    Befehlsleiste, Makro mit Lieferketten, Hedgefonds-Chips, Screener Min/Max – kein JS-Fehler, nichts leer, nichts breiter als der Bildschirm."""
+    for name, vp in (("iPad", {"width": 820, "height": 1180}), ("Handy", {"width": 390, "height": 844})):
+        for light in (False, True):
+            tag = f"Terminal {name} {'hell' if light else 'dunkel'}"
+            ctx = await new_ctx(b, viewport=vp)
+            if light:
+                await ctx.add_init_script("try{const k='reversal-finder-v1';const p=JSON.parse(localStorage.getItem(k)||'{}');p.design='postfach';localStorage.setItem(k,JSON.stringify(p))}catch(e){}")
+            pg = await ctx.new_page()
+            pg.on("pageerror", lambda e, n=tag: errs.append(f"{n}: JS-Fehler {e}"))
+            wide = lambda: pg.evaluate("document.documentElement.scrollWidth")
+            async def fit(where):
+                w = await wide()
+                if w > vp["width"] + 2:
+                    errs.append(f"{tag}: {where} breiter als der Bildschirm ({w}px)")
+            # Chart mit Unternehmen-Bereich: jede Aktie mit Kursdatei
+            await pg.goto(f"{url}?nosplash=1&sec=scanner")
+            await pg.wait_for_timeout(2000)
+            await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.remove())')
+            t = await pg.evaluate("""(async () => { for (const t of [...data.results.filter(r => r.passed).map(r => r.ticker), 'MSFT', 'NVDA']) {
+                const r = await fetch('data/charts/' + encodeURIComponent(t) + '.json'); if (r.ok) return t; } return null; })()""")
+            if t:
+                await pg.evaluate(f"state.cfLast = {t!r}; save(); goSec('chart')")
+                await pg.wait_for_timeout(3500)
+                if not await pg.query_selector("#ctCo"):
+                    errs.append(f"{tag}: Unternehmen-Bereich unter dem Chart fehlt ({t})")
+                else:
+                    for k in await pg.eval_on_selector_all("#ctCo [data-cotab]", "els => els.map(e => e.dataset.cotab)"):
+                        await pg.click(f'#ctCo [data-cotab="{k}"]')
+                        await pg.wait_for_timeout(350)
+                        if len((await pg.inner_text("#ctCo .co-body")).strip()) < 3 and k != "n":
+                            errs.append(f"{tag}: Unternehmen-Reiter {k} ist leer ({t})")
+                        h = await pg.query_selector("#ctCo [data-cohist]:not([data-cohist=''])")
+                        if h and k in ("k", "f"):
+                            await h.click(); await pg.wait_for_timeout(300)
+                        await fit(f"Unternehmen-Reiter {k}")
+                # Befehlsleiste: „F Ticker“ → Finanzen-Reiter
+                await pg.keyboard.press("Escape")
+                await pg.evaluate("cmdOpen()")
+                await pg.wait_for_timeout(200)
+                if not await pg.query_selector("#cmdk"):
+                    errs.append(f"{tag}: Befehlsleiste öffnet nicht")
+                else:
+                    await pg.fill("#cmdQ", "/ma")
+                    await pg.wait_for_timeout(200)
+                    await pg.keyboard.press("Enter")
+                    await pg.wait_for_timeout(1500)
+                    if await pg.evaluate("state.newsTab") != "macro":
+                        errs.append(f"{tag}: Befehl /MA öffnet Makro nicht")
+            # Makro mit Lieferketten
+            await pg.evaluate("state.newsTab = 'macro'; goSec('news')")
+            await pg.wait_for_timeout(2000)
+            if not await pg.query_selector(".sc-card"):
+                errs.append(f"{tag}: Rohstoff-Lieferketten fehlen")
+            else:
+                await pg.click('[data-sck="chips"]'); await pg.wait_for_timeout(300)
+            await fit("Makro")
+            # Hedgefonds-Chips
+            await pg.evaluate("state.newsTab = 'insider'; state.smView = 'funds'; goSec('news')")
+            await pg.wait_for_timeout(1500)
+            c = await pg.query_selector_all(".fp-c")
+            if len(c) > 1:
+                await c[1].click(); await pg.wait_for_timeout(400)
+            await fit("Hedgefonds")
+            # Screener mit Min/Max
+            await pg.evaluate("state.scrOn = true; state.scrFOpen = true; state.scrFT = 'Min / Max'; state.scf = {}; goSec('scanner')")
+            await pg.wait_for_timeout(1500)
+            if await pg.query_selector('[data-scmm="pe"][data-i="1"]'):
+                await pg.fill('[data-scmm="pe"][data-i="1"]', "20"); await pg.dispatch_event('[data-scmm="pe"][data-i="1"]', "change")
+                await pg.wait_for_timeout(500)
+                if not await pg.query_selector('[data-scfx="mm_pe"]'):
+                    errs.append(f"{tag}: Screener-Filter Min/Max wird nicht übernommen")
+            else:
+                errs.append(f"{tag}: Screener Min/Max fehlt")
+            await fit("Screener")
+            await ctx.close()
+
+
 async def run(port: int) -> list[str]:
     from playwright.async_api import async_playwright
     url = f"http://127.0.0.1:{port}/"
@@ -308,6 +399,7 @@ async def run(port: int) -> list[str]:
         await size_check(b, url, errs)
         await rule_check(b, url, errs)
         await ui_check(b, url, errs)
+        await terminal_check(b, url, errs)
         for name, vp in (("iPad", {"width": 820, "height": 1180}), ("Handy", {"width": 390, "height": 844})):
             ctx = await new_ctx(b, viewport=vp)
             pg = await ctx.new_page()
