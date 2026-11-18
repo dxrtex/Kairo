@@ -32,3 +32,11 @@ def test_main_writes_files_and_is_idempotent(tmp_path):
     assert b["by"]["NVDA"] == {"eh": [[0]], "fin": {"y": ["2025"]}} and b["fin"] == "f"
     assert sd.main([str(tmp_path)]) == 0               # zweiter Lauf ändert nichts
     assert json.loads((tmp_path / "co" / f"{sd.bucket('NVDA'):03d}.json").read_text())["by"]["NVDA"]["fin"] == {"y": ["2025"]}
+
+
+def test_detail_fields_never_collide_with_metrics():
+    # 18.11.2026: „pm“ (Monatskurse) überschrieb die Nettomarge „pm“ – Detailfelder dürfen nie Kennzahl-Kürzel sein
+    from backend.fundamentals import FIELDS as METRICS
+    assert not set(sd.FIELDS) & set(METRICS) and not set(sd.FIELDS) & {"sec", "ind", "sf", "_d"}
+    slim, det = sd.split({"by": {"X": {"pm": .2, "pxm": {"m0": "2020-01", "c": [1]}}}}, None)
+    assert slim["by"]["X"] == {"pm": .2} and det[sd.bucket("X")]["X"] == {"pxm": {"m0": "2020-01", "c": [1]}}

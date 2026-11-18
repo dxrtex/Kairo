@@ -220,9 +220,9 @@ def fetch(tickers: list[str], pause: float = 0.3, budget_s: float = 5000) -> dic
             except Exception:
                 pass
             try:                                       # Monatskurse 12 Jahre → KGV/KUV-Verlauf über viele Jahre
-                pm = monthly(tk.history(period="12y", interval="1mo", auto_adjust=False))
-                if pm:
-                    row["pm"] = pm
+                pxm = monthly(tk.history(period="12y", interval="1mo", auto_adjust=False))
+                if pxm:
+                    row["pxm"] = pxm                    # nicht „pm“ – das ist die Nettomarge (profitMargins)!
             except Exception:
                 pass
             if (row.get("mc") or 0) >= 5e9:            # Hoch-/Abstufungen nur für größere Werte (dort gibt es sie)

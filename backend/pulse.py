@@ -3,7 +3,7 @@
   · poly:    Wahrscheinlichkeiten aus Vorhersagemärkten (Polymarket, kostenlos) zu Zinsen, Konjunktur, Märkten
   · mk:      Zinsen, Dollar, Devisen, Rohstoffe, Bitcoin, VIX (Yahoo) – Kurs, Tagesveränderung, 1 Jahr Schlusskurse
   · mkw:     5 Jahre Wochenkurse derselben Werte (Chart je Kachel) · Faktor-ETFs (fac) für die Faktor-Analyse je Aktie
-  · ev:      offene Naturereignisse von NASA EONET (Brände aus Satellitendaten, Stürme, Vulkane, Fluten) für die Weltkarte
+  · ev:      Naturereignisse der letzten 30 Tage von NASA EONET (Brände aus Satellitendaten, Stürme, Vulkane, Fluten) und Erdbeben ab M4,5 (USGS)
   · macro:   Länderdaten der Weltbank (217 Länder): Wachstum, Inflation, Arbeitslosigkeit, Staatsschulden, Handel, Rüstung … (einmal je Woche)
 Schreibt state/pulse.json (alle 30 Min. aus tagsueber.yml) und state/macro.json (Branch kairo-alerts).
 
@@ -136,6 +136,21 @@ def eonet(events: list, n: int = 500) -> list:
     return out[:n]
 
 
+def quakes(features: list, n: int = 120) -> list:
+    """USGS (kostenlos, ohne Schlüssel): Erdbeben ab Stärke 4,5 der letzten 7 Tage → wie eonet(): [["quake", titel, länge, breite, datum, url], …]."""
+    out = []
+    for f in features or []:
+        p, g = f.get("properties") or {}, (f.get("geometry") or {}).get("coordinates") or []
+        try:
+            mag, lon, lat = float(p.get("mag")), round(float(g[0]), 2), round(float(g[1]), 2)
+        except (TypeError, ValueError, IndexError):
+            continue
+        d = time.strftime("%Y-%m-%d", time.gmtime((p.get("time") or 0) / 1000))
+        out.append(["quake", f"M{mag:.1f} · {str(p.get('place') or '')[:70]}", lon, lat, d, str(p.get("url") or "")[:200], round(mag, 1)])
+    out.sort(key=lambda x: -x[6])
+    return [x[:6] for x in out[:n]]
+
+
 def worldbank(series: dict, valid: dict | None = None) -> dict:
     """Weltbank-Antworten je Kennzahl → {iso2: {n, g, i, u, d, ca, gdp, pc, y, r}} (jeweils jüngster Wert).
     valid: {iso2: region} der echten Länder (ohne Sammelgruppen wie „Euroraum“ oder „Welt“)."""
@@ -187,10 +202,15 @@ def fetch_all(out_dir: Path, macro_days: int = 7) -> dict:
     except Exception as exc:
         print(f"Wochenkurse: {exc!r}")
     try:
-        r = requests.get("https://eonet.gsfc.nasa.gov/api/v3/events", params={"status": "open", "days": 20, "limit": 800}, headers=UA, timeout=40)
+        r = requests.get("https://eonet.gsfc.nasa.gov/api/v3/events", params={"status": "all", "days": 30, "limit": 1000}, headers=UA, timeout=40)
         res["ev"] = eonet(r.json().get("events"))
     except Exception as exc:
         print(f"NASA EONET: {exc!r}")
+    try:                                               # Erdbeben (USGS) dazu – wichtig für Chipfabriken in Taiwan und Japan
+        r = requests.get("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson", headers=UA, timeout=30)
+        res["ev"] = (res.get("ev") or []) + quakes(r.json().get("features"))
+    except Exception as exc:
+        print(f"USGS: {exc!r}")
     mpath = out_dir / "macro.json"
     old = json.loads(mpath.read_text()) if mpath.exists() else {}
     if old.get("c"):                                   # gespeicherten Stand nachträglich bereinigen: Werte älter als 6 Jahre raus
