@@ -1,0 +1,38 @@
+name: Markt-Puls (Reddit, Polymarket, Makro)
+
+# Am Wochenende und nach Änderungen: backend/pulse.py einmal laufen lassen (unter der Woche erledigt das tagsueber.yml alle 30 Min.).
+# Ergebnis pulse.json und macro.json im Branch kairo-alerts. Nur Anzeige in der App.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 */3 * * 0,6"      # Sa/So alle 3 Std.
+  push:
+    branches: [main, claude/fluere-6]
+    paths: [backend/pulse.py, .github/workflows/pulse.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pulse
+  cancel-in-progress: false
+
+jobs:
+  pulse:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Puls laden und speichern
+        run: |
+          if git fetch -q origin kairo-alerts:kairo-alerts 2>/dev/null; then git worktree add -q state kairo-alerts;
+          else git worktree add -q --orphan -b kairo-alerts state; fi
+          python -m backend.pulse --out state 2>&1 | grep -v -i warning || true
+          python -c "import json;d=json.load(open('state/pulse.json'));print({k:len(v) for k,v in d.items() if isinstance(v,(list,dict))});print((d.get('social') or [])[:3]);print((d.get('poly') or [])[:2])"
+          test -f state/macro.json && python -c "import json;d=json.load(open('state/macro.json'));print(len(d['c']), d['c'].get('DE'))" || true
+          cd state && git add pulse.json macro.json 2>/dev/null; git add -A
+          git -c user.name="kairo-bot" -c user.email="kairo-bot@users.noreply.github.com" commit -q -m "Puls $(date -u +%F-%H%M)" || exit 0
+          for i in 1 2 3; do git pull -q --rebase origin kairo-alerts && git push -q origin kairo-alerts && break; sleep 5; done
