@@ -135,6 +135,14 @@ def fetch_all(out_dir: Path, macro_days: int = 7) -> dict:
         print(f"Marktdaten: {exc!r}")
     mpath = out_dir / "macro.json"
     old = json.loads(mpath.read_text()) if mpath.exists() else {}
+    if old.get("c"):                                   # gespeicherten Stand nachträglich bereinigen: Werte älter als 6 Jahre raus
+        lim, changed = int(time.strftime("%Y")) - 6, False
+        for o in old["c"].values():
+            for k, y in list((o.get("y") or {}).items()):
+                if str(y)[:4].isdigit() and int(str(y)[:4]) < lim and k in o:
+                    o.pop(k); o["y"].pop(k); changed = True
+        if changed:
+            mpath.write_text(json.dumps(old, ensure_ascii=False, separators=(",", ":")))
     if not old.get("generated") or time.time() - time.mktime(time.strptime(old["generated"][:10], "%Y-%m-%d")) > macro_days * 86400:
         try:
             ser, valid = {}, {}
