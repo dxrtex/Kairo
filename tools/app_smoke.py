@@ -45,6 +45,24 @@ def fetch() -> None:
                 pass
     except Exception as exc:
         print(f"Charts: {exc!r}")
+    try:                                               # Tempo-Aufteilung wie im Scan: alte Form (fin.json) aufteilen, neue Form → Detaildateien laden
+        import json
+        sys.path.insert(0, str(SITE.parent))
+        from backend import splitdetail
+        d = SITE / "data"
+        if (d / "fin.json").exists():
+            splitdetail.main([str(d)])
+        else:
+            (d / "co").mkdir(parents=True, exist_ok=True)
+            res = json.loads((d / "results.json").read_text()).get("results", [])
+            for t in [r["ticker"] for r in res if r.get("passed")][:2] + ["MSFT", "NVDA"]:
+                f = f"co/{splitdetail.bucket(t):03d}.json"
+                try:
+                    (d / f).write_bytes(urllib.request.urlopen(LIVE + f, timeout=60).read())
+                except Exception as exc:
+                    print(f"Laden {f}: {exc!r}")
+    except Exception as exc:
+        print(f"Detaildateien: {exc!r}")
 
 
 def serve() -> int:
@@ -334,7 +352,16 @@ async def terminal_check(b, url, errs):
                 if not await pg.query_selector("#ctCo"):
                     errs.append(f"{tag}: Unternehmen-Bereich unter dem Chart fehlt ({t})")
                 else:
-                    for k in await pg.eval_on_selector_all("#ctCo [data-cotab]", "els => els.map(e => e.dataset.cotab)"):
+                    seen = []                                  # drei Gruppen, je Gruppe ihre Reiter
+                    for g in await pg.eval_on_selector_all("#ctCo [data-cogrp]", "els => els.map(e => e.dataset.cogrp)"):
+                        await pg.click(f'#ctCo [data-cogrp="{g}"]')
+                        await pg.wait_for_timeout(250)
+                        seen += [(g, k) for k in await pg.eval_on_selector_all("#ctCo .co-tabs [data-cotab]", "els => els.map(e => e.dataset.cotab)")]
+                    if len(seen) < 3:
+                        errs.append(f"{tag}: Unternehmen hat nur {len(seen)} Reiter ({t})")
+                    for g, k in seen:
+                        await pg.click(f'#ctCo [data-cogrp="{g}"]')
+                        await pg.wait_for_timeout(150)
                         await pg.click(f'#ctCo [data-cotab="{k}"]')
                         await pg.wait_for_timeout(350)
                         if len((await pg.inner_text("#ctCo .co-body")).strip()) < 3 and k != "n":

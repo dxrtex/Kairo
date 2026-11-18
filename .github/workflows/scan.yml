@@ -128,6 +128,9 @@ jobs:
         if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'
         run: |
           if git fetch -q origin kairo-fin 2>/dev/null && git show origin/kairo-fin:fin.json > /tmp/fin.json 2>/dev/null; then mkdir -p site/data && mv /tmp/fin.json site/data/fin.json && ls -la site/data/fin.json; else echo "noch keine Finanzen"; fi
+      - name: Fundamentaldaten für schnelles Laden aufteilen (schlanke fund.json + Details je Aktie in data/co)
+        if: steps.time.outputs.skip == 'false' && github.ref == 'refs/heads/main'
+        run: python -m backend.splitdetail site/data
       - name: Kairo-Signale je Aktie dazulegen (Branch kairo-sig, fehlt er, zeigt der Chart keine früheren Signale)
         run: |
           if git fetch -q origin kairo-sig 2>/dev/null && git show origin/kairo-sig:sighist.json > /tmp/sighist.json 2>/dev/null; then mkdir -p site/data && mv /tmp/sighist.json site/data/sighist.json && ls -la site/data/sighist.json; else echo "noch keine Kairo-Signale"; fi

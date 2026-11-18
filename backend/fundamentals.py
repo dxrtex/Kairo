@@ -115,6 +115,44 @@ def income_history(df) -> list:
     return out[-5:]
 
 
+# Jahresabschlüsse außerhalb der USA (18.11.2026): dieselbe Tabelle wie fin.json aus der SEC (backend/finhist.py),
+# nur aus Yahoos Jahresberichten (Gewinn- und Verlustrechnung, Bilanz, Kapitalfluss). Zeilen: erster vorhandener Name gewinnt.
+FA_ROWS = {"rev": ("totalrevenue", "operatingrevenue"), "gp": ("grossprofit",), "oi": ("operatingincome", "totaloperatingincomeasreported"),
+           "ni": ("netincomecommonstockholders", "netincome"), "eps": ("dilutedeps", "basiceps"), "fcf": ("freecashflow",),
+           "cash": ("cashandcashequivalents", "cashcashequivalentsandshortterminvestments"),
+           "debt": ("longtermdebt", "longtermdebtandcapitalleaseobligation"), "eq": ("stockholdersequity", "commonstockequity")}
+
+
+def annual_fin(inc, bal=None, cf=None, cur: str | None = None) -> dict | None:
+    """Yahoo-Jahresberichte → {"y": [jahre], "fye": "MM-TT", Kennzahl: [werte], "cur": währung, "src": "yahoo"} – Format wie fin.json."""
+    frames = [f for f in (inc, bal, cf) if f is not None and not getattr(f, "empty", True)]
+    if inc is None or getattr(inc, "empty", True):
+        return None
+    val: dict = {}                                     # (kennzahl, jahresende) → wert
+    for f in frames:
+        rows = {str(k).replace(" ", "").lower(): k for k in f.index}
+        for m, names in FA_ROWS.items():
+            key = next((rows[n] for n in names if n in rows), None)
+            if key is None:
+                continue
+            for col in f.columns:
+                v = _num(f.at[key, col])
+                if v is not None:
+                    val.setdefault((m, str(col)[:10]), v)
+    ends = sorted({e for (m, e) in val if m == "rev"})[-6:]
+    if len(ends) < 2:
+        return None
+    out: dict = {"y": [e[:4] for e in ends], "fye": ends[-1][5:10]}
+    for m in FA_ROWS:
+        vs = [val.get((m, e)) for e in ends]
+        if any(v is not None for v in vs):
+            out[m] = [None if v is None else (round(v, 2) if m == "eps" else round(v)) for v in vs]
+    if cur:
+        out["cur"] = str(cur)[:4]
+    out["src"] = "yahoo"
+    return out
+
+
 def fetch(tickers: list[str], pause: float = 0.3, budget_s: float = 5000) -> dict:
     import yfinance as yf
     out, t0 = {}, time.time()
@@ -148,12 +186,21 @@ def fetch(tickers: list[str], pause: float = 0.3, budget_s: float = 5000) -> dic
                     row["eh"] = eh
             except Exception:
                 pass
+            inc = None
             try:
-                ih = income_history(tk.get_income_stmt())
+                inc = tk.get_income_stmt()
+                ih = income_history(inc)
                 if ih:
                     row["ih"] = ih
             except Exception:
                 pass
+            if "." in t and inc is not None:            # Europa, Asien …: ganze Jahrestabelle (in den USA kommt sie aus der SEC)
+                try:
+                    fa = annual_fin(inc, tk.get_balance_sheet(), tk.get_cashflow(), info.get("financialCurrency"))
+                    if fa:
+                        row["fa"] = fa
+                except Exception:
+                    pass
             try:
                 qh = quarter_revenue(tk.quarterly_income_stmt)
                 if qh:
