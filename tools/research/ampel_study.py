@@ -126,8 +126,13 @@ def main():
             lv = ML.smooth(R["lv"], {**ML.P, **p}["up_n"])
             evaluate(name, lv, c)
     # Gesamtampel = schwächere von S&P 500 und Nasdaq 100, gemessen an beiden Indizes
-    a = ML.smooth(ML.raw_levels(h["^GSPC"], h["^VIX"], h.get("^VIX3M"), cr)["lv"], ML.P["up_n"])
-    b = ML.smooth(ML.raw_levels(h["^NDX"], h["^VIX"], h.get("^VIX3M"), cr)["lv"], ML.P["up_n"])
+    def fin(t):
+        day = ML.smooth(ML.raw_levels(h[t], h["^VIX"], h.get("^VIX3M"), cr)["lv"], ML.P["up_n"])
+        ws, _ = ML.week_levels(h[t], h["^VIX"])
+        return ML.combine(ws.reindex(day.index, method="ffill").shift(1), day)   # ohne Vorgriff: Wochenschluss gilt ab Folgetag
+    a, b = fin("^GSPC"), fin("^NDX")
+    evaluate("FINAL S&P 500", a, h["^GSPC"]["Close"])
+    evaluate("FINAL Nasdaq 100", b, h["^NDX"]["Close"])
     j = pd.concat([a, b], axis=1).dropna().min(axis=1)
     print("\n\n######## Gesamtampel (min S&P/Nasdaq) ########")
     evaluate("Gesamt → S&P 500", j, h["^GSPC"]["Close"])

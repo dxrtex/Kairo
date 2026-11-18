@@ -1,19 +1,17 @@
-"""Marktampel für Swing-Trades (Haltedauer Wochen bis wenige Monate) – 19.11.2026, ersetzt die Wochen-Marktphase vom 18.11.
+"""Marktampel für Swing-Trades (Haltedauer Wochen bis wenige Monate) – 19.11.2026.
 
-Warum neu: Die Wochen-Phase zeigte am 18.11.2026 „Aufwärtstrend“, obwohl der S&P 500 6 % unter dem Hoch, unter der
-50-Tage-Linie und an der 200-Tage-Linie stand, der VIX bei 25 lag und Wachstums-/Momentum-Aktien 12–23 % gefallen waren.
-Fehler: nur der S&P 500, nur Wochenschlüsse, Herabstufung erst nach zwei Wochen.
-
-Jetzt (so arbeiten auch IBD „Market Pulse“, Minervini, O'Neil): vier Stufen je Index, aus Tageskursen.
-  3 grün   Aufwärtstrend           Kurs über 50- und 200-Tage-Linie, nahe am Hoch, Angst niedrig → normal handeln
-  2 gelb   Aufwärtstrend unter Druck  unter der 50-Tage-Linie, ≥ 5 % unter dem Hoch, Verteilungstage, VIX erhöht,
-                                    Kreditmarkt nervös → nur die besten Setups, kleiner
-  1 orange Korrektur               unter der 200-Tage-Linie, ≥ 10 % unter dem Hoch, fallende 50-Tage-Linie, VIX-Kurve
-                                    invertiert → keine neuen Swing-Trades
-  0 rot    Abwärtstrend            ≥ 20 % unter dem Hoch oder 50 < 200 bei fallender 200-Tage-Linie → Cash
-Asymmetrisch wie im Risikomanagement üblich: Herabstufen sofort am Tagesschluss, Heraufstufen erst, wenn die bessere
-Stufe UP_N Handelstage in Folge vorliegt (keine Fehlsignale nach einem Erholungstag).
-Gesamtampel = die schwächere von S&P 500 und Nasdaq 100 (US-Aktien und Tech tragen die meisten Swing-Trades).
+Anlass: Die Wochen-Phase vom 18.11. zeigte „Aufwärtstrend“, obwohl S&P 500 und Nasdaq 100 unter der 50-Tage-Linie lagen,
+der VIX bei 25 und invertiert war und es 6–7 Verteilungstage gab. Backtest tools/research/ampel_study.py (S&P 500 ab 1993,
+Nasdaq 100 ab 1993, Rendite und Rückschläge der nächsten 20/60 Handelstage):
+  · Ein reines Tagesmodell wechselt 13–27× im Jahr und meldet normale Rücksetzer als „Korrektur“ – genau nach solchen
+    Tagen waren die Folgerenditen im Schnitt sogar überdurchschnittlich. Als Warnsignal ungeeignet.
+  · Die Wochen-Phase trennt die wirklich gefährliche Lage: im Abwärtstrend Nasdaq 100 nur +0,6 % in 60 Tagen, schlimmste 5 %
+    der Fälle −21 % in 20 Tagen. Nur investiert, wenn nicht Abwärtstrend/Korrektur: 12,5 % pro Jahr bei max. −32 %
+    (Kaufen und Halten 13,7 % bei −83 %), 3–4 Wechsel im Jahr.
+  · Bester Mix: Wochen-Phase für den Trend + Tagesdruck nur, um Grün zu Gelb abzustufen. Gelb hatte deutlich größere
+    Rückschläge (schlimmste 5 %: −10 % statt −8 % beim Nasdaq) → kleinere Positionen. ~8 Wechsel im Jahr.
+Stufen:  3 grün Aufwärtstrend · 2 gelb Unter Druck (Trend intakt, kurzfristig Stress) bzw. Seitwärts · 1 orange Korrektur ·
+0 rot Abwärtstrend. Gesamtampel = die schwächere von S&P 500 und Nasdaq 100.
 Reine Anzeige: Kairo-Regel, Scan und Strategie nutzen die Ampel nicht.
 """
 from __future__ import annotations
@@ -22,8 +20,11 @@ import numpy as np
 import pandas as pd
 
 LV = {3: ("bull", "Aufwärtstrend", "green"), 2: ("press", "Unter Druck", "yellow"), 1: ("corr", "Korrektur", "orange"), 0: ("bear", "Abwärtstrend", "red")}
-DO = {3: "Normal handeln – Rückenwind für Swing-Trades.", 2: "Nur die besten Setups, kleinere Positionen, Stops eng nachziehen.",
-      1: "Keine neuen Swing-Trades – bestehende absichern, Cash ist eine Position.", 0: "Kapital schützen – keine neuen Käufe, abwarten."}
+DO = {3: "Rückenwind – Swing-Trades mit normaler Positionsgröße.",
+      2: "Trend intakt, aber kurzfristig Stress: nur die besten Setups, kleinere Positionen, Stops konsequent.",
+      1: "Korrektur: höchstens halbe Positionsgröße und nur sehr starke Aktien – oder abwarten.",
+      0: "Abwärtstrend: keine neuen Swing-Trades. Historisch kaum Ertrag bei großen Rückschlägen – Kapital schützen."}
+WK = {"bull": 3, "neutral": 2, "corr": 1, "bear": 0}
 P = dict(up_n=5, buf=0.0, dd_p=-0.05, dd_c=-0.10, dd_b=-0.20, dist_n=5, vix_p=22.0, vix_c=30.0, use_dist=True, use_vix=True, use_credit=True)
 
 
@@ -88,13 +89,35 @@ def smooth(raw: pd.Series, up_n: int) -> pd.Series:
     return pd.Series(out, index=raw.index)
 
 
+def combine(week: pd.Series, day: pd.Series) -> pd.Series:
+    """Wochen-Stufe bestimmt den Trend; bei Wochen-Aufwärtstrend stuft Tagesdruck (geglättet) Grün auf Gelb ab."""
+    j = pd.concat([week, day], axis=1).dropna()
+    w, d = j.iloc[:, 0], j.iloc[:, 1]
+    return pd.Series(np.where(w < 3, w, np.where(d >= 3, 3, 2)), index=j.index, dtype=float)
+
+
+def week_levels(df, vix=None) -> pd.Series | None:
+    from .marketphase import market_phase
+    ph = market_phase(df, vix, keep=100000)
+    if not ph:
+        return None
+    s = pd.Series({pd.Timestamp(d): WK[k] for d, k in ph["hist"]}).sort_index()
+    return s, ph
+
+
 def light(df, vix=None, vix3m=None, credit=None, p: dict | None = None, keep: int = 260) -> dict | None:
     """Ampel eines Index für die App: Stufe, seit wann, Gründe, Verlauf (Tage)."""
     if df is None or _s(df) is None or len(_s(df)) < 260:
         return None
     p = {**P, **(p or {})}
     R = raw_levels(df, vix, vix3m, credit, p)
-    lv = smooth(R["lv"], p["up_n"]).dropna()
+    day = smooth(R["lv"], p["up_n"]).dropna()
+    wk = week_levels(df, vix)
+    if day.empty or not wk:
+        return None
+    ws, ph = wk
+    week_d = ws.reindex(day.index, method="bfill").fillna(float(ws.iloc[-1]))   # Wochenschluss gilt für die Tage seiner Woche
+    lv = combine(week_d, day).dropna()
     if lv.empty:
         return None
     k = int(lv.iloc[-1])
@@ -116,10 +139,14 @@ def light(df, vix=None, vix3m=None, credit=None, p: dict | None = None, keep: in
         why.append([bool(x.vix < p["vix_p"]), f"VIX {x.vix:.0f}{' – Terminkurve invertiert (akuter Stress)' if bool(x.inv) else ''}".replace(".", ",")])
     if bool(x.coff):
         why.append([False, "Kreditmarkt nervös (Hochzinsanleihen schwächer als Staatsanleihen)"])
+    wk_now = WK[ph["k"]]
+    why.insert(0, [wk_now >= 3, f"Wochentrend: {ph['label']} seit {ph['weeks']} Wochen (40-Wochen-Linie, Abstand zum Hoch)"])
     key, label, tone = LV[k]
+    if k == 2 and wk_now == 2:
+        key, label = "side", "Seitwärts"
     hist = [[d.strftime("%Y-%m-%d"), int(v)] for d, v in lv.iloc[-keep:].items()]
     return {"lv": k, "k": key, "label": label, "tone": tone, "do": DO[k], "since": since.strftime("%Y-%m-%d"),
-            "days": int((lv.index >= since).sum()), "raw": raw_now, "why": why, "dd": round(float(x.dd), 4), "hist": hist}
+            "days": int((lv.index >= since).sum()), "raw": raw_now, "week": ph["k"], "day": int(day.iloc[-1]), "why": why, "dd": round(float(x.dd), 4), "hist": hist}
 
 
 def credit_ratio(hyg, ief):
