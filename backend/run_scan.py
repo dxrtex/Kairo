@@ -692,6 +692,12 @@ def main(argv=None) -> int:
             print(f"ETF: Fehler {exc!r}")
     ctx_hist = yf.history(sorted({t for t, _ in MARKET} | set(SECTOR_ETF.values()) | set(INDUSTRY_ETF) | theme_tickers() | set(EU_SECTOR_ETF) | set(ASSET_ETF) | set(fear.TICKERS)), CONFIG.history.period, end=args.end)
     market = market_context(ctx_hist)
+    try:                                           # Marktphase für Swing-Trader (Wochenkurse, ruhig) – reine Anzeige, die Kairo-Regel nutzt sie nicht
+        from . import marketphase
+        ph = {k: marketphase.market_phase(ctx_hist.get(k), ctx_hist.get("^VIX") if k in ("^GSPC", "^NDX") else None) for k in ("^GSPC", "^NDX", "^GDAXI")}
+        market["phase"] = {k: v for k, v in ph.items() if v}
+    except Exception as exc:
+        print(f"Marktphase: Fehler {exc!r}")
     try:
         vix_now = float(ctx_hist["^VIX"]["Close"].dropna().iloc[-1])
     except Exception:
