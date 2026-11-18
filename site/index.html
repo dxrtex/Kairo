@@ -2223,7 +2223,7 @@ html.lt .cx-card { background: rgba(255,255,255,.55); }
 .co-kh { font-size: 12px; color: var(--muted); font-weight: 600; padding: 4px 0 2px; } .co-kr { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
 .co-kr span { color: var(--muted); } .co-kr b { font-weight: 600; }
 table.co-ft { min-width: 0; width: 100%; border-collapse: separate; border-spacing: 2px; font-size: 13px; } .co-ft th { font-weight: 500; color: var(--muted); font-size: 12px; text-align: right; padding: 4px 8px; white-space: nowrap; }
-.co-ft tbody th { text-align: left; color: var(--text); font-size: 13px; padding-left: 0; } .co-ft td { text-align: right; padding: 6px 8px; border-radius: 5px; white-space: nowrap; }
+.co-ft thead th.co-u { text-align: left; padding-left: 0; } .co-ft tbody th { text-align: left; color: var(--text); font-size: 13px; padding-left: 0; } .co-ft td { text-align: right; padding: 6px 8px; border-radius: 5px; white-space: nowrap; }
 .co-qhd { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); } .co-qhd b { color: var(--text); }
 .co-lg { display: inline-flex; align-items: center; gap: 6px; } .co-lg i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-left: 8px; } .co-lg i.o { border: 1.5px solid var(--muted); } .co-lg i.f { background: #30d158; }
 .co-q { width: 100%; height: auto; max-height: 210px; display: block; margin-top: 4px; } .co-qx { font-size: 12px; fill: var(--muted); } .co-qs { font-size: 12px; font-weight: 600; }
@@ -5800,12 +5800,14 @@ function newsHtml() {
       [/\b(FDA|approval|approved|Zulassung)\b/i, "Zulassung"], [/\b(lawsuit|probe|investigation|recall|Klage|Ermittlung|Rückruf)\b/i, "Ermittlung"],
       [/\b(CEO|CFO|resigns|steps down|appointed|Vorstandschef|Rücktritt)\b/i, "Personal"], [/\b(dividend|buyback|repurchase|Dividende|Aktienrückkauf)\b/i, "Dividende"]];
     const tag = n => (TAGS.find(([rx]) => rx.test(String(n.t))) || [])[1];
+    // Filter wie im Terminal (18.11.2026): Tendenz, Thema oder nur seriöse Quellen (ohne SEO-Portale)
+    const fOk = n => !tf ? true : tf === "g" ? n.s > 0 : tf === "r" ? n.s < 0 : tf === "q" ? !NEWS_LOW.test(String(n.p || "")) : tf.startsWith("t:") ? tag(n) === tf.slice(2) : true;
     const glyph = n => n.s > 0 ? '<i class="g">▲</i>' : n.s < 0 ? '<i class="r">▼</i>' : '<i>•</i>';
     const item = n => `<a class="nr-i" href="${esc(safeHref(trU(n)))}" target="_blank" rel="noopener"${n.o ? ` title="${esc(n.o)}"` : ""}>${glyph(n)}<span><b>${tag(n) ? `<u class="nr-tag">${tag(n)}</u>` : ""}${esc(n.t)}</b><em>${esc(n.p || "")}${n.ms ? " · " + esc(ago(n.ms)) : ""}${n.o ? " · übersetzt" : ""}</em></span></a>`;
     const lim = state.newsAll ? 999 : 12;
     let shownN = 0;
     const grp = ([t, l0], pinned) => { const r = rowOf(t) || {}, sr = byTicker(t), d1 = r.d1, open = (state.newsOpen || {})[t];
-      const l = tf ? l0.filter(n => tf === "g" ? n.s > 0 : n.s < 0) : l0; if (!l.length) return "";
+      const l = tf ? l0.filter(fOk) : l0; if (!l.length) return "";
       if (!pinned) { if (shownN >= lim && !state.newsQ) return ""; shownN++; }
       const sc = l0.reduce((a, n) => a + (n.s || 0), 0);
       // Kairo-Einordnung: Schlagzeilen-Tendenz + Analysten + Kursbewegung heute in einem Wort (nur wenn eindeutig)
@@ -5826,7 +5828,7 @@ function newsHtml() {
     const listHtml = (depHtml ? `<div class="nr-sec"><b>Deine Positionen</b><span>${gDep.length} mit Meldungen · Depot und laufende Trades</span></div><div class="nr-list nr-pin">${depHtml}</div>` : "")
       + (restHtml ? `${depHtml ? `<div class="nr-sec"><b>Watchlist & Merkliste</b><span>${gRest.length}</span></div>` : ""}<div class="nr-list">${restHtml}</div>` : ""), more = !state.newsQ && gRest.length > 12;
     const bar = tbar(`<div class="ng-search nr-q"><input type="search" id="newsQ" placeholder="Aktie suchen …" value="${esc(state.newsQ || "")}" autocomplete="off"><button type="button" class="search-x" data-clr="newsQ" aria-label="Eingabe löschen"${state.newsQ ? "" : " hidden"}>✕</button></div>
-      <label class="sp-dd nr-tone"><select data-newstonesel aria-label="Tendenz">${[["", "Alle Meldungen"], ["g", "▲ Positiv"], ["r", "▼ Negativ"]].map(([v, l]) => `<option value="${v}"${tf === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`);
+      <label class="sp-dd nr-tone"><select data-newstonesel aria-label="Filter">${[["", "Alle Meldungen"], ["g", "▲ Positiv"], ["r", "▼ Negativ"], ["q", "Nur seriöse Quellen"]].map(([v, l]) => `<option value="${v}"${tf === v ? " selected" : ""}>${l}</option>`).join("")}<optgroup label="Thema">${TAGS.map(([, l]) => `<option value="t:${l}"${tf === "t:" + l ? " selected" : ""}>${l}</option>`).join("")}</optgroup></select></label>`);
     return (groups.length ? "" : head) + (mine.size ? "" : `<p class="muted" style="margin:8px 2px">Lege Aktien in Merkliste, Depot oder Watchlist – dann siehst du hier ihre Meldungen.</p>`)
       + (groups.length ? `${bar}${meta(`${groups.length} Aktien mit Meldungen · 7 Tage`, gl("wind"))}
         ${listHtml || `<div class="nr-list"><p class="muted" style="padding:14px;margin:0">Keine Meldung mit dieser Tendenz.</p></div>`}<p class="muted" id="newsQnone" hidden>Keine deiner Aktien passt zur Suche.</p>
@@ -8650,6 +8652,7 @@ function getJson(name) {
     fetch(`data/${name}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
       .then(d => { jsonData[name] = d || null; if (["today", "bilanz", "settings", "depot", "etf", "game", "scanner"].includes(state.sec) || (state.sec === "news" && ["funds.json", "insider.json", "indices.json"].includes(name))) render();
         // Chart: Seitenleiste (Fundamental-Check, fairer Wert, Smart Money, Signale) nachziehen, ohne den Chart neu zu bauen (Fehler 14.11.)
+        else if (name === "fin.json" && d && $("ctCo")) coPaint($("ctCo").dataset.t);
         else if (state.sec === "chart" && d && ["fund.json", "insider.json", "funds.json", "sighist.json"].includes(name) && cfChart && $("cfSide") && !RP.on) { const y = $("cfSide").scrollTop; $("cfSide").innerHTML = cockpitSide(cfChart, cfChart.r); $("cfSide").scrollTop = y; } });
   }
   return jsonData[name];
@@ -9944,8 +9947,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.225";
-const APP_NEWS = [["2026.11.225", "Screener, Hedgefonds und Analysten wie im Terminal", [
+const APP_VER = "2026.11.226";
+const APP_NEWS = [["2026.11.226", "Finanzen in Milliarden, News-Filter", [
+  ["Finanzen über Jahre", "Umsatz, Bruttogewinn, operatives Ergebnis, Nettogewinn, Free Cashflow, Cash, Schulden und Eigenkapital der letzten Geschäftsjahre – in Milliarden aus den Jahresberichten bei der SEC, für alle US-Aktien und ohne Finnhub-Schlüssel."],
+  ["News-Filter", "Im News-Feed jetzt auch nach Thema (Zahlen, Analyst, Übernahme …) oder „Nur seriöse Quellen“ filtern."]]],
+ ["2026.11.225", "Screener, Hedgefonds und Analysten wie im Terminal", [
   ["Screener-Ansichten", "Übersicht, Bewertung, Wachstum, Rentabilität, Bilanz, Performance und Smart Money – ein Tipp wechselt alle Spalten. Neu: KGV erwartet, KUV, KBV, EV/EBITDA, Margen, Eigenkapitalrendite, Umsatz, Free Cashflow, Schulden, Kursziel und Analysten."],
   ["Hedgefonds-Chips", "Oben im Hedgefonds-Reiter jeden Fonds antippen und sein Depot sehen: Gewicht als Balken, Wert und was er im Quartal aufgestockt oder reduziert hat."],
   ["Blinken überall", "Auch im Depot blinken Kurs und Wert kurz grün oder rot, wenn ein neuer Live-Kurs kommt."],
@@ -14288,6 +14294,26 @@ function coKHtml(m) {
 // Finanzen über mehrere Jahre: Farbe nach Veränderung zum Vorjahr (grün besser, rot schlechter; bei Schulden umgekehrt)
 const CO_F = [["salesPerShare", "Umsatz je Aktie", "n"], ["eps", "Gewinn je Aktie", "n"], ["grossMargin", "Bruttomarge", "p"], ["operatingMargin", "Operative Marge", "p"], ["netMargin", "Nettomarge", "p"],
   ["roe", "Eigenkapitalrendite", "p"], ["fcfPerShareTTM", "Free Cashflow je Aktie", "n"], ["bookValue", "Buchwert", "big"], ["totalDebtToEquity", "Schulden / Eigenkapital", "n", 1], ["currentRatio", "Liquidität 2. Grades", "n"]];
+// Absolute Zahlen aus den SEC-Jahresberichten (fin.json, wöchentlich) – wie im Profi-Terminal; Farbe = Veränderung zum Vorjahr
+const FIN_R = [["rev", "Umsatz"], ["gp", "Bruttogewinn"], ["oi", "Operatives Ergebnis"], ["ni", "Nettogewinn"], ["nm", "Nettomarge", "p"], ["eps", "Gewinn je Aktie", "e"],
+  ["fcf", "Free Cashflow"], ["cash", "Cash"], ["debt", "Langfr. Schulden", "", 1], ["eq", "Eigenkapital"]];
+const finOf = t => { const f = getJson("fin.json"); return f && f.by ? f.by[t] || f.by[tkClean(t)] || f.by[String(t).replace("-", ".")] || null : null; };
+function coFinHtml(F) {
+  const n = innerWidth < 600 ? 4 : 6, yrs = F.y.slice(-n), off = F.y.length - yrs.length;
+  const col = k => k === "nm" ? (F.rev && F.ni ? F.rev.map((r, i) => r && F.ni[i] != null ? F.ni[i] / r : null) : null) : F[k];
+  const mx = Math.max(...["rev", "ni", "eq"].flatMap(k => (F[k] || []).map(v => Math.abs(v || 0)))), U = mx >= 1e9 ? [1e9, "Mrd. $"] : [1e6, "Mio. $"];
+  const big = v => { const x = v / U[0]; return (x < 0 ? "−" : "") + fmt(Math.abs(x), Math.abs(x) >= 100 ? 0 : 1); };
+  const cell = (v, f) => v == null ? "–" : f === "p" ? fmt(v * 100, 1) + " %" : f === "e" ? fmt(v, 2) : big(v);
+  const body = FIN_R.map(([k, l, f, inv]) => [k, l, f, inv, col(k)]).filter(x => x[4] && x[4].slice(off).some(v => v != null)).map(([k, l, f, inv, L]) => {
+    const V = L.slice(off);
+    return `<tr><th>${l}</th>${V.map((v, i) => { const pv = i ? V[i - 1] : (off ? L[off - 1] : null); let st = "";
+      if (v != null && pv != null && pv !== 0) { let ch = f === "p" ? (v - pv) * 4 : (v - pv) / Math.abs(pv); if (inv) ch = -ch; const a = Math.min(.42, Math.abs(ch) * 1.2 + .06);
+        st = ` style="background:${ch >= 0 ? `rgba(48,209,88,${a.toFixed(2)})` : `rgba(255,69,58,${a.toFixed(2)})`}"`; }
+      return `<td${st}>${cell(v, f)}</td>`; }).join("")}</tr>`; }).join("");
+  if (!body) return "";
+  return `<div class="tscroll"><table class="co-ft"><thead><tr><th class="co-u">in ${U[1]}</th>${yrs.map(y => `<th>${y}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>
+    <div class="co-note">Geschäftsjahre (Ende ${esc(F.fye ? F.fye.split("-").reverse().join(".") + "." : "–")}) · Gewinn je Aktie in $ · aus den Jahresberichten bei der SEC · Farbe: Veränderung zum Vorjahr</div>`;
+}
 function coFHtml(ser) {
   const rows = CO_F.map(([k, l, f, inv]) => [l, f, inv, ((ser || {})[k] || []).filter(x => x && x.period && x.v != null)]).filter(x => x[3].length >= 2);
   if (!rows.length) return "";
@@ -14353,10 +14379,10 @@ function coPHtml(t) {
 }
 function ctCoInner(t) {
   const o = CO[t] || {}, fh = liveKey("fh"), us = isUS(t);
-  const parts = { k: o.m ? coKHtml(o.m) : "", f: o.ser ? coFHtml(o.ser) : "", q: coQHtml(t), a: coAHtml(t), i: coIHtml(t), p: coPHtml(t) };
+  const fin0 = us ? finOf(t) : null, fin = fin0 && fin0.y && +fin0.y[fin0.y.length - 1] >= new Date().getFullYear() - 2 ? fin0 : null, parts = { k: o.m ? coKHtml(o.m) : "", f: fin ? coFinHtml(fin) : o.ser ? coFHtml(o.ser) : "", q: coQHtml(t), a: coAHtml(t), i: coIHtml(t), p: coPHtml(t) };
   const avail = CO_TABS.filter(([k]) => parts[k]); if (!avail.length) return o.busy ? `<div class="co-empty">Lädt …</div>` : "";
   const cur = avail.find(([k]) => k === state.coTab) ? state.coTab : avail[0][0];
-  const hint = !fh && us ? `<div class="co-note">Kennzahlen, Finanzen und Konkurrenz kommen mit dem kostenlosen Finnhub-Schlüssel (Einstellungen → Live-Kurse).</div>` : !us && !o.m ? "" : "";
+  const hint = !fh && us ? `<div class="co-note">Kennzahlen, Analysten und Konkurrenz kommen mit dem kostenlosen Finnhub-Schlüssel (Einstellungen → Live-Kurse).</div>` : !us && !o.m ? "" : "";
   return `<div class="co-hd"><div class="ct-nh">Unternehmen</div><div class="hm-seg co-seg" role="tablist">${avail.map(([k, l]) => `<button role="tab" class="${k === cur ? "on" : ""}" data-cotab="${k}">${l}</button>`).join("")}</div></div>
     <div class="co-body">${parts[cur]}</div>${hint}`;
 }
