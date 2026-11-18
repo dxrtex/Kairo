@@ -2299,6 +2299,7 @@ table.co-ft { min-width: 0; width: 100%; border-collapse: separate; border-spaci
 .fp-r:hover:not(:disabled) .fp-n b { color: var(--accent, #0a84ff); }
 .fp-sold { margin-top: 10px; font-size: 13px; } .fp-sold small { color: var(--muted); margin-right: 6px; } .fp-sold a { color: var(--text); }
 @media (max-width: 640px) { .fp-hd, .fp-r { grid-template-columns: 28px minmax(0, 1fr) 84px 68px; gap: 10px; } .fp-hd span:nth-child(5) { font-size: 0; } .fp-hd span:nth-child(5)::after { content: "Δ"; font-size: 12px; } .fp-hd span:nth-child(4), .fp-v { display: none; } .fp-k { gap: 16px; } }
+.nw-brk { display: inline-block; margin-right: 7px; padding: 1px 6px; border-radius: 4px; background: #ff453a; color: #fff; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; text-decoration: none; text-transform: uppercase; vertical-align: 1px; }
 .scr-views { margin: 10px 0 8px; max-width: 100%; overflow-x: auto; scrollbar-width: none; } .scr-views::-webkit-scrollbar { display: none; } .scr-views button { flex: none; white-space: nowrap; }
 .hm-seg { display: inline-flex; gap: 2px; padding: 2px; height: 34px; border-radius: 10px; background: rgba(118,118,128,.20); }
 .hm-seg button { min-width: 42px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
@@ -5764,7 +5765,7 @@ function newsHtml() {
     dd = d.toLocaleDateString("de-DE", { day: "numeric", month: "short" }); return d.toDateString() === new Date().toDateString() ? (noT ? "heute" : hm) : noT ? dd : `${dd}, ${hm}`; };
   const trU = n => n.o && /^https?:/.test(n.u || "") ? `https://translate.google.com/translate?sl=auto&tl=de&u=${encodeURIComponent(n.u)}` : n.u;
   // Farbe = Tendenz der Schlagzeile (grün positiv, rot negativ, grau neutral) – auf einen Blick unterscheidbar
-  const row = n => `<a class="bf-r nw${n.s > 0 ? " nw-g" : n.s < 0 ? " nw-r" : ""}" href="${esc(safeHref(trU(n)))}" target="_blank" rel="noopener"${n.o ? ` title="${esc(n.o)}"` : ""}><i class="${n.s > 0 ? "g" : n.s < 0 ? "r" : "n"}"></i><span><b>${esc(n.t)}</b><em>${n.s > 0 ? '<u class="nw-t g">▲ positiv</u>' : n.s < 0 ? '<u class="nw-t r">▼ negativ</u>' : ""}${n.nm ? esc(n.nm) + " · " : ""}${esc(n.p || "")}${n.ms ? " · " + esc(ago(n.ms)) : ""}${n.o ? " · übersetzt" : ""}</em></span></a>`;
+  const row = n => `<a class="bf-r nw${n.s > 0 ? " nw-g" : n.s < 0 ? " nw-r" : ""}" href="${esc(safeHref(trU(n)))}" target="_blank" rel="noopener"${n.o ? ` title="${esc(n.o)}"` : ""}><i class="${n.s > 0 ? "g" : n.s < 0 ? "r" : "n"}"></i><span><b>${n.ms && now - n.ms < 45 * 6e4 && now >= n.ms ? `<u class="nw-brk">Eilmeldung</u>` : ""}${esc(n.t)}</b><em>${n.s > 0 ? '<u class="nw-t g">▲ positiv</u>' : n.s < 0 ? '<u class="nw-t r">▼ negativ</u>' : ""}${n.nm ? esc(n.nm) + " · " : ""}${esc(n.p || "")}${n.ms ? " · " + esc(ago(n.ms)) : ""}${n.o ? " · übersetzt" : ""}</em></span></a>`;
   const block = (title, rows, empty) => `<div class="bf-s"><b>${title}</b><div class="bf-l">${rows.length ? rows.join("") : `<div class="bf-empty" style="padding:12px 14px">${empty}</div>`}</div></div>`;
   const msOf = d => { const t = Date.parse(d); return isNaN(t) ? null : t; };
   const dedup = l => { const s = new Set(); return l.filter(n => { const k = String(n.t).toLowerCase().slice(0, 70); if (s.has(k)) return false; s.add(k); return true; }); };
@@ -6975,7 +6976,7 @@ function depotHtml() {
     : `<span class="dh-live off">Abendkurse · <a href="#" data-gosec="settings">Live einrichten</a></span>`;
   const head = items.length ? "" : `<div class="section-title"><span>Mein Depot</span><span></span></div>`;
   const sum = list.length && valued ? `<div class="dep-sum">
-      <div class="fig"><span>Depotwert${valued < list.length ? " (ohne Zertifikate)" : ""}</span><b>${fmt(wert)} €</b></div>
+      <div class="fig"><span>Depotwert${valued < list.length ? " (ohne Zertifikate)" : ""}</span><b data-lpx="dp:sum" data-v="${wert || ""}">${fmt(wert)} €</b></div>
       <div class="fig"><span>Einstand</span><b>${fmt(einstand)} €</b></div>
       <div class="fig"><span>Gewinn / Verlust</span><b class="${gv >= 0 ? "up" : "down"}">${gv >= 0 ? "+" : ""}${fmt(gv)} €</b></div>
       <div class="fig"><span>in %</span><b class="${gv >= 0 ? "up" : "down"}">${einstand ? (gv >= 0 ? "+" : "") + pct(gv / einstand) : "–"}</b></div></div>`
@@ -7009,7 +7010,7 @@ function depotHtml() {
         <div class="meta">${esc(p.t)} · ${fmt(p.qty, p.qty % 1 ? 4 : 0)} Stück${p.date ? ` · gekauft am ${dateDE(p.date)} (vor ${held} Tagen)` : ""}</div></div></div>
       <div class="figures">
         <div class="fig"><span>Einstand je Aktie</span><b>${fmt(p.price)} €</b></div>
-        <div class="fig"><span>Aktuell je Aktie</span><b>${nowEur != null && !isNaN(nowEur) ? fmt(nowEur) + " €" : r ? fmt(r.c) + " " + esc(cur || "") : "–"}</b></div>
+        <div class="fig"><span>Aktuell je Aktie</span><b data-lpx="dp:${esc(p.t)}" data-v="${nowEur || ""}">${nowEur != null && !isNaN(nowEur) ? fmt(nowEur) + " €" : r ? fmt(r.c) + " " + esc(cur || "") : "–"}</b></div>
         <div class="fig"><span>Wert</span><b>${val != null ? fmt(val) + " €" : "–"}</b></div>
         <div class="fig"><span>Gewinn / Verlust</span><b class="${(g ?? 0) >= 0 ? "up" : "down"}">${g != null ? (g >= 0 ? "+" : "") + pct(g / cost) : "–"}</b></div></div>
       ${st ? `<div class="figures"><div class="fig"><span>Tag</span><b>${st.day} von ${st.hold}</b></div><div class="fig"><span>Stop</span><b>${st.fe(st.plan.stop)} €</b></div>
@@ -7223,7 +7224,7 @@ function groupHtml(g) {
       <div class="g1">${cfAv(g.t)}<div class="g1t"><b class="gname">${esc(shortNm(g.name))}</b><span class="muted">${g.ms.length > 1 ? `${g.ms.length} Positionen` : g.ms[0].d ? `Turbo ${g.ms[0].short ? "Short" : "Long"}` : "Aktie"} · ${fmt(a.c)} ${esc(g.cur)}</span>${(() => { const tg = g.slHit ? ["r", "Stop erreicht"] : st ? ["b", `Kairo-Trade · Tag ${st.day}/${st.hold}`] : g.ms.some(m => m.d) ? ["n", "Turbo"] : isLt(g.t) ? ["n", "Langfristig"] : ["n", "Ohne Trade-Plan"];
         return `<small class="g-tag t-${tg[0]}">${tg[1]}</small>`; })()}</div></div>
       ${(() => { const qty = g.ms.reduce((x, m) => x + m.p.qty, 0), turbo = g.ms.some(m => m.d), d0 = g.ms.map(m => m.p.date).filter(Boolean).sort()[0];
-        return `<div class="g2"><span class="muted">Wert</span><b>${g.known ? eur(g.value) : eur(g.invested)}</b><small class="muted">${turbo ? `Einsatz ${eur(g.invested)}` : `${fmt(qty, qty % 1 ? 3 : 0)} Stk. · Ø ${eur2(g.invested / (qty || 1))}`}</small></div>
+        return `<div class="g2"><span class="muted">Wert</span><b data-lpx="dg:${esc(g.t)}" data-v="${g.known ? g.value : ""}">${g.known ? eur(g.value) : eur(g.invested)}</b><small class="muted">${turbo ? `Einsatz ${eur(g.invested)}` : `${fmt(qty, qty % 1 ? 3 : 0)} Stk. · Ø ${eur2(g.invested / (qty || 1))}`}</small></div>
       <div class="g2 g-day"><span class="muted">Heute</span><b class="${g.dayP == null ? "muted" : g.dayP >= 0 ? "up" : "down"}">${g.dayP != null ? sgnPct(g.dayP, 1) : "–"}</b><small class="muted">${g.day != null ? sgnEur(g.day) : ""}</small></div>
       <div class="g2"><span class="muted">Gewinn / Verlust</span><b class="${g.pl == null ? "" : g.pl >= 0 ? "up" : "down"}">${g.known ? sgnEur(g.value - g.invested) : "–"}</b><small class="${g.pl == null ? "muted" : g.pl >= 0 ? "up" : "down"}">${g.known ? sgnPct(g.pl, 1) : "Wert unbekannt"}</small></div>
       ${turbo ? `<div class="g2"><span class="muted">Hebel</span><b>${g.levTxt}</b><small class="${g.koDist != null && g.koDist < .1 ? "down" : "muted"}">${g.koDist != null ? `K.-o. ${pct(g.koDist, 0)} entfernt` : "ohne Knock-out"}</small></div>`
@@ -9947,6 +9948,8 @@ const APP_VER = "2026.11.225";
 const APP_NEWS = [["2026.11.225", "Screener, Hedgefonds und Analysten wie im Terminal", [
   ["Screener-Ansichten", "Übersicht, Bewertung, Wachstum, Rentabilität, Bilanz, Performance und Smart Money – ein Tipp wechselt alle Spalten. Neu: KGV erwartet, KUV, KBV, EV/EBITDA, Margen, Eigenkapitalrendite, Umsatz, Free Cashflow, Schulden, Kursziel und Analysten."],
   ["Hedgefonds-Chips", "Oben im Hedgefonds-Reiter jeden Fonds antippen und sein Depot sehen: Gewicht als Balken, Wert und was er im Quartal aufgestockt oder reduziert hat."],
+  ["Blinken überall", "Auch im Depot blinken Kurs und Wert kurz grün oder rot, wenn ein neuer Live-Kurs kommt."],
+  ["Eilmeldungen", "Meldungen der letzten 45 Minuten tragen im News-Feed ein rotes „Eilmeldung“-Schild."],
   ["Analysten unter dem Chart", "Neuer Reiter mit dem Konsens und den Empfehlungen der letzten Monate als Säulen. Im Analysten-Fächer sind Kursziele unter dem Kurs jetzt rot."]]],
  ["2026.11.224", "Unternehmen unter dem Chart", [
   ["Kennzahlen", "Bewertung, Eckdaten, Margen und Bilanz auf einen Blick – direkt unter dem Chart."],
