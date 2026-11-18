@@ -153,6 +153,18 @@ def annual_fin(inc, bal=None, cf=None, cur: str | None = None) -> dict | None:
     return out
 
 
+def monthly(df, years: int = 12) -> dict | None:
+    """Monats-Schlusskurse für den Bewertungsverlauf über viele Jahre: {"m0": "JJJJ-MM", "c": [kurse]} (4 gültige Stellen)."""
+    if df is None or getattr(df, "empty", True) or "Close" not in df:
+        return None
+    c = df["Close"].dropna()
+    c = c[c > 0].iloc[-12 * years:]
+    if len(c) < 24:
+        return None
+    sig = lambda v: float(f"{v:.4g}")
+    return {"m0": c.index[0].strftime("%Y-%m"), "c": [sig(float(v)) for v in c]}
+
+
 def fetch(tickers: list[str], pause: float = 0.3, budget_s: float = 5000) -> dict:
     import yfinance as yf
     out, t0 = {}, time.time()
@@ -194,7 +206,7 @@ def fetch(tickers: list[str], pause: float = 0.3, budget_s: float = 5000) -> dic
                     row["ih"] = ih
             except Exception:
                 pass
-            if "." in t and inc is not None:            # Europa, Asien …: ganze Jahrestabelle (in den USA kommt sie aus der SEC)
+            if inc is not None:                        # ganze Jahrestabelle (USA: Ersatz, wenn die SEC nichts hat, z. B. TSM mit 20-F)
                 try:
                     fa = annual_fin(inc, tk.get_balance_sheet(), tk.get_cashflow(), info.get("financialCurrency"))
                     if fa:
@@ -205,6 +217,12 @@ def fetch(tickers: list[str], pause: float = 0.3, budget_s: float = 5000) -> dic
                 qh = quarter_revenue(tk.quarterly_income_stmt)
                 if qh:
                     row["qh"] = qh
+            except Exception:
+                pass
+            try:                                       # Monatskurse 12 Jahre → KGV/KUV-Verlauf über viele Jahre
+                pm = monthly(tk.history(period="12y", interval="1mo", auto_adjust=False))
+                if pm:
+                    row["pm"] = pm
             except Exception:
                 pass
             if (row.get("mc") or 0) >= 5e9:            # Hoch-/Abstufungen nur für größere Werte (dort gibt es sie)

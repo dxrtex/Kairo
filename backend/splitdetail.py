@@ -4,7 +4,7 @@ Vorher lud die App beim Start 5,7 MB fund.json und beim ersten Unternehmen 4,5 M
   · site/data/fund.json   schlank: nur Kennzahlen je Aktie (für Screener, Schneeflocke, fairen Wert)
   · site/data/co/NNN.json 128 kleine Dateien mit den Details je Aktie, die erst beim Öffnen einer Aktie geladen werden:
                           eh (Gewinn je Quartal), ih (Umsatz/Gewinn je Jahr), ud (Analysten-Einstufungen),
-                          qh (Umsatz je Quartal), fin (SEC-Jahreszahlen und Meldungen; außerhalb der USA Yahoo-Jahresberichte „fa“)
+                          qh (Umsatz je Quartal), pm (Monatskurse 12 Jahre), fin (SEC-Jahreszahlen und Meldungen; außerhalb der USA Yahoo-Jahresberichte „fa“)
   · site/data/fin.json    entfällt (steckt komplett in den Detaildateien)
 Die Datei einer Aktie: bucket(ticker) – dieselbe Rechnung steht in site/index.html (detB).
 
@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 DET_N = 128
-FIELDS = ("eh", "ih", "ud", "qh", "fa")
+FIELDS = ("eh", "ih", "ud", "qh", "fa", "pm")
 
 
 def bucket(t: str) -> int:

@@ -26,12 +26,12 @@ def test_annual_skips_quarters_and_10q():
     assert annual(FACTS, "StockholdersEquity", True).get("2025-06-30") is None
 
 
-def test_parse_six_years_fcf_and_restated():
+def test_parse_years_fcf_and_restated():
     p = parse(FACTS)
-    assert p["y"] == ["2020", "2021", "2022", "2023", "2024", "2025"]
-    assert p["fcf"] == [20e9] * 6 and "ocf" not in p and "capex" not in p
-    assert p["ni"][4] == 25e9
-    assert p["eps"][0] == 6.12
+    assert p["y"] == [str(y) for y in range(2017, 2026)]          # bis zu 12 Jahre, hier alle 9 vorhandenen
+    assert p["fcf"] == [None] * 3 + [20e9] * 6 and "ocf" not in p and "capex" not in p
+    assert p["ni"][7] == 25e9
+    assert p["eps"][3] == 6.12 and p["eps"][0] is None
     assert p["eq"][-1] == 50e9 and "debt" not in p
 
 
@@ -43,7 +43,7 @@ def test_parse_merges_tag_switch():
     f = {"Revenues": {"units": {"USD": [_dur(y, 1e9) for y in range(2014, 2019)]}},
          "RevenueFromContractWithCustomerExcludingAssessedTax": {"units": {"USD": [_dur(y, 2e9) for y in range(2018, 2026)]}}}
     p = parse(f)
-    assert p["y"][-1] == "2025" and p["rev"][-1] == 2e9 and len(p["y"]) == 6
+    assert p["y"][-1] == "2025" and p["rev"][-1] == 2e9 and p["rev"][0] == 1e9 and len(p["y"]) == 12
 
 
 def test_filings_list():

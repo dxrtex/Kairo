@@ -47,3 +47,24 @@ def test_poly_skips_placeholders_and_old_worldbank():
     wb = worldbank({"d": [{"country": {"id": "DE", "value": "Germany"}, "countryiso3code": "DEU", "value": 20.8, "date": "1990"}],
                     "g": [{"country": {"id": "DE", "value": "Germany"}, "countryiso3code": "DEU", "value": 0.2, "date": "2025"}]})
     assert "d" not in wb["DE"] and wb["DE"]["g"] == 0.2
+
+
+def test_eonet_parses_latest_point_and_kind():
+    from backend.pulse import eonet
+    ev = [{"title": "Fire A", "categories": [{"id": "wildfires"}], "sources": [{"url": "https://x"}],
+           "geometry": [{"type": "Point", "date": "2026-11-10T00:00:00Z", "coordinates": [10.0, 50.0]},
+                        {"type": "Point", "date": "2026-11-12T00:00:00Z", "coordinates": [10.5, 50.5]}]},
+          {"title": "Storm", "categories": [{"id": "severeStorms"}], "geometry": [{"type": "Point", "date": "2026-11-15", "coordinates": [-80, 25]}]},
+          {"title": "Iceberg", "categories": [{"id": "unknown"}], "geometry": [{"type": "Point", "date": "2026-11-15", "coordinates": [0, 0]}]},
+          {"title": "Polygon", "categories": [{"id": "floods"}], "geometry": [{"type": "Polygon", "coordinates": [[[0, 0]]]}]}]
+    out = eonet(ev)
+    assert [x[0] for x in out] == ["storm", "fire"] and out[1][2:5] == [10.5, 50.5, "2026-11-12"] and out[1][5] == "https://x"
+
+
+def test_weekly_skips_factors():
+    import pandas as pd
+    from backend.pulse import weekly
+    idx = pd.date_range("2022-01-07", periods=30, freq="W-FRI")
+    df = pd.DataFrame({"Close": range(1, 31)}, index=idx)
+    w = weekly({"GC=F": df, "SPY": df})
+    assert "GC=F" in w and "SPY" not in w and w["GC=F"][-1] == [idx[-1].strftime("%Y-%m-%d"), 30.0]
