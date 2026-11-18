@@ -4,7 +4,7 @@ Vorher lud die App beim Start 5,7 MB fund.json und beim ersten Unternehmen 4,5 M
   · site/data/fund.json   schlank: nur Kennzahlen je Aktie (für Screener, Schneeflocke, fairen Wert)
   · site/data/co/NNN.json 128 kleine Dateien mit den Details je Aktie, die erst beim Öffnen einer Aktie geladen werden:
                           eh (Gewinn je Quartal), ih (Umsatz/Gewinn je Jahr), ud (Analysten-Einstufungen),
-                          qh (Umsatz je Quartal), fin (SEC-Jahreszahlen und Meldungen)
+                          qh (Umsatz je Quartal), fin (SEC-Jahreszahlen und Meldungen; außerhalb der USA Yahoo-Jahresberichte „fa“)
   · site/data/fin.json    entfällt (steckt komplett in den Detaildateien)
 Die Datei einer Aktie: bucket(ticker) – dieselbe Rechnung steht in site/index.html (detB).
 
@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 DET_N = 128
-FIELDS = ("eh", "ih", "ud", "qh")
+FIELDS = ("eh", "ih", "ud", "qh", "fa")
 
 
 def bucket(t: str) -> int:
@@ -43,6 +43,11 @@ def split(fund: dict | None, fin: dict | None) -> tuple[dict | None, dict]:
     if fin and isinstance(fin.get("by"), dict):
         for t, v in fin["by"].items():
             det.setdefault(bucket(t), {}).setdefault(t, {})["fin"] = v
+    for b in det.values():                             # außerhalb der USA: Jahrestabelle aus Yahoo (fa), wenn die SEC nichts hat
+        for x in b.values():
+            fa = x.pop("fa", None)
+            if fa and "fin" not in x:
+                x["fin"] = fa
     return fund, det
 
 

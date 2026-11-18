@@ -20,3 +20,25 @@ def test_short_desc():
     d = short_desc(t)
     assert d.startswith("Apple Inc") and len(d) <= 341
     assert short_desc("") == ""
+
+
+def test_annual_fin_builds_fin_table_from_yahoo_frames():
+    import pandas as pd
+    from backend.fundamentals import annual_fin
+    cols = [pd.Timestamp("2025-12-31"), pd.Timestamp("2024-12-31"), pd.Timestamp("2023-12-31"), pd.Timestamp("2022-12-31")]
+    inc = pd.DataFrame({c: v for c, v in zip(cols, [[100.0, 40.0, 20.0, 15.0, 1.5], [90.0, 35.0, 18.0, 12.0, 1.2], [80.0, 30.0, 15.0, 10.0, 1.0], [float("nan")] * 5])},
+                       index=["TotalRevenue", "GrossProfit", "OperatingIncome", "NetIncome", "DilutedEPS"])
+    bal = pd.DataFrame({cols[0]: [5.0, 50.0, 70.0], cols[1]: [4.0, 55.0, 60.0]}, index=["CashAndCashEquivalents", "LongTermDebt", "StockholdersEquity"])
+    cf = pd.DataFrame({cols[0]: [12.0], cols[1]: [9.0]}, index=["FreeCashFlow"])
+    f = annual_fin(inc, bal, cf, "EUR")
+    assert f["y"] == ["2023", "2024", "2025"] and f["fye"] == "12-31" and f["cur"] == "EUR" and f["src"] == "yahoo"
+    assert f["rev"] == [80, 90, 100] and f["eps"] == [1.0, 1.2, 1.5] and f["cash"] == [None, 4, 5] and f["fcf"] == [None, 9, 12]
+    assert annual_fin(None) is None and annual_fin(inc[[cols[0]]]) is None
+
+
+def test_split_uses_yahoo_table_only_without_sec():
+    from backend import splitdetail as sd
+    fund = {"by": {"SAP.DE": {"pe": 1, "fa": {"y": ["2025"], "src": "yahoo"}}, "MSFT": {"pe": 2, "fa": {"y": ["x"]}}}}
+    slim, det = sd.split(fund, {"by": {"MSFT": {"y": ["2025"]}}})
+    assert "fa" not in slim["by"]["SAP.DE"] and det[sd.bucket("SAP.DE")]["SAP.DE"] == {"fin": {"y": ["2025"], "src": "yahoo"}}
+    assert det[sd.bucket("MSFT")]["MSFT"] == {"fin": {"y": ["2025"]}}

@@ -14466,7 +14466,7 @@ const coFundM = f => { const p = v => v == null ? null : v * 100, m = { peTTM: f
 CO_K[0][1].push(["peg", "PEG", "n"], ["pcf", "Kurs / Cashflow", "x"]);
 // Verlauf einer Kennzahl: Finnhub-Jahreswerte, sonst aus den SEC-Jahreszahlen gerechnet
 function coHistData(t, key) {
-  const [src, k] = String(key).split(":"), o = CO[t] || {}, F = isUS(t) ? finOf(t) : null;
+  const [src, k] = String(key).split(":"), o = CO[t] || {}, F = finOf(t);
   if (src === "f" && F) { const L = k === "nm" ? (F.rev || []).map((r, i) => r && F.ni && F.ni[i] != null ? F.ni[i] / r : null) : F[k]; return L ? F.y.map((y, i) => [y, L[i]]).filter(x => x[1] != null) : []; }
   const SER = { pe: "pe", ps: "ps", pb: "pb", ev: "ev", gm: "grossMargin", om: "operatingMargin", pm: "netMargin", roe: "roe", roa: "roa", cr: "currentRatio", de: "totalDebtToEquity", eps: "eps" };
   const ser = o.ser && o.ser[SER[k]]; if (ser && ser.length >= 2) return ser.filter(x => x && x.v != null).map(x => [String(x.period).slice(0, 4), x.v]).sort((a, b) => a[0].localeCompare(b[0])).slice(-10);
@@ -14500,7 +14500,7 @@ const finOf = t => { const fd = getJson("fund.json"); if (!fd) return null; if (
 function coFinHtml(F) {
   const n = innerWidth < 600 ? 4 : 6, yrs = F.y.slice(-n), off = F.y.length - yrs.length;
   const col = k => k === "nm" ? (F.rev && F.ni ? F.rev.map((r, i) => r && F.ni[i] != null ? F.ni[i] / r : null) : null) : F[k];
-  const mx = Math.max(...["rev", "ni", "eq"].flatMap(k => (F[k] || []).map(v => Math.abs(v || 0)))), U = mx >= 1e9 ? [1e9, "Mrd. $"] : [1e6, "Mio. $"];
+  const mx = Math.max(...["rev", "ni", "eq"].flatMap(k => (F[k] || []).map(v => Math.abs(v || 0)))), cs = ({ USD: "$", EUR: "€", GBP: "£", JPY: "¥" })[F.cur || "USD"] || F.cur, U = mx >= 1e9 ? [1e9, `Mrd. ${cs}`] : [1e6, `Mio. ${cs}`];
   const big = v => { const x = v / U[0]; return (x < 0 ? "−" : "") + fmt(Math.abs(x), Math.abs(x) >= 100 ? 0 : 1); };
   const cell = (v, f) => v == null ? "–" : f === "p" ? fmt(v * 100, 1) + " %" : f === "e" ? fmt(v, 2) : big(v);
   const body = FIN_R.map(([k, l, f, inv]) => [k, l, f, inv, col(k)]).filter(x => x[4] && x[4].slice(off).some(v => v != null)).map(([k, l, f, inv, L]) => {
@@ -14511,7 +14511,7 @@ function coFinHtml(F) {
       return `<td${st}>${cell(v, f)}</td>`; }).join("")}</tr>`; }).join("");
   if (!body) return "";
   return `<div class="tscroll"><table class="co-ft"><thead><tr><th class="co-u">in ${U[1]}</th>${yrs.map(y => `<th>${y}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>
-    <div class="co-note">Geschäftsjahre (Ende ${esc(F.fye ? F.fye.split("-").reverse().join(".") + "." : "–")}) · Gewinn je Aktie in $ · aus den Jahresberichten bei der SEC · Farbe: Veränderung zum Vorjahr · Zeile antippen: Verlauf</div>`;
+    <div class="co-note">Geschäftsjahre (Ende ${esc(F.fye ? F.fye.split("-").reverse().join(".") + "." : "–")}) · Gewinn je Aktie in ${esc(cs)} · ${F.src === "yahoo" ? "aus den Jahresberichten (Yahoo Finance)" : "aus den Jahresberichten bei der SEC"} · Farbe: Veränderung zum Vorjahr · Zeile antippen: Verlauf</div>`;
 }
 function coFHtml(ser) {
   const rows = CO_F.map(([k, l, f, inv]) => [l, f, inv, ((ser || {})[k] || []).filter(x => x && x.period && x.v != null)]).filter(x => x[3].length >= 2);
@@ -14604,7 +14604,7 @@ function coPHtml(t) {
 function ctCoInner(t) {
   const o = CO[t] || {}, fh = liveKey("fh"), us = isUS(t);
   const fd = fundOf(t), km = o.m ? { ...o.m, peg: fd && fd.peg, pcf: fd && fd.ocf > 0 && fd.mc ? fd.mc / fd.ocf : null } : fd ? { ...coFundM(fd), peg: fd.peg, pcf: fd.ocf > 0 && fd.mc ? fd.mc / fd.ocf : null } : null;
-  const fin0 = us ? finOf(t) : null, fin = fin0 && fin0.y && +fin0.y[fin0.y.length - 1] >= new Date().getFullYear() - 2 ? fin0 : null, parts = { k: km ? coKHtml(km) : "", f: fin ? coFinHtml(fin) : o.ser ? coFHtml(o.ser) : "", q: coQHtml(t), a: coAHtml(t), i: coIHtml(t), p: coPHtml(t), m: coMHtml(t), n: coNHtml(t), d: coDHtml(t), o: coOHtml(t) };
+  const fin0 = finOf(t), fin = fin0 && fin0.y && +fin0.y[fin0.y.length - 1] >= new Date().getFullYear() - 2 ? fin0 : null, parts = { k: km ? coKHtml(km) : "", f: fin ? coFinHtml(fin) : o.ser ? coFHtml(o.ser) : "", q: coQHtml(t), a: coAHtml(t), i: coIHtml(t), p: coPHtml(t), m: coMHtml(t), n: coNHtml(t), d: coDHtml(t), o: coOHtml(t) };
   const avail = CO_TABS.filter(([k]) => parts[k]); if (avail.length <= 1 && !noteOf(t)) return o.busy ? `<div class="co-empty">Lädt …</div>` : "";
   const cur = avail.find(([k]) => k === state.coTab) ? state.coTab : avail[0][0];
   const hint = !fh && us && !o.peers ? `<div class="co-note">Konkurrenz und Empfehlungen je Monat kommen mit dem kostenlosen Finnhub-Schlüssel (Einstellungen → Live-Kurse).</div>` : "";
@@ -14742,7 +14742,7 @@ function coNHtml(t) {
 // ---------- Bewertung (DCF / Reverse-DCF) und Optionsrechner (Black-Scholes) – 18.11.2026, wie im Profi-Terminal. Nur Rechenhilfe. ----------
 const coPx = t => { const q = LIVE.map[t], o = CO[t] || {}, f = fundOf(t) || {}; return (q && q.c > 0 && q.c) || (o.r && o.r.close) || f.cp || null; };
 function dcfBase(t) {
-  const f = fundOf(t) || {}, F = isUS(t) ? finOf(t) : null, last = a => a ? [...a].reverse().find(v => v != null) : null;
+  const f = fundOf(t) || {}, F0 = finOf(t), F = F0 && (!F0.cur || F0.cur === ((CO[t] || {}).r || rowFor(t) || {}).currency) ? F0 : null, last = a => a ? [...a].reverse().find(v => v != null) : null;
   const fcf = (F && last(F.fcf)) || f.fcf || null, cash = (F && last(F.cash)) ?? f.cash ?? 0, debt = (F && last(F.debt)) ?? f.debt ?? 0, sh = f.so || (f.mc && f.cp ? f.mc / f.cp : null);
   const g0 = Math.max(-.05, Math.min(.25, f.eg != null && f.eg > -.5 ? (f.eg + (f.rg ?? f.eg)) / 2 : f.rg ?? .08));
   return { fcf, cash, debt, sh, g0 };
