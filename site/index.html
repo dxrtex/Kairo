@@ -14638,7 +14638,8 @@ const MC_REG = { "Europe & Central Asia": "Europa & Zentralasien", "East Asia & 
 function countriesHtml() {
   const M = pulseGet("m"); if (!M || !M.c) return M === null ? "" : `<div class="hcard"><div class="note">Länderdaten laden …</div></div>`;
   const S = state.mcS || { k: "gdp", asc: false }, q = (state.mcQ || "").toLowerCase(), rg = state.mcR || "";
-  let L = Object.entries(M.c).map(([iso, x]) => ({ iso, nm: mcName(iso, x), ...x })).filter(x => (!q || x.nm.toLowerCase().includes(q) || x.iso.toLowerCase() === q) && (!rg || x.r === rg));
+  const yMin = new Date().getFullYear() - 6, fresh = x => { const o = { ...x }; Object.entries(x.y || {}).forEach(([k, y]) => { if (+String(y).slice(0, 4) < yMin) delete o[k]; }); return o; };
+  let L = Object.entries(M.c).map(([iso, x]) => ({ iso, nm: mcName(iso, x), ...fresh(x) })).filter(x => (!q || x.nm.toLowerCase().includes(q) || x.iso.toLowerCase() === q) && (!rg || x.r === rg));
   L.sort((a, b) => { const x = S.k === "nm" ? a.nm : a[S.k], y = S.k === "nm" ? b.nm : b[S.k]; if (x == null) return 1; if (y == null) return -1; const c = typeof x === "string" ? x.localeCompare(y) : x - y; return S.asc ? c : -c; });
   const regs = [...new Set(Object.values(M.c).map(x => x.r).filter(Boolean))].sort();
   const flag = iso => String.fromCodePoint(...[...iso].map(c => 127397 + c.charCodeAt(0)));
