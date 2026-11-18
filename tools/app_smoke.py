@@ -390,7 +390,19 @@ async def terminal_check(b, url, errs):
                 errs.append(f"{tag}: Rohstoff-Lieferketten fehlen")
             else:
                 await pg.click('[data-sck="chips"]'); await pg.wait_for_timeout(300)
+            if not await pg.query_selector(".mx-bond"):
+                errs.append(f"{tag}: Anleihe-Rechner fehlt")
             await fit("Makro")
+            # Weltkarte (Ebenen, Land antippen)
+            await pg.evaluate("state.newsTab = 'map'; goSec('news')")
+            await pg.wait_for_timeout(2000)
+            if not await pg.query_selector(".mp-svg path"):
+                errs.append(f"{tag}: Weltkarte fehlt")
+            else:
+                await pg.evaluate("state.mapSel = 'st:0'; render()"); await pg.wait_for_timeout(300)
+                if not await pg.query_selector(".mp-info"):
+                    errs.append(f"{tag}: Weltkarte zeigt keine Details")
+            await fit("Weltkarte")
             # Hedgefonds-Chips
             await pg.evaluate("state.newsTab = 'insider'; state.smView = 'funds'; goSec('news')")
             await pg.wait_for_timeout(1500)
