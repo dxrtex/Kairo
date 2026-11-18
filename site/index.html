@@ -2341,6 +2341,14 @@ table.co-ud td b { font-weight: 600; }
 .ld-tb { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; } .ld-tb input { flex: 1; min-width: 160px; height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 13.5px; }
 table.ld-t { min-width: 0; width: 100%; } .ld-t th { cursor: pointer; white-space: nowrap; } .ld-t th small { display: block; font-size: 10.5px; color: var(--muted); font-weight: 400; } .ld-t th.sorted { color: var(--accent, #0a84ff); } .ld-t td:first-child { white-space: nowrap; } .ld-f { margin-right: 7px; }
 .ld-t tr > :first-child { position: sticky; left: 0; z-index: 1; background: var(--card, #111); }
+.rd-svg { width: 100%; height: 120px; display: block; margin-top: 6px; } .dr-s .rd-svg[viewBox$="90"] { height: 90px; } .rd-x { font-size: 10px; fill: var(--muted); } .rd-x.r { fill: #ff453a; }
+.rd-k { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 14px; margin-top: 6px; font-size: 12px; color: var(--muted); } .rd-k b { color: var(--text); font-weight: 600; margin-left: 3px; }
+.q-in { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; margin: 12px 0 4px; } .q-in label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--muted); }
+.q-in label > span { white-space: nowrap; } .q-in input, .q-in select { width: 92px; height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text); font: inherit; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.q-in label em { font-style: normal; opacity: .7; } .q-in input:focus { outline: none; border-color: var(--accent, #0a84ff); }
+table.dcf-g { min-width: 0; width: auto; } .dcf-g td, .dcf-g th { text-align: right; padding: 6px 12px; } .dcf-g td:first-child { color: var(--muted); }
+.og { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; } .og div { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; } .og span { display: block; font-size: 11.5px; color: var(--muted); } .og b { font-size: 15px; font-variant-numeric: tabular-nums; } .og small { display: block; font-size: 10.5px; color: var(--muted); }
+.op-svg { width: 100%; height: 170px; display: block; } @media (max-width: 560px) { .og { grid-template-columns: repeat(3, 1fr); } .q-in input { width: 80px; } .q-in select { width: 104px; } }
 .co-note-in { width: 100%; min-height: 110px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 14px; line-height: 1.5; resize: vertical; }
 .co-note-in:focus { outline: none; border-color: var(--accent, #0a84ff); } .co-seg button.has::after { content: ""; display: inline-block; width: 5px; height: 5px; margin-left: 5px; border-radius: 50%; background: var(--accent, #0a84ff); vertical-align: 2px; }
 .cmd-b { flex: none; height: 28px; margin-right: 8px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; } .cmd-b kbd { font: inherit; }
@@ -7518,7 +7526,11 @@ async function riskCompute(P, sig) {
   const top = [...use].sort((a, b) => Math.abs(b.expo) - Math.abs(a.expo)).slice(0, 8), cor = top.map(a => top.map(b => rCov(a.r, b.r) / (a.sd * b.sd)));
   const pairs = []; top.forEach((a, i) => top.forEach((b, j) => { if (j > i && cor[i][j] >= .7) pairs.push([a.n, b.n, cor[i][j]]); })); pairs.sort((a, b) => b[2] - a[2]);
   const dr = use.reduce((a, q) => a + Math.abs(q.expo) * q.sd, 0) / sd(pnl);
-  return { V, vol: sd(pr) * Math.sqrt(252), volM: sd(mk) * Math.sqrt(252), betaM, betaD, var95, es95, wd: [pnl[wd], D[wd + 1]], w20: [w20, D[w20t + 1]], mdd, sc, use, miss, top, cor, pairs, eff: dr * dr, from: D[0], to: D[N - 1] };
+  // GARCH(1,1) mit Varianz-Zielwert (α 0,08, β 0,90 – übliche Werte): Schwankung morgen und im Schnitt der nächsten 20 Tage
+  const vL = rCov(pr, pr), al = .08, be = .9, om = vL * (1 - al - be); let h2 = vL; pr.forEach(x => { h2 = om + al * x * x + be * h2; });
+  const g1 = Math.sqrt(h2 * 252), g20 = Math.sqrt(252 * rMean(Array.from({ length: 20 }, (_, k) => vL + Math.pow(al + be, k) * (h2 - vL))));
+  const m3 = rMean(pr), s3 = sd(pr), skew = rMean(pr.map(x => Math.pow((x - m3) / s3, 3))), kurt = rMean(pr.map(x => Math.pow((x - m3) / s3, 4))) - 3;
+  return { pr, D, g1, g20, skew, kurt, V, vol: sd(pr) * Math.sqrt(252), volM: sd(mk) * Math.sqrt(252), betaM, betaD, var95, es95, wd: [pnl[wd], D[wd + 1]], w20: [w20, D[w20t + 1]], mdd, sc, use, miss, top, cor, pairs, eff: dr * dr, from: D[0], to: D[N - 1] };
 }
 function riskKick() {
   const P = RISK.pend; if (!P || RISK.busy || !RISK.bench) return; RISK.busy = true; const sig = RISK.sig;
@@ -7545,7 +7557,9 @@ function riskInner() {
       <div class="mt"><span>Schwankung p. a.</span><b class="${R.vol > R.volM * 1.5 ? "down" : ""}">${pct(R.vol, 0)}</b><em>S&P 500: ${pct(R.volM, 0)}</em></div>
       <div class="mt"><span>Beta S&P 500</span><b>${fmt(R.betaM, 2)}</b><em>${betaTx(R.betaM)}${R.betaD != null ? ` · DAX ${fmt(R.betaD, 2)}` : ""}</em></div>
       <div class="mt"><span>Schlechter Tag</span><b class="down">−${eur(R.var95)}</b><em>VaR 95 %: an 1 von 20 Tagen mehr, Ø dann −${eur(R.es95)}</em></div>
-      <div class="mt"><span>Größter Rückgang 1 J.</span><b class="down">−${pct(-R.mdd, 0)}</b><em>mit heutigen Positionen</em></div></div>
+      <div class="mt"><span>Größter Rückgang 1 J.</span><b class="down">−${pct(-R.mdd, 0)}</b><em>mit heutigen Positionen</em></div>
+      ${R.g1 ? `<div class="mt"><span>Schwankung erwartet</span><b class="${R.g1 > R.vol * 1.15 ? "down" : R.g1 < R.vol * .85 ? "up" : ""}">${pct(R.g1, 0)}</b><em>GARCH-Prognose · nächste 20 Tage Ø ${pct(R.g20, 0)}</em></div>` : ""}</div>
+    ${R.pr ? riskDistHtml(R) : ""}
     <div class="dr-s"><div class="dr-sh">Stresstest · was ein Einbruch heute kosten würde</div>
       ${R.sc.map(([l, v]) => `<div class="cf-r"><span>${l}</span><b class="${v < 0 ? "down" : "up"}">${e0(v)}</b><em class="${v < 0 ? "down" : "up"}">${pc(v)}</em></div>`).join("")}
       <div class="cf-r"><span>Schlechtester Tag <small class="muted">${dateDE(R.wd[1])}</small></span><b class="down">${e0(R.wd[0])}</b><em class="down">${pc(R.wd[0])}</em></div>
@@ -7560,6 +7574,23 @@ function riskInner() {
         ${R.top.map((a, i) => `<span class="dr-mh l">${ab(a.n)}</span>${R.cor[i].map((v, j) => `<span class="dr-c" style="background:${i === j ? "transparent" : col(v)}" title="${esc(a.n)} ↔ ${esc(R.top[j].n)}: ${fmt(v, 2)}">${i === j ? "" : fmt(v, 1)}</span>`).join("")}`).join("")}</div>
         <p class="muted cf-t">1 = laufen gleich, 0 = unabhängig, negativ = gegenläufig. Rot ab etwa 0,7: fällt die eine, fällt meist auch die andere.</p></details>` : ""}</div>
     <p class="muted cf-t">Tageskurse ${dateDE(R.from)}–${dateDE(R.to)}, deine heutigen Positionen (Turbos mit Hebel, Verlust höchstens Einsatz; ETF ≈ S&P 500). Wechselkurse nicht eingerechnet.${R.miss.length ? ` Ohne Kursverlauf: ${esc(R.miss.slice(0, 4).join(", "))}${R.miss.length > 4 ? " …" : ""}.` : ""} Vergangenheit, keine Prognose.</p>`;
+}
+// Renditeverteilung (Histogramm der Tagesrenditen, VaR-Linie, Ränder) und Unterwasser-Kurve (Abstand zum letzten Hoch)
+function riskDistHtml(R) {
+  const r = R.pr, n = r.length, lo = Math.min(...r), hi = Math.max(...r), B = 31, w = (hi - lo) / B || 1, bins = Array(B).fill(0); r.forEach(x => { bins[Math.min(B - 1, Math.floor((x - lo) / w))]++; });
+  const mx = Math.max(...bins), v95 = -R.var95 / R.V, W = 600, H = 120, bx = i => i / B * W, X = x => (x - lo) / (hi - lo) * W;
+  const bars = bins.map((c, i) => { const x0 = lo + i * w; return `<rect x="${bx(i) + .5}" y="${H - 18 - c / mx * (H - 30)}" width="${W / B - 1}" height="${c / mx * (H - 30)}" fill="${x0 + w <= v95 ? "#ff453a" : x0 >= 0 ? "#30d158" : "#8e8e93"}" opacity=".8"/>`; }).join("");
+  const ax = [lo, v95, 0, hi].map((v, k) => `<text x="${Math.max(14, Math.min(W - 14, X(v)))}" y="${H - 4}" text-anchor="middle" class="rd-x${k === 1 ? " r" : ""}">${k === 1 ? "VaR " : ""}${sgnPct(v, 1)}</text>`).join("");
+  let eq = 1, pk = 1; const dd = r.map(x => { eq *= 1 + x; pk = Math.max(pk, eq); return eq / pk - 1; }), mn = Math.min(...dd, -.01), H2 = 90;
+  const P = dd.map((v, i) => `${(i / (n - 1) * W).toFixed(1)},${(v / mn * (H2 - 14)).toFixed(1)}`).join(" ");
+  const up = r.filter(x => x > 0).length / n, best = hi, worst = lo;
+  return `<div class="dr-s"><div class="dr-sh">Renditeverteilung · ${n} Tage</div>
+      <svg class="rd-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Histogramm der Tagesrenditen">${bars}<line x1="${X(v95)}" x2="${X(v95)}" y1="6" y2="${H - 18}" stroke="#ff453a" stroke-dasharray="3 3"/><line x1="${X(0)}" x2="${X(0)}" y1="6" y2="${H - 18}" stroke="rgba(127,127,127,.6)"/>${ax}</svg>
+      <div class="rd-k"><span>Plus-Tage <b>${pct(up, 0)}</b></span><span>Bester Tag <b class="up">${sgnPct(best, 1)}</b></span><span>Schlechtester <b class="down">${sgnPct(worst, 1)}</b></span><span>Schiefe <b>${fmt(R.skew, 2)}</b></span><span>Dicke Ränder <b>${fmt(R.kurt, 1)}</b></span></div>
+      <p class="muted cf-t">Rot: die schlechtesten 5 % der Tage (jenseits des VaR). Schiefe unter 0 = große Verluste häufiger als große Gewinne; „dicke Ränder“ über 0 = Extremtage häufiger als bei einer Normalverteilung.</p></div>
+    <div class="dr-s"><div class="dr-sh">Unterwasser-Kurve · Abstand zum letzten Hoch</div>
+      <svg class="rd-svg" viewBox="0 0 ${W} ${H2}" preserveAspectRatio="none" role="img" aria-label="Rückgang vom Hoch"><polygon points="0,0 ${P} ${W},0" fill="rgba(255,69,58,.22)"/><polyline points="${P}" fill="none" stroke="#ff453a" stroke-width="1.3" vector-effect="non-scaling-stroke"/><line x1="0" x2="${W}" y1="0" y2="0" stroke="rgba(127,127,127,.5)"/></svg>
+      <div class="rd-k"><span>${dateDE(R.D[1])}</span><span>tiefster Punkt <b class="down">${pct(-Math.min(...dd), 0)} unter Hoch</b></span><span>heute <b class="${dd[n - 1] < -.05 ? "down" : ""}">${dd[n - 1] > -.001 ? "am Hoch" : pct(-dd[n - 1], 1) + " unter Hoch"}</b></span><span>${dateDE(R.D[R.D.length - 1])}</span></div></div>`;
 }
 function depEarnHtml(groups) {
   if (!earnData) { loadEarnings(); return ""; }
@@ -10024,8 +10055,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.228";
-const APP_NEWS = [["2026.11.228", "Makro, Reddit, Vorhersagemärkte, Befehlsleiste", [
+const APP_VER = "2026.11.229";
+const APP_NEWS = [["2026.11.229", "Quant-Werkzeuge", [
+  ["DCF und Reverse-DCF", "Unter dem Chart → „DCF“: fairer Wert je Aktie aus dem Free Cashflow, mit eigenen Annahmen und Empfindlichkeits-Tabelle – und welches Wachstum der heutige Kurs voraussetzt."],
+  ["Optionsrechner", "Unter dem Chart → „Optionen“: Call oder Put, kaufen oder verkaufen – fairer Preis (Black-Scholes), Delta, Gamma, Theta, Vega, Rho, Gewinnschwelle und Auszahlungsdiagramm."],
+  ["Depot-Risiko erweitert", "Renditeverteilung deines Depots mit den Extremtagen, Unterwasser-Kurve (Abstand zum letzten Hoch) und eine GARCH-Prognose der Schwankung."]]],
+ ["2026.11.228", "Makro, Reddit, Vorhersagemärkte, Befehlsleiste", [
   ["Makro", "Neuer Reiter unter Markt: Zinsen USA (3 Monate bis 30 Jahre), Dollar und Devisen, Gold, Öl, Gas, Kupfer, Bitcoin und VIX mit 1-Jahres-Linie – dazu die Wirtschaftsdaten von 217 Ländern (Wachstum, Inflation, Arbeitslosigkeit, Staatsschulden), sortierbar."],
   ["Vorhersagemärkte", "Was Händler auf Polymarket für Zinsentscheide, Rezession, Zölle oder Märkte einpreisen – als Wahrscheinlichkeit."],
   ["Reddit-Trends", "Im Markt-Überblick: die meistdiskutierten Aktien auf Reddit mit Veränderung zu gestern."],
@@ -14350,7 +14385,7 @@ function ctNewsHtml(r) {
 // Unternehmen unter dem Chart (18.11.2026, wie Fluere): Kennzahlen, Finanzen über mehrere Jahre (Heatmap), Gewinne vs. Schätzungen, Insider, Konkurrenz.
 // Quellen: Finnhub (kostenloser Schlüssel, nur US-Aktien) – ohne Schlüssel Quartale aus earnings.json und Insider aus insider.json. Nur Anzeige.
 const CO = {};
-const CO_TABS = [["k", "Kennzahlen"], ["f", "Finanzen"], ["q", "Quartale"], ["a", "Analysten"], ["i", "Insider"], ["p", "Konkurrenz"], ["m", "Meldungen"], ["n", "Notiz"]];
+const CO_TABS = [["k", "Kennzahlen"], ["f", "Finanzen"], ["q", "Quartale"], ["a", "Analysten"], ["i", "Insider"], ["p", "Konkurrenz"], ["d", "DCF"], ["o", "Optionen"], ["m", "Meldungen"], ["n", "Notiz"]];
 const FL_DE = { "10-K": "Jahresbericht", "10-Q": "Quartalsbericht", "8-K": "Ad-hoc", "20-F": "Jahresbericht", "6-K": "Mitteilung", "40-F": "Jahresbericht", "S-1": "Börsengang", "DEF 14A": "Hauptversammlung", "SC 13D": "Beteiligung 5 %+", "SC 13G": "Beteiligung 5 %+" };
 function coMHtml(t) {
   const F = isUS(t) ? finOf(t) : null; if (!F || !F.fl || !F.fl.length) return "";
@@ -14538,7 +14573,7 @@ function coPHtml(t) {
 function ctCoInner(t) {
   const o = CO[t] || {}, fh = liveKey("fh"), us = isUS(t);
   const fd = fundOf(t), km = o.m ? { ...o.m, peg: fd && fd.peg, pcf: fd && fd.ocf > 0 && fd.mc ? fd.mc / fd.ocf : null } : fd ? { ...coFundM(fd), peg: fd.peg, pcf: fd.ocf > 0 && fd.mc ? fd.mc / fd.ocf : null } : null;
-  const fin0 = us ? finOf(t) : null, fin = fin0 && fin0.y && +fin0.y[fin0.y.length - 1] >= new Date().getFullYear() - 2 ? fin0 : null, parts = { k: km ? coKHtml(km) : "", f: fin ? coFinHtml(fin) : o.ser ? coFHtml(o.ser) : "", q: coQHtml(t), a: coAHtml(t), i: coIHtml(t), p: coPHtml(t), m: coMHtml(t), n: coNHtml(t) };
+  const fin0 = us ? finOf(t) : null, fin = fin0 && fin0.y && +fin0.y[fin0.y.length - 1] >= new Date().getFullYear() - 2 ? fin0 : null, parts = { k: km ? coKHtml(km) : "", f: fin ? coFinHtml(fin) : o.ser ? coFHtml(o.ser) : "", q: coQHtml(t), a: coAHtml(t), i: coIHtml(t), p: coPHtml(t), m: coMHtml(t), n: coNHtml(t), d: coDHtml(t), o: coOHtml(t) };
   const avail = CO_TABS.filter(([k]) => parts[k]); if (avail.length <= 1 && !noteOf(t)) return o.busy ? `<div class="co-empty">Lädt …</div>` : "";
   const cur = avail.find(([k]) => k === state.coTab) ? state.coTab : avail[0][0];
   const hint = !fh && us && !o.peers ? `<div class="co-note">Konkurrenz und Empfehlungen je Monat kommen mit dem kostenlosen Finnhub-Schlüssel (Einstellungen → Live-Kurse).</div>` : "";
@@ -14671,6 +14706,67 @@ function coNHtml(t) {
   state.notes = { ...(state.notes || {}) }; if (x) state.notes[k] = { x: a.value.slice(0, 4000), at: Date.now() }; else delete state.notes[k]; save();
   const s = a.nextElementSibling; if (s) s.textContent = x ? `Gespeichert ${new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} · Nur auf diesem Gerät (und in deiner Datensicherung)` : "Nur auf diesem Gerät (und in deiner Datensicherung)";
   const tb = document.querySelector('[data-cotab="n"]'); if (tb) tb.classList.toggle("has", !!x); }, 500); }); }
+// ---------- Bewertung (DCF / Reverse-DCF) und Optionsrechner (Black-Scholes) – 18.11.2026, wie im Profi-Terminal. Nur Rechenhilfe. ----------
+const coPx = t => { const q = LIVE.map[t], o = CO[t] || {}, f = fundOf(t) || {}; return (q && q.c > 0 && q.c) || (o.r && o.r.close) || f.cp || null; };
+function dcfBase(t) {
+  const f = fundOf(t) || {}, F = isUS(t) ? finOf(t) : null, last = a => a ? [...a].reverse().find(v => v != null) : null;
+  const fcf = (F && last(F.fcf)) || f.fcf || null, cash = (F && last(F.cash)) ?? f.cash ?? 0, debt = (F && last(F.debt)) ?? f.debt ?? 0, sh = f.so || (f.mc && f.cp ? f.mc / f.cp : null);
+  const g0 = Math.max(-.05, Math.min(.25, f.eg != null && f.eg > -.5 ? (f.eg + (f.rg ?? f.eg)) / 2 : f.rg ?? .08));
+  return { fcf, cash, debt, sh, g0 };
+}
+function dcfVal(b, p) { const r = p.r / 100, gT = p.gt / 100; let v = 0, c = b.fcf;
+  for (let y = 1; y <= 10; y++) { c *= 1 + (y <= 5 ? p.g1 : p.g2) / 100; v += c / Math.pow(1 + r, y); }
+  v += c * (1 + gT) / (r - gT) / Math.pow(1 + r, 10); return (v + (b.cash || 0) - (b.debt || 0)) / b.sh; }
+function coDHtml(t) {
+  const b = dcfBase(t), px = coPx(t); if (!b.sh || !px) return "";
+  const P = { g1: +(b.g0 * 100).toFixed(1), g2: +(b.g0 * 50).toFixed(1), gt: 2.5, r: 9, fcf: b.fcf ? +(b.fcf / 1e9).toFixed(3) : 0, ...((state.dcf || {})[t] || {}) };
+  const B = { ...b, fcf: P.fcf * 1e9 }; if (!(B.fcf > 0)) return `<div class="co-empty">Kein positiver Free Cashflow – ein DCF ist hier nicht aussagekräftig. Du kannst unten einen eigenen Wert eintragen.</div>${dcfIn(t, P)}`;
+  const fair = dcfVal(B, P), up = fair / px - 1;
+  let lo = -.5, hi = 1.5; for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (dcfVal(B, { ...P, g1: m * 100, g2: m * 50 }) > px) hi = m; else lo = m; } const ig = (lo + hi) / 2;
+  const rs = [P.r - 1, P.r, P.r + 1], gs = [P.g1 - 5, P.g1, P.g1 + 5];
+  const grid = `<table class="ptab dcf-g"><thead><tr><th>Wachstum ↓ / Zins →</th>${rs.map(r => `<th>${fmt(r, 1)} %</th>`).join("")}</tr></thead><tbody>${gs.map(g => `<tr><td>${fmt(g, 1)} %</td>${rs.map(r => { const v = dcfVal(B, { ...P, r, g1: g, g2: g / 2 }), u = v / px - 1;
+    return `<td style="background:${u >= 0 ? `rgba(48,209,88,${Math.min(.4, Math.abs(u)).toFixed(2)})` : `rgba(255,69,58,${Math.min(.4, Math.abs(u)).toFixed(2)})`}">${isFinite(v) && v > 0 ? fmt(v, v >= 100 ? 0 : 2) : "–"}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
+  return `<div class="co-qhd"><span><small>Fairer Wert (DCF)</small><b>${fmt(fair, 2)}</b></span><span><small>Zum Kurs ${fmt(px, 2)}</small><b class="${up >= 0 ? "up" : "down"}">${sgnPct(up, 0)}</b></span><span><small>Reverse-DCF: Kurs setzt voraus</small><b>${sgnPct(ig, 1)} Wachstum p. a.</b></span></div>
+    ${dcfIn(t, P)}<div class="co-sub">Empfindlichkeit · fairer Wert je Aktie</div><div class="tscroll">${grid}</div>
+    <div class="co-note">Free Cashflow ${fmt(P.fcf, 2)} Mrd. wächst 5 Jahre mit ${fmt(P.g1, 1)} %, dann 5 Jahre mit ${fmt(P.g2, 1)} %, danach ewig ${fmt(P.gt, 1)} %; abgezinst mit ${fmt(P.r, 1)} %, plus Cash minus Schulden, geteilt durch ${fmt(b.sh / 1e9, 2)} Mrd. Aktien. Reverse-DCF: welches Wachstum der heutige Kurs bei diesem Zins einpreist. Kleine Änderungen der Annahmen verändern das Ergebnis stark – Rechenhilfe, keine Kairo-Regel.</div>`;
+}
+const dcfIn = (t, P) => `<div class="q-in">${[["fcf", "Free Cashflow", "Mrd."], ["g1", "Wachstum J. 1–5", "%"], ["g2", "Wachstum J. 6–10", "%"], ["gt", "Danach ewig", "%"], ["r", "Abzinsung", "%"]].map(([k, l, u]) =>
+  `<label><span>${l} <em>${u}</em></span><input inputmode="decimal" data-dcf="${k}" data-t="${esc(t)}" value="${fmt(P[k], k === "fcf" ? 2 : 1)}"></label>`).join("")}${(state.dcf || {})[t] ? `<button class="hlink" data-dcfreset="${esc(t)}">Standard</button>` : ""}</div>`;
+document.addEventListener("change", e => { const i = e.target.closest("[data-dcf]"); if (!i) return; const t = i.dataset.t, v = +String(i.value).replace(",", "."); if (isNaN(v)) return;
+  state.dcf = { ...(state.dcf || {}) }; state.dcf[t] = { ...(state.dcf[t] || {}), [i.dataset.dcf]: v }; save(); coPaint(t); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-dcfreset]"); if (!b) return; state.dcf = { ...(state.dcf || {}) }; delete state.dcf[b.dataset.dcfreset]; save(); coPaint(b.dataset.dcfreset); });
+// Black-Scholes mit Greeks; Auszahlung am Verfall und heute
+const nCdf = x => { const a = Math.abs(x) / Math.SQRT2, t = 1 / (1 + .3275911 * a), y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - .284496736) * t + .254829592) * t * Math.exp(-a * a); return .5 * (1 + (x < 0 ? -y : y)); };
+const nPdf = x => Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI);
+function bs(S, K, T, r, v, call) { if (T <= 0) return { p: Math.max(0, call ? S - K : K - S), d: call ? (S > K ? 1 : 0) : (S < K ? -1 : 0), g: 0, th: 0, ve: 0, rh: 0, itm: call ? +(S > K) : +(S < K) };
+  const d1 = (Math.log(S / K) + (r + v * v / 2) * T) / (v * Math.sqrt(T)), d2 = d1 - v * Math.sqrt(T), df = Math.exp(-r * T);
+  const p = call ? S * nCdf(d1) - K * df * nCdf(d2) : K * df * nCdf(-d2) - S * nCdf(-d1);
+  return { p, d: call ? nCdf(d1) : nCdf(d1) - 1, g: nPdf(d1) / (S * v * Math.sqrt(T)), ve: S * nPdf(d1) * Math.sqrt(T) / 100,
+    th: (-(S * nPdf(d1) * v) / (2 * Math.sqrt(T)) - (call ? 1 : -1) * r * K * df * nCdf(call ? d2 : -d2)) / 365, rh: (call ? 1 : -1) * K * T * df * nCdf(call ? d2 : -d2) / 100, itm: call ? nCdf(d2) : nCdf(-d2) }; }
+function histVol(t) { const c = ((CO[t] || {}).cc || {}).c || []; const x = c.slice(-253).filter(v => v > 0), r = []; for (let i = 1; i < x.length; i++) r.push(Math.log(x[i] / x[i - 1]));
+  if (r.length < 40) return null; const m = rMean(r); return Math.sqrt(r.reduce((a, y) => a + (y - m) * (y - m), 0) / (r.length - 1) * 252); }
+function coOHtml(t) {
+  const S = coPx(t); if (!S) return "";
+  const hv = histVol(t), irx = ((pulseGet("d") || {}).mk || {})["^IRX"], P = { typ: "call", side: "long", K: +(Math.round(S / (S > 100 ? 5 : 1)) * (S > 100 ? 5 : 1)).toFixed(2), days: 30, vol: hv ? +(hv * 100).toFixed(1) : 35, rate: irx ? +irx.c.toFixed(2) : 4, ...((state.opt || {})[t] || {}) };
+  const call = P.typ === "call", sg = P.side === "long" ? 1 : -1, T = P.days / 365, r = P.rate / 100, v = P.vol / 100, o = bs(S, P.K, T, r, v, call), prem = o.p, be = call ? P.K + prem : P.K - prem;
+  const W = 600, H = 170, lo = S * .7, hi = S * 1.3, N = 80, xs = Array.from({ length: N + 1 }, (_, i) => lo + (hi - lo) * i / N);
+  const pe = xs.map(x => sg * (Math.max(0, call ? x - P.K : P.K - x) - prem)), pt = xs.map(x => sg * (bs(x, P.K, T / 2, r, v, call).p - prem));
+  const mx = Math.max(...pe, ...pt, prem * .5), mn = Math.min(...pe, ...pt, -prem * .5), X = x => (x - lo) / (hi - lo) * W, Y = y => 10 + (mx - y) / ((mx - mn) || 1) * (H - 30);
+  const line = a => a.map((y, i) => `${X(xs[i]).toFixed(1)},${Y(y).toFixed(1)}`).join(" ");
+  const near = Math.abs(X(S) - X(P.K)) < 90, ax = [lo, S, P.K, hi].map((x, k) => k === 2 && near ? "" : `<text x="${Math.max(16, Math.min(W - 16, X(x)))}" y="${H - 4}" text-anchor="middle" class="rd-x">${k === 1 ? (near ? `Kurs ${fmt(S, S >= 100 ? 0 : 2)} · Basis ` : "Kurs ") : k === 2 ? "Basis " : ""}${fmt(k === 1 && near ? P.K : x, x >= 100 ? 0 : 2)}</text>`).join("");
+  const sel = (k, opts) => `<label><span>${k === "typ" ? "Art" : "Richtung"}</span><select data-opt="${k}" data-t="${esc(t)}">${opts.map(([a, b]) => `<option value="${a}"${P[k] === a ? " selected" : ""}>${b}</option>`).join("")}</select></label>`;
+  return `<div class="co-qhd"><span><small>Optionspreis (fair)</small><b>${fmt(prem, 2)}</b></span><span><small>Gewinnschwelle am Verfall</small><b>${fmt(be, 2)}</b></span><span><small>Wahrscheinlichkeit im Geld</small><b>${pct(o.itm, 0)}</b></span></div>
+    <div class="q-in">${sel("typ", [["call", "Call"], ["put", "Put"]])}${sel("side", [["long", "Kaufen"], ["short", "Verkaufen"]])}${[["K", "Basispreis", ""], ["days", "Laufzeit", "Tage"], ["vol", "Volatilität", "%"], ["rate", "Zins", "%"]].map(([k, l, u]) =>
+      `<label><span>${l}${u ? ` <em>${u}</em>` : ""}</span><input inputmode="decimal" data-opt="${k}" data-t="${esc(t)}" value="${fmt(P[k], k === "days" ? 0 : k === "K" ? 2 : 1)}"></label>`).join("")}${(state.opt || {})[t] ? `<button class="hlink" data-optreset="${esc(t)}">Standard</button>` : ""}</div>
+    <div class="og">${[["Delta", fmt(sg * o.d, 3), "Preisänderung je 1 Kurs"], ["Gamma", fmt(sg * o.g, 4), "Änderung des Delta"], ["Theta", fmt(sg * o.th, 3), "Zeitwert je Tag"], ["Vega", fmt(sg * o.ve, 3), "je 1 % Volatilität"], ["Rho", fmt(sg * o.rh, 3), "je 1 % Zins"]].map(([a, b, c]) => `<div><span>${a}</span><b>${b}</b><small>${c}</small></div>`).join("")}</div>
+    <div class="co-sub">Gewinn/Verlust je Aktie <span class="co-lg"><i class="f" style="background:#0a84ff"></i>am Verfall <i class="o" style="border-color:#ff9f0a"></i>nach halber Laufzeit</span></div>
+    <svg class="op-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Auszahlungsdiagramm"><line x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="rgba(127,127,127,.5)"/><line x1="${X(S)}" x2="${X(S)}" y1="6" y2="${H - 18}" stroke="rgba(127,127,127,.35)" stroke-dasharray="3 3"/>
+      <polyline points="${line(pt)}" fill="none" stroke="#ff9f0a" stroke-width="1.4" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/><polyline points="${line(pe)}" fill="none" stroke="#0a84ff" stroke-width="2" vector-effect="non-scaling-stroke"/>${ax}</svg>
+    <div class="co-note">Black-Scholes (europäisch, ohne Dividende) · Volatilität vorbelegt mit der Schwankung des letzten Jahres${hv ? ` (${fmt(hv * 100, 1)} %)` : ""}, Zins mit dem 3-Monats-Zins USA · Rechenhilfe, keine Kairo-Regel. Turbos und Optionsscheine deiner Bank haben eigene Preise und Spreads.</div>`;
+}
+document.addEventListener("change", e => { const i = e.target.closest("[data-opt]"); if (!i) return; const t = i.dataset.t, k = i.dataset.opt; let v = i.value; if (k !== "typ" && k !== "side") { v = +String(v).replace(",", "."); if (isNaN(v) || v <= 0) return; }
+  state.opt = { ...(state.opt || {}) }; state.opt[t] = { ...(state.opt[t] || {}), [k]: v }; save(); coPaint(t); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-optreset]"); if (!b) return; state.opt = { ...(state.opt || {}) }; delete state.opt[b.dataset.optreset]; save(); coPaint(b.dataset.optreset); });
 function ctabBuild(c, r) {
   const el = $("ctab"); if (!el || !window.LightweightCharts) return; rpHalt(); ctabDrop(); delete el.dataset.busy;
   if (c.tf && c.tf !== "D") r = { ...r, zone: null, plan: c.intra ? r.plan : r.plan };            // Wochen-/Monatschart: Kairo-Welle und -Zone gehören zum Tageschart
