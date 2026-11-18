@@ -61,12 +61,13 @@ def annual(facts: dict, tag: str, instant: bool) -> dict:
 def parse(facts: dict) -> dict | None:
     """us-gaap-Fakten → {"y": [Jahre], Kennzahl: [Werte je Jahr oder None]}. None, wenn kein Umsatz und kein Gewinn da ist."""
     series = {}
-    for m, tags in METRICS.items():
+    for m, tags in METRICS.items():                # alle Tags zusammenführen: Firmen wechseln den Tag (z. B. Apple 2018 „Revenues“ → „RevenueFromContract…“)
+        merged: dict = {}
         for tag in tags:
-            s = annual(facts, tag, m in INSTANT)
-            if s:
-                series[m] = s
-                break
+            for k, v in annual(facts, tag, m in INSTANT).items():
+                merged.setdefault(k, v)
+        if merged:
+            series[m] = merged
     base = series.get("rev") or series.get("ni")
     if not base:
         return None

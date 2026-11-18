@@ -37,3 +37,10 @@ def test_parse_six_years_fcf_and_restated():
 
 def test_parse_none_without_revenue_or_income():
     assert parse({"GrossProfit": FACTS["NetIncomeLoss"]}) is None
+
+
+def test_parse_merges_tag_switch():
+    f = {"Revenues": {"units": {"USD": [_dur(y, 1e9) for y in range(2014, 2019)]}},
+         "RevenueFromContractWithCustomerExcludingAssessedTax": {"units": {"USD": [_dur(y, 2e9) for y in range(2018, 2026)]}}}
+    p = parse(f)
+    assert p["y"][-1] == "2025" and p["rev"][-1] == 2e9 and len(p["y"]) == 6
