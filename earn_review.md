@@ -61,28 +61,28 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-72 Fehlprognosen und 440 Vergleichsfälle untersucht.
+73 Fehlprognosen und 439 Vergleichsfälle untersucht.
 
-- Markt: Bei 37% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 20% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.2%, getroffene Ø -5.2%.
+- Markt: Bei 38% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 21% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.4%, getroffene Ø -5.2%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 31% (22) | 27% | 1.1 |
-| Marge | 12% (9) | 8% | 1.7 |
-| Umsatz | 57% (41) | 48% | 1.2 |
-| Nutzer/Kunden | 6% (4) | 1% | 8.1 |
-| Aufträge | 10% (7) | 5% | 1.9 |
+| Ausblick | 32% (23) | 27% | 1.2 |
+| Marge | 12% (9) | 8% | 1.6 |
+| Umsatz | 58% (42) | 48% | 1.2 |
+| Nutzer/Kunden | 5% (4) | 1% | 8.0 |
+| Aufträge | 10% (7) | 5% | 1.8 |
 | Kosten | 4% (3) | 8% | 0.5 |
 | Zölle/Politik | 1% (1) | 1% | 1.5 |
-| KI/Rechenzentren | 12% (9) | 12% | 1.1 |
+| KI/Rechenzentren | 14% (10) | 11% | 1.2 |
 | Management | 3% (2) | 3% | 0.8 |
 | Rückkauf/Dividende | 1% (1) | 5% | 0.3 |
-| Analysten | 6% (4) | 8% | 0.7 |
-| Sondereffekt | 3% (2) | 1% | 3.1 |
+| Analysten | 7% (5) | 8% | 0.9 |
+| Sondereffekt | 3% (2) | 1% | 3.0 |
 | Übernahme | 1% (1) | 5% | 0.3 |
 
-**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -11.2% gegen -5.2% → „schon eingepreist“ als Merkmal prüfen
+**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -11.4% gegen -5.2% → „schon eingepreist“ als Merkmal prüfen
 
 Beispiele:
 - ECG 2026-11-03: Kairo 71%, Kurs -29.3% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
