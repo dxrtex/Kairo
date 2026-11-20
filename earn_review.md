@@ -13,10 +13,10 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz | 12 | 42% | 0.281 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 33 | 61% | 0.228 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · nachgeeicht | 2 | 50% | 0.254 | 0.250 |
-| Ausblick gesenkt | 72 | 54% | 0.249 | 0.250 |
+| Ausblick gesenkt | 74 | 54% | 0.249 | 0.250 |
 | Ausblick bestätigt | 32 | 47% | 0.273 | 0.250 |
 | Ausblick angehoben | 168 | 49% | 0.267 | 0.250 |
-| Ausblick keine Meldung | 254 | 55% | 0.244 | 0.250 |
+| Ausblick keine Meldung | 252 | 55% | 0.244 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -33,7 +33,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
-| deutlich unter Erwartung (< −10 %) | 46% (24) | 45% (11) | 44% (32) | 36% (69) |
+| deutlich unter Erwartung (< −10 %) | 46% (26) | 45% (11) | 44% (32) | 36% (67) |
 | unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 70% (20) | 39% (49) |
 | im Rahmen (±2 %) | 29% (17) | 33% (3) | 38% (16) | 45% (40) |
 | über Erwartung (+2 bis +10 %) | 38% (24) | 25% (8) | 47% (55) | 43% (61) |
@@ -107,11 +107,11 @@ Rollierend geprüft an 219 jüngeren Meldungen (3 Zeiträume, je nur mit ältere
 | Merkmal | Gewicht |
 |---|---|
 | Grundwert (Marktlage) | -0.17 |
-| Langzeit-Quote Gewinn × Ausblick | +0.48 |
+| Langzeit-Quote Gewinn × Ausblick | +0.47 |
 | Umsatz-Überraschung | +0.23 |
 
 | Zeitraum | n | Brier Modell | Brier gezeigt | Richtung Modell | Richtung gezeigt |
 |---|---|---|---|---|---|
 | 2026-11-08 – 2026-11-11 | 124 | 0.251 | 0.250 | 53% | 55% |
 | 2026-11-12 – 2026-11-16 | 70 | 0.237 | 0.240 | 60% | 54% |
-| 2026-11-17 – 2026-11-20 | 25 | 0.253 | 0.249 | 60% | 60% |
+| 2026-11-17 – 2026-11-20 | 25 | 0.254 | 0.249 | 60% | 60% |
