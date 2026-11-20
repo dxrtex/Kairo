@@ -6,14 +6,14 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 526 | 52% | 0.255 | 0.250 |
+| alle | 526 | 52% | 0.254 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 275 | 55% | 0.245 | 0.250 |
-| Stand 2026-11-14 Modell Langzeit-Quote+Umsatz | 12 | 33% | 0.302 | 0.250 |
+| Stand 2026-11-14 Modell Langzeit-Quote+Umsatz | 12 | 42% | 0.281 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 33 | 61% | 0.228 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · nachgeeicht | 2 | 50% | 0.254 | 0.250 |
-| Ausblick gesenkt | 72 | 53% | 0.253 | 0.250 |
+| Ausblick gesenkt | 72 | 54% | 0.249 | 0.250 |
 | Ausblick bestätigt | 32 | 47% | 0.273 | 0.250 |
 | Ausblick angehoben | 168 | 49% | 0.267 | 0.250 |
 | Ausblick keine Meldung | 254 | 55% | 0.244 | 0.250 |
@@ -23,7 +23,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | Kairo sagte | n | tatsächlich gestiegen |
 |---|---|---|
 | -0%–30% | 11 | 45% |
-| 30%–40% | 104 | 43% |
+| 30%–40% | 104 | 42% |
 | 40%–50% | 150 | 45% |
 | 50%–60% | 180 | 51% |
 | 60%–70% | 58 | 41% |
@@ -37,7 +37,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 70% (20) | 39% (49) |
 | im Rahmen (±2 %) | 29% (17) | 33% (3) | 38% (16) | 45% (40) |
 | über Erwartung (+2 bis +10 %) | 38% (24) | 25% (8) | 47% (55) | 43% (61) |
-| deutlich über Erwartung (> +10 %) | 44% (32) | 50% (18) | 61% (107) | 54% (112) |
+| deutlich über Erwartung (> +10 %) | 41% (32) | 50% (18) | 61% (107) | 54% (112) |
 
 ## Vorschläge zur Anpassung
 
@@ -98,20 +98,20 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 263 Meldungen: Brier nachgeeicht 0.246 gegen gezeigt 0.246 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 263 Meldungen: Brier nachgeeicht 0.247 gegen gezeigt 0.245 → nicht übernommen (nicht genauer).
 
 ## Prognose-Modell (Langzeit-Quote + Umsatz, auf eigene Meldungen geeicht)
 
-Rollierend geprüft an 219 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.247 gegen gezeigt 0.248, Richtung 56% gegen 55%, besser in 2 von 3 Zeiträumen → **übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell).
+Rollierend geprüft an 219 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.247 gegen gezeigt 0.247, Richtung 56% gegen 55%, besser in 1 von 3 Zeiträumen → nicht übernommen.
 
 | Merkmal | Gewicht |
 |---|---|
 | Grundwert (Marktlage) | -0.17 |
-| Langzeit-Quote Gewinn × Ausblick | +0.46 |
-| Umsatz-Überraschung | +0.26 |
+| Langzeit-Quote Gewinn × Ausblick | +0.48 |
+| Umsatz-Überraschung | +0.23 |
 
 | Zeitraum | n | Brier Modell | Brier gezeigt | Richtung Modell | Richtung gezeigt |
 |---|---|---|---|---|---|
 | 2026-11-08 – 2026-11-11 | 124 | 0.251 | 0.250 | 53% | 55% |
 | 2026-11-12 – 2026-11-16 | 70 | 0.237 | 0.240 | 60% | 54% |
-| 2026-11-17 – 2026-11-20 | 25 | 0.258 | 0.259 | 56% | 56% |
+| 2026-11-17 – 2026-11-20 | 25 | 0.253 | 0.249 | 60% | 60% |
