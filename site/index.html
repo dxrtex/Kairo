@@ -2410,6 +2410,7 @@ table.dcf-g { min-width: 0; width: auto; } .dcf-g td, .dcf-g th { text-align: ri
 .cx-short summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; } .cx-short summary::-webkit-details-marker { display: none; }
 .sh-crit { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 2px; } .sh-crit li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0 5px 22px; position: relative; font-size: 13px; border-bottom: 1px solid var(--line); }
 .sh-crit li::before { position: absolute; left: 0; font-weight: 700; } .sh-crit li.ok::before { content: "✓"; color: var(--up); } .sh-crit li.no::before { content: "✗"; color: var(--muted); } .sh-crit em { font-style: normal; color: var(--muted); font-size: 12px; text-align: right; }
+.sh-rc .ein-rc-h .sh-pill { flex: none; width: auto; margin-left: auto; }
 .sh-side .cf-h { display: flex; align-items: center; gap: 8px; }
 .sh-plan { display: flex; flex-wrap: wrap; gap: 8px 18px; } .sh-plan div { display: flex; flex-direction: column; } .sh-plan span { font-size: 11.5px; color: var(--muted); } .sh-plan b { font-variant-numeric: tabular-nums; }
 .lt-why { list-style: none; padding: 0; margin: 4px 0 8px; } .lt-why li { padding: 3px 0 3px 20px; position: relative; font-size: 13px; }
@@ -12323,6 +12324,15 @@ function einReadyCard(x, i) {
     ${m && m.stop && lv ? `<div class="ein-rc-g">${c("Kauf", `${fmt(m.E * m.fx)} €`)}${c("Stop", `${fmt(m.stop * m.fx)} €`, "down")}${c(lv.L === 1 ? "Stück" : "Turbo", lv.L === 1 ? fmt(lv.qty, 0) : `×${lv.L}`)}${c("Risiko", eur2(lv.rEff), "down")}</div>` : ""}
     <span class="ein-rc-go">Trade-Plan öffnen ›</span></button>`;
 }
+// Einstieg: Short-Treffer (23.11.2026) – Analyse mit Stop über dem Kurs und Stückzahl für dein Risiko je Trade; Umsetzung z. B. mit Put-Turbo
+function einShortHtml() { const L = shortList(11).filter(x => x.p && x.p[0] > x.c).slice(0, 6); if (!L.length) return "";
+  const cfg = tpCfg(), riskEur = cfg.depot * cfg.risk / 100;
+  const card = x => { const fx = toEur(1, x.cur || "EUR") || 0, d = (x.p[0] - x.c) * fx, qty = d > 0 ? Math.floor(riskEur / d) : 0, c = (l, v, cls = "") => `<div><span>${l}</span><b class="${cls}">${v}</b></div>`;
+    return `<button class="ein-rc sh-rc" ${(data.results || []).some(r => r.ticker === x.t) ? `data-card="${esc(x.t)}"` : `data-ctgo="${esc(x.t)}"`}><div class="ein-rc-h">${cfAv(x.t)}<span><b>${esc(shortNm(x.n))}</b><small>${esc(x.t)} · Short</small></span><span class="sh-pill hit">11/11</span></div>
+      <div class="ein-rc-g">${c("Short ab", fx ? `${fmt(x.c * fx)} €` : fmt(x.c))}${c("Stop ↑", fx ? `${fmt(x.p[0] * fx)} €` : fmt(x.p[0]), "down")}${c("Stück", qty ? fmt(qty, 0) : "–")}${c("Ziel 2", fx ? `${fmt(x.p[2] * fx)} €` : fmt(x.p[2]), "up")}</div>
+      <span class="ein-rc-go">Short-Analyse öffnen ›</span></button>`; };
+  return `<div class="plan-h" style="margin:18px 2px 6px">Kairo Short · Treffer</div><div class="ein-hero-l">${L.map(card).join("")}</div>
+    <div class="note" style="margin:4px 2px 0">Short = auf fallende Kurse setzen, z. B. mit einem Put-Turbo (Knock-out über dem Stop). Stückzahl für ${eur(riskEur)} Risiko (${fmt(cfg.risk, 1)} % deines Trading-Kapitals). Die Long-Regel und ihre Tests gelten nicht automatisch für Short – erst den Backtest beachten.</div>`; }
 function einHtml() {
   if (!searchIdx) { loadSearch(); return `<div class="section-title"><span>Einstieg</span><span>lädt …</span></div>`; }
   if (!anaData) loadAnalysis();
@@ -12338,7 +12348,8 @@ function einHtml() {
       ${rdy.length ? `<div class="plan-h" style="margin:14px 2px 6px">Kaufbereit · ${free} ${free === 1 ? "Platz" : "Plätze"} frei</div><div class="ein-hero-l">${rdy.map(einReadyCard).join("")}</div>
         <div class="note" style="margin:4px 2px 0">Reihenfolge wie getestet: zuerst die Treffer, die vorher am stärksten gefallen sind.</div>` : ""}
       ${wt.length ? `<div class="plan-h" style="margin:14px 2px 6px">Treffer – warten auf die Konsolidierung</div><div class="ein-list">${wt.map(x => opt(x, null)).join("")}</div>` : ""}
-      ${!all.length ? `<div class="note" style="margin:14px 2px">Heute keine Kairo-Treffer in deinen Handelsregionen.</div>` : ""}`}
+      ${!all.length ? `<div class="note" style="margin:14px 2px">Heute keine Kairo-Treffer in deinen Handelsregionen.</div>` : ""}
+      ${einShortHtml()}`}
     ${tpPlansHtml()}
     <p class="ein-foot">Turbos verstärken Gewinne, Verluste und Kosten – zum Lernen erst in der <a href="#" data-gosec="game">Übung</a>. Scalable PRIME+: Orders ab 250 € gebührenfrei. Kairo führt keine Orders aus.</p></div>`;
 }
