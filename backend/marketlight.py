@@ -20,10 +20,17 @@ import numpy as np
 import pandas as pd
 
 LV = {3: ("bull", "Aufwärtstrend", "green"), 2: ("press", "Unter Druck", "yellow"), 1: ("corr", "Korrektur", "orange"), 0: ("bear", "Abwärtstrend", "red")}
-DO = {3: "Rückenwind – Swing-Trades mit normaler Positionsgröße.",
-      2: "Trend intakt, aber kurzfristig Stress: nur die besten Setups, kleinere Positionen, Stops konsequent.",
-      1: "Höchstens halbe Positionsgröße und nur sehr starke Aktien – oder abwarten.",
-      0: "Keine neuen Swing-Trades. Historisch kaum Ertrag bei großen Rückschlägen – Kapital schützen."}
+DO = {3: "Ruhiger Aufwärtstrend – Rückenwind für Trendfolge und neues Geld.",
+      2: "Trend intakt, aber kurzfristig Stress – Trendfolge selektiv und kleiner, Stops konsequent.",
+      1: "Korrektur – Trendfolge pausieren oder halbe Größe; Rücksetzer können weiterlaufen.",
+      0: "Abwärtstrend – kein Umfeld für Trendfolge oder neues Geld nach Gefühl. Kapital schützen."}
+# Kairo-Treffer je Ampelfarbe (tools/research/ampel_kairo.py, 19.11.2026): 5.170 Trades nach Kairo-Regel B60, 2018–2026,
+# Ampel am Handelstag vor dem Kauf. Umkehr-Setups laufen genau dann am besten, wenn der Markt ausverkauft ist – in BEIDEN
+# Zeiträumen (bis 2023 +0,70 R, ab 2024 +1,42 R) und auch nur für US-Aktien (+1,0 R). „Ohne Rot“ hätte das Depot verschlechtert.
+KAIRO_LV = {3: {"n": 364, "r": -0.21, "win": 0.25, "t": "liefen in ruhigen Aufwärtsphasen historisch schwach – streng auswählen."},
+            2: {"n": 3013, "r": 0.14, "win": 0.32, "t": "liefen hier durchschnittlich – normale Regel."},
+            1: {"n": 646, "r": -0.23, "win": 0.23, "t": "am Anfang einer Korrektur uneinheitlich (bis 2023 schwach, seit 2024 gut) – streng auswählen."},
+            0: {"n": 1147, "r": 0.85, "win": 0.47, "t": "genau hier historisch am stärksten – Umkehr-Setups nutzen, Stop und Größe strikt nach Regel."}}
 WK = {"bull": 3, "neutral": 2, "corr": 1, "bear": 0}
 P = dict(up_n=5, buf=0.0, dd_p=-0.05, dd_c=-0.10, dd_b=-0.20, dist_n=5, vix_p=22.0, vix_c=30.0, use_dist=True, use_vix=True, use_credit=True)
 
@@ -146,7 +153,7 @@ def light(df, vix=None, vix3m=None, credit=None, p: dict | None = None, keep: in
         key, label = "side", "Seitwärts"
     hist = [[d.strftime("%Y-%m-%d"), int(v)] for d, v in lv.iloc[-keep:].items()]
     return {"lv": k, "k": key, "label": label, "tone": tone, "do": DO[k], "since": since.strftime("%Y-%m-%d"),
-            "days": int((lv.index >= since).sum()), "raw": raw_now, "week": ph["k"], "day": int(day.iloc[-1]), "why": why, "dd": round(float(x.dd), 4), "hist": hist}
+            "days": int((lv.index >= since).sum()), "raw": raw_now, "week": ph["k"], "day": int(day.iloc[-1]), "kairo": KAIRO_LV[k], "why": why, "dd": round(float(x.dd), 4), "hist": hist}
 
 
 def credit_ratio(hyg, ief):
