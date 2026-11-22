@@ -16887,6 +16887,8 @@ $("search").addEventListener("input", () => { const v = $("search").value;   // 
   $("searchX").hidden = !$("search").value; if ($("search").value.trim().length >= 2) loadSearch(); render(); });
 $("searchX").addEventListener("click", () => { const i = $("search"); i.value = ""; $("searchX").hidden = true; render(); i.focus(); });   // ganzer Suchtext mit einem Tipp weg
 function goSec(sec, sub) {
+  // Reiterwechsel schließt jedes Vollbild (22.11.2026: offenes ETF-/TradingView-/Markt-Vollbild lag sonst über dem neuen Reiter und schluckte jedes Antippen)
+  try { if (typeof ETF_FS !== "undefined" && ETF_FS) { ETF_FS = false; document.body.classList.remove("etf-fs"); } if (document.body.classList.contains("tv-full-on")) tvFull(false); if (state.fsv) { state.fsv = null; fsvRender(); } } catch (e) {}
   if (SUBNAV[groupOf(sec)]) state.lastSub = { ...(state.lastSub || {}), [groupOf(sec)]: sec };
   state.sec = sec; syncOpts(); save(); render(); if (!sub) window.scrollTo({ top: 0 }); sub ? subIn() : secIn();
   if (sec === "calendar") loadCalendar();
