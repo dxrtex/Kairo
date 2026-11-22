@@ -2399,6 +2399,8 @@ table.dcf-g { min-width: 0; width: auto; } .dcf-g td, .dcf-g th { text-align: ri
 .lt-ix i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; } .lt-ix b { color: var(--text); font-weight: 600; }
 .regime .lt-ix { margin: 6px 0 0; font-size: 12px; gap: 3px 12px; } .regime .lt-ix i { flex: none; width: 7px; height: 7px; margin: 0; box-shadow: none; } .regime .lt-ix span { font-size: 12px; }
 .eh-mk { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--muted); margin: 8px 0 4px; line-height: 1.45; } .eh-mk i { flex: 0 0 8px; height: 8px; border-radius: 50%; margin-top: 5px; } .eh-mk b { color: var(--text); font-weight: 600; } .eh-mk.diff { padding: 9px 11px; border-radius: 10px; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+.lt-k { font-size: 12.5px; line-height: 1.45; margin: 6px 0 2px; color: var(--muted); } .lt-k b { color: var(--text); font-weight: 600; } .lt-k small { display: block; font-size: 11.5px; opacity: .85; margin-top: 2px; } .lt-k.good b { color: var(--up); } .lt-k.weak b { color: var(--gold); }
+.regime .lt-k { margin: 5px 0 0; font-size: 12px; } .regime .lt-k b { display: inline; }
 .lt-why { list-style: none; padding: 0; margin: 4px 0 8px; } .lt-why li { padding: 3px 0 3px 20px; position: relative; font-size: 13px; }
 .lt-why li::before { position: absolute; left: 0; top: 3px; font-weight: 700; } .lt-why li.ok::before { content: "✓"; color: var(--up); } .lt-why li.no::before { content: "✗"; color: var(--red); }
 .mk-why { margin-top: 6px; font-size: 13px; } .mk-why summary { color: var(--accent, #0a84ff); cursor: pointer; list-style: none; } .mk-why summary::-webkit-details-marker { display: none; } .mk-why ul { margin: 6px 0 4px; padding-left: 18px; color: var(--text); } .mk-why p { margin: 0; font-size: 12px; }
@@ -5751,7 +5753,7 @@ function mktBarHtml() {
       <div class="mk-g"><i style="left:${Math.max(2, Math.min(98, f.score))}%"></i></div><div class="mk-gl"><span>Sorglos</span><span>Panik</span></div></div>` : "";
   const LT = m.light || {}, pu = LT.all, dayLbl = reg ? reg.label.charAt(0).toUpperCase() + reg.label.slice(1) : "";
   const lage = pu ? `<div class="mk-k">Marktampel · für Swing-Trades (Wochen bis Monate)</div><div class="mk-reg t-${PH_TC[pu.tone] || ""}"><i></i>${esc(pu.label)} <small class="mk-since">seit ${ltSince(pu)}</small></div>
-      <p class="mk-ph">${esc(pu.do)}</p>${ltIdx(LT)}${ltBar(pu)}
+      <p class="mk-ph">${esc(pu.do)}</p>${ltKairo(pu)}${ltIdx(LT)}${ltBar(pu)}
       <details class="mk-why"><summary>Woraus sich die Ampel ergibt</summary>${ltWhy(pu)}</details>
 `
     : `<div class="mk-k">Marktlage</div>${reg ? `<div class="mk-reg t-${tc}"><i></i>${esc(dayLbl)}</div>` : ""}`;
@@ -5766,6 +5768,10 @@ const PH_TC = { green: "up", yellow: "gold", orange: "orng", red: "down" };
 const ltReg = m => m ? (m.light && m.light.all ? { tone: m.light.all.tone, label: m.light.all.label } : m.regime) : null;   // Marktampel, sonst alte Tageslage
 const LT_C = ["#ff453a", "#ff9f0a", "#ffd60a", "#30d158"], LT_N = ["Abwärtstrend", "Korrektur", "Unter Druck", "Aufwärtstrend"];
 const ltSince = p => `${dateDE(p.since)} (${p.days === 1 ? "1 Handelstag" : `${p.days} Handelstage`})`;
+// Kairo-Treffer je Ampelfarbe (Studie 19.11.2026, 5.170 Trades 2018–2026): Umkehr-Setups liefen im Abwärtstrend am besten
+function ltKairo(p, compact) { const k = p && p.kairo; if (!k) return "";
+  const num = `Ø ${k.r >= 0 ? "+" : "−"}${fmt(Math.abs(k.r), 2)} R · ${pct(k.win, 0)} Gewinner · ${k.n.toLocaleString("de-DE")} Trades seit 2018`;
+  return `<p class="lt-k ${k.r >= 0.3 ? "good" : k.r < 0 ? "weak" : ""}"><b>Kairo-Treffer:</b> ${esc(k.t)}${compact ? "" : ` <small>${num}</small>`}</p>`; }
 function ltIdx(LT) { const N = [["^GSPC", "S&P 500"], ["^NDX", "Nasdaq 100"], ["URTH", "MSCI World"], ["^GDAXI", "DAX"]].filter(([k]) => LT[k]);
   return N.length ? `<div class="lt-ix">${N.map(([k, n]) => `<span><i style="background:${LT_C[LT[k].lv]}"></i>${n} <b>${esc(LT[k].label)}</b></span>`).join("")}</div>` : ""; }
 function ltBar(p) { const h = (p && p.hist) || []; if (h.length < 20) return "";
@@ -5774,7 +5780,8 @@ function ltBar(p) { const h = (p && p.hist) || []; if (h.length < 20) return "";
 function ltWhy(p) { const src = p.src === "^NDX" ? "Nasdaq 100" : "S&P 500";
   return `<p class="muted" style="margin:6px 0 4px">Maßgeblich ist der schwächere der beiden US-Indizes – gerade: <b>${src}</b>.</p><ul class="lt-why">${(p.why || []).map(([ok, t]) => `<li class="${ok ? "ok" : "no"}">${esc(t)}</li>`).join("")}</ul>
     <p class="muted">So entsteht die Farbe: Der <b>Wochentrend</b> (Kurs gegen die 40-Wochen-Linie ≈ 200-Tage-Linie, Abstand zum Jahreshoch, VIX) entscheidet über Aufwärtstrend, Seitwärts, Korrektur oder Abwärtstrend – ein Wechsel gilt erst nach zwei Wochen, bei −20 % sofort. Ist der Wochentrend aufwärts, aber kurzfristig Druck da (unter der 50-Tage-Linie, ≥ 5 % unter dem Hoch, viele Verteilungstage, VIX ≥ 22 oder invertiert, Kreditmarkt nervös), steht die Ampel auf <b>Gelb</b>; zurück auf Grün erst nach 5 ruhigen Tagen.</p>
-    <p class="muted">Backtest seit 1993: Im Abwärtstrend brachte der Nasdaq 100 in den folgenden drei Monaten im Schnitt nur +0,6 %, in den schlimmsten 5 % der Fälle −21 % binnen eines Monats. In gelben Phasen waren die Erträge im Schnitt nicht schlechter, die Rückschläge aber deutlich größer – darum dort kleinere Positionen. Reine Einordnung, die Kairo-Regel bleibt unverändert.</p>`; }
+    <p class="muted">Backtest seit 1993: Im Abwärtstrend brachte der Nasdaq 100 in den folgenden drei Monaten im Schnitt nur +0,6 %, in den schlimmsten 5 % der Fälle −21 % binnen eines Monats. In gelben Phasen waren die Erträge im Schnitt nicht schlechter, die Rückschläge aber deutlich größer – darum dort kleinere Positionen. Reine Einordnung, die Kairo-Regel bleibt unverändert.</p>
+    <p class="muted"><b>Kairo-Treffer je Farbe</b> (5.170 Trades nach der Kairo-Regel, 2018–2026, Ampel am Tag vor dem Kauf): Grün Ø −0,21 R · Gelb +0,14 R · Orange −0,23 R · <b>Rot +0,85 R</b> (47 % Gewinner). Umkehr-Setups laufen genau dann am besten, wenn der Markt ausverkauft ist – „bei Rot keine Kairo-Trades“ hätte das Depot verschlechtert.</p>`; }
 // Weitere Indizes (14.11.): Dow, Russell 2000, Euro Stoxx 50, FTSE, SMI, CAC, Hang Seng, Shanghai, KOSPI – aufklappbar, ruhig
 const IDX_MORE = ["^DJI", "^RUT", "^STOXX50E", "^FTSE", "^SSMI", "^FCHI", "^HSI", "000001.SS", "^KS11"];
 function moreIdxHtml(m) {
@@ -9111,7 +9118,7 @@ function marketHtml() {
   const reg = m.regime, ids = ["^GSPC", "^NDX", "^GDAXI", "^STOXX", "^VIX"].filter(k => m[k]);
   const tone = { green: "up", red: "down", yellow: "" };
   return `<div class="hcard mkt">${hHead("Markt")}
-    ${(m.light || {}).all ? (p => `<div class="regime tone-${p.tone}" data-gosec="news" data-newstab="overview" role="button" tabindex="0"><i></i><div><b>Marktampel: ${esc(p.label)} <small class="muted">seit ${dateDE(p.since)}</small></b><span>${esc(p.do)}</span>${ltIdx(m.light)}</div></div>`)(m.light.all)
+    ${(m.light || {}).all ? (p => `<div class="regime tone-${p.tone}" data-gosec="news" data-newstab="overview" role="button" tabindex="0"><i></i><div><b>Marktampel: ${esc(p.label)} <small class="muted">seit ${dateDE(p.since)}</small></b><span>${esc(p.do)}</span>${ltKairo(p, 1)}${ltIdx(m.light)}</div></div>`)(m.light.all)
       : reg ? `<div class="regime tone-${reg.tone}"><i></i><div><b>Trend: ${esc(reg.label)}</b><span>${reg.tone === "green" ? "Rückenwind für Long-Setups – S&P 500 über der EMA 50, VIX ruhig." : reg.tone === "red" ? "Gegenwind – Reversal-Einstiege scheitern häufiger. Kleiner positionieren." : "Gemischtes Umfeld – Einstiege selektiv."}</span></div></div>` : ""}
     ${state.sec === "today" ? secLineHtml() : ""}${fearHtml(m.fear)}
     <div class="mtiles"${state.sec === "today" ? " hidden" : ""}>${ids.map(k => { const x = m[k]; return `<div class="mt"><span>${esc(x.name)}</span><b>${fmt(x.c, k === "^VIX" ? 1 : 0)}</b>
@@ -10177,8 +10184,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.236";
-const APP_NEWS = [["2026.11.236", "Neue Marktampel für Swing-Trades", [
+const APP_VER = "2026.11.237";
+const APP_NEWS = [["2026.11.237", "Marktampel mit Kairo-Treffern geprüft", [
+  ["Was die Farbe für Kairo bedeutet", "5.170 Kairo-Trades seit 2018 nach Ampelfarbe ausgewertet: Im Abwärtstrend (Rot) liefen die Umkehr-Setups am besten (Ø +0,85 R, 47 % Gewinner), in ruhigen Aufwärtsphasen (Grün) am schwächsten. Die Ampel zeigt jetzt zu jeder Farbe eine eigene Zeile für Kairo-Treffer – Rot heißt „kein Umfeld für Trendfolge und neues Geld nach Gefühl“, nicht „keine Kairo-Trades“."]]],
+ ["2026.11.236", "Neue Marktampel für Swing-Trades", [
   ["Marktampel neu – mit Backtest seit 1993", "Der Wochentrend von S&P 500 und Nasdaq 100 bestimmt die Farbe (Aufwärtstrend, Unter Druck, Korrektur, Abwärtstrend); kurzfristiger Druck (unter der 50-Tage-Linie, Verteilungstage, VIX-Kurve, Kreditmarkt) stuft Grün auf Gelb ab. Maßgeblich ist der schwächere der beiden US-Indizes, dazu MSCI World und DAX einzeln. Mit Verlauf über drei Monate, Begründung und klarer Handlungsempfehlung."],
   ["Nachkauf-Ampel klar abgegrenzt", "Die ETF-Ampel bewertet Extra-Geld für den Welt-ETF über Jahre – Grün nach einem Rücksetzer ist dort Absicht. Für Swing-Trades verweist sie jetzt auf die Marktampel."]]],
  ["2026.11.235", "Marktphase, Live-News, TradingView-Vollbild", [
