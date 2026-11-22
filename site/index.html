@@ -2401,6 +2401,17 @@ table.dcf-g { min-width: 0; width: auto; } .dcf-g td, .dcf-g th { text-align: ri
 .eh-mk { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--muted); margin: 8px 0 4px; line-height: 1.45; } .eh-mk i { flex: 0 0 8px; height: 8px; border-radius: 50%; margin-top: 5px; } .eh-mk b { color: var(--text); font-weight: 600; } .eh-mk.diff { padding: 9px 11px; border-radius: 10px; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
 .lt-k { font-size: 12.5px; line-height: 1.45; margin: 6px 0 2px; color: var(--muted); } .lt-k b { color: var(--text); font-weight: 600; } .lt-k small { display: block; font-size: 11.5px; opacity: .85; margin-top: 2px; } .lt-k.good b { color: var(--up); } .lt-k.weak b { color: var(--gold); }
 .regime .lt-k { margin: 5px 0 0; font-size: 12px; } .regime .lt-k b { display: inline; }
+.vseg .vs-short { color: var(--red); } .vseg .vs-short.on { color: #fff; }
+.sh-note { display: block; font-size: 12.5px; color: var(--muted); margin: 2px 2px 10px; line-height: 1.5; } .sh-note i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: 1px; }
+@media (max-width: 560px) { .sh-t th:nth-child(n+4), .sh-t td:nth-child(n+4) { display: none; } .sh-nm { min-width: 0; } .sh-nm b { max-width: 150px; } html .vseg { overflow-x: auto !important; scrollbar-width: none; } html .vseg button { flex: 0 0 auto !important; padding-left: 14px !important; padding-right: 14px !important; } .vseg button small { display: none; } .sh-t .sh-st { display: none; } .vseg .vl { font-size: 0; } .vseg .vl::after { content: attr(data-s); font-size: 14px; } } .sh-note b { color: var(--text); font-weight: 600; }
+.sh-t td { vertical-align: middle; } .sh-row { cursor: pointer; } .sh-nm { display: flex; align-items: center; gap: 10px; min-width: 180px; } .sh-nm span { display: flex; flex-direction: column; min-width: 0; } .sh-nm b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; } .sh-nm small { color: var(--muted); font-size: 12px; }
+.sh-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: 12.5px; font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--red) 16%, transparent); color: var(--red); } .sh-pill.hit { background: var(--red); color: #fff; }
+.sh-st { font-size: 12px; font-weight: 600; color: var(--red); } .sh-st.f { color: var(--gold); } .sh-miss { font-size: 12.5px; color: var(--muted); max-width: 280px; }
+.cx-short summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; } .cx-short summary::-webkit-details-marker { display: none; }
+.sh-crit { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 2px; } .sh-crit li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0 5px 22px; position: relative; font-size: 13px; border-bottom: 1px solid var(--line); }
+.sh-crit li::before { position: absolute; left: 0; font-weight: 700; } .sh-crit li.ok::before { content: "✓"; color: var(--up); } .sh-crit li.no::before { content: "✗"; color: var(--muted); } .sh-crit em { font-style: normal; color: var(--muted); font-size: 12px; text-align: right; }
+.sh-side .cf-h { display: flex; align-items: center; gap: 8px; }
+.sh-plan { display: flex; flex-wrap: wrap; gap: 8px 18px; } .sh-plan div { display: flex; flex-direction: column; } .sh-plan span { font-size: 11.5px; color: var(--muted); } .sh-plan b { font-variant-numeric: tabular-nums; }
 .lt-why { list-style: none; padding: 0; margin: 4px 0 8px; } .lt-why li { padding: 3px 0 3px 20px; position: relative; font-size: 13px; }
 .lt-why li::before { position: absolute; left: 0; top: 3px; font-weight: 700; } .lt-why li.ok::before { content: "✓"; color: var(--up); } .lt-why li.no::before { content: "✗"; color: var(--red); }
 .mk-why { margin-top: 6px; font-size: 13px; } .mk-why summary { color: var(--accent, #0a84ff); cursor: pointer; list-style: none; } .mk-why summary::-webkit-details-marker { display: none; } .mk-why ul { margin: 6px 0 4px; padding-left: 18px; color: var(--text); } .mk-why p { margin: 0; font-size: 12px; }
@@ -4041,7 +4052,47 @@ const VIEWS = [
   ["hit", "Treffer", r => r.passed, ["hit"], "Alle 11 Kriterien erfüllt. Gekauft wird erst nach der Konsolidierung – dann steht im Status „kaufbereit“."],
   ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Aktien, denen nur wenige Kriterien fehlen – ab 9, 8 oder 7 von 11. Nur beobachten, kein Kaufsignal."],
   ["trend", "Trend", r => isTrend(r), ["trend"], "Trend-Rücksetzer – eigene, getrennte Strategie (Rücksetzer im Aufwärtstrend)."],
-  ["mine", "Meine", r => r.in_watchlist || favs().has(r.ticker), ["watch", "fav"], "Deine Watchlist (★) – mit Stufe auf dem Weg zum Einstieg."]];
+  ["mine", "Meine", r => r.in_watchlist || favs().has(r.ticker), ["watch", "fav"], "Deine Watchlist (★) – mit Stufe auf dem Weg zum Einstieg."],
+  ["short", "Short", r => !!(r.short && r.short.s === "hit"), ["short"], "Kairo Short: dieselben 11 Kriterien gespiegelt – Anstieg an einen Widerstand, bärische RSI-Divergenz, MACD dreht über 0, Kaufdruck läuft aus. Analyse, keine Order."]];
+// ---------- Kairo Short (23.11.2026): backend/shortside.py – gleiche Prüfung auf dem gespiegelten Kursverlauf ----------
+const SH_LBL = { drawdown: "Anstieg ≥ 12 %", no_crash: "kein Kurssprung", structure: "über EMA 20/50", zone: "Widerstand", flattening: "Abflachung",
+  rsi_div: "RSI-Divergenz", rsi_range: "RSI 52–72", macd_below0: "MACD über 0", macd_turn: "MACD dreht ab", mbi: "MBI rotes X", crv: "CRV ≥ 2" };
+function shortList(min) { const q = ($("search") && $("search").value.trim().toLowerCase()) || "";
+  const src = searchIdx && searchIdx.some(x => x.shm != null) ? searchIdx.map(x => ({ t: x.t, n: x.n, r: x.r, c: x.c, cur: x.cur, sh: x.sh, m: x.shm, p: x.shp, mc: x.mc }))
+    : ((data && data.results) || []).filter(r => r.short).map(r => ({ t: r.ticker, n: r.name, r: r.region, c: r.close, cur: r.currency, sh: r.short.s, m: r.short.met, p: r.short.pl ? [r.short.pl.stop, r.short.pl.target1, r.short.pl.target2] : null, mc: r.market_cap_usd }));
+  return src.filter(x => (x.m || 0) >= min && (min < 11 || x.sh === "hit") && regIn({ region: x.r }) && (!q || x.t.toLowerCase().includes(q) || String(x.n || "").toLowerCase().includes(q)))
+    .sort((a, b) => (b.m || 0) - (a.m || 0) || (b.sh === "hit") - (a.sh === "hit") || (b.mc || 0) - (a.mc || 0)); }
+function shortHtml() {
+  if (!searchIdx) loadSearch();
+  const min = +state.shMin || 10, L = shortList(min), mk = anaData && anaData.market && anaData.market.light && anaData.market.light.all;
+  const res = t => (data.results || []).find(r => r.ticker === t), crv = x => x.p && x.p[0] > x.c && x.p[2] < x.c ? (x.c - x.p[2]) / (x.p[0] - x.c) : null;
+  const rows = L.slice(0, 150).map(x => { const r = res(x.t), miss = r && r.short ? r.short.miss || [] : [], cv = crv(x);
+    return `<tr class="sh-row" ${r ? `data-card="${esc(x.t)}"` : `data-ctgo="${esc(x.t)}"`}><td class="sh-nm">${cfAv(x.t)}<span><b>${esc(shortNm(x.n || x.t))}</b><small>${esc(tkClean(x.t))}</small></span></td>
+      <td class="num">${fmt(x.c, x.c >= 1000 ? 0 : 2)} <small class="muted">${esc(x.cur || "")}</small></td>
+      <td><span class="sh-pill${x.sh === "hit" ? " hit" : ""}">${x.m}/11</span>${x.sh === "hit" ? ` <span class="sh-st">Short-Treffer</span>` : x.sh === "fast" ? ` <span class="sh-st f">fast</span>` : ""}</td>
+      <td class="sh-miss">${miss.length ? miss.slice(0, 3).map(k => esc(SH_LBL[k] || k)).join(" · ") : x.sh === "hit" ? "–" : '<span class="muted">Details in der Karte</span>'}</td>
+      <td class="num">${x.p && x.p[0] ? fmt(x.p[0]) : "–"}</td><td class="num">${x.p && x.p[2] ? fmt(x.p[2]) : "–"}</td><td class="num">${cv != null ? fmt(cv, 1) : "–"}</td></tr>`; }).join("");
+  const tb = `<div class="sc-tb"><label class="sp-dd"><span>Region</span><select data-qregionsel>${[["", "Alle"], ["tested", "USA + Europa"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<option value="${v}"${String(state.region || "") === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+    <label class="sp-dd"><span>Erfüllt</span><select data-shminsel>${[[11, "11/11 Treffer"], [10, "ab 10/11"], [9, "ab 9/11"]].map(([v, l]) => `<option value="${v}"${min === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+    <span class="sc-cnt"><span class="sc-n">${L.length} ${L.length === 1 ? "Aktie" : "Aktien"}</span>${gl("v_short")}</span></div>`;
+  const note = `<div class="sh-note">${mk ? `<i style="background:${LT_C[mk.lv]}"></i>Marktampel <b>${esc(mk.label)}</b> · ` : ""}Short heißt: auf fallende Kurse setzen (z. B. Put-Turbo). Stop liegt <b>über</b> dem Kurs, Ziele darunter. Kairo zeigt nur die Analyse – keine Order.${SHORT_STUDY ? ` <span class="muted">${esc(SHORT_STUDY)}</span>` : ""}</div>`;
+  if (!L.length) return tb + note + `<div class="empty">${searchIdx ? `Gerade keine Short-Setups ${min === 11 ? "mit 11/11" : `ab ${min}/11`}${state.region ? " in dieser Region" : ""}. Stell „Erfüllt“ auf „ab 9/11“, um Kandidaten zu sehen.` : "Lade alle Aktien …"}</div>`;
+  return tb + note + `<div class="table-wrap"><table class="sc-t sh-t"><thead><tr><th>Aktie</th><th class="num">Kurs</th><th>Short-Kriterien</th><th>fehlt</th><th class="num">Stop</th><th class="num">Ziel 2</th><th class="num">CRV</th></tr></thead><tbody>${rows}</tbody></table></div>${L.length > 150 ? `<div class="note">… und ${L.length - 150} weitere</div>` : ""}`;
+}
+const SHORT_STUDY = "";   // wird nach dem Short-Backtest gesetzt
+// Heute: Short-Treffer kompakt (nur wenn es welche gibt) – Antippen öffnet Scanner → Short
+function shortTodayHtml() { if (!searchIdx) return ""; const L = shortList(11); if (!L.length) return "";
+  return `<div class="hcard">${hHead(`Kairo Short <small>${L.length} Treffer</small>`)}${L.slice(0, 5).map(x => `<button class="hrow" ${(data.results || []).some(r => r.ticker === x.t) ? `data-card="${esc(x.t)}"` : `data-ctgo="${esc(x.t)}"`}>${cfAv(x.t)}<span class="hn">${esc(shortNm(x.n || x.t))}</span><span class="sh-pill hit">11/11</span></button>`).join("")}
+    <button class="hlink" data-goshort style="margin-top:6px">Alle Short-Setups ›</button></div>`; }
+document.addEventListener("click", e => { if (!e.target.closest("[data-goshort]")) return; state.view = "short"; state.kinds = ["short"]; state.scrOn = false; save(); goSec("scanner"); });
+document.addEventListener("change", e => { if (e.target.matches && e.target.matches("[data-shminsel]")) { state.shMin = +e.target.value; save(); render(); } });
+// Karte: Short-Seite einer Aktie (alle 11 gespiegelten Kriterien, Plan in Originalkursen)
+function shortCardHtml(r) { const S = r.short, x = !S && rowOf(r.ticker); if (!S && !(x && x.shm != null)) return "";
+  const met = S ? S.met : x.shm, st = S ? S.s : x.sh, pl = S && S.pl;
+  const crit = S && S.crit ? `<ul class="sh-crit">${S.crit.map(([k, l, ok, v]) => `<li class="${ok ? "ok" : "no"}"><span>${esc(l)}</span><em>${esc(v || "")}</em></li>`).join("")}</ul>` : "";
+  const plan = pl && pl.stop ? `<div class="sh-plan"><div><span>Einstieg ≈</span><b>${fmt(pl.entry || r.close)}</b></div><div><span>Stop (darüber)</span><b class="down">${fmt(pl.stop)}</b></div>${pl.target1 ? `<div><span>Ziel 1</span><b class="up">${fmt(pl.target1)}</b></div>` : ""}<div><span>Ziel 2</span><b class="up">${fmt(pl.target2)}</b></div>${pl.crv ? `<div><span>CRV</span><b>${fmt(pl.crv, 1)}</b></div>` : ""}</div>` : "";
+  return `<details class="cx-card cx-short"${st === "hit" ? " open" : ""}><summary><span class="cx-sh">Kairo Short</span> <span class="sh-pill${st === "hit" ? " hit" : ""}">${met}/11</span>${st === "hit" ? ` <span class="sh-st">Short-Treffer</span>` : st === "fast" ? ` <span class="sh-st f">fast – 10/11</span>` : ""}</summary>
+    <p class="muted" style="margin:6px 0 8px">Dieselben 11 Kairo-Kriterien, gespiegelt für fallende Kurse. ${st === "hit" ? "Alle erfüllt – Short-Setup." : "Noch kein Short-Setup."}</p>${crit}${plan}</details>`; }
 // Erklärung je Ansicht als ⓘ statt Textzeile (Wunsch 16.11.2026 „unübersichtlich“)
 VIEWS.forEach(v => { GLOSS["v_" + v[0]] = [v[1], v[4] + (v[0] === "hit" ? " Status: kaufbereit = Kauf zur nächsten Eröffnung · Konsolidierung x/10 = wartet auf 5 ruhige Tage · verfallen = keine Konsolidierung in 10 Tagen · im Depot = läuft schon." : "")]; });
 const viewOfKinds = ks => { const k = new Set(ks); return VIEWS.find(v => v[3].length === k.size && v[3].every(x => k.has(x)))
@@ -4402,6 +4453,7 @@ function cardModalHtml(r) {
         <div class="cx-plan">${kplanHtml(r)}${hint && hint.title && !r.passed ? `<div class="cx-card cx-hint"><div class="cx-sh">Kairo-Einschätzung</div><b>${esc(hint.title)}</b><p>${esc(hint.text || "")}</p></div>` : ""}</div>
       </div>
       ${cxKzHtml(r)}
+      ${shortCardHtml(r)}
       <div class="cx-flow">
         ${hint && hint.title && r.passed ? `<div class="cx-card cx-hint"><div class="cx-sh">Kairo-Einschätzung</div><b>${esc(hint.title)}</b><p>${esc(hint.text || "")}</p></div>` : ""}
         ${cxAnaHtml(r)}
@@ -9410,7 +9462,7 @@ function balanceToday() {
 }
 function todayHtml() {
   const M = todayModel(); moneyStrip = "";
-  const right = `${marketHtml()}${moneyHtml()}${soonHtml()}`;   // Marktampel oben als volle Karte (Wunsch 11/2026)
+  const right = `${marketHtml()}${shortTodayHtml()}${moneyHtml()}${soonHtml()}`;   // Marktampel oben als volle Karte (Wunsch 11/2026)
   requestAnimationFrame(balanceToday);
   return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${myHitsHtml()}${tasksHtml(M)}${k8TodayHtml()}${scrTodayHtml()}${changesHtml()}${startMiniHtml()}</div>
     <div class="hcol">${right}</div></div>`;
@@ -12586,8 +12638,9 @@ function renderMain() {
   if (String(state.minScore || "0") !== "0") { state.minScore = "0"; save(); }   // Score-Filter entfernt (Score nicht belegt, 11/2026)
   const wlC = wlCurList(), list = selRows().filter(r => !wlC || wlC.t.includes(r.ticker)), k = new Set(state.kinds || []);
   const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector", "ins"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
-  const vseg = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v && !state.scrOn ? "on" : ""}" data-view="${v}" role="tab">${l}<small>${v === "watch" ? watchCount() : data.results.filter(f).length}</small></button>`).join("")}<button class="${state.scrOn ? "on" : ""}" data-scron role="tab">Screener<small>${searchIdx ? fmt(searchIdx.length, 0) : "alle"}</small></button></div>`;
+  const vseg = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v && !state.scrOn ? "on" : ""}${v === "short" ? " vs-short" : ""}" data-view="${v}" role="tab"><span class="vl" data-s="${({ watch: "Beob.", mine: "Meine" })[v] || l}">${l}</span><small>${v === "watch" ? watchCount() : v === "short" ? shortList(11).length : data.results.filter(f).length}</small></button>`).join("")}<button class="${state.scrOn ? "on" : ""}" data-scron role="tab">Screener<small>${searchIdx ? fmt(searchIdx.length, 0) : "alle"}</small></button></div>`;
   if (state.scrOn) { $("main").innerHTML = searchHtml() + scanBarHtml() + vseg + screenerHtml(); return; }
+  if (state.view === "short") { $("main").innerHTML = searchHtml() + scanBarHtml() + vseg + shortHtml(); return; }
   const nMore = nFilt - (state.region ? 1 : 0);
   const bar = `${vseg}
     ${state.view === "mine" ? wlBarHtml() : ""}
@@ -14224,7 +14277,15 @@ function kairoParts(h, r, k, hn) {
   const earn = dn != null && dn >= 0 && dn <= 10 ? `<div class="kc-earn"><i>Q</i><span><b>Quartalszahlen ${dn === 0 ? "heute" : dn === 1 ? "morgen" : `in ${dn} Tagen`} · ${dateDE(String(ed).slice(0, 10))}</b><small>Kurslücke möglich – laut Kairo-Test kein Grund, den Einstieg zu verschieben.</small></span></div>` : "";
   return { KV, chart, chips, miss, H, earn };
 }
-function cockpitSide(h, r) {
+// Chart-Seitenleiste + Kairo Short (23.11.2026): bei Short-Treffer/-Fast-Treffer der Short-Plan unter dem Überblick
+function cockpitSide(h, r) { const base = cockpitSide0(h, r); if ((RP.on && r && r.rp) || !r || r.ext) return base;
+  const R0 = (data && data.results || []).find(x => x.ticker === String(r.ticker).replace(/@rp$/, "")) || r, S = R0.short, x = rowOf(r.ticker) || {};
+  const st = S ? S.s : x.sh, met = S ? S.met : x.shm; if (!(st === "hit" || st === "fast")) return base;
+  const pl = S && S.pl ? S.pl : x.shp ? { stop: x.shp[0], target1: x.shp[1], target2: x.shp[2] } : null;
+  return base + `<div class="cf-s sh-side"><div class="cf-h"><span class="sh-pill${st === "hit" ? " hit" : ""}">${met}/11</span> Kairo Short${st === "hit" ? " · Treffer" : " · fast"}</div>
+    ${pl ? `<div class="cf-r"><span>Stop (darüber)</span><b class="down">${fmt(pl.stop)}</b></div>${pl.target1 ? `<div class="cf-r"><span>Ziel 1</span><b>${fmt(pl.target1)}</b></div>` : ""}<div class="cf-r"><span>Ziel 2</span><b>${fmt(pl.target2)}</b></div>` : ""}
+    <p class="muted" style="font-size:12px;margin:6px 0 0">Spiegelbild der Kairo-Regel für fallende Kurse. Details in der Aktienkarte.</p></div>`; }
+function cockpitSide0(h, r) {
   if (RP.on && r && r.rp) return rpSideHtml(h);                    // Replay: keine Infos von heute (Status, Plan, Kriterien) – nur, was man damals sehen konnte
   const M = h.M, last = r.close, p = r.ext ? {} : chartPlan(r) || {}, ko = r.ext ? null : tpKoStock(r.ticker, r.currency || r.cur), hn = r.ext ? { title: "Nicht im Kairo-Scan", text: "Kurschart aus den Tageskerzen eines Jahres (Kursdienst). EMAs, RSI, MACD, Momentum Bias Index und Unterstützungen rechnet Kairo selbst – die 11 Kairo-Kriterien prüft nur der Abendscan." } : hintNow(r) || {}, k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r);
   const dist = v => v == null || !last ? "" : `<em class="${v >= last ? "up" : "down"}">${sgnPct(v / last - 1, 1)}</em>`;
