@@ -6115,9 +6115,12 @@ function newsHtml() {
     const meld = x.kind === "meld", q = x.plan ? " · Plan (10b5-1)" : x.kind === "buy" ? (x.opp == null ? "" : x.opp ? ' · <b class="up">gezielt</b>' : " · Routine") : "";
     const fd = x.fd && x.fd !== x.d ? ` · gemeldet ${dateDE(x.fd)}` : "";
     const own = x.kind === "buy" && x.own != null ? (x.own === "neu" ? " · neue Position" : x.own >= 100 ? " · Anteil mehr als verdoppelt" : x.own >= 1 ? ` · +${fmt(x.own, 0)} % Aktien` : "") : "";
+    // seit dem Insider-Geschäft (23.11.2026, wie bei Profi-Diensten): Kurs heute gegen den Kaufkurs – nur bei plausibler Währung
+    const cNow = x.px > 0 && !meld ? ((LIVE.map[x.t] || {}).c || (rowOf(x.t) || {}).c) : null, perf = cNow && cNow / x.px > .33 && cNow / x.px < 3 ? cNow / x.px - 1 : null;
+    const since = perf == null ? "" : ` · <b class="${perf >= 0 ? "up" : "down"}" title="Kurs heute gegen den Insider-Kurs">seit ${x.kind === "buy" ? "Kauf" : "Verkauf"} ${sgnPct(perf, 1)}</b>`;
     return `<a class="bf-r" href="${esc(safeHref(x.url || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=4&company=${encodeURIComponent(x.t)}`))}" target="_blank" rel="noopener"><i class="${meld ? "y" : x.kind === "buy" ? "g" : "r"}"></i>${x.t ? cfAv(x.t) : ""}<span><b>${esc(x.n || x.t)} ${tag}</b><em>${meld
       ? `${esc(x.who)} · Meldung ${dateDE(x.d)} · ${esc(x.src || "")} (ohne Betrag – Details im Register)`
-      : `${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"}${x.sh ? " " + fmt(x.sh, 0) + " Stk." : ""}${x.px ? ` zu ${fmt(x.px)} ${x.cur === "EUR" ? "€" : "$"}` : ""} · ${dateDE(x.d)}${fd}${q}${own}`}</em></span><span class="bf-p ${meld ? "" : x.kind === "buy" ? "up" : "down"}">${meld ? "Meldung" : x.cur === "EUR" ? eurAmt(x.val) : usd(x.val)}</span></a>`; };
+      : `${esc(x.who)}${x.role ? " (" + esc(x.role) + ")" : ""} · ${x.kind === "buy" ? "kauft" : "verkauft"}${x.sh ? " " + fmt(x.sh, 0) + " Stk." : ""}${x.px ? ` zu ${fmt(x.px)} ${x.cur === "EUR" ? "€" : "$"}` : ""} · ${dateDE(x.d)}${fd}${q}${own}${since}`}</em></span><span class="bf-p ${meld ? "" : x.kind === "buy" ? "up" : "down"}">${meld ? "Meldung" : x.cur === "EUR" ? eurAmt(x.val) : usd(x.val)}</span></a>`; };
   // Alle Listen: neueste zuerst (Datum des Geschäfts), bei gleichem Tag der größere Betrag oben
   const inEur = x => x.cur === "EUR" ? x.val : x.val * ((fxEur && fxEur.USD) || 0.9);
   // Sortierung: neueste zuerst (Standard) oder nach Betrag in € – Umschalter oben in der Insider-Ansicht
