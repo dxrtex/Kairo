@@ -71,3 +71,28 @@ def compact(res, plan: dict) -> dict:
     return {"s": st, "met": met, "of": len(setup), "uni": uni_ok,
             "miss": [c.key for c in setup if not c.ok],
             "pl": {k: r6(v) for k, v in plan.items() if v is not None} if plan else None}
+
+
+def _val(c, f: dict) -> str:
+    """Kurzer Wert in ORIGINALKURSEN (die Texte der Long-Prüfung nennen Kurse des gespiegelten Verlaufs)."""
+    try:
+        if c.key == "drawdown" and f.get("raw_dd") is not None:
+            return f"+{(1 / (1 - f['raw_dd']) - 1) * 100:.1f} % vom Swing-Tief".replace(".", ",")
+        if c.key == "no_crash" and f.get("raw_worst") is not None:
+            return f"größter Tagesgewinn +{(1 / (1 + f['raw_worst']) - 1) * 100:.1f} %".replace(".", ",")
+        if c.key == "rsi_range" and f.get("rsi") is not None:
+            return f"RSI {100 - float(f['rsi']):.1f}".replace(".", ",")
+        if c.key in ("rsi_div", "macd_turn", "mbi", "flattening", "zone", "structure", "macd_below0"):
+            return "erfüllt" if c.ok else "nicht erfüllt"
+        if c.key == "crv":
+            return c.value
+    except Exception:
+        pass
+    return "erfüllt" if c.ok else "nicht erfüllt"
+
+
+def detail(res, plan: dict) -> dict:
+    """Kriterienliste für die Detailkarte (Short-Seite)."""
+    out = compact(res, plan)
+    out["crit"] = [[c.key, LABELS.get(c.key, c.label), bool(c.ok), _val(c, res.flags)] for c in res.criteria if c.key not in UNIVERSE]
+    return out
