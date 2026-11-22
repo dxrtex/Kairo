@@ -294,6 +294,7 @@ def main(argv=None) -> int:
     ap.add_argument("--period", default="3y", help="Kurshistorie, z. B. 3y oder 6y (Prüfung über mehrere Marktphasen)")
     ap.add_argument("--combine", nargs="*")
     ap.add_argument("--px-base", action="store_true", help="Kursverlauf auch für Vergleichstage speichern (Kurzfrist-Studie)")
+    ap.add_argument("--short", action="store_true", help="Kairo Short: gespiegelter Kursverlauf (backend/shortside.py)")
     a = ap.parse_args(argv)
     if a.combine is not None:
         ev, seen = [], set()
@@ -317,8 +318,10 @@ def main(argv=None) -> int:
     data = YFinanceProvider().history(mine, a.period)   # Standard 3 Jahre; 6 Jahre zur Prüfung inkl. Bärenmarkt 2022
     print(f"Shard {a.shard}: {len(data)} von {len(mine)} Aktien geladen")
     ev, t0 = [], time.time()
+    if a.short:
+        from .shortside import invert
     for k, (t, df) in enumerate(data.items()):
-        ev += scan_history(df, t, px_base=a.px_base)
+        ev += scan_history(invert(df) if a.short else df, t, px_base=a.px_base)
         if k % 25 == 0:
             print(f"  {k} Aktien, {sum(e['k'] == 'hit' for e in ev)} Treffer-Signale, {time.time() - t0:.0f} s")
     Path(f"bilanz_part_{a.shard}.json").write_text(json.dumps(ev, separators=(",", ":")))

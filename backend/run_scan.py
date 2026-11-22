@@ -29,7 +29,7 @@ from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
 from .ipos import fetch_ipos
-from . import autota, insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
+from . import autota, shortside, insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import ASSET_ETF, EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, theme_tickers, fill_sectors, home_region, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -726,6 +726,7 @@ def main(argv=None) -> int:
 
     results, stats, near = [], {"universe": len(tickers), "loaded": len(data), "errors": 0}, []
     near_all = []                                    # alle 9/11 (auch ohne Konsolidierung) – für die 4H-Prüfung zur Auswahl
+    short_res: dict = {}                             # Kairo Short je Aktie (Result, Plan in Originalkursen)
     search = {}
     industry_of: dict[str, str] = {}                 # Yahoo-Branche je Aktie → fehlenden Sektor ergänzen
     for t, df in data.items():
@@ -744,8 +745,19 @@ def main(argv=None) -> int:
             except Exception as exc:
                 print(f"{t}: Trend-Fehler {exc!r}")
         tr_hit = bool(tres and tres.passed)
+        sh = None
+        try:                                           # Kairo Short (23.11.2026): dieselbe Prüfung auf dem gespiegelten Verlauf
+            sres, spl = shortside.evaluate_short(df, info, t)
+            sh = shortside.compact(sres, spl)
+            short_res[t] = (sres, spl)
+        except Exception as exc:
+            print(f"{t}: Short-Fehler {exc!r}")
         try:
             search[t] = {**search_row(res, m, hint(res)), **entry_fields(res, tres, m), **day_moves(df), **closed_bar(df)}
+            if sh and sh["uni"]:
+                search[t].update(sh=sh["s"] or None, shm=sh["met"])
+                if sh["s"]:
+                    search[t]["shp"] = [sh["pl"].get(k) for k in ("stop", "target1", "target2")] if sh.get("pl") else None
             se = senti.get(t) or {}
             industry_of[t] = m.get("industry") or about.get(t, {}).get("industry") or se.get("ind") or ""
             sec_en = about.get(t, {}).get("sector") or se.get("sec")
@@ -770,7 +782,7 @@ def main(argv=None) -> int:
             print(f"{t}: Hinweis-Fehler {exc!r}")
         if res.near_hit:
             near_all.append({"t": t, "n": (m.get("name") or t)[:40], "d": res.date})
-        if res.passed or res.fast_hit or m.get("in_watchlist") or tr_hit:
+        if res.passed or res.fast_hit or m.get("in_watchlist") or tr_hit or (sh and sh["uni"] and sh["s"] in ("hit", "fast")):
             results.append((t, df, res))
         elif res.near_hit:                           # 9/11: nur mit enger Konsolidierung (sonst ~900 Aktien) – siehe unten
             su = h4live.setup_now(df, None)
@@ -823,6 +835,11 @@ def main(argv=None) -> int:
              "region": m.get("region") or region_of(t), "exchange": m.get("exchange") or i.get("exchange") or ""}
         rows.append(result_row(res, m))
         rows[-1]["trend"] = score_trend(df, info, t, res)
+        if t in short_res:                            # Kairo Short: Kriterien für die Detailkarte
+            try:
+                rows[-1]["short"] = _clean(shortside.detail(*short_res[t]))
+            except Exception as exc:
+                print(f"{t}: Short-Detail-Fehler {exc!r}")
         if TREND_ON:                                  # zweites Setup: Rücksetzer im Aufwärtstrend
             try:
                 _tr = evaluate_trend(df, res)
