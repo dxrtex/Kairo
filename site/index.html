@@ -5145,7 +5145,8 @@ function sectorsHtml() {
   const [k, kl, kn] = spPer(), { ind, th, eu, as, sec, xs: xs0 } = spList();
   // Live (17.11.2026): mit Kursdienst laufen Kurs und Tagesveränderung der ETFs live mit (US-Sektoren und -Branchen)
   const xs = xs0.map(x => { const q = !eu && LIVE.map[x.k]; return q && q.c > 0 ? { ...x, px: q.c, ...(q.pc > 0 ? { d1: q.c / q.pc - 1 } : {}) } : x; });
-  if (liveOn() && !eu && !as && state.sec === "news") setTimeout(() => liveMany(xs0.map(x => x.k).filter(t => /^[A-Z]{2,5}$/.test(t))).then(n => { if (n && state.sec === "news") render(); }), 0);
+  if (liveOn() && !eu && !as && state.sec === "news") { const st = liveStale(xs0.map(x => x.k).filter(t => /^[A-Z]{2,5}$/.test(t)).filter(t => !LIVE.busy.has(t)));
+    if (st.length) setTimeout(() => liveMany(st).then(n => { if (n && state.sec === "news") render(); }), 0); }
   const rows = spRanked(xs, k).filter(x => x.v != null);
   if (!rows.length) return "";
   const mx = Math.max(...rows.map(x => Math.abs(x.v)), 1e-4), neg = rows.some(x => x.v < 0), pos = rows.some(x => x.v > 0);
@@ -10186,6 +10187,7 @@ const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
 const APP_VER = "2026.11.237";
 const APP_NEWS = [["2026.11.237", "Marktampel mit Kairo-Treffern geprüft", [
+  ["Antippen reagiert wieder sofort", "Mit Kursdienst baute sich der Markt-Überblick bis zu 27-mal pro Sekunde neu auf (Sektoren & Branchen luden immer wieder dieselben Live-Kurse) – Antippen von Kursmonitor, Heatmap und Listen ging dabei verloren, das iPad wurde warm. Behoben. Antwortet der Kursdienst beim Öffnen einer Aktie nicht, kommt nach 12 Sekunden eine klare Meldung."],
   ["Was die Farbe für Kairo bedeutet", "5.170 Kairo-Trades seit 2018 nach Ampelfarbe ausgewertet: Im Abwärtstrend (Rot) liefen die Umkehr-Setups am besten (Ø +0,85 R, 47 % Gewinner), in ruhigen Aufwärtsphasen (Grün) am schwächsten. Die Ampel zeigt jetzt zu jeder Farbe eine eigene Zeile für Kairo-Treffer – Rot heißt „kein Umfeld für Trendfolge und neues Geld nach Gefühl“, nicht „keine Kairo-Trades“."]]],
  ["2026.11.236", "Neue Marktampel für Swing-Trades", [
   ["Marktampel neu – mit Backtest seit 1993", "Der Wochentrend von S&P 500 und Nasdaq 100 bestimmt die Farbe (Aufwärtstrend, Unter Druck, Korrektur, Abwärtstrend); kurzfristiger Druck (unter der 50-Tage-Linie, Verteilungstage, VIX-Kurve, Kreditmarkt) stuft Grün auf Gelb ab. Maßgeblich ist der schwächere der beiden US-Indizes, dazu MSCI World und DAX einzeln. Mit Verlauf über drei Monate, Begründung und klarer Handlungsempfehlung."],
@@ -11501,7 +11503,9 @@ async function liveMany(ts) {                                // mit Kursdienst: 
     }
     ts = ts.filter(t => !bt.includes(t));
   }
-  for (const t of ts) if (await liveQuote(t)) n++;
+  // nur zählen, was wirklich neu geladen wurde – frische Kurse aus dem Zwischenspeicher sind kein Grund zum Neuzeichnen
+  // (sonst Endlosschleife: render → liveMany → „1 neu“ → render …, 22.11.2026: 27 Neuaufbauten pro Sekunde im Markt-Überblick)
+  for (const t of ts) { const o = LIVE.map[t]; if ((o && Date.now() - o.at < LIVE.ttl) || LIVE.busy.has(t)) continue; if (await liveQuote(t)) n++; }
   return n;
 }
 const liveTime = t => { const q = LIVE.map[t]; return q ? new Date(q.ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : ""; };
@@ -16287,10 +16291,12 @@ async function ctOpen(t, y, name) {
   if (l) { l.innerHTML = `<div class="ct-li-note">Lade Chart von ${nm} …</div>`; l.hidden = false; }
   if (away) kToast(`<i class="kt-spin"></i>Lade Chart von <b>${nm}</b> …`, 0);
   try {
-    if (!byTicker(t)) await extChart(t, y || t, name);
+    // Zeitlimit (22.11.2026): schläft der Kursdienst oder hängt die Verbindung, nach 12 s eine klare Meldung statt endlosem „Lade …“
+    const lim = new Promise((_, rej) => setTimeout(() => rej(new Error("Kursdienst antwortet nicht – gleich noch einmal versuchen")), 12000));
+    if (!byTicker(t)) await Promise.race([extChart(t, y || t, name), lim]);
     if (my !== CTO) return;                                   // inzwischen eine andere Aktie angetippt
     const q = $("ctQ"); if (q) { q.value = ""; q.blur(); } if (l) l.hidden = true;
-    if (await cockpitGo(t) === false) throw new Error(liveKey("yq") ? "kein Chart" : "kursdienst");
+    if (await Promise.race([cockpitGo(t), lim]) === false) throw new Error(liveKey("yq") ? "kein Chart" : "kursdienst");
     kToastOff();
   } catch (e) {
     if (my !== CTO) return;
