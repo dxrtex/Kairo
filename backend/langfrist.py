@@ -82,6 +82,7 @@ def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict 
         return None
     since = rb[-1]
     held = rank(data, meta, since, r)[: r["n"]]
+    prev = {t for t, _ in rank(data, meta, rb[-2], r)[: r["n"]]} if len(rb) >= 2 else set()   # Depot des vorigen Quartals
     now = rank(data, meta, idx[-1] + pd.Timedelta(days=1), r)
     pos_now = {t: i + 1 for i, (t, _) in enumerate(now)}
     top_now = [t for t, _ in now[: r["n"]]]
@@ -111,4 +112,5 @@ def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict 
     return {"rule": r, "since": since.strftime("%Y-%m-%d"), "next": nxt.strftime("%Y-%m-%d"), "asof": idx[-1].strftime("%Y-%m-%d"),
             "hold": hold, "ret": round(port, 4) if port is not None else None, "bench": round(bret, 4) if bret is not None else None,
             "out": [t for t in held_t if t not in top_now], "inn": [t for t in top_now if t not in held_t], "top": top,
+            "chg": {"out": sorted(prev - held_t), "inn": sorted(held_t - prev)} if prev else None,   # Tausch am letzten Termin
             "univ": len(now), "bt": BACKTEST}
