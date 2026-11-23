@@ -1,0 +1,35 @@
+name: Langfrist-Studie (Faktoren French, eigene Aktien, Steuer)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/profit-study]
+    paths: [.github/workflows/longterm.yml, tools/research/longterm_study.py]
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  study:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Kurse 10 Jahre aus der Profit-Studie (Run 45195963281)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: px-*
+          merge-multiple: true
+          path: px
+          run-id: 45195963281
+          github-token: ${{ github.token }}
+      - run: python tools/research/longterm_study.py px
