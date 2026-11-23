@@ -38,3 +38,15 @@ def test_no_lookahead_rank_uses_only_past():
     r1 = LF.rank({"A": a, "B": _df(0.001, seed=2)}, {}, cut)
     r2 = LF.rank({"A": b, "B": _df(0.001, seed=2)}, {}, cut)
     assert r1 == r2
+
+
+def test_push_langfrist_message_once_per_date():
+    from backend import push
+    lf = {"since": "2027-01-04", "next": "2027-04-01", "hold": [{"t": "A", "n": "Alpha Inc."}], "top": [],
+          "out": ["A"], "inn": ["B"], "chg": {"out": ["X"], "inn": ["A"]}}
+    sent = {}
+    m = push.langfrist_message("2027-01-05", sent, lf)
+    assert len(m) == 1 and "Verkaufen: X" in m[0]["body"] and "Kaufen: Alpha" in m[0]["body"]
+    assert push.langfrist_message("2027-01-06", sent, lf) == []
+    pre = push.langfrist_message("2027-03-30", sent, lf)
+    assert len(pre) == 1 and "in 2 Tagen" in pre[0]["title"]

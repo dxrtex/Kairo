@@ -1,7 +1,7 @@
 """Push-Mitteilungen aufs iPad – nur wenn es wichtig ist (Web Push, siehe webpush.py).
 
 Stop erreicht, Kursziel erreicht, Verkaufstag (Tag 20 bzw. 40), Schluss unter der EMA 20 (4H-Trades ab Tag 10), K.-o. nah/erreicht,
-4H-Bestätigung, Watchlist-Aktie wird Fast-Treffer (10/11) oder Treffer (11/11). Läuft tagsüber alle 30 Minuten (alerts.yml)
+4H-Bestätigung, Watchlist-Aktie wird Fast-Treffer (10/11) oder Treffer (11/11), Langfrist-Tausch (3 Tage vorher und am Tauschtag). Läuft tagsüber alle 30 Minuten (alerts.yml)
 und nach dem Abendscan; jede Meldung kommt nur einmal (state/push_sent.json).
 
 Einrichtung (einmalig): In der App unter Einstellungen → Mitteilungen aktivieren, den angezeigten Code kopieren und als
@@ -215,6 +215,41 @@ def etf_message(today: str, sent: dict) -> list[dict]:
             if lv == "go2" else "Unter der 200-Tage-Linie und Kreditmarkt schwach – Extra-Geld auf 3 Monate verteilen statt auf einmal.")
     return [{"title": f"{'🟢' if lv == 'go2' else '🟡'} ETF-Ampel: {e['t']}", "body": f"SPYI {_num(e['c'])} € · {_pct(e['dd'])} unter dem Hoch · VIX {e.get('vix') or '–'}. {body}",
              "url": APP + "?sec=etf", "tag": "kairo-etf"}]
+
+
+def langfrist_message(today: str, sent: dict, lf: dict | None = None) -> list[dict]:
+    """Kairo Langfrist: Erinnerung 3 Tage vor dem Tausch (voraussichtlich raus/rein) und am Tauschtag die tatsächliche Liste.
+    Je Termin nur einmal (sent)."""
+    import datetime as _dt
+    if lf is None:
+        try:
+            loc = __import__("pathlib").Path(__file__).resolve().parents[1] / "site" / "data" / "analysis.json"
+            if loc.exists():
+                lf = (json.loads(loc.read_text(encoding="utf-8")).get("market") or {}).get("langfrist")
+            else:
+                import requests
+                lf = (requests.get(APP + "data/analysis.json", timeout=60).json().get("market") or {}).get("langfrist")
+        except Exception as exc:
+            print(f"Langfrist-Mitteilung: Daten nicht geladen ({exc!r})")
+            return []
+    if not lf or not lf.get("since"):
+        return []
+    d = _dt.date.fromisoformat(today)
+    days_to = (_dt.date.fromisoformat(lf["next"]) - d).days if lf.get("next") else None
+    days_since = (d - _dt.date.fromisoformat(lf["since"])).days
+    nm = {x["t"]: x.get("n") or x["t"] for x in (lf.get("top") or []) + (lf.get("hold") or [])}
+    names = lambda ts: ", ".join(_short(nm.get(t, t)) for t in ts[:8]) + (f" +{len(ts) - 8}" if len(ts) > 8 else "") if ts else "keine"
+    out = []
+    chg = lf.get("chg") or {}
+    if 0 <= days_since <= 4 and (chg.get("out") or chg.get("inn")) and f"lf:{lf['since']}" not in sent:
+        sent[f"lf:{lf['since']}"] = today
+        out.append({"title": "📈 Langfrist-Tausch heute", "body": f"Verkaufen: {names(chg.get('out') or [])}. Kaufen: {names(chg.get('inn') or [])}. Alle übrigen halten.",
+                    "url": APP + "?sec=long", "tag": "kairo-lf"})
+    elif days_to is not None and 0 < days_to <= 3 and f"lf-pre:{lf['next']}" not in sent:
+        sent[f"lf-pre:{lf['next']}"] = today
+        out.append({"title": f"📈 Langfrist-Tausch in {days_to} {'Tag' if days_to == 1 else 'Tagen'}", "body": f"Stand heute raus: {names(lf.get('out') or [])}. Rein: {names(lf.get('inn') or [])}.",
+                    "url": APP + "?sec=long", "tag": "kairo-lf"})
+    return out
 
 
 def h4_update(today: str) -> list[dict]:
@@ -544,7 +579,12 @@ def run(today_iso: str | None = None) -> dict:
     except Exception as exc:
         print(f"Insider-Mitteilung: Fehler {exc!r}")
         ins_msg = []
-    n_sent, failed = deliver(devs, prices, today, sent, etf_msg + h4_msg + watch_msg + ins_msg, k, _h4_base())
+    try:
+        lf_msg = langfrist_message(today, sent)
+    except Exception as exc:
+        print(f"Langfrist-Mitteilung: Fehler {exc!r}")
+        lf_msg = []
+    n_sent, failed = deliver(devs, prices, today, sent, lf_msg + etf_msg + h4_msg + watch_msg + ins_msg, k, _h4_base())
     state.save("push_sent.json", sent)
     print(f"Push: {n_sent} Mitteilungen gesendet, {failed} fehlgeschlagen, {len(devs)} Gerät(e), {len(prices)} Kurse")
     return {"enabled": True, "ok": failed == 0, "sent": n_sent, "date": today}
