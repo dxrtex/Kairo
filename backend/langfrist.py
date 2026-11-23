@@ -255,7 +255,10 @@ def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict 
     watch = [{"t": t, "n": (meta.get(t) or {}).get("name") or t, "sec": (meta.get(t) or {}).get("sector"), "rk": rk_now[t],
               "m": round(mo[t], 4), "p": round(float(data[t]["Close"].dropna().iloc[-1]), 4), **ck[t],
               "miss": [k for k, v in zip(CHECKS, ck[t]["chk"]) if not v]} for t in w]
-    return {"rule": r, "since": since.strftime("%Y-%m-%d"), "watch": watch, "checks": list(CHECKS), "next": nxt.strftime("%Y-%m-%d"), "asof": idx[-1].strftime("%Y-%m-%d"),
+    # Rang, Lauf und Kriterien für ALLE Aktien der Auswahl (Scanner „Meine“, Aktienkarte) – run_scan schreibt sie in search.json
+    ranks = {t: [rk_now[t], round(mo[t], 4), ck[t]["nchk"] if t in ck else None,
+                 sum(b << i for i, b in enumerate(ck[t]["chk"])) if t in ck else None] for t in rk_now}
+    return {"rule": r, "since": since.strftime("%Y-%m-%d"), "watch": watch, "checks": list(CHECKS), "ranks": ranks, "next": nxt.strftime("%Y-%m-%d"), "asof": idx[-1].strftime("%Y-%m-%d"),
             "hold": hold, "ret": round(port, 4) if port is not None else None, "bench": round(bret, 4) if bret is not None else None,
             "out": [t for t in held_t if t not in top_now], "inn": [t for t in top_now if t not in held_t], "top": top,
             "chg": {"out": sorted(prev - held_t), "inn": sorted(held_t - prev)} if prev else None,   # Tausch am letzten Termin
