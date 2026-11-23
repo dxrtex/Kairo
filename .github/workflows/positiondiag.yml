@@ -1,0 +1,53 @@
+name: Backtest Position-Strategie – Neulauf und Diagnose
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/position-strategie]
+    paths: [.github/workflows/positiondiag.yml, backend/position/**]
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  backtest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        run:
+          - "--universe us --momentum clenow"
+          - "--universe us --momentum 6-1"
+          - "--universe all --momentum clenow"
+          - "--universe us --momentum clenow --trail 0"
+          - "--universe us --momentum clenow --sizing equal"
+          - "--universe us --momentum clenow --no-regime"
+          - "--universe us --momentum clenow --sizing equal --trail 0"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: git fetch -q origin kairo-fin kairo-fund
+      - run: python -m backend.universe
+      - name: Kurse aus dem ersten Lauf (Run 45264753394)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bpx-*
+          merge-multiple: true
+          path: bpx
+          run-id: 45264753394
+          github-token: ${{ github.token }}
+      - run: python -m backend.position.backtest run bpx ${{ matrix.run }} --out bt.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: diag-${{ strategy.job-index }}
+          path: bt.json
+          retention-days: 30

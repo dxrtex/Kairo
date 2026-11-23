@@ -44,13 +44,25 @@ class Pos:
     sector: str = "?"
 
 
+FILL_DAYS = 5                                       # Börsen-Feiertage anderer Länder: Kurse bis 5 Tage vorwärts auffüllen
+
+
 def prepare(m: Market, cfg: Config = CFG) -> dict:
-    """Alle Indikatoren einmal vektorisiert vorab (schnell für 6.000 Aktien)."""
-    ind = filters.indicators(m.C, m.V, m.fx, cfg)
-    pool = filters.pool(m.C, ind, m.mcap, cfg)
-    mom = scoring.momentum(m.C, cfg)
-    atr = position_sizing.atr(m.H, m.L, m.C, cfg.atr_days)
-    reg = market_regime.regime(m.index_close, cfg).reindex(m.C.index).ffill().fillna(False)
+    """Alle Indikatoren einmal vektorisiert vorab (schnell für 6.000 Aktien).
+    Gemischte Börsenkalender (USA, Europa, Asien): An fremden Handelstagen fehlen Kurse – ohne Auffüllen wären SMA 100/200
+    und Regression nach jedem Feiertag monatelang ungültig. Daher werden Kurse bis 5 Tage fortgeschrieben (Umsatz = 0);
+    gehandelt wird nur an echten Kurstagen."""
+    Cf = m.C.ffill(limit=FILL_DAYS)
+    Hf, Lf = m.H.fillna(Cf), m.L.fillna(Cf)
+    Vf = m.V.fillna(0.0)
+    ind = filters.indicators(Cf, Vf, m.fx, cfg)
+    pool = filters.pool(Cf, ind, m.mcap if not isinstance(m.mcap, pd.DataFrame) else m.mcap.ffill(limit=FILL_DAYS), cfg)
+    pool &= m.C.notna()                               # nur Aktien mit echtem Kurs am Signaltag
+    mom = scoring.momentum(Cf, cfg)
+    atr = position_sizing.atr(Hf, Lf, Cf, cfg.atr_days)
+    reg = market_regime.regime(m.index_close.ffill(), cfg).reindex(m.C.index).ffill().fillna(False)
+    if not cfg.use_regime:
+        reg = pd.Series(True, index=m.C.index)
     last_valid = m.C.apply(lambda s: s.last_valid_index())
     return {"ind": ind, "pool": pool, "mom": mom, "atr": atr, "reg": reg, "last": last_valid}
 
@@ -77,7 +89,7 @@ def run(m: Market, start, end=None, cfg: Config = CFG, tax: bool = True, capital
     cash = float(capital if capital is not None else cfg.start_capital)
     pos: dict[str, Pos] = {}
     pot = taxes = costs = 0.0
-    trades, equity = [], []
+    trades, equity, invested = [], [], []
     pending_sell: dict[str, list[str]] = {}
     pending_buy: list[tuple[str, int, float]] = []
     last_close: dict[str, float] = {}
@@ -143,6 +155,7 @@ def run(m: Market, start, end=None, cfg: Config = CFG, tax: bool = True, capital
                     sell(tk, last_close.get(tk, pos[tk].entry_px), lv, "delisted")
         val = cash + sum(p.shares * last_close.get(tk, p.entry_px) for tk, p in pos.items())
         equity.append((t, val))
+        invested.append(1 - cash / val if val > 0 else 0.0)
         if k == len(dates) - 1 and not log_days:
             break
         scored = rank_day(m, P, t, cfg)
@@ -173,7 +186,9 @@ def run(m: Market, start, end=None, cfg: Config = CFG, tax: bool = True, capital
                 s = m.sectors.get(tk) or "?"
                 if s != "?" and cnt.get(s, 0) >= cfg.sector_cap:
                     continue
-                n = position_sizing.shares(val, float(atr_t.get(tk, np.nan)), _px(m.C, t, tk), cfg)
+                c_t = _px(m.C, t, tk)
+                n = position_sizing.shares(val, float(atr_t.get(tk, np.nan)), c_t, cfg) if cfg.sizing == "atr" else (
+                    int(val / cfg.max_positions // c_t) if c_t == c_t and c_t > 0 else 0)
                 if n > 0:
                     buys.append((tk, n, float(scored.at[tk, "total"])))
                     cnt[s] = cnt.get(s, 0) + 1
@@ -182,7 +197,7 @@ def run(m: Market, start, end=None, cfg: Config = CFG, tax: bool = True, capital
         if log_days:
             day_log.append({"t": t, "scored": scored, "top": top, "buys": buys, "sells": dict(pending_sell), "top25": top25})
     eq = pd.Series(dict(equity))
-    return {"equity": eq, "cash": cash, "pos": pos, "last_close": last_close, "trades": trades, "taxes": taxes, "costs": costs,
+    return {"equity": eq, "invested": float(np.mean(invested)) if invested else 0.0, "cash": cash, "pos": pos, "last_close": last_close, "trades": trades, "taxes": taxes, "costs": costs,
             "pot": pot, "pending_buy": pending_buy, "pending_sell": pending_sell, "log": day_log, "P": P}
 
 

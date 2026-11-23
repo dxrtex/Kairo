@@ -29,7 +29,7 @@ from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
 from .ipos import fetch_ipos
-from . import autota, langfrist, shortside, insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
+from . import autota, shortside, insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import ASSET_ETF, EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, theme_tickers, fill_sectors, home_region, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -929,16 +929,27 @@ def main(argv=None) -> int:
     if ins is not None and ins.get("filings"):
         with open(SITE / "insider.json", "w", encoding="utf-8") as f:
             json.dump(_clean(ins), f, ensure_ascii=False, separators=(",", ":"))
-    if not args.partial and not args.tickers:        # Kairo Langfrist (backend/langfrist.py): Momentum-Depot aus ALLEN gescannten Kursen
+    if not args.partial and not args.tickers:        # Kairo Position (backend/position): Multi-Faktor-Momentum mit SMA-200-Filter
         try:
-            market["langfrist"] = langfrist.build(data, meta, ctx_hist.get("^GSPC"))
-            lf = market["langfrist"] or {}
-            for x in lf.get("top") or []:            # Rang + Lauf je Aktie für Suche, Aktienkarte und Scanner
+            from .position import scan as position_scan
+            curs = {(meta.get(t) or {}).get("currency") or "USD" for t in data}
+            fe = fx_to_eur(curs | {"USD"})
+            fx_usd = {c: v / fe["USD"] for c, v in fe.items() if fe.get("USD")}
+            for c in ("GBp", "GBX"):
+                if "GBP" in fx_usd:
+                    fx_usd[c] = fx_usd["GBP"] / 100
+            market["position"] = position_scan.build(data, meta, ctx_hist.get("^GSPC"), fx_usd)
+            ps = market["position"] or {}
+            for x in ps.get("rank") or []:            # Rang + Score je Aktie für Suche, Aktienkarte und Scanner
                 if x["t"] in search:
-                    search[x["t"]].update(lr=x["rk"], lm=x["m"])
-            print(f"Langfrist: seit {lf.get('since')} {len(lf.get('hold') or [])} Aktien, Depot {lf.get('ret')}, S&P {lf.get('bench')}, nächster Tausch {lf.get('next')}")
+                    search[x["t"]].update(pr=x["rk"], ps=x["score"])
+            print(f"Position: Regime {'Bulle' if (ps.get('regime') or {}).get('on') else 'Kaufstopp'}, Pool {ps.get('pool')}, "
+                  f"Modell {len((ps.get('model') or {}).get('positions') or [])} Positionen ({(ps.get('model') or {}).get('ret')}), "
+                  f"Käufe {len(ps.get('buy') or [])}, Verkäufe {len(ps.get('sell') or [])}, Abdeckung {ps.get('coverage')}")
         except Exception as exc:
-            print(f"Langfrist: Fehler {exc!r}")
+            import traceback
+            traceback.print_exc()
+            print(f"Position: Fehler {exc!r}")
     with open(SITE / "search.json", "w", encoding="utf-8") as f:
         json.dump(_clean({"generated": out["generated"], "fx_eur": fx,     # NaN → null: sonst kann der Browser die Datei nicht lesen
                           "rows": sorted(search.values(), key=lambda r: r["n"].lower())}),

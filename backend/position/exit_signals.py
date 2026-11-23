@@ -16,7 +16,7 @@ def exit_reasons(close: float, sma_fast: float, highest_close: float, atr_value:
     r = []
     if sma_fast == sma_fast and close < sma_fast:
         r.append("trend")                       # Close < SMA 100
-    st = trailing_stop(highest_close, atr_value, cfg)
+    st = trailing_stop(highest_close, atr_value, cfg) if cfg.trail_atr > 0 else float("nan")
     if st == st and close < st:
         r.append("stop")                        # Trailing-Stop
     if is_friday and not in_top_quantile:

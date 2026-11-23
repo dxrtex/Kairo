@@ -1,7 +1,7 @@
 """Push-Mitteilungen aufs iPad – nur wenn es wichtig ist (Web Push, siehe webpush.py).
 
 Stop erreicht, Kursziel erreicht, Verkaufstag (Tag 20 bzw. 40), Schluss unter der EMA 20 (4H-Trades ab Tag 10), K.-o. nah/erreicht,
-4H-Bestätigung, Watchlist-Aktie wird Fast-Treffer (10/11) oder Treffer (11/11), Langfrist-Tausch (3 Tage vorher und am Tauschtag). Läuft tagsüber alle 30 Minuten (alerts.yml)
+4H-Bestätigung, Watchlist-Aktie wird Fast-Treffer (10/11) oder Treffer (11/11), Position-Strategie (Kauf- und Verkaufssignale für die nächste Eröffnung). Läuft tagsüber alle 30 Minuten (alerts.yml)
 und nach dem Abendscan; jede Meldung kommt nur einmal (state/push_sent.json).
 
 Einrichtung (einmalig): In der App unter Einstellungen → Mitteilungen aktivieren, den angezeigten Code kopieren und als
@@ -217,39 +217,35 @@ def etf_message(today: str, sent: dict) -> list[dict]:
              "url": APP + "?sec=etf", "tag": "kairo-etf"}]
 
 
-def langfrist_message(today: str, sent: dict, lf: dict | None = None) -> list[dict]:
-    """Kairo Langfrist: Erinnerung 3 Tage vor dem Tausch (voraussichtlich raus/rein) und am Tauschtag die tatsächliche Liste.
-    Je Termin nur einmal (sent)."""
-    import datetime as _dt
-    if lf is None:
+def position_message(today: str, sent: dict, ps: dict | None = None) -> list[dict]:
+    """Kairo Position: Verkaufssignale (Trendbruch, Trailing-Stop, Rang) und Kaufsignale für die nächste Eröffnung –
+    je Scan-Tag nur einmal (sent)."""
+    if ps is None:
         try:
             loc = __import__("pathlib").Path(__file__).resolve().parents[1] / "site" / "data" / "analysis.json"
             if loc.exists():
-                lf = (json.loads(loc.read_text(encoding="utf-8")).get("market") or {}).get("langfrist")
+                ps = (json.loads(loc.read_text(encoding="utf-8")).get("market") or {}).get("position")
             else:
                 import requests
-                lf = (requests.get(APP + "data/analysis.json", timeout=60).json().get("market") or {}).get("langfrist")
+                ps = (requests.get(APP + "data/analysis.json", timeout=60).json().get("market") or {}).get("position")
         except Exception as exc:
-            print(f"Langfrist-Mitteilung: Daten nicht geladen ({exc!r})")
+            print(f"Position-Mitteilung: Daten nicht geladen ({exc!r})")
             return []
-    if not lf or not lf.get("since"):
+    if not ps or not ps.get("asof"):
         return []
-    d = _dt.date.fromisoformat(today)
-    days_to = (_dt.date.fromisoformat(lf["next"]) - d).days if lf.get("next") else None
-    days_since = (d - _dt.date.fromisoformat(lf["since"])).days
-    nm = {x["t"]: x.get("n") or x["t"] for x in (lf.get("top") or []) + (lf.get("hold") or [])}
-    names = lambda ts: ", ".join(_short(nm.get(t, t)) for t in ts[:8]) + (f" +{len(ts) - 8}" if len(ts) > 8 else "") if ts else "keine"
-    out = []
-    chg = lf.get("chg") or {}
-    if 0 <= days_since <= 4 and (chg.get("out") or chg.get("inn")) and f"lf:{lf['since']}" not in sent:
-        sent[f"lf:{lf['since']}"] = today
-        out.append({"title": "📈 Langfrist-Tausch heute", "body": f"Verkaufen: {names(chg.get('out') or [])}. Kaufen: {names(chg.get('inn') or [])}. Alle übrigen halten.",
-                    "url": APP + "?sec=long", "tag": "kairo-lf"})
-    elif days_to is not None and 0 < days_to <= 3 and f"lf-pre:{lf['next']}" not in sent:
-        sent[f"lf-pre:{lf['next']}"] = today
-        out.append({"title": f"📈 Langfrist-Tausch in {days_to} {'Tag' if days_to == 1 else 'Tagen'}", "body": f"Stand heute raus: {names(lf.get('out') or [])}. Rein: {names(lf.get('inn') or [])}.",
-                    "url": APP + "?sec=long", "tag": "kairo-lf"})
-    return out
+    key = f"pos:{ps['asof']}"
+    sells, buys = ps.get("sell") or [], ps.get("buy") or []
+    if key in sent or not (sells or buys):
+        return []
+    sent[key] = today
+    why = {"trend": "Trend", "stop": "Stop", "rank": "Rang", "delisted": "Delisting"}
+    parts = []
+    if sells:
+        parts.append("Verkaufen: " + ", ".join(f"{x['t']} ({'/'.join(why.get(w, w) for w in x.get('why') or [])})" for x in sells[:8]))
+    if buys:
+        parts.append("Kaufen: " + ", ".join(x["t"] + (" ⚠︎Zahlen" if x.get("earn") else "") for x in buys[:8]))
+    return [{"title": f"📈 Position-Strategie: {len(sells)} verkaufen · {len(buys)} kaufen", "body": " · ".join(parts) + " – zur Eröffnung.",
+             "url": APP + "?sec=long", "tag": "kairo-pos"}]
 
 
 def h4_update(today: str) -> list[dict]:
@@ -580,9 +576,9 @@ def run(today_iso: str | None = None) -> dict:
         print(f"Insider-Mitteilung: Fehler {exc!r}")
         ins_msg = []
     try:
-        lf_msg = langfrist_message(today, sent)
+        lf_msg = position_message(today, sent)
     except Exception as exc:
-        print(f"Langfrist-Mitteilung: Fehler {exc!r}")
+        print(f"Position-Mitteilung: Fehler {exc!r}")
         lf_msg = []
     n_sent, failed = deliver(devs, prices, today, sent, lf_msg + etf_msg + h4_msg + watch_msg + ins_msg, k, _h4_base())
     state.save("push_sent.json", sent)

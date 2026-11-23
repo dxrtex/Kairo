@@ -196,6 +196,7 @@ def report(m: engine.Market, meta: dict, start: str, cfg: Config) -> dict:
         "avg_days": float(np.mean([x["days"] for x in closed])) if closed else None,
         "costs": post["costs"], "taxes": post["taxes"], "halves": halves,
         "exits": {k: sum(1 for x in closed if k in x["why"].split(",")) for k in ("trend", "stop", "rank", "delisted")},
+        "invested": pre["invested"], "regime_on": float(pre["P"]["reg"].loc[pre["equity"].index].mean()),
         "missing": sorted(meta["missing"]), "notes": meta["notes"], "n_prices": meta["n_prices"],
     }
     return rep
@@ -214,6 +215,7 @@ def print_report(rep: dict, title: str):
     print(f"  Sharpe Ratio                  {rep['sharpe']:.2f}   (Index {rep['bench_sharpe']:.2f})")
     print(f"  Trades / Win-Rate / Haltedauer {rep['trades']} / {p(rep['win_rate'])} / {rep['avg_days']:.0f} Tage" if rep["trades"] else "  Trades: 0")
     print(f"  Exits: Trendbruch {rep['exits']['trend']} · Trailing-Stop {rep['exits']['stop']} · Rang {rep['exits']['rank']} · Delisting {rep['exits']['delisted']}")
+    print(f"  Ø investiert                  {rep['invested'] * 100:.0f} % des Depots · Marktfilter „Käufe frei“ an {rep['regime_on'] * 100:.0f} % der Tage")
     print(f"  Transaktionskosten gesamt     {e(rep['costs'])}")
     print(f"  Abgeltungsteuer gesamt        {e(rep['taxes'])}")
     for k, v in rep["halves"].items():
@@ -233,14 +235,17 @@ def main(argv=None):
     ap.add_argument("--momentum", default="clenow")
     ap.add_argument("--start", default="2016-01-04")
     ap.add_argument("--out", default="")
+    ap.add_argument("--trail", type=float, default=CFG.trail_atr, help="Diagnose: 0 = ohne Trailing-Stop")
+    ap.add_argument("--sizing", default="atr", help="Diagnose: equal = 1/15 je Position")
+    ap.add_argument("--no-regime", action="store_true", help="Diagnose: ohne Marktfilter")
     x = ap.parse_args(argv)
     if x.cmd == "prices":
         prices(int(x.a), int(x.b))
         return 0
-    cfg = Config(momentum=x.momentum)
+    cfg = Config(momentum=x.momentum, trail_atr=x.trail, sizing=x.sizing, use_regime=not x.no_regime)
     m, meta = load_market(x.a, x.universe, cfg)
     rep = report(m, meta, x.start, cfg)
-    print_report(rep, f"Universum {x.universe} · Momentum {x.momentum}")
+    print_report(rep, f"Universum {x.universe} · Momentum {x.momentum} · Stop {x.trail} ATR · Größe {x.sizing} · Marktfilter {'aus' if x.no_regime else 'an'}")
     if x.out:
         Path(x.out).write_text(json.dumps(rep, ensure_ascii=False, default=float))
     return 0

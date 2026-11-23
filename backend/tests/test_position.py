@@ -196,3 +196,42 @@ def test_backtest_report_runs_with_synthetic_data(monkeypatch):
         assert k in rep and rep[k] == rep[k]
     assert rep["end_after_tax"] <= rep["end_pre_tax"] + 1e-6 or rep["taxes"] == 0
     backtest.print_report(rep, "Test")
+
+
+def test_live_scan_build_outputs_model_and_signals():
+    from backend.position import scan
+    O, H, L, C, V = _panel(n=480, k=10, seed=21)
+    data = {t: pd.DataFrame({"Open": O[t], "High": H[t], "Low": L[t], "Close": C[t], "Volume": V[t]}) for t in C.columns}
+    meta = {t: {"name": f"Firma {t}", "currency": "USD", "market_cap_usd": 5e9, "sector": f"Sek{i % 4}",
+                "earnings_date": (C.index[-1] + pd.Timedelta(days=2)).strftime("%Y-%m-%d") if i == 0 else None} for i, t in enumerate(C.columns)}
+    ix = pd.DataFrame({"Close": 100 * np.exp(np.cumsum(np.full(len(C), 0.0005)))}, index=C.index)
+    fund = {"S9": {"roe": 0.3, "mc": 1e10, "debt": 1e9, "cash": 2e9, "ev": 12, "peg": 1.1, "fpe": 20}}
+    out = scan.build(data, meta, ix, {"USD": 1.0}, fund=fund)
+    assert out["regime"]["on"] is True and out["rank"] and out["model"]["value"] > 0
+    assert all(r["score"] is not None for r in out["rank"])
+    assert out["coverage"]["roe"] == 0.1
+    s0 = next((r for r in out["rank"] if r["t"] == "S0"), None)
+    assert s0 is None or s0["earn"] is True
+    for p in out["model"]["positions"]:
+        assert p["stop"] is not None and p["since"] >= out["model"]["start"]
+
+
+def test_pe_5y_avg_plausibility():
+    from backend.position import scan
+    f = {"pe": 20, "fa": {"y": ["2022", "2023", "2024", "2025"], "fye": "12-31", "eps": [5, 5, 5, 5]},
+         "pxm": {"m0": "2021-01", "c": [100.0] * 60}}
+    assert scan.pe_5y_avg(f) == pytest.approx(20.0)
+    f["pe"] = 200                                                    # unplausibel → verworfen
+    assert scan.pe_5y_avg(f) is None
+
+
+def test_mixed_calendars_do_not_break_indicators():
+    m = _market(seed=17)
+    extra = pd.bdate_range(m.C.index[0], m.C.index[-1]).difference(m.C.index)
+    hol = m.C.index[300]                                    # „fremder“ Handelstag: alle Kurse NaN (z. B. US-Feiertag)
+    for df in (m.O, m.H, m.L, m.C, m.V):
+        df.loc[hol] = np.nan
+    P = engine.prepare(m)
+    t = m.C.index[320]
+    assert P["pool"].loc[t].any()                           # Pool 20 Tage nach dem Feiertag nicht leer
+    assert P["mom"].loc[t].notna().all()
