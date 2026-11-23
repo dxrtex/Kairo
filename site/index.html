@@ -4155,13 +4155,13 @@ const LF_CRIT = n => [["us", "US-Aktie (Backtest: 1.586 US-Aktien)"], ["liq", "l
 const lfStatus = (x, L) => x.in && x.rk <= L.rule.n ? ["Im Depot", "up"] : x.in ? ["Raus beim Tausch", "down"] : x.rk <= L.rule.n ? ["Kaufen beim Tausch", "up"] : ["Nachrücker", "muted"];
 function longScanHtml() {
   const L = LF();
-  if (!L || !L.top) return `<div class="empty">${anaData ? "Die Langfrist-Rangliste erscheint nach dem nächsten großen Scan (abends an Börsentagen)." : "Lade …"}</div>`;
+  if (!L || !L.top) return `<div class="sc-tb"><span class="sc-tb-r">${scanMenuHtml()}</span></div><div class="empty">${anaData ? "Die Langfrist-Rangliste erscheint nach dem nächsten großen Scan (abends an Börsentagen)." : "Lade …"}</div>`;
   const q = ($("search") && $("search").value.trim().toLowerCase()) || "", show = +state.lfShow || 40, n = L.rule.n;
   const held = Object.fromEntries((L.hold || []).map(x => [x.t, x]));
   const out = (L.hold || []).filter(x => !L.top.some(y => y.t === x.t)).map(x => ({ ...x, in: true, rk: x.rk || 999 }));
   const rows = L.top.concat(out).filter(x => x.rk <= show || x.in).filter(x => !q || x.t.toLowerCase().includes(q) || String(x.n || "").toLowerCase().includes(q));
   const tb = `<div class="sc-tb"><label class="sp-dd"><span>Zeige</span><select data-lfshow>${[[20, `Top ${n} (Depot)`], [40, "Top 40"], [60, "Top 60"]].map(([v, l]) => `<option value="${v}"${show === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
-    <span class="sc-cnt"><span class="sc-n">nächster Tausch ${fmtD(L.next)}</span>${gl("v_long")}</span></div>`;
+    <span class="sc-cnt"><span class="sc-n">nächster Tausch ${fmtD(L.next)}</span>${gl("v_long")}</span><span class="sc-tb-r">${scanMenuHtml()}</span></div>`;
   const crit = `<div class="sh-note">Kriterien der getesteten Regel: ${LF_CRIT(n).map(([, l], i) => `<b>${i + 1}</b> ${l}`).join(" · ")}. Erfüllt eine Aktie alle 4, gehört sie ins Langfrist-Depot. Gekauft und getauscht wird nur am Tauschtermin.</div>`;
   const tr = rows.map(x => { const [st, cls] = lfStatus(x, L), h = held[x.t], met = x.rk <= n ? 4 : 3;
     return `<tr class="lf-row" ${lfOpen(x.t)}><td class="num muted">${x.rk < 999 ? x.rk : "–"}</td><td><div class="sh-nm">${cfAv(x.t)}<span><b>${esc(shortNm(x.n || x.t))}</b><small>${esc(x.t)}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span></div></td>
