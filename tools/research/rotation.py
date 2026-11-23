@@ -130,6 +130,7 @@ def main(out_path: str) -> int:
     sec = [t for t in SECTOR_ETF.values() if t in px]; ind = [t for t in INDUSTRY_ETF if t in px]; th = [t for t in THEME_ETF if t in px]
     res = {}
     for uname, uni in (("sektoren", sec), ("branchen", ind), ("themen", th), ("branchen+themen", ind + th), ("alle", sec + ind + th)):
+        uni = list(dict.fromkeys(uni))          # ETFs können in mehreren Listen stehen (doppelte Spalten vermeiden)
         r = {k: eval_rank(S[k], F, uni) for k in ("mom4", "mom13", "mom26", "mom52", "accel", "rrg_speed", "ratio", "flow", "breakout")}
         r["kombi"] = combo(S, F, uni)
         r["quadrant"] = eval_quad(S["quad"], F, uni)
