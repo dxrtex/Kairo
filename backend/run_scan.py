@@ -929,6 +929,16 @@ def main(argv=None) -> int:
     if ins is not None and ins.get("filings"):
         with open(SITE / "insider.json", "w", encoding="utf-8") as f:
             json.dump(_clean(ins), f, ensure_ascii=False, separators=(",", ":"))
+    if not args.partial and not args.tickers:        # Kairo Langfrist (backend/langfrist.py): Momentum-Depot aus ALLEN gescannten Kursen
+        try:
+            market["langfrist"] = langfrist.build(data, meta, ctx_hist.get("^GSPC"))
+            lf = market["langfrist"] or {}
+            for x in lf.get("top") or []:            # Rang + Lauf je Aktie für Suche, Aktienkarte und Scanner
+                if x["t"] in search:
+                    search[x["t"]].update(lr=x["rk"], lm=x["m"])
+            print(f"Langfrist: seit {lf.get('since')} {len(lf.get('hold') or [])} Aktien, Depot {lf.get('ret')}, S&P {lf.get('bench')}, nächster Tausch {lf.get('next')}")
+        except Exception as exc:
+            print(f"Langfrist: Fehler {exc!r}")
     with open(SITE / "search.json", "w", encoding="utf-8") as f:
         json.dump(_clean({"generated": out["generated"], "fx_eur": fx,     # NaN → null: sonst kann der Browser die Datei nicht lesen
                           "rows": sorted(search.values(), key=lambda r: r["n"].lower())}),
@@ -974,13 +984,6 @@ def main(argv=None) -> int:
         print("Stimmung:", {k: v for k, v in (market["fear"] or {}).items() if k in ("score", "label")})
     except Exception as exc:
         print(f"Stimmung: Fehler {exc!r}")
-    if not args.partial and not args.tickers:        # Kairo Langfrist (backend/langfrist.py): Momentum-Depot aus ALLEN gescannten Kursen
-        try:
-            market["langfrist"] = langfrist.build(data, meta, ctx_hist.get("^GSPC"))
-            lf = market["langfrist"] or {}
-            print(f"Langfrist: seit {lf.get('since')} {len(lf.get('hold') or [])} Aktien, Depot {lf.get('ret')}, S&P {lf.get('bench')}, nächster Tausch {lf.get('next')}")
-        except Exception as exc:
-            print(f"Langfrist: Fehler {exc!r}")
     with open(SITE / "analysis.json", "w", encoding="utf-8") as f:
         json.dump(_clean({"generated": out["generated"], "market": market, "tickers": ana}), f, ensure_ascii=False, separators=(",", ":"))
     print(f"Analyse: {len(ana)} Aktien")

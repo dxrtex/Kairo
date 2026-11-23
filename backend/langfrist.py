@@ -14,6 +14,7 @@ import pandas as pd
 
 RULE = {"n": 20, "lb": 12, "every": 3, "filter": False}
 MIN_ADV, MIN_PX = 5e6, 5.0
+TOP_N = 60                     # so viele Plätze der Rangliste zeigt der Scanner (Top 20 = Depot, 21–60 = Nachrücker)
 # Studie momentum_variants.py (23.11.2026, 1.586 US-Aktien, deutsche Steuer, 0,15 % Kosten je Umsatz):
 # Lernen 2016–2020 37,3 % p. a. nach Steuer · Prüfen 2021–2026 25,2 % (S&P-500-ETF 11,7 %) · größter Rückgang bis 44 % (ETF 24 %)
 # 35/36 Varianten im Lernzeitraum, 20/36 im Prüfzeitraum über dem ETF; Marktfilter schadet (Ø 7,5 % statt 23,8 %).
@@ -105,8 +106,8 @@ def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict 
     while nxt.weekday() >= 5:
         nxt += pd.Timedelta(days=1)
     held_t = {x["t"] for x in hold}
-    top = [{"t": t, "n": (meta.get(t) or {}).get("name") or t, "m": round(v, 4), "rk": i + 1,
-            "p": round(float(data[t]["Close"].dropna().iloc[-1]), 4), "in": t in held_t} for i, (t, v) in enumerate(now[: r["n"] + 10])]
+    top = [{"t": t, "n": (meta.get(t) or {}).get("name") or t, "sec": (meta.get(t) or {}).get("sector"), "m": round(v, 4), "rk": i + 1,
+            "p": round(float(data[t]["Close"].dropna().iloc[-1]), 4), "in": t in held_t} for i, (t, v) in enumerate(now[:TOP_N])]
     return {"rule": r, "since": since.strftime("%Y-%m-%d"), "next": nxt.strftime("%Y-%m-%d"), "asof": idx[-1].strftime("%Y-%m-%d"),
             "hold": hold, "ret": round(port, 4) if port is not None else None, "bench": round(bret, 4) if bret is not None else None,
             "out": [t for t in held_t if t not in top_now], "inn": [t for t in top_now if t not in held_t], "top": top,
