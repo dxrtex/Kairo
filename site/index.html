@@ -3879,7 +3879,8 @@ const SHORT = { drawdown: "Rückgang", no_crash: "kein Crash", structure: "unter
   zone: "Zone", rsi_div: "RSI-Divergenz", rsi_range: "RSI 28–48", macd_below0: "MACD < 0", macd_turn: "MACD dreht",
   mbi: "MBI-Signal", crv: "CRV ≥ 2", cap: "Börsenwert", liquidity: "Liquidität", price: "Kurs ≥ 1", history: "Historie" };
 const gradeBadge = (r, big) => r.grade ? `<span class="grd g-${r.grade.g}${big ? " big" : ""}" title="Qualitätsstufe ${r.grade.g} – aus dem Backtest, siehe Score antippen">${r.grade.g}</span>` : "";
-const statusBadge = r => r.passed ? `<span class="status st-bereit">Treffer</span>${kPill(r)}`
+const SWING_OFF = true;   // 24.11.2026: Swing-Status (Treffer, Konsolidierung, kaufbereit) nirgends mehr anzeigen
+const statusBadge = r => SWING_OFF ? "" : r.passed ? `<span class="status st-bereit">Treffer</span>${kPill(r)}`
   : r.fast_hit ? `<span class="status st-abwarten">Fast-Treffer · fehlt: ${esc(shortCrit(r.missing[0]))}</span>`
   : r.near_hit ? `<span class="status st-kein_setup">9/11 · fehlt: ${esc(r.missing.map(shortCrit).join(", "))}</span>`
   : `<span class="status st-kein_setup">Kein Setup · ${r.missing.length} Kriterien fehlen</span>`;
@@ -4342,7 +4343,7 @@ function lfEinHtml() { if (!searchIdx) loadSearch(); const L = LF(); if (!L || !
     <div class="ein-hero-l">${buy.slice(0, 20).map(card).join("")}</div>
     <div class="note" style="margin:4px 2px 14px">Gleicher Betrag je Aktie (${eur(per)} bei ${eur(cap)} – Betrag im Scanner <button class="hlink" data-golong>Kaufen ›</button> ändern). Ohne Stop, ohne Hebel: halten bis zum nächsten Tausch am ${fmtD(L.next)}. ${SW.now && SW.out.length ? `Vorher verkaufen: ${SW.out.map(t => esc(t)).join(", ")}.` : ""}</div>
     <label class="lf-cap" style="margin:0 2px 14px">Betrag für die Strategie <input id="lfCap" type="number" inputmode="decimal" min="0" step="500" value="${cap}"> €</label>`; }
-function einHtml() { if (state.einT) return einHtml0(); if (!anaData) loadAnalysis(); const h = lfEinHtml(); return h || `<div class="empty">${anaData ? "Die Kaufliste erscheint nach dem nächsten großen Scan." : "Lade …"}</div>`; }   // Swing-Einstieg entfernt (24.11.2026)
+function einHtml() { state.einT = null; if (!anaData) loadAnalysis(); const h = lfEinHtml(); return h || `<div class="empty">${anaData ? "Die Kaufliste erscheint nach dem nächsten großen Scan." : "Lade …"}</div>`; }   // Swing-Einstieg entfernt (24.11.2026)
 // Depot: Abgleich mit dem Langfrist-Depot
 function lfDepotHtml() { const L = LF(); if (!L || !L.hold || !searchIdx) return "";
   const mine = new Set(depotLive().filter(p => p.t && !p.etf).map(p => String(p.t).toUpperCase()));
@@ -4353,7 +4354,7 @@ function lfDepotHtml() { const L = LF(); if (!L || !L.hold || !searchIdx) return
     ${have.length ? `<div class="lf-dl"><span class="up">im Depot</span>${have.map(chip).join("")}</div>` : ""}
     ${miss.length ? `<div class="lf-dl"><span class="muted">fehlen</span>${miss.map(chip).join("")}</div>` : ""}
     ${sell.length ? `<div class="lf-dl"><span class="down">${SW.now ? "verkaufen (Tausch)" : "raus beim nächsten Tausch"}</span>${sell.map(chip).join("")}</div>` : ""}
-    <div class="note" style="margin:6px 0 0">Langfrist-Positionen ohne Stop halten – Kairo tauscht nur am Termin (nächster: ${fmtD(L.next)}). Stops und Verkaufstage unten gelten für Swing-Trades.</div></div>`; }
+    <div class="note" style="margin:6px 0 0">Ohne Stop halten – verkauft und gekauft wird nur am Tauschtermin (nächster: ${fmtD(L.next)}).</div></div>`; }
 function depotHtml() { const h = depotHtml0(); const i = h.indexOf("</div>") >= 0 && h.startsWith('<div class="section-title">') ? h.indexOf("</div>") + 6 : 0; return h.slice(0, i) + lfDepotHtml() + h.slice(i); }
 // ETF: Aufteilung Kern / Langfrist
 function etfHtml() { const L = LF(); return (L ? `<div class="lf-amp" style="margin:0 2px 12px"><b>Aufteilung:</b> 70–80 % Welt-ETF als Kern (nie verkaufen, Extra-Geld bei roter Ampel) · 20–30 % <button class="hlink" data-golong>Langfrist-Depot ›</button></div>` : "") + etfHtml0(); }
@@ -7163,7 +7164,7 @@ function stratOf(plan) {
 }
 // Langfristig (Pro-Runde 13.11.): vom Nutzer gesetzt, getrennt vom Depot gespeichert (übersteht jeden Scalable-Import)
 const ltSet = () => new Set((state.lt || []).map(tkClean));
-const isLt = t => !!t && ltSet().has(tkClean(t));
+const isLt = t => !!t;   // 24.11.2026: Strategie ohne Stops – jede Aktie im Depot gilt als langfristig (kein „Stop festlegen“)
 // Festland-China-A-Aktien (Shanghai .SS, Shenzhen .SZ) sind an deutschen Börsen meist nicht handelbar – nur Hinweis, keine Regeländerung
 const cnA = t => /\.(SS|SZ)$/i.test(String(t || ""));
 const CN_A_TXT = "China-A-Aktie: bei deutschen Brokern meist nicht handelbar – vor dem Kauf in Scalable prüfen.";
@@ -9457,7 +9458,7 @@ function calmGate(d) {
   (d && d.results || []).forEach(r => {
   });
 }
-const kPill = (r, full) => { const x = kSt(r); return `${full && r.passed ? `<span class="st hit">Treffer</span>` : ""}<span class="st ${x.cls}" title="${esc(x.s)}">${esc(x.t)}</span>`; };
+const kPill = (r, full) => { if (SWING_OFF) return ""; const x = kSt(r); return `${full && r.passed ? `<span class="st hit">Treffer</span>` : ""}<span class="st ${x.cls}" title="${esc(x.s)}">${esc(x.t)}</span>`; };
 const statusPill = r => kPill(r);
 const kOrder = (a, b) => kSt(b).lv - kSt(a).lv || (inTrade(b.region) - inTrade(a.region)) || (((a.flags || {}).mom61 ?? 9) - ((b.flags || {}).mom61 ?? 9));
 const hHead = (t, link, lbl) => `<div class="hh"><b>${t}</b>${link ? `<button class="hlink" ${link}>${lbl || "Alle"} ›</button>` : ""}</div>`;
@@ -9679,23 +9680,25 @@ function tasksHtml(M) {
 }
 let moneyStrip = "";                               // iPhone: dieselben Zahlen als schmale Zeile über den Aufgaben
 // Geld auf einen Blick: Vermögen (ETF + Depot), Trading frei/gebunden aus Plänen UND Depot-Positionen ohne Plan, Verlust bis zu den Stops
-function moneyHtml() {
-  const m = riskModel(), c = etfCfg(), e = getJson("etf.json"), etfV = e && e.ok !== false && c.units ? c.units * e.c : null;
-  let depV = null, depPL = null, noStop = 0;
+function moneyHtml() {   // 24.11.2026: Aufteilung Welt-ETF / Strategie statt Swing-Kapital (Plätze, Stops)
+  const c = etfCfg(), e = getJson("etf.json"), pf = pfCfg(), etfV = e && e.ok !== false && c.units ? c.units * e.c : null;
+  let depV = null, depPL = null;
   if (anaData && searchIdx) { const gs = groupPositions(depotLive().filter(p => !p.etf).map((p, i) => ({ p, i, r: p.t ? rowOf(p.t) : null })));
     const kn = gs.filter(g => g.known); depV = kn.length ? kn.reduce((a, g) => a + g.value, 0) : null;
-    const inv = kn.reduce((a, g) => a + g.invested, 0); depPL = depV != null && inv ? depV / inv - 1 : null; noStop = gs.filter(g => !g.st).length; }
-  const total = (etfV || 0) + (depV || 0), free = freeCap(), bound = Math.max(0, m.cfg.depot - free);
-  if (!total && !m.rows.length && m.pf.trade <= 0) return "";
+    const inv = kn.reduce((a, g) => a + g.invested, 0); depPL = depV != null && inv ? depV / inv - 1 : null; }
+  const total = (etfV || 0) + (depV || 0);
   const etm = e && e.ok !== false ? etfTiming(e) : null, amp = etm ? ETF_AMP[etm.lv] : e && e.ok !== false ? (ETF_TONE[e.lv] || ETF_TONE.go) : null;
-  moneyStrip = `<button class="mstrip" data-mstrip>${total ? `<span>Vermögen <b>${eur(total)}</b></span>` : ""}${m.pf.trade > 0 || m.rows.length ? `<span>Trading frei <b>${eur(free)}</b></span>${m.riskNow > 0 ? `<span>Bis Stop <b class="down">−${eur(m.riskNow)}</b></span>` : ""}` : ""}<s>›</s></button>`;
+  const isEtf = total > 0 ? (etfV || 0) / total : null, gap = isEtf != null ? isEtf - pf.etf / 100 : null, jan = new Date().getMonth() === 0;
+  const move = gap != null && total > 0 ? Math.abs(gap) * total : 0;
+  moneyStrip = total ? `<button class="mstrip" data-mstrip><span>Vermögen <b>${eur(total)}</b></span>${isEtf != null ? `<span>ETF <b>${pct(isEtf, 0)}</b> · Aktien <b>${pct(1 - isEtf, 0)}</b></span>` : ""}</button>` : "";
   return `<div class="hcard money" id="hMoney">${hHead("Dein Geld", SEC_LINK("depot"), "Depot")}
-    <div class="mrows">${total ? `<div class="mr"><span>Vermögen<em>${etfV != null ? `ETF ${eur(etfV)}` : ""}${etfV != null && depV != null ? " · " : ""}${depV != null ? `Aktien ${eur(depV)}` : ""}</em></span><b>${eur(total)}${depPL != null ? `<small class="${depPL >= 0 ? "up" : "down"}">Aktien ${sgnPct(depPL, 1)}</small>` : ""}</b></div>` : ""}
-      ${m.pf.trade > 0 || m.rows.length ? `<div class="mr"><span>Trading frei<em>${m.slots} ${m.slots === 1 ? "Platz" : "Plätze"} frei${bound ? ` · ${eur(bound)} gebunden` : ""}${paperMode() ? " · Übung" : ""}</em></span><b>${eur(free)}</b></div>
-      <div class="mr"><span>Verlust bis zu den Stops<em>${noStop ? `<span class="gold">${noStop} ${noStop === 1 ? "Position" : "Positionen"} ohne Stop</span>` : m.cfg.depot ? pct(m.riskNow / m.cfg.depot, 1) + " vom Trading-Kapital" : ""}</em></span><b class="${m.riskNow > 0 ? "down" : ""}">${m.riskNow > 0 ? "−" + eur(m.riskNow) : "0 €"}</b></div>` : ""}</div>
-    ${amp ? `<button class="mline" ${SEC_LINK("etf")}><i style="background:${amp[1]}"></i>ETF-Ampel: ${esc(amp[0])}${etm ? etm.lv === "g" ? " – Extra-Geld jetzt anlegen" : etm.lv === "r" ? " – Extra-Geld zurückhalten" : "" : ""} ›</button>` : ""}
-    ${m.warn.map(w => `<div class="hw-row"><i class="vdot y"></i><span>${esc(w)}</span>${/^Trading-Kapital/.test(w) ? `<button class="hlink" id="etfSync">Angleichen ›</button>` : ""}</div>`).join("")}</div>`;
+    <div class="mrows">${total ? `<div class="mr"><span>Vermögen<em>${etfV != null ? `ETF ${eur(etfV)}` : ""}${etfV != null && depV != null ? " · " : ""}${depV != null ? `Aktien ${eur(depV)}` : ""}</em></span><b>${eur(total)}${depPL != null ? `<small class="${depPL >= 0 ? "up" : "down"}"> ${sgnPct(depPL, 1)}</small>` : ""}</b></div>` : ""}
+      <div class="mr"><span>Aufteilung Ziel<em>Welt-ETF / Strategie-Depot · Backtest 2016–2026: 15,3 % p. a. nach Steuer (ETF allein 10,2 %)</em></span><b>${pf.etf} / ${pf.trade}</b></div>
+      ${isEtf != null ? `<div class="mr"><span>Aufteilung heute<em>${Math.abs(gap) < 0.05 ? "passt – nichts zu tun" : jan ? `Januar: ausgleichen – ${eur(move)} ${gap > 0 ? "vom ETF ins Strategie-Depot" : "vom Strategie-Depot in den ETF"}` : `weicht ${pct(Math.abs(gap), 0)} ab – ausgeglichen wird einmal im Jahr im Januar`}</em></span><b class="${Math.abs(gap) < 0.05 ? "" : "gold"}">${fmt(isEtf * 100, 0)} / ${fmt((1 - isEtf) * 100, 0)}</b></div>` : ""}
+      ${pf.etf !== 70 ? `<div class="hw-row"><i class="vdot y"></i><span>Im Backtest war 70/30 am besten (Rendite zu Schwankung). Deine Einstellung: ${pf.etf}/${pf.trade}.</span><button class="hlink" data-pf70>Auf 70/30 ›</button></div>` : ""}
+    ${amp ? `<button class="mline" ${SEC_LINK("etf")}><i style="background:${amp[1]}"></i>ETF-Ampel: ${esc(amp[0])}${etm ? etm.lv === "g" ? " – Extra-Geld jetzt anlegen" : etm.lv === "r" ? " – Extra-Geld zurückhalten" : "" : ""} ›</button>` : ""}</div></div>`;
 }
+document.addEventListener("click", e => { if (!e.target.closest("[data-pf70]")) return; state.pf = { ...(state.pf || {}), etf: 70 }; save(); render(); });
 function startMiniHtml() {
   const h = startHtml(); if (!h) return "";
   const m = h.match(/Erste Schritte · (\d+) von (\d+)/);
@@ -9795,7 +9798,7 @@ const autoShare = total => total < 10000 ? 100 : total < 20000 ? 80 : 70;
 // Ein früher fest eingestellter ETF-Anteil (state.etf.share + shareManual) gilt weiter; gespeicherte Depots/Übungen bleiben unverändert.
 const PF_SCEN = [[100, "100 / 0"], [90, "90 / 10"], [80, "80 / 20"], [70, "70 / 30"]];
 const pfCfg = () => { const p = state.pf || {}, e = state.etf || {};
-  const etf = p.etf != null && +p.etf >= 0 && +p.etf <= 100 ? +p.etf : e.shareManual && +e.share > 0 ? Math.min(100, +e.share) : 90;
+  const etf = p.etf != null && +p.etf >= 0 && +p.etf <= 100 ? +p.etf : e.shareManual && +e.share > 0 ? Math.min(100, +e.share) : 70;   // Standard 70/30 (Backtest 2016–2026: 15,3 % p. a. nach Steuer)
   return { etf, trade: 100 - etf, reserve: +p.reserve > 0 ? +p.reserve : 0 }; };
 // Letzter SPYI-Kauf aus den importierten Scalable-Transaktionen – zeigt, ob der Sparplan wirklich läuft
 function etfLastBuy() {
@@ -10535,8 +10538,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.244";
-const APP_NEWS = [["2026.11.244", "Scanner = Strategie", [
+const APP_VER = "2026.11.245";
+const APP_NEWS = [["2026.11.245", "Swing komplett raus, 70/30", [
+  ["Aufteilung 70/30", "Standard ist jetzt 70 % Welt-ETF und 30 % Strategie-Depot – im Backtest 2016–2026 das beste Verhältnis von Rendite (15,3 % p. a. nach Steuer) zu Schwankung. Heute zeigt die Aufteilung von heute und im Januar, wie viel du umschichten musst. Eine eigene Einstellung bleibt erhalten."],
+  ["Chart ohne Swing", "Die Seitenleiste zeigt oben den Strategie-Status (Rang, x/8, Lauf). Swing-Kriterien, Stop/Ziel/CRV und frühere Swing-Signale sind raus – Kontext, Quartalszahlen, Smart Money, Fundamental, Meldungen und Volumenprofil bleiben."],
+  ["Depot aufgeräumt", "Bestand und Journal bleiben, Übung, Bilanz und Papier (Swing-Auswertungen) sind weg. Aktien ohne Stop gelten als normal – die Strategie verkauft nur am Tauschtermin."]]],
+ ["2026.11.244", "Scanner = Strategie", [
   ["Ein Scanner, eine Strategie", "Swing und Short sind raus. Der Scanner zeigt nur noch die Langfrist-Strategie: Kaufen (die Top 20 = dein Depot, mit Stückzahl, Tausch alle 3 Monate), Beobachten (Watchlist ab 6/8 Kriterien), Meine (deine ★-Aktien mit Rang und x/8) und den Screener."],
   ["Kein eigener Langfrist-Reiter mehr", "Alles steckt im Scanner. Heute zeigt dein Strategie-Depot, Einstieg die Kaufliste mit Stückzahl."]]],
  ["2026.11.243", "Langfrist-Watchlist", [
@@ -12885,7 +12892,7 @@ function paperHtml() {
 
 // ---------- Rendern ----------
 // Reiter gebündelt: Depot (Positionen · Journal · Bilanz · Übung) und Markt (News · Kalender) – Unterreiter oben im Bereich
-const SUBNAV = { depot: [["depot", "Bestand"], ["journal", "Journal"], ["game", "Übung"], "|", ["bilanz", "Bilanz"], ["paper", "Papier"]], news: [["news", "Markt"], ["calendar", "Kalender"]] };
+const SUBNAV = { depot: [["depot", "Bestand"], ["journal", "Journal"]], news: [["news", "Markt"], ["calendar", "Kalender"]] };
 const groupOf = sec => Object.keys(SUBNAV).find(g => SUBNAV[g].some(x => x[0] === sec)) || sec;
 // Markt: eine Tab-Reihe (Überblick · News · Insider · Kalender) – drei davon im Bereich „news“, der Kalender ist eigener Bereich
 const NEWS_TABS = [["overview", "Überblick"], ["feed", "News"], ["insider", "Insider"], ["macro", "Makro"], ["map", "Karte"], ["calendar", "Kalender"]];
@@ -12949,6 +12956,7 @@ function renderMain() {
   document.querySelector(".search").hidden = state.sec !== "scanner";
   if (state.sec === "settings") { $("main").innerHTML = settingsHtml(); setGroupify(); return; }
   if (state.sec === "today") { $("main").innerHTML = todayHtml(); return; }
+  if (["game", "bilanz", "paper"].includes(state.sec)) { state.sec = "depot"; save(); }   // Swing-Auswertungen entfernt (24.11.2026)
   if (state.sec === "long") { state.sec = "scanner"; state.view = "long"; state.kinds = ["long"]; state.scrOn = false; save(); }   // Langfrist-Reiter → Scanner (24.11.2026)
   if (state.sec === "bilanz") { $("main").innerHTML = subNavHtml("bilanz") + bilanzHtml(); return; }
   if (state.sec !== "chart") ctabDrop();
@@ -13215,8 +13223,7 @@ async function openDetail(t) {
         ${r.bonuses && r.bonuses.length ? `<div class="pane-label" style="margin-top:12px">Score-Bausteine</div><table class="check"><tbody>${r.bonuses.map(b => `<tr><td class="${b.points >= 0 ? "ok" : "no"}">${b.points > 0 ? "+" : ""}${b.points}</td><td>${esc(b.label)}</td></tr>`).join("")}</tbody></table>` : ""}
       </div>
       <div class="pane"><div class="pane-label">Einstieg · Trade-Plan, Turbo &amp; Hebel</div>
-        <div class="note" style="margin-top:0">Setup-Erkennung (Trend-Rücksetzer und Kairo), Trade-Plan, empfohlener K.-o. und Hebel gibt es jetzt gebündelt im Reiter <b>Einstieg</b>.</div>
-        <button class="btn" data-ein="${esc(r.ticker)}">Einstieg planen →</button>
+
         <div class="pane-label" style="margin-top:14px">Zone</div>
         <div class="note" style="margin-top:0">${fib ? `Fibonacci: H ${fmt(r.zone.H)} (${dateDE(r.zone.H_date)}) → L ${fmt(fib.L)} (${dateDE(fib.L_date)}), Impuls ${pct(fib.impulse)}, Retracement ${fmt(fib.retracement, 3)}${fib.ok ? " ✓" : ""}<br>` : ""}
           <span id="zoneWave"></span>${sup ? `Support: Mitte ${fmt(sup.center)}, ${sup.touches} Touches (${sup.touch_dates.map(dateDE).join(", ")})` : "Kein horizontaler Mehrfachboden."}</div>
@@ -13232,7 +13239,8 @@ async function openDetail(t) {
 // ---------- Haupt-Chart: Fibonacci als Linien, Unterstützungen/Widerstände, EMAs – alles mit Ein/Aus-Schaltern ----------
 // Ein Baustein für Detailseite und Vollbild-Cockpit; Schalter (state.cl) wirken sofort in allen offenen Charts.
 const CL_DEF = { fib: 0, big: 0, sup: 0, e20: 1, e50: 1, e100: 0, e200: 0, vol: 1, plan: 1, vp: 0, auto: 0, sig: 0, hf: 0, idl: 1, auz: 1, auk: 1, aus: 0 };   // 16.11.2026 ruhiger Standard (wie TradingView): Kerzen, EMA 20/50, Kairo-Plan – alles andere einen Tipp entfernt; selbst gesetzte Schalter (state.cl) bleiben unangetastet   // auz/auk/aus: KI-Analyse – Zonen, Kerzenmuster, Marktstruktur (15.11.2026)   // idl: Intraday-Linien (15.11.2026)   // hf: Kaufzone der Fonds (14.11.2026)   // 13.11.: Volumenprofil standardmäßig aus (Übersicht)   // Auto-Analyse seit 13.11. standardmäßig an   // EMA 100 aus: weniger Linien im Standard
-const clGet = (k, auto) => { const v = (state.cl || {})[k]; return v == null ? (k in CL_DEF ? CL_DEF[k] : auto ? 1 : 0) : v; };
+const clGet = (k, auto) => { if (k === "plan" || k === "sig") return 0;   // Swing-Ebenen (Trade-Plan, frühere Signale) entfernt (24.11.2026)
+  const v = (state.cl || {})[k]; return v == null ? (k in CL_DEF ? CL_DEF[k] : auto ? 1 : 0) : v; };
 const CL_LIVE = new Set();
 const FIBQ = [[0, "Hoch"], [.382, "38,2 %"], [.5, "50 %"], [.618, "61,8 %"], [.706, "70,6 %", 1], [.786, "78,6 %", 1], [.886, "88,6 %"], [1, "Tief"]];   // betont: Kaufzone Golden Pocket
 const EMA_DEF = [["e20", "#f4b740", "EMA 20"], ["e50", "#4aa3ff", "EMA 50"], ["e100", "#b07cff", "EMA 100"], ["e200", "#ff8a65", "EMA 200"]];
@@ -14640,11 +14648,7 @@ function cockpitSide0(h, r) {
       ${cell("Stop", stp ? fmt(stp) : "–", stp && last ? sgnPct(stp / last - 1, 1) : "", "down")}${cell("Ziel", tgt ? fmt(tgt) : "–", tgt && last ? sgnPct(tgt / last - 1, 0) : "Swing-Hoch", "up")}
       ${cell("Chance/Risiko", crv != null ? `${fmt(crv, 1)} : 1` : "–", ko ? `K.-o. ${fmt(ko)}` : "", crv != null ? (crv >= 2 ? "up" : "down") : "")}</div>
       ${!ent && !r.ext ? `<small class="sbt-n">Plan wird final, sobald alle Kriterien erfüllt sind und die Konsolidierung steht.</small>` : ""}` : "";
-  const top = `<div class="cf-s sbt"><div class="sbt-h"><span>Kairo</span>${KV ? `<b>${KV.met}/${KV.tot}</b>` : ""}${r.ext && KV ? `<em class="st ${({ up: "hit", gold: "wait" })[KV.ph.cls] || ""}">${esc(KV.ph.l)}</em>` : ""}</div>
-    ${KP.H.title ? `<p class="cf-t cf-t2"><b>${esc(KP.H.title)}</b><span>${esc(String(KP.H.text || ""))}</span></p>` : ""}
-    ${KP.miss.length && KP.miss.length <= 4 ? `<div class="sbt-miss"><span>Fehlt</span>${KP.miss.map(x => `<em>${esc(x)}</em>`).join("")}</div>` : ""}
-    ${plan}${KP.earn}
-    <div class="sbt-a"><button class="btn sm" data-ein="${esc(r.ticker)}">Einstieg planen</button><a class="btn ghost sm" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">TradingView</a></div></div>`;
+  const top = `<div class="cf-s sbt"><div class="sbt-a"><a class="btn ghost sm" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">TradingView</a></div>${KP.earn}</div>`;   // Swing-Kopf entfernt (24.11.2026) – oben steht der Strategie-Status
   // Kennzahlen für die eingeklappten Zeilen
   const A = h.A || (window.__lastChart && window.__lastChart.c ? (h.A = autoTA(window.__lastChart.c)) : null), Z = A ? A.zones || [] : [], sup = Z.filter(z => z.hi < last).sort((a, b) => b.hi - a.hi)[0];
   const sv = (() => { try { return smView(t0); } catch (e) { return null; } })(), G = (() => { try { return factorGrade(t0); } catch (e) { return null; } })();
@@ -14652,13 +14656,11 @@ function cockpitSide0(h, r) {
   const sg = sigOf(t0) || [], k8n = (() => { try { return k8Of(t0).length; } catch (e) { return 0; } })();
   const vpOn = clGet("vp") && h.vpp && h.vpp.info && h.vpp.info(), lnN = (M.lines || []).length + (M.cls && clGet("fib") ? 1 : 0);
   return top
-    + sbSec("kc", "Kairo-Kriterien", KV ? `${KV.met} von ${KV.tot}` : "", KP.chips ? `<div class="kv-cs">${KP.chips}</div>${KV && KV.ctx ? `<small class="kv-note">Der Abwärtstrend gehört zum Kairo-Setup – entscheidend sind Kaufzone und Wende-Signale${KP.chart ? "" : " (Werte aus dem Abendscan)"}.</small>` : ""}` : "", false)
     + sbSec("why", "Heute", `<span class="why-sum">${whySum()}</span>`, `<div class="why-slot">${whyHtml()}</div>`, true)
     + sbSec("cx", "Chart-Kontext", sup ? `Unterstützung ${fmt(sup.hi)} <i class="down">${sgnPct(sup.hi / last - 1, 1)}</i>` : "", autoCardHtml(h), true)
     + (r.ext ? "" : sbSec("earn", "Quartalszahlen", en != null ? (en === 0 ? "heute" : en === 1 ? "morgen" : `in ${en} Tagen`) : er && er.last ? `zuletzt ${dateDE(er.last.date)}` : "", earnMiniHtml(r.ticker), true))
     + (r.ext ? "" : sbSec("sm", "Smart Money", sv ? `<i class="${sv.tone[0]}">${esc(sv.tone[1])}</i>` : "", smCardHtml(r.ticker), true))
     + sbSec("fu", "Fundamental", G ? `Note ${G.g}` : "", fundCardHtml(t0), true)
-    + sbSec("sig", "Frühere Kairo-Signale", sg.length ? `${sg.length} in 2 Jahren` : "", sigCardHtml(t0), true)
     + (r.ext ? "" : sbSec("k8", "Firmenmeldungen", k8n ? `${k8n} · SEC 8-K` : "", k8Html(r.ticker), true))
     + (vpOn ? sbSec("vp", "Volumenprofil", vpOn.poc ? `meist ${fmt(vpOn.poc)}` : "", `
     ${(vi => vi && clGet("vp") && vi.poc ? `<div class="cf-s"><div class="cf-h">Volumenprofil <small class="muted">${state.vpMode === "vis" ? "Bildausschnitt" : `seit ${esc(vi.from)}`}</small></div>
@@ -14892,7 +14894,7 @@ function ctabBarHtml(h) {
       <div class="ct-seg"><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button><button class="ct-b" data-alc title="Alarme: alle Alarme, Kurs- und RSI-Alarm" aria-label="Alarme">${CT_IC.bell}<span class="ct-lbl">Alarm</span>${alCount() ? `<small>${alCount()}</small>` : ""}</button>${M.own ? `<button class="ct-b" data-clwreset title="Eigene Fibonacci-Welle verwerfen – zurück zur Kairo-Welle" aria-label="Kairo-Welle">${CT_IC.reset}<span class="ct-lbl">Kairo-Welle</span></button>` : ""}</div></div>
     ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, true))}
       ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.concat(SMA_DEF).map(([k, col, l]) => sw(k, l, col)).join(""))}${grp("Indikatoren", sw("bb", `Bollinger-Bänder (${IND_P().bbN}, ${IND_P().bbK})`, "#2962ff") + sw("ichi", "Ichimoku-Wolke", "#30d158"))}${grp("Indikator-Einstellungen", `<div class="ip-g">${[["rsi", "RSI-Periode"], ["stK", "Stochastik %K"], ["stD", "Stochastik %D"], ["atr", "ATR-Periode"], ["adx", "ADX-Periode"], ["bbN", "Bollinger-Periode"], ["bbK", "Bollinger-Faktor"]].map(([k, l]) => `<label><span>${l}</span><input type="number" inputmode="decimal" data-ip="${k}" value="${IND_P()[k]}" step="${k === "bbK" ? ".5" : "1"}"></label>`).join("")}</div>`)}
-      ${h.c && h.c.intra ? grp("Intraday", sw("idl", "Vortag H/T/S · Eröffnungsspanne · VWAP", "#bf5af2")) : ""}${grp("Smart Money", sw("hf", "Kaufzone der Hedgefonds", "#5e5ce6", !!hfZoneOf(String(h.r.ticker).replace(/@rp$/, ""), h.c)))}${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa") + sw("sig", `Frühere Kairo-Signale${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")) ? ` · ${sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")).length}` : ""}`, "#0a84ff", !!sigOf(h.r && String(h.r.ticker).replace(/@rp$/, ""))))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#96a4be") + (clGet("vp") ? `<div class="ct-vpm" role="group" aria-label="Bereich des Volumenprofils">${[["wave", "Welle", "ab dem Wellen-Tief"], ["anchor", "Ab Punkt", "ab einem Tag, den du antippst"], ["vis", "Sichtbar", "nur der Bildausschnitt"]].map(([v, l, t]) => `<button class="${(state.vpMode || "wave") === v ? "on" : ""}" data-vpmode="${v}" title="${t}">${l}</button>`).join("")}</div>` : ""))}${grp("Trade-Plan", sw("plan", "Kauf, Stop und K.-o.", "#ff453a"))}</div>` : ""}`;
+      ${h.c && h.c.intra ? grp("Intraday", sw("idl", "Vortag H/T/S · Eröffnungsspanne · VWAP", "#bf5af2")) : ""}${grp("Smart Money", sw("hf", "Kaufzone der Hedgefonds", "#5e5ce6", !!hfZoneOf(String(h.r.ticker).replace(/@rp$/, ""), h.c)))}${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa"))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#96a4be") + (clGet("vp") ? `<div class="ct-vpm" role="group" aria-label="Bereich des Volumenprofils">${[["wave", "Welle", "ab dem Wellen-Tief"], ["anchor", "Ab Punkt", "ab einem Tag, den du antippst"], ["vis", "Sichtbar", "nur der Bildausschnitt"]].map(([v, l, t]) => `<button class="${(state.vpMode || "wave") === v ? "on" : ""}" data-vpmode="${v}" title="${t}">${l}</button>`).join("")}</div>` : ""))}</div>` : ""}`;
 }
 // Zeiteinheit und Chartart als Auswahlmenüs (wie TradingView) – spart in der Werkzeugleiste Platz für den Chart
 const TF_ALL = [["5m", "5m", "5 Minuten"], ["15m", "15m", "15 Minuten"], ["1h", "1h", "1 Stunde"], ["4h", "4h", "4 Stunden"], ["D", "1D", "1 Tag"], ["W", "1W", "1 Woche"], ["M", "1M", "1 Monat"]];
@@ -17319,7 +17321,7 @@ document.addEventListener("click", async e => {
     cardEl.querySelectorAll("[data-rng]").forEach(b => b.classList.toggle("on", b === rg));
     const r = mini && data.results.find(x => x.ticker === mini.dataset.mini); if (r) loadChart(r.ticker).then(c => paintChart(mini, c, r)); return; }
   const ei = e.target.closest("[data-ein]");
-  if (ei) { const r = searchIdx && searchIdx.find(x => x.t === ei.dataset.ein); state.einT = ei.dataset.ein; state.einQ = r ? r.n : ei.dataset.ein; closeCard(); if (state.sec !== "entry") goSec("entry"); else { save(); render(); } window.scrollTo({ top: 0 }); return; }
+  if (ei) { const t = ei.dataset.ein, r = (searchIdx || []).find(x => x.t === t) || {}; state.einT = null; closeCard(); ctOpen(t, r.ext ? r.ext.y || r.ext.symbol : t, r.n); return; }   // Swing-Trade-Plan entfernt (24.11.2026): Aktie im Chart öffnen
   const gs = e.target.closest("[data-gosec]");
   if (gs) { e.preventDefault(); closeCard(); if (gs.dataset.gosec === "settings") state.setTab = gs.dataset.settab || ""; if (gs.dataset.newstab) state.newsTab = gs.dataset.newstab; goSec(gs.dataset.gosec); return; }
   const gu = e.target.closest("[data-gosub]");
