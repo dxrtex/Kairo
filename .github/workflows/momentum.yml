@@ -1,0 +1,35 @@
+name: Momentum-Varianten (beste Positions-Strategie)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/profit-study]
+    paths: [.github/workflows/momentum.yml, tools/research/momentum_variants.py]
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  study:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Kurse aus der Qualitäts-Studie (Run 45207662691)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: qpx-*
+          merge-multiple: true
+          path: qpx
+          run-id: 45207662691
+          github-token: ${{ github.token }}
+      - run: python tools/research/momentum_variants.py qpx

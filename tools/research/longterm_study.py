@@ -141,8 +141,8 @@ def simulate(close_m, sel_fn, every, start, cost=0.0015, tax=True):
             gains_y, year = 0.0, d.year
         if k % every == 0:
             tgt = sel_fn(d)
-            if tgt:
-                w = val / len(tgt)
+            if tgt is not None:
+                w = val / len(tgt) if tgt else 0.0
                 for t in list(pos):
                     n, basis = pos[t]
                     p = px.get(t)
