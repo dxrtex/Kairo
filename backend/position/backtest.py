@@ -176,6 +176,10 @@ def run_baseline(m: engine.Market, start, cfg: Config = CFG, tax: bool = True, r
     Ø Umsatz 63 T. ≥ 5 Mio. $, Kurs ≥ 5 $; Rangliste mit Kursen bis zum Vortag, Ausführung zur Eröffnung des Tauschtags.
     Raus, wer nicht mehr in den Top 20 ist; neue Titel gleich gewichtet (Depotwert / 20) aus dem verfügbaren Cash."""
     r = {**BASE, **(rule or {})}
+    mode = r.get("regime", "none")      # none · quarter (Tauschtag: Filter aus → alles verkaufen, Cash) ·
+                                         # daily (Filter aus → alles raus; wieder an → sofort Top 20) · buys (nur keine neuen Käufe)
+    ixc = m.index_close.ffill()
+    reg = (ixc > ixc.rolling(cfg.regime_sma).mean()).reindex(m.C.index).fillna(False)
     Cf = m.C.ffill(limit=engine.FILL_DAYS)
     fx = m.fx.reindex(Cf.columns).fillna(1.0) if m.fx is not None else 1.0
     mom = Cf.shift(21) / Cf.shift(r["lb"] * 21) - 1
@@ -209,9 +213,23 @@ def run_baseline(m: engine.Market, start, cfg: Config = CFG, tax: bool = True, r
                        "px_in": p.entry_px, "px_out": px, "pnl": proceeds - p.basis, "ret": proceeds / p.basis - 1, "why": why,
                        "days": int((when - p.entry_date).days)})
 
+    was_on = True
     for t in dates:
         k = idx.get_loc(t)
-        if t in reb and k > 0:
+        on = bool(reg.iloc[k - 1]) if k > 0 else True
+        go = t in reb or (mode == "daily" and on and not was_on)
+        if mode == "daily" and not on and pos:
+            for tk in list(pos):
+                px = engine._px(m.O, t, tk)
+                sell(tk, px if px == px else last_close.get(tk, pos[tk].entry_px), t, "regime")
+        if mode in ("daily", "quarter") and not on:
+            go = False
+            if mode == "quarter" and t in reb:
+                for tk in list(pos):
+                    px = engine._px(m.O, t, tk)
+                    sell(tk, px if px == px else last_close.get(tk, pos[tk].entry_px), t, "regime")
+        was_on = on
+        if go and k > 0:
             y = idx[k - 1]
             ok = (mom.loc[y] > -1) & (adv.loc[y] >= r["min_adv"]) & (Cf.loc[y] * fx >= r["min_px"]) & m.O.loc[t].notna()
             top = list(mom.loc[y][ok].sort_values(ascending=False).index[: r["n"]])
@@ -222,7 +240,7 @@ def run_baseline(m: engine.Market, start, cfg: Config = CFG, tax: bool = True, r
             val = cash + sum(p.shares * (engine._px(m.O, t, tk) if engine._px(m.O, t, tk) == engine._px(m.O, t, tk)
                                          else last_close.get(tk, p.entry_px)) for tk, p in pos.items())
             for tk in top:
-                if tk in pos:
+                if tk in pos or (mode == "buys" and not on):
                     continue
                 px = engine._px(m.O, t, tk)
                 n = int(min(val / r["n"], cash) // (px * (1 + cfg.cost))) if px == px and px > 0 else 0
@@ -243,12 +261,12 @@ def run_baseline(m: engine.Market, start, cfg: Config = CFG, tax: bool = True, r
         equity.append((t, val))
         invested.append(1 - cash / val if val > 0 else 0.0)
     return {"equity": pd.Series(dict(equity)), "invested": float(np.mean(invested)), "cash": cash, "pos": pos, "last_close": last_close,
-            "trades": trades, "taxes": taxes, "costs": costs, "pot": pot, "P": {"reg": pd.Series(True, index=idx)}}
+            "trades": trades, "taxes": taxes, "costs": costs, "pot": pot, "P": {"reg": reg if mode != "none" else pd.Series(True, index=idx)}}
 
 
-def report(m: engine.Market, meta: dict, start: str, cfg: Config, strategy: str = "position") -> dict:
+def report(m: engine.Market, meta: dict, start: str, cfg: Config, strategy: str = "position", rule: dict | None = None) -> dict:
     if strategy == "langfrist":
-        pre, post = run_baseline(m, start, cfg, tax=False), run_baseline(m, start, cfg, tax=True)
+        pre, post = run_baseline(m, start, cfg, tax=False, rule=rule), run_baseline(m, start, cfg, tax=True, rule=rule)
     else:
         P = engine.prepare(m, cfg)
         pre = engine.run(m, start, cfg=cfg, tax=False, P=P)
@@ -279,7 +297,7 @@ def report(m: engine.Market, meta: dict, start: str, cfg: Config, strategy: str 
         "win_rate": float(np.mean([x["pnl"] > 0 for x in closed])) if closed else None,
         "avg_days": float(np.mean([x["days"] for x in closed])) if closed else None,
         "costs": post["costs"], "taxes": post["taxes"], "halves": halves,
-        "exits": {k: sum(1 for x in closed if k in x["why"].split(",")) for k in ("trend", "stop", "rank", "delisted")},
+        "exits": {k: sum(1 for x in closed if k in x["why"].split(",")) for k in ("trend", "stop", "rank", "delisted", "regime")},
         "invested": pre["invested"], "regime_on": float(pre["P"]["reg"].loc[pre["equity"].index].mean()),
         "missing": sorted(meta["missing"]), "notes": meta["notes"], "n_prices": meta["n_prices"],
     }
@@ -298,7 +316,7 @@ def print_report(rep: dict, title: str):
     print(f"  Max Drawdown                  {p(-rep['mdd'])}   (Index {p(-rep['bench_mdd'])})")
     print(f"  Sharpe Ratio                  {rep['sharpe']:.2f}   (Index {rep['bench_sharpe']:.2f})")
     print(f"  Trades / Win-Rate / Haltedauer {rep['trades']} / {p(rep['win_rate'])} / {rep['avg_days']:.0f} Tage" if rep["trades"] else "  Trades: 0")
-    print(f"  Exits: Trendbruch {rep['exits']['trend']} · Trailing-Stop {rep['exits']['stop']} · Rang {rep['exits']['rank']} · Delisting {rep['exits']['delisted']}")
+    print(f"  Exits: Trendbruch {rep['exits']['trend']} · Trailing-Stop {rep['exits']['stop']} · Rang {rep['exits']['rank']} · Delisting {rep['exits']['delisted']} · Marktfilter {rep['exits'].get('regime', 0)}")
     print(f"  Ø investiert                  {rep['invested'] * 100:.0f} % des Depots · Marktfilter „Käufe frei“ an {rep['regime_on'] * 100:.0f} % der Tage")
     print(f"  Transaktionskosten gesamt     {e(rep['costs'])}")
     print(f"  Abgeltungsteuer gesamt        {e(rep['taxes'])}")
@@ -322,19 +340,25 @@ def main(argv=None):
     ap.add_argument("--trail", type=float, default=CFG.trail_atr, help="Diagnose: 0 = ohne Trailing-Stop")
     ap.add_argument("--sizing", default="atr", help="Diagnose: equal = 1/15 je Position")
     ap.add_argument("--no-regime", action="store_true", help="Diagnose: ohne Marktfilter")
+    ap.add_argument("--risk", type=float, default=CFG.risk_per_atr, help="Risiko je ATR (Anteil des Depots)")
+    ap.add_argument("--maxw", type=float, default=CFG.max_weight, help="Positions-Cap")
+    ap.add_argument("--rebalance", default=CFG.rebalance, help="weekly | monthly | quarterly")
+    ap.add_argument("--regime-mode", default="none", help="nur --strategy langfrist: none | quarter | daily | buys")
     ap.add_argument("--strategy", default="position", help="langfrist = bisherige Regel (12-1-Momentum, Top 20, quartalsweise)")
     x = ap.parse_args(argv)
     if x.cmd == "prices":
         prices(int(x.a), int(x.b))
         return 0
-    cfg = Config(momentum=x.momentum, trail_atr=x.trail, sizing=x.sizing, use_regime=not x.no_regime)
+    cfg = Config(momentum=x.momentum, trail_atr=x.trail, sizing=x.sizing, use_regime=not x.no_regime, risk_per_atr=x.risk,
+                 max_weight=x.maxw, rebalance=x.rebalance)
     m, meta = load_market(x.a, x.universe, cfg)
-    rep = report(m, meta, x.start, cfg, x.strategy)
+    rep = report(m, meta, x.start, cfg, x.strategy, {"regime": x.regime_mode})
     if x.strategy == "langfrist":
         rep["missing"] = []
-        print_report(rep, f"BISHERIGE Strategie Kairo Langfrist (12-1-Momentum, Top 20, quartalsweise) · Universum {x.universe}")
+        print_report(rep, f"BISHERIGE Strategie Kairo Langfrist (12-1-Momentum, Top 20, quartalsweise) · Marktfilter {x.regime_mode} · Universum {x.universe}")
     else:
-        print_report(rep, f"Universum {x.universe} · Momentum {x.momentum} · Stop {x.trail} ATR · Größe {x.sizing} · Marktfilter {'aus' if x.no_regime else 'an'}")
+        print_report(rep, f"Universum {x.universe} · Momentum {x.momentum} · Risiko {x.risk:.3%} je ATR · Cap {x.maxw:.0%} · Stop {x.trail} ATR · "
+                          f"Rebalancing {x.rebalance} · Größe {x.sizing} · Marktfilter {'aus' if x.no_regime else 'an'}")
     if x.out:
         Path(x.out).write_text(json.dumps(rep, ensure_ascii=False, default=float))
     return 0

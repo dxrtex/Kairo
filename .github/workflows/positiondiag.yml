@@ -20,11 +20,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Lauf 45266382491: us clenow / us 6-1 / all clenow / ohne Stop / gleich gewichtet / ohne Marktfilter (fertig)
+        # Lauf 45266382491 + 45267576351: Regelwerk, 6-1, alle, Diagnosen, bisherige Regel (fertig)
+        # Optimierungen (Auftrag 23.11.): 1 = Risiko 0,4 %/ATR + Cap 10 % · 2A = + Stop 5 ATR + monatlich ·
+        # 2B = + ohne Stop + monatlich/quartalsweise · 3 = bisherige Regel + SMA-200-Marktfilter (3 Arten)
         run:
-          - "--universe us --strategy langfrist"
-          - "--universe us --momentum clenow --sizing equal --trail 0"
-          - "--universe all --momentum 6-1"
+          - "--universe us --risk 0.004 --maxw 0.10"
+          - "--universe us --risk 0.004 --maxw 0.10 --trail 5 --rebalance monthly"
+          - "--universe us --risk 0.004 --maxw 0.10 --trail 0 --rebalance monthly"
+          - "--universe us --risk 0.004 --maxw 0.10 --trail 0 --rebalance quarterly"
+          - "--universe us --strategy langfrist --regime-mode quarter"
+          - "--universe us --strategy langfrist --regime-mode daily"
+          - "--universe us --strategy langfrist --regime-mode buys"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

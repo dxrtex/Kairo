@@ -37,6 +37,8 @@ class Config:
     trail_atr: float = 3.0
     sizing: str = "atr"                    # "atr" (Regelwerk) · "equal" nur für Diagnose-Läufe (1/15 des Depots je Position)
     use_regime: bool = True                # False nur für Diagnose-Läufe
+    rebalance: str = "weekly"              # "weekly" (Regelwerk: Rang-Exit freitags, Käufe täglich) · "monthly"/"quarterly":
+                                           # Rang-Exit UND Käufe nur am letzten Handelstag des Monats/Quartals (Test-Varianten)
     # 6. Praxis
     earnings_days: int = 5                 # Handelstage bis Quartalszahlen → Warn-Flag
     # Backtest

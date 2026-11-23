@@ -276,3 +276,38 @@ def test_mixed_calendars_do_not_break_indicators():
     t = m.C.index[320]
     assert P["pool"].loc[t].any()                           # Pool 20 Tage nach dem Feiertag nicht leer
     assert P["mom"].loc[t].notna().all()
+
+
+def test_rebalance_days_monthly_quarterly():
+    idx = pd.bdate_range("2021-01-01", "2021-12-31")
+    mo = engine.rebalance_days(idx, "monthly")
+    assert len(mo) == 11 and pd.Timestamp("2021-01-29") in mo and pd.Timestamp("2021-03-31") in mo
+    assert engine.rebalance_days(idx, "quarterly") == {pd.Timestamp(d) for d in ("2021-03-31", "2021-06-30", "2021-09-30")}
+    assert all(t.weekday() == 4 for t in engine.rebalance_days(idx, "weekly"))
+
+
+def test_engine_monthly_rebalance_buys_only_on_month_end_signal():
+    from dataclasses import replace
+    m = _market(seed=3)
+    cfg = replace(CFG, rebalance="monthly", risk_per_atr=0.004, max_weight=0.10)
+    res = engine.run(m, m.C.index[260], cfg=cfg, tax=False)
+    reb = engine.rebalance_days(m.C.index, "monthly")
+    nxt = {m.C.index[m.C.index.get_loc(t) + 1].strftime("%Y-%m-%d") for t in reb if m.C.index.get_loc(t) + 1 < len(m.C.index)}
+    first = m.C.index[260].strftime("%Y-%m-%d")
+    assert all(x["in"] in nxt for x in res["trades"])
+    assert all(x["out"] in nxt for x in res["trades"] if x["why"] == "rank")
+    assert all(p.entry_date.strftime("%Y-%m-%d") in nxt | {first} for p in res["pos"].values())
+
+
+def test_baseline_regime_filter_modes():
+    from backend.position import backtest
+    m = _market(seed=13, k=30)
+    n = len(m.C)
+    m.index_close = pd.Series(np.r_[np.linspace(100, 150, n - 60), np.linspace(150, 60, 60)], index=m.C.index)
+    start = m.C.index[300]
+    none = backtest.run_baseline(m, start, CFG, tax=False, rule={"n": 5})
+    daily = backtest.run_baseline(m, start, CFG, tax=False, rule={"n": 5, "regime": "daily"})
+    assert any(x["why"] == "regime" for x in daily["trades"]) and not daily["pos"]
+    assert not any(x["why"] == "regime" for x in none["trades"])
+    buys = backtest.run_baseline(m, start, CFG, tax=False, rule={"n": 5, "regime": "buys"})
+    assert not any(x["why"] == "regime" for x in buys["trades"])

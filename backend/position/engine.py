@@ -67,6 +67,15 @@ def prepare(m: Market, cfg: Config = CFG) -> dict:
     return {"ind": ind, "pool": pool, "mom": mom, "atr": atr, "reg": reg, "last": last_valid}
 
 
+def rebalance_days(idx: pd.DatetimeIndex, mode: str) -> set:
+    """Tage mit Rang-Prüfung: freitags (weekly) oder letzter Handelstag des Monats/Quartals (Signal zum Schluss, Ausführung t+1)."""
+    if mode == "weekly":
+        return {t for t in idx if t.weekday() == 4}
+    nxt = idx[1:].month
+    last = [t for t, m2 in zip(idx[:-1], nxt) if t.month != m2]
+    return set(last) if mode == "monthly" else {t for t in last if t.month in (3, 6, 9, 12)}
+
+
 def _px(df, t, k):
     v = df.at[t, k] if k in df.columns else np.nan
     return float(v) if v == v else np.nan
@@ -94,6 +103,7 @@ def run(m: Market, start, end=None, cfg: Config = CFG, tax: bool = True, capital
     pending_buy: list[tuple[str, int, float]] = []
     last_close: dict[str, float] = {}
     day_log = []
+    reb_days = rebalance_days(m.C.index, cfg.rebalance)
 
     def sell(t, px, when, why):
         nonlocal cash, pot, taxes, costs
@@ -160,7 +170,7 @@ def run(m: Market, start, end=None, cfg: Config = CFG, tax: bool = True, capital
             break
         scored = rank_day(m, P, t, cfg)
         top25 = scoring.top_quantile(scored, cfg.exit_rank_pct) if len(scored) else set()
-        fri = t.weekday() == 4
+        fri = t in reb_days
         sma_f = P["ind"]["sma_f"].loc[t]
         atr_t = P["atr"].loc[t]
         for tk, p in pos.items():
@@ -172,7 +182,7 @@ def run(m: Market, start, end=None, cfg: Config = CFG, tax: bool = True, capital
                 pending_sell[tk] = why
         top = scoring.select(scored, m.sectors, cfg, slots=cfg.top_n) if len(scored) else []
         buys = []
-        if bool(P["reg"].get(t, False)):
+        if bool(P["reg"].get(t, False)) and (cfg.rebalance == "weekly" or fri):
             keep = {tk: p.sector for tk, p in pos.items() if tk not in pending_sell}
             free = cfg.max_positions - len(keep)
             cnt: dict[str, int] = {}
