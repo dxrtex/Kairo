@@ -2,6 +2,7 @@
 
     python -m backend.position.backtest prices SHARD SHARDS         → bpx_SHARD.pkl.gz (bereinigte Tageskurse, 12 Jahre)
     python -m backend.position.backtest run PXDIR [--universe us|all] [--momentum clenow|6-1] [--start 2016-01-04]
+    python -m backend.position.backtest run PXDIR --strategy langfrist     → bisherige Regel als Vergleich (gleiche Daten/Kosten/Steuer)
 
 Daten: Kurse aus yfinance (auto_adjust → split- und dividendenbereinigt: Open/High/Low/Close), Universum backend/universe,
 Fundamentaldaten zeitpunktgenau aus den SEC-Jahresabschlüssen (fin.json, nur USA): ROE = Gewinn / Eigenkapital,
@@ -165,10 +166,93 @@ def metrics(eq: pd.Series) -> dict:
             "mdd": float((1 - eq / eq.cummax()).max()), "sharpe": float(r.mean() / r.std() * np.sqrt(252)) if r.std() > 0 else None}
 
 
-def report(m: engine.Market, meta: dict, start: str, cfg: Config) -> dict:
-    P = engine.prepare(m, cfg)
-    pre = engine.run(m, start, cfg=cfg, tax=False, P=P)
-    post = engine.run(m, start, cfg=cfg, tax=True, P=P)
+# ---------------------------------------------------------------- Vergleich: bisherige Strategie (Kairo Langfrist)
+BASE = {"n": 20, "lb": 12, "every": 3, "min_adv": 5e6, "min_px": 5.0}
+
+
+def run_baseline(m: engine.Market, start, cfg: Config = CFG, tax: bool = True, rule: dict | None = None) -> dict:
+    """Bisherige Regel (backend/langfrist.py, v2026.11.242) mit DENSELBEN Kursen, Kosten und Steuern wie die neue Strategie:
+    am ersten Handelstag im Jan/Apr/Jul/Okt die 20 US-Aktien mit dem höchsten 12-1-Momentum (Kurs vor 1 Monat / vor 12 Monaten),
+    Ø Umsatz 63 T. ≥ 5 Mio. $, Kurs ≥ 5 $; Rangliste mit Kursen bis zum Vortag, Ausführung zur Eröffnung des Tauschtags.
+    Raus, wer nicht mehr in den Top 20 ist; neue Titel gleich gewichtet (Depotwert / 20) aus dem verfügbaren Cash."""
+    r = {**BASE, **(rule or {})}
+    Cf = m.C.ffill(limit=engine.FILL_DAYS)
+    fx = m.fx.reindex(Cf.columns).fillna(1.0) if m.fx is not None else 1.0
+    mom = Cf.shift(21) / Cf.shift(r["lb"] * 21) - 1
+    adv = (m.C * m.V.fillna(0) * fx).rolling(63, min_periods=40).mean()
+    last_valid = m.C.apply(lambda s: s.last_valid_index())
+    idx = m.C.index
+    dates = idx[idx >= pd.Timestamp(start)]
+    months = set(range(1, 13, r["every"]))
+    first = pd.Series(idx, index=idx).groupby([idx.year, idx.month]).transform("first")
+    reb = set(d for d in dates if first[d] == d and d.month in months)
+    reb.add(dates[0])
+    cash, pos, pot, taxes, costs = float(cfg.start_capital), {}, 0.0, 0.0, 0.0
+    trades, equity, invested, last_close = [], [], [], {}
+
+    def sell(t, px, when, why):
+        nonlocal cash, pot, taxes, costs
+        p = pos.pop(t)
+        proceeds = p.shares * px * (1 - cfg.cost)
+        costs += p.shares * px * cfg.cost
+        gain = proceeds - p.basis
+        if tax:
+            if gain < 0:
+                pot += -gain
+            else:
+                use = min(pot, gain)
+                pot -= use
+                taxes += (gain - use) * cfg.tax
+                cash -= (gain - use) * cfg.tax
+        cash += proceeds
+        trades.append({"t": t, "in": p.entry_date.strftime("%Y-%m-%d"), "out": when.strftime("%Y-%m-%d"), "n": p.shares,
+                       "px_in": p.entry_px, "px_out": px, "pnl": proceeds - p.basis, "ret": proceeds / p.basis - 1, "why": why,
+                       "days": int((when - p.entry_date).days)})
+
+    for t in dates:
+        k = idx.get_loc(t)
+        if t in reb and k > 0:
+            y = idx[k - 1]
+            ok = (mom.loc[y] > -1) & (adv.loc[y] >= r["min_adv"]) & (Cf.loc[y] * fx >= r["min_px"]) & m.O.loc[t].notna()
+            top = list(mom.loc[y][ok].sort_values(ascending=False).index[: r["n"]])
+            for tk in [x for x in pos if x not in top]:
+                px = engine._px(m.O, t, tk)
+                px = px if px == px else last_close.get(tk, pos[tk].entry_px)
+                sell(tk, px, t, "rank")
+            val = cash + sum(p.shares * (engine._px(m.O, t, tk) if engine._px(m.O, t, tk) == engine._px(m.O, t, tk)
+                                         else last_close.get(tk, p.entry_px)) for tk, p in pos.items())
+            for tk in top:
+                if tk in pos:
+                    continue
+                px = engine._px(m.O, t, tk)
+                n = int(min(val / r["n"], cash) // (px * (1 + cfg.cost))) if px == px and px > 0 else 0
+                if n <= 0:
+                    continue
+                gross = n * px
+                cash -= gross * (1 + cfg.cost)
+                costs += gross * cfg.cost
+                pos[tk] = engine.Pos(n, t, px, gross * (1 + cfg.cost), px, m.sectors.get(tk) or "?")
+        for tk in list(pos):
+            c = engine._px(m.C, t, tk)
+            if c == c:
+                last_close[tk] = c
+            lv = last_valid.get(tk)
+            if lv is not None and pd.notna(lv) and (pd.Timestamp(lv) < t or (pd.Timestamp(lv) == t and t < idx[-1])):
+                sell(tk, last_close.get(tk, pos[tk].entry_px), pd.Timestamp(lv), "delisted")
+        val = cash + sum(p.shares * last_close.get(tk, p.entry_px) for tk, p in pos.items())
+        equity.append((t, val))
+        invested.append(1 - cash / val if val > 0 else 0.0)
+    return {"equity": pd.Series(dict(equity)), "invested": float(np.mean(invested)), "cash": cash, "pos": pos, "last_close": last_close,
+            "trades": trades, "taxes": taxes, "costs": costs, "pot": pot, "P": {"reg": pd.Series(True, index=idx)}}
+
+
+def report(m: engine.Market, meta: dict, start: str, cfg: Config, strategy: str = "position") -> dict:
+    if strategy == "langfrist":
+        pre, post = run_baseline(m, start, cfg, tax=False), run_baseline(m, start, cfg, tax=True)
+    else:
+        P = engine.prepare(m, cfg)
+        pre = engine.run(m, start, cfg=cfg, tax=False, P=P)
+        post = engine.run(m, start, cfg=cfg, tax=True, P=P)
     end_after = engine.liquidate_after_tax(post, cfg)
     spy = _yf("SPY")["Close"].reindex(pre["equity"].index).ffill()
     bench = spy / spy.iloc[0] * cfg.start_capital
@@ -238,14 +322,19 @@ def main(argv=None):
     ap.add_argument("--trail", type=float, default=CFG.trail_atr, help="Diagnose: 0 = ohne Trailing-Stop")
     ap.add_argument("--sizing", default="atr", help="Diagnose: equal = 1/15 je Position")
     ap.add_argument("--no-regime", action="store_true", help="Diagnose: ohne Marktfilter")
+    ap.add_argument("--strategy", default="position", help="langfrist = bisherige Regel (12-1-Momentum, Top 20, quartalsweise)")
     x = ap.parse_args(argv)
     if x.cmd == "prices":
         prices(int(x.a), int(x.b))
         return 0
     cfg = Config(momentum=x.momentum, trail_atr=x.trail, sizing=x.sizing, use_regime=not x.no_regime)
     m, meta = load_market(x.a, x.universe, cfg)
-    rep = report(m, meta, x.start, cfg)
-    print_report(rep, f"Universum {x.universe} · Momentum {x.momentum} · Stop {x.trail} ATR · Größe {x.sizing} · Marktfilter {'aus' if x.no_regime else 'an'}")
+    rep = report(m, meta, x.start, cfg, x.strategy)
+    if x.strategy == "langfrist":
+        rep["missing"] = []
+        print_report(rep, f"BISHERIGE Strategie Kairo Langfrist (12-1-Momentum, Top 20, quartalsweise) · Universum {x.universe}")
+    else:
+        print_report(rep, f"Universum {x.universe} · Momentum {x.momentum} · Stop {x.trail} ATR · Größe {x.sizing} · Marktfilter {'aus' if x.no_regime else 'an'}")
     if x.out:
         Path(x.out).write_text(json.dumps(rep, ensure_ascii=False, default=float))
     return 0

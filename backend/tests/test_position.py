@@ -214,6 +214,47 @@ def test_live_scan_build_outputs_model_and_signals():
     assert s0 is None or s0["earn"] is True
     for p in out["model"]["positions"]:
         assert p["stop"] is not None and p["since"] >= out["model"]["start"]
+    assert out["checks"] == ["liq", "trend", "stab", "mom", "qual", "val", "sector", "earn"]
+    for r in out["rank"]:
+        assert len(r["chk"]) == 8 and r["nchk"] == sum(r["chk"])
+    s0 = next((r for r in out["rank"] + out["watch"] if r["t"] == "S0"), None)
+    assert s0 is None or s0["chk"][7] == 0                           # Quartalszahlen in 2 Tagen → Earnings-Häkchen fehlt
+    for w in out["watch"]:
+        assert w["nchk"] >= 6 and not w["top15"] and not w["held"] and len(w["miss"]) == 8 - w["nchk"]
+
+
+def test_watchlist_checks_near_candidates():
+    from backend.position import scan
+    O, H, L, C, V = _panel(n=480, k=10, seed=21)
+    V["S1"] = 1.0                                                     # S1 illiquide → Liquidität fehlt, Rest kann passen
+    data = {t: pd.DataFrame({"Open": O[t], "High": H[t], "Low": L[t], "Close": C[t], "Volume": V[t]}) for t in C.columns}
+    meta = {t: {"name": t, "currency": "USD", "market_cap_usd": 5e9, "sector": f"Sek{i}"} for i, t in enumerate(C.columns)}
+    ix = pd.DataFrame({"Close": 100 * np.exp(np.cumsum(np.full(len(C), 0.0005)))}, index=C.index)
+    out = scan.build(data, meta, ix, {"USD": 1.0}, fund={})
+    every = {r["t"]: r for r in out["rank"] + out["watch"]}
+    assert "S1" not in [r["t"] for r in out["rank"]]                  # nicht im Kaufpool
+    if "S1" in every:
+        assert every["S1"]["chk"][0] == 0 and "liq" in every["S1"]["miss"]
+
+
+def test_vs_percentile_against_pool():
+    from backend.position import scan
+    d = np.array([1.0, 2.0, 3.0, 4.0])
+    assert scan._vs(d, 5.0) == 100.0 and scan._vs(d, 0.0) == 0.0
+    assert scan._vs(d, 0.0, higher_better=False) == 100.0 and scan._vs(d, float("nan")) is None
+
+
+def test_baseline_old_strategy_runs_same_costs_and_tax():
+    from backend.position import backtest
+    m = _market(seed=13, k=30)
+    m.V.loc[:, :] = 1e6
+    start = m.C.index[300]
+    r = backtest.run_baseline(m, start, CFG, tax=True, rule={"n": 5})
+    r0 = backtest.run_baseline(m, start, CFG, tax=False, rule={"n": 5})
+    assert len(r["pos"]) <= 5 and r["costs"] > 0
+    assert r["equity"].iloc[-1] <= r0["equity"].iloc[-1] + 1e-6
+    ins = [x for x in r["trades"] if x["why"] == "rank"]
+    assert all(pd.Timestamp(x["out"]).month in (1, 4, 7, 10) for x in ins)
 
 
 def test_pe_5y_avg_plausibility():

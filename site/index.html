@@ -2433,6 +2433,10 @@ main .table-wrap .sc-t.lf-s .sh-nm { min-width: 0; } main .table-wrap .sc-t.lf-s
 .pos-reg { display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px; border-radius: 12px; margin: 4px 0 12px; background: var(--surface-2); } .pos-reg i { flex: 0 0 10px; height: 10px; border-radius: 50%; margin-top: 5px; }
 .pos-reg.on i { background: var(--up); } .pos-reg.off i { background: var(--red); } .pos-reg b { display: block; font-size: 14px; } .pos-reg span { font-size: 12.5px; color: var(--muted); }
 .pos-sig { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; } .pos-sig:last-child { border-bottom: 0; } .pos-sig.down span { color: var(--red); }
+.pos-n { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; background: var(--surface-2); color: var(--muted); } .pos-n.n8 { background: color-mix(in srgb, var(--up) 20%, transparent); color: var(--up); } .pos-n.n7 { background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); }
+.pos-ck { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 2px; } .pos-ck i { font-style: normal; font-size: 11.5px; padding: 2px 7px; border-radius: 7px; white-space: nowrap; } .pos-ck i.ok { color: var(--up); background: color-mix(in srgb, var(--up) 10%, transparent); } .pos-ck i.no { color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); font-weight: 600; }
+.pos-w { padding: 9px 0; border-bottom: 1px solid var(--line); cursor: pointer; } .pos-w:last-child { border-bottom: 0; } .pos-w-h { display: flex; align-items: center; gap: 8px; } .pos-w-n { flex: 1; min-width: 0; display: flex; flex-direction: column; } .pos-w-n b, .pos-w-n small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .pos-w-px { font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; }
+.pos-wl { margin-top: 12px; }
 .lf-swap.pos-sell { background: color-mix(in srgb, var(--red) 12%, transparent); }
 main .table-wrap .sc-t.pos-t th:nth-child(1), main .table-wrap .sc-t.pos-t td:nth-child(1) { min-width: 0 !important; max-width: none !important; width: auto !important; box-shadow: none !important; }
 main .table-wrap .sc-t.pos-t .sh-nm { min-width: 0; } main .table-wrap .sc-t.pos-t .sh-nm b { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
@@ -4188,20 +4192,37 @@ function longScanHtml() {
     <span class="sc-cnt"><span class="sc-n">${S.pool} im Pool von ${fmt(S.universe, 0)}</span>${gl("v_long")}</span><span class="sc-tb-r">${scanMenuHtml()}</span></div>`;
   const tr = rows.map(x => { const [st, cls] = posStatus(x, S);
     return `<tr class="lf-row" ${lfOpen(x.t)}><td class="num muted">${x.rk}</td><td><div class="sh-nm">${cfAv(x.t)}<span><b>${posName(x)}</b><small>${esc(x.t)}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span></div></td>
-      <td>${posScore(x.score)}</td><td class="num">${fmt(x.mom, 0)}</td><td class="num">${fmt(x.qual, 0)}</td><td class="num">${fmt(x.val, 0)}</td><td class="${cls} lf-st">${st}${x.earn ? ` <span class="gold" title="Quartalszahlen ${esc(x.edate || "")}">⚠︎</span>` : ""}</td><td class="num">${fmt(x.px)}</td></tr>`; }).join("");
+      <td>${posScore(x.score)} ${posBadge(x)}</td><td class="num">${fmt(x.mom, 0)}</td><td class="num">${fmt(x.qual, 0)}</td><td class="num">${fmt(x.val, 0)}</td><td class="${cls} lf-st">${st}${x.earn ? ` <span class="gold" title="Quartalszahlen ${esc(x.edate || "")}">⚠︎</span>` : ""}</td><td class="num">${fmt(x.px)}</td></tr>`; }).join("");
   return tb + posRegime(S) + `<div class="sh-note">Alle Aktien im Pool erfüllen die Vorauswahl (Börsenwert, Umsatz, Aufwärtstrend, kein Kurssturz). Score = 50 % Momentum + 30 % Qualität + 20 % Value (je 0–100). Gekauft werden die besten 15 (max. 3 je Sektor) – nur bei „Käufe frei“.</div>
     <div class="table-wrap"><table class="sc-t lf-t lf-s pos-r"><thead><tr><th class="num">Rang</th><th>Aktie</th><th>Score</th><th class="num">Mom.</th><th class="num">Qual.</th><th class="num">Value</th><th>Status</th><th class="num">Kurs</th></tr></thead><tbody>${tr}</tbody></table></div>
+    ${posWatchHtml(S, q)}
     <div class="note" style="margin:8px 2px">Modelldepot, Signale und Stückzahl: Reiter <button class="hlink" data-golong>Langfrist ›</button></div>`;
 }
+// Watchlist: Aktien kurz vor dem Kaufsignal (mind. 6 von 8 Einstiegskriterien, scan.py checks())
+const POS_CK = { liq: ["Liquidität", "Ø Umsatz ≥ 10 Mio. $/Tag und Börsenwert ≥ 2 Mrd. $"], trend: ["Trend", "Schluss > SMA 100 > SMA 200, SMA 200 steigt"],
+  stab: ["Stabilität", "kein Tagesverlust über 15 % in 90 Tagen"], mom: ["Momentum", "Momentum-Score ≥ 50 (besser als die Hälfte des Kaufpools)"],
+  qual: ["Quality", "Qualitäts-Score ≥ 50 (ROE, Nettoverschuldung/EBITDA)"], val: ["Value", "Value-Score ≥ 50 (PEG, Forward-KGV vs. 5-J.-KGV)"],
+  sector: ["Sektor-Cap", "im Sektor ist noch Platz (max. 3 je Sektor)"], earn: ["Earnings-frei", "keine Quartalszahlen in den nächsten 5 Börsentagen"] };
+const posBadge = x => x.nchk == null ? "" : `<span class="pos-n n${x.nchk}" title="${x.nchk} von 8 Einstiegskriterien erfüllt">${x.nchk}/8</span>`;
+function posChecks(x, S) { const ks = S.checks || Object.keys(POS_CK); if (!x.chk) return "";
+  return `<span class="pos-ck">${ks.map((k, i) => `<i class="${x.chk[i] ? "ok" : "no"}" title="${esc(POS_CK[k] ? POS_CK[k][1] : k)}">${x.chk[i] ? "✓" : "✗"} ${esc(POS_CK[k] ? POS_CK[k][0] : k)}</i>`).join("")}</span>`; }
+function posWatchHtml(S, q) { const W = (S.watch || []).filter(x => !q || x.t.toLowerCase().includes(q) || String(x.n || "").toLowerCase().includes(q));
+  const top = (S.rank || []).filter(x => x.top15);
+  const row = x => `<div class="pos-w" ${lfOpen(x.t)}><div class="pos-w-h">${cfAv(x.t)}<span class="pos-w-n"><b>${posName(x)}</b><small>${esc(x.t)}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span>${posBadge(x)}<span class="pos-w-px">${fmt(x.px)} <small class="muted">${esc(x.cur || "")}</small></span></div>${posChecks(x, S)}${x.earn && x.edate ? `<small class="gold">⚠︎ Quartalszahlen ${fmtD(x.edate)}</small>` : ""}</div>`;
+  return `<div class="card pos-wl"><div class="plan-h">Top 15 · Kaufkandidaten <small class="muted">${top.length}</small></div>
+    ${top.length ? top.map(row).join("") : `<p class="muted">Gerade keine Kandidaten im Pool.</p>`}</div>
+    <div class="card pos-wl"><div class="plan-h">Watchlist · kurz vor dem Kaufsignal <small class="muted">${W.length} Aktien mit mind. 6/8</small></div>
+    <p class="muted lf-note">Kriterien: ${Object.values(POS_CK).map(v => v[0]).join(" · ")}. Gekauft wird nur, wer alle Pflichtfilter erfüllt und mit dem Gesamt-Score unter die Top 15 kommt – die Häkchen zeigen, was noch fehlt.</p>
+    ${W.length ? W.map(row).join("") : `<p class="muted">Gerade keine Aktie mit 6 oder 7 von 8 Kriterien außerhalb der Top 15.</p>`}</div>`; }
 document.addEventListener("change", e => { if (e.target.matches && e.target.matches("[data-lfshow]")) { state.lfShow = +e.target.value; save(); render(); } });
 // Marktampel-Karte: Marktfilter der Position-Strategie
 function lfAmpelLine() { const S = POS(); if (!S || !S.regime) return "";
   return `<div class="lf-amp"><b>Position-Strategie:</b> ${S.regime.on ? "Käufe frei – S&P 500 über der 200-Tage-Linie." : "Kaufstopp – S&P 500 unter der 200-Tage-Linie, nur Stops verwalten."}</div>`; }
 // Chart-Seitenleiste
 function lfSideHtml(r) { const S = POS(); if (!S || !S.rank || !r || r.ext) return "";
-  const t = String(r.ticker).replace(/@rp$/, ""), x = S.rank.find(y => y.t === t), p = (S.model.positions || []).find(y => y.t === t); if (!x && !p) return "";
+  const t = String(r.ticker).replace(/@rp$/, ""), x = S.rank.find(y => y.t === t) || (S.watch || []).find(y => y.t === t), p = (S.model.positions || []).find(y => y.t === t); if (!x && !p) return "";
   const z = p || x, [st, cls] = posStatus({ ...z, held: !!p }, S);
-  return `<div class="cf-s lf-side"><div class="cf-h">${posScore(z.score)} Kairo Position · <span class="${cls}">${esc(st)}</span></div>
+  return `<div class="cf-s lf-side"><div class="cf-h">${posScore(z.score)} Kairo Position · <span class="${cls}">${esc(x && !x.rk ? "Watchlist" : st)}</span> ${posBadge(x || z)}</div>${x ? posChecks(x, S) : ""}
     <div class="cf-r"><span>Rang</span><b>${z.rk ?? "–"}</b></div><div class="cf-r"><span>Momentum · Qualität · Value</span><b>${fmt(z.mom, 0)} · ${fmt(z.qual, 0)} · ${fmt(z.val, 0)}</b></div>
     ${p ? `<div class="cf-r"><span>Trailing-Stop</span><b class="down">${fmt(p.stop)}</b></div><div class="cf-r"><span>SMA 100</span><b>${fmt(p.sma)}</b></div><div class="cf-r"><span>seit ${fmtD(p.since)}</span>${lfPct(p.ret)}</div>` : ""}</div>`; }
 function cockpitSide(h, r) { return lfSideHtml(r) + cockpitSide1(h, r); }
@@ -10403,6 +10424,7 @@ const APP_VER = "2026.11.243";
 const APP_NEWS = [["2026.11.243", "Neue Position-Strategie", [
   ["Multi-Faktor-Momentum mit Marktfilter", "Kairo nutzt jetzt deine Strategie: Käufe nur, wenn der S&P 500 über der 200-Tage-Linie liegt; Vorauswahl nach Börsenwert, Umsatz, Aufwärtstrend und Stabilität; Score aus Momentum (50 %), Qualität (30 %) und Value (20 %); die besten 15 mit max. 3 je Sektor."],
   ["Täglich Signale statt Quartals-Tausch", "Verkauft wird bei Schluss unter der SMA 100, am Trailing-Stop (3 × ATR) oder freitags, wenn eine Aktie aus den Top 25 % fällt. Die Stückzahl richtet sich nach der Schwankung (ATR). Langfrist zeigt Modelldepot, Signale für morgen und Stückzahl für deinen Depotwert; Mitteilungen melden Kauf und Verkauf."],
+  ["Watchlist kurz vor dem Kaufsignal", "Neben den Top 15 zeigt der Scanner alle Aktien mit mindestens 6 von 8 Einstiegskriterien – Badge 6/8, 7/8, 8/8 und Häkchen für Liquidität, Trend, Stabilität, Momentum, Quality, Value, Sektor-Cap und Earnings-Freiheit."],
   ["Überall eingebaut", "Scanner (Rangliste mit Score), Aktienkarte, Chart, Einstieg, Depot, Heute und Marktampel zeigen die neue Strategie."]]],
  ["2026.11.242", "Langfrist in allen Bereichen", [
   ["Überall Langfrist zuerst", "Heute (Depot-Karte mit Tauschliste), Scanner (Rangliste), Einstieg (Kaufliste mit Stückzahl), Chart (Langfrist-Status in der Seitenleiste), Depot (Abgleich: welche der 20 Aktien du hast, welche fehlen, welche raus müssen), Markt (Ampel gilt nicht fürs Langfrist-Depot), ETF (Aufteilung 70–80 % / 20–30 %)."],
