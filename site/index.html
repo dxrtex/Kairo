@@ -2429,6 +2429,7 @@ main .table-wrap .sc-t.lf-s .sh-nm { min-width: 0; } main .table-wrap .sc-t.lf-s
 .cx-long summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .cx-long summary::-webkit-details-marker { display: none; }
 @media (max-width: 560px) { .lf-top .lf-kpi-l { display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px 14px; } .lf-top .lf-kpi-l b { font-size: 20px; } .lf-mine th:nth-child(6), .lf-mine td:nth-child(6) { display: none !important; } }
 .ein-rc-h .lf-n { flex: 0 0 auto; margin-left: auto; }
+.set-in { width: 110px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; text-align: right; }
 .lf-capdd input { width: 92px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; font-variant-numeric: tabular-nums; }
 .lf-swh { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); } .lf-how summary { cursor: pointer; list-style: none; } .lf-how summary::-webkit-details-marker { display: none; } .lf-how summary::after { content: " ›"; color: var(--muted); }
 .lf-sc th[data-lfsort] { cursor: pointer; user-select: none; } .lf-miss { font-size: 12.5px; font-weight: 600; }
@@ -8791,7 +8792,7 @@ function journalHtml() {
   const imp = `<label class="btn${tx.length ? " ghost" : ""}" style="cursor:pointer">${tx.length ? "Scalable-Abgleich (CSV)" : "Scalable-Export importieren"}<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="jrCsv" hidden></label>`;
   const head = `<div class="section-title"><span>Journal · deine Trades</span><span>${tx.length ? tx.length + " Transaktionen" : ""}</span></div>`;
   if (!tx.length) return head + `<div class="card jempty"><div class="jicon"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="7" width="26" height="34" rx="4"/><path d="M17 16h14M17 23h14M17 30h8"/></svg></div><b>Dein Trading-Journal</b>
-      <p>Jeder Kauf und Verkauf, den du erfasst, landet hier – mit Ergebnis nach Gebühren, Trefferquote und Vergleich zur Test-Erwartung. Ältere Trades holst du per Scalable-Export (Web → Transaktionen → Export).</p>
+      <p>Jeder Kauf und Verkauf, den du erfasst, landet hier – mit Ergebnis nach Gebühren und Trefferquote – auch die Käufe und Verkäufe beim Tausch der Strategie. Ältere Trades holst du per Scalable-Export (Web → Transaktionen → Export).</p>
       <div class="row-actions" style="justify-content:center"><button class="btn" data-qt="">Trade erfassen</button>${imp.replace('class="btn"', 'class="btn ghost"')}</div>${depotMsg ? `<div class="tip tone-gray" style="margin-top:14px;text-align:left">${depotMsg}</div>` : ""}
       <div class="note">Die Datei bleibt auf diesem Gerät – nichts wird hochgeladen. Positionen im Depot werden dabei ebenfalls aktualisiert.</div></div>`;
   const m = journalModel(tx), per = state.jPer || "all", cut = jCut(per);
@@ -9291,6 +9292,7 @@ function briefHtml() {
   if (anaData && searchIdx) {
     groupPositions(depotLive().map((p, i) => ({ p, i, r: p.t ? rowOf(p.t) : null }))).forEach(g => {
       const st = g.st;
+      if (SWING_OFF) { if (g.koDist != null && g.koDist < .08) todo.push(row("r", `${g.name}: K.-o. nah`, `nur noch ${pct(g.koDist, 1)} bis zur Schwelle`, pill(g.pl), `data-briefdep="${esc(g.t)}"`)); return; }   // Strategie ohne Stops/Verkaufstage (24.11.2026)
       if (st && ["red", "yellow"].includes(st.tone)) todo.push(row("r", `${g.name}: ${st.t}`, st.s, pill(g.pl), `data-briefdep="${esc(g.t)}"`));
       else if (g.koDist != null && g.koDist < .08) todo.push(row("r", `${g.name}: K.-o. nah`, `nur noch ${pct(g.koDist, 1)} bis zur Schwelle`, pill(g.pl), `data-briefdep="${esc(g.t)}"`));
       const ev = g.ev && g.ev.kind === "earnings" ? daysUntil(g.ev.date) : null;
@@ -9303,7 +9305,9 @@ function briefHtml() {
   // 2) Neu seit dem letzten Scan
   const nh = ch && ch.new_hit ? ch.new_hit.map(byTicker).filter(Boolean).sort((a, b) => (b.score ?? 0) - (a.score ?? 0)) : [];
   const tr = data.results.filter(r => isTrend(r) && r.tr.top);
-  const ready = data.results.filter(r => r.passed && inTrade(r.region) && kSt(r).k === "ready");
+  const ready = SWING_OFF ? [] : data.results.filter(r => r.passed && inTrade(r.region) && kSt(r).k === "ready");
+  const LB = LF(), swB = LB && LB.hold && lfSwapSoon(LB) ? lfSwap(LB) : null, dnB = LB ? lfDays(LB.next) : null;
+  const tausch = swB && (swB.out.length || swB.inn.length) ? [{ h: row("g", swB.now ? `Tausch ${fmtD(LB.since)} umsetzen` : `Tausch am ${fmtD(LB.next)}`, `verkaufen ${swB.out.join(", ") || "–"} · kaufen ${swB.inn.join(", ") || "–"}`, `<span class="bx-chev">›</span>`, `data-briefclose data-golong`) }] : [];
   const neu = [...ready, ...nh.filter(r => inTrade(r.region) && !ready.includes(r))].slice(0, 3).map(r => row(ready.includes(r) ? "g" : "b", shortNm(r.name || r.ticker), ready.includes(r) ? "kaufbereit – Kauf zur nächsten Eröffnung" : `neuer Treffer · ${kSt(r).t}`, "", `data-briefcard="${esc(r.ticker)}"`))
     .concat(tr.filter(r => !nh.includes(r)).slice(0, 3).map(r => row("b", r.name || r.ticker, "Trend-Rücksetzer Top – Einstieg möglich", "", `data-briefcard="${esc(r.ticker)}"`)));
   const cnt = ch && ch.since ? `<div class="bf-n" style="padding:10px 14px;border-bottom:1px solid var(--line)"><span class="up"><b>+${ch.new_hit.length}</b>Treffer</span><span class="gold"><b>+${ch.new_fast.length}</b>Fast-Treffer</span><span class="muted"><b>${ch.lost_hit.length}</b>weggefallen</span></div>` : "";
@@ -9334,15 +9338,15 @@ function briefHtml() {
     .sort((x, y) => daysUntil(x.date) - daysUntil(y.date) || (x.imp === "high" ? -1 : 0) - (y.imp === "high" ? -1 : 0) || String(x.time || "99").localeCompare(String(y.time || "99"))).slice(0, 4);
   // Redaktionell (Wunsch 11/2026: „professionell, nur das Wichtigste“): ein Satz Lagebild, dann nummeriert, was heute zählt
   const etf = getJson("etf.json"), etm = etf && etf.ok !== false && pfCfg().etf > 0 ? etfTiming(etf) : null;
-  const top = [...todo.map(x => ({ h: x })), ...ready.slice(0, 3).map(r => ({ h: row("g", shortNm(r.name || r.ticker), "kaufbereit – Kauf zur nächsten Eröffnung", `<span class="bx-chev">›</span>`, `data-briefcard="${esc(r.ticker)}"`) })),
+  const top = [...tausch, ...todo.map(x => ({ h: x })), ...ready.slice(0, 3).map(r => ({ h: row("g", shortNm(r.name || r.ticker), "kaufbereit – Kauf zur nächsten Eröffnung", `<span class="bx-chev">›</span>`, `data-briefcard="${esc(r.ticker)}"`) })),
     ...(etm && etm.lv === "g" ? [{ h: row("g", "ETF: guter Moment für Extra-Geld", `${pct(etm.dd, 1)} unter dem Hoch · Sparrate läuft ohnehin`, `<span class="bx-chev">›</span>`, `data-briefclose data-gosec="etf"`) }] : [])].slice(0, 5);
   const regTxt = reg ? reg.label.split(" (")[0] : null;
-  const lead = [regTxt ? `Markt: ${regTxt}.` : "", ready.length ? `${ready.length === 1 ? "Eine Aktie ist" : ready.length + " Aktien sind"} kaufbereit.` : "Heute ist keine Aktie kaufbereit.",
-    todo.length ? `Im Depot ${todo.length === 1 ? "braucht eine Position" : todo.length + " Positionen brauchen"} deine Aufmerksamkeit.` : "Im Depot ist nichts zu tun."].filter(Boolean).join(" ");
+  const lead = [regTxt ? `Markt: ${regTxt}.` : "", LB && LB.ret != null ? `Strategie-Depot ${sgnPct(LB.ret, 1)} seit dem Tausch (S&P 500 ${sgnPct(LB.bench ?? 0, 1)})${dnB != null && dnB >= 0 ? `, nächster Tausch in ${dnB} Tagen` : ""}.` : "",
+    todo.length ? `Im Depot ${todo.length === 1 ? "braucht eine Position" : todo.length + " Positionen brauchen"} deine Aufmerksamkeit.` : tausch.length ? "" : "Im Depot ist nichts zu tun."].filter(Boolean).join(" ");
   const tone = reg ? { green: "up", red: "down" }[reg.tone] || "gold" : "";
   const day = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
   const sec2 = (t, body, link) => body ? `<section class="bx-s"><header><h4>${t}</h4>${link || ""}</header>${body}</section>` : "";
-  const mkt = reg || etm ? `<div class="bx-mkt">${reg ? `<div><span>Marktlage</span><b class="${tone}"><i></i>${esc(regTxt)}</b></div>` : ""}${etm ? `<div><span>ETF-Ampel</span><b class="${etm.lv === "g" ? "up" : etm.lv === "r" ? "down" : "gold"}"><i></i>${ETF_AMP[etm.lv][0]}</b></div>` : ""}${ch && ch.since ? `<div><span>Seit dem Scan</span><b>+${ch.new_hit.length} Treffer</b></div>` : ""}</div>` : "";
+  const mkt = reg || etm ? `<div class="bx-mkt">${reg ? `<div><span>Marktlage</span><b class="${tone}"><i></i>${esc(regTxt)}</b></div>` : ""}${etm ? `<div><span>ETF-Ampel</span><b class="${etm.lv === "g" ? "up" : etm.lv === "r" ? "down" : "gold"}"><i></i>${ETF_AMP[etm.lv][0]}</b></div>` : ""}${LB && LB.next ? `<div><span>Nächster Tausch</span><b>${fmtD(LB.next)}</b></div>` : ""}</div>` : "";
   const mvl = moves.slice(0, 4).map(x => `<button class="bx-mv" ${byTicker(x.t) ? `data-briefcard="${esc(x.t)}"` : ""}><span>${esc(shortNm(x.n))}<small>${esc(tkClean(x.t))}</small></span><b class="${x.d >= 0 ? "up" : "down"}">${sgnPct(x.d, 1)}</b></button>`).join("");
   const evl = (hol.length ? `<div class="bx-ev"><time>Heute</time><span>Feiertag ${esc(hol.join(", "))}<small>dünner Handel, Börsen teils geschlossen</small></span></div>` : "")
     + mac.map(e => `<div class="bx-ev"><time>${daysUntil(e.date) === 0 ? "Heute" : "Morgen"}${e.time ? `<small>${esc(e.time)}</small>` : ""}</time><span>${esc(e.title || "Termin")}${e.imp === "high" ? ` <em>wichtig</em>` : ""}<small>${esc([e.why, e.fc ? "Prognose " + e.fc : "", e.prev ? "vorher " + e.prev : ""].filter(Boolean).join(" · "))}</small></span></div>`).join("");
@@ -9351,7 +9355,7 @@ function briefHtml() {
     <h3 class="bx-h">${esc(h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend")}${nm ? ", " + esc(nm) : ""}</h3>
     <p class="bx-lead">${esc(lead)}</p>
     ${mkt}
-    ${sec2("Das Wichtigste", top.length ? `<div class="bx-l bx-num">${top.map(x => x.h).join("")}</div>` : `<div class="bx-quiet">Nichts zu tun – Kairo meldet sich, wenn ein Treffer kaufbereit wird.</div>`)}
+    ${sec2("Das Wichtigste", top.length ? `<div class="bx-l bx-num">${top.map(x => x.h).join("")}</div>` : `<div class="bx-quiet">Nichts zu tun – Kairo meldet sich zum nächsten Tauschtermin.</div>`)}
     ${sec2("Deine Aktien", mvl ? `<div class="bx-l">${mvl}</div>` : "")}
     ${sec2("Termine", evl ? `<div class="bx-l">${evl}</div>` : "")}
     ${sec2("Schlagzeilen", news ? `<div class="bx-l">${news}</div>` : "")}
@@ -9699,6 +9703,7 @@ function moneyHtml() {   // 24.11.2026: Aufteilung Welt-ETF / Strategie statt Sw
     ${amp ? `<button class="mline" ${SEC_LINK("etf")}><i style="background:${amp[1]}"></i>ETF-Ampel: ${esc(amp[0])}${etm ? etm.lv === "g" ? " – Extra-Geld jetzt anlegen" : etm.lv === "r" ? " – Extra-Geld zurückhalten" : "" : ""} ›</button>` : ""}</div></div>`;
 }
 document.addEventListener("click", e => { if (!e.target.closest("[data-pf70]")) return; state.pf = { ...(state.pf || {}), etf: 70 }; save(); render(); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-pfset]"); if (!b) return; state.pf = { ...(state.pf || {}), etf: +b.dataset.pfset }; save(); render(); });
 function startMiniHtml() {
   const h = startHtml(); if (!h) return "";
   const m = h.match(/Erste Schritte · (\d+) von (\d+)/);
@@ -10538,8 +10543,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.245";
-const APP_NEWS = [["2026.11.245", "Swing komplett raus, 70/30", [
+const APP_VER = "2026.11.246";
+const APP_NEWS = [["2026.11.246", "Briefing und Einstellungen für die Strategie", [
+  ["Tagesbriefing", "Statt „kaufbereit“ steht oben, wie dein Strategie-Depot gegen den S&P 500 läuft und wann getauscht wird; vor dem Tausch die Liste zum Verkaufen und Kaufen. Swing-Regeln (Stop, Verkaufstag, Trade-Plan) sind raus."],
+  ["Einstellungen → Strategie", "Aufteilung 80/20 · 70/30 · 50/50 mit den Backtest-Renditen, Betrag fürs Strategie-Depot und die Regel auf einen Blick – statt Trading-Kapital, Risiko je Trade und Plätzen."]]],
+ ["2026.11.245", "Swing komplett raus, 70/30", [
   ["Aufteilung 70/30", "Standard ist jetzt 70 % Welt-ETF und 30 % Strategie-Depot – im Backtest 2016–2026 das beste Verhältnis von Rendite (15,3 % p. a. nach Steuer) zu Schwankung. Heute zeigt die Aufteilung von heute und im Januar, wie viel du umschichten musst. Eine eigene Einstellung bleibt erhalten."],
   ["Chart ohne Swing", "Die Seitenleiste zeigt oben den Strategie-Status (Rang, x/8, Lauf). Swing-Kriterien, Stop/Ziel/CRV und frühere Swing-Signale sind raus – Kontext, Quartalszahlen, Smart Money, Fundamental, Meldungen und Volumenprofil bleiben."],
   ["Depot aufgeräumt", "Bestand und Journal bleiben, Übung, Bilanz und Papier (Swing-Auswertungen) sind weg. Aktien ohne Stop gelten als normal – die Strategie verkauft nur am Tauschtermin."]]],
@@ -11525,7 +11533,7 @@ const CFG_LABELS = { universe: "Universum (2.1)", correction: "Korrektur (2.2)",
 // Die Abschnitte bleiben unverändert (settingsHtml) – hier werden sie nach ihrer Überschrift den Gruppen zugeordnet und ein-/ausgeblendet.
 const SET_GROUPS = [
   ["check", "Selbstprüfung", "alle Datenquellen auf einen Blick prüfen", ["Selbstprüfung"], '<path d="M12 3l7.5 3v5.5c0 4.4-3.1 8.2-7.5 9.5-4.4-1.3-7.5-5.1-7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.4-4.6"/>'],
-  ["trade", "Trading", "Kapital, Risiko, TradingView", ["Trading"], '<path d="M4 19V5M4 19h16"/><path d="m7 14 4-4 3 3 5-6"/>'],
+  ["trade", "Strategie", "Aufteilung, Betrag, TradingView", ["Strategie"], '<path d="M4 19V5M4 19h16"/><path d="m7 14 4-4 3 3 5-6"/>'],
   ["live", "Kursdienst & Live-Kurse", "Live-Kurse, Intraday, Abgleich", ["Live-Kurse"], '<path d="M3 12h4l3-7 4 14 3-7h4"/>'],
   ["push", "Mitteilungen", "Stop, Ziele, Alarme aufs Gerät", ["Mitteilungen"], '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>'],
   ["data", "Daten & Sicherung", "Watchlist, Backup, Geräte-Abgleich", ["Watchlist", "Daten & Backup"], '<ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6M5 12v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-6"/>'],
@@ -11626,11 +11634,12 @@ function settingsHtml() {
   const tc = tpCfg(), ltN = (state.lt || []).length;
   return `<div class="section-title"><span>Selbstprüfung</span><span>alle Datenquellen auf einen Blick</span></div>
     <div class="card diag" id="diagBox" style="margin-bottom:18px">${diagHtml()}</div>
-    <div class="section-title"><span>Trading</span><span>gilt für Heute, Einstieg und Depot</span></div>
+    <div class="section-title"><span>Strategie</span><span>gilt für Heute, Scanner, Einstieg und Depot</span></div>
     <div class="card set-trade" style="margin-bottom:18px">
-      <button class="set-row" data-capedit><span><b>Trading-Kapital</b><small>1 % davon ist das Risiko je Trade · frei ${eur(freeCap())}</small></span><em>${eur(tc.depot)} ›</em></button>
-      <button class="set-row" data-gosec="depot"><span><b>Langfristige Aktien</b><small>binden kein Trading-Kapital, kein Stop · im Depot je Aktie umschalten</small></span><em>${ltN} ›</em></button>
-      <div class="set-row"><span><b>Höchstens gleichzeitig</b><small>Regel der Strategie</small></span><em>${tc.maxOpen} Trades</em></div>
+      <div class="set-row"><span><b>Aufteilung Welt-ETF / Strategie</b><small>Backtest 2016–2026 nach Steuer: 80/20 13,7 % · 70/30 15,3 % · 50/50 18,3 % p. a. – bestes Verhältnis zur Schwankung bei 70/30 und 80/20</small></span>
+        <span class="sp-seg">${[[80, "80/20"], [70, "70/30"], [50, "50/50"]].map(([v, l]) => `<button class="${pfCfg().etf === v ? "on" : ""}" data-pfset="${v}">${l}</button>`).join("")}</span></div>
+      <div class="set-row"><span><b>Betrag für das Strategie-Depot</b><small>daraus rechnet Kairo die Stückzahl je Aktie (gleich verteilt auf 20 Aktien)</small></span><input id="lfCap" class="set-in" type="number" inputmode="decimal" min="0" step="500" value="${Math.max(0, +state.lfCap || 5000)}"></div>
+      <div class="set-row"><span><b>Regel</b><small>Top 20 US-Aktien nach 12-Monats-Lauf (ohne letzten Monat), gleich gewichtet, Tausch im Januar, April, Juli, Oktober · kein Stop</small></span><em>fest</em></div>
       <div class="set-row"><span><b>TradingView öffnen in</b><small>${tvMode() === "app" ? "der TradingView-App (mit deinem Konto und deinen Indikatoren) · zurück oben links über „◀ Kairo“" : "neuem Browser-Fenster"}</small></span>
         <span class="sp-seg tv-seg">${[["app", "App"], ["web", "Browser"]].map(([v, l]) => `<button class="${tvMode() === v ? "on" : ""}" data-tvmode="${v}">${l}</button>`).join("")}</span></div>
       ${tvMode() === "app" ? `<button class="set-row" data-tvtest><span><b>TradingView-App testen</b><small>öffnet Apple (AAPL) – kommt stattdessen der Browser, ist die App nicht installiert oder nicht angemeldet</small></span><em>Test ›</em></button>` : ""}
