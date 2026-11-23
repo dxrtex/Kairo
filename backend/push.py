@@ -452,6 +452,7 @@ def trendline_messages(today: str, rows: list[dict]) -> list[dict]:
 
 
 H4_PUSH = False
+SWING_PUSH = False        # 24.11.2026: „Swing ist vorbei“ – keine Kaufbereit-/Watchlist-11-von-11-Mitteilungen mehr (Stop-Alarme eigener Trades bleiben)
 
 
 def _money(x: dict) -> str:
@@ -524,7 +525,7 @@ def deliver(devs: list, prices: dict, today: str, sent: dict, shared: list, k, h
         did = device_id(sub)
         view = {a: b for a, b in sent.items() if "|" not in a}
         view.update({a.split("|", 1)[1]: b for a, b in sent.items() if a.startswith(did + "|")})
-        own = messages(dev, prices, today, view) + ready_messages(today, view, h4base)
+        own = messages(dev, prices, today, view) + (ready_messages(today, view, h4base) if SWING_PUSH else [])
         for msg in own + shared:
             body = {a: b for a, b in msg.items() if not a.startswith("_")}
             try:
@@ -570,7 +571,7 @@ def run(today_iso: str | None = None) -> dict:
     # 4H-Bestätigungen: seit 10/2026 keine Mitteilungen mehr (eine Kairo-Regel ohne 4H); der 4H-Status wird weiter berechnet
     h4_msg = h4_messages(h4_items, today, sent, next((d.get("rk") for d in devs if d.get("rk")), None)) if H4_PUSH else []
     try:
-        watch_msg = watch_messages(today)
+        watch_msg = watch_messages(today) if SWING_PUSH else []
     except Exception as exc:
         print(f"Watchlist: Fehler {exc!r}")
         watch_msg = []

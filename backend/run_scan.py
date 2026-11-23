@@ -933,9 +933,9 @@ def main(argv=None) -> int:
         try:
             market["langfrist"] = langfrist.build(data, meta, ctx_hist.get("^GSPC"))
             lf = market["langfrist"] or {}
-            for x in lf.get("top") or []:            # Rang + Lauf je Aktie für Suche, Aktienkarte und Scanner
-                if x["t"] in search:
-                    search[x["t"]].update(lr=x["rk"], lm=x["m"])
+            for t, (rk, m, nc, bits) in (lf.pop("ranks", None) or {}).items():   # Rang, Lauf, x/8 je Aktie für Scanner „Meine“ und Aktienkarte
+                if t in search:
+                    search[t].update(lr=rk, lm=m, lc=nc, lk=bits)
             print(f"Langfrist: seit {lf.get('since')} {len(lf.get('hold') or [])} Aktien, Depot {lf.get('ret')}, S&P {lf.get('bench')}, nächster Tausch {lf.get('next')}, Watchlist {len(lf.get('watch') or [])} (≥ 6/8)")
         except Exception as exc:
             print(f"Langfrist: Fehler {exc!r}")

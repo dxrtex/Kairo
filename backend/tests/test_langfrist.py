@@ -60,6 +60,9 @@ def test_watchlist_eight_checks():
     fund = {"S26": {"roe": 0.4, "peg": 0.8}, "S25": {"roe": -0.2, "peg": -1}}
     out = LF.build(data, meta, bench=_df(0.0003, seed=5), rule={"n": 5}, fund=fund)
     assert out["checks"] == ["liq", "trend", "stab", "mom", "qual", "val", "sector", "earn"]
+    for x in out["top"]:                                         # Rang-Tabelle für alle: Bits = Häkchen in fester Reihenfolge
+        rk, m, nc, bits = out["ranks"][x["t"]]
+        assert rk == x["rk"] and nc == x["nchk"] and [(bits >> i) & 1 for i in range(8)] == x["chk"]
     for x in out["hold"] + out["top"]:
         assert len(x["chk"]) == 8 and x["nchk"] == sum(x["chk"])
     held = {x["t"] for x in out["hold"]}
