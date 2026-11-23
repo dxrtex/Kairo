@@ -200,14 +200,15 @@ def part_b(pxdir):
     start = cm.index[13]
     strat = {"Momentum Top 20 (vierteljährlich)": (lambda d: top(d), 3),
              "Momentum ruhig 20 (vierteljährlich)": (lambda d: top(d, calm=True), 3),
-             "Momentum Top 20 (jährlich)": (lambda d: top(d), 12)}
+             "Momentum Top 20 (jährlich)": (lambda d: top(d), 12),
+             "Kontrolle: alle Aktien gleich gewichtet (jährlich)": (lambda d: list(cm.loc[d][(adv.loc[d] >= 5e6) & (cm.loc[d] >= 5)].dropna().index) or None, 12)}
     for pn, (a, b) in {"Lernen 2017–2020": (start, "2020-12-31"), "Prüfen 2021–heute": ("2021-01-01", None), "gesamt": (start, None)}.items():
         print(f"  -- {pn}")
         s0 = spy.loc[a:b]
         sp = (s0 / s0.iloc[0])
         yrs = max(0.5, len(sp) / 12)
         sp_tax = sp.iloc[-1] - max(0, sp.iloc[-1] - 1) * TAX * (1 - TFS)
-        print(f"    {'S&P 500 ETF':36s} vor Steuer {(sp.iloc[-1] ** (1 / yrs) - 1) * 100:6.2f} % p. a. · nach Steuer {(sp_tax ** (1 / yrs) - 1) * 100:6.2f} % p. a."
+        print(f"    {'S&P 500 ETF':50s} vor Steuer {(sp.iloc[-1] ** (1 / yrs) - 1) * 100:6.2f} % p. a. · nach Steuer {(sp_tax ** (1 / yrs) - 1) * 100:6.2f} % p. a."
               f"  größter Rückgang {(1 - sp / sp.cummax()).max() * 100:5.1f} %")
         cmp = cm.loc[a:b]
         for name, (fn, every) in strat.items():
@@ -218,13 +219,14 @@ def part_b(pxdir):
                     pre, mdd = g ** (1 / yrs) - 1, (1 - eq / eq.cummax()).max()
                 else:
                     post = g ** (1 / yrs) - 1
-            print(f"    {name:36s} vor Steuer {pre * 100:6.2f} % p. a. · nach Steuer {post * 100:6.2f} % p. a.  größter Rückgang {mdd * 100:5.1f} %", flush=True)
+            print(f"    {name:50s} vor Steuer {pre * 100:6.2f} % p. a. · nach Steuer {post * 100:6.2f} % p. a.  größter Rückgang {mdd * 100:5.1f} %", flush=True)
 
 
 if __name__ == "__main__":
-    try:
-        part_a()
-    except Exception as e:
-        print("Teil A fehlgeschlagen:", repr(e))
+    if "--nur-b" not in sys.argv:
+        try:
+            part_a()
+        except Exception as e:
+            print("Teil A fehlgeschlagen:", repr(e))
     if len(sys.argv) > 1:
         part_b(sys.argv[1])
