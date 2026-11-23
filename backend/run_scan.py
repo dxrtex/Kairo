@@ -29,7 +29,7 @@ from .data_provider import CachedProvider, YFinanceProvider
 from .hints import hint
 from .macro import fetch_macro_events
 from .ipos import fetch_ipos
-from . import autota, shortside, insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
+from . import autota, langfrist, shortside, insider_eu, briefing, company, earnings, etf, fear, h4live, insider, trend_study, forecast, grade, live, sentiment, state, telegram, tradeplan
 from .analysis import ASSET_ETF, EU_SECTOR_ETF, INDUSTRY_ETF, MARKET, theme_tickers, fill_sectors, home_region, SECTOR_DE, SECTOR_ETF, industry_group, add_context, analyze, finalize, market_context, trend_state
 from .indicators import ema, macd, rsi, sma
 from .mbi import momentum_bias_index
@@ -974,6 +974,13 @@ def main(argv=None) -> int:
         print("Stimmung:", {k: v for k, v in (market["fear"] or {}).items() if k in ("score", "label")})
     except Exception as exc:
         print(f"Stimmung: Fehler {exc!r}")
+    if not args.partial and not args.tickers:        # Kairo Langfrist (backend/langfrist.py): Momentum-Depot aus ALLEN gescannten Kursen
+        try:
+            market["langfrist"] = langfrist.build(data, meta, ctx_hist.get("^GSPC"))
+            lf = market["langfrist"] or {}
+            print(f"Langfrist: seit {lf.get('since')} {len(lf.get('hold') or [])} Aktien, Depot {lf.get('ret')}, S&P {lf.get('bench')}, nächster Tausch {lf.get('next')}")
+        except Exception as exc:
+            print(f"Langfrist: Fehler {exc!r}")
     with open(SITE / "analysis.json", "w", encoding="utf-8") as f:
         json.dump(_clean({"generated": out["generated"], "market": market, "tickers": ana}), f, ensure_ascii=False, separators=(",", ":"))
     print(f"Analyse: {len(ana)} Aktien")
