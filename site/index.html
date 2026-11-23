@@ -2412,6 +2412,8 @@ table.dcf-g { min-width: 0; width: auto; } .dcf-g td, .dcf-g th { text-align: ri
 .sh-crit li::before { position: absolute; left: 0; font-weight: 700; } .sh-crit li.ok::before { content: "✓"; color: var(--up); } .sh-crit li.no::before { content: "✗"; color: var(--muted); } .sh-crit em { font-style: normal; color: var(--muted); font-size: 12px; text-align: right; }
 .sh-rc .ein-rc-h .sh-pill { flex: none; width: auto; margin-left: auto; }
 .sh-side .cf-h { display: flex; align-items: center; gap: 8px; }
+.sh-warn { font-size: 12px; line-height: 1.45; color: var(--gold); background: color-mix(in srgb, var(--gold) 11%, transparent); border-radius: 8px; padding: 6px 9px; margin: 8px 0 4px; }
+.sh-warn-l { font-size: 12.5px; margin: 0 2px 12px; color: var(--text); } .sh-warn-l b { color: var(--gold); }
 .sh-plan { display: flex; flex-wrap: wrap; gap: 8px 18px; } .sh-plan div { display: flex; flex-direction: column; } .sh-plan span { font-size: 11.5px; color: var(--muted); } .sh-plan b { font-variant-numeric: tabular-nums; }
 .lt-why { list-style: none; padding: 0; margin: 4px 0 8px; } .lt-why li { padding: 3px 0 3px 20px; position: relative; font-size: 13px; }
 .lt-why li::before { position: absolute; left: 0; top: 3px; font-weight: 700; } .lt-why li.ok::before { content: "✓"; color: var(--up); } .lt-why li.no::before { content: "✗"; color: var(--red); }
@@ -4076,15 +4078,18 @@ function shortHtml() {
   const tb = `<div class="sc-tb"><label class="sp-dd"><span>Region</span><select data-qregionsel>${[["", "Alle"], ["tested", "USA + Europa"], ["us", "USA"], ["europe", "Europa"], ["asia", "Asien"]].map(([v, l]) => `<option value="${v}"${String(state.region || "") === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
     <label class="sp-dd"><span>Erfüllt</span><select data-shminsel>${[[11, "11/11 Treffer"], [10, "ab 10/11"], [9, "ab 9/11"]].map(([v, l]) => `<option value="${v}"${min === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
     <span class="sc-cnt"><span class="sc-n">${L.length} ${L.length === 1 ? "Aktie" : "Aktien"}</span>${gl("v_short")}</span></div>`;
-  const note = `<div class="sh-note">${mk ? `<i style="background:${LT_C[mk.lv]}"></i>Marktampel <b>${esc(mk.label)}</b> · ` : ""}Short heißt: auf fallende Kurse setzen (z. B. Put-Turbo). Stop liegt <b>über</b> dem Kurs, Ziele darunter. Kairo zeigt nur die Analyse – keine Order.${SHORT_STUDY ? ` <span class="muted">${esc(SHORT_STUDY)}</span>` : ""}</div>`;
+  const note = `<div class="sh-note">${mk ? `<i style="background:${LT_C[mk.lv]}"></i>Marktampel <b>${esc(mk.label)}</b> · ` : ""}Short heißt: auf fallende Kurse setzen (z. B. Put-Turbo). Stop liegt <b>über</b> dem Kurs, Ziele darunter. Kairo zeigt nur die Analyse – keine Order.</div><div class="sh-warn sh-warn-l"><b>Ehrlicher Test:</b> ${esc(SHORT_STUDY)}</div>`;
   if (!L.length) return tb + note + `<div class="empty">${searchIdx ? `Gerade keine Short-Setups ${min === 11 ? "mit 11/11" : `ab ${min}/11`}${state.region ? " in dieser Region" : ""}. Stell „Erfüllt“ auf „ab 9/11“, um Kandidaten zu sehen.` : "Lade alle Aktien …"}</div>`;
   return tb + note + `<div class="table-wrap"><table class="sc-t sh-t"><thead><tr><th>Aktie</th><th class="num">Kurs</th><th>Short-Kriterien</th><th>fehlt</th><th class="num">Stop</th><th class="num">Ziel 2</th><th class="num">CRV</th></tr></thead><tbody>${rows}</tbody></table></div>${L.length > 150 ? `<div class="note">… und ${L.length - 150} weitere</div>` : ""}`;
 }
-const SHORT_STUDY = "";   // wird nach dem Short-Backtest gesetzt
+// Short-Backtest (shortstudy.yml, 23.11.2026): 6.091 Trades 2018–2026 nach Kairo-Regel B60 auf dem gespiegelten Kursverlauf
+// Ø −0,10 R, 28 % Gewinner, Depot mit allen Trades ≈ Totalverlust; nur Grün +0,30 R (bis 2023 +0,41, ab 2024 +0,02 → nicht belastbar)
+const SHORT_STUDY = "Backtest 2018–2026: 6.091 Short-Trades mit derselben Ausstiegsregel wie Long – Ø −0,10 R je Trade, nur 28 % Gewinner. Die gespiegelte Regel hat bisher kein Geld verdient (nur bei grüner Marktampel leicht positiv, seit 2024 aber kaum noch). Short-Treffer daher als Warnsignal für eigene Positionen und zur Information nutzen – nicht als getestetes Handelssignal.";
+const SHORT_WARN = `<div class="sh-warn">Backtest negativ: Ø −0,10 R je Trade, 28 % Gewinner – kein getestetes Handelssignal.</div>`;
 // Heute: Short-Treffer kompakt (nur wenn es welche gibt) – Antippen öffnet Scanner → Short
 function shortTodayHtml() { if (!searchIdx) return ""; const L = shortList(11); if (!L.length) return "";
   return `<div class="hcard">${hHead(`Kairo Short <small>${L.length} Treffer</small>`)}${L.slice(0, 5).map(x => `<button class="hrow" ${(data.results || []).some(r => r.ticker === x.t) ? `data-card="${esc(x.t)}"` : `data-ctgo="${esc(x.t)}"`}>${cfAv(x.t)}<span class="hn">${esc(shortNm(x.n || x.t))}</span><span class="sh-pill hit">11/11</span></button>`).join("")}
-    <button class="hlink" data-goshort style="margin-top:6px">Alle Short-Setups ›</button></div>`; }
+    ${SHORT_WARN}<button class="hlink" data-goshort style="margin-top:6px">Alle Short-Setups ›</button></div>`; }
 document.addEventListener("click", e => { if (!e.target.closest("[data-goshort]")) return; state.view = "short"; state.kinds = ["short"]; state.scrOn = false; save(); goSec("scanner"); });
 document.addEventListener("change", e => { if (e.target.matches && e.target.matches("[data-shminsel]")) { state.shMin = +e.target.value; save(); render(); } });
 // Karte: Short-Seite einer Aktie (alle 11 gespiegelten Kriterien, Plan in Originalkursen)
@@ -4093,7 +4098,7 @@ function shortCardHtml(r) { const S = r.short, x = !S && rowOf(r.ticker); if (!S
   const crit = S && S.crit ? `<ul class="sh-crit">${S.crit.map(([k, l, ok, v]) => `<li class="${ok ? "ok" : "no"}"><span>${esc(l)}</span><em>${esc(v || "")}</em></li>`).join("")}</ul>` : "";
   const plan = pl && pl.stop ? `<div class="sh-plan"><div><span>Einstieg ≈</span><b>${fmt(pl.entry || r.close)}</b></div><div><span>Stop (darüber)</span><b class="down">${fmt(pl.stop)}</b></div>${pl.target1 ? `<div><span>Ziel 1</span><b class="up">${fmt(pl.target1)}</b></div>` : ""}<div><span>Ziel 2</span><b class="up">${fmt(pl.target2)}</b></div>${pl.crv ? `<div><span>CRV</span><b>${fmt(pl.crv, 1)}</b></div>` : ""}</div>` : "";
   return `<details class="cx-card cx-short"${st === "hit" ? " open" : ""}><summary><span class="cx-sh">Kairo Short</span> <span class="sh-pill${st === "hit" ? " hit" : ""}">${met}/11</span>${st === "hit" ? ` <span class="sh-st">Short-Treffer</span>` : st === "fast" ? ` <span class="sh-st f">fast – 10/11</span>` : ""}</summary>
-    <p class="muted" style="margin:6px 0 8px">Dieselben 11 Kairo-Kriterien, gespiegelt für fallende Kurse. ${st === "hit" ? "Alle erfüllt – Short-Setup." : "Noch kein Short-Setup."}</p>${crit}${plan}</details>`; }
+    <p class="muted" style="margin:6px 0 8px">Dieselben 11 Kairo-Kriterien, gespiegelt für fallende Kurse. ${st === "hit" ? "Alle erfüllt – Short-Setup." : "Noch kein Short-Setup."}</p>${SHORT_WARN}${crit}${plan}</details>`; }
 // Erklärung je Ansicht als ⓘ statt Textzeile (Wunsch 16.11.2026 „unübersichtlich“)
 VIEWS.forEach(v => { GLOSS["v_" + v[0]] = [v[1], v[4] + (v[0] === "hit" ? " Status: kaufbereit = Kauf zur nächsten Eröffnung · Konsolidierung x/10 = wartet auf 5 ruhige Tage · verfallen = keine Konsolidierung in 10 Tagen · im Depot = läuft schon." : "")]; });
 const viewOfKinds = ks => { const k = new Set(ks); return VIEWS.find(v => v[3].length === k.size && v[3].every(x => k.has(x)))
@@ -10241,8 +10246,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.238";
-const APP_NEWS = [["2026.11.238", "Kairo Short", [
+const APP_VER = "2026.11.239";
+const APP_NEWS = [["2026.11.239", "Kairo Short: ehrlicher Backtest", [
+  ["Short-Regel getestet – Ergebnis negativ", "6.091 Short-Trades seit 2018 mit derselben Ausstiegsregel wie Long: im Schnitt −0,10 R je Trade, nur 28 % Gewinner. Die gespiegelte Kairo-Regel hat bisher kein Geld verdient. Jede Short-Anzeige (Scanner, Karte, Chart, Heute, Einstieg) sagt das jetzt direkt dazu – Short-Treffer sind ein Warnsignal und eine Information, kein getestetes Handelssignal."]]],
+ ["2026.11.238", "Kairo Short", [
   ["Short-Setups mit 11 Kriterien", "Kairo prüft jede Aktie jetzt auch auf fallende Kurse – mit denselben 11 Kriterien, gespiegelt: Anstieg an einen Widerstand, bärische RSI-Divergenz, MACD dreht über 0, Kaufdruck läuft aus. Scanner → Short zeigt Short-Treffer (11/11) und Kandidaten (ab 10/11 bzw. 9/11) mit Stop (über dem Kurs), Zielen und Chance-Risiko."],
   ["Überall eingebunden", "Aktienkarte mit allen Short-Kriterien und Plan, Chart-Seitenleiste mit Short-Plan, Short-Treffer auf „Heute“. Die Long-Regel bleibt unverändert; Kairo zeigt nur die Analyse – keine Order."],
   ["Insider: seit Kauf", "Jede Insider-Zeile zeigt, wie sich die Aktie seit dem Geschäft entwickelt hat."],
@@ -12332,7 +12339,7 @@ function einShortHtml() { const L = shortList(11).filter(x => x.p && x.p[0] > x.
       <div class="ein-rc-g">${c("Short ab", fx ? `${fmt(x.c * fx)} €` : fmt(x.c))}${c("Stop ↑", fx ? `${fmt(x.p[0] * fx)} €` : fmt(x.p[0]), "down")}${c("Stück", qty ? fmt(qty, 0) : "–")}${c("Ziel 2", fx ? `${fmt(x.p[2] * fx)} €` : fmt(x.p[2]), "up")}</div>
       <span class="ein-rc-go">Short-Analyse öffnen ›</span></button>`; };
   return `<div class="plan-h" style="margin:18px 2px 6px">Kairo Short · Treffer</div><div class="ein-hero-l">${L.map(card).join("")}</div>
-    <div class="note" style="margin:4px 2px 0">Short = auf fallende Kurse setzen, z. B. mit einem Put-Turbo (Knock-out über dem Stop). Stückzahl für ${eur(riskEur)} Risiko (${fmt(cfg.risk, 1)} % deines Trading-Kapitals). Die Long-Regel und ihre Tests gelten nicht automatisch für Short – erst den Backtest beachten.</div>`; }
+    <div class="note" style="margin:4px 2px 0">Short = auf fallende Kurse setzen, z. B. mit einem Put-Turbo (Knock-out über dem Stop). Stückzahl für ${eur(riskEur)} Risiko (${fmt(cfg.risk, 1)} % deines Trading-Kapitals). </div>${SHORT_WARN}`; }
 function einHtml() {
   if (!searchIdx) { loadSearch(); return `<div class="section-title"><span>Einstieg</span><span>lädt …</span></div>`; }
   if (!anaData) loadAnalysis();
@@ -14303,7 +14310,7 @@ function cockpitSide(h, r) { const base = cockpitSide0(h, r); if ((RP.on && r &&
   const pl = S && S.pl ? S.pl : x.shp ? { stop: x.shp[0], target1: x.shp[1], target2: x.shp[2] } : null;
   return base + `<div class="cf-s sh-side"><div class="cf-h"><span class="sh-pill${st === "hit" ? " hit" : ""}">${met}/11</span> Kairo Short${st === "hit" ? " · Treffer" : " · fast"}</div>
     ${pl ? `<div class="cf-r"><span>Stop (darüber)</span><b class="down">${fmt(pl.stop)}</b></div>${pl.target1 ? `<div class="cf-r"><span>Ziel 1</span><b>${fmt(pl.target1)}</b></div>` : ""}<div class="cf-r"><span>Ziel 2</span><b>${fmt(pl.target2)}</b></div>` : ""}
-    <p class="muted" style="font-size:12px;margin:6px 0 0">Spiegelbild der Kairo-Regel für fallende Kurse. Details in der Aktienkarte.</p></div>`; }
+    <p class="muted" style="font-size:12px;margin:6px 0 0">Spiegelbild der Kairo-Regel für fallende Kurse. Details in der Aktienkarte.</p>${SHORT_WARN}</div>`; }
 function cockpitSide0(h, r) {
   if (RP.on && r && r.rp) return rpSideHtml(h);                    // Replay: keine Infos von heute (Status, Plan, Kriterien) – nur, was man damals sehen konnte
   const M = h.M, last = r.close, p = r.ext ? {} : chartPlan(r) || {}, ko = r.ext ? null : tpKoStock(r.ticker, r.currency || r.cur), hn = r.ext ? { title: "Nicht im Kairo-Scan", text: "Kurschart aus den Tageskerzen eines Jahres (Kursdienst). EMAs, RSI, MACD, Momentum Bias Index und Unterstützungen rechnet Kairo selbst – die 11 Kairo-Kriterien prüft nur der Abendscan." } : hintNow(r) || {}, k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r);
