@@ -1,0 +1,56 @@
+name: Qualitäts-Studie (SEC-Jahreszahlen, Qualität + Momentum, Steuer)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/profit-study]
+    paths: [.github/workflows/quality.yml, tools/research/quality_study.py]
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  prices:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: git fetch -q origin kairo-fin && git show origin/kairo-fin:fin.json > fin.json
+      - run: python tools/research/quality_study.py prices ${{ matrix.shard }} 8 fin.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qpx-${{ matrix.shard }}
+          path: qpx_${{ matrix.shard }}.pkl.gz
+          retention-days: 30
+  study:
+    needs: prices
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: git fetch -q origin kairo-fin && git show origin/kairo-fin:fin.json > fin.json
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: qpx-*
+          merge-multiple: true
+          path: qpx
+      - run: python tools/research/quality_study.py study qpx fin.json
