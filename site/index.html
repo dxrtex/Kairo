@@ -2416,11 +2416,17 @@ table.dcf-g { min-width: 0; width: auto; } .dcf-g td, .dcf-g th { text-align: ri
 .lf-cap { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13.5px; margin-top: 6px; } .lf-cap input { width: 110px; padding: 6px 8px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; font-variant-numeric: tabular-nums; }
 .lf-swap { font-size: 13px; margin: 8px 0 4px; padding: 7px 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent, #0a84ff) 12%, transparent); }
 .lf-t td { vertical-align: middle; } .lf-row { cursor: pointer; }
-.lf-sw { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } .lf-sw h4 { margin: 2px 0 8px; font-size: 13px; } @media (max-width: 560px) { .lf-sw { grid-template-columns: 1fr; } .lf-t th:nth-child(6), .lf-t td:nth-child(6) { display: none; } }
+.lf-sw { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } .lf-sw h4 { margin: 2px 0 8px; font-size: 13px; } @media (max-width: 560px) { .lf-sw { grid-template-columns: 1fr; } .lf-t:not(.lf-s) th:nth-child(6), .lf-t:not(.lf-s) td:nth-child(6) { display: none; } }
 .lf-chip { display: inline-flex; align-items: center; gap: 6px; margin: 0 6px 6px 0; padding: 4px 10px 4px 4px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
 .lf-chip .cf-av, .lf-chip img { width: 22px; height: 22px; font-size: 10px; }
 .lf-bt { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 10px 0 6px; } .lf-bt div { display: flex; flex-direction: column; } .lf-bt span { font-size: 11.5px; color: var(--muted); } .lf-bt b { font-size: 16px; font-variant-numeric: tabular-nums; }
 .lf-note { font-size: 12.5px; line-height: 1.5; margin: 6px 0 2px; } .lf-how .checks li { margin-bottom: 4px; }
+.lf-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: 12.5px; font-variant-numeric: tabular-nums; background: var(--surface-2); color: var(--muted); } .lf-pill.ok { background: color-mix(in srgb, var(--up) 18%, transparent); color: var(--up); }
+.lf-st { font-size: 12.5px; font-weight: 600; min-width: 100px; }
+main .table-wrap .sc-t.lf-s th:nth-child(1), main .table-wrap .sc-t.lf-s td:nth-child(1) { min-width: 0 !important; max-width: none !important; width: 1% !important; white-space: nowrap; box-shadow: none !important; }
+main .table-wrap .sc-t.lf-s .sh-nm { min-width: 0; } main .table-wrap .sc-t.lf-s .sh-nm b { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+@media (max-width: 1100px) { .lf-s th:nth-child(7), .lf-s td:nth-child(7) { display: none; } } @media (max-width: 560px) { .lf-s th:nth-child(4), .lf-s td:nth-child(4), .lf-s th:nth-child(6), .lf-s td:nth-child(6) { display: none; } main .table-wrap .sc-t.lf-s .sh-nm b, main .table-wrap .sc-t.lf-s .sh-nm small { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; } main .table-wrap .sc-t.lf-s .sh-nm { gap: 6px; } main .table-wrap .sc-t.lf-s th, main .table-wrap .sc-t.lf-s td { padding-left: 5px !important; padding-right: 5px !important; } .lf-st { min-width: 0; font-size: 12px; white-space: normal !important; max-width: 84px; line-height: 1.25; } }
+.cx-long summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .cx-long summary::-webkit-details-marker { display: none; }
 .sh-side .cf-h { display: flex; align-items: center; gap: 8px; }
 .sh-warn { font-size: 12px; line-height: 1.45; color: var(--gold); background: color-mix(in srgb, var(--gold) 11%, transparent); border-radius: 8px; padding: 6px 9px; margin: 8px 0 4px; }
 .sh-warn-l { font-size: 12.5px; margin: 0 2px 12px; color: var(--text); } .sh-warn-l b { color: var(--gold); }
@@ -4064,8 +4070,9 @@ const KIND_BTNS_ALL = [["fav", "★ Watchlist", r => favs().has(r.ticker)], ["h4
 let KIND_BTNS = KIND_BTNS_ALL.filter(x => x[0] !== "trend");
 // Scanner: fünf klare Ansichten statt vieler Knöpfe (eine ist immer aktiv) – [Schlüssel, Name, zählt, Arten für selRows, Erklärung]
 const VIEWS = [
+  ["long", "Langfrist", r => false, ["long"], "Kairo Langfrist: die US-Aktien mit dem stärksten 12-Monats-Lauf (ohne letzten Monat). Top 20 = Langfrist-Depot, Tausch alle 3 Monate. Im Test die profitabelste Strategie (2021–2026: 25,2 % p. a. nach Steuer, ETF 11,7 %)."],
   ["go", "Einstiege", r => isH4(r), ["h4"], "Treffer mit fertiger Konsolidierung – ✓ 4H bestätigt = jetzt einsteigen · … wartet auf 4H · ▶ läuft. Bei Bestätigung kommt eine Mitteilung."],
-  ["hit", "Treffer", r => r.passed, ["hit"], "Alle 11 Kriterien erfüllt. Gekauft wird erst nach der Konsolidierung – dann steht im Status „kaufbereit“."],
+  ["hit", "Swing", r => r.passed, ["hit"], "Swing-Setups: alle 11 Kriterien erfüllt. Gekauft wird erst nach der Konsolidierung – dann steht im Status „kaufbereit“."],
   ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Aktien, denen nur wenige Kriterien fehlen – ab 9, 8 oder 7 von 11. Nur beobachten, kein Kaufsignal."],
   ["trend", "Trend", r => isTrend(r), ["trend"], "Trend-Rücksetzer – eigene, getrennte Strategie (Rücksetzer im Aufwärtstrend)."],
   ["mine", "Meine", r => r.in_watchlist || favs().has(r.ticker), ["watch", "fav"], "Deine Watchlist (★) – mit Stufe auf dem Weg zum Einstieg."],
@@ -4143,6 +4150,41 @@ function longHtml() {
       <p class="muted lf-note">Nach deutscher Steuer und 0,15 % Kosten je Umsatz, 1.586 US-Aktien. Die Regel wurde nur mit 2016–2020 ausgewählt und 2021–2026 bestätigt (35 von 36 Varianten lagen im Lernzeitraum vor dem ETF). Ehrlich: Nur heute noch gelistete Aktien (Pleiten fehlen), ein starkes Jahrzehnt für Momentum, über 60 Jahre war Momentum bei großen Firmen seit 2000 nicht besser als der Markt. Einbrüche von −40 % gehören dazu – wer dann verkauft, verliert. Darum „im Test“: kein Versprechen, keine Order.</p></div>`;
 }
 document.addEventListener("click", e => { if (e.target.closest("[data-golong]")) goSec("long"); });
+// Scanner → Langfrist (23.11.2026): Rangliste mit den 4 Kriterien der getesteten Regel (backend/langfrist.py)
+const LF_CRIT = n => [["us", "US-Aktie (Backtest: 1.586 US-Aktien)"], ["liq", "liquide: Ø Umsatz ≥ 5 Mio. $ am Tag"], ["px", "Kurs ≥ 5 $"], ["top", `Top ${n} der Rangliste nach 12-Monats-Lauf (ohne letzten Monat)`]];
+const lfStatus = (x, L) => x.in && x.rk <= L.rule.n ? ["Im Depot", "up"] : x.in ? ["Raus beim Tausch", "down"] : x.rk <= L.rule.n ? ["Kaufen beim Tausch", "up"] : ["Nachrücker", "muted"];
+function longScanHtml() {
+  const L = LF();
+  if (!L || !L.top) return `<div class="empty">${anaData ? "Die Langfrist-Rangliste erscheint nach dem nächsten großen Scan (abends an Börsentagen)." : "Lade …"}</div>`;
+  const q = ($("search") && $("search").value.trim().toLowerCase()) || "", show = +state.lfShow || 40, n = L.rule.n;
+  const held = Object.fromEntries((L.hold || []).map(x => [x.t, x]));
+  const out = (L.hold || []).filter(x => !L.top.some(y => y.t === x.t)).map(x => ({ ...x, in: true, rk: x.rk || 999 }));
+  const rows = L.top.concat(out).filter(x => x.rk <= show || x.in).filter(x => !q || x.t.toLowerCase().includes(q) || String(x.n || "").toLowerCase().includes(q));
+  const tb = `<div class="sc-tb"><label class="sp-dd"><span>Zeige</span><select data-lfshow>${[[20, `Top ${n} (Depot)`], [40, "Top 40"], [60, "Top 60"]].map(([v, l]) => `<option value="${v}"${show === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+    <span class="sc-cnt"><span class="sc-n">nächster Tausch ${fmtD(L.next)}</span>${gl("v_long")}</span></div>`;
+  const crit = `<div class="sh-note">Kriterien der getesteten Regel: ${LF_CRIT(n).map(([, l], i) => `<b>${i + 1}</b> ${l}`).join(" · ")}. Erfüllt eine Aktie alle 4, gehört sie ins Langfrist-Depot. Gekauft und getauscht wird nur am Tauschtermin.</div>`;
+  const tr = rows.map(x => { const [st, cls] = lfStatus(x, L), h = held[x.t], met = x.rk <= n ? 4 : 3;
+    return `<tr class="lf-row" ${lfOpen(x.t)}><td class="num muted">${x.rk < 999 ? x.rk : "–"}</td><td><div class="sh-nm">${cfAv(x.t)}<span><b>${esc(shortNm(x.n || x.t))}</b><small>${esc(x.t)}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span></div></td>
+      <td class="num">${lfPct(x.m, 0)}</td><td><span class="lf-pill${met === 4 ? " ok" : ""}">${met}/4</span></td><td class="${cls} lf-st">${st}</td>
+      <td class="num">${h && h.ret != null ? lfPct(h.ret) : "–"}</td><td class="num">${fmt(x.p)} $</td></tr>`; }).join("");
+  return tb + crit + `<div class="table-wrap"><table class="sc-t lf-t lf-s"><thead><tr><th class="num">Rang</th><th>Aktie</th><th class="num">Lauf 12 M.</th><th>Kriterien</th><th>Status</th><th class="num">seit Tausch</th><th class="num">Kurs</th></tr></thead><tbody>${tr}</tbody></table></div>
+    <div class="note" style="margin:8px 2px">Depot, Stückzahl für deinen Betrag und Tauschliste: Reiter <button class="hlink" data-golong>Langfrist ›</button></div>`;
+}
+document.addEventListener("change", e => { if (e.target.matches && e.target.matches("[data-lfshow]")) { state.lfShow = +e.target.value; save(); render(); } });
+// Aktienkarte: Kairo Langfrist (Rang, Lauf, 4 Kriterien)
+function longCardHtml(r) {
+  const L = LF(); if (!L || !L.top) return "";
+  const t = r.ticker, x = L.top.find(y => y.t === t), h = (L.hold || []).find(y => y.t === t), n = L.rule.n;
+  const us = !/[.^]/.test(t) && (!r.currency || r.currency === "USD");
+  if (!x && !h && !us) return `<details class="cx-card cx-long"><summary><span class="cx-sh">Kairo Langfrist</span> <span class="lf-pill">–</span> <span class="muted">nur US-Aktien</span></summary><p class="muted" style="margin:6px 0">Die Langfrist-Regel wurde mit US-Aktien getestet – diese Aktie gehört nicht zur Auswahl.</p></details>`;
+  const rk = x ? x.rk : h && h.rk, ok = { us, liq: !!x || !!h, px: !!x || !!h, top: !!(rk && rk <= n) }, met = Object.values(ok).filter(Boolean).length;
+  const st = x ? lfStatus({ ...x, in: !!h }, L)[0] : h ? "Im Depot – fliegt beim Tausch raus" : "nicht unter den Top 60";
+  return `<details class="cx-card cx-long"${ok.top || h ? " open" : ""}><summary><span class="cx-sh">Kairo Langfrist</span> <span class="lf-pill${met === 4 ? " ok" : ""}">${met}/4</span> <span class="${ok.top ? "up" : "muted"}">${esc(st)}</span></summary>
+    <div class="lf-kpi" style="margin-top:8px"><div><span>Rang heute</span><b>${rk ? `${rk} von ${fmt(L.univ, 0)}` : "–"}</b></div><div><span>Lauf 12 M. (ohne letzten)</span>${x ? lfPct(x.m, 0) : h ? lfPct(h.m, 0) : "<b>–</b>"}</div>${h ? `<div><span>seit Tausch ${fmtD(L.since)}</span>${lfPct(h.ret)}</div>` : ""}<div><span>nächster Tausch</span><b>${fmtD(L.next)}</b></div></div>
+    <ul class="sh-crit">${LF_CRIT(n).map(([k, l]) => `<li class="${ok[k] ? "ok" : "no"}"><span>${esc(l)}</span></li>`).join("")}</ul>
+    <button class="hlink" data-golong>Zum Langfrist-Depot ›</button></details>`;
+}
+
 document.addEventListener("change", e => { if (e.target.id === "lfCap") { state.lfCap = Math.max(0, +e.target.value || 0); save(); render(); } });
 const SHORT_WARN = `<div class="sh-warn">Backtest negativ: Ø −0,10 R je Trade, 28 % Gewinner – kein getestetes Handelssignal.</div>`;
 // Heute: Short-Treffer kompakt (nur wenn es welche gibt) – Antippen öffnet Scanner → Short
@@ -4518,7 +4560,7 @@ function cardModalHtml(r) {
         <div class="cx-plan">${kplanHtml(r)}${hint && hint.title && !r.passed ? `<div class="cx-card cx-hint"><div class="cx-sh">Kairo-Einschätzung</div><b>${esc(hint.title)}</b><p>${esc(hint.text || "")}</p></div>` : ""}</div>
       </div>
       ${cxKzHtml(r)}
-      ${shortCardHtml(r)}
+      ${longCardHtml(r)}${shortCardHtml(r)}
       <div class="cx-flow">
         ${hint && hint.title && r.passed ? `<div class="cx-card cx-hint"><div class="cx-sh">Kairo-Einschätzung</div><b>${esc(hint.title)}</b><p>${esc(hint.text || "")}</p></div>` : ""}
         ${cxAnaHtml(r)}
@@ -10305,8 +10347,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.240";
-const APP_NEWS = [["2026.11.240", "Kairo Langfrist", [
+const APP_VER = "2026.11.241";
+const APP_NEWS = [["2026.11.241", "Scanner auf Langfrist umgestellt", [
+  ["Scanner zeigt zuerst Langfrist", "Der Scanner sucht jetzt als Erstes Aktien fürs Langfrist-Depot: Rangliste nach 12-Monats-Lauf mit 4 Kriterien (US-Aktie, liquide, Kurs ≥ 5 $, Top 20). Status je Aktie: im Depot, kaufen beim Tausch, raus beim Tausch oder Nachrücker."],
+  ["Aktienkarte mit Langfrist-Prüfung", "Jede Aktie zeigt oben „Kairo Langfrist“: Rang, Lauf, erfüllte Kriterien und ob sie ins Depot gehört."],
+  ["Swing bleibt als zweite Ansicht", "Die bisherigen Treffer heißen jetzt „Swing“ und sind eine Ansicht weiter rechts – unverändert."]]],
+ ["2026.11.240", "Kairo Langfrist", [
   ["Neuer Reiter: Langfrist", "Kairo ist jetzt auf langfristiges Investieren ausgerichtet: Das Langfrist-Depot hält die 20 US-Aktien mit dem stärksten 12-Monats-Lauf und tauscht alle 3 Monate. In 36 getesteten Varianten war das die beste Regel – 2021–2026 im Test 25,2 % pro Jahr nach Steuer gegen 11,7 % beim S&P-500-ETF, mit Einbrüchen bis −44 %. Empfohlen: 70–80 % Welt-ETF, 20–30 % Langfrist-Depot."],
   ["Was du tun musst", "Betrag eintragen – Kairo rechnet die Stückzahl je Aktie. Zum Tauschtermin (Januar, April, Juli, Oktober) zeigt „Heute“, welche Aktien raus und welche rein. Dazwischen nichts tun."],
   ["Swing tritt zurück", "Swing-Trades und Short-Setups haben im Test den ETF nicht geschlagen: Short ist von „Heute“ und „Einstieg“ verschwunden, Einstieg ist auf dem iPhone nicht mehr in der unteren Leiste."]]],
@@ -12720,7 +12766,8 @@ function renderMain() {
   if (depCharts.size) { depCharts.forEach(ch => ch.remove()); depCharts.clear(); }
   KIND_BTNS = KIND_BTNS_ALL.filter(x => !["trend", "h4"].includes(x[0]));
   const views = VIEWS.filter(v => !["trend", "go"].includes(v[0]));          // 4H-Einstiege und Trend-Rücksetzer: aus der App entfernt (10/2026)
-  if (state.view === undefined || (state.view && !views.some(v => v[0] === state.view))) {   // Standard: Treffer
+  if (!state.lfView) { state.lfView = 1; state.view = "long"; state.kinds = ["long"]; state.scrOn = false; save(); }   // 23.11.2026: Scanner zeigt zuerst Langfrist
+  if (state.view === undefined || (state.view && !views.some(v => v[0] === state.view))) {   // Standard: Langfrist
     const v = views[0]; state.view = v[0]; state.kinds = v[3]; save();
   }
   const cur = views.find(v => v[0] === state.view);
@@ -12728,9 +12775,10 @@ function renderMain() {
   if (String(state.minScore || "0") !== "0") { state.minScore = "0"; save(); }   // Score-Filter entfernt (Score nicht belegt, 11/2026)
   const wlC = wlCurList(), list = selRows().filter(r => !wlC || wlC.t.includes(r.ticker)), k = new Set(state.kinds || []);
   const nFilt = ["chk", "grade", "minScore", "minCap", "maxCap", "vola", "minTgt", "region", "zone", "div", "sector", "ins"].filter(x => String(state[x] ?? "") !== String(DEFAULTS[x] ?? "")).length;
-  const vseg = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v && !state.scrOn ? "on" : ""}${v === "short" ? " vs-short" : ""}" data-view="${v}" role="tab"><span class="vl" data-s="${({ watch: "Beob.", mine: "Meine" })[v] || l}">${l}</span><small>${v === "watch" ? watchCount() : v === "short" ? shortList(11).length : data.results.filter(f).length}</small></button>`).join("")}<button class="${state.scrOn ? "on" : ""}" data-scron role="tab">Screener<small>${searchIdx ? fmt(searchIdx.length, 0) : "alle"}</small></button></div>`;
+  const vseg = `<div class="vseg" role="tablist">${views.map(([v, l, f]) => `<button class="${state.view === v && !state.scrOn ? "on" : ""}${v === "short" ? " vs-short" : ""}" data-view="${v}" role="tab"><span class="vl" data-s="${({ watch: "Beob.", mine: "Meine", long: "Lang" })[v] || l}">${l}</span><small>${v === "watch" ? watchCount() : v === "short" ? shortList(11).length : v === "long" ? (LF() ? LF().rule.n : "…") : data.results.filter(f).length}</small></button>`).join("")}<button class="${state.scrOn ? "on" : ""}" data-scron role="tab">Screener<small>${searchIdx ? fmt(searchIdx.length, 0) : "alle"}</small></button></div>`;
   if (state.scrOn) { $("main").innerHTML = searchHtml() + scanBarHtml() + vseg + screenerHtml(); return; }
   if (state.view === "short") { $("main").innerHTML = searchHtml() + scanBarHtml() + vseg + shortHtml(); return; }
+  if (state.view === "long") { if (!anaData) loadAnalysis(); $("main").innerHTML = searchHtml() + scanBarHtml() + vseg + longScanHtml(); return; }
   const nMore = nFilt - (state.region ? 1 : 0);
   const bar = `${vseg}
     ${state.view === "mine" ? wlBarHtml() : ""}
@@ -12850,6 +12898,8 @@ function headSub() {
   if (!data) return "";
   if (state.sec === "today") return `${todaySubHtml()} ${healthPill()}`;
   const s = data.stats || {}, when = new Date(data.generated).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  if (state.sec === "scanner" && state.view === "long" && !state.scrOn) { const L = LF();
+    return L ? `<b>Langfrist: Top ${L.rule.n}</b> von ${fmt(L.univ, 0)} US-Aktien · nächster Tausch ${fmtD(L.next)} · Scan ${esc(when)} Uhr ${healthPill()}` : `Langfrist-Rangliste nach dem nächsten großen Scan · Scan ${esc(when)} Uhr ${healthPill()}`; }
   const nH = data.results.filter(r => r.passed).length, bd = h4Data() ? boardItems() : null;
   return `<b>${nH} Treffer</b>${bd ? ` · <b>${bd.ready.length} kaufbereit</b>` : ""} · ${fmt(s.universe, 0)} Aktien geprüft · Scan ${esc(when)} Uhr ${healthPill()}`;
 }
