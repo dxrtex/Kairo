@@ -936,7 +936,7 @@ def main(argv=None) -> int:
             for x in lf.get("top") or []:            # Rang + Lauf je Aktie für Suche, Aktienkarte und Scanner
                 if x["t"] in search:
                     search[x["t"]].update(lr=x["rk"], lm=x["m"])
-            print(f"Langfrist: seit {lf.get('since')} {len(lf.get('hold') or [])} Aktien, Depot {lf.get('ret')}, S&P {lf.get('bench')}, nächster Tausch {lf.get('next')}")
+            print(f"Langfrist: seit {lf.get('since')} {len(lf.get('hold') or [])} Aktien, Depot {lf.get('ret')}, S&P {lf.get('bench')}, nächster Tausch {lf.get('next')}, Watchlist {len(lf.get('watch') or [])} (≥ 6/8)")
         except Exception as exc:
             print(f"Langfrist: Fehler {exc!r}")
     with open(SITE / "search.json", "w", encoding="utf-8") as f:

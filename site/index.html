@@ -2427,6 +2427,10 @@ main .table-wrap .sc-t.lf-s th:nth-child(1), main .table-wrap .sc-t.lf-s td:nth-
 main .table-wrap .sc-t.lf-s .sh-nm { min-width: 0; } main .table-wrap .sc-t.lf-s .sh-nm b { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
 @media (max-width: 1100px) { .lf-s th:nth-child(7), .lf-s td:nth-child(7) { display: none; } } @media (max-width: 560px) { .lf-s th:nth-child(4), .lf-s td:nth-child(4), .lf-s th:nth-child(6), .lf-s td:nth-child(6) { display: none; } main .table-wrap .sc-t.lf-s .sh-nm b, main .table-wrap .sc-t.lf-s .sh-nm small { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; } main .table-wrap .sc-t.lf-s .sh-nm { gap: 6px; } main .table-wrap .sc-t.lf-s th, main .table-wrap .sc-t.lf-s td { padding-left: 5px !important; padding-right: 5px !important; } .lf-st { min-width: 0; font-size: 12px; white-space: normal !important; max-width: 84px; line-height: 1.25; } }
 .cx-long summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .cx-long summary::-webkit-details-marker { display: none; }
+.lf-n { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; background: var(--surface-2); color: var(--muted); white-space: nowrap; } .lf-n.n8 { background: color-mix(in srgb, var(--up) 20%, transparent); color: var(--up); } .lf-n.n7 { background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); }
+.lf-ck { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 2px; } .lf-ck i { font-style: normal; font-size: 11.5px; padding: 2px 7px; border-radius: 7px; white-space: nowrap; } .lf-ck i.ok { color: var(--up); background: color-mix(in srgb, var(--up) 10%, transparent); } .lf-ck i.no { color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); font-weight: 600; }
+.lf-w { padding: 9px 0; border-bottom: 1px solid var(--line); cursor: pointer; } .lf-w:last-child { border-bottom: 0; } .lf-w-h { display: flex; align-items: center; gap: 8px; } .lf-w-n { flex: 1; min-width: 0; display: flex; flex-direction: column; } .lf-w-n b, .lf-w-n small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .lf-w-px { font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; }
+.lf-wl { margin-top: 12px; } .lf-side .lf-ck { margin: 4px 0 8px; }
 .lf-amp { font-size: 12.5px; line-height: 1.45; margin: 8px 0 6px; padding: 7px 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent, #0a84ff) 10%, transparent); color: var(--muted); } .lf-amp b { color: var(--text); }
 .lf-dl { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; margin: 6px 0; } .lf-dl > span { font-size: 12px; font-weight: 600; min-width: 92px; margin-right: 6px; }
 .lf-dep { margin-bottom: 12px; } .lf-rc .ein-rc-h .lf-pill { margin-left: auto; }
@@ -4148,6 +4152,7 @@ function longHtml() {
       ${lfSwapSoon(L) && (L.out.length || L.inn.length) ? `<div class="lf-swap"><b>Tauschtermin:</b> Aktien unter „Raus“ verkaufen, unter „Rein“ mit dem Erlös gleich gewichtet kaufen. Alle übrigen behalten.</div>` : ""}</div>
     <div class="table-wrap"><table class="sc-t lf-t"><thead><tr><th class="num">#</th><th>Aktie</th><th class="num">Lauf 12 M.</th><th class="num">seit Tausch</th><th class="num" title="Platz in der Rangliste heute – über ${L.rule.n} = würde beim nächsten Tausch ersetzt">Rang heute</th><th class="num">Kurs</th><th class="num">Stück</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="card"><div class="plan-h">${SW.now ? "Tausch jetzt umsetzen" : "Vorschau nächster Tausch"}</div>${swap}</div>
+    ${(L.watch || []).length ? `<div class="card"><div class="plan-h">Watchlist <small class="muted">${L.watch.length} Aktien mit mind. 6/8 Kriterien</small></div>${L.watch.slice(0, 5).map(x => `<button class="hrow" ${lfOpen(x.t)}>${cfAv(x.t)}<span class="hn">${esc(shortNm(x.n || x.t))} <small class="muted">Rang ${x.rk}</small></span>${lfBadge(x)}</button>`).join("")}<button class="hlink" data-golongscan>Alle im Scanner ›</button></div>` : ""}
     <div class="card lf-how"><div class="plan-h">So funktioniert Kairo Langfrist</div>
       <ul class="checks"><li>Alle 3 Monate (erster Börsentag im Januar, April, Juli, Oktober) die <b>${L.rule.n} US-Aktien mit dem stärksten Kursanstieg der letzten 12 Monate</b> – den letzten Monat ausgenommen –, jede mit gleichem Betrag.</li>
       <li>Dazwischen nichts tun. Kein Stop, kein Nachjustieren: Gewinner laufen lassen, Verlierer fliegen beim nächsten Tausch automatisch raus.</li>
@@ -4157,8 +4162,8 @@ function longHtml() {
       <p class="muted lf-note">Nach deutscher Steuer und 0,15 % Kosten je Umsatz, 1.586 US-Aktien. Die Regel wurde nur mit 2016–2020 ausgewählt und 2021–2026 bestätigt (35 von 36 Varianten lagen im Lernzeitraum vor dem ETF). Ehrlich: Nur heute noch gelistete Aktien (Pleiten fehlen), ein starkes Jahrzehnt für Momentum, über 60 Jahre war Momentum bei großen Firmen seit 2000 nicht besser als der Markt. Einbrüche von −40 % gehören dazu – wer dann verkauft, verliert. Darum „im Test“: kein Versprechen, keine Order.</p></div>`;
 }
 document.addEventListener("click", e => { if (e.target.closest("[data-golong]")) goSec("long"); });
+document.addEventListener("click", e => { if (!e.target.closest("[data-golongscan]")) return; state.view = "long"; state.kinds = ["long"]; state.scrOn = false; save(); goSec("scanner"); });
 // Scanner → Langfrist (23.11.2026): Rangliste mit den 4 Kriterien der getesteten Regel (backend/langfrist.py)
-const LF_CRIT = n => [["us", "US-Aktie (Backtest: 1.586 US-Aktien)"], ["liq", "liquide: Ø Umsatz ≥ 5 Mio. $ am Tag"], ["px", "Kurs ≥ 5 $"], ["top", `Top ${n} der Rangliste nach 12-Monats-Lauf (ohne letzten Monat)`]];
 const lfStatus = (x, L) => x.in && x.rk <= L.rule.n ? ["Im Depot", "up"] : x.in ? ["Raus beim Tausch", "down"] : x.rk <= L.rule.n ? ["Kaufen beim Tausch", "up"] : ["Nachrücker", "muted"];
 function longScanHtml() {
   const L = LF();
@@ -4169,14 +4174,28 @@ function longScanHtml() {
   const rows = L.top.concat(out).filter(x => x.rk <= show || x.in).filter(x => !q || x.t.toLowerCase().includes(q) || String(x.n || "").toLowerCase().includes(q));
   const tb = `<div class="sc-tb"><label class="sp-dd"><span>Zeige</span><select data-lfshow>${[[20, `Top ${n} (Depot)`], [40, "Top 40"], [60, "Top 60"]].map(([v, l]) => `<option value="${v}"${show === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
     <span class="sc-cnt"><span class="sc-n">nächster Tausch ${fmtD(L.next)}</span>${gl("v_long")}</span><span class="sc-tb-r">${scanMenuHtml()}</span></div>`;
-  const crit = `<div class="sh-note">Kriterien der getesteten Regel: ${LF_CRIT(n).map(([, l], i) => `<b>${i + 1}</b> ${l}`).join(" · ")}. Erfüllt eine Aktie alle 4, gehört sie ins Langfrist-Depot. Gekauft und getauscht wird nur am Tauschtermin.</div>`;
-  const tr = rows.map(x => { const [st, cls] = lfStatus(x, L), h = held[x.t], met = x.rk <= n ? 4 : 3;
+  const crit = `<div class="sh-note">Kaufsignal der getesteten Regel: die Top ${n} nach 12-Monats-Lauf (ohne letzten Monat) am Tauschtermin. Das Badge zeigt zusätzlich, wie viele der 8 Einstiegskriterien eine Aktie erfüllt (${Object.values(LF_CK).map(v => v[0]).join(", ")}).</div>`;
+  const tr = rows.map(x => { const [st, cls] = lfStatus(x, L), h = held[x.t];
     return `<tr class="lf-row" ${lfOpen(x.t)}><td class="num muted">${x.rk < 999 ? x.rk : "–"}</td><td><div class="sh-nm">${cfAv(x.t)}<span><b>${esc(shortNm(x.n || x.t))}</b><small>${esc(x.t)}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span></div></td>
-      <td class="num">${lfPct(x.m, 0)}</td><td><span class="lf-pill${met === 4 ? " ok" : ""}">${met}/4</span></td><td class="${cls} lf-st">${st}</td>
+      <td class="num">${lfPct(x.m, 0)}</td><td>${lfBadge(x.chk ? x : h || x)}</td><td class="${cls} lf-st">${st}</td>
       <td class="num">${h && h.ret != null ? lfPct(h.ret) : "–"}</td><td class="num">${fmt(x.p)} $</td></tr>`; }).join("");
   return tb + crit + `<div class="table-wrap"><table class="sc-t lf-t lf-s"><thead><tr><th class="num">Rang</th><th>Aktie</th><th class="num">Lauf 12 M.</th><th>Kriterien</th><th>Status</th><th class="num">seit Tausch</th><th class="num">Kurs</th></tr></thead><tbody>${tr}</tbody></table></div>
+    ${lfWatchHtml(L, q)}
     <div class="note" style="margin:8px 2px">Depot, Stückzahl für deinen Betrag und Tauschliste: Reiter <button class="hlink" data-golong>Langfrist ›</button></div>`;
 }
+// Watchlist (backend/langfrist.py checks): Aktien außerhalb der Top 20 mit mindestens 6 von 8 Einstiegskriterien
+const LF_CK = { liq: ["Liquidität", "Ø Umsatz ≥ 10 Mio. $/Tag (50 T.) und Börsenwert ≥ 2 Mrd. $"], trend: ["Trend", "Schluss > SMA 100 > SMA 200, SMA 200 steigt"],
+  stab: ["Stabilität", "kein Tagesverlust über 15 % in 90 Tagen"], mom: ["Momentum", "12-Monats-Lauf besser als die Hälfte der Auswahl"],
+  qual: ["Quality", "ROE und Nettoverschuldung/EBITDA mindestens im Mittelfeld (fehlende Daten = neutral)"], val: ["Value", "PEG und Forward-KGV vs. 5-Jahres-KGV mindestens im Mittelfeld (fehlende Daten = neutral)"],
+  sector: ["Sektor-Cap", "höchstens 3 Depot-Aktien im selben Sektor"], earn: ["Earnings-frei", "keine Quartalszahlen in den nächsten 5 Börsentagen"] };
+const lfBadge = x => x && x.nchk != null ? `<span class="lf-n n${x.nchk}" title="${x.nchk} von 8 Einstiegskriterien erfüllt">${x.nchk}/8</span>` : `<span class="muted">–</span>`;
+function lfChecks(x, L) { const ks = (L && L.checks) || Object.keys(LF_CK); if (!x || !x.chk) return "";
+  return `<span class="lf-ck">${ks.map((k, i) => `<i class="${x.chk[i] ? "ok" : "no"}" title="${esc(LF_CK[k] ? LF_CK[k][1] : k)}">${x.chk[i] ? "✓" : "✗"} ${esc(LF_CK[k] ? LF_CK[k][0] : k)}</i>`).join("")}</span>`; }
+function lfWatchHtml(L, q) { const W = (L.watch || []).filter(x => !q || x.t.toLowerCase().includes(q) || String(x.n || "").toLowerCase().includes(q));
+  const row = x => `<div class="lf-w" ${lfOpen(x.t)}><div class="lf-w-h">${cfAv(x.t)}<span class="lf-w-n"><b>${esc(shortNm(x.n || x.t))}</b><small>Rang ${x.rk} · ${esc(x.t)}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span>${lfBadge(x)}<span class="lf-w-px">${lfPct(x.m, 0)}</span></div>${lfChecks(x, L)}${x.chk && !x.chk[7] && x.edate ? `<small class="gold">⚠︎ Quartalszahlen ${fmtD(x.edate)}</small>` : ""}</div>`;
+  return `<div class="card lf-wl"><div class="plan-h">Watchlist · kurz vor dem Kaufsignal <small class="muted">${W.length} Aktien mit mind. 6/8</small></div>
+    <p class="muted lf-note">Außerhalb der Top ${L.rule.n}, sortiert nach erfüllten Kriterien und Rang. Rückt eine Aktie bis zum Tauschtermin ${fmtD(L.next)} in die Top ${L.rule.n}, wird sie gekauft. Die Häkchen zeigen, was noch fehlt.</p>
+    ${W.length ? W.map(row).join("") : `<p class="muted">${L.watch ? "Gerade keine Aktie mit mindestens 6 von 8 Kriterien außerhalb der Top " + L.rule.n + "." : "Die Watchlist erscheint nach dem nächsten großen Scan."}</p>`}</div>`; }
 document.addEventListener("change", e => { if (e.target.matches && e.target.matches("[data-lfshow]")) { state.lfShow = +e.target.value; save(); render(); } });
 // ---------- Langfrist in allen Bereichen (23.11.2026) ----------
 // Marktampel: das Langfrist-Depot wird NICHT nach der Ampel gesteuert (Marktfilter kostete im Test Rendite)
@@ -4184,17 +4203,17 @@ function lfAmpelLine() { const L = LF(); if (!L) return "";
   return `<div class="lf-amp"><b>Langfrist-Depot:</b> unabhängig von der Ampel halten – ein Marktfilter kostete im Test viel Rendite (Ø 7,5 % statt 23,8 % p. a.). Die Ampel gilt für Extra-Geld im ETF und für Swing.</div>`; }
 // Chart-Seitenleiste: Langfrist-Status oben
 function lfSideHtml(r) { const L = LF(); if (!L || !L.top || !r || r.ext) return "";
-  const t = String(r.ticker).replace(/@rp$/, ""), x = L.top.find(y => y.t === t), h = (L.hold || []).find(y => y.t === t); if (!x && !h) return "";
-  const [st, cls] = lfStatus({ ...(x || h), in: !!h, rk: x ? x.rk : 999 }, L);
-  return `<div class="cf-s lf-side"><div class="cf-h"><span class="lf-pill${x && x.rk <= L.rule.n ? " ok" : ""}">${x && x.rk <= L.rule.n ? "4/4" : "3/4"}</span> Kairo Langfrist · <span class="${cls}">${esc(st)}</span></div>
-    <div class="cf-r"><span>Rang heute</span><b>${x ? x.rk : "–"}</b></div><div class="cf-r"><span>Lauf 12 M.</span>${lfPct((x || h).m, 0)}</div>${h ? `<div class="cf-r"><span>seit Tausch</span>${lfPct(h.ret)}</div>` : ""}<div class="cf-r"><span>nächster Tausch</span><b>${fmtD(L.next)}</b></div></div>`; }
+  const t = String(r.ticker).replace(/@rp$/, ""), x = L.top.find(y => y.t === t), h = (L.hold || []).find(y => y.t === t), w = (L.watch || []).find(y => y.t === t); if (!x && !h && !w) return "";
+  const [st, cls] = lfStatus({ ...(x || h || w), in: !!h, rk: x ? x.rk : 999 }, L);
+  return `<div class="cf-s lf-side"><div class="cf-h">${lfBadge(x || h || w)} Kairo Langfrist · <span class="${cls}">${esc(!x && !h ? "Watchlist" : st)}</span></div>${lfChecks(x || h || w, L)}
+    <div class="cf-r"><span>Rang heute</span><b>${x ? x.rk : w ? w.rk : "–"}</b></div><div class="cf-r"><span>Lauf 12 M.</span>${lfPct((x || h || w).m, 0)}</div>${h ? `<div class="cf-r"><span>seit Tausch</span>${lfPct(h.ret)}</div>` : ""}<div class="cf-r"><span>nächster Tausch</span><b>${fmtD(L.next)}</b></div></div>`; }
 function cockpitSide(h, r) { return lfSideHtml(r) + cockpitSide1(h, r); }
 // Einstieg: zuerst die Langfrist-Kaufliste (Stückzahl für deinen Betrag), darunter Swing als Nebenstrategie
 function lfEinHtml() { const L = LF(); if (!L || !L.hold || state.einT) return "";
   const cap = Math.max(0, +state.lfCap || 5000), per = cap / Math.max(1, L.hold.length), SW = lfSwap(L);
   const buy = SW.now ? L.hold.filter(x => SW.inn.includes(x.t)) : L.hold;
   const card = x => { const e = toEur(x.p, "USD"), q = e > 0 ? Math.floor(per / e) : null;
-    return `<button class="ein-rc lf-rc" ${lfOpen(x.t)}><div class="ein-rc-h">${cfAv(x.t)}<span><b>${esc(shortNm(x.n || x.t))}</b><small>${esc(x.t)} · Langfrist</small></span><span class="lf-pill ok">4/4</span></div>
+    return `<button class="ein-rc lf-rc" ${lfOpen(x.t)}><div class="ein-rc-h">${cfAv(x.t)}<span><b>${esc(shortNm(x.n || x.t))}</b><small>${esc(x.t)} · Langfrist</small></span>${lfBadge(x)}</div>
       <div class="ein-rc-g"><div><span>Kurs</span><b>${fmt(x.p)} $</b></div><div><span>Betrag</span><b>${eur(per)}</b></div><div><span>Stück</span><b>${q ?? "–"}</b></div><div><span>Lauf 12 M.</span>${lfPct(x.m, 0)}</div></div></button>`; };
   return `<div class="plan-h" style="margin:4px 2px 6px">Kairo Langfrist · ${SW.now ? `Tausch ${fmtD(L.since)} – jetzt kaufen` : `aktuelles Depot (${L.hold.length} Aktien)`}</div>
     <div class="ein-hero-l">${buy.slice(0, 20).map(card).join("")}</div>
@@ -4218,14 +4237,15 @@ function etfHtml() { const L = LF(); return (L ? `<div class="lf-amp" style="mar
 // Aktienkarte: Kairo Langfrist (Rang, Lauf, 4 Kriterien)
 function longCardHtml(r) {
   const L = LF(); if (!L || !L.top) return "";
-  const t = r.ticker, x = L.top.find(y => y.t === t), h = (L.hold || []).find(y => y.t === t), n = L.rule.n;
+  const t = r.ticker, x = L.top.find(y => y.t === t), h = (L.hold || []).find(y => y.t === t), w = (L.watch || []).find(y => y.t === t), n = L.rule.n;
   const us = !/[.^]/.test(t) && (!r.currency || r.currency === "USD");
   if (!x && !h && !us) return `<details class="cx-card cx-long"><summary><span class="cx-sh">Kairo Langfrist</span> <span class="lf-pill">–</span> <span class="muted">nur US-Aktien</span></summary><p class="muted" style="margin:6px 0">Die Langfrist-Regel wurde mit US-Aktien getestet – diese Aktie gehört nicht zur Auswahl.</p></details>`;
-  const rk = x ? x.rk : h && h.rk, ok = { us, liq: !!x || !!h, px: !!x || !!h, top: !!(rk && rk <= n) }, met = Object.values(ok).filter(Boolean).length;
-  const st = x ? lfStatus({ ...x, in: !!h }, L)[0] : h ? "Im Depot – fliegt beim Tausch raus" : "nicht unter den Top 60";
-  return `<details class="cx-card cx-long"${ok.top || h ? " open" : ""}><summary><span class="cx-sh">Kairo Langfrist</span> <span class="lf-pill${met === 4 ? " ok" : ""}">${met}/4</span> <span class="${ok.top ? "up" : "muted"}">${esc(st)}</span></summary>
-    <div class="lf-kpi" style="margin-top:8px"><div><span>Rang heute</span><b>${rk ? `${rk} von ${fmt(L.univ, 0)}` : "–"}</b></div><div><span>Lauf 12 M. (ohne letzten)</span>${x ? lfPct(x.m, 0) : h ? lfPct(h.m, 0) : "<b>–</b>"}</div>${h ? `<div><span>seit Tausch ${fmtD(L.since)}</span>${lfPct(h.ret)}</div>` : ""}<div><span>nächster Tausch</span><b>${fmtD(L.next)}</b></div></div>
-    <ul class="sh-crit">${LF_CRIT(n).map(([k, l]) => `<li class="${ok[k] ? "ok" : "no"}"><span>${esc(l)}</span></li>`).join("")}</ul>
+  const rk = x ? x.rk : h ? h.rk : w && w.rk, ok = { top: !!(rk && rk <= n) }, z = x || h || w;
+  const st = x ? lfStatus({ ...x, in: !!h }, L)[0] : h ? "Im Depot – fliegt beim Tausch raus" : w ? "Watchlist – kurz vor dem Kaufsignal" : "nicht unter den Top 60";
+  return `<details class="cx-card cx-long"${ok.top || h || w ? " open" : ""}><summary><span class="cx-sh">Kairo Langfrist</span> ${lfBadge(z)} <span class="${ok.top ? "up" : "muted"}">${esc(st)}</span></summary>
+    <div class="lf-kpi" style="margin-top:8px"><div><span>Rang heute</span><b>${rk ? `${rk} von ${fmt(L.univ, 0)}` : "–"}</b></div><div><span>Lauf 12 M. (ohne letzten)</span>${z ? lfPct(z.m, 0) : "<b>–</b>"}</div>${h ? `<div><span>seit Tausch ${fmtD(L.since)}</span>${lfPct(h.ret)}</div>` : ""}<div><span>nächster Tausch</span><b>${fmtD(L.next)}</b></div></div>
+    ${z && z.chk ? lfChecks(z, L) : `<p class="muted" style="margin:6px 0">Kriterien werden für die ${fmt(L.univ, 0)} liquiden US-Aktien der Auswahl berechnet (Ø Umsatz ≥ 5 Mio. $, Kurs ≥ 5 $).</p>`}
+    <p class="muted lf-note">Gekauft wird am Tauschtermin, wer unter den Top ${n} nach 12-Monats-Lauf ist. Die 8 Häkchen sind Zusatzinfo.</p>
     <button class="hlink" data-golong>Zum Langfrist-Depot ›</button></details>`;
 }
 
@@ -10391,8 +10411,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.242";
-const APP_NEWS = [["2026.11.242", "Langfrist in allen Bereichen", [
+const APP_VER = "2026.11.243";
+const APP_NEWS = [["2026.11.243", "Langfrist-Watchlist", [
+  ["Watchlist kurz vor dem Kaufsignal", "Scanner → Langfrist zeigt unter der Rangliste alle Aktien außerhalb der Top 20, die mindestens 6 von 8 Einstiegskriterien erfüllen – mit Badge 6/8, 7/8 oder 8/8."],
+  ["8 Häkchen je Aktie", "Liquidität, Trend, Stabilität, Momentum, Quality, Value, Sektor-Cap und Earnings-Freiheit – in Rangliste, Aktienkarte, Chart-Seitenleiste und Einstieg. Gekauft wird weiter nach der getesteten Regel: Top 20 am Tauschtermin."]]],
+ ["2026.11.242", "Langfrist in allen Bereichen", [
   ["Überall Langfrist zuerst", "Heute (Depot-Karte mit Tauschliste), Scanner (Rangliste), Einstieg (Kaufliste mit Stückzahl), Chart (Langfrist-Status in der Seitenleiste), Depot (Abgleich: welche der 20 Aktien du hast, welche fehlen, welche raus müssen), Markt (Ampel gilt nicht fürs Langfrist-Depot), ETF (Aufteilung 70–80 % / 20–30 %)."],
   ["Mitteilung zum Tausch", "3 Tage vor dem Tausch kommt eine Vorschau, am Tauschtag die genaue Liste: verkaufen und kaufen."],
   ["Beste Strategie bestätigt", "5 bekannte Verbesserungen aus der Forschung (risikobereinigt, 52-Wochen-Hoch, stetige Gewinner, 12+6 Monate, nur über der 200-Tage-Linie) getestet – keine war besser als die heutige Regel."]]],
