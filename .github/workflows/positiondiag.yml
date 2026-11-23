@@ -20,17 +20,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Lauf 45266382491 + 45267576351: Regelwerk, 6-1, alle, Diagnosen, bisherige Regel (fertig)
-        # Optimierungen (Auftrag 23.11.): 1 = Risiko 0,4 %/ATR + Cap 10 % · 2A = + Stop 5 ATR + monatlich ·
-        # 2B = + ohne Stop + monatlich/quartalsweise · 3 = bisherige Regel + SMA-200-Marktfilter (3 Arten)
+        # Läufe 45266382491, 45267576351, 45270818310: Regelwerk, Diagnosen, Optimierungen, bisherige Regel ± Marktfilter (fertig)
+        # Jetzt: Mischung Welt-ETF (ACWI) + bisherige Langfrist-Regel 100/0, 80/20, 70/30, 50/50, 0/100 mit jährlichem Ausgleich
         run:
-          - "--universe us --risk 0.004 --maxw 0.10"
-          - "--universe us --risk 0.004 --maxw 0.10 --trail 5 --rebalance monthly"
-          - "--universe us --risk 0.004 --maxw 0.10 --trail 0 --rebalance monthly"
-          - "--universe us --risk 0.004 --maxw 0.10 --trail 0 --rebalance quarterly"
-          - "--universe us --strategy langfrist --regime-mode quarter"
-          - "--universe us --strategy langfrist --regime-mode daily"
-          - "--universe us --strategy langfrist --regime-mode buys"
+          - "mix"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -48,7 +41,7 @@ jobs:
           path: bpx
           run-id: 45264753394
           github-token: ${{ github.token }}
-      - run: python -m backend.position.backtest run bpx ${{ matrix.run }} --out bt.json
+      - run: python -m backend.position.backtest ${{ matrix.run == 'mix' && 'mix bpx --universe us' || format('run bpx {0}', matrix.run) }} --out bt.json
       - uses: actions/upload-artifact@v4
         with:
           name: diag-${{ strategy.job-index }}

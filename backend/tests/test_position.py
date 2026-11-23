@@ -311,3 +311,19 @@ def test_baseline_regime_filter_modes():
     assert not any(x["why"] == "regime" for x in none["trades"])
     buys = backtest.run_baseline(m, start, CFG, tax=False, rule={"n": 5, "regime": "buys"})
     assert not any(x["why"] == "regime" for x in buys["trades"])
+
+
+def test_mix_etf_strategy_rebalancing():
+    from backend.position import backtest
+    idx = pd.bdate_range("2019-01-01", "2021-12-31")
+    s = pd.Series(100000 * np.exp(np.linspace(0, 0.6, len(idx))), index=idx)        # Strategie +82 %
+    e = pd.Series(50 * np.exp(np.linspace(0, 0.2, len(idx))), index=idx)            # ETF +22 %
+    a = backtest.mix(s, 1.0, e, 1.0, CFG)
+    assert a["end_pre"] == pytest.approx(s.iloc[-1])
+    b = backtest.mix(s, 1.0, e, 0.0, CFG)
+    assert b["end_pre"] == pytest.approx(100000 * (1 - CFG.cost) * e.iloc[-1] / e.iloc[0])
+    assert b["end_after"] < b["end_pre"]                                              # Steuer auf ETF-Gewinn
+    c = backtest.mix(s, 1.0, e, 0.3, CFG)
+    assert b["end_pre"] < c["end_pre"] < a["end_pre"] and c["taxes_rebal"] == 0     # Strategie stärker → Strategie wird verkauft
+    d = backtest.mix(e / e.iloc[0] * 100000, 1.0, s, 0.3, CFG)                       # ETF stärker → ETF-Verkauf wird versteuert
+    assert d["taxes_rebal"] > 0

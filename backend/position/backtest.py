@@ -304,6 +304,84 @@ def report(m: engine.Market, meta: dict, start: str, cfg: Config, strategy: str 
     return rep
 
 
+# ---------------------------------------------------------------- Mischung Welt-ETF + Langfrist-Strategie
+def mix(strat_eq: pd.Series, liq_factor: float, etf: pd.Series, w: float, cfg: Config = CFG) -> dict:
+    """Depot aus Welt-ETF (Anteil 1−w) und Langfrist-Strategie (Anteil w), Ausgleich am ersten Handelstag jedes Jahres.
+    strat_eq: Depotwert der Strategie im Lauf MIT Steuern (realisierte Gewinne innerhalb der Strategie schon versteuert).
+    ETF: Kauf/Verkauf 0,10 %, Gewinne beim Verkauf mit 26,375 % auf 70 % (Teilfreistellung), ETF-Verluste in eigenen Topf.
+    Näherungen: Entnahmen aus der Strategie beim Ausgleich ohne Extra-Steuer (Bestände wechseln dort ohnehin vierteljährlich,
+    kaum unrealisierte Gewinne); am Ende Strategie-Anteil × liq_factor (Steuer auf offene Gewinne wie im Einzellauf); keine Vorabpauschale."""
+    idx = strat_eq.index
+    e = etf.reindex(idx).ffill().bfill()
+    rs, re = strat_eq.pct_change().fillna(0.0), e.pct_change().fillna(0.0)
+    cap = cfg.start_capital
+    S = cap * w
+    U = cap * (1 - w) * (1 - cfg.cost)
+    B, pot, taxes, costs = cap * (1 - w), 0.0, 0.0, cap * (1 - w) * cfg.cost
+    years = pd.Series(idx, index=idx).groupby(idx.year).first()
+    reb = set(years.iloc[1:])
+    vals = []
+    for t in idx:
+        S *= 1 + rs[t]
+        U *= 1 + re[t]
+        if t in reb and 0 < w < 1:
+            tot = S + U
+            tu = tot * (1 - w)
+            if U > tu:                                          # ETF verkaufen → Strategie
+                x = U - tu
+                g = x * (1 - B / U) if U > 0 else 0.0
+                tx = 0.0
+                if g < 0:
+                    pot += -g
+                else:
+                    use = min(pot, g)
+                    pot -= use
+                    tx = (g - use) * (1 - cfg.etf_partial_exemption) * cfg.tax
+                B *= 1 - x / U
+                U -= x
+                c = x * cfg.cost
+                S += x - tx - c
+                taxes, costs = taxes + tx, costs + c
+            else:                                               # Strategie verkaufen → ETF
+                y = tu - U
+                c = y * cfg.cost * 2
+                S -= y
+                U += y - c
+                B += y - c
+                costs += c
+        vals.append((t, S + U))
+    v = pd.Series(dict(vals))
+    g = max(0.0, U - B)
+    use = min(pot, g)
+    etf_tax = (g - use) * (1 - cfg.etf_partial_exemption) * cfg.tax
+    end_after = U - etf_tax + S * liq_factor
+    yrs = (idx[-1] - idx[0]).days / 365.25
+    m = metrics(v)
+    ann = (v.groupby(v.index.year).last() / pd.concat([pd.Series({idx[0].year: cap}), v.groupby(v.index.year).last().shift(1).dropna()]).sort_index() - 1)
+    return {"w": w, "end_pre": m["end"], "end_after": end_after, "cagr_after": (end_after / cap) ** (1 / yrs) - 1, "cagr_pre": m["cagr"],
+            "mdd": m["mdd"], "sharpe": m["sharpe"], "taxes_rebal": taxes, "costs": costs,
+            "worst_year": float(ann.min()), "worst_year_y": int(ann.idxmin()), "years": {int(k): round(float(x), 4) for k, x in ann.items()},
+            "mdd_2122": float((1 - v.loc["2021":"2022"] / v.loc["2021":"2022"].cummax()).max())}
+
+
+def mix_report(m: engine.Market, start: str, cfg: Config, etf_ticker: str = "ACWI") -> list[dict]:
+    post = run_baseline(m, start, cfg, tax=True)
+    f = engine.liquidate_after_tax(post, cfg) / float(post["equity"].iloc[-1])
+    etf = _yf(etf_ticker)["Close"]
+    out = [mix(post["equity"], f, etf, w, cfg) for w in (0.0, 0.2, 0.3, 0.5, 1.0)]
+    e = lambda x: f"{x:,.0f} €".replace(",", ".")
+    p = lambda x: f"{x * 100:+.1f} %".replace(".", ",")
+    print(f"\n===== Mischung Welt-ETF ({etf_ticker}) + Langfrist-Strategie, Ausgleich jährlich, {post['equity'].index[0]:%Y-%m-%d} – {post['equity'].index[-1]:%Y-%m-%d} =====")
+    print("  ETF/Strategie   Ende n. St.   CAGR n. St.  CAGR v. St.  Max DD   DD 2021/22  Sharpe  schlechtestes Jahr  Steuer Ausgleich")
+    for r in out:
+        print(f"  {round((1 - r['w']) * 100):>3}/{round(r['w'] * 100):<3}       {e(r['end_after']):>13} {p(r['cagr_after']):>10} {p(r['cagr_pre']):>11} {p(-r['mdd']):>8} {p(-r['mdd_2122']):>10}"
+              f"  {r['sharpe']:.2f}   {p(r['worst_year'])} ({r['worst_year_y']})   {e(r['taxes_rebal'])}")
+    print("  Jahresrenditen (vor Liquidationssteuer):")
+    for r in out:
+        print(f"  {round((1 - r['w']) * 100):>3}/{round(r['w'] * 100):<3} " + " ".join(f"{y}:{v * 100:+.0f}%" for y, v in r["years"].items()))
+    return out
+
+
 def print_report(rep: dict, title: str):
     e = lambda x: f"{x:,.0f} €".replace(",", ".")
     p = lambda x: "–" if x is None else f"{x * 100:+.1f} %".replace(".", ",")
@@ -348,6 +426,13 @@ def main(argv=None):
     x = ap.parse_args(argv)
     if x.cmd == "prices":
         prices(int(x.a), int(x.b))
+        return 0
+    if x.cmd == "mix":
+        cfg = Config()
+        m, meta = load_market(x.a, x.universe, cfg)
+        out = mix_report(m, x.start, cfg)
+        if x.out:
+            Path(x.out).write_text(json.dumps(out, ensure_ascii=False, default=float))
         return 0
     cfg = Config(momentum=x.momentum, trail_atr=x.trail, sizing=x.sizing, use_regime=not x.no_regime, risk_per_atr=x.risk,
                  max_weight=x.maxw, rebalance=x.rebalance)
