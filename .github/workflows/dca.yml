@@ -1,0 +1,26 @@
+name: Sparplan × Marktampel
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/profit-study]
+    paths: [.github/workflows/dca.yml, tools/research/dca_study.py]
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  study:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python tools/research/dca_study.py
