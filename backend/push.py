@@ -243,12 +243,15 @@ def langfrist_message(today: str, sent: dict, lf: dict | None = None) -> list[di
     chg = lf.get("chg") or {}
     if 0 <= days_since <= 4 and (chg.get("out") or chg.get("inn")) and f"lf:{lf['since']}" not in sent:
         sent[f"lf:{lf['since']}"] = today
-        out.append({"title": "📈 Langfrist-Tausch heute", "body": f"Verkaufen: {names(chg.get('out') or [])}. Kaufen: {names(chg.get('inn') or [])}. Alle übrigen halten.",
-                    "url": APP + "?sec=long", "tag": "kairo-lf"})
+        jan = d.month == 1          # Januar: zusätzlich ETF und Strategie-Depot wieder auf 70/30 bringen
+        out.append({"title": "📈 Strategie-Tausch heute", "body": f"Verkaufen: {names(chg.get('out') or [])}. Kaufen: {names(chg.get('inn') or [])}. Alle übrigen halten."
+                    + (" Außerdem Jahres-Ausgleich: ETF und Strategie-Depot wieder auf 70/30 bringen (Heute → Dein Geld)." if jan else ""),
+                    "url": APP + "?sec=entry", "tag": "kairo-lf"})
     elif days_to is not None and 0 < days_to <= 3 and f"lf-pre:{lf['next']}" not in sent:
         sent[f"lf-pre:{lf['next']}"] = today
-        out.append({"title": f"📈 Langfrist-Tausch in {days_to} {'Tag' if days_to == 1 else 'Tagen'}", "body": f"Stand heute raus: {names(lf.get('out') or [])}. Rein: {names(lf.get('inn') or [])}.",
-                    "url": APP + "?sec=long", "tag": "kairo-lf"})
+        out.append({"title": f"📈 Strategie-Tausch in {days_to} {'Tag' if days_to == 1 else 'Tagen'}", "body": f"Stand heute raus: {names(lf.get('out') or [])}. Rein: {names(lf.get('inn') or [])}. Liste zum Abhaken: Einstieg."
+                    + (" Im Januar auch ETF und Strategie-Depot auf 70/30 ausgleichen." if _dt.date.fromisoformat(lf["next"]).month == 1 else ""),
+                    "url": APP + "?sec=entry", "tag": "kairo-lf"})
     return out
 
 

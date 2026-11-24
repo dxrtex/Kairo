@@ -3881,7 +3881,8 @@ const SHORT = { drawdown: "Rückgang", no_crash: "kein Crash", structure: "unter
   mbi: "MBI-Signal", crv: "CRV ≥ 2", cap: "Börsenwert", liquidity: "Liquidität", price: "Kurs ≥ 1", history: "Historie" };
 const gradeBadge = (r, big) => r.grade ? `<span class="grd g-${r.grade.g}${big ? " big" : ""}" title="Qualitätsstufe ${r.grade.g} – aus dem Backtest, siehe Score antippen">${r.grade.g}</span>` : "";
 const SWING_OFF = true;
-const SWING_GLOSS = new Set(["score", "crv", "zone", "trend", "grade", "status", "ko", "lev", "r", "base", "stop", "ema20x", "mom", "paper", "dm", "exp", "mbi", "div"]);   // Swing-Begriffe nicht mehr im Lexikon   // 24.11.2026: Swing-Status (Treffer, Konsolidierung, kaufbereit) nirgends mehr anzeigen
+const KM_TOT = SWING_OFF ? 8 : 11, KM_NEAR = SWING_OFF ? 6 : 9;   // Kriterien-Zählung: Strategie x/8 statt Swing x/11
+const SWING_GLOSS = new Set(["v_hit", "v_short", "v_go", "v_trend", "score", "crv", "zone", "trend", "grade", "status", "ko", "lev", "r", "base", "stop", "ema20x", "mom", "paper", "dm", "exp", "mbi", "div"]);   // Swing-Begriffe nicht mehr im Lexikon   // 24.11.2026: Swing-Status (Treffer, Konsolidierung, kaufbereit) nirgends mehr anzeigen
 const statusBadge = r => SWING_OFF ? "" : r.passed ? `<span class="status st-bereit">Treffer</span>${kPill(r)}`
   : r.fast_hit ? `<span class="status st-abwarten">Fast-Treffer · fehlt: ${esc(shortCrit(r.missing[0]))}</span>`
   : r.near_hit ? `<span class="status st-kein_setup">9/11 · fehlt: ${esc(r.missing.map(shortCrit).join(", "))}</span>`
@@ -3952,9 +3953,9 @@ const save = () => { try { wsTrack(); } catch (e) {} try { const { tableSort, ta
 
 // ---------- Begriffe kurz erklärt (ⓘ antippen) ----------
 const GLOSS = {
-  cal: ["Kalender", "„Nur wichtige“ zeigt Quartalszahlen deiner Aktien (Depot, Watchlist, Merkliste, Treffer), wichtige Wirtschaftstermine, den Verfall und große Börsengänge. „Alle“ zeigt jeden Termin aus dem Scan. Q = Quartalszahlen, Div = Dividende, % = Wirtschaftsdaten."],
-  scr: ["Screener", "Alle geprüften Aktien frei filtern – wie ein klassischer Screener, unabhängig von der Kairo-Regel (Treffer stehen unter „Treffer“). Kurse und Kennzahlen aus dem letzten Scan, alle Aktien ab 2 Mrd. $ Börsenwert. Mit ☆ speicherst du einen Screen: Kairo zeigt dann, welche Aktien neu hineinfallen."],
-  wind: ["Rückenwind / Gegenwind", "Kairo zählt drei Dinge zusammen: die Tendenz der Schlagzeilen der letzten 7 Tage (▲ +1, ▼ −1, höchstens ±2), das Analysten-Urteil (Kaufen +1, Verkaufen −1) und den Kurs heute (ab +2 % +1, ab −2 % −1). Ab +2 steht Rückenwind, ab −2 Gegenwind, dazwischen nichts. Eine Stimmungs-Zusammenfassung – kein Kaufsignal und kein Teil der Kairo-Regel."],
+  cal: ["Kalender", "„Nur wichtige“ zeigt Quartalszahlen deiner Aktien (Depot, Watchlist, Merkliste, Strategie), wichtige Wirtschaftstermine, den Verfall und große Börsengänge. „Alle“ zeigt jeden Termin aus dem Scan. Q = Quartalszahlen, Div = Dividende, % = Wirtschaftsdaten."],
+  scr: ["Screener", "Alle geprüften Aktien frei filtern – wie ein klassischer Screener, unabhängig von der Strategie (deren Aktien stehen unter „Kaufen“). Kurse und Kennzahlen aus dem letzten Scan, alle Aktien ab 2 Mrd. $ Börsenwert. Mit ☆ speicherst du einen Screen: Kairo zeigt dann, welche Aktien neu hineinfallen."],
+  wind: ["Rückenwind / Gegenwind", "Kairo zählt drei Dinge zusammen: die Tendenz der Schlagzeilen der letzten 7 Tage (▲ +1, ▼ −1, höchstens ±2), das Analysten-Urteil (Kaufen +1, Verkaufen −1) und den Kurs heute (ab +2 % +1, ab −2 % −1). Ab +2 steht Rückenwind, ab −2 Gegenwind, dazwischen nichts. Eine Stimmungs-Zusammenfassung – kein Kaufsignal und kein Teil der Strategie."],
   score: ["Score", "Kairo-Bewertung 0–100 für Treffer: je näher am idealen Einstieg (Zone, Divergenz, MACD-Wende, CRV), desto höher. Für die Rangfolge nutzt Kairo inzwischen das Vormomentum – der Score war in der Forschung kein belegtes Merkmal."],
   crv: ["CRV (Chance-Risiko)", "Möglicher Gewinn bis zum Ziel geteilt durch das Risiko bis zum Stop. CRV 3 heißt: 3 € Chance je 1 € Risiko."],
   vola: ["Volatilität", "Wie stark die Aktie schwankt: Schwankung der Tagesrenditen der letzten 30 Tage, aufs Jahr hochgerechnet. Über 50 % = sehr unruhig – mit Hebel besonders riskant."],
@@ -4153,7 +4154,7 @@ function lfCurveHtml(L, big) { const C = L && L.curve; if (!C || !C.d || C.d.len
       <line x1="${P}" x2="${W - P}" y1="${base.toFixed(1)}" y2="${base.toFixed(1)}" stroke="var(--line)" stroke-dasharray="4 4"/>
       ${ln.slice().reverse().map(([k, , col, w]) => `<path d="${path(C[k])}" fill="none" stroke="${col}" stroke-width="${w}" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>`).join("")}</svg>
     <div class="lf-cvl">${ln.map(([k, l, col]) => `<span><i style="background:${col}"></i>${l} <b class="${last(C[k]) >= 0 ? "up" : "down"}">${sgnPct(last(C[k]), 1)}</b></span>`).join("")}<span class="muted">seit ${fmtD(C.start)}</span></div>
-    ${big ? `<p class="muted lf-note">Modell: an jedem Tauschtermin die Top ${L.rule.n} gleich gewichtet, ohne Kosten und Steuern. ${Math.round((1 - C.mix) * 100)}/${Math.round(C.mix * 100)} mit dem S&P 500 als ETF-Näherung. Die Kurve beginnt, sobald die Kurse 12 Monate Vorlauf haben.</p>` : ""}</div>`; }
+    ${big ? `<p class="muted lf-note">Modell: an jedem Tauschtermin die Top ${L.rule.n} gleich gewichtet, ohne Kosten und Steuern. ${Math.round((1 - C.mix) * 100)}/${Math.round(C.mix * 100)} mit dem ${C.etf === "MSCI World" ? "MSCI World (URTH) als Welt-ETF" : "S&P 500 als ETF-Näherung"}. Die Kurve beginnt, sobald die Kurse 12 Monate Vorlauf haben.</p>` : ""}</div>`; }
 function longTodayHtml() {
   const L = LF(); if (!L || !L.hold || !L.hold.length) return "";
   const dn = lfDays(L.next), soon = lfSwapSoon(L);
@@ -5105,6 +5106,7 @@ const scanFetch = f => data && data.generated ? fetch(`data/${f}?v=${encodeURICo
 function loadSearch() {
   if (!searchLoading) searchLoading = scanFetch("search.json").then(r => r.json())
     .then(d => { searchIdx = d.rows || []; searchGen = d.generated || ""; fxEur = d.fx_eur || { EUR: 1 };
+      if (SWING_OFF) searchIdx.forEach(r => { r.m = r.lc ?? null; r.s = r.lc === 8 ? "hit" : r.lc === 7 ? "fast" : null; });   // x/8 der Strategie überall statt Swing x/11
       try { (JSON.parse(localStorage.getItem("kairo-ext") || "[]")).forEach(x => { if (!searchIdx.some(r => r.t === x.t)) searchIdx.push(x); }); } catch (e) {}
       render(); }).catch(() => { searchIdx = []; render(); });
   return searchLoading;
@@ -5127,13 +5129,13 @@ function tipHtml(h) {
   return `<div class="tip tone-${esc(h.tone)}">${d != null && dl ? `<span class="days">${d === 0 ? "heute<small>letzter Tag</small>" : `${d}<small>${d === 1 ? "Tag" : "Tage"} ${esc(dl)}</small>`}</span>` : ""}<b class="t">${esc(h.title)}</b>${esc(h.text)}</div>`;
 }
 // Such-Karte (Wunsch 13.11.: professioneller, Glas-Optik wie der Rest): Kopf mit Logo, großer Kurs, Wertentwicklung,
-// Kairo-Fortschritt als 11er-Leiste, Kennzahlen, Hinweis, klare Aktionen. Alle Werte aus search.json (Stand letzter Scan, Kurs ggf. live).
+// Kriterien-Fortschritt als Leiste (Strategie 8, früher Swing 11), Kennzahlen, Hinweis, klare Aktionen. Alle Werte aus search.json (Stand letzter Scan, Kurs ggf. live).
 function searchCard(r) {
   const inRes = data.results.some(x => x.ticker === r.t), tone = r.tone || "gray", m = r.m ?? 0;
   const chg = (v, l) => v == null ? "" : `<span class="sc-pf ${v >= 0 ? "up" : "down"}"><em>${l}</em>${sgnPct(v, Math.abs(v) < .1 ? 1 : 0)}</span>`;
   const dh = r.H > 0 && r.c > 0 ? r.c / r.H - 1 : null, tr = r.e200 > 0 && r.c > 0 ? (r.c > r.e200 ? (r.e50 > r.e200 ? ["up", "Aufwärtstrend"] : ["", "über EMA 200"]) : ["down", "unter EMA 200"]) : null;
   const ed = r.ed && daysUntil(r.ed) >= 0 ? r.ed : null, edN = ed ? daysUntil(ed) : null;
-  const st = r.s === "hit" ? ["up", "Kairo-Treffer"] : r.s === "fast" ? ["gold", "Fast-Treffer"] : m >= 9 ? ["", "beobachten"] : ["muted", r.title && /Suchraster/.test(r.title) ? "außerhalb des Rasters" : "kein Signal"];
+  const st = SWING_OFF ? (r.lr && LF() && r.lr <= LF().rule.n ? ["up", "Top 20"] : m >= KM_NEAR ? ["gold", "Watchlist-Niveau"] : r.lr ? ["", `Rang ${r.lr}`] : ["muted", "nicht in der Auswahl"]) : r.s === "hit" ? ["up", "Kairo-Treffer"] : r.s === "fast" ? ["gold", "Fast-Treffer"] : m >= 9 ? ["", "beobachten"] : ["muted", r.title && /Suchraster/.test(r.title) ? "außerhalb des Rasters" : "kein Signal"];
   const fact = (l, v, cls = "") => v == null || v === "" ? "" : `<div class="sc-f"><span>${l}</span><b class="${cls}">${v}</b></div>`;
   return `<article class="scard tone-${esc(tone)}">
     <header class="sc-h">${cfAv(r.t)}<div class="sc-id"><h3 title="${esc(r.n)}">${esc(r.n)}</h3>
@@ -5141,8 +5143,8 @@ function searchCard(r) {
       <span class="sc-favs">${favBtn(r.t)}${wlPickBtn(r.t, "fav")}</span></header>
     <div class="sc-px"><b>${fmt(r.c)}</b><small>${esc(r.cur || "")}</small>${r.d1 != null ? `<span class="sc-d ${r.d1 >= 0 ? "up" : "down"}">${sgnPct(r.d1, 2)}</span>` : ""}${r.live ? `<i class="sc-live" title="live">● live</i>` : ""}</div>
     <div class="sc-pfs">${chg(r.d5, "1W")}${chg(r.m1, "1M")}${chg(r.m3, "3M")}${chg(r.ytd, "YTD")}</div>
-    <div class="sc-k"><div class="sc-kh"><span>Kairo-Kriterien</span><b>${m}<small>/11</small></b><em class="sc-st ${st[0]}">${st[1]}</em></div>
-      <div class="sc-bar" role="img" aria-label="${m} von 11 Kriterien erfüllt">${Array.from({ length: 11 }, (_, k) => `<i class="${k < m ? (m === 11 ? "on hit" : m >= 9 ? "on near" : "on") : ""}"></i>`).join("")}</div></div>
+    <div class="sc-k"><div class="sc-kh"><span>${SWING_OFF ? "Strategie-Kriterien" : "Kairo-Kriterien"}</span><b>${r.m == null ? "–" : m}<small>/${KM_TOT}</small></b><em class="sc-st ${st[0]}">${st[1]}</em></div>
+      <div class="sc-bar" role="img" aria-label="${m} von ${KM_TOT} Kriterien erfüllt">${Array.from({ length: KM_TOT }, (_, k) => `<i class="${k < m ? (m === KM_TOT ? "on hit" : m >= KM_NEAR ? "on near" : "on") : ""}"></i>`).join("")}</div></div>
     <div class="sc-fs">${fact("Börsenwert", r.mc ? fmtCap(r.mc) : null)}${fact("Trend", tr && tr[1], tr && tr[0])}${fact("Vom Hoch", dh != null ? sgnPct(dh, 0) : null, dh != null && dh < -.2 ? "down" : "")}
       ${fact("RSI 14", r.rsi != null ? fmt(r.rsi, 0) : null, r.rsi >= 70 ? "down" : r.rsi <= 30 ? "up" : "")}${fact("Schwankung", r.vola != null ? pct(r.vola, 0) : null)}${fact("Quartalszahlen", ed ? (edN === 0 ? "heute" : edN === 1 ? "morgen" : `in ${edN} T.`) : "–", edN != null && edN <= 7 ? "gold" : ed ? "" : "muted")}</div>
     ${(f => f && f.sf ? (G => `<div class="sc-sf">${sfSvg(f.sf, 66)}<div class="sc-sft"><span>Fundamental-Check</span><b style="color:rgb(${sfCol(sfSum(f))})">${sfSum(f)}/30</b>${G ? `<em>Faktor-Rating <i class="fc-g g-${G.g}">${G.g}</i></em>` : ""}<small>${SF_AX.map(([l], k) => `${l} ${f.sf[k]}`).join(" · ")}</small></div></div>`)(factorGrade(r.t)) : "")(fundOf(r.t))}
@@ -5168,7 +5170,7 @@ function searchHtml() {
 }
 
 // ---------- Screener über alle Aktien (Runde 13.11., wie Finviz): frei filtern und sortieren – unabhängig von der Kairo-Regel ----------
-const SCR_PRE = [["", "Alle"], ["hi52", "Nahe 52-W-Hoch"], ["os", "Überverkauft (RSI < 30)"], ["mom", "Starkes Momentum"], ["pull", "Rücksetzer im Aufwärtstrend"], ["earn", "Zahlen in 14 Tagen"], ["ins", "Insider kaufen"], ["k9", "Kairo ab 9/11"], ["qual", "Qualität günstig"], ["divs", "Dividenden-Stars"], ["grow", "Starkes Wachstum"]];
+const SCR_PRE = [["", "Alle"], ["hi52", "Nahe 52-W-Hoch"], ["os", "Überverkauft (RSI < 30)"], ["mom", "Starkes Momentum"], ["pull", "Rücksetzer im Aufwärtstrend"], ["earn", "Zahlen in 14 Tagen"], ["ins", "Insider kaufen"], ["k9", SWING_OFF ? "Strategie ab 6/8" : "Kairo ab 9/11"], ["qual", "Qualität günstig"], ["divs", "Dividenden-Stars"], ["grow", "Starkes Wachstum"]];
 const SCR_DEF = ["n", "c", "d1", "m1", "ytd", "hi", "tr", "pe", "sf", "m"];   // Standard-Spalten (Übersicht); weitere über „Spalten“
 const SCR_COLS = [["n", "Aktie"], ["c", "Kurs"], ["d1", "1T"], ["d5", "1W"], ["m1", "1M"], ["m3", "3M"], ["ytd", "YTD"], ["hi", "vom Hoch"], ["rsi", "RSI"], ["tr", "Trend"], ["mc", "Börsenwert"], ["pe", "KGV"], ["dy", "Div."], ["sf", "Flocke"], ["spf", "Short %"], ["hpi", "Institut. %"], ["fu", "Fonds"], ["sec", "Sektor"], ["m", "Kairo"],
   ["fpe", "KGV erw."], ["ps", "KUV"], ["pb", "KBV"], ["ev", "EV/EBITDA"], ["rg", "Umsatz +"], ["eg", "Gewinn +"], ["gm", "Bruttomarge"], ["om", "Op. Marge"], ["pm", "Nettomarge"],
@@ -5239,7 +5241,7 @@ function scrRows(F0) {
 }
 function scrPreset(k) { const b = { reg: (state.scf || {}).reg || "" };
   state.scf = k === "hi52" ? { ...b, hi: "near", tr: "up" } : k === "os" ? { ...b, rsi: "lo" } : k === "mom" ? { ...b, pf: ".2", pfk: "m3", tr: "up" } : k === "pull" ? { ...b, tr: "up", hi: "pull" }
-    : k === "earn" ? { ...b, earn: 1 } : k === "ins" ? { ...b, ins: 1 } : k === "k9" ? { ...b, met: "9" }
+    : k === "earn" ? { ...b, earn: 1 } : k === "ins" ? { ...b, ins: 1 } : k === "k9" ? { ...b, met: String(KM_NEAR) }
     : k === "qual" ? { ...b, fsf: "20", pe: "lo" } : k === "divs" ? { ...b, dy: ".03", fde: "100" } : k === "grow" ? { ...b, frg: ".2", fpm: "0" } : b;
   if (["qual", "divs", "grow"].includes(k)) state.scs = k === "divs" ? { k: "dy", asc: false } : { k: "sf", asc: false }; state.scfPre = k; scrMore = 0; save(); render(); }
 function screenerHtml() {
@@ -5273,7 +5275,7 @@ function screenerHtml() {
     : k === "cr" || k === "beta" ? (v => v == null ? `<span class="muted">–</span>` : fmt(v, 2))(scrVal(r, k))
     : k === "rm" ? (v => v == null ? `<span class="muted">–</span>` : (([l, c]) => `<span class="${c}">${l}</span>`)(SCR_RM(v)))(scrVal(r, k))
     : k === "mc" ? (r.mc ? fmtCap(r.mc) : "–") : k === "sec" ? `<span class="muted">${esc(r.sec || "–")}</span>`
-    : r.m == null ? `<span class="muted">–</span>` : `<span class="km${r.s === "hit" ? " hit" : r.s === "fast" ? " fast" : ""}"><b>${r.m}/11</b><i><u style="width:${Math.round(r.m / 11 * 100)}%"></u></i></span>`;
+    : r.m == null ? `<span class="muted">–</span>` : `<span class="km${r.s === "hit" ? " hit" : r.s === "fast" ? " fast" : ""}"><b>${r.m}/${KM_TOT}</b><i><u style="width:${Math.round(r.m / KM_TOT * 100)}%"></u></i></span>`;
   // Kopf wie bei TradingView/Koyfin (16.11.2026 „geht es professioneller?“): eine Leiste – Vorlage ▾, aktive Filter als Chips mit ×,
   // „+ Filter“ öffnet ein Fenster mit Reitern (Allgemein · Kurs & Technik · Fundamental · Kairo & Smart Money), rechts Anzahl und Spalten.
   const FD = [["Allgemein", [["reg", "Region", R_REG], ["sec", "Sektor", [["", "alle"], ...secs.map(x => [x, x])]], ["cap", "Börsenwert", R_CAP]]],
@@ -5284,7 +5286,7 @@ function screenerHtml() {
     ...(fd ? [["Fundamental", [["pe", "KGV", R_PE], ["dy", "Dividende", R_DY], ["frg", "Umsatzwachstum", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]]],
       ["fpm", "Nettomarge", [["", "egal"], ["0", "positiv"], [".1", "ab 10 %"], [".2", "ab 20 %"]]], ["fde", "Verschuldung", [["", "egal"], ["50", "unter 0,5"], ["100", "unter 1"]]],
       ["fsf", "Schneeflocke", [["", "egal"], ["15", "ab 15/30"], ["20", "ab 20/30"], ["24", "ab 24/30"]]]]]] : []),
-    ["Kairo & Smart Money", [["met", "Kairo-Kriterien", [["", "egal"], ["7", "ab 7/11"], ["9", "ab 9/11"], ["10", "ab 10/11"], ["11", "11/11"]]],
+    ["Kairo & Smart Money", [["met", SWING_OFF ? "Strategie-Kriterien" : "Kairo-Kriterien", SWING_OFF ? [["", "egal"], ["6", "ab 6/8"], ["7", "ab 7/8"], ["8", "8/8"]] : [["", "egal"], ["7", "ab 7/11"], ["9", "ab 9/11"], ["10", "ab 10/11"], ["11", "11/11"]]],
       ["earn", "Quartalszahlen", [["", "egal"], ["1", "in den nächsten 14 Tagen"]]], ["ins", "Insider", [["", "egal"], ["1", "kaufen (90 Tage)"]]],
       ...(fd ? [["fspf", "Leerverkauf (Short-Quote)", [["", "egal"], ["lo", "unter 3 %"], [".1", "ab 10 %"], [".2", "ab 20 %"]]], ["fhpi", "Anteil Institutionen", [["", "egal"], [".5", "ab 50 %"], [".8", "ab 80 %"], ["lo", "unter 20 %"]]],
         ["ffu", "Hedgefonds (13F)", [["", "egal"], ["buy", "Top-Fonds kaufen"], ["sell", "Top-Fonds verkaufen"]]]] : [])]]];
@@ -5652,7 +5654,7 @@ function spDrillHtml(key) {
   const nOwn = all.filter(ownOf).length;
   const wr = all.filter(r => r[nm] != null), up = wr.filter(r => r[nm] > 0).length;
   const li = top.map((r, i) => { const sr = byTicker(r.t), ow = ownOf(r); return `<button class="sp-s${ow ? " own" : ""}" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}>
-      <span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(r.n || r.t)}</b><em>${ow === "dep" ? '<small class="sp-own dep">Depot</small> ' : ow === "wat" ? '<small class="sp-own">★ Watchlist</small> ' : ""}${esc(tkClean ? tkClean(r.t) : r.t)}${rg === "all" && RGN[r.hr || r.r] ? ` · ${RGN[r.hr || r.r]}` : ""} · ${r.mc ? fmtCap(r.mc) : `${fmt(r.c)} ${esc(r.cur || "")}`}${r.mc && capSum ? ` · Gewicht ${pct(r.mc / capSum, 0)}` : ""}${r.m != null && r.m >= 9 && !(sr && sr.passed) ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}</em></span>
+      <span class="sp-i">${i + 1}</span><span class="sp-sn"><b>${esc(r.n || r.t)}</b><em>${ow === "dep" ? '<small class="sp-own dep">Depot</small> ' : ow === "wat" ? '<small class="sp-own">★ Watchlist</small> ' : ""}${esc(tkClean ? tkClean(r.t) : r.t)}${rg === "all" && RGN[r.hr || r.r] ? ` · ${RGN[r.hr || r.r]}` : ""} · ${r.mc ? fmtCap(r.mc) : `${fmt(r.c)} ${esc(r.cur || "")}`}${r.mc && capSum ? ` · Gewicht ${pct(r.mc / capSum, 0)}` : ""}${r.m != null && r.m >= KM_NEAR && !(sr && sr.passed) ? ` · ${r.m}/${KM_TOT}` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}</em></span>
       <span class="sp-v ${r[nm] == null ? "" : r[nm] >= 0 ? "up" : "down"}">${r[nm] == null ? "–" : sgnPct(r[nm], 1)}</span></button>`; }).join("");
   return `<h3 style="margin:0 0 4px">${esc(x.n)}</h3>
     <p class="muted" style="margin:0 0 12px;font-size:13px">${esc(spKey(x))} ${sgnPct(x[k], 1)} ${esc(kn)} · ${wr.length ? `${up} von ${wr.length} Aktien im Plus` : ""}${nOwn ? ` · <b>${nOwn} aus deiner Liste</b>` : ""}</p>
@@ -5762,8 +5764,8 @@ function moversHtml() {
   const f = SP_IDX[k], reg = hmReg(), down = state.mvSide === "down", mine = myTickers();
   const near = !!state.mvNear, own = !!state.mvMine, lim = state.mvMore ? 30 : 10;
   const live = !!mktLive(), all = vol
-    ? hmRows(reg, live).filter(r => r.rv != null && r.rv >= MV_RV && r.d1 != null && (!near || (r.m != null && r.m >= 9)) && (!own || mine.has(r.t))).sort((a, b) => b.rv - a.rv)
-    : hmRows(reg, live).filter(r => r[f] != null && (!near || (r.m != null && r.m >= 9)) && (!own || mine.has(r.t)) && (down ? r[f] < 0 : r[f] > 0)).sort((a, b) => down ? a[f] - b[f] : b[f] - a[f]);
+    ? hmRows(reg, live).filter(r => r.rv != null && r.rv >= MV_RV && r.d1 != null && (!near || (r.m != null && r.m >= KM_NEAR)) && (!own || mine.has(r.t))).sort((a, b) => b.rv - a.rv)
+    : hmRows(reg, live).filter(r => r[f] != null && (!near || (r.m != null && r.m >= KM_NEAR)) && (!own || mine.has(r.t)) && (down ? r[f] < 0 : r[f] > 0)).sort((a, b) => down ? a[f] - b[f] : b[f] - a[f]);
   const xs = all.slice(0, lim);
   const why = t => {                                    // neueste Schlagzeile der letzten 3 Tage (Scan: Stimmung/Briefing) – „warum bewegt?“
     const bj = jsonData["briefing.json"], sr0 = byTicker(t), ms = d => { const x = Date.parse(d); return isNaN(x) ? 0 : x; };
@@ -5771,7 +5773,7 @@ function moversHtml() {
     return l[0] || null; };
   const one = (r, i) => { const sr = byTicker(r.t), rv = !vol && k === "d1" && r.rv != null && r.rv >= 1.5, nw = (k === "d1" || k === "w1") ? why(r.t) : null;
     return `<button class="sp-s mv-r" ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}><span class="sp-i">${i + 1}</span>${cfAv(r.t)}
-      <span class="sp-sn"><b>${esc(r.n || r.t)}${mine.has(r.t) ? ` <small class="mv-own">●</small>` : ""}</b><em>${esc(tkClean(r.t))} · ${fmt(r.c)} ${esc(r.cur || "")}${r.m != null ? ` · ${r.m}/11` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}${rv ? ` · <span class="mv-rv">${fmt(r.rv, 1)}× Volumen</span>` : ""}</em>${nw ? `<em class="mv-why">${IC.news} ${esc(String(nw.t).slice(0, 110))}</em>` : ""}</span>
+      <span class="sp-sn"><b>${esc(r.n || r.t)}${mine.has(r.t) ? ` <small class="mv-own">●</small>` : ""}</b><em>${esc(tkClean(r.t))} · ${fmt(r.c)} ${esc(r.cur || "")}${r.m != null ? ` · ${r.m}/${KM_TOT}` : ""}${sr && sr.passed ? " " + kPill(sr, false) : r.s === "fast" ? " · Fast-Treffer" : ""}${rv ? ` · <span class="mv-rv">${fmt(r.rv, 1)}× Volumen</span>` : ""}</em>${nw ? `<em class="mv-why">${IC.news} ${esc(String(nw.t).slice(0, 110))}</em>` : ""}</span>
       <span class="mv-c mv-px" data-lpx="mv:${esc(r.t)}" data-v="${r.c}">${fmt(r.c)} <small>${esc(r.cur || "")}</small></span><span class="mv-c mv-vd">${r.vd ? (v => v >= 1e9 ? fmt(v / 1e9, 2) + " Mrd." : fmt(v / 1e6, v >= 1e8 ? 0 : 1) + " Mio.")(r.vd) : "–"}<small>${r.rv != null ? fmt(r.rv, 1) + "× normal" : ""}</small></span><span class="mv-c">${r.mc ? fmtCap(r.mc) : "–"}</span>
       <span class="sp-v ${r[f] >= 0 ? "up" : "down"}">${vol ? `<b class="mv-rvb">${fmt(r.rv, 1)}×</b>` : ""}${sgnPct(r[f], 2)}</span></button>`; };
   // Volumen: nach Richtung getrennt – steigt der Kurs bei hohem Volumen, kaufen große Anleger (Kaufdruck), fällt er, verkaufen sie
@@ -5781,11 +5783,11 @@ function moversHtml() {
   const more = vol ? Math.max(vUp.length, vDn.length) > 5 : all.length > 10;
   return `<div class="hcard mv-card">${hHead(vol ? "Ungewöhnliches Volumen" : down ? "Verlierer" : "Gewinner").replace(/<\/div>$/, fsBtn("mv") + "</div>")}
     <div class="sp-seg">${[["up", "Gewinner"], ["down", "Verlierer"], ["vol", "Volumen"]].map(([v, l]) => `<button class="${(state.mvSide || "up") === v ? "on" : ""}" data-mvside="${v}">${l}</button>`).join("")}</div>
-    <div class="sp-tg mv-flt"><button class="opt${own ? " on" : ""}" data-mvmine title="nur Depot und Watchlist">★ Meine</button><button class="opt${near ? " on" : ""}" data-mvnear title="nur Aktien mit mindestens 9 von 11 Kairo-Kriterien">≥ 9/11</button><span class="mv-ctx">${esc(hmName(reg))} · ${esc(kn)}</span></div>
+    <div class="sp-tg mv-flt"><button class="opt${own ? " on" : ""}" data-mvmine title="nur Depot und Watchlist">★ Meine</button><button class="opt${near ? " on" : ""}" data-mvnear title="nur Aktien mit mindestens ${KM_NEAR} von ${KM_TOT} Kriterien">≥ ${KM_NEAR}/${KM_TOT}</button><span class="mv-ctx">${esc(hmName(reg))} · ${esc(kn)}</span></div>
     ${vol ? "" : `<div class="mv-head"><span></span><span></span><span>Aktie</span><span>Kurs</span><span>Handelsvolumen</span><span>Börsenwert</span><span>${esc(kn)}</span></div>`}
-    ${li || `<p class="muted">${vol ? `Heute keine Aktie mit ≥ ${MV_RV}× Volumen in dieser Auswahl${live ? " (bis jetzt)" : ""}.` : near ? "Keine Aktie mit ≥ 9/11 in dieser Auswahl." : "Keine Daten für diese Auswahl."}</p>`}
+    ${li || `<p class="muted">${vol ? `Heute keine Aktie mit ≥ ${MV_RV}× Volumen in dieser Auswahl${live ? " (bis jetzt)" : ""}.` : near ? `Keine Aktie mit ≥ ${KM_NEAR}/${KM_TOT} in dieser Auswahl.` : "Keine Daten für diese Auswahl."}</p>`}
     ${more ? `<button class="hlink" data-mvmore style="margin-top:6px">${state.mvMore ? "weniger zeigen" : vol ? "mehr zeigen" : `mehr zeigen (${Math.min(all.length, 30)})`}</button>` : ""}
-    <div class="note" style="margin:8px 0 0">${live ? "Tagsüber nur die größten Werte je Region. " : ""}${vol ? `Heute mindestens ${MV_RV}× so viel gehandelt wie im Schnitt der 20 Tage davor – oft steigen große Anleger ein (Kurs steigt) oder aus (Kurs fällt), etwa nach Zahlen, Übernahme-Gerüchten oder Analystenurteilen. ${live ? "Tagsüber zählt das Volumen bis jetzt – der Wert steigt bis Handelsschluss noch. " : ""}` : down ? "Starke Rücksetzer sind oft die Kandidaten von morgen – x/11 zeigt, wie nah eine Aktie an einem Kairo-Treffer ist." : "Zum Beobachten, nicht zum Hinterherkaufen: Kairo kauft Rücksetzer, keine Kurssprünge."} ● = in deinem Depot oder auf der Watchlist.${k === "d1" ? " „× Volumen“ = Handel ggü. dem 20-Tage-Schnitt – hohes Volumen heißt meist echte Nachricht." : ""}</div></div>`;
+    <div class="note" style="margin:8px 0 0">${live ? "Tagsüber nur die größten Werte je Region. " : ""}${vol ? `Heute mindestens ${MV_RV}× so viel gehandelt wie im Schnitt der 20 Tage davor – oft steigen große Anleger ein (Kurs steigt) oder aus (Kurs fällt), etwa nach Zahlen, Übernahme-Gerüchten oder Analystenurteilen. ${live ? "Tagsüber zählt das Volumen bis jetzt – der Wert steigt bis Handelsschluss noch. " : ""}` : down ? "Starke Rücksetzer sind oft die Kandidaten von morgen – x/11 zeigt, wie nah eine Aktie an einem Kairo-Treffer ist." : "Zum Beobachten – gekauft wird nur nach der Strategie am Tauschtermin."} ● = in deinem Depot oder auf der Watchlist.${k === "d1" ? " „× Volumen“ = Handel ggü. dem 20-Tage-Schnitt – hohes Volumen heißt meist echte Nachricht." : ""}</div></div>`;
 }
 document.addEventListener("click", e => {
   const hr = e.target.closest("[data-hmreg]"); if (hr) { state.hmReg = hr.dataset.hmreg; save(); render(); return; }
@@ -6041,7 +6043,7 @@ function fsMvHtml() {
   const reg = hmReg(), live = !!mktLive(), mine = myTickers(), F = state.fsMv || {};
   let xs = hmRows(reg, live).filter(r => vol ? r.rv != null && r.rv >= MV_RV && r.d1 != null : r[f] != null && (side === "down" ? r[f] < 0 : r[f] > 0));
   if (F.mine) xs = xs.filter(r => mine.has(r.t));
-  if (F.near) xs = xs.filter(r => r.m != null && r.m >= 9);
+  if (F.near) xs = xs.filter(r => r.m != null && r.m >= KM_NEAR);
   if (F.sec) xs = xs.filter(r => r.sec === F.sec);
   if (F.cap) xs = xs.filter(r => (r.mc || 0) >= F.cap);
   const s = fsSort("mv", vol ? "rv" : "ret"), g = r => s.k === "ret" ? r[f] * (side === "down" ? -1 : 1) : s.k === "mc" ? r.mc || 0 : s.k === "rv" ? r.rv || 0 : s.k === "m" ? r.m ?? -1 : s.k === "n" ? (r.n || r.t) : 0;
@@ -6050,14 +6052,14 @@ function fsMvHtml() {
   const head = `<div class="fs-ctl"><div class="sp-seg">${[["up", "Gewinner"], ["down", "Verlierer"], ["vol", "Volumen"]].map(([v, l]) => `<button class="${side === v ? "on" : ""}" data-mvside="${v}">${l}</button>`).join("")}</div>
     ${hmSel(reg)}
     ${vol ? "" : `<div class="sp-tg">${SP_PER.map(([v, l, t]) => `<button class="opt${v === k ? " on" : ""}" data-spper="${v}" title="${t}">${l}</button>`).join("")}</div>`}
-    <div class="fs-ctl2"><button class="kchip${F.mine ? " on" : ""}" data-fsmv="mine">★ nur meine</button><button class="kchip${F.near ? " on" : ""}" data-fsmv="near">≥ 9/11</button>
+    <div class="fs-ctl2"><button class="kchip${F.mine ? " on" : ""}" data-fsmv="mine">★ nur meine</button><button class="kchip${F.near ? " on" : ""}" data-fsmv="near">≥ ${KM_NEAR}/${KM_TOT}</button>
       <select data-fsmvsel="sec"><option value="">alle Sektoren</option>${secs.map(x => `<option${F.sec === x ? " selected" : ""}>${esc(x)}</option>`).join("")}</select>
       <select data-fsmvsel="cap">${FS_CAP.map(([v, l]) => `<option value="${v}"${+(F.cap || 0) === v ? " selected" : ""}>${l}</option>`).join("")}</select></div></div>`;
   return `${head}<div class="fs-panel"><div class="fs-h">${vol ? `Ungewöhnliches Volumen (≥ ${MV_RV}× Schnitt) · heute` : `${side === "down" ? "Verlierer" : "Gewinner"} · ${esc(kn)}`} · ${esc(hmName(reg))} · ${n} Aktien</div>
     ${n ? `<div class="table-wrap fs-tw"><table class="fs-t fs-mv"><thead><tr><th>#</th>${fsSortBtn("n", "Aktie", s)}${fsSortBtn(vol ? "rv" : "ret", vol ? "Volumen" : kn, s, 1)}${vol ? fsSortBtn("ret", "Kurs heute", s, 1) : fsSortBtn("rv", "Volumen", s, 1)}${fsSortBtn("m", "Kairo", s, 1)}${fsSortBtn("mc", "Börsenwert", s, 1)}<th>Sektor</th></tr></thead>
       <tbody>${show.map((r, i) => { const sr = byTicker(r.t); return `<tr ${sr ? `data-card="${esc(r.t)}"` : `data-ein="${esc(r.t)}"`}><td class="muted">${i + 1}</td><td><b>${esc(r.n || r.t)}</b>${mine.has(r.t) ? ' <small class="sp-own">★</small>' : ""}<small class="muted fs-k">${esc(tkClean(r.t))} · ${fmt(r.c)} ${esc(r.cur || "")}</small></td>
         <td class="num">${vol ? `<b>${fmt(r.rv, 1)}×</b>` : `<b class="${r[f] >= 0 ? "up" : "down"}">${sgnPct(r[f], 1)}</b>`}</td><td class="num">${vol ? `<span class="${r.d1 >= 0 ? "up" : "down"}">${sgnPct(r.d1, 1)}</span>` : r.rv != null ? `${fmt(r.rv, 1)}×` : "–"}</td>
-        <td class="num">${r.m != null ? `${r.m}/11` : "–"}${sr && sr.passed ? " " + kPill(sr, false) : ""}</td><td class="num">${r.mc ? fmtCap(r.mc) : "–"}</td><td class="muted">${esc(r.sec || "–")}</td></tr>`; }).join("")}</tbody></table></div>
+        <td class="num">${r.m != null ? `${r.m}/${KM_TOT}` : "–"}${sr && sr.passed ? " " + kPill(sr, false) : ""}</td><td class="num">${r.mc ? fmtCap(r.mc) : "–"}</td><td class="muted">${esc(r.sec || "–")}</td></tr>`; }).join("")}</tbody></table></div>
       ${n > 100 ? `<button class="hlink" data-fsmv="all" style="margin-top:8px">${F.all ? "nur die ersten 100" : `alle ${n} zeigen`}</button>` : ""}` : `<p class="muted">Keine Aktie für diese Filter.</p>`}
     <p class="muted" style="font-size:13px;margin:10px 0 0">${spStamp()} · Volumen = heute gehandelt im Verhältnis zum Schnitt der 20 Tage davor. ★ = Depot/Watchlist. Spaltenkopf antippen sortiert.</p></div>`;
 }
@@ -9958,8 +9960,8 @@ function startHtml() {
   if (state.startHide) return "";
   const steps = [["ETF-Sparplan bei Scalable einrichten (SPYI, monatlich)", !!state.stSpar, "stSpar"],
     ["SPYI-Anteile im ETF-Reiter eintragen", !!etfCfg().units, null, "etf"],
-    ["Übungsdepot starten – Trades ohne echtes Geld", !!gLoad(), null, "game"],
-    ["Mitteilungen aufs iPad aktivieren (Stop, Verkaufstag, ETF-Ampel)", !!pushSub, null, "settings"]];
+    ["Betrag fürs Strategie-Depot festlegen", !!state.lfCap, null, "settings"],
+    ["Mitteilungen aufs iPad aktivieren (Tausch, ETF-Ampel, Kursalarme)", !!pushSub, null, "settings"]];
   const done = steps.filter(x => x[1]).length;
   if (done === steps.length) return "";
   return `<div class="hcard">${hHead(`Erste Schritte · ${done} von ${steps.length}`)}<ul class="checks">${steps.map(([t, ok, k, sec]) =>
@@ -10567,7 +10569,7 @@ function pushHtml() {
   let body;
   if (!pushOk() && !standalone()) body = `<div class="tgdesc">Mitteilungen funktionieren auf dem iPad nur, wenn Kairo als App auf dem Home-Bildschirm liegt: in Safari <b>Teilen ⬆︎ → „Zum Home-Bildschirm“</b>, dann Kairo von dort öffnen und hier aktivieren (ab iPadOS 16.4).</div>`;
   else if (!pushOk()) body = `<div class="tgdesc">Dieses Gerät unterstützt keine Web-Mitteilungen (iPadOS 16.4 oder neuer nötig).</div>`;
-  else if (!pushSub) body = `<div class="tgdesc">Nur wenn es wichtig ist – tagsüber alle 30 Minuten geprüft, auch wenn Kairo geschlossen ist:<br><b>Stop erreicht</b> · <b>Kursziel erreicht</b> (falls gesetzt) · <b>Schluss unter EMA 20</b> · <b>Verkaufstag</b> (Tag 60) · <b>K.-o. nah</b> bzw. erreicht. Jede Meldung kommt nur einmal.</div>
+  else if (!pushSub) body = `<div class="tgdesc">Nur wenn es wichtig ist – tagsüber alle 30 Minuten geprüft, auch wenn Kairo geschlossen ist:<br><b>Strategie-Tausch</b> (3 Tage vorher und am Tauschtag, mit Liste) · <b>Jahres-Ausgleich 70/30</b> im Januar · <b>ETF-Ampel</b> · deine <b>Kursalarme</b> · Stop oder K.-o. bei Positionen, für die du selbst einen gesetzt hast. Jede Meldung kommt nur einmal.</div>
     <div class="row-actions" style="margin-top:12px"><button class="btn" data-push="on">Mitteilungen aktivieren</button></div>`;
   else body = `<div class="tgdesc">✓ Dieses iPad ist angemeldet. Damit der Scan die Mitteilungen senden kann, einmalig den Code als GitHub-Secret speichern:</div>
     <ol class="steps"><li><button class="btn ghost sm" data-push="copy">Code kopieren</button> <span class="muted">(Geräte-Abo + offene Trades mit Stop/K.-o./Verkaufstag + Depot-K.-o., keine Beträge)</span></li>
@@ -10579,8 +10581,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.249";
-const APP_NEWS = [["2026.11.249", "Tausch-Liste und Verlauf", [
+const APP_VER = "2026.11.250";
+const APP_NEWS = [["2026.11.250", "Letzte Swing-Reste, Tausch-Mitteilung", [
+  ["Überall x/8", "Screener, Such-Karte, Gewinner/Verlierer und Watchlist zählen jetzt die 8 Strategie-Kriterien statt der 11 Swing-Kriterien. Filter „ab 6/8“."],
+  ["Mitteilung zum Tausch", "Heißt jetzt „Strategie-Tausch“ und öffnet direkt die Liste zum Abhaken im Einstieg. Im Januar erinnert sie zusätzlich an den Ausgleich auf 70/30."],
+  ["Verlauf mit Welt-ETF", "Die 70/30-Linie rechnet mit dem MSCI World statt dem S&P 500."]]],
+ ["2026.11.249", "Tausch-Liste und Verlauf", [
   ["Tausch-Liste zum Abhaken", "Einstieg zeigt oben, was beim Tausch verkauft und gekauft wird – mit Stückzahl (Verkauf aus deinem Depot, Kauf für deinen Betrag). Abgehakte Zeilen merkt sich Kairo je Termin."],
   ["Verlauf des Strategie-Depots", "Auf Heute und im Depot: Kurve Strategie gegen S&P 500 und 70/30-Mischung, seit die Kurse 12 Monate Vorlauf haben."],
   ["Lexikon und Erfassen aufgeräumt", "Begriffe A–Z erklärt Momentum, Tausch, Strategie-Depot, x/8 und Ausgleich statt Swing-Begriffen. „Trade erfassen“ zeigt Turbos nur noch, wenn du welche im Depot hast."]]],
@@ -11477,7 +11483,7 @@ function wlHtml() {
   const n = favs().size;
   const st = "Der tägliche Scan prüft deine Watchlist (Stand 26.10.2026). Mit Kursdienst Version 4 übernimmt er stattdessen automatisch deine Sterne.";
   return `<div class="section-title"><span>Watchlist</span><span>${n} Aktien</span></div>
-    <div class="card"><div class="tgdesc">Mit ★ nimmst du eine Aktie auf oder heraus. Der tägliche Scan prüft genau diese Aktien – Stufen, „kurz vor Treffer“ und Insider-Meldungen. Eine ganze Liste (z. B. aus Scalable kopiert) kannst du hier abgleichen: Namen, Ticker oder ISINs, eine Aktie pro Zeile – oder eine CSV-/Excel-Datei.</div>
+    <div class="card"><div class="tgdesc">Mit ★ nimmst du eine Aktie auf oder heraus. Der tägliche Scan prüft genau diese Aktien – Rang und Kriterien der Strategie sowie Insider-Meldungen. Eine ganze Liste (z. B. aus Scalable kopiert) kannst du hier abgleichen: Namen, Ticker oder ISINs, eine Aktie pro Zeile – oder eine CSV-/Excel-Datei.</div>
     <div class="note" style="margin-top:8px">${st}</div>
     <textarea id="wlIn" class="tgtext" rows="4" placeholder="z. B.&#10;Apple&#10;RHM.DE&#10;US67066G1040" style="margin-top:10px"></textarea>
     <div class="row-actions" style="margin-top:10px"><button class="btn" data-wlcheck>Abgleichen</button>
@@ -13303,7 +13309,7 @@ const SMA_DEF = [["s50", "#30d158", "SMA 50"], ["s200", "#ff375f", "SMA 200"]]; 
 // Welle = vom Hoch rückwärts von Tief zu tieferem Wendepunkt, bis davor eine fast volle Korrektur (≥ 78,6 %) liegt (höchstens
 // doppelte Größe der Scan-Welle). Linien = Wendepunkte (±5 Tage) mit ≥ 2 Berührungen in einem Band von max(0,6 ATR, 1,2 %).
 // ---------- Auto-Analyse (13.11., wie TrendSpider/Autochartist): Trendlinien, Chartmuster, Technik-Check ----------
-// Rein regelbasiert aus den Tageskerzen (keine Blackbox) und nur zur Information – die Kairo-Regel nutzt nichts davon.
+// Rein regelbasiert aus den Tageskerzen (keine Blackbox) und nur zur Information – die Strategie nutzt nichts davon.
 function autoTA(c) {
   const n = c.t.length, H = c.h, L = c.l, C = c.c, V = c.v || [], last = C[n - 1];
   if (n < 80 || !(last > 0)) return null;
@@ -13446,7 +13452,7 @@ function autoTA(c) {
 // Trefferquote auf DIESER Aktie, Rechteck, Kanal, Tasse mit Henkel, Dreifachboden/-top, bärische Flagge, RSI-Divergenzen,
 // automatische Fibonacci mit Konfluenz-Zonen, Monats-Ebene, Gesamturteil (−100 … +100) mit Übereinstimmung, Szenarien
 // (Auslöser, Ziel, Abbruch, CRV) und eine Zusammenfassung in Worten. Alles regelbasiert und nachprüfbar – nur Einordnung,
-// die Kairo-Regel nutzt nichts davon.
+// die Strategie nutzt nichts davon.
 function autoTAx(c, out, x) {
   const { n, H, L, C, V, last, atr, highs, lows } = x, O = c.o || C;
   const daily = typeof c.t[0] === "string" && (!c.tf || c.tf === "D");
@@ -14517,10 +14523,10 @@ function autoCardHtml(h) {
   return `<div class="cf-s au ki"><div class="cf-h">Chart-Kontext <button class="au-tg${clGet("auto") ? " on" : ""}" data-cl="auto" aria-pressed="${clGet("auto") ? "true" : "false"}">${clGet("auto") ? "im Chart ✓" : "im Chart zeigen"}</button></div>
     ${any ? `${zr(res, "Widerstand", "#ff6961")}${zr(inZ, "Kurs in der Zone", "#a0aabe")}${zr(sup, "Unterstützung", "#34c759")}
       ${(A.conf || []).map(q => cx("#ffd60a", "Konfluenz", fmt(q.p), dist(q.p), esc(q.src.join(" + ")))).join("")}
-      ${plan ? cx("#ff453a", "Kairo-Stop", fmt(plan.stop), dist(plan.stop), esc(stopTxt)) : ""}` : `<p class="muted cf-t">Keine ausgeprägten Zonen in der Nähe des Kurses.</p>`}
+      ${plan && !SWING_OFF ? cx("#ff453a", "Kairo-Stop", fmt(plan.stop), dist(plan.stop), esc(stopTxt)) : ""}` : `<p class="muted cf-t">Keine ausgeprägten Zonen in der Nähe des Kurses.</p>`}
     ${clGet("auto") ? `<div class="ki-cs">${chip("auz", "Zonen")}${chip("auk", "Kerzen")}${chip("aus", "Struktur")}</div>` : ""}
-    <details class="ki-more" data-kimore${state.kiMore ? " open" : ""}><summary><span>Klassische Signale</span><small>Trend · Zeitebenen · Muster – für Kairo ohne Gewicht</small></summary>
-    ${K ? `<div class="kv-tr"><span>Trend-Wert (Trendfolger)</span><b class="${K.cls}">${K.score > 0 ? "+" : ""}${K.score} · ${K.lbl}</b></div><small class="kv-note">Ein Abwärtstrend ist für einen Kairo-Rücksetzer Voraussetzung – Rot heißt hier nicht „nicht kaufen“.</small><div class="cf-h au-h2">Woraus sich der Trend-Wert ergibt</div>${K.parts.map(q => `<div class="ki-f"><span>${esc(q.t)}<small>${esc(q.why || "")}</small></span><b class="${q.v > 0 ? "up" : q.v < 0 ? "down" : "muted"}">${q.v > 0 ? "+" : ""}${q.v}</b></div>`).join("")}` : ""}
+    <details class="ki-more" data-kimore${state.kiMore ? " open" : ""}><summary><span>Klassische Signale</span><small>Trend · Zeitebenen · Muster – reine Einordnung</small></summary>
+    ${K ? `<div class="kv-tr"><span>Trend-Wert (Trendfolger)</span><b class="${K.cls}">${K.score > 0 ? "+" : ""}${K.score} · ${K.lbl}</b></div>${SWING_OFF ? "" : `<small class="kv-note">Ein Abwärtstrend ist für einen Kairo-Rücksetzer Voraussetzung – Rot heißt hier nicht „nicht kaufen“.</small>`}<div class="cf-h au-h2">Woraus sich der Trend-Wert ergibt</div>${K.parts.map(q => `<div class="ki-f"><span>${esc(q.t)}<small>${esc(q.why || "")}</small></span><b class="${q.v > 0 ? "up" : q.v < 0 ? "down" : "muted"}">${q.v > 0 ? "+" : ""}${q.v}</b></div>`).join("")}` : ""}
     <div class="cf-h au-h2">Zeitebenen</div><div class="au-rows">${mtf.map(([l, v]) => `<div class="cf-r"><span>${l}</span>${arr(v)}</div>`).join("")}
       ${T.rsi != null ? `<div class="cf-r"><span>Momentum (RSI ${fmt(T.rsi, 0)})</span><b class="${T.rsi > 55 ? "up" : T.rsi < 45 ? "down" : "muted"}">${T.rsi >= 70 ? "überkauft" : T.rsi <= 30 ? "überverkauft" : T.rsi > 55 ? "stark" : T.rsi < 45 ? "schwach" : "neutral"}</b></div>` : ""}
       ${T.md != null ? `<div class="cf-r"><span>MACD</span><b class="${T.md > 0 ? "up" : "down"}">${T.md > 0 ? "über Signal" : "unter Signal"}</b></div>` : ""}
@@ -14534,14 +14540,14 @@ function autoCardHtml(h) {
     ${A.div ? `<div class="cf-h au-h2">Divergenz</div><div class="au-p ${A.div.bull ? "bull" : "bear"}"><div><b>${A.div.bull ? "Bullische" : "Bärische"} RSI-Divergenz</b><span class="au-st">${dateDE(c.t[A.div.i2])}</span></div><small>Kurs ${A.div.bull ? "tieferes Tief" : "höheres Hoch"} (${fmt(A.div.p1)} → ${fmt(A.div.p2)}), RSI aber ${A.div.bull ? "höher" : "tiefer"} (${fmt(A.div.r1, 0)} → ${fmt(A.div.r2, 0)}) – der Bewegung geht die Kraft aus.</small></div>` : ""}
     ${lns ? `<div class="cf-h au-h2">Trendlinien</div>${lns}` : ""}
     ${A.fib ? `<div class="cf-h au-h2">Automatische Fibonacci · ${A.fib.up ? "Aufwärtsbewegung" : "Abwärtsbewegung"} ${dateDE(c.t[A.fib.iA])} → ${dateDE(c.t[A.fib.iB])}</div>${A.fib.lv.map(v => `<div class="cf-r"><span>${fmt(v.q * 100, 1)} %</span><b>${fmt(v.p)}</b>${dist(v.p)}</div>`).join("")}` : ""}
-    <p class="muted cf-t">Regelbasiert aus den Kerzen dieses Charts erkannt (nachprüfbar, keine Blackbox) – Einordnung, kein Kaufsignal; die Kairo-Regel nutzt nichts davon. Kairo hat die Formationen an 1.142 Aktien über 10 Jahre geprüft: die meisten liegen nach 20 Tagen nur knapp über Zufall. Die Quote steht deshalb direkt am Muster.</p></details></div>`;
+    <p class="muted cf-t">Regelbasiert aus den Kerzen dieses Charts erkannt (nachprüfbar, keine Blackbox) – Einordnung, kein Kaufsignal; die Strategie nutzt nichts davon. Kairo hat die Formationen an 1.142 Aktien über 10 Jahre geprüft: die meisten liegen nach 20 Tagen nur knapp über Zufall. Die Quote steht deshalb direkt am Muster.</p></details></div>`;
 }
 // ---------- „Warum bewegt sich die Aktie?“ (Wunsch 16.11.2026) ----------
 // Vorbild: Robinhood/Yahoo „Why is it moving“, Benzinga „WIIM“, TradingView-Nachrichtenpunkte am Chart, Bloomberg-Kursbewegung mit
 // Ursache. Kairo ordnet jede Schlagzeile dem Handelstag zu, an dem sie wirkt (nach Börsenschluss → nächster Handelstag), vergleicht
 // die Bewegung mit Index und Branche und erkennt den Auslöser (Zahlen, Analysten, Prognose, Kapitalmaßnahme, Deal, Behörden …).
 // Quellen: Nachrichten aus dem Scan (Yahoo, Google News deutsch), live Finnhub (US, 1 Jahr, mit Schlüssel), Kursdienst ab Version 11
-// (Google News für jede Aktie, auch Europa). Nur Anzeige – die Kairo-Regel nutzt nichts davon.
+// (Google News für jede Aktie, auch Europa). Nur Anzeige – die Strategie nutzt nichts davon.
 const WHY = {};
 const WHY_CAT = [
   ["earn", "Quartalszahlen", /earnings|quarterly results|results|\bQ[1-4]\b|Quartal|Zahlen|revenue|Umsatz|\bEPS\b|\bbeats?\b|\bmiss(es|ed)?\b/i],
@@ -15567,7 +15573,7 @@ document.addEventListener("change", e => { const i = e.target.closest("[data-opt
   state.opt = { ...(state.opt || {}) }; state.opt[t] = { ...(state.opt[t] || {}), [k]: v }; save(); coPaint(t); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-optreset]"); if (!b) return; state.opt = { ...(state.opt || {}) }; delete state.opt[b.dataset.optreset]; save(); coPaint(b.dataset.optreset); });
 // ---------- Quant-Panels (18.11.2026, wie im Profi-Terminal): Backtest, Marktphase (Kalman, Trend-Filter, HMM), Beta & Faktoren, Paar-Handel (OU) ----------
-// Alles aus den Kairo-Tageskursen der Aktie (bis 4 Jahre) und dem Markt-Puls (Index, Faktor-ETFs). Reine Rechenhilfe – die Kairo-Regel nutzt nichts davon.
+// Alles aus den Kairo-Tageskursen der Aktie (bis 4 Jahre) und dem Markt-Puls (Index, Faktor-ETFs). Reine Rechenhilfe – die Strategie nutzt nichts davon.
 const qSvgLine = (a, X, Y) => a.map((v, i) => v == null ? "" : `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).filter(Boolean).join(" ");
 const qSd = a => Math.sqrt(rCov(a, a));
 const qPct = (v, d = 1) => v == null || !isFinite(v) ? "–" : `${v >= 0 ? "+" : "−"}${fmt(Math.abs(v) * 100, d)} %`;
@@ -16133,7 +16139,7 @@ function fairHtml(f, med, cur) {
       <span class="fv-m fair" style="left:${X(F.fair)}%"><span class="fv-ml">fair</span></span><span class="fv-m px" style="left:${X(f.cp)}%"><span class="fv-ml">Kurs</span></span></div>
     <div class="fv-lg"><span><span class="fv-dot u"></span>günstig</span><span><span class="fv-dot f"></span>fair ± 20 %</span><span><span class="fv-dot o"></span>teuer</span></div>
     <details class="fv-d"><summary>So rechnet Kairo · ${F.m.length} Methoden</summary>${F.m.map(([l, v, w]) => `<div class="fv-r"><span>${l}<small>${esc(w)}</small></span><b>${fmt(v)}${c}</b></div>`).join("")}
-      <p class="muted" style="margin:6px 0 0;font-size:12px">Mittelwert = Median der Methoden. Branchen-KGV höchstens 40. Keine Anlageberatung – die Kairo-Regel nutzt das nicht.</p></details></div>`;
+      <p class="muted" style="margin:6px 0 0;font-size:12px">Mittelwert = Median der Methoden. Branchen-KGV höchstens 40. Keine Anlageberatung – die Strategie nutzt das nicht.</p></details></div>`;
 }
 function fundCardHtml(t, compact) {
   const f = fundOf(t); if (!f) return getJson("fund.json") === undefined ? "" : "";
@@ -16153,7 +16159,7 @@ function fundCardHtml(t, compact) {
     <div class="fc-top">${sfSvg(f.sf, compact ? 104 : 170, !compact)}<div class="fc-ax">${SF_AX.map(([l, w], k) => `<div class="fc-r" title="${esc(w)}"><span class="fc-l">${l}</span><span class="fc-bar"><span class="fc-fill" style="width:${Math.max(3, f.sf[k] / 6 * 100)}%;background:rgb(${sfCol(f.sf[k] * 5)})"></span></span><b>${f.sf[k]}/6</b></div>`).join("")}
       <div class="fc-sum">Gesamt <b style="color:rgb(${sfCol(n)})">${n}/30</b></div></div></div>
     ${compact ? "" : fairHtml(f, med, cur) + divHtml(f)}${compact ? "" : `<div class="fc-kv">${kv.map(([l, v, sub, c]) => `<div><span>${l}</span><b class="${c}">${v}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div>`).join("")}</div>`}
-    <p class="muted cf-t">Stand ${dateDE(fd.generated || "")} · Yahoo-Daten, Branche = ${esc(f.sec || "–")}. Einordnung wie bei Simply Wall St – die Kairo-Regel nutzt das nicht.</p></div>`;
+    <p class="muted cf-t">Stand ${dateDE(fd.generated || "")} · Yahoo-Daten, Branche = ${esc(f.sec || "–")}. Einordnung wie bei Simply Wall St – die Strategie nutzt das nicht.</p></div>`;
 }
 // ---------- Zeichenwerkzeuge wie TradingView (Wunsch 13.11.) ----------
 // Trendlinie, horizontale Linie, Strahl, Fibonacci-Retracement (wie TradingView: Stufen 0–1 mit farbigen Bändern, 0 am zweiten Punkt,

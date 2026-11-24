@@ -194,7 +194,7 @@ def checks(data: dict, meta: dict, now: list[tuple[str, float]], depot: set, fun
     return out
 
 
-def curve(data: dict, meta: dict, bench: pd.DataFrame | None, rule: dict | None = None, mix: float = 0.3) -> dict | None:
+def curve(data: dict, meta: dict, bench: pd.DataFrame | None, rule: dict | None = None, mix: float = 0.3, etf: pd.DataFrame | None = None) -> dict | None:
     """Verlauf des Strategie-Depots seit dem ersten Tausch, für den die Kurse 12 Monate Vorlauf haben (Scan-Historie ca. 2 Jahre):
     an jedem Tauschtermin die Top 20 gleich gewichtet kaufen und bis zum nächsten halten (ohne Kosten und Steuern).
     Dazu S&P 500 und die Mischung 70 % S&P 500 (als ETF-Näherung) / 30 % Strategie, täglich gewichtet. Wöchentliche Punkte."""
@@ -228,10 +228,15 @@ def curve(data: dict, meta: dict, bench: pd.DataFrame | None, rule: dict | None 
     bb = b.reindex(s_.index, method="ffill")
     bb = bb / bb.iloc[0]
     rs, rbm = s_.pct_change().fillna(0), bb.pct_change().fillna(0)
-    m = (1 + (1 - mix) * rbm + mix * rs).cumprod()
+    re_ = rbm
+    if etf is not None and len(etf) and "Close" in etf:              # Welt-ETF (MSCI World, URTH) für die Mischung, sonst S&P 500
+        ee = etf["Close"].dropna().reindex(s_.index, method="ffill")
+        if ee.notna().sum() > len(ee) * 0.9:
+            re_ = ee.bfill().pct_change().fillna(0)
+    m = (1 + (1 - mix) * re_ + mix * rs).cumprod()
     wk = s_.resample("W-FRI").last().dropna().index.union([s_.index[-1]])
     pick = lambda x: [round(float(v), 4) for v in x.reindex(wk, method="ffill")]
-    return {"d": [d.strftime("%Y-%m-%d") for d in wk], "s": pick(s_), "b": pick(bb), "m": pick(m), "start": rb[0].strftime("%Y-%m-%d"), "mix": mix}
+    return {"d": [d.strftime("%Y-%m-%d") for d in wk], "s": pick(s_), "b": pick(bb), "m": pick(m), "start": rb[0].strftime("%Y-%m-%d"), "mix": mix, "etf": "MSCI World" if re_ is not rbm else "S&P 500"}
 
 
 def _px_on(df, d):
@@ -240,7 +245,8 @@ def _px_on(df, d):
     return float(c.iloc[min(i, len(c) - 1)]) if len(c) else None
 
 
-def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict | None = None, fund: dict | None = None) -> dict | None:
+def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict | None = None, fund: dict | None = None,
+          etf: pd.DataFrame | None = None) -> dict | None:
     """Aktuelles Langfrist-Depot, Entwicklung seit dem letzten Tausch, Vorschau auf den nächsten Tausch."""
     r = {**RULE, **(rule or {})}
     ref = bench if bench is not None and len(bench) else next((df for t, df in data.items() if _is_us(t, meta.get(t)) and len(df) > 300), None)
@@ -299,7 +305,7 @@ def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict 
     ranks = {t: [rk_now[t], round(mo[t], 4), ck[t]["nchk"] if t in ck else None,
                  sum(b << i for i, b in enumerate(ck[t]["chk"])) if t in ck else None] for t in rk_now}
     try:
-        cv = curve(data, meta, bench, r)
+        cv = curve(data, meta, bench, r, etf=etf)
     except Exception as exc:
         print(f"Langfrist: Verlauf-Fehler {exc!r}")
         cv = None
