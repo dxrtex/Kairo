@@ -4163,7 +4163,7 @@ function longTodayHtml() {
   const dn = lfDays(L.next), soon = lfSwapSoon(L);
   return `<div class="hcard lf-hc">${hHead(`Strategie-Depot <small>${L.hold.length} Aktien</small>`, `data-golong`, "Öffnen")}
     <div class="lf-kpi"><div><span>seit Tausch ${fmtD(L.since)}</span>${lfPct(L.ret)}</div><div><span>S&P 500</span>${lfPct(L.bench)}</div><div><span>nächster Tausch</span><b>${dn != null && dn >= 0 ? `in ${dn} T.` : fmtD(L.next)}</b></div></div>
-    ${lfCurveHtml(L)}
+    ${lfCurveHtml(L)}${probeHtml(true)}
     ${(sw => soon && (sw.out.length || sw.inn.length) ? `<div class="lf-swap"><b>${sw.now ? "Tausch jetzt:" : "Tausch steht an:"}</b> verkaufen ${sw.out.map(t => esc(t)).join(", ") || "–"} · kaufen ${sw.inn.map(t => esc(t)).join(", ") || "–"} <button class="hlink" data-golong>Liste ›</button></div>` : "")(lfSwap(L))}
     ${L.hold.slice().sort((a, b) => (b.ret ?? -9) - (a.ret ?? -9)).slice(0, 5).map(x => `<button class="hrow" ${lfOpen(x.t)}>${cfAv(x.t)}<span class="hn">${esc(shortNm(x.n || x.t))}</span>${lfPct(x.ret)}</button>`).join("")}</div>`;
 }
@@ -4384,7 +4384,42 @@ function lfDepotHtml() { const L = LF(); if (!L || !L.hold || !searchIdx) return
     ${miss.length ? `<div class="lf-dl"><span class="muted">fehlen</span>${miss.map(chip).join("")}</div>` : ""}
     ${sell.length ? `<div class="lf-dl"><span class="down">${SW.now ? "verkaufen (Tausch)" : "raus beim nächsten Tausch"}</span>${sell.map(chip).join("")}</div>` : ""}
     <div class="note" style="margin:6px 0 0">Ohne Stop halten – verkauft und gekauft wird nur am Tauschtermin (nächster: ${fmtD(L.next)}).</div></div>`; }
-function depotHtml() { const h = depotHtml0(); const i = h.indexOf("</div>") >= 0 && h.startsWith('<div class="section-title">') ? h.indexOf("</div>") + 6 : 0; return h.slice(0, i) + lfDepotHtml() + h.slice(i); }
+function depotHtml() { const h = depotHtml0(); const i = h.indexOf("</div>") >= 0 && h.startsWith('<div class="section-title">') ? h.indexOf("</div>") + 6 : 0; return h.slice(0, i) + lfDepotHtml() + probeHtml() + h.slice(i); }
+// ---------- Probe-Depot LF10 (paper/lfpaper.py, 24.11.2026): Strategie mit 10.000 € im echten Markt, ohne echtes Geld ----------
+// Handelt automatisch nach der Regel (Eröffnungskurs, ganze Stücke, PRIME+-Gebühren, Spread, Abgeltungsteuer mit Verlusttopf).
+const PROBE = { d: null, busy: false, at: 0 };
+function probeLoad() { if (PROBE.busy || (PROBE.d !== null && Date.now() - PROBE.at < 3e5)) return; PROBE.busy = true;
+  fetch(PAPER_URL + "lf10.json?v=" + Math.floor(Date.now() / 3e5)).then(r => r.ok ? r.json() : false).then(j => { PROBE.d = j && j.equity ? j : false; })
+    .catch(() => { PROBE.d = false; }).finally(() => { PROBE.busy = false; PROBE.at = Date.now(); if (state.sec === "depot" || state.sec === "today") render(); }); }
+function probeChart(st) { const E = st.equity || [], B = Object.fromEntries((st.bench || []).map(x => [x.date, x])); if (E.length < 3) return "";
+  const s = E.map(x => x.eur), e = E.map(x => B[x.date] ? B[x.date].etf : null), m = E.map(x => B[x.date] ? B[x.date].mix : null), S0 = st.start_cash || 10000;
+  const all = [...s, ...e.filter(v => v != null), ...m.filter(v => v != null), S0], lo = Math.min(...all), hi = Math.max(...all), W = 600, H = 150, P = 6, n = E.length;
+  const X = i => (P + i * (W - 2 * P) / (n - 1)).toFixed(1), Y = v => (H - P - (v - lo) / ((hi - lo) || 1) * (H - 2 * P)).toFixed(1);
+  const path = a => a.map((v, i) => v == null ? "" : `${i && a[i - 1] != null ? "L" : "M"}${X(i)},${Y(v)}`).join("");
+  return `<div class="psp"><svg class="g-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px"><line x1="0" x2="${W}" y1="${Y(S0)}" y2="${Y(S0)}" class="g-base"/>
+    <path d="${path(e)}" style="fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 3" vector-effect="non-scaling-stroke"/>
+    <path d="${path(m)}" style="fill:none;stroke:var(--up);stroke-width:1.6" vector-effect="non-scaling-stroke"/>
+    <path d="${path(s)}" style="fill:none;stroke:var(--accent, #0a84ff);stroke-width:2.2" vector-effect="non-scaling-stroke"/></svg>
+    <span class="psp-y" style="top:0">${eur(hi)}</span><span class="psp-y" style="bottom:0">${eur(lo)}</span></div>
+    <div class="psp-x"><span>${dateDE(E[0].date)}</span><span>${dateDE(E[n - 1].date)}</span></div>
+    <div class="oleg"><span style="color:var(--accent, #0a84ff)">— Probe-Depot</span><span class="up">— 70/30 mit Welt-ETF</span><span class="muted">┄ Welt-ETF (ACWI)</span></div>`; }
+function probeHtml(compact) { if (PROBE.d === null) { probeLoad(); return compact ? "" : `<div class="card"><div class="plan-h">Probe-Depot</div><p class="muted">Lade …</p></div>`; }
+  const st = PROBE.d;
+  if (!st || (st.equity || []).length < 2) return compact ? "" : `<div class="card lf-probe"><div class="plan-h">Probe-Depot · Strategie im echten Markt</div><p class="muted" style="margin:4px 0 0">Startet nach dem nächsten US-Börsenschluss: 10.000 € virtuell, gekauft wird zur nächsten Eröffnung das aktuelle Strategie-Depot. Danach handelt es automatisch an jedem Tauschtermin – mit echten Kursen, Gebühren und Steuern, ohne echtes Geld.</p></div>`;
+  const S = st.summary || {}, S0 = st.start_cash || 10000, E = st.equity, last = E[E.length - 1].eur, ret = last / S0 - 1;
+  const pc = v => v == null ? "–" : `<b class="${v >= 0 ? "up" : "down"}">${sgnPct(v, 1)}</b>`;
+  if (compact) return `<div class="lf-swap" style="margin-top:8px"><b>Probe-Depot</b> seit ${dateDE(st.start)}: ${pc(ret)} · Welt-ETF ${pc(S.etf)} <button class="hlink" data-goprobe>Ansehen ›</button></div>`;
+  const pos = (st.positions || []).map(p => { const I = lfInfo(p.t) || {}, px = I.p, r = px && p.entry ? px / p.entry - 1 : null;
+    return `<tr class="lf-row" ${lfOpen(p.t)}><td><div class="sh-nm">${cfAv(p.t)}<span><b>${esc(shortNm(I.n || p.t))}</b><small>${esc(p.t)} · seit ${dateDE(p.entry_ts)}</small></span></div></td><td class="num">${p.qty}</td><td class="num">${fmt(p.entry)} $</td><td class="num">${px != null ? fmt(px) + " $" : "–"}</td><td class="num">${r != null ? `<span class="${r >= 0 ? "up" : "down"}">${sgnPct(r, 1)}</span>` : "–"}</td></tr>`; }).join("");
+  const tr = (st.trades || []).slice(-8).reverse().map(t => `<tr><td><b>${esc(t.t)}</b><small> ${dateDE(t.entry_ts)} → ${dateDE(t.exit_ts)}</small></td><td>${esc(t.why || "")}</td><td class="num"><span class="${t.pnl_eur >= 0 ? "up" : "down"}">${t.pnl_eur >= 0 ? "+" : ""}${fmt(t.pnl_eur, 0)} €</span></td><td class="num">${t.tax_eur ? fmt(t.tax_eur, 0) + " €" : "–"}</td></tr>`).join("");
+  return `<div class="card lf-probe" id="probe"><div class="plan-h">Probe-Depot · Strategie im echten Markt <small class="muted">seit ${dateDE(st.start)} · ohne echtes Geld</small></div>
+    <div class="lf-kpi lf-kpi-l"><div><span>Depotwert</span><b>${eur(last)}</b></div><div><span>seit Start</span>${pc(ret)}</div><div><span>Welt-ETF gleicher Start</span>${pc(S.etf)}</div><div><span>70/30 gleicher Start</span>${pc(S.mix)}</div></div>
+    ${probeChart(st)}
+    <div class="lf-kpi"><div><span>größter Rückgang</span><b class="down">${pct(S.max_dd ?? 0, 1)}</b></div><div><span>Gebühren + Spread</span><b>${eur(S.kosten ?? st.fees)}</b></div><div><span>Steuern bezahlt</span><b>${eur(S.steuern ?? st.taxes)}</b></div><div><span>Verkäufe</span><b>${(st.trades || []).length}</b></div></div>
+    ${pos ? `<div class="table-wrap"><table class="sc-t lf-t"><thead><tr><th>Aktie</th><th class="num">Stück</th><th class="num">Kauf</th><th class="num">Kurs</th><th class="num">seit Kauf</th></tr></thead><tbody>${pos}</tbody></table></div>` : ""}
+    ${tr ? `<div class="plan-h" style="margin-top:10px">Letzte Verkäufe</div><div class="table-wrap"><table class="sc-t lf-t"><thead><tr><th>Aktie</th><th>Grund</th><th class="num">Gewinn</th><th class="num">Steuer</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
+    <p class="muted lf-note">Handelt automatisch nach der Regel: Start mit 10.000 €, an jedem Tauschtermin zur Eröffnung, nur ganze Stücke, Scalable PRIME+ (0,99 € unter 250 €), halber Spread je Seite, Abgeltungsteuer mit Verlusttopf (ohne Sparerpauschbetrag). Jede Order wird am Ausführungstag gespeichert und nie nachträglich geändert. Bewertung täglich nach US-Börsenschluss, Kurse in der Tabelle vom letzten Scan.</p></div>`; }
+document.addEventListener("click", e => { if (!e.target.closest("[data-goprobe]")) return; goSec("depot"); setTimeout(() => { const el = $("probe"); el && el.scrollIntoView({ behavior: "smooth", block: "start" }); }, 300); });
 // ETF: Aufteilung Kern / Langfrist
 function etfHtml() { const L = LF(); return (L ? `<div class="lf-amp" style="margin:0 2px 12px"><b>Aufteilung:</b> 70–80 % Welt-ETF als Kern (nie verkaufen, Extra-Geld bei roter Ampel) · 20–30 % <button class="hlink" data-golong>Strategie-Depot ›</button></div>` : "") + etfHtml0(); }
 // Aktienkarte: Kairo Langfrist (Rang, Lauf, 4 Kriterien)
@@ -10588,8 +10623,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.252";
-const APP_NEWS = [["2026.11.252", "Neue Regel: Top 10 kaufen, bis Platz 20 halten", [
+const APP_VER = "2026.11.253";
+const APP_NEWS = [["2026.11.253", "Probe-Depot: die Strategie im echten Markt", [
+  ["Probe-Depot mit 10.000 €", "Depot → Probe-Depot: Die Strategie handelt ab sofort automatisch mit 10.000 € Spielgeld – zum echten Eröffnungskurs, nur ganze Stücke, mit Scalable-Gebühren, Spread und Abgeltungsteuer. Daneben der Welt-ETF und 70/30 mit gleichem Start."],
+  ["Nichts wird nachträglich geändert", "Jeder Kauf und Verkauf wird am Ausführungstag gespeichert. So zeigt das Probe-Depot ehrlich, was die Regel im echten Markt bringt – anders als ein Backtest."]]],
+ ["2026.11.252", "Neue Regel: Top 10 kaufen, bis Platz 20 halten", [
   ["Top 10 statt Top 20", "Gekauft werden nur noch die 10 US-Aktien mit dem stärksten 12-Monats-Lauf. Im Backtest 2016–2026 schlug Top 10 die bisherigen Top 20 bei jedem Tauschtermin und jedem Startjahr – 32,4 % statt 24,6 % pro Jahr nach Steuer."],
   ["Puffer bis Platz 20", "Eine gekaufte Aktie bleibt, solange sie auf Platz 1–20 steht – verkauft wird erst ab Platz 21. Das halbiert die Verkäufe (Ø etwa 4 je Quartal), spart Steuern und senkte den größten Rückgang auf 47 %."],
   ["70/30 im Backtest 18,2 %", "70 % Welt-ETF und 30 % Strategie kamen 2016–2026 auf 18,2 % pro Jahr nach Steuer (Welt-ETF allein 10,6 %, Momentum-ETF 11,3 %), schlechtestes Jahr −10,6 %. Nur heute gelistete Aktien – realistisch eher 12–15 %."],

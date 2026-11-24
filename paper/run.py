@@ -22,11 +22,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import core, dualmom, kairo, momentum, sp2f
+from . import core, dualmom, kairo, lfpaper, momentum, sp2f
 
 HERE = Path(__file__).resolve().parent
 START_CASH = 2000.0                                # Nutzer-Startkapital (18.10.2026)
-CASH_BY_SID = {"KAIROS": 20000.0, "KAIROZ": 20000.0, "KAIROL": 20000.0}                  # Kairo-S: 20 Positionen × 0,25 % brauchen Orders ≥ 250 € (PRIME+)
+CASH_BY_SID = {"LF10": lfpaper.START_CASH, "KAIROS": 20000.0, "KAIROZ": 20000.0, "KAIROL": 20000.0}                  # Kairo-S: 20 Positionen × 0,25 % brauchen Orders ≥ 250 € (PRIME+)
 
 
 def cash_for(sid: str) -> float:
@@ -397,6 +397,25 @@ def run_kairo(kstates: list, mk: Market, cal, signals: list) -> None:
             st["last_day"] = str(D.date())
 
 
+def run_lf(st: dict, mk: Market, cal, lf_t: list[str], fx_usd) -> None:
+    """Probe-Depot der Langfrist-Strategie (paper/lfpaper.py). Ein Fehler hier darf die übrigen Depots nicht stören."""
+    try:
+        data = {t: mk.daily[t] for t in lf_t if t in mk.daily}
+        meta = {t: {"currency": "USD"} for t in data}
+        if st["last_day"] is None:                     # erster Lauf: Start heute, Kauf zur nächsten Eröffnung
+            st["start"] = st["last_day"] = str(cal[-1].date())
+            st["equity"].append({"date": st["start"], "eur": st["start_cash"], "open": 0})
+        for D in [d for d in cal if d > pd.Timestamp(st["last_day"])]:
+            prev = cal[cal < D][-1]
+            lfpaper.day(st, mk, D, prev, cal, data, meta, equity)
+            st["last_day"] = str(D.date())
+        b = lfpaper.bench(st, mk.daily, fx_usd)
+        st["bench"] = b.get("series", [])
+        st["summary"] = lfpaper.summary(st, b)
+    except Exception as e:                             # noqa: BLE001
+        print("Probe-Depot LF10 Fehler:", repr(e)[:300])
+
+
 def run_shadow(sd: Path, mk: Market, cal, bull, s19_t, s20_t, fund, sec3) -> dict | None:
     """Schattenbuch (paper/shadow.py) – reine Forschung; ein Fehler hier darf die Depots nicht stören."""
     from . import shadow
@@ -436,7 +455,8 @@ def report(d: Path, states: list[dict], bench: list[dict] | None = None, shadow:
                 "DM": "DM Dual Momentum SPY/EFA/QQQ → SHY",
                 "SP2F": "SP2F S&P 500 2× nur über der 200-Tage-Linie (DBPG.DE, sonst Bargeld)",
                 "KAIRO": "KAIRO Scanner-Treffer (Basis-Einstieg)", "KAIROS": "KAIROS Scanner-Treffer, schwache Aktien zuerst",
-                "KAIROZ": "KAIROZ Kairo-Ziel (attraktives Kursziel, halten bis zum Ziel)", "KAIROL": "KAIROL Kairo lang (Vergleich ohne Kursziel)"}.get(st["sid"], "S20 Trendfolge / VCP")
+                "KAIROZ": "KAIROZ Kairo-Ziel (attraktives Kursziel, halten bis zum Ziel)", "KAIROL": "KAIROL Kairo lang (Vergleich ohne Kursziel)",
+                "LF10": "LF10 Probe-Depot Langfrist-Strategie (Top 10 kaufen, halten bis Platz 20, 10.000 €)"}.get(st["sid"], "S20 Trendfolge / VCP")
         lines += [f"## {name}", "", f"- Start: {s['start']} · Handelstage: {s['tage']}",
                   f"- Depot: **{s['depot_eur']:,.2f} €** ({s['rendite']:+.2%}) · größter Rückgang {s['max_dd']:.1%}",
                   f"- Abgeschlossene Trades: {s['trades']}" + (f" · Trefferquote {s['trefferquote']:.0%} · Ø R {s['avg_R']:+.2f}"
@@ -475,6 +495,9 @@ def main(argv=None) -> int:
     states = [load_state(sd, "S19"), load_state(sd, "S19B"), load_state(sd, "S19C"), load_state(sd, "S20"), load_state(sd, "MOM5"), load_state(sd, "MOM10"), load_state(sd, "DM"),
               load_state(sd, "SP2F")]
     need = set(s19_t) | set(s20_t) | {p["t"] for s in states for p in s["positions"]}
+    lstate = load_state(sd, lfpaper.SID)
+    lf_t = lfpaper.universe(list(uni.loc[uni["region"] == "us", "ticker"]))
+    need |= set(lf_t) | {p["t"] for p in lstate["positions"]}
     kstates = [load_state(sd, "KAIRO"), load_state(sd, "KAIROS"), load_state(sd, "KAIROZ"), load_state(sd, "KAIROL")]
     signals = load_signals()
     k_t = kairo.tickers(signals, kstates, pd.Timestamp.now().normalize() - pd.Timedelta(days=90))
@@ -533,7 +556,8 @@ def main(argv=None) -> int:
             new_setups(st, mk, D, cal, s19_t if st["sid"].startswith("S19") else s20_t, bool(bull.loc[D]), fund, sec3)
             st["last_day"] = str(D.date())
     run_kairo(kstates, mk, cal, signals)
-    states += kstates
+    run_lf(lstate, mk, cal, lf_t, fx_usd)
+    states += kstates + [lstate]
     bench = []
     if "ACWI" in daily and fx_usd is not None and states[0]["start"]:
         a = daily["ACWI"]["Close"] / fx_usd.reindex(daily["ACWI"].index, method="ffill")
