@@ -3422,7 +3422,7 @@ details.sb[open] > summary::after { transform: rotate(45deg); } details.sb[open]
 
   <div class="search">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-    <input type="search" id="search" placeholder="Aktie suchen – Name, Ticker oder Befehl wie /ma" autocomplete="off">
+    <input type="search" id="search" placeholder="Aktie suchen – Name, Ticker oder Befehl wie /hm" autocomplete="off">
     <button type="button" id="searchX" class="search-x" aria-label="Suche löschen" hidden>✕</button>
     <button type="button" class="cmd-b" data-cmdopen title="Befehlsleiste (⌘K oder /)" aria-label="Befehlsleiste öffnen"><kbd>⌘K</kbd></button>
   </div>
@@ -6509,8 +6509,6 @@ function newsHtml() {
   const msOf = d => { const t = Date.parse(d); return isNaN(t) ? null : t; };
   const dedup = l => { const s = new Set(); return l.filter(n => { const k = String(n.t).toLowerCase().slice(0, 70); if (s.has(k)) return false; s.add(k); return true; }); };
   const live = liveKey("fh");
-  if (tab === "macro") return macroHtml();
-  if (tab === "map") return mapHtml();
   if (tab === "overview") return marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf);
   // Kopf (Wunsch 16.11.2026 „Unübersichtlich“): eine Werkzeugleiste – Bereich · Suche · Tendenz · ↻ – und darunter eine leise Infozeile
   const liveAt = live && NEWS.at ? new Date(NEWS.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
@@ -15625,7 +15623,7 @@ document.addEventListener("change", e => { const s = e.target.closest("[data-map
 const CMD_GO = [["HEUTE", "Heute", () => goSec("today")], ["SC", "Scanner", () => goSec("scanner")], ["SCR", "Screener", () => { state.scrOn = true; goSec("scanner"); }],
   ["HM", "Heatmap und Sektoren", () => { state.newsTab = "overview"; goSec("news"); }], ["NW", "News", () => { state.newsTab = "feed"; goSec("news"); }],
   ["IN", "Insider", () => { state.newsTab = "insider"; state.smView = "ins"; goSec("news"); }], ["HF", "Hedgefonds (13F)", () => { state.newsTab = "insider"; state.smView = "funds"; goSec("news"); }],
-  ["MA", "Makro: Zinsen, Rohstoffe, Länder", () => { state.newsTab = "macro"; goSec("news"); }], ["SO", "Reddit-Trends", () => { state.newsTab = "overview"; goSec("news"); setTimeout(() => { const x = document.querySelector(".so-card"); if (x) x.scrollIntoView({ block: "start" }); }, 80); }],
+["SO", "Reddit-Trends", () => { state.newsTab = "overview"; goSec("news"); setTimeout(() => { const x = document.querySelector(".so-card"); if (x) x.scrollIntoView({ block: "start" }); }, 80); }],
   ["KA", "Kalender", () => goSec("calendar")], ["ETF", "ETF-Ampel", () => goSec("etf")], ["DE", "Depot", () => goSec("depot")], ["EIN", "Einstieg", () => goSec("entry")],
   ["CH", "Chart", () => goSec("chart")], ["SET", "Einstellungen", () => goSec("settings")]];
 const CMD_TAB = { O: ["k", "Kennzahlen"], F: ["f", "Finanzen"], Q: ["q", "Quartale"], A: ["a", "Analysten"], I: ["i", "Insider"], P: ["p", "Konkurrenz"], M: ["m", "Meldungen"], N: ["n", "Notiz"],
@@ -15637,7 +15635,7 @@ CMD_GO.push(["FM", "Finanzmodell: DCF & Reverse-DCF", () => coGo("d")], ["BS", "
   ["BT", "Backtest auf echter Kursgeschichte", () => coGo("b")], ["KF", "Kalman-Trend", () => coGo("t")], ["HMM", "Marktphasen (Hidden-Markov)", () => coGo("t")], ["RG", "Trend-Filter (Regime)", () => coGo("t")],
   ["SB", "Streudiagramm & Beta", () => coGo("x")], ["FX", "Faktor-Analyse", () => coGo("x")], ["CR", "Korrelation zu anderen Anlagen", () => coGo("x")], ["PR", "Paar-Handel (Ornstein-Uhlenbeck)", () => coGo("r")],
   ["VAR", "Value at Risk (Depot)", depGo], ["GAR", "GARCH-Schwankungsprognose (Depot)", depGo], ["SS", "Stresstest (Depot)", depGo], ["DD", "Drawdown / Unterwasser-Kurve (Depot)", depGo],
-  ["RD", "Renditeverteilung (Depot)", depGo], ["PO", "Portfolio-Optimierer (Depot)", depGo], ["IM", "Weltkarte: Standorte, Engpässe, Naturereignisse", () => { state.newsTab = "map"; goSec("news"); }], ["MAP", "Weltkarte", () => { state.newsTab = "map"; goSec("news"); }], ["BC", "Anleihe-Rechner", () => { state.newsTab = "macro"; goSec("news"); setTimeout(() => { const b = document.querySelector(".mx-bond"); if (b) b.scrollIntoView({ block: "start", behavior: "smooth" }); }, 500); }]);
+  ["RD", "Renditeverteilung (Depot)", depGo], ["PO", "Portfolio-Optimierer (Depot)", depGo]);
 function cmdItems(q) {
   q = q.trim(); const Q = q.toUpperCase().replace(/^\//, ""), out = [], m = Q.match(/^([OFQAIPMNDBTXR])\s+(\S+)$/);
   const tick = s => (searchIdx || []).filter(r => r.t.toUpperCase() === s || tkClean(r.t).toUpperCase() === s || r.t.toUpperCase().startsWith(s) || String(r.n).toUpperCase().includes(s))
