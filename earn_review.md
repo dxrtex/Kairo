@@ -58,7 +58,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 - MTSI 2026-11-05: Kairo 60% steigt, Kurs -18.4% · Gewinn +4% · Ausblick angehoben – „Business Outlook For the fiscal first quarter ending January 1, 2027, MACOM expects revenue to be in the range of $450 million to $460 million.“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
-- ANF 2026-11-24: Kairo 56% steigt, Kurs +23.4% · Gewinn +21% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- ANF 2026-11-24: Kairo 56% steigt, Kurs +23.3% · Gewinn +21% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - CTVA 2026-11-11: Kairo 42% steigt, Kurs -24.3% · Gewinn -40% · Ausblick gesenkt – „Corteva (CTVA) Cuts Guidance And Delays Filing, Is The Reset Now Fully Priced In?“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
