@@ -193,12 +193,15 @@ def run_baseline(m: engine.Market, start, cfg: Config = CFG, tax: bool = True, r
     reb.add(dates[0])
     cash, pos, pot, taxes, costs = float(cfg.start_capital), {}, 0.0, 0.0, 0.0
     trades, equity, invested, last_close = [], [], [], {}
+    fee = lambda v: r.get("fee_fix", 0.0) if v < r.get("fee_free", float("inf")) else 0.0   # z. B. Scalable PRIME+: 0,99 € unter 250 € Orderwert
+    mc = m.mcap.ffill() if isinstance(m.mcap, pd.DataFrame) else m.mcap
 
     def sell(t, px, when, why):
         nonlocal cash, pot, taxes, costs
         p = pos.pop(t)
-        proceeds = p.shares * px * (1 - cfg.cost)
-        costs += p.shares * px * cfg.cost
+        f0 = fee(p.shares * px)
+        proceeds = p.shares * px * (1 - cfg.cost) - f0
+        costs += p.shares * px * cfg.cost + f0
         gain = proceeds - p.basis
         if tax:
             if gain < 0:
@@ -232,6 +235,9 @@ def run_baseline(m: engine.Market, start, cfg: Config = CFG, tax: bool = True, r
         if go and k > 0:
             y = idx[k - 1]
             ok = (mom.loc[y] > -1) & (adv.loc[y] >= r["min_adv"]) & (Cf.loc[y] * fx >= r["min_px"]) & m.O.loc[t].notna()
+            if r.get("min_mc") and mc is not None:                       # nur große Firmen (Börsenwert in USD)
+                mcy = mc.loc[y] if isinstance(mc, pd.DataFrame) else mc
+                ok &= (mcy.reindex(ok.index) >= r["min_mc"]).fillna(False)
             top = list(mom.loc[y][ok].sort_values(ascending=False).index[: r["n"]])
             for tk in [x for x in pos if x not in top]:
                 px = engine._px(m.O, t, tk)
@@ -243,13 +249,17 @@ def run_baseline(m: engine.Market, start, cfg: Config = CFG, tax: bool = True, r
                 if tk in pos or (mode == "buys" and not on):
                     continue
                 px = engine._px(m.O, t, tk)
-                n = int(min(val / r["n"], cash) // (px * (1 + cfg.cost))) if px == px and px > 0 else 0
+                budget = min(val / r["n"], cash)
+                n = int(budget // (px * (1 + cfg.cost))) if px == px and px > 0 else 0
+                if n > 0 and n * px * (1 + cfg.cost) + fee(n * px) > cash:
+                    n = int((cash - fee(n * px)) // (px * (1 + cfg.cost)))
                 if n <= 0:
                     continue
                 gross = n * px
-                cash -= gross * (1 + cfg.cost)
-                costs += gross * cfg.cost
-                pos[tk] = engine.Pos(n, t, px, gross * (1 + cfg.cost), px, m.sectors.get(tk) or "?")
+                f0 = fee(gross)
+                cash -= gross * (1 + cfg.cost) + f0
+                costs += gross * cfg.cost + f0
+                pos[tk] = engine.Pos(n, t, px, gross * (1 + cfg.cost) + f0, px, m.sectors.get(tk) or "?")
         for tk in list(pos):
             c = engine._px(m.C, t, tk)
             if c == c:
@@ -382,6 +392,38 @@ def mix_report(m: engine.Market, start: str, cfg: Config, etf_ticker: str = "ACW
     return out
 
 
+def variants_report(m: engine.Market, start: str) -> list[dict]:
+    """Varianten der Langfrist-Regel: Anzahl Aktien, Mindest-Börsenwert, Depotgröße mit echten Gebühren (Scalable PRIME+)."""
+    from dataclasses import replace as _rp
+    rows = []
+
+    def one(label, cap, rule):
+        cfg = _rp(CFG, start_capital=cap)
+        post = run_baseline(m, start, cfg, tax=True, rule=rule)
+        end_after = engine.liquidate_after_tax(post, cfg)
+        eq = post["equity"]
+        yrs = (eq.index[-1] - eq.index[0]).days / 365.25
+        mt = metrics(eq)
+        closed = [x for x in post["trades"] if x["why"] != "open"]
+        halves = {nm: metrics(eq.loc[a:b])["cagr"] for nm, (a, b) in {"16-20": (None, "2020-12-31"), "21-26": ("2021-01-01", None)}.items()}
+        rows.append({"v": label, "cap": cap, "end": end_after, "cagr": (end_after / cap) ** (1 / yrs) - 1, "mdd": mt["mdd"], "sharpe": mt["sharpe"],
+                     "trades": len(closed), "costs": post["costs"], "h1": halves["16-20"], "h2": halves["21-26"],
+                     "cash": 1 - post["invested"]})
+        r_ = rows[-1]
+        print(f"  {label:<38} {cap:>8,.0f} €  Ende {r_['end']:>12,.0f} €  CAGR n. St. {r_['cagr']*100:5.1f} %  Max DD {r_['mdd']*100:5.1f} %  Sharpe {r_['sharpe'] or 0:.2f}"
+              f"  16–20 {r_['h1']*100:5.1f} %  21–26 {r_['h2']*100:5.1f} %  Trades {r_['trades']:4d}  Kosten {r_['costs']:>9,.0f} €  Ø Cash {r_['cash']*100:4.1f} %".replace(",", "."), flush=True)
+
+    print("\n===== A) Anzahl Aktien × Mindest-Börsenwert (100.000 €, 0,10 % Kosten, Abgeltungsteuer) =====")
+    for mcap, ml in ((0, "alle"), (10e9, "ab 10 Mrd. $"), (50e9, "ab 50 Mrd. $")):
+        for n in (10, 15, 20):
+            one(f"Top {n} · {ml}", 100_000, {"n": n, "min_mc": mcap})
+    print("\n===== B) Echte Gebühren Scalable PRIME+ (0,99 € unter 250 € Orderwert) + 0,10 % Spread, ganze Stücke =====")
+    for cap in (1_500, 3_000, 6_000, 15_000):
+        for n in (5, 10, 15, 20):
+            one(f"Top {n} · alle · PRIME+", cap, {"n": n, "fee_fix": 0.99, "fee_free": 250})
+    return rows
+
+
 def print_report(rep: dict, title: str):
     e = lambda x: f"{x:,.0f} €".replace(",", ".")
     p = lambda x: "–" if x is None else f"{x * 100:+.1f} %".replace(".", ",")
@@ -426,6 +468,12 @@ def main(argv=None):
     x = ap.parse_args(argv)
     if x.cmd == "prices":
         prices(int(x.a), int(x.b))
+        return 0
+    if x.cmd == "variants":
+        m, meta = load_market(x.a, x.universe, Config())
+        out = variants_report(m, x.start)
+        if x.out:
+            Path(x.out).write_text(json.dumps(out, ensure_ascii=False, default=float))
         return 0
     if x.cmd == "mix":
         cfg = Config()

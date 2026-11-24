@@ -327,3 +327,19 @@ def test_mix_etf_strategy_rebalancing():
     assert b["end_pre"] < c["end_pre"] < a["end_pre"] and c["taxes_rebal"] == 0     # Strategie stärker → Strategie wird verkauft
     d = backtest.mix(e / e.iloc[0] * 100000, 1.0, s, 0.3, CFG)                       # ETF stärker → ETF-Verkauf wird versteuert
     assert d["taxes_rebal"] > 0
+
+
+def test_baseline_min_mcap_and_fixed_fees():
+    from dataclasses import replace
+    from backend.position import backtest
+    m = _market(seed=13, k=30)
+    start = m.C.index[300]
+    big = list(m.C.columns[:6])
+    m.mcap = pd.Series(1e9, index=m.C.columns); m.mcap[big] = 2e10
+    r = backtest.run_baseline(m, start, CFG, tax=False, rule={"n": 5, "min_mc": 1e10})
+    assert r["pos"] and set(r["pos"]) <= set(big)
+    small = replace(CFG, start_capital=1_000)
+    free = backtest.run_baseline(m, start, small, tax=False, rule={"n": 5})
+    fee = backtest.run_baseline(m, start, small, tax=False, rule={"n": 5, "fee_fix": 0.99, "fee_free": 250})
+    assert fee["costs"] > free["costs"] + 0.99 * 5 - 1e-9
+    assert fee["equity"].iloc[-1] < free["equity"].iloc[-1]

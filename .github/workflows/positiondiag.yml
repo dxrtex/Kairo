@@ -20,10 +20,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Läufe 45266382491, 45267576351, 45270818310: Regelwerk, Diagnosen, Optimierungen, bisherige Regel ± Marktfilter (fertig)
-        # Jetzt: Mischung Welt-ETF (ACWI) + bisherige Langfrist-Regel 100/0, 80/20, 70/30, 50/50, 0/100 mit jährlichem Ausgleich
+        # Frühere Läufe: Regelwerk, Diagnosen, Optimierungen, bisherige Regel ± Marktfilter, Mischung ETF + Strategie (fertig)
+        # Jetzt: Varianten der Langfrist-Regel – Top 10/15/20, Mindest-Börsenwert, echte Gebühren je Depotgröße
         run:
-          - "mix"
+          - "variants"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -41,7 +41,7 @@ jobs:
           path: bpx
           run-id: 45264753394
           github-token: ${{ github.token }}
-      - run: python -m backend.position.backtest ${{ matrix.run == 'mix' && 'mix bpx --universe us' || format('run bpx {0}', matrix.run) }} --out bt.json
+      - run: python -m backend.position.backtest ${{ (matrix.run == 'mix' || matrix.run == 'variants') && format('{0} bpx --universe us', matrix.run) || format('run bpx {0}', matrix.run) }} --out bt.json
       - uses: actions/upload-artifact@v4
         with:
           name: diag-${{ strategy.job-index }}
