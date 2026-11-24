@@ -194,6 +194,46 @@ def checks(data: dict, meta: dict, now: list[tuple[str, float]], depot: set, fun
     return out
 
 
+def curve(data: dict, meta: dict, bench: pd.DataFrame | None, rule: dict | None = None, mix: float = 0.3) -> dict | None:
+    """Verlauf des Strategie-Depots seit dem ersten Tausch, für den die Kurse 12 Monate Vorlauf haben (Scan-Historie ca. 2 Jahre):
+    an jedem Tauschtermin die Top 20 gleich gewichtet kaufen und bis zum nächsten halten (ohne Kosten und Steuern).
+    Dazu S&P 500 und die Mischung 70 % S&P 500 (als ETF-Näherung) / 30 % Strategie, täglich gewichtet. Wöchentliche Punkte."""
+    r = {**RULE, **(rule or {})}
+    if bench is None or not len(bench):
+        return None
+    b = bench["Close"].dropna()
+    idx = pd.DatetimeIndex(b.index)
+    rb = [d for d in rebalance_dates(idx, r["every"]) if d <= idx[-1]]
+    rb = [d for d in rb if (d - idx[0]).days >= 380]               # 12 Monate Lauf + 1 Monat Puffer
+    if not rb:
+        return None
+    vals, v0 = [], 1.0
+    for k, d in enumerate(rb):
+        end = rb[k + 1] if k + 1 < len(rb) else idx[-1] + pd.Timedelta(days=1)
+        held = [t for t, _ in rank(data, meta, d, r)[: r["n"]]]
+        days = idx[(idx >= d) & (idx < end)] if k + 1 < len(rb) else idx[idx >= d]
+        rel = []
+        for t in held:
+            c = data[t]["Close"].dropna()
+            p0 = _px_on(data[t], d)
+            if p0:
+                rel.append((c.reindex(days, method="ffill") / p0).fillna(1.0))
+        if not rel:
+            return None
+        seg = pd.concat(rel, axis=1).mean(axis=1) * v0
+        vals.append(seg)
+        v0 = float(seg.iloc[-1])
+    s_ = pd.concat(vals)
+    s_ = s_[~s_.index.duplicated(keep="last")]
+    bb = b.reindex(s_.index, method="ffill")
+    bb = bb / bb.iloc[0]
+    rs, rbm = s_.pct_change().fillna(0), bb.pct_change().fillna(0)
+    m = (1 + (1 - mix) * rbm + mix * rs).cumprod()
+    wk = s_.resample("W-FRI").last().dropna().index.union([s_.index[-1]])
+    pick = lambda x: [round(float(v), 4) for v in x.reindex(wk, method="ffill")]
+    return {"d": [d.strftime("%Y-%m-%d") for d in wk], "s": pick(s_), "b": pick(bb), "m": pick(m), "start": rb[0].strftime("%Y-%m-%d"), "mix": mix}
+
+
 def _px_on(df, d):
     c = df["Close"].dropna()
     i = c.index.searchsorted(d)
@@ -258,7 +298,12 @@ def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict 
     # Rang, Lauf und Kriterien für ALLE Aktien der Auswahl (Scanner „Meine“, Aktienkarte) – run_scan schreibt sie in search.json
     ranks = {t: [rk_now[t], round(mo[t], 4), ck[t]["nchk"] if t in ck else None,
                  sum(b << i for i, b in enumerate(ck[t]["chk"])) if t in ck else None] for t in rk_now}
-    return {"rule": r, "since": since.strftime("%Y-%m-%d"), "watch": watch, "checks": list(CHECKS), "ranks": ranks, "next": nxt.strftime("%Y-%m-%d"), "asof": idx[-1].strftime("%Y-%m-%d"),
+    try:
+        cv = curve(data, meta, bench, r)
+    except Exception as exc:
+        print(f"Langfrist: Verlauf-Fehler {exc!r}")
+        cv = None
+    return {"rule": r, "since": since.strftime("%Y-%m-%d"), "watch": watch, "curve": cv, "checks": list(CHECKS), "ranks": ranks, "next": nxt.strftime("%Y-%m-%d"), "asof": idx[-1].strftime("%Y-%m-%d"),
             "hold": hold, "ret": round(port, 4) if port is not None else None, "bench": round(bret, 4) if bret is not None else None,
             "out": [t for t in held_t if t not in top_now], "inn": [t for t in top_now if t not in held_t], "top": top,
             "chg": {"out": sorted(prev - held_t), "inn": sorted(held_t - prev)} if prev else None,   # Tausch am letzten Termin

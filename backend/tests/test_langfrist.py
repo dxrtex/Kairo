@@ -94,3 +94,15 @@ def test_pe_5y_avg():
     assert abs(LF.pe_5y_avg(f) - 20.0) < 1e-9
     f["pe"] = 200
     assert LF.pe_5y_avg(f) is None
+
+
+def test_curve_quarterly_equal_weight():
+    data = {f"S{i}": _df(0.0005 * i, seed=i) for i in range(12)}
+    meta = {t: {"name": t} for t in data}
+    cv = LF.curve(data, meta, _df(0.0003, seed=5), {"n": 3})
+    assert cv and len(cv["d"]) == len(cv["s"]) == len(cv["b"]) == len(cv["m"]) > 10
+    assert abs(cv["s"][0] - 1) < 0.05 and abs(cv["b"][0] - 1) < 0.05
+    lo, hi = min(cv["s"][-1], cv["b"][-1]), max(cv["s"][-1], cv["b"][-1])
+    assert lo - 0.02 <= cv["m"][-1] <= hi + 0.02                    # Mischung liegt zwischen Strategie und Index
+    out = LF.build(data, meta, bench=_df(0.0003, seed=5), rule={"n": 3}, fund={})
+    assert out["curve"] and out["curve"]["d"][-1] <= out["asof"]

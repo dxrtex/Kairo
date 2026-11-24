@@ -2436,6 +2436,11 @@ main .table-wrap .sc-t.lf-s .sh-nm { min-width: 0; } main .table-wrap .sc-t.lf-s
 main .table-wrap .sc-t.lf-sc th:nth-child(2), main .table-wrap .sc-t.lf-sc td:nth-child(2) { min-width: 0 !important; max-width: none !important; width: auto !important; box-shadow: none !important; }
 main .table-wrap .sc-t.lf-mine th:nth-child(1), main .table-wrap .sc-t.lf-mine td:nth-child(1) { min-width: 0 !important; max-width: none !important; width: auto !important; box-shadow: none !important; }
 main .table-wrap .sc-t.lf-sc .sh-nm b { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; } main .table-wrap .sc-t.lf-sc .sh-nm small { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.lf-cv { margin: 10px 0 6px; } .lf-cv svg { width: 100%; height: 120px; display: block; } .lf-dep .lf-cv svg { height: 190px; }
+.lf-cvl { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; margin-top: 6px; } .lf-cvl i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+.lf-tl { margin: 0 2px 16px; } .lf-tr { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); } .lf-tr:last-child { border-bottom: 0; }
+.lf-tr input { width: 20px; height: 20px; accent-color: var(--up); flex: 0 0 auto; } .lf-tr .lf-trn { flex: 1; min-width: 0; display: flex; flex-direction: column; } .lf-tr .lf-trn small { color: var(--muted); }
+.lf-tr.done .lf-trn b { text-decoration: line-through; color: var(--muted); } .lf-tr .lf-trq { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
 .lf-n { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; background: var(--surface-2); color: var(--muted); white-space: nowrap; } .lf-n.n8 { background: color-mix(in srgb, var(--up) 20%, transparent); color: var(--up); } .lf-n.n7 { background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); }
 .lf-ck { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 2px; } .lf-ck i { font-style: normal; font-size: 11.5px; padding: 2px 7px; border-radius: 7px; white-space: nowrap; } .lf-ck i.ok { color: var(--up); background: color-mix(in srgb, var(--up) 10%, transparent); } .lf-ck i.no { color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); font-weight: 600; }
 .lf-w { padding: 9px 0; border-bottom: 1px solid var(--line); cursor: pointer; } .lf-w:last-child { border-bottom: 0; } .lf-w-h { display: flex; align-items: center; gap: 8px; } .lf-w-n { flex: 1; min-width: 0; display: flex; flex-direction: column; } .lf-w-n b, .lf-w-n small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .lf-w-px { font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; }
@@ -3875,7 +3880,8 @@ const SHORT = { drawdown: "Rückgang", no_crash: "kein Crash", structure: "unter
   zone: "Zone", rsi_div: "RSI-Divergenz", rsi_range: "RSI 28–48", macd_below0: "MACD < 0", macd_turn: "MACD dreht",
   mbi: "MBI-Signal", crv: "CRV ≥ 2", cap: "Börsenwert", liquidity: "Liquidität", price: "Kurs ≥ 1", history: "Historie" };
 const gradeBadge = (r, big) => r.grade ? `<span class="grd g-${r.grade.g}${big ? " big" : ""}" title="Qualitätsstufe ${r.grade.g} – aus dem Backtest, siehe Score antippen">${r.grade.g}</span>` : "";
-const SWING_OFF = true;   // 24.11.2026: Swing-Status (Treffer, Konsolidierung, kaufbereit) nirgends mehr anzeigen
+const SWING_OFF = true;
+const SWING_GLOSS = new Set(["score", "crv", "zone", "trend", "grade", "status", "ko", "lev", "r", "base", "stop", "ema20x", "mom", "paper", "dm", "exp", "mbi", "div"]);   // Swing-Begriffe nicht mehr im Lexikon   // 24.11.2026: Swing-Status (Treffer, Konsolidierung, kaufbereit) nirgends mehr anzeigen
 const statusBadge = r => SWING_OFF ? "" : r.passed ? `<span class="status st-bereit">Treffer</span>${kPill(r)}`
   : r.fast_hit ? `<span class="status st-abwarten">Fast-Treffer · fehlt: ${esc(shortCrit(r.missing[0]))}</span>`
   : r.near_hit ? `<span class="status st-kein_setup">9/11 · fehlt: ${esc(r.missing.map(shortCrit).join(", "))}</span>`
@@ -3980,6 +3986,11 @@ const GLOSS = {
   exp: ["Erwartung je Trade", "Durchschnittliches Ergebnis aller Trades. Positiv heißt: Die Strategie verdient im Schnitt – auch wenn viele Trades verlieren."],
   sharpe: ["Sharpe", "Rendite im Verhältnis zur Schwankung. Höher ist besser: gleiche Rendite mit weniger Auf und Ab."],
   fear: ["Stimmung / Angst (0–100)", "Fasst sieben Messgrößen zusammen: VIX-Höhe und -Anstieg, kurz- gegen langfristige Angst (VIX ÷ VIX3M), Tech/KI (Nasdaq 100 und Halbleiter vom Hoch), Anteil der gescannten Aktien über der EMA 50, Aktien am 52-Wochen-Tief und den Kreditmarkt. Die Trend-Ampel sagt, wohin der Markt läuft – die Stimmung, wie nervös er ist. Erfahrungswerte, keine getestete Handelsregel."],
+  mom12: ["12-Monats-Lauf (Momentum)", "Kursanstieg der letzten 12 Monate ohne den letzten Monat. Die Strategie kauft die 20 US-Aktien mit dem stärksten Lauf – Aktien, die lange gut liefen, laufen im Schnitt eine Weile weiter (Momentum-Effekt)."],
+  tausch: ["Tausch", "Am ersten Börsentag im Januar, April, Juli und Oktober: Aktien, die nicht mehr in den Top 20 sind, verkaufen, neue Top-20-Aktien mit gleichem Betrag kaufen. Dazwischen nichts tun – kein Stop."],
+  sdep: ["Strategie-Depot", "Die 20 Aktien der Strategie, gleich gewichtet. Zusammen mit dem Welt-ETF im Verhältnis 70/30 (ETF/Strategie) – im Backtest 2016–2026 15,3 % p. a. nach Steuer bei einem größten Rückgang von 36 %."],
+  k8: ["Erfüllt x/8", "Zusatzinfo zu jeder Aktie: Liquidität, Trend, Stabilität, Momentum, Quality, Value, Sektor-Cap und Earnings-Freiheit. Ab 6/8 außerhalb der Top 20 steht eine Aktie auf der Watchlist. Gekauft wird trotzdem nur nach Rang."],
+  reb: ["Ausgleich (Rebalancing)", "Einmal im Jahr im Januar ETF und Strategie-Depot wieder auf 70/30 bringen: vom Teil, der stärker gestiegen ist, in den anderen umschichten. Hält das Risiko konstant."],
   etfa: ["ETF-Ampel", "Für Extra-Geld neben dem Sparplan: Grün = jetzt investieren (Rücksetzer oder Angst am Markt), Gelb = höchstens 3 Monate abwarten. Die monatliche Sparrate läuft immer. Langzeittest S&P 500 und Welt-ETF 1990–2026: Nach Grün war die Rendite der folgenden 3 Monate höher – in Euro lag Extra-Geld nach Ampel aber 0,1–0,3 % hinter „sofort anlegen“. Sofort anlegen ist also mindestens genauso gut; die Ampel ordnet ein."],
 };
 const TERMS = [[/\bATR\b/, "atr"], [/Konsolidierung/, "base"], [/Vormomentum/, "mom"], [/EMA ?20\b/, "ema20x"], [/K\.-o\.-Schwelle|\bK\.-o\./, "ko"],
@@ -4131,11 +4142,24 @@ function lfSwapSoon(L) { const dn = lfDays(L.next), ds = -lfDays(L.since); retur
 // Tauschliste: bis 5 Tage nach dem Termin die tatsächlichen Käufe/Verkäufe (chg), sonst die Vorschau auf den nächsten Termin
 function lfSwap(L) { const ds = -lfDays(L.since); if (L.chg && ds != null && ds <= 5 && (L.chg.out.length || L.chg.inn.length)) return { out: L.chg.out, inn: L.chg.inn, now: true };
   return { out: L.out || [], inn: L.inn || [], now: false }; }
+// Verlauf Strategie-Depot vs. S&P 500 vs. 70/30 (backend/langfrist.curve, wöchentlich, ohne Kosten/Steuern)
+function lfCurveHtml(L, big) { const C = L && L.curve; if (!C || !C.d || C.d.length < 4) return "";
+  const W = 600, H = big ? 190 : 120, P = 6, all = [...C.s, ...C.b, ...C.m], lo = Math.min(...all), hi = Math.max(...all), n = C.d.length;
+  const X = i => P + i * (W - 2 * P) / (n - 1), Y = v => H - P - (v - lo) / ((hi - lo) || 1) * (H - 2 * P);
+  const path = a => a.map((v, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join("");
+  const base = Y(1), last = a => a[a.length - 1] - 1;
+  const ln = [["s", "Strategie", "var(--accent, #0a84ff)", 2.2], ["m", `${Math.round((1 - C.mix) * 100)}/${Math.round(C.mix * 100)}`, "var(--up)", 1.8], ["b", "S&P 500", "var(--muted)", 1.6]];
+  return `<div class="lf-cv">${big ? `<div class="plan-h" style="margin-bottom:6px">Verlauf Strategie-Depot</div>` : ""}<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Verlauf Strategie-Depot">
+      <line x1="${P}" x2="${W - P}" y1="${base.toFixed(1)}" y2="${base.toFixed(1)}" stroke="var(--line)" stroke-dasharray="4 4"/>
+      ${ln.slice().reverse().map(([k, , col, w]) => `<path d="${path(C[k])}" fill="none" stroke="${col}" stroke-width="${w}" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>`).join("")}</svg>
+    <div class="lf-cvl">${ln.map(([k, l, col]) => `<span><i style="background:${col}"></i>${l} <b class="${last(C[k]) >= 0 ? "up" : "down"}">${sgnPct(last(C[k]), 1)}</b></span>`).join("")}<span class="muted">seit ${fmtD(C.start)}</span></div>
+    ${big ? `<p class="muted lf-note">Modell: an jedem Tauschtermin die Top ${L.rule.n} gleich gewichtet, ohne Kosten und Steuern. ${Math.round((1 - C.mix) * 100)}/${Math.round(C.mix * 100)} mit dem S&P 500 als ETF-Näherung. Die Kurve beginnt, sobald die Kurse 12 Monate Vorlauf haben.</p>` : ""}</div>`; }
 function longTodayHtml() {
   const L = LF(); if (!L || !L.hold || !L.hold.length) return "";
   const dn = lfDays(L.next), soon = lfSwapSoon(L);
   return `<div class="hcard lf-hc">${hHead(`Strategie-Depot <small>${L.hold.length} Aktien</small>`, `data-golong`, "Öffnen")}
     <div class="lf-kpi"><div><span>seit Tausch ${fmtD(L.since)}</span>${lfPct(L.ret)}</div><div><span>S&P 500</span>${lfPct(L.bench)}</div><div><span>nächster Tausch</span><b>${dn != null && dn >= 0 ? `in ${dn} T.` : fmtD(L.next)}</b></div></div>
+    ${lfCurveHtml(L)}
     ${(sw => soon && (sw.out.length || sw.inn.length) ? `<div class="lf-swap"><b>${sw.now ? "Tausch jetzt:" : "Tausch steht an:"}</b> verkaufen ${sw.out.map(t => esc(t)).join(", ") || "–"} · kaufen ${sw.inn.map(t => esc(t)).join(", ") || "–"} <button class="hlink" data-golong>Liste ›</button></div>` : "")(lfSwap(L))}
     ${L.hold.slice().sort((a, b) => (b.ret ?? -9) - (a.ret ?? -9)).slice(0, 5).map(x => `<button class="hrow" ${lfOpen(x.t)}>${cfAv(x.t)}<span class="hn">${esc(shortNm(x.n || x.t))}</span>${lfPct(x.ret)}</button>`).join("")}</div>`;
 }
@@ -4315,13 +4339,28 @@ function lfSideHtml(r) { const L = LF(); if (!L || !L.top || !r || r.ext) return
     <div class="cf-r"><span>Rang heute</span><b>${x ? x.rk : w ? w.rk : "–"}</b></div><div class="cf-r"><span>Lauf 12 M.</span>${lfPct((x || h || w).m, 0)}</div>${h ? `<div class="cf-r"><span>seit Tausch</span>${lfPct(h.ret)}</div>` : ""}<div class="cf-r"><span>nächster Tausch</span><b>${fmtD(L.next)}</b></div></div>`; }
 function cockpitSide(h, r) { return lfSideHtml(r) + cockpitSide1(h, r); }
 // Einstieg: zuerst die Langfrist-Kaufliste (Stückzahl für deinen Betrag), darunter Swing als Nebenstrategie
+// Tausch-Checkliste (24.11.2026): verkaufen / kaufen mit Stückzahl, zum Abhaken – je Tauschtermin gemerkt
+function lfTauschHtml(L) { const SW = lfSwap(L), key = SW.now ? L.since : L.next, done = new Set(((state.tDone || {})[key]) || []);
+  const cap = Math.max(0, +state.lfCap || 5000), per = cap / L.rule.n;
+  const mine = {}; depotLive().filter(p => p.t && !p.etf).forEach(p => { const t = String(p.t).toUpperCase(); mine[t] = (mine[t] || 0) + (+p.qty || 0); });
+  const info = t => lfInfo(t, L) || { t, n: t, p: null };
+  const row = (t, side) => { const I = info(t), e = toEur(I.p, I.cur || "USD"), q = side === "sell" ? mine[t] || null : e > 0 ? Math.floor(per / e) : null, k = side + ":" + t;
+    return `<label class="lf-tr${done.has(k) ? " done" : ""}"><input type="checkbox" data-tdone="${esc(key)}|${esc(k)}"${done.has(k) ? " checked" : ""}>${cfAv(t)}<span class="lf-trn"><b>${esc(shortNm(I.n || t))}</b><small>${esc(t)}${I.p != null ? ` · ${fmt(I.p)} $` : ""}</small></span>
+      <span class="lf-trq ${side === "sell" ? "down" : "up"}">${side === "sell" ? `verkaufen${q ? ` ${fmt(q, q % 1 ? 3 : 0)} Stück` : " (alle)"}` : q === 0 ? `<span class="gold" title="1 Stück kostet ${eur(e)} – mehr als ${eur(per)} je Aktie">Betrag zu klein</span>` : `kaufen ${q ?? "–"} Stück`}</span></label>`; };
+  const items = [...SW.out.map(t => row(t, "sell")), ...SW.inn.map(t => row(t, "buy"))], nDone = [...SW.out.map(t => "sell:" + t), ...SW.inn.map(t => "buy:" + t)].filter(k => done.has(k)).length;
+  const dn = lfDays(L.next), soon = lfSwapSoon(L);
+  return `<div class="card lf-tl"><div class="plan-h">${SW.now ? `Tausch ${fmtD(L.since)} – jetzt umsetzen` : soon ? `Tausch am ${fmtD(L.next)} – Liste` : `Nächster Tausch ${fmtD(L.next)}${dn != null && dn >= 0 ? ` (in ${dn} Tagen)` : ""} · Vorschau`} ${items.length ? `<small class="muted">${nDone} von ${items.length} erledigt</small>` : ""}</div>
+    ${items.length ? items.join("") : `<p class="muted" style="margin:4px 0 0">Stand heute bleibt beim nächsten Tausch alles, wie es ist.</p>`}
+    <p class="muted lf-note">${SW.now || soon ? "Zuerst verkaufen, dann mit dem Erlös gleich gewichtet kaufen. Abgehakte Zeilen merkt sich Kairo für diesen Termin." : "Die Liste ändert sich bis zum Termin noch – verbindlich ist der Stand am Tauschtag."}</p></div>`; }
+document.addEventListener("change", e => { const c = e.target.closest && e.target.closest("[data-tdone]"); if (!c) return; const [key, k] = c.dataset.tdone.split("|"), o = { ...(state.tDone || {}) }, l = new Set(o[key] || []);
+  c.checked ? l.add(k) : l.delete(k); o[key] = [...l]; state.tDone = o; save(); render(); });
 function lfEinHtml() { if (!searchIdx) loadSearch(); const L = LF(); if (!L || !L.hold || state.einT) return "";
   const cap = Math.max(0, +state.lfCap || 5000), per = cap / Math.max(1, L.hold.length), SW = lfSwap(L);
   const buy = SW.now ? L.hold.filter(x => SW.inn.includes(x.t)) : L.hold;
   const card = x => { const e = toEur(x.p, "USD"), q = e > 0 ? Math.floor(per / e) : null;
     return `<button class="ein-rc lf-rc" ${lfOpen(x.t)}><div class="ein-rc-h">${cfAv(x.t)}<span><b>${esc(shortNm(x.n || x.t))}</b><small>${esc(x.t)} · Strategie</small></span>${lfBadge(x)}</div>
       <div class="ein-rc-g"><div><span>Kurs</span><b>${fmt(x.p)} $</b></div><div><span>Betrag</span><b>${eur(per)}</b></div><div><span>Stück</span><b>${q ?? "–"}</b></div><div><span>Lauf 12 M.</span>${lfPct(x.m, 0)}</div></div></button>`; };
-  return `<div class="plan-h" style="margin:4px 2px 6px">${SW.now ? `Tausch ${fmtD(L.since)} – jetzt kaufen` : `Dein Strategie-Depot (${L.hold.length} Aktien) · nächster Tausch ${fmtD(L.next)}`}</div>
+  return lfTauschHtml(L) + `<div class="plan-h" style="margin:4px 2px 6px">${SW.now ? `Tausch ${fmtD(L.since)} – jetzt kaufen` : `Dein Strategie-Depot (${L.hold.length} Aktien) · nächster Tausch ${fmtD(L.next)}`}</div>
     <div class="ein-hero-l">${buy.slice(0, 20).map(card).join("")}</div>
     <div class="note" style="margin:4px 2px 14px">Gleicher Betrag je Aktie (${eur(per)} bei ${eur(cap)} – Betrag im Scanner <button class="hlink" data-golong>Kaufen ›</button> ändern). Ohne Stop, ohne Hebel: halten bis zum nächsten Tausch am ${fmtD(L.next)}. ${SW.now && SW.out.length ? `Vorher verkaufen: ${SW.out.map(t => esc(t)).join(", ")}.` : ""}</div>
     <label class="lf-cap" style="margin:0 2px 14px">Betrag für die Strategie <input id="lfCap" type="number" inputmode="decimal" min="0" step="500" value="${cap}"> €</label>`; }
@@ -4332,7 +4371,7 @@ function lfDepotHtml() { const L = LF(); if (!L || !L.hold || !searchIdx) return
   const hold = L.hold.map(x => x.t), have = hold.filter(t => mine.has(t)), miss = hold.filter(t => !mine.has(t));
   const SW = lfSwap(L), sell = [...new Set([...(SW.now ? SW.out : []), ...(L.out || [])])].filter(t => mine.has(t));
   const chip = t => `<button class="lf-chip" ${lfOpen(t)}>${cfAv(t)}${esc(t)}</button>`;
-  return `<div class="card lf-dep"><div class="plan-h">Strategie-Depot · ${have.length} von ${hold.length} Aktien in deinem Depot <button class="hlink" data-golong style="float:right">Öffnen ›</button></div>
+  return `<div class="card lf-dep">${lfCurveHtml(L, true)}<div class="plan-h">Strategie-Depot · ${have.length} von ${hold.length} Aktien in deinem Depot <button class="hlink" data-golong style="float:right">Öffnen ›</button></div>
     ${have.length ? `<div class="lf-dl"><span class="up">im Depot</span>${have.map(chip).join("")}</div>` : ""}
     ${miss.length ? `<div class="lf-dl"><span class="muted">fehlen</span>${miss.map(chip).join("")}</div>` : ""}
     ${sell.length ? `<div class="lf-dl"><span class="down">${SW.now ? "verkaufen (Tausch)" : "raus beim nächsten Tausch"}</span>${sell.map(chip).join("")}</div>` : ""}
@@ -7389,7 +7428,7 @@ function qtDraw() {
     <label class="qt-pdf"><input type="file" accept="application/pdf,.pdf" id="qtPdf" hidden><b>Abrechnung (PDF) einlesen</b><small>Scalable-App → Dokumente → Wertpapierabrechnung teilen/speichern. Kairo liest sie nur auf diesem Gerät.</small></label>
     ${QT.pdfMsg ? `<div class="qt-ovi ${QT.pdfMsg.ok ? "" : "down"}">${QT.pdfMsg.t}</div>` : ""}
     <div class="qt-seg">${[["buy", "Kauf"], ["sell", "Verkauf"]].map(([v, l]) => `<button class="${QT.side === v ? "on " + v : ""}" data-qtside="${v}">${l}</button>`).join("")}</div>
-    <div class="qt-seg sm">${[["stock", "Aktie / ETF"], ["turbo", "Turbo / Optionsschein"]].map(([v, l]) => `<button class="${QT.kind === v ? "on" : ""}" data-qtkind="${v}">${l}</button>`).join("")}</div>
+    ${SWING_OFF && QT.kind !== "turbo" && !depotLive().some(p => p.d) ? "" : `<div class="qt-seg sm">${[["stock", "Aktie / ETF"], ["turbo", "Turbo / Optionsschein"]].map(([v, l]) => `<button class="${QT.kind === v ? "on" : ""}" data-qtkind="${v}">${l}</button>`).join("")}</div>`}
     ${QT.kind === "stock" ? `<label class="qt-f"><span>Aktie</span><input id="qtQ" type="search" autocomplete="off" placeholder="Name oder Kürzel" value="${esc(QT.t ? (r && r.n) || QT.t : "")}"><div id="qtList" class="qt-list" hidden></div></label>`
       : `<label class="qt-f"><span>ISIN oder WKN des Turbos</span><div class="qt-row"><input id="qtIsin" autocomplete="off" placeholder="z. B. DE000HT1ABC2" value="${esc(QT.isin)}"><button class="btn ghost sm" data-qtov>Laden</button></div></label>
         ${QT.ov ? `<div class="qt-ovi">${QT.ov.err ? `<span class="down">${esc(QT.ov.err)}</span>` : `<b>${esc(QT.ov.und)} ${QT.ov.put ? "Short" : "Long"}</b> · K.-o. ${fmt(QT.ov.ko)} ${esc(QT.ov.ucur || "")}${QT.ov.bid ? ` · Geld ${fmt(QT.ov.bid)} € / Brief ${fmt(QT.ov.ask)} €` : ""}`}</div>` : ""}`}
@@ -10540,8 +10579,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.248";
-const APP_NEWS = [["2026.11.248", "Feinschliff", [
+const APP_VER = "2026.11.249";
+const APP_NEWS = [["2026.11.249", "Tausch-Liste und Verlauf", [
+  ["Tausch-Liste zum Abhaken", "Einstieg zeigt oben, was beim Tausch verkauft und gekauft wird – mit Stückzahl (Verkauf aus deinem Depot, Kauf für deinen Betrag). Abgehakte Zeilen merkt sich Kairo je Termin."],
+  ["Verlauf des Strategie-Depots", "Auf Heute und im Depot: Kurve Strategie gegen S&P 500 und 70/30-Mischung, seit die Kurse 12 Monate Vorlauf haben."],
+  ["Lexikon und Erfassen aufgeräumt", "Begriffe A–Z erklärt Momentum, Tausch, Strategie-Depot, x/8 und Ausgleich statt Swing-Begriffen. „Trade erfassen“ zeigt Turbos nur noch, wenn du welche im Depot hast."]]],
+ ["2026.11.248", "Feinschliff", [
   ["Aktienkarte für die Strategie", "Die Karte zeigt jetzt Status, Rang, 12-Monats-Lauf, Erfüllt x/8 mit Häkchen und die Stückzahl – statt Kaufzone, Stop und Swing-Kriterien."],
   ["Letzte Swing-Reste entfernt", "Chart-Kopf, Marktampel, Heute und Einstellungen sprechen nur noch von der Strategie. Überall heißt es einheitlich „Strategie-Depot“."]]],
  ["2026.11.247", "Scanner wieder im gewohnten Aufbau", [
@@ -11684,9 +11727,9 @@ function settingsHtml() {
       </details></div></div>
     ${wlHtml()}
     ${backupHtml()}
-    <div class="section-title"><span>Begriffe A–Z</span><span>${Object.keys(GLOSS).length} Erklärungen</span></div>
-    <div class="card gloss">${Object.values(GLOSS).sort((a, b) => a[0].localeCompare(b[0], "de")).map(([t, x]) => `<details><summary>${esc(t)}</summary><p>${esc(x)}</p></details>`).join("")}</div>
-    <div class="section-title"><span>Forschung &amp; Live-Bilanz</span><span>öffentlich</span></div><div class="card" style="margin-bottom:18px"><div class="note" style="margin:0">Alle getesteten Strategien mit Regeln und Ergebnissen – auch zum Teilen mit ChatGPT oder Claude: <a href="research/" target="_blank" rel="noopener">dxrtex.github.io/Kairo/research/</a> · öffentliche Live-Bilanz aller Treffer: <a href="track/" target="_blank" rel="noopener">dxrtex.github.io/Kairo/track/</a></div></div>
+    <div class="section-title"><span>Begriffe A–Z</span><span>${Object.keys(GLOSS).filter(k => !(SWING_OFF && SWING_GLOSS.has(k))).length} Erklärungen</span></div>
+    <div class="card gloss">${Object.entries(GLOSS).filter(([k]) => !(SWING_OFF && SWING_GLOSS.has(k))).map(([, v]) => v).sort((a, b) => a[0].localeCompare(b[0], "de")).map(([t, x]) => `<details><summary>${esc(t)}</summary><p>${esc(x)}</p></details>`).join("")}</div>
+    <div class="section-title"><span>Forschung &amp; Live-Bilanz</span><span>Backtest</span></div><div class="card" style="margin-bottom:18px"><div class="note" style="margin:0">Aktuelle Strategie: Top 20 US-Aktien nach 12-Monats-Lauf, Tausch vierteljährlich, 70 % Welt-ETF / 30 % Strategie. Backtest 2016–2026 nach Steuer: Strategie 24,6 % p. a. (größter Rückgang 51 %), 70/30 15,3 % (36 %), Welt-ETF 10,2 % (33 %), S&P-500-ETF 12,7 %. Nur heute gelistete Aktien – echte Renditen liegen darunter. Ältere Studien (u. a. Swing) zum Nachlesen: <a href="research/" target="_blank" rel="noopener">dxrtex.github.io/Kairo/research/</a></div></div>
     <div class="section-title"><span>Datenstatus</span><span>letzter Scan</span></div>
     <div class="card" style="margin-bottom:18px">${health().length ? health().map(([c, t]) => `<div class="dsrow"><i class="${c}"></i>${esc(t)}</div>`).join("") : `<div class="dsrow"><i class="g"></i>Alle Daten vollständig – Kurse, Stammdaten, Termine und Nachrichten.</div>`}
       <div class="dsrc">${sourcesStatus().map(x => `<div class="dsrow"><i class="${x.c}"></i><span>${esc(x.n)}</span><b style="margin-left:auto;font-weight:600">${x.c === "n" ? "nicht geladen" : esc(x.txt)}${x.c === "y" ? " · älter als üblich" : ""}</b></div>`).join("")}</div>
