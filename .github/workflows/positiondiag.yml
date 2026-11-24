@@ -21,9 +21,10 @@ jobs:
       fail-fast: false
       matrix:
         # Frühere Läufe: Regelwerk, Diagnosen, Optimierungen, bisherige Regel ± Marktfilter, Mischung ETF + Strategie (fertig)
-        # Jetzt: Varianten der Langfrist-Regel – Top 10/15/20, Mindest-Börsenwert, echte Gebühren je Depotgröße
+        # Varianten Top 10/15/20, Mindest-Börsenwert, Gebühren (fertig, Lauf 45414356249)
+        # Jetzt: Belastbarkeit Top 10, Puffer-Regel, Branchen-Grenze, 70/30
         run:
-          - "variants"
+          - "robust"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -41,7 +42,7 @@ jobs:
           path: bpx
           run-id: 45264753394
           github-token: ${{ github.token }}
-      - run: python -m backend.position.backtest ${{ (matrix.run == 'mix' || matrix.run == 'variants') && format('{0} bpx --universe us', matrix.run) || format('run bpx {0}', matrix.run) }} --out bt.json
+      - run: python -m backend.position.backtest ${{ (matrix.run == 'mix' || matrix.run == 'variants' || matrix.run == 'robust') && format('{0} bpx --universe us', matrix.run) || format('run bpx {0}', matrix.run) }} --out bt.json
       - uses: actions/upload-artifact@v4
         with:
           name: diag-${{ strategy.job-index }}

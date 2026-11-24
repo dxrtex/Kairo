@@ -343,3 +343,18 @@ def test_baseline_min_mcap_and_fixed_fees():
     fee = backtest.run_baseline(m, start, small, tax=False, rule={"n": 5, "fee_fix": 0.99, "fee_free": 250})
     assert fee["costs"] > free["costs"] + 0.99 * 5 - 1e-9
     assert fee["equity"].iloc[-1] < free["equity"].iloc[-1]
+
+
+def test_baseline_buffer_sector_cap_and_offset():
+    from backend.position import backtest
+    m = _market(seed=13, k=30)
+    start = m.C.index[300]
+    base = backtest.run_baseline(m, start, CFG, tax=False, rule={"n": 5})
+    buf = backtest.run_baseline(m, start, CFG, tax=False, rule={"n": 5, "hold": 15})
+    assert len(buf["pos"]) <= 5
+    assert len([x for x in buf["trades"] if x["why"] == "rank"]) <= len([x for x in base["trades"] if x["why"] == "rank"])
+    cap = backtest.run_baseline(m, start, CFG, tax=False, rule={"n": 5, "sec_max": 1})
+    secs = [p.sector for p in cap["pos"].values()]
+    assert len(secs) == len(set(secs))
+    off = backtest.run_baseline(m, start, CFG, tax=False, rule={"n": 5, "offset": 1})
+    assert all(pd.Timestamp(x["out"]).month in (2, 5, 8, 11) for x in off["trades"] if x["why"] == "rank")

@@ -187,7 +187,7 @@ def run_baseline(m: engine.Market, start, cfg: Config = CFG, tax: bool = True, r
     last_valid = m.C.apply(lambda s: s.last_valid_index())
     idx = m.C.index
     dates = idx[idx >= pd.Timestamp(start)]
-    months = set(range(1, 13, r["every"]))
+    months = set(range(1 + r.get("offset", 0), 13, r["every"]))   # offset 1 → Feb/Mai/Aug/Nov
     first = pd.Series(idx, index=idx).groupby([idx.year, idx.month]).transform("first")
     reb = set(d for d in dates if first[d] == d and d.month in months)
     reb.add(dates[0])
@@ -238,16 +238,26 @@ def run_baseline(m: engine.Market, start, cfg: Config = CFG, tax: bool = True, r
             if r.get("min_mc") and mc is not None:                       # nur große Firmen (Börsenwert in USD)
                 mcy = mc.loc[y] if isinstance(mc, pd.DataFrame) else mc
                 ok &= (mcy.reindex(ok.index) >= r["min_mc"]).fillna(False)
-            top = list(mom.loc[y][ok].sort_values(ascending=False).index[: r["n"]])
-            for tk in [x for x in pos if x not in top]:
+            ranked = list(mom.loc[y][ok].sort_values(ascending=False).index)
+            keep = set(ranked[: r.get("hold") or r["n"]])                 # Puffer: behalten, solange in den Top „hold“
+            for tk in [x for x in pos if x not in keep]:
                 px = engine._px(m.O, t, tk)
                 px = px if px == px else last_close.get(tk, pos[tk].entry_px)
                 sell(tk, px, t, "rank")
             val = cash + sum(p.shares * (engine._px(m.O, t, tk) if engine._px(m.O, t, tk) == engine._px(m.O, t, tk)
                                          else last_close.get(tk, p.entry_px)) for tk, p in pos.items())
-            for tk in top:
+            cands = ranked if (r.get("hold") or r.get("sec_max")) else ranked[: r["n"]]
+            secn = {}
+            for tk in pos:
+                secn[m.sectors.get(tk) or "?"] = secn.get(m.sectors.get(tk) or "?", 0) + 1
+            for tk in cands:
+                if len(pos) >= r["n"]:
+                    break
                 if tk in pos or (mode == "buys" and not on):
                     continue
+                sec = m.sectors.get(tk) or "?"
+                if r.get("sec_max") and sec != "?" and secn.get(sec, 0) >= r["sec_max"]:
+                    continue                                               # höchstens sec_max Aktien je Branche
                 px = engine._px(m.O, t, tk)
                 budget = min(val / r["n"], cash)
                 n = int(budget // (px * (1 + cfg.cost))) if px == px and px > 0 else 0
@@ -259,7 +269,8 @@ def run_baseline(m: engine.Market, start, cfg: Config = CFG, tax: bool = True, r
                 f0 = fee(gross)
                 cash -= gross * (1 + cfg.cost) + f0
                 costs += gross * cfg.cost + f0
-                pos[tk] = engine.Pos(n, t, px, gross * (1 + cfg.cost) + f0, px, m.sectors.get(tk) or "?")
+                pos[tk] = engine.Pos(n, t, px, gross * (1 + cfg.cost) + f0, px, sec)
+                secn[sec] = secn.get(sec, 0) + 1
         for tk in list(pos):
             c = engine._px(m.C, t, tk)
             if c == c:
@@ -424,6 +435,61 @@ def variants_report(m: engine.Market, start: str) -> list[dict]:
     return rows
 
 
+def robust_report(m: engine.Market, start: str, etf_ticker: str = "ACWI") -> list[dict]:
+    """Letztes Paket: ist Top 10 belastbar (Tauschmonate, Lauf-Zeitraum, Startjahr)? Puffer-Regel, Branchen-Grenze, 70/30 je Variante."""
+    rows = []
+    etf = _yf(etf_ticker)["Close"]
+
+    def one(sect, label, rule, st=start, mixit=False):
+        post = run_baseline(m, st, CFG, tax=True, rule=rule)
+        end_after = engine.liquidate_after_tax(post, CFG)
+        eq = post["equity"]
+        yrs = (eq.index[-1] - eq.index[0]).days / 365.25
+        mt = metrics(eq)
+        closed = [x for x in post["trades"] if x["why"] != "open"]
+        row = {"sect": sect, "v": label, "rule": rule, "start": str(st), "cagr": (end_after / CFG.start_capital) ** (1 / yrs) - 1,
+               "mdd": mt["mdd"], "sharpe": mt["sharpe"] or 0.0, "trades_y": len(closed) / yrs, "taxes": post["taxes"],
+               "days": float(np.mean([x["days"] for x in closed])) if closed else 0.0}
+        line = (f"  {label:<44} CAGR n. St. {row['cagr']*100:5.1f} %  Max DD {row['mdd']*100:5.1f} %  Sharpe {row['sharpe']:.2f}"
+                f"  Verkäufe/J {row['trades_y']:5.1f}  Ø Haltedauer {row['days']:4.0f} T.  Steuern {row['taxes']:>9,.0f} €")
+        if mixit:
+            f = end_after / float(eq.iloc[-1])
+            mx = mix(eq, f, etf, 0.3, CFG)
+            row["mix"] = {"cagr": mx["cagr_after"], "mdd": mx["mdd"], "sharpe": mx["sharpe"], "worst": mx["worst_year"]}
+            line += f"  | 70/30: CAGR {mx['cagr_after']*100:5.1f} %  Max DD {mx['mdd']*100:5.1f} %  Sharpe {mx['sharpe']:.2f}  schlechtestes Jahr {mx['worst_year']*100:+.1f} %"
+        print(line.replace(",", "."), flush=True)
+        rows.append(row)
+        return row
+
+    print("\n===== 1) Top 10 vs. Top 20 je Tauschmonate und Lauf-Zeitraum (100.000 €, Kosten, Steuern) =====")
+    for off, ml in ((0, "Jan/Apr/Jul/Okt"), (1, "Feb/Mai/Aug/Nov"), (2, "Mär/Jun/Sep/Dez")):
+        for lb in (6, 9, 12):
+            for n in (10, 20):
+                one("robust", f"Top {n} · {lb}-1 Mon. · {ml}", {"n": n, "lb": lb, "offset": off})
+    print("\n===== 2) Top 10 vs. Top 20 je Startjahr (bis heute) =====")
+    for st in ("2016-01-01", "2018-01-01", "2020-01-01", "2022-01-01"):
+        if pd.Timestamp(st) < pd.Timestamp(start):
+            continue
+        for n in (10, 20):
+            one("start", f"Top {n} · Start {st[:4]}", {"n": n}, st=st)
+    print("\n===== 3) Puffer-Regel und Branchen-Grenze, dazu 70/30 mit Welt-ETF (" + etf_ticker + ") =====")
+    for label, rule in (("Top 20 (bisher)", {"n": 20}),
+                        ("Top 10", {"n": 10}),
+                        ("Top 10 · behalten bis Platz 15", {"n": 10, "hold": 15}),
+                        ("Top 10 · behalten bis Platz 20", {"n": 10, "hold": 20}),
+                        ("Top 10 · behalten bis Platz 30", {"n": 10, "hold": 30}),
+                        ("Top 20 · behalten bis Platz 40", {"n": 20, "hold": 40}),
+                        ("Top 10 · max. 3 je Branche", {"n": 10, "sec_max": 3}),
+                        ("Top 10 · max. 2 je Branche", {"n": 10, "sec_max": 2}),
+                        ("Top 10 · Puffer 20 · max. 3 je Branche", {"n": 10, "hold": 20, "sec_max": 3})):
+        one("final", label, rule, mixit=True)
+    print("\n===== 4) Puffer 20 auch mit anderen Tauschmonaten (Gegenprobe) =====")
+    for off, ml in ((1, "Feb/Mai/Aug/Nov"), (2, "Mär/Jun/Sep/Dez")):
+        for label, rule in (("Top 10", {"n": 10}), ("Top 10 · Puffer 20", {"n": 10, "hold": 20})):
+            one("check", f"{label} · {ml}", {**rule, "offset": off})
+    return rows
+
+
 def print_report(rep: dict, title: str):
     e = lambda x: f"{x:,.0f} €".replace(",", ".")
     p = lambda x: "–" if x is None else f"{x * 100:+.1f} %".replace(".", ",")
@@ -468,6 +534,12 @@ def main(argv=None):
     x = ap.parse_args(argv)
     if x.cmd == "prices":
         prices(int(x.a), int(x.b))
+        return 0
+    if x.cmd == "robust":
+        m, meta = load_market(x.a, x.universe, Config())
+        out = robust_report(m, x.start)
+        if x.out:
+            Path(x.out).write_text(json.dumps(out, ensure_ascii=False, default=str))
         return 0
     if x.cmd == "variants":
         m, meta = load_market(x.a, x.universe, Config())
