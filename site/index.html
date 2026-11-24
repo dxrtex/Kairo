@@ -3450,9 +3450,9 @@ details.sb[open] > summary::after { transform: rotate(45deg); } details.sb[open]
     <button class="tab grp-sub" data-sec="journal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3M9 8h6M9 11.5h4"/></svg>
       Journal</button>
-    <button class="tab grp-sub" data-sec="game">
+    <button class="tab grp-sub" data-sec="strat">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="11" rx="5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.5" r="1" fill="currentColor"/><circle cx="17.5" cy="13.5" r="1" fill="currentColor"/></svg>
-      Spiel</button>
+      Strategie-Test</button>
     <div class="sb-only sb-sep"></div>
     <button class="tab sb-only grp-sub" data-sec="bilanz">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
@@ -4163,7 +4163,7 @@ function longTodayHtml() {
   const dn = lfDays(L.next), soon = lfSwapSoon(L);
   return `<div class="hcard lf-hc">${hHead(`Strategie-Depot <small>${L.hold.length} Aktien</small>`, `data-golong`, "Öffnen")}
     <div class="lf-kpi"><div><span>seit Tausch ${fmtD(L.since)}</span>${lfPct(L.ret)}</div><div><span>S&P 500</span>${lfPct(L.bench)}</div><div><span>nächster Tausch</span><b>${dn != null && dn >= 0 ? `in ${dn} T.` : fmtD(L.next)}</b></div></div>
-    ${lfCurveHtml(L)}
+    ${lfCurveHtml(L)}${probeHtml(true)}
     ${(sw => soon && (sw.out.length || sw.inn.length) ? `<div class="lf-swap"><b>${sw.now ? "Tausch jetzt:" : "Tausch steht an:"}</b> verkaufen ${sw.out.map(t => esc(t)).join(", ") || "–"} · kaufen ${sw.inn.map(t => esc(t)).join(", ") || "–"} <button class="hlink" data-golong>Liste ›</button></div>` : "")(lfSwap(L))}
     ${L.hold.slice().sort((a, b) => (b.ret ?? -9) - (a.ret ?? -9)).slice(0, 5).map(x => `<button class="hrow" ${lfOpen(x.t)}>${cfAv(x.t)}<span class="hn">${esc(shortNm(x.n || x.t))}</span>${lfPct(x.ret)}</button>`).join("")}</div>`;
 }
@@ -4385,6 +4385,117 @@ function lfDepotHtml() { const L = LF(); if (!L || !L.hold || !searchIdx) return
     ${sell.length ? `<div class="lf-dl"><span class="down">${SW.now ? "verkaufen (Tausch)" : "raus beim nächsten Tausch"}</span>${sell.map(chip).join("")}</div>` : ""}
     <div class="note" style="margin:6px 0 0">Ohne Stop halten – verkauft und gekauft wird nur am Tauschtermin (nächster: ${fmtD(L.next)}).</div></div>`; }
 function depotHtml() { const h = depotHtml0(); const i = h.indexOf("</div>") >= 0 && h.startsWith('<div class="section-title">') ? h.indexOf("</div>") + 6 : 0; return h.slice(0, i) + lfDepotHtml() + h.slice(i); }
+// ---------- Probe-Depot LF10 (paper/lfpaper.py, 24.11.2026): Strategie mit 10.000 € im echten Markt, ohne echtes Geld ----------
+// Handelt automatisch nach der Regel (Eröffnungskurs, ganze Stücke, PRIME+-Gebühren, Spread, Abgeltungsteuer mit Verlusttopf).
+const PROBE = { d: null, busy: false, at: 0 };
+function probeLoad() { if (PROBE.busy || (PROBE.d !== null && Date.now() - PROBE.at < 3e5)) return; PROBE.busy = true;
+  fetch(PAPER_URL + "lf10.json?v=" + Math.floor(Date.now() / 3e5)).then(r => r.ok ? r.json() : false).then(j => { PROBE.d = j && j.equity ? j : false; })
+    .catch(() => { PROBE.d = false; }).finally(() => { PROBE.busy = false; PROBE.at = Date.now(); if (["depot", "today", "strat"].includes(state.sec)) render(); }); }
+function probeChart(st) { const E = st.equity || [], B = Object.fromEntries((st.bench || []).map(x => [x.date, x])); if (E.length < 3) return "";
+  const s = E.map(x => x.eur), e = E.map(x => B[x.date] ? B[x.date].etf : null), m = E.map(x => B[x.date] ? B[x.date].mix : null), S0 = st.start_cash || 10000;
+  const all = [...s, ...e.filter(v => v != null), ...m.filter(v => v != null), S0], lo = Math.min(...all), hi = Math.max(...all), W = 600, H = 150, P = 6, n = E.length;
+  const X = i => (P + i * (W - 2 * P) / (n - 1)).toFixed(1), Y = v => (H - P - (v - lo) / ((hi - lo) || 1) * (H - 2 * P)).toFixed(1);
+  const path = a => a.map((v, i) => v == null ? "" : `${i && a[i - 1] != null ? "L" : "M"}${X(i)},${Y(v)}`).join("");
+  return `<div class="psp"><svg class="g-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px"><line x1="0" x2="${W}" y1="${Y(S0)}" y2="${Y(S0)}" class="g-base"/>
+    <path d="${path(e)}" style="fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 3" vector-effect="non-scaling-stroke"/>
+    <path d="${path(m)}" style="fill:none;stroke:var(--up);stroke-width:1.6" vector-effect="non-scaling-stroke"/>
+    <path d="${path(s)}" style="fill:none;stroke:var(--accent, #0a84ff);stroke-width:2.2" vector-effect="non-scaling-stroke"/></svg>
+    <span class="psp-y" style="top:0">${eur(hi)}</span><span class="psp-y" style="bottom:0">${eur(lo)}</span></div>
+    <div class="psp-x"><span>${dateDE(E[0].date)}</span><span>${dateDE(E[n - 1].date)}</span></div>
+    <div class="oleg"><span style="color:var(--accent, #0a84ff)">— Probe-Depot</span><span class="up">— 70/30 mit Welt-ETF</span><span class="muted">┄ Welt-ETF (ACWI)</span></div>`; }
+function probeHtml(compact) { if (PROBE.d === null) { probeLoad(); return compact ? "" : `<div class="card"><div class="plan-h">Probe-Depot</div><p class="muted">Lade …</p></div>`; }
+  const st = PROBE.d;
+  if (!st || (st.equity || []).length < 2) return compact ? "" : `<div class="card lf-probe"><div class="plan-h">Probe-Depot · Strategie im echten Markt</div><p class="muted" style="margin:4px 0 0">Startet nach dem nächsten US-Börsenschluss: 10.000 € virtuell, gekauft wird zur nächsten Eröffnung das aktuelle Strategie-Depot. Danach handelt es automatisch an jedem Tauschtermin – mit echten Kursen, Gebühren und Steuern, ohne echtes Geld.</p></div>`;
+  const S = st.summary || {}, S0 = st.start_cash || 10000, E = st.equity, last = E[E.length - 1].eur, ret = last / S0 - 1;
+  const pc = v => v == null ? "–" : `<b class="${v >= 0 ? "up" : "down"}">${sgnPct(v, 1)}</b>`;
+  if (compact) return `<div class="lf-swap" style="margin-top:8px"><b>Probe-Depot</b> seit ${dateDE(st.start)}: ${pc(ret)} · Welt-ETF ${pc(S.etf)} <button class="hlink" data-goprobe>Ansehen ›</button></div>`;
+  const pos = (st.positions || []).map(p => { const I = lfInfo(p.t) || {}, px = I.p, r = px && p.entry ? px / p.entry - 1 : null;
+    return `<tr class="lf-row" ${lfOpen(p.t)}><td><div class="sh-nm">${cfAv(p.t)}<span><b>${esc(shortNm(I.n || p.t))}</b><small>${esc(p.t)} · seit ${dateDE(p.entry_ts)}</small></span></div></td><td class="num">${p.qty}</td><td class="num">${fmt(p.entry)} $</td><td class="num">${px != null ? fmt(px) + " $" : "–"}</td><td class="num">${r != null ? `<span class="${r >= 0 ? "up" : "down"}">${sgnPct(r, 1)}</span>` : "–"}</td></tr>`; }).join("");
+  const tr = (st.trades || []).slice(-8).reverse().map(t => `<tr><td><b>${esc(t.t)}</b><small> ${dateDE(t.entry_ts)} → ${dateDE(t.exit_ts)}</small></td><td>${esc(t.why || "")}</td><td class="num"><span class="${t.pnl_eur >= 0 ? "up" : "down"}">${t.pnl_eur >= 0 ? "+" : ""}${fmt(t.pnl_eur, 0)} €</span></td><td class="num">${t.tax_eur ? fmt(t.tax_eur, 0) + " €" : "–"}</td></tr>`).join("");
+  return `<div class="card lf-probe" id="probe"><div class="plan-h">Probe-Depot · Strategie im echten Markt <small class="muted">seit ${dateDE(st.start)} · ohne echtes Geld</small></div>
+    <div class="lf-kpi lf-kpi-l"><div><span>Depotwert</span><b>${eur(last)}</b></div><div><span>seit Start</span>${pc(ret)}</div><div><span>Welt-ETF gleicher Start</span>${pc(S.etf)}</div><div><span>70/30 gleicher Start</span>${pc(S.mix)}</div></div>
+    ${probeChart(st)}
+    <div class="lf-kpi"><div><span>größter Rückgang</span><b class="down">${pct(S.max_dd ?? 0, 1)}</b></div><div><span>Gebühren + Spread</span><b>${eur(S.kosten ?? st.fees)}</b></div><div><span>Steuern bezahlt</span><b>${eur(S.steuern ?? st.taxes)}</b></div><div><span>Verkäufe</span><b>${(st.trades || []).length}</b></div></div>
+    ${pos ? `<div class="table-wrap"><table class="sc-t lf-t"><thead><tr><th>Aktie</th><th class="num">Stück</th><th class="num">Kauf</th><th class="num">Kurs</th><th class="num">seit Kauf</th></tr></thead><tbody>${pos}</tbody></table></div>` : ""}
+    ${tr ? `<div class="plan-h" style="margin-top:10px">Letzte Verkäufe</div><div class="table-wrap"><table class="sc-t lf-t"><thead><tr><th>Aktie</th><th>Grund</th><th class="num">Gewinn</th><th class="num">Steuer</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
+    <p class="muted lf-note">Handelt automatisch nach der Regel: Start mit 10.000 €, an jedem Tauschtermin zur Eröffnung, nur ganze Stücke, Scalable PRIME+ (0,99 € unter 250 €), halber Spread je Seite, Abgeltungsteuer mit Verlusttopf (ohne Sparerpauschbetrag). Jede Order wird am Ausführungstag gespeichert und nie nachträglich geändert. Bewertung täglich nach US-Börsenschluss, Kurse in der Tabelle vom letzten Scan.</p></div>`; }
+document.addEventListener("click", e => { if (!e.target.closest("[data-goprobe]")) return; goSec("strat"); });
+// ---------- Spiel-Depot Strategie (24.11.2026): du setzt die Strategie selbst um – Spielgeld, nur auf diesem Gerät ----------
+// Kauf/Verkauf zum letzten Kurs (live, sonst Scan) oder deinem Kurs aus Scalable, ganze Stücke, PRIME+-Gebühren, Abgeltungsteuer mit
+// Verlusttopf (wie das Probe-Depot, ohne Sparerpauschbetrag). Regel-Abgleich zeigt, was laut Strategie fehlt oder raus muss.
+const SG_KEY = "kairo-sgame1", SG_TAX = 0.26375;
+const sgLoad = () => { try { const g = JSON.parse(localStorage.getItem(SG_KEY)); return g && g.v === 1 ? g : null; } catch (e) { return null; } };
+const sgSave = g => { try { localStorage.setItem(SG_KEY, JSON.stringify(g)); } catch (e) {} };
+const sgPx = t => { const x = gPx(t); return x.eur != null && x.eur > 0 ? x.eur : null; };
+const sgVal = g => g.cash + g.pos.reduce((a, p) => a + p.qty * (sgPx(p.t) ?? p.px), 0);
+function sgTick(g) { const v = sgVal(g), ep = gEtfPx(), d = isoD(new Date()), last = g.hist[g.hist.length - 1];
+  const pt = { d, v: Math.round(v * 100) / 100, e: ep && g.etf0 ? Math.round(g.cap * ep / g.etf0 * 100) / 100 : null };
+  if (!last || last.d !== d) g.hist.push(pt); else Object.assign(last, pt); if (g.hist.length > 1500) g.hist = g.hist.slice(-1500); }
+function sgBuy(g, t, qty, px) { const n = (gPx(t).n || t), gross = qty * px, fee = gFee(gross);
+  if (!(qty >= 1) || !(px > 0)) return "Stückzahl und Kurs eintragen.";
+  if (gross + fee > g.cash + 1e-6) return `Nicht genug Geld frei (frei: ${eur2(g.cash)}).`;
+  g.cash -= gross + fee; g.fees += fee;
+  const p = g.pos.find(x => x.t === t);
+  if (p) { p.cost += gross + fee; p.qty += qty; p.px = p.cost / p.qty; } else g.pos.push({ t, n, qty, px: (gross + fee) / qty, cost: gross + fee, d: isoD(new Date()) });
+  g.orders.unshift({ ts: new Date().toISOString(), side: "Kauf", t, qty, px, fee }); return ""; }
+function sgSell(g, t, qty, px, why) { const p = g.pos.find(x => x.t === t); if (!p) return "Nicht im Depot.";
+  qty = Math.min(qty, p.qty); const gross = qty * px, fee = gFee(gross), cost = p.cost * qty / p.qty, gain = gross - fee - cost;
+  let tax = 0; if (gain < 0) g.pot += -gain; else { const use = Math.min(g.pot, gain); g.pot -= use; tax = (gain - use) * SG_TAX; }
+  g.cash += gross - fee - tax; g.fees += fee; g.taxes += tax;
+  g.closed.unshift({ t, n: p.n, qty, d: p.d, xd: isoD(new Date()), buy: cost / qty, px, gain, tax, why: why || "" });
+  p.qty -= qty; p.cost -= cost; if (p.qty <= 0) g.pos.splice(g.pos.indexOf(p), 1);
+  g.orders.unshift({ ts: new Date().toISOString(), side: "Verkauf", t, qty, px, fee, tax }); return ""; }
+async function sgAskBuy(t) { const g = sgLoad(); if (!g) return; const px0 = sgPx(t); if (!px0) { await kAsk({ t: "Kein Kurs", s: `Für ${t} gibt es gerade keinen Kurs.` }); return; }
+  const L = LF(), n = (L && L.rule.n) || 10, slot = sgVal(g) / n, q0 = Math.max(1, Math.floor(Math.min(slot, g.cash) / px0)), nm = shortNm(gPx(t).n || t);
+  let px = px0, v = await kAsk({ t: `${nm} kaufen`, s: `Kurs ${eur2(px0)} je Aktie (letzter Kurs). Vorschlag laut Regel: ${q0} Stück ≈ ${eur(q0 * px0)} (Depotwert ÷ ${n}). Frei: ${eur2(g.cash)}.\n\nStückzahl:`, input: "num", val: q0, ok: "Kaufen", alt: "Anderer Kurs …", cancel: "Abbrechen" });
+  if (v === "alt") { const k = await kAsk({ t: `${nm}: dein Kaufkurs je Aktie in €`, s: "z. B. der Kurs aus Scalable", input: "num", val: fmt(px0, 2), ok: "Weiter", cancel: "Abbrechen" }); if (k == null) return; px = +String(k).replace(/\./g, "").replace(",", ".");
+    v = await kAsk({ t: `${nm} kaufen zu ${eur2(px)}`, s: "Stückzahl:", input: "num", val: Math.max(1, Math.floor(Math.min(slot, g.cash) / px)), ok: "Kaufen", cancel: "Abbrechen" }); }
+  if (v == null || v === false) return; const err = sgBuy(g, t, Math.floor(+String(v).replace(",", ".")), px);
+  if (err) { await kAsk({ t: "Kauf nicht möglich", s: err }); return; } sgTick(g); sgSave(g); render(); }
+async function sgAskSell(t) { const g = sgLoad(); if (!g) return; const p = g.pos.find(x => x.t === t); if (!p) return; const px0 = sgPx(t) ?? p.px, nm = shortNm(p.n || t);
+  let px = px0, v = await kAsk({ t: `${nm} verkaufen`, s: `${p.qty} Stück zu ${eur2(px0)} (letzter Kurs) ≈ ${eur(p.qty * px0)}. Steuer und Gebühr rechnet Kairo ab.`, ok: "Alle verkaufen", alt: "Anderer Kurs …", cancel: "Abbrechen" });
+  if (v === "alt") { const k = await kAsk({ t: `${nm}: dein Verkaufskurs je Aktie in €`, input: "num", val: fmt(px0, 2), ok: "Verkaufen", cancel: "Abbrechen" }); if (k == null) return; px = +String(k).replace(/\./g, "").replace(",", "."); v = true; }
+  if (!v) return; const L = LF(), rk = L ? (lfInfo(t, L) || {}).rk : null;
+  sgSell(g, t, p.qty, px, rk ? `Rang ${rk}` : ""); sgTick(g); sgSave(g); render(); }
+document.addEventListener("click", async e => { const b = e.target.closest("[data-sg]"); if (!b) return; e.preventDefault(); const k = b.dataset.sg, t = b.dataset.t;
+  if (k === "start") { const v = await kAsk({ t: "Spiel-Depot starten", s: "Mit wie viel Spielgeld willst du die Strategie selbst umsetzen?", input: "num", val: "10000", ok: "Starten", cancel: "Abbrechen" }); if (v == null) return;
+    const cap = Math.max(500, +String(v).replace(/\./g, "").replace(",", ".") || 10000);
+    const g = { v: 1, start: new Date().toISOString(), cap, cash: cap, pos: [], closed: [], orders: [], hist: [], pot: 0, taxes: 0, fees: 0, etf0: gEtfPx() };
+    sgTick(g); sgSave(g); render(); return; }
+  if (k === "buy") return sgAskBuy(t);
+  if (k === "sell") return sgAskSell(t);
+  if (k === "other") { const v = await kAsk({ t: "Aktie kaufen", s: "Ticker eingeben (z. B. NVDA):", input: "text", ok: "Weiter", cancel: "Abbrechen" }); if (v) sgAskBuy(String(v).trim().toUpperCase()); return; }
+  if (k === "reset") { if (await kAsk({ t: "Spiel-Depot zurücksetzen?", s: "Alle Spiel-Positionen und Aufträge werden gelöscht. Das Probe-Depot bleibt.", ok: "Zurücksetzen", danger: true, cancel: "Abbrechen" })) { try { localStorage.removeItem(SG_KEY); } catch (er) {} render(); } } });
+function sgHtml() { if (!searchIdx) loadSearch(); const g = sgLoad(), L = LF();
+  if (!g) return `<div class="card lf-probe"><div class="plan-h">Spiel-Depot · du setzt die Strategie selbst um</div>
+    <p class="muted" style="margin:4px 0 10px">Mit Spielgeld kaufst und verkaufst du selbst – zum letzten Kurs oder zu deinem Kurs aus Scalable, mit PRIME+-Gebühren und Steuer. Kairo zeigt dir dabei, was laut Regel fehlt oder raus muss, und vergleicht dich mit dem Probe-Depot und dem Welt-ETF.</p>
+    <button class="btn" data-sg="start">Spiel-Depot starten</button></div>`;
+  sgTick(g); sgSave(g); liveKick(g.pos.map(p => p.t), "strat");
+  const v = sgVal(g), ret = v / g.cap - 1, H = g.hist, eret = H.length && H[H.length - 1].e ? H[H.length - 1].e / g.cap - 1 : null;
+  const pc = x => x == null ? "–" : `<b class="${x >= 0 ? "up" : "down"}">${sgnPct(x, 1)}</b>`;
+  const held = new Set(g.pos.map(p => p.t)), SW = L ? lfSwap(L) : { out: [], inn: [] }, target = L && L.hold ? L.hold.map(x => x.t) : [];
+  const keep = L ? new Set(L.top.filter(x => x.rk <= lfH(L)).map(x => x.t)) : new Set();
+  const miss = target.filter(t => !held.has(t)), extra = g.pos.map(p => p.t).filter(t => L && !target.includes(t));
+  const chip = (t, k, lbl) => `<button class="lf-chip" data-sg="${k}" data-t="${esc(t)}">${cfAv(t)}${esc(t)} <small class="${k === "buy" ? "up" : "down"}">${lbl}</small></button>`;
+  const rule = L ? `<div class="lf-sw" style="margin-top:6px"><div><h4 class="up">Laut Regel kaufen</h4>${miss.length ? miss.map(t => chip(t, "buy", "kaufen")).join("") : `<span class="muted">nichts – alle ${target.length} im Depot</span>`}</div>
+      <div><h4 class="down">Laut Regel verkaufen</h4>${extra.length ? extra.map(t => chip(t, "sell", keep.has(t) ? "Puffer – halten?" : "verkaufen")).join("") : `<span class="muted">nichts</span>`}</div></div>
+      ${lfSwapSoon(L) && (SW.out.length || SW.inn.length) ? `<div class="lf-swap"><b>Tausch ${SW.now ? fmtD(L.since) : "am " + fmtD(L.next)}:</b> verkaufen ${SW.out.join(", ") || "–"} · kaufen ${SW.inn.join(", ") || "–"}</div>` : ""}` : `<p class="muted">Regel-Abgleich erscheint nach dem nächsten Scan.</p>`;
+  const rows = g.pos.map(p => { const px = sgPx(p.t), val = p.qty * (px ?? p.px), r = val / p.cost - 1, I = L ? lfInfo(p.t, L) || {} : {};
+    return `<tr><td><div class="sh-nm">${cfAv(p.t)}<span><b>${esc(shortNm(p.n || p.t))}</b><small>${esc(p.t)} · seit ${dateDE(p.d)}${I.rk ? ` · Rang ${I.rk}` : ""}</small></span></div></td><td class="num">${p.qty}</td><td class="num">${eur2(p.px)}</td><td class="num">${px != null ? eur2(px) : "–"}</td><td class="num">${eur(val)}</td><td class="num"><span class="${r >= 0 ? "up" : "down"}">${sgnPct(r, 1)}</span></td><td class="num"><button class="hlink" data-sg="sell" data-t="${esc(p.t)}">Verkaufen</button></td></tr>`; }).join("");
+  const cl = g.closed.slice(0, 10).map(c => `<tr><td><b>${esc(c.t)}</b><small> ${dateDE(c.d)} → ${dateDE(c.xd)}</small></td><td class="num">${c.qty}</td><td class="num"><span class="${c.gain >= 0 ? "up" : "down"}">${sEur2(c.gain)}</span></td><td class="num">${c.tax ? eur2(c.tax) : "–"}</td></tr>`).join("");
+  const P = PROBE.d && PROBE.d.equity ? PROBE.d : null, pret = P ? P.equity[P.equity.length - 1].eur / (P.start_cash || 10000) - 1 : null;
+  const ev = []; let prev = g.cap; H.forEach(h => { ev.push({ date: h.d, pnl: h.v - prev }); prev = h.v; });
+  return `<div class="card lf-probe" id="sgame"><div class="plan-h">Spiel-Depot · du setzt die Strategie selbst um <small class="muted">seit ${dateDE(g.start.slice(0, 10))} · Spielgeld ${eur(g.cap)}</small></div>
+    <div class="lf-kpi lf-kpi-l"><div><span>Depotwert</span><b>${eur2(v)}</b></div><div><span>seit Start</span>${pc(ret)}</div><div><span>Welt-ETF gleicher Start</span>${pc(eret)}</div><div><span>Probe-Depot (automatisch)</span>${pc(pret)}</div></div>
+    ${ev.length > 1 ? jCurveSvg(ev) : ""}
+    <div class="lf-kpi"><div><span>frei</span><b>${eur2(g.cash)}</b></div><div><span>Gebühren</span><b>${eur2(g.fees)}</b></div><div><span>Steuern bezahlt</span><b>${eur2(g.taxes)}</b></div><div><span>Verlusttopf</span><b>${eur2(g.pot)}</b></div></div>
+    <div class="plan-h" style="margin-top:10px">Regel-Abgleich <small class="muted">Strategie-Depot ${L ? L.hold.length : "–"} Aktien · nächster Tausch ${L ? fmtD(L.next) : "–"}</small></div>${rule}
+    ${rows ? `<div class="table-wrap" style="margin-top:10px"><table class="sc-t lf-t"><thead><tr><th>Aktie</th><th class="num">Stück</th><th class="num">Ø Kauf</th><th class="num">Kurs</th><th class="num">Wert</th><th class="num">seit Kauf</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="muted" style="margin:10px 0 0">Noch keine Positionen – oben unter „Laut Regel kaufen“ antippen.</p>`}
+    ${cl ? `<div class="plan-h" style="margin-top:10px">Verkauft</div><div class="table-wrap"><table class="sc-t lf-t"><thead><tr><th>Aktie</th><th class="num">Stück</th><th class="num">Gewinn</th><th class="num">Steuer</th></tr></thead><tbody>${cl}</tbody></table></div>` : ""}
+    <div class="g-act" style="margin-top:10px"><button class="btn ghost sm" data-sg="other">Andere Aktie kaufen …</button><button class="btn ghost sm" data-sg="reset">Zurücksetzen</button></div>
+    <p class="muted lf-note">Spielgeld, nur auf diesem Gerät. Kurs: live, wenn verfügbar, sonst letzter Scan – oder dein Kurs aus Scalable („Anderer Kurs“). Ganze Stücke, 0,99 € unter 250 € Orderwert, Abgeltungsteuer mit Verlusttopf (ohne Sparerpauschbetrag). Keine echte Order.</p></div>`; }
+function stratHtml() { if (!anaData) loadAnalysis();
+  return `<div class="section-title"><span>Strategie-Test</span><span>ohne echtes Geld</span></div>` + probeHtml() + sgHtml(); }
 // ETF: Aufteilung Kern / Langfrist
 function etfHtml() { const L = LF(); return (L ? `<div class="lf-amp" style="margin:0 2px 12px"><b>Aufteilung:</b> 70–80 % Welt-ETF als Kern (nie verkaufen, Extra-Geld bei roter Ampel) · 20–30 % <button class="hlink" data-golong>Strategie-Depot ›</button></div>` : "") + etfHtml0(); }
 // Aktienkarte: Kairo Langfrist (Rang, Lauf, 4 Kriterien)
@@ -9279,7 +9390,7 @@ function getJson(name) {
     jsonData[name] = undefined;
     fetch(`data/${name}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
       .then(d => { jsonData[name] = d || null; if (d && name.startsWith("co/")) cxDetPaint(); if (d && name === "briefing.json") { Object.values(WHY).forEach(w => { w.cache = null; }); if ($("ctNews")) ctNewsPaint($("ctNews").dataset.t); }
-        if (name.startsWith("co/") ? false : ["today", "bilanz", "settings", "depot", "etf", "game", "scanner"].includes(state.sec) || (state.sec === "news" && ["funds.json", "insider.json", "indices.json"].includes(name))) render();
+        if (name.startsWith("co/") ? false : ["today", "bilanz", "settings", "depot", "etf", "strat", "scanner"].includes(state.sec) || (state.sec === "news" && ["funds.json", "insider.json", "indices.json"].includes(name))) render();
         // Chart: Seitenleiste (Fundamental-Check, fairer Wert, Smart Money, Signale) nachziehen, ohne den Chart neu zu bauen (Fehler 14.11.)
         else if ((["fin.json", "desc.json", "fund.json"].includes(name) || name.startsWith("co/")) && d && $("ctCo")) { coPaint($("ctCo").dataset.t);
           if (name.startsWith("co/") && state.sec === "chart" && cfChart && $("cfSide") && !RP.on) { const y = $("cfSide").scrollTop; $("cfSide").innerHTML = cockpitSide(cfChart, cfChart.r); $("cfSide").scrollTop = y; } }
@@ -10588,8 +10699,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.252";
-const APP_NEWS = [["2026.11.252", "Neue Regel: Top 10 kaufen, bis Platz 20 halten", [
+const APP_VER = "2026.11.253";
+const APP_NEWS = [["2026.11.253", "Strategie-Test: Probe-Depot und Spiel-Depot", [
+  ["Probe-Depot mit 10.000 €", "Depot → Strategie-Test: Die Strategie handelt ab sofort automatisch mit 10.000 € Spielgeld – zum echten Eröffnungskurs, nur ganze Stücke, mit Scalable-Gebühren, Spread und Abgeltungsteuer. Daneben der Welt-ETF und 70/30 mit gleichem Start."],
+  ["Spiel-Depot: du setzt selbst um", "Im selben Reiter darunter handelst du die Strategie selbst mit Spielgeld (Betrag frei wählbar, Vorschlag 10.000 €): Kairo zeigt, was laut Regel zu kaufen oder zu verkaufen ist, schlägt die Stückzahl vor und rechnet Gebühren und Steuern – du kannst deinen echten Kurs aus Scalable eintragen. Vergleich mit Probe-Depot und Welt-ETF."],
+  ["Nichts wird nachträglich geändert", "Jeder Kauf und Verkauf wird am Ausführungstag gespeichert. So zeigt das Probe-Depot ehrlich, was die Regel im echten Markt bringt – anders als ein Backtest."]]],
+ ["2026.11.252", "Neue Regel: Top 10 kaufen, bis Platz 20 halten", [
   ["Top 10 statt Top 20", "Gekauft werden nur noch die 10 US-Aktien mit dem stärksten 12-Monats-Lauf. Im Backtest 2016–2026 schlug Top 10 die bisherigen Top 20 bei jedem Tauschtermin und jedem Startjahr – 32,4 % statt 24,6 % pro Jahr nach Steuer."],
   ["Puffer bis Platz 20", "Eine gekaufte Aktie bleibt, solange sie auf Platz 1–20 steht – verkauft wird erst ab Platz 21. Das halbiert die Verkäufe (Ø etwa 4 je Quartal), spart Steuern und senkte den größten Rückgang auf 47 %."],
   ["70/30 im Backtest 18,2 %", "70 % Welt-ETF und 30 % Strategie kamen 2016–2026 auf 18,2 % pro Jahr nach Steuer (Welt-ETF allein 10,6 %, Momentum-ETF 11,3 %), schlechtestes Jahr −10,6 %. Nur heute gelistete Aktien – realistisch eher 12–15 %."],
@@ -12966,7 +13081,7 @@ function paperHtml() {
 
 // ---------- Rendern ----------
 // Reiter gebündelt: Depot (Positionen · Journal · Bilanz · Übung) und Markt (News · Kalender) – Unterreiter oben im Bereich
-const SUBNAV = { depot: [["depot", "Bestand"], ["journal", "Journal"]], news: [["news", "Markt"], ["calendar", "Kalender"]] };
+const SUBNAV = { depot: [["depot", "Bestand"], ["strat", "Strategie-Test"], ["journal", "Journal"]], news: [["news", "Markt"], ["calendar", "Kalender"]] };
 const groupOf = sec => Object.keys(SUBNAV).find(g => SUBNAV[g].some(x => x[0] === sec)) || sec;
 // Markt: eine Tab-Reihe (Überblick · News · Insider · Kalender) – drei davon im Bereich „news“, der Kalender ist eigener Bereich
 const NEWS_TABS = [["overview", "Überblick"], ["feed", "News"], ["insider", "Insider"], ["macro", "Makro"], ["map", "Karte"], ["calendar", "Kalender"]];
@@ -13030,7 +13145,8 @@ function renderMain() {
   document.querySelector(".search").hidden = state.sec !== "scanner";
   if (state.sec === "settings") { $("main").innerHTML = settingsHtml(); setGroupify(); return; }
   if (state.sec === "today") { $("main").innerHTML = todayHtml(); return; }
-  if (["game", "bilanz", "paper"].includes(state.sec)) { state.sec = "depot"; save(); }   // Swing-Auswertungen entfernt (24.11.2026)
+  if (state.sec === "game") { state.sec = "strat"; save(); }   // Spiel = Strategie-Test (Probe-Depot + Spiel-Depot, 24.11.2026)
+  if (["bilanz", "paper"].includes(state.sec)) { state.sec = "depot"; save(); }   // Swing-Auswertungen entfernt (24.11.2026)
   if (state.sec === "long") { state.sec = "scanner"; state.view = "long"; state.kinds = ["long"]; state.scrOn = false; save(); }   // Langfrist-Reiter → Scanner (24.11.2026)
   if (state.sec === "bilanz") { $("main").innerHTML = subNavHtml("bilanz") + bilanzHtml(); return; }
   if (state.sec !== "chart") ctabDrop();
@@ -13041,6 +13157,7 @@ function renderMain() {
   if (state.sec === "entry") { $("main").innerHTML = einHtml(); return; }
   if (state.sec === "depot") { $("main").innerHTML = subNavHtml("depot") + depotHtml(); mountDepotCharts(); return; }
   if (state.sec === "journal") { $("main").innerHTML = subNavHtml("journal") + journalHtml(); return; }
+  if (state.sec === "strat") { $("main").innerHTML = subNavHtml("strat") + stratHtml(); return; }
   if (state.sec === "game") { $("main").innerHTML = subNavHtml("game") + gameHtml(); return; }
   if (state.sec === "paper") { $("main").innerHTML = subNavHtml("paper") + paperHtml(); return; }
   if (depCharts.size) { depCharts.forEach(ch => ch.remove()); depCharts.clear(); }
@@ -13174,7 +13291,7 @@ function greetText() {
   const h = new Date().getHours(), nm = String(state.name || "").trim();
   return esc(h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend") + (nm ? `, <span class="nm">${esc(nm)}</span>` : "") + greetEmoji();
 }
-const SEC_T = { today: "Heute", long: "Langfrist", etf: "ETF", scanner: "Scanner", chart: "Chart", entry: "Einstieg", calendar: "Markt", news: "Markt", depot: "Depot", journal: "Depot", game: "Depot", paper: "Depot", settings: "Einstellungen", bilanz: "Depot" };   // Titel = Bereich der Seitenleiste
+const SEC_T = { today: "Heute", long: "Langfrist", etf: "ETF", scanner: "Scanner", chart: "Chart", entry: "Einstieg", calendar: "Markt", news: "Markt", depot: "Depot", journal: "Depot", strat: "Depot", game: "Depot", paper: "Depot", settings: "Einstellungen", bilanz: "Depot" };   // Titel = Bereich der Seitenleiste
 // Unterzeile im Kopf je Bereich (Design-Prüfung 14.11.: wurde nur beim Start gesetzt – Scanner zeigte die Zeile von „Heute“)
 function headSub() {
   if (!data) return "";
