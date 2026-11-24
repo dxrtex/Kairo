@@ -490,6 +490,53 @@ def robust_report(m: engine.Market, start: str, etf_ticker: str = "ACWI") -> lis
     return rows
 
 
+def etf_report(m: engine.Market, start: str, cfg: Config = CFG) -> list[dict]:
+    """Lohnt sich der Aufwand? Eigene Regel gegen fertige ETFs (Welt, S&P 500, Momentum-ETFs), allein und als 70/30 mit Welt-ETF.
+    ETF allein: Kauf 0,10 %, am Ende 26,375 % Steuer auf 70 % des Gewinns (Teilfreistellung), keine Vorabpauschale (begünstigt ETFs leicht)."""
+    world = _yf("ACWI")["Close"]
+    out = []
+    p = lambda x: f"{x * 100:5.1f} %"
+
+    def line(label, eq, end_after, mx):
+        yrs = (eq.index[-1] - eq.index[0]).days / 365.25
+        mt = metrics(eq)
+        part = lambda e: metrics(e)["cagr"] if len(e) > 20 else float("nan")
+        h1, h2 = part(eq.loc[:"2020-12-31"]), part(eq.loc["2021-01-01":])
+        row = {"v": label, "cagr": (end_after / cfg.start_capital) ** (1 / yrs) - 1, "mdd": mt["mdd"], "sharpe": mt["sharpe"] or 0.0,
+               "h1": h1, "h2": h2, "mix": {k: mx[k] for k in ("cagr_after", "mdd", "sharpe", "worst_year")} if mx else None}
+        s_ = (f"  {label:<40} allein: CAGR n. St. {p(row['cagr'])}  Max DD {p(row['mdd'])}  Sharpe {row['sharpe']:.2f}  16–20 {p(h1)}  21–26 {p(h2)}")
+        if mx:
+            s_ += f"  | 70 % Welt-ETF + 30 %: CAGR n. St. {p(mx['cagr_after'])}  Max DD {p(mx['mdd'])}  Sharpe {mx['sharpe']:.2f}  schlechtestes Jahr {mx['worst_year']*100:+.1f} %"
+        print(s_, flush=True)
+        out.append(row)
+
+    print(f"\n===== Eigene Regel vs. fertige ETFs, ab {start}, nach Steuern (Momentum-ETF-Anteil im 70/30 ohne Steuer beim jährlichen Ausgleich) =====")
+    idx0 = None
+    for label, rule in (("Eigene Regel: Top 10 + Puffer 20", {"n": 10, "hold": 20}), ("Eigene Regel: Top 20 (bisher)", {"n": 20})):
+        post = run_baseline(m, start, cfg, tax=True, rule=rule)
+        eq = post["equity"]
+        idx0 = eq.index if idx0 is None else idx0
+        ea = engine.liquidate_after_tax(post, cfg)
+        line(label, eq, ea, mix(eq, ea / float(eq.iloc[-1]), world, 0.3, cfg))
+    for t, label in (("ACWI", "Welt-ETF (MSCI ACWI)"), ("URTH", "Welt-ETF (MSCI World)"), ("SPY", "S&P 500"),
+                     ("MTUM", "Momentum-ETF USA (MSCI USA Momentum)"), ("IWMO.L", "Momentum-ETF Welt (MSCI World Momentum)"),
+                     ("QQQ", "Nasdaq 100")):
+        try:
+            c = _yf(t)["Close"].reindex(idx0).ffill().dropna()
+        except Exception as e:                                     # noqa: BLE001
+            print(f"  {label}: keine Daten ({e})")
+            continue
+        if len(c) < 0.9 * len(idx0):
+            print(f"  {label}: zu kurze Historie ({c.index[0]:%Y-%m-%d})")
+            continue
+        eq = c / c.iloc[0] * cfg.start_capital * (1 - cfg.cost)
+        e_ = float(eq.iloc[-1])
+        ea = e_ * (1 - cfg.cost) - max(0.0, e_ - cfg.start_capital) * cfg.tax * (1 - cfg.etf_partial_exemption)
+        mx = None if t in ("ACWI",) else mix(eq, ea / e_, world, 0.3, cfg)
+        line(label, eq, ea, mx)
+    return out
+
+
 def print_report(rep: dict, title: str):
     e = lambda x: f"{x:,.0f} €".replace(",", ".")
     p = lambda x: "–" if x is None else f"{x * 100:+.1f} %".replace(".", ",")
@@ -534,6 +581,12 @@ def main(argv=None):
     x = ap.parse_args(argv)
     if x.cmd == "prices":
         prices(int(x.a), int(x.b))
+        return 0
+    if x.cmd == "etf":
+        m, meta = load_market(x.a, x.universe, Config())
+        out = etf_report(m, x.start)
+        if x.out:
+            Path(x.out).write_text(json.dumps(out, ensure_ascii=False, default=str))
         return 0
     if x.cmd == "robust":
         m, meta = load_market(x.a, x.universe, Config())
