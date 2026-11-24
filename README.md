@@ -1,6 +1,6 @@
 # Papier-Handel S19 / S19-B / S19-C / S20 (echte 4-Stunden-Kerzen, keine echten Orders)
 
-Stand: 2026-11-24 06:07 UTC · Startkapital je Strategie 2,000 € · Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5; S19-B/-C: v1.7). Kosten: Scalable PRIME+ (ab 250 € Orderwert gebührenfrei, sonst 0,99 €) + halber Spread je Seite.
+Stand: 2026-11-24 16:36 UTC · Startkapital je Strategie 2,000 € · Regeln exakt nach Nutzer-Vorgabe (Protokoll v1.5; S19-B/-C: v1.7). Kosten: Scalable PRIME+ (ab 250 € Orderwert gebührenfrei, sonst 0,99 €) + halber Spread je Seite.
 
 ## S19 Hybride Mean Reversion (Original)
 
@@ -439,6 +439,16 @@ Letzte Ereignisse:
 - 2026-11-20 CIEN: Treffer gescheitert (neues Tief)
 - 2026-11-20 FSLY: Treffer gescheitert (neues Tief)
 - 2026-11-20 BKR: Treffer gescheitert (neues Tief)
+
+## LF10 Probe-Depot Langfrist-Strategie (Top 10 kaufen, halten bis Platz 20, 10.000 €)
+
+- Start: 2026-11-23 · Handelstage: 1
+- Depot: **10,000.00 €** (+0.00%) · größter Rückgang 0.0%
+- Abgeschlossene Trades: 0
+- Offen: 0 · warten auf H4-Auslöser: 0
+
+Letzte Ereignisse:
+
 
 ---
 Grenzen: Kauf zur Eröffnung der 4H-Kerze nach dem Auslöser, Yahoo-Stundenkerzen (teils verzögert),
