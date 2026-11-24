@@ -11,7 +11,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 275 | 55% | 0.245 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz | 19 | 37% | 0.287 | 0.250 |
-| Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 48 | 58% | 0.240 | 0.250 |
+| Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 48 | 56% | 0.241 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · nachgeeicht | 2 | 50% | 0.254 | 0.250 |
 | Ausblick gesenkt | 78 | 53% | 0.253 | 0.250 |
 | Ausblick bestätigt | 33 | 48% | 0.270 | 0.250 |
@@ -25,7 +25,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | -0%–30% | 11 | 45% |
 | 30%–40% | 109 | 44% |
 | 40%–50% | 153 | 45% |
-| 50%–60% | 191 | 51% |
+| 50%–60% | 191 | 50% |
 | 60%–70% | 61 | 41% |
 | 70%–100% | 23 | 57% |
 
@@ -37,7 +37,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 70% (20) | 40% (50) |
 | im Rahmen (±2 %) | 33% (18) | 25% (4) | 38% (16) | 45% (40) |
 | über Erwartung (+2 bis +10 %) | 37% (27) | 25% (8) | 47% (58) | 44% (64) |
-| deutlich über Erwartung (> +10 %) | 41% (32) | 50% (18) | 60% (111) | 55% (117) |
+| deutlich über Erwartung (> +10 %) | 41% (32) | 50% (18) | 60% (111) | 54% (117) |
 
 ## Vorschläge zur Anpassung
 
@@ -106,12 +106,12 @@ Rollierend geprüft an 232 jüngeren Meldungen (3 Zeiträume, je nur mit ältere
 
 | Merkmal | Gewicht |
 |---|---|
-| Grundwert (Marktlage) | -0.16 |
+| Grundwert (Marktlage) | -0.17 |
 | Langzeit-Quote Gewinn × Ausblick | +0.45 |
-| Umsatz-Überraschung | +0.20 |
+| Umsatz-Überraschung | +0.21 |
 
 | Zeitraum | n | Brier Modell | Brier gezeigt | Richtung Modell | Richtung gezeigt |
 |---|---|---|---|---|---|
 | 2026-11-09 – 2026-11-12 | 160 | 0.245 | 0.247 | 56% | 56% |
 | 2026-11-13 – 2026-11-18 | 44 | 0.245 | 0.251 | 52% | 50% |
-| 2026-11-19 – 2026-11-24 | 28 | 0.259 | 0.259 | 57% | 54% |
+| 2026-11-19 – 2026-11-24 | 28 | 0.260 | 0.259 | 54% | 50% |
