@@ -122,3 +122,16 @@ def test_push_tausch_message_links_checklist_and_january_rebalance():
     lf = {"since": "2027-01-04", "next": "2027-04-01", "chg": {"out": ["A"], "inn": ["B"]}, "top": [], "hold": []}
     m = push.langfrist_message("2027-01-05", {}, lf)
     assert m and "Strategie-Tausch" in m[0]["title"] and "?sec=entry" in m[0]["url"] and "70/30" in m[0]["body"]
+
+
+def test_buffer_rule_buys_top_n_keeps_until_hold(monkeypatch):
+    seq = {1: list("ABCDEF"), 2: list("CDBEAF"), 3: list("DEFCGB")}
+    monkeypatch.setattr(LF, "rank", lambda data, meta, d, r=None: [(t, 1.0 - i / 10) for i, t in enumerate(seq[d])])
+    path = LF.depot_path({}, {}, [1, 2, 3], {"n": 2, "hold": 4})
+    assert path[0][1] == ["A", "B"]
+    assert path[1][1] == ["B", "C"]          # B auf Platz 3 bleibt (Puffer), A auf Platz 5 fliegt raus, C rückt nach
+    assert path[2][1] == ["C", "D"]          # C auf Platz 4 bleibt, B auf Platz 6 raus
+    sell, buy = LF.next_swap(["C", "D"], [(t, 0) for t in "EFGDHC"], {"n": 2, "hold": 4})
+    assert sell == ["C"] and buy == ["E"]
+    sell, buy = LF.next_swap(["C", "D"], [(t, 0) for t in "ECDF"], {"n": 2, "hold": 4})
+    assert sell == [] and buy == []          # beide im Puffer – E (Platz 1) wird nicht gekauft, Depot ist voll

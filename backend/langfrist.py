@@ -1,10 +1,12 @@
 """Kairo Langfrist (23.11.2026): Momentum-Depot für langfristiges Investieren neben dem Welt-ETF.
 
 Regel aus der Studie tools/research/momentum_variants.py (Auswahl nur im Lernzeitraum 2016–2020, bestätigt 2021–2026):
-Zu jedem Tauschtermin die RULE["n"] US-Aktien mit dem stärksten Kursanstieg der letzten RULE["lb"] Monate ohne den
-letzten Monat (12-1-Momentum), gleich gewichtet; Universum wie im Backtest: Ø Umsatz ≥ 5 Mio. $ am Tag, Kurs ≥ 5 $.
+Rangliste nach dem Kursanstieg der letzten RULE["lb"] Monate ohne den letzten Monat (12-1-Momentum), nur US-Aktien mit
+Ø Umsatz ≥ 5 Mio. $ am Tag und Kurs ≥ 5 $. Puffer-Regel (24.11.2026, backend/position/backtest.py robust_report):
+Am Tauschtermin wird verkauft, wer nicht mehr auf Platz 1–RULE["hold"] steht; freie Plätze füllen die bestplatzierten
+noch nicht gehaltenen Aktien, bis RULE["n"] Aktien im Depot sind (gleich gewichtet). Gekauft wird also nur aus den Top n.
 Tauschtermine: erster Handelstag im Januar/April/Juli/Oktober (bei RULE["every"] = 3).
-Ohne Zustand: Das aktuelle Depot wird bei jedem Scan aus den Kursen bis zum letzten Tauschtermin neu bestimmt.
+Ohne Zustand: Das Depot wird bei jedem Scan aus den Kursen über die Tauschtermine der Scan-Historie nachgespielt.
 Reine Analyse/Anzeige – keine Orders.
 """
 from __future__ import annotations
@@ -12,13 +14,14 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-RULE = {"n": 20, "lb": 12, "every": 3, "filter": False}
+RULE = {"n": 10, "hold": 20, "lb": 12, "every": 3, "filter": False}
 MIN_ADV, MIN_PX = 5e6, 5.0
-TOP_N = 60                     # so viele Plätze der Rangliste zeigt der Scanner (Top 20 = Depot, 21–60 = Nachrücker)
-# Studie momentum_variants.py (23.11.2026, 1.586 US-Aktien, deutsche Steuer, 0,15 % Kosten je Umsatz):
-# Lernen 2016–2020 37,3 % p. a. nach Steuer · Prüfen 2021–2026 25,2 % (S&P-500-ETF 11,7 %) · größter Rückgang bis 44 % (ETF 24 %)
-# 35/36 Varianten im Lernzeitraum, 20/36 im Prüfzeitraum über dem ETF; Marktfilter schadet (Ø 7,5 % statt 23,8 %).
-BACKTEST = {"period": "2016–2026", "learn": 0.373, "test": 0.252, "etf_test": 0.117, "mdd": 0.44, "etf_mdd": 0.24}
+TOP_N = 60                     # so viele Plätze der Rangliste zeigt der Scanner (1–10 kaufen, 11–20 halten, danach Nachrücker)
+# Backtest 24.11.2026 (US-Aktien 2016–2026, Abgeltungsteuer, 0,10 % Kosten): Top 10 + Puffer 20 32,4 % p. a. (Top 20 bisher 24,6 %),
+# 2016–20 43,8 % · 2021–26 25,0 % · größter Rückgang 47 % · Ø 4 Verkäufe je Quartal. 70 % Welt-ETF / 30 % Strategie 18,2 % p. a.
+# (Rückgang 36 %, schlechtestes Jahr −10,6 %); Welt-ETF 10,6 %, S&P 500 12,7 %, Momentum-ETF Welt 11,3 %. Nur heute gelistete Aktien.
+BACKTEST = {"period": "2016–2026", "cagr": 0.324, "learn": 0.438, "test": 0.25, "mdd": 0.47, "mix": 0.182, "mix_mdd": 0.356,
+            "mix_worst": -0.106, "world": 0.106, "spx": 0.127, "mom_etf": 0.113, "sells_q": 4}
 
 
 def _is_us(t: str, m: dict | None) -> bool:
@@ -68,6 +71,36 @@ def rank(data: dict, meta: dict, upto: pd.Timestamp, rule: dict | None = None) -
 CHECKS = ("liq", "trend", "stab", "mom", "qual", "val", "sector", "earn")
 WATCH_MIN, WATCH_MAX = 6, 40
 CK = {"min_dv": 10e6, "min_mc": 2e9, "gap": -0.15, "earn_days": 5, "sector_cap": 3}
+
+
+def depot_path(data: dict, meta: dict, dates: list, rule: dict | None = None) -> list[tuple[pd.Timestamp, list[str], list[tuple[str, float]]]]:
+    """Puffer-Regel über mehrere Tauschtermine nachspielen: behalten, wer auf Platz 1–hold steht, auffüllen bis n aus der Rangliste.
+    Liefert je Termin (Datum, Depot in Kaufreihenfolge, Rangliste)."""
+    r = {**RULE, **(rule or {})}
+    n, keep_n = r["n"], r.get("hold") or r["n"]
+    held, out = [], []
+    for d in dates:
+        rk = rank(data, meta, d, r)
+        order = [t for t, _ in rk]
+        keep = set(order[:keep_n])
+        held = [t for t in held if t in keep]
+        for t in order:
+            if len(held) >= n:
+                break
+            if t not in held:
+                held.append(t)
+        out.append((d, list(held), rk))
+    return out
+
+
+def next_swap(held: list[str], now: list[tuple[str, float]], rule: dict | None = None) -> tuple[list[str], list[str]]:
+    """Vorschau für den nächsten Tausch mit der Rangliste von heute: (verkaufen, kaufen)."""
+    r = {**RULE, **(rule or {})}
+    order = [t for t, _ in now]
+    keep = set(order[: r.get("hold") or r["n"]])
+    stay = [t for t in held if t in keep]
+    inn = [t for t in order if t not in stay][: max(0, r["n"] - len(stay))]
+    return [t for t in held if t not in keep], inn
 
 
 def load_fund() -> dict:
@@ -156,7 +189,7 @@ def checks(data: dict, meta: dict, now: list[tuple[str, float]], depot: set, fun
     über 20 T.) · Stabilität (kein Tagesverlust unter −15 % in 90 T.) · Momentum / Quality (ROE, Nettoverschuldung/EBITDA) /
     Value (PEG, Forward-KGV ÷ 5-J.-KGV): Perzentil ≥ 50 in der Auswahl, fehlende Daten = neutral 50 · Sektor-Cap (höchstens 3
     Depot-Aktien im selben Sektor, Depot-Aktien selbst erfüllt) · Earnings-frei (keine Quartalszahlen in 5 Börsentagen).
-    Reine Zusatzinfo – das Kaufsignal der Regel bleibt Top 20 nach 12-1-Momentum am Tauschtermin."""
+    Reine Zusatzinfo – gekauft wird nach der Regel: Top 10 nach 12-1-Momentum am Tauschtermin, gehalten bis Platz 20."""
     tick = [t for t, _ in now]
     mom = _pct(dict(now))
     F = {t: _fund_row(fund.get(t) or {}) for t in tick}
@@ -196,7 +229,7 @@ def checks(data: dict, meta: dict, now: list[tuple[str, float]], depot: set, fun
 
 def curve(data: dict, meta: dict, bench: pd.DataFrame | None, rule: dict | None = None, mix: float = 0.3, etf: pd.DataFrame | None = None) -> dict | None:
     """Verlauf des Strategie-Depots seit dem ersten Tausch, für den die Kurse 12 Monate Vorlauf haben (Scan-Historie ca. 2 Jahre):
-    an jedem Tauschtermin die Top 20 gleich gewichtet kaufen und bis zum nächsten halten (ohne Kosten und Steuern).
+    Depot nach der Puffer-Regel (depot_path), gleich gewichtet bis zum nächsten Tausch (ohne Kosten und Steuern).
     Dazu S&P 500 und die Mischung 70 % S&P 500 (als ETF-Näherung) / 30 % Strategie, täglich gewichtet. Wöchentliche Punkte."""
     r = {**RULE, **(rule or {})}
     if bench is None or not len(bench):
@@ -208,9 +241,10 @@ def curve(data: dict, meta: dict, bench: pd.DataFrame | None, rule: dict | None 
     if not rb:
         return None
     vals, v0 = [], 1.0
+    path = depot_path(data, meta, rb, r)
     for k, d in enumerate(rb):
+        held = path[k][1]
         end = rb[k + 1] if k + 1 < len(rb) else idx[-1] + pd.Timedelta(days=1)
-        held = [t for t, _ in rank(data, meta, d, r)[: r["n"]]]
         days = idx[(idx >= d) & (idx < end)] if k + 1 < len(rb) else idx[idx >= d]
         rel = []
         for t in held:
@@ -257,11 +291,14 @@ def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict 
     if not rb:
         return None
     since = rb[-1]
-    held = rank(data, meta, since, r)[: r["n"]]
-    prev = {t for t, _ in rank(data, meta, rb[-2], r)[: r["n"]]} if len(rb) >= 2 else set()   # Depot des vorigen Quartals
+    hist = [d for d in rb if (d - idx[0]).days >= 380] or [since]   # Termine mit 12 Monaten Kurs-Vorlauf
+    path = depot_path(data, meta, hist, r)
+    mo_since = dict(path[-1][2])
+    held = [(t, mo_since.get(t, float("nan"))) for t in path[-1][1]]
+    prev = set(path[-2][1]) if len(path) >= 2 else set()           # Depot des vorigen Quartals
     now = rank(data, meta, idx[-1] + pd.Timedelta(days=1), r)
     pos_now = {t: i + 1 for i, (t, _) in enumerate(now)}
-    top_now = [t for t, _ in now[: r["n"]]]
+    sell_nx, buy_nx = next_swap([t for t, _ in held], now, r)
     hold, rets = [], []
     for t, m0 in held:
         df = data[t]
@@ -293,7 +330,7 @@ def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict 
     for x in hold + top:
         if x["t"] in ck:
             x.update(chk=ck[x["t"]]["chk"], nchk=ck[x["t"]]["nchk"])
-    top_set = set(top_now)
+    top_set = {t for t, _ in now[: r.get("hold") or r["n"]]}
     rk_now = {t: i + 1 for i, (t, _) in enumerate(now)}
     w = sorted((t for t, v in ck.items() if v["nchk"] >= WATCH_MIN and t not in held_t and t not in top_set),
                key=lambda t: (-ck[t]["nchk"], rk_now[t]))[:WATCH_MAX]
@@ -311,6 +348,6 @@ def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict 
         cv = None
     return {"rule": r, "since": since.strftime("%Y-%m-%d"), "watch": watch, "curve": cv, "checks": list(CHECKS), "ranks": ranks, "next": nxt.strftime("%Y-%m-%d"), "asof": idx[-1].strftime("%Y-%m-%d"),
             "hold": hold, "ret": round(port, 4) if port is not None else None, "bench": round(bret, 4) if bret is not None else None,
-            "out": [t for t in held_t if t not in top_now], "inn": [t for t in top_now if t not in held_t], "top": top,
+            "out": sell_nx, "inn": buy_nx, "top": top,
             "chg": {"out": sorted(prev - held_t), "inn": sorted(held_t - prev)} if prev else None,   # Tausch am letzten Termin
             "univ": len(now), "bt": BACKTEST}
