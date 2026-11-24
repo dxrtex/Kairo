@@ -37,7 +37,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 70% (20) | 40% (50) |
 | im Rahmen (±2 %) | 33% (18) | 25% (4) | 38% (16) | 45% (40) |
 | über Erwartung (+2 bis +10 %) | 35% (26) | 33% (9) | 47% (58) | 44% (64) |
-| deutlich über Erwartung (> +10 %) | 41% (32) | 50% (18) | 60% (111) | 55% (117) |
+| deutlich über Erwartung (> +10 %) | 41% (32) | 50% (18) | 61% (111) | 54% (117) |
 
 ## Vorschläge zur Anpassung
 
@@ -57,8 +57,8 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 - IONQ 2026-11-05: Kairo 52% steigt, Kurs +23.4% · Gewinn +271% · Ausblick angehoben – „EX-99.1 3 ionq-ex99_1.htm EX-99.1 EX-99.1 Exhibit 99.1 IonQ Announces Record 3Q26 Revenues and Raises FY2026 Guidance to $505 - $515 Million as Backlog Grows to“
 - MTSI 2026-11-05: Kairo 60% steigt, Kurs -18.4% · Gewinn +4% · Ausblick angehoben – „Business Outlook For the fiscal first quarter ending January 1, 2027, MACOM expects revenue to be in the range of $450 million to $460 million.“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
-- ANF 2026-11-24: Kairo 56% steigt, Kurs +24.4% · Gewinn +21% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- ANF 2026-11-24: Kairo 56% steigt, Kurs +23.2% · Gewinn +21% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - CTVA 2026-11-11: Kairo 42% steigt, Kurs -24.3% · Gewinn -40% · Ausblick gesenkt – „Corteva (CTVA) Cuts Guidance And Delays Filing, Is The Reset Now Fully Priced In?“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
@@ -107,11 +107,11 @@ Rollierend geprüft an 232 jüngeren Meldungen (3 Zeiträume, je nur mit ältere
 | Merkmal | Gewicht |
 |---|---|
 | Grundwert (Marktlage) | -0.16 |
-| Langzeit-Quote Gewinn × Ausblick | +0.46 |
+| Langzeit-Quote Gewinn × Ausblick | +0.47 |
 | Umsatz-Überraschung | +0.20 |
 
 | Zeitraum | n | Brier Modell | Brier gezeigt | Richtung Modell | Richtung gezeigt |
 |---|---|---|---|---|---|
 | 2026-11-09 – 2026-11-12 | 160 | 0.245 | 0.247 | 56% | 56% |
 | 2026-11-13 – 2026-11-18 | 44 | 0.245 | 0.251 | 52% | 50% |
-| 2026-11-19 – 2026-11-24 | 28 | 0.255 | 0.259 | 57% | 54% |
+| 2026-11-19 – 2026-11-24 | 28 | 0.251 | 0.259 | 57% | 54% |
