@@ -442,6 +442,7 @@ def score_trend(df: pd.DataFrame, info: dict, ticker: str, res) -> dict:
 
 
 FC_MODEL = forecast.load_model()
+SWING_SCAN = False      # 24.11.2026: Swing ist aus der App – Short-Prüfung und 4H-Stundenkerzen werden nicht mehr berechnet (spart Zeit und Abrufe)
 GRADE = grade.load()
 
 
@@ -747,9 +748,13 @@ def main(argv=None) -> int:
         tr_hit = bool(tres and tres.passed)
         sh = None
         try:                                           # Kairo Short (23.11.2026): dieselbe Prüfung auf dem gespiegelten Verlauf
+            if not SWING_SCAN:
+                raise StopIteration
             sres, spl = shortside.evaluate_short(df, info, t)
             sh = shortside.compact(sres, spl)
             short_res[t] = (sres, spl)
+        except StopIteration:
+            pass
         except Exception as exc:
             print(f"{t}: Short-Fehler {exc!r}")
         try:
@@ -1052,8 +1057,11 @@ def main(argv=None) -> int:
             print(f"Live-Bilanz: Fehler {exc!r}")
             bil = {"live": None, "signals": [], "backtest": None}
         try:                                          # 4H-Top-Setup: Treffer → Konsolidierung → 4H-Bestätigung (backend/h4live.py)
-            h4 = h4_block(rows, data, search, today_iso, evening, near_all)
-            print(f"4H-Top-Setup: {len(h4['items'])} Treffer verfolgt – " + ", ".join(f"{k} {v}" for k, v in h4["count"].items()))
+            if not SWING_SCAN:                        # Swing aus: leere Datei, damit die App nichts Altes zeigt
+                h4 = {"generated": datetime.now(timezone.utc).isoformat(timespec="minutes"), "items": [], "now": {}, "off": True}
+            else:
+                h4 = h4_block(rows, data, search, today_iso, evening, near_all)
+                print(f"4H-Top-Setup: {len(h4['items'])} Treffer verfolgt – " + ", ".join(f"{k} {v}" for k, v in h4["count"].items()))
         except Exception as exc:
             print(f"4H-Top-Setup: Fehler {exc!r}")
             h4 = {"generated": datetime.now(timezone.utc).isoformat(timespec="minutes"), "items": [], "now": {}, "error": True}
