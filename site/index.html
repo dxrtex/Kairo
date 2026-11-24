@@ -3987,9 +3987,10 @@ const GLOSS = {
   exp: ["Erwartung je Trade", "Durchschnittliches Ergebnis aller Trades. Positiv heißt: Die Strategie verdient im Schnitt – auch wenn viele Trades verlieren."],
   sharpe: ["Sharpe", "Rendite im Verhältnis zur Schwankung. Höher ist besser: gleiche Rendite mit weniger Auf und Ab."],
   fear: ["Stimmung / Angst (0–100)", "Fasst sieben Messgrößen zusammen: VIX-Höhe und -Anstieg, kurz- gegen langfristige Angst (VIX ÷ VIX3M), Tech/KI (Nasdaq 100 und Halbleiter vom Hoch), Anteil der gescannten Aktien über der EMA 50, Aktien am 52-Wochen-Tief und den Kreditmarkt. Die Trend-Ampel sagt, wohin der Markt läuft – die Stimmung, wie nervös er ist. Erfahrungswerte, keine getestete Handelsregel."],
-  mom12: ["12-Monats-Lauf (Momentum)", "Kursanstieg der letzten 12 Monate ohne den letzten Monat. Die Strategie kauft die 20 US-Aktien mit dem stärksten Lauf – Aktien, die lange gut liefen, laufen im Schnitt eine Weile weiter (Momentum-Effekt)."],
-  tausch: ["Tausch", "Am ersten Börsentag im Januar, April, Juli und Oktober: Aktien, die nicht mehr in den Top 20 sind, verkaufen, neue Top-20-Aktien mit gleichem Betrag kaufen. Dazwischen nichts tun – kein Stop."],
-  sdep: ["Strategie-Depot", "Die 20 Aktien der Strategie, gleich gewichtet. Zusammen mit dem Welt-ETF im Verhältnis 70/30 (ETF/Strategie) – im Backtest 2016–2026 15,3 % p. a. nach Steuer bei einem größten Rückgang von 36 %."],
+  mom12: ["12-Monats-Lauf (Momentum)", "Kursanstieg der letzten 12 Monate ohne den letzten Monat. Die Strategie kauft aus den 10 US-Aktien mit dem stärksten Lauf – Aktien, die lange gut liefen, laufen im Schnitt eine Weile weiter (Momentum-Effekt)."],
+  tausch: ["Tausch", "Am ersten Börsentag im Januar, April, Juli und Oktober: Aktien, die nicht mehr auf Platz 1–20 stehen, verkaufen. Freie Plätze mit den bestplatzierten neuen Aktien aus den Top 10 füllen, jede mit gleichem Betrag. Dazwischen nichts tun – kein Stop."],
+  sdep: ["Strategie-Depot", "Die 10 Aktien der Strategie, gleich gewichtet: gekauft aus den Top 10, gehalten bis Platz 20. Zusammen mit dem Welt-ETF im Verhältnis 70/30 (ETF/Strategie) – im Backtest 2016–2026 18,2 % p. a. nach Steuer bei einem größten Rückgang von 36 %."],
+  puffer: ["Puffer bis Platz 20", "Eine gekaufte Aktie bleibt im Depot, solange sie in der Rangliste auf Platz 1–20 steht – auch wenn sie aus den Top 10 rutscht. Das halbiert die Verkäufe und spart Steuern. Eine neue Aktie aus den Top 10 wird nur gekauft, wenn ein Platz frei wird."],
   k8: ["Erfüllt x/8", "Zusatzinfo zu jeder Aktie: Liquidität, Trend, Stabilität, Momentum, Quality, Value, Sektor-Cap und Earnings-Freiheit. Ab 6/8 außerhalb der Top 20 steht eine Aktie auf der Watchlist. Gekauft wird trotzdem nur nach Rang."],
   reb: ["Ausgleich (Rebalancing)", "Einmal im Jahr im Januar ETF und Strategie-Depot wieder auf 70/30 bringen: vom Teil, der stärker gestiegen ist, in den anderen umschichten. Hält das Risiko konstant."],
   etfa: ["ETF-Ampel", "Für Extra-Geld neben dem Sparplan: Grün = jetzt investieren (Rücksetzer oder Angst am Markt), Gelb = höchstens 3 Monate abwarten. Die monatliche Sparrate läuft immer. Langzeittest S&P 500 und Welt-ETF 1990–2026: Nach Grün war die Rendite der folgenden 3 Monate höher – in Euro lag Extra-Geld nach Ampel aber 0,1–0,3 % hinter „sofort anlegen“. Sofort anlegen ist also mindestens genauso gut; die Ampel ordnet ein."],
@@ -4096,10 +4097,10 @@ const KIND_BTNS_ALL = [["fav", "★ Watchlist", r => favs().has(r.ticker)], ["h4
 let KIND_BTNS = KIND_BTNS_ALL.filter(x => x[0] !== "trend");
 // Scanner: fünf klare Ansichten statt vieler Knöpfe (eine ist immer aktiv) – [Schlüssel, Name, zählt, Arten für selRows, Erklärung]
 const VIEWS = [
-  ["long", "Kaufen", r => false, ["long"], "Die 20 US-Aktien mit dem stärksten 12-Monats-Lauf (ohne letzten Monat) = dein Depot. Getauscht wird nur alle 3 Monate (Januar, April, Juli, Oktober). Backtest 2016–2026: 24,6 % p. a. nach Steuer, S&P-500-ETF 12,7 %."],
+  ["long", "Kaufen", r => false, ["long"], "Gekauft wird aus den 10 US-Aktien mit dem stärksten 12-Monats-Lauf (ohne letzten Monat), gehalten bis Platz 20 = dein Depot. Getauscht wird nur alle 3 Monate (Januar, April, Juli, Oktober). Backtest 2016–2026: 32,4 % p. a. nach Steuer, S&P-500-ETF 12,7 %."],
   ["go", "Einstiege", r => isH4(r), ["h4"], "Treffer mit fertiger Konsolidierung – ✓ 4H bestätigt = jetzt einsteigen · … wartet auf 4H · ▶ läuft. Bei Bestätigung kommt eine Mitteilung."],
   ["hit", "Swing", r => r.passed, ["hit"], "Swing-Setups: alle 11 Kriterien erfüllt. Gekauft wird erst nach der Konsolidierung – dann steht im Status „kaufbereit“."],
-  ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Watchlist: Aktien außerhalb der Top 20 mit mindestens 6 von 8 Kriterien (Liquidität, Trend, Stabilität, Momentum, Quality, Value, Sektor-Cap, Earnings-frei). Gekauft wird, wer bis zum Tausch in die Top 20 rückt."],
+  ["watch", "Beobachten", r => !r.passed && (!!r.fast_hit || !!r.near_hit), ["fast", "near"], "Watchlist: Aktien außerhalb der Top 20 mit mindestens 6 von 8 Kriterien (Liquidität, Trend, Stabilität, Momentum, Quality, Value, Sektor-Cap, Earnings-frei). Gekauft wird, wer bis zum Tausch in die Top 10 rückt und einen freien Platz bekommt."],
   ["trend", "Trend", r => isTrend(r), ["trend"], "Trend-Rücksetzer – eigene, getrennte Strategie (Rücksetzer im Aufwärtstrend)."],
   ["mine", "Meine", r => r.in_watchlist || favs().has(r.ticker), ["watch", "fav"], "Deine Watchlist (★) – mit Rang, 12-Monats-Lauf und x/8 aus der Strategie."],
   ["short", "Short", r => !!(r.short && r.short.s === "hit"), ["short"], "Kairo Short: dieselben 11 Kriterien gespiegelt – Anstieg an einen Widerstand, bärische RSI-Divergenz, MACD dreht über 0, Kaufdruck läuft aus. Analyse, keine Order."]];
@@ -4132,9 +4133,11 @@ function shortHtml() {
 // Ø −0,10 R, 28 % Gewinner, Depot mit allen Trades ≈ Totalverlust; nur Grün +0,30 R (bis 2023 +0,41, ab 2024 +0,02 → nicht belastbar)
 const SHORT_STUDY = "Backtest 2018–2026: 6.091 Short-Trades mit derselben Ausstiegsregel wie Long – Ø −0,10 R je Trade, nur 28 % Gewinner. Die gespiegelte Regel hat bisher kein Geld verdient (nur bei grüner Marktampel leicht positiv, seit 2024 aber kaum noch). Short-Treffer daher als Warnsignal für eigene Positionen und zur Information nutzen – nicht als getestetes Handelssignal.";
 // ---------- Kairo Langfrist (23.11.2026): Momentum-Depot neben dem Welt-ETF (backend/langfrist.py) ----------
-// Studie tools/research/momentum_variants.py: 20 US-Aktien mit dem stärksten 12-Monats-Lauf (ohne letzten Monat), Tausch alle 3 Monate.
-// Lernen 2016–2020 37,3 % p. a. nach Steuer · Prüfen 2021–2026 25,2 % (S&P-500-ETF 11,7 %) · Rückgang bis −44 % (ETF −24 %).
+// Regel (24.11.2026): Top 10 US-Aktien nach 12-Monats-Lauf (ohne letzten Monat) kaufen, behalten bis Platz 20, Tausch alle 3 Monate.
+// Backtest 2016–2026 nach Steuer: 32,4 % p. a. (Top 20 bisher 24,6 %), Rückgang bis −47 % · 70/30 mit Welt-ETF 18,2 % (−36 %).
 const LF = () => anaData && anaData.market && anaData.market.langfrist;
+const lfH = L => (L && L.rule && (L.rule.hold || L.rule.n)) || 20;   // Puffer: behalten bis Platz lfH
+const lfInn = (L, t) => lfSwap(L).inn.includes(t);
 const fmtD = s => s ? new Date(s + "T12:00:00").toLocaleDateString("de-DE", { day: "numeric", month: "short", year: "2-digit" }) : "–";
 const lfDays = iso => iso ? Math.round((new Date(iso + "T12:00:00") - new Date()) / 864e5) : null;
 const lfOpen = t => (data.results || []).some(r => r.ticker === t) ? `data-card="${esc(t)}"` : `data-ctgo="${esc(t)}"`;
@@ -4171,7 +4174,7 @@ function longHtml() {
   const cap = Math.max(0, +state.lfCap || 5000), per = cap / Math.max(1, L.hold.length), dn = lfDays(L.next);
   const eurPx = p => toEur(p, "USD"), qty = p => { const e = eurPx(p); return e > 0 ? Math.floor(per / e) : null; };
   const rows = L.hold.slice().sort((a, b) => (b.m ?? 0) - (a.m ?? 0)).map((x, i) => `<tr class="lf-row" ${lfOpen(x.t)}><td class="num muted">${i + 1}</td><td><div class="sh-nm">${cfAv(x.t)}<span><b>${esc(shortNm(x.n || x.t))}</b><small>${esc(x.t)}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span></div></td>
-      <td class="num">${lfPct(x.m, 0)}</td><td class="num">${lfPct(x.ret)}</td><td class="num">${x.rk ? (x.rk <= L.rule.n ? `<span class="up">${x.rk}</span>` : `<span class="down">${x.rk}</span>`) : "–"}</td>
+      <td class="num">${lfPct(x.m, 0)}</td><td class="num">${lfPct(x.ret)}</td><td class="num">${x.rk ? (x.rk <= lfH(L) ? `<span class="up">${x.rk}</span>` : `<span class="down">${x.rk}</span>`) : "–"}</td>
       <td class="num">${fmt(x.p)} $</td><td class="num">${qty(x.p) ?? "–"}</td></tr>`).join("");
   const nm = t => { const r = (L.top || []).find(y => y.t === t) || L.hold.find(y => y.t === t) || {}; return esc(shortNm(r.n || t)); };
   const SW = lfSwap(L);
@@ -4182,21 +4185,23 @@ function longHtml() {
       <div><span>nächster Tausch</span><b>${fmtD(L.next)}${dn != null && dn >= 0 ? ` <small class="muted">in ${dn} Tagen</small>` : ""}</b></div></div>
       <label class="lf-cap">Betrag für das Strategie-Depot <input id="lfCap" type="number" inputmode="decimal" min="0" step="500" value="${cap}"> € <small class="muted">→ ${eur(per)} je Aktie</small></label>
       ${lfSwapSoon(L) && (L.out.length || L.inn.length) ? `<div class="lf-swap"><b>Tauschtermin:</b> Aktien unter „Raus“ verkaufen, unter „Rein“ mit dem Erlös gleich gewichtet kaufen. Alle übrigen behalten.</div>` : ""}</div>
-    <div class="table-wrap"><table class="sc-t lf-t"><thead><tr><th class="num">#</th><th>Aktie</th><th class="num">Lauf 12 M.</th><th class="num">seit Tausch</th><th class="num" title="Platz in der Rangliste heute – über ${L.rule.n} = würde beim nächsten Tausch ersetzt">Rang heute</th><th class="num">Kurs</th><th class="num">Stück</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="table-wrap"><table class="sc-t lf-t"><thead><tr><th class="num">#</th><th>Aktie</th><th class="num">Lauf 12 M.</th><th class="num">seit Tausch</th><th class="num" title="Platz in der Rangliste heute – über ${lfH(L)} = würde beim nächsten Tausch ersetzt">Rang heute</th><th class="num">Kurs</th><th class="num">Stück</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="card"><div class="plan-h">${SW.now ? "Tausch jetzt umsetzen" : "Vorschau nächster Tausch"}</div>${swap}</div>
     ${(L.watch || []).length ? `<div class="card"><div class="plan-h">Watchlist <small class="muted">${L.watch.length} Aktien mit mind. 6/8 Kriterien</small></div>${L.watch.slice(0, 5).map(x => `<button class="hrow" ${lfOpen(x.t)}>${cfAv(x.t)}<span class="hn">${esc(shortNm(x.n || x.t))} <small class="muted">Rang ${x.rk}</small></span>${lfBadge(x)}</button>`).join("")}<button class="hlink" data-golongscan>Alle im Scanner ›</button></div>` : ""}
     <div class="card lf-how"><div class="plan-h">So funktioniert Kairo Langfrist</div>
-      <ul class="checks"><li>Alle 3 Monate (erster Börsentag im Januar, April, Juli, Oktober) die <b>${L.rule.n} US-Aktien mit dem stärksten Kursanstieg der letzten 12 Monate</b> – den letzten Monat ausgenommen –, jede mit gleichem Betrag.</li>
+      <ul class="checks"><li>Alle 3 Monate (erster Börsentag im Januar, April, Juli, Oktober) die US-Aktien nach dem <b>Kursanstieg der letzten 12 Monate</b> sortieren – den letzten Monat ausgenommen.</li>
+      <li><b>Kaufen</b> nur aus den Top ${L.rule.n}, jede mit gleichem Betrag. <b>Behalten</b>, solange die Aktie auf Platz 1–${lfH(L)} steht – erst ab Platz ${lfH(L) + 1} verkaufen und durch die bestplatzierte neue Aktie ersetzen.</li>
       <li>Dazwischen nichts tun. Kein Stop, kein Nachjustieren: Gewinner laufen lassen, Verlierer fliegen beim nächsten Tausch automatisch raus.</li>
       <li>Nur liquide Werte (Ø Umsatz ≥ 5 Mio. $ am Tag, Kurs ≥ 5 $), ${L.univ} Aktien in der Auswahl.</li>
       <li>Empfohlene Aufteilung: <b>70–80 % Welt-ETF</b> (Kern, nie verkaufen) und <b>20–30 % Strategie-Depot</b>.</li></ul>
-      <div class="lf-bt"><div><span>Backtest Lernzeitraum 2016–2020</span><b class="up">${pct(bt.learn ?? .373, 1)} p. a.</b></div><div><span>Prüfzeitraum 2021–2026</span><b class="up">${pct(bt.test ?? .252, 1)} p. a.</b></div><div><span>S&P-500-ETF 2021–2026</span><b>${pct(bt.etf_test ?? .117, 1)} p. a.</b></div><div><span>größter Rückgang</span><b class="down">bis −${fmt((bt.mdd ?? .44) * 100, 0)} %</b></div></div>
-      <p class="muted lf-note">Nach deutscher Steuer und 0,15 % Kosten je Umsatz, 1.586 US-Aktien. Die Regel wurde nur mit 2016–2020 ausgewählt und 2021–2026 bestätigt (35 von 36 Varianten lagen im Lernzeitraum vor dem ETF). Ehrlich: Nur heute noch gelistete Aktien (Pleiten fehlen), ein starkes Jahrzehnt für Momentum, über 60 Jahre war Momentum bei großen Firmen seit 2000 nicht besser als der Markt. Einbrüche von −40 % gehören dazu – wer dann verkauft, verliert. Darum „im Test“: kein Versprechen, keine Order.</p></div>`;
+      <div class="lf-bt"><div><span>Strategie 2016–2026</span><b class="up">${pct(bt.cagr ?? .324, 1)} p. a.</b></div><div><span>70/30 mit Welt-ETF</span><b class="up">${pct(bt.mix ?? .182, 1)} p. a.</b></div><div><span>Welt-ETF allein</span><b>${pct(bt.world ?? .106, 1)} p. a.</b></div><div><span>größter Rückgang</span><b class="down">bis −${fmt((bt.mdd ?? .47) * 100, 0)} %</b></div></div>
+      <p class="muted lf-note">Backtest nach Abgeltungsteuer und 0,10 % Kosten je Umsatz. Top 10 lag bei allen drei Tauschterminen und jedem Startjahr vor Top 20; der Puffer bis Platz 20 halbiert die Verkäufe. Momentum-ETFs kamen im selben Zeitraum nur auf rund 11 % p. a. Ehrlich: Nur heute noch gelistete Aktien (Pleiten fehlen), ein starkes Jahrzehnt für Momentum – realistisch eher 12–15 % p. a. für 70/30. Einbrüche von −40 % gehören dazu – wer dann verkauft, verliert. Kein Versprechen, keine Order.</p></div>`;
 }
 document.addEventListener("click", e => { if (!e.target.closest("[data-golong]")) return; state.view = "long"; state.kinds = ["long"]; state.scrOn = false; save(); goSec("scanner"); });
 document.addEventListener("click", e => { if (!e.target.closest("[data-golongscan]")) return; state.view = "long"; state.kinds = ["long"]; state.scrOn = false; save(); goSec("scanner"); });
 // Scanner → Langfrist (23.11.2026): Rangliste mit den 4 Kriterien der getesteten Regel (backend/langfrist.py)
-const lfStatus = (x, L) => x.in && x.rk <= L.rule.n ? ["Im Depot", "up"] : x.in ? ["Raus beim Tausch", "down"] : x.rk <= L.rule.n ? ["Kaufen beim Tausch", "up"] : ["Nachrücker", "muted"];
+const lfStatus = (x, L) => { const SW = lfSwap(L); return x.in ? (SW.out.includes(x.t) ? ["Raus beim Tausch", "down"] : ["Im Depot", "up"])
+  : SW.inn.includes(x.t) ? ["Kaufen beim Tausch", "up"] : x.rk <= L.rule.n ? ["Wartet auf freien Platz", "muted"] : ["Nachrücker", "muted"]; };
 function longScanHtml() {
   const L = LF();
   if (!L || !L.top) return `<div class="sc-tb"><span class="sc-tb-r">${scanMenuHtml()}</span></div><div class="empty">${anaData ? "Die Langfrist-Rangliste erscheint nach dem nächsten großen Scan (abends an Börsentagen)." : "Lade …"}</div>`;
@@ -4204,9 +4209,9 @@ function longScanHtml() {
   const held = Object.fromEntries((L.hold || []).map(x => [x.t, x]));
   const out = (L.hold || []).filter(x => !L.top.some(y => y.t === x.t)).map(x => ({ ...x, in: true, rk: x.rk || 999 }));
   const rows = L.top.concat(out).filter(x => x.rk <= show || x.in).filter(x => !q || x.t.toLowerCase().includes(q) || String(x.n || "").toLowerCase().includes(q));
-  const tb = `<div class="sc-tb"><label class="sp-dd"><span>Zeige</span><select data-lfshow>${[[20, `Top ${n} (Depot)`], [40, "Top 40"], [60, "Top 60"]].map(([v, l]) => `<option value="${v}"${show === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+  const tb = `<div class="sc-tb"><label class="sp-dd"><span>Zeige</span><select data-lfshow>${[[n, `Top ${n} (kaufen)`], [lfH(L), `Top ${lfH(L)} (halten)`], [40, "Top 40"], [60, "Top 60"]].map(([v, l]) => `<option value="${v}"${show === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
     <span class="sc-cnt"><span class="sc-n">nächster Tausch ${fmtD(L.next)}</span>${gl("v_long")}</span><span class="sc-tb-r">${scanMenuHtml()}</span></div>`;
-  const crit = `<div class="sh-note">Kaufsignal der getesteten Regel: die Top ${n} nach 12-Monats-Lauf (ohne letzten Monat) am Tauschtermin. Das Badge zeigt zusätzlich, wie viele der 8 Einstiegskriterien eine Aktie erfüllt (${Object.values(LF_CK).map(v => v[0]).join(", ")}).</div>`;
+  const crit = `<div class="sh-note">Regel: am Tauschtermin aus den Top ${n} nach 12-Monats-Lauf (ohne letzten Monat) kaufen, behalten bis Platz ${lfH(L)}. Das Badge zeigt zusätzlich, wie viele der 8 Einstiegskriterien eine Aktie erfüllt (${Object.values(LF_CK).map(v => v[0]).join(", ")}).</div>`;
   const tr = rows.map(x => { const [st, cls] = lfStatus(x, L), h = held[x.t];
     return `<tr class="lf-row" ${lfOpen(x.t)}><td class="num muted">${x.rk < 999 ? x.rk : "–"}</td><td><div class="sh-nm">${cfAv(x.t)}<span><b>${esc(shortNm(x.n || x.t))}</b><small>${esc(x.t)}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span></div></td>
       <td class="num">${lfPct(x.m, 0)}</td><td>${lfBadge(x.chk ? x : h || x)}</td><td class="${cls} lf-st">${st}</td>
@@ -4215,7 +4220,7 @@ function longScanHtml() {
     ${lfWatchHtml(L, q)}
     <div class="note" style="margin:8px 2px">Depot, Stückzahl für deinen Betrag und Tauschliste: Scanner <button class="hlink" data-golong>Kaufen ›</button></div>`;
 }
-// Watchlist (backend/langfrist.py checks): Aktien außerhalb der Top 20 mit mindestens 6 von 8 Einstiegskriterien
+// Watchlist (backend/langfrist.py checks): Aktien außerhalb der Top 20 (Puffer) mit mindestens 6 von 8 Einstiegskriterien
 const LF_CK = { liq: ["Liquidität", "Ø Umsatz ≥ 10 Mio. $/Tag (50 T.) und Börsenwert ≥ 2 Mrd. $"], trend: ["Trend", "Schluss > SMA 100 > SMA 200, SMA 200 steigt"],
   stab: ["Stabilität", "kein Tagesverlust über 15 % in 90 Tagen"], mom: ["Momentum", "12-Monats-Lauf besser als die Hälfte der Auswahl"],
   qual: ["Quality", "ROE und Nettoverschuldung/EBITDA mindestens im Mittelfeld (fehlende Daten = neutral)"], val: ["Value", "PEG und Forward-KGV vs. 5-Jahres-KGV mindestens im Mittelfeld (fehlende Daten = neutral)"],
@@ -4226,11 +4231,11 @@ function lfChecks(x, L) { const ks = (L && L.checks) || Object.keys(LF_CK); if (
 function lfWatchHtml(L, q) { const W = (L.watch || []).filter(x => !q || x.t.toLowerCase().includes(q) || String(x.n || "").toLowerCase().includes(q));
   const row = x => `<div class="lf-w" ${lfOpen(x.t)}><div class="lf-w-h">${cfAv(x.t)}<span class="lf-w-n"><b>${esc(shortNm(x.n || x.t))}</b><small>Rang ${x.rk} · ${esc(x.t)}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span>${lfBadge(x)}<span class="lf-w-px">${lfPct(x.m, 0)}</span></div>${lfChecks(x, L)}${x.chk && !x.chk[7] && x.edate ? `<small class="gold">⚠︎ Quartalszahlen ${fmtD(x.edate)}</small>` : ""}</div>`;
   return `<div class="card lf-wl"><div class="plan-h">Watchlist · kurz vor dem Kaufsignal <small class="muted">${W.length} Aktien mit mind. 6/8</small></div>
-    <p class="muted lf-note">Außerhalb der Top ${L.rule.n}, sortiert nach erfüllten Kriterien und Rang. Rückt eine Aktie bis zum Tauschtermin ${fmtD(L.next)} in die Top ${L.rule.n}, wird sie gekauft. Die Häkchen zeigen, was noch fehlt.</p>
-    ${W.length ? W.map(row).join("") : `<p class="muted">${L.watch ? "Gerade keine Aktie mit mindestens 6 von 8 Kriterien außerhalb der Top " + L.rule.n + "." : "Die Watchlist erscheint nach dem nächsten großen Scan."}</p>`}</div>`; }
+    <p class="muted lf-note">Außerhalb der Top ${lfH(L)}, sortiert nach erfüllten Kriterien und Rang. Rückt eine Aktie bis zum Tauschtermin ${fmtD(L.next)} in die Top ${L.rule.n} und ist ein Platz frei, wird sie gekauft. Die Häkchen zeigen, was noch fehlt.</p>
+    ${W.length ? W.map(row).join("") : `<p class="muted">${L.watch ? "Gerade keine Aktie mit mindestens 6 von 8 Kriterien außerhalb der Top " + lfH(L) + "." : "Die Watchlist erscheint nach dem nächsten großen Scan."}</p>`}</div>`; }
 document.addEventListener("change", e => { if (e.target.matches && e.target.matches("[data-lfshow]")) { state.lfShow = +e.target.value; save(); render(); } });
 // ---------- Scanner = Langfrist-Strategie (24.11.2026, Wunsch: „Swing ist vorbei“) ----------
-// Reiter: Kaufen (Top 20 = Depot, Tausch alle 3 Monate) · Beobachten (Watchlist ≥ 6/8) · Meine (★) · Screener. Kein Swing, kein Short.
+// Reiter: Kaufen (Top 10 kaufen, halten bis Platz 20, Tausch alle 3 Monate) · Beobachten (Watchlist ≥ 6/8) · Meine (★) · Screener. Kein Swing, kein Short.
 const SC_VIEWS = [["long", "Kaufen", "Kaufen"], ["watch", "Beobachten", "Beob."], ["mine", "Meine", "Meine"]];
 const lfBits = b => b == null ? null : Array.from({ length: 8 }, (_, i) => (b >> i) & 1);
 // Alles, was Kairo zu einer Aktie aus der Strategie weiß: Depot, Rangliste, Watchlist oder (für alle übrigen) die Zeile aus search.json
@@ -4243,7 +4248,8 @@ function lfInfo(t, L) { L = L || LF(); if (!L) return null;
 function lfState(i, L) { const n = L.rule.n, SW = lfSwap(L);
   if (i.h && SW.out.includes(i.t)) return ["Raus beim Tausch", "down"];
   if (i.h) return ["Im Depot", "up"];
-  if (i.rk && i.rk <= n) return ["Kaufen beim Tausch", "up"];
+  if (SW.inn.includes(i.t)) return ["Kaufen beim Tausch", "up"];
+  if (i.rk && i.rk <= n) return ["Wartet auf freien Platz", "muted"];
   if (i.w) return ["Watchlist", "gold"];
   if (i.rk) return [`Rang ${i.rk}`, "muted"];
   return ["nicht in der Auswahl", "muted"]; }
@@ -4273,7 +4279,7 @@ const lfQ = () => ($("search") && $("search").value.trim().toLowerCase()) || "";
 const lfHit = (r, q) => !q || r.t.toLowerCase().includes(q) || String(r.n || "").toLowerCase().includes(q);
 const lfCols = {
   name: { k: "name", l: "Aktie", g: r => r.n, h: lfNameCell },
-  st: { k: "st", l: "Status", g: r => r.h ? 0 : r.rk && LF() && r.rk <= LF().rule.n ? 1 : r.w ? 2 : r.rk ? 3 : 4, h: lfPill },
+  st: { k: "st", l: "Status", g: r => r.h ? 0 : LF() && lfInn(LF(), r.t) ? 1 : r.rk && LF() && r.rk <= LF().rule.n ? 2 : r.w ? 3 : r.rk ? 4 : 5, h: lfPill },
   met: { k: "met", l: "Erfüllt", n: 1, g: r => r.nchk ?? -1, h: lfMet },
   miss: { k: "miss", l: "Fehlt", g: r => 8 - (r.nchk ?? 0), h: lfMiss },
   rk: { k: "rk", l: "Rang", n: 1, g: r => r.rk ?? 99999, h: r => r.rk ? String(r.rk) : `<span class="muted">–</span>` },
@@ -4290,13 +4296,14 @@ function scanBuyHtml() {
   if (!L || !L.top) return lfBar(0, "long") + `<div class="empty">${anaData ? "Die Rangliste erscheint nach dem nächsten großen Scan (abends an Börsentagen)." : "Lade …"}</div>`;
   const n = L.rule.n, q = lfQ(), show = +state.lfShow || n, cap = Math.max(0, +state.lfCap || 5000), per = cap / n, dn = lfDays(L.next), SW = lfSwap(L);
   const out = (L.hold || []).filter(x => !L.top.some(y => y.t === x.t)).map(x => x.t);
-  const rows = [...L.top.filter(x => x.rk <= show).map(x => x.t), ...out].map(t => lfInfo(t, L)).filter(r => lfHit(r, q));
+  const heldT = new Set((L.hold || []).map(x => x.t));
+  const rows = [...L.top.filter(x => x.rk <= show || heldT.has(x.t)).map(x => x.t), ...out].map(t => lfInfo(t, L)).filter(r => lfHit(r, q));
   const qty = r => { const e = toEur(r.p, "USD"); return e > 0 ? Math.floor(per / e) : null; };
   const cols = [lfCols.name, lfCols.st, lfCols.met, lfCols.miss, lfCols.rk, lfCols.m,
     { k: "ret", l: "seit Tausch", n: 1, g: r => r.h ? r.h.ret : null, h: r => r.h && r.h.ret != null ? `<span class="${r.h.ret >= 0 ? "up" : "down"}">${sgnPct(r.h.ret, 1)}</span>` : "–" },
-    { k: "q", l: "Stück", n: 1, g: r => qty(r), h: r => { if (!(r.h || (r.rk && r.rk <= n))) return "–"; const k = qty(r); return k === 0 ? `<span class="gold" title="${eur(per)} je Aktie reichen nicht für 1 Stück">0</span>` : String(k ?? "–"); } },
+    { k: "q", l: "Stück", n: 1, g: r => qty(r), h: r => { if (!(r.h || SW.inn.includes(r.t))) return "–"; const k = qty(r); return k === 0 ? `<span class="gold" title="${eur(per)} je Aktie reichen nicht für 1 Stück">0</span>` : String(k ?? "–"); } },
     lfCols.cap, lfCols.e, lfCols.p];
-  const sel = `<label class="sp-dd"><span>Zeige</span><select data-lfshow>${[[n, `Top ${n}`], [40, "Top 40"], [60, "Top 60"]].map(([v, l]) => `<option value="${v}"${show === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
+  const sel = `<label class="sp-dd"><span>Zeige</span><select data-lfshow>${[[n, `Top ${n}`], [lfH(L), `Top ${lfH(L)}`], [40, "Top 40"], [60, "Top 60"]].map(([v, l]) => `<option value="${v}"${show === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
   const nm = t => esc(shortNm((lfInfo(t, L) || {}).n || t));
   const swap = lfSwapSoon(L) && (SW.out.length || SW.inn.length) ? `<div class="note lf-swapnote"><b>${SW.now ? `Tausch ${fmtD(L.since)}:` : `Tausch am ${fmtD(L.next)}:`}</b> verkaufen ${SW.out.map(nm).join(", ") || "–"} · kaufen ${SW.inn.map(nm).join(", ") || "–"}</div>` : "";
   const line = `<div class="note" style="margin:0 2px 10px">Depot seit Tausch ${fmtD(L.since)} ${sgnPct(L.ret ?? 0, 1)} · S&P 500 ${sgnPct(L.bench ?? 0, 1)} · nächster Tausch ${fmtD(L.next)}${dn != null && dn >= 0 ? ` (in ${dn} Tagen)` : ""} · Stückzahl für ${eur(cap)} (${eur(per)} je Aktie, ändern unter Einstellungen → Strategie).</div>`;
@@ -4310,7 +4317,7 @@ function scanWatchHtml() {
   const sel = `<label class="sp-dd"><span>Erfüllt</span><select data-lwmin>${[[6, "ab 6/8"], [7, "ab 7/8"], [8, "8/8"]].map(([v, l]) => `<option value="${v}"${min === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
   const cols = [lfCols.name, lfCols.met, lfCols.miss, lfCols.rk, lfCols.m, lfCols.cap, lfCols.e, lfCols.p];
   return lfBar(rows.length, "watch", sel) + (rows.length ? lfTable("watch", rows, cols, { k: "met", asc: false })
-    : `<div class="empty">${L.watch ? `Gerade keine Aktie ${min === 8 ? "mit 8/8" : `ab ${min}/8`} außerhalb der Top ${L.rule.n}.` : "Die Watchlist erscheint nach dem nächsten großen Scan (abends an Börsentagen)."}</div>`);
+    : `<div class="empty">${L.watch ? `Gerade keine Aktie ${min === 8 ? "mit 8/8" : `ab ${min}/8`} außerhalb der Top ${lfH(L)}.` : "Die Watchlist erscheint nach dem nächsten großen Scan (abends an Börsentagen)."}</div>`);
 }
 function scanMineHtml() {
   const L = LF(), cur = wlCurList(), q = lfQ();
@@ -4331,7 +4338,7 @@ function scanStratHtml(vseg) {
 // ---------- Langfrist in allen Bereichen (23.11.2026) ----------
 // Marktampel: das Strategie-Depot wird NICHT nach der Ampel gesteuert (Marktfilter kostete im Test Rendite)
 function lfAmpelLine() { const L = LF(); if (!L) return "";
-  return `<div class="lf-amp"><b>Strategie-Depot:</b> unabhängig von der Ampel halten – ein Marktfilter kostete im Test viel Rendite (2016–2026: 17 % statt 24,6 % p. a.). Die Ampel gilt nur für Extra-Geld im ETF.</div>`; }
+  return `<div class="lf-amp"><b>Strategie-Depot:</b> unabhängig von der Ampel halten – ein Marktfilter kostete im Test viel Rendite (2016–2026 mit Top 20: 17 % statt 24,6 % p. a.). Die Ampel gilt nur für Extra-Geld im ETF.</div>`; }
 // Chart-Seitenleiste: Langfrist-Status oben
 function lfSideHtml(r) { const L = LF(); if (!L || !L.top || !r || r.ext) return "";
   const t = String(r.ticker).replace(/@rp$/, ""), x = L.top.find(y => y.t === t), h = (L.hold || []).find(y => y.t === t), w = (L.watch || []).find(y => y.t === t); if (!x && !h && !w) return "";
@@ -4386,12 +4393,12 @@ function longCardHtml(r) {
   const t = r.ticker, x = L.top.find(y => y.t === t), h = (L.hold || []).find(y => y.t === t), w = (L.watch || []).find(y => y.t === t), n = L.rule.n, I = lfInfo(t, L);
   const us = !/[.^]/.test(t) && (!r.currency || r.currency === "USD");
   if (!x && !h && !us) return `<details class="cx-card cx-long"><summary><span class="cx-sh">Kairo Langfrist</span> <span class="lf-pill">–</span> <span class="muted">nur US-Aktien</span></summary><p class="muted" style="margin:6px 0">Die Langfrist-Regel wurde mit US-Aktien getestet – diese Aktie gehört nicht zur Auswahl.</p></details>`;
-  const rk = I.rk, ok = { top: !!(rk && rk <= n) }, z = x || h || w || (I.chk ? I : null);
+  const rk = I.rk, ok = { top: !!(h || lfInn(L, t)) }, z = x || h || w || (I.chk ? I : null);
   const st = x ? lfStatus({ ...x, in: !!h }, L)[0] : h ? "Im Depot – fliegt beim Tausch raus" : w ? "Watchlist – kurz vor dem Kaufsignal" : rk ? `Rang ${rk}` : "nicht in der Auswahl";
   return `<details class="cx-card cx-long"${ok.top || h || w ? " open" : ""}><summary><span class="cx-sh">Kairo Langfrist</span> ${lfBadge(z)} <span class="${ok.top ? "up" : "muted"}">${esc(st)}</span></summary>
     <div class="lf-kpi" style="margin-top:8px"><div><span>Rang heute</span><b>${rk ? `${rk} von ${fmt(L.univ, 0)}` : "–"}</b></div><div><span>Lauf 12 M. (ohne letzten)</span>${z ? lfPct(z.m, 0) : "<b>–</b>"}</div>${h ? `<div><span>seit Tausch ${fmtD(L.since)}</span>${lfPct(h.ret)}</div>` : ""}<div><span>nächster Tausch</span><b>${fmtD(L.next)}</b></div></div>
     ${z && z.chk ? lfChecks(z, L) : `<p class="muted" style="margin:6px 0">Kriterien werden für die ${fmt(L.univ, 0)} liquiden US-Aktien der Auswahl berechnet (Ø Umsatz ≥ 5 Mio. $, Kurs ≥ 5 $).</p>`}
-    <p class="muted lf-note">Gekauft wird am Tauschtermin, wer unter den Top ${n} nach 12-Monats-Lauf ist. Die 8 Häkchen sind Zusatzinfo.</p>
+    <p class="muted lf-note">Gekauft wird am Tauschtermin aus den Top ${n} nach 12-Monats-Lauf, gehalten bis Platz ${lfH(L)}. Die 8 Häkchen sind Zusatzinfo.</p>
     <button class="hlink" data-golong>Zum Strategie-Depot ›</button></details>`;
 }
 
@@ -5135,7 +5142,7 @@ function searchCard(r) {
   const chg = (v, l) => v == null ? "" : `<span class="sc-pf ${v >= 0 ? "up" : "down"}"><em>${l}</em>${sgnPct(v, Math.abs(v) < .1 ? 1 : 0)}</span>`;
   const dh = r.H > 0 && r.c > 0 ? r.c / r.H - 1 : null, tr = r.e200 > 0 && r.c > 0 ? (r.c > r.e200 ? (r.e50 > r.e200 ? ["up", "Aufwärtstrend"] : ["", "über EMA 200"]) : ["down", "unter EMA 200"]) : null;
   const ed = r.ed && daysUntil(r.ed) >= 0 ? r.ed : null, edN = ed ? daysUntil(ed) : null;
-  const st = SWING_OFF ? (r.lr && LF() && r.lr <= LF().rule.n ? ["up", "Top 20"] : m >= KM_NEAR ? ["gold", "Watchlist-Niveau"] : r.lr ? ["", `Rang ${r.lr}`] : ["muted", "nicht in der Auswahl"]) : r.s === "hit" ? ["up", "Kairo-Treffer"] : r.s === "fast" ? ["gold", "Fast-Treffer"] : m >= 9 ? ["", "beobachten"] : ["muted", r.title && /Suchraster/.test(r.title) ? "außerhalb des Rasters" : "kein Signal"];
+  const st = SWING_OFF ? (r.lr && LF() && r.lr <= LF().rule.n ? ["up", "Top " + LF().rule.n] : r.lr && LF() && r.lr <= lfH(LF()) ? ["", "Puffer bis Platz " + lfH(LF())] : m >= KM_NEAR ? ["gold", "Watchlist-Niveau"] : r.lr ? ["", `Rang ${r.lr}`] : ["muted", "nicht in der Auswahl"]) : r.s === "hit" ? ["up", "Kairo-Treffer"] : r.s === "fast" ? ["gold", "Fast-Treffer"] : m >= 9 ? ["", "beobachten"] : ["muted", r.title && /Suchraster/.test(r.title) ? "außerhalb des Rasters" : "kein Signal"];
   const fact = (l, v, cls = "") => v == null || v === "" ? "" : `<div class="sc-f"><span>${l}</span><b class="${cls}">${v}</b></div>`;
   return `<article class="scard tone-${esc(tone)}">
     <header class="sc-h">${cfAv(r.t)}<div class="sc-id"><h3 title="${esc(r.n)}">${esc(r.n)}</h3>
@@ -7637,7 +7644,7 @@ function depotHtml0() {
     + (cards.length ? `${groups.length ? `<div class="plan-h" style="margin:18px 2px 8px">Weitere Positionen</div>` : ""}<div class="grid">${cards}</div>` : "")
     + `</div></div>${chk ? `<aside class="dep-side"><div class="pos-hd ana-hd"><b>Analyse</b></div>${chk}</aside>` : ""}</div>`
     + koListHtml(koItems)
-    + `<div class="note" style="margin:16px 2px 0">Dein Depot wird nur auf diesem Gerät gespeichert (nicht im Internet). Kurse vom letzten Scan, Umrechnung in Euro zum Tageskurs${missingFx ? " – für einige Währungen fehlt der Wechselkurs" : ""}. Regel der Strategie: Top 20 nach 12-Monats-Lauf, gleich gewichtet, Tausch im Januar, April, Juli, Oktober, kein Stop. Keine Anlageberatung.</div>`;
+    + `<div class="note" style="margin:16px 2px 0">Dein Depot wird nur auf diesem Gerät gespeichert (nicht im Internet). Kurse vom letzten Scan, Umrechnung in Euro zum Tageskurs${missingFx ? " – für einige Währungen fehlt der Wechselkurs" : ""}. Regel der Strategie: Top 10 nach 12-Monats-Lauf kaufen, behalten bis Platz 20, gleich gewichtet, Tausch im Januar, April, Juli, Oktober, kein Stop. Keine Anlageberatung.</div>`;
 }
 // Ausgeknockte Turbos: eigene Liste mit Verlust (Einsatz), Ausbuchen oder „doch nicht ausgeknockt“
 // Knock-out im Journal: Verkauf zu 0 € am K.-o.-Tag (Restwert 0 € angenommen) – nur wenn der Kauf im Scalable-Export steht
@@ -9436,12 +9443,12 @@ const TOUR_IC = {
   go: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M24 6c7 4 11 11 11 19l-5 6H18l-5-6c0-8 4-15 11-19z"/><circle cx="24" cy="20" r="3.5"/><path d="M18 31l-4 9 7-3M30 31l4 9-7-3"/></svg>` };
 const TOUR = [
   ["brand", "Regeln statt Bauchgefühl.", "Jeden Abend prüft Kairo rund 6.000 Aktien nach festen, getesteten Regeln – und meldet sich nur, wenn der richtige Moment da ist. Mit Stop, Stückzahl und ehrlicher Bilanz. <b>The moment has a method.</b>",
-    [["Heute", "was heute zu tun ist"], ["Langfrist", "dein Momentum-Depot: 20 Aktien"], ["ETF", "Sparplan und Ampel"],
+    [["Heute", "was heute zu tun ist"], ["Langfrist", "dein Momentum-Depot: 10 Aktien"], ["ETF", "Sparplan und Ampel"],
      ["Scanner", "Langfrist-Rangliste, Swing als Zusatz"], ["Markt", "Sektoren, Rotation, Insider"], ["Depot", "Positionen und Abgleich"]]],
   ["rule", "Die Langfrist-Regel", "Die im Test profitabelste Strategie – einfach und ohne Bauchgefühl.",
-    [["1 · Auswahl", "die 20 US-Aktien mit dem stärksten 12-Monats-Lauf (ohne letzten Monat)"], ["2 · Gleich gewichtet", "jede Aktie mit gleichem Betrag, ohne Stop, ohne Hebel"], ["3 · Tausch", "alle 3 Monate (Jan/Apr/Jul/Okt) – dazwischen nichts tun"]]],
+    [["1 · Auswahl", "kaufen aus den 10 US-Aktien mit dem stärksten 12-Monats-Lauf (ohne letzten Monat), halten bis Platz 20"], ["2 · Gleich gewichtet", "jede Aktie mit gleichem Betrag, ohne Stop, ohne Hebel"], ["3 · Tausch", "alle 3 Monate (Jan/Apr/Jul/Okt) – dazwischen nichts tun"]]],
   ["go", "So fängst du an", "Der Welt-ETF ist dein Fundament (70–80 %), das Strategie-Depot der Renditetreiber (20–30 %).",
-    [["ETF", "Sparplan – die Ampel sagt, wann Extra-Geld lohnt"], ["Langfrist", "Betrag eintragen, 20 Aktien kaufen, am Termin tauschen"],
+    [["ETF", "Sparplan – die Ampel sagt, wann Extra-Geld lohnt"], ["Langfrist", "Betrag eintragen, 10 Aktien kaufen, am Termin tauschen"],
      ["Depot", "Positionen eintragen – Kairo gleicht mit dem Strategie-Depot ab"], ["Mitteilungen", "Erinnerung zum Tausch und ETF-Ampel aufs Handy"]]]];
 function tourHtml(i) {
   // Rundgang im Kairo-Stil (17.11.2026 „veraltet“): ruhige Karte, Liste statt Kacheln, schlanker Fortschritt, „Überspringen“ als Textknopf
@@ -9736,7 +9743,7 @@ function moneyHtml() {   // 24.11.2026: Aufteilung Welt-ETF / Strategie statt Sw
   moneyStrip = total ? `<button class="mstrip" data-mstrip><span>Vermögen <b>${eur(total)}</b></span>${isEtf != null ? `<span>ETF <b>${pct(isEtf, 0)}</b> · Aktien <b>${pct(1 - isEtf, 0)}</b></span>` : ""}</button>` : "";
   return `<div class="hcard money" id="hMoney">${hHead("Dein Geld", SEC_LINK("depot"), "Depot")}
     <div class="mrows">${total ? `<div class="mr"><span>Vermögen<em>${etfV != null ? `ETF ${eur(etfV)}` : ""}${etfV != null && depV != null ? " · " : ""}${depV != null ? `Aktien ${eur(depV)}` : ""}</em></span><b>${eur(total)}${depPL != null ? `<small class="${depPL >= 0 ? "up" : "down"}"> ${sgnPct(depPL, 1)}</small>` : ""}</b></div>` : ""}
-      <div class="mr"><span>Aufteilung Ziel<em>Welt-ETF / Strategie-Depot · Backtest 2016–2026: 15,3 % p. a. nach Steuer (ETF allein 10,2 %)</em></span><b>${pf.etf} / ${pf.trade}</b></div>
+      <div class="mr"><span>Aufteilung Ziel<em>Welt-ETF / Strategie-Depot · Backtest 2016–2026 bei 70/30: 18,2 % p. a. nach Steuer (ETF allein 10,2 %)</em></span><b>${pf.etf} / ${pf.trade}</b></div>
       ${isEtf != null ? `<div class="mr"><span>Aufteilung heute<em>${Math.abs(gap) < 0.05 ? "passt – nichts zu tun" : jan ? `Januar: ausgleichen – ${eur(move)} ${gap > 0 ? "vom ETF ins Strategie-Depot" : "vom Strategie-Depot in den ETF"}` : `weicht ${pct(Math.abs(gap), 0)} ab – ausgeglichen wird einmal im Jahr im Januar`}</em></span><b class="${Math.abs(gap) < 0.05 ? "" : "gold"}">${fmt(isEtf * 100, 0)} / ${fmt((1 - isEtf) * 100, 0)}</b></div>` : ""}
       ${pf.etf !== 70 ? `<div class="hw-row"><i class="vdot y"></i><span>Im Backtest war 70/30 am besten (Rendite zu Schwankung). Deine Einstellung: ${pf.etf}/${pf.trade}.</span><button class="hlink" data-pf70>Auf 70/30 ›</button></div>` : ""}
     ${amp ? `<button class="mline" ${SEC_LINK("etf")}><i style="background:${amp[1]}"></i>ETF-Ampel: ${esc(amp[0])}${etm ? etm.lv === "g" ? " – Extra-Geld jetzt anlegen" : etm.lv === "r" ? " – Extra-Geld zurückhalten" : "" : ""} ›</button>` : ""}</div></div>`;
@@ -9843,7 +9850,7 @@ const autoShare = total => total < 10000 ? 100 : total < 20000 ? 80 : 70;
 // Ein früher fest eingestellter ETF-Anteil (state.etf.share + shareManual) gilt weiter; gespeicherte Depots/Übungen bleiben unverändert.
 const PF_SCEN = [[100, "100 / 0"], [90, "90 / 10"], [80, "80 / 20"], [70, "70 / 30"]];
 const pfCfg = () => { const p = state.pf || {}, e = state.etf || {};
-  const etf = p.etf != null && +p.etf >= 0 && +p.etf <= 100 ? +p.etf : e.shareManual && +e.share > 0 ? Math.min(100, +e.share) : 70;   // Standard 70/30 (Backtest 2016–2026: 15,3 % p. a. nach Steuer)
+  const etf = p.etf != null && +p.etf >= 0 && +p.etf <= 100 ? +p.etf : e.shareManual && +e.share > 0 ? Math.min(100, +e.share) : 70;   // Standard 70/30 (Backtest 2016–2026: 18,2 % p. a. nach Steuer)
   return { etf, trade: 100 - etf, reserve: +p.reserve > 0 ? +p.reserve : 0 }; };
 // Letzter SPYI-Kauf aus den importierten Scalable-Transaktionen – zeigt, ob der Sparplan wirklich läuft
 function etfLastBuy() {
@@ -10085,7 +10092,7 @@ function etfHtml0() {
     ${istP != null ? `<div class="ep-bar"><i style="width:${Math.min(100, istP)}%"></i><s style="left:${c.share}%"></s></div><div class="ep-bar-l"><span>ETF ${eur(etfVal)} · Strategie ${eur(trade)}</span><span>Ziel ${c.share} % ETF</span></div>` : ""}
     <div class="mtiles" style="margin-top:12px">
       <div class="mt"><span>Lücke zum ETF-Ziel</span><b>${gapE == null ? "–" : gapE > 50 ? eur(gapE) : "erreicht ✓"}</b><em>${gapE == null ? "Anteile fehlen (Depot-Import)" : gapE > 50 ? `Ziel ${eur(tgtE)} · Extra-Geld nach Ampel` : "Sparrate läuft weiter"}</em></div>
-      <div class="mt"><span>Strategie-Depot</span><b>${eur(tgtT)}</b><em>${100 - c.share} % · 20 Aktien à ${eur(tgtT / 20)}</em></div>
+      <div class="mt"><span>Strategie-Depot</span><b>${eur(tgtT)}</b><em>${100 - c.share} % · 10 Aktien à ${eur(tgtT / 10)}</em></div>
       ${c.rate ? `<div class="mt"><span>Sparrate</span><b>${eur(c.rate)}</b><em>${fv != null ? `in 10 Jahren ≈ ${eur(fv)} (Beispiel 5 % p. a.)` : ist != null && ist < c.share / 100 - .05 ? "ganz in den ETF (unter Ziel)" : `${eur(c.rate * c.share / 100)} ETF · ${eur(c.rate * (100 - c.share) / 100)} Strategie`}</em></div>` : ""}</div>
     <div class="ep-seg"><span>Aufteilung</span>${PF_SCEN.map(([v, l]) => `<button class="opt${c.share === v ? " on" : ""}" data-pfetf="${v}">${l}</button>`).join("")}</div>
     ${tgtT > 0 && Math.abs(tgtT - (+state.lfCap || 0)) > 1 ? `<div class="note" style="margin:10px 0 0"><i class="vdot y"></i>Betrag fürs Strategie-Depot ist ${eur(+state.lfCap || 5000)}, laut Aufteilung ${eur(tgtT)}. <button class="btn ghost sm" data-lfcapset="${Math.round(tgtT)}">Übernehmen</button></div>` : ""}
@@ -10100,7 +10107,7 @@ function etfHtml0() {
           <label>Ø Kaufkurs (€)<input id="etfBuy" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(st0.buy || "")}" placeholder="${dpx && c.buy ? `${fmt(c.buy)} (Depot)` : "aus Scalable"}"></label>
           <label>Erster Kauf<input id="etfSince" type="date" value="${esc(st0.since || (dpx ? c.since : "") || "")}"></label></div></details>
       <div class="note" style="margin:8px 0 0">Die Aufteilung gilt überall in Kairo: ETF-Bereich, Heute („Dein Geld“) und Stückzahl im Strategie-Depot.${c.reserve ? ` Dein Notgroschen von ${eur(c.reserve)} zählt nicht mit.` : ""}</div></details>
-    <details class="etf-why"><summary>Warum diese Aufteilung? Backtest &amp; Gebühren</summary><div class="note" style="margin:6px 0 0">Backtest 2016–2026 (Welt-ETF + Strategie-Depot, Ausgleich jährlich im Januar, nach Steuer): 100/0 10,2 % · 80/20 13,7 % · <b>70/30 15,3 %</b> · 50/50 18,3 % p. a. Größter Rückgang 33 % / 34 % / 36 % / 39 %. Das beste Verhältnis von Rendite zu Schwankung hatten 70/30 und 80/20. Nur heute gelistete Aktien (Pleiten fehlen) – echte Renditen liegen darunter.
+    <details class="etf-why"><summary>Warum diese Aufteilung? Backtest &amp; Gebühren</summary><div class="note" style="margin:6px 0 0">Backtest 2016–2026 (Welt-ETF + Strategie-Depot mit Top 10 und Puffer bis Platz 20, Ausgleich jährlich im Januar, nach Steuer): 100/0 10,2 % · 80/20 15,8 % · <b>70/30 18,2 %</b> · 50/50 22,8 % p. a. Größter Rückgang 34 % / 35 % / 36 % / 39 %. Das beste Verhältnis von Rendite zu Schwankung hatten 70/30 und 80/20. Nur heute gelistete Aktien (Pleiten fehlen) – echte Renditen liegen darunter.
       ${c.inv * (100 - c.share) / 100 < 5000 && c.share < 100 ? `<div style="margin-top:6px" class="gold">Gebühren: Bei weniger als ~5.000 € im Strategie-Depot (250 € je Aktie) kostet eine Ordergebühr von ~1 € schon 0,4 % je Kauf – deutlich mehr als im Backtest (0,10 %).</div>` : ""} Keine Anlageberatung.</div></details></div>`;
   const how = `<div class="hcard">${hHead("So gehst du vor")}<ul class="checks rules">${[
       ["Sparplan bei Scalable", "monatlich in den SPYI – läuft automatisch, bei jeder Ampelfarbe"],
@@ -10581,8 +10588,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.251";
-const APP_NEWS = [["2026.11.251", "Schneller und aufgeräumt", [
+const APP_VER = "2026.11.252";
+const APP_NEWS = [["2026.11.252", "Neue Regel: Top 10 kaufen, bis Platz 20 halten", [
+  ["Top 10 statt Top 20", "Gekauft werden nur noch die 10 US-Aktien mit dem stärksten 12-Monats-Lauf. Im Backtest 2016–2026 schlug Top 10 die bisherigen Top 20 bei jedem Tauschtermin und jedem Startjahr – 32,4 % statt 24,6 % pro Jahr nach Steuer."],
+  ["Puffer bis Platz 20", "Eine gekaufte Aktie bleibt, solange sie auf Platz 1–20 steht – verkauft wird erst ab Platz 21. Das halbiert die Verkäufe (Ø etwa 4 je Quartal), spart Steuern und senkte den größten Rückgang auf 47 %."],
+  ["70/30 im Backtest 18,2 %", "70 % Welt-ETF und 30 % Strategie kamen 2016–2026 auf 18,2 % pro Jahr nach Steuer (Welt-ETF allein 10,6 %, Momentum-ETF 11,3 %), schlechtestes Jahr −10,6 %. Nur heute gelistete Aktien – realistisch eher 12–15 %."],
+  ["Neuer Status „Wartet auf freien Platz“", "Steht eine Aktie in den Top 10, aber alle 10 Plätze sind mit Aktien im Puffer belegt, wird sie nicht gekauft. Kaufen beim Tausch zeigt nur, was am Termin wirklich gekauft wird."]]],
+ ["2026.11.251", "Schneller und aufgeräumt", [
   ["Abend-Scan schneller", "Der Scan rechnet keine Swing-Prüfungen mehr (Short, 4H-Stundenkerzen). Die Strategie-Daten bleiben unverändert."]]],
  ["2026.11.250", "Letzte Swing-Reste, Tausch-Mitteilung", [
   ["Überall x/8", "Screener, Such-Karte, Gewinner/Verlierer und Watchlist zählen jetzt die 8 Strategie-Kriterien statt der 11 Swing-Kriterien. Filter „ab 6/8“."],
@@ -11689,10 +11701,10 @@ function settingsHtml() {
     <div class="card diag" id="diagBox" style="margin-bottom:18px">${diagHtml()}</div>
     <div class="section-title"><span>Strategie</span><span>gilt für Heute, Scanner, Einstieg und Depot</span></div>
     <div class="card set-trade" style="margin-bottom:18px">
-      <div class="set-row"><span><b>Aufteilung Welt-ETF / Strategie</b><small>Backtest 2016–2026 nach Steuer: 80/20 13,7 % · 70/30 15,3 % · 50/50 18,3 % p. a. – bestes Verhältnis zur Schwankung bei 70/30 und 80/20</small></span>
+      <div class="set-row"><span><b>Aufteilung Welt-ETF / Strategie</b><small>Backtest 2016–2026 nach Steuer: 80/20 15,8 % · 70/30 18,2 % · 50/50 22,8 % p. a. – größter Rückgang 35 % · 36 % · 39 %</small></span>
         <span class="sp-seg">${[[80, "80/20"], [70, "70/30"], [50, "50/50"]].map(([v, l]) => `<button class="${pfCfg().etf === v ? "on" : ""}" data-pfset="${v}">${l}</button>`).join("")}</span></div>
-      <div class="set-row"><span><b>Betrag für das Strategie-Depot</b><small>daraus rechnet Kairo die Stückzahl je Aktie (gleich verteilt auf 20 Aktien)</small></span><input id="lfCap" class="set-in" type="number" inputmode="decimal" min="0" step="500" value="${Math.max(0, +state.lfCap || 5000)}"></div>
-      <div class="set-row"><span><b>Regel</b><small>Top 20 US-Aktien nach 12-Monats-Lauf (ohne letzten Monat), gleich gewichtet, Tausch im Januar, April, Juli, Oktober · kein Stop</small></span><em>fest</em></div>
+      <div class="set-row"><span><b>Betrag für das Strategie-Depot</b><small>daraus rechnet Kairo die Stückzahl je Aktie (gleich verteilt auf 10 Aktien)</small></span><input id="lfCap" class="set-in" type="number" inputmode="decimal" min="0" step="500" value="${Math.max(0, +state.lfCap || 5000)}"></div>
+      <div class="set-row"><span><b>Regel</b><small>Top 10 US-Aktien nach 12-Monats-Lauf (ohne letzten Monat) kaufen, behalten bis Platz 20, gleich gewichtet, Tausch im Januar, April, Juli, Oktober · kein Stop</small></span><em>fest</em></div>
       <div class="set-row"><span><b>TradingView öffnen in</b><small>${tvMode() === "app" ? "der TradingView-App (mit deinem Konto und deinen Indikatoren) · zurück oben links über „◀ Kairo“" : "neuem Browser-Fenster"}</small></span>
         <span class="sp-seg tv-seg">${[["app", "App"], ["web", "Browser"]].map(([v, l]) => `<button class="${tvMode() === v ? "on" : ""}" data-tvmode="${v}">${l}</button>`).join("")}</span></div>
       ${tvMode() === "app" ? `<button class="set-row" data-tvtest><span><b>TradingView-App testen</b><small>öffnet Apple (AAPL) – kommt stattdessen der Browser, ist die App nicht installiert oder nicht angemeldet</small></span><em>Test ›</em></button>` : ""}
@@ -11737,7 +11749,7 @@ function settingsHtml() {
     ${backupHtml()}
     <div class="section-title"><span>Begriffe A–Z</span><span>${Object.keys(GLOSS).filter(k => !(SWING_OFF && SWING_GLOSS.has(k))).length} Erklärungen</span></div>
     <div class="card gloss">${Object.entries(GLOSS).filter(([k]) => !(SWING_OFF && SWING_GLOSS.has(k))).map(([, v]) => v).sort((a, b) => a[0].localeCompare(b[0], "de")).map(([t, x]) => `<details><summary>${esc(t)}</summary><p>${esc(x)}</p></details>`).join("")}</div>
-    <div class="section-title"><span>Forschung &amp; Live-Bilanz</span><span>Backtest</span></div><div class="card" style="margin-bottom:18px"><div class="note" style="margin:0">Aktuelle Strategie: Top 20 US-Aktien nach 12-Monats-Lauf, Tausch vierteljährlich, 70 % Welt-ETF / 30 % Strategie. Backtest 2016–2026 nach Steuer: Strategie 24,6 % p. a. (größter Rückgang 51 %), 70/30 15,3 % (36 %), Welt-ETF 10,2 % (33 %), S&P-500-ETF 12,7 %. Nur heute gelistete Aktien – echte Renditen liegen darunter. Ältere Studien (u. a. Swing) zum Nachlesen: <a href="research/" target="_blank" rel="noopener">dxrtex.github.io/Kairo/research/</a></div></div>
+    <div class="section-title"><span>Forschung &amp; Live-Bilanz</span><span>Backtest</span></div><div class="card" style="margin-bottom:18px"><div class="note" style="margin:0">Aktuelle Strategie: Top 10 US-Aktien nach 12-Monats-Lauf kaufen, behalten bis Platz 20, Tausch vierteljährlich, 70 % Welt-ETF / 30 % Strategie. Backtest 2016–2026 nach Steuer: Strategie 32,4 % p. a. (größter Rückgang 47 %), 70/30 18,2 % (36 %), Welt-ETF 10,6 % (34 %), S&P-500-ETF 12,7 %, Momentum-ETF Welt 11,3 %. Top 20 ohne Puffer (bis 24.11.2026): 24,6 %. Nur heute gelistete Aktien – echte Renditen liegen darunter. Ältere Studien (u. a. Swing) zum Nachlesen: <a href="research/" target="_blank" rel="noopener">dxrtex.github.io/Kairo/research/</a></div></div>
     <div class="section-title"><span>Datenstatus</span><span>letzter Scan</span></div>
     <div class="card" style="margin-bottom:18px">${health().length ? health().map(([c, t]) => `<div class="dsrow"><i class="${c}"></i>${esc(t)}</div>`).join("") : `<div class="dsrow"><i class="g"></i>Alle Daten vollständig – Kurse, Stammdaten, Termine und Nachrichten.</div>`}
       <div class="dsrc">${sourcesStatus().map(x => `<div class="dsrow"><i class="${x.c}"></i><span>${esc(x.n)}</span><b style="margin-left:auto;font-weight:600">${x.c === "n" ? "nicht geladen" : esc(x.txt)}${x.c === "y" ? " · älter als üblich" : ""}</b></div>`).join("")}</div>
