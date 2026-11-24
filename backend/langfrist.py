@@ -24,6 +24,14 @@ BACKTEST = {"period": "2016–2026", "cagr": 0.324, "learn": 0.438, "test": 0.25
             "mix_worst": -0.106, "world": 0.106, "spx": 0.127, "mom_etf": 0.113, "sells_q": 4}
 
 
+def next_trading_day(d: pd.Timestamp) -> pd.Timestamp:
+    """Erster US-Börsentag ab d: Wochenende und Neujahr überspringen (Neujahr am Sonntag → Montag frei, NYSE)."""
+    d = pd.Timestamp(d).normalize()
+    while d.weekday() >= 5 or (d.month == 1 and (d.day == 1 or (d.day == 2 and d.weekday() == 0))):
+        d += pd.Timedelta(days=1)
+    return d
+
+
 def _is_us(t: str, m: dict | None) -> bool:
     return "." not in t and "^" not in t and (not m or (m.get("currency") or "USD") == "USD")
 
@@ -316,9 +324,7 @@ def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict 
     y, m = since.year, since.month + r["every"]
     if m > 12:
         y, m = y + 1, m - 12
-    nxt = pd.Timestamp(y, m, 1)
-    while nxt.weekday() >= 5:
-        nxt += pd.Timedelta(days=1)
+    nxt = next_trading_day(pd.Timestamp(y, m, 1))
     held_t = {x["t"] for x in hold}
     top = [{"t": t, "n": (meta.get(t) or {}).get("name") or t, "sec": (meta.get(t) or {}).get("sector"), "m": round(v, 4), "rk": i + 1,
             "p": round(float(data[t]["Close"].dropna().iloc[-1]), 4), "in": t in held_t} for i, (t, v) in enumerate(now[:TOP_N])]

@@ -135,3 +135,10 @@ def test_buffer_rule_buys_top_n_keeps_until_hold(monkeypatch):
     assert sell == ["C"] and buy == ["E"]
     sell, buy = LF.next_swap(["C", "D"], [(t, 0) for t in "ECDF"], {"n": 2, "hold": 4})
     assert sell == [] and buy == []          # beide im Puffer – E (Platz 1) wird nicht gekauft, Depot ist voll
+
+
+def test_next_trading_day_skips_new_year():
+    assert str(LF.next_trading_day(pd.Timestamp("2027-01-01")).date()) == "2027-01-04"   # Fr Neujahr → Mo
+    assert str(LF.next_trading_day(pd.Timestamp("2023-01-01")).date()) == "2023-01-03"   # So Neujahr → Mo frei → Di
+    assert str(LF.next_trading_day(pd.Timestamp("2027-04-01")).date()) == "2027-04-01"
+    assert str(LF.next_trading_day(pd.Timestamp("2026-08-01")).date()) == "2026-08-03"
