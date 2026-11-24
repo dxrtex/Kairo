@@ -14,8 +14,8 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 48 | 56% | 0.241 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · nachgeeicht | 2 | 50% | 0.254 | 0.250 |
 | Ausblick gesenkt | 78 | 53% | 0.253 | 0.250 |
-| Ausblick bestätigt | 34 | 47% | 0.271 | 0.250 |
-| Ausblick angehoben | 174 | 49% | 0.266 | 0.250 |
+| Ausblick bestätigt | 33 | 48% | 0.270 | 0.250 |
+| Ausblick angehoben | 175 | 49% | 0.266 | 0.250 |
 | Ausblick keine Meldung | 262 | 55% | 0.246 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
@@ -37,7 +37,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 70% (20) | 40% (50) |
 | im Rahmen (±2 %) | 33% (18) | 25% (4) | 38% (16) | 45% (40) |
 | über Erwartung (+2 bis +10 %) | 37% (27) | 25% (8) | 47% (58) | 44% (64) |
-| deutlich über Erwartung (> +10 %) | 41% (32) | 47% (19) | 61% (110) | 54% (117) |
+| deutlich über Erwartung (> +10 %) | 41% (32) | 50% (18) | 60% (111) | 54% (117) |
 
 ## Vorschläge zur Anpassung
 
@@ -94,7 +94,7 @@ Beispiele:
 - MTSI 2026-11-05: Kairo 60%, Kurs -18.4% (Markt -2.5%) · Gründe: Umsatz, KI/Rechenzentren – „MACOM (NASDAQ:MTSI) Q3 sales beat estimates but stock drops“
 - MTRN 2026-11-04: Kairo 60%, Kurs -17.7% (Markt +1.7%) · Gründe: Marge – „Earnings call transcript: Materion beats EPS in Q3 2026 but shares slide“
 - RUM 2026-11-11: Kairo 40%, Kurs +16.6% (Markt +1.3%) · Gründe: Umsatz, KI/Rechenzentren – „Rumble's Quake AI Is Nearly Sold Out — And Higher Prices Could Be Next“
-- HPE 2026-11-23: Kairo 56%, Kurs -16.5% (Markt +4.7%) · Gründe: Ausblick, Marge – „HPE shares fall as margin worries overshadow raised outlook“
+- NTCT 2026-11-05: Kairo 55%, Kurs -16.5% (Markt -4.0%) · Gründe: Umsatz – „NetScout Systems Shares Fall Amid Higher Fiscal Q2 Results“
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
@@ -102,7 +102,7 @@ Geprüft an den jüngeren 274 Meldungen: Brier nachgeeicht 0.250 gegen gezeigt 0
 
 ## Prognose-Modell (Langzeit-Quote + Umsatz, auf eigene Meldungen geeicht)
 
-Rollierend geprüft an 232 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.246 gegen gezeigt 0.249, Richtung 55% gegen 54%, besser in 3 von 3 Zeiträumen → **übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell).
+Rollierend geprüft an 232 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.247 gegen gezeigt 0.249, Richtung 55% gegen 54%, besser in 2 von 3 Zeiträumen → **übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell).
 
 | Merkmal | Gewicht |
 |---|---|
@@ -114,4 +114,4 @@ Rollierend geprüft an 232 jüngeren Meldungen (3 Zeiträume, je nur mit ältere
 |---|---|---|---|---|---|
 | 2026-11-09 – 2026-11-12 | 160 | 0.245 | 0.247 | 56% | 56% |
 | 2026-11-13 – 2026-11-18 | 44 | 0.245 | 0.251 | 52% | 50% |
-| 2026-11-19 – 2026-11-24 | 28 | 0.259 | 0.259 | 54% | 50% |
+| 2026-11-19 – 2026-11-24 | 28 | 0.260 | 0.259 | 54% | 50% |
