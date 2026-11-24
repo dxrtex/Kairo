@@ -4134,7 +4134,7 @@ function lfSwap(L) { const ds = -lfDays(L.since); if (L.chg && ds != null && ds 
 function longTodayHtml() {
   const L = LF(); if (!L || !L.hold || !L.hold.length) return "";
   const dn = lfDays(L.next), soon = lfSwapSoon(L);
-  return `<div class="hcard lf-hc">${hHead(`Langfrist-Depot <small>${L.hold.length} Aktien</small>`, `data-golong`, "Öffnen")}
+  return `<div class="hcard lf-hc">${hHead(`Strategie-Depot <small>${L.hold.length} Aktien</small>`, `data-golong`, "Öffnen")}
     <div class="lf-kpi"><div><span>seit Tausch ${fmtD(L.since)}</span>${lfPct(L.ret)}</div><div><span>S&P 500</span>${lfPct(L.bench)}</div><div><span>nächster Tausch</span><b>${dn != null && dn >= 0 ? `in ${dn} T.` : fmtD(L.next)}</b></div></div>
     ${(sw => soon && (sw.out.length || sw.inn.length) ? `<div class="lf-swap"><b>${sw.now ? "Tausch jetzt:" : "Tausch steht an:"}</b> verkaufen ${sw.out.map(t => esc(t)).join(", ") || "–"} · kaufen ${sw.inn.map(t => esc(t)).join(", ") || "–"} <button class="hlink" data-golong>Liste ›</button></div>` : "")(lfSwap(L))}
     ${L.hold.slice().sort((a, b) => (b.ret ?? -9) - (a.ret ?? -9)).slice(0, 5).map(x => `<button class="hrow" ${lfOpen(x.t)}>${cfAv(x.t)}<span class="hn">${esc(shortNm(x.n || x.t))}</span>${lfPct(x.ret)}</button>`).join("")}</div>`;
@@ -4142,7 +4142,7 @@ function longTodayHtml() {
 function longHtml() {
   const L = LF();
   const head = `<div class="section-title"><span>Kairo Langfrist</span><span class="muted">Momentum-Depot · im Test</span></div>`;
-  if (!L || !L.hold) return head + `<div class="empty">${anaData ? "Das Langfrist-Depot erscheint nach dem nächsten großen Scan (morgens, mittags, abends an Börsentagen)." : "Lade …"}</div>`;
+  if (!L || !L.hold) return head + `<div class="empty">${anaData ? "Das Strategie-Depot erscheint nach dem nächsten großen Scan (morgens, mittags, abends an Börsentagen)." : "Lade …"}</div>`;
   const cap = Math.max(0, +state.lfCap || 5000), per = cap / Math.max(1, L.hold.length), dn = lfDays(L.next);
   const eurPx = p => toEur(p, "USD"), qty = p => { const e = eurPx(p); return e > 0 ? Math.floor(per / e) : null; };
   const rows = L.hold.slice().sort((a, b) => (b.m ?? 0) - (a.m ?? 0)).map((x, i) => `<tr class="lf-row" ${lfOpen(x.t)}><td class="num muted">${i + 1}</td><td><div class="sh-nm">${cfAv(x.t)}<span><b>${esc(shortNm(x.n || x.t))}</b><small>${esc(x.t)}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span></div></td>
@@ -4155,7 +4155,7 @@ function longHtml() {
   const bt = L.bt || {};
   return head + `<div class="card lf-top"><div class="lf-kpi lf-kpi-l"><div><span>Depot seit Tausch ${fmtD(L.since)}</span>${lfPct(L.ret)}</div><div><span>S&P 500 im selben Zeitraum</span>${lfPct(L.bench)}</div>
       <div><span>nächster Tausch</span><b>${fmtD(L.next)}${dn != null && dn >= 0 ? ` <small class="muted">in ${dn} Tagen</small>` : ""}</b></div></div>
-      <label class="lf-cap">Betrag für das Langfrist-Depot <input id="lfCap" type="number" inputmode="decimal" min="0" step="500" value="${cap}"> € <small class="muted">→ ${eur(per)} je Aktie</small></label>
+      <label class="lf-cap">Betrag für das Strategie-Depot <input id="lfCap" type="number" inputmode="decimal" min="0" step="500" value="${cap}"> € <small class="muted">→ ${eur(per)} je Aktie</small></label>
       ${lfSwapSoon(L) && (L.out.length || L.inn.length) ? `<div class="lf-swap"><b>Tauschtermin:</b> Aktien unter „Raus“ verkaufen, unter „Rein“ mit dem Erlös gleich gewichtet kaufen. Alle übrigen behalten.</div>` : ""}</div>
     <div class="table-wrap"><table class="sc-t lf-t"><thead><tr><th class="num">#</th><th>Aktie</th><th class="num">Lauf 12 M.</th><th class="num">seit Tausch</th><th class="num" title="Platz in der Rangliste heute – über ${L.rule.n} = würde beim nächsten Tausch ersetzt">Rang heute</th><th class="num">Kurs</th><th class="num">Stück</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="card"><div class="plan-h">${SW.now ? "Tausch jetzt umsetzen" : "Vorschau nächster Tausch"}</div>${swap}</div>
@@ -4164,7 +4164,7 @@ function longHtml() {
       <ul class="checks"><li>Alle 3 Monate (erster Börsentag im Januar, April, Juli, Oktober) die <b>${L.rule.n} US-Aktien mit dem stärksten Kursanstieg der letzten 12 Monate</b> – den letzten Monat ausgenommen –, jede mit gleichem Betrag.</li>
       <li>Dazwischen nichts tun. Kein Stop, kein Nachjustieren: Gewinner laufen lassen, Verlierer fliegen beim nächsten Tausch automatisch raus.</li>
       <li>Nur liquide Werte (Ø Umsatz ≥ 5 Mio. $ am Tag, Kurs ≥ 5 $), ${L.univ} Aktien in der Auswahl.</li>
-      <li>Empfohlene Aufteilung: <b>70–80 % Welt-ETF</b> (Kern, nie verkaufen) und <b>20–30 % Langfrist-Depot</b>.</li></ul>
+      <li>Empfohlene Aufteilung: <b>70–80 % Welt-ETF</b> (Kern, nie verkaufen) und <b>20–30 % Strategie-Depot</b>.</li></ul>
       <div class="lf-bt"><div><span>Backtest Lernzeitraum 2016–2020</span><b class="up">${pct(bt.learn ?? .373, 1)} p. a.</b></div><div><span>Prüfzeitraum 2021–2026</span><b class="up">${pct(bt.test ?? .252, 1)} p. a.</b></div><div><span>S&P-500-ETF 2021–2026</span><b>${pct(bt.etf_test ?? .117, 1)} p. a.</b></div><div><span>größter Rückgang</span><b class="down">bis −${fmt((bt.mdd ?? .44) * 100, 0)} %</b></div></div>
       <p class="muted lf-note">Nach deutscher Steuer und 0,15 % Kosten je Umsatz, 1.586 US-Aktien. Die Regel wurde nur mit 2016–2020 ausgewählt und 2021–2026 bestätigt (35 von 36 Varianten lagen im Lernzeitraum vor dem ETF). Ehrlich: Nur heute noch gelistete Aktien (Pleiten fehlen), ein starkes Jahrzehnt für Momentum, über 60 Jahre war Momentum bei großen Firmen seit 2000 nicht besser als der Markt. Einbrüche von −40 % gehören dazu – wer dann verkauft, verliert. Darum „im Test“: kein Versprechen, keine Order.</p></div>`;
 }
@@ -4304,9 +4304,9 @@ function scanStratHtml(vseg) {
   return searchHtml() + scanBarHtml() + vseg + (v === "watch" ? scanWatchHtml() : v === "mine" ? scanMineHtml() : scanBuyHtml());
 }
 // ---------- Langfrist in allen Bereichen (23.11.2026) ----------
-// Marktampel: das Langfrist-Depot wird NICHT nach der Ampel gesteuert (Marktfilter kostete im Test Rendite)
+// Marktampel: das Strategie-Depot wird NICHT nach der Ampel gesteuert (Marktfilter kostete im Test Rendite)
 function lfAmpelLine() { const L = LF(); if (!L) return "";
-  return `<div class="lf-amp"><b>Langfrist-Depot:</b> unabhängig von der Ampel halten – ein Marktfilter kostete im Test viel Rendite (2016–2026: 17 % statt 24,6 % p. a.). Die Ampel gilt nur für Extra-Geld im ETF.</div>`; }
+  return `<div class="lf-amp"><b>Strategie-Depot:</b> unabhängig von der Ampel halten – ein Marktfilter kostete im Test viel Rendite (2016–2026: 17 % statt 24,6 % p. a.). Die Ampel gilt nur für Extra-Geld im ETF.</div>`; }
 // Chart-Seitenleiste: Langfrist-Status oben
 function lfSideHtml(r) { const L = LF(); if (!L || !L.top || !r || r.ext) return "";
   const t = String(r.ticker).replace(/@rp$/, ""), x = L.top.find(y => y.t === t), h = (L.hold || []).find(y => y.t === t), w = (L.watch || []).find(y => y.t === t); if (!x && !h && !w) return "";
@@ -4326,20 +4326,20 @@ function lfEinHtml() { if (!searchIdx) loadSearch(); const L = LF(); if (!L || !
     <div class="note" style="margin:4px 2px 14px">Gleicher Betrag je Aktie (${eur(per)} bei ${eur(cap)} – Betrag im Scanner <button class="hlink" data-golong>Kaufen ›</button> ändern). Ohne Stop, ohne Hebel: halten bis zum nächsten Tausch am ${fmtD(L.next)}. ${SW.now && SW.out.length ? `Vorher verkaufen: ${SW.out.map(t => esc(t)).join(", ")}.` : ""}</div>
     <label class="lf-cap" style="margin:0 2px 14px">Betrag für die Strategie <input id="lfCap" type="number" inputmode="decimal" min="0" step="500" value="${cap}"> €</label>`; }
 function einHtml() { state.einT = null; if (!anaData) loadAnalysis(); const h = lfEinHtml(); return h || `<div class="empty">${anaData ? "Die Kaufliste erscheint nach dem nächsten großen Scan." : "Lade …"}</div>`; }   // Swing-Einstieg entfernt (24.11.2026)
-// Depot: Abgleich mit dem Langfrist-Depot
+// Depot: Abgleich mit dem Strategie-Depot
 function lfDepotHtml() { const L = LF(); if (!L || !L.hold || !searchIdx) return "";
   const mine = new Set(depotLive().filter(p => p.t && !p.etf).map(p => String(p.t).toUpperCase()));
   const hold = L.hold.map(x => x.t), have = hold.filter(t => mine.has(t)), miss = hold.filter(t => !mine.has(t));
   const SW = lfSwap(L), sell = [...new Set([...(SW.now ? SW.out : []), ...(L.out || [])])].filter(t => mine.has(t));
   const chip = t => `<button class="lf-chip" ${lfOpen(t)}>${cfAv(t)}${esc(t)}</button>`;
-  return `<div class="card lf-dep"><div class="plan-h">Langfrist-Depot · ${have.length} von ${hold.length} Aktien in deinem Depot <button class="hlink" data-golong style="float:right">Öffnen ›</button></div>
+  return `<div class="card lf-dep"><div class="plan-h">Strategie-Depot · ${have.length} von ${hold.length} Aktien in deinem Depot <button class="hlink" data-golong style="float:right">Öffnen ›</button></div>
     ${have.length ? `<div class="lf-dl"><span class="up">im Depot</span>${have.map(chip).join("")}</div>` : ""}
     ${miss.length ? `<div class="lf-dl"><span class="muted">fehlen</span>${miss.map(chip).join("")}</div>` : ""}
     ${sell.length ? `<div class="lf-dl"><span class="down">${SW.now ? "verkaufen (Tausch)" : "raus beim nächsten Tausch"}</span>${sell.map(chip).join("")}</div>` : ""}
     <div class="note" style="margin:6px 0 0">Ohne Stop halten – verkauft und gekauft wird nur am Tauschtermin (nächster: ${fmtD(L.next)}).</div></div>`; }
 function depotHtml() { const h = depotHtml0(); const i = h.indexOf("</div>") >= 0 && h.startsWith('<div class="section-title">') ? h.indexOf("</div>") + 6 : 0; return h.slice(0, i) + lfDepotHtml() + h.slice(i); }
 // ETF: Aufteilung Kern / Langfrist
-function etfHtml() { const L = LF(); return (L ? `<div class="lf-amp" style="margin:0 2px 12px"><b>Aufteilung:</b> 70–80 % Welt-ETF als Kern (nie verkaufen, Extra-Geld bei roter Ampel) · 20–30 % <button class="hlink" data-golong>Langfrist-Depot ›</button></div>` : "") + etfHtml0(); }
+function etfHtml() { const L = LF(); return (L ? `<div class="lf-amp" style="margin:0 2px 12px"><b>Aufteilung:</b> 70–80 % Welt-ETF als Kern (nie verkaufen, Extra-Geld bei roter Ampel) · 20–30 % <button class="hlink" data-golong>Strategie-Depot ›</button></div>` : "") + etfHtml0(); }
 // Aktienkarte: Kairo Langfrist (Rang, Lauf, 4 Kriterien)
 function longCardHtml(r) {
   const L = LF(); if (!L || !L.top) return "";
@@ -4352,7 +4352,7 @@ function longCardHtml(r) {
     <div class="lf-kpi" style="margin-top:8px"><div><span>Rang heute</span><b>${rk ? `${rk} von ${fmt(L.univ, 0)}` : "–"}</b></div><div><span>Lauf 12 M. (ohne letzten)</span>${z ? lfPct(z.m, 0) : "<b>–</b>"}</div>${h ? `<div><span>seit Tausch ${fmtD(L.since)}</span>${lfPct(h.ret)}</div>` : ""}<div><span>nächster Tausch</span><b>${fmtD(L.next)}</b></div></div>
     ${z && z.chk ? lfChecks(z, L) : `<p class="muted" style="margin:6px 0">Kriterien werden für die ${fmt(L.univ, 0)} liquiden US-Aktien der Auswahl berechnet (Ø Umsatz ≥ 5 Mio. $, Kurs ≥ 5 $).</p>`}
     <p class="muted lf-note">Gekauft wird am Tauschtermin, wer unter den Top ${n} nach 12-Monats-Lauf ist. Die 8 Häkchen sind Zusatzinfo.</p>
-    <button class="hlink" data-golong>Zum Langfrist-Depot ›</button></details>`;
+    <button class="hlink" data-golong>Zum Strategie-Depot ›</button></details>`;
 }
 
 document.addEventListener("change", e => { if (e.target.id === "lfCap") { state.lfCap = Math.max(0, +e.target.value || 0); save(); render(); } });
@@ -4636,6 +4636,24 @@ function kPlan(t) {
   const it = h4Of(t), pl0 = (rowOf(t) || {}).pl || {}, ib = it && it.base && it.base.lo != null ? it.base : null;
   return ib ? { base: { lo: ib.lo, hi: ib.hi }, stop: ib.sl, src: "Konsolidierung nach dem Treffer" } : { base: pl0.base || null, stop: pl0.stop, src: pl0.src };
 }
+// Aktienkarte (24.11.2026): Strategie-Block im Stil des bisherigen Kairo-Plans – Status, Rang, Lauf, x/8, Stückzahl, Tausch
+function lfPlanHtml(r) {
+  const L = LF(); if (!L) return `<div class="kplan k-n"><div class="kp-h"><i></i><div><b>Strategie</b><span>${anaData ? "Rang und Kriterien kommen mit dem nächsten großen Scan." : "Lade …"}</span></div></div></div>`;
+  const I = lfInfo(r.ticker, L), n = L.rule.n, [st, c] = lfState(I, L), tz = tgtZ(r);
+  const tone = c === "up" ? "g" : c === "down" ? "r" : c === "gold" ? "y" : "n";
+  const sub = I.h ? `Im Strategie-Depot – halten bis zum Tausch am ${fmtD(L.next)}.` : I.rk && I.rk <= n ? `Unter den Top ${n} – wird beim Tausch am ${fmtD(L.next)} gekauft.`
+    : I.w ? `Watchlist – rückt sie bis ${fmtD(L.next)} in die Top ${n}, wird sie gekauft.` : I.rk ? `Rang ${I.rk} – für einen Kauf nötig: Top ${n} am Tauschtermin.`
+    : "Nicht in der Auswahl (nur liquide US-Aktien ab 5 $ werden gerankt).";
+  const cap = Math.max(0, +state.lfCap || 5000), e = toEur(I.p, I.cur || "USD"), q = e > 0 ? Math.floor(cap / n / e) : null;
+  const cells = [["Rang", I.rk ? `${I.rk}` : "–", I.rk ? `von ${fmt(L.univ, 0)} US-Aktien` : ""], ["Lauf 12 M.", I.m != null ? sgnPct(I.m, 0) : "–", "ohne letzten Monat"],
+    ["Erfüllt", I.nchk != null ? `${I.nchk} / 8` : "–", I.chk ? (m => m.length ? "fehlt: " + m.join(", ") : "alle 8 Kriterien") ((L.checks || []).filter((k, i) => !I.chk[i]).map(k => LF_CK[k] ? LF_CK[k][0] : k)) : "kommt mit dem großen Scan"]];
+  if (I.h || (I.rk && I.rk <= n)) cells.push(["Stück", q != null ? String(q) : "–", `für ${eur(cap / n)} je Aktie`]);
+  if (tz && tz.u > 0) cells.push(["Kursziel Analysten", sgnPct(tz.u, 0), `${tz.n} Analysten`]);
+  return `<div class="kplan k-${tone}"><div class="kp-h"><i></i><div><b>${esc(st)}</b><span>${esc(sub)}</span></div></div>
+    <div class="kp-cells">${cells.map(([l, v, s2]) => `<div><span>${l}</span><b>${v}</b><em>${esc(s2)}</em></div>`).join("")}</div>
+    ${I.chk ? lfChecks(I, L) : ""}
+    <div class="kp-act"><button class="btn" data-closecard data-golong>Im Scanner ansehen</button></div></div>`;
+}
 function kplanHtml(r) {
   const x = kSt(r), cur = esc(r.currency || ""), tz = tgtZ(r);
   const pl = kPlan(r.ticker);
@@ -4716,7 +4734,7 @@ function cardModalHtml(r) {
         <span><i class="chgp${d1 == null ? "" : d1 >= 0 ? " up" : " dn"}" data-chg="${esc(r.ticker)}">${d1 == null ? "" : sgnPct(d1, 2)}</i>${r.live || LIVE.map[r.ticker] ? liveTag(r.ticker) || "" : `<em>Schluss ${r.date ? dateDE(r.date) : ""}</em>`}${liveBtn(r.ticker)}</span></div>
       <button class="cx-x" data-closecard aria-label="Schließen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </header>
-    <div class="cx-bar">${statusBadge(r)} ${score} ${insChip(r.ticker)}
+    <div class="cx-bar">${SWING_OFF ? (I => I ? `${lfBadge(I)} ${lfPill(I)}` : "")(LF() ? lfInfo(r.ticker) : null) : `${statusBadge(r)} ${score}`} ${insChip(r.ticker)}
       ${r.earnings_risk ? `<span class="warn" title="Im Test waren Käufe kurz vor den Zahlen nicht schlechter – aber Kurslücke möglich">Zahlen ${dateDE(r.earnings_date)}</span>` : ""}${wlTag(r)}</div>
     ${r.stale ? `<div class="tip tone-yellow" style="margin:0 22px 8px">${IC.warn} Yahoo hat beim letzten Scan keine neuen Kurse geliefert – Stand ${esc(dateDE(r.stale))}.</div>` : ""}
     <div class="aboutbox cx-pad" hidden>${aboutHtml(r)}</div>
@@ -4726,21 +4744,21 @@ function cardModalHtml(r) {
         <div class="cx-card cx-chart cx-live"><div class="cx-ch"><div class="cx-rng">${CX_RNG.map(([k, l]) => `<button data-cxrng="${k}" class="${cxRng() === k ? "on" : ""}">${l}</button>`).join("")}</div>
             <span class="cx-lvt" data-livetag="${esc(r.ticker)}">${LIVE.map[r.ticker] ? liveChartTag(r.ticker) : ""}</span></div>
           <div class="cx-lw" data-cxlw="${esc(r.ticker)}"></div>
-          <div class="cx-cl"><span>${esc(r.zone_type || "")}${r.divergence ? " · " + esc(r.divergence) : ""}</span><span class="cx-lg"><i class="kz"></i>Kaufzone <i class="st"></i>Stop</span></div></div>
-        <div class="cx-plan">${kplanHtml(r)}${hint && hint.title && !r.passed ? `<div class="cx-card cx-hint"><div class="cx-sh">Kairo-Einschätzung</div><b>${esc(hint.title)}</b><p>${esc(hint.text || "")}</p></div>` : ""}</div>
+          <div class="cx-cl"><span>${esc(r.zone_type || "")}${r.divergence ? " · " + esc(r.divergence) : ""}</span>${SWING_OFF ? "" : `<span class="cx-lg"><i class="kz"></i>Kaufzone <i class="st"></i>Stop</span>`}</div></div>
+        <div class="cx-plan">${SWING_OFF ? lfPlanHtml(r) : kplanHtml(r)}${!SWING_OFF && hint && hint.title && !r.passed ? `<div class="cx-card cx-hint"><div class="cx-sh">Kairo-Einschätzung</div><b>${esc(hint.title)}</b><p>${esc(hint.text || "")}</p></div>` : ""}</div>
       </div>
       ${cxKzHtml(r)}
-      ${longCardHtml(r)}${shortCardHtml(r)}
+      ${SWING_OFF ? "" : longCardHtml(r) + shortCardHtml(r)}
       <div class="cx-flow">
-        ${hint && hint.title && r.passed ? `<div class="cx-card cx-hint"><div class="cx-sh">Kairo-Einschätzung</div><b>${esc(hint.title)}</b><p>${esc(hint.text || "")}</p></div>` : ""}
+        ${!SWING_OFF && hint && hint.title && r.passed ? `<div class="cx-card cx-hint"><div class="cx-sh">Kairo-Einschätzung</div><b>${esc(hint.title)}</b><p>${esc(hint.text || "")}</p></div>` : ""}
         ${cxAnaHtml(r)}
         ${cxNewsHtml(r)}
         ${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(earnMiniHtml(r.ticker))}
         <div class="cx-det" data-cxdet="${esc(r.ticker)}" data-cur="${esc(r.currency || "")}">${cxEpsHtml(r.ticker)}${cxIncHtml(r.ticker, r.currency)}</div>
         ${(h => h ? `<div class="cx-box cx-sm">${h}</div>` : "")(smCardHtml(r.ticker, true))}
         ${(h => h ? `<div class="cx-box cx-sm cx-fund">${h}</div>` : "")(fundCardHtml(r.ticker))}
-        <div class="cx-card"><div class="cx-sh">Kairo-Kriterien <span>${r.met ?? "–"} von ${r.total ?? 11}</span></div>
-          ${r.criteria ? `<div class="chips">${chips(r)}</div>` : `<div class="note" style="margin:0">${(r.missing || []).length ? `Es fehlen: ${esc((r.missing || []).map(shortCrit).join(", "))}` : "–"}</div>`}</div>
+        ${SWING_OFF ? "" : `<div class="cx-card"><div class="cx-sh">Kairo-Kriterien <span>${r.met ?? "–"} von ${r.total ?? 11}</span></div>
+          ${r.criteria ? `<div class="chips">${chips(r)}</div>` : `<div class="note" style="margin:0">${(r.missing || []).length ? `Es fehlen: ${esc((r.missing || []).map(shortCrit).join(", "))}` : "–"}</div>`}</div>`}
       </div>
     </div>
     <footer class="cx-foot">
@@ -4763,7 +4781,7 @@ function cxKzHtml(r) {
   return `<div class="cx-kz">
     <div class="kz-t kz-52" data-cx52><span>52 Wochen</span><b>–</b></div>
     ${t("Vom Hoch", ddFmt(r.drawdown, 0), (r.drawdown ?? 0) >= 0 ? "down" : "up")}
-    ${t("Chance/Risiko", crvTxt(r.crv), (r.crv ?? 0) >= 2 ? "up" : "", "Support bis Ziel")}
+    ${SWING_OFF ? (I => t("Lauf 12 M.", I && I.m != null ? sgnPct(I.m, 0) : "–", I && I.m != null ? (I.m >= 0 ? "up" : "down") : "", I && I.rk ? `Rang ${I.rk}` : "ohne letzten Monat"))(LF() ? lfInfo(r.ticker) : null) : t("Chance/Risiko", crvTxt(r.crv), (r.crv ?? 0) >= 2 ? "up" : "", "Support bis Ziel")}
     ${t("Börsenwert", fmtCap(r.market_cap_usd))}
     ${t("KGV", pe != null ? (pe > 0 ? fmt(pe, 1) : "Verlust") : "–", pe != null && pe <= 0 ? "down" : "", (f.fpe ?? fu.fpe) > 0 ? `erw. ${fmt(f.fpe ?? fu.fpe, 1)}` : "")}
     ${t("Dividende", dy ? pct(dy, 1) : "keine", "", dy && f.pr != null ? `Quote ${pct(f.pr, 0)}` : "")}
@@ -4859,8 +4877,8 @@ async function cxChartMount(t, r) {
   se.setData(c.t.map((d, i) => ({ time: d, open: c.o[i], high: c.h[i], low: c.l[i], close: c.c[i] })).filter(b => b.close != null));
   if (rng !== "1T" && c.e20) ch.addLineSeries({ color: "#f4b740", lineWidth: 1.4, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: () => null })
     .setData(c.t.map((d, i) => c.e20[i] == null ? null : { time: d, value: c.e20[i] }).filter(Boolean));
-  const pl = kPlan(t); if (pl.base) [[pl.base.lo, "#30d158"], [pl.base.hi, "#30d158"]].forEach(([p, col]) => p != null && se.createPriceLine({ price: p, color: col, lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
-  if (pl.stop != null) se.createPriceLine({ price: pl.stop, color: "#ff453a", lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: "" });
+  const pl = SWING_OFF ? {} : kPlan(t); if (pl.base) [[pl.base.lo, "#30d158"], [pl.base.hi, "#30d158"]].forEach(([p, col]) => p != null && se.createPriceLine({ price: p, color: col, lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
+  if (!SWING_OFF && pl.stop != null) se.createPriceLine({ price: pl.stop, color: "#ff453a", lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: "" });
   const n = c.t.length, show = { "1T": n, "1M": 22, "6M": 126, "1J": 252 }[rng] || 126;
   if (rng === "1T") { const day = String(tkey(c.t[n - 1])).slice(0, 10); let i0 = n - 1; while (i0 > 0 && String(tkey(c.t[i0 - 1])).slice(0, 10) === day) i0--; ch.timeScale().setVisibleLogicalRange({ from: i0 - .5, to: n + 1 }); }
   else ch.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - show) - .5, to: n + 1.5 });
@@ -5693,7 +5711,7 @@ function heatmapHtml(fs) {
   return `<div class="hcard hm-card${fs ? " fs-hm" : ""}">${fs ? "" : hHead("Heatmap").replace(/<\/div>$/, fsBtn("hm") + "</div>")}${regBar}
     ${fs ? `<div class="hmc" style="aspect-ratio:${W}/${H}"><canvas></canvas><div class="zm-ctl"><button data-hmcb="in" aria-label="Vergrößern">+</button><button data-hmcb="out" aria-label="Verkleinern">−</button><button data-hmcb="reset" aria-label="Ganze Ansicht">⤢</button></div><div class="zm-hint">Zwei Finger oder Trackpad zum Zoomen · Sektor antippen</div></div>` : draw(1)}
     <div class="hm-leg"><span>${sgnPct(-lim, 0)}</span><i></i><span>${sgnPct(lim, 0)}</span><em>${up} von ${xs.length} im Plus · ${esc(kn)}</em></div>
-    <div class="note" style="margin:6px 0 0">${spStamp()}<br>${IX ? `${esc(IX.n)}: ${xs.length} von ${IX.total} Mitgliedern im Kairo-Scan` : `Die ${xs.length} größten Aktien ${reg === "all" ? "aller Regionen" : "der Region"} aus dem Scan`}, Fläche = Börsenwert. Goldener Rahmen = Kairo-Treffer, weißer Rahmen = Depot/Watchlist. Antippen zeigt eine Vorschau.${fs ? " Mit zwei Fingern zoomen oder einen Sektor-Namen antippen – dann erscheinen auch die kleineren Firmen." : ""}</div></div>`;
+    <div class="note" style="margin:6px 0 0">${spStamp()}<br>${IX ? `${esc(IX.n)}: ${xs.length} von ${IX.total} Mitgliedern im Kairo-Scan` : `Die ${xs.length} größten Aktien ${reg === "all" ? "aller Regionen" : "der Region"} aus dem Scan`}, Fläche = Börsenwert. Weißer Rahmen = Depot/Watchlist. Antippen zeigt eine Vorschau.${fs ? " Mit zwei Fingern zoomen oder einen Sektor-Namen antippen – dann erscheinen auch die kleineren Firmen." : ""}</div></div>`;
 }
 // Gewinner / Verlierer im gewählten Zeitraum (gleiche Region wie die Heatmap)
 // „Ungewöhnliches Volumen“: heute mindestens 3× so viel gehandelt wie im Schnitt der 20 Tage davor – oft der früheste Hinweis,
@@ -6099,7 +6117,7 @@ const ltReg = m => m ? (m.light && m.light.all ? { tone: m.light.all.tone, label
 const LT_C = ["#ff453a", "#ff9f0a", "#ffd60a", "#30d158"], LT_N = ["Abwärtstrend", "Korrektur", "Unter Druck", "Aufwärtstrend"];
 const ltSince = p => `${dateDE(p.since)} (${p.days === 1 ? "1 Handelstag" : `${p.days} Handelstage`})`;
 // Kairo-Treffer je Ampelfarbe (Studie 19.11.2026, 5.170 Trades 2018–2026): Umkehr-Setups liefen im Abwärtstrend am besten
-function ltKairo(p, compact) { const k = p && p.kairo; if (!k) return "";
+function ltKairo(p, compact) { const k = p && p.kairo; if (!k || SWING_OFF) return "";
   const num = `Ø ${k.r >= 0 ? "+" : "−"}${fmt(Math.abs(k.r), 2)} R · ${pct(k.win, 0)} Gewinner · ${k.n.toLocaleString("de-DE")} Trades seit 2018`;
   return `<p class="lt-k ${k.r >= 0.3 ? "good" : k.r < 0 ? "weak" : ""}"><b>Kairo-Treffer:</b> ${esc(k.t)}${compact ? "" : ` <small>${num}</small>`}</p>`; }
 function ltIdx(LT) { const N = [["^GSPC", "S&P 500"], ["^NDX", "Nasdaq 100"], ["URTH", "MSCI World"], ["^GDAXI", "DAX"]].filter(([k]) => LT[k]);
@@ -6110,8 +6128,7 @@ function ltBar(p) { const h = (p && p.hist) || []; if (h.length < 20) return "";
 function ltWhy(p) { const src = p.src === "^NDX" ? "Nasdaq 100" : "S&P 500";
   return `<p class="muted" style="margin:6px 0 4px">Maßgeblich ist der schwächere der beiden US-Indizes – gerade: <b>${src}</b>.</p><ul class="lt-why">${(p.why || []).map(([ok, t]) => `<li class="${ok ? "ok" : "no"}">${esc(t)}</li>`).join("")}</ul>
     <p class="muted">So entsteht die Farbe: Der <b>Wochentrend</b> (Kurs gegen die 40-Wochen-Linie ≈ 200-Tage-Linie, Abstand zum Jahreshoch, VIX) entscheidet über Aufwärtstrend, Seitwärts, Korrektur oder Abwärtstrend – ein Wechsel gilt erst nach zwei Wochen, bei −20 % sofort. Ist der Wochentrend aufwärts, aber kurzfristig Druck da (unter der 50-Tage-Linie, ≥ 5 % unter dem Hoch, viele Verteilungstage, VIX ≥ 22 oder invertiert, Kreditmarkt nervös), steht die Ampel auf <b>Gelb</b>; zurück auf Grün erst nach 5 ruhigen Tagen.</p>
-    <p class="muted">Backtest seit 1993: Im Abwärtstrend brachte der Nasdaq 100 in den folgenden drei Monaten im Schnitt nur +0,6 %, in den schlimmsten 5 % der Fälle −21 % binnen eines Monats. In gelben Phasen waren die Erträge im Schnitt nicht schlechter, die Rückschläge aber deutlich größer – darum dort kleinere Positionen. Reine Einordnung, die Kairo-Regel bleibt unverändert.</p>
-    <p class="muted"><b>Kairo-Treffer je Farbe</b> (5.170 Trades nach der Kairo-Regel, 2018–2026, Ampel am Tag vor dem Kauf): Grün Ø −0,21 R · Gelb +0,14 R · Orange −0,23 R · <b>Rot +0,85 R</b> (47 % Gewinner). Umkehr-Setups laufen genau dann am besten, wenn der Markt ausverkauft ist – „bei Rot keine Kairo-Trades“ hätte das Depot verschlechtert.</p>`; }
+    <p class="muted">Backtest seit 1993: Im Abwärtstrend brachte der Nasdaq 100 in den folgenden drei Monaten im Schnitt nur +0,6 %, in den schlimmsten 5 % der Fälle −21 % binnen eines Monats. In gelben Phasen waren die Erträge im Schnitt nicht schlechter, die Rückschläge aber deutlich größer – darum dort kleinere Positionen. Reine Einordnung, die Kairo-Regel bleibt unverändert.</p>`; }
 // Weitere Indizes (14.11.): Dow, Russell 2000, Euro Stoxx 50, FTSE, SMI, CAC, Hang Seng, Shanghai, KOSPI – aufklappbar, ruhig
 const IDX_MORE = ["^DJI", "^RUT", "^STOXX50E", "^FTSE", "^SSMI", "^FCHI", "^HSI", "000001.SS", "^KS11"];
 function moreIdxHtml(m) {
@@ -7012,7 +7029,7 @@ function calendarHtml() {
     const n = daysUntil(d), when = n === 0 ? "heute" : n === 1 ? "morgen" : n === -1 ? "gestern" : n < 0 ? `vor ${-n} Tagen` : `in ${n} Tagen`;
     return `<div class="cal-day"><b>${new Date(d + "T12:00:00").toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}</b><span>${when}</span></div>`;
   };
-  const foot = `<div class="note" style="margin:16px 2px 0">Börsengänge: Nasdaq-IPO-Kalender (Nasdaq und NYSE)${liveKey("fh") ? ", live ergänzt über Finnhub" : ""}; angekündigte ohne festen Termin von Hand. Quartalszahlen und Dividenden: Yahoo Finance (Watchlist-, Depot- und Treffer-Aktien, sofern im Scan). Zinsentscheide, Inflation, Arbeitsmarkt, BIP, Stimmungsindizes, Reden der Notenbank-Chefs und Feiertage weltweit: Wirtschaftskalender (Forex Factory, jeweils 2 Wochen voraus) plus offizielle Termine von Fed, EZB, BoE, BLS und BEA für die nächsten Monate. Dazu die Quartalszahlen der Markt-Schwergewichte (Nvidia, Apple, TSMC, ASML …). Rot umrandet = sehr wichtig. Keine Gewähr – vor wichtigen Entscheidungen bitte gegenprüfen.</div>`;
+  const foot = `<div class="note" style="margin:16px 2px 0">Börsengänge: Nasdaq-IPO-Kalender (Nasdaq und NYSE)${liveKey("fh") ? ", live ergänzt über Finnhub" : ""}; angekündigte ohne festen Termin von Hand. Quartalszahlen und Dividenden: Yahoo Finance (Watchlist-, Depot- und Strategie-Aktien, sofern im Scan). Zinsentscheide, Inflation, Arbeitsmarkt, BIP, Stimmungsindizes, Reden der Notenbank-Chefs und Feiertage weltweit: Wirtschaftskalender (Forex Factory, jeweils 2 Wochen voraus) plus offizielle Termine von Fed, EZB, BoE, BLS und BEA für die nächsten Monate. Dazu die Quartalszahlen der Markt-Schwergewichte (Nvidia, Apple, TSMC, ASML …). Rot umrandet = sehr wichtig. Keine Gewähr – vor wichtigen Entscheidungen bitte gegenprüfen.</div>`;
   const byDay = {};
   if (!month) {
     if (!list.length) return head + `<div class="empty">Keine Termine in den nächsten Wochen.</div>`;
@@ -7566,8 +7583,8 @@ function depotHtml0() {
   // ETF-Zeilen gehören in dieselbe Positionsliste wie die Aktien (17.11.2026); übrige Karten bleiben darunter
   const rowCards = cardsA.filter(h => h.includes("dep-row")).join(""), cards = cardsA.filter(h => !h.includes("dep-row")).join("");
   const empty = list.length ? "" : `<div class="card empty-st"><div class="es-ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 40h32"/><path d="M13 34V22M21 34V14M29 34V24M37 34V18"/></svg></div><b>Dein Depot ist noch leer</b>
-    <p>Kairo prüft deine Positionen jeden Tag: Stop, EMA 20, Verkaufstag, Termine.</p>
-    <p class="es-sub">Oben „Trade erfassen“ oder den Scalable-Export importieren · noch nichts gekauft? <a href="#" data-gosec="today">Heute</a> oder <a href="#" data-gosec="game">Übung</a></p></div>`;
+    <p>Kairo gleicht deine Aktien mit dem Strategie-Depot ab und zeigt Kurs, Entwicklung und Termine.</p>
+    <p class="es-sub">Oben „Trade erfassen“ oder den Scalable-Export importieren · noch nichts gekauft? <a href="#" data-golong>Scanner → Kaufen</a></p></div>`;
   if (state.depFlash) setTimeout(() => { state.depFlash = null; }, 2500);
   // iPad quer / Desktop (Pro-Runde 13.11.): Positionen links, Depot-Check rechts daneben; am iPhone Reihenfolge wie bisher
   const chk = depRiskHtml(items, groups) + depotCheckHtml(items, groups) + depEarnHtml(groups);
@@ -7579,7 +7596,7 @@ function depotHtml0() {
     + (cards.length ? `${groups.length ? `<div class="plan-h" style="margin:18px 2px 8px">Weitere Positionen</div>` : ""}<div class="grid">${cards}</div>` : "")
     + `</div></div>${chk ? `<aside class="dep-side"><div class="pos-hd ana-hd"><b>Analyse</b></div>${chk}</aside>` : ""}</div>`
     + koListHtml(koItems)
-    + `<div class="note" style="margin:16px 2px 0">Dein Depot wird nur auf diesem Gerät gespeichert (nicht im Internet). Kurse vom letzten Scan, Umrechnung in Euro zum Tageskurs${missingFx ? " – für einige Währungen fehlt der Wechselkurs" : ""}. Regeln der Strategie: halten bis Stop, ab Tag 10 Schluss unter der EMA 20 oder spätestens Tag 60 (vor Quartalszahlen früher), kein Gewinnziel, höchstens ${KMAX.maxOpen} Trades. Keine Anlageberatung.</div>`;
+    + `<div class="note" style="margin:16px 2px 0">Dein Depot wird nur auf diesem Gerät gespeichert (nicht im Internet). Kurse vom letzten Scan, Umrechnung in Euro zum Tageskurs${missingFx ? " – für einige Währungen fehlt der Wechselkurs" : ""}. Regel der Strategie: Top 20 nach 12-Monats-Lauf, gleich gewichtet, Tausch im Januar, April, Juli, Oktober, kein Stop. Keine Anlageberatung.</div>`;
 }
 // Ausgeknockte Turbos: eigene Liste mit Verlust (Einsatz), Ausbuchen oder „doch nicht ausgeknockt“
 // Knock-out im Journal: Verkauf zu 0 € am K.-o.-Tag (Restwert 0 € angenommen) – nur wenn der Kauf im Scalable-Export steht
@@ -9382,9 +9399,9 @@ const TOUR = [
      ["Scanner", "Langfrist-Rangliste, Swing als Zusatz"], ["Markt", "Sektoren, Rotation, Insider"], ["Depot", "Positionen und Abgleich"]]],
   ["rule", "Die Langfrist-Regel", "Die im Test profitabelste Strategie – einfach und ohne Bauchgefühl.",
     [["1 · Auswahl", "die 20 US-Aktien mit dem stärksten 12-Monats-Lauf (ohne letzten Monat)"], ["2 · Gleich gewichtet", "jede Aktie mit gleichem Betrag, ohne Stop, ohne Hebel"], ["3 · Tausch", "alle 3 Monate (Jan/Apr/Jul/Okt) – dazwischen nichts tun"]]],
-  ["go", "So fängst du an", "Der Welt-ETF ist dein Fundament (70–80 %), das Langfrist-Depot der Renditetreiber (20–30 %).",
+  ["go", "So fängst du an", "Der Welt-ETF ist dein Fundament (70–80 %), das Strategie-Depot der Renditetreiber (20–30 %).",
     [["ETF", "Sparplan – die Ampel sagt, wann Extra-Geld lohnt"], ["Langfrist", "Betrag eintragen, 20 Aktien kaufen, am Termin tauschen"],
-     ["Depot", "Positionen eintragen – Kairo gleicht mit dem Langfrist-Depot ab"], ["Mitteilungen", "Erinnerung zum Tausch und ETF-Ampel aufs Handy"]]]];
+     ["Depot", "Positionen eintragen – Kairo gleicht mit dem Strategie-Depot ab"], ["Mitteilungen", "Erinnerung zum Tausch und ETF-Ampel aufs Handy"]]]];
 function tourHtml(i) {
   // Rundgang im Kairo-Stil (17.11.2026 „veraltet“): ruhige Karte, Liste statt Kacheln, schlanker Fortschritt, „Überspringen“ als Textknopf
   const [ic, t, x, rows] = TOUR[i], last = i === TOUR.length - 1;
@@ -9455,7 +9472,7 @@ function marketHtml() {
   const tone = { green: "up", red: "down", yellow: "" };
   return `<div class="hcard mkt">${hHead("Markt")}
     ${(m.light || {}).all ? (p => `<div class="regime tone-${p.tone}" data-gosec="news" data-newstab="overview" role="button" tabindex="0"><i></i><div><b>Marktampel: ${esc(p.label)} <small class="muted">seit ${dateDE(p.since)}</small></b><span>${esc(p.do)}</span>${ltKairo(p, 1)}${ltIdx(m.light)}</div></div>`)(m.light.all)
-      : reg ? `<div class="regime tone-${reg.tone}"><i></i><div><b>Trend: ${esc(reg.label)}</b><span>${reg.tone === "green" ? "Rückenwind für Long-Setups – S&P 500 über der EMA 50, VIX ruhig." : reg.tone === "red" ? "Gegenwind – Reversal-Einstiege scheitern häufiger. Kleiner positionieren." : "Gemischtes Umfeld – Einstiege selektiv."}</span></div></div>` : ""}
+      : reg ? `<div class="regime tone-${reg.tone}"><i></i><div><b>Trend: ${esc(reg.label)}</b><span>${SWING_OFF ? (reg.tone === "green" ? "Rückenwind – S&P 500 über der EMA 50, VIX ruhig." : reg.tone === "red" ? "Gegenwind – höhere Schwankungen. Strategie-Depot trotzdem halten." : "Gemischtes Umfeld.") : reg.tone === "green" ? "Rückenwind für Long-Setups – S&P 500 über der EMA 50, VIX ruhig." : reg.tone === "red" ? "Gegenwind – Reversal-Einstiege scheitern häufiger. Kleiner positionieren." : "Gemischtes Umfeld – Einstiege selektiv."}</span></div></div>` : ""}
     ${lfAmpelLine()}${state.sec === "today" ? secLineHtml() : ""}${fearHtml(m.fear)}
     <div class="mtiles"${state.sec === "today" ? " hidden" : ""}>${ids.map(k => { const x = m[k]; return `<div class="mt"><span>${esc(x.name)}</span><b>${fmt(x.c, k === "^VIX" ? 1 : 0)}</b>
       <em class="${k === "^VIX" ? (x.tone === "green" ? "up" : x.tone === "red" ? "down" : "") : x.chg1m == null ? "" : x.chg1m >= 0 ? "up" : "down"}" title="${k === "^VIX" ? "" : "Veränderung 1 Monat"}">${k === "^VIX" ? esc(x.label) : `${x.d1 != null ? `<span class="${x.d1 >= 0 ? "up" : "down"}">${sgnPct(x.d1, 1)} heute</span><br>` : ""}${sgnPct(x.chg1m, 1)} · 1 Mon.`}</em></div>`; }).join("")}</div></div>`;
@@ -9684,6 +9701,7 @@ function moneyHtml() {   // 24.11.2026: Aufteilung Welt-ETF / Strategie statt Sw
     ${amp ? `<button class="mline" ${SEC_LINK("etf")}><i style="background:${amp[1]}"></i>ETF-Ampel: ${esc(amp[0])}${etm ? etm.lv === "g" ? " – Extra-Geld jetzt anlegen" : etm.lv === "r" ? " – Extra-Geld zurückhalten" : "" : ""} ›</button>` : ""}</div></div>`;
 }
 document.addEventListener("click", e => { if (!e.target.closest("[data-pf70]")) return; state.pf = { ...(state.pf || {}), etf: 70 }; save(); render(); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-lfcapset]"); if (!b) return; state.lfCap = +b.dataset.lfcapset; save(); render(); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-pfset]"); if (!b) return; state.pf = { ...(state.pf || {}), etf: +b.dataset.pfset }; save(); render(); });
 function startMiniHtml() {
   const h = startHtml(); if (!h) return "";
@@ -9750,8 +9768,8 @@ function todayHtml() {
   const M = todayModel(); moneyStrip = "";
   const right = `${marketHtml()}${moneyHtml()}${soonHtml()}`;   // Short nicht mehr auf Heute (Backtest negativ, 23.11.2026)   // Marktampel oben als volle Karte (Wunsch 11/2026)
   requestAnimationFrame(balanceToday);
-  const M2 = { ...M, tasks: M.tasks.filter(x => x.cat !== "buy"), more: 0 };   // Swing-Käufe raus (24.11.2026) – Verkäufe/Stops laufender Positionen bleiben
-  return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${longTodayHtml()}${tasksHtml(M2)}${k8TodayHtml()}${scrTodayHtml()}${changesHtml()}${startMiniHtml()}</div>
+  const M2 = { ...M, tasks: M.tasks.filter(x => x.cat !== "buy" && !/^(w|np):/.test(String(x.k))), more: 0 };   // Swing-Käufe raus (24.11.2026) – Verkäufe/Stops laufender Positionen bleiben
+  return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${longTodayHtml()}${tasksHtml(M2)}${k8TodayHtml()}${scrTodayHtml()}${SWING_OFF ? "" : changesHtml()}${startMiniHtml()}</div>
     <div class="hcol">${right}</div></div>`;
 }
 
@@ -10022,15 +10040,14 @@ function etfHtml0() {
   const gapE = etfVal != null ? tgtE - etfVal : null, fd = tgtT > 0 ? feeDrag(tgtT) : null;
   // Mein Plan (11/2026): oben das Ergebnis, darunter nur die Aufteilung – Eingaben und Hintergrund zum Aufklappen
   const plan = `<div class="hcard etf-plan">${hHead("Mein Plan")}
-    <p class="ep-lead"><b>${c.share} % ETF · ${100 - c.share} % Trading</b>${istP != null ? ` – du liegst bei <b class="${Math.abs(istP - c.share) > 10 ? "gold" : ""}">${istP} % ETF</b>` : ""}</p>
-    ${istP != null ? `<div class="ep-bar"><i style="width:${Math.min(100, istP)}%"></i><s style="left:${c.share}%"></s></div><div class="ep-bar-l"><span>ETF ${eur(etfVal)} · Trading ${eur(trade)}</span><span>Ziel ${c.share} % ETF</span></div>` : ""}
+    <p class="ep-lead"><b>${c.share} % ETF · ${100 - c.share} % Strategie-Depot</b>${istP != null ? ` – du liegst bei <b class="${Math.abs(istP - c.share) > 10 ? "gold" : ""}">${istP} % ETF</b>` : ""}</p>
+    ${istP != null ? `<div class="ep-bar"><i style="width:${Math.min(100, istP)}%"></i><s style="left:${c.share}%"></s></div><div class="ep-bar-l"><span>ETF ${eur(etfVal)} · Strategie ${eur(trade)}</span><span>Ziel ${c.share} % ETF</span></div>` : ""}
     <div class="mtiles" style="margin-top:12px">
       <div class="mt"><span>Lücke zum ETF-Ziel</span><b>${gapE == null ? "–" : gapE > 50 ? eur(gapE) : "erreicht ✓"}</b><em>${gapE == null ? "Anteile fehlen (Depot-Import)" : gapE > 50 ? `Ziel ${eur(tgtE)} · Extra-Geld nach Ampel` : "Sparrate läuft weiter"}</em></div>
-      <div class="mt"><span>Trading-Budget</span><b>${eur(tgtT)}</b><em>${100 - c.share} %${fd && fd.tone === "red" ? ` · <span class="down">Gebühren zu hoch</span>` : ""}</em></div>
-      ${c.rate ? `<div class="mt"><span>Sparrate</span><b>${eur(c.rate)}</b><em>${fv != null ? `in 10 Jahren ≈ ${eur(fv)} (Beispiel 5 % p. a.)` : ist != null && ist < c.share / 100 - .05 ? "ganz in den ETF (unter Ziel)" : `${eur(c.rate * c.share / 100)} ETF · ${eur(c.rate * (100 - c.share) / 100)} Trading`}</em></div>` : ""}</div>
+      <div class="mt"><span>Strategie-Depot</span><b>${eur(tgtT)}</b><em>${100 - c.share} % · 20 Aktien à ${eur(tgtT / 20)}</em></div>
+      ${c.rate ? `<div class="mt"><span>Sparrate</span><b>${eur(c.rate)}</b><em>${fv != null ? `in 10 Jahren ≈ ${eur(fv)} (Beispiel 5 % p. a.)` : ist != null && ist < c.share / 100 - .05 ? "ganz in den ETF (unter Ziel)" : `${eur(c.rate * c.share / 100)} ETF · ${eur(c.rate * (100 - c.share) / 100)} Strategie`}</em></div>` : ""}</div>
     <div class="ep-seg"><span>Aufteilung</span>${PF_SCEN.map(([v, l]) => `<button class="opt${c.share === v ? " on" : ""}" data-pfetf="${v}">${l}</button>`).join("")}</div>
-    ${tgtT > 0 && Math.abs(tgtT - trade) > 1 ? `<div class="note" style="margin:10px 0 0"><i class="vdot y"></i>Trading-Kapital ist ${eur(trade)}, laut Aufteilung ${eur(tgtT)}. <button class="btn ghost sm" id="etfSync">Angleichen</button></div>` : ""}
-    ${tgtT <= 0 ? `<div class="note" style="margin:10px 0 0">✓ Alles im ETF. Swing-Trades verfolgst du risikolos im <button class="hlink" ${SEC_LINK("paper")}>Papier-Test ›</button></div>` : ""}
+    ${tgtT > 0 && Math.abs(tgtT - (+state.lfCap || 0)) > 1 ? `<div class="note" style="margin:10px 0 0"><i class="vdot y"></i>Betrag fürs Strategie-Depot ist ${eur(+state.lfCap || 5000)}, laut Aufteilung ${eur(tgtT)}. <button class="btn ghost sm" data-lfcapset="${Math.round(tgtT)}">Übernehmen</button></div>` : ""}
     ${c.units && !c.buy ? `<div class="note" style="margin:8px 0 0">Trag unter „Einstellungen“ deinen Ø Kaufkurs ein – dann zeigt Kairo oben Gewinn und Rendite.</div>` : ""}
     <details class="etf-why"${state.etfSet ? " open" : ""} data-etfset><summary>Einstellungen</summary>
       <div class="tp2-cfg" style="margin-top:8px"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
@@ -10041,10 +10058,9 @@ function etfHtml0() {
         <div class="tp2-cfg" style="margin-top:8px"><label>SPYI-Anteile<input id="etfUnits" type="number" inputmode="decimal" min="0" step="1" value="${esc(st0.units || "")}" placeholder="${dpx ? `${fmt(c.units, c.units % 1 ? 3 : 0)} (Depot)` : "Stück"}"></label>
           <label>Ø Kaufkurs (€)<input id="etfBuy" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(st0.buy || "")}" placeholder="${dpx && c.buy ? `${fmt(c.buy)} (Depot)` : "aus Scalable"}"></label>
           <label>Erster Kauf<input id="etfSince" type="date" value="${esc(st0.since || (dpx ? c.since : "") || "")}"></label></div></details>
-      <div class="note" style="margin:8px 0 0">Die Aufteilung gilt überall in Kairo: ETF-Bereich, Trading-Budget im Einstieg, Kapital &amp; Risiko und neue Übungsdepots.${c.reserve ? ` Dein Notgroschen von ${eur(c.reserve)} zählt nicht mit.` : ""}</div></details>
-    <details class="etf-why"><summary>Warum diese Aufteilung? Forschung &amp; Gebühren</summary><div class="note" style="margin:6px 0 0">Bestehende Übungsdepots behalten ihre Aufteilung.
-      ${c.inv < 10000 && c.share < 100 ? `<div style="margin-top:6px" class="gold">Hinweis aus der Gebühren-Forschung: Unter 10.000 € trägt der Trading-Teil die festen Ordergebühren kaum (Test 2008–26) – siehe Gebühren-Bremse unten.</div>` : ""}
-      Forschungsstand 10/2026: Für den Trading-Teil gibt es noch <b>keine belegte</b> Strategie. Bester Kandidat ist Dual Momentum (in allen drei Testzeiträumen besser als der Welt-ETF, im letzten aber nicht sicher von Glück zu unterscheiden) – er läuft im Papier-Test, Entscheidung nach etwa 12 Monaten. Bis dahin ist 100 % ETF die belegte Wahl. Keine Anlageberatung.</div>${tgtT <= 0 ? "" : (() => { const fd = feeDrag(tgtT); return `<div class="note" style="margin:10px 0 0;border-left:3px solid var(--${fd.tone === "red" ? "red" : fd.tone === "yellow" ? "gold" : "up"})"><i class="vdot ${fd.tone === "red" ? "r" : fd.tone === "yellow" ? "y" : "g"}"></i> <b>Trading-Kapital ${eur(tgtT)}:</b> ${fd.t}</div>`; })()}</details></div>`;
+      <div class="note" style="margin:8px 0 0">Die Aufteilung gilt überall in Kairo: ETF-Bereich, Heute („Dein Geld“) und Stückzahl im Strategie-Depot.${c.reserve ? ` Dein Notgroschen von ${eur(c.reserve)} zählt nicht mit.` : ""}</div></details>
+    <details class="etf-why"><summary>Warum diese Aufteilung? Backtest &amp; Gebühren</summary><div class="note" style="margin:6px 0 0">Backtest 2016–2026 (Welt-ETF + Strategie-Depot, Ausgleich jährlich im Januar, nach Steuer): 100/0 10,2 % · 80/20 13,7 % · <b>70/30 15,3 %</b> · 50/50 18,3 % p. a. Größter Rückgang 33 % / 34 % / 36 % / 39 %. Das beste Verhältnis von Rendite zu Schwankung hatten 70/30 und 80/20. Nur heute gelistete Aktien (Pleiten fehlen) – echte Renditen liegen darunter.
+      ${c.inv * (100 - c.share) / 100 < 5000 && c.share < 100 ? `<div style="margin-top:6px" class="gold">Gebühren: Bei weniger als ~5.000 € im Strategie-Depot (250 € je Aktie) kostet eine Ordergebühr von ~1 € schon 0,4 % je Kauf – deutlich mehr als im Backtest (0,10 %).</div>` : ""} Keine Anlageberatung.</div></details></div>`;
   const how = `<div class="hcard">${hHead("So gehst du vor")}<ul class="checks rules">${[
       ["Sparplan bei Scalable", "monatlich in den SPYI – läuft automatisch, bei jeder Ampelfarbe"],
       ["Nie wegen Rücksetzern verkaufen", "der Welt-ETF fiel 2008/09 um mehr als 50 % und erholte sich – wer verkaufte, verpasste die Erholung"],
@@ -10524,8 +10540,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.247";
-const APP_NEWS = [["2026.11.247", "Scanner wieder im gewohnten Aufbau", [
+const APP_VER = "2026.11.248";
+const APP_NEWS = [["2026.11.248", "Feinschliff", [
+  ["Aktienkarte für die Strategie", "Die Karte zeigt jetzt Status, Rang, 12-Monats-Lauf, Erfüllt x/8 mit Häkchen und die Stückzahl – statt Kaufzone, Stop und Swing-Kriterien."],
+  ["Letzte Swing-Reste entfernt", "Chart-Kopf, Marktampel, Heute und Einstellungen sprechen nur noch von der Strategie. Überall heißt es einheitlich „Strategie-Depot“."]]],
+ ["2026.11.247", "Scanner wieder im gewohnten Aufbau", [
   ["Gewohnte Tabelle", "Der Scanner sieht wieder aus wie vorher – Tabelle oder Liste, sortierbare Spalten, „Erfüllt“ und „Fehlt“ –, nur mit den 8 Kriterien der Strategie statt der 11 Swing-Kriterien. Status zeigt Im Depot, Kaufen beim Tausch oder Raus beim Tausch."]]],
  ["2026.11.246", "Briefing und Einstellungen für die Strategie", [
   ["Tagesbriefing", "Statt „kaufbereit“ steht oben, wie dein Strategie-Depot gegen den S&P 500 läuft und wann getauscht wird; vor dem Tausch die Liste zum Verkaufen und Kaufen. Swing-Regeln (Stop, Verkaufstag, Trade-Plan) sind raus."],
@@ -10541,15 +10560,15 @@ const APP_NEWS = [["2026.11.247", "Scanner wieder im gewohnten Aufbau", [
   ["Watchlist kurz vor dem Kaufsignal", "Scanner → Langfrist zeigt unter der Rangliste alle Aktien außerhalb der Top 20, die mindestens 6 von 8 Einstiegskriterien erfüllen – mit Badge 6/8, 7/8 oder 8/8."],
   ["8 Häkchen je Aktie", "Liquidität, Trend, Stabilität, Momentum, Quality, Value, Sektor-Cap und Earnings-Freiheit – in Rangliste, Aktienkarte, Chart-Seitenleiste und Einstieg. Gekauft wird weiter nach der getesteten Regel: Top 20 am Tauschtermin."]]],
  ["2026.11.242", "Langfrist in allen Bereichen", [
-  ["Überall Langfrist zuerst", "Heute (Depot-Karte mit Tauschliste), Scanner (Rangliste), Einstieg (Kaufliste mit Stückzahl), Chart (Langfrist-Status in der Seitenleiste), Depot (Abgleich: welche der 20 Aktien du hast, welche fehlen, welche raus müssen), Markt (Ampel gilt nicht fürs Langfrist-Depot), ETF (Aufteilung 70–80 % / 20–30 %)."],
+  ["Überall Langfrist zuerst", "Heute (Depot-Karte mit Tauschliste), Scanner (Rangliste), Einstieg (Kaufliste mit Stückzahl), Chart (Langfrist-Status in der Seitenleiste), Depot (Abgleich: welche der 20 Aktien du hast, welche fehlen, welche raus müssen), Markt (Ampel gilt nicht fürs Strategie-Depot), ETF (Aufteilung 70–80 % / 20–30 %)."],
   ["Mitteilung zum Tausch", "3 Tage vor dem Tausch kommt eine Vorschau, am Tauschtag die genaue Liste: verkaufen und kaufen."],
   ["Beste Strategie bestätigt", "5 bekannte Verbesserungen aus der Forschung (risikobereinigt, 52-Wochen-Hoch, stetige Gewinner, 12+6 Monate, nur über der 200-Tage-Linie) getestet – keine war besser als die heutige Regel."]]],
  ["2026.11.241", "Scanner auf Langfrist umgestellt", [
-  ["Scanner zeigt zuerst Langfrist", "Der Scanner sucht jetzt als Erstes Aktien fürs Langfrist-Depot: Rangliste nach 12-Monats-Lauf mit 4 Kriterien (US-Aktie, liquide, Kurs ≥ 5 $, Top 20). Status je Aktie: im Depot, kaufen beim Tausch, raus beim Tausch oder Nachrücker."],
+  ["Scanner zeigt zuerst Langfrist", "Der Scanner sucht jetzt als Erstes Aktien fürs Strategie-Depot: Rangliste nach 12-Monats-Lauf mit 4 Kriterien (US-Aktie, liquide, Kurs ≥ 5 $, Top 20). Status je Aktie: im Depot, kaufen beim Tausch, raus beim Tausch oder Nachrücker."],
   ["Aktienkarte mit Langfrist-Prüfung", "Jede Aktie zeigt oben „Kairo Langfrist“: Rang, Lauf, erfüllte Kriterien und ob sie ins Depot gehört."],
   ["Swing bleibt als zweite Ansicht", "Die bisherigen Treffer heißen jetzt „Swing“ und sind eine Ansicht weiter rechts – unverändert."]]],
  ["2026.11.240", "Kairo Langfrist", [
-  ["Neuer Reiter: Langfrist", "Kairo ist jetzt auf langfristiges Investieren ausgerichtet: Das Langfrist-Depot hält die 20 US-Aktien mit dem stärksten 12-Monats-Lauf und tauscht alle 3 Monate. In 36 getesteten Varianten war das die beste Regel – 2021–2026 im Test 25,2 % pro Jahr nach Steuer gegen 11,7 % beim S&P-500-ETF, mit Einbrüchen bis −44 %. Empfohlen: 70–80 % Welt-ETF, 20–30 % Langfrist-Depot."],
+  ["Neuer Reiter: Langfrist", "Kairo ist jetzt auf langfristiges Investieren ausgerichtet: Das Strategie-Depot hält die 20 US-Aktien mit dem stärksten 12-Monats-Lauf und tauscht alle 3 Monate. In 36 getesteten Varianten war das die beste Regel – 2021–2026 im Test 25,2 % pro Jahr nach Steuer gegen 11,7 % beim S&P-500-ETF, mit Einbrüchen bis −44 %. Empfohlen: 70–80 % Welt-ETF, 20–30 % Strategie-Depot."],
   ["Was du tun musst", "Betrag eintragen – Kairo rechnet die Stückzahl je Aktie. Zum Tauschtermin (Januar, April, Juli, Oktober) zeigt „Heute“, welche Aktien raus und welche rein. Dazwischen nichts tun."],
   ["Swing tritt zurück", "Swing-Trades und Short-Setups haben im Test den ETF nicht geschlagen: Short ist von „Heute“ und „Einstieg“ verschwunden, Einstieg ist auf dem iPhone nicht mehr in der unteren Leiste."]]],
  ["2026.11.239", "Kairo Short: ehrlicher Backtest", [
@@ -11518,7 +11537,7 @@ const SET_GROUPS = [
   ["check", "Selbstprüfung", "alle Datenquellen auf einen Blick prüfen", ["Selbstprüfung"], '<path d="M12 3l7.5 3v5.5c0 4.4-3.1 8.2-7.5 9.5-4.4-1.3-7.5-5.1-7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.4-4.6"/>'],
   ["trade", "Strategie", "Aufteilung, Betrag, TradingView", ["Strategie"], '<path d="M4 19V5M4 19h16"/><path d="m7 14 4-4 3 3 5-6"/>'],
   ["live", "Kursdienst & Live-Kurse", "Live-Kurse, Intraday, Abgleich", ["Live-Kurse"], '<path d="M3 12h4l3-7 4 14 3-7h4"/>'],
-  ["push", "Mitteilungen", "Stop, Ziele, Alarme aufs Gerät", ["Mitteilungen"], '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>'],
+  ["push", "Mitteilungen", "Tausch, Kursalarme, ETF aufs Gerät", ["Mitteilungen"], '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>'],
   ["data", "Daten & Sicherung", "Watchlist, Backup, Geräte-Abgleich", ["Watchlist", "Daten & Backup"], '<ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6M5 12v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-6"/>'],
   ["look", "Darstellung", "Name, Design, Textgröße", ["Persönlich"], '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M12 3.5a8.5 8.5 0 0 1 0 17"/>'],
   ["help", "Hilfe & Begriffe", "Begriffe A–Z, Feedback, Forschung", ["Hilfe & Feedback", "Begriffe A–Z", "Forschung & Live-Bilanz"], '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6M12 16.6v.1"/>'],
@@ -11537,7 +11556,7 @@ function setGroupify() {
   const ic = p => `<span class="sg-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg></span>`;
   if (!tab) {
     const info = g => { const sc = secs.filter(x => gOf(x.t) === g[0]); const i = sc.map(x => x.info).filter(Boolean)[0]; return i || g[2]; };
-    m.insertAdjacentHTML("afterbegin", `<div class="sg-hub">${SET_GROUPS.map(g => `<button class="sg-row" data-settab="${g[0]}">${ic(g[4])}<span class="sg-tx"><b>${g[1]}</b><small>${esc(g[2])}</small></span><em>${esc(g[0] === "trade" ? eur(tpCfg().depot) : ["live", "push", "data"].includes(g[0]) && info(g) !== g[2] ? info(g).replace(/ – .*/, "") : "")}</em><i class="sg-ch" aria-hidden="true"></i></button>`).join("")}</div>
+    m.insertAdjacentHTML("afterbegin", `<div class="sg-hub">${SET_GROUPS.map(g => `<button class="sg-row" data-settab="${g[0]}">${ic(g[4])}<span class="sg-tx"><b>${g[1]}</b><small>${esc(g[2])}</small></span><em>${esc(g[0] === "trade" ? `${pfCfg().etf}/${pfCfg().trade}` : ["live", "push", "data"].includes(g[0]) && info(g) !== g[2] ? info(g).replace(/ – .*/, "") : "")}</em><i class="sg-ch" aria-hidden="true"></i></button>`).join("")}</div>
       <div class="sg-ver">Kairo ${esc(APP_VER)}</div>`);
   } else {
     const g = SET_GROUPS.find(x => x[0] === tab);
@@ -14167,7 +14186,7 @@ function buildMain(el, c, r, opts) {
   if (LIVE.map[r.ticker]) h.live();
   if (liveOn()) liveQuote(r.ticker).then(q => { if (q) liveChartsPaint(r.ticker); });
   const w0 = Math.min(M.cls ? M.cls.iL : T.length, clGet("big", true) && M.big ? M.big.iL : T.length, T.length - 130);
-  h.vr0 = { from: Math.max(0, w0 - 12), to: T.length + 3 };
+  h.vr0 = SWING_OFF ? { from: Math.max(0, T.length - 252), to: T.length + 3 } : { from: Math.max(0, w0 - 12), to: T.length + 3 };   // Strategie: 1 Jahr statt Swing-Welle
   CL_LIVE.add(h); return h;
 }
 // Schalter-Leiste (Legende = Schalter, wie in Profi-Charts)
@@ -15839,9 +15858,9 @@ function ctabBuild(c, r) {
   el.innerHTML = `<div class="ct-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="ctQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="${innerWidth > 900 ? "Symbol suchen" : innerWidth < 640 ? "Aktie suchen – Name oder Kürzel" : "Chart suchen – jede Aktie, Name oder Kürzel (z. B. Amazon, UBS, Rheinmetall)"}" aria-label="Chart suchen">${matchMedia("(pointer: fine)").matches ? `<kbd class="ct-kbd" aria-hidden="true">/</kbd>` : ""}<div id="ctList" class="ct-list" hidden></div></div>
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
       <div class="ct-mode" role="group" aria-label="Chart-Art"><button class="${state.ctTv ? "" : "on"}" data-cttv="0" title="Kairo-Chart mit Plan, Fibonacci, Volumenprofil und Kairo-Analyse">Kairo</button><button class="${state.ctTv ? "on" : ""}" data-cttv="1" title="TradingView-Chart: live, alle Indikatoren und Zeichenwerkzeuge, 1 Min bis Monat">TradingView</button></div><button class="ct-b tv-fsb" data-tvfs title="TradingView im Vollbild" aria-label="TradingView im Vollbild">${FS_IC}</button>
-      <span class="st ${k.cls}">${esc(k.t)}</span>${CXBACK ? `<button class="ct-b ct-back" data-cxback title="Zurück zur Übersicht von ${esc(tkClean(CXBACK.t))} und an dieselbe Stelle im ${esc(SEC_NAME[CXBACK.sec] || "Reiter")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>${esc(SEC_NAME[CXBACK.sec] || "Zurück")}</span></button>` : ""}${state.mcBack > 1 ? `<button class="ct-b ct-back" data-mcback title="Zurück zu den ${state.mcBack} Charts" aria-label="Zurück zum Raster">${MC_IC[state.mcBack] || MC_IC[4]}<span>${state.mcBack} Charts</span></button>` : ""}<button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
+      ${SWING_OFF ? (I => I && (I.rk || I.h) ? lfPill(I) : "")(LF() && !r.ext ? lfInfo(String(r.ticker).replace(/@rp$/, "")) : null) : `<span class="st ${k.cls}">${esc(k.t)}</span>`}${CXBACK ? `<button class="ct-b ct-back" data-cxback title="Zurück zur Übersicht von ${esc(tkClean(CXBACK.t))} und an dieselbe Stelle im ${esc(SEC_NAME[CXBACK.sec] || "Reiter")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>${esc(SEC_NAME[CXBACK.sec] || "Zurück")}</span></button>` : ""}${state.mcBack > 1 ? `<button class="ct-b ct-back" data-mcback title="Zurück zu den ${state.mcBack} Charts" aria-label="Zurück zum Raster">${MC_IC[state.mcBack] || MC_IC[4]}<span>${state.mcBack} Charts</span></button>` : ""}<button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
-      <div class="ct-right">${ctDdHtml(c.tf || "D")}<div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"], ["wave", "Setup"]].map(([v, l]) => `<button title="${v === "wave" ? "Ausschnitt der Kairo-Welle (Setup)" : "Zeitraum"}" class="${v === "wave" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
+      <div class="ct-right">${ctDdHtml(c.tf || "D")}<div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"]].map(([v, l]) => `<button title="Zeitraum" class="${v === "252" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
         <button class="ct-b${state.ctWl ? " on" : ""}" data-ctwl title="Watchlist im Chart (Pfeiltasten ↑ ↓ wechseln)" aria-label="Watchlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg></button><button class="ct-b ct-mcb" data-mcn="${innerWidth < 700 ? 2 : 4}" title="Mehrfach-Charts: ${innerWidth < 700 ? 2 : 4} Charts nebeneinander" aria-label="Mehrfach-Charts">${MC_IC[innerWidth < 700 ? 2 : 4]}</button>${ctFsiHtml()}<button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
     <div class="ctab-grid"><div class="ctab-l"><div class="ctab-tv" id="ctTv"></div>
       <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="cmp" id="cmpBox"><button class="cmp-b" data-cmpopen title="Symbol vergleichen" aria-label="Symbol vergleichen">＋ Vergleichen</button><div class="cmp-pop" id="cmpPop" hidden>${[["^GSPC", "S&P 500"], ["^NDX", "Nasdaq 100"], ["^GDAXI", "DAX"], ["^STOXX", "STOXX 600"], ["GC=F", "Gold"], ["CL=F", "Öl WTI"], ["EURUSD=X", "EUR/USD"], ["BTC-USD", "Bitcoin"], ["^TNX", "US-Zins 10 J."]].map(([v, l]) => `<button data-cmp="${v}">${l}</button>`).join("")}<button data-cmp="?">Andere Aktie …</button></div><div class="cmp-chips" id="cmpChips"></div></div><div class="dr-tb" id="drTb"></div><div class="dr-sel" id="drSel" hidden></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
