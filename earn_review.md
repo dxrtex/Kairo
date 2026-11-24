@@ -11,10 +11,10 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 275 | 55% | 0.245 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz | 19 | 37% | 0.287 | 0.250 |
-| Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 48 | 60% | 0.240 | 0.250 |
+| Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 48 | 56% | 0.241 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · nachgeeicht | 2 | 50% | 0.254 | 0.250 |
-| Ausblick gesenkt | 77 | 53% | 0.251 | 0.250 |
-| Ausblick bestätigt | 34 | 47% | 0.273 | 0.250 |
+| Ausblick gesenkt | 78 | 53% | 0.253 | 0.250 |
+| Ausblick bestätigt | 33 | 48% | 0.270 | 0.250 |
 | Ausblick angehoben | 175 | 49% | 0.266 | 0.250 |
 | Ausblick keine Meldung | 262 | 55% | 0.246 | 0.250 |
 
@@ -25,7 +25,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | -0%–30% | 11 | 45% |
 | 30%–40% | 109 | 44% |
 | 40%–50% | 153 | 45% |
-| 50%–60% | 191 | 51% |
+| 50%–60% | 191 | 50% |
 | 60%–70% | 61 | 41% |
 | 70%–100% | 23 | 57% |
 
@@ -36,8 +36,8 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | deutlich unter Erwartung (< −10 %) | 46% (26) | 45% (11) | 44% (32) | 37% (68) |
 | unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 70% (20) | 40% (50) |
 | im Rahmen (±2 %) | 33% (18) | 25% (4) | 38% (16) | 45% (40) |
-| über Erwartung (+2 bis +10 %) | 35% (26) | 33% (9) | 47% (58) | 44% (64) |
-| deutlich über Erwartung (> +10 %) | 41% (32) | 50% (18) | 61% (111) | 55% (117) |
+| über Erwartung (+2 bis +10 %) | 37% (27) | 25% (8) | 47% (58) | 44% (64) |
+| deutlich über Erwartung (> +10 %) | 41% (32) | 50% (18) | 60% (111) | 54% (117) |
 
 ## Vorschläge zur Anpassung
 
@@ -56,7 +56,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 - HLIO 2026-11-05: Kairo 53% steigt, Kurs -21.1% · Gewinn +5% · Ausblick bestätigt – „FY25 Actual 3/2/2026 Prior FY26 Outlook 8/10/2026 New FY26 Outlook 11/5/2026 4Q26 Outlook 11/5/2026 Sales $839 million $792 million proforma 1 $880 to $900 mill“
 - IONQ 2026-11-05: Kairo 52% steigt, Kurs +23.4% · Gewinn +271% · Ausblick angehoben – „EX-99.1 3 ionq-ex99_1.htm EX-99.1 EX-99.1 Exhibit 99.1 IonQ Announces Record 3Q26 Revenues and Raises FY2026 Guidance to $505 - $515 Million as Backlog Grows to“
 - MTSI 2026-11-05: Kairo 60% steigt, Kurs -18.4% · Gewinn +4% · Ausblick angehoben – „Business Outlook For the fiscal first quarter ending January 1, 2027, MACOM expects revenue to be in the range of $450 million to $460 million.“
-- ANF 2026-11-24: Kairo 56% steigt, Kurs +24.6% · Gewinn +21% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
+- ANF 2026-11-24: Kairo 56% steigt, Kurs +25.1% · Gewinn +21% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - CTVA 2026-11-11: Kairo 42% steigt, Kurs -24.3% · Gewinn -40% · Ausblick gesenkt – „Corteva (CTVA) Cuts Guidance And Delays Filing, Is The Reset Now Fully Priced In?“
@@ -102,16 +102,16 @@ Geprüft an den jüngeren 274 Meldungen: Brier nachgeeicht 0.250 gegen gezeigt 0
 
 ## Prognose-Modell (Langzeit-Quote + Umsatz, auf eigene Meldungen geeicht)
 
-Rollierend geprüft an 232 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.246 gegen gezeigt 0.249, Richtung 56% gegen 55%, besser in 3 von 3 Zeiträumen → **übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell).
+Rollierend geprüft an 232 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.247 gegen gezeigt 0.249, Richtung 55% gegen 54%, besser in 2 von 3 Zeiträumen → **übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell).
 
 | Merkmal | Gewicht |
 |---|---|
-| Grundwert (Marktlage) | -0.16 |
-| Langzeit-Quote Gewinn × Ausblick | +0.48 |
-| Umsatz-Überraschung | +0.20 |
+| Grundwert (Marktlage) | -0.17 |
+| Langzeit-Quote Gewinn × Ausblick | +0.45 |
+| Umsatz-Überraschung | +0.21 |
 
 | Zeitraum | n | Brier Modell | Brier gezeigt | Richtung Modell | Richtung gezeigt |
 |---|---|---|---|---|---|
 | 2026-11-09 – 2026-11-12 | 160 | 0.245 | 0.247 | 56% | 56% |
 | 2026-11-13 – 2026-11-18 | 44 | 0.245 | 0.251 | 52% | 50% |
-| 2026-11-19 – 2026-11-24 | 28 | 0.250 | 0.258 | 61% | 57% |
+| 2026-11-19 – 2026-11-24 | 28 | 0.260 | 0.259 | 54% | 50% |
