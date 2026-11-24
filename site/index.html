@@ -2436,11 +2436,6 @@ main .table-wrap .sc-t.lf-s .sh-nm { min-width: 0; } main .table-wrap .sc-t.lf-s
 main .table-wrap .sc-t.lf-sc th:nth-child(2), main .table-wrap .sc-t.lf-sc td:nth-child(2) { min-width: 0 !important; max-width: none !important; width: auto !important; box-shadow: none !important; }
 main .table-wrap .sc-t.lf-mine th:nth-child(1), main .table-wrap .sc-t.lf-mine td:nth-child(1) { min-width: 0 !important; max-width: none !important; width: auto !important; box-shadow: none !important; }
 main .table-wrap .sc-t.lf-sc .sh-nm b { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; } main .table-wrap .sc-t.lf-sc .sh-nm small { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
-@media (max-width: 1100px) { .lf-buy th:nth-child(6), .lf-buy td:nth-child(6), .lf-watch th:nth-child(6), .lf-watch td:nth-child(6), .lf-mine th:nth-child(6), .lf-mine td:nth-child(6) { display: none !important; } }
-@media (max-width: 560px) { .lf-buy th:nth-child(1), .lf-buy td:nth-child(1), .lf-buy th:nth-child(4), .lf-buy td:nth-child(4), .lf-buy th:nth-child(8), .lf-buy td:nth-child(8),
-  .lf-watch th:nth-child(1), .lf-watch td:nth-child(1), .lf-watch th:nth-child(5), .lf-watch td:nth-child(5), .lf-watch th:nth-child(7), .lf-watch td:nth-child(7),
-  .lf-mine th:nth-child(3), .lf-mine td:nth-child(3), .lf-mine th:nth-child(5), .lf-mine td:nth-child(5) { display: none !important; }
-  main .table-wrap .sc-t.lf-sc .sh-nm b, main .table-wrap .sc-t.lf-sc .sh-nm small { max-width: 96px; } main .table-wrap .sc-t.lf-sc th, main .table-wrap .sc-t.lf-sc td { padding-left: 5px !important; padding-right: 5px !important; } .lf-capdd input { width: 76px; } }
 .lf-n { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; background: var(--surface-2); color: var(--muted); white-space: nowrap; } .lf-n.n8 { background: color-mix(in srgb, var(--up) 20%, transparent); color: var(--up); } .lf-n.n7 { background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); }
 .lf-ck { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 2px; } .lf-ck i { font-style: normal; font-size: 11.5px; padding: 2px 7px; border-radius: 7px; white-space: nowrap; } .lf-ck i.ok { color: var(--up); background: color-mix(in srgb, var(--up) 10%, transparent); } .lf-ck i.no { color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); font-weight: 600; }
 .lf-w { padding: 9px 0; border-bottom: 1px solid var(--line); cursor: pointer; } .lf-w:last-child { border-bottom: 0; } .lf-w-h { display: flex; align-items: center; gap: 8px; } .lf-w-n { flex: 1; min-width: 0; display: flex; flex-direction: column; } .lf-w-n b, .lf-w-n small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .lf-w-px { font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; }
@@ -4228,93 +4223,79 @@ function lfState(i, L) { const n = L.rule.n, SW = lfSwap(L);
   if (i.rk) return [`Rang ${i.rk}`, "muted"];
   return ["nicht in der Auswahl", "muted"]; }
 // Sortierbare Tabelle im Stil des Scanners (Kopf antippen = sortieren)
+// Tabelle im Aufbau des bisherigen Scanners (Wunsch 24.11.2026): gleiche Tabelle, Umschalter Tabelle/Liste, Spaltenköpfe sortieren
 function lfTable(id, rows, cols, def) {
   const so = (state.lfSort || {})[id] || def, col = cols.find(c => c.k === so.k) || cols.find(c => c.k === def.k);
   const sorted = rows.slice().sort((a, b) => { const x = col.g(a), y = col.g(b), nx = x == null || x !== x, ny = y == null || y !== y;
     if (nx || ny) return nx - ny; const c = typeof x === "string" ? x.localeCompare(y) : x - y; return so.asc ? c : -c; });
-  return `<div class="table-wrap"><table class="sc-t lf-t lf-s lf-sc lf-${id}"><thead><tr>${cols.map(c => `<th class="${c.n ? "num " : ""}${c.k === col.k ? "sorted" + (so.asc ? " asc" : "") : ""}" data-lfsort="${id}:${c.k}">${c.l}</th>`).join("")}</tr></thead>
-    <tbody>${sorted.map(r => `<tr class="lf-row" ${lfOpen(r.t)}>${cols.map(c => `<td class="${c.n ? "num" : ""}">${c.h(r)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`; }
+  const mv = state.mView ? (state.mView === "list" ? "list" : "table") : (innerWidth < 640 ? "list" : "table");
+  const tog = `<div class="mvtog${mv === "list" ? " mv-list" : ""}"><button class="kchip${mv === "table" ? " on" : ""}" data-mview="table">Tabelle</button><button class="kchip${mv === "list" ? " on" : ""}" data-mview="list">Liste</button></div>`;
+  const table = `<div class="table-wrap"><table class="sc-t lf-sc lf-${id}"><thead><tr>${cols.map(c => `<th class="${c.n ? "num " : ""}${c.k === col.k ? "sorted" + (so.asc ? " asc" : "") : ""}" data-lfsort="${id}:${c.k}">${c.l}</th>`).join("")}</tr></thead>
+    <tbody>${sorted.map(r => `<tr class="${r.nchk === 8 ? "r-hit" : r.nchk === 7 ? "r-fast" : ""}">${cols.map(c => `<td class="${c.n ? "num" : ""}">${c.h(r)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  const list = mv === "list" && innerWidth <= 700 ? `<div class="mlist">${sorted.map(r => `<div class="mrow">${favBtn(r.t)}${cfAv(r.t)}<a href="#" ${lfOpen(r.t)}><b>${esc(String(r.n || r.t).slice(0, 30))}</b>
+      <span>${esc(r.t)} · ${fmt(r.p)} ${esc(r.cur || "USD")}${r.s && r.s.mc ? ` · ${fmtCap(r.s.mc)}` : ""}${r.rk ? ` · Rang ${r.rk}` : ""}</span></a>
+      <div class="mr">${lfPill(r)}<em>${r.nchk != null ? `${r.nchk}/8` : "–"}</em></div></div>`).join("")}</div>` : "";
+  return tog + table + list; }
 document.addEventListener("click", e => { const th = e.target.closest("[data-lfsort]"); if (!th) return; const [id, k] = th.dataset.lfsort.split(":"), cur = (state.lfSort || {})[id] || {};
-  state.lfSort = { ...(state.lfSort || {}), [id]: { k, asc: cur.k === k ? !cur.asc : ["rk", "n"].includes(k) } }; save(); render(); });
-const lfNameCell = r => `<div class="sh-nm">${favBtn(r.t)}${cfAv(r.t)}<span><b>${esc(shortNm(r.n || r.t))}</b><small>${esc(r.t)}${r.sec ? ` · ${esc(r.sec)}` : ""}</small></span></div>`;
+  state.lfSort = { ...(state.lfSort || {}), [id]: { k, asc: cur.k === k ? !cur.asc : ["rk", "name", "st"].includes(k) } }; save(); render(); });
+const lfNameCell = r => `<span class="nm2">${favBtn(r.t)}<a href="#" class="nm nm-l" ${lfOpen(r.t)}>${cfAv(r.t)}<span><b>${esc(r.n || r.t)}</b><small>${esc(tkClean(r.t))}${r.sec ? ` · ${esc(r.sec)}` : ""}</small></span></a></span>`;
+const lfMet = r => r.nchk == null ? `<span class="muted" title="Kriterien kommen mit dem nächsten großen Scan">– / 8</span>` : `<b class="${r.nchk === 8 ? "up" : r.nchk >= 6 ? "" : "muted"}">${r.nchk} / 8</b>`;
+function lfPill(r) { const L = LF(); if (!L) return ""; const [s, c] = lfState(r, L), k = c === "up" ? "hit" : c === "down" ? "late" : c === "gold" ? "wait" : "";
+  return k ? `<span class="st ${k}">${s}</span>` : `<span class="muted">${s}</span>`; }
 const lfMiss = r => { const ks = (LF() && LF().checks) || Object.keys(LF_CK), m = r.chk ? ks.filter((k, i) => !r.chk[i]) : null;
-  return m == null ? `<span class="muted">–</span>` : m.length ? `<span class="down lf-miss">${m.map(k => esc(LF_CK[k] ? LF_CK[k][0] : k)).join(", ")}</span>` : `<span class="up">alles erfüllt</span>`; };
+  return m == null ? `<span class="muted">–</span>` : m.length ? `<span class="down" title="${esc(m.map(k => LF_CK[k] ? LF_CK[k][1] : k).join(" · "))}">${esc(m.slice(0, 2).map(k => LF_CK[k] ? LF_CK[k][0] : k).join(", "))}${m.length > 2 ? ` +${m.length - 2}` : ""}</span>` : `<span class="muted">–</span>`; };
 const lfQ = () => ($("search") && $("search").value.trim().toLowerCase()) || "";
 const lfHit = (r, q) => !q || r.t.toLowerCase().includes(q) || String(r.n || "").toLowerCase().includes(q);
-// Kaufen: Depot-Kennzahlen, Tausch, Rangliste mit Stückzahl, Regeln + Backtest
+const lfCols = {
+  name: { k: "name", l: "Aktie", g: r => r.n, h: lfNameCell },
+  st: { k: "st", l: "Status", g: r => r.h ? 0 : r.rk && LF() && r.rk <= LF().rule.n ? 1 : r.w ? 2 : r.rk ? 3 : 4, h: lfPill },
+  met: { k: "met", l: "Erfüllt", n: 1, g: r => r.nchk ?? -1, h: lfMet },
+  miss: { k: "miss", l: "Fehlt", g: r => 8 - (r.nchk ?? 0), h: lfMiss },
+  rk: { k: "rk", l: "Rang", n: 1, g: r => r.rk ?? 99999, h: r => r.rk ? String(r.rk) : `<span class="muted">–</span>` },
+  m: { k: "m", l: "Lauf 12 M.", n: 1, g: r => r.m, h: r => r.m != null ? `<span class="${r.m >= 0 ? "up" : "down"}">${sgnPct(r.m, 0)}</span>` : "–" },
+  cap: { k: "cap", l: "Börsenwert", n: 1, g: r => r.s ? r.s.mc : null, h: r => r.s && r.s.mc ? fmtCap(r.s.mc) : "–" },
+  d1: { k: "d1", l: "Heute", n: 1, g: r => r.s ? r.s.d1 : null, h: r => r.s && r.s.d1 != null ? `<span class="${r.s.d1 >= 0 ? "up" : "down"}">${sgnPct(r.s.d1, 1)}</span>` : "–" },
+  e: { k: "e", l: "Earnings", g: r => (r.w && r.w.edate) || (r.s && r.s.ed) || "9", h: r => { const d = (r.w && r.w.edate) || (r.s && r.s.ed); return d ? `<span class="${r.chk && !r.chk[7] ? "down" : ""}">${dateDE(d)}</span>` : "–"; } },
+  p: { k: "p", l: "Kurs", n: 1, g: r => r.p, h: r => r.p != null ? `<span data-lpx="px:${esc(r.t)}" data-v="${r.p}">${fmt(r.p)}</span>` : "–" } };
+// Kopfzeile wie bisher: Anzahl, Info, Scan-Menü – darunter eine schlanke Zeile zum Strategie-Depot
+function lfBar(n, view, extra) { return `<div class="sc-tb">${extra || ""}<span class="sc-cnt"><span class="sc-n">${n} ${n === 1 ? "Aktie" : "Aktien"}</span>${gl("v_" + view)}</span><span class="sc-tb-r">${scanMenuHtml()}</span></div>`; }
 function scanBuyHtml() {
   if (!searchIdx) loadSearch();
   const L = LF();
-  if (!L || !L.top) return `<div class="sc-tb"><span class="sc-tb-r">${scanMenuHtml()}</span></div><div class="empty">${anaData ? "Die Rangliste erscheint nach dem nächsten großen Scan (abends an Börsentagen)." : "Lade …"}</div>`;
+  if (!L || !L.top) return lfBar(0, "long") + `<div class="empty">${anaData ? "Die Rangliste erscheint nach dem nächsten großen Scan (abends an Börsentagen)." : "Lade …"}</div>`;
   const n = L.rule.n, q = lfQ(), show = +state.lfShow || n, cap = Math.max(0, +state.lfCap || 5000), per = cap / n, dn = lfDays(L.next), SW = lfSwap(L);
-  const held = new Set((L.hold || []).map(x => x.t)), out = (L.hold || []).filter(x => !L.top.some(y => y.t === x.t)).map(x => x.t);
+  const out = (L.hold || []).filter(x => !L.top.some(y => y.t === x.t)).map(x => x.t);
   const rows = [...L.top.filter(x => x.rk <= show).map(x => x.t), ...out].map(t => lfInfo(t, L)).filter(r => lfHit(r, q));
   const qty = r => { const e = toEur(r.p, "USD"); return e > 0 ? Math.floor(per / e) : null; };
-  const cols = [
-    { k: "rk", l: "Rang", n: 1, g: r => r.rk ?? 999, h: r => `<span class="muted">${r.rk ?? "–"}</span>` },
-    { k: "name", l: "Aktie", g: r => r.n, h: lfNameCell },
-    { k: "st", l: "Status", g: r => lfState(r, L)[0], h: r => { const [s, c] = lfState(r, L); return `<span class="${c} lf-st">${s}</span>`; } },
-    { k: "m", l: "Lauf 12 M.", n: 1, g: r => r.m, h: r => lfPct(r.m, 0) },
-    { k: "n", l: "Kriterien", g: r => r.nchk, h: r => lfBadge(r) },
-    { k: "ret", l: "seit Tausch", n: 1, g: r => r.h ? r.h.ret : null, h: r => r.h && r.h.ret != null ? lfPct(r.h.ret) : `<span class="muted">–</span>` },
-    { k: "q", l: "Stück", n: 1, g: r => qty(r), h: r => { if (!(r.h || (r.rk && r.rk <= n))) return `<span class="muted">–</span>`; const k = qty(r); return k === 0 ? `<span class="gold" title="${eur(per)} je Aktie reichen nicht für 1 Stück – Betrag erhöhen">0</span>` : `<b>${k ?? "–"}</b>`; } },
-    { k: "p", l: "Kurs", n: 1, g: r => r.p, h: r => `${fmt(r.p)} $` }];
+  const cols = [lfCols.name, lfCols.st, lfCols.met, lfCols.miss, lfCols.rk, lfCols.m,
+    { k: "ret", l: "seit Tausch", n: 1, g: r => r.h ? r.h.ret : null, h: r => r.h && r.h.ret != null ? `<span class="${r.h.ret >= 0 ? "up" : "down"}">${sgnPct(r.h.ret, 1)}</span>` : "–" },
+    { k: "q", l: "Stück", n: 1, g: r => qty(r), h: r => { if (!(r.h || (r.rk && r.rk <= n))) return "–"; const k = qty(r); return k === 0 ? `<span class="gold" title="${eur(per)} je Aktie reichen nicht für 1 Stück">0</span>` : String(k ?? "–"); } },
+    lfCols.cap, lfCols.e, lfCols.p];
+  const sel = `<label class="sp-dd"><span>Zeige</span><select data-lfshow>${[[n, `Top ${n}`], [40, "Top 40"], [60, "Top 60"]].map(([v, l]) => `<option value="${v}"${show === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
   const nm = t => esc(shortNm((lfInfo(t, L) || {}).n || t));
-  const swap = (SW.out.length || SW.inn.length) ? `<div class="lf-sw"><div><h4 class="down">${SW.now ? `Verkaufen (Tausch ${fmtD(L.since)})` : "Raus beim nächsten Tausch"}</h4>${SW.out.length ? SW.out.map(t => `<button class="lf-chip" ${lfOpen(t)}>${cfAv(t)}${nm(t)}</button>`).join("") : `<span class="muted">keine</span>`}</div>
-      <div><h4 class="up">${SW.now ? "Kaufen" : "Rein beim nächsten Tausch"}</h4>${SW.inn.length ? SW.inn.map(t => `<button class="lf-chip" ${lfOpen(t)}>${cfAv(t)}${nm(t)}</button>`).join("") : `<span class="muted">keine</span>`}</div></div>` : `<p class="muted" style="margin:4px 0 0">Stand heute bliebe beim nächsten Tausch alles, wie es ist.</p>`;
-  const tb = `<div class="sc-tb"><label class="sp-dd"><span>Zeige</span><select data-lfshow>${[[n, `Top ${n} (Depot)`], [40, "Top 40"], [60, "Top 60"]].map(([v, l]) => `<option value="${v}"${show === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
-    <label class="sp-dd lf-capdd"><span>Betrag</span><input id="lfCap" type="number" inputmode="decimal" min="0" step="500" value="${cap}"> €</label>
-    <span class="sc-cnt"><span class="sc-n">${eur(per)} je Aktie</span>${gl("v_long")}</span><span class="sc-tb-r">${scanMenuHtml()}</span></div>`;
-  const kpi = `<div class="card lf-top"><div class="lf-kpi lf-kpi-l"><div><span>Depot seit Tausch ${fmtD(L.since)}</span>${lfPct(L.ret)}</div><div><span>S&P 500 im selben Zeitraum</span>${lfPct(L.bench)}</div>
-      <div><span>nächster Tausch</span><b>${fmtD(L.next)}${dn != null && dn >= 0 ? ` <small class="muted">in ${dn} Tagen</small>` : ""}</b></div><div><span>Watchlist</span><b>${(L.watch || []).length} <small class="muted">≥ 6/8</small></b></div></div>
-      <div class="lf-swh"><div class="plan-h">${SW.now ? "Tausch jetzt umsetzen" : "Vorschau nächster Tausch"}</div>${swap}</div></div>`;
-  const bt = L.bt || {};
-  const how = `<details class="card lf-how"><summary class="plan-h">So funktioniert die Strategie · Backtest</summary>
-      <ul class="checks"><li>Alle 3 Monate (erster Börsentag im Januar, April, Juli, Oktober) die <b>${n} US-Aktien mit dem stärksten Kursanstieg der letzten 12 Monate</b> – den letzten Monat ausgenommen –, jede mit gleichem Betrag.</li>
-      <li>Dazwischen nichts tun: kein Stop, kein Nachjustieren. Verlierer fliegen beim nächsten Tausch automatisch raus.</li>
-      <li>Nur liquide Werte (Ø Umsatz ≥ 5 Mio. $ am Tag, Kurs ≥ 5 $), ${fmt(L.univ, 0)} Aktien in der Auswahl. Die 8 Häkchen (Badge x/8) sind Zusatzinfo, kein Kaufsignal.</li>
-      <li>Aufteilung im Test am besten: <b>70 % Welt-ETF + 30 % Strategie</b> (2016–2026: 15,3 % p. a. nach Steuer, ETF allein 10,2 %).</li></ul>
-      <div class="lf-bt"><div><span>Backtest 2016–2026 nach Steuer</span><b class="up">24,6 % p. a.</b></div><div><span>S&P-500-ETF</span><b>12,7 % p. a.</b></div><div><span>größter Rückgang</span><b class="down">−51 %</b></div><div><span>Mix 70/30</span><b class="up">15,3 % p. a.</b></div></div>
-      <p class="muted lf-note">1.230 US-Aktien, 0,10 % Kosten, Abgeltungsteuer mit Verlusttopf. Nur heute noch gelistete Aktien (Pleiten fehlen) – echte Renditen liegen darunter. Einbrüche von −40 bis −50 % gehören dazu. Kein Versprechen, keine Order.</p></details>`;
-  return tb + kpi + lfTable("buy", rows, cols, { k: "rk", asc: true }) + how;
+  const swap = lfSwapSoon(L) && (SW.out.length || SW.inn.length) ? `<div class="note lf-swapnote"><b>${SW.now ? `Tausch ${fmtD(L.since)}:` : `Tausch am ${fmtD(L.next)}:`}</b> verkaufen ${SW.out.map(nm).join(", ") || "–"} · kaufen ${SW.inn.map(nm).join(", ") || "–"}</div>` : "";
+  const line = `<div class="note" style="margin:0 2px 10px">Depot seit Tausch ${fmtD(L.since)} ${sgnPct(L.ret ?? 0, 1)} · S&P 500 ${sgnPct(L.bench ?? 0, 1)} · nächster Tausch ${fmtD(L.next)}${dn != null && dn >= 0 ? ` (in ${dn} Tagen)` : ""} · Stückzahl für ${eur(cap)} (${eur(per)} je Aktie, ändern unter Einstellungen → Strategie).</div>`;
+  return lfBar(rows.length, "long", sel) + line + swap + lfTable("buy", rows, cols, { k: "rk", asc: true });
 }
-// Beobachten: Watchlist – Aktien außerhalb der Top 20 mit mindestens 6/7/8 von 8 Kriterien
 function scanWatchHtml() {
+  if (!searchIdx) loadSearch();
   const L = LF();
-  if (!L || !L.top) return `<div class="sc-tb"><span class="sc-tb-r">${scanMenuHtml()}</span></div><div class="empty">${anaData ? "Die Watchlist erscheint nach dem nächsten großen Scan." : "Lade …"}</div>`;
+  if (!L || !L.top) return lfBar(0, "watch") + `<div class="empty">${anaData ? "Die Watchlist erscheint nach dem nächsten großen Scan." : "Lade …"}</div>`;
   const min = +state.lwMin || 6, q = lfQ(), rows = (L.watch || []).filter(x => x.nchk >= min).map(x => lfInfo(x.t, L)).filter(r => lfHit(r, q));
-  const tb = `<div class="sc-tb"><label class="sp-dd"><span>Erfüllt</span><select data-lwmin>${[[6, "ab 6/8"], [7, "ab 7/8"], [8, "8/8"]].map(([v, l]) => `<option value="${v}"${min === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
-    <span class="sc-cnt"><span class="sc-n">${rows.length} ${rows.length === 1 ? "Aktie" : "Aktien"}</span>${gl("v_watch")}</span><span class="sc-tb-r">${scanMenuHtml()}</span></div>`;
-  const cols = [
-    { k: "rk", l: "Rang", n: 1, g: r => r.rk ?? 999, h: r => `<span class="muted">${r.rk ?? "–"}</span>` },
-    { k: "name", l: "Aktie", g: r => r.n, h: lfNameCell },
-    { k: "n", l: "Kriterien", g: r => r.nchk, h: r => lfBadge(r) },
-    { k: "miss", l: "Fehlt", g: r => 8 - (r.nchk || 0), h: lfMiss },
-    { k: "m", l: "Lauf 12 M.", n: 1, g: r => r.m, h: r => lfPct(r.m, 0) },
-    { k: "e", l: "Zahlen", g: r => (r.w && r.w.edate) || "9", h: r => r.w && r.w.edate ? `<span class="${r.chk && !r.chk[7] ? "gold" : "muted"}">${fmtD(r.w.edate)}</span>` : `<span class="muted">–</span>` },
-    { k: "p", l: "Kurs", n: 1, g: r => r.p, h: r => `${fmt(r.p)} $` }];
-  const note = `<div class="sh-note">Kurz vor dem Kaufsignal: außerhalb der Top ${L.rule.n}, aber mindestens ${min} von 8 Kriterien (${Object.values(LF_CK).map(v => v[0]).join(", ")}). Rückt eine Aktie bis zum Tausch am ${fmtD(L.next)} in die Top ${L.rule.n}, wird sie gekauft.</div>`;
-  return tb + note + (rows.length ? lfTable("watch", rows, cols, { k: "n", asc: false }) : `<div class="empty">Gerade keine Aktie ${min === 8 ? "mit 8/8" : `ab ${min}/8`} außerhalb der Top ${L.rule.n}.</div>`);
+  const sel = `<label class="sp-dd"><span>Erfüllt</span><select data-lwmin>${[[6, "ab 6/8"], [7, "ab 7/8"], [8, "8/8"]].map(([v, l]) => `<option value="${v}"${min === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
+  const cols = [lfCols.name, lfCols.met, lfCols.miss, lfCols.rk, lfCols.m, lfCols.cap, lfCols.e, lfCols.p];
+  return lfBar(rows.length, "watch", sel) + (rows.length ? lfTable("watch", rows, cols, { k: "met", asc: false })
+    : `<div class="empty">${L.watch ? `Gerade keine Aktie ${min === 8 ? "mit 8/8" : `ab ${min}/8`} außerhalb der Top ${L.rule.n}.` : "Die Watchlist erscheint nach dem nächsten großen Scan (abends an Börsentagen)."}</div>`);
 }
-// Meine: deine Watchlist (★, eigene Listen, Scalable) mit Rang, Lauf und x/8 aus der Strategie
 function scanMineHtml() {
   const L = LF(), cur = wlCurList(), q = lfQ();
   const ts = [...new Set(cur ? cur.t : [...favs(), ...data.results.filter(r => r.in_watchlist).map(r => r.ticker)])];
   if (!searchIdx) loadSearch();
-  const tb = `<div class="sc-tb"><span class="sc-cnt"><span class="sc-n">${ts.length} ${ts.length === 1 ? "Aktie" : "Aktien"}</span>${gl("v_mine")}</span><span class="sc-tb-r">${scanMenuHtml()}</span></div>`;
-  if (!ts.length) return wlBarHtml() + tb + `<div class="empty">Deine Watchlist ist noch leer. Tippe bei einer Aktie auf den Stern ☆ – im Scanner, in der Aktienkarte oder in der Suche.</div>`;
-  if (!L) return wlBarHtml() + tb + `<div class="empty">${anaData ? "Rang und Kriterien erscheinen nach dem nächsten großen Scan." : "Lade …"}</div>`;
+  if (!ts.length) return wlBarHtml() + lfBar(0, "mine") + `<div class="empty">Deine Watchlist ist noch leer. Tippe bei einer Aktie auf den Stern ☆.</div>`;
+  if (!L) return wlBarHtml() + lfBar(ts.length, "mine") + `<div class="empty">${anaData ? "Rang und Kriterien erscheinen nach dem nächsten großen Scan." : "Lade …"}</div>`;
   const rows = ts.map(t => lfInfo(t, L)).filter(r => r && lfHit(r, q));
   liveKick(ts.slice(0, 40), "scanner");
-  const cols = [
-    { k: "name", l: "Aktie", g: r => r.n, h: lfNameCell },
-    { k: "st", l: "Status", g: r => r.h ? 0 : r.rk && r.rk <= L.rule.n ? 1 : r.w ? 2 : r.rk ? 3 : 4, h: r => { const [s, c] = lfState(r, L); return `<span class="${c} lf-st">${s}</span>`; } },
-    { k: "rk", l: "Rang", n: 1, g: r => r.rk ?? 99999, h: r => r.rk ? `<span class="muted">${r.rk}</span>` : `<span class="muted">–</span>` },
-    { k: "n", l: "Kriterien", g: r => r.nchk, h: r => lfBadge(r) },
-    { k: "m", l: "Lauf 12 M.", n: 1, g: r => r.m, h: r => lfPct(r.m, 0) },
-    { k: "d1", l: "Heute", n: 1, g: r => r.s ? r.s.d1 : null, h: r => r.s && r.s.d1 != null ? lfPct(r.s.d1) : `<span class="muted">–</span>` },
-    { k: "p", l: "Kurs", n: 1, g: r => r.p, h: r => r.p != null ? `${fmt(r.p)} <small class="muted">${esc(r.cur || "")}</small>` : "–" }];
-  return wlBarHtml() + tb + `<div class="sh-note">Nur US-Aktien mit Ø Umsatz ≥ 5 Mio. $ und Kurs ≥ 5 $ haben einen Rang – alle anderen stehen als „nicht in der Auswahl“.</div>` + lfTable("mine", rows, cols, { k: "st", asc: true });
+  return wlBarHtml() + lfBar(rows.length, "mine") + lfTable("mine", rows, [lfCols.name, lfCols.st, lfCols.met, lfCols.miss, lfCols.rk, lfCols.m, lfCols.d1, lfCols.cap, lfCols.p], { k: "st", asc: true });
 }
 document.addEventListener("change", e => { if (e.target.matches && e.target.matches("[data-lwmin]")) { state.lwMin = +e.target.value; save(); render(); } });
 function scanStratHtml(vseg) {
@@ -10543,8 +10524,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.246";
-const APP_NEWS = [["2026.11.246", "Briefing und Einstellungen für die Strategie", [
+const APP_VER = "2026.11.247";
+const APP_NEWS = [["2026.11.247", "Scanner wieder im gewohnten Aufbau", [
+  ["Gewohnte Tabelle", "Der Scanner sieht wieder aus wie vorher – Tabelle oder Liste, sortierbare Spalten, „Erfüllt“ und „Fehlt“ –, nur mit den 8 Kriterien der Strategie statt der 11 Swing-Kriterien. Status zeigt Im Depot, Kaufen beim Tausch oder Raus beim Tausch."]]],
+ ["2026.11.246", "Briefing und Einstellungen für die Strategie", [
   ["Tagesbriefing", "Statt „kaufbereit“ steht oben, wie dein Strategie-Depot gegen den S&P 500 läuft und wann getauscht wird; vor dem Tausch die Liste zum Verkaufen und Kaufen. Swing-Regeln (Stop, Verkaufstag, Trade-Plan) sind raus."],
   ["Einstellungen → Strategie", "Aufteilung 80/20 · 70/30 · 50/50 mit den Backtest-Renditen, Betrag fürs Strategie-Depot und die Regel auf einen Blick – statt Trading-Kapital, Risiko je Trade und Plätzen."]]],
  ["2026.11.245", "Swing komplett raus, 70/30", [
