@@ -551,7 +551,7 @@ def run(today_iso: str | None = None) -> dict:
     from . import state
     raw, key = os.environ.get("PUSH_SUBS"), os.environ.get("VAPID_PRIVATE_KEY")
     try:                                               # 4H-Status immer aktualisieren (auch ohne Mitteilungen – die App zeigt ihn)
-        h4_items = h4_update(today_iso or datetime.now().strftime("%Y-%m-%d"))
+        h4_items = h4_update(today_iso or datetime.now().strftime("%Y-%m-%d")) if SWING_PUSH else []   # Swing aus: keine 4H-Stundenkerzen mehr laden
     except Exception as exc:
         print(f"4H: Fehler {exc!r}")
         h4_items = []
