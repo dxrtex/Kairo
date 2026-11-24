@@ -93,7 +93,7 @@ Beispiele:
 - RDW 2026-11-04: Kairo 65%, Kurs -19.8% (Markt +1.7%) · Gründe: Marge, Umsatz, Aufträge – „Why Redwire Stock Is Plummeting Today“
 - MTSI 2026-11-05: Kairo 60%, Kurs -18.4% (Markt -2.5%) · Gründe: Umsatz, KI/Rechenzentren – „MACOM (NASDAQ:MTSI) Q3 sales beat estimates but stock drops“
 - MTRN 2026-11-04: Kairo 60%, Kurs -17.7% (Markt +1.7%) · Gründe: Marge – „Earnings call transcript: Materion beats EPS in Q3 2026 but shares slide“
-- HPE 2026-11-23: Kairo 56%, Kurs -17.0% (Markt +4.7%) · Gründe: Ausblick, Marge – „HPE shares fall as margin worries overshadow raised outlook“
+- HPE 2026-11-23: Kairo 56%, Kurs -17.3% (Markt +4.7%) · Gründe: Ausblick, Marge – „HPE shares fall as margin worries overshadow raised outlook“
 - RUM 2026-11-11: Kairo 40%, Kurs +16.6% (Markt +1.3%) · Gründe: Umsatz, KI/Rechenzentren – „Rumble's Quake AI Is Nearly Sold Out — And Higher Prices Could Be Next“
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
