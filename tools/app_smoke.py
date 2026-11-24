@@ -326,7 +326,7 @@ async def backup_check(b, url, errs):
 
 async def terminal_check(b, url, errs):
     """Terminal-Funktionen (11/2026) auf iPad und Handy, dunkel und hell: Unternehmen-Reiter unter dem Chart, Verlauf je Kennzahl,
-    Befehlsleiste, Makro mit Lieferketten, Hedgefonds-Chips, Screener Min/Max – kein JS-Fehler, nichts leer, nichts breiter als der Bildschirm."""
+    Befehlsleiste, Hedgefonds-Chips, Screener Min/Max – kein JS-Fehler, nichts leer, nichts breiter als der Bildschirm."""
     for name, vp in (("iPad", {"width": 820, "height": 1180}), ("Handy", {"width": 390, "height": 844})):
         for light in (False, True):
             tag = f"Terminal {name} {'hell' if light else 'dunkel'}"
@@ -377,32 +377,15 @@ async def terminal_check(b, url, errs):
                 if not await pg.query_selector("#cmdk"):
                     errs.append(f"{tag}: Befehlsleiste öffnet nicht")
                 else:
-                    await pg.fill("#cmdQ", "/ma")
+                    await pg.fill("#cmdQ", "/hm")
                     await pg.wait_for_timeout(200)
                     await pg.keyboard.press("Enter")
                     await pg.wait_for_timeout(1500)
-                    if await pg.evaluate("state.newsTab") != "macro":
-                        errs.append(f"{tag}: Befehl /MA öffnet Makro nicht")
-            # Makro mit Lieferketten
-            await pg.evaluate("state.newsTab = 'macro'; goSec('news')")
-            await pg.wait_for_timeout(2000)
-            if not await pg.query_selector(".sc-card"):
-                errs.append(f"{tag}: Rohstoff-Lieferketten fehlen")
-            else:
-                await pg.click('[data-sck="chips"]'); await pg.wait_for_timeout(300)
-            if not await pg.query_selector(".mx-bond"):
-                errs.append(f"{tag}: Anleihe-Rechner fehlt")
-            await fit("Makro")
-            # Weltkarte (Ebenen, Land antippen)
-            await pg.evaluate("state.newsTab = 'map'; goSec('news')")
-            await pg.wait_for_timeout(2000)
-            if not await pg.query_selector(".mp-svg path"):
-                errs.append(f"{tag}: Weltkarte fehlt")
-            else:
-                await pg.evaluate("state.mapSel = 'st:0'; render()"); await pg.wait_for_timeout(300)
-                if not await pg.query_selector(".mp-info"):
-                    errs.append(f"{tag}: Weltkarte zeigt keine Details")
-            await fit("Weltkarte")
+                    if await pg.evaluate("state.newsTab") != "overview":
+                        errs.append(f"{tag}: Befehl /HM öffnet den Markt-Überblick nicht")
+            # Makro und Weltkarte: auf Wunsch entfernt (24.11.2026) – Tabs dürfen nicht mehr erscheinen
+            if await pg.evaluate("[...document.querySelectorAll('.subnav button')].some(b => /Makro|Karte/.test(b.textContent))"):
+                errs.append(f"{tag}: Makro/Karte noch im Markt-Reiter")
             # Hedgefonds-Chips
             await pg.evaluate("state.newsTab = 'insider'; state.smView = 'funds'; goSec('news')")
             await pg.wait_for_timeout(1500)
