@@ -23,9 +23,10 @@ jobs:
         # Frühere Läufe: Regelwerk, Diagnosen, Optimierungen, bisherige Regel ± Marktfilter, Mischung ETF + Strategie (fertig)
         # Varianten Top 10/15/20, Mindest-Börsenwert, Gebühren (fertig, Lauf 45414356249)
         # Belastbarkeit Top 10, Puffer-Regel, Branchen-Grenze (fertig, Lauf 45418705059)
-        # Jetzt: eigene Regel vs. fertige ETFs (Welt, S&P 500, Momentum-ETFs)
+        # ETF-Vergleich (fertig, Lauf 45422813628)
+        # Jetzt: Mischungen 80/20 · 70/30 · 50/50 mit Top 10 + Puffer 20
         run:
-          - "etf"
+          - "mix10"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -43,7 +44,7 @@ jobs:
           path: bpx
           run-id: 45264753394
           github-token: ${{ github.token }}
-      - run: python -m backend.position.backtest ${{ (matrix.run == 'mix' || matrix.run == 'variants' || matrix.run == 'robust' || matrix.run == 'etf') && format('{0} bpx --universe us', matrix.run) || format('run bpx {0}', matrix.run) }} --out bt.json
+      - run: python -m backend.position.backtest ${{ (matrix.run == 'mix' || matrix.run == 'variants' || matrix.run == 'robust' || matrix.run == 'etf' || matrix.run == 'mix10') && format('{0} bpx --universe us', matrix.run) || format('run bpx {0}', matrix.run) }} --out bt.json
       - uses: actions/upload-artifact@v4
         with:
           name: diag-${{ strategy.job-index }}

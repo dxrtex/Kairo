@@ -385,8 +385,8 @@ def mix(strat_eq: pd.Series, liq_factor: float, etf: pd.Series, w: float, cfg: C
             "mdd_2122": float((1 - v.loc["2021":"2022"] / v.loc["2021":"2022"].cummax()).max())}
 
 
-def mix_report(m: engine.Market, start: str, cfg: Config, etf_ticker: str = "ACWI") -> list[dict]:
-    post = run_baseline(m, start, cfg, tax=True)
+def mix_report(m: engine.Market, start: str, cfg: Config, etf_ticker: str = "ACWI", rule: dict | None = None) -> list[dict]:
+    post = run_baseline(m, start, cfg, tax=True, rule=rule)
     f = engine.liquidate_after_tax(post, cfg) / float(post["equity"].iloc[-1])
     etf = _yf(etf_ticker)["Close"]
     out = [mix(post["equity"], f, etf, w, cfg) for w in (0.0, 0.2, 0.3, 0.5, 1.0)]
@@ -581,6 +581,12 @@ def main(argv=None):
     x = ap.parse_args(argv)
     if x.cmd == "prices":
         prices(int(x.a), int(x.b))
+        return 0
+    if x.cmd == "mix10":                                          # Mischungen mit der endgültigen Regel Top 10 + Puffer 20
+        m, meta = load_market(x.a, x.universe, Config())
+        out = mix_report(m, x.start, Config(), rule={"n": 10, "hold": 20})
+        if x.out:
+            Path(x.out).write_text(json.dumps(out, ensure_ascii=False, default=str))
         return 0
     if x.cmd == "etf":
         m, meta = load_market(x.a, x.universe, Config())
