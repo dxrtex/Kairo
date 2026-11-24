@@ -931,7 +931,8 @@ def main(argv=None) -> int:
             json.dump(_clean(ins), f, ensure_ascii=False, separators=(",", ":"))
     if not args.partial and not args.tickers:        # Kairo Langfrist (backend/langfrist.py): Momentum-Depot aus ALLEN gescannten Kursen
         try:
-            market["langfrist"] = langfrist.build(data, meta, ctx_hist.get("^GSPC"))
+            _urth = (locals().get("lh") or {}).get("URTH")
+            market["langfrist"] = langfrist.build(data, meta, ctx_hist.get("^GSPC"), etf=_urth if _urth is not None else ctx_hist.get("URTH"))
             lf = market["langfrist"] or {}
             for t, (rk, m, nc, bits) in (lf.pop("ranks", None) or {}).items():   # Rang, Lauf, x/8 je Aktie für Scanner „Meine“ und Aktienkarte
                 if t in search:

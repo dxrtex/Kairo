@@ -106,3 +106,19 @@ def test_curve_quarterly_equal_weight():
     assert lo - 0.02 <= cv["m"][-1] <= hi + 0.02                    # Mischung liegt zwischen Strategie und Index
     out = LF.build(data, meta, bench=_df(0.0003, seed=5), rule={"n": 3}, fund={})
     assert out["curve"] and out["curve"]["d"][-1] <= out["asof"]
+
+
+def test_curve_uses_world_etf_for_mix():
+    data = {f"S{i}": _df(0.0005 * i, seed=i) for i in range(12)}
+    meta = {t: {"name": t} for t in data}
+    cv = LF.curve(data, meta, _df(0.0003, seed=5), {"n": 3}, etf=_df(-0.002, seed=9))
+    assert cv["etf"] == "MSCI World"
+    cv2 = LF.curve(data, meta, _df(0.0003, seed=5), {"n": 3})
+    assert cv2["etf"] == "S&P 500" and cv["m"][-1] < cv2["m"][-1]       # schwächerer ETF → schwächere Mischung
+
+
+def test_push_tausch_message_links_checklist_and_january_rebalance():
+    from backend import push
+    lf = {"since": "2027-01-04", "next": "2027-04-01", "chg": {"out": ["A"], "inn": ["B"]}, "top": [], "hold": []}
+    m = push.langfrist_message("2027-01-05", {}, lf)
+    assert m and "Strategie-Tausch" in m[0]["title"] and "?sec=entry" in m[0]["url"] and "70/30" in m[0]["body"]
