@@ -6233,7 +6233,7 @@ document.addEventListener("click", e => {
 // zwei Finger – wird oben im Dokument abgefangen und an die Ansicht weitergegeben, egal über welchem Element der Zeiger steht.
 const ZG = { target: null, vp: null,
   open() { return !!(state.fsv || ($("chfs") && !$("chfs").hidden) || this.tv()); },
-  tv() { const de = document.documentElement; return de.classList.contains("ct-fit") || de.classList.contains("ct-lock") || document.body.classList.contains("tv-full-on"); },   // TradingView: Seiten-Zoom aus, sonst kämpft Safari beim Zwei-Finger-Zoom mit dem Chart
+  tv() { const de = document.documentElement; return de.classList.contains("ct-fit") || de.classList.contains("ct-lock") || document.body.classList.contains("tv-full-on") || (state.sec === "chart" && state.mc > 1 && !!$("mcRoot")); },   // TradingView: Seiten-Zoom aus, sonst kämpft Safari beim Zwei-Finger-Zoom mit dem Chart
   sync() { const m = document.querySelector('meta[name="viewport"]'); if (!m) return; if (this.vp == null) this.vp = m.content;
     const on = this.open(), nc = on ? this.vp + ", maximum-scale=1, user-scalable=no" : this.vp; if (m.content !== nc) m.content = nc;
     document.documentElement.classList.toggle("zg-on", on); if (!on) this.target = null; },
@@ -11077,8 +11077,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.281";
-const APP_NEWS = [["2026.11.281", "Zeichnen in TradingView", [
+const APP_VER = "2026.11.282";
+const APP_NEWS = [["2026.11.282", "Chart scrollt wieder", [
+  ["Scrollen", "Im Chart-Reiter und bei den Mehrfach-Charts lässt sich die Seite wieder nach unten scrollen – auch zu News, Unternehmen und den unteren Charts. Zeichnen geht über den Knopf „TradingView“."]]],
+ ["2026.11.281", "Zeichnen in TradingView", [
   ["Ein Tipp zur App", "Neuer Knopf „TradingView“ oben im Chart: öffnet dieselbe Aktie in der TradingView-App – dort funktionieren alle Zeichenwerkzeuge (Fibonacci & Co.) mit dem Finger und bleiben in deinem Konto gespeichert. Zurück oben links über „◀ Kairo“."],
   ["Ehrlich", "Im eingebetteten TradingView-Chart in Kairo lassen sich Werkzeuge per Finger nicht zuverlässig setzen – das liegt im TradingView-Baustein selbst und lässt sich von außen nicht ändern."]]],
  ["2026.11.280", "Marktphase sauber", [
@@ -15751,7 +15753,7 @@ const ctTouch = () => matchMedia("(pointer: coarse)").matches || (navigator.maxT
 let ctFree = 0;
 function ctFit() {
   const de = document.documentElement, box = $("ctTv"), el = $("ctab");
-  if (state.sec === "chart" && state.mc > 1 && $("mcRoot") && MC_TV) { de.classList.remove("ct-fit"); de.classList.toggle("ct-lock", ctTouch() && !(innerWidth < 700 && state.mc === 4)); ZG.sync(); return; }   // Raster füllt den Bildschirm: Seite steht still
+  if (state.sec === "chart" && state.mc > 1 && $("mcRoot") && MC_TV) { de.classList.remove("ct-fit"); de.classList.remove("ct-lock"); ZG.sync(); return; }   // Raster füllt den Bildschirm: Seite steht still
   const on = !!(box && el && el.isConnected && el.classList.contains("tv-on") && state.sec === "chart" && !(state.mc > 1) && ctTouch() && !document.body.classList.contains("tv-full-on"));
   de.classList.toggle("ct-fit", on); if (!on) { if (!(state.sec === "chart" && state.mc > 1 && $("mcRoot"))) de.classList.remove("ct-lock"); if (box) box.style.height = box.style.minHeight = ""; ZG.sync(); return; }
   if (window.visualViewport && Math.abs(visualViewport.scale - 1) > .01) return;   // Seite gerade vergrößert: Höhe nicht anfassen
@@ -15759,7 +15761,8 @@ function ctFit() {
   const nb = nr && nr.height && nr.top > vh * .5 ? Math.max(0, vh - nr.top) : 0, top = box.getBoundingClientRect().top + scrollY, h = Math.max(300, Math.round(vh - top - nb - 58));
   box.style.height = h + "px"; box.style.minHeight = "0"; el.style.setProperty("--cth", h + "px"); ctLock(); ZG.sync();
 }
-function ctLock() { const de = document.documentElement; if (!de.classList.contains("ct-fit")) return; if (Date.now() - ctFree < 1200 && scrollY < 40) return; de.classList.toggle("ct-lock", scrollY < 6); }
+// 25.11.2026 abends (Wunsch „im Chart wieder runterscrollen“): Seite nicht mehr sperren – Zeichnen läuft über den Knopf „TradingView“ in der App
+function ctLock() { document.documentElement.classList.remove("ct-lock"); }
 addEventListener("scroll", ctLock, { passive: true });
 { let fr = 0, t0 = null; new ResizeObserver(() => { if (fr || !document.documentElement.classList.contains("ct-fit")) return; fr = requestAnimationFrame(() => { fr = 0; const b = $("ctTv"), t = b ? Math.round(b.getBoundingClientRect().top + scrollY) : null; if (t !== t0) { t0 = t; ctFit(); } }); }).observe(document.body); }   // Hinweisleiste oben kommt/geht → Höhe neu
 { let tm, w0 = innerWidth, h0 = innerHeight; addEventListener("resize", () => { if (Math.abs(innerWidth - w0) < 2 && Math.abs(innerHeight - h0) < 80) return; w0 = innerWidth; h0 = innerHeight; clearTimeout(tm); tm = setTimeout(ctFit, 200); }); }   // nur echte Größenwechsel (Drehen, Split View) – nicht die Adressleiste während einer Geste
