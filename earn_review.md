@@ -14,8 +14,8 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 55 | 55% | 0.242 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · nachgeeicht | 2 | 50% | 0.254 | 0.250 |
 | Ausblick gesenkt | 79 | 53% | 0.251 | 0.250 |
-| Ausblick bestätigt | 34 | 47% | 0.271 | 0.250 |
-| Ausblick angehoben | 178 | 49% | 0.266 | 0.250 |
+| Ausblick bestätigt | 35 | 46% | 0.272 | 0.250 |
+| Ausblick angehoben | 177 | 49% | 0.266 | 0.250 |
 | Ausblick keine Meldung | 264 | 54% | 0.246 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
@@ -37,7 +37,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | unter Erwartung (−10 bis −2 %) | 8% (12) | 17% (6) | 70% (20) | 39% (51) |
 | im Rahmen (±2 %) | 33% (18) | 25% (4) | 38% (16) | 46% (41) |
 | über Erwartung (+2 bis +10 %) | 37% (27) | 25% (8) | 46% (59) | 44% (63) |
-| deutlich über Erwartung (> +10 %) | 39% (33) | 47% (19) | 60% (113) | 53% (118) |
+| deutlich über Erwartung (> +10 %) | 39% (33) | 45% (20) | 61% (112) | 53% (118) |
 
 ## Vorschläge zur Anpassung
 
@@ -59,7 +59,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - CTVA 2026-11-11: Kairo 42% steigt, Kurs -24.3% · Gewinn -40% · Ausblick gesenkt – „Corteva (CTVA) Cuts Guidance And Delays Filing, Is The Reset Now Fully Priced In?“
-- NTNX 2026-11-24: Kairo 56% steigt, Kurs -18.2% · Gewinn +20% · Ausblick angehoben – „Second Quarter Fiscal 2027 Outlook Revenue $820 - $830 million Non-GAAP Operating Margin 27% to 28% Weighted Average Shares Outstanding (Diluted) 3 Approximatel“
+- NTNX 2026-11-24: Kairo 56% steigt, Kurs -18.1% · Gewinn +20% · Ausblick angehoben – „Second Quarter Fiscal 2027 Outlook Revenue $820 - $830 million Non-GAAP Operating Margin 27% to 28% Weighted Average Shares Outstanding (Diluted) 3 Approximatel“
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
@@ -92,7 +92,7 @@ Beispiele:
 - DUOL 2026-11-03: Kairo 36%, Kurs +26.0% (Markt +0.3%) · Gründe: Umsatz, Nutzer/Kunden – „Duolingo Misses on Earnings. The Stock Soars 15%.“
 - RDW 2026-11-04: Kairo 65%, Kurs -19.8% (Markt +1.7%) · Gründe: Marge, Umsatz, Aufträge – „Why Redwire Stock Is Plummeting Today“
 - MTSI 2026-11-05: Kairo 60%, Kurs -18.4% (Markt -2.5%) · Gründe: Umsatz, KI/Rechenzentren – „MACOM (NASDAQ:MTSI) Q3 sales beat estimates but stock drops“
-- NTNX 2026-11-24: Kairo 56%, Kurs -18.2% (Markt -0.5%) · Gründe: Ausblick, Umsatz, Management, Analysten – „Nutanix Stock Gets Body-Slammed on Surprise CEO Exit. Why Some Analysts Aren’t Sweating It.“
+- NTNX 2026-11-24: Kairo 56%, Kurs -18.1% (Markt -0.5%) · Gründe: Ausblick, Umsatz, Management, Analysten – „Nutanix Stock Gets Body-Slammed on Surprise CEO Exit. Why Some Analysts Aren’t Sweating It.“
 - MTRN 2026-11-04: Kairo 60%, Kurs -17.7% (Markt +1.7%) · Gründe: Marge – „Earnings call transcript: Materion beats EPS in Q3 2026 but shares slide“
 - RUM 2026-11-11: Kairo 40%, Kurs +16.6% (Markt +1.3%) · Gründe: Umsatz, KI/Rechenzentren – „Rumble's Quake AI Is Nearly Sold Out — And Higher Prices Could Be Next“
 
@@ -114,4 +114,4 @@ Rollierend geprüft an 239 jüngeren Meldungen (3 Zeiträume, je nur mit ältere
 |---|---|---|---|---|---|
 | 2026-11-09 – 2026-11-12 | 160 | 0.245 | 0.247 | 56% | 56% |
 | 2026-11-13 – 2026-11-18 | 44 | 0.245 | 0.251 | 52% | 50% |
-| 2026-11-19 – 2026-11-24 | 35 | 0.257 | 0.258 | 49% | 49% |
+| 2026-11-19 – 2026-11-24 | 35 | 0.256 | 0.258 | 49% | 49% |
