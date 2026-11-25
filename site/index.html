@@ -2307,6 +2307,16 @@ table.co-ud td b { font-weight: 600; }
 .ctab.tv-on .ctab-tv { display: block; height: calc(100dvh - 190px); min-height: 460px; border-radius: 14px; overflow: hidden; background: var(--bg, #000); border: 1px solid var(--line, #8883); }
 .ctab.tv-on .ctab-chart, .ctab.tv-on .ctab-p, .ctab.tv-on .ct-bar { display: none !important; }
 .tv-fsb { display: none; } .ctab.tv-on .tv-fsb { display: inline-flex; } .tv-fsb svg { width: 16px; height: 16px; }
+.vpc { display: flex; flex-direction: column; gap: 1px; margin: 4px 0 10px; }
+.vpc-r { display: grid; grid-template-columns: 64px 1fr; align-items: center; height: 7px; }
+.vpc-r span { font-size: 10.5px; line-height: 7px; color: var(--muted); text-align: right; padding-right: 7px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vpc-r i { display: flex; height: 100%; border-radius: 1px; overflow: hidden; } .vpc-r i b { display: block; height: 100%; background: rgba(48,209,88,.28); } .vpc-r i b.dn { background: rgba(255,69,58,.26); }
+.vpc-r.va i b { background: rgba(48,209,88,.6); } .vpc-r.va i b.dn { background: rgba(255,69,58,.55); } .vpc-r.poc i b, .vpc-r.poc i b.dn { background: #f4b740; }
+.vpc-r.now span { color: var(--text); font-weight: 700; } .vpc-r.now span::after { content: " ◂"; color: var(--accent, #0a84ff); }
+.ct-more { display: none; } html.ct-fit .ct-more { display: flex; align-items: center; gap: 6px; margin: 10px auto 2px; padding: 9px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+html.ct-fit .ct-more svg { width: 16px; height: 16px; } html.ct-lock, html.ct-lock body { overflow: hidden !important; overscroll-behavior: none; }
+html.ct-fit .ctab.tv-on .ctab-tv { touch-action: none; overscroll-behavior: contain; }
+@media (min-width: 701px) { html.ct-lock .ctab-side { max-height: calc(var(--cth, 600px) + 50px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; } }
 .ctab-tv.tv-full { position: fixed !important; inset: 0; z-index: 9800; height: 100dvh !important; min-height: 0 !important; margin: 0 !important; border-radius: 0 !important; border: 0 !important; display: block !important; }
 .ctab-tv.tv-full:fullscreen, .ctab-tv.tv-full:-webkit-full-screen { width: 100vw; height: 100vh !important; }
 body.tv-full-on { overflow: hidden; } body.tv-full-on nav.tabbar { display: none; }
@@ -10909,8 +10919,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.270";
-const APP_NEWS = [["2026.11.270", "Depot ruhiger", [
+const APP_VER = "2026.11.271";
+const APP_NEWS = [["2026.11.271", "Chart flüssiger", [
+  ["Wischen und Zeichnen", "Auf iPad und iPhone füllt der Chart den Bildschirm und die Seite dahinter steht still – Verschieben, Zoomen und Zeichenwerkzeuge wie Fibonacci reagieren jetzt zuverlässig. „News & Unternehmen“ unter dem Chart führt nach unten."],
+  ["Kein Neuladen mehr", "Nachgeladene Daten bauen den TradingView-Chart nicht mehr neu auf – keine Ruckler, gezeichnete Linien bleiben stehen."],
+  ["Mehrere Charts", "Neuer Knopf oben: 2 oder 4 TradingView-Charts gleichzeitig, jede Aktie über ihren Namen wählbar."],
+  ["Volumenprofil", "In der Seitenleiste: wo im letzten Jahr am meisten gehandelt wurde, mit Wertzone und aktuellem Kurs."]]],
+ ["2026.11.270", "Depot ruhiger", [
   ["Klare Titel", "Probe-Depot und Spiel-Depot haben jetzt einen richtigen Titel mit kurzer Erklärung darunter statt einer langen Zeile in Großbuchstaben."],
   ["Keine leeren Karten", "Fehlen die Index-Verläufe, blendet Kairo die Karte „Depot-Risiko“ aus, statt einen Platzhalter zu zeigen."]]],
  ["2026.11.269", "Depot-Feinschliff", [
@@ -13439,7 +13454,7 @@ function segInd() {
 addEventListener("resize", () => { clearTimeout(segInd.t); segInd.t = setTimeout(segInd, 120); });
 { let narrow = innerWidth <= 700; addEventListener("resize", () => { const n = innerWidth <= 700; if (n !== narrow) { narrow = n; if (data && state.mView === "list") render(); } }); }
 function subIn() { const m = $("main"); if (!m || calm()) return; m.classList.remove("sub-in"); void m.offsetWidth; m.classList.add("sub-in"); clearTimeout(subIn.t); subIn.t = setTimeout(() => m.classList.remove("sub-in"), 500); }
-function render() { wlSeed(); wlPopHide(); renderMain(); if (state.fsv) fsvRender(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", state.sec === "settings" ? KFOOT : KFOOT_S); if (data) appleHead(); clampNotes(); linkTerms(); segInd(); subnavShow(); }
+function render() { wlSeed(); wlPopHide(); renderMain(); try { ctFit(); } catch (e) {} if (state.fsv) fsvRender(); if (data && $("main") && !$("main").querySelector(".kfoot")) $("main").insertAdjacentHTML("beforeend", state.sec === "settings" ? KFOOT : KFOOT_S); if (data) appleHead(); clampNotes(); linkTerms(); segInd(); subnavShow(); }
 // iPhone: wischbare Reiterleiste – aktiven Reiter sichtbar halten
 function subnavShow() { document.querySelectorAll(".subnav").forEach(n => { const o = n.querySelector("button.on"); if (o && n.scrollWidth > n.clientWidth + 2) { const l = o.offsetLeft - n.offsetLeft, r = l + o.offsetWidth; if (l < n.scrollLeft || r > n.scrollLeft + n.clientWidth) n.scrollLeft = Math.max(0, l - 24); } }); }
 function renderMain() {
@@ -15161,7 +15176,8 @@ function cockpitSide0(h, r) {
     + (r.ext ? "" : sbSec("sm", "Smart Money", sv ? `<i class="${sv.tone[0]}">${esc(sv.tone[1])}</i>` : "", smCardHtml(r.ticker), true))
     + sbSec("fu", "Fundamental", G ? `Note ${G.g}` : "", fundCardHtml(t0), true)
     + (r.ext ? "" : sbSec("k8", "Firmenmeldungen", k8n ? `${k8n} · SEC 8-K` : "", k8Html(r.ticker), true))
-    + (vpOn ? sbSec("vp", "Volumenprofil", vpOn.poc ? `meist ${fmt(vpOn.poc)}` : "", `
+    + ((tvV => tvV ? sbSec("vp", "Volumenprofil", `meist ${fmt(tvV.pocP)}`, vpCardHtml(tvV, last), true) : "")(document.querySelector("#ctab.tv-on") && window.__lastChart && window.__lastChart.r && window.__lastChart.r.ticker === r.ticker ? vpCalc(window.__lastChart.d && window.__lastChart.d.v ? window.__lastChart.d : window.__lastChart.c) : null))
+    + (vpOn && !document.querySelector("#ctab.tv-on") ? sbSec("vp", "Volumenprofil", vpOn.poc ? `meist ${fmt(vpOn.poc)}` : "", `
     ${(vi => vi && clGet("vp") && vi.poc ? `<div class="cf-s"><div class="cf-h">Volumenprofil <small class="muted">${state.vpMode === "vis" ? "Bildausschnitt" : `seit ${esc(vi.from)}`}</small></div>
       ${row("Meistgehandelt", vi.poc, "rgba(150,164,190,.9)")}<div class="cf-r"><span><i style="background:rgba(150,164,190,.45)"></i>70 % des Volumens</span><b>${fmt(vi.val)}–${fmt(vi.vah)}</b>${last ? `<em class="${last > vi.vah ? "up" : last < vi.val ? "down" : ""}">${last > vi.vah ? "Kurs darüber" : last < vi.val ? "Kurs darunter" : "Kurs drin"}</em>` : ""}</div>
       <p class="muted cf-t">Breite Balken = auf diesem Kursniveau wurde viel gehandelt, schmale = wenig. ${vi.nSub ? `Aus Stundenkerzen (${vi.nSub} von ${vi.nDays} Tagen).` : `Aus Tageskerzen geschätzt${liveKey("yq") ? " – Stundenkerzen werden geladen." : " – mit dem Kairo-Kursdienst genauer aus Stundenkerzen."}`}${state.vpMode === "anchor" ? ` <button class="hlink" data-vppick>Startpunkt neu wählen</button>` : ""}</p></div>` : "")(h.vpp && h.vpp.info())}
@@ -15172,6 +15188,30 @@ function cockpitSide0(h, r) {
 `, false) : "");
 }
 // Eingeklappte Zeile der Seitenleiste: Titel links, Kennzahl rechts; offen/zu wird gemerkt. solo = eine Karte → deren Kopf entfällt
+// Volumenprofil als Indikator (25.11.2026, Wunsch): TradingView zeigt das feste Volumenprofil nur im Bezahl-Abo – Kairo rechnet es selbst
+// aus den Tageskerzen des letzten Jahres (Volumen jeder Kerze gleichmäßig von Tief bis Hoch verteilt, grün = Tage mit Plus, rot = mit Minus).
+function vpCalc(c, n = 252, N = 28) {
+  if (!c || !c.t || !c.v || !c.h || !c.l) return null; const L = c.t.length, i1 = Math.max(0, L - n); let lo = Infinity, hi = -Infinity;
+  for (let i = i1; i < L; i++) { if (c.l[i] > 0) lo = Math.min(lo, c.l[i]); if (c.h[i] > 0) hi = Math.max(hi, c.h[i]); }
+  if (!(hi > lo)) return null; const step = (hi - lo) / N, bins = new Array(N).fill(0), up = new Array(N).fill(0);
+  for (let i = i1; i < L; i++) { const v = c.v[i] || 0, a = c.l[i], b = c.h[i]; if (!(v > 0 && a > 0 && b >= a)) continue;
+    const k1 = Math.min(N - 1, Math.floor((a - lo) / step)), k2 = Math.min(N - 1, Math.floor((b - lo) / step)), per = v / (k2 - k1 + 1), pl = c.c[i] >= (c.o[i] ?? c.c[i]);
+    for (let k = k1; k <= k2; k++) { bins[k] += per; if (pl) up[k] += per; } }
+  let max = 0, poc = 0, tot = 0; bins.forEach((x, k) => { tot += x; if (x > max) { max = x; poc = k; } }); if (!tot) return null;
+  let a = poc, b = poc, acc = bins[poc]; while (acc < tot * .7 && (a > 0 || b < N - 1)) { const dn = a > 0 ? bins[a - 1] : -1, uv = b < N - 1 ? bins[b + 1] : -1; if (uv >= dn) acc += bins[++b]; else acc += bins[--a]; }
+  return { lo, step, N, bins, up, max, poc, a, b, pocP: lo + (poc + .5) * step, val: lo + a * step, vah: lo + (b + 1) * step, from: c.t[i1] };
+}
+function vpCardHtml(V, last) {
+  if (!V) return ""; const rows = [];
+  const kNow = last > 0 ? Math.max(0, Math.min(V.N - 1, Math.floor((last - V.lo) / V.step))) : -1;
+  for (let k = V.N - 1; k >= 0; k--) { const w = V.bins[k] / V.max * 100, uw = V.bins[k] ? V.up[k] / V.bins[k] * w : 0, lbl = k === V.poc || k === kNow || (k % 5 === 2 && Math.abs(k - V.poc) > 1 && Math.abs(k - kNow) > 1);
+    rows.push(`<div class="vpc-r${k >= V.a && k <= V.b ? " va" : ""}${k === V.poc ? " poc" : ""}${k === kNow ? " now" : ""}"><span>${lbl ? fmt(V.lo + (k + .5) * V.step) : ""}</span><i><b style="width:${uw.toFixed(1)}%"></b><b class="dn" style="width:${(w - uw).toFixed(1)}%"></b></i></div>`); }
+  const pos = !(last > 0) ? "" : last > V.vah ? `<em class="up">darüber</em>` : last < V.val ? `<em class="down">darunter</em>` : `<em>mittendrin</em>`;
+  return `<div class="cf-s"><div class="cf-h">Volumenprofil <small class="muted">seit ${esc(dateDE(tkey(V.from)))} · Tageskerzen</small></div><div class="vpc" role="img" aria-label="Volumenprofil: meistgehandelt bei ${fmt(V.pocP)}">${rows.join("")}</div>
+    <div class="cf-r"><span><i style="background:#f4b740"></i>Meistgehandelt</span><b>${fmt(V.pocP)}</b>${last > 0 ? `<em class="${last >= V.pocP ? "up" : "down"}">${sgnPct(last / V.pocP - 1, 1)}</em>` : ""}</div>
+    <div class="cf-r"><span><i style="background:rgba(48,209,88,.6)"></i>Wertzone 70 %</span><b>${fmt(V.val)}–${fmt(V.vah)}</b>${pos}</div>
+    <p class="muted cf-t">Breite Balken = auf diesem Kursniveau wurde viel gehandelt – solche Zonen bremsen oft. Im TradingView-Chart selbst: Werkzeugleiste links → Prognose &amp; Messung → „Volumenprofil Fixed-Range“, dann Start und Ende setzen.</p></div>`;
+}
 function sbSec(key, title, sum, body, solo) {
   if (!body || !String(body).trim()) return "";
   return `<details class="sb" data-sb="${key}"${(state.sbOpen || {})[key] ? " open" : ""}><summary><span>${title}</span><em>${sum || ""}</em></summary><div class="sb-b${solo ? " solo" : ""}">${body}</div></details>`;
@@ -15256,17 +15296,25 @@ function mcTickers(n) {
   for (let i = 1; i < n; i++) if (!ok(L[i])) L[i] = pool.find(t => rowFor(t) && !L.slice(0, i).includes(t));
   state.mcT = L; return L.slice(0, n).filter(Boolean);
 }
+// Mehrfach-Charts mit TradingView (25.11.2026, Wunsch „mehrere Charts gleichzeitig wie bei der Kairo-Ansicht“): jedes Feld ein eigener
+// TradingView-Chart mit Zeichenwerkzeugen; Wechsel der Aktie über den Namen oben, groß öffnen über ⤢. Fadenkreuz koppeln geht über
+// TradingView-Grenzen hinweg nicht – deshalb gibt es die Kopplung nur in der Kairo-Ansicht.
+const MC_TV = true;
+function mcTv(t, i, tf) { const el = $("mcCv" + i); if (!el) return;
+  tvWidget(el, "advanced-chart", tvChartCfg(t, tf, { hide_side_toolbar: state.mc > 2 || innerWidth < 700, withdateranges: false }));
+  const r = rowFor(t) || {}, q = LIVE.map && LIVE.map[t], px = q && q.c > 0 ? q.c : r.close, ch = q && q.c > 0 && q.pc > 0 ? q.c / q.pc - 1 : (r.change ?? r.d1), pe = $("mcPx" + i);
+  if (pe && px > 0) pe.innerHTML = `${fmt(px)} <small>${esc(r.currency || r.cur || "")}</small>${ch != null ? ` <em class="${ch >= 0 ? "up" : "down"}">${sgnPct(ch, 2)}</em>` : ""}`; }
 function mcDrop() { MCH.seq++; if (MCH.ro) { MCH.ro.disconnect(); MCH.ro = null; } MCH.ch.forEach(x => { try { x.chart.remove(); } catch (e) {} }); MCH.ch = []; }
 function mcRender() {
   mcDrop(); const n = state.mc, ts = mcTickers(n), tf = ["D", "W", "M"].includes(state.mcTf) ? state.mcTf : "D";
   $("main").innerHTML = `<div class="mc${MCH.fs ? " mc-fs" : ""}" id="mcRoot"><div class="mc-bar"><b>Mehrfach-Charts</b>
     <div class="ct-rg" role="group" aria-label="Aufteilung">${[1, 2, 4].map(k => `<button class="${n === k ? "on" : ""}" data-mcn="${k}" title="${k === 1 ? "Ein Chart" : k + " Charts"}" aria-label="${k} Chart${k > 1 ? "s" : ""}">${MC_IC[k]}</button>`).join("")}</div>
     <div class="ct-rg" role="group" aria-label="Zeiteinheit">${[["D", "1D"], ["W", "1W"], ["M", "1M"]].map(([v, l]) => `<button class="${tf === v ? "on" : ""}" data-mctf="${v}">${l}</button>`).join("")}</div>
-    <div class="ct-rg" role="group" aria-label="Zeitraum">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["all", "Alle"]].map(([v, l]) => `<button class="${(state.mcR || "126") === v ? "on" : ""}" data-mcr="${v}">${l}</button>`).join("")}</div>
-    <button class="ct-b${state.mcLink === 0 ? "" : " on"}" data-mclink aria-pressed="${state.mcLink !== 0}" title="Zeitachse und Fadenkreuz koppeln">${IC.link} <span class="ct-lbl">Gekoppelt</span></button><button class="ct-b${MCH.fs ? " on" : ""}" data-mcfs title="${MCH.fs ? "Vollbild verlassen (Esc)" : "Alle Charts im Vollbild"}" aria-label="Vollbild">${MCH.fs ? CT_IC.shrink : CT_IC.expand}<span class="ct-lbl">${MCH.fs ? "Schließen" : "Vollbild"}</span></button></div>
+    ${MC_TV ? "" : `<div class="ct-rg" role="group" aria-label="Zeitraum">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["all", "Alle"]].map(([v, l]) => `<button class="${(state.mcR || "126") === v ? "on" : ""}" data-mcr="${v}">${l}</button>`).join("")}</div>
+    <button class="ct-b${state.mcLink === 0 ? "" : " on"}" data-mclink aria-pressed="${state.mcLink !== 0}" title="Zeitachse und Fadenkreuz koppeln">${IC.link} <span class="ct-lbl">Gekoppelt</span></button>`}<button class="ct-b${MCH.fs ? " on" : ""}" data-mcfs title="${MCH.fs ? "Vollbild verlassen (Esc)" : "Alle Charts im Vollbild"}" aria-label="Vollbild">${MCH.fs ? CT_IC.shrink : CT_IC.expand}<span class="ct-lbl">${MCH.fs ? "Schließen" : "Vollbild"}</span></button></div>
     <div class="mc-g mc-${n}">${ts.map((t, i) => { const r = rowFor(t) || {}; return `<div class="mc-c" data-mci="${i}"><div class="mc-h"><button class="mc-t" data-mcpick="${i}" title="Aktie wechseln">${cfAv(t)}<span><b>${esc(String(r.name || r.n || tkClean(t)).slice(0, 26))}</b><small>${esc(tkClean(t))} ▾</small></span></button><span class="mc-px" id="mcPx${i}"></span><button class="ct-b" data-mcopen="${esc(t)}" data-mcoi="${i}" title="Groß öffnen mit allen Werkzeugen – die anderen Charts bleiben" aria-label="Groß öffnen">${CT_IC.expand}</button></div><div class="mc-cv" id="mcCv${i}"><div class="note" style="padding:16px">Lade …</div></div></div>`; }).join("")}</div></div>`;
-  ts.forEach((t, i) => mcLoad(t, i, tf, MCH.seq));
-  document.documentElement.classList.toggle("fs-on", !!MCH.fs);
+  if (MC_TV) ts.forEach((t, i) => mcTv(t, i, tf)); else ts.forEach((t, i) => mcLoad(t, i, tf, MCH.seq));
+  document.documentElement.classList.toggle("fs-on", !!MCH.fs); try { ctFit(); } catch (e) {}
   MCH.ro = new ResizeObserver(() => MCH.ch.forEach(x => { const el = x.el; if (el.clientWidth) x.chart.applyOptions({ width: el.clientWidth, height: el.clientHeight }); }));
   document.querySelectorAll(".mc-cv").forEach(el => MCH.ro.observe(el));
 }
@@ -15436,25 +15484,47 @@ function tvWidget(box, kind, cfg) {
   const sc = document.createElement("script"); sc.type = "text/javascript"; sc.async = true; sc.src = `https://s3.tradingview.com/external-embedding/embed-widget-${kind}.js`;
   sc.textContent = JSON.stringify(cfg); w.appendChild(sc); box.appendChild(w);
 }
+// US-Aktien ohne Börsen-Präfix → TradingView nimmt Cboe One (kostenlos in Echtzeit, wie bei Fluere); deutsche Aktien standardmäßig über gettex
+function tvChartSym(t) { let sym = /\.DE$/.test(t) && !state.tvVenue ? `GETTEX:${t.replace(/\.DE$/, "")}` : tvSym(t);
+  if (/^(NASDAQ|NYSE|AMEX|NYSEARCA|NYSEAMERICAN):/.test(sym)) sym = "BATS:" + sym.split(":")[1]; return sym; }
+function tvChartCfg(t, iv, extra) { const lt = isLight();
+  return { autosize: true, symbol: tvChartSym(t), interval: iv || "D", timezone: "Europe/Berlin", theme: lt ? "light" : "dark", style: "1", locale: "de_DE",
+    backgroundColor: lt ? "#ffffff" : "#000000", gridColor: lt ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)", allow_symbol_change: false, hide_side_toolbar: false,
+    withdateranges: true, details: false, hotlist: false, calendar: false, save_image: false, support_host: "https://www.tradingview.com", ...(extra || {}) }; }
 function ctTvMount(t) {
   const box = $("ctTv"); if (!box || box.dataset.t === t + "|" + isLight()) return; box.dataset.t = t + "|" + isLight();
-  const lt = isLight();
-  // US-Aktien ohne Börsen-Präfix → TradingView nimmt Cboe One (kostenlos in Echtzeit, wie bei Fluere); deutsche Aktien standardmäßig über gettex
-  let sym = /\.DE$/.test(t) && !state.tvVenue ? `GETTEX:${t.replace(/\.DE$/, "")}` : tvSym(t);
-  if (/^(NASDAQ|NYSE|AMEX|NYSEARCA|NYSEAMERICAN):/.test(sym)) sym = "BATS:" + sym.split(":")[1];
-  tvWidget(box, "advanced-chart", { autosize: true, symbol: sym, interval: state.ctTvIv || "D", timezone: "Europe/Berlin", theme: lt ? "light" : "dark", style: "1", locale: "de_DE",
-    backgroundColor: lt ? "#ffffff" : "#000000", gridColor: lt ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)", allow_symbol_change: false, hide_side_toolbar: false,
-    withdateranges: true, details: false, hotlist: false, calendar: false, save_image: false, support_host: "https://www.tradingview.com" });
+  tvWidget(box, "advanced-chart", tvChartCfg(t, state.ctTvIv));
 }
 // Vollbild für den TradingView-Chart (Wunsch 18.11.2026): echtes Vollbild, wo das Gerät es erlaubt, sonst bildschirmfüllend mit „Schließen“
 function tvFull(on) { const box = $("ctTv"); if (!box) return; const fe = document.fullscreenElement || document.webkitFullscreenElement;
-  if (on) { box.classList.add("tv-full"); document.body.classList.add("tv-full-on");
+  if (on) { box.classList.add("tv-full"); document.body.classList.add("tv-full-on"); document.documentElement.classList.remove("ct-fit", "ct-lock"); box.style.height = box.style.minHeight = "";
     if (!$("tvFsX")) document.body.insertAdjacentHTML("beforeend", `<button id="tvFsX" class="tv-fsx" data-tvfsx aria-label="Vollbild schließen">✕ Schließen</button>`);
     const rq = box.requestFullscreen || box.webkitRequestFullscreen; if (rq) try { const pr = rq.call(box); if (pr && pr.catch) pr.catch(() => {}); } catch (err) {} }
-  else { box.classList.remove("tv-full"); document.body.classList.remove("tv-full-on"); const x = $("tvFsX"); if (x) x.remove(); if (fe) try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (err) {} } }
+  else { box.classList.remove("tv-full"); document.body.classList.remove("tv-full-on"); const x = $("tvFsX"); if (x) x.remove(); setTimeout(ctFit, 60); if (fe) try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (err) {} } }
 ["fullscreenchange", "webkitfullscreenchange"].forEach(ev => document.addEventListener(ev, () => { if (!(document.fullscreenElement || document.webkitFullscreenElement) && $("ctTv") && $("ctTv").classList.contains("tv-full") && !document.body.classList.contains("tv-full-keep")) tvFull(false); }));
 document.addEventListener("click", e => { if (e.target.closest("[data-tvfs]")) { tvFull(true); return; } if (e.target.closest("[data-tvfsx]")) { tvFull(false); return; } });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && document.body.classList.contains("tv-full-on")) tvFull(false); });
+// Touch wie bei TradingView (25.11.2026, Wunsch „wischen reagiert nicht immer, Fibonacci lässt sich nicht richtig ziehen“): Mit einem
+// Zeichenwerkzeug gibt TradingView die Fingerbewegung an die Seite weiter – die Kairo-Seite scrollte, statt den Punkt zu ziehen. Auf
+// Touch-Geräten füllt der Chart deshalb den Bildschirm und die Seite steht still, solange man oben beim Chart ist. „News & Unternehmen“
+// führt nach unten; wer wieder ganz nach oben wischt, hat den Chart wieder fest.
+const ctTouch = () => matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints > 1 && /Macintosh|iPad|iPhone/.test(navigator.userAgent));
+let ctFree = 0;
+function ctFit() {
+  const de = document.documentElement, box = $("ctTv"), el = $("ctab");
+  if (state.sec === "chart" && state.mc > 1 && $("mcRoot") && MC_TV) { de.classList.remove("ct-fit"); de.classList.toggle("ct-lock", ctTouch() && !(innerWidth < 700 && state.mc === 4)); return; }   // Raster füllt den Bildschirm: Seite steht still
+  const on = !!(box && el && el.isConnected && el.classList.contains("tv-on") && state.sec === "chart" && !(state.mc > 1) && ctTouch() && !document.body.classList.contains("tv-full-on"));
+  de.classList.toggle("ct-fit", on); if (!on) { de.classList.remove("ct-lock"); if (box) box.style.height = box.style.minHeight = ""; return; }
+  const vh = window.visualViewport ? visualViewport.height : innerHeight, nav = document.querySelector("nav.tabbar"), nr = nav && getComputedStyle(nav).display !== "none" ? nav.getBoundingClientRect() : null;
+  const nb = nr && nr.height && nr.top > vh * .5 ? Math.max(0, vh - nr.top) : 0, top = box.getBoundingClientRect().top + scrollY, h = Math.max(300, Math.round(vh - top - nb - 58));
+  box.style.height = h + "px"; box.style.minHeight = "0"; el.style.setProperty("--cth", h + "px"); ctLock();
+}
+function ctLock() { const de = document.documentElement; if (!de.classList.contains("ct-fit")) return; if (Date.now() - ctFree < 1200 && scrollY < 40) return; de.classList.toggle("ct-lock", scrollY < 6); }
+addEventListener("scroll", ctLock, { passive: true });
+{ let fr = 0; new ResizeObserver(() => { if (fr || !document.documentElement.classList.contains("ct-fit")) return; fr = requestAnimationFrame(() => { fr = 0; ctFit(); }); }).observe(document.body); }   // Hinweisleiste oben kommt/geht → Höhe neu
+{ let tm; addEventListener("resize", () => { clearTimeout(tm); tm = setTimeout(ctFit, 150); }); if (window.visualViewport) visualViewport.addEventListener("resize", () => { clearTimeout(tm); tm = setTimeout(ctFit, 150); }); }
+document.addEventListener("click", e => { const b = e.target.closest("[data-ctmore]"); if (!b) return; ctFree = Date.now(); document.documentElement.classList.remove("ct-lock");
+  window.scrollTo({ top: Math.max(0, b.getBoundingClientRect().top + scrollY - 70), behavior: "smooth" }); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-cttv]"); if (!b) return; state.ctTv = b.dataset.cttv === "1"; save();
   const el = $("ctab"); if (!el) return; el.classList.toggle("tv-on", state.ctTv); el.querySelectorAll("[data-cttv]").forEach(x => x.classList.toggle("on", x === b));
   if (state.ctTv && el.dataset.t) ctTvMount(el.dataset.t); });
@@ -16339,6 +16409,10 @@ function nlLink(text, skipT) {
 }
 document.addEventListener("click", e => { const s = e.target.closest("[data-nlt]"); if (!s) return; e.preventDefault(); e.stopPropagation(); const t = s.dataset.nlt, r = (searchIdx || []).find(x => x.t === t) || {}; closeCard && closeCard(); ctOpen(t, r.ext ? r.ext.y || r.ext.symbol : t, r.n); }, true);
 function ctabBuild(c, r) {
+  // Flüssig (25.11.2026, Wunsch „der Chart hängt manchmal“): Bei gleicher Aktie (Daten nachgeladen, Sync, Einstellungen) wurde der ganze Reiter
+  // neu gebaut – auch der TradingView-Chart lud jedes Mal neu (Ruckler, gerade gezeichnete Linien weg). Jetzt nur die Seitenleiste auffrischen.
+  { const e0 = $("ctab"), h0 = cfChart, m0 = $("cfMain"), b0 = $("ctTv");
+    if (e0 && e0.classList.contains("tv-on") && e0.dataset.t === r.ticker && h0 && h0.tab && m0 && m0.isConnected && b0 && b0.dataset.t === r.ticker + "|" + isLight() && !RP.on) { h0.r = r; if ($("cfSide")) $("cfSide").innerHTML = cockpitSide(h0, r); ctFit(); return; } }
   const el = $("ctab"); if (!el || !window.LightweightCharts) return; rpHalt(); ctabDrop(); delete el.dataset.busy;
   if (c.tf && c.tf !== "D") r = { ...r, zone: null, plan: c.intra ? r.plan : r.plan };            // Wochen-/Monatschart: Kairo-Welle und -Zone gehören zum Tageschart
   const k = r.ext ? { cls: "", t: "Kurschart" } : kSt(r), chg = r.change ?? r.d1, off = !!state.cfSideOff;
@@ -16346,17 +16420,17 @@ function ctabBuild(c, r) {
   const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-rsz" data-rsz="${f}" title="Ziehen: Höhe ändern · Doppeltipp: zurücksetzen" aria-hidden="true"><i></i></div><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="Indikator groß">${CT_IC.expand}</button><button class="ct-x ct-fsx" data-fsind="${f}" title="Unter dem Chart ausblenden" aria-label="Indikator schließen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ctab-c" id="${id}"></div></div>`;
   el.innerHTML = `<div class="ct-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="ctQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="${innerWidth > 900 ? "Symbol suchen" : innerWidth < 640 ? "Aktie suchen – Name oder Kürzel" : "Chart suchen – jede Aktie, Name oder Kürzel (z. B. Amazon, UBS, Rheinmetall)"}" aria-label="Chart suchen">${matchMedia("(pointer: fine)").matches ? `<kbd class="ct-kbd" aria-hidden="true">/</kbd>` : ""}<div id="ctList" class="ct-list" hidden></div></div>
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}${r.live ? "" : (g => g ? ` <small class="muted">· Schluss ${g.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}</small>` : "")(data && data.generated ? new Date(data.generated) : null)}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
-      <button class="ct-b tv-fsb" data-tvfs title="TradingView im Vollbild" aria-label="TradingView im Vollbild">${FS_IC}</button>
+      <button class="ct-b tv-fsb" data-mcn="${innerWidth < 700 ? 2 : 4}" title="Mehrere Charts gleichzeitig" aria-label="Mehrfach-Charts">${MC_IC[innerWidth < 700 ? 2 : 4]}</button><button class="ct-b tv-fsb" data-tvfs title="TradingView im Vollbild" aria-label="TradingView im Vollbild">${FS_IC}</button>
       ${SWING_OFF ? (I => I && (I.rk || I.h) ? lfPill(I) : "")(LF() && !r.ext ? lfInfo(String(r.ticker).replace(/@rp$/, "")) : null) : `<span class="st ${k.cls}">${esc(k.t)}</span>`}${CXBACK ? `<button class="ct-b ct-back" data-cxback title="Zurück zur Übersicht von ${esc(tkClean(CXBACK.t))} und an dieselbe Stelle im ${esc(SEC_NAME[CXBACK.sec] || "Reiter")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>${esc(SEC_NAME[CXBACK.sec] || "Zurück")}</span></button>` : ""}${state.mcBack > 1 ? `<button class="ct-b ct-back" data-mcback title="Zurück zu den ${state.mcBack} Charts" aria-label="Zurück zum Raster">${MC_IC[state.mcBack] || MC_IC[4]}<span>${state.mcBack} Charts</span></button>` : ""}<button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
       <div class="ct-right">${ctDdHtml(c.tf || "D")}<div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"]].map(([v, l]) => `<button title="Zeitraum" class="${v === "252" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
         <button class="ct-b${state.ctWl ? " on" : ""}" data-ctwl title="Watchlist im Chart (Pfeiltasten ↑ ↓ wechseln)" aria-label="Watchlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg></button><button class="ct-b ct-mcb" data-mcn="${innerWidth < 700 ? 2 : 4}" title="Mehrfach-Charts: ${innerWidth < 700 ? 2 : 4} Charts nebeneinander" aria-label="Mehrfach-Charts">${MC_IC[innerWidth < 700 ? 2 : 4]}</button>${ctFsiHtml()}<button class="ct-b" data-ctfocus="main" title="Chart im Vollbild" aria-label="Vollbild">${CT_IC.expand}</button><button class="ct-b ct-sideb${off ? "" : " on"}" data-cfside aria-pressed="${off ? "false" : "true"}" title="Kairo-Leiste ein-/ausblenden" aria-label="Kairo-Leiste">${CT_IC.side}</button></div></div>
-    <div class="ctab-grid"><div class="ctab-l"><div class="ctab-tv" id="ctTv"></div>
+    <div class="ctab-grid"><div class="ctab-l"><div class="ctab-tv" id="ctTv"></div><button class="ct-more" data-ctmore>News &amp; Unternehmen <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
       <div class="chfs-chart ctab-chart" data-pane="main"><div id="cfMain" class="cf-canvas"></div><div class="cmp" id="cmpBox"><button class="cmp-b" data-cmpopen title="Symbol vergleichen" aria-label="Symbol vergleichen">＋ Vergleichen</button><div class="cmp-pop" id="cmpPop" hidden>${[["^GSPC", "S&P 500"], ["^NDX", "Nasdaq 100"], ["^GDAXI", "DAX"], ["^STOXX", "STOXX 600"], ["GC=F", "Gold"], ["CL=F", "Öl WTI"], ["EURUSD=X", "EUR/USD"], ["BTC-USD", "Bitcoin"], ["^TNX", "US-Zins 10 J."]].map(([v, l]) => `<button data-cmp="${v}">${l}</button>`).join("")}<button data-cmp="?">Andere Aktie …</button></div><div class="cmp-chips" id="cmpChips"></div></div><div class="dr-tb" id="drTb"></div><div class="dr-sel" id="drSel" hidden></div><div class="cf-pickbar" id="cfPill">${cfPillHtml(r.ticker)}</div><div class="cf-pick" id="cfPick" hidden></div></div>
       ${pane("tRsi", paneLbl(0, r), "rsi")}${pane("tMacd", paneLbl(1, r), "macd")}${pane("tMbi", paneLbl(2, r), "mbi")}
       ${ctNewsHtml(r)}${ctCoHtml(r)}
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside><div class="ct-wl" id="ctWl"${state.ctWl ? "" : " hidden"}>${ctWlHtml(r.ticker)}</div></div>`;
-  ctFsSearch(); el.classList.add("tv-on"); ctTvMount(r.ticker);   // ein Chart-System: TradingView (Wunsch 25.11.2026)
+  ctFsSearch(); el.classList.add("tv-on"); ctTvMount(r.ticker); ctFit();   // ein Chart-System: TradingView (Wunsch 25.11.2026)
   { const o = CO[r.ticker] || (CO[r.ticker] = {}); o.cc = c; o.r = r; }
   coLoad(r.ticker); coEnd($("ctCo")); if ($("ctCo")) coFan($("ctCo"));
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
@@ -16375,7 +16449,7 @@ function ctabBuild(c, r) {
   // Flüssig (12.11.): RSI, MACD und MBI erst nach dem ersten Bild bauen – der Reiter erscheint sofort, die Indikatoren folgen im nächsten Moment
   ctabInd = [];
   { const hh = cfChart; requestAnimationFrame(() => setTimeout(() => {
-      if (cfChart !== hh || !$("tRsi")) return;
+      if (cfChart !== hh || !$("tRsi") || el.classList.contains("tv-on")) return;   // TradingView sichtbar: RSI/MACD/MBI darunter unsichtbar → nicht rechnen
       ctabInd = indCharts(c, r, $("tRsi"), $("tMacd"), $("tMbi"));
       const vr = hh.chart.timeScale().getVisibleLogicalRange(); syncCharts([hh.chart, ...ctabInd]);
       if (vr) ctabInd.forEach(ch => ch.timeScale().setVisibleLogicalRange(vr));
@@ -17792,7 +17866,7 @@ function goSec(sec, sub) {
   // Reiterwechsel schließt jedes Vollbild (22.11.2026: offenes ETF-/TradingView-/Markt-Vollbild lag sonst über dem neuen Reiter und schluckte jedes Antippen)
   try { if (typeof ETF_FS !== "undefined" && ETF_FS) { ETF_FS = false; document.body.classList.remove("etf-fs"); } if (document.body.classList.contains("tv-full-on")) tvFull(false); if (state.fsv) { state.fsv = null; fsvRender(); } } catch (e) {}
   if (SUBNAV[groupOf(sec)]) state.lastSub = { ...(state.lastSub || {}), [groupOf(sec)]: sec };
-  state.sec = sec; syncOpts(); save(); render(); if (!sub) window.scrollTo({ top: 0 }); sub ? subIn() : secIn();
+  state.sec = sec; syncOpts(); save(); render(); if (!sub) window.scrollTo({ top: 0 }); sub ? subIn() : secIn(); try { ctFit(); } catch (e) {}
   if (sec === "calendar") loadCalendar();
   if (sec === "depot" || sec === "today" || sec === "entry") loadSearch();
 }
