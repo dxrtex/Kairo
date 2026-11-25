@@ -3713,6 +3713,13 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .lf-hr{display:grid!important;grid-template-columns:auto 1fr 44px 70px 84px;column-gap:8px;align-items:center}.lf-hr .lf-rk{text-align:right;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}.lf-hr .lf-rk.down{color:var(--red,#ff453a)}.lf-hr>:last-child{text-align:right}
 .lf-more{display:block;width:100%;margin-top:6px;padding:9px;border:0;border-radius:10px;background:var(--surface-2);color:var(--accent);font-weight:600;font-size:13.5px;cursor:pointer}
 .hev .hn small.hev-k{display:inline;margin-left:8px;font-size:12px;color:var(--muted)}
+.lf-kp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:4px 0 10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.lf-kp>div{padding:9px 12px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:1px}.lf-kp>div:first-child{border-left:0}
+.lf-kp span{font-size:11.5px;color:var(--muted)}.lf-kp b{font-size:16px;font-variant-numeric:tabular-nums}.lf-kp small{font-size:11.5px;color:var(--muted)}
+.lf-prev{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--surface-2)}.lf-prev-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-bottom:6px}.lf-prev-h b{font-size:13.5px}.lf-prev-h small{font-size:12px;color:var(--muted)}
+.lf-prev-r{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px}.lf-prev-r>span{width:76px;font-size:12.5px;font-weight:600}.lf-prev-r em{font-style:normal;font-size:12.5px;color:var(--muted)}
+.lf-tc{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 4px;border:0;border-radius:999px;background:var(--surface);color:var(--text);font-size:12.5px;cursor:pointer}.lf-tc .cf-av{width:20px!important;height:20px!important}
+.lf-tc.out{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--red,#ff453a) 40%,transparent)}.lf-tc.in{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--up) 40%,transparent)}
+td small.cur{margin-left:3px;font-size:11px;color:var(--muted)}.mlist .lsig small{display:none}
 .lsig{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:13.5px;line-height:1.15}.lsig i{flex:none;width:7px;height:7px;border-radius:50%;background:currentColor}.lsig b{font-weight:600}
 .lsig small{font-size:11.5px;color:var(--muted);font-weight:400}.lsig-up{color:var(--up)}.lsig-down{color:var(--red,#ff453a)}.lsig-hold{color:var(--accent)}.lsig-gold{color:var(--gold)}.lsig-muted{color:var(--muted)}
 .etf-q{padding:20px 22px!important}
@@ -4392,7 +4399,7 @@ const lfCols = {
   cap: { k: "cap", l: "Börsenwert", n: 1, g: r => r.s ? r.s.mc : null, h: r => r.s && r.s.mc ? fmtCap(r.s.mc) : "–" },
   d1: { k: "d1", l: "Heute", n: 1, g: r => r.s ? r.s.d1 : null, h: r => r.s && r.s.d1 != null ? `<span class="${r.s.d1 >= 0 ? "up" : "down"}">${sgnPct(r.s.d1, 1)}</span>` : "–" },
   e: { k: "e", l: "Earnings", g: r => (r.w && r.w.edate) || (r.s && r.s.ed) || "9", h: r => { const d = (r.w && r.w.edate) || (r.s && r.s.ed); return d ? `<span class="${r.chk && !r.chk[7] ? "down" : ""}">${dateDE(d)}</span>` : "–"; } },
-  p: { k: "p", l: "Kurs", n: 1, g: r => r.p, h: r => r.p != null ? `<span data-lpx="px:${esc(r.t)}" data-v="${r.p}">${fmt(r.p)}</span>` : "–" } };
+  p: { k: "p", l: "Kurs", n: 1, g: r => r.p, h: r => r.p != null ? `<span data-lpx="px:${esc(r.t)}" data-v="${r.p}">${fmt(r.p)}</span><small class="cur">${({ USD: "$", EUR: "€", GBP: "£", GBp: "p", CHF: "Fr" })[r.cur || "USD"] || esc(r.cur)}</small>` : "–" } };
 // Kopfzeile wie bisher: Anzahl, Info, Scan-Menü – darunter eine schlanke Zeile zum Strategie-Depot
 function lfBar(n, view, extra) { return `<div class="sc-tb">${extra || ""}<span class="sc-cnt"><span class="sc-n">${n} ${n === 1 ? "Aktie" : "Aktien"}</span>${gl("v_" + view)}</span><span class="sc-tb-r">${scanMenuHtml()}</span></div>`; }
 function scanBuyHtml() {
@@ -4409,8 +4416,10 @@ function scanBuyHtml() {
     lfCols.d1, lfCols.p];   // 24.11.2026: nur noch, was die Strategie braucht – Kriterien in der Aktienkarte
   const sel = `<label class="sp-dd"><span>Zeige</span><select data-lfshow>${[[n, `Top ${n}`], [lfH(L), `Top ${lfH(L)}`], [40, "Top 40"], [60, "Top 60"]].map(([v, l]) => `<option value="${v}"${show === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
   const nm = t => esc(shortNm((lfInfo(t, L) || {}).n || t));
-  const swap = lfSwapSoon(L) && (SW.out.length || SW.inn.length) ? `<div class="note lf-swapnote"><b>${SW.now ? `Tausch ${fmtD(L.since)}:` : `Tausch am ${fmtD(L.next)}:`}</b> verkaufen ${SW.out.map(nm).join(", ") || "–"} · kaufen ${SW.inn.map(nm).join(", ") || "–"}</div>` : "";
-  const line = `<div class="lf-sum"><span>Strategie seit Tausch <b class="${(L.ret ?? 0) >= 0 ? "up" : "down"}">${sgnPct(L.ret ?? 0, 1)}</b></span><span>S&P 500 <b class="${(L.bench ?? 0) >= 0 ? "up" : "down"}">${sgnPct(L.bench ?? 0, 1)}</b></span><span>Tausch <b>${fmtD(L.next)}</b>${dn != null && dn >= 0 ? ` <small>in ${dn} T.</small>` : ""}</span></div>`;
+  const chip = (t, k) => `<button class="lf-tc ${k}" ${lfOpen(t)}>${cfAv(t)}${nm(t)}</button>`;
+  const line = `<div class="lf-kp"><div><span>Seit Tausch</span>${lfPct(L.ret ?? 0)}</div><div><span>S&P 500</span>${lfPct(L.bench ?? 0)}</div><div><span>Nächster Tausch</span><b>${fmtD(L.next)}</b>${dn != null && dn >= 0 ? `<small>in ${dn} Tagen</small>` : ""}</div></div>`;
+  const swap = `<div class="lf-prev"><div class="lf-prev-h"><b>${SW.now ? `Tausch ${fmtD(L.since)}` : `Vorschau Tausch ${fmtD(L.next)}`}</b><small>${SW.now ? "jetzt umsetzen" : "Stand heute – kann sich bis zum Termin ändern"}</small></div>
+    ${SW.out.length || SW.inn.length ? `<div class="lf-prev-r"><span class="down">Verkaufen</span>${SW.out.length ? SW.out.map(t => chip(t, "out")).join("") : `<em>keine</em>`}</div><div class="lf-prev-r"><span class="up">Kaufen</span>${SW.inn.length ? SW.inn.map(t => chip(t, "in")).join("") : `<em>keine</em>`}</div>` : `<div class="lf-prev-r"><em>Stand heute bleibt alles, wie es ist.</em></div>`}</div>`;
   return lfBar(rows.length, "long", sel) + line + swap + lfTable("buy", rows, cols, { k: "rk", asc: true });
 }
 function scanWatchHtml() {
@@ -10859,8 +10868,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.262";
-const APP_NEWS = [["2026.11.262", "ETF-Reiter wie bei justETF", [
+const APP_VER = "2026.11.263";
+const APP_NEWS = [["2026.11.263", "Scanner übersichtlicher", [
+  ["Vorschau des nächsten Tauschs", "Über der Liste: was beim nächsten Termin verkauft und gekauft würde (Stand heute) – mit Logo, ein Tipp öffnet die Aktie."],
+  ["Kennzahlen auf einen Blick", "Seit Tausch, S&P 500 und nächster Tausch als ruhige Leiste, die Kopfzeile als Chips. Veraltete Daten färben den Scan-Chip gelb."],
+  ["Kurse mit Währung", "In allen Tabellen steht hinter dem Kurs die Währung ($, €, £) – wichtig bei deinen deutschen und US-Aktien unter „Meine“."]]],
+ ["2026.11.262", "ETF-Reiter wie bei justETF", [
   ["Wertentwicklung und Fondsdaten", "Unter dem Kurs: 1 Monat, 6 Monate, laufendes Jahr, 1 und 3 Jahre – dazu Index, Anzahl Aktien, Kosten (TER 0,17 %), thesaurierend, physisch, Irland."],
   ["Mein Plan rechnet richtig", "Ist- und Ziel-Aufteilung kommen jetzt aus demselben Betrag: ETF-Wert plus Wert deines Strategie-Depots (aus dem Depot-Import, sonst dein eingestellter Betrag). Die Lücke zum ETF-Ziel passt zum Betrag im Nachkauf-Signal."],
   ["Nachkauf-Signal ohne Doppelungen", "Die Kennzahlen zeigen direkt, was für das Signal zählt (grün umrandet mit +), statt sie darunter noch einmal als Liste zu wiederholen. Der Rückblick steht in einer Zeile."],
@@ -13518,6 +13531,8 @@ function headSub() {
     return todaySubHtml(stale) + (bad && !stale ? ` ${healthPill()}` : ""); }
   const s = data.stats || {}, when = new Date(data.generated).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const L = LF();
+  if (L && state.sec === "scanner") { const hs = health(), stale = hs.some(x => x[0] === "r" && /Letzter Scan/.test(x[1]));
+    return `<span class="hchip on"><i></i>${L.hold ? L.hold.length : L.rule.n} Positionen</span><span class="hchip">${(L.watch || []).length} auf der Watchlist</span><span class="hchip">${fmt(L.univ, 0)} US-Aktien im Ranking</span>${stale ? `<button class="hchip warn" data-gosec="settings" data-settab="status"><i></i>Scan ${esc(when)} ›</button>` : `<span class="hchip plain">Scan ${esc(when)}</span>`}`; }
   return L ? `<b>${L.rule.n} Positionen</b> · <b>${(L.watch || []).length} auf der Watchlist</b> · ${fmt(L.univ, 0)} US-Aktien im Ranking · nächster Tausch ${fmtD(L.next)} · Scan ${esc(when)} Uhr ${healthPill()}`
     : `${fmt(s.universe, 0)} Aktien geprüft · Rangliste nach dem nächsten großen Scan · Scan ${esc(when)} Uhr ${healthPill()}`;
 }
