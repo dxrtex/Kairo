@@ -63,28 +63,28 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-86 Fehlprognosen und 469 Vergleichsfälle untersucht.
+87 Fehlprognosen und 468 Vergleichsfälle untersucht.
 
-- Markt: Bei 36% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 18% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
-- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.8%, getroffene Ø -5.5%.
+- Markt: Bei 36% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 17% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
+- Vorlauf (20 Handelstage davor): Fehlprognosen Ø -12.0%, getroffene Ø -5.5%.
 
 | Grund in den Schlagzeilen danach | bei Fehlprognosen | bei getroffenen | Faktor |
 |---|---|---|---|
-| Ausblick | 33% (28) | 28% | 1.2 |
+| Ausblick | 33% (29) | 28% | 1.2 |
 | Marge | 13% (11) | 7% | 1.7 |
-| Umsatz | 55% (47) | 49% | 1.1 |
-| Nutzer/Kunden | 6% (5) | 1% | 6.8 |
+| Umsatz | 55% (48) | 49% | 1.1 |
+| Nutzer/Kunden | 6% (5) | 1% | 6.7 |
 | Aufträge | 9% (8) | 5% | 1.7 |
 | Kosten | 3% (3) | 8% | 0.4 |
 | Zölle/Politik | 2% (2) | 1% | 2.7 |
-| KI/Rechenzentren | 10% (9) | 12% | 0.9 |
-| Management | 5% (4) | 3% | 1.4 |
+| KI/Rechenzentren | 11% (10) | 12% | 1.0 |
+| Management | 6% (5) | 3% | 1.8 |
 | Rückkauf/Dividende | 1% (1) | 6% | 0.2 |
-| Analysten | 8% (7) | 8% | 1.1 |
-| Sondereffekt | 3% (3) | 1% | 4.1 |
+| Analysten | 8% (7) | 8% | 1.0 |
+| Sondereffekt | 3% (3) | 1% | 4.0 |
 | Übernahme | 1% (1) | 5% | 0.2 |
 
-**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -11.8% gegen -5.5% → „schon eingepreist“ als Merkmal prüfen
+**Kandidaten für neue Merkmale:** Vorlauf: Fehlprognosen Ø -12.0% gegen -5.5% → „schon eingepreist“ als Merkmal prüfen
 
 Beispiele:
 - ECG 2026-11-03: Kairo 71%, Kurs -29.3% (Markt +0.3%) · Gründe: Ausblick, Umsatz – „Everus Construction Group (ECG) Jumped, What Is Driving Attention Now?“
@@ -92,8 +92,8 @@ Beispiele:
 - DUOL 2026-11-03: Kairo 36%, Kurs +26.0% (Markt +0.3%) · Gründe: Umsatz, Nutzer/Kunden – „Duolingo Misses on Earnings. The Stock Soars 15%.“
 - RDW 2026-11-04: Kairo 65%, Kurs -19.8% (Markt +1.7%) · Gründe: Marge, Umsatz, Aufträge – „Why Redwire Stock Is Plummeting Today“
 - MTSI 2026-11-05: Kairo 60%, Kurs -18.4% (Markt -2.5%) · Gründe: Umsatz, KI/Rechenzentren – „MACOM (NASDAQ:MTSI) Q3 sales beat estimates but stock drops“
+- NTNX 2026-11-24: Kairo 56%, Kurs -17.8% (Markt -0.5%) · Gründe: Ausblick, Umsatz, Management, Analysten – „Nutanix Stock Gets Body-Slammed on Surprise CEO Exit. Why Some Analysts Aren’t Sweating It.“
 - MTRN 2026-11-04: Kairo 60%, Kurs -17.7% (Markt +1.7%) · Gründe: Marge – „Earnings call transcript: Materion beats EPS in Q3 2026 but shares slide“
-- NTNX 2026-11-24: Kairo 56%, Kurs -17.1% (Markt -0.5%) · Gründe: Ausblick, Umsatz, Management, Analysten – „Nutanix Stock Gets Body-Slammed on Surprise CEO Exit. Why Some Analysts Aren’t Sweating It.“
 - RUM 2026-11-11: Kairo 40%, Kurs +16.6% (Markt +1.3%) · Gründe: Umsatz, KI/Rechenzentren – „Rumble's Quake AI Is Nearly Sold Out — And Higher Prices Could Be Next“
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
