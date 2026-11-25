@@ -2326,7 +2326,8 @@ table.co-ud td b { font-weight: 600; }
 .vpc-r.va i b { background: rgba(48,209,88,.6); } .vpc-r.va i b.dn { background: rgba(255,69,58,.55); } .vpc-r.poc i b, .vpc-r.poc i b.dn { background: #f4b740; }
 .vpc-r.now span { color: var(--text); font-weight: 700; } .vpc-r.now span::after { content: " ◂"; color: var(--accent, #0a84ff); }
 .ct-more { display: none; } html.ct-fit .ct-more { display: flex; align-items: center; gap: 6px; margin: 10px auto 2px; padding: 9px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-html.ct-fit .ct-more svg { width: 16px; height: 16px; } html.ct-lock, html.ct-lock body { overflow: hidden !important; overscroll-behavior: none; }
+html.ct-fit .ct-more svg { width: 16px; height: 16px; } html.ct-lock, html.ct-lock body, html:has(body.tv-full-on), body.tv-full-on { overflow: hidden !important; overscroll-behavior: none; }
+html.ct-lock body, body.tv-full-on { position: fixed; inset: 0; width: 100%; }   /* iOS: sonst federt die Seite nach und schluckt Fingerbewegungen (Fadenkreuz beim Zeichnen) */
 html.ct-fit .ctab.tv-on .ctab-tv { touch-action: none; overscroll-behavior: contain; }
 @media (min-width: 701px) { html.ct-lock .ctab-side { max-height: calc(var(--cth, 600px) + 50px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; } }
 .ctab-tv.tv-full { position: fixed !important; inset: 0; z-index: 9800; height: 100dvh !important; min-height: 0 !important; margin: 0 !important; border-radius: 0 !important; border: 0 !important; display: block !important; }
@@ -6102,9 +6103,10 @@ document.addEventListener("click", e => {
 // Solange ein Vollbild offen ist: Seiten-Zoom aus (viewport + touch-action) und jede Zoom-Geste – Safari-Geste, Strg+Scroll,
 // zwei Finger – wird oben im Dokument abgefangen und an die Ansicht weitergegeben, egal über welchem Element der Zeiger steht.
 const ZG = { target: null, vp: null,
-  open() { return !!(state.fsv || ($("chfs") && !$("chfs").hidden)); },
+  open() { return !!(state.fsv || ($("chfs") && !$("chfs").hidden) || this.tv()); },
+  tv() { const de = document.documentElement; return de.classList.contains("ct-fit") || de.classList.contains("ct-lock") || document.body.classList.contains("tv-full-on"); },   // TradingView: Seiten-Zoom aus, sonst kämpft Safari beim Zwei-Finger-Zoom mit dem Chart
   sync() { const m = document.querySelector('meta[name="viewport"]'); if (!m) return; if (this.vp == null) this.vp = m.content;
-    const on = this.open(); m.content = on ? this.vp + ", maximum-scale=1, user-scalable=no" : this.vp;
+    const on = this.open(), nc = on ? this.vp + ", maximum-scale=1, user-scalable=no" : this.vp; if (m.content !== nc) m.content = nc;
     document.documentElement.classList.toggle("zg-on", on); if (!on) this.target = null; },
   t() { const t = this.target; return t && document.body.contains(t.el) ? t : null; } };
 ["gesturestart", "gesturechange", "gestureend"].forEach(type => document.addEventListener(type, e => {
@@ -10932,8 +10934,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.273";
-const APP_NEWS = [["2026.11.273", "ETF klarer", [
+const APP_VER = "2026.11.274";
+const APP_NEWS = [["2026.11.274", "Chart ohne Wackeln", [
+  ["Zwei-Finger-Zoom ruhig", "Beim Zoomen im Chart vergrößert iPad/iPhone nicht mehr zusätzlich die ganze Seite, und der Chart ändert dabei nicht mehr seine Höhe – kein Rütteln mehr."],
+  ["Fadenkreuz beim Zeichnen", "Im Chart und im Vollbild steht die Seite jetzt komplett still – die Fingerbewegung geht ganz an TradingView, auch beim Setzen von Fibonacci-Punkten."]]],
+ ["2026.11.273", "ETF klarer", [
   ["70/30 fest", "Die Aufteilung ist jetzt fest 70 % Welt-ETF und 30 % Strategie – keine Auswahl mehr. Frühere eigene Werte gelten nicht mehr."],
   ["Dein Plan neu", "Ein zweifarbiger Balken zeigt, wo du heute stehst und wo das Ziel liegt; darunter je eine Kachel für ETF, Strategie-Depot und Sparrate mit dem, was zu tun ist."],
   ["Ruhiger", "Fonds-Eckdaten und Erklärtexte stehen jetzt im Hintergrund unten."]]],
@@ -15517,10 +15522,10 @@ function ctTvMount(t) {
 }
 // Vollbild für den TradingView-Chart (Wunsch 18.11.2026): echtes Vollbild, wo das Gerät es erlaubt, sonst bildschirmfüllend mit „Schließen“
 function tvFull(on) { const box = $("ctTv"); if (!box) return; const fe = document.fullscreenElement || document.webkitFullscreenElement;
-  if (on) { box.classList.add("tv-full"); document.body.classList.add("tv-full-on"); document.documentElement.classList.remove("ct-fit", "ct-lock"); box.style.height = box.style.minHeight = "";
+  if (on) { if (!document.body.classList.contains("tv-full-on")) { tvFull.y = scrollY; document.body.style.top = -tvFull.y + "px"; } box.classList.add("tv-full"); document.body.classList.add("tv-full-on"); document.documentElement.classList.remove("ct-fit", "ct-lock"); box.style.height = box.style.minHeight = ""; ZG.sync();
     if (!$("tvFsX")) document.body.insertAdjacentHTML("beforeend", `<button id="tvFsX" class="tv-fsx" data-tvfsx aria-label="Vollbild schließen">✕ Schließen</button>`);
     const rq = box.requestFullscreen || box.webkitRequestFullscreen; if (rq) try { const pr = rq.call(box); if (pr && pr.catch) pr.catch(() => {}); } catch (err) {} }
-  else { box.classList.remove("tv-full"); document.body.classList.remove("tv-full-on"); const x = $("tvFsX"); if (x) x.remove(); setTimeout(ctFit, 60); if (fe) try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (err) {} } }
+  else { const was = document.body.classList.contains("tv-full-on"); box.classList.remove("tv-full"); document.body.classList.remove("tv-full-on"); document.body.style.top = ""; const y0 = was ? tvFull.y || 0 : null; if (y0 > 40) ctFree = Date.now(); const x = $("tvFsX"); if (x) x.remove(); ZG.sync(); ctFit(); if (y0 != null) { window.scrollTo(0, y0); requestAnimationFrame(() => { window.scrollTo(0, y0); ctLock(); }); setTimeout(() => { if (!document.body.classList.contains("tv-full-on")) { window.scrollTo(0, y0); ctLock(); } }, 350); } if (fe) try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (err) {} } }
 ["fullscreenchange", "webkitfullscreenchange"].forEach(ev => document.addEventListener(ev, () => { if (!(document.fullscreenElement || document.webkitFullscreenElement) && $("ctTv") && $("ctTv").classList.contains("tv-full") && !document.body.classList.contains("tv-full-keep")) tvFull(false); }));
 document.addEventListener("click", e => { if (e.target.closest("[data-tvfs]")) { tvFull(true); return; } if (e.target.closest("[data-tvfsx]")) { tvFull(false); return; } });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && document.body.classList.contains("tv-full-on")) tvFull(false); });
@@ -15532,17 +15537,18 @@ const ctTouch = () => matchMedia("(pointer: coarse)").matches || (navigator.maxT
 let ctFree = 0;
 function ctFit() {
   const de = document.documentElement, box = $("ctTv"), el = $("ctab");
-  if (state.sec === "chart" && state.mc > 1 && $("mcRoot") && MC_TV) { de.classList.remove("ct-fit"); de.classList.toggle("ct-lock", ctTouch() && !(innerWidth < 700 && state.mc === 4)); return; }   // Raster füllt den Bildschirm: Seite steht still
+  if (state.sec === "chart" && state.mc > 1 && $("mcRoot") && MC_TV) { de.classList.remove("ct-fit"); de.classList.toggle("ct-lock", ctTouch() && !(innerWidth < 700 && state.mc === 4)); ZG.sync(); return; }   // Raster füllt den Bildschirm: Seite steht still
   const on = !!(box && el && el.isConnected && el.classList.contains("tv-on") && state.sec === "chart" && !(state.mc > 1) && ctTouch() && !document.body.classList.contains("tv-full-on"));
-  de.classList.toggle("ct-fit", on); if (!on) { de.classList.remove("ct-lock"); if (box) box.style.height = box.style.minHeight = ""; return; }
-  const vh = window.visualViewport ? visualViewport.height : innerHeight, nav = document.querySelector("nav.tabbar"), nr = nav && getComputedStyle(nav).display !== "none" ? nav.getBoundingClientRect() : null;
+  de.classList.toggle("ct-fit", on); if (!on) { if (!(state.sec === "chart" && state.mc > 1 && $("mcRoot"))) de.classList.remove("ct-lock"); if (box) box.style.height = box.style.minHeight = ""; ZG.sync(); return; }
+  if (window.visualViewport && Math.abs(visualViewport.scale - 1) > .01) return;   // Seite gerade vergrößert: Höhe nicht anfassen
+  const vh = innerHeight, nav = document.querySelector("nav.tabbar"), nr = nav && getComputedStyle(nav).display !== "none" ? nav.getBoundingClientRect() : null;
   const nb = nr && nr.height && nr.top > vh * .5 ? Math.max(0, vh - nr.top) : 0, top = box.getBoundingClientRect().top + scrollY, h = Math.max(300, Math.round(vh - top - nb - 58));
-  box.style.height = h + "px"; box.style.minHeight = "0"; el.style.setProperty("--cth", h + "px"); ctLock();
+  box.style.height = h + "px"; box.style.minHeight = "0"; el.style.setProperty("--cth", h + "px"); ctLock(); ZG.sync();
 }
 function ctLock() { const de = document.documentElement; if (!de.classList.contains("ct-fit")) return; if (Date.now() - ctFree < 1200 && scrollY < 40) return; de.classList.toggle("ct-lock", scrollY < 6); }
 addEventListener("scroll", ctLock, { passive: true });
-{ let fr = 0; new ResizeObserver(() => { if (fr || !document.documentElement.classList.contains("ct-fit")) return; fr = requestAnimationFrame(() => { fr = 0; ctFit(); }); }).observe(document.body); }   // Hinweisleiste oben kommt/geht → Höhe neu
-{ let tm; addEventListener("resize", () => { clearTimeout(tm); tm = setTimeout(ctFit, 150); }); if (window.visualViewport) visualViewport.addEventListener("resize", () => { clearTimeout(tm); tm = setTimeout(ctFit, 150); }); }
+{ let fr = 0, t0 = null; new ResizeObserver(() => { if (fr || !document.documentElement.classList.contains("ct-fit")) return; fr = requestAnimationFrame(() => { fr = 0; const b = $("ctTv"), t = b ? Math.round(b.getBoundingClientRect().top + scrollY) : null; if (t !== t0) { t0 = t; ctFit(); } }); }).observe(document.body); }   // Hinweisleiste oben kommt/geht → Höhe neu
+{ let tm, w0 = innerWidth, h0 = innerHeight; addEventListener("resize", () => { if (Math.abs(innerWidth - w0) < 2 && Math.abs(innerHeight - h0) < 80) return; w0 = innerWidth; h0 = innerHeight; clearTimeout(tm); tm = setTimeout(ctFit, 200); }); }   // nur echte Größenwechsel (Drehen, Split View) – nicht die Adressleiste während einer Geste
 document.addEventListener("click", e => { const b = e.target.closest("[data-ctmore]"); if (!b) return; ctFree = Date.now(); document.documentElement.classList.remove("ct-lock");
   window.scrollTo({ top: Math.max(0, b.getBoundingClientRect().top + scrollY - 70), behavior: "smooth" }); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-cttv]"); if (!b) return; state.ctTv = b.dataset.cttv === "1"; save();
