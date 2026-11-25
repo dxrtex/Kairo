@@ -3701,6 +3701,10 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .km{display:inline-flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:58px}.km b{font-size:13.5px}.km i{display:block;width:56px;height:4px;border-radius:3px;background:rgba(127,127,127,.22);overflow:hidden}.km u{display:block;height:100%;background:var(--muted);border-radius:3px}
 .km.hit b{color:var(--up)}.km.hit u{background:var(--up)}.km.fast b{color:var(--gold)}.km.fast u{background:var(--gold)}
 .etf-hero2{padding:22px!important;display:flex;flex-direction:column;gap:14px}
+.lf-hl .lf-hlh{display:grid;grid-template-columns:1fr 56px 96px;column-gap:10px}.lf-hl .lf-hlh span:not(:first-child){text-align:right}
+.lf-hr{display:grid!important;grid-template-columns:auto 1fr 56px 96px;column-gap:10px;align-items:center}.lf-hr .lf-rk{text-align:right;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}.lf-hr .lf-rk.down{color:var(--red,#ff453a)}.lf-hr>:last-child{text-align:right}
+.lf-more{display:block;width:100%;margin-top:6px;padding:9px;border:0;border-radius:10px;background:var(--surface-2);color:var(--accent);font-weight:600;font-size:13.5px;cursor:pointer}
+.hev .hn small.hev-k{display:inline;margin-left:8px;font-size:12px;color:var(--muted)}
 .lsig{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:13.5px;line-height:1.15}.lsig i{flex:none;width:7px;height:7px;border-radius:50%;background:currentColor}.lsig b{font-weight:600}
 .lsig small{font-size:11.5px;color:var(--muted);font-weight:400}.lsig-up{color:var(--up)}.lsig-down{color:var(--red,#ff453a)}.lsig-hold{color:var(--accent)}.lsig-gold{color:var(--gold)}.lsig-muted{color:var(--muted)}
 .etf-q{padding:20px 22px!important}.eq-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.eq-id b{display:block;font-size:17px;font-weight:650}.eq-id small{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
@@ -4233,8 +4237,11 @@ function longTodayHtml() {
     <div class="lf-kpi"><div><span>seit Tausch ${fmtD(L.since)}</span>${lfPct(L.ret)}</div><div><span>S&P 500</span>${lfPct(L.bench)}</div><div><span>nächster Tausch</span><b>${dn != null && dn >= 0 ? `in ${dn} T.` : fmtD(L.next)}</b></div></div>
     ${lfCurveHtml(L)}${probeHtml(true)}
     ${(sw => soon && (sw.out.length || sw.inn.length) ? `<div class="lf-swap"><b>${sw.now ? "Tausch jetzt:" : "Tausch steht an:"}</b> verkaufen ${sw.out.map(t => esc(t)).join(", ") || "–"} · kaufen ${sw.inn.map(t => esc(t)).join(", ") || "–"} <button class="hlink" data-golong>Liste ›</button></div>` : "")(lfSwap(L))}
-    <div class="lf-hl"><div class="lf-hlh"><span>Aktie</span><span>seit Tausch</span></div>${L.hold.slice().sort((a, b) => (b.ret ?? -9) - (a.ret ?? -9)).map(x => `<button class="hrow lf-hr" ${lfOpen(x.t)}>${cfAv(x.t)}<span class="hn">${esc(shortNm(x.n || x.t))}<small>${esc(x.t)}${x.rk ? ` · Rang ${x.rk}` : ""}</small></span>${lfPct(x.ret)}</button>`).join("")}</div></div>`;
+    ${(hs => { const lim = state.lfAllH || hs.length <= 7 ? hs.length : 6, nm = x => x.n || ((lfInfo(x.t, L) || {}).n) || x.t;
+      return `<div class="lf-hl"><div class="lf-hlh"><span>Aktie</span><span>Rang</span><span>seit Tausch</span></div>${hs.slice(0, lim).map(x => `<button class="hrow lf-hr" ${lfOpen(x.t)}>${cfAv(x.t)}<span class="hn">${esc(shortNm(nm(x)))}<small>${esc(tkClean(x.t))}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span><span class="lf-rk${x.rk && x.rk > lfH(L) ? " down" : ""}">${x.rk || "–"}</span>${lfPct(x.ret)}</button>`).join("")}
+        ${hs.length > 7 ? `<button class="lf-more" data-lfallh>${state.lfAllH ? "Weniger anzeigen" : `Alle ${hs.length} anzeigen`}</button>` : ""}</div>`; })(L.hold.slice().sort((a, b) => (b.ret ?? -9) - (a.ret ?? -9)))}</div>`;
 }
+document.addEventListener("click", e => { if (!e.target.closest("[data-lfallh]")) return; state.lfAllH = !state.lfAllH; save(); render(); });
 function longHtml() {
   const L = LF();
   const head = `<div class="section-title"><span>Kairo Langfrist</span><span class="muted">Momentum-Depot · im Test</span></div>`;
@@ -4478,7 +4485,7 @@ function probeHtml(compact) { if (PROBE.d === null) { probeLoad(); return compac
   if (!st || (st.equity || []).length < 2) return compact ? "" : `<div class="card lf-probe"><div class="plan-h">Probe-Depot · Strategie im echten Markt</div><p class="muted" style="margin:4px 0 0">Startet nach dem nächsten US-Börsenschluss: 10.000 € virtuell, gekauft wird zur nächsten Eröffnung das aktuelle Strategie-Depot. Danach handelt es automatisch an jedem Tauschtermin – mit echten Kursen, Gebühren und Steuern, ohne echtes Geld.</p></div>`;
   const S = st.summary || {}, S0 = st.start_cash || 10000, E = st.equity, last = E[E.length - 1].eur, ret = last / S0 - 1;
   const pc = v => v == null ? "–" : `<b class="${v >= 0 ? "up" : "down"}">${sgnPct(v, 1)}</b>`;
-  if (compact) return `<button class="lf-pr" data-goprobe><span>Probe-Depot <small>seit ${dateDE(st.start)}</small></span>${pc(ret)}<em>Welt-ETF ${S.etf == null ? "–" : sgnPct(S.etf, 1)}</em><i>›</i></button>`;
+  if (compact) return `<button class="lf-pr" data-goprobe><span>Probe-Depot <small>seit ${fmtD(st.start)}</small></span>${pc(ret)}<em>Welt-ETF ${S.etf == null ? "–" : sgnPct(S.etf, 1)}</em><i>›</i></button>`;
   const pos = (st.positions || []).map(p => { const I = lfInfo(p.t) || {}, px = I.p, r = px && p.entry ? px / p.entry - 1 : null;
     return `<tr class="lf-row" ${lfOpen(p.t)}><td><div class="sh-nm">${cfAv(p.t)}<span><b>${esc(shortNm(I.n || p.t))}</b><small>${esc(p.t)} · seit ${dateDE(p.entry_ts)}</small></span></div></td><td class="num">${p.qty}</td><td class="num">${fmt(p.entry)} $</td><td class="num">${px != null ? fmt(px) + " $" : "–"}</td><td class="num">${r != null ? `<span class="${r >= 0 ? "up" : "down"}">${sgnPct(r, 1)}</span>` : "–"}</td></tr>`; }).join("");
   const tr = (st.trades || []).slice(-8).reverse().map(t => `<tr><td><b>${esc(t.t)}</b><small> ${dateDE(t.entry_ts)} → ${dateDE(t.exit_ts)}</small></td><td>${esc(t.why || "")}</td><td class="num"><span class="${t.pnl_eur >= 0 ? "up" : "down"}">${t.pnl_eur >= 0 ? "+" : ""}${fmt(t.pnl_eur, 0)} €</span></td><td class="num">${t.tax_eur ? fmt(t.tax_eur, 0) + " €" : "–"}</td></tr>`).join("");
@@ -9764,14 +9771,14 @@ function soonHtml() {
     .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.kind === "earnings" && b.kind === "earnings" ? earnWhen(a).m - earnWhen(b).m : 0)).slice(0, 9);
   const fresh = earnData ? Object.values(earnData).filter(r => r && r.last && mine.has(r.t) && daysUntil(r.last.date) >= -3 && daysUntil(r.last.date) <= 0) : [];
   const freshHtml = fresh.length ? `<div class="hcard">${hHead("Neue Quartalszahlen", SEC_LINK("calendar"), "Kalender")}
-    ${fresh.map(r => { const v = r.last.view || {}, rx = r.last.rx; return `<div class="hev ev-tap" data-ctgo="${esc(r.t)}" role="button" tabindex="0"><span class="k k-earn">Q</span><span class="hn">${esc(r.name || r.t)}<small style="display:block;color:var(--muted)">${esc(v.lbl ? "Für den Kurs: " + v.lbl : "Zahlen da")}${rx && rx.d1 != null ? ` · Reaktion ${sgnPct(rx.d1, 1)}` : ""}</small></span><span class="ev-res t-${esc(v.tone || "gray")}"><i></i></span></div>`; }).join("")}</div>` : "";
+    ${fresh.map(r => { const v = r.last.view || {}, rx = r.last.rx; return `<div class="hev ev-tap" data-ctgo="${esc(r.t)}" role="button" tabindex="0"><span class="k k-earn">Q</span><span class="hn">${esc(shortNm(r.name || r.t))}<small style="display:block;color:var(--muted)">${esc(v.lbl ? "Für den Kurs: " + v.lbl : "Zahlen da")}${rx && rx.d1 != null ? ` · Reaktion ${sgnPct(rx.d1, 1)}` : ""}</small></span><span class="ev-res t-${esc(v.tone || "gray")}"><i></i></span></div>`; }).join("")}</div>` : "";
   if (!evs.length) return freshHtml;
   liveKick(evs.filter(e => e.kind === "earnings" && e.ticker && daysUntil(e.date) <= 1).map(e => e.ticker), "today");   // Quartalszahlen heute/morgen: Kurs live
   return freshHtml + `<div class="hcard">${hHead("Demnächst · 7 Tage", SEC_LINK("calendar"), "Kalender")}
     ${evs.map(e => { const [icon, cls] = e.kind === "sell" ? ["↘", "k-earn"] : CAL_KIND[e.kind] || ["•", "k-exp"], n = daysUntil(e.date);
       if (e.kind === "earnings" && n <= 1) { const w = earnWhen(e);   // Quartalszahlen heute/morgen: hervorgehoben, mit Uhrzeit
-        return `<div class="hev ev-tap hev-q${n === 0 ? " now" : ""}${w.done ? " done" : ""}" data-ctgo="${esc(e.ticker)}" role="button" tabindex="0"><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.name || e.ticker)}<small>Quartalszahlen ${n === 0 ? "heute" : "morgen"}${w.done ? "" : " · " + esc(w.sub)}</small></span><span class="hq-t${w.sure ? "" : " un"}"><b>${esc(w.lbl)}</b>${n === 0 ? "" : "<i>morgen</i>"}${liveChg(e.ticker)}</span></div>`; }
-      return `<div class="hev${e.kind === "earnings" ? " ev-tap" : ""}"${e.kind === "earnings" ? ` data-ctgo="${esc(e.ticker)}" role="button" tabindex="0"` : ""}><span class="k ${cls}">${icon}</span><span class="hn">${esc(e.ticker ? (e.name || e.ticker) + " · " + (e.kind === "sell" ? "Verkaufstag deines Trades" : e.kind === "earnings" ? "Quartalszahlen" : "Dividende") : e.title)}</span><em>${n === 0 ? "heute" : n === 1 ? "morgen" : new Date(e.date + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}</em></div>`; }).join("")}</div>`;
+        return `<div class="hev ev-tap hev-q${n === 0 ? " now" : ""}${w.done ? " done" : ""}" data-ctgo="${esc(e.ticker)}" role="button" tabindex="0"><span class="k ${cls}">${icon}</span><span class="hn">${esc(shortNm(e.name || e.ticker))}<small>Quartalszahlen ${n === 0 ? "heute" : "morgen"}${w.done ? "" : " · " + esc(w.sub)}</small></span><span class="hq-t${w.sure ? "" : " un"}"><b>${esc(w.lbl)}</b>${n === 0 ? "" : "<i>morgen</i>"}${liveChg(e.ticker)}</span></div>`; }
+      return `<div class="hev${e.kind === "earnings" ? " ev-tap" : ""}"${e.kind === "earnings" ? ` data-ctgo="${esc(e.ticker)}" role="button" tabindex="0"` : ""}><span class="k ${cls}">${icon}</span><span class="hn">${e.ticker ? `${esc(shortNm(e.name || e.ticker))}<small class="hev-k">${e.kind === "sell" ? "Verkaufstag" : e.kind === "earnings" ? "Quartalszahlen" : "Dividende"}</small>` : esc(e.title)}</span><em>${n === 0 ? "heute" : n === 1 ? "morgen" : new Date(e.date + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}</em></div>`; }).join("")}</div>`;
 }
 // ---------- Heute (11/2026): ein Aufgabenmodell für alle Designs ----------
 // Reihenfolge: verkaufen/absichern → kaufen (nur freie Plätze, Kairo-Rangfolge) → ETF → vorbereiten. Abhaken gilt für heute.
@@ -10008,9 +10015,12 @@ function todayHtml() {
   const M = todayModel(); moneyStrip = "";
   const right = `${marketHtml()}${moneyHtml()}${soonHtml()}`;   // Short nicht mehr auf Heute (Backtest negativ, 23.11.2026)   // Marktampel oben als volle Karte (Wunsch 11/2026)
   requestAnimationFrame(balanceToday);
-  const M2 = { ...M, tasks: M.tasks.filter(x => x.cat !== "buy" && !/^(w|np):/.test(String(x.k))), more: 0 };   // Swing-Käufe raus (24.11.2026) – Verkäufe/Stops laufender Positionen bleiben
-  return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${longTodayHtml()}${tasksHtml(M2)}${k8TodayHtml()}${scrTodayHtml()}${SWING_OFF ? "" : changesHtml()}${startMiniHtml()}</div>
-    <div class="hcol">${right}</div></div>`;
+  // 25.11.2026: ETF-Signal steht in „Dein Geld“ (nicht doppelt als Aufgabe); Aufgaben-Karte nur, wenn wirklich etwas offen ist
+  const M2 = { ...M, tasks: M.tasks.filter(x => x.cat !== "buy" && x.cat !== "etf" && !/^(w|np):/.test(String(x.k))), more: 0 };
+  const dn = hDone(), tk = M2.tasks.some(x => !dn.has(x.k)) ? tasksHtml(M2) : "", extra = `${k8TodayHtml()}${scrTodayHtml()}${SWING_OFF ? "" : changesHtml()}`;
+  if (innerWidth < 760) return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${longTodayHtml()}${tk}${marketHtml()}${moneyHtml()}${soonHtml()}${extra}${startMiniHtml()}</div></div>`;
+  return fedBannerHtml() + moneyStrip + `<div class="hgrid tgrid"><div class="hcol">${longTodayHtml()}${tk}${extra}</div>
+    <div class="hcol">${right}</div></div>${startMiniHtml()}`;
 }
 
 // ---------- ETF-Bereich (Anteil aus dem Portfolio-Profil, Standard 90 %): SPDR MSCI ACWI IMI – Ampel aus backend/etf.py, Plan auf dem Gerät ----------
@@ -10796,8 +10806,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.259";
-const APP_NEWS = [["2026.11.259", "ETF wie beim Broker, Scanner mit Signalen", [
+const APP_VER = "2026.11.260";
+const APP_NEWS = [["2026.11.260", "Heute aufgeräumt", [
+  ["Strategie-Liste kompakter", "Firmenname, Sektor, Rang und Rendite seit Tausch in klaren Spalten – die besten sechs sofort, alle weiteren per Tipp."],
+  ["Keine doppelten Hinweise", "Das ETF-Signal steht nur noch in „Dein Geld“. „Heute zu tun“ erscheint nur, wenn wirklich etwas offen ist."],
+  ["Ruhiger Kalender", "Kurze Firmennamen, die Art des Termins klein daneben. Auf dem iPhone stehen Markt und Dein Geld direkt unter dem Strategie-Depot, „Erste Schritte“ ganz unten."]]],
+ ["2026.11.259", "ETF wie beim Broker, Scanner mit Signalen", [
   ["ETF-Kopf mit Kurs und Position", "Oben stehen Name, ISIN, Kurs (live gettex), Veränderung heute, Abstand zum Hoch und deine Anteile mit Wert, Gewinn und Rendite pro Jahr – wie in einer Broker-App."],
   ["Nachkauf-Signal kompakt", "Empfehlung, Betrag, Wie und Sparplan in einer Leiste, dazu Vom Hoch, EMA 100/200, RSI und VIX. Lange Erklärtexte und der doppelte Aufteilungs-Hinweis sind weg."],
   ["Scanner: Signal statt Status", "Wie bei Modell-Portfolios: Kaufen, Halten, Verkaufen (mit Termin), Reserve und Beobachten – statt „Im Depot“ oder „Raus beim Tausch“."]]],

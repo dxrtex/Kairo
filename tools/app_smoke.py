@@ -463,8 +463,8 @@ async def run(port: int) -> list[str]:
                 await pg.goto(f"{url}?nosplash=1&sec=today")
                 await pg.wait_for_timeout(2500)
                 await pg.evaluate('document.querySelectorAll(".bmodal").forEach(x => x.remove())')
-                if not await pg.query_selector(".tasks"):
-                    errs.append(f"Heute {des} {vw}px: Aufgabenliste fehlt")
+                if not await pg.query_selector(".tasks, .lf-hc"):       # Aufgaben nur bei offenen Punkten (25.11.2026), sonst Strategie-Depot
+                    errs.append(f"Heute {des} {vw}px: weder Aufgaben noch Strategie-Depot")
                 for sel in ("[data-hdone]", ".tq-prep > summary", ".kb-row[data-kbopen]"):
                     el = await pg.query_selector(sel + " >> visible=true")   # nur Sichtbares (Aufgaben können zugeklappt sein)
                     if el:
