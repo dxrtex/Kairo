@@ -3729,6 +3729,7 @@ main .table-wrap .sc-t.ein2-tb .sh-nm small{white-space:nowrap!important;display
 .nr-tb .nr-set,.nr-meta .nr-set{font-size:12.5px!important;color:var(--muted)!important;font-weight:500}
 .dh-set{color:var(--muted)!important;text-decoration:none}
 @media (max-width:640px){.pos-list details > .gsum{padding-right:34px!important}.pos-list details > .gsum::after{right:10px!important}}
+.lf-probe-h{margin:0 2px 10px}.lf-probe-h b{display:block;font-size:18px;font-weight:700}.lf-probe-h span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
 .lf-sech{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:14px 2px 8px}.lf-sech b{font-size:15px}.lf-sech small{font-size:12.5px;color:var(--muted)}
 .lf-tc small{margin-left:2px;font-size:11.5px;color:var(--muted)}
 .lf-kp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:4px 0 10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.lf-kp>div{padding:9px 12px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:1px}.lf-kp>div:first-child{border-left:0}
@@ -4558,7 +4559,7 @@ function probeHtml(compact) { if (PROBE.d === null) { probeLoad(); return compac
   const pos = (st.positions || []).map(p => { const I = lfInfo(p.t) || {}, px = I.p, r = px && p.entry ? px / p.entry - 1 : null;
     return `<tr class="lf-row" ${lfOpen(p.t)}><td><div class="sh-nm">${cfAv(p.t)}<span><b>${esc(shortNm(I.n || p.t))}</b><small>${esc(p.t)} · seit ${dateDE(p.entry_ts)}</small></span></div></td><td class="num">${p.qty}</td><td class="num">${fmt(p.entry)} $</td><td class="num">${px != null ? fmt(px) + " $" : "–"}</td><td class="num">${r != null ? `<span class="${r >= 0 ? "up" : "down"}">${sgnPct(r, 1)}</span>` : "–"}</td></tr>`; }).join("");
   const tr = (st.trades || []).slice(-8).reverse().map(t => `<tr><td><b>${esc(t.t)}</b><small> ${dateDE(t.entry_ts)} → ${dateDE(t.exit_ts)}</small></td><td>${esc(t.why || "")}</td><td class="num"><span class="${t.pnl_eur >= 0 ? "up" : "down"}">${t.pnl_eur >= 0 ? "+" : ""}${fmt(t.pnl_eur, 0)} €</span></td><td class="num">${t.tax_eur ? fmt(t.tax_eur, 0) + " €" : "–"}</td></tr>`).join("");
-  return `<div class="card lf-probe" id="probe"><div class="plan-h">Probe-Depot · Strategie im echten Markt <small class="muted">seit ${dateDE(st.start)} · ohne echtes Geld</small></div>
+  return `<div class="card lf-probe" id="probe"><div class="lf-probe-h"><b>Probe-Depot</b><span>Die Strategie automatisch im echten Markt – seit ${dateDE(st.start)}, ohne echtes Geld</span></div>
     <div class="lf-kpi lf-kpi-l"><div><span>Depotwert</span><b>${eur(last)}</b></div><div><span>seit Start</span>${pc(ret)}</div><div><span>Welt-ETF gleicher Start</span>${pc(S.etf)}</div><div><span>70/30 gleicher Start</span>${pc(S.mix)}</div></div>
     ${probeChart(st)}
     <div class="lf-kpi"><div><span>größter Rückgang</span><b class="${(S.max_dd ?? 0) < -0.0005 ? "down" : ""}">${pct(S.max_dd ?? 0, 1)}</b></div><div><span>Gebühren + Spread</span><b>${eur(S.kosten ?? st.fees)}</b></div><div><span>Steuern bezahlt</span><b>${eur(S.steuern ?? st.taxes)}</b></div><div><span>Verkäufe</span><b>${(st.trades || []).length}</b></div></div>
@@ -4613,7 +4614,7 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
   if (k === "other") { const v = await kAsk({ t: "Aktie kaufen", s: "Ticker eingeben (z. B. NVDA):", input: "text", ok: "Weiter", cancel: "Abbrechen" }); if (v) sgAskBuy(String(v).trim().toUpperCase()); return; }
   if (k === "reset") { if (await kAsk({ t: "Spiel-Depot zurücksetzen?", s: "Alle Spiel-Positionen und Aufträge werden gelöscht. Das Probe-Depot bleibt.", ok: "Zurücksetzen", danger: true, cancel: "Abbrechen" })) { try { localStorage.removeItem(SG_KEY); } catch (er) {} render(); } } });
 function sgHtml() { if (!searchIdx) loadSearch(); const g = sgLoad(), L = LF();
-  if (!g) return `<div class="card lf-probe"><div class="plan-h">Spiel-Depot · du setzt die Strategie selbst um</div>
+  if (!g) return `<div class="card lf-probe"><div class="lf-probe-h"><b>Spiel-Depot</b><span>Du setzt die Strategie selbst um – mit Spielgeld</span></div>
     <p class="muted" style="margin:4px 0 10px">Mit Spielgeld kaufst und verkaufst du selbst – zum letzten Kurs oder zu deinem Kurs aus Scalable, mit PRIME+-Gebühren und Steuer. Kairo zeigt dir dabei, was laut Regel fehlt oder raus muss, und vergleicht dich mit dem Probe-Depot und dem Welt-ETF.</p>
     <button class="btn" data-sg="start">Spiel-Depot starten</button></div>`;
   sgTick(g); sgSave(g); liveKick(g.pos.map(p => p.t), "strat");
@@ -4631,7 +4632,7 @@ function sgHtml() { if (!searchIdx) loadSearch(); const g = sgLoad(), L = LF();
   const cl = g.closed.slice(0, 10).map(c => `<tr><td><b>${esc(c.t)}</b><small> ${dateDE(c.d)} → ${dateDE(c.xd)}</small></td><td class="num">${c.qty}</td><td class="num"><span class="${c.gain >= 0 ? "up" : "down"}">${sEur2(c.gain)}</span></td><td class="num">${c.tax ? eur2(c.tax) : "–"}</td></tr>`).join("");
   const P = PROBE.d && PROBE.d.equity ? PROBE.d : null, pret = P ? P.equity[P.equity.length - 1].eur / (P.start_cash || 10000) - 1 : null;
   const ev = []; let prev = g.cap; H.forEach(h => { ev.push({ date: h.d, pnl: h.v - prev }); prev = h.v; });
-  return `<div class="card lf-probe" id="sgame"><div class="plan-h">Spiel-Depot · du setzt die Strategie selbst um <small class="muted">seit ${dateDE(g.start.slice(0, 10))} · Spielgeld ${eur(g.cap)}</small></div>
+  return `<div class="card lf-probe" id="sgame"><div class="lf-probe-h"><b>Spiel-Depot</b><span>Du setzt die Strategie selbst um – seit ${dateDE(g.start.slice(0, 10))}, Spielgeld ${eur(g.cap)}</span></div>
     <div class="lf-kpi lf-kpi-l"><div><span>Depotwert</span><b>${eur2(v)}</b></div><div><span>seit Start</span>${pc(ret)}</div><div><span>Welt-ETF gleicher Start</span>${pc(eret)}</div><div><span>Probe-Depot (automatisch)</span>${pc(pret)}</div></div>
     ${ev.length > 1 ? jCurveSvg(ev) : ""}
     <div class="lf-kpi"><div><span>frei</span><b>${eur2(g.cash)}</b></div><div><span>Gebühren</span><b>${eur2(g.fees)}</b></div><div><span>Steuern bezahlt</span><b>${eur2(g.taxes)}</b></div><div><span>Verlusttopf</span><b>${eur2(g.pot)}</b></div></div>
@@ -8335,6 +8336,7 @@ function depRiskHtml(items, groups) {
   const sig = P.pos.map(q => `${q.k}:${Math.sign(q.expo)}${Math.round(Math.log(Math.abs(q.expo) + 1) * 8)}`).sort().join("|"); RISK.pend = P;   // Signatur grob: Live-Kurse lösen nicht jede Minute eine Neuberechnung aus
   if (sig !== RISK.sig) { RISK.sig = sig; RISK.res = null; }
   const B = riskBench(); if (B && !RISK.res && !RISK.busy) setTimeout(riskKick, 0);
+  if (RISK.bench === false) return "";   // 25.11.2026: ohne Index-Verläufe keine leere Karte
   return `<div class="hcard dep-risk" id="riskBox">${riskInner()}</div>`;
 }
 function riskInner() {
@@ -10907,8 +10909,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.269";
-const APP_NEWS = [["2026.11.269", "Depot-Feinschliff", [
+const APP_VER = "2026.11.270";
+const APP_NEWS = [["2026.11.270", "Depot ruhiger", [
+  ["Klare Titel", "Probe-Depot und Spiel-Depot haben jetzt einen richtigen Titel mit kurzer Erklärung darunter statt einer langen Zeile in Großbuchstaben."],
+  ["Keine leeren Karten", "Fehlen die Index-Verläufe, blendet Kairo die Karte „Depot-Risiko“ aus, statt einen Platzhalter zu zeigen."]]],
+ ["2026.11.269", "Depot-Feinschliff", [
   ["iPhone: Positionen lesbar", "Der Pfeil zum Aufklappen überdeckt Gewinn und Verlust nicht mehr."],
   ["Strategie-Test ohne Doppelung", "Die Überschrift über Probe- und Spiel-Depot ist weg – die Karten sagen selbst, was sie sind. „Größter Rückgang 0,0 %“ steht nicht mehr rot."],
   ["Ruhige Hinweise", "„Echtzeit-Kurse einrichten ›“ steht dezent neben dem Depotwert statt als blauer Link."]]],
