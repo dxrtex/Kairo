@@ -2300,6 +2300,12 @@ table.co-ud td b { font-weight: 600; }
 @keyframes lpxUp { 0% { background: rgba(48,209,88,.45); } 100% { background: transparent; } }
 @keyframes lpxDn { 0% { background: rgba(255,69,58,.45); } 100% { background: transparent; } }
 .lpx-up { animation: lpxUp 1.2s ease-out; border-radius: 4px; } .lpx-dn { animation: lpxDn 1.2s ease-out; border-radius: 4px; }
+/* Heute live (25.11.2026): kurzes, kräftiges Aufblinken wie im Trading-Terminal + Live-Uhr im Kopf */
+@keyframes lpxUpT { 0% { background: rgba(48,209,88,.55); box-shadow: 0 0 0 3px rgba(48,209,88,.55); } 100% { background: transparent; box-shadow: 0 0 0 3px transparent; } }
+@keyframes lpxDnT { 0% { background: rgba(255,69,58,.55); box-shadow: 0 0 0 3px rgba(255,69,58,.55); } 100% { background: transparent; box-shadow: 0 0 0 3px transparent; } }
+#main .lf-hc .lpx-up, #main .money .lpx-up, #main .mkt .lpx-up { animation: lpxUpT .9s ease-out; border-radius: 5px; } #main .lf-hc .lpx-dn, #main .money .lpx-dn, #main .mkt .lpx-dn { animation: lpxDnT .9s ease-out; border-radius: 5px; }
+.hchip.hlive { font-variant-numeric: tabular-nums; } .hchip.hlive.on { color: var(--text); } .hchip.hlive.on i { background: var(--up); box-shadow: 0 0 0 0 rgba(48,209,88,.6); animation: hlvPulse 2s ease-out infinite; }
+@keyframes hlvPulse { 0% { box-shadow: 0 0 0 0 rgba(48,209,88,.6); } 70% { box-shadow: 0 0 0 6px rgba(48,209,88,0); } 100% { box-shadow: 0 0 0 0 rgba(48,209,88,0); } }
 /* Sektoren wie ein Profi-Terminal (17.11.2026): volle Breite, ruhige Zeilen, Balken um die Nulllinie, Kurs, Prozent */
 .sp-card .sp-sub { font-size: 12px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin: 6px 4px 4px; padding-bottom: 6px; border-bottom: 1px solid var(--line, #8883); }
 .sp-card .sp-sub .sp-live { color: var(--up); text-transform: none; letter-spacing: 0; }
@@ -4343,11 +4349,17 @@ function lfCurveHtml(L, big) { const C0 = L && L.curve; if (!C0 || !C0.d || C0.d
     <div class="lf-cvl">${keys.map(k => `<span><i style="background:${col[k]}"></i>${nm[k]} <b class="${last(k) >= 0 ? "up" : "down"}">${sgnPct(last(k), 1)}</b></span>`).join("")}${chips}</div>
     ${big ? `<p class="muted lf-note">Modell: an jedem Tauschtermin nach der Regel (Top ${L.rule.n} kaufen, halten bis Platz ${lfH(L)}), gleich gewichtet, ohne Kosten und Steuern. ${Math.round((1 - C.mix) * 100)}/${Math.round(C.mix * 100)} mit dem ${C.etf === "MSCI World" ? "MSCI World (URTH) als Welt-ETF" : "S&P 500 als ETF-Näherung"}.</p>` : ""}</div>`; }
 document.addEventListener("click", e => { const b = e.target.closest("[data-lfrng]"); if (!b) return; state.lfRng = b.dataset.lfrng; save(); render(); });
+// Prozentwert mit Live-Blinken (data-v = 1 + Wert, damit auch negative Werte vergleichbar sind)
+const lpv = (k, v, d = 1) => v == null ? "<b>–</b>" : `<b class="${v >= 0 ? "up" : "down"}" data-lpx="${esc(k)}" data-v="${(1 + v).toFixed(6)}">${sgnPct(v, d)}</b>`;
 function longTodayHtml() {
   const L = LF(); if (!L || !L.hold || !L.hold.length) return "";
   const dn = lfDays(L.next), soon = lfSwapSoon(L);
   liveKick(L.hold.map(x => x.t), "today");                       // Tagesveränderung live (Kursdienst), sonst Stand des Scans
-  const d1 = t => { const r = rowOf(t); return r && r.d1 != null ? r.d1 : null; }, ds = L.hold.map(x => d1(x.t)).filter(v => v != null);
+  const d1 = t => { const q = LIVE.map[t]; if (q && q.c > 0 && q.pc > 0) return q.c / q.pc - 1; const r = rowOf(t); return r && r.d1 != null ? r.d1 : null; }, ds = L.hold.map(x => d1(x.t)).filter(v => v != null);
+  // Live (25.11.2026, Wunsch „Heute muss LIVE sein“): seit Tausch je Aktie aus Kurs am Tauschtag (p0) und Live-Kurs; Strategie = Mittel wie im Backend; S&P aus Stand am Tauschtag (bpx0)
+  const retL = x => { const q = LIVE.map[x.t]; return q && q.c > 0 && x.p0 > 0 ? q.c / x.p0 - 1 : x.ret; };
+  const anyL = L.hold.some(x => LIVE.map[x.t] && x.p0 > 0), rsL = L.hold.map(retL).filter(v => v != null), retAll = anyL && rsL.length ? rsL.reduce((a, b) => a + b, 0) / rsL.length : L.ret;
+  const gq = LIVE.map["^GSPC"], benchL = gq && gq.c > 0 && L.bpx0 > 0 ? gq.c / L.bpx0 - 1 : L.bench;
   const day = ds.length ? ds.reduce((a, b) => a + b, 0) / ds.length : null;
   // Deine echten Positionen (Scalable-Import) in den Strategie-Aktien: Wert, Tagesveränderung in €, Gewinn seit Kauf
   let own = null;
@@ -4355,12 +4367,12 @@ function longTodayHtml() {
     if (gs.length) { const v = gs.reduce((a, g) => a + g.value, 0), inv = gs.reduce((a, g) => a + g.invested, 0), dv = gs.reduce((a, g) => { const x = d1(g.t); return a + (x != null ? g.value * x / (1 + x) : 0); }, 0);
       own = { n: gs.length, v, inv, dv, pl: inv ? v / inv - 1 : null }; } } } catch (e) { own = null; }
   return `<div class="hcard lf-hc">${hHead(`Strategie-Depot <small>${L.hold.length} Aktien</small>`, `data-golong`, "Öffnen")}
-    ${own ? `<div class="lf-val"><span>Deine Strategie-Aktien <small>${own.n} von ${L.hold.length} im Depot</small></span><b>${eur(own.v)}</b><em class="${own.dv >= 0 ? "up" : "down"}">${own.dv >= 0 ? "+" : "−"}${eur(Math.abs(own.dv))} heute</em>${own.pl != null ? `<small class="${own.pl >= 0 ? "up" : "down"}">${sgnPct(own.pl, 1)} seit Kauf · Einstand ${eur(own.inv)}</small>` : ""}</div>` : ""}
-    <div class="lf-kpi lf-kpi4"><div><span>Heute</span>${day != null ? lfPct(day) : "<b>–</b>"}</div><div><span>seit ${fmtD(L.since).replace(/\s\d{2}$/, "")}</span>${lfPct(L.ret)}</div><div><span>S&P 500</span>${lfPct(L.bench)}</div><div><span>Tausch</span><b>${dn != null && dn >= 0 ? `in ${dn} T.` : fmtD(L.next)}</b></div></div>
+    ${own ? `<div class="lf-val"><span>Deine Strategie-Aktien <small>${own.n} von ${L.hold.length} im Depot</small></span><b data-lpx="h:own" data-v="${own.v.toFixed(2)}">${eur(own.v)}</b><em class="${own.dv >= 0 ? "up" : "down"}">${own.dv >= 0 ? "+" : "−"}${eur(Math.abs(own.dv))} heute</em>${own.pl != null ? `<small class="${own.pl >= 0 ? "up" : "down"}">${sgnPct(own.pl, 1)} seit Kauf · Einstand ${eur(own.inv)}</small>` : ""}</div>` : ""}
+    <div class="lf-kpi lf-kpi4"><div><span>Heute</span>${day != null ? lpv("hk:day", day) : "<b>–</b>"}</div><div><span>seit ${fmtD(L.since).replace(/\s\d{2}$/, "")}</span>${lpv("hk:ret", retAll)}</div><div><span>S&P 500</span>${lpv("hk:sp", benchL)}</div><div><span>Tausch</span><b>${dn != null && dn >= 0 ? `in ${dn} T.` : fmtD(L.next)}</b></div></div>
     ${lfCurveHtml(L)}${probeHtml(true)}
     ${(sw => soon && (sw.out.length || sw.inn.length) ? `<div class="lf-swap"><b>${sw.now ? "Tausch jetzt:" : "Tausch steht an:"}</b> verkaufen ${sw.out.map(t => esc(t)).join(", ") || "–"} · kaufen ${sw.inn.map(t => esc(t)).join(", ") || "–"} <button class="hlink" data-golong>Liste ›</button></div>` : "")(lfSwap(L))}
     ${(hs => { const lim = state.lfAllH || hs.length <= 7 ? hs.length : 6, nm = x => x.n || ((lfInfo(x.t, L) || {}).n) || x.t;
-      return `<div class="lf-hl"><div class="lf-hlh"><span>Aktie</span><span>Rang</span><span>Heute</span><span>seit Tausch</span></div>${hs.slice(0, lim).map(x => `<button class="hrow lf-hr" ${lfOpen(x.t)}>${cfAv(x.t)}<span class="hn">${esc(shortNm(nm(x)))}<small>${esc(tkClean(x.t))}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span><span class="lf-rk${x.rk && x.rk > lfH(L) ? " down" : ""}">${x.rk || "–"}</span><span class="lf-d1 ${(d1(x.t) ?? 0) >= 0 ? "up" : "down"}">${d1(x.t) != null ? sgnPct(d1(x.t), 1) : "–"}</span>${lfPct(x.ret)}</button>`).join("")}
+      return `<div class="lf-hl"><div class="lf-hlh"><span>Aktie</span><span>Rang</span><span>Heute</span><span>seit Tausch</span></div>${hs.slice(0, lim).map(x => `<button class="hrow lf-hr" ${lfOpen(x.t)}>${cfAv(x.t)}<span class="hn">${esc(shortNm(nm(x)))}<small>${esc(tkClean(x.t))}${x.sec ? ` · ${esc(x.sec)}` : ""}</small></span><span class="lf-rk${x.rk && x.rk > lfH(L) ? " down" : ""}">${x.rk || "–"}</span><span class="lf-d1 ${(d1(x.t) ?? 0) >= 0 ? "up" : "down"}"${d1(x.t) != null ? ` data-lpx="hd:${esc(x.t)}" data-v="${(1 + d1(x.t)).toFixed(6)}"` : ""}>${d1(x.t) != null ? sgnPct(d1(x.t), 1) : "–"}</span>${lpv("hr:" + x.t, retL(x))}</button>`).join("")}
         ${hs.length > 7 ? `<button class="lf-more" data-lfallh>${state.lfAllH ? "Weniger anzeigen" : `Alle ${hs.length} anzeigen`}</button>` : ""}</div>`; })(L.hold.slice().sort((a, b) => (b.ret ?? -9) - (a.ret ?? -9)))}</div>`;
 }
 document.addEventListener("click", e => { if (!e.target.closest("[data-lfallh]")) return; state.lfAllH = !state.lfAllH; save(); render(); });
@@ -9889,10 +9901,10 @@ function marketHtml() {
 }
 // „Heute“: stärkster und schwächster Sektor (heute) – Antippen öffnet Markt → Überblick
 function secLineHtml() {
-  const lv = mktLive(), xs = ((lv && lv.sectors && lv.sectors.length ? lv.sectors : (anaData && anaData.market || {}).sectors) || []).filter(x => x.d1 != null);
+  const lv = mktLive(), xs = ((lv && lv.sectors && lv.sectors.length ? lv.sectors : (anaData && anaData.market || {}).sectors) || []).map(x => { const q = x.k && LIVE.map[x.k]; return q && q.c > 0 && q.pc > 0 ? { ...x, d1: q.c / q.pc - 1 } : x; }).filter(x => x.d1 != null);   // Sektor-ETFs live
   if (xs.length < 3) return "";
   const o = [...xs].sort((a, b) => b.d1 - a.d1), hi = o[0], lo = o[o.length - 1];
-  return `<button class="sec-line" data-newstab="overview"><span>Stärkster Sektor <b class="${hi.d1 >= 0 ? "up" : "down"}">${esc(hi.n)} ${sgnPct(hi.d1, 1)}</b></span><span>Schwächster <b class="${lo.d1 >= 0 ? "up" : "down"}">${esc(lo.n)} ${sgnPct(lo.d1, 1)}</b></span><i>Heatmap ›</i></button>`;
+  return `<button class="sec-line" data-newstab="overview"><span>Stärkster Sektor <b class="${hi.d1 >= 0 ? "up" : "down"}" data-lpx="hs:${esc(hi.n)}" data-v="${(1 + hi.d1).toFixed(6)}">${esc(hi.n)} ${sgnPct(hi.d1, 1)}</b></span><span>Schwächster <b class="${lo.d1 >= 0 ? "up" : "down"}" data-lpx="hs:${esc(lo.n)}" data-v="${(1 + lo.d1).toFixed(6)}">${esc(lo.n)} ${sgnPct(lo.d1, 1)}</b></span><i>Heatmap ›</i></button>`;
 }
 // Stimmung/Angst 0–100 (backend/fear.py): eigene Skala neben dem Trend – Information, keine Handelsregel
 function fearHtml(f) {
@@ -9973,7 +9985,8 @@ function todaySubHtml(stale) {                  // Kopfzeile (25.11.2026): Datum
     return x.open ? `<span class="hchip on"><i></i>${n} offen bis ${hm(x.mins)}</span>` : x.at ? `<span class="hchip"><i></i>${n} ${x.k ? "öffnet " + atDE(x, true).replace(" Uhr", "") : "öffnet " + hm(x.mins)}</span>` : ""; });
   const g = data && data.generated ? new Date(data.generated) : null, old = stale || (g && bdBetween(g, new Date()) > 1);
   const gt = g ? g.toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" }).replace(",", "") : "";
-  return `<b class="hdate">${dt}</b>${ex.join("")}${g ? (old ? `<button class="hchip warn" data-gosec="settings" data-settab="status" title="Neuer Scan steht aus – Status ansehen"><i></i>Daten von ${gt} ›</button>` : `<span class="hchip plain">Daten ${gt}</span>`) : ""}`;
+  const lvc = liveOn() ? `<span class="hchip hlive${HLV.ok ? " on" : ""}" id="hLive"><i></i>${HLV.ok ? `Live · ${new Date(HLV.ok).toLocaleTimeString("de-DE")}` : "Live"}</span>` : "";
+  return `<b class="hdate">${dt}</b>${ex.join("")}${lvc}${g ? (old ? `<button class="hchip warn" data-gosec="settings" data-settab="status" title="Neuer Scan steht aus – Status ansehen"><i></i>Daten von ${gt} ›</button>` : `<span class="hchip plain">Daten ${gt}</span>`) : ""}`;
 }
 const hDone = () => { const x = state.hDone; return new Set(x && x.d === isoD(new Date()) ? x.k : []); };
 const etfDoneRecent = () => state.etfDone && daysUntil(state.etfDone) > -30;
@@ -10095,7 +10108,7 @@ function tasksHtml(M) {
 let moneyStrip = "";                               // iPhone: dieselben Zahlen als schmale Zeile über den Aufgaben
 // Geld auf einen Blick: Vermögen (ETF + Depot), Trading frei/gebunden aus Plänen UND Depot-Positionen ohne Plan, Verlust bis zu den Stops
 function moneyHtml() {   // 24.11.2026: Aufteilung Welt-ETF / Strategie statt Swing-Kapital (Plätze, Stops)
-  const c = etfCfg(), e = getJson("etf.json"), pf = pfCfg(), etfV = e && e.ok !== false && c.units ? c.units * e.c : null;
+  const c = etfCfg(), e = getJson("etf.json"), pf = pfCfg(), ePx = etfLive && !etfLive.err && etfLive.p > 0 ? etfLive.p : e && e.c, etfV = e && e.ok !== false && c.units && ePx ? c.units * ePx : null;   // ETF-Wert mit Live-Kurs (gettex)
   let depV = null, depPL = null;
   if (anaData && searchIdx) { const gs = groupPositions(depotLive().filter(p => !p.etf).map((p, i) => ({ p, i, r: p.t ? rowOf(p.t) : null })));
     const kn = gs.filter(g => g.known); depV = kn.length ? kn.reduce((a, g) => a + g.value, 0) : null;
@@ -10106,7 +10119,7 @@ function moneyHtml() {   // 24.11.2026: Aufteilung Welt-ETF / Strategie statt Sw
   const move = gap != null && total > 0 ? Math.abs(gap) * total : 0;
   moneyStrip = total ? `<button class="mstrip" data-mstrip><span>Vermögen <b>${eur(total)}</b></span>${isEtf != null ? `<span>ETF <b>${pct(isEtf, 0)}</b> · Aktien <b>${pct(1 - isEtf, 0)}</b></span>` : ""}</button>` : "";
   return `<div class="hcard money" id="hMoney">${hHead("Dein Geld", SEC_LINK("depot"), "Depot")}
-    <div class="mrows">${total ? `<div class="mr"><span>Vermögen<em>${etfV != null ? `ETF ${eur(etfV)}` : ""}${etfV != null && depV != null ? " · " : ""}${depV != null ? `Aktien ${eur(depV)}` : ""}</em></span><b>${eur(total)}${depPL != null ? `<small class="${depPL >= 0 ? "up" : "down"}"> ${sgnPct(depPL, 1)}</small>` : ""}</b></div>` : ""}
+    <div class="mrows">${total ? `<div class="mr"><span>Vermögen<em>${etfV != null ? `ETF ${eur(etfV)}` : ""}${etfV != null && depV != null ? " · " : ""}${depV != null ? `Aktien ${eur(depV)}` : ""}</em></span><b data-lpx="h:tot" data-v="${total.toFixed(2)}">${eur(total)}${depPL != null ? `<small class="${depPL >= 0 ? "up" : "down"}"> ${sgnPct(depPL, 1)}</small>` : ""}</b></div>` : ""}
       ${isEtf != null ? `<div class="mr"><span>Aufteilung ETF / Strategie<em>Ziel ${pf.etf} / ${pf.trade} · ${Math.abs(gap) < 0.05 ? "passt – nichts zu tun" : jan ? `Januar: ausgleichen – ${eur(move)} ${gap > 0 ? "vom ETF ins Strategie-Depot" : "vom Strategie-Depot in den ETF"}` : `heute ${pct(Math.abs(gap), 0)} daneben · Ausgleich im Januar`}</em></span><b class="${Math.abs(gap) < 0.05 ? "" : "gold"}">${fmt(isEtf * 100, 0)} / ${fmt((1 - isEtf) * 100, 0)}</b></div>` : `<div class="mr"><span>Aufteilung Ziel<em>Welt-ETF / Strategie-Depot</em></span><b>${pf.etf} / ${pf.trade}</b></div>`}
       ${pf.etf !== 70 ? `<div class="hw-row"><i class="vdot y"></i><span>Im Backtest war 70/30 am besten (Rendite zu Schwankung). Deine Einstellung: ${pf.etf}/${pf.trade}.</span><button class="hlink" data-pf70>Auf 70/30 ›</button></div>` : ""}
     ${amp ? `<button class="mline" ${SEC_LINK("etf")}><i style="background:${amp[1]}"></i>ETF-Ampel: ${esc(amp[0])}${etm ? etm.lv === "g" ? " – Extra-Geld jetzt anlegen" : etm.lv === "r" ? " – Extra-Geld zurückhalten" : "" : ""} ›</button>` : ""}</div></div>`;
@@ -10991,8 +11004,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.276";
-const APP_NEWS = [["2026.11.276", "Start ohne Aufhellen", [
+const APP_VER = "2026.11.277";
+const APP_NEWS = [["2026.11.277", "Heute live", [
+  ["Alles live", "Strategie-Depot, deine Aktien, Vermögen, S&P 500 und die Sektoren aktualisieren sich auf Heute laufend – mit Kursdienst alle 10 Sekunden, US-Aktien mit Finnhub in Echtzeit."],
+  ["Aufblinken", "Jede geänderte Zahl blinkt kurz grün oder rot wie im Trading-Terminal; oben zeigt „Live“ die Uhrzeit der letzten Aktualisierung."],
+  ["Seit Tausch live", "Ergebnis seit dem Tausch je Aktie, für die Strategie und den S&P 500 rechnet Kairo jetzt mit dem Live-Kurs."]]],
+ ["2026.11.276", "Start ohne Aufhellen", [
   ["Sofort schwarz", "Beim Öffnen zeichnet Kairo das schwarze Startbild und das Logo jetzt ganz am Anfang – vorher zeigte iOS kurz seinen eigenen grauen Hintergrund, bis alle Stilregeln gelesen waren."]]],
  ["2026.11.275", "Einstieg neu", [
   ["Countdown", "Oben ein Ring bis zum nächsten Tausch und Strategie gegen S&P 500 als Balken."],
@@ -12508,6 +12525,30 @@ const liveChg = t => { const q = t && LIVE.map[t]; if (!q || !q.pc) return ""; c
   return `<em class="hq-live ${d >= 0 ? "up" : "down"}" title="Live-Kurs ${esc(liveTime(t))}">${sgnPct(d, 1)}</em>`; };
 const todayLiveTs = () => (calData || []).filter(e => e.kind === "earnings" && e.ticker && myTickers().has(e.ticker) && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 1).map(e => e.ticker);
 const liveStale = ts => ts.filter(t => { const o = LIVE.map[t]; return !o || Date.now() - o.at > LIVE.ttl; });
+// ---------- Heute live (25.11.2026, Wunsch „Heute muss LIVE sein – so aktuell es geht, bei jeder Aktualisierung kurz aufblinken“) ----------
+// Strategie-Aktien, eigene Aktien, S&P 500, Sektor-ETFs und der Welt-ETF: mit Kursdienst alle 10 s (Börse offen), US-Werte mit Finnhub
+// zusätzlich in Echtzeit (WebSocket). Neu gezeichnet werden nur die drei Live-Karten; geänderte Zahlen blinken grün/rot.
+const HLV = { at: 0, busy: false, ok: 0, etfAt: 0, sec: "" };
+function heuteTs() { const L = LF(), m = (anaData && anaData.market) || {};
+  return [...new Set([...((L && L.hold) || []).map(x => x.t), ...depotLive().filter(p => p.t && !p.etf).map(p => String(p.t).toUpperCase()), "^GSPC", ...(m.sectors || []).map(x => x.k).filter(k => k && /^[A-Z][A-Z0-9.\-]{0,9}$/.test(k))])]; }
+async function heuteLive(force) {
+  if (state.sec !== "today" || document.visibilityState !== "visible" || HLV.busy || !data) return;
+  const ts = heuteTs(), open = ts.some(t => livePhase(t)), iv = open ? (liveKey("yq") ? 10e3 : 30e3) : 120e3;
+  if (!force && Date.now() - HLV.at < iv) return; HLV.at = Date.now(); HLV.busy = true;
+  try {
+    if (liveOn()) { const rest = ts.filter(t => !(FHWS.on && FHWS.subs.has(t))); rest.forEach(t => { const o = LIVE.map[t]; if (o) o.at = 0; }); await liveMany(rest); HLV.ok = Date.now(); }
+    if (Date.now() - HLV.etfAt > 30e3) { HLV.etfAt = Date.now(); try { await etfLiveLoad(); } catch (e) {} }
+  } catch (e) {} finally { HLV.busy = false; }
+  heutePatch();
+}
+function heutePatch() { if (state.sec !== "today" || !$("main")) return;
+  const sw = (sel, html) => { const el = document.querySelector(sel); if (!el || !html) return; const t = document.createElement("div"); t.innerHTML = html; const n = t.firstElementChild; if (n && n.outerHTML !== el.outerHTML) el.replaceWith(n); };
+  try { sw("#main .lf-hc", longTodayHtml()); sw("#hMoney", moneyHtml()); sw("#main .hcard.mkt", marketHtml()); } catch (e) {}
+  const c = $("hLive"); if (c && HLV.ok) { c.classList.add("on"); c.innerHTML = `<i></i>Live · ${new Date(HLV.ok).toLocaleTimeString("de-DE")}`; c.classList.remove("tick"); void c.offsetWidth; c.classList.add("tick"); }
+}
+let heuteSoonT = 0;
+function heuteSoon() { if (heuteSoonT || state.sec !== "today") return; heuteSoonT = setTimeout(() => { heuteSoonT = 0; HLV.ok = Date.now(); heutePatch(); }, 1000); }   // Echtzeit-Ticks: höchstens 1× je Sekunde neu zeichnen
+setInterval(() => { if (state.sec !== HLV.sec) { HLV.sec = state.sec; if (state.sec === "today") { HLV.at = 0; } } heuteLive(); }, 2e3);
 function liveKick(ts, sec) {                                  // veraltete Kurse nachladen und einmal neu zeichnen
   const st = liveOn() ? liveStale([...new Set(ts.filter(Boolean))]) : [];
   if (st.length) liveMany(st).then(n => { if (n && state.sec === sec) render(); });
@@ -14864,7 +14905,7 @@ function mcLivePaint(t) {
 const FHWS = { ws: null, subs: new Set(), want: new Set(), paintAt: {}, retry: 0, on: false };
 function fhSym(t) { return String(t).replace("-", "."); }
 function fhSync() {
-  const key = liveKey("fh"), want = new Set(key && document.visibilityState === "visible" ? chartTickers().filter(t => isUS(t) && !/^[~^]/.test(t) && livePhase(t)) : []);
+  const key = liveKey("fh"), want = new Set(key && document.visibilityState === "visible" ? [...chartTickers(), ...(state.sec === "today" ? heuteTs().slice(0, 45) : [])].filter(t => isUS(t) && !/^[~^]/.test(t) && livePhase(t)) : []);
   FHWS.want = want;
   if (!want.size) { if (FHWS.ws) { try { FHWS.ws.close(); } catch (e) {} FHWS.ws = null; FHWS.subs.clear(); } return; }
   if (!FHWS.ws || FHWS.ws.readyState > 1) {
@@ -14878,7 +14919,8 @@ function fhSync() {
         const ph = livePhase(t), xo = ph === "pre" || ph === "post";
         const q = xo ? { ...o, c: +d.p, ts: d.t || Date.now(), at: Date.now(), src: "Finnhub live", ext: ph } : { ...o, c: +d.p, h: Math.max(o.h || 0, +d.p), l: o.l > 0 ? Math.min(o.l, +d.p) : +d.p, ts: d.t || Date.now(), at: Date.now(), src: "Finnhub live", ext: null };
         LIVE.map[t] = q; liveApply(t, q);
-        if (Date.now() - (FHWS.paintAt[t] || 0) > 250) { FHWS.paintAt[t] = Date.now(); liveChartsPaint(t); mcLivePaint(t); cxLivePaint(t); } }); };
+        if (Date.now() - (FHWS.paintAt[t] || 0) > 250) { FHWS.paintAt[t] = Date.now(); liveChartsPaint(t); mcLivePaint(t); cxLivePaint(t); } });
+      if (state.sec === "today") heuteSoon(); };
     return; }
   if (FHWS.ws.readyState !== 1) return;
   want.forEach(t => { if (!FHWS.subs.has(t)) { FHWS.ws.send(JSON.stringify({ type: "subscribe", symbol: fhSym(t) })); FHWS.subs.add(t); } });
@@ -14888,7 +14930,7 @@ let liveTickN = 0;
 setInterval(() => {
   if (!liveOn() || document.visibilityState !== "visible") return;
   liveTickN++; const ts = chartTickers(), fast = (state.sec === "chart" || document.body.classList.contains("card-open")) && ts.some(t => livePhase(t));
-  if (fast) fhSync(); else if (FHWS.ws) fhSync();
+  if (fast || (state.sec === "today" && heuteTs().some(t => livePhase(t)))) fhSync(); else if (FHWS.ws) fhSync();
   if (!fast && liveTickN % 6) return;                  // geschlossen: wie bisher alle 30 s
   ts.forEach(t => { if (FHWS.on && FHWS.subs.has(t)) return;   // kommt schon in Echtzeit
     liveQuote(t, fast).then(q => { if (q) { liveChartsPaint(t); mcLivePaint(t); cxLivePaint(t); } }); });

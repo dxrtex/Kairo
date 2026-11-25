@@ -317,10 +317,11 @@ def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict 
                      "m": round(m0, 4), "p0": round(p0, 4) if p0 else None, "p": round(p1, 4),
                      "ret": round(ret, 4) if ret is not None else None, "rk": pos_now.get(t)})
     port = float(np.nanmean([x for x in rets if x is not None])) if rets else None
-    bret = None
+    bret, bpx0 = None, None
     if bench is not None and len(bench):
         b0, b1 = _px_on(bench, since), float(bench["Close"].dropna().iloc[-1])
         bret = b1 / b0 - 1 if b0 else None
+        bpx0 = round(float(b0), 2) if b0 else None   # S&P-Stand am Tauschtag: die App rechnet damit „S&P seit Tausch“ live
     y, m = since.year, since.month + r["every"]
     if m > 12:
         y, m = y + 1, m - 12
@@ -353,7 +354,7 @@ def build(data: dict, meta: dict, bench: pd.DataFrame | None = None, rule: dict 
         print(f"Langfrist: Verlauf-Fehler {exc!r}")
         cv = None
     return {"rule": r, "since": since.strftime("%Y-%m-%d"), "watch": watch, "curve": cv, "checks": list(CHECKS), "ranks": ranks, "next": nxt.strftime("%Y-%m-%d"), "asof": idx[-1].strftime("%Y-%m-%d"),
-            "hold": hold, "ret": round(port, 4) if port is not None else None, "bench": round(bret, 4) if bret is not None else None,
+            "hold": hold, "ret": round(port, 4) if port is not None else None, "bench": round(bret, 4) if bret is not None else None, "bpx0": bpx0,
             "out": sell_nx, "inn": buy_nx, "top": top,
             "chg": {"out": sorted(prev - held_t), "inn": sorted(held_t - prev)} if prev else None,   # Tausch am letzten Termin
             "univ": len(now), "bt": BACKTEST}
