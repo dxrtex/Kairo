@@ -696,7 +696,7 @@ def main(argv=None) -> int:
     try:                                           # Marktampel für Swing-Trades (Tageskurse, asymmetrisch) – reine Anzeige, die Kairo-Regel nutzt sie nicht
         from . import marketlight
         lh = dict(ctx_hist)
-        lh.update(yf.history(["URTH"], CONFIG.history.period, end=args.end) or {})
+        lh.update(yf.history(["URTH", "RSP", "SPY"], CONFIG.history.period, end=args.end) or {})
         lt = marketlight.market_lights(lh)
         if lt:
             market["light"] = lt

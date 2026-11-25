@@ -178,5 +178,41 @@ def market_lights(h: dict) -> dict | None:
     if not us:
         return None
     w = min(us, key=lambda x: x["lv"])
-    out["all"] = {**w, "src": "^GSPC" if w is out.get("^GSPC") else "^NDX"}
+    out["all"] = narrow_rally({**w, "src": "^GSPC" if w is out.get("^GSPC") else "^NDX"}, g("RSP"), g("SPY"))
     return out
+
+
+def narrow_series(rsp, spy) -> pd.Series | None:
+    """Schmale Rally: gleichgewichteter S&P 500 (RSP) schwächer als der kapitalgewichtete (SPY) – Verhältnis unter seiner
+    50-Tage-Linie und diese fällt (gegen vor 10 Tagen). Stand gestern (kein Vorgriff)."""
+    a, b = _s(rsp), _s(spy)
+    if a is None or b is None:
+        return None
+    r = (a / b.reindex(a.index)).dropna()
+    if len(r) < 70:
+        return None
+    m = r.rolling(50).mean()
+    return ((r < m) & (m < m.shift(10))).shift(1).fillna(False).astype(bool)
+
+
+def narrow_rally(x: dict, rsp=None, spy=None) -> dict:
+    """Gesamtampel: Grün → Gelb, solange die Rally schmal ist (tools/research/ampel_v2.py, 25.11.2026: 1999–2026 weniger Wechsel
+    pro Jahr (7,5 → 6,4), Grün-Tage mit besserer 20-Tage-Rendite und kleinerem Rückschlag; 2013–2026 deutlich, 2003–2012 neutral).
+    Sektorbreite (Anteil Sektoren über 200-Tage-Linie) brachte nichts und wird nicht genutzt."""
+    nr = narrow_series(rsp, spy)
+    if nr is None or not x.get("hist"):
+        return x
+    hist = [[d, 2 if v == 3 and bool(nr.get(pd.Timestamp(d), False)) else v] for d, v in x["hist"]]
+    now = bool(nr.iloc[-1]) if len(nr) else False
+    x = {**x, "hist": hist, "why": list(x.get("why") or [])}
+    x["why"].append([not now, "Rally breit getragen (gleichgewichteter S&P 500 hält mit)" if not now else
+                     "Rally wird schmaler (gleichgewichteter S&P 500 fällt hinter den großen Werten zurück)"])
+    k = hist[-1][1]
+    if k == x["lv"]:
+        return x
+    i = len(hist) - 1
+    while i > 0 and hist[i - 1][1] == k:
+        i -= 1
+    key, label, tone = LV[k]
+    return {**x, "lv": k, "k": key, "label": label, "tone": tone, "do": DO[k], "kairo": KAIRO_LV[k],
+            "since": hist[i][0], "days": len(hist) - i, "narrow": True}
