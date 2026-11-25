@@ -3724,6 +3724,9 @@ main .table-wrap .sc-t.ein2-tb .sh-nm small{white-space:nowrap!important;display
 .sp-gap{text-align:center;font-size:12px;color:var(--muted);padding:6px 0;letter-spacing:.06em}
 .sp-all{display:block;width:100%;margin:8px 0 2px;padding:9px;border:0;border-radius:10px;background:var(--surface-2);color:var(--accent);font-weight:600;font-size:13.5px;cursor:pointer}
 .nr-empty-mine{display:flex;align-items:baseline;gap:8px;margin:4px 2px 12px;font-size:13px;color:var(--muted)}.nr-empty-mine i{flex:none;width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.so-sum{display:flex;align-items:baseline;gap:10px;cursor:pointer;list-style:none}.so-sum::-webkit-details-marker{display:none}.so-sum b{font-size:17px}.so-sum span{font-size:12.5px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.so-sum::after{content:"›";color:var(--muted);font-size:18px;transition:transform .2s}.so-card[open] .so-sum::after{transform:rotate(90deg)}
+.nr-tb .nr-set,.nr-meta .nr-set{font-size:12.5px!important;color:var(--muted)!important;font-weight:500}
 .lf-sech{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:14px 2px 8px}.lf-sech b{font-size:15px}.lf-sech small{font-size:12.5px;color:var(--muted)}
 .lf-tc small{margin-left:2px;font-size:11.5px;color:var(--muted)}
 .lf-kp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:4px 0 10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.lf-kp>div{padding:9px 12px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:1px}.lf-kp>div:first-child{border-left:0}
@@ -6547,12 +6550,13 @@ function qmHtml() {
   const L = [...myTickers()].map(t => { const r = rowOf(t) || {}, q = LIVE.map[t], c = q && q.c > 0 ? q.c : r.c, d1 = q && q.c > 0 && q.pc > 0 ? q.c / q.pc - 1 : r.d1; return { t, n: r.n || t, c, d1, cur: r.cur || "" }; }).filter(x => x.c > 0);
   if (!L.length) return ""; const S = state.qmSort || "d"; L.sort((a, b) => S === "n" ? String(a.n).localeCompare(String(b.n)) : (b.d1 ?? -9) - (a.d1 ?? -9));
   return `<div class="hcard qm-card">${hHead("Kursmonitor")}<div class="qm-tb"><span class="muted">Deine Aktien · Watchlist, Favoriten, Depot${liveOn() ? " · live" : ""}</span><span class="sp-tg">${[["d", "Veränderung"], ["n", "Name"]].map(([k, l]) => `<button class="opt${S === k ? " on" : ""}" data-qms="${k}">${l}</button>`).join("")}</span></div>
-    <div class="qm-g">${L.slice(0, state.qmAll ? 120 : 24).map(x => `<button class="qm-t ${x.d1 == null ? "" : x.d1 >= 0 ? "up" : "down"}" data-ctgo="${esc(x.t)}" style="--a:${x.d1 == null ? 0 : Math.min(.32, Math.abs(x.d1) * 6 + .04).toFixed(2)}">
-      <span class="qm-k">${esc(tkClean(x.t))}</span><span class="qm-n">${esc(shortNm(x.n))}</span><b data-lpx="qm:${esc(x.t)}" data-v="${x.c}">${fmt(x.c, x.c >= 1000 ? 0 : 2)}</b><em>${x.d1 == null ? "–" : sgnPct(x.d1, 2)}</em></button>`).join("")}</div>${L.length > 24 ? `<button class="hlink qm-more" data-qmall>${state.qmAll ? "weniger zeigen" : `alle ${L.length} zeigen`}</button>` : ""}</div>`;
+    <div class="qm-g">${L.slice(0, state.qmAll ? 120 : innerWidth < 640 ? 8 : 16).map(x => `<button class="qm-t ${x.d1 == null ? "" : x.d1 >= 0 ? "up" : "down"}" data-ctgo="${esc(x.t)}" style="--a:${x.d1 == null ? 0 : Math.min(.32, Math.abs(x.d1) * 6 + .04).toFixed(2)}">
+      <span class="qm-k">${esc(tkClean(x.t))}</span><span class="qm-n">${esc(shortNm(x.n))}</span><b data-lpx="qm:${esc(x.t)}" data-v="${x.c}">${fmt(x.c, x.c >= 1000 ? 0 : 2)}</b><em>${x.d1 == null ? "–" : sgnPct(x.d1, 2)}</em></button>`).join("")}</div>${L.length > (innerWidth < 640 ? 8 : 16) ? `<button class="hlink qm-more" data-qmall>${state.qmAll ? "weniger zeigen" : `alle ${L.length} zeigen`}</button>` : ""}</div>`;
 }
 // Reiterleiste klebt oben: Fläche darüber abdecken, sonst scheint der Inhalt zwischen Statusleiste und Leiste durch (18.11.2026)
 (() => { let q = 0; const f = () => { q = 0; document.querySelectorAll(".subnav").forEach(n => { const t = parseFloat(getComputedStyle(n).top) || 0; n.classList.toggle("stuck", n.getBoundingClientRect().top <= t + 1); }); };
   const g = () => { if (!q) q = requestAnimationFrame(f); }; document.addEventListener("scroll", g, { passive: true, capture: true }); window.addEventListener("resize", g); })();
+document.addEventListener("toggle", e => { if (e.target.matches && e.target.matches("[data-soopen]")) { state.soOpen = e.target.open; save(); } }, true);
 document.addEventListener("click", e => { if (e.target.closest("[data-qmall]")) { state.qmAll = !state.qmAll; render(); return; } const b = e.target.closest("[data-qms]"); if (!b) return; state.qmSort = b.dataset.qms; save(); render(); });
 function marketOverviewHtml(bj, ij, row, block, msOf, dedup, nameOf) {
   if (!calData) loadCalendar();
@@ -6636,8 +6640,8 @@ function newsHtml() {
   // Kopf (Wunsch 16.11.2026 „Unübersichtlich“): eine Werkzeugleiste – Bereich · Suche · Tendenz · ↻ – und darunter eine leise Infozeile
   const liveAt = live && NEWS.at ? new Date(NEWS.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
   const meta = (extra, info = "") => { const bits = [extra, live ? `<span class="nr-live"></span>Live${liveAt ? " · " + liveAt + " Uhr" : " · lädt …"}` : ""].filter(Boolean);
-    return `<div class="nr-meta"><span>${bits.join(" · ")}</span>${info}${!live && !state.fhTipOff ? `<button class="hlink nr-set" data-gosec="settings" data-settab="live">Live einrichten</button>` : ""}</div>`; };
-  const tbar = (mid = "") => `<div class="nr-tb">${tab === "feed" ? `<div class="sp-tg nr-seg">${[["mine", "Meine Aktien"], ["market", "Markt"]].map(([v, l]) => `<button class="opt${(v === "mine") === feedMine ? " on" : ""}" data-feedmode="${v}">${l}</button>`).join("")}</div>` : ""}${mid}${live ? `<button class="nr-ic" data-newsfresh aria-label="Aktualisieren" title="Aktualisieren">↻</button>` : !mid && !state.fhTipOff ? `<button class="hlink nr-set" data-gosec="settings" data-settab="live">Live einrichten</button>` : ""}</div>`;
+    return `<div class="nr-meta"><span>${bits.join(" · ")}</span>${info}${!live && !state.fhTipOff ? `<button class="hlink nr-set" data-gosec="settings" data-settab="live">Echtzeit-News einrichten ›</button>` : ""}</div>`; };
+  const tbar = (mid = "") => `<div class="nr-tb">${tab === "feed" ? `<div class="sp-tg nr-seg">${[["mine", "Meine Aktien"], ["market", "Markt"]].map(([v, l]) => `<button class="opt${(v === "mine") === feedMine ? " on" : ""}" data-feedmode="${v}">${l}</button>`).join("")}</div>` : ""}${mid}${live ? `<button class="nr-ic" data-newsfresh aria-label="Aktualisieren" title="Aktualisieren">↻</button>` : !mid && !state.fhTipOff ? `<button class="hlink nr-set" data-gosec="settings" data-settab="live">Echtzeit-News einrichten ›</button>` : ""}</div>`;
   const head = tbar() + (live ? meta("") : "");
   if (tab === "feed" && feedMine) {
     let pool = bj && bj.stocks ? Object.entries(bj.stocks).filter(([t]) => mine.has(t)).flatMap(([t, l]) => l.map(n => ({ ...n, nm: nameOf(t), tk: t, ms: msOf(n.d) }))) : [];
@@ -10901,8 +10905,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.267";
-const APP_NEWS = [["2026.11.267", "Markt übersichtlicher", [
+const APP_VER = "2026.11.268";
+const APP_NEWS = [["2026.11.268", "Markt-Überblick kürzer", [
+  ["Reddit-Trends eingeklappt", "Die Karte zeigt nur noch die drei meistdiskutierten Aktien in der Kopfzeile – ein Tipp klappt die Liste auf, Kairo merkt sich die Wahl."],
+  ["Kursmonitor kompakter", "16 Kacheln auf dem iPad, 8 auf dem iPhone – alle weiteren per Tipp."],
+  ["Ruhigere Hinweise", "„Echtzeit-News einrichten ›“ steht dezent in der Leiste statt als blauer Link."]]],
+ ["2026.11.267", "Markt übersichtlicher", [
   ["Sektoren & Branchen kompakt", "Statt rund 70 Branchen untereinander zuerst die 8 stärksten und 8 schwächsten – alle per Tipp, im Vollbild immer alle."],
   ["News nie leer", "Gibt es zu deinen Aktien keine neuen Meldungen, zeigt der Reiter direkt die wichtigsten Markt-News mit kurzem Hinweis."],
   ["Kurze Firmennamen", "„Goldman Sachs“ statt „The Goldman Sachs Group, Inc.“, „Eli Lilly“ statt „Eli Lilly and Company“ – im Kalender und überall in der App."]]],
@@ -15692,12 +15700,13 @@ const pulseAge = d => { const g = d && Date.parse(d.generated); if (!g) return "
 function socialHtml() {
   const d = pulseGet("d"), L0 = (d && d.social) || []; if (!L0.length) return "";
   const mine = myTickers(), own = !!state.soMine, L = (own ? L0.filter(x => mine.has(x.t)) : L0).slice(0, state.soMore ? 40 : 12), mx = Math.max(...L0.map(x => x.m), 1);
-  return `<div class="hcard so-card">${hHead("Reddit-Trends")}<div class="sp-tg mv-flt"><button class="opt${own ? " on" : ""}" data-somine>★ Meine</button><span class="mv-ctx">Erwähnungen in 24 Std. · ${esc(pulseAge(d))}</span></div>
+  const top = L0.slice(0, 3).map(x => esc(x.t)).join(", ");   // 25.11.2026: eingeklappt – Daten bleiben, stehen aber nicht im Weg
+  return `<details class="hcard so-card"${state.soOpen ? " open" : ""} data-soopen><summary class="so-sum"><b>Reddit-Trends</b><span>meistdiskutiert: ${top}</span></summary><div class="sp-tg mv-flt" style="margin-top:10px"><button class="opt${own ? " on" : ""}" data-somine>★ Meine</button><span class="mv-ctx">Erwähnungen in 24 Std. · ${esc(pulseAge(d))}</span></div>
     <div class="so-l">${L.map((x, i) => { const ch = x.m0 ? x.m / x.m0 - 1 : null, sr = rowOf(x.t);
       return `<button class="so-r" ${sr ? `data-ctgo="${esc(x.t)}"` : `data-ein="${esc(x.t)}"`}><span class="so-i">${x.r || i + 1}</span>${cfAv(x.t)}<span class="so-n"><b>${esc(x.t)}</b><em>${esc(sr ? shortNm(sr.n) : x.n)}</em></span>
         <span class="so-m"><b>${fmt(x.m, 0)}</b><i class="${ch == null || ch >= 0 ? "" : "dn"}" style="width:${(x.m / mx * 100).toFixed(1)}%"></i></span><span class="so-c ${ch > 0 ? "up" : ch < 0 ? "down" : ""}">${ch == null ? "neu" : sgnPct(ch, 0)}</span></button>`; }).join("") || `<div class="bf-empty">Keine deiner Aktien unter den Reddit-Trends.</div>`}</div>
     ${!own && L0.length > 12 ? `<button class="hlink" data-somore style="margin-top:6px">${state.soMore ? "weniger" : "alle 40 zeigen"}</button>` : ""}
-    <div class="note" style="margin:6px 0 0">Quelle ApeWisdom (Reddit: wallstreetbets, stocks, investing u. a.). Viel Gerede ist kein Kaufsignal – oft das Gegenteil.</div></div>`;
+    <div class="note" style="margin:6px 0 0">Quelle ApeWisdom (Reddit: wallstreetbets, stocks, investing u. a.). Viel Gerede ist kein Kaufsignal – oft das Gegenteil.</div></details>`;
 }
 document.addEventListener("click", e => { if (e.target.closest("[data-somine]")) { state.soMine = !state.soMine; save(); render(); return; } if (e.target.closest("[data-somore]")) { state.soMore = !state.soMore; save(); render(); } });
 // Zinsen, Devisen, Rohstoffe: Kachel mit Kurs, Tagesveränderung (Zinsen in Basispunkten) und 1-Jahres-Linie
