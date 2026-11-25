@@ -3721,6 +3721,9 @@ main .table-wrap .sc-t.ein2-tb .sh-nm small{white-space:nowrap!important;display
 @media (max-width:640px){.ein2-tb:not(.ein2-dep) th:nth-child(6),.ein2-tb:not(.ein2-dep) td:nth-child(6){display:none}.ein2-dep th:nth-child(2),.ein2-dep td:nth-child(2),.ein2-dep th:nth-child(6),.ein2-dep td:nth-child(6){display:none}
 .ein2-tb th,.ein2-tb td{padding-left:6px!important;padding-right:6px!important}main .table-wrap .sc-t.ein2-tb th:nth-child(2),main .table-wrap .sc-t.ein2-tb td:nth-child(2),main .table-wrap .sc-t.ein2-tb.ein2-dep th:nth-child(1),main .table-wrap .sc-t.ein2-tb.ein2-dep td:nth-child(1){min-width:0!important;max-width:none!important;width:auto!important}.ein2-tb .sh-nm{min-width:0!important;gap:6px!important}.ein2-tb .sh-nm b{max-width:78px;overflow:hidden;text-overflow:ellipsis;display:block}.ein2-tb .cf-av{width:24px!important;height:24px!important;flex:none}.ein2-tb .ein2-hint{display:none}.ein2-tb th{font-size:11px!important}.ein2-cb{width:26px!important}.ein2-tb .ein2-a{font-size:12.5px}.ein2-tb .sh-nm small{display:none}.ein2-h{grid-template-columns:1fr 1fr!important}}
 .ein2-cap input{width:96px!important;border:1px solid var(--line)!important;border-radius:9px;padding:2px 8px!important;background:var(--surface-2)!important}
+.sp-gap{text-align:center;font-size:12px;color:var(--muted);padding:6px 0;letter-spacing:.06em}
+.sp-all{display:block;width:100%;margin:8px 0 2px;padding:9px;border:0;border-radius:10px;background:var(--surface-2);color:var(--accent);font-weight:600;font-size:13.5px;cursor:pointer}
+.nr-empty-mine{display:flex;align-items:baseline;gap:8px;margin:4px 2px 12px;font-size:13px;color:var(--muted)}.nr-empty-mine i{flex:none;width:7px;height:7px;border-radius:50%;background:var(--muted)}
 .lf-sech{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:14px 2px 8px}.lf-sech b{font-size:15px}.lf-sech small{font-size:12.5px;color:var(--muted)}
 .lf-tc small{margin-left:2px;font-size:11.5px;color:var(--muted)}
 .lf-kp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:4px 0 10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.lf-kp>div{padding:9px 12px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:1px}.lf-kp>div:first-child{border-left:0}
@@ -5802,7 +5805,8 @@ function sectorsHtml() {
   if (!rows.length) return "";
   const mx = Math.max(...rows.map(x => Math.abs(x.v)), 1e-4), neg = rows.some(x => x.v < 0), pos = rows.some(x => x.v > 0);
   const zero = neg && pos ? 50 : neg ? 100 : 0, span = neg && pos ? 50 : 100;
-  const show = rows;                                   // durchgehend sortierte Liste (wie Profi-Tools) – keine Lücke „⋯“ mehr
+  // 25.11.2026: lange Listen (Branchen ~70) kompakt – die 8 stärksten und 8 schwächsten, alle per Tipp
+  const cut = rows.length > 20 && !state.spAll && state.fsv !== "sp", show = cut ? [...rows.slice(0, 8), null, ...rows.slice(-8)] : rows;
   const hasHist = xs.some(x => (x.rh || []).length > 3), hv = hasHist && state.spView === "hist";
   const hasRrg = xs.some(x => x.rrg), rv = hasRrg && state.spView === "rrg";
   const bar = x => { const w = Math.abs(x.v) / mx * span; return `<i class="${x.v >= 0 ? "up" : "down"}" style="left:${x.v >= 0 ? zero : zero - w}%;width:${Math.max(w, .8)}%"></i>`; };
@@ -5821,9 +5825,10 @@ function sectorsHtml() {
       ${hv || rv ? `<span class="sp-dd sp-dd0"><span>Zeitraum</span><b>Wochen</b></span>` : `<span class="sp-perw">${hmPerSel(k)}</span>`}
       ${sel("data-spviewsel", [["ret", "Rendite", 1], ["rrg", "Rotation", hasRrg], ["hist", "Verlauf", hasHist]].filter(o => o[2]).map(o => [o[0], o[1]]), hv ? "hist" : rv ? "rrg" : "ret", "Ansicht")}
       ${hv || rv ? "" : `<button class="sp-rel${state.spRel ? " on" : ""}" data-sprel aria-pressed="${state.spRel ? "true" : "false"}" title="Rendite minus Durchschnitt aller ${what}">ggü. Markt</button>`}</div>
-    ${rv ? spRrgHtml(xs, ind) + (th ? themeTrendHtml(xs) : "") : hv ? spHistHtml(xs, ind) : `<div class="sp-sub">${eu ? "Europa" : "US"}-${what} · ${esc(kn)}${xs.some(x => x.px) ? ' · <b class="sp-live">● live</b>' : ""}</div><div class="sp-list sp-list2">${show.map(row).join("")}</div><div class="sp-after">${rot}${th ? themeTrendHtml(xs) : hotHtml(ind ? [] : xs)}</div>`}
+    ${rv ? spRrgHtml(xs, ind) + (th ? themeTrendHtml(xs) : "") : hv ? spHistHtml(xs, ind) : `<div class="sp-sub">${eu ? "Europa" : "US"}-${what} · ${esc(kn)}${xs.some(x => x.px) ? ' · <b class="sp-live">● live</b>' : ""}</div><div class="sp-list sp-list2">${show.map((x, i) => x ? row(x, i) : `<div class="sp-gap">· · · ${rows.length - 16} weitere · · ·</div>`).join("")}</div>${rows.length > 20 ? `<button class="sp-all" data-spall>${state.spAll ? "Nur stärkste und schwächste" : `Alle ${rows.length} anzeigen`}</button>` : ""}<div class="sp-after">${rot}${th ? themeTrendHtml(xs) : hotHtml(ind ? [] : xs)}</div>`}
     <div class="note sp-src" style="margin:8px 0 0">${eu ? "STOXX-Europe-600-Sektor-ETFs (Xetra)" : as ? "Anlage-ETFs" : `US-${what}-ETFs${ind ? " bzw. Kairo-Körbe (z. B. Neoclouds)" : ""}`}${rv ? " gegenüber dem " + (eu ? "STOXX 600" : "S&P 500") + ", Wochenwerte" : state.spRel ? " · Rendite minus Durchschnitt" : ""} · ▲▼ Plätze ${k === "d1" ? "ggü. gestern" : "ggü. Vorwoche"} · antippen zeigt die stärksten Aktien</div></div>`;
 }
+document.addEventListener("click", e => { if (!e.target.closest("[data-spall]")) return; state.spAll = !state.spAll; save(); render(); });
 // „Heißgelaufen“: die 2 Sektoren mit der höchsten Mehrrendite über 4 Wochen (backend/analysis.py rotation). Backtest 2008–2026
 // (tools/research/rotation.py): solche Sektoren lagen seit 2016 in den folgenden 13 Wochen im Schnitt ~1 % hinter dem Markt.
 function hotHtml(xs) {
@@ -6686,6 +6691,13 @@ function newsHtml() {
       + (restHtml ? `${depHtml ? `<div class="nr-sec"><b>Watchlist & Merkliste</b><span>${gRest.length}</span></div>` : ""}<div class="nr-list">${restHtml}</div>` : ""), more = !state.newsQ && gRest.length > 12;
     const bar = tbar(`<div class="ng-search nr-q"><input type="search" id="newsQ" placeholder="Aktie suchen …" value="${esc(state.newsQ || "")}" autocomplete="off"><button type="button" class="search-x" data-clr="newsQ" aria-label="Eingabe löschen"${state.newsQ ? "" : " hidden"}>✕</button></div>
       <label class="sp-dd nr-tone"><select data-newstonesel aria-label="Filter">${[["", "Alle Meldungen"], ["g", "▲ Positiv"], ["r", "▼ Negativ"], ["q", "Nur seriöse Quellen"]].map(([v, l]) => `<option value="${v}"${tf === v ? " selected" : ""}>${l}</option>`).join("")}<optgroup label="Thema">${TAGS.map(([, l]) => `<option value="t:${l}"${tf === "t:" + l ? " selected" : ""}>${l}</option>`).join("")}</optgroup></select></label>`);
+    if (!groups.length && mine.size && !state.newsQ) {   // 25.11.2026: nicht leer – Markt-News zeigen, mit kurzem Hinweis
+      const fm0 = state.feedMode; state.feedMode = "market"; let mk = ""; try { mk = newsHtml(); } finally { state.feedMode = fm0; }
+      const note = `<div class="nr-empty-mine"><i></i>Zu deinen Aktien gab es in den letzten 7 Tagen keine neuen Meldungen – hier die wichtigsten Markt-News.</div>`;
+      const i0 = mk.indexOf('<div class="nr-tb">'); if (i0 < 0) return note + mk;   // Hinweis direkt unter die Werkzeugleiste
+      let d = 0, j = i0; const re = /<\/?div\b/g; re.lastIndex = i0; let m;
+      while ((m = re.exec(mk))) { d += m[0] === "<div" ? 1 : -1; if (!d) { j = mk.indexOf(">", m.index) + 1; break; } }
+      return mk.slice(0, j) + note + mk.slice(j); }
     return (groups.length ? "" : head) + (mine.size ? "" : `<p class="muted" style="margin:8px 2px">Lege Aktien in Merkliste, Depot oder Watchlist – dann siehst du hier ihre Meldungen.</p>`)
       + (groups.length ? `${bar}${meta(`${groups.length} Aktien mit Meldungen · 7 Tage`, gl("wind"))}
         ${listHtml || `<div class="nr-list"><p class="muted" style="padding:14px;margin:0">Keine Meldung mit dieser Tendenz.</p></div>`}<p class="muted" id="newsQnone" hidden>Keine deiner Aktien passt zur Suche.</p>
@@ -7355,7 +7367,7 @@ function calendarHtml() {
   for (const d = new Date(start); d <= last || d.getDay() !== 1; d.setDate(d.getDate() + 1)) {
     const wd = d.getDay(); if (wd === 0 || wd === 6) { if (d > last) break; continue; }
     const iso = isoOf(d), inM = d.getMonth() === first.getMonth(), evs = byDay[iso] || [];
-    const tag = e => { const [icon, cls] = CAL_KIND[e.kind] || ["•", "k-exp"]; const lbl = e.ticker ? (e.name || e.ticker).replace(/,? (Inc|AG|SE|Corp|N\.V|plc)\.?$/i, "") : (e.title || "").replace(/\s*\(.*$/, "").replace(/^[^:]{2,20}:\s*/, "").trim();
+    const tag = e => { const [icon, cls] = CAL_KIND[e.kind] || ["•", "k-exp"]; const lbl = e.ticker ? shortNm(e.name || e.ticker) : (e.title || "").replace(/\s*\(.*$/, "").replace(/^[^:]{2,20}:\s*/, "").trim();
       return `<span class="ct ${cls}${e.ticker && dep.has(e.ticker) ? " dep" : ""}"><i>${icon}</i>${esc(lbl)}</span>`; };
     cells += `<button class="mc${inM ? "" : " out"}${iso === todayIso ? " today" : ""}${iso === calDay ? " sel" : ""}${iso < todayIso ? " past" : ""}" data-calday="${iso}">
       <span class="dn">${d.getDate()}</span>${evSort(evs).slice(0, 3).map(tag).join("")}${evs.length > 3 ? `<span class="more">+${evs.length - 3} weitere</span>` : ""}${evs.length ? `<span class="dots">${evs.slice(0, 4).map(e => `<i class="${(CAL_KIND[e.kind] || [])[1] || ""}"></i>`).join("")}</span>` : ""}</button>`;
@@ -10889,8 +10901,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.266";
-const APP_NEWS = [["2026.11.266", "Einstieg kennt dein Depot", [
+const APP_VER = "2026.11.267";
+const APP_NEWS = [["2026.11.267", "Markt übersichtlicher", [
+  ["Sektoren & Branchen kompakt", "Statt rund 70 Branchen untereinander zuerst die 8 stärksten und 8 schwächsten – alle per Tipp, im Vollbild immer alle."],
+  ["News nie leer", "Gibt es zu deinen Aktien keine neuen Meldungen, zeigt der Reiter direkt die wichtigsten Markt-News mit kurzem Hinweis."],
+  ["Kurze Firmennamen", "„Goldman Sachs“ statt „The Goldman Sachs Group, Inc.“, „Eli Lilly“ statt „Eli Lilly and Company“ – im Kalender und überall in der App."]]],
+ ["2026.11.266", "Einstieg kennt dein Depot", [
   ["Nur was wirklich zu tun ist", "Steht eine Aktie zum Verkauf, die du gar nicht hast, heißt es jetzt „nicht in deinem Depot“. Hast du eine Kauf-Aktie schon, steht „schon im Depot“. Abhaken musst du nur noch die echten Orders."],
   ["So setzt du den Tausch um", "Kurze Anleitung für Scalable: ab 15:30 Uhr (US-Eröffnung), erst verkaufen, dann kaufen, Limit knapp über dem Kurs."],
   ["Saubere Zeilen", "Ticker und Rang stehen auf dem iPad wieder in einer Zeile."]]],
@@ -13092,7 +13108,9 @@ document.addEventListener("change", e => {
 });
 document.addEventListener("change", e => { if (e.target.id === "tpPaper") { state.tpPaper = e.target.checked; save(); render(); } });
 // Kurzname für Listen: Rechtsform-Zusätze weg („Prologis, Inc.“ → „Prologis“)
-const shortNm = n => String(n || "").replace(/,?\s+(Inc\.?|Corp\.?|Corporation|Incorporated|plc|PLC|AG|SE|N\.V\.|S\.A\.|S\.p\.A\.|ASA|AB( \(publ\))?|Ltd\.?|Limited|Co\.,? Ltd\.?|Holdings?|Group|& Co\.? KGaA|KGaA)\s*$/i, "").replace(/,\s*$/, "").trim() || n;
+const SHORT_RE = /,?\s+(Inc\.?|Corp\.?|Corporation|Incorporated|plc|PLC|AG|SE|N\.V\.|S\.A\.|S\.p\.A\.|ASA|AB( \(publ\))?|Ltd\.?|Limited|Co\.,? Ltd\.?|Holdings?|Group|& Co\.? KGaA|KGaA|and Company|& Co\.?|Company|Aktiengesellschaft)\s*$/i;
+// zweimal kürzen („The Goldman Sachs Group, Inc.“ → „Goldman Sachs“), führendes „The“ weg (25.11.2026)
+const shortNm = n => { let x = String(n || ""); for (let i = 0; i < 2; i++) x = x.replace(SHORT_RE, "").replace(/,\s*$/, "").trim(); x = x.replace(/^The\s+/i, ""); return x || n; };
 // Große Karte je kaufbereitem Treffer (11/2026): Kauf, Stop, Größe, Risiko – dieselbe Rechnung wie der Trade-Plan
 function einReadyCard(x, i) {
   const r0 = data.results.find(y => y.ticker === x.t), free = kmSlots(); let m = null, lv = null;
