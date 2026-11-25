@@ -10758,8 +10758,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.256";
-const APP_NEWS = [["2026.11.256", "Screener und Depot aufgeräumt", [
+const APP_VER = "2026.11.257";
+const APP_NEWS = [["2026.11.257", "Ein Chart: TradingView", [
+  ["Nur noch ein Chart", "Der Chart-Reiter zeigt den echten TradingView-Chart – ohne Umschalter zwischen Kairo und TradingView. Live-Kerzen ab 1 Minute, alle Indikatoren und Zeichenwerkzeuge, so flüssig wie in TradingView selbst."],
+  ["Kairo daneben und darunter", "Strategie-Status, Rang, Quartalszahlen, Smart Money und Fundamentaldaten stehen rechts, News und Firmendaten unter dem Chart. Die Aktie wechselst du über die Suche oben."]]],
+ ["2026.11.256", "Screener und Depot aufgeräumt", [
   ["Screener wie bei Profi-Tools", "Filter öffnen sich als Fenster und verdecken nicht mehr die Liste, die Ansichten sind ruhige Reiter, die Übersicht zeigt Kurs, 1T, 1M, YTD, Abstand zum Hoch, Börsenwert und KGV."],
   ["Depot ohne Swing-Reste", "Statt offener Trades, Stops, Verkaufstag und Trading-Kapital zeigt der Depot-Kopf Welt-ETF-Anteil gegen dein Ziel, wie viele Strategie-Aktien du hast und den nächsten Tausch. Der Strategie-Abgleich steht eingeklappt unten."]]],
  ["2026.11.255", "Scanner und Einstieg aufgeräumt", [
@@ -14930,7 +14933,7 @@ function cockpitSide0(h, r) {
       ${cell("Stop", stp ? fmt(stp) : "–", stp && last ? sgnPct(stp / last - 1, 1) : "", "down")}${cell("Ziel", tgt ? fmt(tgt) : "–", tgt && last ? sgnPct(tgt / last - 1, 0) : "Swing-Hoch", "up")}
       ${cell("Chance/Risiko", crv != null ? `${fmt(crv, 1)} : 1` : "–", ko ? `K.-o. ${fmt(ko)}` : "", crv != null ? (crv >= 2 ? "up" : "down") : "")}</div>
       ${!ent && !r.ext ? `<small class="sbt-n">Plan wird final, sobald alle Kriterien erfüllt sind und die Konsolidierung steht.</small>` : ""}` : "";
-  const top = `<div class="cf-s sbt"><div class="sbt-a"><a class="btn ghost sm" href="${tvUrl(r.ticker)}" target="_blank" rel="noopener">TradingView</a></div>${KP.earn}</div>`;   // Swing-Kopf entfernt (24.11.2026) – oben steht der Strategie-Status
+  const top = KP.earn ? `<div class="cf-s sbt">${KP.earn}</div>` : "";   // TradingView ist jetzt der Chart selbst (25.11.2026)   // Swing-Kopf entfernt (24.11.2026) – oben steht der Strategie-Status
   // Kennzahlen für die eingeklappten Zeilen
   const A = h.A || (window.__lastChart && window.__lastChart.c ? (h.A = autoTA(window.__lastChart.c)) : null), Z = A ? A.zones || [] : [], sup = Z.filter(z => z.hi < last).sort((a, b) => b.hi - a.hi)[0];
   const sv = (() => { try { return smView(t0); } catch (e) { return null; } })(), G = (() => { try { return factorGrade(t0); } catch (e) { return null; } })();
@@ -14949,7 +14952,7 @@ function cockpitSide0(h, r) {
       ${row("Meistgehandelt", vi.poc, "rgba(150,164,190,.9)")}<div class="cf-r"><span><i style="background:rgba(150,164,190,.45)"></i>70 % des Volumens</span><b>${fmt(vi.val)}–${fmt(vi.vah)}</b>${last ? `<em class="${last > vi.vah ? "up" : last < vi.val ? "down" : ""}">${last > vi.vah ? "Kurs darüber" : last < vi.val ? "Kurs darunter" : "Kurs drin"}</em>` : ""}</div>
       <p class="muted cf-t">Breite Balken = auf diesem Kursniveau wurde viel gehandelt, schmale = wenig. ${vi.nSub ? `Aus Stundenkerzen (${vi.nSub} von ${vi.nDays} Tagen).` : `Aus Tageskerzen geschätzt${liveKey("yq") ? " – Stundenkerzen werden geladen." : " – mit dem Kairo-Kursdienst genauer aus Stundenkerzen."}`}${state.vpMode === "anchor" ? ` <button class="hlink" data-vppick>Startpunkt neu wählen</button>` : ""}</p></div>` : "")(h.vpp && h.vpp.info())}
 `, false) : "")
-    + (lnN ? sbSec("ln", "Fibonacci & Linien", `${lnN} ${lnN === 1 ? "Eintrag" : "Einträge"}`, `
+    + (lnN && !document.querySelector("#ctab.tv-on") ? sbSec("ln", "Fibonacci & Linien", `${lnN} ${lnN === 1 ? "Eintrag" : "Einträge"}`, `
     ${M.cls && clGet("fib") ? fibList(M.cls, "#f4b740", "Fibonacci") : ""}${M.big && clGet("big", true) ? fibList(M.big, "#b07cff", "Fibonacci große Welle") : ""}
     ${M.lines.length ? `<div class="cf-s"><div class="cf-h">Unterstützungen & Widerstände</div>${M.lines.map(L => row(`${L.kind === "s" ? "Unterstützung" : "Widerstand"} · ${L.n}×`, L.p, L.kind === "s" ? "#4aa3ff" : "#ff8076")).join("")}</div>` : ""}
 `, false) : "");
@@ -15226,7 +15229,7 @@ function ctTvMount(t) {
   let sym = /\.DE$/.test(t) && !state.tvVenue ? `GETTEX:${t.replace(/\.DE$/, "")}` : tvSym(t);
   if (/^(NASDAQ|NYSE|AMEX|NYSEARCA|NYSEAMERICAN):/.test(sym)) sym = "BATS:" + sym.split(":")[1];
   tvWidget(box, "advanced-chart", { autosize: true, symbol: sym, interval: state.ctTvIv || "D", timezone: "Europe/Berlin", theme: lt ? "light" : "dark", style: "1", locale: "de_DE",
-    backgroundColor: lt ? "#ffffff" : "#000000", gridColor: lt ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)", allow_symbol_change: true, hide_side_toolbar: false,
+    backgroundColor: lt ? "#ffffff" : "#000000", gridColor: lt ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)", allow_symbol_change: false, hide_side_toolbar: false,
     withdateranges: true, details: false, hotlist: false, calendar: false, save_image: false, support_host: "https://www.tradingview.com" });
 }
 // Vollbild für den TradingView-Chart (Wunsch 18.11.2026): echtes Vollbild, wo das Gerät es erlaubt, sonst bildschirmfüllend mit „Schließen“
@@ -16128,7 +16131,7 @@ function ctabBuild(c, r) {
   const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-rsz" data-rsz="${f}" title="Ziehen: Höhe ändern · Doppeltipp: zurücksetzen" aria-hidden="true"><i></i></div><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="Indikator groß">${CT_IC.expand}</button><button class="ct-x ct-fsx" data-fsind="${f}" title="Unter dem Chart ausblenden" aria-label="Indikator schließen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ctab-c" id="${id}"></div></div>`;
   el.innerHTML = `<div class="ct-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="ctQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="${innerWidth > 900 ? "Symbol suchen" : innerWidth < 640 ? "Aktie suchen – Name oder Kürzel" : "Chart suchen – jede Aktie, Name oder Kürzel (z. B. Amazon, UBS, Rheinmetall)"}" aria-label="Chart suchen">${matchMedia("(pointer: fine)").matches ? `<kbd class="ct-kbd" aria-hidden="true">/</kbd>` : ""}<div id="ctList" class="ct-list" hidden></div></div>
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
-      <div class="ct-mode" role="group" aria-label="Chart-Art"><button class="${state.ctTv ? "" : "on"}" data-cttv="0" title="Kairo-Chart mit Plan, Fibonacci, Volumenprofil und Kairo-Analyse">Kairo</button><button class="${state.ctTv ? "on" : ""}" data-cttv="1" title="TradingView-Chart: live, alle Indikatoren und Zeichenwerkzeuge, 1 Min bis Monat">TradingView</button></div><button class="ct-b tv-fsb" data-tvfs title="TradingView im Vollbild" aria-label="TradingView im Vollbild">${FS_IC}</button>
+      <button class="ct-b tv-fsb" data-tvfs title="TradingView im Vollbild" aria-label="TradingView im Vollbild">${FS_IC}</button>
       ${SWING_OFF ? (I => I && (I.rk || I.h) ? lfPill(I) : "")(LF() && !r.ext ? lfInfo(String(r.ticker).replace(/@rp$/, "")) : null) : `<span class="st ${k.cls}">${esc(k.t)}</span>`}${CXBACK ? `<button class="ct-b ct-back" data-cxback title="Zurück zur Übersicht von ${esc(tkClean(CXBACK.t))} und an dieselbe Stelle im ${esc(SEC_NAME[CXBACK.sec] || "Reiter")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>${esc(SEC_NAME[CXBACK.sec] || "Zurück")}</span></button>` : ""}${state.mcBack > 1 ? `<button class="ct-b ct-back" data-mcback title="Zurück zu den ${state.mcBack} Charts" aria-label="Zurück zum Raster">${MC_IC[state.mcBack] || MC_IC[4]}<span>${state.mcBack} Charts</span></button>` : ""}<button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
       <div class="ct-right">${ctDdHtml(c.tf || "D")}<div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"]].map(([v, l]) => `<button title="Zeitraum" class="${v === "252" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
@@ -16138,7 +16141,7 @@ function ctabBuild(c, r) {
       ${pane("tRsi", paneLbl(0, r), "rsi")}${pane("tMacd", paneLbl(1, r), "macd")}${pane("tMbi", paneLbl(2, r), "mbi")}
       ${ctNewsHtml(r)}${ctCoHtml(r)}
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside><div class="ct-wl" id="ctWl"${state.ctWl ? "" : " hidden"}>${ctWlHtml(r.ticker)}</div></div>`;
-  ctFsSearch(); el.classList.toggle("tv-on", !!state.ctTv); if (state.ctTv) ctTvMount(r.ticker);
+  ctFsSearch(); el.classList.add("tv-on"); ctTvMount(r.ticker);   // ein Chart-System: TradingView (Wunsch 25.11.2026)
   { const o = CO[r.ticker] || (CO[r.ticker] = {}); o.cc = c; o.r = r; }
   coLoad(r.ticker); coEnd($("ctCo")); if ($("ctCo")) coFan($("ctCo"));
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
