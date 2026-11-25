@@ -3727,6 +3727,8 @@ main .table-wrap .sc-t.ein2-tb .sh-nm small{white-space:nowrap!important;display
 .so-sum{display:flex;align-items:baseline;gap:10px;cursor:pointer;list-style:none}.so-sum::-webkit-details-marker{display:none}.so-sum b{font-size:17px}.so-sum span{font-size:12.5px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .so-sum::after{content:"›";color:var(--muted);font-size:18px;transition:transform .2s}.so-card[open] .so-sum::after{transform:rotate(90deg)}
 .nr-tb .nr-set,.nr-meta .nr-set{font-size:12.5px!important;color:var(--muted)!important;font-weight:500}
+.dh-set{color:var(--muted)!important;text-decoration:none}
+@media (max-width:640px){.pos-list details > .gsum{padding-right:34px!important}.pos-list details > .gsum::after{right:10px!important}}
 .lf-sech{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:14px 2px 8px}.lf-sech b{font-size:15px}.lf-sech small{font-size:12.5px;color:var(--muted)}
 .lf-tc small{margin-left:2px;font-size:11.5px;color:var(--muted)}
 .lf-kp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:4px 0 10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.lf-kp>div{padding:9px 12px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:1px}.lf-kp>div:first-child{border-left:0}
@@ -4559,7 +4561,7 @@ function probeHtml(compact) { if (PROBE.d === null) { probeLoad(); return compac
   return `<div class="card lf-probe" id="probe"><div class="plan-h">Probe-Depot · Strategie im echten Markt <small class="muted">seit ${dateDE(st.start)} · ohne echtes Geld</small></div>
     <div class="lf-kpi lf-kpi-l"><div><span>Depotwert</span><b>${eur(last)}</b></div><div><span>seit Start</span>${pc(ret)}</div><div><span>Welt-ETF gleicher Start</span>${pc(S.etf)}</div><div><span>70/30 gleicher Start</span>${pc(S.mix)}</div></div>
     ${probeChart(st)}
-    <div class="lf-kpi"><div><span>größter Rückgang</span><b class="down">${pct(S.max_dd ?? 0, 1)}</b></div><div><span>Gebühren + Spread</span><b>${eur(S.kosten ?? st.fees)}</b></div><div><span>Steuern bezahlt</span><b>${eur(S.steuern ?? st.taxes)}</b></div><div><span>Verkäufe</span><b>${(st.trades || []).length}</b></div></div>
+    <div class="lf-kpi"><div><span>größter Rückgang</span><b class="${(S.max_dd ?? 0) < -0.0005 ? "down" : ""}">${pct(S.max_dd ?? 0, 1)}</b></div><div><span>Gebühren + Spread</span><b>${eur(S.kosten ?? st.fees)}</b></div><div><span>Steuern bezahlt</span><b>${eur(S.steuern ?? st.taxes)}</b></div><div><span>Verkäufe</span><b>${(st.trades || []).length}</b></div></div>
     ${pos ? `<div class="table-wrap"><table class="sc-t lf-t"><thead><tr><th>Aktie</th><th class="num">Stück</th><th class="num">Kauf</th><th class="num">Kurs</th><th class="num">seit Kauf</th></tr></thead><tbody>${pos}</tbody></table></div>` : ""}
     ${tr ? `<div class="plan-h" style="margin-top:10px">Letzte Verkäufe</div><div class="table-wrap"><table class="sc-t lf-t"><thead><tr><th>Aktie</th><th>Grund</th><th class="num">Gewinn</th><th class="num">Steuer</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
     <p class="muted lf-note">Handelt automatisch nach der Regel: Start mit 10.000 €, an jedem Tauschtermin zur Eröffnung, nur ganze Stücke, Scalable PRIME+ (0,99 € unter 250 €), halber Spread je Seite, Abgeltungsteuer mit Verlusttopf (ohne Sparerpauschbetrag). Jede Order wird am Ausführungstag gespeichert und nie nachträglich geändert. Bewertung täglich nach US-Börsenschluss, Kurse in der Tabelle vom letzten Scan.</p></div>`; }
@@ -4639,7 +4641,7 @@ function sgHtml() { if (!searchIdx) loadSearch(); const g = sgLoad(), L = LF();
     <div class="g-act" style="margin-top:10px"><button class="btn ghost sm" data-sg="other">Andere Aktie kaufen …</button><button class="btn ghost sm" data-sg="reset">Zurücksetzen</button></div>
     <p class="muted lf-note">Spielgeld, nur auf diesem Gerät. Kurs: live, wenn verfügbar, sonst letzter Scan – oder dein Kurs aus Scalable („Anderer Kurs“). Ganze Stücke, 0,99 € unter 250 € Orderwert, Abgeltungsteuer mit Verlusttopf (ohne Sparerpauschbetrag). Keine echte Order.</p></div>`; }
 function stratHtml() { if (!anaData) loadAnalysis();
-  return `<div class="section-title"><span>Strategie-Test</span><span>ohne echtes Geld</span></div>` + probeHtml() + sgHtml(); }
+  return probeHtml() + sgHtml(); }   // 25.11.2026: Überschrift doppelte die Karten-Titel
 // ETF: Aufteilung Kern / Langfrist
 function etfHtml() { return etfHtml0(); }
 // Aktienkarte: Kairo Langfrist (Rang, Lauf, 4 Kriterien)
@@ -7851,7 +7853,7 @@ function depotHtml0() {
   const nLive = list.filter(p => p.t && LIVE.map[p.t]).length;
   // Kopf (Wunsch 17.11.2026 „billig“): kein Abschnittstitel und keine Live-Leiste mehr – der Live-Stand steht klein in der Wertzeile
   DEP_LIVE = liveOn() ? (nLive ? `<span class="dh-live"><i></i>${nLive === list.filter(p => p.t).length ? "Live" : `${nLive} von ${list.filter(p => p.t).length} live`}</span><button class="dh-rf" data-liveall="depot" title="Alle Kurse aktualisieren" aria-label="Kurse aktualisieren">↻</button>` : `<span class="dh-live wait">Live-Kurse laden …</span>`)
-    : `<span class="dh-live off">Abendkurse · <a href="#" data-gosec="settings">Live einrichten</a></span>`;
+    : `<span class="dh-live off">Abendkurse · <a href="#" data-gosec="settings" class="dh-set">Echtzeit-Kurse einrichten ›</a></span>`;
   const head = items.length ? "" : `<div class="section-title"><span>Mein Depot</span><span></span></div>`;
   const sum = list.length && valued ? `<div class="dep-sum">
       <div class="fig"><span>Depotwert${valued < list.length ? " (ohne Zertifikate)" : ""}</span><b data-lpx="dp:sum" data-v="${wert || ""}">${fmt(wert)} €</b></div>
@@ -10905,8 +10907,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.268";
-const APP_NEWS = [["2026.11.268", "Markt-Überblick kürzer", [
+const APP_VER = "2026.11.269";
+const APP_NEWS = [["2026.11.269", "Depot-Feinschliff", [
+  ["iPhone: Positionen lesbar", "Der Pfeil zum Aufklappen überdeckt Gewinn und Verlust nicht mehr."],
+  ["Strategie-Test ohne Doppelung", "Die Überschrift über Probe- und Spiel-Depot ist weg – die Karten sagen selbst, was sie sind. „Größter Rückgang 0,0 %“ steht nicht mehr rot."],
+  ["Ruhige Hinweise", "„Echtzeit-Kurse einrichten ›“ steht dezent neben dem Depotwert statt als blauer Link."]]],
+ ["2026.11.268", "Markt-Überblick kürzer", [
   ["Reddit-Trends eingeklappt", "Die Karte zeigt nur noch die drei meistdiskutierten Aktien in der Kopfzeile – ein Tipp klappt die Liste auf, Kairo merkt sich die Wahl."],
   ["Kursmonitor kompakter", "16 Kacheln auf dem iPad, 8 auf dem iPhone – alle weiteren per Tipp."],
   ["Ruhigere Hinweise", "„Echtzeit-News einrichten ›“ steht dezent in der Leiste statt als blauer Link."]]],
