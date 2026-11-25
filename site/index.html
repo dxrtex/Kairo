@@ -2414,6 +2414,10 @@ main .table-wrap .sc-t.lf-sc.lf-buy .sh-nm b, main .table-wrap .sc-t.lf-sc .nm-l
 @media (max-width: 520px) { .tv-appb span { display: none; } .tv-appb { padding: 0 9px !important; } }
 /* Einstieg Broker-Terminal (25.11.2026 abends) */
 .en4-kp { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; margin-bottom: 14px !important; } .en4-cap input { width: 110px; font-size: 20px; font-weight: 700; padding: 4px 10px; }
+.en5 { margin-bottom: 14px; } .en5-ic { background: linear-gradient(160deg, #3ee07a, #1fae55) !important; box-shadow: 0 6px 18px rgba(48,209,88,.22) !important; }
+.en5-sub { display: block; margin-top: 3px; font-size: 11.5px; color: var(--muted); } .en5 .eq-dd b { font-weight: 650; } .eq2-g.en5-one { grid-template-columns: 1fr; }
+.en5-pr { height: 4px; margin: 6px 0 3px; } .en5-cap { margin: 2px 0 1px; } .en5-cap input { width: 100px; font-size: 18px; padding: 3px 8px; }
+@media (max-width: 700px) { .en5 .eq2-g { grid-template-columns: 1fr; } .en5 .eq-pos { grid-template-columns: 1fr 1fr; } }
 .en4-c { padding: 20px 22px !important; } .en4-h { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 12px; } .en4-h > div:first-child { display: flex; flex-direction: column; gap: 3px; min-width: 0; } .en4-h b { font-size: 17px; font-weight: 700; } .en4-h small { font-size: 12.5px; color: var(--muted); }
 .en4-pr { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; } .en4-pr small { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; } .en4-bar { width: 140px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; } .en4-bar i { display: block; height: 100%; background: var(--up); }
 .en4-sum { display: flex; gap: 18px; font-size: 12.5px; color: var(--muted); } .en4-sum b { margin-left: 4px; font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; } .en4-sum b.up { color: var(--up); } .en4-sum b.down { color: var(--down, #ff453a); }
@@ -4668,13 +4672,44 @@ function lfTauschHtml(L) { const SW = lfSwap(L), key = SW.now ? L.since : L.next
     <div class="en4-how"><span><i>1</i>Ab 15:30 Uhr (US-Eröffnung) – dann sind die Spreads auf gettex am kleinsten</span><span><i>2</i>Erst verkaufen, dann mit dem Erlös kaufen</span><span><i>3</i>Limit knapp über dem Kurs (+0,5 %)</span></div></div>`; }
 document.addEventListener("change", e => { const c = e.target.closest && e.target.closest("[data-tdone]"); if (!c) return; const [key, k] = c.dataset.tdone.split("|"), o = { ...(state.tDone || {}) }, l = new Set(o[key] || []);
   c.checked ? l.add(k) : l.delete(k); o[key] = [...l]; state.tDone = o; save(); render(); });
+// Kopfkarte wie beim ETF (25.11.2026, Wunsch „Einstieg braucht ebenfalls Update so wie der ETF-Bereich“): Wert des Strategie-Depots groß,
+// seit Tausch und heute (live), Verlauf seit dem Tausch gegen den S&P 500, darunter Kacheln. Live-Teile (#enHeroG, #enKd1, #enKup) tauscht scanLivePatch aus.
+function enHeroParts(L) { const cap = Math.max(0, +state.lfCap || 5000), LR = lfLiveRet(L), ret = LR.ret ?? 0, SV = stratValue();
+  const val = SV.real ? SV.v : cap * (1 + ret), df = LR.ret != null && LR.bench != null ? LR.ret - LR.bench : null;
+  const d1L = (L.hold || []).map(x => { const q = lfLQ(x.t); return q && q.pc > 0 ? q.c / q.pc - 1 : null; }).filter(v => v != null);
+  const d1s = d1L.length ? d1L : (L.hold || []).map(x => { const r = rowOf(x.t); return r && r.d1 != null ? +r.d1 : null; }).filter(v => v != null && isFinite(v)), d1 = d1s.length ? d1s.reduce((a, b) => a + b, 0) / d1s.length : null;
+  const rs = (L.hold || []).map(x => { const q = lfLQ(x.t); return q && x.p0 > 0 ? q.c / x.p0 - 1 : x.ret; }).filter(v => v != null), nUp = rs.filter(v => v >= 0).length;
+  const lt = (L.hold || []).map(x => LIVE.map[x.t] && LIVE.map[x.t].at).filter(Boolean), at = lt.length ? Math.max(...lt) : 0, live = LR.live && Date.now() - at < 20 * 60e3;
+  // Verlauf seit Tausch: wöchentliche Modellkurve, letzter Punkt = heute (live)
+  const C0 = L.curve; let sp = "";
+  if (C0 && C0.d && C0.d.length > 3) { let i0 = C0.d.findIndex(d => d >= L.since); if (i0 < 0) i0 = C0.d.length - 1; if (i0 > 0) i0 -= 1;
+    const S = C0.s.slice(i0).map(v => v / C0.s[i0]), B = C0.b.slice(i0).map(v => v / C0.b[i0]); S.push(1 + ret); if (LR.bench != null) B.push(1 + LR.bench); else B.push(B[B.length - 1]);
+    if (S.length >= 3) { const W = 600, Hh = 150, all = [...S, ...B, 1], mn = Math.min(...all), mx = Math.max(...all), pd = (mx - mn) * .12 || .01, lo = mn - pd, hi = mx + pd;
+      const X = (i, n) => i / (n - 1) * W, Y = v => Hh - (v - lo) / (hi - lo) * Hh, pts = A => A.map((v, i) => [X(i, A.length), Y(v)]);
+      const col = ret >= 0 ? "var(--up)" : "var(--down)", ps = pts(S), d = lfSmooth(ps), yl = ps[ps.length - 1][1] / Hh;
+      sp = `<div class="eq2-sp"><svg viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="enG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:${col};stop-opacity:.3"/><stop offset="1" style="stop-color:${col};stop-opacity:0"/></linearGradient></defs>
+        <line x1="0" x2="${W}" y1="${Y(1).toFixed(1)}" y2="${Y(1).toFixed(1)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>
+        <path d="${d}L${W},${Hh}L0,${Hh}Z" fill="url(#enG)"/><path d="${lfSmooth(pts(B))}" fill="none" class="eq2-bl"/><path d="${d}" fill="none" style="stroke:${col}" stroke-width="2.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>
+        <i class="eq2-dot${live ? " on" : ""}" style="--y:${yl.toFixed(4)};--c:${col}"></i>
+        <div class="eq2-sl"><span>Strategie <b class="${ret >= 0 ? "up" : "down"}">${sgnPct(ret, 1)}</b></span><span class="eq2-bk">S&amp;P 500 ${LR.bench != null ? sgnPct(LR.bench, 1) : "–"}</span><span>seit ${fmtD(L.since)}</span></div></div>`; } }
+  const src = live ? `Live · ${new Date(at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr · ${d1L.length} von ${L.hold.length} Kursen` : LR.live ? "Letzte Kurse" : `Schlusskurse${L.asof ? " vom " + dateDE(L.asof) : ""}${liveOn() ? "" : " · Live mit Kursdienst (Einstellungen)"}`;
+  const g = `<div class="eq2-l"><div class="eq-px"><b data-lpx="en:v" data-v="${val.toFixed(2)}">${eur(val)}</b><span class="${ret >= 0 ? "up" : "down"}" id="scKRet" data-lpx="ek:ret" data-v="${(1 + ret).toFixed(6)}">${sgnPct(ret, 1)}</span><em>seit Tausch</em>
+      ${df != null ? `<span class="eq-dd"><b class="${df >= 0 ? "up" : "down"}">${Math.abs(df * 100).toFixed(1).replace(".", ",")} Punkte</b> ${df >= 0 ? "vor" : "hinter"} dem S&amp;P 500</span>` : ""}</div>
+      <div class="eq-src"><i class="${live ? "on" : ""}"></i><span>${src}</span></div><small class="en5-sub">${SV.real ? "Wert deiner Strategie-Aktien im Depot" : `Modell mit ${eur(cap)} Einsatz`}</small></div>${sp}`;
+  const kd1 = `<span>Heute</span><b${d1 != null ? ` class="${d1 >= 0 ? "up" : "down"}" data-lpx="en:d1" data-v="${(1 + d1).toFixed(6)}"` : ""}>${d1 != null ? sgnPct(d1, 2) : "–"}</b><small>${d1 == null ? "Börse zu oder ohne Kursdienst" : d1L.length ? `Ø der ${L.hold.length} Aktien` : "letzter Handelstag"}</small>`;
+  const kup = `<span>Im Plus</span><b data-lpx="en:up" data-v="${nUp + 1}">${nUp} / ${rs.length}</b><small>Aktien seit Tausch</small>`;
+  return { g, kd1, kup, sp: !!sp }; }
+function enHeroHtml(L, cap, per) { const P = enHeroParts(L), dn = lfDays(L.next), t0 = Date.parse(L.since), t1 = Date.parse(L.next), pr = t0 && t1 ? Math.max(0, Math.min(1, (Date.now() - t0) / (t1 - t0))) : 0;
+  return `<div class="hcard etf-q eq2 en5"><div class="eq-top"><i class="eq2-ic en5-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></i>
+    <div class="eq-id"><b>Strategie-Depot</b><small>Top ${L.rule.n} Momentum · gleich gewichtet · Tausch alle 3 Monate</small></div></div>
+    <div class="eq2-g${P.sp ? "" : " en5-one"}" id="enHeroG">${P.g}</div>
+    <div class="eq-pos"><div class="eq-kv" id="enKd1">${P.kd1}</div><div class="eq-kv" id="enKup">${P.kup}</div>
+      <div class="eq-kv"><span>Nächster Tausch</span><b>${fmtD(L.next)}</b><div class="sc2-pr en5-pr"><i style="width:${(pr * 100).toFixed(1)}%"></i></div><small>${dn != null && dn >= 0 ? `in ${dn} Tagen` : ""}</small></div>
+      <div class="eq-kv"><span>Betrag Strategie</span><label class="ein2-cap en4-cap en5-cap"><input id="lfCap" type="number" inputmode="decimal" min="0" step="500" value="${cap}"> €</label><small>${eur(per)} je Aktie</small></div></div></div>`; }
 function lfEinHtml() { if (!searchIdx) loadSearch(); const L = LF(); if (!L || !L.hold || state.einT) return "";
   const cap = Math.max(0, +state.lfCap || 5000), per = cap / Math.max(1, L.rule.n), dn = lfDays(L.next), H = lfH(L), SW = lfSwap(L);
   const LR = lfLiveRet(L), df = LR.ret != null && LR.bench != null ? LR.ret - LR.bench : null, t0 = Date.parse(L.since), t1 = Date.parse(L.next), pr = t0 && t1 ? Math.max(0, Math.min(1, (Date.now() - t0) / (t1 - t0))) : 0;
-  const head = `<div class="lf-kp sc2-kp en4-kp"><div><span>Strategie seit Tausch${LR.live ? ' <i class="sc2-lv">LIVE</i>' : ""}</span><b class="${(LR.ret ?? 0) >= 0 ? "up" : "down"}" id="scKRet" data-lpx="ek:ret" data-v="${(1 + (LR.ret ?? 0)).toFixed(6)}">${sgnPct(LR.ret ?? 0, 1)}</b>${df != null ? `<small class="${df >= 0 ? "up" : "down"}">${Math.abs(df * 100).toFixed(1).replace(".", ",")} Punkte ${df >= 0 ? "vor" : "hinter"} dem S&amp;P 500</small>` : ""}</div>
-    <div><span>S&amp;P 500 seit Tausch</span><b class="${(LR.bench ?? 0) >= 0 ? "up" : "down"}" id="scKSp" data-lpx="ek:sp" data-v="${(1 + (LR.bench ?? 0)).toFixed(6)}">${sgnPct(LR.bench ?? 0, 1)}</b><small>seit ${fmtD(L.since)}</small></div>
-    <div><span>Nächster Tausch</span><b>${fmtD(L.next)}</b><div class="sc2-pr"><i style="width:${(pr * 100).toFixed(1)}%"></i></div><small>${dn != null && dn >= 0 ? `in ${dn} Tagen` : ""}</small></div>
-    <div><span>Betrag Strategie</span><label class="ein2-cap en4-cap"><input id="lfCap" type="number" inputmode="decimal" min="0" step="500" value="${cap}"> €</label><small>${eur(per)} je Aktie · ${L.rule.n} Aktien</small></div></div>`;
+  const head = enHeroHtml(L, cap, per);
   const hs = L.hold.slice().sort((a, b) => (a.rk ?? 999) - (b.rk ?? 999)), retL = x => { const q = lfLQ(x.t); return q && x.p0 > 0 ? q.c / x.p0 - 1 : x.ret; };
   const rs = hs.map(retL).filter(v => v != null), nUp = rs.filter(v => v >= 0).length, mMax = Math.max(...hs.map(x => Math.abs(x.m || 0)), .01);
   const rows = hs.map(x => { const px = lfLQ(x.t) ? lfLQ(x.t).c : x.p, e = toEur(px, "USD"), q = e > 0 ? Math.floor(per / e) : null, out = x.rk && x.rk > H, goes = SW.out.includes(x.t), v = retL(x);
@@ -11111,8 +11146,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.284";
-const APP_NEWS = [["2026.11.284", "ETF live mit Logo", [
+const APP_VER = "2026.11.285";
+const APP_NEWS = [["2026.11.285", "Einstieg mit Kopfkarte wie beim ETF", [
+  ["Strategie-Depot auf einen Blick", "Oben groß der Wert, seit Tausch und der Abstand zum S&P 500 – mit Verlaufskurve seit dem Tausch gegen den S&P 500."],
+  ["Live", "Wert, seit Tausch und heute aktualisieren sich mit Kursdienst laufend und blinken bei jeder Änderung."],
+  ["Kacheln", "Heute, Aktien im Plus, nächster Tausch mit Fortschritt und dein Betrag – darunter Auftragsliste und Depot-Tabelle."]]],
+ ["2026.11.284", "ETF live mit Logo", [
   ["Alles live", "Kurs, heute, Wert, Gewinn und die Plan-Kacheln aktualisieren sich während der gettex-Handelszeit alle 15 Sekunden und blinken bei jeder Änderung."],
   ["SPDR-Logo", "Der Welt-ETF zeigt jetzt das Logo des Anbieters."],
   ["Ruhiger Ring", "Der Plan-Ring zeigt den Strategie-Teil in dezentem Grau statt Lila."]]],
@@ -12673,7 +12712,8 @@ function scanLivePatch() { if (!["scanner", "entry"].includes(state.sec)) return
     if (k === "p") { if (+el.dataset.v !== q.c) { el.dataset.v = q.c; el.textContent = fmt(q.c); } return; }
     const v = k === "d1" ? (q.pc > 0 ? q.c / q.pc - 1 : null) : k === "ret" && +el.dataset.p0 > 0 ? q.c / +el.dataset.p0 - 1 : null; if (v == null) return;
     const nv = (1 + v).toFixed(6); if (el.dataset.v === nv) return; el.dataset.v = nv; el.textContent = sgnPct(v, 1); el.classList.toggle("up", v >= 0); el.classList.toggle("down", v < 0); if (k === "d1") el.style.setProperty("--a", lfTint(v)); });
-  const L = LF(); if (L) { const LR = lfLiveRet(L); [["scKRet", LR.ret], ["scKSp", LR.bench]].forEach(([id, v]) => { const el = $(id); if (!el || v == null) return; const nv = (1 + v).toFixed(6); if (el.dataset.v === nv) return; el.dataset.v = nv; el.textContent = sgnPct(v, 1); el.className = v >= 0 ? "up" : "down"; }); }
+  const L = LF(); if (L && state.sec === "entry" && $("enHeroG")) { try { const P = enHeroParts(L); $("enHeroG").innerHTML = P.g; $("enKd1").innerHTML = P.kd1; $("enKup").innerHTML = P.kup; } catch (e) {} }
+  else if (L) { const LR = lfLiveRet(L); [["scKRet", LR.ret], ["scKSp", LR.bench]].forEach(([id, v]) => { const el = $(id); if (!el || v == null) return; const nv = (1 + v).toFixed(6); if (el.dataset.v === nv) return; el.dataset.v = nv; el.textContent = sgnPct(v, 1); el.className = v >= 0 ? "up" : "down"; }); }
 }
 let scanSoonT = 0;
 function scanSoon() { if (scanSoonT || !["scanner", "entry"].includes(state.sec)) return; scanSoonT = setTimeout(() => { scanSoonT = 0; scanLivePatch(); }, 1000); }
