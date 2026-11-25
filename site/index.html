@@ -3713,6 +3713,8 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .lf-hr{display:grid!important;grid-template-columns:auto 1fr 44px 70px 84px;column-gap:8px;align-items:center}.lf-hr .lf-rk{text-align:right;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}.lf-hr .lf-rk.down{color:var(--red,#ff453a)}.lf-hr>:last-child{text-align:right}
 .lf-more{display:block;width:100%;margin-top:6px;padding:9px;border:0;border-radius:10px;background:var(--surface-2);color:var(--accent);font-weight:600;font-size:13.5px;cursor:pointer}
 .hev .hn small.hev-k{display:inline;margin-left:8px;font-size:12px;color:var(--muted)}
+.co-kb,.co-kr.co-kb{font-size:13.5px}
+@media (max-width:900px){.ctab:not(.fs) .ctab-grid{display:flex!important;flex-direction:column;align-items:stretch!important}.ctab:not(.fs) .ctab-l{display:contents}.ctab:not(.fs) .ctab-side{order:2;margin-top:4px}.ctab:not(.fs) .ctab-l>.ct-news{order:3}.ctab:not(.fs) .ctab-l>.ct-co{order:4}}
 .lf-sech{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:14px 2px 8px}.lf-sech b{font-size:15px}.lf-sech small{font-size:12.5px;color:var(--muted)}
 .lf-tc small{margin-left:2px;font-size:11.5px;color:var(--muted)}
 .lf-kp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:4px 0 10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.lf-kp>div{padding:9px 12px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:1px}.lf-kp>div:first-child{border-left:0}
@@ -4462,7 +4464,8 @@ function lfAmpelLine() { const L = LF(); if (!L) return "";
 function lfSideHtml(r) { const L = LF(); if (!L || !L.top || !r || r.ext) return "";
   const t = String(r.ticker).replace(/@rp$/, ""), x = L.top.find(y => y.t === t), h = (L.hold || []).find(y => y.t === t), w = (L.watch || []).find(y => y.t === t); if (!x && !h && !w) return "";
   const [st, cls] = lfStatus({ ...(x || h || w), in: !!h, rk: x ? x.rk : 999 }, L);
-  return `<div class="cf-s lf-side"><div class="cf-h">${lfBadge(x || h || w)} Kairo Langfrist · <span class="${cls === "hold" ? "" : cls}">${esc(!x && !h ? "Beobachten" : st)}</span></div>${lfChecks(x || h || w, L)}
+  const bd = (x || h || w || {}).nchk != null ? lfBadge(x || h || w) + " " : "";
+  return `<div class="cf-s lf-side"><div class="cf-h">${bd}Kairo Langfrist · <span class="${cls === "hold" ? "" : cls}">${esc(!x && !h ? "Beobachten" : st)}</span></div>${lfChecks(x || h || w, L)}
     <div class="cf-r"><span>Rang heute</span><b>${x ? x.rk : w ? w.rk : "–"}</b></div><div class="cf-r"><span>Lauf 12 M.</span>${lfPct((x || h || w).m, 0)}</div>${h ? `<div class="cf-r"><span>seit Tausch</span>${lfPct(h.ret)}</div>` : ""}<div class="cf-r"><span>nächster Tausch</span><b>${fmtD(L.next)}</b></div></div>`; }
 function cockpitSide(h, r) { return lfSideHtml(r) + cockpitSide1(h, r); }
 // Einstieg: zuerst die Langfrist-Kaufliste (Stückzahl für deinen Betrag), darunter Swing als Nebenstrategie
@@ -10874,8 +10877,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.263";
-const APP_NEWS = [["2026.11.263", "Scanner übersichtlicher", [
+const APP_VER = "2026.11.264";
+const APP_NEWS = [["2026.11.264", "Chart aufgeräumt", [
+  ["iPhone: Strategie direkt unter dem Chart", "Rang, 12-Monats-Lauf, seit Tausch und nächster Tausch stehen jetzt gleich unter dem Chart, danach News und Unternehmen – vorher ganz unten."],
+  ["Einheitliche Kennzahlen", "Alle Zeilen im Unternehmensbereich haben dieselbe Schriftgröße – antippbare Werte (mit ›) fielen vorher größer aus."],
+  ["Kleinigkeiten", "Kein verwaister Strich mehr vor „Kairo Langfrist“, wenn keine Kriterien vorliegen."]]],
+ ["2026.11.263", "Scanner übersichtlicher", [
   ["Vorschau des nächsten Tauschs", "Über der Liste: was beim nächsten Termin verkauft und gekauft würde (Stand heute) – mit Logo, ein Tipp öffnet die Aktie."],
   ["Kennzahlen auf einen Blick", "Seit Tausch, S&P 500 und nächster Tausch als ruhige Leiste, die Kopfzeile als Chips. Veraltete Daten färben den Scan-Chip gelb."],
   ["Kurse mit Währung", "In allen Tabellen steht hinter dem Kurs die Währung ($, €, £) – wichtig bei deinen deutschen und US-Aktien unter „Meine“."],
