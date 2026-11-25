@@ -226,6 +226,17 @@ def main() -> None:
             if isinstance(r, dict) and r.get("t") and re.fullmatch(r"[A-Z0-9.\-]{1,12}", r["t"]):
                 tickers.append(r["t"])
                 names.setdefault(r["t"], r.get("n") or "")
+        # Kairo Langfrist (analysis.json → market.langfrist): Depot, Rangliste, Beobachten und die ganze Auswahl – auch Werte außerhalb des Scans
+        lf = (d.get("market") or {}).get("langfrist") if isinstance(d.get("market"), dict) else None
+        if isinstance(lf, dict):
+            for k in ("hold", "top", "watch"):
+                for r in lf.get(k) or []:
+                    if isinstance(r, dict) and r.get("t") and re.fullmatch(r"[A-Z0-9.\-]{1,12}", r["t"]):
+                        tickers.append(r["t"])
+                        names.setdefault(r["t"], r.get("n") or "")
+            for t in (lf.get("ranks") or {}):
+                if re.fullmatch(r"[A-Z0-9.\-]{1,12}", t):
+                    tickers.append(t)
     extra = Path("data/watchlist.json")
     if extra.exists():
         for k, v in json.loads(extra.read_text()).items():
