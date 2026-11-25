@@ -59,7 +59,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - CTVA 2026-11-11: Kairo 42% steigt, Kurs -24.3% · Gewinn -40% · Ausblick gesenkt – „Corteva (CTVA) Cuts Guidance And Delays Filing, Is The Reset Now Fully Priced In?“
-- NTNX 2026-11-24: Kairo 56% steigt, Kurs -17.9% · Gewinn +20% · Ausblick angehoben – „Second Quarter Fiscal 2027 Outlook Revenue $820 - $830 million Non-GAAP Operating Margin 27% to 28% Weighted Average Shares Outstanding (Diluted) 3 Approximatel“
+- LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
@@ -92,8 +92,8 @@ Beispiele:
 - DUOL 2026-11-03: Kairo 36%, Kurs +26.0% (Markt +0.3%) · Gründe: Umsatz, Nutzer/Kunden – „Duolingo Misses on Earnings. The Stock Soars 15%.“
 - RDW 2026-11-04: Kairo 65%, Kurs -19.8% (Markt +1.7%) · Gründe: Marge, Umsatz, Aufträge – „Why Redwire Stock Is Plummeting Today“
 - MTSI 2026-11-05: Kairo 60%, Kurs -18.4% (Markt -2.5%) · Gründe: Umsatz, KI/Rechenzentren – „MACOM (NASDAQ:MTSI) Q3 sales beat estimates but stock drops“
-- NTNX 2026-11-24: Kairo 56%, Kurs -17.9% (Markt -0.5%) · Gründe: Ausblick, Umsatz, Management, Analysten – „Nutanix Stock Gets Body-Slammed on Surprise CEO Exit. Why Some Analysts Aren’t Sweating It.“
 - MTRN 2026-11-04: Kairo 60%, Kurs -17.7% (Markt +1.7%) · Gründe: Marge – „Earnings call transcript: Materion beats EPS in Q3 2026 but shares slide“
+- NTNX 2026-11-24: Kairo 56%, Kurs -17.4% (Markt -0.5%) · Gründe: Ausblick, Umsatz, Management, Analysten – „Nutanix Stock Gets Body-Slammed on Surprise CEO Exit. Why Some Analysts Aren’t Sweating It.“
 - RUM 2026-11-11: Kairo 40%, Kurs +16.6% (Markt +1.3%) · Gründe: Umsatz, KI/Rechenzentren – „Rumble's Quake AI Is Nearly Sold Out — And Higher Prices Could Be Next“
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
