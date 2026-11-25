@@ -38,6 +38,7 @@ jobs:
             [ -n "$id" ] && gh run download "$id" -n github-pages -D live 2>/dev/null && break
           done
           mkdir -p livesite && tar -xf live/artifact.tar -C livesite --wildcards '*data/search.json' '*data/insider.json' || tar -xf live/artifact.tar -C livesite --wildcards '*data/search.json'
+          tar -xf live/artifact.tar -C livesite --wildcards '*data/analysis.json' 2>/dev/null || true
           git fetch -q origin kairo-funds 2>/dev/null && git show origin/kairo-funds:funds.json > livesite/funds.json 2>/dev/null || rm -f livesite/funds.json
           ls -la livesite/data
       - name: Vorhandene Logos laden (Branch kairo-logos)
@@ -46,7 +47,7 @@ jobs:
           else git worktree add -q --orphan -b kairo-logos store; fi
           mkdir -p store/logos; ls store/logos | wc -l
       - name: Logos laden
-        run: python tools/fetch_logos.py "$(find livesite -name search.json | head -1)" store/logos --extra "$(find livesite -name insider.json | head -1)" --extra livesite/funds.json
+        run: python tools/fetch_logos.py "$(find livesite -name search.json | head -1)" store/logos --extra "$(find livesite -name insider.json | head -1)" --extra livesite/funds.json --extra "$(find livesite -name analysis.json | head -1)"
       - name: Speichern
         run: |
           cd store

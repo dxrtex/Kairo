@@ -10919,8 +10919,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.271";
-const APP_NEWS = [["2026.11.271", "Chart flüssiger", [
+const APP_VER = "2026.11.272";
+const APP_NEWS = [["2026.11.272", "Logos sofort da", [
+  ["Logos beim Öffnen", "Einmal geladene Firmenlogos erscheinen sofort – kein kurzes Aufblitzen farbiger Buchstaben mehr, wenn die Listen nach dem Start neu gezeichnet werden."],
+  ["Mehr eigene Logos", "Auch die Aktien der Langfrist-Strategie kommen in Kairos eigene Logo-Sammlung und laden damit schneller."]]],
+ ["2026.11.271", "Chart flüssiger", [
   ["Wischen und Zeichnen", "Auf iPad und iPhone füllt der Chart den Bildschirm und die Seite dahinter steht still – Verschieben, Zoomen und Zeichenwerkzeuge wie Fibonacci reagieren jetzt zuverlässig. „News & Unternehmen“ unter dem Chart führt nach unten."],
   ["Kein Neuladen mehr", "Nachgeladene Daten bauen den TradingView-Chart nicht mehr neu auf – keine Ruckler, gezeichnete Linien bleiben stehen."],
   ["Mehrere Charts", "Neuer Knopf oben: 2 oder 4 TradingView-Charts gleichzeitig, jede Aktie über ihren Namen wählbar."],
@@ -17373,10 +17376,19 @@ function closeCockpit() { const el = $("chfs"); if (!el || el.hidden) return; el
 const cfPick = { seg: null };
 const cfAv = t => { const k = tkClean(t), r = byTicker(t) || {}; let h = 0; for (const ch of k) h = (h * 31 + ch.charCodeAt(0)) % 360;
   const L = (/^[A-Za-z]/.test(k) ? k : String(r.name || k).replace(/[^A-Za-zÄÖÜäöü0-9]/g, "")).slice(0, 1).toUpperCase();
-  return `<i class="cf-av" style="--h:${h}" data-lt="${esc(k)}">${esc(L)}${logoImg(k)}</i>`; };
+  const im = logoImg(k), ok = im && LOGO_OK.has(k);   // schon einmal geladen → gleich als Logo zeigen, kein farbiger Buchstabe beim Neuzeichnen
+  return `<i class="cf-av${ok ? " lg" : ""}" style="--h:${h}" data-lt="${esc(k)}">${esc(L)}${im}</i>`; };
 // Firmenlogos: zuerst die eigene Sammlung (logos/, beim Scan geladen, liegt auf dem eigenen Server), sonst Financial Modeling Prep; fehlt beides, bleibt der farbige Buchstabe
 const LOGOS = { set: null, p: null };
 try { const a = JSON.parse(localStorage.getItem("kairo-logos-idx") || "null"); if (Array.isArray(a) && a.length > 50) LOGOS.set = new Set(a); } catch (e) {}   // sofort beim Start, ohne Warten
+// Schneller beim Öffnen (25.11.2026, Wunsch „Logos sind nach dem Öffnen manchmal noch farbig“): Die Listen werden nach dem Start mehrmals
+// neu gezeichnet (Daten, Live-Kurse) – jedes neue Bild zeigte bis zum Laden kurz den farbigen Buchstaben. Kairo merkt sich, welche Logos
+// schon einmal geladen wurden, und zeigt sie sofort (das Bild kommt aus dem Speicher des Geräts).
+const LOGO_OK = new Set(); try { (JSON.parse(localStorage.getItem("kairo-logos-ok") || "[]") || []).slice(-4000).forEach(k => LOGO_OK.add(k)); } catch (e) {}
+let logoOkT = 0;
+function logoOk(img, good) { const p = img.parentNode, k = p && p.dataset ? p.dataset.lt : null;
+  if (good) { if (p) p.classList.add("lg"); if (k && !LOGO_OK.has(k)) { LOGO_OK.add(k); clearTimeout(logoOkT); logoOkT = setTimeout(() => { try { localStorage.setItem("kairo-logos-ok", JSON.stringify([...LOGO_OK].slice(-4000))); } catch (e) {} }, 1500); } }
+  else { if (p) p.classList.remove("lg"); if (k && LOGO_OK.delete(k)) try { localStorage.setItem("kairo-logos-ok", JSON.stringify([...LOGO_OK])); } catch (e) {} img.remove(); } }
 const logoFile = k => "logos/" + k.replace(/[^A-Za-z0-9._-]/g, "_") + ".png?v=4";   // v = Aufbereitung (tools/fetch_logos.py LOGO_V)
 function logoImg(k) {
   if (state.logos === 0) return "";
@@ -17385,7 +17397,7 @@ function logoImg(k) {
   else src = "https://financialmodelingprep.com/image-stock/" + encodeURIComponent(k) + ".png";   // nicht in der Sammlung (z. B. Depot-Werte außerhalb des Scans)
   // Flüssig (12.11.): eigene Logos sofort laden statt „lazy“ – Nachladen beim Scrollen hat jedes Bild blockiert (Messung Scanner: 104 → 17 ms je Bild)
   const own = LOGOS.set && LOGOS.set.has(k);
-  return `<img class="cf-logo" src="${esc(src)}" alt="" ${own ? 'fetchpriority="low"' : 'loading="lazy"'} decoding="async" referrerpolicy="no-referrer" onload="var p=this.parentNode;if(!p)return;if(this.naturalWidth>8)p.classList.add('lg');else this.remove()" onerror="this.remove()">`;
+  return `<img class="cf-logo" src="${esc(src)}" alt=""${own ? "" : ' loading="lazy"'} decoding="async" referrerpolicy="no-referrer" onload="logoOk(this,this.naturalWidth>8)" onerror="logoOk(this,false)">`;
 }
 function logosLoad() {
   if (LOGOS.p || state.logos === 0) return;
