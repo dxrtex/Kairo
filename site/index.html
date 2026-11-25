@@ -11147,8 +11147,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.286";
-const APP_NEWS = [["2026.11.286", "Ruhigeres Blinken", [
+const APP_VER = "2026.11.287";
+const APP_NEWS = [["2026.11.287", "Kairo-Chart ist zurück", [
+  ["Werkzeuge direkt in der App", "Der Chart-Reiter nutzt wieder den eigenen Kairo-Chart statt TradingView. Alle Zeichenwerkzeuge funktionieren mit dem Finger: Werkzeug wählen, Fadenkreuz versetzt zum Finger ziehen, Tippen setzt den Punkt – mit Magnet auf Hoch und Tief."],
+  ["Mehrfach-Charts", "Auch die Ansicht mit mehreren Charts nutzt wieder den Kairo-Chart."]]],
+ ["2026.11.286", "Ruhigeres Blinken", [
   ["Dezent", "Kursänderungen blinken jetzt nur noch als zarter, kurzer Farbschimmer – ruhiger und seriöser."]]],
  ["2026.11.285", "Einstieg mit Kopfkarte wie beim ETF", [
   ["Strategie-Depot auf einen Blick", "Oben groß der Wert, seit Tausch und der Abstand zum S&P 500 – mit Verlaufskurve seit dem Tausch gegen den S&P 500."],
@@ -15625,7 +15628,7 @@ function mcTickers(n) {
 // Mehrfach-Charts mit TradingView (25.11.2026, Wunsch „mehrere Charts gleichzeitig wie bei der Kairo-Ansicht“): jedes Feld ein eigener
 // TradingView-Chart mit Zeichenwerkzeugen; Wechsel der Aktie über den Namen oben, groß öffnen über ⤢. Fadenkreuz koppeln geht über
 // TradingView-Grenzen hinweg nicht – deshalb gibt es die Kopplung nur in der Kairo-Ansicht.
-const MC_TV = true;
+const MC_TV = false;   // Mehrfach-Charts mit dem Kairo-Chart (25.11.2026)
 function mcTv(t, i, tf) { const el = $("mcCv" + i); if (!el) return;
   tvWidget(el, "advanced-chart", tvChartCfg(t, tf, { hide_side_toolbar: state.mc > 2 || innerWidth < 700, withdateranges: false }));
   const r = rowFor(t) || {}, q = LIVE.map && LIVE.map[t], px = q && q.c > 0 ? q.c : r.close, ch = q && q.c > 0 && q.pc > 0 ? q.c / q.pc - 1 : (r.change ?? r.d1), pe = $("mcPx" + i);
@@ -16760,8 +16763,8 @@ function ctabBuild(c, r) {
   const pane = (id, lbl, f) => `<div class="ctab-p" data-pane="${f}"><div class="ct-rsz" data-rsz="${f}" title="Ziehen: Höhe ändern · Doppeltipp: zurücksetzen" aria-hidden="true"><i></i></div><div class="ct-ph"><span class="pane-label">${lbl}</span><button class="ct-x" data-ctfocus="${f}" title="Groß anzeigen" aria-label="Indikator groß">${CT_IC.expand}</button><button class="ct-x ct-fsx" data-fsind="${f}" title="Unter dem Chart ausblenden" aria-label="Indikator schließen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ctab-c" id="${id}"></div></div>`;
   el.innerHTML = `<div class="ct-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="ctQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="${innerWidth > 900 ? "Symbol suchen" : innerWidth < 640 ? "Aktie suchen – Name oder Kürzel" : "Chart suchen – jede Aktie, Name oder Kürzel (z. B. Amazon, UBS, Rheinmetall)"}" aria-label="Chart suchen">${matchMedia("(pointer: fine)").matches ? `<kbd class="ct-kbd" aria-hidden="true">/</kbd>` : ""}<div id="ctList" class="ct-list" hidden></div></div>
     <div class="ctab-top"><div class="chfs-tt"><b>${esc(r.name)}</b><span>${esc(tkClean(r.ticker))}${r.ext && r.exch ? ` · ${esc(r.exch)}` : ""} · <span id="cfPx">${fmt(r.close)} ${esc(r.currency || "")}${chg != null ? ` · <em class="${chg >= 0 ? "up" : "down"}">${sgnPct(chg, 2)}</em>` : ""}${r.live ? "" : (g => g ? ` <small class="muted">· Schluss ${g.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}</small>` : "")(data && data.generated ? new Date(data.generated) : null)}</span> <span data-livetag="${esc(r.ticker)}">${liveChartTag(r.ticker)}</span></span></div>
-      <a class="ct-b tv-fsb tv-appb" href="${esc(tvUrl(String(r.ticker).replace(/@rp$/, "")))}" title="In der TradingView-App öffnen – dort funktionieren alle Zeichenwerkzeuge, Zeichnungen bleiben in deinem Konto" aria-label="In TradingView öffnen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span>TradingView</span></a>
-      <button class="ct-b tv-fsb" data-mcn="${innerWidth < 700 ? 2 : 4}" title="Mehrere Charts gleichzeitig" aria-label="Mehrfach-Charts">${MC_IC[innerWidth < 700 ? 2 : 4]}</button><button class="ct-b tv-fsb" data-tvfs title="TradingView im Vollbild" aria-label="TradingView im Vollbild">${FS_IC}</button>
+
+      <button class="ct-b" data-mcn="${innerWidth < 700 ? 2 : 4}" title="Mehrere Charts gleichzeitig" aria-label="Mehrfach-Charts">${MC_IC[innerWidth < 700 ? 2 : 4]}</button><button class="ct-b tv-fsb" data-tvfs title="TradingView im Vollbild" aria-label="TradingView im Vollbild">${FS_IC}</button>
       ${SWING_OFF ? (I => I && (I.rk || I.h) ? lfPill(I) : "")(LF() && !r.ext ? lfInfo(String(r.ticker).replace(/@rp$/, "")) : null) : `<span class="st ${k.cls}">${esc(k.t)}</span>`}${CXBACK ? `<button class="ct-b ct-back" data-cxback title="Zurück zur Übersicht von ${esc(tkClean(CXBACK.t))} und an dieselbe Stelle im ${esc(SEC_NAME[CXBACK.sec] || "Reiter")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>${esc(SEC_NAME[CXBACK.sec] || "Zurück")}</span></button>` : ""}${state.mcBack > 1 ? `<button class="ct-b ct-back" data-mcback title="Zurück zu den ${state.mcBack} Charts" aria-label="Zurück zum Raster">${MC_IC[state.mcBack] || MC_IC[4]}<span>${state.mcBack} Charts</span></button>` : ""}<button class="ct-b ct-close" data-ctfocus="" title="Vollbild schließen" aria-label="Vollbild schließen">${CT_IC.shrink}<span>Schließen</span></button></div>
     <div class="ct-bar"><div id="cfBar" class="ct-tools"></div>
       <div class="ct-right">${ctDdHtml(c.tf || "D")}<div class="ct-rg">${[["63", "3M"], ["126", "6M"], ["252", "1J"], ["504", "2J"], ["all", "Alle"]].map(([v, l]) => `<button title="Zeitraum" class="${v === "252" ? "on" : ""}" data-cfr="${v}">${l}</button>`).join("")}</div>
@@ -16771,7 +16774,7 @@ function ctabBuild(c, r) {
       ${pane("tRsi", paneLbl(0, r), "rsi")}${pane("tMacd", paneLbl(1, r), "macd")}${pane("tMbi", paneLbl(2, r), "mbi")}
       ${ctNewsHtml(r)}${ctCoHtml(r)}
     </div><aside class="chfs-side ctab-side" id="cfSide"></aside><div class="ct-wl" id="ctWl"${state.ctWl ? "" : " hidden"}>${ctWlHtml(r.ticker)}</div></div>`;
-  ctFsSearch(); el.classList.add("tv-on"); ctTvMount(r.ticker); ctFit();   // ein Chart-System: TradingView (Wunsch 25.11.2026)
+  ctFsSearch(); ctFit();   // ein Chart-System: der eigene Kairo-Chart (Wunsch 25.11.2026: „keine fremde Website – Werkzeuge müssen in der App funktionieren“)
   { const o = CO[r.ticker] || (CO[r.ticker] = {}); o.cc = c; o.r = r; }
   coLoad(r.ticker); coEnd($("ctCo")); if ($("ctCo")) coFan($("ctCo"));
   cfChart = buildMain($("cfMain"), c, r, chartOpts); cfChart.tab = 1; cfChart.bar = "cfBar"; cfChart.barFn = ctabBarHtml; drAttach(cfChart);
