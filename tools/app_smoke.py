@@ -394,7 +394,7 @@ async def terminal_check(b, url, errs):
                 await c[1].click(); await pg.wait_for_timeout(400)
             await fit("Hedgefonds")
             # Screener mit Min/Max
-            await pg.evaluate("state.scrOn = true; state.scrFOpen = true; state.scrFT = 'Min / Max'; state.scf = {}; goSec('scanner')")
+            await pg.evaluate("state.scrOn = true; SCR_UI.f = true; state.scrFT = 'Min / Max'; state.scf = {}; goSec('scanner')")
             await pg.wait_for_timeout(1500)
             if await pg.query_selector('[data-scmm="pe"][data-i="1"]'):
                 await pg.fill('[data-scmm="pe"][data-i="1"]', "20"); await pg.dispatch_event('[data-scmm="pe"][data-i="1"]', "change")
