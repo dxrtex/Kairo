@@ -3715,9 +3715,13 @@ button.set-row { cursor: pointer; } .set-row + .set-row { border-top: 1px solid 
 .hev .hn small.hev-k{display:inline;margin-left:8px;font-size:12px;color:var(--muted)}
 .lsig{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:13.5px;line-height:1.15}.lsig i{flex:none;width:7px;height:7px;border-radius:50%;background:currentColor}.lsig b{font-weight:600}
 .lsig small{font-size:11.5px;color:var(--muted);font-weight:400}.lsig-up{color:var(--up)}.lsig-down{color:var(--red,#ff453a)}.lsig-hold{color:var(--accent)}.lsig-gold{color:var(--gold)}.lsig-muted{color:var(--muted)}
-.etf-q{padding:20px 22px!important}.eq-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.eq-id b{display:block;font-size:17px;font-weight:650}.eq-id small{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.etf-q{padding:20px 22px!important}
+.eq-perf{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));margin-top:14px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.eq-perf>div{padding:8px 10px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:2px}.eq-perf>div:first-child{border-left:0}
+.eq-perf span{font-size:11.5px;color:var(--muted)}.eq-perf b{font-size:14.5px;font-variant-numeric:tabular-nums}
+.eq-facts{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.eq-facts span{font-size:12px;color:var(--muted);background:var(--surface-2);border-radius:999px;padding:3px 10px}
+@media (max-width:640px){.eq-perf{grid-template-columns:repeat(3,minmax(0,1fr))}.eq-perf>div:nth-child(4){border-left:0}.eq-perf>div:nth-child(n+4){border-top:1px solid var(--line)}}.eq-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.eq-id b{display:block;font-size:17px;font-weight:650}.eq-id small{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
 .eq-px{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-top:10px}.eq-px>b{font-size:34px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.eq-px>span{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}.eq-px>em{font-style:normal;font-size:13px;color:var(--muted)}
-.eq-px .eq-dd{font-size:13px;font-weight:500;color:var(--muted);margin-left:6px}.eq-src{font-size:12px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}.eq-src i{width:7px;height:7px;border-radius:50%;background:var(--muted)}.eq-src i.on{background:var(--up)}
+.eq-px .eq-dd{font-size:13px;font-weight:500;color:var(--muted);margin-left:6px}.eq-src{font-size:12px;color:var(--muted);margin-top:4px;display:flex;align-items:baseline;gap:6px}.eq-src>i{flex:none;transform:translateY(-1px)}.eq-src i{width:7px;height:7px;border-radius:50%;background:var(--muted)}.eq-src i.on{background:var(--up)}
 .eq-pos{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}.eq-kv{display:flex;flex-direction:column;gap:2px;padding:0 14px;border-left:1px solid var(--line)}.eq-kv:first-child{padding-left:0;border-left:0}
 .eq-kv>span{font-size:12px;color:var(--muted)}.eq-kv b{font-size:17px;font-variant-numeric:tabular-nums}.eq-kv small{font-size:11.5px;color:var(--muted)}
 .e2-act{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}.e2-act>div{padding:10px 14px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:2px}.e2-act>div:first-child{border-left:0;background:color-mix(in srgb,var(--amp,var(--up)) 10%,transparent)}
@@ -10263,15 +10267,25 @@ function etfLivePxHtml(c) {
   const cl = v => v >= 0 ? "up" : "down", sg = v => v >= 0 ? "+" : "";
   const kv = (l, v, sub) => `<div class="eq-kv"><span>${l}</span><b>${v}</b>${sub ? `<small>${sub}</small>` : ""}</div>`;
   return `<div class="eq-px"><b>${p ? fmt(p, L ? 3 : 2) + " €" : "–"}</b>${chg != null ? `<span class="${cl(chg)}">${sgnPct(chg, 2)}</span><em>heute</em>` : ""}${dd != null ? `<span class="eq-dd">${dd > -.005 ? "am 1-Jahres-Hoch" : sgnPct(dd, 1) + " vom Hoch"}</span>` : ""}</div>
-    <div class="eq-src"><i class="${old ? "" : "on"}"></i>${src}</div>
+    <div class="eq-src"><i class="${old ? "" : "on"}"></i><span>${src}</span></div>
     ${val != null ? `<div class="eq-pos">${kv("Deine Anteile", fmt(c.units, c.units % 1 ? 3 : 0), c.buy ? `Ø ${fmt(c.buy)} €` : "")}${kv("Wert", eur(val), `${c.share} % deines Kapitals als Ziel`)}
       ${pnl != null ? kv("Gewinn / Verlust", `<span class="${cl(pnl)}">${sg(pnl)}${eur(pnl)}</span>`, `<span class="${cl(pnl)}">${sg(pnl)}${pct(pnl / paid, 1)}</span> auf ${eur(paid)}`) : kv("Gewinn / Verlust", "–", "Ø Kaufkurs fehlt (Einstellungen)")}
       ${pa != null ? kv("≈ pro Jahr", `<span class="${cl(pa)}">${sg(pa)}${pct(pa, 1)}</span>`, `seit ${dateDE(c.since)}`) : ""}</div>` : ""}`;
 }
+// Wert des Strategie-Teils: echte Aktien-Positionen aus dem Depot-Import (ohne ETFs), sonst der eingestellte Betrag
+function stratValue() { try { if (anaData && searchIdx) { const gs = groupPositions(depotLive().filter(p => !p.etf).map((p, i) => ({ p, i, r: p.t ? rowOf(p.t) : null }))).filter(g => g.known);
+    if (gs.length) return { v: gs.reduce((a, g) => a + g.value, 0), real: true }; } } catch (e) {} return { v: +state.lfCap > 0 ? +state.lfCap : 5000, real: false }; }
+// Wertentwicklung über Zeiträume aus der Kursreihe (Schlusskurse) – wie die Performance-Leiste bei justETF/Broker
+function etfPerfHtml(e) { const H = e && Array.isArray(e.hist) ? e.hist : []; if (H.length < 30) return "";
+  const last = H[H.length - 1][1], at = n => H.length > n ? H[H.length - 1 - n][1] : null;
+  const ytd = (() => { const y = String(new Date().getFullYear()); const i = H.findIndex(x => String(x[0]).startsWith(y)); return i > 0 ? H[i - 1][1] : null; })();
+  const ps = [["1 M", at(21)], ["6 M", at(126)], ["lfd. Jahr", ytd], ["1 J", at(252)], ["3 J", at(756)]].filter(([, v]) => v);
+  return `<div class="eq-perf">${ps.map(([l, v]) => { const r = last / v - 1; return `<div><span>${l}</span><b class="${r >= 0 ? "up" : "down"}">${sgnPct(r, 1)}</b></div>`; }).join("")}</div>`; }
 function etfQuoteHtml(e, c) {
   etfLiveLoad();
-  return `<div class="hcard etf-q"><div class="eq-top"><div class="eq-id"><b>${esc(e && e.name ? e.name.replace(/\s*\(.*\)\s*$/, "") : "SPDR MSCI ACWI IMI")}</b><small>SPYI · ${SPYI_ISIN} · Welt-ETF · thesaurierend</small></div>
-    <button class="hlink" data-etflive title="Kurs aktualisieren" aria-label="Kurs aktualisieren">↻</button></div><div id="etfLivePx">${etfLivePxHtml(c)}</div></div>`;
+  return `<div class="hcard etf-q"><div class="eq-top"><div class="eq-id"><b>${esc(e && e.name ? e.name.replace(/\s*\(.*\)\s*$/, "") : "SPDR MSCI ACWI IMI")}</b><small>SPYI · ${SPYI_ISIN}</small></div>
+    <button class="hlink" data-etflive title="Kurs aktualisieren" aria-label="Kurs aktualisieren">↻</button></div><div id="etfLivePx">${etfLivePxHtml(c)}</div>${etfPerfHtml(e)}
+    <div class="eq-facts"><span>MSCI ACWI IMI · ~9.000 Aktien aus 47 Ländern</span><span>TER 0,17 %</span><span>thesaurierend</span><span>physisch</span><span>Irland</span><span>Sparplan bei Scalable ohne Gebühr</span></div></div>`;
 }
 let ETF_FS = false;   // Live-Chart im Vollbild (Wunsch 14.11.2026)
 function etfLiveHtml(c) {
@@ -10287,11 +10301,13 @@ document.addEventListener("click", e => {
 function etfHtml0() {
   const e0 = getJson("etf.json"), c = etfCfg(), e = e0 && e0.ok === false ? null : e0;
   if (e0 === undefined) return `<div class="section-title"><span>ETF-Bereich</span><span>lädt …</span></div>`;
-  const trade = tpCfg().depot, etfVal = e && c.units ? c.units * e.c : null, sum = etfVal != null ? etfVal + trade : null, ist = sum ? etfVal / sum : null;
-  const tgtT = c.inv * (100 - c.share) / 100;
+  const SV = stratValue(), trade = SV.v, etfVal = e && c.units ? c.units * e.c : null, sum = etfVal != null ? etfVal + trade : null, ist = sum ? etfVal / sum : null;
+  // 25.11.2026: Ist und Ziel aus derselben Basis – eingestelltes Gesamtkapital, sonst ETF-Wert + Strategie-Wert (vorher gemischt: 3.000 € Standard vs. Depot)
+  const base = +(state.etf || {}).total > 0 ? c.inv : sum != null ? sum : c.inv;
+  const tgtT = base * (100 - c.share) / 100;
   const tm = e ? etfTiming(e) : null, tlv = tm ? tm.lv : null;
   const lamp = (lv, lbl, col) => `<div class="eh-l${tlv === lv ? " on" : ""}" style="--c:${col}"><i></i><span>${lbl}</span></div>`;
-  const tgtE = c.inv * c.share / 100, gap = etfVal != null ? tgtE - etfVal : null;
+  const tgtE = base * c.share / 100, gap = etfVal != null ? tgtE - etfVal : null;
   const head = !tm ? esc(e ? e.t : "") : tlv === "g" ? (e.vix >= 30 ? "Panik am Markt – sehr guter Moment" : "Guter Moment für Extra-Geld") : tlv === "r" ? "Überhitzt – Extra-Geld zurückhalten" : tm.knife ? "Rücksetzer im Abwärtstrend – in Raten" : "Normal – kein besonderer Moment";
   const act = !tm ? null : tlv === "g" ? ["Extra-Geld anlegen", gap > 50 ? `bis ${eur(gap)}` : "", tm.s >= 4 ? "in 2 Raten, falls es weiter fällt" : "auf einmal"]
     : tlv === "r" ? ["Extra-Geld zurückhalten", "", "bis Gelb oder Grün, höchstens 8 Wochen"]
@@ -10308,9 +10324,6 @@ function etfHtml0() {
       ${tm ? `<div class="e2-cols"><div><div class="e2-h">Signalfaktoren</div><ul class="eh-why e2-why">${tm.why.map(([k, t]) => `<li class="${k}"><i>${k === "g" ? "+" : k === "r" ? "−" : "·"}</i>${esc(t)}</li>`).join("")}</ul></div>
         ${S ? `<div><div class="e2-h">Ø Rendite 3 Monate nach dem Signal</div><div class="e2-stats">${["g", "y", "r"].map(k => `<div class="e2-st${tlv === k ? " on" : ""}" style="--c:${ETF_AMP[k][1]}"><span><i></i>${ETF_AMP[k][0]}</span><b class="${S[k].f60 == null ? "" : S[k].f60 >= 0 ? "up" : "down"}">${S[k].f60 == null ? "–" : sgnPct(S[k].f60, 1)}</b><small>${pct(S[k].share, 0)} der Tage</small></div>`).join("")}</div><div class="e2-src">SPYI seit ${dateDE(tm.from)}${(Date.now() - Date.parse(tm.from)) / 31557600000 < 3 ? " · kurze Historie, Werte schwanken noch" : ""}</div></div>` : ""}</div>` : ""}
         ${(lb => lb ? `<div class="eh-last${c.rate && daysUntil(lb.date) < -40 ? " gold" : ""}">Letzter Kauf <b>${dateDE(lb.date)}</b>${lb.plan ? " · Sparplan" : ""}${c.rate && daysUntil(lb.date) < -40 ? " – seit über 40 Tagen keiner: Sparplan bei Scalable prüfen" : ""}<small class="muted">Bewertet nur Nachkäufe auf Jahre – für Aktien gilt die Marktampel</small></div>` : `<div class="eh-last muted">Bewertet nur Nachkäufe auf Jahre – für Aktien gilt die Marktampel.</div>`)(etfLastBuy())}</div>
-    ${etfLiveHtml(c)}
-    <details class="hcard etf-more"><summary>Kurs der letzten 3 Jahre · mit 200-Tage-Linie</summary><div style="margin-top:10px">${etfLine(e.hist, c.buy)}
-      <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ${IC.warn} Kurs ist ${e.age} Tage alt` : ""}.</div></div></details>
 `
     : `<div class="hcard"><div class="note" style="margin:0">${e0 && e0.ok === false ? `Die Kursdaten des ETF sehen gerade unplausibel aus${e0.ref_ok === false ? ` (weichen ${pct(e0.ref_dev, 1)} vom Vergleichs-ETF ab)` : ""} – Datenfehler beim Anbieter. Die Ampel ist ausgeblendet, bis sie wieder stimmen.` : "Die ETF-Daten kommen mit dem nächsten Scan."}</div></div>`;
   const why = e ? `<div class="hsub">Wie die Einstiegs-Ampel entscheidet</div><ul class="checks">${[
@@ -10332,10 +10345,10 @@ function etfHtml0() {
     ${istP != null ? `<div class="ep-bar"><i style="width:${Math.min(100, istP)}%"></i><s style="left:${c.share}%"></s></div><div class="ep-bar-l"><span>ETF ${eur(etfVal)} · Strategie ${eur(trade)}</span><span>Ziel ${c.share} % ETF</span></div>` : ""}
     <div class="mtiles" style="margin-top:12px">
       <div class="mt"><span>Lücke zum ETF-Ziel</span><b>${gapE == null ? "–" : gapE > 50 ? eur(gapE) : "erreicht ✓"}</b><em>${gapE == null ? "Anteile fehlen (Depot-Import)" : gapE > 50 ? `Ziel ${eur(tgtE)} · Extra-Geld nach Ampel` : "Sparrate läuft weiter"}</em></div>
-      <div class="mt"><span>Strategie-Depot</span><b>${eur(tgtT)}</b><em>${100 - c.share} % · 10 Aktien à ${eur(tgtT / 10)}</em></div>
+      <div class="mt"><span>Strategie-Depot</span><b>${eur(trade)}</b><em>${SV.real ? "aus deinem Depot" : "eingestellter Betrag"} · Ziel ${eur(tgtT)}${trade > tgtT * 1.1 ? " · über Ziel, Ausgleich im Januar" : trade < tgtT * .9 ? " · unter Ziel, Ausgleich im Januar" : ""}</em></div>
       ${c.rate ? `<div class="mt"><span>Sparrate</span><b>${eur(c.rate)}</b><em>${fv != null ? `in 10 Jahren ≈ ${eur(fv)} (Beispiel 5 % p. a.)` : ist != null && ist < c.share / 100 - .05 ? "ganz in den ETF (unter Ziel)" : `${eur(c.rate * c.share / 100)} ETF · ${eur(c.rate * (100 - c.share) / 100)} Strategie`}</em></div>` : ""}</div>
     <div class="ep-seg"><span>Aufteilung</span>${PF_SCEN.map(([v, l]) => `<button class="opt${c.share === v ? " on" : ""}" data-pfetf="${v}">${l}</button>`).join("")}</div>
-    ${tgtT > 0 && Math.abs(tgtT - (+state.lfCap || 0)) > 1 ? `<div class="note" style="margin:10px 0 0"><i class="vdot y"></i>Betrag fürs Strategie-Depot ist ${eur(+state.lfCap || 5000)}, laut Aufteilung ${eur(tgtT)}. <button class="btn ghost sm" data-lfcapset="${Math.round(tgtT)}">Übernehmen</button></div>` : ""}
+    ${!SV.real && tgtT > 0 && Math.abs(tgtT - (+state.lfCap || 5000)) > 50 && +(state.etf || {}).total > 0 ? `<div class="note" style="margin:10px 0 0"><i class="vdot y"></i>Betrag fürs Strategie-Depot ist ${eur(+state.lfCap || 5000)}, laut Aufteilung ${eur(tgtT)}. <button class="btn ghost sm" data-lfcapset="${Math.round(tgtT)}">Übernehmen</button></div>` : ""}
     ${c.units && !c.buy ? `<div class="note" style="margin:8px 0 0">Trag unter „Einstellungen“ deinen Ø Kaufkurs ein – dann zeigt Kairo oben Gewinn und Rendite.</div>` : ""}
     <details class="etf-why"${state.etfSet ? " open" : ""} data-etfset><summary>Einstellungen</summary>
       <div class="tp2-cfg" style="margin-top:8px"><label>Gesamtkapital (€)<input id="etfTotal" type="number" inputmode="decimal" min="0" step="100" value="${esc(c.total)}"></label>
@@ -10363,7 +10376,11 @@ function etfHtml0() {
     <div class="table-wrap plain"><table class="jtrades"><thead><tr><th>Regel</th><th class="num">ACWI ab 2008</th><th class="num">Welt ab 2003</th><th class="num">größter Rückgang</th></tr></thead><tbody>
       ${ETF_BT.plans.map(([l, a, b, d, me]) => `<tr${me ? ' class="best"' : ""}><td>${me ? `<b>${l}</b> ★` : l}</td><td class="num">${fmt(a, 2)}×</td><td class="num">${fmt(b, 2)}×</td><td class="num down">−${pct(d, 0)}</td></tr>`).join("")}</tbody></table></div>
     <div class="note" style="margin:6px 0 0">Geld zurückhalten und auf Rücksetzer warten brachte nichts – das wartende Geld verpasst die Zeit am Markt. Ein Trendfilter halbiert die Rückgänge, kostet aber rund ein Fünftel des Endwerts. Deshalb: Sparplan immer, nur <b>zusätzliches</b> Geld nach der Ampel. Welt ab 2003 = 55 % S&amp;P 500 + 35 % Industrieländer + 10 % Schwellenländer; vor Steuern und ohne Kosten.</div></div>`;
-  return `${e ? etfQuoteHtml(e, c) : ""}${hero}${plan}
+  // Reihenfolge (25.11.2026): Kurs → Nachkauf-Signal → Mein Plan → Chart → Hintergrund
+  const chartBlk = e ? `${etfLiveHtml(c)}
+    <details class="hcard etf-more"><summary>Kurs der letzten 3 Jahre · mit 200-Tage-Linie</summary><div style="margin-top:10px">${etfLine(e.hist, c.buy)}
+      <div class="note" style="margin:6px 0 0">${e.ref ? `✓ Kurs gegengeprüft mit iShares MSCI ACWI` : "Gegenprobe mit zweitem Welt-ETF heute nicht möglich"}${e.age > 4 ? ` · ${IC.warn} Kurs ist ${e.age} Tage alt` : ""}.</div></div></details>` : "";
+  return `${e ? etfQuoteHtml(e, c) : ""}${hero}${plan}${chartBlk}
     <details class="hcard etf-more"><summary>Hintergrund: Warum diese Ampel? (Regeln &amp; Testergebnisse)</summary><div style="margin-top:10px">${why}${how.replace('<div class="hcard">', '<div>')}${test.replace('<div class="hcard">', '<div style="margin-top:12px">')}</div></details>`;
 }
 document.addEventListener("input", e => {
@@ -10828,8 +10845,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.261";
-const APP_NEWS = [["2026.11.261", "Heute wie beim Broker", [
+const APP_VER = "2026.11.262";
+const APP_NEWS = [["2026.11.262", "ETF-Reiter wie bei justETF", [
+  ["Wertentwicklung und Fondsdaten", "Unter dem Kurs: 1 Monat, 6 Monate, laufendes Jahr, 1 und 3 Jahre – dazu Index, Anzahl Aktien, Kosten (TER 0,17 %), thesaurierend, physisch, Irland."],
+  ["Mein Plan rechnet richtig", "Ist- und Ziel-Aufteilung kommen jetzt aus demselben Betrag: ETF-Wert plus Wert deines Strategie-Depots (aus dem Depot-Import, sonst dein eingestellter Betrag). Die Lücke zum ETF-Ziel passt zum Betrag im Nachkauf-Signal."],
+  ["Klare Reihenfolge", "Kurs → Nachkauf-Signal → Mein Plan → Chart → Hintergrund."]]],
+ ["2026.11.261", "Heute wie beim Broker", [
   ["Strategie-Depot mit Tagesveränderung", "Oben steht jetzt „Heute“ (Durchschnitt deiner Strategie-Aktien, live), daneben seit Tausch, S&P 500 und der nächste Tausch. Die Aktienliste hat eine eigene Spalte „Heute“."],
   ["Ruhige Kopfzeile", "Börsen als kleine Chips mit Uhrzeit („Xetra offen bis 17:30“, „New York öffnet 15:30“) statt eines langen Satzes."],
   ["Kalender mit Datums-Spalte", "Links Wochentag und Tag, rechts Firma und Art des Termins – bei Quartalszahlen mit Uhrzeit, sobald sie feststeht. Die Markt-Karte heißt wie im Markt-Reiter „Marktampel“."],
