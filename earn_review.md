@@ -92,8 +92,8 @@ Beispiele:
 - DUOL 2026-11-03: Kairo 36%, Kurs +26.0% (Markt +0.3%) · Gründe: Umsatz, Nutzer/Kunden – „Duolingo Misses on Earnings. The Stock Soars 15%.“
 - RDW 2026-11-04: Kairo 65%, Kurs -19.8% (Markt +1.7%) · Gründe: Marge, Umsatz, Aufträge – „Why Redwire Stock Is Plummeting Today“
 - MTSI 2026-11-05: Kairo 60%, Kurs -18.4% (Markt -2.5%) · Gründe: Umsatz, KI/Rechenzentren – „MACOM (NASDAQ:MTSI) Q3 sales beat estimates but stock drops“
+- NTNX 2026-11-24: Kairo 56%, Kurs -17.8% (Markt -0.5%) · Gründe: Ausblick, Umsatz, Management, Analysten – „Nutanix Stock Gets Body-Slammed on Surprise CEO Exit. Why Some Analysts Aren’t Sweating It.“
 - MTRN 2026-11-04: Kairo 60%, Kurs -17.7% (Markt +1.7%) · Gründe: Marge – „Earnings call transcript: Materion beats EPS in Q3 2026 but shares slide“
-- NTNX 2026-11-24: Kairo 56%, Kurs -17.4% (Markt -0.5%) · Gründe: Ausblick, Umsatz, Management, Analysten – „Nutanix Stock Gets Body-Slammed on Surprise CEO Exit. Why Some Analysts Aren’t Sweating It.“
 - RUM 2026-11-11: Kairo 40%, Kurs +16.6% (Markt +1.3%) · Gründe: Umsatz, KI/Rechenzentren – „Rumble's Quake AI Is Nearly Sold Out — And Higher Prices Could Be Next“
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
