@@ -24,9 +24,10 @@ jobs:
         # Varianten Top 10/15/20, Mindest-Börsenwert, Gebühren (fertig, Lauf 45414356249)
         # Belastbarkeit Top 10, Puffer-Regel, Branchen-Grenze (fertig, Lauf 45418705059)
         # ETF-Vergleich (fertig, Lauf 45422813628)
-        # Jetzt: Mischungen 80/20 · 70/30 · 50/50 mit Top 10 + Puffer 20
+        # Mischungen 80/20 · 70/30 · 50/50 mit Top 10 + Puffer 20 (fertig)
+        # Jetzt: Realbedingungen Scalable PRIME+ in € (Spread je Liquidität, Gebühren, Abo, Steuer mit Pauschbetrag)
         run:
-          - "mix10"
+          - "real"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -44,7 +45,10 @@ jobs:
           path: bpx
           run-id: 45264753394
           github-token: ${{ github.token }}
-      - run: python -m backend.position.backtest ${{ (matrix.run == 'mix' || matrix.run == 'variants' || matrix.run == 'robust' || matrix.run == 'etf' || matrix.run == 'mix10') && format('{0} bpx --universe us', matrix.run) || format('run bpx {0}', matrix.run) }} --out bt.json
+      - if: matrix.run == 'real'
+        run: python -m backend.position.real bpx --out bt.json
+      - if: matrix.run != 'real'
+        run: python -m backend.position.backtest ${{ (matrix.run == 'mix' || matrix.run == 'variants' || matrix.run == 'robust' || matrix.run == 'etf' || matrix.run == 'mix10') && format('{0} bpx --universe us', matrix.run) || format('run bpx {0}', matrix.run) }} --out bt.json
       - uses: actions/upload-artifact@v4
         with:
           name: diag-${{ strategy.job-index }}
