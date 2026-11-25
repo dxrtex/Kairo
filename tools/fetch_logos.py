@@ -166,7 +166,16 @@ def tv_logo(t: str, name: str = "") -> str | None:
     return None
 
 
+# Feste Quellen für Werte, die keine Aktie sind (z. B. der Welt-ETF der App) – Kürzel-Suche würde ein fremdes Logo liefern (SPYI gibt es auch in den USA)
+FIXED = {"ETF-SPYI": ["https://s3-symbol-logo.tradingview.com/spdr--big.svg",
+                      "https://www.google.com/s2/favicons?domain=ssga.com&sz=256", "https://icons.duckduckgo.com/ip3/ssga.com.ico"]}
+
+
 def candidates(t: str, company: dict, name: str = ""):
+    if t in FIXED:
+        for u in FIXED[t]:
+            yield "fixed", u
+        return
     for v in variants(t):
         yield "fmp", f"https://financialmodelingprep.com/image-stock/{v}.png"
     u = tv_logo(t, name)
@@ -242,6 +251,7 @@ def main() -> None:
         for k, v in json.loads(extra.read_text()).items():
             if isinstance(v, list):
                 tickers += v
+    tickers += list(FIXED)
     tickers = list(dict.fromkeys(tickers))
     company = {}
     if Path("data/company.json").exists():
