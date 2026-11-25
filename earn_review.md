@@ -57,9 +57,9 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 - IONQ 2026-11-05: Kairo 52% steigt, Kurs +23.4% · Gewinn +271% · Ausblick angehoben – „EX-99.1 3 ionq-ex99_1.htm EX-99.1 EX-99.1 Exhibit 99.1 IonQ Announces Record 3Q26 Revenues and Raises FY2026 Guidance to $505 - $515 Million as Backlog Grows to“
 - MTSI 2026-11-05: Kairo 60% steigt, Kurs -18.4% · Gewinn +4% · Ausblick angehoben – „Business Outlook For the fiscal first quarter ending January 1, 2027, MACOM expects revenue to be in the range of $450 million to $460 million.“
 - STVN 2026-11-03: Kairo 38% steigt, Kurs -28.6% · Gewinn +0% · Ausblick gesenkt – „What Does Stevanato Group (STVN) Investigation Mean After Its Lower GLP 1 Outlook?“
+- NTNX 2026-11-24: Kairo 56% steigt, Kurs -19.2% · Gewinn +20% · Ausblick angehoben – „Second Quarter Fiscal 2027 Outlook Revenue $820 - $830 million Non-GAAP Operating Margin 27% to 28% Weighted Average Shares Outstanding (Diluted) 3 Approximatel“
 - MTRN 2026-11-04: Kairo 60% steigt, Kurs -17.7% · Gewinn +2% · Ausblick angehoben – „Pressemitteilung: Ausblick angehoben“
 - CTVA 2026-11-11: Kairo 42% steigt, Kurs -24.3% · Gewinn -40% · Ausblick gesenkt – „Corteva (CTVA) Cuts Guidance And Delays Filing, Is The Reset Now Fully Priced In?“
-- LITE 2026-11-02: Kairo 54% steigt, Kurs -18.6% · Gewinn +8% · Ausblick keine Meldung
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
@@ -91,8 +91,8 @@ Beispiele:
 - FSLY 2026-11-04: Kairo 64%, Kurs -26.9% (Markt +1.7%) · Gründe: Ausblick, Umsatz, Nutzer/Kunden – „Fastly (NASDAQ:FSLY) beats Q3 2026 sales expectations but stock drops 13%“
 - DUOL 2026-11-03: Kairo 36%, Kurs +26.0% (Markt +0.3%) · Gründe: Umsatz, Nutzer/Kunden – „Duolingo Misses on Earnings. The Stock Soars 15%.“
 - RDW 2026-11-04: Kairo 65%, Kurs -19.8% (Markt +1.7%) · Gründe: Marge, Umsatz, Aufträge – „Why Redwire Stock Is Plummeting Today“
+- NTNX 2026-11-24: Kairo 56%, Kurs -19.2% (Markt -0.5%) · Gründe: Ausblick, Umsatz, Management, Analysten – „Nutanix Stock Gets Body-Slammed on Surprise CEO Exit. Why Some Analysts Aren’t Sweating It.“
 - MTSI 2026-11-05: Kairo 60%, Kurs -18.4% (Markt -2.5%) · Gründe: Umsatz, KI/Rechenzentren – „MACOM (NASDAQ:MTSI) Q3 sales beat estimates but stock drops“
-- NTNX 2026-11-24: Kairo 56%, Kurs -17.8% (Markt -0.5%) · Gründe: Ausblick, Umsatz, Management, Analysten – „Nutanix Stock Gets Body-Slammed on Surprise CEO Exit. Why Some Analysts Aren’t Sweating It.“
 - MTRN 2026-11-04: Kairo 60%, Kurs -17.7% (Markt +1.7%) · Gründe: Marge – „Earnings call transcript: Materion beats EPS in Q3 2026 but shares slide“
 - RUM 2026-11-11: Kairo 40%, Kurs +16.6% (Markt +1.3%) · Gründe: Umsatz, KI/Rechenzentren – „Rumble's Quake AI Is Nearly Sold Out — And Higher Prices Could Be Next“
 
