@@ -42,7 +42,7 @@ def half_spread(adv_usd: float, mult: float) -> float:
 
 def run_real(m: engine.Market, eurusd: pd.Series, start: str, cap: float, mult: float = 1.0, sub: float = 0.0,
              allow: float = 1000.0, fee_fix: float = 0.99, fee_free: float = 250.0, n: int = 10, hold: int = 20,
-             end: str | None = None) -> dict:
+             end: str | None = None, tax: bool = True) -> dict:
     Cf = m.C.ffill(limit=engine.FILL_DAYS)
     mom = Cf.shift(21) / Cf.shift(12 * 21) - 1
     adv = (m.C * m.V.fillna(0)).rolling(63, min_periods=40).mean()
@@ -60,6 +60,8 @@ def run_real(m: engine.Market, eurusd: pd.Series, start: str, cap: float, mult: 
 
     def tax_on(gain: float, year: int) -> float:
         nonlocal pot
+        if not tax:
+            return 0.0
         if gain < 0:
             pot += -gain
             return 0.0
@@ -176,6 +178,11 @@ def main(argv=None):
         for mult, nm in ((0.5, "Spread günstig"), (1.0, "Spread realistisch"), (2.0, "Spread ungünstig")):
             line(f"{cap:>6,} € · {nm}", run_real(m, eurusd, x.start, cap, mult), cap)
         line(f"{cap:>6,} € · realistisch + Abo 4,99 €/Monat", run_real(m, eurusd, x.start, cap, 1.0, sub=4.99), cap)
+    print("\n  Wo bleibt die Rendite? (10.000 €, gleiche Regel)")
+    for nm, kw in (("ohne Kosten, ohne Steuer", dict(mult=0.0, fee_fix=0.0, tax=False)), ("mit Spread + Gebühren, ohne Steuer", dict(mult=1.0, tax=False)),
+                   ("mit Spread + Gebühren + Steuer", dict(mult=1.0)), ("… + Abo 4,99 €/Monat", dict(mult=1.0, sub=4.99))):
+        r = run_real(m, eurusd, x.start, 10000, **kw)
+        print(f"  {nm:<40} {r['liq']:>10,.0f} € → {p(r['cagr_net'])} p. a.")
     print("\n  Welt-ETF (ACWI in €, kaufen & halten, am Ende versteuert):")
     for cap in (3000, 10000):
         r = etf_real(eurusd, x.start, cap)
