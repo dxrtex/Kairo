@@ -2399,6 +2399,16 @@ table.co-ud td b { font-weight: 600; }
 .p73-body .p73-g { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 @media (max-width: 760px) { .eq2-g { grid-template-columns: 1fr; gap: 10px; } .eq2-sp { height: 130px; --sh: 98px; } .eq2-sp svg { height: 98px; } .eq2 .eq-px > b { font-size: 32px; } .p73-body { grid-template-columns: 1fr; justify-items: center; } .p73-body .p73-g { width: 100%; } .e3-rt b { font-size: 17px; } .eq2 { padding: 18px !important; } .eq2-sl { font-size: 11px; } .eq2-sl span:last-child { display: none; } }
 .eq2-sl span { white-space: nowrap; }
+/* Scanner Profi (25.11.2026) */
+.lf-sc .lsig { padding: 4px 10px 4px 8px; border-radius: 999px; background: color-mix(in srgb, currentColor 13%, transparent); font-weight: 600; } .lf-sc .lsig b { font-weight: 650; }
+.lf-hm { display: inline-block; min-width: 62px; text-align: right; padding: 3px 8px; border-radius: 7px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.lf-hm.up { background: rgba(48,209,88,var(--a,.1)); color: color-mix(in srgb, var(--up) 70%, var(--text)); } .lf-hm.down { background: rgba(255,69,58,var(--a,.1)); color: color-mix(in srgb, var(--down, #ff453a) 70%, var(--text)); }
+.lf-db { position: relative; display: inline-block; min-width: 86px; padding: 3px 8px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; z-index: 0; } .lf-db::before { content: ""; position: absolute; right: 0; top: 2px; bottom: 2px; width: var(--w); border-radius: 6px; background: currentColor; opacity: .14; z-index: -1; }
+.sc2-kp { border: 0 !important; gap: 10px !important; } .sc2-kp > div { border: 0 !important; border-radius: 14px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); padding: 14px 16px !important; gap: 4px; } .sc2-kp b { font-size: 24px !important; font-weight: 700; letter-spacing: -.01em; }
+.sc2-kp small.up { color: var(--up); } .sc2-kp small.down { color: var(--down, #ff453a); } .sc2-lv { font-style: normal; font-size: 9.5px; font-weight: 800; letter-spacing: .08em; color: var(--up); padding: 1px 5px; border-radius: 4px; background: color-mix(in srgb, var(--up) 15%, transparent); margin-left: 4px; vertical-align: 1px; }
+.sc2-pr { height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 6px 0 2px; } .sc2-pr i { display: block; height: 100%; border-radius: 3px; background: var(--accent, #0a84ff); }
+main .table-wrap .sc-t.lf-sc.lf-buy .sh-nm b, main .table-wrap .sc-t.lf-sc .nm-l b { max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.lf-sc .nm-l small { display: block; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ct-more { display: none; } html.ct-fit .ct-more { display: flex; align-items: center; gap: 6px; margin: 10px auto 2px; padding: 9px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 html.ct-fit .ct-more svg { width: 16px; height: 16px; } html.ct-lock, html.ct-lock body, html:has(body.tv-full-on), body.tv-full-on { overflow: hidden !important; overscroll-behavior: none; }
 html.ct-lock body, body.tv-full-on { position: fixed; inset: 0; width: 100%; }   /* iOS: sonst federt die Seite nach und schluckt Fingerbewegungen (Fadenkreuz beim Zeichnen) */
@@ -4508,19 +4518,29 @@ const lfMiss = r => { const ks = (LF() && LF().checks) || Object.keys(LF_CK), m 
   return m == null ? `<span class="muted">–</span>` : m.length ? `<span class="down" title="${esc(m.map(k => LF_CK[k] ? LF_CK[k][1] : k).join(" · "))}">${esc(m.slice(0, 2).map(k => LF_CK[k] ? LF_CK[k][0] : k).join(", "))}${m.length > 2 ? ` +${m.length - 2}` : ""}</span>` : `<span class="muted">–</span>`; };
 const lfQ = () => ($("search") && $("search").value.trim().toLowerCase()) || "";
 const lfHit = (r, q) => !q || r.t.toLowerCase().includes(q) || String(r.n || "").toLowerCase().includes(q);
+// Scanner wie ein Profi-Screener (25.11.2026): Live-Kurs und Tagesveränderung (Kursdienst/Finnhub), Farbintensität je Bewegung, Datenbalken für den 12-Monats-Lauf
+const lfLQ = t => { const q = LIVE.map[t]; return q && q.c > 0 ? q : null; };
+const lfPx = r => { const q = lfLQ(r.t); return q ? q.c : r.p; };
+const lfD1 = r => { const q = lfLQ(r.t); return q && q.pc > 0 ? q.c / q.pc - 1 : r.s && r.s.d1 != null ? r.s.d1 : null; };
+const lfTint = v => Math.min(.42, .07 + Math.abs(v) * 6).toFixed(3);
+let lfMMaxC = { L: null, v: 1 };
+function lfMMax() { const L = LF(); if (lfMMaxC.L !== L) { const ms = ((L && L.top) || []).slice(0, 60).map(x => Math.abs(x.m || 0)).sort((a, b) => b - a); lfMMaxC = { L, v: ms[0] || 1 }; } return lfMMaxC.v; }
+function lfLiveRet(L) { const anyL = (L.hold || []).some(x => lfLQ(x.t) && x.p0 > 0), rs = (L.hold || []).map(x => { const q = lfLQ(x.t); return q && x.p0 > 0 ? q.c / x.p0 - 1 : x.ret; }).filter(v => v != null);
+  const gq = lfLQ("^GSPC"); return { ret: anyL && rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : L.ret, bench: gq && L.bpx0 > 0 ? gq.c / L.bpx0 - 1 : L.bench, live: anyL }; }
 const lfCols = {
   name: { k: "name", l: "Aktie", g: r => r.n, h: lfNameCell },
   st: { k: "st", l: "Signal", g: r => r.h ? (LF() && lfSwap(LF()).out.includes(r.t) ? 0.5 : 0) : LF() && lfInn(LF(), r.t) ? 1 : r.rk && LF() && r.rk <= LF().rule.n ? 2 : r.w ? 3 : r.rk ? 4 : 5, h: lfPill },
   met: { k: "met", l: "Kriterien", n: 1, g: r => r.nchk ?? -1, h: lfMet },
   miss: { k: "miss", l: "Fehlt", g: r => 8 - (r.nchk ?? 0), h: lfMiss },
   rk: { k: "rk", l: "Rang", n: 1, g: r => r.rk ?? 99999, h: r => r.rk ? String(r.rk) : `<span class="muted">–</span>` },
-  m: { k: "m", l: "Lauf 12 M.", n: 1, g: r => r.m, h: r => r.m != null ? `<span class="${r.m >= 0 ? "up" : "down"}">${sgnPct(r.m, 0)}</span>` : "–" },
+  m: { k: "m", l: "Lauf 12 M.", n: 1, g: r => r.m, h: r => r.m != null ? `<span class="lf-db ${r.m >= 0 ? "up" : "down"}" style="--w:${Math.max(2, Math.min(100, Math.abs(r.m) / lfMMax() * 100)).toFixed(1)}%">${sgnPct(r.m, 0)}</span>` : "–" },
   cap: { k: "cap", l: "Börsenwert", n: 1, g: r => r.s ? r.s.mc : null, h: r => r.s && r.s.mc ? fmtCap(r.s.mc) : "–" },
-  d1: { k: "d1", l: "Heute", n: 1, g: r => r.s ? r.s.d1 : null, h: r => r.s && r.s.d1 != null ? `<span class="${r.s.d1 >= 0 ? "up" : "down"}">${sgnPct(r.s.d1, 1)}</span>` : "–" },
+  d1: { k: "d1", l: "Heute", n: 1, g: r => lfD1(r), h: r => { const v = lfD1(r); return v != null ? `<span class="lf-hm ${v >= 0 ? "up" : "down"}" style="--a:${lfTint(v)}" data-lq="${esc(r.t)}" data-lk="d1" data-lpx="sd:${esc(r.t)}" data-v="${(1 + v).toFixed(6)}">${sgnPct(v, 1)}</span>` : "–"; } },
   e: { k: "e", l: "Earnings", g: r => (r.w && r.w.edate) || (r.s && r.s.ed) || "9", h: r => { const d = (r.w && r.w.edate) || (r.s && r.s.ed); return d ? `<span class="${r.chk && !r.chk[7] ? "down" : ""}">${dateDE(d)}</span>` : "–"; } },
-  p: { k: "p", l: "Kurs", n: 1, g: r => r.p, h: r => r.p != null ? `<span data-lpx="px:${esc(r.t)}" data-v="${r.p}">${fmt(r.p)}</span><small class="cur">${({ USD: "$", EUR: "€", GBP: "£", GBp: "p", CHF: "Fr" })[r.cur || "USD"] || esc(r.cur)}</small>` : "–" } };
+  p: { k: "p", l: "Kurs", n: 1, g: r => lfPx(r), h: r => lfPx(r) != null ? `<span data-lq="${esc(r.t)}" data-lk="p" data-lpx="px:${esc(r.t)}" data-v="${lfPx(r)}">${fmt(lfPx(r))}</span><small class="cur">${({ USD: "$", EUR: "€", GBP: "£", GBp: "p", CHF: "Fr" })[r.cur || "USD"] || esc(r.cur)}</small>` : "–" } };
 // Kopfzeile wie bisher: Anzahl, Info, Scan-Menü – darunter eine schlanke Zeile zum Strategie-Depot
 function lfBar(n, view, extra) { return `<div class="sc-tb">${extra || ""}<span class="sc-cnt"><span class="sc-n">${n} ${n === 1 ? "Aktie" : "Aktien"}</span>${gl("v_" + view)}</span><span class="sc-tb-r">${scanMenuHtml()}</span></div>`; }
+const lfRetH = r => { if (!r.h) return null; const q = lfLQ(r.t); return q && r.h.p0 > 0 ? q.c / r.h.p0 - 1 : r.h.ret; };
 function scanBuyHtml() {
   if (!searchIdx) loadSearch();
   const L = LF();
@@ -4531,12 +4551,15 @@ function scanBuyHtml() {
   const rows = [...L.top.filter(x => x.rk <= show || heldT.has(x.t)).map(x => x.t), ...out].map(t => lfInfo(t, L)).filter(r => lfHit(r, q));
   const qty = r => { const e = toEur(r.p, "USD"); return e > 0 ? Math.floor(per / e) : null; };
   const cols = [lfCols.rk, lfCols.name, lfCols.st, lfCols.m,
-    { k: "ret", l: "seit Tausch", n: 1, g: r => r.h ? r.h.ret : null, h: r => r.h && r.h.ret != null ? `<span class="${r.h.ret >= 0 ? "up" : "down"}">${sgnPct(r.h.ret, 1)}</span>` : `<span class="muted">–</span>` },
+    { k: "ret", l: "seit Tausch", n: 1, g: r => lfRetH(r), h: r => { const v = lfRetH(r); return v != null ? `<span class="${v >= 0 ? "up" : "down"}" data-lq="${esc(r.t)}" data-lk="ret" data-p0="${r.h.p0 || ""}" data-lpx="sr:${esc(r.t)}" data-v="${(1 + v).toFixed(6)}">${sgnPct(v, 1)}</span>` : `<span class="muted">–</span>`; } },
     lfCols.d1, lfCols.p];   // 24.11.2026: nur noch, was die Strategie braucht – Kriterien in der Aktienkarte
   const sel = `<label class="sp-dd"><span>Zeige</span><select data-lfshow>${[[n, `Top ${n}`], [lfH(L), `Top ${lfH(L)}`], [40, "Top 40"], [60, "Top 60"]].map(([v, l]) => `<option value="${v}"${show === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
   const nm = t => esc(shortNm((lfInfo(t, L) || {}).n || t));
   const chip = (t, k) => { const r = lfInfo(t, L), q = k === "in" && r ? qty(r) : null; return `<button class="lf-tc ${k}" ${lfOpen(t)}>${cfAv(t)}${nm(t)}${q ? `<small>${q} Stk.</small>` : q === 0 ? `<small class="gold" title="Ein Stück kostet mehr als der Betrag je Aktie">1 Stk. > Betrag</small>` : ""}</button>`; };
-  const line = `<div class="lf-kp"><div><span>Seit Tausch</span>${lfPct(L.ret ?? 0)}</div><div><span>S&P 500</span>${lfPct(L.bench ?? 0)}</div><div><span>Nächster Tausch</span><b>${fmtD(L.next)}</b>${dn != null && dn >= 0 ? `<small>in ${dn} Tagen</small>` : ""}</div></div>`;
+  const LR = lfLiveRet(L), df = LR.ret != null && LR.bench != null ? LR.ret - LR.bench : null, t0 = Date.parse(L.since), t1 = Date.parse(L.next), pr = t0 && t1 ? Math.max(0, Math.min(1, (Date.now() - t0) / (t1 - t0))) : 0;
+  const line = `<div class="lf-kp sc2-kp"><div><span>Strategie seit Tausch${LR.live ? ' <i class="sc2-lv">LIVE</i>' : ""}</span><b class="${(LR.ret ?? 0) >= 0 ? "up" : "down"}" data-lpx="sk:ret" data-v="${(1 + (LR.ret ?? 0)).toFixed(6)}" id="scKRet">${sgnPct(LR.ret ?? 0, 1)}</b>${df != null ? `<small class="${df >= 0 ? "up" : "down"}">${Math.abs(df * 100).toFixed(1).replace(".", ",")} Punkte ${df >= 0 ? "vor" : "hinter"} dem S&amp;P 500</small>` : ""}</div>
+    <div><span>S&amp;P 500 seit Tausch</span><b class="${(LR.bench ?? 0) >= 0 ? "up" : "down"}" data-lpx="sk:sp" data-v="${(1 + (LR.bench ?? 0)).toFixed(6)}" id="scKSp">${sgnPct(LR.bench ?? 0, 1)}</b><small>Vergleich: gleich viel Geld im Index</small></div>
+    <div><span>Nächster Tausch</span><b>${fmtD(L.next)}</b><div class="sc2-pr"><i style="width:${(pr * 100).toFixed(1)}%"></i></div><small>${dn != null && dn >= 0 ? `in ${dn} Tagen · ${Math.round(pr * 100)} % des Quartals vorbei` : ""}</small></div></div>`;
   const swap = `<div class="lf-prev"><div class="lf-prev-h"><b>${SW.now ? `Tausch ${fmtD(L.since)}` : `Vorschau Tausch ${fmtD(L.next)}`}</b><small>${SW.now ? "jetzt umsetzen" : "Stand heute – kann sich bis zum Termin ändern"} · Stück für ${eur(per)} je Aktie (${eur(cap)} gesamt)</small></div>
     ${SW.out.length || SW.inn.length ? `<div class="lf-prev-r"><span class="down">Verkaufen</span>${SW.out.length ? SW.out.map(t => chip(t, "out")).join("") : `<em>keine</em>`}</div><div class="lf-prev-r"><span class="up">Kaufen</span>${SW.inn.length ? SW.inn.map(t => chip(t, "in")).join("") : `<em>keine</em>`}</div>` : `<div class="lf-prev-r"><em>Stand heute bleibt alles, wie es ist.</em></div>`}</div>`;
   return lfBar(rows.length, "long", sel) + line + swap + lfTable("buy", rows, cols, { k: "rk", asc: true });
@@ -11040,8 +11063,12 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.278";
-const APP_NEWS = [["2026.11.278", "ETF hübscher", [
+const APP_VER = "2026.11.279";
+const APP_NEWS = [["2026.11.279", "Scanner wie ein Profi-Screener", [
+  ["Live", "Kurs, Tagesveränderung und „seit Tausch“ aktualisieren sich im Scanner alle 10 Sekunden (US-Aktien mit Finnhub in Echtzeit) und blinken bei jeder Änderung."],
+  ["Lesbarer", "Tagesveränderung mit Farbintensität, 12-Monats-Lauf mit Datenbalken, Signal als farbiges Abzeichen – und die Tabelle passt wieder ganz auf den Bildschirm."],
+  ["Kennzahlen oben", "Strategie und S&P 500 seit dem Tausch live, mit Abstand in Punkten und einem Balken bis zum nächsten Tausch."]]],
+ ["2026.11.278", "ETF hübscher", [
   ["Kurs-Karte", "Großer Kurs mit 1-Jahres-Kurve, deinem Ø Kaufkurs als Linie und einem pulsierenden Punkt, wenn der Kurs live ist; Anteile, Wert und Rendite als ruhige Kacheln."],
   ["Klare Empfehlung", "Das Nachkauf-Signal zeigt die Empfehlung als farbiges Banner mit Betrag und Vorgehen."],
   ["Plan als Ring", "Dein 70/30-Plan als Ring: wo du heute stehst, wo das Ziel liegt – Werte jetzt mit dem Live-Kurs, wie oben."]]],
@@ -12565,6 +12592,27 @@ const liveChg = t => { const q = t && LIVE.map[t]; if (!q || !q.pc) return ""; c
   return `<em class="hq-live ${d >= 0 ? "up" : "down"}" title="Live-Kurs ${esc(liveTime(t))}">${sgnPct(d, 1)}</em>`; };
 const todayLiveTs = () => (calData || []).filter(e => e.kind === "earnings" && e.ticker && myTickers().has(e.ticker) && daysUntil(e.date) >= 0 && daysUntil(e.date) <= 1).map(e => e.ticker);
 const liveStale = ts => ts.filter(t => { const o = LIVE.map[t]; return !o || Date.now() - o.at > LIVE.ttl; });
+// ---------- Scanner live (25.11.2026, Wunsch „richtige Trading-Plattformen holen da noch mehr raus“): sichtbare Zeilen alle 10 s / Echtzeit,
+// nur die Zellen werden ersetzt (Suchfeld, Sortierung und Scrollstand bleiben), geänderte Werte blinken.
+const SCL = { at: 0, busy: false };
+const scanLiveTs = () => [...new Set([...document.querySelectorAll("#main [data-lq]")].map(e => e.dataset.lq))].slice(0, 80).concat(state.view === "buy" || !state.view ? ["^GSPC"] : []);
+async function scanLive() {
+  if (state.sec !== "scanner" || document.visibilityState !== "visible" || SCL.busy || !liveOn()) return;
+  const ts = scanLiveTs(); if (!ts.length) return; const open = ts.some(t => livePhase(t)), iv = open ? (liveKey("yq") ? 10e3 : 30e3) : 120e3;
+  if (Date.now() - SCL.at < iv) return; SCL.at = Date.now(); SCL.busy = true;
+  try { const rest = ts.filter(t => !(FHWS.on && FHWS.subs.has(t))); rest.forEach(t => { const o = LIVE.map[t]; if (o) o.at = 0; }); await liveMany(rest); } catch (e) {} finally { SCL.busy = false; }
+  scanLivePatch();
+}
+function scanLivePatch() { if (state.sec !== "scanner") return;
+  document.querySelectorAll("#main [data-lq]").forEach(el => { const q = lfLQ(el.dataset.lq), k = el.dataset.lk; if (!q) return;
+    if (k === "p") { if (+el.dataset.v !== q.c) { el.dataset.v = q.c; el.textContent = fmt(q.c); } return; }
+    const v = k === "d1" ? (q.pc > 0 ? q.c / q.pc - 1 : null) : k === "ret" && +el.dataset.p0 > 0 ? q.c / +el.dataset.p0 - 1 : null; if (v == null) return;
+    const nv = (1 + v).toFixed(6); if (el.dataset.v === nv) return; el.dataset.v = nv; el.textContent = sgnPct(v, 1); el.classList.toggle("up", v >= 0); el.classList.toggle("down", v < 0); if (k === "d1") el.style.setProperty("--a", lfTint(v)); });
+  const L = LF(); if (L) { const LR = lfLiveRet(L); [["scKRet", LR.ret], ["scKSp", LR.bench]].forEach(([id, v]) => { const el = $(id); if (!el || v == null) return; const nv = (1 + v).toFixed(6); if (el.dataset.v === nv) return; el.dataset.v = nv; el.textContent = sgnPct(v, 1); el.className = v >= 0 ? "up" : "down"; }); }
+}
+let scanSoonT = 0;
+function scanSoon() { if (scanSoonT || state.sec !== "scanner") return; scanSoonT = setTimeout(() => { scanSoonT = 0; scanLivePatch(); }, 1000); }
+{ let sec0 = ""; setInterval(() => { if (state.sec !== sec0) { sec0 = state.sec; SCL.at = 0; } scanLive(); }, 2e3); }
 // ---------- Heute live (25.11.2026, Wunsch „Heute muss LIVE sein – so aktuell es geht, bei jeder Aktualisierung kurz aufblinken“) ----------
 // Strategie-Aktien, eigene Aktien, S&P 500, Sektor-ETFs und der Welt-ETF: mit Kursdienst alle 10 s (Börse offen), US-Werte mit Finnhub
 // zusätzlich in Echtzeit (WebSocket). Neu gezeichnet werden nur die drei Live-Karten; geänderte Zahlen blinken grün/rot.
@@ -14945,7 +14993,7 @@ function mcLivePaint(t) {
 const FHWS = { ws: null, subs: new Set(), want: new Set(), paintAt: {}, retry: 0, on: false };
 function fhSym(t) { return String(t).replace("-", "."); }
 function fhSync() {
-  const key = liveKey("fh"), want = new Set(key && document.visibilityState === "visible" ? [...chartTickers(), ...(state.sec === "today" ? heuteTs().slice(0, 45) : [])].filter(t => isUS(t) && !/^[~^]/.test(t) && livePhase(t)) : []);
+  const key = liveKey("fh"), want = new Set(key && document.visibilityState === "visible" ? [...chartTickers(), ...(state.sec === "today" ? heuteTs().slice(0, 45) : state.sec === "scanner" ? scanLiveTs().slice(0, 45) : [])].filter(t => isUS(t) && !/^[~^]/.test(t) && livePhase(t)) : []);
   FHWS.want = want;
   if (!want.size) { if (FHWS.ws) { try { FHWS.ws.close(); } catch (e) {} FHWS.ws = null; FHWS.subs.clear(); } return; }
   if (!FHWS.ws || FHWS.ws.readyState > 1) {
@@ -14960,7 +15008,7 @@ function fhSync() {
         const q = xo ? { ...o, c: +d.p, ts: d.t || Date.now(), at: Date.now(), src: "Finnhub live", ext: ph } : { ...o, c: +d.p, h: Math.max(o.h || 0, +d.p), l: o.l > 0 ? Math.min(o.l, +d.p) : +d.p, ts: d.t || Date.now(), at: Date.now(), src: "Finnhub live", ext: null };
         LIVE.map[t] = q; liveApply(t, q);
         if (Date.now() - (FHWS.paintAt[t] || 0) > 250) { FHWS.paintAt[t] = Date.now(); liveChartsPaint(t); mcLivePaint(t); cxLivePaint(t); } });
-      if (state.sec === "today") heuteSoon(); };
+      if (state.sec === "today") heuteSoon(); else if (state.sec === "scanner") scanSoon(); };
     return; }
   if (FHWS.ws.readyState !== 1) return;
   want.forEach(t => { if (!FHWS.subs.has(t)) { FHWS.ws.send(JSON.stringify({ type: "subscribe", symbol: fhSym(t) })); FHWS.subs.add(t); } });
@@ -14970,7 +15018,7 @@ let liveTickN = 0;
 setInterval(() => {
   if (!liveOn() || document.visibilityState !== "visible") return;
   liveTickN++; const ts = chartTickers(), fast = (state.sec === "chart" || document.body.classList.contains("card-open")) && ts.some(t => livePhase(t));
-  if (fast || (state.sec === "today" && heuteTs().some(t => livePhase(t)))) fhSync(); else if (FHWS.ws) fhSync();
+  if (fast || ((state.sec === "today" || state.sec === "scanner") && (state.sec === "today" ? heuteTs() : scanLiveTs()).some(t => livePhase(t)))) fhSync(); else if (FHWS.ws) fhSync();
   if (!fast && liveTickN % 6) return;                  // geschlossen: wie bisher alle 30 s
   ts.forEach(t => { if (FHWS.on && FHWS.subs.has(t)) return;   // kommt schon in Echtzeit
     liveQuote(t, fast).then(q => { if (q) { liveChartsPaint(t); mcLivePaint(t); cxLivePaint(t); } }); });
