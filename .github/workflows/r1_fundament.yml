@@ -1,0 +1,41 @@
+name: Backtest Runde 1 – Fundament
+
+# Nur Analyse (tools/research/r1_fundament.py): langer Zeitraum, Überlebens-Verzerrung, Tauschtermin, Raster, Walk-forward, Bootstrap, Steuer.
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/backtest-runde1]
+    paths: [.github/workflows/r1_fundament.yml, tools/research/r1_fundament.py]
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  r1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt lxml html5lib
+      - run: git fetch -q origin kairo-fin kairo-fund || true
+      - run: python -m backend.universe
+      - run: python tools/research/r1_fundament.py download --out px
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r1-px
+          path: px
+          retention-days: 30
+      - run: python tools/research/r1_fundament.py analyze --px px --out r1.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r1-result
+          path: r1.json
+          retention-days: 30
