@@ -1720,6 +1720,8 @@
 .etf-live .eh-k i.on{background:var(--up);box-shadow:0 0 0 3px color-mix(in srgb,var(--up) 25%,transparent)}
 .etf-live .el-m{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin:6px 0 4px}.etf-live .el-m>b{font-size:28px;font-variant-numeric:tabular-nums}
 .etf-live .el-m span{font-size:14px;font-weight:600}.etf-live .el-s{font-size:12px;color:var(--muted)}
+.el-kc{margin-top:10px}.el-kcv{height:360px;border-radius:12px;overflow:hidden}.etf-live.fs .el-kcv{height:calc(100dvh - 190px)}@media (max-width:560px){.el-kcv{height:280px}}
+.el-s i{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin:0 6px 0 12px}.el-s i:first-child{margin-left:0}.el-k1{border-color:var(--up)!important}.el-k2{border-top-style:dashed!important;border-color:#f4b740!important}.el-k3{border-top-style:dotted!important;border-color:#8e8e93!important}
 .el-tv{margin-top:12px}.el-tvbar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;margin-bottom:8px}
 .el-tv iframe{width:100%;height:420px;border:0;border-radius:12px;display:block}@media (max-width:560px){.el-tv iframe{height:340px}}
 .etf-hero{display:flex;gap:22px;align-items:center;padding:22px!important}
@@ -10504,7 +10506,7 @@ async function etfLiveLoad(force) {
 // Live (25.11.2026, Wunsch „wird hier auch alles live aktualisiert?“): Kurs-Kopf und Plan-Kacheln werden ausgetauscht, ohne den
 // TradingView-Chart neu zu laden; geänderte Zahlen blinken (data-lpx). Die Aktien des Strategie-Depots laufen mit, wenn ein Kursdienst eingerichtet ist.
 function etfPatch() { if (state.sec !== "etf") return; const box = document.getElementById("etfLivePx"), pc = document.getElementById("etfPlanCore");
-  if (!box) { render(); return; } const c = etfCfg(); box.innerHTML = etfLivePxHtml(c);
+  if (!box) { render(); return; } const c = etfCfg(); box.innerHTML = etfLivePxHtml(c); etfKcLive();
   if (pc) { const e0 = getJson("etf.json"), e = e0 && e0.ok === false ? null : e0; try { pc.innerHTML = etfPlanCore(e, c, stratValue()); } catch (er) {} } }
 let etfStkAt = 0;
 setInterval(() => { if (state.sec !== "etf" || document.hidden) return; etfLiveLoad();
@@ -10565,12 +10567,38 @@ function etfQuoteHtml(e, c) {
     <button class="hlink" data-etflive title="Kurs aktualisieren" aria-label="Kurs aktualisieren">↻</button></div><div id="etfLivePx">${etfLivePxHtml(c)}</div>${etfPerfHtml(e)}</div>`;
 }
 let ETF_FS = false;   // Live-Chart im Vollbild (Wunsch 14.11.2026)
+// ETF-Chart ohne fremde Website (26.11.2026, Wunsch „keine fremde Website – alles im Kairo-Chart“): eigener Chart aus den
+// Schlusskursen (etf.json) mit 200-Tage-Linie und Ø Kaufkurs; der letzte Punkt ist der Live-Kurs von gettex und läuft mit.
+const ETFKC = { ch: null, s: null, key: "" };
 function etfLiveHtml(c) {
   etfLiveLoad();
-  const e = getJson("etf.json"), v3 = state.etfCh === "3j" && e && e.hist;
-  return `<div class="hcard etf-live${ETF_FS ? " fs" : ""}"><div class="hh"><b>Chart</b><div class="sp-tg">${[["live", "Live"], ["3j", "3 Jahre"]].map(([k, l]) => `<button class="opt${(v3 ? "3j" : "live") === k ? " on" : ""}" data-etfch="${k}">${l}</button>`).join("")}</div></div>
-    ${v3 ? `${etfLine(e.hist, c.buy)}<div class="el-s">Schlusskurse mit 200-Tage-Linie${c.buy ? " und deinem Ø Kaufkurs" : ""} · ${e.ref ? "gegengeprüft mit iShares MSCI ACWI" : "Gegenprobe heute nicht möglich"}</div>` : etfTvHtml()}</div>`;
+  const e = getJson("etf.json"), rg = ["1m", "6m", "1y", "3y", "max"].includes(state.etfRg) ? state.etfRg : "1y";
+  setTimeout(etfKcMount, 0);
+  return `<div class="hcard etf-live${ETF_FS ? " fs" : ""}"><div class="hh"><b>Chart</b><div class="sp-tg">${[["1m", "1M"], ["6m", "6M"], ["1y", "1J"], ["3y", "3J"], ["max", "Max"]].map(([k, l]) => `<button class="opt${rg === k ? " on" : ""}" data-etfrg="${k}">${l}</button>`).join("")}</div>
+      <button class="nr-ic el-fs2" data-etffs aria-label="${ETF_FS ? "Verkleinern" : "Groß anzeigen"}" title="${ETF_FS ? "Verkleinern" : "Groß anzeigen"}">${ETF_FS ? "✕" : "⤢"}</button></div>
+    <div class="el-kc"><div id="etfKc" class="el-kcv"></div></div>
+    <div class="el-s"><i class="el-k1"></i>SPYI · Schlusskurse, letzter Punkt live (gettex)<i class="el-k2"></i>200-Tage-Linie${c.buy ? `<i class="el-k3"></i>Ø Kaufkurs ${fmt(c.buy)} €` : ""}</div></div>`;
 }
+function etfKcMount() { const el = $("etfKc"), e = getJson("etf.json"); if (!el || !e || !Array.isArray(e.hist) || !window.LightweightCharts) return;
+  const rg = ["1m", "6m", "1y", "3y", "max"].includes(state.etfRg) ? state.etfRg : "1y", c = etfCfg(), key = rg + "|" + isLight() + "|" + (c.buy || "") + "|" + el.clientWidth;
+  if (ETFKC.ch && ETFKC.el === el && ETFKC.key === key) { etfKcLive(); return; }
+  if (ETFKC.ch) { try { ETFKC.ch.remove(); } catch (x) {} } el.innerHTML = "";
+  const H = e.hist, n = { "1m": 22, "6m": 130, "1y": 260, "3y": 780, max: H.length }[rg], sl = H.slice(-n);
+  const ch = LightweightCharts.createChart(el, { ...chartOpts(el), rightPriceScale: { borderVisible: false, scaleMargins: { top: .12, bottom: .08 } }, timeScale: { borderVisible: false, rightOffset: 4 } });
+  const up = sl.length > 1 && sl[sl.length - 1][1] >= sl[0][1], col = up ? "#30d158" : "#ff453a";
+  const s = ch.addAreaSeries({ lineColor: col, lineWidth: 2, topColor: up ? "rgba(48,209,88,.28)" : "rgba(255,69,58,.28)", bottomColor: "rgba(0,0,0,0)", priceLineVisible: true, lastValueVisible: true, priceFormat: { type: "price", precision: 3, minMove: .001 } });
+  s.setData(sl.map(x => ({ time: x[0], value: +x[1] })));
+  const m = ch.addLineSeries({ color: "rgba(244,183,64,.9)", lineWidth: 1.5, lineStyle: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  m.setData(sl.filter(x => x[2] != null).map(x => ({ time: x[0], value: +x[2] })));
+  if (c.buy > 0) s.createPriceLine({ price: c.buy, color: "#8e8e93", lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title: "Ø Kauf" });
+  ch.timeScale().fitContent();
+  Object.assign(ETFKC, { ch, s, el, key, last: sl.length ? sl[sl.length - 1][0] : null, base: sl.length ? sl[sl.length - 1][1] : null });
+  try { new ResizeObserver(() => { if (ETFKC.ch === ch && el.isConnected) ch.applyOptions({ width: el.clientWidth, height: el.clientHeight }); }).observe(el); } catch (x) {}
+  etfKcLive(); }
+function etfKcLive() { const L = etfLive && !etfLive.err && etfLive.p > 0 ? etfLive : null; if (!L || !ETFKC.s || !ETFKC.el || !ETFKC.el.isConnected) return;
+  const d = L.at ? new Date(L.at) : new Date(), day = d.toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
+  if (ETFKC.last && day < ETFKC.last) return; try { ETFKC.s.update({ time: day, value: L.p }); } catch (x) {} }
+document.addEventListener("click", e => { const b = e.target.closest("[data-etfrg]"); if (!b) return; state.etfRg = b.dataset.etfrg; save(); render(); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-etfch]"); if (b) { state.etfCh = b.dataset.etfch; save(); render(); } });
 document.addEventListener("click", e => {
   if (e.target.closest("[data-etflive]")) etfLiveLoad(true);
@@ -11147,8 +11175,10 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.290";
-const APP_NEWS = [["2026.11.290", "Pinsel, Notizen, Linienstil", [
+const APP_VER = "2026.11.291";
+const APP_NEWS = [["2026.11.291", "ETF-Chart von Kairo", [
+  ["Keine fremde Website mehr", "Der ETF-Bereich zeigt einen eigenen Chart: Kursverlauf 1M bis Max mit 200-Tage-Linie und deinem Ø Kaufkurs. Der letzte Punkt ist der Live-Kurs von gettex und läuft mit."]]],
+ ["2026.11.290", "Pinsel, Notizen, Linienstil", [
   ["Pinsel", "Frei zeichnen – mit dem Finger direkt im Chart malen."],
   ["Notiz mit Pfeil", "Punkt antippen, zur Textstelle ziehen, Text eingeben."],
   ["Jede Zeichnung einstellbar", "Linienstärke (1–4), Linienart (durchgezogen, gestrichelt, gepunktet) und Sperren, damit nichts verrutscht."],
