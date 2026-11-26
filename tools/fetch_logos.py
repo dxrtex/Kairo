@@ -50,6 +50,17 @@ def get(url: str, timeout: float = 8.0) -> bytes | None:
     return None
 
 
+def weak_img(im) -> bool:
+    """Logo im kleinen runden Feld kaum zu erkennen (26.11.2026, SELLAS): sehr breiter, dünner Schriftzug oder fast nichts sichtbar."""
+    a = im.split()[3].point(lambda v: 255 if v > 24 else 0)
+    box = a.getbbox()
+    if not box:
+        return True
+    bw, bh = box[2] - box[0], box[3] - box[1]
+    cov = sum(1 for v in a.getdata() if v) / float(im.size[0] * im.size[1])
+    return max(bw, bh) / max(1, min(bw, bh)) > 4.2 or cov < .03
+
+
 def normalize(raw: bytes) -> tuple[bytes, str] | None:
     """Bild prüfen, Rand beschneiden, auf SIZE×SIZE (transparent) einpassen. Gibt PNG und Bild-Hash zurück."""
     if raw[:5] in (b"<svg ", b"<?xml") or b"<svg" in raw[:300]:
@@ -190,6 +201,7 @@ def candidates(t: str, company: dict, name: str = ""):
 
 
 def fetch_one(t: str, company: dict, skip_hash: set[str], names: dict | None = None):
+    weak = None
     for src, url in candidates(t, company, (names or {}).get(t, "")):
         raw = get(url)
         if not raw:
@@ -197,8 +209,11 @@ def fetch_one(t: str, company: dict, skip_hash: set[str], names: dict | None = N
         n = normalize(raw)
         if not n or n[1] in skip_hash:
             continue
+        if weak_img(Image.open(io.BytesIO(n[0])).convert("RGBA")):
+            weak = weak or (t, src, n[0], n[1])      # merken, falls keine Quelle etwas Besseres hat
+            continue
         return t, src, n[0], n[1]
-    return t, None, None, None
+    return weak or (t, None, None, None)
 
 
 def main() -> None:
@@ -282,6 +297,18 @@ def main() -> None:
             (out / f"{safe(t)}.png").unlink(missing_ok=True)
             meta.pop(t)
     now = time.time()
+    # schwache Logos (Schriftzug zu dünn/breit) einmal neu suchen – Kennzeichen „wk“, damit es nicht bei jedem Lauf passiert
+    redo = 0
+    for t, m in list(meta.items()):
+        f = out / f"{safe(t)}.png"
+        if m.get("src") and not m.get("wk") and f.exists():
+            try:
+                if weak_img(Image.open(f).convert("RGBA")):
+                    meta.pop(t)
+                    redo += 1
+            except Exception:
+                pass
+    print("schwache Logos neu suchen:", redo)
     # neu versuchen: ohne Logo, und Fehlversuche frühestens nach 7 Tagen erneut
     todo = [t for t in tickers if t not in meta or (meta[t].get("src") and meta[t].get("v") != LOGO_V)
             or (not meta[t].get("src") and (meta[t].get("v") != LOGO_V or now - meta[t].get("at", 0) > 7 * 86400))]
@@ -292,7 +319,7 @@ def main() -> None:
         for i, (t, src, png, h) in enumerate(ex.map(lambda t: fetch_one(t, company, skip, names), todo)):
             if src:
                 (out / f"{safe(t)}.png").write_bytes(png)
-                meta[t] = {"src": src, "h": h, "at": now, "v": LOGO_V}
+                meta[t] = {"src": src, "h": h, "at": now, "v": LOGO_V, "wk": 1}
             else:
                 meta[t] = {"src": None, "at": now, "v": LOGO_V}
             got[src or "–"] += 1
