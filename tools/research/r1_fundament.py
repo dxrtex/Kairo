@@ -82,30 +82,47 @@ def download(out: Path) -> None:
         print("S&P-500-Historie nicht verfügbar:", repr(e), flush=True)
         snaps = []
     hist = set().union(*[m for _, m in snaps]) if snaps else set()
-    tickers = sorted(set(today) | hist | {"SPY", "ACWI", "URTH"})
+    bench = ["SPY", "ACWI", "URTH"]
+    tickers = bench + sorted((set(today) | hist) - set(bench))
     print(f"heutige US-Liste {len(today)} · S&P 500 jemals Mitglied {len(hist)} · zusammen {len(tickers)}", flush=True)
     C, V = {}, {}
-    for i in range(0, len(tickers), 150):
-        batch = tickers[i:i + 150]
-        for att in range(3):
+    # Yahoo bremst nach ~1.000 Werten: kleine Pakete, Pausen, fehlende Werte in weiteren Durchgängen erneut
+    todo = list(tickers)
+    for rnd in range(4):
+        miss = []
+        for i in range(0, len(todo), 60):
+            batch = todo[i:i + 60]
             try:
                 df = yf.download(batch, start=START, interval="1d", group_by="ticker", auto_adjust=True, threads=True, progress=False)
-                break
             except Exception as e:
-                print("  Wiederholung", e, flush=True)
-                time.sleep(5)
-        else:
-            continue
-        for t in batch:
-            try:
-                sub = df[t] if isinstance(df.columns, pd.MultiIndex) else df
-                c = sub["Close"].dropna()
-                if len(c) > 260:
-                    C[t] = c
-                    V[t] = sub["Volume"].reindex(c.index)
-            except Exception:
-                pass
-        print(f"  {min(i + 150, len(tickers))}/{len(tickers)} geladen, mit Kursen {len(C)}", flush=True)
+                print("  Paket-Fehler", repr(e)[:120], flush=True)
+                miss += batch
+                time.sleep(30)
+                continue
+            got = 0
+            for t in batch:
+                try:
+                    sub = df[t] if isinstance(df.columns, pd.MultiIndex) else df
+                    c = sub["Close"].dropna()
+                    if len(c) > 260:
+                        C[t] = c
+                        V[t] = sub["Volume"].reindex(c.index)
+                        got += 1
+                    else:
+                        miss.append(t)
+                except Exception:
+                    miss.append(t)
+            if got == 0:
+                time.sleep(20)                    # vermutlich gebremst
+            else:
+                time.sleep(2)
+            if (i // 60) % 5 == 0:
+                print(f"  Runde {rnd + 1}: {min(i + 60, len(todo))}/{len(todo)}, mit Kursen gesamt {len(C)}", flush=True)
+        print(f"Runde {rnd + 1} fertig: mit Kursen {len(C)}, offen {len(miss)}", flush=True)
+        if not miss or rnd == 3:
+            break
+        todo = miss
+        time.sleep(90)
     close = pd.DataFrame(C).sort_index()
     vol = pd.DataFrame(V).reindex(close.index)
     pickle.dump({"close": close, "vol": vol, "today": today, "snaps": snaps}, open(out / "px.pkl", "wb"))
