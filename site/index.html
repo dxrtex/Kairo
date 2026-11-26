@@ -11147,8 +11147,13 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.287";
-const APP_NEWS = [["2026.11.287", "Kairo-Chart ist zurück", [
+const APP_VER = "2026.11.288";
+const APP_NEWS = [["2026.11.288", "20 neue Zeichenwerkzeuge", [
+  ["Linien", "Strahl, verlängerte Linie, vertikale Linie, Kreuzlinie und Pfeil."],
+  ["Fibonacci und Gann", "Fib-Fächer, Fib-Zeitzonen, Pitchfork (Gabel) und Gann-Fächer. Das Fib-Retracement nutzt jetzt die Stufen wie TradingView: 0 · 0,236 · 0,382 · 0,5 · 0,618 · 0,786 · 1."],
+  ["Muster", "XABCD- und ABCD-Muster mit Verhältnissen sowie die Elliott-Impulswelle (0–5) – Punkt für Punkt antippen."],
+  ["Formen und Messen", "Kreis, Ellipse, Dreieck, Pfeil-Marker nach oben und unten, Datumsbereich sowie Datums- und Preisbereich."]]],
+ ["2026.11.287", "Kairo-Chart ist zurück", [
   ["Werkzeuge direkt in der App", "Der Chart-Reiter nutzt wieder den eigenen Kairo-Chart statt TradingView. Alle Zeichenwerkzeuge funktionieren mit dem Finger: Werkzeug wählen, Fadenkreuz versetzt zum Finger ziehen, Tippen setzt den Punkt – mit Magnet auf Hoch und Tief."],
   ["Mehrfach-Charts", "Auch die Ansicht mit mehreren Charts nutzt wieder den Kairo-Chart."]]],
  ["2026.11.286", "Ruhigeres Blinken", [
@@ -17029,11 +17034,15 @@ const DRAW = { tool: null, sel: null, hide: false, hist: {}, h: null, act: null,
 let DRAW_TOUCH = matchMedia("(pointer: coarse)").matches;   // zuletzt mit dem Finger bedient → Fadenkreuz-Modus
 addEventListener("pointerdown", e => { DRAW_TOUCH = e.pointerType === "touch"; }, true);
 // Fib-Retracement nur mit der Golden Zone (Wunsch 14.11.2026): [Stufe, Linienfarbe, Farbe der Fläche darüber]
-const DR_FIB = [[0, "120,123,134"], [.618, "8,153,129", "242,54,69"], [.706, "255,152,0", "120,123,134"], [.79, "242,54,69", "255,152,0"], [1, "120,123,134", "120,123,134"]];
+// Stufen und Farben wie bei TradingView (Wunsch 26.11.2026: „1:1 wie TradingView“)
+const DR_FIB = [[0, "120,123,134"], [.236, "242,54,69"], [.382, "255,152,0"], [.5, "76,175,80"], [.618, "8,153,129"], [.786, "41,98,255"], [1, "120,123,134"]];
 const DR_FIBX = [[1.618, "41,98,255"], [2.618, "242,54,69"], [3.618, "156,39,176"], [4.236, "233,30,99"]];
 const DR_COL = ["41,98,255", "242,54,69", "8,153,129", "255,152,0", "156,39,176", "236,238,242"];
 // Werkzeug-Gruppen wie bei TradingView (ein Knopf je Gruppe, weitere Werkzeuge im Ausklapp-Menü)
-const DR_GRP = [["lines", "Linien", ["tl", "hr", "hl", "chan", "path"]], ["fib", "Fibonacci", ["fib", "fibx"]], ["shape", "Formen und Text", ["rect", "text"]], ["fc", "Prognose und Messung", ["long", "short", "prng", "avwap"]]];
+const DR_GRP = [["lines", "Linien", ["tl", "ray", "xl", "hl", "hr", "vl", "cross", "arrow", "chan"]], ["fib", "Fibonacci und Gann", ["fib", "fibx", "fibfan", "fibtz", "pitch", "gfan"]],
+  ["pat", "Muster", ["xabcd", "abcd", "ew"]], ["shape", "Formen und Text", ["rect", "circ", "ell", "tri", "path", "text", "aup", "adn"]], ["fc", "Prognose und Messung", ["long", "short", "prng", "drng", "dprng", "avwap"]]];
+// Werkzeuge mit fester Punktzahl (Antippen setzt Punkt für Punkt) und mit drittem Punkt
+const DR_PN = { abcd: 4, xabcd: 5, ew: 6 }, DR_3 = ["chan", "fibx", "pitch", "tri"];
 const DR_TOOLS = [["tl", "Trendlinie", '<path d="M5 19 19 5"/><circle cx="5" cy="19" r="1.8"/><circle cx="19" cy="5" r="1.8"/>'],
   ["hl", "Horizontale Linie", '<path d="M3 12h18"/><circle cx="12" cy="12" r="1.8"/>'], ["hr", "Horizontaler Strahl", '<path d="M6 12h15"/><circle cx="5" cy="12" r="1.8"/>'],
   ["fib", "Fib-Retracement", '<path d="M3 5h18M3 9.5h18M3 13h18M3 19h18" opacity=".9"/><path d="M5 19 19 5" stroke-dasharray="2 2"/>'],
@@ -17045,7 +17054,26 @@ const DR_TOOLS = [["tl", "Trendlinie", '<path d="M5 19 19 5"/><circle cx="5" cy=
   ["prng", "Preisbereich", '<path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/>'],
   ["text", "Text", '<path d="M5 6V4h14v2M12 4v16M9 20h6"/>'],
   ["avwap", "Verankerter VWAP", '<path d="M3 18c4-1 5-9 9-9s5 6 9 4"/><path d="M5 21V5" stroke-dasharray="2 2"/><circle cx="5" cy="18" r="1.8"/>'],
-  ["short", "Short-Position", '<path d="M4 6h10M4 12h16M4 18h10"/><circle cx="4" cy="12" r="1.4"/><text x="16" y="21" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="-apple-system,sans-serif">S</text>']];
+  ["short", "Short-Position", '<path d="M4 6h10M4 12h16M4 18h10"/><circle cx="4" cy="12" r="1.4"/><text x="16" y="21" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="-apple-system,sans-serif">S</text>'],
+  ["ray", "Strahl", '<path d="M5 19 21 3"/><circle cx="5" cy="19" r="1.8"/><circle cx="12" cy="12" r="1.8"/>'],
+  ["xl", "Verlängerte Linie", '<path d="M2 22 22 2"/><circle cx="8" cy="16" r="1.8"/><circle cx="16" cy="8" r="1.8"/>'],
+  ["vl", "Vertikale Linie", '<path d="M12 3v18"/><circle cx="12" cy="12" r="1.8"/>'],
+  ["cross", "Kreuzlinie", '<path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="1.8"/>'],
+  ["arrow", "Pfeil", '<path d="M5 19 19 5"/><path d="M11 5h8v8"/>'],
+  ["fibfan", "Fib-Fächer", '<path d="M4 20 20 4M4 20l16-6M4 20l16-10M4 20l12 0"/>'],
+  ["fibtz", "Fib-Zeitzonen", '<path d="M4 4v16M7 4v16M10 4v16M14 4v16M20 4v16"/>'],
+  ["pitch", "Pitchfork (Gabel)", '<path d="M3 13h8M11 13l9-8M11 13l9 0M11 13l9 8"/><circle cx="3" cy="13" r="1.6"/>'],
+  ["gfan", "Gann-Fächer", '<path d="M4 20 20 4M4 20l16-8M4 20l8-16M4 20h16"/>'],
+  ["xabcd", "XABCD-Muster", '<path d="M2 18 7 6l5 9 5-11 5 13"/><path d="M2 18 12 15 22 17" opacity=".5"/>'],
+  ["abcd", "ABCD-Muster", '<path d="M3 18 9 6l5 8 7-11"/>'],
+  ["ew", "Elliott-Impulswelle", '<path d="M2 20 6 12l3 4 5-11 3 5 5-7"/>'],
+  ["circ", "Kreis", '<circle cx="12" cy="12" r="8"/>'],
+  ["ell", "Ellipse", '<ellipse cx="12" cy="12" rx="9" ry="6"/>'],
+  ["tri", "Dreieck", '<path d="M4 19 12 5l8 14z"/>'],
+  ["aup", "Pfeil nach oben", '<path d="M12 4 5 13h4v7h6v-7h4z"/>'],
+  ["adn", "Pfeil nach unten", '<path d="M12 20 5 11h4V4h6v7h4z"/>'],
+  ["drng", "Datumsbereich", '<path d="M4 5v14M20 5v14M4 12h16M8 9l-4 3 4 3M16 9l4 3-4 3"/>'],
+  ["dprng", "Datums- und Preisbereich", '<rect x="4" y="4" width="16" height="16" rx="1" opacity=".6"/><path d="M12 6v12M6 12h12"/>']];
 const drKey = h => h && h.r ? String(h.r.ticker).replace(/@rp$/, "") + (h.c && h.c.intra ? "|i" : "") : "";   // Intraday-Zeichnungen getrennt (Zeitachse mit Uhrzeit)
 const drList = h => (state.draws || {})[drKey(h)] || [];
 function drSet(h, list, noHist) {
@@ -17068,7 +17096,7 @@ function drVwap(h, d) { const c = h.c, n = c.t.length, i0 = Math.max(0, Math.min
   for (let i = i0; i < n; i++) { const v = (c.v && c.v[i]) || 0, tp = (c.h[i] + c.l[i] + c.c[i]) / 3; if (!(tp > 0)) continue; pv += tp * (v || 1); vv += v || 1; o.push([i, pv / vv]); } return o; }
 // 3-Punkt-Werkzeuge: Kanal-Breite (Abstand der Parallele) bzw. dritter Punkt der Fib-Extension
 function drSet3(h, d, q) { if (d.k === "chan") { const ia = drIdx(h, d.a), ib = drIdx(h, d.b), t = ib !== ia ? (q.li - ia) / (ib - ia) : 0; d.off = +(q.p - (d.a.p + (d.b.p - d.a.p) * t)).toPrecision(6); }
-  else if (d.k === "fibx") d.c3 = drAnc(h, q.li, q.p); }
+  else if (["fibx", "pitch", "tri"].includes(d.k)) d.c3 = drAnc(h, q.li, q.p); }
 const DR_FX = [[0, "120,123,134"], [.618, "8,153,129"], [1, "41,98,255"], [1.272, "255,152,0"], [1.618, "242,54,69"], [2.618, "156,39,176"]];
 // blaues Fadenkreuz beim Zeichnen mit dem Finger (wie TradingView): gestrichelte Linien, Punkt, Preis- und Datumsschild
 function drCurPrimitive(h) {
@@ -17086,6 +17114,27 @@ function drCurPrimitive(h) {
     if (li != null) { const T = h.c.t, i = Math.round(li), d = i >= 0 && i < T.length ? T[i] : null; if (d != null) tag(typeof d === "number" ? dayDE(tkey(d)) : dateDE(d), C.x, m.height - 12); } }) };
   return { attached(p) { series = p.series; chart = p.chart; req = p.requestUpdate; }, detached() { series = chart = null; }, updateAllViews() {}, paneViews: () => [{ zOrder: () => "top", renderer: () => r }] };
 }
+// Neue Werkzeuge (26.11.2026, „Werkzeuge wie bei TradingView“): Linienstücke in Pixeln – dieselben Stücke zum Zeichnen und zum Antippen
+function drEdge(x1, y1, x2, y2, W, H) { const dx = x2 - x1, dy = y2 - y1; if (!dx && !dy) return [x2, y2];
+  const tx = dx ? ((dx > 0 ? W : 0) - x1) / dx : Infinity, ty = dy ? ((dy > 0 ? H : 0) - y1) / dy : Infinity, t = Math.max(1, Math.min(tx, ty)); return [x1 + dx * t, y1 + dy * t]; }
+const DR_FAN = [.236, .382, .5, .618, .786], DR_GANN = [[8, "8x1"], [4, "4x1"], [3, "3x1"], [2, "2x1"], [1, "1x1"], [1 / 2, "1x2"], [1 / 3, "1x3"], [1 / 4, "1x4"], [1 / 8, "1x8"]], DR_TZ = [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
+function drSegs(h, d, W, H) { const ts = h.chart.timeScale(), X = i => ts.logicalToCoordinate(i), Y = v => h.candles.priceToCoordinate(v);
+  const ax = X(drIdx(h, d.a)), ay = Y(d.a.p); if (ax == null || ay == null) return []; const bx = d.b ? X(drIdx(h, d.b)) : null, by = d.b ? Y(d.b.p) : null;
+  const cx = d.c3 ? X(drIdx(h, d.c3)) : null, cy = d.c3 ? Y(d.c3.p) : null, S = [];
+  if (d.k === "vl") return [[ax, 0, ax, H]]; if (d.k === "cross") return [[ax, 0, ax, H], [0, ay, W, ay]];
+  if (d.pts) { const P2 = d.pts.map(p2 => [X(drIdx(h, p2)), Y(p2.p)]); for (let k = 1; k < P2.length; k++) if (P2[k - 1][0] != null && P2[k][0] != null && P2[k - 1][1] != null && P2[k][1] != null) S.push([P2[k - 1][0], P2[k - 1][1], P2[k][0], P2[k][1]]); return S; }
+  if (bx == null || by == null) return S;
+  if (d.k === "ray") { const e = drEdge(ax, ay, bx, by, W, H); return [[ax, ay, e[0], e[1]]]; }
+  if (d.k === "xl") { const e = drEdge(ax, ay, bx, by, W, H), f = drEdge(bx, by, ax, ay, W, H); return [[f[0], f[1], e[0], e[1]]]; }
+  if (d.k === "arrow") return [[ax, ay, bx, by]];
+  if (d.k === "fibfan") { [0, ...DR_FAN, 1].forEach(q => { const ty = by + (ay - by) * q, e = drEdge(ax, ay, bx, ty, W, H); S.push([ax, ay, e[0], e[1], q]); }); return S; }
+  if (d.k === "gfan") { DR_GANN.forEach(([r, l]) => { const e = drEdge(ax, ay, ax + (bx - ax) * (r >= 1 ? 1 : 1 / r), ay + (by - ay) * (r >= 1 ? r : 1), W, H); S.push([ax, ay, e[0], e[1], l]); }); return S; }
+  if (d.k === "fibtz") { const ia = drIdx(h, d.a), n = drIdx(h, d.b) - ia; if (!n) return [[ax, 0, ax, H, 0]]; DR_TZ.forEach(f => { const xx = X(ia + n * f); if (xx != null && xx >= -2 && xx <= W + 2) S.push([xx, 0, xx, H, f]); }); return S; }
+  if (d.k === "tri") { S.push([ax, ay, bx, by]); if (cx != null) S.push([bx, by, cx, cy], [cx, cy, ax, ay]); return S; }
+  if (d.k === "pitch") { if (cx == null) return [[ax, ay, bx, by]]; const mx = (bx + cx) / 2, my = (by + cy) / 2, e = drEdge(ax, ay, mx, my, W, H), dx = e[0] - mx, dy = e[1] - my;
+    S.push([ax, ay, e[0], e[1]], [bx, by, bx + dx, by + dy], [cx, cy, cx + dx, cy + dy], [bx, by, cx, cy]); return S; }
+  return S; }
+function drSegDist(px, py, x1, y1, x2, y2) { const dx = x2 - x1, dy = y2 - y1, l = dx * dx + dy * dy; let t = l ? ((px - x1) * dx + (py - y1) * dy) / l : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - x1 - t * dx, py - y1 - t * dy); }
 function drPrimitive(h) {
   let series = null, chart = null;
   const F = "600 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
@@ -17106,6 +17155,39 @@ function drPrimitive(h) {
         x.beginPath(); x.moveTo(ax, ay); x.lineTo(ex, ey); x.stroke(); if (d.al && d.al.on) lbl("Alarm", bx + 6, by, col, "left", false); if (sel) { handle(ax, ay); handle(bx, by); } }
       else if (d.k === "hl") { x.beginPath(); x.moveTo(0, ay); x.lineTo(W, ay); x.stroke(); lbl(`${d.al && d.al.on ? "Alarm · " : ""}${fmt(d.a.p)}`, W - 4, ay, col, "right"); if (sel) handle(ax, ay); }
       else if (d.k === "hr") { x.beginPath(); x.moveTo(ax, ay); x.lineTo(W, ay); x.stroke(); lbl(`${d.al && d.al.on ? "Alarm · " : ""}${fmt(d.a.p)}`, W - 4, ay, col, "right"); if (sel) handle(ax, ay); }
+      else if (["ray", "xl", "arrow", "vl", "cross"].includes(d.k)) { const Hh = m.height; drSegs(h, d, W, Hh).forEach(([x1, y1, x2, y2]) => { x.beginPath(); x.moveTo(x1, y1); x.lineTo(x2, y2); x.stroke(); });
+        if (d.k === "arrow" && bx != null) { const an = Math.atan2(by - ay, bx - ax), L2 = 12; x.beginPath(); x.moveTo(bx, by); x.lineTo(bx - L2 * Math.cos(an - .45), by - L2 * Math.sin(an - .45)); x.moveTo(bx, by); x.lineTo(bx - L2 * Math.cos(an + .45), by - L2 * Math.sin(an + .45)); x.stroke(); }
+        if (d.k === "vl" || d.k === "cross") { const T = h.c.t, i0 = Math.round(drIdx(h, d.a)), dd = i0 >= 0 && i0 < T.length ? T[i0] : null; if (dd != null) lbl(typeof dd === "number" ? dayDE(tkey(dd)) : dateDE(dd), ax, Hh - 12, col, "center"); }
+        if (d.k === "cross") lbl(fmt(d.a.p), W - 4, ay, col, "right");
+        if (sel) { handle(ax, ay); if (bx != null && d.k !== "vl" && d.k !== "cross") handle(bx, by); } }
+      else if (d.k === "aup" || d.k === "adn") { const up = d.k === "aup", s2 = 9, y0 = up ? ay + 6 : ay - 6, dir = up ? 1 : -1; x.fillStyle = `rgb(${col})`; x.beginPath(); x.moveTo(ax, y0); x.lineTo(ax - s2, y0 + dir * s2); x.lineTo(ax - s2 / 2.4, y0 + dir * s2); x.lineTo(ax - s2 / 2.4, y0 + dir * s2 * 2.2); x.lineTo(ax + s2 / 2.4, y0 + dir * s2 * 2.2); x.lineTo(ax + s2 / 2.4, y0 + dir * s2); x.lineTo(ax + s2, y0 + dir * s2); x.closePath(); x.fill(); if (sel) handle(ax, ay); }
+      else if (d.k === "circ" && bx != null) { const rr = Math.hypot(bx - ax, by - ay); x.fillStyle = `rgba(${col},.1)`; x.lineWidth = 1.5; x.beginPath(); x.arc(ax, ay, rr, 0, Math.PI * 2); x.fill(); x.stroke(); if (sel) { handle(ax, ay); handle(bx, by); } }
+      else if (d.k === "ell" && bx != null) { x.fillStyle = `rgba(${col},.1)`; x.lineWidth = 1.5; x.beginPath(); x.ellipse((ax + bx) / 2, (ay + by) / 2, Math.abs(bx - ax) / 2 || 1, Math.abs(by - ay) / 2 || 1, 0, 0, Math.PI * 2); x.fill(); x.stroke(); if (sel) { handle(ax, ay); handle(bx, by); } }
+      else if (d.k === "tri" && bx != null) { const S2 = drSegs(h, d, W, m.height); x.fillStyle = `rgba(${col},.1)`; x.lineWidth = 1.5; x.beginPath(); x.moveTo(ax, ay); x.lineTo(bx, by); if (d.c3) { const cx = X(drIdx(h, d.c3)), cy = Y(d.c3.p); x.lineTo(cx, cy); x.closePath(); x.fill(); x.stroke(); if (sel) handle(cx, cy); } else x.stroke(); if (sel) { handle(ax, ay); handle(bx, by); } }
+      else if (d.k === "pitch" && bx != null) { const S2 = drSegs(h, d, W, m.height); if (S2.length === 4) { const [, m1, m2, base] = S2; x.fillStyle = `rgba(${col},.07)`; x.beginPath(); x.moveTo(m1[0], m1[1]); x.lineTo(m1[2], m1[3]); x.lineTo(m2[2], m2[3]); x.lineTo(m2[0], m2[1]); x.closePath(); x.fill(); }
+        S2.forEach(([x1, y1, x2, y2], k2) => { x.lineWidth = k2 === 0 ? 1.5 : 1.3; if (k2 === 3) x.setLineDash([4, 4]); x.beginPath(); x.moveTo(x1, y1); x.lineTo(x2, y2); x.stroke(); x.setLineDash([]); });
+        if (sel) { handle(ax, ay); handle(bx, by); if (d.c3) handle(X(drIdx(h, d.c3)), Y(d.c3.p)); } }
+      else if ((d.k === "fibfan" || d.k === "gfan") && bx != null) { const S2 = drSegs(h, d, W, m.height), fc = { 0: "120,123,134", .236: "242,54,69", .382: "255,152,0", .5: "76,175,80", .618: "8,153,129", .786: "41,98,255", 1: "120,123,134" };
+        S2.forEach(([x1, y1, x2, y2, q]) => { const c2 = d.k === "fibfan" ? fc[q] || col : q === "1x1" ? "41,98,255" : "120,123,134"; x.strokeStyle = `rgb(${c2})`; x.lineWidth = q === "1x1" ? 1.6 : 1.1; x.beginPath(); x.moveTo(x1, y1); x.lineTo(x2, y2); x.stroke();
+          const lx = x1 + (x2 - x1) * .55, ly = y1 + (y2 - y1) * .55; if (q !== 0) lbl(String(q), lx, ly - 7, c2, "center", false); });
+        if (sel) { handle(ax, ay); handle(bx, by); } }
+      else if (d.k === "fibtz" && bx != null) { drSegs(h, d, W, m.height).forEach(([x1, y1, x2, y2, f]) => { x.strokeStyle = `rgb(${f === 0 ? "120,123,134" : col})`; x.lineWidth = 1.1; x.beginPath(); x.moveTo(x1, 0); x.lineTo(x2, m.height); x.stroke(); lbl(String(f), x1 + 3, 12, col, "left", false); }); if (sel) { handle(ax, ay); handle(bx, by); } }
+      else if ((d.k === "drng" || d.k === "dprng") && bx != null) { const up = d.b.p >= d.a.p, colr = d.k === "drng" ? "41,98,255" : up ? "8,153,129" : "242,54,69", xl = Math.min(ax, bx), xr = Math.max(ax, bx), Hh = m.height, yt = d.k === "drng" ? 0 : Math.min(ay, by), yb = d.k === "drng" ? Hh : Math.max(ay, by);
+        x.fillStyle = `rgba(${colr},.1)`; x.fillRect(xl, yt, xr - xl, yb - yt); x.strokeStyle = `rgb(${colr})`; x.lineWidth = 1.4; const ym = d.k === "drng" ? ay : (ay + by) / 2;
+        x.beginPath(); x.moveTo(ax, ym); x.lineTo(bx, ym); x.stroke(); const dr = bx >= ax ? 1 : -1; x.beginPath(); x.moveTo(bx - dr * 6, ym - 5); x.lineTo(bx, ym); x.lineTo(bx - dr * 6, ym + 5); x.stroke();
+        if (d.k === "dprng") { const xm = (ax + bx) / 2; x.beginPath(); x.moveTo(xm, ay); x.lineTo(xm, by); x.stroke(); }
+        const bars = Math.round(drIdx(h, d.b) - drIdx(h, d.a)), T = h.c.t, ia = Math.round(drIdx(h, d.a)), ib = Math.round(drIdx(h, d.b)), da = T[Math.max(0, Math.min(T.length - 1, ia))], db = T[Math.max(0, Math.min(T.length - 1, ib))];
+        const days = typeof da === "number" ? Math.round((db - da) / 86400) : Math.round((Date.parse(db) - Date.parse(da)) / 864e5), extra = ib > T.length - 1 ? "" : `, ${days} Tage`;
+        lbl(`${bars} Kerzen${extra}${d.k === "dprng" ? ` · ${d.b.p - d.a.p >= 0 ? "+" : ""}${fmt(d.b.p - d.a.p)} (${sgnPct(d.b.p / d.a.p - 1, 2)})` : ""}`, (ax + bx) / 2, d.k === "drng" ? ym + 16 : yb + 14, colr, "center");
+        if (sel) { handle(ax, ay); handle(bx, by); } }
+      else if (DR_PN[d.k]) { const P2 = (d.pts || []).map(p2 => [X(drIdx(h, p2)), Y(p2.p)]), names = d.k === "ew" ? ["0", "1", "2", "3", "4", "5"] : d.k === "abcd" ? ["A", "B", "C", "D"] : ["X", "A", "B", "C", "D"];
+        if (d.k === "xabcd" && P2.length >= 3) { x.fillStyle = `rgba(${col},.12)`; [[0, 1, 2], [2, 3, 4]].forEach(tr => { if (P2.length > tr[2]) { x.beginPath(); tr.forEach((k2, j2) => j2 ? x.lineTo(P2[k2][0], P2[k2][1]) : x.moveTo(P2[k2][0], P2[k2][1])); x.closePath(); x.fill(); } }); }
+        x.lineWidth = 1.8; x.beginPath(); P2.forEach(([px, py], k2) => { if (px == null || py == null) return; k2 ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
+        const ratio = (i1, i2, i3) => { const p = d.pts; if (!p[i3]) return null; const a1 = Math.abs(p[i2].p - p[i1].p); return a1 ? Math.abs(p[i3].p - p[i2].p) / a1 : null; };
+        if (d.k !== "ew") { const R2 = d.k === "xabcd" ? [[0, 1, 2], [1, 2, 3], [2, 3, 4]] : [[0, 1, 2], [1, 2, 3]]; x.setLineDash([4, 4]); x.lineWidth = 1;
+          R2.forEach(([i1, i2, i3]) => { const r2 = ratio(i1, i2, i3); if (r2 == null || !P2[i3]) return; x.beginPath(); x.moveTo(P2[i1][0], P2[i1][1]); x.lineTo(P2[i3][0], P2[i3][1]); x.stroke(); lbl(fmt(r2, 3), (P2[i1][0] + P2[i3][0]) / 2, (P2[i1][1] + P2[i3][1]) / 2, col, "center"); }); x.setLineDash([]); }
+        P2.forEach(([px, py], k2) => { if (px == null || py == null) return; const hiP = k2 === 0 ? (P2[1] ? py < P2[1][1] : true) : py <= P2[k2 - 1][1]; const t2 = d.k === "ew" ? `(${names[k2]})` : names[k2]; lbl(t2, px, hiP ? py - 14 : py + 14, col, "center"); });
+        if (sel || (DRAW.act && DRAW.act.temp === d)) P2.forEach(([px, py]) => px != null && handle(px, py)); }
       else if (d.k === "avwap") { const V = drVwap(h, d); if (V.length > 1) { x.beginPath(); V.forEach(([i, v], k) => { const px = X(i), py = Y(v); if (px == null || py == null) return; k ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
           const [li, lv] = V[V.length - 1], lx = X(li), ly = Y(lv); if (lx != null && ly != null) lbl(`VWAP ${fmt(lv)}`, W - 4, ly, col, "right"); if (sel) { const sy = Y(V[0][1]); handle(X(V[0][0]), sy); } } }
       else if (d.k === "text") { x.font = "600 13px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"; x.textBaseline = "middle"; x.fillStyle = `rgb(${col})`; x.fillText(d.tx || "", ax + 4, ay); if (sel) handle(ax, ay); }
@@ -17129,7 +17211,7 @@ function drPrimitive(h) {
         if (sel) { handle(ax, ay); handle(bx, by); handle(ax, by); handle(bx, ay); } }
       else if (d.k === "fib" && bx != null) {
         const lv = d.x2 ? DR_FIB.concat(DR_FIBX) : DR_FIB, xl = Math.min(ax, bx), xr = d.ext ? W : Math.max(ax, bx), P = q => d.b.p + (d.a.p - d.b.p) * q;
-        for (let k = 0; k < lv.length - 1; k++) { const y1 = Y(P(lv[k][0])), y2 = Y(P(lv[k + 1][0])); if (y1 == null || y2 == null) continue; x.fillStyle = `rgba(${lv[k + 1][2] || lv[k + 1][1]},${lv[k + 1][2] === "255,152,0" ? .26 : .14})`; x.fillRect(xl, Math.min(y1, y2), xr - xl, Math.abs(y2 - y1)); }
+        for (let k = 0; k < lv.length - 1; k++) { const y1 = Y(P(lv[k][0])), y2 = Y(P(lv[k + 1][0])); if (y1 == null || y2 == null) continue; x.fillStyle = `rgba(${lv[k + 1][2] || lv[k + 1][1]},.12)`; x.fillRect(xl, Math.min(y1, y2), xr - xl, Math.abs(y2 - y1)); }
         x.lineWidth = 1.2; lv.forEach(([q, c2]) => { const yy = Y(P(q)); if (yy == null) return; x.strokeStyle = `rgb(${c2})`; x.beginPath(); x.moveTo(xl, yy); x.lineTo(xr, yy); x.stroke();
           const tx = `${q} (${fmt(P(q))})`; x.font = F; const tw = x.measureText(tx).width;
           if (xl - tw - 8 > 0) lbl(tx, xl - 6, yy, c2, "right", false); else lbl(tx, xl + 4, yy - 8, c2, "left", false); });
@@ -17163,7 +17245,9 @@ function drHandles(h, d) { const g = drGeo(h, d);
   if (d.k === "hl" || d.k === "hr") return [["a", g.ax, g.ay]];
   if (d.k === "avwap") { const V = drVwap(h, d); return V.length ? [["a", g.ax, h.candles.priceToCoordinate(V[0][1])]] : []; }
   if (d.k === "text") return [["a", g.ax, g.ay]];
-  if (d.k === "path") { const ts = h.chart.timeScale(); return (d.pts || []).map((p2, k) => ["p" + k, ts.logicalToCoordinate(drIdx(h, p2)), h.candles.priceToCoordinate(p2.p)]); }
+  if (d.k === "vl" || d.k === "cross" || d.k === "aup" || d.k === "adn") return [["a", g.ax, g.ay]];
+  if ((d.k === "pitch" || d.k === "tri") && d.c3) return [["a", g.ax, g.ay], ["b", g.bx, g.by], ["c3", h.chart.timeScale().logicalToCoordinate(drIdx(h, d.c3)), h.candles.priceToCoordinate(d.c3.p)]];
+  if (d.pts) { const ts = h.chart.timeScale(); return (d.pts || []).map((p2, k) => ["p" + k, ts.logicalToCoordinate(drIdx(h, p2)), h.candles.priceToCoordinate(p2.p)]); }
   if (d.k === "chan") { const mx = (g.ax + g.bx) / 2, my = h.candles.priceToCoordinate((d.a.p + d.b.p) / 2 + (d.off || 0)); return [["a", g.ax, g.ay], ["b", g.bx, g.by], ["o", mx, my]]; }
   if (d.k === "fibx" && d.c3) return [["a", g.ax, g.ay], ["b", g.bx, g.by], ["c3", h.chart.timeScale().logicalToCoordinate(drIdx(h, d.c3)), h.candles.priceToCoordinate(d.c3.p)]];
   if (d.k === "rect") return [["a", g.ax, g.ay], ["b", g.bx, g.by], ["ab", g.ax, g.by], ["ba", g.bx, g.ay]];
@@ -17175,6 +17259,11 @@ function drHit(h, px, py) {
   for (let k = L.length - 1; k >= 0; k--) { const d = L[k], g = drGeo(h, d); if (g.ax == null || g.ay == null) continue;
     if (d.k === "tl" && g.bx != null) { let ex = g.bx, ey = g.by; if (d.ext && g.bx !== g.ax) { ex = g.bx > g.ax ? W : 0; ey = g.ay + (g.by - g.ay) * (ex - g.ax) / (g.bx - g.ax); } if (seg(g.ax, g.ay, ex, ey) < 9) return { d }; }
     else if (d.k === "hl" && Math.abs(py - g.ay) < 9) return { d };
+    else if (["ray", "xl", "arrow", "vl", "cross", "fibfan", "gfan", "fibtz", "pitch", "tri"].includes(d.k) || DR_PN[d.k]) { const Hh = h.el.clientHeight; if (drSegs(h, d, W, Hh).some(([x1, y1, x2, y2]) => drSegDist(px, py, x1, y1, x2, y2) < 9)) return { d };
+      if (d.k === "tri" && d.c3 && g.bx != null) { const cx = h.chart.timeScale().logicalToCoordinate(drIdx(h, d.c3)), cy = h.candles.priceToCoordinate(d.c3.p), sg = (x1, y1, x2, y2) => (px - x2) * (y1 - y2) - (x1 - x2) * (py - y2), s1 = sg(g.ax, g.ay, g.bx, g.by), s2 = sg(g.bx, g.by, cx, cy), s3 = sg(cx, cy, g.ax, g.ay); if ((s1 < 0) === (s2 < 0) && (s2 < 0) === (s3 < 0)) return { d }; } }
+    else if ((d.k === "aup" || d.k === "adn") && Math.abs(px - g.ax) < 12 && Math.abs(py - (g.ay + (d.k === "aup" ? 16 : -16))) < 18) return { d };
+    else if (d.k === "circ" && g.bx != null) { if (Math.hypot(px - g.ax, py - g.ay) <= Math.hypot(g.bx - g.ax, g.by - g.ay) + 8) return { d }; }
+    else if (d.k === "drng" && g.bx != null) { if (px >= Math.min(g.ax, g.bx) - 6 && px <= Math.max(g.ax, g.bx) + 6) return { d }; }
     else if (d.k === "text") { const yy = g.ay; if (px >= g.ax - 4 && px <= g.ax + 8 + 7.2 * (d.tx || "").length && Math.abs(py - yy) < 12) return { d }; }
     else if (d.k === "path") { const ts = h.chart.timeScale(), P2 = (d.pts || []).map(p2 => [ts.logicalToCoordinate(drIdx(h, p2)), h.candles.priceToCoordinate(p2.p)]); for (let k = 1; k < P2.length; k++) if (P2[k - 1][0] != null && P2[k][0] != null && seg(P2[k - 1][0], P2[k - 1][1], P2[k][0], P2[k][1]) < 9) return { d }; }
     else if (d.k === "chan" && g.bx != null) { const off = d.off || 0, y2a = h.candles.priceToCoordinate(d.a.p + off), y2b = h.candles.priceToCoordinate(d.b.p + off); if (seg(g.ax, g.ay, g.bx, g.by) < 9 || seg(g.ax, y2a, g.bx, y2b) < 9) return { d };
@@ -17206,16 +17295,17 @@ function drAttach(h) {
   const down = (e, P0) => { const h = el.__drH;
     if (e.button > 0 || MEAS.on || WAVE.on) return; const P = P0 || pos(e), q = at(P.x, P.y);
     if (DRAW.tool) { if (!q) return; e.stopPropagation(); drLock(h, true); try { el.setPointerCapture(e.pointerId); } catch (x) {}
-      if (DRAW.wait) { const t = DRAW.wait; t.b = drAnc(h, q.li, q.p); DRAW.wait = null; if (["chan", "fibx"].includes(t.k)) { DRAW.wait3 = t; DRAW.act = { mode: "w3", temp: t }; drLock(h, false); drTbRender(h); return; } DRAW.act = null; drFinish(h, t); return; }
+      if (DRAW.wait) { const t = DRAW.wait; t.b = drAnc(h, q.li, q.p); DRAW.wait = null; if (DR_3.includes(t.k)) { DRAW.wait3 = t; DRAW.act = { mode: "w3", temp: t }; drLock(h, false); drTbRender(h); return; } DRAW.act = null; drFinish(h, t); return; }
       const k = DRAW.tool, A = drAnc(h, q.li, q.p);
-      if (k === "hl" || k === "hr") { drFinish(h, { id: uid(), k, a: A, c: DR_COL[0] }); return; }
+      if (k === "hl" || k === "hr" || k === "vl" || k === "cross") { drFinish(h, { id: uid(), k, a: A, c: DR_COL[0] }); return; }
+      if (k === "aup" || k === "adn") { drFinish(h, { id: uid(), k, a: A, c: k === "aup" ? "8,153,129" : "242,54,69" }); return; }
       if (k === "avwap") { drFinish(h, { id: uid(), k, a: A, c: "255,159,10" }); return; }
       if (k === "text") { DRAW.act = null; drLock(h, false); kAsk({ t: "Text", input: "text", val: "", ok: "Setzen" }).then(tx => { if (tx && String(tx).trim()) drFinish(h, { id: uid(), k, a: A, tx: String(tx).trim().slice(0, 80), c: DR_COL[5] }); else { DRAW.tool = null; drTbRender(h); } }); return; }
-      if (k === "path") { const P0 = DRAW.act && DRAW.act.mode === "path" ? DRAW.act.temp : null;
+      if (k === "path" || DR_PN[k]) { const P0 = DRAW.act && DRAW.act.mode === "path" ? DRAW.act.temp : null;
         if (P0) { const lp = P0.pts[P0.pts.length - 1], lx = h.chart.timeScale().logicalToCoordinate(drIdx(h, lp)), ly = h.candles.priceToCoordinate(lp.p);
-          if (lx != null && Math.hypot(P.x - lx, P.y - ly) < 12) { DRAW.act = null; if (P0.pts.length > 1) drFinish(h, { id: P0.id, k: "path", a: P0.pts[0], pts: P0.pts, c: DR_COL[0] }); else { drLock(h, false); h.drReq && h.drReq(); } return; }
-          P0.pts.push(A); h.drReq && h.drReq(); return; }
-        DRAW.act = { mode: "path", temp: { id: uid(), k: "path", a: A, pts: [A], c: DR_COL[0] } }; drTbRender(h); h.drReq && h.drReq(); return; }
+          if (k === "path" && lx != null && Math.hypot(P.x - lx, P.y - ly) < 12) { DRAW.act = null; if (P0.pts.length > 1) drFinish(h, { id: P0.id, k: "path", a: P0.pts[0], pts: P0.pts, c: DR_COL[0] }); else { drLock(h, false); h.drReq && h.drReq(); } return; }
+          P0.pts.push(A); if (DR_PN[k] && P0.pts.length >= DR_PN[k]) { DRAW.act = null; drFinish(h, { id: P0.id, k, a: P0.pts[0], pts: P0.pts, c: P0.c }); return; } h.drReq && h.drReq(); return; }
+        DRAW.act = { mode: "path", temp: { id: uid(), k, a: A, pts: [A], c: k === "ew" ? "41,98,255" : k === "path" ? DR_COL[0] : "8,153,129" } }; drTbRender(h); h.drReq && h.drReq(); return; }
       if (DRAW.wait3) { const t3 = DRAW.wait3; DRAW.wait3 = null; DRAW.act = null; drSet3(h, t3, q); drFinish(h, t3); return; }
       if (k === "long" || k === "short") { const c = h.c, i = Math.min(c.t.length - 1, Math.max(14, Math.round(q.li))); let atr = 0; for (let j = i - 13; j <= i; j++) atr += c.h[j] - c.l[j]; atr /= 14;
         const sgn = k === "long" ? 1 : -1, st = q.p - sgn * 1.5 * atr; drFinish(h, { id: uid(), k, a: A, b: drAnc(h, q.li + 25, q.p), s: +st.toPrecision(6), t: +(q.p + sgn * 2 * Math.abs(q.p - st)).toPrecision(6) }); return; }
@@ -17277,7 +17367,7 @@ function drAttach(h) {
   }, true);
   const up = (e, P0) => { const h = el.__drH; const A = DRAW.act; if (!A) return; const P = P0 || pos(e);
     if (A.mode === "new") { if (Math.hypot(P.x - A.x0, P.y - A.y0) < 6) { DRAW.wait = A.temp; DRAW.act = { mode: "wait", temp: A.temp }; drLock(h, false); drTbRender(h); return; }
-      if (["chan", "fibx"].includes(A.temp.k)) { DRAW.wait3 = A.temp; DRAW.act = { mode: "w3", temp: A.temp }; drLock(h, false); drTbRender(h); return; }
+      if (DR_3.includes(A.temp.k)) { DRAW.wait3 = A.temp; DRAW.act = { mode: "w3", temp: A.temp }; drLock(h, false); drTbRender(h); return; }
       DRAW.act = null; drFinish(h, A.temp); return; }
     if (A.mode === "path" || A.mode === "w3") { drLock(h, false); return; }
     if (A.mode === "wait") return;
@@ -17294,7 +17384,7 @@ function drAttach(h) {
   ["pointerup", "pointercancel", "pointerleave"].forEach(t => document.addEventListener(t, () => clearTimeout(lp), true));
   document.addEventListener("click", e => { if (fired && e.target.closest && e.target.closest(".dr-gw > [data-drtool]")) { fired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true); })();
 function drFinish(h, d) { DRAW.act = null; DRAW.wait = null; DRAW.wait3 = null; drLock(h, false); if (!state.drKeep) DRAW.cur = null;
-  if (d.b && !["long", "short", "chan", "fibx"].includes(d.k) && drIdx(h, d.a) === drIdx(h, d.b) && d.a.p === d.b.p) { h.drReq && h.drReq(); drTbRender(h); return; }
+  if (d.b && !["long", "short", ...DR_3].includes(d.k) && drIdx(h, d.a) === drIdx(h, d.b) && d.a.p === d.b.p) { h.drReq && h.drReq(); drTbRender(h); return; }
   DRAW.sel = d.id; if (!state.drKeep) DRAW.tool = null; drSet(h, [...drList(h), d]); drSelRender(h); }
 function drTbRender(h) {
   const tb = $("drTb"); if (!tb) return; const n = drList(h).length, ic = (p, sw = 1.7) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
@@ -17317,7 +17407,7 @@ function drTbRender(h) {
   h.el.classList.toggle("drawing", !!DRAW.tool);
 }
 // Objektliste (wie TradingView „Objektbaum“): jede Zeichnung mit Name und Lage – antippen wählt sie aus, Auge blendet sie aus
-const DR_NAME = { tl: "Trendlinie", hl: "Horizontale Linie", hr: "Horizontaler Strahl", fib: "Fib-Retracement", rect: "Rechteck", long: "Long-Position", short: "Short-Position", avwap: "Verankerter VWAP", chan: "Paralleler Kanal", fibx: "Fib-Extension", path: "Pfad", prng: "Preisbereich", text: "Text" };
+const DR_NAME = { tl: "Trendlinie", hl: "Horizontale Linie", hr: "Horizontaler Strahl", fib: "Fib-Retracement", rect: "Rechteck", long: "Long-Position", short: "Short-Position", avwap: "Verankerter VWAP", chan: "Paralleler Kanal", fibx: "Fib-Extension", path: "Pfad", prng: "Preisbereich", text: "Text" , ray: "Strahl", xl: "Verlängerte Linie", vl: "Vertikale Linie", cross: "Kreuzlinie", arrow: "Pfeil", fibfan: "Fib-Fächer", fibtz: "Fib-Zeitzonen", pitch: "Pitchfork", gfan: "Gann-Fächer", xabcd: "XABCD-Muster", abcd: "ABCD-Muster", ew: "Elliott-Welle", circ: "Kreis", ell: "Ellipse", tri: "Dreieck", aup: "Pfeil nach oben", adn: "Pfeil nach unten", drng: "Datumsbereich", dprng: "Datums- und Preisbereich" };
 function drLsHtml(h, ic) {
   const L = drList(h), cur = h.r && h.r.currency || "";
   const eye = on => ic(on ? '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>' : '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a15 15 0 0 1-2.6 3.2M6.1 7.6C4 9.2 3 12 3 12s4 6 9 6c1.6 0 3-.4 4.3-1"/>');
@@ -17340,7 +17430,7 @@ document.addEventListener("click", e => {
 function drSelRender(h) {
   const box = $("drSel"); if (!box) return; const d = drList(h).find(x => x.id === DRAW.sel); box.hidden = !d; if (!d) return;
   const name = DR_NAME[d.k], I = (p, t, attr, on, cls = "") => `<button class="ds-b${on ? " on" : ""}${cls}" ${attr} title="${t}" aria-label="${t}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg></button>`;
-  const colOk = !["long", "short", "fib", "fibx", "prng"].includes(d.k), cur = d.c || DR_COL[0];
+  const colOk = !["long", "short", "fib", "fibx", "prng", "fibfan", "gfan", "drng", "dprng"].includes(d.k), cur = d.c || DR_COL[0];
   // Wie TradingView: schmale schwebende Leiste – Griff, Farbe, Werkzeug-Optionen, Alarm, Löschen; Name als Hinweis
   box.innerHTML = `<span class="ds-grip" title="${name}"><i></i><i></i><i></i></span><span class="ds-n">${name}</span><i class="ds-sep"></i>
     ${colOk ? `<span class="ds-cw"><button class="ds-b ds-col" data-drcolpop title="Farbe" aria-label="Farbe"><span style="background:rgb(${cur})"></span></button>${DRAW.colPop ? `<span class="ds-pal">${DR_COL.map(c => `<button class="dr-c${cur === c ? " on" : ""}" data-drcol="${c}" style="--c:rgb(${c})" aria-label="Farbe"></button>`).join("")}</span>` : ""}</span>` : ""}
