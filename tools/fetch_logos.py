@@ -167,7 +167,9 @@ def tv_logo(t: str, name: str = "") -> str | None:
 
 
 # Feste Quellen für Werte, die keine Aktie sind (z. B. der Welt-ETF der App) – Kürzel-Suche würde ein fremdes Logo liefern (SPYI gibt es auch in den USA)
-FIXED = {"ETF-SPYI": ["https://s3-symbol-logo.tradingview.com/spdr--big.svg",
+# (26.11.2026: erster Versuch „ETF-SPYI“ fand nichts – neuer Schlüssel, damit nicht 7 Tage gewartet wird; SPDR-Fonds bei FMP tragen das SPDR-Logo)
+FIXED = {"ETF-SPDR": ["https://financialmodelingprep.com/image-stock/SPY.png", "https://financialmodelingprep.com/image-stock/SPDW.png",
+                      "https://financialmodelingprep.com/image-stock/SPYG.png", "https://s3-symbol-logo.tradingview.com/spdr--big.svg",
                       "https://www.google.com/s2/favicons?domain=ssga.com&sz=256", "https://icons.duckduckgo.com/ip3/ssga.com.ico"]}
 
 
