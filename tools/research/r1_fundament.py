@@ -47,12 +47,16 @@ def sp500_history() -> tuple[set, list]:
                         headers={"User-Agent": "Mozilla/5.0 (research script)"}).text
     tabs = pd.read_html(io.StringIO(html))
     fix = lambda t: str(t).strip().replace(".", "-") if isinstance(t, str) and t.strip() and t.strip() != "nan" else None
-    cur = {fix(t) for t in tabs[0]["Symbol"] if fix(t)}
-    ch = tabs[1]
-    ch.columns = ["_".join([str(c) for c in col if "Unnamed" not in str(c)]).strip("_") if isinstance(col, tuple) else str(col) for col in ch.columns]
-    dcol = [c for c in ch.columns if c.lower().startswith("date") or c.lower().startswith("effective")][0]
-    acol = [c for c in ch.columns if "Added" in c and "Ticker" in c][0]
-    rcol = [c for c in ch.columns if "Removed" in c and "Ticker" in c][0]
+    flat = lambda df: ["_".join([str(c) for c in col if "Unnamed" not in str(c)]).strip("_") if isinstance(col, tuple) else str(col) for col in df.columns]
+    cur_t = next(t for t in tabs if "Symbol" in flat(t))
+    cur = {fix(t) for t in cur_t[[c for c in cur_t.columns if (c[0] if isinstance(c, tuple) else c) == "Symbol"][0]] if fix(t)}
+    ch = next(t for t in tabs if any("Added" in c for c in flat(t)) and any("Removed" in c for c in flat(t)))
+    ch = ch.copy()
+    ch.columns = flat(ch)
+    print("Spalten Änderungen:", list(ch.columns), flush=True)
+    dcol = ch.columns[0]
+    acol = [c for c in ch.columns if "Added" in c and ("Ticker" in c or "Symbol" in c)][0]
+    rcol = [c for c in ch.columns if "Removed" in c and ("Ticker" in c or "Symbol" in c)][0]
     changes = []
     for _, r in ch.iterrows():
         try:
@@ -81,7 +85,11 @@ def download(out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     uni = pd.read_csv(ROOT / "data" / "universe_us.csv", dtype={"ticker": str})
     today = sorted({t for t in uni["ticker"] if isinstance(t, str) and "." not in t and "^" not in t})
-    cur, changes = sp500_history()
+    try:
+        cur, changes = sp500_history()
+    except Exception as e:                       # ohne Wikipedia: nur die heutige Liste (Prüfung 2 entfällt dann)
+        print("S&P-500-Historie nicht verfügbar:", repr(e), flush=True)
+        cur, changes = set(), []
     hist = set(cur) | {a for _, a, _ in changes if a} | {r for _, _, r in changes if r}
     tickers = sorted(set(today) | hist | {"SPY", "ACWI", "URTH"})
     print(f"heutige US-Liste {len(today)} · S&P 500 jemals Mitglied {len(hist)} · zusammen {len(tickers)}", flush=True)
@@ -325,6 +333,7 @@ def analyze(px: Path, out: Path) -> None:
             mem_cache[k] = members_at(cur, changes, d)
         return mem_cache[k]
     spy_c = eng.spy
+    UNIS = [("today", elig_today)] + ([("sp500pit", elig_pit)] if cur else [])
     acwi = close["ACWI"].dropna() if "ACWI" in close else None
 
     def run(n=10, hold=20, lb=12, off=0, start="2000-01-01", end=None, el=elig_today, key="today", cost=COST):
@@ -334,7 +343,7 @@ def analyze(px: Path, out: Path) -> None:
     # 1) langer Zeitraum, beide Universen
     print("\n===== 1) Regel wie in der App, lange Historie =====", flush=True)
     R["long"] = {}
-    for key, el in (("today", elig_today), ("sp500pit", elig_pit)):
+    for key, el in UNIS:
         for st0 in ("2000-01-01", "2008-01-01", "2016-01-01"):
             p, s = run(start=st0, el=el, key=key)
             b = spy_c.reindex(s.index)
@@ -347,7 +356,7 @@ def analyze(px: Path, out: Path) -> None:
     # 2) Krisen
     print("\n===== 2) Krisen (Regel, heutige Liste und S&P-500-Mitglieder) =====", flush=True)
     R["crises"] = {}
-    for key, el in (("today", elig_today), ("sp500pit", elig_pit)):
+    for key, el in UNIS:
         p, s = run(start="2000-01-01", el=el, key=key)
         for nm, a, b_ in CRISES:
             ss, bb = s.loc[a:b_], spy_c.loc[a:b_]
@@ -360,7 +369,7 @@ def analyze(px: Path, out: Path) -> None:
     # 3) Tauschtermin-Glück
     print("\n===== 3) Tauschtermin: andere Monate und gestaffelt =====", flush=True)
     R["timing"] = {}
-    for key, el in (("today", elig_today), ("sp500pit", elig_pit)):
+    for key, el in UNIS:
         ss = []
         for off, lbl in ((0, "Jan/Apr/Jul/Okt"), (1, "Feb/Mai/Aug/Nov"), (2, "Mär/Jun/Sep/Dez")):
             p, s = run(off=off, start="2000-01-01", el=el, key=key)
@@ -374,7 +383,7 @@ def analyze(px: Path, out: Path) -> None:
     # 4) Stabilität – Raster (heutige Liste und S&P-500-Mitglieder, ab 2000, vor Steuer)
     print("\n===== 4) Raster Anzahl × Puffer × Momentum (Sharpe / CAGR / MaxDD) =====", flush=True)
     R["grid"] = {}
-    for key, el in (("today", elig_today), ("sp500pit", elig_pit)):
+    for key, el in UNIS:
         for lb in (6, 9, 12):
             for n in (5, 10, 15, 20, 30):
                 cells = []
@@ -388,7 +397,7 @@ def analyze(px: Path, out: Path) -> None:
     print("\n===== 5) Walk-forward =====", flush=True)
     R["wf"] = {}
     configs = [(n, h, lb) for lb in (6, 9, 12) for n in (5, 10, 15, 20) for h in (n, 2 * n, 3 * n)]
-    for key, el in (("today", elig_today), ("sp500pit", elig_pit)):
+    for key, el in UNIS:
         curves = {}
         for c in configs:
             p, s = run(n=c[0], hold=c[1], lb=c[2], start="2000-01-01", el=el, key=key)
@@ -417,7 +426,7 @@ def analyze(px: Path, out: Path) -> None:
     print("\n===== 6) Bootstrap 10 Jahre =====", flush=True)
     R["boot"] = {}
     rng = np.random.default_rng(7)
-    for key, el in (("today", elig_today), ("sp500pit", elig_pit)):
+    for key, el in UNIS:
         p, s = run(start="2000-01-01", el=el, key=key)
         ms = s.resample("ME").last().pct_change().dropna()
         mb = spy_c.reindex(s.index).resample("ME").last().pct_change().reindex(ms.index).fillna(0)
@@ -444,7 +453,7 @@ def analyze(px: Path, out: Path) -> None:
     # 7) nach Kosten und Steuer (Regel wie in der App)
     print("\n===== 7) Nach Kosten und Abgeltungsteuer (10.000 €, Regel wie in der App) =====", flush=True)
     R["tax"] = {}
-    for key, el in (("today", elig_today), ("sp500pit", elig_pit)):
+    for key, el in UNIS:
         for st0 in ("2000-01-01", "2016-01-01"):
             p = eng.path(10, 20, 12, 0, st0, None, el, key)
             at = after_tax(eng, p)
