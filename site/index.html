@@ -11147,8 +11147,11 @@ function pushHtml() {
 }
 const BACKUP_KEYS = k => k.startsWith("kairo-") || k === PREF;
 // ---------- Was ist neu (nach jedem Update einmal) · Problem melden (mit Kontext, zum Einfügen im Chat mit Claude) ----------
-const APP_VER = "2026.11.288";
-const APP_NEWS = [["2026.11.288", "20 neue Zeichenwerkzeuge", [
+const APP_VER = "2026.11.289";
+const APP_NEWS = [["2026.11.289", "11 neue Indikatoren", [
+  ["Im Chart", "Supertrend, Parabolic SAR, Keltner-Kanal, Donchian-Kanal und VWAP (Monat, im Intraday je Tag) – unter „Indikatoren“ einschalten."],
+  ["Unter dem Chart", "CCI, Money Flow Index, Williams %R, Rate of Change, Chaikin Money Flow und Stochastik-RSI – in jedem Indikator-Fenster oben links auswählen."]]],
+ ["2026.11.288", "20 neue Zeichenwerkzeuge", [
   ["Linien", "Strahl, verlängerte Linie, vertikale Linie, Kreuzlinie und Pfeil."],
   ["Fibonacci und Gann", "Fib-Fächer, Fib-Zeitzonen, Pitchfork (Gabel) und Gann-Fächer. Das Fib-Retracement nutzt jetzt die Stufen wie TradingView: 0 · 0,236 · 0,382 · 0,5 · 0,618 · 0,786 · 1."],
   ["Muster", "XABCD- und ABCD-Muster mit Verhältnissen sowie die Elliott-Impulswelle (0–5) – Punkt für Punkt antippen."],
@@ -14842,6 +14845,26 @@ function buildMain(el, c, r, opts) {
       s2.setData(T.map((t, i) => arr[i] == null ? null : { time: t, value: arr[i] }).filter(Boolean)); return s2; };
     ema.s50 = ln(sm(50), SMA_DEF[0][1]); ema.s200 = ln(sm(200), SMA_DEF[1][1]);
     ema.bb = [ln(m20.map((m, i) => m == null ? null : m + BK * sd[i]), "rgba(41,98,255,.85)", 1), ln(m20, "rgba(255,109,0,.8)", 1, 2), ln(m20.map((m, i) => m == null ? null : m - BK * sd[i]), "rgba(41,98,255,.85)", 1)];
+    // Weitere Indikatoren im Chart (26.11.2026, „alles wie TradingView“): Supertrend, Parabolic SAR, Keltner, Donchian, VWAP (Monat) – standardmäßig aus
+    { const H0 = c.h, L0 = c.l, V0 = c.v || [], n0 = C0.length, trA = C0.map((x, i) => i ? Math.max(H0[i] - L0[i], Math.abs(H0[i] - C0[i - 1]), Math.abs(L0[i] - C0[i - 1])) : H0[i] - L0[i]);
+      const kM = emaN(C0, 20), kA = wilder(trA, 10);
+      ema.kc = [ln(kM.map((m, i) => m == null || kA[i] == null ? null : m + 2 * kA[i]), "rgba(0,188,212,.9)", 1), ln(kM, "rgba(0,188,212,.6)", 1, 2), ln(kM.map((m, i) => m == null || kA[i] == null ? null : m - 2 * kA[i]), "rgba(0,188,212,.9)", 1)];
+      const dU = C0.map((_, i) => { if (i < 19) return null; let m = -Infinity; for (let k = i - 19; k <= i; k++) m = Math.max(m, H0[k]); return m; }), dL = C0.map((_, i) => { if (i < 19) return null; let m = Infinity; for (let k = i - 19; k <= i; k++) m = Math.min(m, L0[k]); return m; });
+      ema.dc = [ln(dU, "rgba(41,98,255,.9)", 1), ln(dU.map((u, i) => u == null ? null : (u + dL[i]) / 2), "rgba(255,109,0,.7)", 1, 2), ln(dL, "rgba(41,98,255,.9)", 1)];
+      const sA2 = wilder(trA, 10), up = [], lo = [], dir = []; for (let i = 0; i < n0; i++) { if (sA2[i] == null) { up.push(null); lo.push(null); dir.push(0); continue; } const m = (H0[i] + L0[i]) / 2, bu = m + 3 * sA2[i], bl = m - 3 * sA2[i], pu = up[i - 1], pl = lo[i - 1];
+        const fu = pu == null || bu < pu || C0[i - 1] > pu ? bu : pu, fl = pl == null || bl > pl || C0[i - 1] < pl ? bl : pl; up.push(fu); lo.push(fl);
+        const pd = dir[i - 1] || 1; dir.push(pd === -1 && C0[i] > (pu ?? fu) ? 1 : pd === 1 && C0[i] < (pl ?? fl) ? -1 : pd); }
+      ema.st = []; { let i0 = 0; for (let i = 1; i <= n0; i++) { if (i < n0 && dir[i] === dir[i0]) continue; const dd = dir[i0];   // je Trendabschnitt eine eigene Linie – keine Verbindung über den Wechsel
+          if (dd) { const s3 = chart.addLineSeries({ color: dd === 1 ? "#089981" : "#f23645", lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: false });
+            s3.setData(T.slice(i0, i).map((t, k) => ({ time: t, value: dd === 1 ? lo[i0 + k] : up[i0 + k] })).filter(x => x.value != null)); ema.st.push(s3); } i0 = i; } }
+      const ps = Array(n0).fill(null); if (n0 > 2) { let bull = C0[1] >= C0[0], af = .02, ep = bull ? H0[0] : L0[0], sar = bull ? L0[0] : H0[0];
+        for (let i = 1; i < n0; i++) { sar = sar + af * (ep - sar); if (bull) { sar = Math.min(sar, L0[i - 1], L0[Math.max(0, i - 2)]); if (L0[i] < sar) { bull = false; sar = ep; ep = L0[i]; af = .02; } else if (H0[i] > ep) { ep = H0[i]; af = Math.min(.2, af + .02); } }
+          else { sar = Math.max(sar, H0[i - 1], H0[Math.max(0, i - 2)]); if (H0[i] > sar) { bull = true; sar = ep; ep = H0[i]; af = .02; } else if (L0[i] < ep) { ep = L0[i]; af = Math.min(.2, af + .02); } } ps[i] = sar; } }
+      ema.psar = [chart.addLineSeries({ color: "#2962ff", lineVisible: false, pointMarkersVisible: true, pointMarkersRadius: 1.6, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: false })];
+      ema.psar[0].setData(T.map((t, i) => ps[i] == null ? null : { time: t, value: ps[i] }).filter(Boolean));
+      const mon = t => typeof t === "number" ? new Date(t * 1000).toISOString().slice(0, 7) : String(t).slice(0, 7); let pv = 0, vv = 0, cm = null;
+      const vw = C0.map((x, i) => { const m = c.intra ? (typeof T[i] === "number" ? new Date(T[i] * 1000).toISOString().slice(0, 10) : String(T[i]).slice(0, 10)) : mon(T[i]); if (m !== cm) { cm = m; pv = 0; vv = 0; } const tp = (H0[i] + L0[i] + x) / 3, v = V0[i] || 1; pv += tp * v; vv += v; return pv / vv; });
+      ema.vwm = [ln(vw, "#ff9800", 1.6)]; }
     ema.ichi = []; ema.ichiP = null;
     if (clGet("ichi")) {                                // Ichimoku (9/26/52): Wolke 26 Perioden in die Zukunft – nur gebaut, wenn eingeschaltet
       const n = T.length, mid = (L0, i) => { if (i < L0 - 1) return null; let hi = -Infinity, lo = Infinity; for (let k = i - L0 + 1; k <= i; k++) { hi = Math.max(hi, c.h[k]); lo = Math.min(lo, c.l[k]); } return (hi + lo) / 2; };
@@ -14957,7 +14980,7 @@ function buildMain(el, c, r, opts) {
   h.legend(-1);
   h.apply = () => {
     h.hfp && h.hfp.update(); (h.idl || []).forEach(x => x.applyOptions({ visible: !!clGet("idl") }));
-    EMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); SMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); ema.bb.forEach(x => x.applyOptions({ visible: !!clGet("bb") })); if (!!clGet("ichi") !== !!ema.ichiP && h.tab) setTimeout(indRebuild, 0); vol.applyOptions({ visible: !!clGet("vol") }); vpp.update();
+    EMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); SMA_DEF.forEach(([k]) => ema[k].applyOptions({ visible: !!clGet(k) })); ema.bb.forEach(x => x.applyOptions({ visible: !!clGet("bb") })); ["kc", "dc", "st", "psar", "vwm"].forEach(k => (ema[k] || []).forEach(x => x.applyOptions({ visible: !!clGet(k) }))); if (!!clGet("ichi") !== !!ema.ichiP && h.tab) setTimeout(indRebuild, 0); vol.applyOptions({ visible: !!clGet("vol") }); vpp.update();
     pls.forEach(x => candles.removePriceLine(x)); pls = [];
     if (clGet("plan")) [[p.entry, "Kaufzone oben", "#eceef2", 0], [p.stop, "Stop", "#ff453a", 0], [ko, "K.-o. Turbo", "#ff9f0a", 1]]
       .forEach(([pr, t, col, st]) => { if (pr != null) pls.push(candles.createPriceLine({ price: pr, title: t, color: col, lineWidth: 1, lineStyle: st, axisLabelVisible: true })); });
@@ -15769,12 +15792,12 @@ let ctPop = false, ctFocus = null;
 function ctabBarHtml(h) {
   const M = h.M, sw = (k, lbl, col, ok = true, auto) => ok ? `<button class="ct-row" data-cl="${k}"${auto != null ? ` data-auto="${auto ? 1 : 0}"` : ""} role="switch" aria-checked="${clGet(k, auto) ? "true" : "false"}"><i style="background:${col}"></i><span>${lbl}</span><u class="ct-sw${clGet(k, auto) ? " on" : ""}"></u></button>` : "";
   const ns = M.lines.filter(l => l.kind === "s").length, nr = M.lines.length - ns;
-  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), ...SMA_DEF.map(x => x[0]), "bb", "ichi", "vol", "vp", "plan", "auto", "sig"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length) && (k !== "sig" || sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")))).length;
+  const keys = ["fib", "big", "sup", ...EMA_DEF.map(x => x[0]), ...SMA_DEF.map(x => x[0]), "bb", "ichi", "st", "psar", "kc", "dc", "vwm", "vol", "vp", "plan", "auto", "sig"], nOn = keys.filter(k => clGet(k, k === "big" ? true : undefined) && (k !== "fib" || M.cls) && (k !== "big" || M.big) && (k !== "sup" || M.lines.length) && (k !== "sig" || sigOf(h.r && String(h.r.ticker).replace(/@rp$/, "")))).length;
   const grp = (t, body) => body ? `<div class="ct-g"><div class="ct-gh">${t}</div>${body}</div>` : "";
   return `<div class="ct-tl"><div class="ct-seg"><button class="ct-b ct-lay${ctPop ? " on" : ""}" data-ctlayers aria-expanded="${ctPop}" title="Indikatoren und Ebenen ein-/ausblenden">${CT_IC.fx}<span>Indikatoren</span><small>${nOn}</small></button></div>
       <div class="ct-seg"><button class="ct-b${RP.on ? " on" : ""}" data-rp title="Replay: Chart Tag für Tag nachspielen und üben" aria-label="Replay">${CT_IC.play}<span class="ct-lbl">Replay</span></button><button class="ct-b" data-alc title="Alarme: alle Alarme, Kurs- und RSI-Alarm" aria-label="Alarme">${CT_IC.bell}<span class="ct-lbl">Alarm</span>${alCount() ? `<small>${alCount()}</small>` : ""}</button>${M.own ? `<button class="ct-b" data-clwreset title="Eigene Fibonacci-Welle verwerfen – zurück zur Kairo-Welle" aria-label="Kairo-Welle">${CT_IC.reset}<span class="ct-lbl">Kairo-Welle</span></button>` : ""}</div></div>
     ${ctPop ? `<div class="ct-pop" role="dialog" aria-label="Ebenen">${grp("Fibonacci", sw("fib", M.own ? "Fibonacci (eigene Welle)" : "Fibonacci", "#f4b740", !!M.cls) + sw("big", "Große Welle", "#b07cff", !!M.big, true))}
-      ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.concat(SMA_DEF).map(([k, col, l]) => sw(k, l, col)).join(""))}${grp("Indikatoren", sw("bb", `Bollinger-Bänder (${IND_P().bbN}, ${IND_P().bbK})`, "#2962ff") + sw("ichi", "Ichimoku-Wolke", "#30d158"))}${grp("Indikator-Einstellungen", `<div class="ip-g">${[["rsi", "RSI-Periode"], ["stK", "Stochastik %K"], ["stD", "Stochastik %D"], ["atr", "ATR-Periode"], ["adx", "ADX-Periode"], ["bbN", "Bollinger-Periode"], ["bbK", "Bollinger-Faktor"]].map(([k, l]) => `<label><span>${l}</span><input type="number" inputmode="decimal" data-ip="${k}" value="${IND_P()[k]}" step="${k === "bbK" ? ".5" : "1"}"></label>`).join("")}</div>`)}
+      ${grp("Unterstützung & Widerstand", sw("sup", `Linien · ${ns} unten, ${nr} oben`, "#4aa3ff", M.lines.length > 0))}${grp("Gleitende Durchschnitte", EMA_DEF.concat(SMA_DEF).map(([k, col, l]) => sw(k, l, col)).join(""))}${grp("Indikatoren", sw("bb", `Bollinger-Bänder (${IND_P().bbN}, ${IND_P().bbK})`, "#2962ff") + sw("ichi", "Ichimoku-Wolke", "#30d158") + sw("st", "Supertrend (10, 3)", "#089981") + sw("psar", "Parabolic SAR", "#2962ff") + sw("kc", "Keltner-Kanal (20, 2)", "#00bcd4") + sw("dc", "Donchian-Kanal (20)", "#2962ff") + sw("vwm", h.c && h.c.intra ? "VWAP (Tag)" : "VWAP (Monat)", "#ff9800"))}${grp("Indikator-Einstellungen", `<div class="ip-g">${[["rsi", "RSI-Periode"], ["stK", "Stochastik %K"], ["stD", "Stochastik %D"], ["atr", "ATR-Periode"], ["adx", "ADX-Periode"], ["bbN", "Bollinger-Periode"], ["bbK", "Bollinger-Faktor"]].map(([k, l]) => `<label><span>${l}</span><input type="number" inputmode="decimal" data-ip="${k}" value="${IND_P()[k]}" step="${k === "bbK" ? ".5" : "1"}"></label>`).join("")}</div>`)}
       ${h.c && h.c.intra ? grp("Intraday", sw("idl", "Vortag H/T/S · Eröffnungsspanne · VWAP", "#bf5af2")) : ""}${grp("Smart Money", sw("hf", "Kaufzone der Hedgefonds", "#5e5ce6", !!hfZoneOf(String(h.r.ticker).replace(/@rp$/, ""), h.c)))}${grp("Auto-Analyse", sw("auto", "Trendlinien & Chartmuster", "#5ac8fa"))}${grp("Volumen", sw("vol", "Volumen", "#8e8e93") + sw("vp", "Volumenprofil", "#96a4be") + (clGet("vp") ? `<div class="ct-vpm" role="group" aria-label="Bereich des Volumenprofils">${[["wave", "Welle", "ab dem Wellen-Tief"], ["anchor", "Ab Punkt", "ab einem Tag, den du antippst"], ["vis", "Sichtbar", "nur der Bildausschnitt"]].map(([v, l, t]) => `<button class="${(state.vpMode || "wave") === v ? "on" : ""}" data-vpmode="${v}" title="${t}">${l}</button>`).join("")}</div>` : ""))}</div>` : ""}`;
 }
 // Zeiteinheit und Chartart als Auswahlmenüs (wie TradingView) – spart in der Werkzeugleiste Platz für den Chart
@@ -18170,12 +18193,12 @@ function autoOn(ch) { if (!ch) return; const g = ch.__axg, L = g && g.list ? g.l
 // Indikator-Fenster (Runde 13.11., wie TradingView): jedes der drei Fenster frei wählbar, Perioden einstellbar (Ebenen → Indikator-Einstellungen)
 const PANE_DEF = ["rsi", "macd", "mbi"];
 const IND_P = () => ({ rsi: 14, stK: 14, stD: 3, atr: 14, adx: 14, bbN: 20, bbK: 2, ...(state.ip || {}) });
-const IND_L = { rsi: "RSI", macd: "MACD", mbi: "Momentum Bias Index", stoch: "Stochastik", atr: "ATR", obv: "OBV (On-Balance-Volumen)", adx: "ADX / DMI", rs: "Relative Stärke vs. S&P 500" };
+const IND_L = { rsi: "RSI", macd: "MACD", mbi: "Momentum Bias Index", stoch: "Stochastik", srsi: "Stochastik-RSI", atr: "ATR", obv: "OBV (On-Balance-Volumen)", adx: "ADX / DMI", cci: "CCI", mfi: "Money Flow Index", willr: "Williams %R", roc: "Rate of Change", cmf: "Chaikin Money Flow", rs: "Relative Stärke vs. S&P 500" };
 function rsiN(C, n) { const R = Array(C.length).fill(null); let g = 0, l = 0; for (let i = 1; i < C.length; i++) { const ch = C[i] - C[i - 1], up = Math.max(ch, 0), dn = Math.max(-ch, 0);
   if (i <= n) { g += up / n; l += dn / n; } else { g = (g * (n - 1) + up) / n; l = (l * (n - 1) + dn) / n; } if (i >= n) R[i] = l ? 100 - 100 / (1 + g / l) : 100; } return R; }
 function wilder(a, n) { const o = Array(a.length).fill(null); let s0 = 0, k = 0; for (let i = 0; i < a.length; i++) { if (a[i] == null) continue; k++; if (k <= n) { s0 += a[i]; if (k === n) o[i] = s0 / n; } else o[i] = (o[i - 1] * (n - 1) + a[i]) / n; } return o; }
 function paneLbl(i, r) { const k = (state.panes || PANE_DEF)[i] || PANE_DEF[i], P = IND_P();
-  const sub = { rsi: `${P.rsi} · SMA 14 · 30/50/70${k === "rsi" && P.rsi === 14 && r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}`, macd: "12/26/9", mbi: "grün/rot · X-Signale", stoch: `${P.stK}/${P.stD} · 20/80`, atr: `${P.atr} · in % vom Kurs`, obv: "kumuliert", adx: `${P.adx} · +DI/−DI`, rs: "steigt = stärker als der Markt · EMA 50" }[k];
+  const sub = { srsi: "14 · 14 · 3 · 3 · 20/80", cci: "20 · ±100", mfi: "14 · 20/80", willr: "14 · −20/−80", roc: "12 · Nulllinie", cmf: "20 · Nulllinie", rsi: `${P.rsi} · SMA 14 · 30/50/70${k === "rsi" && P.rsi === 14 && r.div && r.div.kind ? " · Divergenz " + esc(r.div.kind) : ""}`, macd: "12/26/9", mbi: "grün/rot · X-Signale", stoch: `${P.stK}/${P.stD} · 20/80`, atr: `${P.atr} · in % vom Kurs`, obv: "kumuliert", adx: `${P.adx} · +DI/−DI`, rs: "steigt = stärker als der Markt · EMA 50" }[k];
   return `<select class="pane-sel" data-panesel="${i}" aria-label="Indikator wählen">${Object.entries(IND_L).map(([v, l]) => `<option value="${v}"${v === k ? " selected" : ""}>${l}</option>`).join("")}</select><span>${sub}</span>`; }
 function indCharts(c, r, eR, eM, eB, fixed) {
   const LW = window.LightweightCharts, opts = chartOpts, T = c.t, P = IND_P(), n = T.length;
@@ -18210,6 +18233,20 @@ function indCharts(c, r, eR, eM, eB, fixed) {
       const atr = wilder(tr, N), pdi = wilder(pdm, N).map((v, i) => v == null || !atr[i] ? null : v / atr[i] * 100), mdi = wilder(mdm, N).map((v, i) => v == null || !atr[i] ? null : v / atr[i] * 100);
       const dx = pdi.map((v, i) => v == null || mdi[i] == null || v + mdi[i] === 0 ? null : Math.abs(v - mdi[i]) / (v + mdi[i]) * 100), adx = wilder(dx, N);
       const a = line(ch, adx, "#eceef2", 1.8); line(ch, pdi, "#30d158", 1.2); line(ch, mdi, "#ff453a", 1.2); a.createPriceLine({ price: 25, color: "#5d6676", lineWidth: 1, lineStyle: 2, axisLabelVisible: false }); return ch; } };
+  const lv = (sr, vals) => vals.forEach(v => sr.createPriceLine({ price: v, color: "#5d6676", lineWidth: 1, lineStyle: 2, axisLabelVisible: false })), tp = c.c.map((x, i) => (c.h[i] + c.l[i] + x) / 3);
+  const hh = (a, i, N) => { let m = -Infinity; for (let k = Math.max(0, i - N + 1); k <= i; k++) m = Math.max(m, a[k]); return m; }, ll = (a, i, N) => { let m = Infinity; for (let k = Math.max(0, i - N + 1); k <= i; k++) m = Math.min(m, a[k]); return m; };
+  B.cci = el => { const ch = LW.createChart(el, opts(el)), m = smaN(tp, 20), C2 = tp.map((x, i) => { if (m[i] == null) return null; let md = 0; for (let k = i - 19; k <= i; k++) md += Math.abs(tp[k] - m[i]); md /= 20; return md ? (x - m[i]) / (.015 * md) : 0; });
+    lv(line(ch, C2, "#2962ff"), [-100, 0, 100]); return ch; };
+  B.mfi = el => { const ch = LW.createChart(el, opts(el)), M2 = tp.map((x, i) => { if (i < 14) return null; let p = 0, q = 0; for (let k = i - 13; k <= i; k++) { const f = tp[k] * (c.v[k] || 0); if (tp[k] > tp[k - 1]) p += f; else if (tp[k] < tp[k - 1]) q += f; } return q ? 100 - 100 / (1 + p / q) : 100; });
+    lv(line(ch, M2, "#bf5af2"), [20, 80]); return ch; };
+  B.willr = el => { const ch = LW.createChart(el, opts(el)), W2 = c.c.map((x, i) => { if (i < 13) return null; const H2 = hh(c.h, i, 14), L2 = ll(c.l, i, 14); return H2 > L2 ? (H2 - x) / (H2 - L2) * -100 : -50; });
+    lv(line(ch, W2, "#7e57c2"), [-20, -80]); return ch; };
+  B.roc = el => { const ch = LW.createChart(el, opts(el)), R2 = c.c.map((x, i) => i >= 12 && c.c[i - 12] ? (x / c.c[i - 12] - 1) * 100 : null);
+    ch.applyOptions({ localization: { locale: "de-DE", priceFormatter: v => fmt(v, 1) + " %" } }); lv(line(ch, R2, "#2196f3"), [0]); return ch; };
+  B.cmf = el => { const ch = LW.createChart(el, opts(el)), mv = c.c.map((x, i) => { const r2 = c.h[i] - c.l[i]; return r2 ? ((x - c.l[i]) - (c.h[i] - x)) / r2 * (c.v[i] || 0) : 0; }), F2 = c.c.map((_, i) => { if (i < 19) return null; let a = 0, b = 0; for (let k = i - 19; k <= i; k++) { a += mv[k]; b += c.v[k] || 0; } return b ? a / b : 0; });
+    const hs = ch.addHistogramSeries({ priceLineVisible: false, lastValueVisible: true }); hs.setData(T.map((t, i) => F2[i] == null ? null : { time: t, value: F2[i], color: F2[i] >= 0 ? "rgba(8,153,129,.75)" : "rgba(242,54,69,.75)" }).filter(Boolean)); lv(hs, [0]); return ch; };
+  B.srsi = el => { const ch = LW.createChart(el, opts(el)), Rr = rsiN(c.c, 14), St = Rr.map((x, i) => { if (x == null || i < 27) return null; let H2 = -Infinity, L2 = Infinity; for (let k = i - 13; k <= i; k++) { if (Rr[k] == null) return null; H2 = Math.max(H2, Rr[k]); L2 = Math.min(L2, Rr[k]); } return H2 > L2 ? (x - L2) / (H2 - L2) * 100 : 50; });
+    const K2 = smaN(St, 3), D2 = smaN(K2, 3), k3 = line(ch, K2, "#2962ff"); line(ch, D2, "#ff6d00", 1.2); lv(k3, [20, 80]); return ch; };
   B.rs = el => { const ch = LW.createChart(el, opts(el)), Bn = RISK.bench; if (Bn === undefined) { riskBench(); setTimeout(() => { if (RISK.bench) indRebuild(); }, 2500); }
     if (Bn && Bn.c && Bn.c["^GSPC"] && !c.intra) { const m = new Map(Bn.t.map((d, i) => [d, Bn.c["^GSPC"][i]])); let base = null, lastIx = null;
       const R = T.map((d, i) => { const ix = m.get(String(d).slice(0, 10)) ?? lastIx; if (ix != null) lastIx = ix; if (!(ix > 0)) return null; const v = c.c[i] / ix; if (base == null) base = v; return v / base * 100; });
