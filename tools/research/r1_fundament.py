@@ -40,44 +40,35 @@ CRISES = [("Dotcom 2000–02", "2000-03-24", "2002-10-09"), ("Finanzkrise 2007�
 
 
 # ---------------------------------------------------------------- Daten
-def sp500_history() -> tuple[set, list]:
-    """Heutige S&P-500-Mitglieder und Änderungen (Wikipedia). Ticker im Yahoo-Format (BRK.B → BRK-B)."""
-    import requests
-    html = requests.get("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", timeout=30,
-                        headers={"User-Agent": "Mozilla/5.0 (research script)"}).text
-    tabs = pd.read_html(io.StringIO(html))
-    fix = lambda t: str(t).strip().replace(".", "-") if isinstance(t, str) and t.strip() and t.strip() != "nan" else None
-    flat = lambda df: ["_".join([str(c) for c in col if "Unnamed" not in str(c)]).strip("_") if isinstance(col, tuple) else str(col) for col in df.columns]
-    cur_t = next(t for t in tabs if "Symbol" in flat(t))
-    cur = {fix(t) for t in cur_t[[c for c in cur_t.columns if (c[0] if isinstance(c, tuple) else c) == "Symbol"][0]] if fix(t)}
-    ch = next(t for t in tabs if any("Added" in c for c in flat(t)) and any("Removed" in c for c in flat(t)))
-    ch = ch.copy()
-    ch.columns = flat(ch)
-    print("Spalten Änderungen:", list(ch.columns), flush=True)
-    dcol = ch.columns[0]
-    acol = [c for c in ch.columns if "Added" in c and ("Ticker" in c or "Symbol" in c)][0]
-    rcol = [c for c in ch.columns if "Removed" in c and ("Ticker" in c or "Symbol" in c)][0]
-    changes = []
-    for _, r in ch.iterrows():
-        try:
-            d = pd.Timestamp(r[dcol])
-        except Exception:
-            continue
-        changes.append((d, fix(r[acol]), fix(r[rcol])))
-    changes.sort(key=lambda x: x[0], reverse=True)
-    return cur, changes
+def sp500_history() -> list:
+    """S&P-500-Mitglieder zu jedem Stichtag seit 1996 (öffentlicher Datensatz github.com/fja05680/sp500), Yahoo-Ticker-Format.
+    Liefert [(Datum, Menge der Ticker)] aufsteigend. Ticker verschwundener Firmen tragen dort oft ein Suffix „-JJJJMM“ – entfernt."""
+    import re, requests
+    h = {"User-Agent": "research-script", "Accept": "application/vnd.github+json"}
+    lst = requests.get("https://api.github.com/repos/fja05680/sp500/contents", headers=h, timeout=30).json()
+    files = sorted([f for f in lst if isinstance(f, dict) and f.get("name", "").startswith("S&P 500 Historical Components") and f["name"].endswith(".csv")], key=lambda f: f["name"])
+    if not files:
+        raise RuntimeError("Datensatz nicht gefunden")
+    f = files[-1]
+    print("S&P-500-Datensatz:", f["name"], flush=True)
+    df = pd.read_csv(io.StringIO(requests.get(f["download_url"], headers={"User-Agent": "research-script"}, timeout=60).text))
+    fix = lambda t: re.sub(r"-\d{6}$", "", t.strip()).replace(".", "-")
+    snaps = [(pd.Timestamp(r["date"]), {fix(t) for t in str(r["tickers"]).split(",") if t.strip()}) for _, r in df.iterrows()]
+    snaps.sort(key=lambda x: x[0])
+    return snaps
 
 
-def members_at(cur: set, changes: list, d: pd.Timestamp) -> set:
-    m = set(cur)
-    for cd, add, rem in changes:            # absteigend: alle Änderungen nach d zurückdrehen
-        if cd <= d:
-            break
-        if add:
-            m.discard(add)
-        if rem:
-            m.add(rem)
-    return m
+def members_at(snaps: list, d: pd.Timestamp) -> set:
+    lo, hi = 0, len(snaps) - 1
+    if not snaps or d < snaps[0][0]:
+        return set()
+    while lo < hi:                          # letzter Stand am oder vor d
+        mid = (lo + hi + 1) // 2
+        if snaps[mid][0] <= d:
+            lo = mid
+        else:
+            hi = mid - 1
+    return snaps[lo][1]
 
 
 def download(out: Path) -> None:
@@ -86,11 +77,11 @@ def download(out: Path) -> None:
     uni = pd.read_csv(ROOT / "data" / "universe_us.csv", dtype={"ticker": str})
     today = sorted({t for t in uni["ticker"] if isinstance(t, str) and "." not in t and "^" not in t})
     try:
-        cur, changes = sp500_history()
-    except Exception as e:                       # ohne Wikipedia: nur die heutige Liste (Prüfung 2 entfällt dann)
+        snaps = sp500_history()
+    except Exception as e:                       # ohne Datensatz: nur die heutige Liste (Prüfung 2 entfällt dann)
         print("S&P-500-Historie nicht verfügbar:", repr(e), flush=True)
-        cur, changes = set(), []
-    hist = set(cur) | {a for _, a, _ in changes if a} | {r for _, _, r in changes if r}
+        snaps = []
+    hist = set().union(*[m for _, m in snaps]) if snaps else set()
     tickers = sorted(set(today) | hist | {"SPY", "ACWI", "URTH"})
     print(f"heutige US-Liste {len(today)} · S&P 500 jemals Mitglied {len(hist)} · zusammen {len(tickers)}", flush=True)
     C, V = {}, {}
@@ -117,7 +108,7 @@ def download(out: Path) -> None:
         print(f"  {min(i + 150, len(tickers))}/{len(tickers)} geladen, mit Kursen {len(C)}", flush=True)
     close = pd.DataFrame(C).sort_index()
     vol = pd.DataFrame(V).reindex(close.index)
-    pickle.dump({"close": close, "vol": vol, "today": today, "cur": cur, "changes": changes}, open(out / "px.pkl", "wb"))
+    pickle.dump({"close": close, "vol": vol, "today": today, "snaps": snaps}, open(out / "px.pkl", "wb"))
     print("gespeichert:", close.shape, flush=True)
 
 
@@ -316,10 +307,11 @@ def analyze(px: Path, out: Path) -> None:
     spy = close["SPY"].dropna()
     eng = Engine(close, vol, spy)
     today = set(D["today"]) & set(close.columns)
-    cur, changes = D["cur"], D["changes"]
+    snaps = D.get("snaps") or []
+    cur = bool(snaps)
     R = {"meta": {}}
-    first_change = min(c[0] for c in changes) if changes else None
-    hist = set(cur) | {a for _, a, _ in changes if a} | {r for _, _, r in changes if r}
+    first_change = snaps[0][0] if snaps else None
+    hist = set().union(*[m for _, m in snaps]) if snaps else set()
     have = hist & set(close.columns)
     R["meta"] = {"today_universe": len(today), "sp500_ever": len(hist), "sp500_with_prices": len(have), "sp500_missing": len(hist - have),
                  "changes_from": str(first_change.date()) if first_change is not None else None, "price_cols": int(close.shape[1]),
@@ -330,7 +322,7 @@ def analyze(px: Path, out: Path) -> None:
     def elig_pit(d):
         k = d.strftime("%Y-%m")
         if k not in mem_cache:
-            mem_cache[k] = members_at(cur, changes, d)
+            mem_cache[k] = members_at(snaps, d)
         return mem_cache[k]
     spy_c = eng.spy
     UNIS = [("today", elig_today)] + ([("sp500pit", elig_pit)] if cur else [])
