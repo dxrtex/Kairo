@@ -1,0 +1,39 @@
+name: Backtest Runde 2 – Strategien
+
+# Nur Analyse (tools/research/r2_strategien.py), Kurse aus Runde 1 (Lauf 45847303469, Artefakt r1-px).
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/backtest-runde1]
+    paths: [.github/workflows/r2_strategien.yml, tools/research/r2_strategien.py]
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  r2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: r1-px
+          path: px
+          run-id: 45847303469
+          github-token: ${{ github.token }}
+      - run: python tools/research/r2_strategien.py --px px --out r2.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r2-result
+          path: r2.json
+          retention-days: 30
