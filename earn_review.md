@@ -1,21 +1,21 @@
 # Prognose-Bilanz Quartalszahlen
 
-Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhalb 1324 Min., 403 Meldungen); Mitteilung im Mittel 2 Min. danach.
+Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhalb 1324 Min., 404 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-752 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-26), davon 562 mit aufgezeichneter Prognose.
+753 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-26), davon 563 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 562 | 52% | 0.254 | 0.250 |
+| alle | 563 | 52% | 0.254 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 275 | 55% | 0.245 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz | 19 | 37% | 0.287 | 0.250 |
-| Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 62 | 56% | 0.239 | 0.250 |
+| Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 63 | 57% | 0.239 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · nachgeeicht | 2 | 50% | 0.254 | 0.250 |
 | Ausblick gesenkt | 81 | 54% | 0.249 | 0.250 |
 | Ausblick bestätigt | 36 | 47% | 0.269 | 0.250 |
-| Ausblick angehoben | 177 | 49% | 0.266 | 0.250 |
+| Ausblick angehoben | 178 | 49% | 0.266 | 0.250 |
 | Ausblick keine Meldung | 268 | 54% | 0.247 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
@@ -24,7 +24,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 |---|---|---|
 | -0%–30% | 11 | 45% |
 | 30%–40% | 114 | 43% |
-| 40%–50% | 157 | 45% |
+| 40%–50% | 158 | 45% |
 | 50%–60% | 196 | 50% |
 | 60%–70% | 61 | 41% |
 | 70%–100% | 23 | 57% |
@@ -33,7 +33,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 
 | Gewinn | gesenkt | bestätigt | angehoben | keine Meldung |
 |---|---|---|---|---|
-| deutlich unter Erwartung (< −10 %) | 46% (26) | 45% (11) | 44% (32) | 37% (68) |
+| deutlich unter Erwartung (< −10 %) | 46% (26) | 45% (11) | 42% (33) | 37% (68) |
 | unter Erwartung (−10 bis −2 %) | 7% (14) | 17% (6) | 70% (20) | 40% (52) |
 | im Rahmen (±2 %) | 33% (18) | 25% (4) | 38% (16) | 45% (44) |
 | über Erwartung (+2 bis +10 %) | 37% (27) | 25% (8) | 46% (59) | 44% (63) |
@@ -63,7 +63,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-87 Fehlprognosen und 475 Vergleichsfälle untersucht.
+87 Fehlprognosen und 476 Vergleichsfälle untersucht.
 
 - Markt: Bei 36% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 17% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
 - Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.7%, getroffene Ø -5.5%.
@@ -74,7 +74,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 | Marge | 13% (11) | 8% | 1.7 |
 | Umsatz | 54% (47) | 49% | 1.1 |
 | Nutzer/Kunden | 6% (5) | 1% | 6.8 |
-| Aufträge | 9% (8) | 5% | 1.7 |
+| Aufträge | 9% (8) | 5% | 1.8 |
 | Kosten | 3% (3) | 8% | 0.4 |
 | Zölle/Politik | 2% (2) | 1% | 2.7 |
 | KI/Rechenzentren | 10% (9) | 12% | 0.9 |
@@ -98,11 +98,11 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 281 Meldungen: Brier nachgeeicht 0.250 gegen gezeigt 0.249 → nicht übernommen (nicht genauer).
+Geprüft an den jüngeren 282 Meldungen: Brier nachgeeicht 0.249 gegen gezeigt 0.249 → nicht übernommen (nicht genauer).
 
 ## Prognose-Modell (Langzeit-Quote + Umsatz, auf eigene Meldungen geeicht)
 
-Rollierend geprüft an 204 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.245 gegen gezeigt 0.248, Richtung 57% gegen 53%, besser in 3 von 3 Zeiträumen → **übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell).
+Rollierend geprüft an 205 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.245 gegen gezeigt 0.248, Richtung 57% gegen 53%, besser in 3 von 3 Zeiträumen → **übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell).
 
 | Merkmal | Gewicht |
 |---|---|
@@ -114,4 +114,4 @@ Rollierend geprüft an 204 jüngeren Meldungen (3 Zeiträume, je nur mit ältere
 |---|---|---|---|---|---|
 | 2026-11-10 – 2026-11-15 | 124 | 0.243 | 0.246 | 60% | 54% |
 | 2026-11-16 – 2026-11-20 | 51 | 0.247 | 0.251 | 53% | 51% |
-| 2026-11-22 – 2026-11-26 | 29 | 0.249 | 0.252 | 48% | 52% |
+| 2026-11-22 – 2026-11-26 | 30 | 0.248 | 0.251 | 50% | 53% |
