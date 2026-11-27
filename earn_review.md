@@ -2,21 +2,21 @@
 
 Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhalb 1324 Min., 403 Meldungen); Mitteilung im Mittel 2 Min. danach.
 
-750 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-25), davon 560 mit aufgezeichneter Prognose.
+752 Meldungen mit Kursreaktion (2026-10-27 bis 2026-11-26), davon 562 mit aufgezeichneter Prognose.
 
 | Bereich | n | Richtung getroffen | Brier (kleiner = besser) | Münzwurf |
 |---|---|---|---|---|
-| alle | 560 | 52% | 0.255 | 0.250 |
+| alle | 562 | 52% | 0.254 | 0.250 |
 | Stand 2026-10-30 Gewinn+Ausblick | 13 | 46% | 0.261 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle | 191 | 48% | 0.269 | 0.250 |
 | Stand 2026-11-03b Asien-Quoten+Ausblick-Quelle · nachgeeicht | 275 | 55% | 0.245 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz | 19 | 37% | 0.287 | 0.250 |
-| Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 60 | 55% | 0.241 | 0.250 |
+| Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · Modell | 62 | 56% | 0.239 | 0.250 |
 | Stand 2026-11-14 Modell Langzeit-Quote+Umsatz · nachgeeicht | 2 | 50% | 0.254 | 0.250 |
 | Ausblick gesenkt | 81 | 54% | 0.249 | 0.250 |
 | Ausblick bestätigt | 36 | 47% | 0.269 | 0.250 |
 | Ausblick angehoben | 177 | 49% | 0.266 | 0.250 |
-| Ausblick keine Meldung | 266 | 54% | 0.247 | 0.250 |
+| Ausblick keine Meldung | 268 | 54% | 0.247 | 0.250 |
 
 ## Eichung – stimmt die gezeigte Zahl?
 
@@ -24,7 +24,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 |---|---|---|
 | -0%–30% | 11 | 45% |
 | 30%–40% | 114 | 43% |
-| 40%–50% | 155 | 46% |
+| 40%–50% | 157 | 45% |
 | 50%–60% | 196 | 50% |
 | 60%–70% | 61 | 41% |
 | 70%–100% | 23 | 57% |
@@ -35,7 +35,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 |---|---|---|---|---|
 | deutlich unter Erwartung (< −10 %) | 46% (26) | 45% (11) | 44% (32) | 37% (68) |
 | unter Erwartung (−10 bis −2 %) | 7% (14) | 17% (6) | 70% (20) | 40% (52) |
-| im Rahmen (±2 %) | 33% (18) | 25% (4) | 38% (16) | 48% (42) |
+| im Rahmen (±2 %) | 33% (18) | 25% (4) | 38% (16) | 45% (44) |
 | über Erwartung (+2 bis +10 %) | 37% (27) | 25% (8) | 46% (59) | 44% (63) |
 | deutlich über Erwartung (> +10 %) | 39% (33) | 48% (21) | 61% (112) | 53% (118) |
 
@@ -63,7 +63,7 @@ Schnelligkeit: erste Zahlen im Mittel 665 Min. nach der Meldezeit (90 % innerhal
 
 ## Warum lagen wir falsch? (automatische Ursachensuche)
 
-87 Fehlprognosen und 473 Vergleichsfälle untersucht.
+87 Fehlprognosen und 475 Vergleichsfälle untersucht.
 
 - Markt: Bei 36% der Fehlprognosen lief der Gesamtmarkt am selben Tag um ≥ 1 % in dieselbe Richtung; bei 17% war die Bewegung über dem Markt kleiner als 3% – dann lag es eher am Markt als an den Zahlen.
 - Vorlauf (20 Handelstage davor): Fehlprognosen Ø -11.7%, getroffene Ø -5.5%.
@@ -98,20 +98,20 @@ Beispiele:
 
 ## Automatische Nacheichung (Gewinn × Ausblick)
 
-Geprüft an den jüngeren 280 Meldungen: Brier nachgeeicht 0.250 gegen gezeigt 0.250 → **übernommen** (die App nutzt ab jetzt die nachgeeichten Werte).
+Geprüft an den jüngeren 281 Meldungen: Brier nachgeeicht 0.250 gegen gezeigt 0.249 → nicht übernommen (nicht genauer).
 
 ## Prognose-Modell (Langzeit-Quote + Umsatz, auf eigene Meldungen geeicht)
 
-Rollierend geprüft an 202 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.245 gegen gezeigt 0.249, Richtung 56% gegen 52%, besser in 2 von 3 Zeiträumen → **übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell).
+Rollierend geprüft an 204 jüngeren Meldungen (3 Zeiträume, je nur mit älteren geschätzt): Brier Modell 0.245 gegen gezeigt 0.248, Richtung 57% gegen 53%, besser in 3 von 3 Zeiträumen → **übernommen** (App und Mitteilungen rechnen ab jetzt mit dem Modell).
 
 | Merkmal | Gewicht |
 |---|---|
-| Grundwert (Marktlage) | -0.17 |
-| Langzeit-Quote Gewinn × Ausblick | +0.44 |
+| Grundwert (Marktlage) | -0.18 |
+| Langzeit-Quote Gewinn × Ausblick | +0.45 |
 | Umsatz-Überraschung | +0.25 |
 
 | Zeitraum | n | Brier Modell | Brier gezeigt | Richtung Modell | Richtung gezeigt |
 |---|---|---|---|---|---|
-| 2026-11-10 – 2026-11-13 | 122 | 0.243 | 0.247 | 60% | 53% |
-| 2026-11-15 – 2026-11-19 | 51 | 0.246 | 0.253 | 53% | 51% |
-| 2026-11-20 – 2026-11-25 | 29 | 0.253 | 0.250 | 48% | 52% |
+| 2026-11-10 – 2026-11-15 | 124 | 0.243 | 0.246 | 60% | 54% |
+| 2026-11-16 – 2026-11-20 | 51 | 0.247 | 0.251 | 53% | 51% |
+| 2026-11-22 – 2026-11-26 | 29 | 0.249 | 0.252 | 48% | 52% |
