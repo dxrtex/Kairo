@@ -25,19 +25,19 @@ import pandas as pd
 PAST_DAYS, NEXT_DAYS = 14, 21
 
 GUIDE_UP = re.compile(
-    r"\b(rais(es|ed|ing)?|lifts?|lifted|boosts?|boosted|hikes?|hiked|ups|increases?|increased)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
+    r"\b(rais(es|ed|ing)?|lifts?|lifted|boosts?|boosted|hikes?|hiked|ups|increases?|increased)\b[^|;]{0,45}\b(guidance|outlook|forecast|view)\b"
     r"|\b(guidance|outlook|forecast)\b[^|]{0,25}\b(above|tops|beats|ahead of)\b"
     r"|\b(strong|upbeat|bullish|upgraded|rosy|robust)\b[^|,;:]{0,20}\b(guidance|outlook|forecast)\b"
     r"|\b(hebt|erhöht|erhoeht|hob)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele|umsatzziel|gewinnziel)\w*"
     r"|\b(prognose|ausblick|jahresziele?|ziele)\w*\s+(angehoben|erhöht)\b|\bprognose(erhöhung|anhebung)\b", re.I)
 GUIDE_DOWN = re.compile(
-    r"\b(cuts?|lowers?|lowered|slash(es|ed)?|reduces?|reduced|trims?|trimmed|withdraws?|withdrew|pulls?|pulled)\b[^|]{0,45}\b(guidance|outlook|forecast|view)\b"
+    r"\b(cuts?|lowers?|lowered|slash(es|ed)?|reduces?|reduced|trims?|trimmed|withdraws?|withdrew|pulls?|pulled)\b[^|;]{0,45}\b(guidance|outlook|forecast|view)\b"
     r"|\b(guidance|outlook|forecast)\b[^|]{0,25}\b(below|misses|missed|disappoints?|weak|falls short)\b"
     r"|\b(guidance|outlook|forecast)\b[^|]{0,15}\b(withdrawn|suspended|lowered|slashed|reduced)\b"
     r"|\b(weak|soft|disappointing|downbeat|gloomy|lowered)\b[^|,;:]{0,20}\b(guidance|outlook|forecast)\b"
     r"|\b(senkt|kappt|kassiert|streicht|senkte)\b[^|]{0,30}\b(prognose|ausblick|jahresziele?|ziele|umsatzziel|gewinnziel)\w*"
     r"|\b(prognose|ausblick|jahresziele?|ziele)\w*\s+(gesenkt|gekappt|kassiert|zurückgenommen)\b|\b(gewinnwarnung|prognosesenkung|umsatzwarnung)\b", re.I)
-ANALYST = re.compile(r"\b(price target|target price|kursziel|rating|stock forecast|price forecast|price prediction|prognose für die aktie|upgrades?|downgrades?|upgraded|downgraded|analysts? (see|expect)|"
+ANALYST = re.compile(r"\b(price target|target price|kursziel|rating|stock forecast|price forecast|price prediction|prognose für die aktie|upgrades?|downgrades?|upgraded|downgraded|analysts? (see|expect)|analysts?'? (outlook|view|forecast)|"
                      r"(raises|lifts|cuts|lowers|trims|boosts|slash(es|ed)?)\b[^|]{0,30}\btargets?\b|"
                      r"(raises|lifts|cuts|lowers|trims)\b[^|]{0,30}\b(profit |earnings |eps )?estimates?\b|wall street|"
                      r"fitch|moody'?s|s&p global ratings|dbrs|affirms\b[^|]{0,40}\brating|\bat '?[ab]{1,3}[+-]?'?|"
@@ -56,7 +56,8 @@ GENERIC = {"united", "international", "american", "general", "first", "national"
            "tata", "bajaj", "hero", "star", "green", "nomura", "indian", "india", "japan", "advanced", "applied", "digital", "capital",
            "federal", "western", "eastern", "southern", "northern", "pacific", "atlantic", "energy", "delivery", "public", "community",
            "citizens", "regional", "stock", "home", "union", "mitsubishi", "sumitomo", "hitachi", "toyota", "samsung", "hyundai", "lg",
-           "adani", "reliance", "mahindra", "state", "asia", "asian", "europe", "european", "credit", "sea", "oil", "vital"}
+           "adani", "reliance", "mahindra", "state", "asia", "asian", "europe", "european", "credit", "sea", "oil", "vital",
+           "bullish", "bearish"}   # 28.11.2026: Firma „Bullish“ (BLSH) – im Titel meist das Wort, nicht die Firma
 # Ausgaben-/Investitionspläne sind kein Umsatz- oder Gewinnausblick (Meta 21.10.2026: „Boosts … Spending Outlook“ → Kurs −7 %)
 SPEND = re.compile(r"\b(spend\w*|capex|capital (expenditures?|spending)|expenses?|costs?|investments?|invest\w*|ausgaben|investitionen|kosten)\b", re.I)
 # Sondereffekte: Gewinn durch Einmalposten verzerrt (Steuer, Abschreibung, Rückstellung)
@@ -91,7 +92,7 @@ def _about(title: str, m: re.Match, words: list[str]) -> bool:
                 gap = tl[k + len(w):m.start()]
                 if (m.start() - k <= 90 and not re.search(r"[,;]", gap)) or (k == 0 and "," not in gap):   # Titel beginnt mit der Firma
                     return True
-            elif k - m.end() <= 40 and not re.search(r"[,;]", tl[m.end():k]):
+            elif k - m.end() <= 40 and not re.search(r"[,;:—–]|\s-\s|\b(after|amid|despite|following|yet|but|while|as)\b", tl[m.end():k]):
                 return True
     return False
 
@@ -101,7 +102,9 @@ def guidance(items: list[tuple[str, str, str]], words: list[str], since: pd.Time
     Meldung nach den Zahlen erschien (Vorschauen zählen nicht). +1 angehoben, −1 gesenkt, 0 bestätigt;
     widersprüchliche Treffer → die häufigere Richtung, bei Gleichstand keine Angabe."""
     from email.utils import parsedate_to_datetime
-    words = [w for w in words if w and len(w) >= 3]
+    words = [w for w in words if w and (len(w) >= 3 or (w.isupper() and len(w) == 2))]   # Kürzel aus 2 Buchstaben nur in Großschreibung
+    if not words:
+        return None
     hits = []
     for title, link, date in items:
         if since is not None and date:

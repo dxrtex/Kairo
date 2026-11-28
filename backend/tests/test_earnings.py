@@ -237,3 +237,17 @@ def test_guidance_echte_fehltreffer_november_2026():
     for title, words, d in right:
         g = E.guidance([(title, "u", RSS_DATE)], words)
         assert (g and g["d"]) == d if d is not None else True, title
+
+
+def test_guidance_review_2811_false_hits():
+    """Wöchentliche Prüfung 28.11.2026: vier falsch erkannte Ausblick-Schlagzeilen."""
+    # fremde Firma, Name/Kürzel der eigenen Firma zu kurz (XP Inc.)
+    assert E.guidance([("Xeris Biopharma Holdings (XERS) Stock May Be Worth More Following Raised Revenue Guidance", "u", "")], E._words("XP Inc.", "XP")) is None
+    assert E.guidance([("XP raises 2027 revenue guidance", "u", "")], E._words("XP Inc.", "XP"))["d"] == 1
+    # Analysten-Ausblick, Firmenname ist ein gewöhnliches Wort (Bullish)
+    assert E.guidance([("TJX's Marmaxx Turnaround Fuels Bullish Analyst Outlook Despite Margin Pressures", "u", "")], E._words("Bullish", "BLSH")) is None
+    # fremde Firma, eigene erst nach Gedankenstrich (Zscaler)
+    assert E.guidance([("CrowdStrike Beats Earnings Estimates, Raises Guidance — Yet Stock Plunges After Zscaler Deal", "u", "")], E._words("Zscaler, Inc.", "ZS")) is None
+    # „Lower … Revenue; Maintains … Outlook“ ist bestätigt, nicht gesenkt (K92 Mining)
+    g = E.guidance([("K92 Mining Reports Slightly Lower Q3 Revenue; Maintains 2026 Production Outlook", "u", "")], E._words("K92 Mining Inc.", "KNT.TO"))
+    assert g and g["d"] == 0
